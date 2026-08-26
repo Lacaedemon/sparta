@@ -5666,16 +5666,20 @@ func soldier_brace() -> float:
 ## and deterministic -- `_sim_soldier_pos`/`_sim_soldier_hp` are this tick's
 ## frozen snapshot, and SoldierEnemyProximity's rebuild reads the same
 ## snapshot from every unit in the scene tree, no RNG, no wall-clock.
-## Memoized per physics tick: this is called from seven places (SoldierMelee.resolve for
-## both attacker and defender, SoldierSteering.accumulate, SoldierEnemyContact.accumulate,
-## SoldierBodies.step, SoldierBodies.couple, and the engaged-highlight debug draw), all of
-## which can run within the same tick. Keyed by (Engine.get_physics_frames(), count) rather
-## than the frame alone: every caller always passes a freshly-read `_sim_soldier_pos.size()`,
-## so if SoldierMelee.reap() splices a soldier out mid-tick (this unit was the DEFENDER in
-## some other unit's strike, resolved earlier in this same tick's _physics_process pass), the
-## next caller's `count` no longer matches the cached call's `count` and the cache misses --
-## recomputing against the current (post-reap) array rather than returning stale indices. No
-## explicit reap() invalidation hook needed.
+## Memoized per physics tick: this is called from several places (SoldierMelee.resolve for
+## the attacker, SoldierSteering.accumulate, SoldierEnemyContact.accumulate,
+## SoldierBodies.step, SoldierBodies.couple, and the engaged-highlight / strike-lunge
+## draw), all of which can run within the same tick. Keyed by
+## (Engine.get_physics_frames(), count, is_engaged()) rather than the frame alone: every
+## caller always passes a freshly-read `_sim_soldier_pos.size()`, so if SoldierMelee.reap()
+## splices a soldier out mid-tick (this unit was the DEFENDER in some other unit's strike,
+## resolved earlier in this same tick's _physics_process pass), the next caller's `count`
+## no longer matches the cached call's `count` and the cache misses -- recomputing against
+## the current (post-reap) array rather than returning stale indices. The engaged bit is
+## the same idea for the opening-tick latch: _compute returns empty while idle, then the
+## unit enters FIGHTING and strikes later in the SAME physics frame. Without the bit, that
+## first strike would reuse the idle empty set and land no per-soldier blows. No explicit
+## reap() invalidation hook needed.
 ##
 ## The (frame, count) key is NOT enough on its own to cover every caller, though:
 ## SoldierBodies.step() calls this BEFORE it integrates this tick's body positions, while
@@ -5692,6 +5696,7 @@ func soldier_brace() -> float:
 var _engaged_indices_cache: PackedInt32Array = PackedInt32Array()
 var _engaged_indices_cache_frame: int = -1
 var _engaged_indices_cache_count: int = -1
+var _engaged_indices_cache_engaged: bool = false
 
 ## Persists SoldierBodies.step()'s engaged-body <-> canonical-target-slot PAIRING across
 ## ticks, so an engaged body's steering target stays fixed for a real reaction cadence
@@ -5725,12 +5730,15 @@ func engaged_soldier_indices(count: int, use_cache: bool = true) -> PackedInt32A
 	if not use_cache:
 		return _compute_engaged_soldier_indices(count)
 	var frame: int = Engine.get_physics_frames()
-	if _engaged_indices_cache_frame == frame and _engaged_indices_cache_count == count:
+	var engaged: bool = is_engaged()
+	if _engaged_indices_cache_frame == frame and _engaged_indices_cache_count == count \
+			and _engaged_indices_cache_engaged == engaged:
 		return _engaged_indices_cache
 	var result: PackedInt32Array = _compute_engaged_soldier_indices(count)
 	_engaged_indices_cache = result
 	_engaged_indices_cache_frame = frame
 	_engaged_indices_cache_count = count
+	_engaged_indices_cache_engaged = engaged
 	return result
 
 

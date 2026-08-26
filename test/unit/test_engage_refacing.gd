@@ -122,7 +122,7 @@ func test_men_hold_positions_during_reface() -> void:
 
 func test_strike_withheld_until_faced() -> void:
 	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
-	var enemy := _unit(2, 1, Vector2(0, 20), Vector2.UP)
+	var enemy := _unit(2, 1, Vector2(0, 40), Vector2.UP)
 	var start_soldiers: int = enemy.soldiers
 	var start_hp: float = enemy._sim_soldier_hp[0]
 
@@ -159,7 +159,7 @@ func test_strike_withheld_until_faced() -> void:
 func test_small_offset_snaps_and_fights() -> void:
 	# Enemy nearly straight ahead: a tiny offset, under the threshold.
 	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
-	var enemy := _unit(2, 1, Vector2(18, 2), Vector2.LEFT)
+	var enemy := _unit(2, 1, Vector2(40, 4), Vector2.LEFT)
 	var start_soldiers: int = enemy.soldiers
 	var start_hp: float = enemy._sim_soldier_hp[0]
 

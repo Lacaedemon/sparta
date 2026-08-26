@@ -156,3 +156,20 @@ func test_issue_repro_does_not_one_tick_wipe_at_regiment_range() -> void:
 	assert_true(wounded, "once in contact, per-soldier melee actually lands wounds")
 	assert_gt(player.soldiers, 0, "the player unit still has men after the grind")
 	assert_gt(enemy.soldiers, 0, "the enemy unit still has men after the grind")
+
+
+# --- engaged-indices cache must miss when FIGHTING starts on the same tick ----
+
+func test_engaged_indices_cache_misses_when_fighting_starts_same_tick() -> void:
+	# Render / idle callers populate the (frame, count) cache with an empty set while
+	# the unit is still idle. The opening blow of a fresh contact then enters FIGHTING
+	# later in the SAME physics frame. The cache key includes the engaged bit so that
+	# strike does not reuse the idle empty set.
+	var u := _cavalry(1, 0, 10, Vector2.ZERO, Vector2.DOWN)
+	var n: int = u._sim_soldier_pos.size()
+	var idle: PackedInt32Array = u.engaged_soldier_indices(n)
+	assert_eq(idle.size(), 0, "idle: no engaged selection")
+	u.state = Unit.State.FIGHTING
+	var fighting: PackedInt32Array = u.engaged_soldier_indices(n)
+	assert_gt(fighting.size(), 0,
+		"FIGHTING on the same physics tick does not reuse the idle empty cache")

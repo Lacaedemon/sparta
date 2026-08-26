@@ -204,7 +204,8 @@ func test_accumulate_clears_a_stale_broken_flag_even_once_the_unit_fully_disenga
 	SoldierEncirclement.accumulate([wall, front, rear], 1)
 	assert_eq(wall._sim_soldier_broken[0], 1, "sanity: genuinely surrounded at first")
 
-	wall._engaged_linger = 0.0   # the unit fully disengages -- is_engaged() now false
+	wall.state = Unit.State.IDLE
+	wall._engaged_linger = 0.0   # fully out of the fight -- linger and FIGHTING both clear
 	SoldierEncirclement.accumulate([wall, front, rear], 2)   # a new frame -- the perf early-out fires
 	assert_eq(wall._sim_soldier_broken[0], 0,
 		"the stale flag is cleared even though the expensive gather+rebuild was skipped entirely")
@@ -281,6 +282,7 @@ func test_accumulate_only_considers_the_engaged_tier_not_every_living_soldier() 
 	wall._engaged_indices_cache = PackedInt32Array([1])
 	wall._engaged_indices_cache_frame = frame
 	wall._engaged_indices_cache_count = 2
+	wall._engaged_indices_cache_engaged = true
 
 	SoldierEncirclement.accumulate([wall, front, rear], frame)
 
