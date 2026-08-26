@@ -184,7 +184,8 @@ etc.) -- don't reflexively `skip` them.
 
 **Standard 5v5 (`seed "12345"`):** player uids 0-4 =
 Spearmen(140)/Infantry(120)/Archers(90)/Cavalry(80)/Cavalry(80) at
-x=452/602/782/978.93/1148.09, y=300; enemies 5-9 at y=880 (the battlefield-depth
+x=452/602/782/978.93/1148.09, y=300;
+enemies 5-9 at y=880 (the battlefield-depth
 change moved the enemy line down from its long-standing y=700 -- another silent
 breaker for any older script that clicked the enemy band). The x's re-space
 whenever a type's formation footprint changes -- `Battle._spawn_line` widens
@@ -197,10 +198,10 @@ no-ops with no error). **Don't trust this paragraph's x values either -- treat
 tick-8 state dump, and pin your script's subject with a
 `{"tick": 8, "uid": N, "field": "position", "value": [x, y]}` expect entry** so
 any future spawn re-spacing fails `tools/check.sh demo_defects` loudly, naming
-the clip, instead of recording a silent no-op. As of PR #938 the pins cover
-only the scripts that PR touched -- the twelve retargeted ones plus
-`parade-ground.json` -- not the whole catalog; older input scripts predate the
-convention, so add the pin whenever you edit one.
+the clip, instead of recording a silent no-op.
+The catalog's remaining default-line scripts were retargeted in the #1178 sweep.
+Older non-catalog scripts can still predate the convention,
+so add the pin whenever you edit one.
 Spawn positions are seed-independent, so clicks land regardless of seed. For a
 form-up facing the enemy (+y/down), drag **right→left** (start point on the
 right). Box-select a horizontal row by bracketing the row generously in y and
