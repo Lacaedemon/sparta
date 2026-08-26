@@ -11,15 +11,18 @@ const BattleScript = preload("res://scripts/Battle.gd")
 const SPAWN := Vector2(500, 470)
 
 
-func before_each() -> void:
-	# Pin the global combat RNG so each test's battle plays the same rolls
-	# regardless of how many draws earlier tests consumed (the same convention
-	# test_all_out_attack.gd uses). The pursuer-blocked proof below samples
-	# real combat outcomes, which otherwise shift with suite order.
-	Replay.rng.seed = 12345
+func after_each() -> void:
+	Replay.forced_seed = -1
 
 
 func _spawn(scenario: Array) -> Node:
+	# Deterministic battle seed: Battle._ready() runs Replay.start_recording(),
+	# which seeds the shared combat RNG from forced_seed (a plain rng.seed set
+	# here would be clobbered by that same call). Pinning it makes each test's
+	# battle play the same rolls on every run -- the pursuer-blocked proof below
+	# samples real combat outcomes, which are otherwise a fresh random draw per
+	# spawn (the same convention test_battle_ai_general.gd uses).
+	Replay.forced_seed = 12345
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	battle.drill_mode = true
 	battle.scenario = scenario
@@ -177,14 +180,11 @@ func test_pursuer_is_physically_blocked_by_the_rearguard_while_the_main_body_esc
 	var pursuer_start: Vector2 = pursuer.position
 
 	battle.enqueue_disengage_with_sacrifice([main_body.uid])
-	var pursuer_fought := false
 	for _k in range(90):   # 1.5s -- long enough for contact/engagement to settle
 		await get_tree().physics_frame
-		if pursuer.state == Unit.State.FIGHTING:
-			pursuer_fought = true
 
-	assert_true(pursuer_fought,
-			"the pursuer spent part of the window fighting -- something real is in its way")
+	assert_eq(pursuer.state, Unit.State.FIGHTING,
+			"the pursuer is still fighting -- something real is in its way")
 	assert_lt(pursuer.position.distance_to(pursuer_start), 40.0,
 			"and hasn't advanced far from where the clash started -- it's blocked, not slowed" \
 			+ " by a multiplier while still closing the distance")
