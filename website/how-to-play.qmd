@@ -34,7 +34,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Select a unit | **Left-click** its block or its raised flag |
 | Select multiple | **Left-click and drag** a box |
 | Move | **Right-click** the ground |
-| Form up | **Right-click and drag** open ground (left flank → right flank); with several units selected, the line is split among them |
+| Form up | **Right-click and drag** open ground (left flank → right flank); with several units selected, the line is split among them. With **Tray formation placement** on, a multi-row or gapped tray layout deploys as that 2D grid instead |
 | Form up in selection order | **Shift + right-click and drag** (instead of the default left-to-right field order) |
 | Form-up split mode | <kbd>Y</kbd> cycles through enabled modes (equal-depth / equal-width); <kbd>Shift</kbd> + <kbd>Y</kbd> cycles the other way; configure which modes cycle and which is the battle default in **☰ Menu** |
 | Reform before move | A checkbox in the **unit settings panel** (bottom-left), or the **control bar**, toggles whether the selection pauses to settle its ranks before marching. Each unit type has its own default (on for most types, off for cavalry) |
@@ -69,7 +69,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Engaged-soldier highlight | **☰ Menu → Engaged-soldier highlight** tints a unit's currently-engaged soldiers (the ones the sim actually treats as melee/contact candidates this tick) a distinct color, for every unit, at any zoom; a developer debug visual (off by default) |
 | Position-anchor marker | **☰ Menu → Position-anchor marker** draws a small dot at each unit's `position` -- the regiment's own kinematic anchor point, distinct from any individual soldier; a developer debug visual (off by default) |
 | Frame rate | **☰ Menu → Show frame rate** toggles a counter showing render FPS and the live simulation tick rate (ticks/s, which reads below the 60 Hz target if a large battle can't keep up); **☰ Menu → Frame rate corner…** picks which screen corner it renders in (top-left by default, off by default) |
-| Unit card tray | <kbd>F1</kbd> or the **Tray** button beside **☰ Menu** (or **☰ Menu → Unit card tray**) shows a panel for organizing your units into named battle lines. Each line is a fixed-width grid of cells (**+ Line**/**- Line** and **+ Column**/**- Column** resize it) -- a cell can be empty, so a line can leave gaps for a quincunx/checkerboard-style offset against the line below it. Drag a card onto another cell to swap the two (an empty target cell just moves the card there), or use its arrow buttons for the same moves -- a lone unit always has an empty neighbor cell to shift into. Click a line's name to select every unit in it at once (off by default) |
+| Unit card tray | <kbd>F1</kbd> or the **Tray** button beside **☰ Menu** (or **☰ Menu → Unit card tray**) shows a panel for organizing your units into named battle lines. Each line is a fixed-width grid of cells (**+ Line**/**- Line** and **+ Column**/**- Column** resize it) -- a cell can be empty, so a line can leave gaps for a quincunx/checkerboard-style offset against the line below it. Drag a card onto another cell to swap the two (an empty target cell just moves the card there), or use its arrow buttons for the same moves -- a lone unit always has an empty neighbor cell to shift into. Click a line's name to select every unit in it at once. Check **Tray formation placement** to deploy that grid onto the field with a form-up drag (Line 1 = front rank; see [Deploy from the unit card tray](#deploy-from-the-unit-card-tray)) |
 | Pan camera | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges (all four arrows nudge instead while a unit is selected; <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> always pans) |
 | Zoom | **Mouse wheel** |
 | Show all orders + formation preview | hold <kbd>Space</kbd> |
@@ -1087,6 +1087,42 @@ Three Spearmen regiments, box-selected and dragged into a line under the
 echelon (right leads) split: the unit nearest the right flank advances
 furthest, the unit nearest the left flank trails, and the middle regiment
 splits the difference --- a clean staggered diagonal.
+:::
+
+### Deploy from the unit card tray
+
+The tray is not only an organizer -- with
+**Tray formation placement** checked (in the tray header; off by default), a
+form-up drag deploys the selection in the tray's own 2D grid. **Line 1** is the
+front rank (on the dragged line), later lines sit behind it, columns run
+left-to-right along the drag, and empty cells become real gaps on the field.
+Rank-to-rank spacing comes from each line's own formation depth, so stacked
+blocks cannot overlap. A single filled line still only reorders left-to-right
+and then splits by the live Form-up mode (equal-depth, checkerboard, echelon,
+...) -- the 2D path kicks in once the layout has more than one row, or a gap
+inside the occupied cells.
+
+This is distinct from the **Checkerboard (quincunx)** Form-up split, which
+alternates the selection by index into two rows and ignores the tray. Tray
+gaps are the ones you drew; checkerboard gaps are computed. Check
+[tactics: tray formation](tactics.qmd#tray-formation) for when you'd want
+one versus the other.
+
+::: {#fig-tray-formation-deploy .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/tray_formation_deploy.jpg">
+  <source src="media/tray_formation_deploy.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Three Infantry regiments laid out in the tray as a quincunx (Line 1: unit,
+gap, unit; Line 2: gap, unit, gap), then box-selected and drag-deployed:
+the two Line-1 units land on the front with a gap between them, and the
+Line-2 unit sits behind in that gap.
 :::
 
 **Survey all orders (hold Space).** Holding <kbd>Space</kbd> overlays every unit's

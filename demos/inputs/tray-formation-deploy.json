@@ -1,0 +1,31 @@
+{
+  "_comment": "Tray-grid form-up (#1048): three player Infantry start already in tray-column order (uid 0 east / left-when-facing-south, uid 1 west, uid 2 middle-rear) and spaced to the destination column pitch so the form-up is a short south step onto the dragged line rather than a file-count reshape (an in-place widen during the response beat is what the overlap metric flags -- nnd_min ~1 wu while bbox 99x54 grows to 162x36). South of the default forest patch (y 380-580). The recorder seeds the unit-card tray as a quincunx (Line 1: uid 0, gap, uid 1; Line 2: gap, uid 2, gap) and turns tray_row_order_placement on without showing the tray overlay (it would cover most of a 720px-wide clip). Box-select, then a right-to-left drag so the perpendicular facing points south -- the same way the units already stand -- and the tray grid places uid 0 and uid 1 on the front with a gap, uid 2 behind covering that gap. Distinct from form_up_dist CHECKERBOARD, which ignores the tray and alternates by index. drill:true (no team 1). Camera holds a wide frame covering start and settled quincunx.",
+  "seed": "10481048",
+  "drill": true,
+  "tray_row_order_placement": true,
+  "tray_grid": [
+    [0, null, 1],
+    [null, 2, null]
+  ],
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 880, "y": 560, "count": 80},
+    {"team": 0, "type": "Infantry", "x": 660, "y": 560, "count": 80},
+    {"team": 0, "type": "Infantry", "x": 770, "y": 500, "count": 80}
+  ],
+  "camera": [
+    {"tick": 0, "x": 770.0, "y": 590.0, "zoom": 1.15},
+    {"tick": 80, "x": 770.0, "y": 610.0, "zoom": 1.2},
+    {"tick": 900, "x": 770.0, "y": 610.0, "zoom": 1.2}
+  ],
+  "steps": [
+    {"tick": 5, "box": {"from": [500, 430], "to": [1100, 640]}},
+    {"tick": 24, "rmb_drag": {"from": [930, 640], "to": [609, 640]}}
+  ],
+  "state": [10, 40, 120, 240, 400, 560, 700, 840],
+  "expect": [
+    {"tick": 10, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": 840, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": 840, "uid": 1, "field": "state", "value": "IDLE"},
+    {"tick": 840, "uid": 2, "field": "state", "value": "IDLE"}
+  ]
+}

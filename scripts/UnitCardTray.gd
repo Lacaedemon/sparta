@@ -74,7 +74,12 @@ func _ready() -> void:
 	_header_box.add_child(_rem_col_btn)
 
 	_row_placement_check = CheckBox.new()
-	_row_placement_check.text = "Tray order line placement"
+	_row_placement_check.text = "Tray formation placement"
+	_row_placement_check.tooltip_text = (
+			"When on, a form-up drag deploys the selection in this tray's 2D grid: " +
+			"Line 1 is the front rank, columns run left-to-right, and empty cells " +
+			"become gaps on the field. A single filled line still only reorders " +
+			"left-to-right (the previous tray-order behavior).")
 	_row_placement_check.toggled.connect(_on_placement_toggled)
 	_header_box.add_child(_row_placement_check)
 
@@ -205,6 +210,60 @@ func get_units_in_tray_order() -> Array:
 			if u != null and is_instance_valid(u) and u.state != UnitRef.State.DEAD:
 				res.append(u)
 	return res
+
+
+## Grid coordinates of `u`: x = row (Line 1 is 0, the front rank on deploy), y = column
+## (left-to-right). Returns Vector2i(-1, -1) when `u` is not in the tray -- a missing cell
+## rather than (0, 0), which is a real occupied slot.
+func cell_of(u) -> Vector2i:
+	if u == null:
+		return Vector2i(-1, -1)
+	for r_idx in range(_grid.size()):
+		var row: Array = _grid[r_idx]
+		for c_idx in range(row.size()):
+			if row[c_idx] == u:
+				return Vector2i(r_idx, c_idx)
+	return Vector2i(-1, -1)
+
+
+## Replace the live grid with `grid` (Array of rows; each cell a Unit or null). Every row
+## is padded / trimmed to the first row's width so the rectangular invariant holds. Used
+## by tests and by the scripted-input recorder to seed a tray layout without HUD clicks.
+func apply_grid(grid: Array) -> void:
+	_grid.clear()
+	if grid.is_empty():
+		_append_empty_row()
+		_rebuild_ui()
+		return
+	var cols: int = (grid[0] as Array).size() if grid[0] is Array else DEFAULT_COLUMNS
+	cols = maxi(1, cols)
+	for src in grid:
+		var row: Array = []
+		row.resize(cols)
+		if src is Array:
+			var src_row: Array = src
+			for c_idx in range(mini(cols, src_row.size())):
+				row[c_idx] = src_row[c_idx]
+		_grid.append(row)
+	_rebuild_ui()
+
+
+## `uid_rows` is the JSON shape a demo input script carries: each cell is a unit uid (int)
+## or null. Resolves through `by_uid` (Battle._by_uid); a missing uid becomes an empty cell
+## rather than aborting the rest of the layout.
+func apply_uid_grid(uid_rows: Array, by_uid: Dictionary) -> void:
+	var grid: Array = []
+	for uid_row in uid_rows:
+		if not uid_row is Array:
+			continue
+		var row: Array = []
+		for cell in uid_row:
+			if cell == null:
+				row.append(null)
+			else:
+				row.append(by_uid.get(int(cell)))
+		grid.append(row)
+	apply_grid(grid)
 
 
 func _valid_cell(r: int, c: int) -> bool:
