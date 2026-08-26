@@ -1441,3 +1441,52 @@ When a stacked PR is opened without `--base`:
 
 (`Lacaedemon/sparta` PR #1391 / #1390, 2026-08-24.)
 
+## gha / ai-config workflow inventory (after #1396)
+
+Sparta is a Godot + Quarto consumer of `Morrison-Lab/gha`, not an R package.
+PR #1396 audited `examples/` against `.github/workflows/` and added the
+applicable remaining callers.
+Do not re-run that audit from scratch.
+This is the inventory.
+
+**Already present before #1396:** `check-links`, `check-non-standard-chars`,
+`claude.yml`, `claude-code-review.yml`, `summary.yml`, `quarto-publish.yml`
+(via `publish-site.yml`), and a three-workflow preview family
+(`website-preview.yml` / `-deploy` / `-cleanup`).
+Godot CI, coverage, demos, and gdlint stay local.
+
+**Added in #1396:** `check-junk-files`, `check-secrets`, `check-ai-tells`
+(advisory; ignores `.claude/` `.gemini/` `.agents/`), `lint-workflows` /
+`lint-yaml` / `lint-markdown` / `lint-qmd` (advisory `fail: false` on first
+adoption), `check-new-line-breaks` (diff-scoped, blocking),
+`website-preview-equations.yml` (gha `check-equation-renders` -- the preview
+family is four workflows, not three), `report-failure` on `publish-site.yml`,
+and on-request Jules (`jules-review.yml`, `@jules review`).
+The repo has `JULES_API_KEY`.
+
+**Do not add without a new secret or an explicit policy change:** `gemini.yml`, `gemini-code-review.yml`, `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, and `ai-code-review.yml`.
+`gh api repos/Lacaedemon/sparta/actions/secrets` (as of 2026-08-25) listed only `CLAUDE_CODE_OAUTH_TOKEN`, `CODECOV_TOKEN`, and `JULES_API_KEY`.
+`GEMINI.md` also pauses automatic Gemini/Antigravity review for quota.
+
+**Skip as R-package-only or otherwise inapplicable:** `check-news`,
+`assemble-news`, `lint-changed-lines`, gha `test-coverage` (covr), `spellcheck`,
+`update-snapshots`, `bump-dev-version`, `version-check`,
+`altdoc-multiversion-docs`, `check-bibliography-dois`, `check-phi`,
+`request-dependabot-review` (no `dependabot.yml`), `bump-submodule` /
+`sync-shared-fragments` / `sync-upstream`, `small-model-agent`.
+
+**How to apply:** list repo secrets before copying a secret-gated gha example.
+Start corpus-wide markdown/yaml/qmd/workflow linters at `fail: false`.
+If the site has MathJax, install `check-equation-renders` as the fourth preview
+stub and keep its `workflows:` name matched to `Website Preview Build`.
+
+In this environment (`gh` 2.52.0), `gh pr edit <N> --body-file <path>` and `gh pr edit <N> --add-reviewer d-morrison` exit 1 with Projects Classic deprecation on `repository.pullRequest.projectCards`.
+That is a GitHub CLI bug fixed in `cli/cli` 2.73.0 (`cli/cli#10942`), not a property of this repo.
+`--add-label` hits the same GraphQL path.
+Patch the body with
+`gh api -X PATCH repos/Lacaedemon/sparta/pulls/<N> -F body=@file.md`
+and add labels with
+`gh api -X POST repos/Lacaedemon/sparta/issues/<N>/labels -f "labels[]=<name>"`.
+
+(`Lacaedemon/sparta` PR #1396 / issue #1395, 2026-08-25.)
+
