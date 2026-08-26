@@ -739,7 +739,9 @@ outside your selection to order a relief: the fresh unit advances into the fight
 the tired one peels back toward its own rear to rest. The two regiments pass through
 each other during the swap (the pair ignores each other's regiment collision, but
 close-order files stay packed --- relief through a dense block is meant to be
-hard), the reliever takes over the melee, and the relieved
+hard; switch to Loose if you want a file-lane). See
+[Tactics](tactics.qmd#line-relief) for the sources (Asclepiodotus, Polybius, Livy)
+behind that cost. The reliever takes over the melee, and the relieved
 unit's retreat is a real move order, so holding <kbd>Space</kbd> shows it like any
 other march. The relieved regiment backs out **facing the enemy** rather than turning
 its back on the line it just left, so it keeps its ranks square the whole way out.

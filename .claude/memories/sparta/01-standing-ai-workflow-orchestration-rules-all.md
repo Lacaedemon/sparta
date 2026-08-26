@@ -85,15 +85,26 @@ modifier or an instant state switch that ignores it. Concretely:
   redesign), and resolution authority -- so treat it as the general rule rather than a
   list of special cases.
 
-- **Close-order files stay impermeable during line relief.** Regiment-level
-  pass-through (`Unit._separation_exempt` / `Order.friendly_target`) lets two
-  friendly blocks interpenetrate so the line never opens a gap. That is unit
-  interpenetration, not file-gap opening. Close-order grids (NORMAL, TIGHT,
-  SQUARE, SCHILTRON, SHIELD_WALL, TESTUDO -- `spacing_scale <= 1.0`) keep their
-  files packed; blocked or expensive relief through close order is intended, not
-  a bug to paper over by widening slots (`_apply_relief_corridor_to_slots`).
-  Only Loose (`spacing_scale > 1.0`) may open a file corridor. Do not add file
-  pass-through to buy misslotted-budget margin on a close-order relief clip.
+- **Close-order files stay impermeable during line relief.**
+  Regiment-level pass-through (`Unit._separation_exempt` / `Order.friendly_target`)
+  lets two friendly blocks interpenetrate so the line never opens a gap.
+  That is unit interpenetration, not file-gap opening.
+  Close-order grids (NORMAL, TIGHT, SQUARE, SCHILTRON, SHIELD_WALL, TESTUDO --
+  `spacing_scale <= 1.0`) keep their files packed.
+  Blocked or expensive relief through close order is intended,
+  not a bug to paper over by widening slots (`_apply_relief_corridor_to_slots`).
+  A historically honest corridor is "pay to leave close order":
+  open lanes, pass, then close.
+  A unit that stays in synaspismos should stall file-through relief.
+  Only Loose (`spacing_scale > 1.0`) may open a file corridor.
+  Do not add file pass-through to buy misslotted-budget margin
+  on a close-order relief clip.
+  Asclepiodotus *Tactics* 4: four-cubit open order, two-cubit pyknosis,
+  and one-cubit synaspismos (locked shields, for receiving a charge).
+  Polybius *Histories* 18.28-32: a closed phalanx's rear ranks press the front
+  so the front cannot face about or act in squads.
+  Livy 8.8 and Polybius 15.9: unit swaps go through intervals between companies,
+  then the lanes close -- not through locked files.
 
 When implementing or reviewing a new mechanic, ask: does this emerge from the
 individual-level physics already in place, or is it a shortcut layered on top? Prefer

@@ -567,13 +567,14 @@ const SCHILTRON_ATTACK_FACTOR: float = 0.55
 # stood). Only LOOSE widens the grid, to ~0.9 m per man -- matching the researched
 # pyknosis close-order figure, not true open order (~1.8-2 m/man).
 const LOOSE_SPACING_SCALE: float = 2.0
-# Line-relief file corridor: ONLY Loose (spacing_scale > 1, pyknosis-scale gaps)
-# spreads ranks the partner is actually passing through, so the incoming front
-# can march between without intra-unit overlap. Close-order grids sit at the
-# synaspismos floor or tighter and keep their files packed -- relief cannot
-# easily thread a close formation, and that cost is intended. Peaks when the
-# two Loose blocks overlap (same distance gate as Order.resolve_friendly_target).
-# Ranks the partner has not reached stay on the base grid.
+# Line-relief file corridor: ONLY Loose (spacing_scale > 1) spreads ranks the
+# partner is actually passing through. Close-order grids sit at the synaspismos
+# floor or tighter and keep their files packed. A historically honest corridor
+# is pay-to-leave-close-order: open lanes, pass, then close. A unit that stays
+# in synaspismos stalls file-through relief -- that cost is intended, not a
+# bug. Peaks when two Loose blocks overlap (same distance gate as
+# Order.resolve_friendly_target). Ranks the partner has not reached stay on
+# the base grid.
 const RELIEF_CORRIDOR_SPREAD_MAX: float = 0.45
 # How many ranks ahead of the partner's current footprint a Loose lane begins
 # to open, so the men have a rank of travel to step aside before arrival.
@@ -6276,7 +6277,8 @@ func _relief_swap_partner() -> Unit:
 
 ## True when this block's own grid is open enough for a file corridor. Close order
 ## (synaspismos floor and tighter: spacing_scale <= 1) keeps files packed so relief
-## through the ranks stays expensive; only Loose already has gaps to widen.
+## through the ranks stays expensive -- pay to leave close order, then pass, then
+## close. Only Loose already has gaps to widen.
 func _relief_corridor_opens_files() -> bool:
 	return spacing_scale > 1.0
 
