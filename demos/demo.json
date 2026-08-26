@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Memory-only change: records the gha/ai-config workflow inventory. No battle recording can show a working-notes file."
+  "input": "demos/inputs/interval-labels.json",
+  "caption": "Tight, Normal, and Loose are distinct pitches on one slot-center identity. Infantry starts at 0.9 m pyknosis, T packs Tight 0.45 m locked, T opens Loose 1.8 m. Cavalry beside it walks 2 x 6 m, then Tight 1 x 3 m locked, then Loose 4 x 12 m -- same ratios, not a second metric.",
+  "fixed_fps": 30,
+  "max_frames": 360,
+  "fps": 12,
+  "width": 720
 }

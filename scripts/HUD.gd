@@ -184,7 +184,7 @@ const _FPS_CORNER_ENTRIES := [
 # Menu order for every formation mode. Captions are live metric slot-center
 # intervals from Unit.formation_label_for_mode (so cavalry's 1 x 3 m preset
 # labels as metres of horse-width and horse-length, not the infantry 0.45 m floor).
-# Wide enough for "0.45 m locked" and anisotropic "1 x 3 m" without clipping.
+# Wide enough for "0.45 m Shield Wall" and anisotropic "4 x 12 m" without clipping.
 const _FORMATION_BTN_MIN_SIZE := Vector2(180, 28)
 const _FORMATION_MENU_ORDER := [
 	UnitRef.FORMATION_NORMAL,
@@ -1664,7 +1664,9 @@ func _build_ctrl_section(label_text: String, content: Control) -> Control:
 func _build_ctrl_formation_menu() -> Control:
 	_ctrl_formation_btn = MenuButton.new()
 	_ctrl_formation_btn.text = UnitRef.formation_interval_label(
-			UnitRef.FORMATION_NORMAL, UnitRef.FORMATION_SPACING) + " ▾"
+			UnitRef.FORMATION_NORMAL,
+			UnitRef.FORMATION_SPACING * UnitRef.spacing_scale_for_mode(
+					UnitRef.FORMATION_NORMAL)) + " ▾"
 	_ctrl_formation_btn.custom_minimum_size = _FORMATION_BTN_MIN_SIZE
 	_ctrl_formation_btn.add_theme_font_size_override("font_size", 13)
 	var popup := _ctrl_formation_btn.get_popup()

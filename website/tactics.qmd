@@ -239,10 +239,11 @@ recovers (see [How to play](how-to-play.qmd) for the controls).
 - **The swap is a regiment pass-through, not a file-gap opening.** For its duration the
   two friendly *regiments* may interpenetrate, so the line never opens a
   company-sized hole for the enemy to pour into while the fresh unit works its way
-  forward. Close-order *files* stay packed: 0.45 m synaspismos on foot and 1 m
+  forward. Tight *files* stay packed: 0.45 m synaspismos on foot and 1 m
   knee-to-knee on horse leave a derived side gap of ~0, so a partner cannot march
-  between files. Only a block that already has open file clearance (0.9 m on foot,
-  Loose cavalry) widens a lane. Blocked relief through a locked interval is
+  between files. A block that already has open file clearance (0.9 m Normal or
+  1.8 m Loose on foot; 2 x 6 m or 4 x 12 m cavalry) widens a lane. Blocked relief
+  through a locked Tight interval is
   intended.
 - **The retreat is an order like any other.** The relieved unit falls back under a
   normal move order (hold <kbd>Space</kbd> to see it), and you can redirect it ---
@@ -621,15 +622,15 @@ commit your horse.
 
 Press <kbd>T</kbd> to cycle a unit's density --- named on the control bar by the live
 **slot-center pitch in metres** (the interval includes the man or horse). On foot that
-is **0.45 m**, **0.45 m locked** (Tight: the same interval with better missile and
-charge defence), **0.9 m** (historically pyknosis close order, not true open order
-at ~1.8 m), and **Square** (the anti-cavalry ring, covered below).
+is **0.9 m** (pyknosis, the default fighting order), **0.45 m locked** (Tight:
+synaspismos with better missile and charge defence), **1.8 m** (true open order),
+and **0.45 m Square** (the anti-cavalry ring, covered below).
 <kbd>Shift</kbd> + <kbd>T</kbd> cycles the other way, handy for stepping back one
 density without looping all the way round. Two heavier
 **shielded close-order stances**
-pack *below* the 0.45 m floor and are set from the control-bar Formation menu or
-their own direct keys. Cavalry uses the same identity with a different preset
-(1 m files &times; 3 m ranks; Loose doubles both).
+pack *below* the 0.45 m Tight floor and are set from the control-bar Formation menu or
+their own direct keys. Cavalry uses the same identity with a different Tight preset
+(1 m files &times; 3 m ranks; Normal 2x, Loose 4x).
 
 Density also decides how deep an enemy can press into the line once melee is joined.
 Tight, Square, Schiltron, Shield Wall, and Testudo hold the enemy at the front rank
@@ -675,8 +676,8 @@ formations rather than dissolving into a mob.
 </video>
 ```
 
-Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps 0.45 m locked
-to 0.9 m, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back --- the same
+Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps 0.9 m
+to 0.45 m locked to 1.8 m, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back --- the same
 parallelism as Shift+Y and Shift+X reversing the form-up-split and
 group-attack-mode cycles.
 :::

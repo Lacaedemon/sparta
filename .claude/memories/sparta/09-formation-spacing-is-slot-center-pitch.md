@@ -9,30 +9,32 @@ Do not invent a second stored scale for cavalry or for "close vs regular."
 
 Infantry vs cavalry are **different presets on that same axis**,
 not different metrics.
-Foot default is isotropic synaspismos (0.45 m files and ranks).
-Cavalry spawn anisotropic: 1.0 m files
-(one horse-width, derived side gap ~0, knee-to-knee)
+The authored floor is **Tight** (synaspismos):
+0.45 m isotropic on foot,
+cavalry 1.0 m files (one horse-width, derived side gap ~0, knee-to-knee)
 and 3.0 m ranks
 (Aelian: horse length ~3x shoulder width;
 Asclepiodotus 7.4: Greeks doubled the rider interval
 so an 8-deep x 16-front block still looked square --
 cavalry depth does not add othismos, and stacked horses panic).
 
-`FORMATION_NORMAL` and `FORMATION_TIGHT` share the 0.45 m infantry floor
-(`spacing_scale` 1.0).
-They **do** fork combat (separation, missile, charge absorption, brace, containment).
+`FORMATION_TIGHT` is that floor (`spacing_scale` 1.0).
+Keep Tight's combat/collision fork
+(separation, missile, charge absorption, brace, containment).
+`FORMATION_NORMAL` is pyknosis at 2x (~0.9 m on foot, 2 x 6 m on horse) --
+the default fighting order.
+`FORMATION_LOOSE` is true open order at 4x (~1.8 m on foot, 4 x 12 m on horse) --
+marching and file-relief density, not pyknosis.
 Do not collapse the enums,
 and do not gate file-corridor relief on `is_tight_formation()` --
-Shield Wall / Testudo are tighter than both.
+Shield Wall / Testudo are tighter than Tight.
 Gate the corridor on `file_clearance_wu() > 0`.
+Tight stays packed; Normal and Loose may widen.
 
-`FORMATION_LOOSE` is pyknosis (~0.9 m on foot),
-not true open order (~1.8-2 m).
-A cavalry-only option set
-(a dedicated open-order pitch for turning/weapon-use,
-separate from doubling the infantry scale)
-is a larger change: until it lands,
-Loose still multiplies both cavalry axes by 2.
+Square and schiltron stay on the Tight floor
+(synaspismos packing, isotropic at file pitch).
+Shield Wall / Testudo squeeze below that floor (0.75x / 0.6x);
+do not silently make them looser than Tight.
 
 The sim body is still a **circle** (`MARK_RADIUS` / `CAV_MARK_RADIUS`),
 so rank clearance currently subtracts the same radius as file.
@@ -41,10 +43,12 @@ would bring default cavalry rank clearance near zero;
 that is measurement fidelity on the same identity, not a new scale.
 
 Regiment-level relief pass-through (`_separation_exempt`) is **not** file-gap opening.
-Close-order files stay packed;
+Tight files stay packed;
 only an already-open derived gap may widen a lane.
 Blocked relief through a locked interval is intended.
 
 Player-facing labels are metres via `DistanceLegend.interval_label_text`
 (centimetre precision -- `label_text` would print 0.45 as "0 m").
 Anisotropic units read "1 x 3 m" (file then rank, ASCII x).
+Square/schiltron captions are isotropic at file pitch
+so they match the square grid, which omits rank.

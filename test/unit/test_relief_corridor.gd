@@ -265,22 +265,36 @@ func test_corridor_reads_rank_depth_off_the_slots_not_the_headcount() -> void:
 
 func test_close_order_relief_does_not_open_files() -> void:
 	var reliever := _bare_unit()
+	reliever.set_formation(Unit.FORMATION_TIGHT)
 	var tired := _bare_unit()
+	tired.set_formation(Unit.FORMATION_TIGHT)
 	_link(reliever, tired)
 	tired.position = reliever.position
-	assert_eq(reliever.formation_mode, Unit.FORMATION_NORMAL)
+	assert_eq(reliever.formation_mode, Unit.FORMATION_TIGHT)
 	assert_almost_eq(reliever.file_clearance_wu(), 0.0, 0.0001,
 			"synaspismos derived gap is packed")
 	assert_eq(reliever._relief_corridor_spread_strength(tired), 0.0,
-			"close-order files stay packed even when the blocks overlap")
+			"Tight files stay packed even when the blocks overlap")
 	var base: PackedVector2Array = reliever.formation_slots(reliever.soldiers, false)
 	var maybe: PackedVector2Array = reliever._apply_relief_corridor_to_slots(base)
 	for i in range(base.size()):
 		assert_true(base[i].is_equal_approx(maybe[i]),
-				"close-order corridor is a no-op on every slot")
+				"Tight corridor is a no-op on every slot")
 
 
-func test_tight_formation_shares_close_order_file_lock() -> void:
+func test_normal_formation_may_open_the_file_corridor() -> void:
+	var reliever := _bare_unit()
+	assert_eq(reliever.formation_mode, Unit.FORMATION_NORMAL)
+	var tired := _bare_unit()
+	_link(reliever, tired)
+	tired.position = reliever.position
+	assert_gt(reliever.file_clearance_wu(), 0.0,
+			"Normal pyknosis has a derived file gap")
+	assert_gt(reliever._relief_corridor_spread_strength(tired), 0.0,
+			"Normal files may widen a relief lane")
+
+
+func test_tight_formation_keeps_files_packed() -> void:
 	var reliever := _bare_unit()
 	reliever.set_formation(Unit.FORMATION_TIGHT)
 	var tired := _bare_unit()
@@ -288,10 +302,10 @@ func test_tight_formation_shares_close_order_file_lock() -> void:
 	_link(reliever, tired)
 	tired.position = reliever.position
 	assert_eq(reliever._relief_corridor_spread_strength(tired), 0.0,
-			"Tight is a combat fork at the same 0.45 m interval, so files stay packed")
+			"Tight's combat fork sits on the packed interval, so files stay closed")
 
 
-func test_returning_to_close_order_seals_the_corridor() -> void:
+func test_returning_to_tight_seals_the_corridor() -> void:
 	var reliever := _bare_loose_unit()
 	var tired := _bare_loose_unit()
 	_link(reliever, tired)
@@ -299,20 +313,29 @@ func test_returning_to_close_order_seals_the_corridor() -> void:
 	assert_gt(reliever._relief_corridor_spread_strength(tired), 0.0,
 			"Loose first opens the corridor")
 	reliever.set_formation(Unit.FORMATION_NORMAL)
+	assert_gt(reliever._relief_corridor_spread_strength(tired), 0.0,
+			"Normal pyknosis keeps the corridor open")
+	reliever.set_formation(Unit.FORMATION_TIGHT)
 	assert_eq(reliever._relief_corridor_spread_strength(tired), 0.0,
-			"dropping back to close order seals the files")
+			"dropping back to Tight seals the files")
 
 
 func test_cavalry_knee_to_knee_does_not_open_files() -> void:
 	var reliever := _bare_cavalry_unit()
+	reliever.set_formation(Unit.FORMATION_TIGHT)
 	var tired := _bare_cavalry_unit()
+	tired.set_formation(Unit.FORMATION_TIGHT)
 	_link(reliever, tired)
 	tired.position = reliever.position
 	assert_almost_eq(reliever.file_clearance_wu(), 0.0, 0.0001,
 			"1 m horse-width file pitch is packed knee-to-knee")
 	assert_eq(reliever._relief_corridor_spread_strength(tired), 0.0,
-			"cavalry close order uses the same clearance gate as infantry")
+			"cavalry Tight uses the same clearance gate as infantry")
+	reliever.set_formation(Unit.FORMATION_NORMAL)
+	tired.set_formation(Unit.FORMATION_NORMAL)
+	assert_gt(reliever._relief_corridor_spread_strength(tired), 0.0,
+			"Normal cavalry doubles the file pitch and may open a lane")
 	reliever.set_formation(Unit.FORMATION_LOOSE)
 	tired.set_formation(Unit.FORMATION_LOOSE)
 	assert_gt(reliever._relief_corridor_spread_strength(tired), 0.0,
-			"Loose cavalry doubles the file pitch and may open a lane")
+			"Loose cavalry at 4x may open a lane")

@@ -72,7 +72,7 @@ DEMOS=(
   "wheel_turn|demos/inputs/wheel-turn-oblique-move.json|30|440|720|input"
   "resize_flank_anchor|demos/inputs/flank-anchored-resize.json|30|160|640|input"
   "cavalry_grid|demos/inputs/cavalry-spacing.json|30|270|640|input"
-  "interval_labels|demos/inputs/interval-labels.json|30|220|640|input"
+  "interval_labels|demos/inputs/interval-labels.json|30|360|640|input"
   "reversal_march|demos/inputs/reversal-march.json|30|380|640|input"
   "chase_canter|demos/inputs/stern-chase-canter.json|30|260|640|input"
   "funnel_lanes|demos/inputs/funnel-hug-lanes.json|60|1080|640|input"

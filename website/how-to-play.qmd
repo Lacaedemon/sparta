@@ -48,7 +48,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Set stance in place | <kbd>Ctrl</kbd> + a stance key writes that stance on the selection immediately --- no move/attack order needed |
 | Rank relief (discipline) | <kbd>I</kbd> toggles rank cycling for the selection (on by default; see [Tactics](tactics.qmd#rank-cycling-trained-units)) |
 | Draw the other carried weapon | <kbd>Shift+I</kbd> re-equips the selection to the second weapon its soldiers carry, and back again. Only some troops carry a second one --- legionaries deploy holding the gladius with a pilum stowed (see [Tactics](tactics.qmd#drawing-the-other-weapon)) |
-| Formation | <kbd>T</kbd> (cycles 0.45 m / 0.45 m locked / 0.9 m / 0.45 m Square on foot; cavalry shows 1 x 3 m on the same axis; <kbd>Shift</kbd> + <kbd>T</kbd> cycles the other way) · or **control bar** |
+| Formation | <kbd>T</kbd> (cycles 0.9 m / 0.45 m locked / 1.8 m / 0.45 m Square on foot; cavalry shows 2 x 6 m / 1 x 3 m locked / 4 x 12 m on the same axis; <kbd>Shift</kbd> + <kbd>T</kbd> cycles the other way) · or **control bar** |
 | Anti-cavalry square | <kbd>O</kbd> jumps straight to Square / orbis (press again to drop back to Normal) · or click **0.45 m Square** in the control bar |
 | Schiltron | <kbd>Shift</kbd> + <kbd>O</kbd> jumps straight to Schiltron, the harder-bracing anti-cavalry variant (press again to drop back to Normal) · or click **0.45 m Schiltron** in the control bar |
 | Shielded stances | <kbd>L</kbd> shield wall · <kbd>U</kbd> testudo (each toggles back to Normal) · or click **0.34 m Shield Wall** / **0.27 m Testudo** in the control bar menu |
@@ -89,14 +89,15 @@ under pressure.
 the screen with clickable buttons for the most-used unit toggles.
 Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking to typing.
 
-- **Formation** --- click **0.45 m**, **0.45 m locked**, **0.9 m**, or **0.45 m Square**
+- **Formation** --- click **0.9 m**, **0.45 m locked**, **1.8 m**, or **0.45 m Square**
   (same as <kbd>T</kbd>), or pick one of the other direct-select stances:
   **0.45 m Schiltron**
   (<kbd>Shift</kbd> + <kbd>O</kbd>, the harder-bracing anti-cavalry variant),
   **0.34 m Shield Wall** (<kbd>L</kbd>), or **0.27 m Testudo** (<kbd>U</kbd>).
   The button shows the
-  selected unit's live slot-center pitch in metres --- cavalry reads **1 x 3 m**
-  (file then rank) on that same identity, not a second scale. <kbd>T</kbd> cycles only
+  selected unit's live slot-center pitch in metres --- cavalry reads **2 x 6 m**
+  at Normal (file then rank), **1 x 3 m locked** at Tight, **4 x 12 m** at Loose
+  on that same identity, not a second scale. <kbd>T</kbd> cycles only
   the density set plus Square; the other three stances are set from the menu or their
   direct keys.
 - **Stance** --- click any order stance to arm it for your next right-click order (same as the stance hotkeys; <kbd>Esc</kbd> / the Normal button clears it).
@@ -742,9 +743,10 @@ while visibly shoving the enemy line back harder with every blow.
 outside your selection to order a relief: the fresh unit advances into the fight and
 the tired one peels back toward its own rear to rest. The two *regiments* pass through
 each other during the swap --- that is unit-level interpenetration so the line never
-opens a company-sized hole, not files spreading apart. Close-order files (0.45 m on
-foot, 1 m knee-to-knee on horse) stay packed; only a block whose derived file gap is
-already open (0.9 m Loose on foot, Loose cavalry) widens a lane between files.
+opens a company-sized hole, not files spreading apart. Tight files (0.45 m on
+foot, 1 m knee-to-knee on horse) stay packed; a block whose derived file gap is
+already open (0.9 m Normal or 1.8 m Loose on foot; 2 x 6 m or 4 x 12 m cavalry)
+widens a lane between files.
 The reliever takes over the melee, and the relieved unit's retreat is a real move
 order, so holding <kbd>Space</kbd> shows it like any other march. The relieved
 regiment backs out **facing the enemy** rather than turning its back on the line it
@@ -794,25 +796,26 @@ three swapping with the single unit clicked.
 Press <kbd>T</kbd> to cycle a selected unit's **formation density** --- the control
 bar names each mode by its live **slot-center pitch in metres** (the interval
 includes the man or horse; it is not empty air between bodies). On foot that is
-*0.45 m* (synaspismos), *0.45 m locked* (the same interval with Tight's missile and
-charge bonuses), *0.9 m* (pyknosis --- historically close order, not true open
-order), and *Square* (the anti-cavalry ring described below). Tight does **not**
-pack the grid tighter than 0.45 m; there is no historically grounded room below
-synaspismos except Shield Wall / Testudo. Every unit can cycle through all four;
-each type just starts at a different one --- spearmen deploy locked (0.45 m locked
-against a charge), archers deploy at 0.9 m (room to fire), and sword-armed infantry
-and cavalry deploy at their type's default combat interval.
+*0.9 m* (pyknosis, the default fighting order), *0.45 m locked* (Tight:
+synaspismos with Tight's missile and charge bonuses), *1.8 m* (true open order,
+the marching / file-relief density), and *0.45 m Square* (the anti-cavalry ring
+described below). Tight is the packed floor; there is no historically grounded
+room below synaspismos except Shield Wall / Testudo. Every unit can cycle through
+all four; each type just starts at a different one --- spearmen deploy locked
+(0.45 m locked against a charge), archers deploy at 1.8 m (room to fire), and
+sword-armed infantry and cavalry deploy at Normal (0.9 m on foot, 2 x 6 m on
+horse).
 
 The grid each density mode scales is itself **per-type**, on that **same**
 centre-pitch identity:
-foot regiments stand isotropic at 0.45 m on both axes,
-while a cavalry regiment's grid is anisotropic ---
+foot Tight is isotropic at 0.45 m on both axes,
+while a cavalry regiment's Tight grid is anisotropic ---
 **1 m between files** (one horse-width, derived side gap ~0, knee-to-knee) and
 **3 m between ranks** (Aelian: horse length ~3&times; shoulder width;
 Asclepiodotus 7.4: Greeks doubled the interval between riders so an 8-deep &times;
-16-front block still looked square). Cavalry has no separate spacing metric and no
-extra stance list yet: <kbd>T</kbd> still walks the infantry option set, doubling
-both axes in Loose (2 m files / 6 m ranks).
+16-front block still looked square). Cavalry has no separate spacing metric:
+<kbd>T</kbd> walks the same option set, scaling both axes 2x at Normal
+(2 m files / 6 m ranks) and 4x at Loose (4 m files / 12 m ranks).
 A mounted regiment therefore occupies several times the ground
 of a foot block with the same headcount,
 and its deep column takes visibly longer to wheel or pivot.
@@ -829,7 +832,7 @@ and its deep column takes visibly longer to wheel or pivot.
 ```
 
 An 80-horse Cavalry regiment (right) on its own grid pitch beside a 120-man
-Infantry block (left) at foot close order: the mounted block stands both wider
+Infantry block (left) at foot Normal (0.9 m): the mounted block stands both wider
 and far deeper, and marches as one body on that roomier grid.
 :::
 
@@ -844,10 +847,10 @@ and far deeper, and marches as one body on that roomier grid.
 </video>
 ```
 
-Same spacing identity, different presets: a foot block at 0.45 m beside a
-cavalry squadron at 1 m files &times; 3 m ranks. <kbd>T</kbd> walks the foot
-block to 0.45 m locked (same interval) then 0.9 m; the horse keeps its own
-anisotropic pitch.
+Same spacing identity, different pitches: a foot block starts at 0.9 m pyknosis
+beside a cavalry squadron at 2 m files &times; 6 m ranks. <kbd>T</kbd> packs the
+foot block to 0.45 m locked, then opens 1.8 m; the horse walks Tight 1 x 3 m
+locked, then Loose 4 x 12 m --- same 1x / 2x / 4x ratios, not a second metric.
 :::
 
 **Square: orbis and schiltron (anti-cavalry rings).** *Square* forms a hollow square:
@@ -1062,11 +1065,11 @@ active split mode before you release.
 </video>
 ```
 
-Three regiments of different size --- Spearmen (Tight), Infantry (Normal),
-Archers (Loose) --- box-selected and dragged into a flank line under the
-default equal-depth (space) split: each forms up to the same physical depth.
-Tight and Normal share the same spacing, but the loosely-spread Archers split
-the line differently from both for a genuinely density-driven reason.
+Three regiments of different size --- Spearmen (Tight, 0.45 m), Infantry
+(Normal, 0.9 m), Archers (Loose, 1.8 m) --- box-selected and dragged into a
+flank line under the default equal-depth (space) split: each forms up to the
+same physical depth. The three densities now occupy genuinely different
+frontage, so the split is density-driven for all three, not only the Archers.
 :::
 
 **Checkerboard (quincunx).** A fifth split mode, off by default (enable it in

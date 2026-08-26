@@ -1,8 +1,8 @@
 {
   "input": "demos/inputs/interval-labels.json",
-  "caption": "Same spacing identity for foot and horse: slot-center pitch in metres. Infantry starts at 0.45 m, T locks shields at that same interval, T again opens 0.9 m pyknosis. Cavalry beside it stays 1 x 3 m (file then rank) -- knee-to-knee files, deeper ranks, not a second metric.",
+  "caption": "Tight, Normal, and Loose are distinct pitches on one slot-center identity. Infantry starts at 0.9 m pyknosis, T packs Tight 0.45 m locked, T opens Loose 1.8 m. Cavalry beside it walks 2 x 6 m, then Tight 1 x 3 m locked, then Loose 4 x 12 m -- same ratios, not a second metric.",
   "fixed_fps": 30,
-  "max_frames": 220,
+  "max_frames": 360,
   "fps": 12,
   "width": 720
 }

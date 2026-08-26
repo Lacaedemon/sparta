@@ -79,9 +79,9 @@ const HISTORICAL_FORMATIONS := {
 		UnitRef.FORMATION_TESTUDO: "testudo",
 	},
 	Type.SPARTA: {
-		UnitRef.FORMATION_NORMAL: "phalanx",
+		UnitRef.FORMATION_NORMAL: "pyknosis",
 		UnitRef.FORMATION_TIGHT: "synaspismos",
-		UnitRef.FORMATION_LOOSE: "pyknosis",
+		UnitRef.FORMATION_LOOSE: "araios",
 		UnitRef.FORMATION_SQUARE: "plinthion",
 		UnitRef.FORMATION_SCHILTRON: "schiltron",
 		UnitRef.FORMATION_SHIELD_WALL: "synaspismos",

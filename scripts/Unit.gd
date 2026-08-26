@@ -556,17 +556,14 @@ const SCHILTRON_ATTACK_FACTOR: float = 0.55
 # Both the square (orbis) and the schiltron pack to the same synaspismos floor as TIGHT
 # (shields locked outward), so they reuse TIGHT_SEPARATION_SCALE and keep spacing_scale
 # at 1.0.
-# Open-order grid-spacing scale. FORMATION_SPACING already sits at the historically
-# attested synaspismos / locked-shield floor (~0.45 m per man) -- the *tightest* of the
-# three Hellenistic-phalanx density tiers, not the standing close-order (pyknosis,
-# ~0.9 m/man) one; see FORMATION_SPACING's own comment for why the game keeps that
-# tight density as the default. There's no historically grounded room to pack soldiers
-# tighter than synaspismos, so TIGHT reuses the same floor (spacing_scale stays 1.0;
-# its bonuses come from TIGHT_MISSILE_DEFENSE/TIGHT_CHARGE_ABSORPTION and the smaller
-# separation_radius above, not from squeezing marks closer than any real formation ever
-# stood). Only LOOSE widens the grid, to ~0.9 m per man -- matching the researched
-# pyknosis close-order figure, not true open order (~1.8-2 m/man).
-const LOOSE_SPACING_SCALE: float = 2.0
+# Density scales on the type's authored slot-center pitch (FORMATION_SPACING on foot;
+# cavalry's loadout file_pitch_m / rank_pitch_m). TIGHT is that floor (synaspismos
+# ~0.45 m on foot, knee-to-knee 1 x 3 m on horse). NORMAL is pyknosis at 2x (the
+# default fighting order). LOOSE is true open order at 4x (marching / file-relief).
+# Square and schiltron stay on the Tight floor; Shield Wall / Testudo squeeze below it.
+const TIGHT_SPACING_SCALE: float = 1.0
+const NORMAL_SPACING_SCALE: float = 2.0
+const LOOSE_SPACING_SCALE: float = 4.0
 # Line-relief file corridor: ONLY a block whose derived file clearance is already
 # positive (file_clearance_wu() > 0 -- slot-center pitch minus the two body
 # half-widths) may spread ranks so a partner can march between files. At
@@ -1165,24 +1162,21 @@ var separation_radius: float = SEPARATION_RADIUS_INFANTRY
 # lose its widened body on a formation cycle.
 var _base_separation_radius: float = SEPARATION_RADIUS_INFANTRY
 # Density scale for the formation grid itself: set_formation() sets this alongside
-# separation_radius, so LOOSE actually spreads soldiers out -- not just widens an
-# abstract collision footprint. TIGHT stays at 1.0 (see LOOSE_SPACING_SCALE above
-# for why there's no tighter-than-default grid spacing). Loose is pyknosis
-# (~0.9 m/man on foot), not true open order (~1.8-2 m/man). UnitFormation.slots()
-# and _front_depth() read it; the files/ranks count itself never changes, only the
-# spacing between them.
-var spacing_scale: float = 1.0
+# separation_radius, so NORMAL/LOOSE actually spread soldiers out -- not just widen
+# an abstract collision footprint. Default matches FORMATION_NORMAL (pyknosis, 2x
+# the Tight floor). UnitFormation.slots() and _front_depth() read it; the
+# files/ranks count itself never changes, only the spacing between them.
+var spacing_scale: float = NORMAL_SPACING_SCALE
 # Per-type formation grid pitch, in world units: SLOT-CENTER to slot-center (the
 # interval includes the man or horse; Asclepiodotus Tactics 4 measures
 # right-shoulder to right-shoulder / breast to breast). Not an empty
 # edge-to-edge gap -- that derived clearance is file_clearance_wu(). Foot troops
-# keep the historical synaspismos floor on both axes (FORMATION_SPACING, 0.45 m
-# centers); cavalry spawn with a wider file pitch (one horse-width between
-# centers, derived side gap ~0) and a much deeper rank pitch (set by Battle from
-# the loadout's file_pitch_m/rank_pitch_m; Aelian's horse length is ~3x shoulder
-# width). spacing_scale (the formation-mode density: TIGHT/LOOSE/shield wall)
-# multiplies both axes alike -- see file_pitch_wu()/rank_pitch_wu(), the
-# accessors every slot-geometry consumer reads.
+# author the synaspismos floor on both axes (FORMATION_SPACING, 0.45 m centers);
+# cavalry author a wider file pitch (one horse-width between centers, derived
+# side gap ~0) and a much deeper rank pitch (Battle loadout file_pitch_m /
+# rank_pitch_m; Aelian's horse length is ~3x shoulder width). Those authored
+# values are the TIGHT / knee-to-knee preset. spacing_scale multiplies both
+# axes alike -- NORMAL 2x, LOOSE 4x -- see file_pitch_wu()/rank_pitch_wu().
 var file_pitch: float = FORMATION_SPACING
 var rank_pitch: float = FORMATION_SPACING
 # Rises while this unit is locked in mutual melee (both FIGHTING, neither HOLD).
@@ -3522,7 +3516,9 @@ static func spacing_scale_for_mode(mode: int) -> float:
 		return TESTUDO_SPACING_SCALE
 	if mode == FORMATION_LOOSE:
 		return LOOSE_SPACING_SCALE
-	return 1.0   # NORMAL, TIGHT, SQUARE, SCHILTRON all sit at the historical floor
+	if mode == FORMATION_NORMAL:
+		return NORMAL_SPACING_SCALE
+	return TIGHT_SPACING_SCALE   # TIGHT, SQUARE, SCHILTRON stay on the authored floor
 
 
 ## Change the regiment's formation and recalculate its separation footprint.
@@ -6263,22 +6259,27 @@ func gait_pace(gait: int) -> float:
 
 
 ## Player-facing formation label: the live slot-center pitch as metres (e.g.
-## "0.45 m", "0.9 m", "1 x 3 m"), plus a stance qualifier only when the mode
-## forks combat or geometry at that same interval (Tight's locked-shield
-## bonuses, Square, Shield Wall, Testudo, Schiltron). Normal and Loose are the
-## interval itself -- they are not a second prestige name. Cavalry is
+## "0.9 m", "0.45 m locked", "1.8 m", "2 x 6 m"), plus a stance qualifier only
+## when the mode forks combat or geometry (Tight's locked-shield bonuses on the
+## packed floor, Square, Shield Wall, Testudo, Schiltron). Normal and Loose are
+## the interval itself -- they are not a second prestige name. Cavalry is
 ## anisotropic (file then rank) on the same identity; foot is isotropic so one
-## number suffices.
+## number suffices. Square/schiltron captions omit rank because that grid is
+## isotropic at file pitch.
 func formation_summary() -> String:
 	return formation_label_for_mode(formation_mode)
 
 
 ## Label for `mode` as if this unit switched to it, using this unit's own unscaled
-## file/rank pitch (so cavalry's 1 m x 3 m preset labels as metres of horse-width
-## and horse-length, not the infantry 0.45 m floor).
+## file/rank pitch (so cavalry's 1 m x 3 m Tight preset labels as metres of
+## horse-width and horse-length, not the infantry 0.45 m floor). Square and
+## schiltron lay out an isotropic grid at file pitch, so their caption omits rank.
 func formation_label_for_mode(mode: int) -> String:
 	var scale: float = spacing_scale_for_mode(mode)
-	return formation_interval_label(mode, file_pitch * scale, rank_pitch * scale)
+	var file_wu: float = file_pitch * scale
+	if mode == FORMATION_SQUARE or mode == FORMATION_SCHILTRON:
+		return formation_interval_label(mode, file_wu)
+	return formation_interval_label(mode, file_wu, rank_pitch * scale)
 
 
 ## Player-facing label for a formation `mode` whose live file interval is
@@ -6320,9 +6321,10 @@ func _relief_swap_partner() -> Unit:
 
 ## True when this block's derived file clearance is already open enough that a
 ## relief partner may widen a lane. Keys off actual density (slot-center pitch
-## minus body half-widths), not a close/regular label: Normal and Tight share
-## the 0.45 m infantry floor and both stall; Loose (0.9 m) and any unit whose
-## own file_pitch already leaves a gap may open.
+## minus body half-widths), not a close/regular label: Tight / Square / Schiltron
+## sit on the packed floor (derived gap ~0) and stall; Normal (pyknosis) and
+## Loose (open order) leave a gap, so the corridor may open. Shield Wall /
+## Testudo squeeze below the floor and stay packed.
 func _relief_corridor_opens_files() -> bool:
 	return file_clearance_wu() > 0.0
 
@@ -6820,22 +6822,15 @@ func _stop_rout_and_fight() -> void:
 # Historically-grounded metric values: FORMATION_SPACING is the synaspismos
 # ("locked shields") SLOT-CENTER pitch, ~0.45 m (Battle.WORLD_UNITS_PER_METER = 20).
 # The interval includes the soldier (Asclepiodotus Tactics 4: right-shoulder to
-# right-shoulder); derived edge-to-edge clearance is file_clearance_wu(). 0.45 m is
-# the *tightest* of the three attested Hellenistic-phalanx density tiers (open order)
-# ~1.8-2 m/man, close order/pyknosis ~0.9-1 m/man, synaspismos ~0.45 m/man), not the
-# standing close-order one. Historically synaspismos was a rare, temporary stance
-# adopted under extreme pressure (a frontal charge, heavy missile fire) rather than a
-# standing default -- Sparta keeps it as the default formation density deliberately,
-# not by oversight: combat here keeps a regiment in sustained melee contact far more
-# of the time than any historical campaign's ratio of march time to battle time, and
-# the tighter block stays compact and legible at the game's camera/map scale.
-# FORMATION_LOOSE already offers the looser ~0.9 m/man pyknosis close-order density as
-# a selectable formation (see LOOSE_SPACING_SCALE / spacing_scale_for_mode), so a
-# player who wants that historically-standard density can select it. See
-# docs/SPEED_VERIFICATION.md for the full historical sourcing and design rationale.
-# A foot soldier's mark is sized to match this floor --
-# shoulder-to-shoulder at synaspismos density, no gap and no overlap. Cavalry
-# marks are sized to a horse's ~1 m body width. World-units, not px.
+# right-shoulder); derived edge-to-edge clearance is file_clearance_wu(). That
+# floor is FORMATION_TIGHT. FORMATION_NORMAL is pyknosis at 2x (~0.9 m), the
+# default fighting order. FORMATION_LOOSE is true open order at 4x (~1.8 m),
+# the marching / file-relief density. See NORMAL_SPACING_SCALE /
+# LOOSE_SPACING_SCALE and docs/SPEED_VERIFICATION.md. A foot soldier's mark is
+# sized to match the Tight floor -- shoulder-to-shoulder at synaspismos, no gap
+# and no overlap. Cavalry marks are sized to a horse's ~1 m body width, and the
+# loadout's 1 m x 3 m pitches are the Tight / knee-to-knee preset on the same
+# identity. World-units, not px.
 const FORMATION_SPACING: float = 0.45 * WorldScaleRef.WU_PER_M   # metres between soldier marks (synaspismos density)
 const FORMATION_ASPECT: float = 1.7     # files-to-ranks ratio (> 1 = wider than deep)
 const MARK_RADIUS: float = 0.225 * WorldScaleRef.WU_PER_M   # foot soldier mark (0.45 m across)

@@ -209,6 +209,7 @@ func test_motion_ref_reports_both_grid_pitches_and_their_min() -> void:
 	autofree(u)
 	u.file_pitch = 20.0
 	u.rank_pitch = 60.0
+	u.set_formation(Unit.FORMATION_TIGHT)
 	var ref: Dictionary = DemoState.motion_ref(u)
 	assert_eq(float(ref["file_pitch"]), 20.0, "file pitch dumped as-is")
 	assert_eq(float(ref["rank_pitch"]), 60.0, "rank pitch dumped as-is")
@@ -221,10 +222,11 @@ func test_unit_record_dumps_pitches_at_top_level() -> void:
 	add_child_autofree(u)
 	u.file_pitch = 20.0
 	u.rank_pitch = 60.0
+	u.set_formation(Unit.FORMATION_TIGHT)
 	var rec: Dictionary = DemoState.unit_record(u, {}, 1.0, false)
 	assert_eq(float(rec["file_pitch"]), 20.0, "HUD checks can read file pitch without FULL")
 	assert_eq(float(rec["rank_pitch"]), 60.0, "and rank pitch for the anisotropic label")
-	assert_eq(str(rec["formation_label"]), "1 x 3 m",
+	assert_eq(str(rec["formation_label"]), "1 x 3 m locked",
 			"dumped caption matches the HUD so the analyzer need not load Unit")
 
 

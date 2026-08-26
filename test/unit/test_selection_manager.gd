@@ -1718,10 +1718,9 @@ func test_form_up_single_unit_slice_fills_the_whole_line() -> void:
 	var sm := _sm()
 	var u := _unit()
 	u.max_soldiers = 120
-	# A lone unit fills the 140 px drag with the same frontage the original single-unit deploy
-	# used (files_for_halfwidth of the half-width) — in EVERY mode, since holding anything
-	# "equal" is vacuous with only one unit to compare.
-	var want_files: int = UnitFormation.files_for_halfwidth(70.0, 120)
+	# A lone unit fills the 140 px drag at its own live file pitch (Normal pyknosis
+	# is 2x the Tight floor, so the same half-width holds fewer files).
+	var want_files: int = UnitFormation.files_for_halfwidth(70.0, 120, u.file_pitch_wu())
 	for mode in [EQUAL_DEPTH, EQUAL_WIDTH, EQUAL_DEPTH_SPACE, EQUAL_WIDTH_COUNT, CHECKERBOARD,
 			ECHELON_RIGHT, ECHELON_LEFT]:
 		var slices: Array = sm._form_up_slices([u], Vector2(400, 500), Vector2(540, 500), mode)

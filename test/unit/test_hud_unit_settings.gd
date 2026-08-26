@@ -176,16 +176,16 @@ func test_ctrl_bar_update_reform_is_a_noop_with_no_unit() -> void:
 func test_refresh_formation_menu_labels_is_a_noop_without_a_unit() -> void:
 	var hud := _hud()
 	hud._refresh_formation_menu_labels(null)
-	assert_eq(hud._ctrl_formation_btn.text, "0.45 m ▾",
-			"null unit leaves the default infantry interval")
+	assert_eq(hud._ctrl_formation_btn.text, "0.9 m ▾",
+			"null unit leaves the default infantry pyknosis interval")
 
 
 func test_formation_popup_falls_back_to_infantry_interval_without_selection() -> void:
 	var hud := _hud()
 	hud._sel_mgr = null
 	hud._on_formation_popup_id(UnitScript.FORMATION_LOOSE)
-	assert_eq(hud._ctrl_formation_btn.text, "0.9 m ▾",
-			"no selection stamps the infantry pyknosis label")
+	assert_eq(hud._ctrl_formation_btn.text, "1.8 m ▾",
+			"no selection stamps the infantry open-order label")
 
 
 func test_formation_popup_keeps_cavalry_anisotropic_label() -> void:
@@ -198,9 +198,12 @@ func test_formation_popup_keeps_cavalry_anisotropic_label() -> void:
 	stub.units = [cav]
 	hud._sel_mgr = stub
 	hud._on_formation_popup_id(UnitScript.FORMATION_NORMAL)
-	assert_eq(hud._ctrl_formation_btn.text, "1 x 3 m ▾",
-			"a cavalry selection keeps file x rank metres, not the 0.45 m infantry default")
+	assert_eq(hud._ctrl_formation_btn.text, "2 x 6 m ▾",
+			"a cavalry selection keeps file x rank metres, not the 0.9 m infantry default")
 	var popup: PopupMenu = hud._ctrl_formation_btn.get_popup()
 	var loose_idx: int = popup.get_item_index(UnitScript.FORMATION_LOOSE)
-	assert_eq(popup.get_item_text(loose_idx), "2 x 6 m",
-			"the menu previews Loose as doubled cavalry pitches")
+	assert_eq(popup.get_item_text(loose_idx), "4 x 12 m",
+			"the menu previews Loose as 4x the cavalry Tight floor")
+	var tight_idx: int = popup.get_item_index(UnitScript.FORMATION_TIGHT)
+	assert_eq(popup.get_item_text(tight_idx), "1 x 3 m locked",
+			"the menu previews Tight as the authored knee-to-knee floor")
