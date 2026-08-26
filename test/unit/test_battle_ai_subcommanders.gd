@@ -73,7 +73,10 @@ func _team1_units(battle: Node) -> Array:
 ## fights for a long time, and `ally` against a token 1-soldier enemy that dies almost
 ## immediately -- freeing `ally` (UnitLeader.is_chasing_live_target reads false once its
 ## target is dead) while `ward` is still fighting, so the next AI tick's mutual-support
-## directive can claim it.
+## directive can claim it. The ally cavalry is a shallow 10-horse troop: an 80-horse
+## squadron's facing-front sits a mounted rank-pitch past a 70-wu spawn gap, so the
+## opening blow would find nobody in weapon reach. Ten horses (three ranks) put that
+## front on the token foe, and one cadence of per-soldier melee deletes him.
 ##
 ## `ward` and its foe spawn IN CONTACT, which is the whole of what makes the timing
 ## deterministic, and it is worth spelling out because the obvious-looking wider gap does not
@@ -104,7 +107,7 @@ func _spawn_support_scenario() -> Node:
 		{"team": 0, "type": "Infantry", "x": 750, "y": 515},               # ward's foe: in contact
 		{"team": 0, "type": "Infantry", "x": 900, "y": 480, "count": 1},   # ally's foe: dies fast
 		{"team": 1, "type": "Infantry", "x": 750, "y": 550},   # `ward`: fighting from tick 0
-		{"team": 1, "type": "Cavalry", "x": 900, "y": 550},    # `ally`: freed once its foe dies
+		{"team": 1, "type": "Cavalry", "x": 900, "y": 550, "count": 10},    # `ally`: shallow so the token foe is in spatha reach
 	]
 	add_child_autofree(battle)
 	return battle

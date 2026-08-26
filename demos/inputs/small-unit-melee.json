@@ -1,0 +1,34 @@
+{
+  "_comment": "Opening melee of a small 10-vs-10 cavalry clash resolves per soldier, not as a regiment-formula wipe. Player cavalry at (500,400) facing down; enemy cavalry at (500,700) facing up; 300 wu between centres so the 120-wu-deep boxes do not overlap at spawn. Team 0 holds until an explicit attack (click, then right-click the enemy). Both sides close, lock, and trade blows: neither roster vanishes in one tick at regiment-circle range (~66 wu), and once in contact the grind actually wounds. drill is set so Battle._check_victory cannot pause the sim if one side later does break -- there IS real combat here. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "seed": "40002",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 500, "y": 400, "count": 10, "facing": [0, 1]},
+    {"team": 1, "type": "Cavalry", "x": 500, "y": 700, "count": 10, "facing": [0, -1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 500.0, "y": 550.0, "zoom": 1.35}
+  ],
+  "steps": [
+    {"tick": 8, "click": [500, 400]},
+    {"tick": 14, "rmb_click": [500, 700]}
+  ],
+  "state": [8, 30, 60, 90, 120, 150, 180, 210, 240, 300, 360, 420, 480, 540],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "soldiers", "value": 10},
+    {"tick": 8, "uid": 1, "field": "soldiers", "value": 10},
+    {"tick": 8, "uid": 0, "field": "position", "value": [500.0, 400.0]},
+    {"tick": 8, "uid": 1, "field": "position", "value": [500.0, 700.0]},
+    {"tick": 8, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": 210, "uid": 0, "field": "soldiers", "value": 10},
+    {"tick": 210, "uid": 1, "field": "soldiers", "value": 10},
+    {"tick": [210, 540], "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": [210, 540], "uid": 1, "field": "state", "value": "FIGHTING"},
+    {"tick": 540, "uid": 0, "field": "soldiers", "value": 10},
+    {"tick": 540, "uid": 1, "field": "soldiers", "value": 10}
+  ],
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}

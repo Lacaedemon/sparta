@@ -357,7 +357,9 @@ func test_engaged_target_pairing_resets_on_full_disengage_then_recomputes_on_re_
 	assert_gt(tier_width, 0, "sanity: an engaged unit fields a body-contact tier")
 	assert_eq(u._engaged_target_pairing_engaged.size(), tier_width,
 		"sanity: the first pairing covers the body-contact tier")
-	# Fully disengage.
+	# Fully disengage: leave FIGHTING and drop the linger. is_engaged() is true while
+	# either is set, matching ENGAGED_LINGER's "while FIGHTING and for linger after".
+	u.state = Unit.State.IDLE
 	u._engaged_linger = 0.0
 	assert_false(u.is_engaged(), "sanity: the unit is no longer engaged")
 	await get_tree().physics_frame

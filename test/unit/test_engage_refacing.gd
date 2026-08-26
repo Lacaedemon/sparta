@@ -124,18 +124,33 @@ func test_strike_withheld_until_faced() -> void:
 	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
 	var enemy := _unit(2, 1, Vector2(0, 40), Vector2.UP)
 	var start_soldiers: int = enemy.soldiers
+	var start_hp: float = enemy._sim_soldier_hp[0]
 
 	# First tick: still turning, way off — no casualties yet.
 	a._think(0.05)
 	assert_eq(enemy.soldiers, start_soldiers,
 		"no blow lands while the unit is still turning to face the enemy")
+	assert_almost_eq(enemy._sim_soldier_hp[0], start_hp, 0.001,
+		"and no per-soldier wound lands either")
 
 	# Finish the turn; once faced, the strike lands (attack cooldown permitting).
 	for _i in range(80):
 		a._think(0.05)
 		if enemy.soldiers < start_soldiers:
 			break
-	assert_lt(enemy.soldiers, start_soldiers,
+		var wounded := false
+		for i in range(enemy._sim_soldier_hp.size()):
+			if enemy._sim_soldier_hp[i] < start_hp - 0.01:
+				wounded = true
+				break
+		if wounded:
+			break
+	var hp_dropped := false
+	for i in range(enemy._sim_soldier_hp.size()):
+		if enemy._sim_soldier_hp[i] < start_hp - 0.01:
+			hp_dropped = true
+			break
+	assert_true(enemy.soldiers < start_soldiers or hp_dropped,
 		"once the front is brought to bear, the unit strikes")
 
 
@@ -146,11 +161,17 @@ func test_small_offset_snaps_and_fights() -> void:
 	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
 	var enemy := _unit(2, 1, Vector2(40, 4), Vector2.LEFT)
 	var start_soldiers: int = enemy.soldiers
+	var start_hp: float = enemy._sim_soldier_hp[0]
 
 	a._think(0.05)
 	assert_eq(a._engage_turn_target, Vector2.ZERO,
 		"a small offset does not start a turn-in-place")
-	assert_lt(enemy.soldiers, start_soldiers,
+	var hp_dropped := false
+	for i in range(enemy._sim_soldier_hp.size()):
+		if enemy._sim_soldier_hp[i] < start_hp - 0.01:
+			hp_dropped = true
+			break
+	assert_true(enemy.soldiers < start_soldiers or hp_dropped,
 		"a small correction snaps and the unit fights on the same tick")
 
 

@@ -830,12 +830,13 @@ func test_reap_anchors_the_fallen_heap_at_each_dying_soldiers_own_real_position(
 
 
 func test_register_casualties_uses_real_nearby_positions_when_no_per_death_data_but_soldiers_exist() -> void:
-	# The regiment-formula path (take_casualties) has no per-death position data -- most
-	# commonly the very first strike after fresh contact, before the engaged-tier latch
-	# sets (is_engaged() reads false for that one tick; see Unit.tick_engaged). This is
-	# NOT a rare edge case: a real bug reproduction hit exactly this path for every one of
-	# its casualty events. The unit still has a live soldier layer, so the heap must anchor
-	# on real live positions, not the idealized formation-slot edge.
+	# The regiment-formula path (take_casualties) has no per-death position data -- the
+	# fallback for a unit with no soldier layer, INDIVIDUAL_COLLISION off, or a ranged
+	# volley that still books casualties in bulk. Close-tier melee with a soldier layer
+	# now resolves per-soldier from the first blow, so this heap-placement path is no
+	# longer the opening strike of a fresh contact. The unit still has a live soldier
+	# layer, so the heap must anchor on real live positions, not the idealized
+	# formation-slot edge.
 	var u := _unit(1, 0, 4, Vector2(0, 0), Vector2.DOWN, false)
 	var live_pos := Vector2(500.0, -300.0)
 	for i in range(u._sim_soldier_pos.size()):

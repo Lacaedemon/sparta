@@ -3675,8 +3675,9 @@ func test_orderly_blocked_at_contact_does_not_idle_coast_forward() -> void:
 
 func test_engaged_soldier_indices_memoizes_within_the_same_physics_tick() -> void:
 	# Called from up to six places per tick; the second call with the same
-	# (Engine.get_physics_frames(), count) must reuse the first call's cached result rather
-	# than recomputing, so all same-tick callers see one consistent selection cheaply.
+	# (Engine.get_physics_frames(), count, is_engaged()) must reuse the first call's cached
+	# result rather than recomputing, so all same-tick callers see one consistent selection
+	# cheaply.
 	var u := _make_unit(120)
 	u.seed_sim_soldiers()
 	u.state = Unit.State.FIGHTING
