@@ -59,7 +59,7 @@
   "defect_exemptions": {
     "overlap": {
       "uids": [8],
-      "reason": "Enemy cavalry (uid8) on the default 5v5 compresses below the cavalry overlap floor while the player's distributed attack runs. Pre-existing on main; owned by in-flight melee/spacing work, not this spawn-pin retarget."
+      "reason": "Enemy cavalry (uid8) on the default 5v5 compresses below the cavalry overlap floor while the player's distributed attack runs. Pre-existing on main; owned by #1398 (melee) / #1401 (spacing), not this spawn-pin retarget."
     }
   }
 }
