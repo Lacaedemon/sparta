@@ -590,19 +590,19 @@ Table&nbsp;1: Battle controls: selection, orders, formations, drill maneuvers, a
 </tr>
 <tr class="even">
 <td>Formation</td>
-<td><kbd>T</kbd> (cycles Normal / Tight / Loose / Square; <kbd>Shift</kbd> + <kbd>T</kbd> cycles the other way) · or <strong>control bar</strong></td>
+<td><kbd>T</kbd> (cycles 0.9 m / 0.45 m locked / 1.8 m / 0.45 m Square on foot; cavalry shows 2 × 6 m / 1 × 3 m locked / 4 × 12 m on the same axis; <kbd>Shift</kbd> + <kbd>T</kbd> cycles the other way) · or <strong>control bar</strong></td>
 </tr>
 <tr class="odd">
 <td>Anti-cavalry square</td>
-<td><kbd>O</kbd> jumps straight to Square / orbis (press again to drop back to Normal) · or click <strong>Square (Orbis)</strong> in the control bar</td>
+<td><kbd>O</kbd> jumps straight to Square / orbis (press again to drop back to Normal) · or click <strong>0.45 m Square</strong> in the control bar</td>
 </tr>
 <tr class="even">
 <td>Schiltron</td>
-<td><kbd>Shift</kbd> + <kbd>O</kbd> jumps straight to Schiltron, the harder-bracing anti-cavalry variant (press again to drop back to Normal) · or click <strong>Schiltron</strong> in the control bar</td>
+<td><kbd>Shift</kbd> + <kbd>O</kbd> jumps straight to Schiltron, the harder-bracing anti-cavalry variant (press again to drop back to Normal) · or click <strong>0.45 m Schiltron</strong> in the control bar</td>
 </tr>
 <tr class="odd">
 <td>Shielded stances</td>
-<td><kbd>L</kbd> shield wall · <kbd>U</kbd> testudo (each toggles back to Normal) · or the <strong>control bar</strong> menu</td>
+<td><kbd>L</kbd> shield wall · <kbd>U</kbd> testudo (each toggles back to Normal) · or click <strong>0.34 m Shield Wall</strong> / <strong>0.27 m Testudo</strong> in the control bar menu</td>
 </tr>
 <tr class="even">
 <td>Line width</td>
@@ -712,7 +712,7 @@ Table&nbsp;1: Battle controls: selection, orders, formations, drill maneuvers, a
 <p>A right-click on empty ground is a <strong>move</strong> order; a right-click on an enemy is an <strong>attack</strong> order. Melee then resolves <strong>per soldier</strong>: a small unit is not erased in one tick the moment the two blocks’ centres enter weapon range – men have to actually be in reach, and both sides can hit back. Selection and camera stay live even while paused, so you can plan under pressure.</p>
 <p><strong>Control bar.</strong> When you have units selected, a control bar appears at the bottom of the screen with clickable buttons for the most-used unit toggles. Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking to typing.</p>
 <ul>
-<li><strong>Formation</strong> — click Normal, Tight, Loose, or Square (Orbis) directly (same as <kbd>T</kbd>), or pick one of the other direct-select stances: <strong>Schiltron</strong> (<kbd>Shift</kbd> + <kbd>O</kbd>, the harder-bracing anti-cavalry variant), <strong>Shield Wall</strong> (<kbd>L</kbd>), or <strong>Testudo</strong> (<kbd>U</kbd>). <kbd>T</kbd> cycles only the density set plus Square; the other three stances are set from the menu or their direct keys.</li>
+<li><strong>Formation</strong> — click <strong>0.9 m</strong>, <strong>0.45 m locked</strong>, <strong>1.8 m</strong>, or <strong>0.45 m Square</strong> (same as <kbd>T</kbd>), or pick one of the other direct-select stances: <strong>0.45 m Schiltron</strong> (<kbd>Shift</kbd> + <kbd>O</kbd>, the harder-bracing anti-cavalry variant), <strong>0.34 m Shield Wall</strong> (<kbd>L</kbd>), or <strong>0.27 m Testudo</strong> (<kbd>U</kbd>). The button shows the selected unit’s live slot-center pitch in metres — cavalry reads <strong>2 × 6 m</strong> at Normal (file then rank), <strong>1 × 3 m locked</strong> at Tight, <strong>4 × 12 m</strong> at Loose on that same identity, not a second scale. <kbd>T</kbd> cycles only the density set plus Square; the other three stances are set from the menu or their direct keys.</li>
 <li><strong>Stance</strong> — click any order stance to arm it for your next right-click order (same as the stance hotkeys; <kbd>Esc</kbd> / the Normal button clears it).</li>
 <li><strong>Reform</strong> — toggle Reform before move for the selected unit(s) (same as the checkbox in the unit settings panel).</li>
 <li><strong>Focused / Spread</strong> — cycle the group-order mode (same as <kbd>X</kbd>); governs both a multi-unit attack and a multi-unit relief.</li>
@@ -1084,7 +1084,7 @@ Figure&nbsp;24: Knockback focus stance: a unit switches mid-fight and starts hit
 </figcaption>
 </figure>
 </div>
-<p><strong>Relieve a fighting friendly (line relief).</strong> Right-click an <strong>engaged friendly</strong> outside your selection to order a relief: the fresh unit advances into the fight and the tired one peels back toward its own rear to rest. The two regiments pass through each other during the swap — ranks the partner is marching through open a lane, the reliever takes over the melee, and the relieved unit’s retreat is a real move order, so holding <kbd>Space</kbd> shows it like any other march. The relieved regiment backs out <strong>facing the enemy</strong> rather than turning its back on the line it just left, so it keeps its ranks square the whole way out. Any fresh order to the reliever cancels the swap where it stands. Relief is how you win a long grind — see <a href="./tactics.html#line-relief">Tactics</a>.</p>
+<p><strong>Relieve a fighting friendly (line relief).</strong> Right-click an <strong>engaged friendly</strong> outside your selection to order a relief: the fresh unit advances into the fight and the tired one peels back toward its own rear to rest. The two <em>regiments</em> pass through each other during the swap — that is unit-level interpenetration so the line never opens a company-sized hole, not files spreading apart. Tight files (0.45 m on foot, 1 m knee-to-knee on horse) stay packed; a block whose derived file gap is already open (0.9 m Normal or 1.8 m Loose on foot; 2 × 6 m or 4 × 12 m cavalry) widens a lane between files — and only in the ranks the partner is marching through. The reliever takes over the melee, and the relieved unit’s retreat is a real move order, so holding <kbd>Space</kbd> shows it like any other march. The relieved regiment backs out <strong>facing the enemy</strong> rather than turning its back on the line it just left, so it keeps its ranks square the whole way out. Any fresh order to the reliever cancels the swap where it stands. Relief is how you win a long grind — see <a href="./tactics.html#line-relief">Tactics</a>.</p>
 <div id="fig-line-relief" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-line-relief-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1114,8 +1114,8 @@ Figure&nbsp;26: Passage of lines: three fresh units, ordered with the group-orde
 </figcaption>
 </figure>
 </div>
-<p>Press <kbd>T</kbd> to cycle a selected unit’s <strong>formation</strong> — <em>Tight</em> closes ranks for better missile and charge defence, <em>Loose</em> spreads out, and <em>Square</em> forms the anti-cavalry ring described below. Every unit can cycle through all four; each type just starts at a different one — spearmen deploy Tight (locked shields against a charge), archers deploy Loose (room to fire), and sword-armed infantry and cavalry deploy at the plain Normal combat order.</p>
-<p>The grid each density mode scales is itself <strong>per-type</strong>: foot regiments stand at close order (about half a metre per man on both axes), while a cavalry regiment’s grid is far roomier — about a metre between files and three metres between ranks, the riding room a horse needs side-to-side and nose-to-tail. A mounted regiment therefore occupies several times the ground of a foot block with the same headcount, and its deep column takes visibly longer to wheel or pivot.</p>
+<p>Press <kbd>T</kbd> to cycle a selected unit’s <strong>formation density</strong> — the control bar names each mode by its live <strong>slot-center pitch in metres</strong> (the interval includes the man or horse; it is not empty air between bodies). On foot that is <em>0.9 m</em> (pyknosis, the default fighting order), <em>0.45 m locked</em> (Tight: synaspismos with Tight’s missile and charge bonuses), <em>1.8 m</em> (true open order, the marching / file-relief density), and <em>0.45 m Square</em> (the anti-cavalry ring described below). Tight is the packed floor; there is no historically grounded room below synaspismos except Shield Wall / Testudo. Every unit can cycle through all four; each type just starts at a different one — spearmen deploy locked (0.45 m locked against a charge), archers deploy at 1.8 m (room to fire), and sword-armed infantry and cavalry deploy at Normal (0.9 m on foot, 2 × 6 m on horse).</p>
+<p>The grid each density mode scales is itself <strong>per-type</strong>, on that <strong>same</strong> centre-pitch identity: foot Tight is isotropic at 0.45 m on both axes, while a cavalry regiment’s Tight grid is anisotropic — <strong>1 m between files</strong> (one horse-width, derived side gap ~0, knee-to-knee) and <strong>3 m between ranks</strong> (Aelian: horse length ~3× shoulder width; Asclepiodotus 7.4: Greeks doubled the interval between riders so an 8-deep × 16-front block still looked square). Cavalry has no separate spacing metric: <kbd>T</kbd> walks the same option set, scaling both axes 2x at Normal (2 m files / 6 m ranks) and 4x at Loose (4 m files / 12 m ranks). A mounted regiment therefore occupies several times the ground of a foot block with the same headcount, and its deep column takes visibly longer to wheel or pivot.</p>
 <div id="fig-cavalry-grid" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-cavalry-grid-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1126,14 +1126,28 @@ Figure&nbsp;26: Passage of lines: three fresh units, ordered with the group-orde
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cavalry-grid-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;27: An 80-horse Cavalry regiment (right) on its own grid pitch beside a 120-man Infantry block (left) at foot close order: the mounted block stands both wider and far deeper, and marches as one body on that roomier grid.
+Figure&nbsp;27: An 80-horse Cavalry regiment (right) on its own grid pitch beside a 120-man Infantry block (left) at foot Normal (0.9 m): the mounted block stands both wider and far deeper, and marches as one body on that roomier grid.
+</figcaption>
+</figure>
+</div>
+<div id="fig-interval-labels" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-interval-labels-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/interval_labels.jpg">
+  <source src="media/interval_labels.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-interval-labels-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;28: Same spacing identity, different pitches: a foot block starts at 0.9 m pyknosis beside a cavalry squadron at 2 m files × 6 m ranks. <kbd>T</kbd> packs the foot block to 0.45 m locked, then opens 1.8 m; the horse walks Tight 1 × 3 m locked, then Loose 4 × 12 m — same 1x / 2x / 4x ratios, not a second metric.
 </figcaption>
 </figure>
 </div>
 <p><strong>Square: orbis and schiltron (anti-cavalry rings).</strong> <em>Square</em> forms a hollow square: the soldiers face spears and shields outward on every side, so the unit has <strong>no weak flank or rear</strong> — an attack from any direction lands as if it were frontal, and a cavalry charge into the ring is braced (and backfires) no matter which side it hits. The ring is visible at a glance from the individual soldiers’ own outward-facing marks around the block’s perimeter — no separate overlay drawn on top. The price is mobility (the ring crawls) and offence (it hits softer while hunkered), so square up <em>before</em> the horse arrives and drop back to Normal once the threat is gone. There are two variants of the ring, trading off differently:</p>
 <ul>
-<li><strong>Orbis</strong> — the last-stand ring. Its offence and charge-bracing sit at the square’s baseline, and it holds its nerve better than any other stance: casualties erode its morale more slowly, so a surrounded unit making a final stand is less likely to break outright. Because it’s a reaction you want to trigger fast, <kbd>O</kbd> (for <em>orbis</em>) jumps a unit straight to Square without cycling through Tight and Loose — press it again to drop back to Normal — and the control bar’s <strong>Square (Orbis)</strong> button does the same with one click.</li>
-<li><strong>Schiltron</strong> — the cavalry specialist. A denser hedge of levelled spears braces a charge <em>harder</em> than the orbis does, so cavalry that rides into a schiltron comes off worse than riding into an orbis, at the cost of hitting even softer in return. It carries no morale bonus — unlike orbis this isn’t a last-stand stance, just the hard anti-cavalry counter. <kbd>Shift</kbd> + <kbd>O</kbd> jumps a unit straight to Schiltron — press it again to drop back to Normal — and the control bar’s <strong>Schiltron</strong> button does the same.</li>
+<li><strong>Orbis</strong> — the last-stand ring. Its offence and charge-bracing sit at the square’s baseline, and it holds its nerve better than any other stance: casualties erode its morale more slowly, so a surrounded unit making a final stand is less likely to break outright. Because it’s a reaction you want to trigger fast, <kbd>O</kbd> (for <em>orbis</em>) jumps a unit straight to Square without cycling through Tight and Loose — press it again to drop back to Normal — and the control bar’s <strong>0.45 m Square</strong> button does the same with one click.</li>
+<li><strong>Schiltron</strong> — the cavalry specialist. A denser hedge of levelled spears braces a charge <em>harder</em> than the orbis does, so cavalry that rides into a schiltron comes off worse than riding into an orbis, at the cost of hitting even softer in return. It carries no morale bonus — unlike orbis this isn’t a last-stand stance, just the hard anti-cavalry counter. <kbd>Shift</kbd> + <kbd>O</kbd> jumps a unit straight to Schiltron — press it again to drop back to Normal — and the control bar’s <strong>0.45 m Schiltron</strong> button does the same.</li>
 </ul>
 <p><strong>Shielded close-order stances.</strong> Two heavier stances build on Tight’s locked-shield density, chosen from the control-bar Formation menu:</p>
 <ul>
@@ -1151,7 +1165,7 @@ Figure&nbsp;27: An 80-horse Cavalry regiment (right) on its own grid pitch besid
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-shielded-stances-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;28: Shielded-stance visuals: a shield wall (left) packs into a tight edge-to-edge line, and a testudo (right) packs into a dense block — each stance reads at a glance from the soldiers’ own positions.
+Figure&nbsp;29: Shielded-stance visuals: a shield wall (left) packs into a tight edge-to-edge line, and a testudo (right) packs into a dense block — each stance reads at a glance from the soldiers’ own positions.
 </figcaption>
 </figure>
 </div>
@@ -1167,7 +1181,7 @@ Figure&nbsp;28: Shielded-stance visuals: a shield wall (left) packs into a tight
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-file-major-reform-contrast-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;29: Two identical Spearmen-vs-Infantry standoffs. The left Spearmen keeps file-major reform on: its rear ends up jagged, some files deeper than others. The right Spearmen has it off: its rear reflows and re-centres uniformly instead.
+Figure&nbsp;30: Two identical Spearmen-vs-Infantry standoffs. The left Spearmen keeps file-major reform on: its rear ends up jagged, some files deeper than others. The right Spearmen has it off: its rear reflows and re-centres uniformly instead.
 </figcaption>
 </figure>
 </div>
@@ -1181,7 +1195,7 @@ Figure&nbsp;29: Two identical Spearmen-vs-Infantry standoffs. The left Spearmen 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-resize-anchor-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;30: Flank-anchored drag-resize: pulling the east grip outward extends the line east only, the west flank’s edge holding its ground while the new files form up.
+Figure&nbsp;31: Flank-anchored drag-resize: pulling the east grip outward extends the line east only, the west flank’s edge holding its ground while the new files form up.
 </figcaption>
 </figure>
 </div>
@@ -1196,7 +1210,7 @@ Figure&nbsp;30: Flank-anchored drag-resize: pulling the east grip outward extend
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-file-doubling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;31: File-doubling: duplicatio (N) folds the line into a deep column; explicatio (B) unfolds it back into a broad line.
+Figure&nbsp;32: File-doubling: duplicatio (N) folds the line into a deep column; explicatio (B) unfolds it back into a broad line.
 </figcaption>
 </figure>
 </div>
@@ -1211,7 +1225,7 @@ Figure&nbsp;31: File-doubling: duplicatio (N) folds the line into a deep column;
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-file-doubling-asymmetric-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;32: Anchored explicatio (Shift+B): the right flank stays fixed while the whole widen lands on the left.
+Figure&nbsp;33: Anchored explicatio (Shift+B): the right flank stays fixed while the whole widen lands on the left.
 </figcaption>
 </figure>
 </div>
@@ -1234,7 +1248,7 @@ Figure&nbsp;32: Anchored explicatio (Shift+B): the right flank stays fixed while
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-form-up-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;33: Three regiments of different size — Spearmen (Tight), Infantry (Normal), Archers (Loose) — box-selected and dragged into a flank line under the default equal-depth (space) split: each forms up to the same physical depth. Tight and Normal share the same spacing, but the loosely-spread Archers split the line differently from both for a genuinely density-driven reason.
+Figure&nbsp;34: Three regiments of different size — Spearmen (Tight, 0.45 m), Infantry (Normal, 0.9 m), Archers (Loose, 1.8 m) — box-selected and dragged into a flank line under the default equal-depth (space) split: each forms up to the same physical depth. The three densities now occupy genuinely different frontage, so the split is density-driven for all three, not only the Archers.
 </figcaption>
 </figure>
 </div>
@@ -1249,7 +1263,7 @@ Figure&nbsp;33: Three regiments of different size — Spearmen (Tight), Infantry
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-checkerboard-form-up-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;34: Four Infantry regiments, box-selected and dragged into a line under the checkerboard split: the 2nd and 4th land on the front row, the 1st and 3rd land behind them, each centred on a front-row gap.
+Figure&nbsp;35: Four Infantry regiments, box-selected and dragged into a line under the checkerboard split: the 2nd and 4th land on the front row, the 1st and 3rd land behind them, each centred on a front-row gap.
 </figcaption>
 </figure>
 </div>
@@ -1264,7 +1278,7 @@ Figure&nbsp;34: Four Infantry regiments, box-selected and dragged into a line un
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-echelon-form-up-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;35: Three Spearmen regiments, box-selected and dragged into a line under the echelon (right leads) split: the unit nearest the right flank advances furthest, the unit nearest the left flank trails, and the middle regiment splits the difference — a clean staggered diagonal.
+Figure&nbsp;36: Three Spearmen regiments, box-selected and dragged into a line under the echelon (right leads) split: the unit nearest the right flank advances furthest, the unit nearest the left flank trails, and the middle regiment splits the difference — a clean staggered diagonal.
 </figcaption>
 </figure>
 </div>
@@ -1282,7 +1296,7 @@ Figure&nbsp;35: Three Spearmen regiments, box-selected and dragged into a line u
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-tray-formation-deploy-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;36: Three Infantry regiments laid out in the tray as a quincunx (Line 1: unit, gap, unit; Line 2: gap, unit, gap), then box-selected and drag-deployed: the two Line-1 units land on the front with a gap between them, and the Line-2 unit sits behind in that gap.
+Figure&nbsp;37: Three Infantry regiments laid out in the tray as a quincunx (Line 1: unit, gap, unit; Line 2: gap, unit, gap), then box-selected and drag-deployed: the two Line-1 units land on the front with a gap between them, and the Line-2 unit sits behind in that gap.
 </figcaption>
 </figure>
 </div>
@@ -1297,7 +1311,7 @@ Figure&nbsp;36: Three Infantry regiments laid out in the tray as a quincunx (Lin
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-formation-preview-square-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;37: Move-order ghost preview: a unit forms Square, then marches under the hold-Space orders overlay. The destination ghost shows the real hollow-square footprint, matching the stance it is actually marching into.
+Figure&nbsp;38: Move-order ghost preview: a unit forms Square, then marches under the hold-Space orders overlay. The destination ghost shows the real hollow-square footprint, matching the stance it is actually marching into.
 </figcaption>
 </figure>
 </div>
@@ -1312,7 +1326,7 @@ Figure&nbsp;37: Move-order ghost preview: a unit forms Square, then marches unde
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-order-distance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;38: Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.
+Figure&nbsp;39: Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.
 </figcaption>
 </figure>
 </div>
@@ -1327,7 +1341,7 @@ Figure&nbsp;38: Order distance labels: the green move line shows the remaining m
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-slow-motion-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;39: A marching unit visibly covers less ground per stretch of the clip as F5 steps through 50%, 25%, and 10% speed.
+Figure&nbsp;40: A marching unit visibly covers less ground per stretch of the clip as F5 steps through 50%, 25%, and 10% speed.
 </figcaption>
 </figure>
 </div>
@@ -1346,7 +1360,7 @@ Figure&nbsp;39: A marching unit visibly covers less ground per stretch of the cl
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-charge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;40: Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.
+Figure&nbsp;41: Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.
 </figcaption>
 </figure>
 </div>
@@ -1372,7 +1386,7 @@ Figure&nbsp;40: Cavalry charge: two horse units receive an attack order and acce
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-parade-ground-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;41: Parade Ground: the standard player line, no enemy on the field, given a group move order and settling into formation.
+Figure&nbsp;42: Parade Ground: the standard player line, no enemy on the field, given a group move order and settling into formation.
 </figcaption>
 </figure>
 </div>
@@ -1390,7 +1404,7 @@ Figure&nbsp;41: Parade Ground: the standard player line, no enemy on the field, 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-all-teams-control-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;42: All-Teams Control: both the top (team 0) and bottom (team 1) lines box-selected and marched forward in turn, one commanded directly by the player just like the other.
+Figure&nbsp;43: All-Teams Control: both the top (team 0) and bottom (team 1) lines box-selected and marched forward in turn, one commanded directly by the player just like the other.
 </figcaption>
 </figure>
 </div>
@@ -1404,7 +1418,7 @@ Figure&nbsp;42: All-Teams Control: both the top (team 0) and bottom (team 1) lin
 <img src="media/custom-battle-setup.png" class="img-fluid figure-img" width="700">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-custom-battle-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;43: Custom Battle Setup: picking Sparta vs.&nbsp;Rome, with each side’s roster shown alongside its own faction dropdown.
+Figure&nbsp;44: Custom Battle Setup: picking Sparta vs.&nbsp;Rome, with each side’s roster shown alongside its own faction dropdown.
 </figcaption>
 </figure>
 </div>
