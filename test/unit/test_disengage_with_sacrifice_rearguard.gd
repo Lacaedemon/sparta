@@ -158,16 +158,30 @@ func test_rearguard_round_trips_through_snapshot_restore() -> void:
 				"and keeps its rearguard identity after the restore")
 
 
-## The decisive proof: the pursuer is slowed because it is genuinely blocked and fighting a
-## real Unit, not because of any multiplier. The dispatch path gives the rearguard the
-## default ~2s lifetime, so the whole proof has to happen while that timer runs -- which
-## means the sacrifice must be ordered at MUTUAL engagement, not at a fixed early tick.
-## Under the rebalanced close-order density the pursuer's own FIGHTING latch lands around
-## tick 31 (the main body latches on tick 1-2; the gap is think cadence, not geometry --
-## it is unchanged at 40/50/60 wu separations), so a fixed tick-20 order fires while the
-## pursuer is still IDLE and the pursuit then never reaches the rearguard before it
-## expires. Waiting for both latches keeps the staging premise ("a clash close enough
-## that the two sides are already engaged") true at any pace.
+## The decisive proof: the pursuer is blocked because it is genuinely fighting a real,
+## separate rearguard Unit -- not because of any multiplier, and not merely because two
+## already-interpenetrated soldier blocks take a while to physically separate after a
+## clash (that alone looks identical whether or not a rearguard exists: stubbing the spawn
+## out entirely still left the pursuer reading FIGHTING, near-stationary, and in genuine
+## soldier-level contact for most of a fixed sampling window -- the old single-sample and
+## whole-window forms of this test both passed on that stubbed build). Asserting on two
+## observables that only a real, separate rearguard Unit can produce fixes that: the
+## pursuer's own combat target becomes the rearguard (an object-identity check, not a
+## state flag or a distance heuristic -- with no rearguard object, it can never be true),
+## and the rearguard's own headcount drops from real per-soldier melee casualties (not
+## fakeable without a Unit that actually has soldiers to lose).
+##
+## The dispatch path gives the rearguard the default ~2s lifetime, so the whole proof has
+## to happen while that timer runs -- which means the sacrifice must be ordered at MUTUAL
+## engagement, not at a fixed early tick. Under the rebalanced close-order density the
+## pursuer's own FIGHTING latch lands around tick 31 (the main body latches on tick 1-2;
+## the gap is think cadence, not geometry -- it is unchanged at 40/50/60 wu separations),
+## so a fixed tick-20 order fires while the pursuer is still IDLE and the pursuit then
+## never reaches the rearguard before it expires. Waiting for both latches keeps the
+## staging premise ("a clash close enough that the two sides are already engaged") true at
+## any pace, and the tick budgets below are derived from Replay.PHYSICS_TPS (seconds, not
+## bare tick counts) so a small change to sim pacing (e.g. a soldier body-speed retune)
+## doesn't need these literals re-pinned.
 func test_pursuer_is_physically_blocked_by_the_rearguard_while_the_main_body_escapes_free() -> void:
 	var battle := _spawn(_clash_scenario())
 	await get_tree().physics_frame
@@ -183,7 +197,8 @@ func test_pursuer_is_physically_blocked_by_the_rearguard_while_the_main_body_esc
 	assert_not_null(pursuer, "team-1 unit found")
 	if main_body == null or pursuer == null:
 		return
-	while battle.current_tick() < 300 \
+	var engage_deadline: int = int(5 * Replay.PHYSICS_TPS)
+	while battle.current_tick() < engage_deadline \
 			and not (main_body.state == Unit.State.FIGHTING
 					and pursuer.state == Unit.State.FIGHTING):
 		await get_tree().physics_frame
@@ -192,36 +207,57 @@ func test_pursuer_is_physically_blocked_by_the_rearguard_while_the_main_body_esc
 	var pursuer_start: Vector2 = pursuer.position
 
 	battle.enqueue_disengage_with_sacrifice([main_body.uid])
+	await get_tree().physics_frame
 
-	# Track the pursuer across the rearguard's whole lifetime (measured ~120 ticks from
-	# the dispatch default; capped well past it in case a retune lengthens it). The
-	# blocked-ness proof is the WINDOW, not one sample: the pursuer re-fights something
-	# after its original opponent disengaged, and its net displacement stays pinned the
-	# entire time the rearguard lives. Measured under the rebalanced density: FIGHTING
-	# from ~9 ticks after the order, displacement never above ~4.2 wu while the
-	# rearguard lives, then a ~17-22 wu excursion within ticks of it expiring.
-	var fought_the_rearguard: bool = false
+	# Find the rearguard itself -- fail fast and legibly if the spawn never happened,
+	# instead of letting the tracking loop below fall through with nothing to track (which
+	# is exactly how the previous version's asserts stayed silently satisfied on a stubbed
+	# spawn: a loop that never finds a rearguard contributes no evidence either way).
+	var rearguard: Unit = null
+	for uid in _units_by_uid(battle):
+		var u: Unit = _units_by_uid(battle)[uid]
+		if u.is_rearguard_detachment:
+			rearguard = u
+			break
+	assert_not_null(rearguard,
+			"a real, separate rearguard Unit was spawned to hold the point of contact")
+	if rearguard == null:
+		return
+	var rearguard_uid: int = rearguard.uid
+	var initial_rearguard_soldiers: int = rearguard.soldiers
+
+	# Track across the rearguard's whole lifetime (measured ~120 ticks from the dispatch
+	# default; capped well past it in case a retune lengthens it). Measured under the
+	# rebalanced density with Replay.forced_seed pinned: the pursuer's own target_enemy
+	# stays on the (by-then-distant) main body for roughly the first two-thirds of this
+	# window -- soldier bodies take time to physically separate, so contact alone isn't
+	# proof -- then commits to the rearguard once the pursuit closes back on it, and a
+	# rearguard casualty follows shortly after.
+	var pursuer_targeted_rearguard: bool = false
+	var rearguard_took_casualties: bool = false
 	var worst_advance: float = 0.0
-	var deadline: int = battle.current_tick() + 240
+	var deadline: int = battle.current_tick() + int(4 * Replay.PHYSICS_TPS)
 	while battle.current_tick() < deadline:
 		await get_tree().physics_frame
-		var rearguard: Unit = null
-		var live_units := _units_by_uid(battle)
-		for uid in live_units:
-			if live_units[uid].is_rearguard_detachment:
-				rearguard = live_units[uid]
-				break
-		if rearguard == null or not is_instance_valid(rearguard):
-			break   # lifetime expired (or destroyed) -- the proof window is over
 		if not is_instance_valid(pursuer):
 			break   # freed mid-window; the asserts below judge what was tracked so far
-		if pursuer.state == Unit.State.FIGHTING:
-			fought_the_rearguard = true
+		if not is_instance_valid(rearguard):
+			break   # destroyed or timed out -- the proof window is over
+		if pursuer.target_enemy == rearguard:
+			pursuer_targeted_rearguard = true
+		if rearguard.soldiers < initial_rearguard_soldiers:
+			rearguard_took_casualties = true
 		worst_advance = maxf(worst_advance,
 				pursuer.position.distance_to(pursuer_start))
 
-	assert_true(fought_the_rearguard,
-			"the pursuer fought while the rearguard stood -- something real was in its way")
+	assert_true(pursuer_targeted_rearguard,
+			"the pursuer's own combat target became the rearguard Unit itself -- a real," \
+			+ " separate Unit it actually fought, not a state flag or a distance" \
+			+ " coincidence with the retreating main body")
+	assert_true(rearguard_took_casualties,
+			("the rearguard (uid %d, started with %d soldiers) took real melee" \
+			+ " casualties -- something with its own body count actually fought back") \
+			% [rearguard_uid, initial_rearguard_soldiers])
 	assert_lt(worst_advance, 40.0,
 			("and never advanced far from where the clash started while the rearguard" \
 			+ " lived (worst %.1f wu) -- blocked, not slowed by a multiplier while" \
