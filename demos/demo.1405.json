@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/infantry-respread-after-charge.json",
+  "caption": "Fixes #1405: an infantry block that survives a cavalry charge (per-soldier melee, no rout) used to never re-spread to its commanded pitch afterward -- a knocked-back soldier catching up to the block while it marches after the withdrawing cavalry would repeatedly get flung a formation's-width away by the corridor-routing logic, right as it was about to land. Watch the infantry's front rank close back up to full spacing as the block marches, instead of trailing a loose straggling clump for the rest of the clip.",
+  "fixed_fps": 30,
+  "max_frames": 500,
+  "fps": 15,
+  "width": 720
+}

@@ -77,6 +77,7 @@ func test_infantry_block_respreads_after_melee_exit() -> void:
 	var settled_streak: int = 0
 	var reached := false
 	var ever_in_melee := false
+	var ever_judged := false
 	var deadline: int = battle.current_tick() + REFORM_BUDGET
 	while battle.current_tick() < deadline:
 		await get_tree().physics_frame
@@ -98,6 +99,8 @@ func test_infantry_block_respreads_after_melee_exit() -> void:
 			# before the charge lands, an untouched block is trivially at full spacing, so
 			# the settle streak must not start counting until a real contact happened.
 			ever_in_melee = true
+		else:
+			ever_judged = true
 		if ever_in_melee and judged and _min_nnd(inf) >= settle_floor:
 			settled_streak += 1
 			if settled_streak >= SETTLE_STREAK_TICKS:
@@ -105,6 +108,15 @@ func test_infantry_block_respreads_after_melee_exit() -> void:
 				break
 		else:
 			settled_streak = 0
+	if ever_in_melee and not ever_judged:
+		# The cavalry never actually disengaged within the budget (still FIGHTING/in
+		# contact at the deadline), so spacing was never once judged -- a real failure,
+		# but a DIFFERENT one than "the block failed to re-spread." Surface it as its own
+		# distinct signal instead of letting the assert below fail with a misleading
+		# "didn't re-spread" message when the true problem is "never got the chance to."
+		assert_true(false,
+			"infantry (or its attacker) never disengaged within %d ticks -- spacing was never once judged, so this scenario no longer exercises the reform-while-marching path" % REFORM_BUDGET)
+		return
 	assert_true(reached,
 		"infantry block re-spreads to >= %.1f%% of its %.2f wu commanded pitch and holds it for %d straight ticks, within %d ticks of melee start" % [
 			SETTLE_PITCH_FRACTION * 100.0, pitch, SETTLE_STREAK_TICKS, REFORM_BUDGET])
