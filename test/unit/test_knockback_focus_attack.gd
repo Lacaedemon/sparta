@@ -320,6 +320,36 @@ func test_knockback_focus_indefinite_speed_survives_a_subsequent_body_step() -> 
 		"cap through a subsequent SoldierBodies.step() -- the clamp must not slam it back down")
 
 
+func test_knockback_focus_indefinite_speed_survives_step_on_exact_slot() -> void:
+	# A body sitting EXACTLY on its formation slot (dist == 0) that receives an
+	# indefinite knockback push must preserve its push velocity through step()
+	# without being discarded by on-slot arrival clamping.
+	Replay.rng.seed = 12345
+	var attacker := _make_engaged_unit(12, Vector2(0, 0), Vector2.DOWN)
+	attacker.order_mode = Unit.ORDER_KNOCKBACK_FOCUS
+	attacker.knockback_push_indefinite = true
+	var defender := _make_engaged_unit(12, Vector2(0, 10), Vector2.UP)
+	defender.order_mode = Unit.ORDER_SKIRMISH
+	for i in range(defender._sim_soldier_hp.size()):
+		defender._sim_soldier_hp[i] = 9999.0
+	SoldierMelee.resolve(attacker, [defender])
+	var cap: float = defender.move_speed * defender.superphysical_speed_frac
+	var struck: int = -1
+	var speed_after_strike: float = 0.0
+	for i in range(defender._sim_body_vel.size()):
+		if defender._sim_body_vel[i].length() > speed_after_strike:
+			speed_after_strike = defender._sim_body_vel[i].length()
+			struck = i
+	assert_gt(speed_after_strike, cap,
+		"sanity: the indefinite push actually exceeds the ordinary superphysical cap")
+	# Step directly without nudging off-slot (dist == 0.0).
+	SoldierBodies.step(defender, 1.0 / Replay.PHYSICS_TPS)
+	var speed_after_step: float = defender._sim_body_vel[struck].length()
+	assert_gt(speed_after_step, cap,
+		"an exact on-slot body carrying a knockback push stays above the ordinary " +
+		"cap through SoldierBodies.step() without being zeroed")
+
+
 # --- Unit.knockback_push_indefinite defaults -----------------------------------------------
 
 func test_knockback_push_indefinite_defaults_to_false() -> void:

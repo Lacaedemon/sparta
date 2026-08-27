@@ -191,3 +191,32 @@ func test_body_speed_cap_uses_move_speed_times_the_units_own_frac() -> void:
 	assert_true(worst_speed <= cap + 0.01,
 		"the cap follows this unit's own move_speed (%.1f) and superphysical_speed_frac (%.2f), not a fixed constant"
 			% [u.move_speed, u.superphysical_speed_frac])
+
+
+# --- on-slot carried velocity (knockback preservation) ------------------------------
+# When a body sits exactly on its formation slot (dist <= MIN_DIST), an external impulse
+# such as melee knockback or collision push must not be discarded by on-slot arrival
+# clamping -- the carried velocity must decay naturally via friction and steering.
+
+func test_on_slot_body_preserves_carried_knockback_velocity_through_step() -> void:
+	var dt: float = 1.0 / Replay.PHYSICS_TPS
+	var u := _make_unit(40, 4)
+	u.state = Unit.State.FIGHTING
+	u.seed_sim_soldiers()
+	# Body 0 sits exactly on its slot (dist == 0.0 after seeding).
+	var initial_slot: Vector2 = u.soldier_world_slots(u.soldiers)[0]
+	assert_eq(u._sim_soldier_pos[0], initial_slot, "body 0 starts exactly on slot")
+
+	# Apply an external knockback impulse to the stationary on-slot body.
+	var knockback := Vector2(100.0, 0.0)
+	u._sim_body_vel[0] = knockback
+
+	SoldierBodies.step(u, dt)
+
+	# The velocity should be preserved, having only decayed by one tick of friction and steering.
+	var resulting_speed: float = u._sim_body_vel[0].length()
+	assert_true(resulting_speed > 95.0,
+		"carried knockback speed (%.2f wu/s) must not be zeroed on an on-slot body" % resulting_speed)
+	assert_true(u._sim_soldier_pos[0].distance_to(initial_slot) > 1.0,
+		"on-slot body carrying knockback must advance away from slot by its integrated displacement")
+

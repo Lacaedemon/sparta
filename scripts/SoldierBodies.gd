@@ -367,25 +367,13 @@ static func step(unit: Unit, delta: float) -> void:
 		# (velocity relative to the feed-forward) so it advances at most the remaining distance
 		# this tick, for any positive distance -- the body lands exactly on the slot instead of
 		# coasting through it. No overshoot, no oscillation.
-		if not turning and delta > 0.0:
-			if dist > MIN_DIST:
-				var dir: Vector2 = to_slot / dist
-				var arrival_vel: Vector2 = new_vel - feed_forward
-				var inbound: float = arrival_vel.dot(dir)
-				var max_inbound: float = dist / delta
-				if inbound > max_inbound:
-					new_vel -= dir * (inbound - max_inbound)
-			else:
-				# dist has collapsed to (effectively) zero: the body already sits on the slot, so
-				# there is no meaningful direction left to project an inbound component onto -- but
-				# the branch above never runs once dist <= MIN_DIST, so any leftover arrival
-				# velocity (beyond the feed-forward) would otherwise carry the body straight past
-				# the slot this tick with nothing left to clamp it. Zero the arrival component
-				# instead of leaving it unclamped, so a body that just landed doesn't fling itself
-				# to the far side on the very next tick (a gap this friction damping's carried-over
-				# velocity can now expose, since a well-timed arrival used to leave almost no
-				# residual speed at this exact transition).
-				new_vel = feed_forward
+		if not turning and delta > 0.0 and dist > MIN_DIST:
+			var dir: Vector2 = to_slot / dist
+			var arrival_vel: Vector2 = new_vel - feed_forward
+			var inbound: float = arrival_vel.dot(dir)
+			var max_inbound: float = dist / delta
+			if inbound > max_inbound:
+				new_vel -= dir * (inbound - max_inbound)
 		unit._sim_body_vel[i] = new_vel
 		# Cap individual soldier speed to this unit's own jog pace while the unit is
 		# stationary: during the reform hold phase AND whenever a formation reshape
