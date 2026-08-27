@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Memory-only change (.claude/memories/sparta/): banks ARDIA-session prose learnings (demo scan tick cadence, Replay.rng/forced_seed seeding, GUT CLI flags, shared git stash across worktrees). No sim, scene, script, or asset behavior changed, so a recorded battle can't show anything."
+}
