@@ -732,10 +732,11 @@ flee vector so the clearance detour is the visual centrepiece.
 A scenario's combat arc is sensitive to the RELATIVE position of every unit
 on the field -- including a "safe" anchor unit hundreds of world units away
 and outside detection range -- because battle-AI target scoring reads all
-enemy positions when it maneuvers. Moving a scenario for more field room is
-therefore only a translation when EVERY actor moves together; moving the
-fighting units while leaving (or re-anchoring) a distant bystander produces a
-different battle, not a moved one.
+enemy positions when it maneuvers.
+Moving a scenario for more field room is therefore only a translation when
+EVERY actor moves together; moving the fighting units while leaving (or
+re-anchoring) a distant bystander produces a different battle, not a moved
+one.
 
 Measured on the rout-annihilation demo (`rout-rally-recover.json`, seed
 12345) while re-staging it onto its tall map so the pursuit could not run out
