@@ -164,15 +164,16 @@ func test_flanked_false_when_the_flanking_enemy_is_outside_radius() -> void:
 ## A controllable "N% of the line is engaged" fixture: frontage_override fixes the file
 ## count directly (rather than relying on the sqrt-based auto width), so
 ## `engaged_ranks() * files` -- the front-rank cutoff engaged_soldier_indices() selects --
-## lands on an exact, predictable fraction of `total`. A bare Unit defaults to attack_range
-## 26.0 / rank_pitch 9.0wu, so engaged_ranks() == 3 (see test_unit.gd's own
+## lands on an exact, predictable fraction of `total`. Pin Tight so a bare Unit's
+## attack_range 26.0 / rank_pitch 9.0wu yields engaged_ranks() == 3 (see test_unit.gd's
 ## test_engaged_ranks_matches_the_old_flat_default_for_a_bare_units_default_reach) --
-## `files` is chosen against that fixed depth.
+## `files` is chosen against that fixed depth. Default Normal pyknosis is 18 wu.
 func _make_engaged_unit(total: int, files: int) -> Unit:
 	var u: Unit = Unit.new()
 	u.max_soldiers = total
 	add_child_autofree(u)
 	u.soldiers = total
+	u.set_formation(Unit.FORMATION_TIGHT)
 	u.frontage_override = files
 	u.seed_sim_soldiers()
 	u.state = Unit.State.FIGHTING

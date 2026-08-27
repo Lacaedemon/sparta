@@ -4,7 +4,8 @@ class_name DemoHashStream
 ## this class never touches a game script). Kept dependency-free on purpose:
 ## analyze_transcript.gd runs as a bare `godot -s` SceneTree with no autoloads, where any
 ## reference chain into the game scripts (Unit -> Settings, ...) spews compile errors --
-## the same reason DemoDefects reads snapshots as plain Dictionaries.
+## the same reason DemoDefects reads snapshots as plain Dictionaries and must not
+## call Unit.formation_interval_label.
 ##
 ## Stream shape, one line per tick:
 ##   {"tick": 12, "cheap": "<md5 hex>"}                       -- every tick

@@ -155,7 +155,7 @@ func test_set_formation_records_square_and_close_order_footprint() -> void:
 func test_formation_summary_labels_square() -> void:
 	var u := _make_unit()
 	u.set_formation(Unit.FORMATION_SQUARE)
-	assert_eq(u.formation_summary(), "Square", "the HUD label reads Square")
+	assert_eq(u.formation_summary(), "0.45 m Square", "the HUD label reads the 0.45 m interval")
 
 
 func test_t_cycle_reaches_square_then_wraps_to_normal() -> void:

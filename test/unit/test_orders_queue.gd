@@ -484,7 +484,7 @@ func test_ticks_elapsed_guard_fires_after_the_configured_tick_count() -> void:
 # territory: the guard doesn't retire the order there, and the peak-engaged-fraction
 ## tracker keeps accumulating regardless of what current_order actually is.
 
-## frontage_override fixes the file count so engaged_ranks() (3, a bare Unit's default) *
+## frontage_override fixes the file count so engaged_ranks() (3, Tight floor) *
 ## files lands on an exact, predictable fraction of `total` -- see
 ## test_order_guards.gd's own _make_engaged_unit for the same fixture, restated here (not
 ## reused directly) since this file's own bare-Unit convention is _make_unit(uid).
@@ -494,6 +494,7 @@ func _make_engaged_unit(uid: int, total: int, files: int) -> Unit:
 	add_child_autofree(u)
 	u.uid = uid
 	u.soldiers = total
+	u.set_formation(Unit.FORMATION_TIGHT)
 	u.frontage_override = files
 	u.seed_sim_soldiers()
 	u.state = Unit.State.FIGHTING

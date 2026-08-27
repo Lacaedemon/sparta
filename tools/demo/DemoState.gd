@@ -280,6 +280,15 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		"morale": round_to(u.morale, 1),
 		"state": state_name(u.state),
 		"formation": formation_name(u.formation_mode),
+		# Live slot-center pitches (already density-scaled). Same identity for
+		# foot and horse; cavalry is anisotropic (file vs rank). Top-level so a
+		# HUD-consistency check can rebuild "1 x 3 m" without a FULL dump.
+		"file_pitch": round_to(u.file_pitch_wu(), 4),
+		"rank_pitch": round_to(u.rank_pitch_wu(), 4),
+		# Player-facing caption the HUD button shows -- dumped so the analyzer
+		# can compare without loading Unit (Settings autoload is missing under
+		# godot -s).
+		"formation_label": u.formation_summary(),
 		# Durable frontage (phase 5): the file count a FRONTAGE order last wrote (or the
 		# type-derived default when none has). Like formation/order_mode/rank_relief, this is
 		# mode-layer state a completed order writes and that then persists as queryable Unit

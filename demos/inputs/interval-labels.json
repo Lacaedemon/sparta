@@ -1,0 +1,47 @@
+{
+  "_comment": "Spacing-identity drill: Infantry (pyknosis 0.9 m) beside Cavalry (2 x 6 m Normal). Select foot, T to Tight 0.45 m locked, T to Loose 1.8 m. Select horse (2 x 6 m), T to Tight 1 x 3 m locked, T to Loose 4 x 12 m. ~2.5 s holds after each T so bodies ease onto the new pitch. Fresh scenario; world coordinates; physics ticks (60/s).",
+  "spawn_fingerprint": "668133657edf6748543f69f433817c77",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 400, "y": 520, "count": 36, "facing": [0, 1]},
+    {"team": 0, "type": "Cavalry", "x": 980, "y": 520, "count": 24, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 690.0, "y": 540.0, "zoom": 1.35}
+  ],
+  "steps": [
+    {"tick": 8, "click": [400, 520]},
+    {"tick": 20, "key": "T"},
+    {"tick": 180, "key": "T"},
+    {"tick": 350, "click": [980, 520]},
+    {"tick": 360, "key": "T"},
+    {"tick": 520, "key": "T"}
+  ],
+  "frames": [8, 170, 340, 355, 510, 680],
+  "state": [8, 170, 340, 355, 510, 680],
+  "defect_exemptions": {
+    "path_crossing": {
+      "uids": [0],
+      "reason": "The Tight->Loose (1x->4x) expansion re-slots the 36 men across a quadrupling pitch, so half the routes measured from the t170 Tight hold cross while the block spreads (routes measured across the whole cycle, Normal->Loose net, do not cross). The clip's claim is the interval labels and the pitch identity through the cycle, and it deliberately films this expansion."
+    },
+    "overlap": {
+      "uids": [1],
+      "reason": "At the t510 Tight sample one horse pair is still resolving the 2x->1x pack (min neighbour 4.25 wu) while the block's 25th-percentile and median neighbour distances already sit on the 20 wu knee-to-knee file pitch. A transient straggler pair during the sampled pack, not standing interpenetration."
+    },
+    "shape_residual": {
+      "uids": [1],
+      "reason": "The t680 sample catches the horses mid-walk from Tight (1 x 3 m) onto the 4x Loose grid (4 x 12 m, ~44 m wide for 24 horses) -- RMS slot error reads distance-to-destination while in transit. The clip ends before open order finishes forming; the label change and pitch identity, not settled geometry, are what it demonstrates."
+    }
+  },
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [400.0, 520.0]},
+    {"tick": 8, "uid": 1, "field": "position", "value": [980.0, 520.0]},
+    {"tick": 8, "uid": 0, "field": "formation", "value": "NORMAL"},
+    {"tick": 8, "uid": 1, "field": "formation", "value": "NORMAL"},
+    {"tick": 170, "uid": 0, "field": "formation", "value": "TIGHT"},
+    {"tick": 340, "uid": 0, "field": "formation", "value": "LOOSE"},
+    {"tick": 355, "uid": 1, "field": "formation", "value": "NORMAL"},
+    {"tick": 510, "uid": 1, "field": "formation", "value": "TIGHT"},
+    {"tick": 680, "uid": 1, "field": "formation", "value": "LOOSE"}
+  ]
+}

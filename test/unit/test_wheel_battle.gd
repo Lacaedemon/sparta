@@ -57,10 +57,11 @@ func test_wheel_in_live_battle_hinges_without_surge() -> void:
 	var prev: PackedVector2Array = target._sim_soldier_pos.duplicate()
 	var worst_step := 0.0
 	# Poll for the swing's real end rather than a fixed frame count: the wheel is paced by
-	# the outer file's jog (UnitManeuver.wheel_gait_rate), so this 120-man block takes
-	# ~270 ticks to come 90° around, plus a short settle tail for the bodies.
+	# the outer file's jog (UnitManeuver.wheel_gait_rate). Default fighting order is now
+	# pyknosis (2x Tight), so this 120-man block's 90° swing is roughly twice the old
+	# close-order ~270 ticks, plus a short settle tail for the bodies.
 	var swing_ticks := 0
-	while target.is_wheeling() and swing_ticks < 450:
+	while target.is_wheeling() and swing_ticks < 900:
 		await get_tree().physics_frame
 		worst_step = maxf(worst_step, _max_step(prev, target._sim_soldier_pos))
 		prev = target._sim_soldier_pos.duplicate()
@@ -95,7 +96,7 @@ const _LAST_SCRIPTED_KEY_TICK := 340
 # UnitManeuver.wheel_gait_rate) plus headroom for any per-tick scheduling variance between
 # runners, so the poll loop -- not a fixed frame count -- is what decides when the wheel has
 # actually finished.
-const _SETTLE_TICK_CAP := 450
+const _SETTLE_TICK_CAP := 900
 
 
 ## The committed wheel demo drives the real controls end to end: load the scripted-input

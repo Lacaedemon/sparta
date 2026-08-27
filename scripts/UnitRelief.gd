@@ -9,7 +9,10 @@ class_name UnitRelief
 ## both blocks also widen slot spacing in the ranks the partner is actually
 ## passing through (Unit._apply_relief_corridor_to_slots) so the incoming front
 ## can march between without intra-unit overlap. Ranks the partner has not
-## reached stay on the base grid. The tired unit
+## reached stay on the base grid, and only a block whose derived file clearance
+## is already positive widens at all -- locked-shields / knee-to-knee intervals
+## (clearance ~0) keep files packed, so blocked relief through a tight formation
+## is intended. The tired unit
 ## gets a plain MOVE order for its retreat -- marched with its facing held, so it backs out
 ## of the line still fronting the enemy -- so both sides of the swap read straight off the
 ## queue. Static helpers on the unit -- deterministic (positions / state only, no RNG), so

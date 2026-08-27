@@ -734,7 +734,7 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 		var d: Dictionary = loadout[i % loadout.size()]
 		half_widths.append(_line_half_width(d))
 	var xs: Array[float] = _line_x_offsets(half_widths, field.size.x)
-	var start_x: float = field.size.x * 0.5 - (xs[xs.size() - 1] * 0.5 if not xs.is_empty() else 0.0)
+	var start_x: float = _line_start_x(half_widths, xs, field.size.x)
 
 	for i in range(count):
 		var d: Dictionary = loadout[i % loadout.size()]
@@ -756,7 +756,7 @@ func _line_half_width(d: Dictionary) -> float:
 
 
 ## Given each unit's own half-width (already formation-density-scaled, see _line_half_width)
-## in a left-to-right line, returns each unit's x-offset from the line's own left edge (index
+## in a left-to-right line, returns each unit's x-offset from the first unit's centre (index
 ## 0 is always 0.0). Tightens the BASE spacing as the line grows so even a max stack stays on
 ## the field, but never lets it collapse below what keeps a wide neighbour's formation block
 ## from overlapping the unit next to it -- a flat per-unit spacing assumed a roughly-uniform
@@ -766,32 +766,53 @@ func _line_half_width(d: Dictionary) -> float:
 ## composition. That no-overlap gap makes no promise about the TOTAL line width, though -- a
 ## max-size stack cycling several wide LOOSE-order types back to back can need more total width
 ## than the field has room for, which would push the outer units off the playable field
-## entirely. So the no-overlap gaps are summed first; if that sum would overflow the same field
-## budget the old flat spacing always respected, every gap is uniformly shrunk until the line
-## fits (accepting a little unavoidable overlap only in that rare wide/high-count extreme).
-## Pure -- no Unit/scene access -- so both the default line spawn and a custom matchup
-## (a variable, non-cycling roster) share it and it's directly unit-testable.
+## entirely. The footprint that must fit is the centre-to-centre span PLUS the two outer
+## half-widths (the first block hangs left of the first centre; the last hangs right of the
+## last). If that footprint would overflow the playable field, every gap is uniformly
+## shrunk until the blocks fit (accepting a little unavoidable overlap only in that
+## rare wide/high-count extreme). Pair with _line_start_x, which centres that
+## footprint on the field rather than the centres alone. Pure -- no Unit/scene
+## access -- so both the default line spawn and a custom matchup (a variable,
+## non-cycling roster) share it and it's directly unit-testable.
 func _line_x_offsets(half_widths: Array[float], field_width: float) -> Array[float]:
 	var count: int = half_widths.size()
 	if count == 0:
 		return []
 	var base_spacing: float = minf(150.0, (field_width - 200.0) / maxf(1.0, count - 1))
 	var gaps: Array[float] = []
-	var raw_total_width: float = 0.0
+	var raw_center_span: float = 0.0
 	for i in range(count - 1):
 		var gap: float = maxf(base_spacing,
 				half_widths[i] + half_widths[i + 1] + Unit.FORMATION_SPACING)
 		gaps.append(gap)
-		raw_total_width += gap
-	var field_budget: float = field_width - 200.0
-	if raw_total_width > field_budget and raw_total_width > 0.0:
-		var shrink: float = field_budget / raw_total_width
+		raw_center_span += gap
+	var outer: float = half_widths[0] + half_widths[count - 1]
+	var raw_footprint: float = raw_center_span + outer
+	# Fit the full blocks on the playable field. The old centre-span budget of
+	# field_width - 200 already spent that margin on the two outer half-widths
+	# once Normal/Loose made those blocks wider; keeping both would shrink the
+	# standard 5v5 line and overlap neighbours the no-overlap test forbids.
+	if raw_footprint > field_width and raw_center_span > 0.0:
+		var target_span: float = maxf(0.0, field_width - outer)
+		var shrink: float = target_span / raw_center_span
 		for i in range(gaps.size()):
 			gaps[i] *= shrink
 	var xs: Array[float] = [0.0]
 	for i in range(count - 1):
 		xs.append(xs[i] + gaps[i])
 	return xs
+
+
+## World-x of the first unit's centre so the full formation footprint (outer half-widths
+## included) is centred on a field of `field_width`. `xs` is _line_x_offsets' centre-relative
+## list. A centre-only midpoint left the first and last blocks hanging off the field once
+## Normal/Loose made those blocks wider than the Tight floor.
+func _line_start_x(half_widths: Array[float], xs: Array[float], field_width: float) -> float:
+	if xs.is_empty() or half_widths.is_empty():
+		return field_width * 0.5
+	var first_half: float = half_widths[0]
+	var last_half: float = half_widths[half_widths.size() - 1]
+	return (field_width - xs[xs.size() - 1] - last_half + first_half) * 0.5
 
 
 ## The default battle loadout: spearmen, infantry, archers, cavalry, cavalry. A line
@@ -1171,7 +1192,7 @@ func _custom_matchup_scenario(team_0_names: Array, team_1_names: Array) -> Array
 				d_eff.merge(overrides[i], true)
 			half_widths.append(_line_half_width(d_eff))
 		var xs: Array[float] = _line_x_offsets(half_widths, field.size.x)
-		var start_x: float = field.size.x * 0.5 - (xs[xs.size() - 1] * 0.5 if not xs.is_empty() else 0.0)
+		var start_x: float = _line_start_x(half_widths, xs, field.size.x)
 		for i in range(dicts.size()):
 			var spec: Dictionary = {
 				"team": team,

@@ -5,7 +5,7 @@
   "camera": [
     {
       "tick": 0,
-      "x": 800.0,
+      "x": 660.0,
       "y": 500.0,
       "zoom": 0.7
     }
@@ -15,11 +15,11 @@
       "tick": 10,
       "box": {
         "from": [
-          350,
+          80,
           240
         ],
         "to": [
-          1220,
+          1450,
           360
         ]
       }
@@ -35,11 +35,11 @@
       "tick": 90,
       "box": {
         "from": [
-          350,
+          80,
           820
         ],
         "to": [
-          1220,
+          1450,
           940
         ]
       }
@@ -73,7 +73,7 @@
       "uid": 0,
       "field": "position",
       "value": [
-        452.0,
+        120.0,
         300.0
       ]
     },
@@ -82,10 +82,20 @@
       "uid": 5,
       "field": "position",
       "value": [
-        452.0,
+        120.0,
         880.0
       ]
     }
   ],
-  "spawn_fingerprint": "f8dd2ca100bf389fdc9d141c8085e92a"
+  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        0,
+        1,
+        5
+      ],
+      "reason": "Both boxed armies are marched to meeting points and grind through the ensuing press; judged samples adjacent to the contact window catch nearest-neighbour dips (worst 0.74-1.26 wu) while the blocks compress into the fight under the 2x default pitch. Press-adjacent compression, not standing interpenetration; measured on the density re-pin."
+    }
+  }
 }

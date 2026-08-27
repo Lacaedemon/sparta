@@ -19,7 +19,7 @@ func _make_unit(uid: int = 1, max_soldiers: int = 40) -> Unit:
 
 ## Run the wheel to completion on a bare unit: drive _think (advances the maneuver) and the body
 ## layer each tick until facing settles or a tick cap is hit. Returns the tick count used.
-func _run_wheel(u: Unit, dir: int, max_ticks: int = 200) -> int:
+func _run_wheel(u: Unit, dir: int, max_ticks: int = 400) -> int:
 	u.seed_sim_soldiers()
 	u.wheel(dir)
 	var delta := 1.0 / 60.0

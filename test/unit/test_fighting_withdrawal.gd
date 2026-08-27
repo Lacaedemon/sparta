@@ -293,6 +293,10 @@ func test_handoff_after_battles_fighting_split_still_marches() -> void:
 	var old_pf: PathField = PathField.active
 	PathField.active = null
 	var u := _make_seeded_unit()
+	# Pin Tight so the about-face + reform settle stays inside the 600-tick budget.
+	# Default Normal doubles rank pitch and the corner-man-paced turn outruns it.
+	u.set_formation(Unit.FORMATION_TIGHT)
+	u.seed_sim_soldiers()
 	assert_true(u.reform_before_move,
 		"infantry reforms before moving by default -- the split applies to this unit")
 	u.state = Unit.State.FIGHTING

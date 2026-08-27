@@ -45,13 +45,14 @@ func test_default_line_units_do_not_overlap() -> void:
 
 func test_max_campaign_stack_stays_within_field() -> void:
 	# At CampaignBattle.MAX_UNITS (12), cycling the standard 5-archetype loadout
-	# twice-plus needs a no-overlap-gap sum of ~1620.6 world units -- wider than
-	# Battle.FIELD's own spawn budget (FIELD.size.x - 200 == 1400) -- so simply taking
-	# every pair's no-overlap minimum (as test_default_line_units_do_not_overlap alone
-	# would allow) pushes the outer units off the field entirely. Confirms the line is
-	# instead scaled back down to fit within FIELD, at the cost of the no-overlap
-	# guarantee ONLY in this rare high-count extreme (unlike the standard 5v5 case
-	# above, which the fallback must leave untouched).
+	# twice-plus needs a no-overlap-gap sum wider than Battle.FIELD once outer
+	# half-widths are counted -- so simply taking every pair's no-overlap
+	# minimum (as test_default_line_units_do_not_overlap alone would allow)
+	# pushes the outer units off the field entirely. Confirms the line is
+	# instead scaled back down to fit within FIELD (gaps shrink AND the
+	# footprint, not just the centres, is centred), at the cost of the
+	# no-overlap guarantee ONLY in this rare high-count extreme (unlike the
+	# standard 5v5 case above, which the fallback must leave untouched).
 	CampaignBattle.clear()
 	CampaignBattle.active = true
 	CampaignBattle.pending = {
@@ -99,12 +100,9 @@ func test_max_campaign_stack_stays_within_field() -> void:
 			[right_edge, field_min, field_max])
 
 
-func test_half_width_helper_matches_known_issue_measurements() -> void:
-	# Pure-function regression pinned to the issue's own reported bbox widths (measured via
-	# a direct state dump, not eyeballed): Spearmen 135.0, Infantry 126.1 (rounds to 126.0
-	# from pure geometry -- the reported figure includes per-soldier jitter), Archers 216.1,
-	# Cavalry 99.1/99.0. Confirms half_width_for_soldiers (and its spacing_scale_for_mode
-	# input) reproduce the exact widths that motivated the fix, not just "some" width.
+func test_half_width_helper_matches_density_scaled_widths() -> void:
+	# Spearmen stay on the Tight floor (unchanged 135 wu). Infantry Normal and
+	# Archer Loose scale 2x / 4x from that floor, so their widths are 252 and 432.
 	var spacing := func(mode: int) -> float:
 		return Unit.FORMATION_SPACING * Unit.spacing_scale_for_mode(mode)
 
@@ -113,16 +111,16 @@ func test_half_width_helper_matches_known_issue_measurements() -> void:
 			135.0, 0.01, "Spearmen (140, TIGHT) width")
 	assert_almost_eq(
 			2.0 * UnitFormation.half_width_for_soldiers(120, spacing.call(Unit.FORMATION_NORMAL)),
-			126.0, 0.01, "Infantry (120, NORMAL) width")
+			252.0, 0.01, "Infantry (120, NORMAL pyknosis) width")
 	assert_almost_eq(
 			2.0 * UnitFormation.half_width_for_soldiers(90, spacing.call(Unit.FORMATION_LOOSE)),
-			216.0, 0.01, "Archers (90, LOOSE) width")
+			432.0, 0.01, "Archers (90, LOOSE open order) width")
 	# Historical pin: the cavalry row reproduces the issue's measurement at the FOOT
 	# pitch it used then. Cavalry has since moved to its own wider file pitch, so its
 	# live width is pinned separately below with the real pitch as input.
 	assert_almost_eq(
 			2.0 * UnitFormation.half_width_for_soldiers(80, spacing.call(Unit.FORMATION_NORMAL)),
-			99.0, 0.01, "Cavalry (80, NORMAL) width at the foot pitch")
+			198.0, 0.01, "Cavalry (80, NORMAL) width at the foot pitch")
 
 
 func test_cavalry_grid_pitch_reaches_the_live_units_bit_exactly() -> void:
@@ -157,9 +155,9 @@ func test_cavalry_grid_pitch_reaches_the_live_units_bit_exactly() -> void:
 
 
 func test_cavalry_formation_width_uses_its_own_file_pitch() -> void:
-	# 80 cavalry at Normal order form a 9-column squadron (Asclepiodotus 7.4); at the 1.0 m file
-	# pitch the block spans (9-1) * 20 = 160 world units.
+	# 80 cavalry at Normal order form a 9-column squadron (Asclepiodotus 7.4); at the
+	# 2.0 m file pitch (2x the 1.0 m Tight floor) the block spans (9-1) * 40 = 320 wu.
 	assert_almost_eq(
 			2.0 * UnitFormation.half_width_for_soldiers(80,
 					1.0 * WorldScale.WU_PER_M * Unit.spacing_scale_for_mode(Unit.FORMATION_NORMAL), 0, 0, true),
-			160.0, 0.01, "Cavalry (80, NORMAL) width at its own file pitch")
+			320.0, 0.01, "Cavalry (80, NORMAL) width at its own file pitch")

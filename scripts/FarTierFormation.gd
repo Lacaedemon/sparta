@@ -24,7 +24,7 @@ var casualties: int = 0
 ## them formation_mode / spacing / stance; in code the spacing knob is Unit.spacing_scale
 ## and the stance is Unit.order_mode, so the record mirrors those field names and types.
 var formation_mode: int = 0   # Unit.FORMATION_* constant
-var spacing_scale: float = 1.0
+var spacing_scale: float = Unit.NORMAL_SPACING_SCALE
 var order_mode: int = 0   # Battle.OrderMode value, mirrored as a plain int like Unit.order_mode
 
 ## Durable regiment-level stats the far-tier rules (FarTierRules) read — the same unit-level

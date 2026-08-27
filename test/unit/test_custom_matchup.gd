@@ -83,6 +83,22 @@ func test_line_x_offsets_shrinks_gaps_to_fit_a_narrow_field() -> void:
 		"the total line width is shrunk to fit the field budget, not left at the raw no-overlap sum")
 
 
+func test_line_x_offsets_counts_outer_half_widths_in_the_fit_budget() -> void:
+	# Centre-span-only shrink used to leave the first/last blocks hanging past FIELD
+	# once Normal/Loose widened those blocks. Three 400-wu-half units on a 1600 field
+	# overflow on footprint even if the centre span alone could be forced into 1400.
+	var b := BattleScript.new()
+	autofree(b)
+	var halves: Array[float] = [400.0, 400.0, 400.0]
+	var field_width := 1600.0
+	var xs: Array[float] = b._line_x_offsets(halves, field_width)
+	var start_x: float = b._line_start_x(halves, xs, field_width)
+	var left: float = start_x - halves[0]
+	var right: float = start_x + xs[xs.size() - 1] + halves[halves.size() - 1]
+	assert_gte(left, 0.0, "leftmost block stays on the field (left edge %.1f)" % left)
+	assert_lte(right, field_width, "rightmost block stays on the field (right edge %.1f)" % right)
+
+
 # --- _custom_matchup_scenario -------------------------------------------------
 
 func test_custom_matchup_scenario_resolves_roster_names_to_real_spawnable_types() -> void:

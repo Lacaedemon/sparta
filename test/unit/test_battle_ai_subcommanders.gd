@@ -103,11 +103,19 @@ func _spawn_support_scenario() -> Node:
 	# since Battle._ready is what consumes it.
 	Replay.forced_seed = SUPPORT_SCENARIO_SEED
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	# Staged at Tight explicitly: the in-contact spawn bands documented above were
+	# measured at the old 0.45 m default pitch, which Tight still is. The default
+	# (Normal) doubled to pyknosis, which reshapes block depth enough to reopen
+	# the combat race this staging was specifically calibrated to remove.
 	battle.scenario = [
-		{"team": 0, "type": "Infantry", "x": 750, "y": 515},               # ward's foe: in contact
-		{"team": 0, "type": "Infantry", "x": 900, "y": 480, "count": 1},   # ally's foe: dies fast
-		{"team": 1, "type": "Infantry", "x": 750, "y": 550},   # `ward`: fighting from tick 0
-		{"team": 1, "type": "Cavalry", "x": 900, "y": 550, "count": 10},    # `ally`: shallow so the token foe is in spatha reach
+		{"team": 0, "type": "Infantry", "x": 750, "y": 515,
+			"formation": Unit.FORMATION_TIGHT},                             # ward's foe: in contact
+		{"team": 0, "type": "Infantry", "x": 900, "y": 480, "count": 1,
+			"formation": Unit.FORMATION_TIGHT},                             # ally's foe: dies fast
+		{"team": 1, "type": "Infantry", "x": 750, "y": 550,
+			"formation": Unit.FORMATION_TIGHT},                             # `ward`: fighting from tick 0
+		{"team": 1, "type": "Cavalry", "x": 900, "y": 550, "count": 10,
+			"formation": Unit.FORMATION_TIGHT},                             # `ally`: shallow so the token foe is in spatha reach
 	]
 	add_child_autofree(battle)
 	return battle

@@ -5,6 +5,12 @@ extends RefCounted
 ## SceneTree, no RNG, no wall clock), so the whole module is directly GUT-testable and
 ## produces identical verdicts on every run of the same transcript.
 ##
+## Must not reference Unit (or any script that uses the Settings autoload): this file
+## is loaded by analyze_transcript.gd under bare `godot -s`, which has no autoloads.
+## DistanceLegend is a leaf (WorldScale only) and is safe to preload. The HUD
+## caption rebuild preloads it at the formation-label helpers below, not here,
+## so this class docstring stays one block.
+##
 ## The input is the per-tick snapshot series a FULL state dump produces
 ## (SPARTA_DEMO_STATE_FULL=1 -- see tools/demo/DemoState.gd): each unit carries its
 ## actual body positions (`soldiers_full.pos`), its CANONICAL slot grid
@@ -696,17 +702,36 @@ static func _vec(pair) -> Vector2:
 	return Vector2(float(pair[0]), float(pair[1]))
 
 
-## Map a sim formation name to the expected HUD display text.
-static func hud_formation_name(sim_formation: String) -> String:
-	match sim_formation:
-		"NORMAL": return "Normal"
-		"TIGHT": return "Tight"
-		"LOOSE": return "Loose"
-		"SQUARE": return "Square (Orbis)"
-		"SHIELD_WALL": return "Shield Wall"
-		"TESTUDO": return "Testudo"
-		"SCHILTRON": return "Schiltron"
-		_: return ""
+## Map a sim formation name to the expected HUD display text. Optional
+## `file_pitch_wu` / `rank_pitch_wu` are the dumped live slot-center pitches
+## (already density-scaled). When omitted (or unknown mode) this returns "" so
+## the HUD check skips rather than guessing. Does NOT import Unit -- this file
+## runs under bare `godot -s` with no Settings autoload.
+const DistanceLegendRef = preload("res://scripts/DistanceLegend.gd")
+const _FORMATION_LABEL_SUFFIX := {
+	"NORMAL": "",
+	"TIGHT": " locked",
+	"LOOSE": "",
+	"SQUARE": " Square",
+	"SHIELD_WALL": " Shield Wall",
+	"TESTUDO": " Testudo",
+	"SCHILTRON": " Schiltron",
+}
+
+
+static func hud_formation_name(sim_formation: String, file_pitch_wu: float = -1.0,
+		rank_pitch_wu: float = -1.0) -> String:
+	if not _FORMATION_LABEL_SUFFIX.has(sim_formation):
+		return ""
+	if file_pitch_wu < 0.0:
+		return ""
+	# Square/schiltron geometry is isotropic at file pitch (formation_slots
+	# omits rank). Rebuild must match that, not the unused rank dump.
+	var rank: float = rank_pitch_wu
+	if sim_formation == "SQUARE" or sim_formation == "SCHILTRON":
+		rank = -1.0
+	var interval: String = DistanceLegendRef.interval_pair_label(file_pitch_wu, rank)
+	return interval + _FORMATION_LABEL_SUFFIX[sim_formation]
 
 
 ## Check consistency between the player-visible HUD readout and sim state across all snapshots.
@@ -758,16 +783,48 @@ static func check_hud_consistency(snapshots: Array) -> Array:
 		else:
 			selection_run = 0
 
-		# 1. Formation verification: HUD button text vs unit.formation
+		# 1. Formation verification: HUD button text vs dumped caption, else rebuilt
+		# from dumped pitches (never via Unit -- this analyzer has no autoloads).
+		# When both the dump caption and the pitch rebuild exist, they must agree
+		# -- suffix-map drift or a stale formation_summary is a real mismatch.
+		# Fail closed: a selected unit whose mode is missing from the suffix map,
+		# or whose HUD caption is blank while an expected label exists, is a
+		# mismatch -- do not skip and reset the run.
 		var sim_formation: String = str(matching_unit.get("formation", ""))
 		var hud_formation: String = str(hud.get("formation_text", "")).strip_edges()
-		if hud_formation != "" and not matching_unit.is_empty():
-			var expected: String = hud_formation_name(sim_formation)
-			if expected != "" and hud_formation != expected:
+		if not matching_unit.is_empty():
+			var pitch: float = float(matching_unit.get("file_pitch", -1.0))
+			var rank: float = float(matching_unit.get("rank_pitch", -1.0))
+			if pitch < 0.0 and matching_unit.has("motion_ref"):
+				var ref: Dictionary = matching_unit["motion_ref"]
+				pitch = float(ref.get("file_pitch", -1.0))
+				rank = float(ref.get("rank_pitch", -1.0))
+			var unknown_mode := (
+					sim_formation != "" and not _FORMATION_LABEL_SUFFIX.has(sim_formation))
+			var rebuilt: String = hud_formation_name(sim_formation, pitch, rank)
+			var dumped_label: String = str(matching_unit.get("formation_label", "")).strip_edges()
+			var expected: String = dumped_label if dumped_label != "" else rebuilt
+			var dump_rebuild_mismatch := (
+					dumped_label != "" and rebuilt != "" and dumped_label != rebuilt)
+			var blank_hud := expected != "" and hud_formation == ""
+			if unknown_mode or blank_hud or (
+					expected != "" and (hud_formation != expected or dump_rebuild_mismatch)):
 				formation_run += 1
 				worst_formation_run = maxi(worst_formation_run, formation_run)
 				if worst_formation == "":
-					worst_formation = "tick %d: sim %s vs hud '%s'" % [tick, sim_formation, hud_formation]
+					if unknown_mode:
+						worst_formation = (
+								"tick %d: unknown formation '%s'" % [tick, sim_formation])
+					elif dump_rebuild_mismatch:
+						worst_formation = (
+								"tick %d: formation_label '%s' vs pitch rebuild '%s'"
+								% [tick, dumped_label, rebuilt])
+					elif blank_hud:
+						worst_formation = (
+								"tick %d: blank hud vs expected '%s'" % [tick, expected])
+					else:
+						worst_formation = "tick %d: sim %s vs hud '%s'" % [
+								tick, sim_formation, hud_formation]
 			else:
 				formation_run = 0
 		else:

@@ -2876,12 +2876,14 @@ func test_narrow_frontage_caps_front_depth_so_melee_still_closes() -> void:
 	u.set_frontage(1)   # one file: maximally deep
 	assert_almost_eq(u._front_depth(), u.attack_range * 0.5, 0.001,
 			"a maximally deep column's separation depth is capped at half the reach")
-	# An auto/normal formation on a small unit stays shallow enough to sit below
+	# An auto Tight column on a small unit stays shallow enough to sit below
 	# the cap, so it's untouched (a big 120-soldier block is deep enough to hit
-	# the same cap at the wider real-world FORMATION_SPACING).
+	# the same cap at the wider real-world FORMATION_SPACING). Pin Tight: at
+	# Normal pyknosis a 16-man block's 0.9 m rank pitch already hits the cap.
 	var shallow := _make_unit(16)
+	shallow.set_formation(Unit.FORMATION_TIGHT)
 	assert_lt(shallow._front_depth(), shallow.attack_range * 0.5,
-			"a normal formation's depth is below the cap (unaffected)")
+			"a Tight formation's depth is below the cap (unaffected)")
 
 
 func test_files_for_halfwidth_maps_and_clamps() -> void:
@@ -3018,32 +3020,31 @@ func test_set_formation_loose_widens_the_grid_spacing() -> void:
 		"adjacent marks sit further apart at LOOSE than at NORMAL")
 
 
-func test_set_formation_tight_does_not_shrink_the_grid_spacing() -> void:
-	# FORMATION_SPACING already sits at the historically attested close-order/
-	# locked-shield floor -- there's no realistic room to pack marks tighter than
-	# that, so TIGHT's bonuses come from separation_radius/missile-defense/charge-
-	# absorption, not from squeezing the visual grid past any real formation's density.
+func test_set_formation_tight_packs_the_grid_tighter_than_normal() -> void:
+	# TIGHT is synaspismos (the authored floor); NORMAL is pyknosis at 2x.
 	var u := _make_unit()
 	var normal_slots: PackedVector2Array = UnitFormation.slots(u, u.soldiers)
 	u.set_formation(Unit.FORMATION_TIGHT)
 	var tight_slots: PackedVector2Array = UnitFormation.slots(u, u.soldiers)
-	assert_almost_eq(tight_slots[1].distance_to(tight_slots[0]),
-		normal_slots[1].distance_to(normal_slots[0]), 0.001,
-		"TIGHT leaves the grid spacing at the same historical floor as NORMAL")
+	assert_lt(tight_slots[1].distance_to(tight_slots[0]),
+		normal_slots[1].distance_to(normal_slots[0]),
+		"TIGHT packs marks closer than NORMAL pyknosis")
 
 
 func test_loose_formation_widens_the_engaged_front_depth() -> void:
 	# _front_depth (the engaged-enemy separation floor) scales with the same density,
 	# so a LOOSE-order unit's ranks are realistically further apart front-to-back too.
-	# A small, shallow unit so neither depth hits the reach cap -- this isolates the
-	# spacing_scale effect from that separate capping behavior.
+	# A small, shallow unit with reach high enough that neither depth hits the
+	# cap -- this isolates the spacing_scale effect from that separate capping.
+	# Default gladius reach (26 wu) would cap both Normal and Loose at 13 wu.
 	var u := _make_unit(2)
 	u.set_frontage(1)   # one file: two ranks deep
+	u.attack_range = 100.0
 	var normal_depth: float = u._front_depth()
 	u.set_formation(Unit.FORMATION_LOOSE)
 	var loose_depth: float = u._front_depth()
-	assert_almost_eq(loose_depth, normal_depth * Unit.LOOSE_SPACING_SCALE, 0.001,
-		"LOOSE order's rank depth scales by the same density factor as the grid spacing")
+	assert_almost_eq(loose_depth, normal_depth * Unit.LOOSE_SPACING_SCALE / Unit.NORMAL_SPACING_SCALE, 0.001,
+		"LOOSE order's rank depth is 2x NORMAL (4x vs 2x the Tight floor)")
 
 
 # --- combat geometry agrees with the rendered grid --------------------------------
@@ -3162,27 +3163,32 @@ func test_engaged_soldier_indices_prefers_real_enemy_proximity_over_centroid_dis
 # --- engaged_ranks() (the engaged tier's reach-scaled depth) ----------------------------
 
 func test_engaged_ranks_matches_the_old_flat_default_for_a_bare_units_default_reach() -> void:
-	# A bare Unit.new() defaults to attack_range 26.0 (gladius/sword reach) and the default
+	# A bare Unit at Tight uses attack_range 26.0 (gladius/sword reach) and the Tight
 	# rank_pitch (FORMATION_SPACING, 9.0wu): ceil(26/9) = 3, exactly the old flat
-	# ENGAGED_RANKS constant this replaces -- so every test fixture that never overrides
-	# attack_range/rank_pitch keeps its existing engaged-tier depth unchanged.
+	# ENGAGED_RANKS constant this replaces. Pin Tight: default Normal pyknosis is
+	# 18 wu, where ceil(26/18) = 2.
 	var u := _make_unit(120)
+	u.set_formation(Unit.FORMATION_TIGHT)
 	assert_eq(u.engaged_ranks(), 3)
+	u.set_formation(Unit.FORMATION_NORMAL)
+	assert_eq(u.engaged_ranks(), 2, "Normal pyknosis halves the Tight rank count")
 
 
 func test_engaged_ranks_scales_up_for_a_longer_reach_unit() -> void:
-	# A spear (reach 48wu) at the default 9wu rank pitch: ceil(48/9) = 6 -- deep enough that
+	# A spear (reach 48wu) at the Tight 9wu rank pitch: ceil(48/9) = 6 -- deep enough that
 	# rank-4/5 spearmen, who previously could never be selected as engaged regardless of
 	# whether they were within their own weapon's reach, are now included.
 	var u := _make_unit(120)
+	u.set_formation(Unit.FORMATION_TIGHT)
 	u.attack_range = 48.0
 	assert_eq(u.engaged_ranks(), 6)
 
 
 func test_engaged_ranks_scales_down_for_a_short_reach_unit() -> void:
-	# A sidearm (reach 12wu, the Archers' melee backup) at the default 9wu rank pitch:
+	# A sidearm (reach 12wu, the Archers' melee backup) at the Tight 9wu rank pitch:
 	# ceil(12/9) = 2.
 	var u := _make_unit(120)
+	u.set_formation(Unit.FORMATION_TIGHT)
 	u.attack_range = 12.0
 	assert_eq(u.engaged_ranks(), 2)
 
@@ -3225,6 +3231,7 @@ func test_body_tier_ranks_ignores_weapon_reach() -> void:
 	# STRIKE) without moving body_tier_ranks() off 1 (whose BODY is being shoved). A sixth-rank
 	# spearman strikes past five files of his own men without anything touching him.
 	var u := _make_unit(120)
+	u.set_formation(Unit.FORMATION_TIGHT)
 	u.attack_range = 48.0
 	assert_eq(u.engaged_ranks(), 6, "sanity: reach still drives the melee tier")
 	assert_eq(u.body_tier_ranks(), 1, "but not the body-contact tier")
@@ -3251,6 +3258,7 @@ func test_body_tier_leaves_an_unengaged_bulk_when_reach_would_swallow_the_block(
 	# engaged depth of 6 -- the melee tier still (correctly) covers everyone, while the body
 	# tier keeps a real bulk in reserve.
 	var u := _make_unit(40)
+	u.set_formation(Unit.FORMATION_TIGHT)
 	u.attack_range = 48.0
 	u.set_frontage(9)
 	u.seed_sim_soldiers()
@@ -3361,6 +3369,7 @@ func test_engaged_soldier_indices_reaches_beyond_the_old_flat_rank_cap_for_a_lon
 	# geometrically stood, because they were never even included in the engaged candidate
 	# set SoldierMelee.resolve searches.
 	var u := _make_unit(60)
+	u.set_formation(Unit.FORMATION_TIGHT)
 	u.attack_range = 48.0
 	u.seed_sim_soldiers()
 	u.state = Unit.State.FIGHTING
@@ -3769,6 +3778,7 @@ func test_near_front_soldier_indices_selects_anchor_ranks_worth_of_live_front_bo
 	# The settled, non-Square, engaged case: ANCHOR_RANKS-worth (narrower than the full
 	# engaged_ranks() depth), by live position, same as engaged_soldier_indices' own mechanism.
 	var u := _make_unit(120)
+	u.set_formation(Unit.FORMATION_TIGHT)   # Tight 9 wu: engaged_ranks 3 > ANCHOR_RANKS 2
 	u.seed_sim_soldiers()
 	u.state = Unit.State.FIGHTING
 	u.tick_engaged(0.0)
@@ -3899,15 +3909,66 @@ func test_tight_formation_reduces_cavalry_charge_bonus() -> void:
 func test_formation_summary_returns_correct_names() -> void:
 	var u := _make_unit()
 	u.set_formation(Unit.FORMATION_NORMAL)
-	assert_eq(u.formation_summary(), "Normal")
+	assert_eq(u.formation_summary(), "0.9 m")
 	u.set_formation(Unit.FORMATION_TIGHT)
-	assert_eq(u.formation_summary(), "Tight")
+	assert_eq(u.formation_summary(), "0.45 m locked")
 	u.set_formation(Unit.FORMATION_LOOSE)
-	assert_eq(u.formation_summary(), "Loose")
+	assert_eq(u.formation_summary(), "1.8 m")
 	u.set_formation(Unit.FORMATION_SHIELD_WALL)
-	assert_eq(u.formation_summary(), "Shield Wall")
+	assert_eq(u.formation_summary(), "0.34 m Shield Wall")
 	u.set_formation(Unit.FORMATION_TESTUDO)
-	assert_eq(u.formation_summary(), "Testudo")
+	assert_eq(u.formation_summary(), "0.27 m Testudo")
+	u.set_formation(Unit.FORMATION_SQUARE)
+	assert_eq(u.formation_summary(), "0.45 m Square")
+
+
+func test_formation_summary_labels_cavalry_anisotropic_pitch() -> void:
+	# Battle loadout: 1.0 m files, 3.0 m ranks as the TIGHT / knee-to-knee floor.
+	# NORMAL 2x, LOOSE 4x on that same identity -- not a second metric.
+	var cav := _cavalry()
+	cav.file_pitch = Unit.CAV_MARK_RADIUS * 2.0
+	cav.rank_pitch = Unit.CAV_MARK_RADIUS * 6.0
+	cav.set_formation(Unit.FORMATION_NORMAL)
+	assert_eq(cav.formation_summary(), "2 x 6 m",
+			"cavalry Normal is 2x the knee-to-knee floor")
+	cav.set_formation(Unit.FORMATION_TIGHT)
+	assert_eq(cav.formation_summary(), "1 x 3 m locked",
+			"Tight is the authored 1 m x 3 m knee-to-knee preset")
+	cav.set_formation(Unit.FORMATION_LOOSE)
+	assert_eq(cav.formation_summary(), "4 x 12 m",
+			"Loose is 4x the Tight floor; still one identity")
+	cav.set_formation(Unit.FORMATION_SQUARE)
+	assert_eq(cav.formation_summary(), "1 m Square",
+			"Square is isotropic at file pitch, matching the square grid")
+
+
+func test_file_clearance_is_zero_at_synaspismos() -> void:
+	var u := _make_unit()
+	assert_gt(u.file_clearance_wu(), 0.0,
+			"Normal pyknosis (0.9 m) leaves a derived gap a partner can march through")
+	u.set_formation(Unit.FORMATION_TIGHT)
+	assert_almost_eq(u.file_clearance_wu(), 0.0, 0.0001,
+			"0.45 m pitch minus two 0.225 m half-widths is a packed file")
+	u.set_formation(Unit.FORMATION_LOOSE)
+	assert_gt(u.file_clearance_wu(), 0.0,
+			"Loose (1.8 m) leaves a still wider derived gap")
+
+
+func test_cavalry_knee_to_knee_file_clearance_is_zero() -> void:
+	var cav := _cavalry()
+	cav.file_pitch = Unit.CAV_MARK_RADIUS * 2.0
+	cav.rank_pitch = Unit.CAV_MARK_RADIUS * 6.0
+	cav.set_formation(Unit.FORMATION_TIGHT)
+	assert_almost_eq(cav.file_clearance_wu(), 0.0, 0.0001,
+			"1 m file centers minus two 0.5 m horse half-widths is knee-to-knee")
+	assert_gt(cav.rank_clearance_wu(), cav.file_clearance_wu(),
+			"rank pitch is deeper than file pitch, so rank clearance is larger while the body is still a circle")
+	cav.set_formation(Unit.FORMATION_NORMAL)
+	assert_gt(cav.file_clearance_wu(), 0.0,
+			"Normal cavalry (2 m files) opens a derived side gap")
+	cav.set_formation(Unit.FORMATION_LOOSE)
+	assert_gt(cav.file_clearance_wu(), 0.0,
+			"Loose cavalry (4 m files) opens a still wider derived side gap")
 
 
 # --- shielded close-order stances: shield wall & testudo ------------------
@@ -4044,20 +4105,26 @@ func _mean_nn_spacing(positions: PackedVector2Array) -> float:
 
 func test_shield_wall_and_testudo_pack_tighter_than_normal() -> void:
 	# Shield wall / testudo must genuinely tighten the soldier GRID (not just their combat
-	# multipliers), so their measured spacing drops below the 9.0 wu TIGHT/NORMAL
-	# historical close-order floor.
+	# multipliers), so their measured spacing drops below the 9.0 wu Tight synaspismos
+	# floor -- not merely below Normal pyknosis.
 	var normal := _make_unit()
 	var normal_spacing := _mean_nn_spacing(normal.soldier_world_slots(normal.soldiers))
-	assert_almost_eq(normal_spacing, Unit.FORMATION_SPACING, 0.1,
-		"sanity: normal spacing sits at the documented 9.0 wu floor")
+	assert_almost_eq(normal_spacing, Unit.FORMATION_SPACING * Unit.NORMAL_SPACING_SCALE, 0.1,
+		"sanity: normal spacing sits at pyknosis (2x the 9.0 wu Tight floor)")
+
+	var tight := _make_unit()
+	tight.set_formation(Unit.FORMATION_TIGHT)
+	var synaspismos := _mean_nn_spacing(tight.soldier_world_slots(tight.soldiers))
 
 	for mode: int in [Unit.FORMATION_SHIELD_WALL, Unit.FORMATION_TESTUDO]:
 		var u := _make_unit()
 		u.set_formation(mode)
-		var tight_spacing := _mean_nn_spacing(u.soldier_world_slots(u.soldiers))
-		assert_lt(tight_spacing, normal_spacing,
+		var packed_spacing := _mean_nn_spacing(u.soldier_world_slots(u.soldiers))
+		assert_lt(packed_spacing, normal_spacing,
 			"formation %d spacing (%.2f) is measurably tighter than normal (%.2f)" \
-				% [mode, tight_spacing, normal_spacing])
+				% [mode, packed_spacing, normal_spacing])
+		assert_lt(packed_spacing, synaspismos,
+			"formation %d must not sit looser than Tight synaspismos" % mode)
 
 
 func test_testudo_packs_tighter_than_shield_wall() -> void:
@@ -4074,22 +4141,21 @@ func test_testudo_packs_tighter_than_shield_wall() -> void:
 		"testudo packs tighter than shield wall")
 
 
-func test_tight_and_normal_spacing_is_unchanged_from_the_historical_floor() -> void:
-	# Regression guard: TIGHT/NORMAL keep the historical close-order floor --
-	# only SHIELD_WALL/TESTUDO squeeze the grid below it.
-	for mode: int in [Unit.FORMATION_NORMAL, Unit.FORMATION_TIGHT]:
-		var u := _make_unit()
-		u.set_formation(mode)
-		assert_almost_eq(u.spacing_scale, 1.0, 0.001,
-			"formation %d keeps the close-order floor" % mode)
+func test_tight_stays_on_the_synaspismos_floor() -> void:
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_TIGHT)
+	assert_almost_eq(u.spacing_scale, Unit.TIGHT_SPACING_SCALE, 0.001,
+		"Tight is the authored 1x floor")
+	u.set_formation(Unit.FORMATION_NORMAL)
+	assert_almost_eq(u.spacing_scale, Unit.NORMAL_SPACING_SCALE, 0.001,
+		"Normal is pyknosis at 2x")
 
 
 func test_loose_spacing_still_widens_the_grid() -> void:
-	# Regression guard: LOOSE must keep working exactly as before (2x spacing).
 	var u := _make_unit()
 	u.set_formation(Unit.FORMATION_LOOSE)
 	assert_almost_eq(u.spacing_scale, Unit.LOOSE_SPACING_SCALE, 0.001,
-		"loose still doubles the grid spacing")
+		"Loose is true open order at 4x the Tight floor")
 
 
 # --- formation_containment_margin: melee-intermixing depth gated by formation_mode --

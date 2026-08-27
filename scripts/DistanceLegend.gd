@@ -4,6 +4,10 @@ class_name DistanceLegend
 ## with so it stays both round and a sensible width on screen. No node state, no RNG, no
 ## wall-clock -- a function of (zoom, world_units_per_metre) only, so it's directly
 ## unit-testable; HUD just reads the camera and draws the rect + label these compute.
+## Leaf enough for the bare `godot -s` transcript analyzer: it preloads WorldScale
+## (zero dependencies) and never touches Unit/Settings.
+
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 
 # Target on-screen width band for the bar (px): wide enough to read at a glance, narrow
 # enough not to dominate the corner. pick_round_metres returns the largest "nice" distance
@@ -83,6 +87,36 @@ static func label_text(metres: float) -> String:
 	if s.ends_with(".0"):
 		s = s.substr(0, s.length() - 2)
 	return "%s km" % s
+
+
+## Player-facing label for a formation's slot-center file interval. The scale-bar
+## `label_text` rounds to whole metres and would print synaspismos (0.45 m) as "0 m";
+## this keeps centimetre precision and strips trailing zeros so 0.90 reads "0.9 m"
+## and 1.00 reads "1 m".
+static func interval_label_text(metres: float) -> String:
+	if metres <= 0.0:
+		return "0 m"
+	var rounded: float = round(metres * 100.0) / 100.0
+	var s: String = "%.2f" % rounded
+	while s.ends_with("0"):
+		s = s.substr(0, s.length() - 1)
+	if s.ends_with("."):
+		s = s.substr(0, s.length() - 1)
+	return "%s m" % s
+
+
+## "0.45 m" when file equals rank (or rank is omitted); "1 x 3 m" when they
+## differ. File first, then rank -- the same slot-center-pitch identity on both
+## axes. ASCII "x", not a multiplication sign. Lives here so DemoDefects can
+## rebuild a HUD caption from a dump without loading Unit (Settings autoload).
+static func interval_pair_label(file_wu: float, rank_wu: float = -1.0) -> String:
+	var file_s: String = interval_label_text(
+			metres_for_world(file_wu, WorldScaleRef.WU_PER_M))
+	if rank_wu < 0.0 or is_equal_approx(file_wu, rank_wu):
+		return file_s
+	var rank_s: String = interval_label_text(
+			metres_for_world(rank_wu, WorldScaleRef.WU_PER_M))
+	return "%s x %s" % [file_s.trim_suffix(" m"), rank_s]
 
 
 ## The 1-2-5 ladder from 1 m up to 1e7 m (10,000 km -- far past any battlefield), so

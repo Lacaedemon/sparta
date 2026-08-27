@@ -234,13 +234,17 @@ unit advances through its tired ally and takes over the melee, and the relieved
 regiment falls back toward its own rear --- where fatigue drains away and morale
 recovers (see [How to play](how-to-play.qmd) for the controls).
 
-- **The swap is a pass-through.** For its duration the two friendly regiments may
-  interpenetrate, so the line never opens a gap for the enemy to pour into while
-  the fresh unit works its way forward. The ranks the partner is actually marching
-  through also widen their file spacing so the incoming front can pass between
-  without stacking on its own men; ranks the partner has not reached yet stay
-  closed, and the lane opens a couple of ranks ahead of the pass rather than
-  fanning the whole block the moment the order arms.
+- **The swap is a regiment pass-through, with a gated file lane.** For its duration
+  the two friendly *regiments* may interpenetrate, so the line never opens a
+  company-sized hole for the enemy to pour into while the fresh unit works its way
+  forward. Tight *files* stay packed: 0.45 m synaspismos on foot and 1 m
+  knee-to-knee on horse leave a derived side gap of ~0, so a partner cannot march
+  between files --- blocked relief through a locked Tight interval is intended. A
+  block that already has open file clearance (0.9 m Normal or 1.8 m Loose on foot;
+  2 &times; 6 m or 4 &times; 12 m cavalry) widens a lane --- and only in the ranks
+  the partner is actually marching through: ranks it has not reached yet stay
+  closed, the lane opening a couple of ranks ahead of the pass rather than fanning
+  the whole block the moment the order arms.
 - **The retreat is an order like any other.** The relieved unit falls back under a
   normal move order (hold <kbd>Space</kbd> to see it), and you can redirect it ---
   to a safer rest spot, or straight to another fight if you must.
@@ -657,13 +661,17 @@ commit your horse.
 
 ## Formation stances
 
-Press <kbd>T</kbd> to cycle a unit's density --- **Normal**, **Tight** (closed ranks:
-better missile and charge defence), **Loose** (open order: room to fire), and **Square**
-(the anti-cavalry ring, covered below). <kbd>Shift</kbd> + <kbd>T</kbd> cycles the other
-way, handy for stepping back one density without looping all the way round. Two heavier
+Press <kbd>T</kbd> to cycle a unit's density --- named on the control bar by the live
+**slot-center pitch in metres** (the interval includes the man or horse). On foot that
+is **0.9 m** (pyknosis, the default fighting order), **0.45 m locked** (Tight:
+synaspismos with better missile and charge defence), **1.8 m** (true open order),
+and **0.45 m Square** (the anti-cavalry ring, covered below).
+<kbd>Shift</kbd> + <kbd>T</kbd> cycles the other way, handy for stepping back one
+density without looping all the way round. Two heavier
 **shielded close-order stances**
-build on Tight's locked-shield density and are set from the control-bar Formation menu or
-their own direct keys.
+pack *below* the 0.45 m Tight floor and are set from the control-bar Formation menu or
+their own direct keys. Cavalry uses the same identity with a different Tight preset
+(1 m files &times; 3 m ranks; Normal 2x, Loose 4x).
 
 Density also decides how deep an enemy can press into the line once melee is joined.
 Tight, Square, Schiltron, Shield Wall, and Testudo hold the enemy at the front rank
@@ -709,8 +717,8 @@ formations rather than dissolving into a mob.
 </video>
 ```
 
-Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps Tight to
-Loose, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back to Tight --- the same
+Formation density cycling with the Shift-reverse: <kbd>T</kbd> steps 0.9 m
+to 0.45 m locked to 1.8 m, then <kbd>Shift</kbd> + <kbd>T</kbd> steps back --- the same
 parallelism as Shift+Y and Shift+X reversing the form-up-split and
 group-attack-mode cycles.
 :::
@@ -825,12 +833,12 @@ as the shape of the saving and not a number to time a charge against.
 **Orbis vs schiltron.** The hollow square comes in two variants with different
 trade-offs, not one generic stance:
 
-- **Orbis** (<kbd>O</kbd>, or the control bar's **Square (Orbis)** button) is the
+- **Orbis** (<kbd>O</kbd>, or the control bar's **0.45 m Square** button) is the
   last-stand ring. Its charge brace and offence sit at the square's baseline, but it
   holds its nerve better than any other stance --- casualties erode its morale more
   slowly, so a surrounded unit fighting to the end is less likely to break outright.
   Reach for it when a unit is cut off and simply needs to survive as long as possible.
-- **Schiltron** (<kbd>Shift</kbd> + <kbd>O</kbd>, or the control bar's **Schiltron**
+- **Schiltron** (<kbd>Shift</kbd> + <kbd>O</kbd>, or the control bar's **0.45 m Schiltron**
   button) is the cavalry specialist. Its denser hedge of levelled spears braces a
   charge *harder* than the orbis does --- cavalry riding into a schiltron comes off
   worse than riding into an orbis --- at the cost of hitting even softer in return,
