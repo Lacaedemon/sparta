@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Test-only change: hardens the assertions in test_disengage_with_sacrifice_rearguard.gd's decisive pursuer-blocked test so they discriminate a real rearguard from the spawn being stubbed out. No scene/script/asset/gameplay behavior changed -- nothing new for a recorded battle to show."
+}
