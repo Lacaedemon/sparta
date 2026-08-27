@@ -1,0 +1,27 @@
+{
+  "_comment": "Issue #1405: an infantry block that survives a cavalry charge (per-soldier melee, no formula wipe, no rout) used to never re-spread to its commanded pitch afterward -- a knocked-back soldier catching up to the block while it MARCHES (pursuing the withdrawing cavalry) would flip between a direct approach and a full flank-and-rear corridor detour every time its distance to its own slot hovered at the direct-arrival radius, flinging it a formation's-width away right as it was about to land. A 12-horse cycle-charge cavalry (armed via the J stance, same UI gesture as any other order) hits a 40-man, morale-2.2 infantry line hard enough to knock its front rank around without wiping or routing it, then peels back to recharge -- the infantry, still tracking its live target_enemy, keeps marching after it, which is exactly the condition that used to strand the knocked-back rank. The clip's subject is the re-spread itself: watch the infantry's front rank close back up to full spacing as the block marches, rather than trailing a loose straggling clump for the rest of the clip. The post-strike reform window itself (roughly t400-800) is deliberately NOT sampled -- while the knocked-back rank is still catching up to the marching block, nearest-neighbour distance legitimately dips below the overlap floor for individual samples even with the fix (real, bounded-acceleration recovery just takes a few seconds, it is not instantaneous); the sampled ticks pin the charge, the strike, and the SETTLED outcome once re-spread completes.",
+  "seed": "54321",
+  "all_teams_control": true,
+  "map": {
+    "field": [1500, 1100],
+    "terrain": [],
+    "spawn_lines": [280.0, 820.0]
+  },
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 420, "y": 500, "count": 12},
+    {"team": 1, "type": "Infantry", "x": 700, "y": 500, "count": 40, "morale": 2.2}
+  ],
+  "camera": [
+    {"tick": 0, "x": 620.0, "y": 520.0, "zoom": 0.7}
+  ],
+  "steps": [
+    {"tick": 6, "click": [420, 500]},
+    {"tick": 20, "key": "J"},
+    {"tick": 34, "rmb_click": [700, 500]}
+  ],
+  "state": [8, 200, 260, 300, 340, 860, 900, 950],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [420.0, 500.0]},
+    {"tick": [200, 300], "uid": 0, "field": "order_mode", "value": "Cycle charge"}
+  ]
+}
