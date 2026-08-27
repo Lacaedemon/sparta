@@ -1,27 +1,36 @@
 {
-  "_comment": "Side-step maneuver demo: zoom in on the lone Spearmen (seed 12345; uid0 stands at x=452/y=300 under Battle._spawn_line's current spacing, facing south toward the enemy), select it, then right-click a short step to the right. The click target (480, 300) is a ~28-unit shift, comfortably under UnitManeuver.SIDESTEP_MAX_DISTANCE (40.0), so the regiment SIDE-STEPS -- it shuffles right at a walk while holding its south-facing line, instead of centre-pivoting to face the move and pivoting back. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s). The select click MUST land on the unit's actual spawn position: an earlier revision clicked (407, 300), a stale coordinate from a previous spawn layout, so the click selected nothing, the regiment never moved, and both expectations below failed silently on every run -- including the website's own sidestep clip, which reads this same script via website/tools/demo-catalog.sh.",
+  "_comment": "Side-step maneuver demo: zoom in on the lone Spearmen (seed 12345; uid0 stands at x=120/y=300 under Battle._spawn_line's current spacing, facing south toward the enemy), select it, then right-click a short step to the right. The click target (480, 300) is a ~28-unit shift, comfortably under UnitManeuver.SIDESTEP_MAX_DISTANCE (40.0), so the regiment SIDE-STEPS -- it shuffles right at a walk while holding its south-facing line, instead of centre-pivoting to face the move and pivoting back. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s). The select click MUST land on the unit's actual spawn position: an earlier revision clicked (407, 300), a stale coordinate from a previous spawn layout, so the click selected nothing, the regiment never moved, and both expectations below failed silently on every run -- including the website's own sidestep clip, which reads this same script via website/tools/demo-catalog.sh.",
   "seed": "12345",
   "camera": [
     {
       "tick": 0,
-      "x": 465.0,
+      "x": 133.0,
       "y": 318.0,
       "zoom": 2.0
     }
   ],
-  "state": [8, 30, 60, 90, 120, 150, 180, 240],
+  "state": [
+    8,
+    30,
+    60,
+    90,
+    120,
+    150,
+    180,
+    240
+  ],
   "steps": [
     {
       "tick": 10,
       "click": [
-        452,
+        120.0,
         300
       ]
     },
     {
       "tick": 28,
       "rmb_click": [
-        480,
+        148,
         300
       ]
     }
@@ -32,7 +41,7 @@
       "uid": 0,
       "field": "position",
       "value": [
-        452.0,
+        120.0,
         300.0
       ]
     },
@@ -45,5 +54,6 @@
       "field": "state",
       "value": "MOVING"
     }
-  ]
+  ],
+  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181"
 }

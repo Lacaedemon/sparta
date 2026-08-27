@@ -37,6 +37,9 @@ func _make_engaged_unit(max_soldiers: int, pos: Vector2, face: Vector2) -> Unit:
 	add_child_autofree(u)
 	u.position = pos
 	u.facing = face
+	# 10 wu contact gaps in this file were authored at synaspismos; Normal pyknosis
+	# doubles rank pitch and the front ranks no longer meet.
+	u.set_formation(Unit.FORMATION_TIGHT)
 	u.state = Unit.State.FIGHTING
 	u.tick_engaged(0.1)     # latch is_engaged() true
 	u.seed_sim_soldiers()   # seed bodies + full health

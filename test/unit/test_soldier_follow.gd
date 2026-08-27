@@ -146,10 +146,14 @@ func test_couple_position_anchor_reaches_less_deep_than_the_old_selection_after_
 	# old, wider selection would -- read directly off the still-existing engaged_soldier_indices
 	# (unchanged, still used elsewhere), not re-implemented, purely to show the contrast.
 	var u := _make_unit(120)
+	# Tight 9 wu ranks: engaged_ranks() is 3, which is wider than ANCHOR_RANKS 2.
+	# Default Normal 18 wu ranks collapse that contrast (both selections are 2 ranks).
+	u.set_formation(Unit.FORMATION_TIGHT)
+	u.seed_sim_soldiers()
 	u.state = Unit.State.FIGHTING
 	u.tick_engaged(DELTA)
 	assert_true(u.is_engaged(), "sanity: the unit is engaged")
-	assert_false(u.in_square(), "sanity: NORMAL formation -- the branch this fix narrows")
+	assert_false(u.in_square(), "sanity: line formation -- the branch this fix narrows")
 	var files: int = u.formation_files(u.soldiers)
 	# Wipe out the whole front rank (indices 0..files-1 in the at-rest canonical grid) --
 	# remove from the tail of the doomed range down so earlier removals don't shift the

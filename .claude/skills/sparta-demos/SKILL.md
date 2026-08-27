@@ -184,7 +184,7 @@ etc.) -- don't reflexively `skip` them.
 
 **Standard 5v5 (`seed "12345"`):** player uids 0-4 =
 Spearmen(140)/Infantry(120)/Archers(90)/Cavalry(80)/Cavalry(80) at
-x=452/602/781.99/978.93/1148.09, y=300;
+x=120/291/641.99/1026.92/1356.09, y=300;
 enemies 5-9 at y=880 (the battlefield-depth
 change moved the enemy line down from its long-standing y=700 -- another silent
 breaker for any older script that clicked the enemy band). The x's re-space

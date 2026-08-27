@@ -181,17 +181,11 @@ const _FPS_CORNER_ENTRIES := [
 		"id": MENU_FPS_CORNER_BOTTOM_RIGHT, "preset": Control.PRESET_BOTTOM_RIGHT},
 ]
 
-# Display names and menu order for every formation mode, shared by the button
-# caption and the drop-up menu so the two never drift apart.
-const _FORMATION_NAMES := {
-	UnitRef.FORMATION_NORMAL: "Normal",
-	UnitRef.FORMATION_TIGHT: "Tight",
-	UnitRef.FORMATION_LOOSE: "Loose",
-	UnitRef.FORMATION_SQUARE: "Square (Orbis)",
-	UnitRef.FORMATION_SHIELD_WALL: "Shield Wall",
-	UnitRef.FORMATION_TESTUDO: "Testudo",
-	UnitRef.FORMATION_SCHILTRON: "Schiltron",
-}
+# Menu order for every formation mode. Captions are live metric slot-center
+# intervals from Unit.formation_label_for_mode (so cavalry's 1 x 3 m preset
+# labels as metres of horse-width and horse-length, not the infantry 0.45 m floor).
+# Wide enough for "0.45 m Shield Wall" and anisotropic "4 x 12 m" without clipping.
+const _FORMATION_BTN_MIN_SIZE := Vector2(180, 28)
 const _FORMATION_MENU_ORDER := [
 	UnitRef.FORMATION_NORMAL,
 	UnitRef.FORMATION_TIGHT,
@@ -1582,7 +1576,8 @@ func _ctrl_bar_refresh_stance_popup() -> void:
 func _ctrl_bar_update_formation(unit) -> void:
 	if _ctrl_formation_btn == null or unit == null or not is_instance_valid(unit):
 		return
-	_ctrl_formation_btn.text = _FORMATION_NAMES.get(unit.formation_mode, "Formation") + " ▾"
+	_ctrl_formation_btn.text = unit.formation_summary() + " ▾"
+	_refresh_formation_menu_labels(unit)
 
 
 ## Reflect the shown unit's OWN reform_before_move (no longer a global setting) on
@@ -1668,16 +1663,30 @@ func _build_ctrl_section(label_text: String, content: Control) -> Control:
 
 func _build_ctrl_formation_menu() -> Control:
 	_ctrl_formation_btn = MenuButton.new()
-	_ctrl_formation_btn.text = "Normal ▾"
-	_ctrl_formation_btn.custom_minimum_size = Vector2(90, 28)
+	_ctrl_formation_btn.text = UnitRef.formation_interval_label(
+			UnitRef.FORMATION_NORMAL,
+			UnitRef.FORMATION_SPACING * UnitRef.spacing_scale_for_mode(
+					UnitRef.FORMATION_NORMAL)) + " ▾"
+	_ctrl_formation_btn.custom_minimum_size = _FORMATION_BTN_MIN_SIZE
 	_ctrl_formation_btn.add_theme_font_size_override("font_size", 13)
 	var popup := _ctrl_formation_btn.get_popup()
 	for mode: int in _FORMATION_MENU_ORDER:
-		popup.add_item(_FORMATION_NAMES[mode], mode)
+		popup.add_item(UnitRef.formation_interval_label(
+				mode, UnitRef.FORMATION_SPACING * UnitRef.spacing_scale_for_mode(mode)), mode)
 		popup.set_item_metadata(popup.get_item_index(mode), mode)
 	popup.about_to_popup.connect(_reposition_dropup.bind(popup, _ctrl_formation_btn))
 	popup.id_pressed.connect(_on_formation_popup_id)
 	return _ctrl_formation_btn
+
+
+func _refresh_formation_menu_labels(unit) -> void:
+	if _ctrl_formation_btn == null or unit == null or not is_instance_valid(unit):
+		return
+	var popup := _ctrl_formation_btn.get_popup()
+	for mode: int in _FORMATION_MENU_ORDER:
+		var idx: int = popup.get_item_index(mode)
+		if idx >= 0:
+			popup.set_item_text(idx, unit.formation_label_for_mode(mode))
 
 
 func _build_ctrl_stance_menu() -> Control:
@@ -1709,7 +1718,15 @@ func _reposition_dropup(popup: PopupMenu, btn: Control) -> void:
 func _on_formation_popup_id(id: int) -> void:
 	if _sel_mgr != null:
 		_sel_mgr.set_formation_to(id)
-	_ctrl_formation_btn.text = _FORMATION_NAMES.get(id, "Formation") + " ▾"
+	# Re-read the lead selected unit so a cavalry pick keeps its own 1 x 3 m
+	# label instead of flashing the infantry 0.45 m default for one frame.
+	if _sel_mgr != null and _sel_mgr.has_selection():
+		var live: Array = _sel_mgr._live_selected_units()
+		if not live.is_empty():
+			_ctrl_bar_update_formation(live[0])
+			return
+	_ctrl_formation_btn.text = UnitRef.formation_interval_label(
+			id, UnitRef.FORMATION_SPACING * UnitRef.spacing_scale_for_mode(id)) + " ▾"
 
 
 func _on_stance_popup_id(id: int) -> void:

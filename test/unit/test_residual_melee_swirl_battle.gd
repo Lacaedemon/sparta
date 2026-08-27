@@ -42,8 +42,9 @@ extends GutTest
 ## which is why the old ceiling passed locally while failing on CI.
 ##
 ## The OPENING of the clash does separate, and is stable seed to seed. Worst deviation
-## reached within the first WINDOW_TICKS ticks, same two builds, same eight seeds
-## (headless Linux, Godot 4.7.stable):
+## reached within the first 300 ticks, same two builds, same eight seeds
+## (headless Linux, Godot 4.7.stable; measured at the PRE-REBALANCE pace -- superseded by
+## the recalibration in the next section, kept as the record of the method):
 ##
 ## | seed     | fix in place | fix disabled |
 ## | -------- | ------------ | ------------ |
@@ -63,6 +64,42 @@ extends GutTest
 ## MEAN is (2.98 against 6.52), and the per-seed ceiling is a looser backstop so one blown
 ## seed cannot hide behind seven good ones. Both bounds are stated below with the margin
 ## they carry.
+##
+## ## Recalibrated for the close-order density rebalance
+##
+## The 2x-pyknosis default slowed the whole arc (an intended pace change, per the owner's
+## ruling): contact now forms around tick 151 on every seed, and the FIRST CASUALTY lands
+## between tick 439 and 727 across the eight seeds -- entirely outside the old 300-tick
+## opening window, which had become bloodless and therefore vacuous (its own casualty
+## assert caught exactly that). A fixed-length window cannot be stretched to compensate:
+## by tick 900 a healthy build's deviation already spans 0.50 to 44.28 degrees (the
+## documented tangential-shear fan-out below), so a fixed late window loses discrimination
+## the same way the old tick-700 gate did.
+##
+## The defect this file guards is ARMED by casualty compaction, so the window is now
+## anchored on each run's own arming event: the asserted span is [0, first_cas +
+## ARMED_WINDOW_TICKS]. Same two builds (the canonical-slot mapping disabled in both
+## step() and couple()), same eight seeds, worst deviation within that span, measured
+## headless on Windows under the rebalanced density:
+##
+## | seed     | fix in place | fix disabled |
+## | -------- | ------------ | ------------ |
+## | 12345    |  38.46       | 179.96       |
+## | 99999    |  21.79       | 179.79       |
+## | 424242   |   7.76       | 178.16       |
+## | 1        |  16.08       | 176.65       |
+## | 777      |   0.11       |   0.11       |
+## | 20260805 |  11.95       | 177.52       |
+## | 31337    |  16.54       | 179.84       |
+## | 5150     |  15.18       | 178.90       |
+## | **mean** | **15.98**    | **156.37**   |
+##
+## The regressed build reaches the full melee-lock spin (176.7-180.0 degrees) on seven of
+## eight seeds; seed 777 arms late (its spin arrives after the armed window closes) and
+## lands under the healthy band, so -- exactly as in the original calibration -- the SEED
+## MEAN is the discriminator and the per-seed ceiling is the backstop. At first_cas + 150
+## BOTH builds still read ~0.0-0.07 degrees (the spin needs upwards of 150 post-compaction
+## ticks to develop), which is why the armed tail is 300 ticks and not shorter.
 ##
 ## What this file deliberately does NOT assert: any bound on the late-window rotation. Clean
 ## main really does reach tens of degrees by tick 700 on some seeds (the first table above),
@@ -155,19 +192,25 @@ extends GutTest
 # Seeds are arbitrary but FIXED: the point of several is that no single one decides the
 # verdict, and the calibration above is only meaningful against the same set.
 const SEEDS: Array = [12345, 99999, 424242, 1, 777, 20260805, 31337, 5150]
-# Length of the asserted window, in physics ticks (60/s). Contact forms around tick 60-100
-# and the first casualties land well inside this; past roughly this point the seeds fan out
-# (by tick 400 a healthy build already spans 2.9-15.1 degrees) and the metric stops
-# discriminating, which is what makes the window a window rather than a whole battle.
-const WINDOW_TICKS: int = 300
-# Ceiling on the seed MEAN of the worst deviation within the window. Healthy measures 2.98
-# (1.5x of headroom); the regressed build measures 6.52 and misses by 1.4x.
-const MEAN_TURN_MAX_DEG: float = 4.5
-# Backstop ceiling on any ONE seed's worst deviation. Healthy's worst single seed is 3.44
-# (2.3x of headroom). Deliberately looser than the mean gate: it exists to catch a single
-# regiment spinning out -- the original melee-lock bug swept ~175 degrees inside this same
-# window -- not to re-litigate the seed-to-seed spread the mean gate covers.
-const SEED_TURN_MAX_DEG: float = 8.0
+# The first casualty must land within this many ticks, or the run is vacuous (the defect
+# is armed by casualty compaction). Measured 439-727 across the seeds locally; budgeted
+# ~1.5x over the local worst for the local/CI divergence this file documents.
+const FIRST_CAS_BUDGET: int = 1100
+# The asserted window runs from tick 0 through first casualty plus this armed tail. The
+# regressed build reads ~0.0-0.07 degrees at first_cas + 150 and 176.7-180.0 at
+# first_cas + 300 (seven of eight seeds), so the tail must be long enough for the spin
+# to develop; the healthy fan-out documented above is what rules out making it longer.
+const ARMED_WINDOW_TICKS: int = 300
+# Ceiling on the seed MEAN of the worst deviation within the anchored window. Healthy
+# measures 15.98 (3.75x of headroom); the regressed build measures 156.37 and misses by
+# 2.6x.
+const MEAN_TURN_MAX_DEG: float = 60.0
+# Backstop ceiling on any ONE seed's worst deviation. Healthy's worst single seed is
+# 38.46 (3.1x of headroom); every non-laggard regressed seed reads 176.7+ and misses by
+# 1.5x. Deliberately looser than the mean gate: it exists to catch a single regiment
+# spinning out -- the melee-lock spin sweeps ~180 degrees inside this window -- not to
+# re-litigate the seed-to-seed spread the mean gate covers.
+const SEED_TURN_MAX_DEG: float = 120.0
 # The clash: two identical regiments, head-on, close enough to meet early in the window.
 const REGIMENT_COUNT: int = 100
 const CLASH_X: float = 800.0
@@ -194,10 +237,13 @@ func _team_unit(team: int) -> Unit:
 	return null
 
 
-## Run one seed's clash for the window and report the worst facing deviation either regiment
-## reached at any point inside it, plus what the fight actually did (so the caller can prove
-## the window wasn't vacuous). Peak rather than end-of-window value: the deviation wanders,
-## so a single end sample can read low on a block that swung wide mid-window.
+## Run one seed's clash and report the worst facing deviation either regiment reached at
+## any point inside the anchored window [0, first_cas + ARMED_WINDOW_TICKS], plus what the
+## fight actually did (so the caller can prove the window wasn't vacuous). Peak rather
+## than end-of-window value: the deviation wanders, so a single end sample can read low on
+## a block that swung wide mid-window. first_cas is -1 when no casualty landed inside
+## FIRST_CAS_BUDGET, which the caller asserts against -- a bloodless run never armed the
+## defect and must fail rather than pass empty.
 func _clash_window(seed_value: int) -> Dictionary:
 	Replay.forced_seed = seed_value   # before add_child; Battle._ready folds it into the RNG
 	_battle = load("res://scenes/Battle.tscn").instantiate()
@@ -213,19 +259,32 @@ func _clash_window(seed_value: int) -> Dictionary:
 	var a: Unit = _team_unit(0)
 	var b: Unit = _team_unit(1)
 	if a == null or b == null:
-		return {"worst": INF, "fought": false, "casualties": 0}
+		return {"worst": INF, "fought": false, "casualties": 0, "first_cas": -1}
 
 	var start_a: Vector2 = a.facing
 	var start_b: Vector2 = b.facing
 	var worst: float = 0.0
-	for _tick in range(WINDOW_TICKS):
+	var first_cas: int = -1
+	var casualties: int = 0
+	var tick: int = 0
+	while true:
 		await get_tree().physics_frame
+		tick += 1
+		if not (is_instance_valid(a) and is_instance_valid(b)):
+			break   # a fully annihilated regiment frees its node; stop sampling freed refs
 		worst = maxf(worst, rad_to_deg(absf(a.facing.angle_to(start_a))))
 		worst = maxf(worst, rad_to_deg(absf(b.facing.angle_to(start_b))))
-	var fought: bool = (a.state == Unit.State.FIGHTING or a.state == Unit.State.DEAD) \
+		casualties = (REGIMENT_COUNT - a.soldiers) + (REGIMENT_COUNT - b.soldiers)
+		if first_cas < 0 and casualties > 0:
+			first_cas = tick
+		if first_cas < 0 and tick >= FIRST_CAS_BUDGET:
+			break
+		if first_cas > 0 and tick >= first_cas + ARMED_WINDOW_TICKS:
+			break
+	var fought: bool = is_instance_valid(a) and is_instance_valid(b) \
+		and (a.state == Unit.State.FIGHTING or a.state == Unit.State.DEAD) \
 		and (b.state == Unit.State.FIGHTING or b.state == Unit.State.DEAD)
-	var casualties: int = (REGIMENT_COUNT - a.soldiers) + (REGIMENT_COUNT - b.soldiers)
-	return {"worst": worst, "fought": fought, "casualties": casualties}
+	return {"worst": worst, "fought": fought, "casualties": casualties, "first_cas": first_cas}
 
 
 func _free_battle() -> void:
@@ -246,14 +305,16 @@ func test_matched_infantry_clash_keeps_facing_close_to_its_start_heading() -> vo
 		var worst: float = run["worst"]
 		total += worst
 		worst_seed = maxf(worst_seed, worst)
-		report += " %d=%.2f" % [int(seed_value), worst]
+		report += " %d=%.2f@%d" % [int(seed_value), worst, int(run["first_cas"])]
 		assert_true(run["fought"],
 			"seed %d: both regiments made and held contact inside the window" % seed_value)
-		# The defect this guards is armed by casualty-driven array compaction, so a window
-		# with no dead men would satisfy the bounds below without exercising it at all.
-		assert_gt(int(run["casualties"]), 0,
-			"seed %d: the window contains real casualties, so the arrays did compact"
-				% seed_value)
+		# The defect this guards is armed by casualty-driven array compaction, so a run
+		# whose window never contains a dead man would satisfy the bounds below without
+		# exercising it at all. The window is anchored on the first casualty, so the
+		# arming event has to actually arrive.
+		assert_gt(int(run["first_cas"]), 0,
+			"seed %d: the first casualty lands within %d ticks, so the arrays did compact inside the asserted window"
+				% [seed_value, FIRST_CAS_BUDGET])
 		assert_lt(worst, SEED_TURN_MAX_DEG,
 			"seed %d: neither regiment spins out during the clash (worst %.2f deg)"
 				% [seed_value, worst])
@@ -262,8 +323,8 @@ func test_matched_infantry_clash_keeps_facing_close_to_its_start_heading() -> vo
 	var mean: float = total / float(SEEDS.size())
 	# Report the metric whether or not it passes: the seed-by-seed numbers are what a future
 	# recalibration needs, and a bare pass/fail throws them away.
-	print("[residual swirl] worst deviation within %d ticks --%s | mean %.2f, worst %.2f"
-		% [WINDOW_TICKS, report, mean, worst_seed])
+	print("[residual swirl] worst deviation within first_cas+%d ticks --%s | mean %.2f, worst %.2f"
+		% [ARMED_WINDOW_TICKS, report, mean, worst_seed])
 	assert_lt(mean, MEAN_TURN_MAX_DEG,
 		"the regiments hold their heading through the opening of the clash (seed mean %.2f deg over %d seeds)"
 			% [mean, SEEDS.size()])

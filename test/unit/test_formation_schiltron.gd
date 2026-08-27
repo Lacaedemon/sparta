@@ -50,7 +50,7 @@ func test_set_formation_records_schiltron_and_close_order_footprint() -> void:
 func test_formation_summary_labels_schiltron() -> void:
 	var u := _make_unit()
 	u.set_formation(Unit.FORMATION_SCHILTRON)
-	assert_eq(u.formation_summary(), "Schiltron", "the HUD label reads Schiltron")
+	assert_eq(u.formation_summary(), "0.45 m Schiltron", "the HUD label reads the 0.45 m interval")
 
 
 # --- shared hollow-square geometry (both variants alike) ------------------------
@@ -301,5 +301,6 @@ func test_control_bar_menu_lists_schiltron() -> void:
 	add_child_autofree(hud)
 	assert_true(hud._FORMATION_MENU_ORDER.has(Unit.FORMATION_SCHILTRON),
 		"the control-bar formation menu includes Schiltron")
-	assert_eq(hud._FORMATION_NAMES.get(Unit.FORMATION_SCHILTRON, ""), "Schiltron",
-		"the control-bar label reads Schiltron")
+	assert_eq(Unit.formation_interval_label(Unit.FORMATION_SCHILTRON, Unit.FORMATION_SPACING),
+		"0.45 m Schiltron",
+		"the control-bar label reads the interval plus Schiltron")

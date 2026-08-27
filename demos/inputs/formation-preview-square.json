@@ -1,11 +1,11 @@
 {
-  "_comment": "Move-order ghost preview per-formation geometry: hold Space so the orders overlay is live, select the Spearmen (seed 12345, ~452,300), form Square (O), then right-click to march them. Before the fix, the ghost preview always drew the wide 2:1 line grid (UnitFormation.slots) even for a squared unit; after the fix it reads formation_slots(), so the ghost matches the real square footprint the unit is actually standing in -- compare the live block's shape to the ghost dots at the destination.",
+  "_comment": "Move-order ghost preview per-formation geometry: hold Space so the orders overlay is live, select the Spearmen (seed 12345, ~120,300), form Square (O), then right-click to march them. Before the fix, the ghost preview always drew the wide 2:1 line grid (UnitFormation.slots) even for a squared unit; after the fix it reads formation_slots(), so the ghost matches the real square footprint the unit is actually standing in -- compare the live block's shape to the ghost dots at the destination.",
   "seed": "12345",
   "drill": true,
   "camera": [
     {
       "tick": 0,
-      "x": 452.0,
+      "x": 120.0,
       "y": 430.0,
       "zoom": 1.5
     }
@@ -18,7 +18,7 @@
     {
       "tick": 8,
       "click": [
-        452.0,
+        120.0,
         300
       ]
     },
@@ -29,7 +29,7 @@
     {
       "tick": 30,
       "rmb_click": [
-        452.0,
+        120.0,
         580
       ]
     }
@@ -40,7 +40,7 @@
       "uid": 0,
       "field": "position",
       "value": [
-        452.0,
+        120.0,
         300.0
       ]
     },
@@ -54,11 +54,13 @@
       "value": "SQUARE"
     }
   ],
-  "spawn_fingerprint": "eea022291581d04e20c800cb96603e9d",
+  "spawn_fingerprint": "4f0be0e39aea931f238c2e4952b3f6e0",
   "defect_exemptions": {
     "overlap": {
-      "uids": [0],
-      "reason": "Forming Square then marching packs the block inside the overlap floor for a judged sample of the reform (nnd_min 1.58 wu). The clip's subject is the move-order ghost matching the square footprint, not intra-block spacing during the reform; expected under the current square assignment."
+      "uids": [
+        0
+      ],
+      "reason": "Square reform packs uid0 onto the Tight floor while bodies funnel through the corners; measured min neighbour 0.54 wu on the re-pinned 2x-default layout (previously cited 1.58 wu at the old density). Transient reform compression, not standing interpenetration."
     }
   }
 }

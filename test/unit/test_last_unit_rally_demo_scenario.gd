@@ -41,8 +41,10 @@ func _spawn_last_unit_rally_battle() -> void:
 	_battle = battle
 	# The exact matchup from demos/inputs/last-unit-rally.json.
 	battle.scenario = [
-		{"team": 0, "type": "Infantry", "x": 800, "y": 440, "count": 120, "morale": 15.0},
-		{"team": 1, "type": "Infantry", "x": 800, "y": 560, "count": 120},
+		{"team": 0, "type": "Infantry", "x": 800, "y": 440, "count": 120, "morale": 15.0,
+				"formation": Unit.FORMATION_TIGHT},
+		{"team": 1, "type": "Infantry", "x": 800, "y": 560, "count": 120,
+				"formation": Unit.FORMATION_TIGHT},
 	]
 	add_child_autofree(battle)
 

@@ -22,7 +22,7 @@ func test_defaults_match_a_fresh_full_strength_formation() -> void:
 	assert_eq(rec.facing.y, Vector2.DOWN.y)
 	assert_eq(rec.casualties, 0)
 	assert_eq(rec.formation_mode, Unit.FORMATION_NORMAL)
-	assert_eq(rec.spacing_scale, 1.0)
+	assert_eq(rec.spacing_scale, Unit.NORMAL_SPACING_SCALE)
 	assert_eq(rec.order_mode, 0)
 	assert_eq(rec.max_soldiers, 0)
 	assert_eq(rec.attack, 0)

@@ -31,7 +31,8 @@ func _min_hp(u: Unit) -> float:
 	return lowest
 
 
-func _cavalry(uid: int, team: int, n: int, pos: Vector2, face: Vector2) -> Unit:
+func _cavalry(uid: int, team: int, n: int, pos: Vector2, face: Vector2,
+		tight: bool = false) -> Unit:
 	var u: Unit = Unit.new()
 	u.max_soldiers = n
 	add_child_autofree(u)
@@ -46,6 +47,17 @@ func _cavalry(uid: int, team: int, n: int, pos: Vector2, face: Vector2) -> Unit:
 	u.file_pitch = 1.0 * WorldScaleRef.WU_PER_M
 	u.rank_pitch = 3.0 * WorldScaleRef.WU_PER_M
 	u.file_major_reform = false
+	if tight:
+		# The pitches above are authored at 1x, but the effective pitch is
+		# file_pitch * spacing_scale and the default (Normal) close-order density
+		# now scales 2x -- which pushes every soldier of a unit staged on these
+		# authored distances out of weapon reach. Tight keeps spacing_scale at 1.0,
+		# so the geometry the test's distances were calibrated against is what the
+		# soldiers actually stand in. Must run before seed_sim_soldiers(): the
+		# seeded body positions are what strike() measures reach against, and they
+		# do not re-slot on a later formation change without a live sim stepping
+		# them there.
+		u.set_formation(Unit.FORMATION_TIGHT)
 	u.seed_sim_soldiers()
 	return u
 
@@ -73,11 +85,14 @@ func test_rear_contact_wounds_soldiers_actually_in_reach() -> void:
 	# Same facing, attacker approaching from behind: the defender's facing-front rank
 	# sits a mounted rank-pitch on the far side of the horse, outside spatha reach.
 	# Hitting "the engaged front" would land no wounds; hitting whoever is nearest
-	# must draw blood over a few cadences without annihilating the block.
-	var attacker := _cavalry(1, 0, 10, Vector2(0, -50), Vector2.DOWN)
+	# must draw blood over a few cadences without annihilating the block. Both sides
+	# stage Tight so the authored 1x pitches are the seeded geometry (see _cavalry);
+	# at the rebalanced 2x default pitch NO defender stands in reach at this gap, so
+	# the reach mechanic under test would never fire at all.
+	var attacker := _cavalry(1, 0, 10, Vector2(0, -50), Vector2.DOWN, true)
 	attacker.state = Unit.State.FIGHTING
 	attacker.tick_engaged(0.1)
-	var defender := _cavalry(2, 1, 10, Vector2(0, 0), Vector2.DOWN)
+	var defender := _cavalry(2, 1, 10, Vector2(0, 0), Vector2.DOWN, true)
 	defender.state = Unit.State.FIGHTING
 	defender.tick_engaged(0.1)
 	var full: float = _min_hp(defender)

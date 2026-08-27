@@ -104,24 +104,17 @@ above do -- flagged as an open question rather than asserted as verified.
   half the tightest historically attested spacing" -- that comparison
   mislabeled the 0.9 m *close-order* (pyknosis) figure as synaspismos.
   Synaspismos, the tier that is actually tightest, is 0.45 m/man -- Sparta's
-  `FORMATION_SPACING` **matches** it. The real, smaller discrepancy is that
-  Sparta uses this exceptional, high-pressure spacing as the unit's *only*
-  formation density, where history treats it as a rare, temporary stance
-  rather than the standing default -- worth noting, but a materially different
-  (and much smaller) claim than "half the historical minimum."
-  **Resolution (#719):** kept as-is, deliberately, rather than loosened
-  toward pyknosis. Sparta's combat model keeps a regiment in sustained melee
-  contact far more of the time than any historical campaign's march-to-battle
-  ratio, so treating the emergency-tier density as the standing "combat
-  ready" default is an intentional choice for footprint compactness and
-  legibility at this game's camera/map scale, not an oversight. It's also
-  not the only density available: `FORMATION_LOOSE` (`spacing_scale = 2.0`,
-  ~0.9 m/man) already gives the pyknosis close-order figure as a selectable
-  formation -- so the issue's "reserve the tight density for a specific
-  stance, loosen the default" proposal is already half-implemented, just
-  with the tiers assigned the other way around (tight is the default, loose
-  is the option). No constant changes in this PR; see the rationale comment
-  on `FORMATION_SPACING` in `scripts/Unit.gd`.
+  `FORMATION_SPACING` **matches** it as the Tight floor.
+  Normal (pyknosis, 0.9 m) is the default fighting order;
+  Loose is true open order (1.8 m).
+  **Update:** Tight remains synaspismos (0.45 m), the authored
+  `FORMATION_SPACING` floor.
+  Normal is pyknosis at 2x (~0.9 m), the default fighting order.
+  Loose is true open order at 4x (~1.8 m).
+  Density scales 1x / 2x / 4x from the type's authored pitch
+  (cavalry Tight 1 m x 3 m).
+  See `NORMAL_SPACING_SCALE` / `LOOSE_SPACING_SCALE` and the rationale
+  comment on `FORMATION_SPACING` in `scripts/Unit.gd`.
 
 **Unit radii (collision bodies):**
 
@@ -157,10 +150,11 @@ correctly; the other is a real, citable discrepancy:
    *tightest* attested Hellenistic-phalanx tier** -- not "about half the
    tightest historically attested spacing" as an earlier draft of this
    document claimed (that draft mislabeled the looser 0.9 m *close-order*
-   figure as synaspismos). The real, smaller discrepancy: Sparta applies
-   this exceptional emergency stance as the unit's only/default density,
-   where history used it briefly under extreme pressure rather than as a
-   standing formation.
+   figure as synaspismos).
+   Tight is that floor; **Normal is now pyknosis (~0.9 m), the default
+   fighting order**, and Loose is true open order (~1.8 m).
+   Synaspismos stays the locked defensive stance, not the standing density.
+
 2. **Cavalry charge speed (8.5 m/s / 30.6 km/h) sits between a canter and a
    true gallop** -- faster than the 16-27 km/h canter range, well short of
    the 40-48 km/h gallop range. The earlier draft of this document asserted
@@ -168,21 +162,20 @@ correctly; the other is a real, citable discrepancy:
    an intentional design choice (see "Mounted cavalry" above) rather than a
    value to raise.
 
-The formation-spacing question is not fixed in this PR: changing it is a
-gameplay-balance change (formation width/spacing math and unit collision
-spacing ripple from that constant) that needs its own playtesting pass, not
-a drive-by edit alongside a verification writeup. See the tracked follow-up
-issue below. The third original concern -- cavalry visual size -- is a
-rendering question this document's physics-radius check can't settle either
-way; also tracked separately.
+The default-density question tracked as #719 is the live identity: Normal
+is pyknosis, Tight is reserved synaspismos.
+The third original concern -- cavalry visual size -- is a rendering question
+this document's physics-radius check can't settle either way; also tracked
+separately.
 
 ### Follow-up issues filed from this verification
 
-- [#719](https://github.com/Lacaedemon/sparta/issues/719) -- Sparta's
-  default formation spacing matches the exceptional synaspismos tier
-  rather than the standing close-order tier -- consider whether the
-  *default* density should loosen toward close order (~0.9 m/man), with
-  synaspismos-tight spacing reserved for a specific defensive stance.
+- [#719](https://github.com/Lacaedemon/sparta/issues/719) -- default density
+  is now pyknosis (~0.9 m/man); synaspismos (0.45 m) is the Tight locked
+  stance.
+  The follow-up's "consider loosening the default" question is the live
+  identity; keep the issue if any remaining balance work still hangs off it.
+
 - [#721](https://github.com/Lacaedemon/sparta/issues/721) -- cavalry
   visual/silhouette size vs. collision radius (rendering, not physics) --
   separate from anything this document verifies.
