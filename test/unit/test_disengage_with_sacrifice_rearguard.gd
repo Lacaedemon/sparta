@@ -159,12 +159,18 @@ func test_rearguard_round_trips_through_snapshot_restore() -> void:
 
 
 ## The decisive proof: the pursuer is slowed because it is genuinely blocked and fighting a
-## real Unit, not because of any multiplier. Give the rearguard a long lifetime (well past
-## this test's own window) so only real combat, not the timeout, can end the engagement.
+## real Unit, not because of any multiplier. The dispatch path gives the rearguard the
+## default ~2s lifetime, so the whole proof has to happen while that timer runs -- which
+## means the sacrifice must be ordered at MUTUAL engagement, not at a fixed early tick.
+## Under the rebalanced close-order density the pursuer's own FIGHTING latch lands around
+## tick 31 (the main body latches on tick 1-2; the gap is think cadence, not geometry --
+## it is unchanged at 40/50/60 wu separations), so a fixed tick-20 order fires while the
+## pursuer is still IDLE and the pursuit then never reaches the rearguard before it
+## expires. Waiting for both latches keeps the staging premise ("a clash close enough
+## that the two sides are already engaged") true at any pace.
 func test_pursuer_is_physically_blocked_by_the_rearguard_while_the_main_body_escapes_free() -> void:
 	var battle := _spawn(_clash_scenario())
-	while battle.current_tick() < 20:
-		await get_tree().physics_frame
+	await get_tree().physics_frame
 	var units := _units_by_uid(battle)
 	var main_body: Unit = null
 	var pursuer: Unit = null
@@ -177,16 +183,45 @@ func test_pursuer_is_physically_blocked_by_the_rearguard_while_the_main_body_esc
 	assert_not_null(pursuer, "team-1 unit found")
 	if main_body == null or pursuer == null:
 		return
+	while battle.current_tick() < 300 \
+			and not (main_body.state == Unit.State.FIGHTING
+					and pursuer.state == Unit.State.FIGHTING):
+		await get_tree().physics_frame
+	assert_eq(main_body.state, Unit.State.FIGHTING, "sanity: the main body engaged")
+	assert_eq(pursuer.state, Unit.State.FIGHTING, "sanity: the pursuer engaged too")
 	var pursuer_start: Vector2 = pursuer.position
 
 	battle.enqueue_disengage_with_sacrifice([main_body.uid])
-	for _k in range(90):   # 1.5s -- long enough for contact/engagement to settle
-		await get_tree().physics_frame
 
-	assert_eq(pursuer.state, Unit.State.FIGHTING,
-			"the pursuer is still fighting -- something real is in its way")
-	assert_lt(pursuer.position.distance_to(pursuer_start), 40.0,
-			"and hasn't advanced far from where the clash started -- it's blocked, not slowed" \
-			+ " by a multiplier while still closing the distance")
+	# Track the pursuer across the rearguard's whole lifetime (measured ~120 ticks from
+	# the dispatch default; capped well past it in case a retune lengthens it). The
+	# blocked-ness proof is the WINDOW, not one sample: the pursuer re-fights something
+	# after its original opponent disengaged, and its net displacement stays pinned the
+	# entire time the rearguard lives. Measured under the rebalanced density: FIGHTING
+	# from ~9 ticks after the order, displacement never above ~4.2 wu while the
+	# rearguard lives, then a ~17-22 wu excursion within ticks of it expiring.
+	var fought_the_rearguard: bool = false
+	var worst_advance: float = 0.0
+	var deadline: int = battle.current_tick() + 240
+	while battle.current_tick() < deadline:
+		await get_tree().physics_frame
+		var rearguard: Unit = null
+		var live_units := _units_by_uid(battle)
+		for uid in live_units:
+			if live_units[uid].is_rearguard_detachment:
+				rearguard = live_units[uid]
+		if rearguard == null or not is_instance_valid(rearguard):
+			break   # lifetime expired (or destroyed) -- the proof window is over
+		if pursuer.state == Unit.State.FIGHTING:
+			fought_the_rearguard = true
+		worst_advance = maxf(worst_advance,
+				pursuer.position.distance_to(pursuer_start))
+
+	assert_true(fought_the_rearguard,
+			"the pursuer fought while the rearguard stood -- something real was in its way")
+	assert_lt(worst_advance, 40.0,
+			("and never advanced far from where the clash started while the rearguard" \
+			+ " lived (worst %.1f wu) -- blocked, not slowed by a multiplier while" \
+			+ " still closing the distance") % worst_advance)
 	assert_ne(main_body.state, Unit.State.FIGHTING,
 			"meanwhile the main body itself is no longer in that fight -- it got away")

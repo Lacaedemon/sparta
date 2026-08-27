@@ -25,8 +25,8 @@ extends GutTest
 # own tick counter measures sim progress directly, and the budget comes from the sim's own timing
 # constants (with generous margin) rather than the demo's presentation clip length.
 #
-# A two-squadron charge onto a morale-1 block routs it; the faster cavalry then run it down
-# within ROUT_TIME. ROUT_ONSET_BUDGET covers the charge-in and break; ROUT_TIME plus margin
+# A two-squadron charge onto a morale-1 block routs it; the faster cavalry then run it
+# down. ROUT_ONSET_BUDGET covers the charge-in and break; ROUT_TIME plus CHASE_MARGIN
 # covers the chase-and-catch. The squadrons are shallow (12 horses): an 80-horse column's
 # facing-front sits a mounted rank-pitch past regiment-circle contact, so per-soldier melee
 # would land no blows and the block would never break. Twelve horses (three ranks) put that
@@ -34,8 +34,16 @@ extends GutTest
 # deaths (morale erosion is a fraction of max strength). The squadrons spawn close so the
 # onset is a charge into contact, not a long approach, and the onset budget stays generous so
 # a physics retune that shifts *when* the block breaks doesn't push the arc past the budget.
-const ROUT_ONSET_BUDGET := 600   # ticks allowed for the block to break and start routing
-const CHASE_MARGIN := 240        # slack past ROUT_TIME for the pursuit to catch and finish it
+#
+# Budgets re-measured under the close-order density rebalance (an intended pace change):
+# the whole arc runs slower now -- the block breaks around tick 650 locally and around
+# tick 940 on CI (a 12v12-plus-cavalry chase is squarely in the chaotic regime where
+# local and CI runs of one seed diverge), and the pursuit finishes it around tick 2040
+# locally. The onset budget carries ~1.5x over the CI reading and the chase margin sizes
+# the total to ~1.8x the locally measured annihilation tick, so a CI-side arc up to
+# ~1.4x slower than local still lands inside it.
+const ROUT_ONSET_BUDGET := 1400  # ticks allowed for the block to break and start routing
+const CHASE_MARGIN := 2000       # slack past ROUT_TIME for the pursuit to catch and finish it
 
 
 var _battle: Node = null
