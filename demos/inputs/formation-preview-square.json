@@ -5,7 +5,7 @@
   "camera": [
     {
       "tick": 0,
-      "x": 452.0,
+      "x": 120.0,
       "y": 430.0,
       "zoom": 1.5
     }
@@ -18,7 +18,7 @@
     {
       "tick": 8,
       "click": [
-        452.0,
+        120.0,
         300
       ]
     },
@@ -29,7 +29,7 @@
     {
       "tick": 30,
       "rmb_click": [
-        452.0,
+        120.0,
         580
       ]
     }
@@ -40,7 +40,7 @@
       "uid": 0,
       "field": "position",
       "value": [
-        452.0,
+        120.0,
         300.0
       ]
     },
@@ -54,10 +54,12 @@
       "value": "SQUARE"
     }
   ],
-  "spawn_fingerprint": "eea022291581d04e20c800cb96603e9d",
+  "spawn_fingerprint": "4f0be0e39aea931f238c2e4952b3f6e0",
   "defect_exemptions": {
     "overlap": {
-      "uids": [0],
+      "uids": [
+        0
+      ],
       "reason": "Forming Square then marching packs the block inside the overlap floor for a judged sample of the reform (nnd_min 1.58 wu). The clip's subject is the move-order ghost matching the square footprint, not intra-block spacing during the reform; expected under the current square assignment."
     }
   }

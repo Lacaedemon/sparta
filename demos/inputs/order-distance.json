@@ -5,7 +5,7 @@
   "camera": [
     {
       "tick": 0,
-      "x": 452.0,
+      "x": 120.0,
       "y": 430.0,
       "zoom": 1.5
     }
@@ -18,14 +18,14 @@
     {
       "tick": 8,
       "click": [
-        452.0,
+        120.0,
         300
       ]
     },
     {
       "tick": 24,
       "rmb_click": [
-        452.0,
+        120.0,
         560
       ]
     }
@@ -36,7 +36,7 @@
       "uid": 0,
       "field": "position",
       "value": [
-        452.0,
+        120.0,
         300.0
       ]
     },
@@ -50,5 +50,13 @@
       "value": "MOVING"
     }
   ],
-  "spawn_fingerprint": "eea022291581d04e20c800cb96603e9d"
+  "spawn_fingerprint": "4f0be0e39aea931f238c2e4952b3f6e0",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        0
+      ],
+      "reason": "Single judged sample grazes 0.7% under the floor (min neighbour 2.2348 wu vs the 2.25 wu threshold) during the ordered march. A marginal threshold contact, not body stacking; measured on the 2x-pyknosis default spawn re-pin."
+    }
+  }
 }

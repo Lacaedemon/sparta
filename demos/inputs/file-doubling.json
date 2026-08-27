@@ -5,7 +5,7 @@
   "camera": [
     {
       "tick": 0,
-      "x": 452.0,
+      "x": 120.0,
       "y": 300.0,
       "zoom": 2.0
     }
@@ -14,7 +14,7 @@
     {
       "tick": 10,
       "click": [
-        452.0,
+        120.0,
         300
       ]
     },
@@ -33,10 +33,10 @@
       "uid": 0,
       "field": "position",
       "value": [
-        452.0,
+        120.0,
         300.0
       ]
     }
   ],
-  "spawn_fingerprint": "eea022291581d04e20c800cb96603e9d"
+  "spawn_fingerprint": "4f0be0e39aea931f238c2e4952b3f6e0"
 }

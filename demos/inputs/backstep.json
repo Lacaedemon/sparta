@@ -4,7 +4,7 @@
   "camera": [
     {
       "tick": 0,
-      "x": 452.0,
+      "x": 120.0,
       "y": 300.0,
       "zoom": 2.0
     }
@@ -13,14 +13,14 @@
     {
       "tick": 10,
       "click": [
-        452.0,
+        120.0,
         300
       ]
     },
     {
       "tick": 28,
       "rmb_click": [
-        452.0,
+        120.0,
         270
       ]
     }
@@ -37,7 +37,7 @@
       "uid": 0,
       "field": "position",
       "value": [
-        452.0,
+        120.0,
         300.0
       ]
     },
@@ -51,5 +51,5 @@
       "value": "MOVING"
     }
   ],
-  "spawn_fingerprint": "f8dd2ca100bf389fdc9d141c8085e92a"
+  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181"
 }
