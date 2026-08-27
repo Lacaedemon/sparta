@@ -8,10 +8,13 @@ class_name SoldierBodies
 ## force — a real knockback-and-recover, not a spring rebound — and feeds its
 ## friendly-avoidance steering velocity forward so it drifts off a crowding friend; the
 ## unengaged bulk feeds the unit's march velocity forward so it tracks its moving slots
-## with no lag, easing onto a reformed slot instead of snapping. Operates on a Unit's
-## `_sim_soldier_pos` / `_sim_body_vel` / `_sim_steer` (the state stays on the unit, where
-## the render, steering, and melee read it). Deterministic and order-free across soldiers,
-## no RNG — replay-safe like the rest of the soldier layer.
+## with no lag, easing onto a reformed slot instead of snapping. A body's fully-integrated
+## speed is still hard-capped near its unit's own sprint pace (Unit.superphysical_speed_frac
+## * move_speed) no matter how far its slot has receded -- see the final clamp at the end of
+## the per-soldier loop in step(). Operates on a Unit's `_sim_soldier_pos` / `_sim_body_vel` /
+## `_sim_steer` (the state stays on the unit, where the render, steering, and melee read it).
+## Deterministic and order-free across soldiers, no RNG — replay-safe like the rest of the
+## soldier layer.
 
 # Floor on the arrival acceleration (world units/s^2). A body accelerates toward its slot
 # at max(unit.accel, this) and decelerates to arrive at rest, so a body shoved off formation
@@ -265,7 +268,9 @@ static func step(unit: Unit, delta: float) -> void:
 	# same ceiling applies to engaged and unengaged bodies alike. The idle/reform jog cap
 	# below enforces the same ceiling on the integrated velocity for a stationary unit; using
 	# jog here keeps the arrival target consistent with it. A body that needs to move faster
-	# than jog does so only via the march feed-forward, which is added on top and uncapped.
+	# than jog does so only via the march feed-forward, which is added on top of this cap --
+	# the two combined are still bounded, by the superphysical clamp applied to the fully
+	# integrated velocity below, not by this jog-pace arrival cap.
 	var max_arrive: float = unit.jog_speed
 	# Hoisted out of the per-soldier loop below: mass is uniform across a unit's own
 	# soldiers (SoldierCombat.profile_for keys it only on unit-level type/training), so
@@ -370,6 +375,14 @@ static func step(unit: Unit, delta: float) -> void:
 		# applies when state == IDLE.
 		if unit._reform_holding() or unit.state == Unit.State.IDLE:
 			unit._sim_body_vel[i] = _cap_body_speed(unit, i)
+		# Final physical ceiling, applied after every adjustment above and to every body
+		# alike (marching, engaged, idle/reforming): a man cannot exceed his own sprint by
+		# more than a hard margin no matter how fast his slot is receding out from under him.
+		# The arrival term above is already capped at jog pace, but the march feed-forward
+		# stacks on top of it with no cap of its own, so only this clamp on the FULLY
+		# INTEGRATED velocity bounds their sum -- see Unit.superphysical_speed_frac.
+		var superphysical_cap: float = unit.move_speed * unit.superphysical_speed_frac
+		unit._sim_body_vel[i] = unit._sim_body_vel[i].limit_length(superphysical_cap)
 		unit._sim_soldier_pos[i] += unit._sim_body_vel[i] * delta
 		# Tell the render a body actually moved this tick, so _process can skip the
 		# MultiMesh rewrite while a block sits at rest (REST_SPEED is well below visible).
