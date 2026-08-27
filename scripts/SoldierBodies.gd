@@ -13,7 +13,7 @@ class_name SoldierBodies
 ## * move_speed) no matter how far its slot has receded -- see the final clamp at the end of
 ## the per-soldier loop in step(). Operates on a Unit's `_sim_soldier_pos` / `_sim_body_vel` /
 ## `_sim_steer` (the state stays on the unit, where the render, steering, and melee read it).
-## Deterministic and order-free across soldiers, no RNG — replay-safe like the rest of the
+## Deterministic and order-free across soldiers, no RNG -- replay-safe like the rest of the
 ## soldier layer.
 
 # Floor on the arrival acceleration (world units/s^2). A body accelerates toward its slot

@@ -134,7 +134,7 @@ func test_couple_behaves_identically_whether_or_not_the_handoff_is_present() -> 
 		"couple()'s coupling outcome is identical whether it reused a pre-populated handoff or fell back to computing its own slots")
 
 
-# --- superphysical speed clamp (#1411) ---------------------------------------------
+# --- superphysical speed clamp -----------------------------------------------------
 # The arrival correction alone is capped at jog_speed, but the march feed-forward stacks
 # on top of it with no cap of its own -- a body chasing a slot that keeps receding at full
 # march can integrate feed-forward (up to move_speed) PLUS arrival (up to jog_speed)
