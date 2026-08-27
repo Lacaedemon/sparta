@@ -10,6 +10,36 @@ Our lab's work rules encoded throughout `ai-config` apply unconditionally to all
 3. **Mandatory Timers for Async Work**: Whenever waiting on in-flight CI runs, background tasks, or subagents before completing a task or merge, **ALWAYS** schedule a timer (`schedule`) or proceed to other active work. Never end a turn waiting on asynchronous execution without a scheduled wakeup handle.
 4. **Memory & Skill PR Discipline**: Every addition or update to memories, instructions, or skills (including `cai`, `memorize`, and `push-memory`) **MUST** be delivered via a branch + PR with requested reviewer (`d-morrison`) and driven to clean. Never edit configuration or memory files directly on `main` or disk without a PR.
 
+## `git stash` is a repo-global stack shared across sibling worktrees -- never use it for a temporary revert-and-restore
+
+**Do:** save a temporary "revert this file to check pre-fix behavior" edit as a
+patch file (`git diff <path> > scratch.patch`, restore later with `git apply
+scratch.patch`), or -- when the fix is already committed -- just `git checkout
+<known-good-ref> -- <path>` and `git checkout HEAD -- <path>` to restore. Both
+are local to the one command that runs them and touch nothing shared.
+
+**Don't:** `git stash push` a fix to test the pre-fix code, then `git stash
+pop` to restore it, in a repo that other AI sessions may be working in via
+sibling `git worktree`s of the SAME underlying repository. Git's stash is
+**one stack per repository, not per worktree** -- every worktree checked out
+from the same `.git` shares it. A concurrent session's own `git stash
+push`/`pop` in its own worktree operates on that SAME stack, and `pop` always
+takes whatever is at `stash@{0}` regardless of who pushed it. A push can land
+underneath another session's push-then-pop cycle and simply vanish from the
+list with no error -- `git stash list` afterward shows entries from other
+branches/sessions instead of the one just pushed.
+
+Measured on PR #1415 (2026-08-27): a `git stash push -- scripts/SoldierBodies.gd`
+succeeded with a normal confirmation message, but the very next `git stash
+list` showed two entries from entirely different branches
+(`test/1409-rearguard-discriminating-asserts`, `cursor/af036b55`) and no
+trace of the just-pushed one. `git fsck --unreachable` turned up dozens of
+dangling commits in this shared repo, making a targeted recovery impractical
+-- the fix had to be retyped from memory of the already-validated diff. Retyping
+worked here only because the fix was small and had just been fully written
+out in the same session; a larger uncommitted change lost this way would not
+be recoverable at all.
+
 ## Standing design philosophy: bottom-up physics, no top-down gimmicks
 
 Sparta's combat/movement sim is built **bottom-up from individual-level physics**
