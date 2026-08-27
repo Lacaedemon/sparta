@@ -70,13 +70,5 @@
       "value": "Cycle charge"
     }
   ],
-  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
-  "defect_exemptions": {
-    "overlap": {
-      "uids": [
-        9
-      ],
-      "reason": "Enemy cavalry (uid9) on the default 5v5 compresses below the cavalry overlap floor during the live charge this clip exists to show. Pre-existing on main; owned by #1398 (melee) / #1401 (spacing), not this spawn-pin retarget."
-    }
-  }
+  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181"
 }

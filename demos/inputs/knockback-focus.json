@@ -89,16 +89,9 @@
   "defect_exemptions": {
     "overlap": {
       "uids": [
-        5,
-        9
+        5
       ],
-      "reason": "Enemy Spearmen (uid5) and cavalry (uid9) on the default 5v5 compress below their overlap floors during the knockback-focus clash this clip exists to show. Pre-existing on main; owned by #1398 (melee) / #1401 (spacing), not this spawn-pin retarget."
-    },
-    "path_crossing": {
-      "uids": [
-        9
-      ],
-      "reason": "Enemy cavalry residual paths cross during the same live clash. Pre-existing on main; owned by #1398 (melee) / #1401 (spacing), not this spawn-pin retarget."
+      "reason": "Focused knockback drives uid5 into a compressed knot around the strike target; measured min neighbour 0.63 wu on the re-pinned 2x-default layout (was cited lower pre-repin). Transient press compression at the focal point, not standing interpenetration."
     }
   }
 }

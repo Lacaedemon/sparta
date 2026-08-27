@@ -1,5 +1,5 @@
 {
-  "_comment": "Back-step maneuver demo: zoom in on the lone Spearmen (seed 12345, ~452,300, facing south toward the enemy), select it, then right-click a short step straight behind it. The click target (452, 270) is a ~30-unit move directly into the rear sector, comfortably under UnitManeuver.SIDESTEP_MAX_DISTANCE (40.0), so the regiment BACK-STEPS -- it shuffles backward at a walk while holding its south-facing line, instead of about-facing (conversio) in place and marching forward facing the new spot. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "_comment": "Back-step maneuver demo: zoom in on the lone Spearmen (seed 12345, ~120,300, facing south toward the enemy), select it, then right-click a short step straight behind it. The click target (120, 270) is a ~30-unit move directly into the rear sector, comfortably under UnitManeuver.SIDESTEP_MAX_DISTANCE (40.0), so the regiment BACK-STEPS -- it shuffles backward at a walk while holding its south-facing line, instead of about-facing (conversio) in place and marching forward facing the new spot. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
   "seed": "12345",
   "camera": [
     {
