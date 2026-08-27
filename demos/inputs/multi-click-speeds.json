@@ -165,7 +165,7 @@
       "uid": 0,
       "field": "position",
       "value": [
-        469.93,
+        469.91,
         300.0
       ]
     },
@@ -174,7 +174,7 @@
       "uid": 3,
       "field": "position",
       "value": [
-        920.07,
+        920.09,
         300.0
       ]
     },
@@ -184,5 +184,6 @@
       "field": "state",
       "value": "IDLE"
     }
-  ]
+  ],
+  "spawn_fingerprint": "7c41c13e04ad1706625707bad8469627"
 }

@@ -1,10 +1,11 @@
 {
-  "_comment": "Order-distance-label demo (#413): hold Space so the orders overlay is live, select the Spearmen (seed 12345, ~407,300), then right-click a long march south. The green move line now carries a metric distance label at its midpoint (e.g. '13 m'), in the same units as the map-scale legend, and the number counts down as the regiment closes on its target. hold_space fires at tick 2 so the overlay is up before the move order lands.",
+  "_comment": "Order-distance-label demo (#413): hold Space so the orders overlay is live, select the Spearmen (seed 12345, ~452,300), then right-click a long march south. The green move line now carries a metric distance label at its midpoint (e.g. '13 m'), in the same units as the map-scale legend, and the number counts down as the regiment closes on its target. hold_space fires at tick 2 so the overlay is up before the move order lands.",
   "seed": "12345",
+  "drill": true,
   "camera": [
     {
       "tick": 0,
-      "x": 407.0,
+      "x": 452.0,
       "y": 430.0,
       "zoom": 1.5
     }
@@ -17,14 +18,14 @@
     {
       "tick": 8,
       "click": [
-        407,
+        452.0,
         300
       ]
     },
     {
       "tick": 24,
       "rmb_click": [
-        407,
+        452.0,
         560
       ]
     }
@@ -35,7 +36,7 @@
       "uid": 0,
       "field": "position",
       "value": [
-        407.0,
+        452.0,
         300.0
       ]
     },
@@ -48,5 +49,6 @@
       "field": "state",
       "value": "MOVING"
     }
-  ]
+  ],
+  "spawn_fingerprint": "eea022291581d04e20c800cb96603e9d"
 }

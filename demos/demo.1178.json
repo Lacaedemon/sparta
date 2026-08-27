@@ -1,0 +1,9 @@
+{
+  "_comment": "Per-PR manifest for the catalog spawn-pin sweep. The back-step clip is the representative case: a select click at the stale (407, 300) Spearmen spawn selected nothing, so the published website clip showed a regiment standing still. Retargeted to the current _spawn_line x=452.",
+  "input": "demos/inputs/backstep.json",
+  "caption": "Website catalog spawn pins retargeted to the current default line. The Spearmen now stand at x=452 (was 407); the select lands, and the regiment back-steps north while holding its south-facing line instead of standing still.",
+  "fixed_fps": 30,
+  "max_frames": 240,
+  "fps": 15,
+  "width": 640
+}

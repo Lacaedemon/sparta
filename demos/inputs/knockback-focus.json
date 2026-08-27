@@ -4,7 +4,7 @@
   "camera": [
     {
       "tick": 0,
-      "x": 557.0,
+      "x": 602.0,
       "y": 560.0,
       "zoom": 1.6
     }
@@ -13,35 +13,35 @@
     {
       "tick": 5,
       "click": [
-        557,
+        602.0,
         300
       ]
     },
     {
       "tick": 10,
       "rmb_click": [
-        557,
+        602.0,
         880
       ]
     },
     {
       "tick": 12,
       "rmb_click": [
-        557,
+        602.0,
         880
       ]
     },
     {
       "tick": 14,
       "rmb_click": [
-        557,
+        602.0,
         880
       ]
     },
     {
       "tick": 16,
       "rmb_click": [
-        557,
+        602.0,
         880
       ]
     },
@@ -71,7 +71,7 @@
       "uid": 1,
       "field": "position",
       "value": [
-        557.0,
+        602.0,
         300.0
       ]
     },
@@ -84,5 +84,16 @@
       "field": "order_mode",
       "value": "Knockback focus"
     }
-  ]
+  ],
+  "spawn_fingerprint": "f8dd2ca100bf389fdc9d141c8085e92a",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [5, 9],
+      "reason": "Enemy Spearmen (uid5) and cavalry (uid9) on the default 5v5 compress below their overlap floors during the knockback-focus clash this clip exists to show. Pre-existing on main; owned by #1398 (melee) / #1401 (spacing), not this spawn-pin retarget."
+    },
+    "path_crossing": {
+      "uids": [9],
+      "reason": "Enemy cavalry residual paths cross during the same live clash. Pre-existing on main; owned by #1398 (melee) / #1401 (spacing), not this spawn-pin retarget."
+    }
+  }
 }
