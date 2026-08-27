@@ -73,7 +73,7 @@
       "uid": 0,
       "field": "position",
       "value": [
-        407.0,
+        452.0,
         300.0
       ]
     },
@@ -82,9 +82,10 @@
       "uid": 5,
       "field": "position",
       "value": [
-        407.0,
+        452.0,
         880.0
       ]
     }
-  ]
+  ],
+  "spawn_fingerprint": "f8dd2ca100bf389fdc9d141c8085e92a"
 }

@@ -687,11 +687,11 @@ formation widths, so the standard 5v5's `x` positions are:
 
 | uid | Type | `x` |
 | --- | --- | --- |
-| 0 / 5 | Spearmen | 407.0 |
-| 1 / 6 | Infantry | 557.0 |
-| 2 / 7 | Archers | 736.99 |
-| 3 / 8 | Cavalry | 963.95 |
-| 4 / 9 | Cavalry | 1193.07 |
+| 0 / 5 | Spearmen | 452.0 |
+| 1 / 6 | Infantry | 602.0 |
+| 2 / 7 | Archers | 781.99 |
+| 3 / 8 | Cavalry | 978.93 |
+| 4 / 9 | Cavalry | 1148.09 |
 
 Cavalry rows sit on their own wider grid pitch (1.0 m between files, 3.0 m
 between ranks), so each cavalry block is ~218 px wide and **360 px deep**

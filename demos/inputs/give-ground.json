@@ -15,11 +15,12 @@
   "frames": [10, 260, 350, 500, 650],
   "state": [10, 100, 200, 260, 280, 320, 380, 440, 500, 560, 620],
   "expect": [
-    { "tick": 8, "uid": 0, "field": "position", "value": [500.0, 500.3] },
+    { "tick": 8, "uid": 0, "field": "position", "value": [500.0, 500.0] },
     { "tick": [280, 620], "uid": 0, "field": "order_mode", "value": "Give ground" }
   ],
   "fixed_fps": 30,
   "max_frames": 660,
   "fps": 15,
-  "width": 640
+  "width": 640,
+  "spawn_fingerprint": "6607533e7f2f7d6d06ece81fdd7cdb3c"
 }

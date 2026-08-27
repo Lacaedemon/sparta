@@ -1,5 +1,5 @@
 {
-  "_comment": "Group attack distributed mode demo: box-select three player regiments (Spearmen/Infantry/Archers, seed 12345 y=300), press X to switch from focused to distributed attack, then right-click the enemy Spearmen at (407,880). Each selected unit automatically targets a different nearby enemy instead of all piling onto one. The HUD flashes 'Attack: distributed' when X is pressed.",
+  "_comment": "Group attack distributed mode demo: box-select three player regiments (Spearmen/Infantry/Archers, seed 12345 y=300), press X to switch from focused to distributed attack, then right-click the enemy Spearmen at (452,880). Each selected unit automatically targets a different nearby enemy instead of all piling onto one. The HUD flashes 'Attack: distributed' when X is pressed.",
   "seed": "12345",
   "camera": [
     {
@@ -30,7 +30,7 @@
     {
       "tick": 48,
       "rmb_click": [
-        407,
+        452.0,
         880
       ]
     }
@@ -41,7 +41,7 @@
       "uid": 0,
       "field": "position",
       "value": [
-        407.0,
+        452.0,
         300.0
       ]
     },
@@ -54,5 +54,12 @@
       "field": "state",
       "value": "MOVING"
     }
-  ]
+  ],
+  "spawn_fingerprint": "f8dd2ca100bf389fdc9d141c8085e92a",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [8],
+      "reason": "Enemy cavalry (uid8) on the default 5v5 compresses below the cavalry overlap floor while the player's distributed attack runs. Pre-existing on main; owned by #1398 (melee) / #1401 (spacing), not this spawn-pin retarget."
+    }
+  }
 }

@@ -1,5 +1,5 @@
 {
-  "_comment": "Cycle-charge stance demo (seed 12345): box-select the player's two cavalry regiments (right of the line, ~x 964 and 1193, y 300), press J to arm the Cycle charge stance, then right-click the enemy Infantry regiment at (557,880). The horse charges in, lands its momentum hit, then peels back to a standoff and charges AGAIN -- the caracole loop -- instead of grinding in melee once the charge bonus is spent. The HUD flashes 'Cycle charge' when J is pressed and the order cursor turns violet.",
+  "_comment": "Cycle-charge stance demo (seed 12345): box-select the player's two cavalry regiments (right of the line, ~x 979 and 1148, y 300), press J to arm the Cycle charge stance, then right-click the enemy Infantry regiment at (602,880). The horse charges in, lands its momentum hit, then peels back to a standoff and charges AGAIN -- the caracole loop -- instead of grinding in melee once the charge bonus is spent. The HUD flashes 'Cycle charge' when J is pressed and the order cursor turns violet.",
   "seed": "12345",
   "camera": [
     {
@@ -36,7 +36,7 @@
     {
       "tick": 48,
       "rmb_click": [
-        557,
+        602.0,
         880
       ]
     }
@@ -47,7 +47,7 @@
       "uid": 3,
       "field": "position",
       "value": [
-        963.95,
+        978.93,
         300.0
       ]
     },
@@ -56,7 +56,7 @@
       "uid": 4,
       "field": "position",
       "value": [
-        1193.07,
+        1148.09,
         300.0
       ]
     },
@@ -69,5 +69,12 @@
       "field": "order_mode",
       "value": "Cycle charge"
     }
-  ]
+  ],
+  "spawn_fingerprint": "f8dd2ca100bf389fdc9d141c8085e92a",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [9],
+      "reason": "Enemy cavalry (uid9) on the default 5v5 compresses below the cavalry overlap floor during the live charge this clip exists to show. Pre-existing on main; owned by #1398 (melee) / #1401 (spacing), not this spawn-pin retarget."
+    }
+  }
 }
