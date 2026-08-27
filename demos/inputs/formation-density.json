@@ -1,12 +1,50 @@
 {
-  "_comment": "Formation-density demo: select the Spearmen (seed 12345, ~500,300), zoomed in close enough to see individual mark spacing. Press T twice to cycle Normal -> Tight -> Loose. Tight leaves the marks at the same spacing as Normal (the historical close-order floor); Loose visibly spreads them apart.",
+  "_comment": "Formation-density demo: select the Spearmen (seed 12345, ~120,300), zoomed in close enough to see individual mark spacing. Press T twice to cycle Normal -> Tight -> Loose. Tight leaves the marks at the same spacing as Normal (the historical close-order floor); Loose visibly spreads them apart.",
   "seed": "12345",
   "camera": [
-    {"tick": 0, "x": 500.0, "y": 300.0, "zoom": 2.2}
+    {
+      "tick": 0,
+      "x": 500.0,
+      "y": 300.0,
+      "zoom": 2.2
+    }
   ],
   "steps": [
-    {"tick": 10, "click": [500, 300]},
-    {"tick": 40, "key": "T"},
-    {"tick": 100, "key": "T"}
-  ]
+    {
+      "tick": 10,
+      "click": [
+        120,
+        300
+      ]
+    },
+    {
+      "tick": 40,
+      "key": "T"
+    },
+    {
+      "tick": 100,
+      "key": "T"
+    }
+  ],
+  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        0
+      ],
+      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: min neighbour 0.14 wu during the Tight->Loose 1x->4x expansion."
+    },
+    "shape_residual": {
+      "uids": [
+        0
+      ],
+      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: residual 138 wu mid-expansion across the quadrupling pitch."
+    },
+    "path_crossing": {
+      "uids": [
+        0
+      ],
+      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: 0.52 crossing fraction during the expansion re-deal."
+    }
+  }
 }

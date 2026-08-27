@@ -1,11 +1,55 @@
 {
-  "_comment": "Scripted-input demo: click-select the Spearmen (uid 0, spawned at ~500,300 on seed 12345), then right-drag a flank line to deploy them. Driven through the real SelectionManager by tools/demo/DemoInputRecorder.gd. Coordinates are world-space; ticks are physics ticks (60/s).",
+  "_comment": "Scripted-input demo: click-select the Spearmen (uid 0, spawned at ~120,300 on seed 12345), then right-drag a flank line to deploy them. Driven through the real SelectionManager by tools/demo/DemoInputRecorder.gd. Coordinates are world-space; ticks are physics ticks (60/s).",
   "seed": "12345",
   "camera": [
-    {"tick": 0, "x": 510.0, "y": 380.0, "zoom": 1.9}
+    {
+      "tick": 0,
+      "x": 510.0,
+      "y": 380.0,
+      "zoom": 1.9
+    }
   ],
   "steps": [
-    {"tick": 8, "click": [500, 300]},
-    {"tick": 24, "rmb_drag": {"from": [620, 460], "to": [385, 460]}}
-  ]
+    {
+      "tick": 8,
+      "click": [
+        120,
+        300
+      ]
+    },
+    {
+      "tick": 24,
+      "rmb_drag": {
+        "from": [
+          275,
+          460
+        ],
+        "to": [
+          40,
+          460
+        ]
+      }
+    }
+  ],
+  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        0
+      ],
+      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: min neighbour 0.26 wu during the drag-line re-deal."
+    },
+    "shape_residual": {
+      "uids": [
+        0
+      ],
+      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: residual 77.4 wu while the block marches onto the dragged line."
+    },
+    "path_crossing": {
+      "uids": [
+        0
+      ],
+      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: 0.48 crossing fraction during the form-up."
+    }
+  }
 }

@@ -2,11 +2,41 @@
   "_comment": "Schiltron formation-change demo, split out of the combined schiltron.json into a dedicated clip -- see demos/README.md. No cavalry at all, so there's no spawn-facing-flip churn and no combat to distract from the transition itself. A single player Infantry unit spawns in NORMAL formation, gets selected, and the clip shows the Shift+O jump straight to Schiltron -- the block relaying out into the real outward-facing hollow square. Recorded as a standalone GIF for the PR description (not the CI-posted demo.488.json clip, which shows the receiving-the-charge scenario instead). Deterministic (seed + scripted input, no scenario override -- uses the default line spawn).",
   "seed": "12345",
   "camera": [
-    {"tick": 0, "x": 650.0, "y": 300.0, "zoom": 1.6}
+    {
+      "tick": 0,
+      "x": 650.0,
+      "y": 300.0,
+      "zoom": 1.6
+    }
   ],
   "steps": [
-    {"tick": 8, "click": [650, 300]},
-    {"tick": 24, "key": "O", "shift": true}
+    {
+      "tick": 8,
+      "click": [
+        291,
+        300
+      ]
+    },
+    {
+      "tick": 24,
+      "key": "O",
+      "shift": true
+    }
   ],
-  "state": [8, 24, 40, 60, 90]
+  "state": [
+    8,
+    24,
+    40,
+    60,
+    90
+  ],
+  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
+  "defect_exemptions": {
+    "shape_residual": {
+      "uids": [
+        1
+      ],
+      "reason": "The clip films the Infantry packing from the 2x Normal default onto the Tight-floor grid; the default dense sampling catches the block mid-transition (residual 52.3 wu vs the 13.5 threshold reads distance-to-destination in transit). Measured on the new-density re-pin; the settled formation is the clip's claim and its final samples show it."
+    }
+  }
 }

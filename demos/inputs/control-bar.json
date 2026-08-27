@@ -2,9 +2,27 @@
   "_comment": "Control bar screenshot: box-select all three blue regiments so the bottom control bar appears with Formation, Stance, Reform, and group-attack buttons.",
   "seed": "12345",
   "camera": [
-    {"tick": 0, "x": 640.0, "y": 500.0, "zoom": 0.9}
+    {
+      "tick": 0,
+      "x": 640.0,
+      "y": 500.0,
+      "zoom": 0.9
+    }
   ],
   "steps": [
-    {"tick": 6, "box": {"from": [300, 240], "to": [980, 360]}}
-  ]
+    {
+      "tick": 6,
+      "box": {
+        "from": [
+          80,
+          240
+        ],
+        "to": [
+          700,
+          360
+        ]
+      }
+    }
+  ],
+  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181"
 }

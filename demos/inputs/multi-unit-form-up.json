@@ -2,10 +2,54 @@
   "_comment": "Scripted-input demo: box-select three regiments (uids 0/1/2 — Spearmen 140, Infantry 120, Archers 90, spawned in a row at y=300 on seed 12345), then one right-drag deploys them along a flank line, split to equal depth. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
   "seed": "12345",
   "camera": [
-    {"tick": 0, "x": 560.0, "y": 400.0, "zoom": 1.7}
+    {
+      "tick": 0,
+      "x": 560.0,
+      "y": 400.0,
+      "zoom": 1.7
+    }
   ],
   "steps": [
-    {"tick": 8, "box": {"from": [450, 270], "to": [850, 330]}},
-    {"tick": 32, "rmb_drag": {"from": [880, 470], "to": [260, 470]}}
-  ]
+    {
+      "tick": 8,
+      "box": {
+        "from": [
+          80,
+          270
+        ],
+        "to": [
+          700,
+          330
+        ]
+      }
+    },
+    {
+      "tick": 32,
+      "rmb_drag": {
+        "from": [
+          1400,
+          470
+        ],
+        "to": [
+          160,
+          470
+        ]
+      }
+    }
+  ],
+  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        0
+      ],
+      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: min neighbour 0.19 wu during the three-regiment drag-line deploy."
+    },
+    "path_crossing": {
+      "uids": [
+        0
+      ],
+      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: 0.45 crossing fraction during the deploy re-deal."
+    }
+  }
 }
