@@ -108,7 +108,16 @@ func test_infantry_block_respreads_after_melee_exit() -> void:
 				break
 		else:
 			settled_streak = 0
-	if ever_in_melee and not ever_judged:
+	if not ever_in_melee:
+		# The cavalry never even landed a melee cadence within the budget -- combat
+		# itself never started, so this scenario never got anywhere near the
+		# reform-while-marching path this test guards. A DIFFERENT failure than "the
+		# block failed to re-spread": surface it distinctly instead of letting the
+		# assert below fire with a misleading message.
+		assert_true(false,
+			"the cavalry never landed a melee cadence against the infantry within %d ticks -- combat never started, so this scenario never exercised the reform-while-marching path" % REFORM_BUDGET)
+		return
+	if not ever_judged:
 		# The cavalry never actually disengaged within the budget (still FIGHTING/in
 		# contact at the deadline), so spacing was never once judged -- a real failure,
 		# but a DIFFERENT one than "the block failed to re-spread." Surface it as its own
