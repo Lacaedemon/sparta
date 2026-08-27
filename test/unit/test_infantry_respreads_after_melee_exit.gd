@@ -1,5 +1,5 @@
 extends GutTest
-## Regression for issue #1405: an infantry block that survives a cavalry charge with per-
+## Regression guard: an infantry block that survives a cavalry charge with per-
 ## soldier melee (no formula wipe, no rout) used to never re-spread to its commanded pitch
 ## afterward. A knocked-back soldier's arrival target (_corridor_to_slot, SoldierBodies.gd)
 ## snapped between "go direct" and a full flank-and-rear corridor detour every time its
