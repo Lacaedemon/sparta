@@ -9,6 +9,14 @@ class_name Unit
 
 const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 
+## Emitted from _escape() when this routing unit's flight carries it past the
+## retreat_bounds margin and it leaves play alive. Group membership cannot carry
+## this distinction -- annihilation and escape tear down the same groups in the
+## same way -- so an observer that must tell "run down and destroyed" from "got
+## away" (a demo-determinism test, a casualty ledger) listens here instead of
+## inferring the cause from where the unit last stood.
+signal escaped
+
 enum State { IDLE, MOVING, FIGHTING, ROUTING, DEAD }
 
 ## Readable label for current_maneuver(): distinguishes the in-progress drill/turn a plain
@@ -6795,6 +6803,7 @@ func _shatter() -> void:
 ## synchronous group teardown so it never lingers in a spatial-hash / separation scan
 ## after leaving play (queue_free() alone defers to end of frame).
 func _escape() -> void:
+	escaped.emit()
 	_remove_from_play()
 
 

@@ -213,6 +213,8 @@ func test_pursuer_is_physically_blocked_by_the_rearguard_while_the_main_body_esc
 				break
 		if rearguard == null or not is_instance_valid(rearguard):
 			break   # lifetime expired (or destroyed) -- the proof window is over
+		if not is_instance_valid(pursuer):
+			break   # freed mid-window; the asserts below judge what was tracked so far
 		if pursuer.state == Unit.State.FIGHTING:
 			fought_the_rearguard = true
 		worst_advance = maxf(worst_advance,

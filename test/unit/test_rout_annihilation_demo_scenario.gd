@@ -47,6 +47,16 @@ const CHASE_MARGIN := 2000       # slack past ROUT_TIME for the pursuit to catch
 
 
 var _battle: Node = null
+# Set by _on_infantry_escaped: the tracked router crossed the retreat margin and left
+# play alive. The removal itself cannot carry this -- annihilation and escape tear the
+# groups down identically, and under the rebalanced (slower) pace the pursuit can
+# legally finish the router within a couple of world units of the escape line, so no
+# position threshold separates the two outcomes either. Unit.escaped does, exactly.
+var _escaped := false
+
+
+func _on_infantry_escaped() -> void:
+	_escaped = true
 
 
 func _rout_time_ticks() -> int:
@@ -86,12 +96,14 @@ func _infantry() -> Unit:
 
 
 func test_scenario_routs_then_is_annihilated_under_pursuit() -> void:
+	_escaped = false
 	_spawn_rout_rally_battle()
 	await get_tree().physics_frame
 
 	assert_not_null(_infantry(), "the low-morale infantry unit spawns")
 	if _infantry() == null:
 		return
+	_infantry().escaped.connect(_on_infantry_escaped)
 
 	# Tick budget derived from the sim's own timing constants: onset headroom, the rout timer, and
 	# slack for the pursuit to catch and finish it. Independent of interpreter speed.
@@ -121,14 +133,51 @@ func test_scenario_routs_then_is_annihilated_under_pursuit() -> void:
 	assert_true(annihilated_tick > routed_tick,
 		"the relentlessly-pursued router is run down and destroyed within the budget " +
 		"(rout tick %d, gone by tick %d)" % [routed_tick, annihilated_tick])
-	# It was still routing (never rallied), had taken further casualties since breaking (not merely
-	# spawned dead), and was nowhere near the retreat margin's outer edge --- annihilated by combat,
-	# not escaped off the map or removed some other way.
+	# It was still routing (never rallied), had taken further casualties since breaking (not
+	# merely spawned dead), and never crossed the retreat margin --- annihilated by combat, not
+	# escaped. The escape check listens to Unit.escaped rather than thresholding the final
+	# position: under the rebalanced pace the chase runs long, and one CI run measured the
+	# kill 1.6 wu inside the escape line -- close enough that no position cut separates
+	# "caught at the margin's edge" from "got away".
 	assert_eq(last_state, Unit.State.ROUTING,
 		"still fleeing (never rallied) right up to the moment it's destroyed")
 	assert_true(last_soldiers < soldiers_at_rout,
 		"took further casualties while routing, run down by the pursuit (started rout at %d, last seen at %d)"
 			% [soldiers_at_rout, last_soldiers])
-	assert_true(last_y > -100.0,
-		"nowhere near the retreat margin's outer edge when it was destroyed (last y=%.1f) --- annihilated, not escaped"
-			% last_y)
+	assert_false(_escaped,
+		"annihilated by combat, not escaped past the retreat margin (last y=%.1f)" % last_y)
+
+
+## The bite proof for the escape discriminator above: drive the one arc the pursuit test
+## must never see -- a router that genuinely gets away -- and require Unit.escaped to
+## fire. A shattered router never rallies, so with nothing on the field to catch it, its
+## flight deterministically crosses the retreat margin.
+func test_shattered_router_escapes_and_reports_it() -> void:
+	_escaped = false
+	Replay.forced_seed = 12345
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.drill_mode = true   # the sim must not auto-end when the last router leaves
+	battle.terrain = []
+	# Spawned near the north field edge so the flight to the margin is short.
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": 800, "y": 120, "count": 12},
+	]
+	_battle = battle
+	add_child_autofree(battle)
+	await get_tree().physics_frame
+
+	var unit: Unit = _infantry()
+	assert_not_null(unit, "the infantry unit spawns")
+	if unit == null:
+		return
+	unit.escaped.connect(_on_infantry_escaped)
+	unit._rout()
+	unit._shatter()
+
+	var deadline: int = 900   # flight is ~310 wu at flee pace; generous margin
+	while _battle.current_tick() < deadline and _infantry() != null:
+		await get_tree().physics_frame
+
+	assert_null(_infantry(), "the shattered router left play within the budget")
+	assert_true(_escaped,
+		"and it reported the escape -- removed by crossing the margin, not by combat")
