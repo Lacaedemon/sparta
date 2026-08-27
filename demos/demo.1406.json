@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Comment-only metadata fix: rewords a stale spawn-table cross-reference in demos/inputs/hill-cavalry-crowding.json's _comment. No sim, scenario, or visible gameplay change."
+}
