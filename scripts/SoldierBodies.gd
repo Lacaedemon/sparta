@@ -11,8 +11,11 @@ class_name SoldierBodies
 ## with no lag, easing onto a reformed slot instead of snapping. A body's fully-integrated
 ## speed is still hard-capped near its unit's own sprint pace (Unit.superphysical_speed_frac
 ## * move_speed) no matter how far its slot has receded -- see the final clamp at the end of
-## the per-soldier loop in step(). Operates on a Unit's `_sim_soldier_pos` / `_sim_body_vel` /
-## `_sim_steer` (the state stays on the unit, where the render, steering, and melee read it).
+## the per-soldier loop in step(). That clamp floors at whatever speed the body already
+## carried in, so it never suppresses a deliberately faster external push (a knockback) --
+## only the march/arrival stacking it exists to bound. Operates on a Unit's
+## `_sim_soldier_pos` / `_sim_body_vel` / `_sim_steer` (the state stays on the unit, where
+## the render, steering, and melee read it).
 ## Deterministic and order-free across soldiers, no RNG -- replay-safe like the rest of the
 ## soldier layer.
 
@@ -329,6 +332,11 @@ static func step(unit: Unit, delta: float) -> void:
 			# drifting through it and having to turn around -- the last guard against a
 			# sub-pixel oscillation around the exact point.
 			desired_vel += (to_slot / dist) * (dist / delta)
+		# The speed this body carried INTO this tick, before anything below touches it --
+		# the floor the superphysical clamp uses further down, so a body already coasting
+		# faster than that clamp (a knockback -- see the clamp's own comment) never gets
+		# slammed back down to it; only NEW speed this tick's own steering adds gets bounded.
+		var pre_tick_speed: float = unit._sim_body_vel[i].length()
 		# Apply kinetic friction damping (Newton's laws collision phase 1) to the velocity
 		# CARRIED OVER from last tick, before this tick's arrival/steering command: velocity
 		# held from a knockback or collision decays over time on its own (stationary/slow bodies
@@ -380,8 +388,18 @@ static func step(unit: Unit, delta: float) -> void:
 		# more than a hard margin no matter how fast his slot is receding out from under him.
 		# The arrival term above is already capped at jog pace, but the march feed-forward
 		# stacks on top of it with no cap of its own, so only this clamp on the FULLY
-		# INTEGRATED velocity bounds their sum -- see Unit.superphysical_speed_frac.
-		var superphysical_cap: float = unit.move_speed * unit.superphysical_speed_frac
+		# INTEGRATED velocity bounds their sum -- see Unit.superphysical_speed_frac. Floored at
+		# pre_tick_speed (above) rather than a flat move_speed * frac, so this clamp only ever
+		# bounds speed THIS tick's own steering adds -- it never re-clamps a body already
+		# coasting faster than the floor from an external impulse. A knockback -- especially
+		# ORDER_KNOCKBACK_FOCUS's knockback_push_indefinite variant, which deliberately drives a
+		# body up to SoldierCombat.KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP (200 wu/s), well past any
+		# unit's own move_speed * frac -- sets _sim_body_vel directly via
+		# SoldierCombat.capped_knockback_velocity() outside this loop; without the floor, the very
+		# next tick's superphysical clamp would slam that legitimate push straight back down,
+		# defeating the whole "coast much further than a normal push" point of the stance.
+		var superphysical_cap: float = maxf(
+			unit.move_speed * unit.superphysical_speed_frac, pre_tick_speed)
 		unit._sim_body_vel[i] = unit._sim_body_vel[i].limit_length(superphysical_cap)
 		unit._sim_soldier_pos[i] += unit._sim_body_vel[i] * delta
 		# Tell the render a body actually moved this tick, so _process can skip the
