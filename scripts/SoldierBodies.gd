@@ -42,8 +42,19 @@ const REST_SPEED: float = 0.5
 # (and a casualty forces an immediate recompute regardless -- see Unit._engaged_target_*).
 const ENGAGED_TARGET_REASSIGN_TICKS: int = 30
 
-# Multiplier on file pitch defining proximity threshold for straight-line arrival.
+# Multiplier on file pitch defining proximity threshold for straight-line arrival: a body
+# within this radius of its own slot skips corridor routing entirely and just walks direct.
 const CORRIDOR_PROXIMITY_MULT: float = 1.5
+# The same proximity multiplier, but for a body whose unit is actively marching (own_slot
+# is a moving point, not a fixed reform target) -- wider than CORRIDOR_PROXIMITY_MULT so a
+# body catching up to a translating formation, hovering right at the plain radius from
+# ordinary march wobble, doesn't repeatedly cross it and get flung into the full
+# flank-and-rear detour (a formation's-width away) each time, right as it was about to
+# land. See _corridor_to_slot's own doc comment for the failure this was measured against.
+# A stationary reform (drill/frontage-fold, _approach_velocity zero) keeps the plain,
+# narrower radius, so a genuine casualty-thinned or frontage-fold reform still corridors
+# around its own formation's interior exactly as before.
+const MARCHING_CORRIDOR_PROXIMITY_MULT: float = 4.5
 # Lateral clearance beyond outer formed file for perimeter corridor routing.
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
 # Stagger fraction between alternate soldier lanes in perimeter corridor.
@@ -534,7 +545,13 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 	if unit.state == Unit.State.ROUTING or (unit._sim_soldier_broken.size() > i and unit._sim_soldier_broken[i] != 0):
 		return diff
 	var spacing: float = unit.file_pitch_wu()
-	if diff.length_squared() <= (spacing * CORRIDOR_PROXIMITY_MULT) * (spacing * CORRIDOR_PROXIMITY_MULT):
+	# Use the wider MARCHING_CORRIDOR_PROXIMITY_MULT radius while the unit is actively
+	# marching (own_slot is a moving point, not a fixed reform target) -- see that const's
+	# own doc comment for why a moving target needs a wider direct-arrival band than a
+	# stationary reform does.
+	var marching: bool = unit._approach_velocity.length_squared() > 0.0001
+	var proximity_mult: float = MARCHING_CORRIDOR_PROXIMITY_MULT if marching else CORRIDOR_PROXIMITY_MULT
+	if diff.length_squared() <= (spacing * proximity_mult) * (spacing * proximity_mult):
 		return diff
 	var ang: float = unit.soldier_block_world_angle()
 	var p_local: Vector2 = (pos - unit.position).rotated(-ang)
