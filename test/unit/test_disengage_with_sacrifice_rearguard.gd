@@ -214,8 +214,9 @@ func test_pursuer_is_physically_blocked_by_the_rearguard_while_the_main_body_esc
 	# is exactly how the previous version's asserts stayed silently satisfied on a stubbed
 	# spawn: a loop that never finds a rearguard contributes no evidence either way).
 	var rearguard: Unit = null
-	for uid in _units_by_uid(battle):
-		var u: Unit = _units_by_uid(battle)[uid]
+	var post_order_units := _units_by_uid(battle)
+	for uid in post_order_units:
+		var u: Unit = post_order_units[uid]
 		if u.is_rearguard_detachment:
 			rearguard = u
 			break
