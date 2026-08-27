@@ -727,6 +727,34 @@ down": brittle player CAVALRY (fast router), one enemy cavalry charging from
 the FLANK (overshoot lands clear of the flee lane), terrain dead ahead of the
 flee vector so the clearance detour is the visual centrepiece.
 
+## Moving a staged scenario is only a translation when the WHOLE scene moves
+
+A scenario's combat arc is sensitive to the RELATIVE position of every unit
+on the field -- including a "safe" anchor unit hundreds of world units away
+and outside detection range -- because battle-AI target scoring reads all
+enemy positions when it maneuvers. Moving a scenario for more field room is
+therefore only a translation when EVERY actor moves together; moving the
+fighting units while leaving (or re-anchoring) a distant bystander produces a
+different battle, not a moved one.
+
+Measured on the rout-annihilation demo (`rout-rally-recover.json`, seed
+12345) while re-staging it onto its tall map so the pursuit could not run out
+of field:
+
+- **Translating only the fighting units** (the spearmen anchor re-anchored
+  elsewhere) flipped the arc from a clean ~350 wu chase ground down to the
+  last man into an enveloped kill-in-place 13-80 ticks after the rout, with
+  no observable casualties while routing -- across ALL 8 seeds tried, so it
+  was the staging, not seed chaos.
+- **Translating the WHOLE scene by exactly +1200, spearmen included,**
+  reproduced the original chase arc (rout ~tick 1200, annihilation ~tick
+  2830).
+
+Translate every actor together, then re-measure the arc before trusting it --
+bit-level chaos still shifts tick timings even under an exact translation.
+Never read an arc flip after a partial move as seed chaos: sweep seeds first,
+and when every seed agrees, the staging is the variable.
+
 ## A pursuing cavalry's own formation disintegrates over a long chase
 
 Any long gallop chase progressively deforms the pursuer's block: monotonic

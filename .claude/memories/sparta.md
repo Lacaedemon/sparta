@@ -19,4 +19,3 @@ to `.claude/memories/sparta.md` still load everything via the `@` imports below.
 @.claude/memories/sparta/06-a-caching-fallback-outlives-the-window.md
 @.claude/memories/sparta/07-a-pr-can-revert-merged-main.md
 @.claude/memories/sparta/08-both-lod-layers-carry-the-weapon.md
-@.claude/memories/sparta/10-whole-scene-translation-battle-ai-anchor.md
