@@ -279,6 +279,47 @@ func test_knockback_focus_pushes_the_defender_back_harder_than_a_normal_attacker
 		"the indefinite variant never pushes less far than the default clear-the-line one")
 
 
+# --- regression: the superphysical clamp must not undo an indefinite knockback push ------
+
+func test_knockback_focus_indefinite_speed_survives_a_subsequent_body_step() -> void:
+	# Guard for a body-speed regression the superphysical clamp (SoldierBodies.step's
+	# final move_speed * superphysical_speed_frac ceiling) could otherwise introduce: the
+	# indefinite push variant deliberately drives a body up toward
+	# SoldierCombat.KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP (200 wu/s), well past any unit's
+	# ordinary superphysical cap -- that legitimate push must survive a subsequent
+	# SoldierBodies.step() call, not get slammed back down to the ordinary ceiling on the
+	# very next physics tick.
+	Replay.rng.seed = 12345
+	var attacker := _make_engaged_unit(12, Vector2(0, 0), Vector2.DOWN)
+	attacker.order_mode = Unit.ORDER_KNOCKBACK_FOCUS
+	attacker.knockback_push_indefinite = true
+	var defender := _make_engaged_unit(12, Vector2(0, 10), Vector2.UP)
+	defender.order_mode = Unit.ORDER_SKIRMISH
+	for i in range(defender._sim_soldier_hp.size()):
+		defender._sim_soldier_hp[i] = 9999.0
+	SoldierMelee.resolve(attacker, [defender])
+	var cap: float = defender.move_speed * defender.superphysical_speed_frac
+	var struck: int = -1
+	var speed_after_strike: float = 0.0
+	for i in range(defender._sim_body_vel.size()):
+		if defender._sim_body_vel[i].length() > speed_after_strike:
+			speed_after_strike = defender._sim_body_vel[i].length()
+			struck = i
+	assert_gt(speed_after_strike, cap,
+		"sanity: the indefinite push actually exceeds the ordinary superphysical cap")
+	# Nudge the struck body off its own slot before stepping: a freshly-seeded body sits
+	# EXACTLY on-slot (dist == 0), which routes through step()'s separate on-slot snap
+	# branch (`new_vel = feed_forward`, unrelated to this clamp) rather than the ordinary
+	# arrival path this test means to exercise -- see the tracked follow-up on that branch.
+	defender._sim_soldier_pos[struck] += Vector2(5.0, 0.0)
+
+	SoldierBodies.step(defender, 1.0 / Replay.PHYSICS_TPS)
+	var speed_after_step: float = defender._sim_body_vel[struck].length()
+	assert_gt(speed_after_step, cap,
+		"a body already carrying a legitimate knockback push stays above the ordinary " +
+		"cap through a subsequent SoldierBodies.step() -- the clamp must not slam it back down")
+
+
 # --- Unit.knockback_push_indefinite defaults -----------------------------------------------
 
 func test_knockback_push_indefinite_defaults_to_false() -> void:

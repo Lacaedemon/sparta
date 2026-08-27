@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/sustained-sprint-march.json",
+  "caption": "An Archers regiment sprints south for several seconds (gait forced full-sprint via a quadruple right-click). Every soldier's body keeps pace with its moving formation slot at speed; the fix in #1411 clamps each body's fully-integrated velocity at move_speed * superphysical_speed_frac (103.5 wu/s for this unit) so a lagging body can never sprint-plus-jog its way past that ceiling while chasing a receding slot.",
+  "fixed_fps": 30,
+  "max_frames": 220,
+  "fps": 15,
+  "width": 640
+}

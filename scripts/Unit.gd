@@ -8,6 +8,7 @@ class_name Unit
 ## camera zooms in past LOD_ZOOM_IN — see _update_lod / UnitMeshes.figure_mesh.
 
 const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+const GaitLimitsRef = preload("res://scripts/GaitLimits.gd")
 
 ## Emitted from _escape() when this routing unit's flight carries it past the
 ## retreat_bounds margin and it leaves play alive. Group membership cannot carry
@@ -88,6 +89,13 @@ var uid: int = -1
 # Battle._default_loadout). This 0.5 default is the fallback for a bare test unit
 # that never gets a loadout.
 @export var back_speed_fraction: float = 0.5
+# Hard ceiling on a soldier's own fully-integrated body speed (SoldierBodies.step's march
+# feed-forward plus arrival correction combined), as a multiple of move_speed: a man
+# cannot outrun his own sprint just because his formation slot is receding out from under
+# him. GaitLimitsRef.SUPERPHYSICAL_SPEED_FRAC is the single source of truth this default
+# matches, shared with DemoDefects' superphysical_speed metric so the engine's cap and the
+# metric's threshold agree by construction.
+@export var superphysical_speed_frac: float = GaitLimitsRef.SUPERPHYSICAL_SPEED_FRAC
 # Acceleration/deceleration, in world units/s^2 -- how fast this unit's actual speed
 # ramps toward whichever pace it's targeting (see _current_speed below), instead of
 # snapping there instantly. Independent per-type values (Battle sets them from the
@@ -7518,7 +7526,9 @@ func to_snapshot_dict() -> Dictionary:
 		"anti_cavalry": anti_cavalry, "is_cavalry": is_cavalry, "is_ranged": is_ranged,
 		"max_soldiers": max_soldiers, "attack": attack, "defense": defense,
 		"move_speed": move_speed, "walk_speed": walk_speed, "jog_speed": jog_speed,
-		"back_speed_fraction": back_speed_fraction, "accel": accel, "decel": decel,
+		"back_speed_fraction": back_speed_fraction,
+		"superphysical_speed_frac": superphysical_speed_frac,
+		"accel": accel, "decel": decel,
 		"attack_range": attack_range,
 		"weapon_type_id": weapon_type_id, "shield_type_id": shield_type_id,
 		# The deployed weapon and the carried second one travel with the clone too: a
@@ -7627,6 +7637,10 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	walk_speed = float(d["walk_speed"])
 	jog_speed = float(d["jog_speed"])
 	back_speed_fraction = float(d["back_speed_fraction"])
+	# Defaulted rather than required: a snapshot written before this field existed still
+	# applies, falling back to the same shared constant the @export default uses.
+	superphysical_speed_frac = float(
+			d.get("superphysical_speed_frac", GaitLimitsRef.SUPERPHYSICAL_SPEED_FRAC))
 	accel = float(d["accel"])
 	decel = float(d["decel"])
 	attack_range = float(d["attack_range"])

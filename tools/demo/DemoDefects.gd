@@ -76,8 +76,12 @@ const WHIPSAW_MAX_REVERSALS := 4
 const WHIPSAW_MIN_SWING_DEG := 10.0
 ## A soldier moving faster than this multiple of the unit's own sprint, sustained for
 ## MIN_SUSTAIN consecutive samples, is super-physical (a single-sample spike is a
-## legitimate knockback/contact impulse and exempt).
-const SUPERPHYSICAL_SPEED_FRAC := 1.15
+## legitimate knockback/contact impulse and exempt). Read from GaitLimits.gd -- the leaf
+## script SoldierBodies.step()'s own engine-side clamp reads too -- rather than a second
+## hand-kept copy of the fraction, so the metric's threshold and the engine's physical
+## ceiling can never drift apart.
+const GaitLimitsRef = preload("res://scripts/GaitLimits.gd")
+const SUPERPHYSICAL_SPEED_FRAC := GaitLimitsRef.SUPERPHYSICAL_SPEED_FRAC
 ## More than this fraction of a unit's soldiers standing closer to some OTHER soldier's
 ## slot than their own (measured against the FIT-ALIGNED grid, so legitimate turn lag --
 ## a rigid offset the Kabsch fit removes -- cannot fire it), sustained pre-contact, is a

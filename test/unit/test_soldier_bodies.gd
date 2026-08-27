@@ -132,3 +132,62 @@ func test_couple_behaves_identically_whether_or_not_the_handoff_is_present() -> 
 
 	assert_eq(with_handoff.position, without_handoff.position,
 		"couple()'s coupling outcome is identical whether it reused a pre-populated handoff or fell back to computing its own slots")
+
+
+# --- superphysical speed clamp -----------------------------------------------------
+# The arrival correction alone is capped at jog_speed, but the march feed-forward stacks
+# on top of it with no cap of its own -- a body chasing a slot that keeps receding at full
+# march can integrate feed-forward (up to move_speed) PLUS arrival (up to jog_speed)
+# simultaneously. Reproduce that stacking directly: displace one body far BEHIND its slot,
+# along the same axis the whole regiment is marching, so the arrival term and the march
+# feed-forward point the same way instead of cancelling.
+
+func test_body_speed_never_exceeds_the_sprint_based_cap_while_its_slot_recedes_at_full_march() -> void:
+	var dt: float = 1.0 / Replay.PHYSICS_TPS
+	var u := _make_unit(31, 4)
+	u.state = Unit.State.MOVING
+	# A large accel is fixture-only (not a physical claim about this unit type): it lets the
+	# body's velocity ramp fully onto the stacked feed-forward + arrival ceiling within a
+	# handful of ticks instead of the several seconds a normal accel would take, without
+	# changing which velocity the clamp has to bound.
+	u.accel = 4000.0
+	u.seed_sim_soldiers()
+	# facing is DOWN (+Y) -- see _make_unit -- so "behind" the march direction is -Y. The gap
+	# (600 wu) stays far larger than jog_speed can close in a handful of ticks, so the arrival
+	# term saturates at jog_speed (its own cap) for the whole run, exactly like a body whose
+	# slot keeps receding out from under it.
+	u._sim_soldier_pos[0] -= Vector2(0.0, 600.0)
+	u._approach_velocity = u.facing * u.move_speed   # marching at full sprint
+	var cap: float = u.move_speed * u.superphysical_speed_frac
+	var worst_speed := 0.0
+	for _tick in range(15):
+		var before: Vector2 = u._sim_soldier_pos[0]
+		SoldierBodies.step(u, dt)
+		u.position += u._approach_velocity * dt   # the whole regiment marches too
+		worst_speed = maxf(worst_speed, before.distance_to(u._sim_soldier_pos[0]) / dt)
+	assert_true(worst_speed <= cap + 0.01,
+		"soldier 0's fastest integrated speed (%.2f wu/s) must stay within move_speed * superphysical_speed_frac (%.2f wu/s) even while chasing a receding slot at full march" % [worst_speed, cap])
+
+
+func test_body_speed_cap_uses_move_speed_times_the_units_own_frac() -> void:
+	# The cap tracks whatever this unit's own fields say, not a hard-coded number -- a unit
+	# with a different move_speed or a tuned frac gets a correspondingly different ceiling.
+	var dt: float = 1.0 / Replay.PHYSICS_TPS
+	var u := _make_unit(32, 4)
+	u.state = Unit.State.MOVING
+	u.accel = 4000.0
+	u.move_speed = 120.0
+	u.superphysical_speed_frac = 1.3
+	u.seed_sim_soldiers()
+	u._sim_soldier_pos[0] -= Vector2(0.0, 600.0)
+	u._approach_velocity = u.facing * u.move_speed
+	var cap: float = u.move_speed * u.superphysical_speed_frac
+	var worst_speed := 0.0
+	for _tick in range(15):
+		var before: Vector2 = u._sim_soldier_pos[0]
+		SoldierBodies.step(u, dt)
+		u.position += u._approach_velocity * dt
+		worst_speed = maxf(worst_speed, before.distance_to(u._sim_soldier_pos[0]) / dt)
+	assert_true(worst_speed <= cap + 0.01,
+		"the cap follows this unit's own move_speed (%.1f) and superphysical_speed_frac (%.2f), not a fixed constant"
+			% [u.move_speed, u.superphysical_speed_frac])

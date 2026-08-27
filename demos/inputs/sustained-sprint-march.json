@@ -1,0 +1,28 @@
+{
+  "_comment": "Issue #1411: a lone Archers regiment marches south at full sprint for several seconds (gait forced via a quadruple right-click, so it isn't just the last-200wu-before-arrival auto-sprint window) -- the same sustained-sprint shape as the production pace_modes scenario named in the issue. Demonstrates the soldiers tracking their moving formation slots at speed with no superphysical burst: worst per-soldier speed stays comfortably under move_speed * superphysical_speed_frac (103.5 wu/s at this unit's stats) the whole march.",
+  "seed": "20411",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Archers", "x": 400.0, "y": 150.0, "facing": [0.0, 1.0], "formation": 0}
+  ],
+  "camera": [
+    {"tick": 0, "x": 400.0, "y": 250.0, "zoom": 1.0},
+    {"tick": 420, "x": 400.0, "y": 500.0, "zoom": 0.85}
+  ],
+  "steps": [
+    {"tick": 8, "click": [400.0, 150.0]},
+    {"tick": 20, "rmb_click": [400.0, 750.0]},
+    {"tick": 21, "rmb_click": [400.0, 750.0]},
+    {"tick": 22, "rmb_click": [400.0, 750.0]},
+    {"tick": 23, "rmb_click": [400.0, 750.0]}
+  ],
+  "state": [8, 20, 60, 120, 180, 220, 240, 260, 280, 300, 320, 340, 360, 380, 400, 420],
+  "fixed_fps": 30,
+  "max_frames": 220,
+  "fps": 15,
+  "width": 640,
+  "expect": [
+    {"tick": 23, "uid": 0, "field": "current_order", "value": "MOVE"},
+    {"tick": [220, 300], "uid": 0, "field": "current_speed", "value": 90.0}
+  ]
+}
