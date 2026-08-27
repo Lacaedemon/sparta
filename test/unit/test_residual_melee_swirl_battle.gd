@@ -270,6 +270,8 @@ func _clash_window(seed_value: int) -> Dictionary:
 	while true:
 		await get_tree().physics_frame
 		tick += 1
+		if not (is_instance_valid(a) and is_instance_valid(b)):
+			break   # a fully annihilated regiment frees its node; stop sampling freed refs
 		worst = maxf(worst, rad_to_deg(absf(a.facing.angle_to(start_a))))
 		worst = maxf(worst, rad_to_deg(absf(b.facing.angle_to(start_b))))
 		casualties = (REGIMENT_COUNT - a.soldiers) + (REGIMENT_COUNT - b.soldiers)
@@ -279,7 +281,8 @@ func _clash_window(seed_value: int) -> Dictionary:
 			break
 		if first_cas > 0 and tick >= first_cas + ARMED_WINDOW_TICKS:
 			break
-	var fought: bool = (a.state == Unit.State.FIGHTING or a.state == Unit.State.DEAD) \
+	var fought: bool = is_instance_valid(a) and is_instance_valid(b) \
+		and (a.state == Unit.State.FIGHTING or a.state == Unit.State.DEAD) \
 		and (b.state == Unit.State.FIGHTING or b.state == Unit.State.DEAD)
 	return {"worst": worst, "fought": fought, "casualties": casualties, "first_cas": first_cas}
 

@@ -210,6 +210,7 @@ func test_pursuer_is_physically_blocked_by_the_rearguard_while_the_main_body_esc
 		for uid in live_units:
 			if live_units[uid].is_rearguard_detachment:
 				rearguard = live_units[uid]
+				break
 		if rearguard == null or not is_instance_valid(rearguard):
 			break   # lifetime expired (or destroyed) -- the proof window is over
 		if pursuer.state == Unit.State.FIGHTING:
