@@ -747,7 +747,8 @@ of field:
   last man into an enveloped kill-in-place 13-80 ticks after the rout, with
   no observable casualties while routing -- across ALL 8 seeds tried, so it
   was the staging, not seed chaos.
-- **Translating the WHOLE scene by exactly +1200 (spearmen included)**
+
+- **Translating the WHOLE scene by exactly +1200** (spearmen included)
   reproduced the original chase arc (rout ~tick 1200, annihilation ~tick
   2830).
 
