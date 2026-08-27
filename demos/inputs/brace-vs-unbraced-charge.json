@@ -1,10 +1,10 @@
 {
-  "_comment": "Two identical Spearmen lines face an identical cavalry charge. The right line (uid 1) is ordered to Brace early and settles well before contact; the left line (uid 0) is left at the merely-engaged default. Demonstrates the graded soldier_brace() formula (issue #1105).",
+  "_comment": "Two identical Spearmen lines face an identical cavalry charge. The right line (uid 1) is ordered to Brace early and settles well before contact; the left line (uid 0) is left at the no-order default, which holds formation rather than auto-advancing. Both lines therefore wait in place. The left-hand cavalry spawns 30 wu closer (y=770 vs 800) so its charge lands inside the 240-frame / 480-tick window -- with equal spawn depth the left pair only meets around tick 520, past the cutoff this clip keeps so a charging regiment does not outrun its own contact resistance and punch through the braced line. Demonstrates the graded soldier_brace() formula: on impact the unbraced line is shoved forward into the melee (its own rear is -y), while the braced line holds near where it stood. World coordinates; physics ticks (60/s).",
   "seed": "12345",
   "scenario": [
     { "team": 0, "type": "Spearmen", "x": 400, "y": 400, "count": 40 },
     { "team": 0, "type": "Spearmen", "x": 700, "y": 400, "count": 40 },
-    { "team": 1, "type": "Cavalry", "x": 400, "y": 800, "count": 40 },
+    { "team": 1, "type": "Cavalry", "x": 400, "y": 770, "count": 40 },
     { "team": 1, "type": "Cavalry", "x": 700, "y": 800, "count": 40 }
   ],
   "camera": [ { "tick": 0, "x": 550, "y": 620, "zoom": 1.0 } ],
@@ -17,10 +17,13 @@
   "fps": 15,
   "width": 720,
   "state": [5, 65, 200, 400, 460, 480],
-  "spawn_fingerprint": "76b0d1bfe076367d9d5e51293d57e250",
+  "spawn_fingerprint": "0d185bb095a974270cd71a890d386ac0",
   "expect": [
     { "tick": [5, 65], "uid": 1, "field": "order_mode", "value": "Brace" },
-    { "tick": [400, 480], "uid": 0, "field": "state", "value": "MOVING" },
-    { "tick": [460, 480], "uid": 1, "field": "engaged", "value": true }
+    { "tick": 5, "uid": 0, "field": "state", "value": "IDLE" },
+    { "tick": 200, "uid": 0, "field": "state", "value": "IDLE" },
+    { "tick": 400, "uid": 0, "field": "state", "value": "IDLE" },
+    { "tick": [460, 480], "uid": 0, "field": "state", "value": "FIGHTING" },
+    { "tick": 480, "uid": 1, "field": "engaged", "value": true }
   ]
 }
