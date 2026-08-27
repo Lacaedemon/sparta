@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/knockback-focus.json",
+  "caption": "A player Infantry unit attacks an enemy line under Knockback Focus. Settled, on-slot defenders struck by knockback impulses now preserve their carried-over velocity through SoldierBodies.step() rather than having it zeroed upon slot alignment, allowing the full recoil and smooth arrival recovery to play out as intended.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 640
+}
