@@ -35,15 +35,16 @@ extends GutTest
 # onset is a charge into contact, not a long approach, and the onset budget stays generous so
 # a physics retune that shifts *when* the block breaks doesn't push the arc past the budget.
 #
-# Budgets re-measured under the close-order density rebalance (an intended pace change):
-# the whole arc runs slower now -- the block breaks around tick 650 locally and around
-# tick 940 on CI (a 12v12-plus-cavalry chase is squarely in the chaotic regime where
-# local and CI runs of one seed diverge), and the pursuit finishes it around tick 2040
-# locally. The onset budget carries ~1.5x over the CI reading and the chase margin sizes
-# the total to ~1.8x the locally measured annihilation tick, so a CI-side arc up to
-# ~1.4x slower than local still lands inside it.
-const ROUT_ONSET_BUDGET := 1400  # ticks allowed for the block to break and start routing
-const CHASE_MARGIN := 2000       # slack past ROUT_TIME for the pursuit to catch and finish it
+# Budgets re-measured under the close-order density rebalance (an intended pace change)
+# at the tall-field deep-south staging: the block breaks around tick 1200 locally and the
+# pursuit grinds it to the last man by around tick 2830 locally. The observed local/CI
+# divergence factors on this arc's earlier staging were ~1.45x on the rout onset and
+# ~1.9x on the chase length, so the onset budget carries ~1.8x over the local reading and
+# the total budget (~6160 ticks) carries ~1.3x over a CI arc extrapolated at those
+# factors (~4830). A 12v12-plus-cavalry chase is squarely in the chaotic regime where
+# local and CI runs of one seed diverge, which is what all that headroom is for.
+const ROUT_ONSET_BUDGET := 2200  # ticks allowed for the block to break and start routing
+const CHASE_MARGIN := 3600       # slack past ROUT_TIME for the pursuit to catch and finish it
 
 
 var _battle: Node = null
@@ -74,12 +75,22 @@ func _spawn_rout_rally_battle() -> void:
 	Replay.forced_seed = 12345
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	_battle = battle
-	# The exact matchup from demos/inputs/rout-rally-recover.json.
+	# The exact matchup and map from demos/inputs/rout-rally-recover.json: a tall flat
+	# field with the whole scene staged in the deep south, so the flee lane north is
+	# ~1800 wu -- roughly 5x the locally measured flight -- and a slower platform's
+	# longer chase still ends in a kill, not an escape (the default 1200-tall field
+	# measured an ESCAPE on CI under the rebalanced pace). The translation moves every
+	# actor by exactly +1200 INCLUDING the safe spearmen anchor: the cavalry AI's
+	# target scoring sees that anchor's relative position, and re-staging it (measured
+	# across 8 seeds) flips the arc from a clean chase to an enveloped kill-in-place
+	# with no observable pursuit casualties.
+	battle.field = Rect2(0, 0, 1600, 2400)
+	battle.terrain = []
 	battle.scenario = [
-		{"team": 0, "type": "Infantry", "x": 800, "y": 430, "count": 12, "morale": 1.0},
-		{"team": 0, "type": "Spearmen", "x": 300, "y": 300, "count": 140, "morale": 100.0},
-		{"team": 1, "type": "Cavalry", "x": 740, "y": 500, "count": 12},
-		{"team": 1, "type": "Cavalry", "x": 860, "y": 500, "count": 12},
+		{"team": 0, "type": "Infantry", "x": 800, "y": 1630, "count": 12, "morale": 1.0},
+		{"team": 0, "type": "Spearmen", "x": 300, "y": 1500, "count": 140, "morale": 100.0},
+		{"team": 1, "type": "Cavalry", "x": 740, "y": 1700, "count": 12},
+		{"team": 1, "type": "Cavalry", "x": 860, "y": 1700, "count": 12},
 	]
 	add_child_autofree(battle)
 
