@@ -3849,6 +3849,9 @@ func _separate(delta: float) -> void:
 				var dissolve := minf(_combat_intermixing, other._combat_intermixing)
 				min_dist *= (1.0 - dissolve)
 		var offset: Vector2 = position - other.position
+		# ⚡ Bolt: Fast path to avoid computing offset.length() for pairs that are far away.
+		if offset.length_squared() >= min_dist * min_dist:
+			continue
 		var d: float = offset.length()
 		if d >= min_dist:
 			continue

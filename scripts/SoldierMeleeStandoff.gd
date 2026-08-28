@@ -75,9 +75,11 @@ static func standoff_bias(pos: Vector2, enemy_pos: Vector2, my_reach: float, ene
 	if my_reach >= enemy_reach:
 		return Vector2.ZERO
 	var offset: Vector2 = enemy_pos - pos
-	var d: float = offset.length()
-	if d <= my_reach:
+	# ⚡ Bolt: Fast path out early using squared distance comparison,
+	# skipping the costly `.length()` calculation when inside reach.
+	if offset.length_squared() <= my_reach * my_reach:
 		return Vector2.ZERO   # already inside my own reach -- I can already strike
+	var d: float = offset.length()
 	return (offset / maxf(d, 0.01)) * STANDOFF_STRENGTH
 
 
