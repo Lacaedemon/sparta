@@ -3849,10 +3849,9 @@ func _separate(delta: float) -> void:
 				var dissolve := minf(_combat_intermixing, other._combat_intermixing)
 				min_dist *= (1.0 - dissolve)
 		var offset: Vector2 = position - other.position
-		# ⚡ Bolt: Fast path to avoid computing offset.length() for pairs that are far away.
-		if offset.length_squared() >= min_dist * min_dist:
-			continue
 		var d: float = offset.length()
+		if d >= min_dist:
+			continue
 		# Share of the correction this unit takes: 0.5 soft (the pair splits it),
 		# but a spear line holds firm against enemy cavalry — 0 for the spearman,
 		# 1 for the horse — so cavalry can't ride through a screen (hard block).
