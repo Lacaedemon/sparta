@@ -194,8 +194,6 @@ static func _overlaps_friendly(u: Unit, sorted_units: Array, extents: Dictionary
 			continue   # cheap circumradius reject -- the blocks can't possibly overlap
 		lengths += 1
 		var d: float = delta.length()
-		if d >= max_dist:
-			continue
 		if _oriented_overlap(delta, d, half_extents[u], angles[u], half_extents[v], angles[v]):
 			SimOps.add(SimOps.SQRT_EVAL, lengths)
 			return true
