@@ -385,6 +385,40 @@ func test_corridor_to_slot_monotonic_scaling_routes_direct() -> void:
 		"monotonic quadrant contraction must route directly to slot y")
 
 
+func test_lane_follower_caps_overtaking_body_under_file_major() -> void:
+	var u := _make_unit(55, 60)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.MOVING
+	u.facing = Vector2.DOWN
+	u._approach_velocity = Vector2.DOWN * 40.0
+	var files: int = u.formation_files(u.soldiers)
+	assert_true(files > 0, "unit must have positive files")
+	u._ensure_file_assignment(u.soldiers, files)
+
+	# Pick two soldiers in the same file:
+	var file_0_bodies: Array = []
+	for i in range(u.soldiers):
+		if u._sim_soldier_file[i] == 0:
+			file_0_bodies.append(i)
+	assert_true(file_0_bodies.size() >= 2, "must have at least 2 bodies in file 0")
+	var front_idx: int = file_0_bodies[0]
+	var rear_idx: int = file_0_bodies[1]
+
+	# Place rear body directly behind front body within follow distance:
+	var front_pos := Vector2(800.0, 300.0)
+	var rear_pos := Vector2(800.0, 294.0)
+	u._sim_soldier_pos[front_idx] = front_pos
+	u._sim_soldier_pos[rear_idx] = rear_pos
+	u._sim_body_vel[front_idx] = Vector2.DOWN * 10.0
+	u._sim_body_vel[rear_idx] = Vector2.DOWN * 80.0
+
+	SoldierBodies.step(u, 1.0 / 60.0)
+
+	assert_lte(u._sim_body_vel[rear_idx].y, u._sim_body_vel[front_idx].y + 0.1,
+		"rear soldier in file lane must be capped to front soldier forward speed")
+
+
+
 
 
 

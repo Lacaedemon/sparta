@@ -55,6 +55,9 @@ const CORRIDOR_PROXIMITY_MULT: float = 1.5
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
 # Stagger fraction between alternate soldier lanes in perimeter corridor.
 const CORRIDOR_LANE_STAGGER_FRAC: float = 0.25
+# Distance and lateral clearances for intra-file lane follower speed damping:
+const LANE_FOLLOWER_DIST_MULT: float = 0.9
+const LANE_FOLLOWER_LATERAL_MULT: float = 1.5
 
 
 ## Seed a unit's bodies onto its current formation slots, at rest (zero velocity) and
@@ -284,6 +287,47 @@ static func step(unit: Unit, delta: float) -> void:
 	var files: int = unit.formation_files(n)
 	var body_radius: float = unit.soldier_body_radius()
 	var two_bodies: float = body_radius * 2.0
+	var turning: bool = unit.is_maneuver_turning()
+	# Precompute true file-column front and rear neighbors in O(n) for lane follower speed damping:
+	var file_front_neighbor: PackedInt32Array = PackedInt32Array()
+	var file_rear_neighbor: PackedInt32Array = PackedInt32Array()
+	if not turning and unit.state == Unit.State.MOVING and not unit._reform_holding() and files > 0:
+		file_front_neighbor.resize(n)
+		file_front_neighbor.fill(-1)
+		file_rear_neighbor.resize(n)
+		file_rear_neighbor.fill(-1)
+		if unit._sim_soldier_file.size() == n:
+			var max_r: int = ceili(float(n) / float(files)) + 2
+			var grid: PackedInt32Array = PackedInt32Array()
+			grid.resize(files * max_r)
+			grid.fill(-1)
+			var explicit: bool = unit._sim_soldier_rank.size() == n
+			var rank_counts: PackedInt32Array = PackedInt32Array()
+			if not explicit:
+				rank_counts.resize(files)
+			var soldier_ranks: PackedInt32Array = PackedInt32Array()
+			soldier_ranks.resize(n)
+			for j in range(n):
+				var f: int = clampi(unit._sim_soldier_file[j], 0, files - 1)
+				var r: int = maxi(0, unit._sim_soldier_rank[j]) if explicit else rank_counts[f]
+				if not explicit:
+					rank_counts[f] += 1
+				soldier_ranks[j] = r
+				if r >= 0 and r < max_r:
+					grid[f * max_r + r] = j
+			for j in range(n):
+				var f: int = clampi(unit._sim_soldier_file[j], 0, files - 1)
+				var r: int = soldier_ranks[j]
+				if r > 0 and r - 1 < max_r:
+					file_front_neighbor[j] = grid[f * max_r + r - 1]
+				if r + 1 < max_r:
+					file_rear_neighbor[j] = grid[f * max_r + r + 1]
+		else:
+			for j in range(n):
+				if j - files >= 0:
+					file_front_neighbor[j] = j - files
+				if j + files < n:
+					file_rear_neighbor[j] = j + files
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
@@ -308,7 +352,6 @@ static func step(unit: Unit, delta: float) -> void:
 		# instead of chasing the swinging slots. This covers the order-driven maneuvers (the
 		# drill turns and the wheel, read off current_order) AND the engage re-face (a fighting
 		# unit turning its front onto a new enemy) -- see Unit.is_maneuver_turning.
-		var turning: bool = unit.is_maneuver_turning()
 		var own_slot: Vector2 = target_slots[i]
 		var to_slot: Vector2 = Vector2.ZERO if turning \
 				else _corridor_to_slot(unit, i, own_slot, n)
@@ -374,22 +417,23 @@ static func step(unit: Unit, delta: float) -> void:
 				# subsequent ticks.
 				new_vel = step_vel - dir * max_inbound
 		# Lane follower forward speed cap: prevent sprinting through a friendly body directly ahead in the file lane:
-		if not turning and unit.state == Unit.State.MOVING and not unit._reform_holding() and files > 0:
+		if file_front_neighbor.size() == n:
 			var speed_sq: float = step_vel.length_squared()
 			if speed_sq > 0.01:
 				var my_speed: float = sqrt(speed_sq)
 				var v_dir: Vector2 = step_vel / my_speed
 				var my_pos: Vector2 = unit._sim_soldier_pos[i]
-				var min_follow_dist: float = two_bodies * 0.9
-				# Bounded O(1) check against immediate file-column neighbors:
-				var prev_file_idx: int = i - files
-				var next_file_idx: int = i + files
+				var min_follow_dist: float = two_bodies * LANE_FOLLOWER_DIST_MULT
+				var max_lat_dist: float = body_radius * LANE_FOLLOWER_LATERAL_MULT
+				# Bounded O(1) check against resolved file-column neighbors:
+				var prev_file_idx: int = file_front_neighbor[i]
+				var next_file_idx: int = file_rear_neighbor[i]
 				if prev_file_idx >= 0 and prev_file_idx < n:
 					var other_pos: Vector2 = unit._sim_soldier_pos[prev_file_idx]
 					var d_fwd: float = (other_pos - my_pos).dot(v_dir)
 					if d_fwd > 0.0 and d_fwd < min_follow_dist:
 						var d_lat: float = absf((other_pos - my_pos).cross(v_dir))
-						if d_lat < body_radius * 1.5:
+						if d_lat < max_lat_dist:
 							var other_fwd_speed: float = maxf(0.0, unit._sim_body_vel[prev_file_idx].dot(v_dir))
 							if my_speed > other_fwd_speed:
 								var excess: float = my_speed - other_fwd_speed
@@ -401,7 +445,7 @@ static func step(unit: Unit, delta: float) -> void:
 					var d_fwd: float = (other_pos - my_pos).dot(v_dir)
 					if d_fwd > 0.0 and d_fwd < min_follow_dist:
 						var d_lat: float = absf((other_pos - my_pos).cross(v_dir))
-						if d_lat < body_radius * 1.5:
+						if d_lat < max_lat_dist:
 							var other_fwd_speed: float = maxf(0.0, unit._sim_body_vel[next_file_idx].dot(v_dir))
 							if my_speed > other_fwd_speed:
 								var excess: float = my_speed - other_fwd_speed
