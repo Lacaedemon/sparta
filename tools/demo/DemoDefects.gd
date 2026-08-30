@@ -376,6 +376,9 @@ static func analyze(snapshots: Array) -> Dictionary:
 ## - the soldier count dropped since the previous sample: casualties compact
 ##   the arrays and the survivors converge on re-dealt slots, a legitimate
 ##   transient the superphysical check already skips for the same reason;
+## - the unit reshaped (formation mode or frontage change) on the current or
+##   preceding sample: ranks expanding, contracting, or wheeling to new slots
+##   are in physical transit during the transition window;
 ## - fewer than 2 bodies remain: nnd_stats returns zeros for a lone survivor,
 ##   which would read as maximal compression forever.
 static func judged_mask(s: Dictionary) -> Array:
