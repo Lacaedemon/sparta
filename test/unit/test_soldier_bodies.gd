@@ -220,3 +220,62 @@ func test_on_slot_body_preserves_carried_knockback_velocity_through_step() -> vo
 	assert_true(u._sim_soldier_pos[0].distance_to(initial_slot) > 1.0,
 		"on-slot body carrying knockback must advance away from slot by its integrated displacement")
 
+
+# --- corridor routing inward rank approach & rear rank arrivals --------------------
+
+func test_corridor_to_slot_inward_approach_does_not_fling_to_flank() -> void:
+	var u := _make_unit(50, 40)
+	u.seed_sim_soldiers()
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	# Slot 0 is in the front rank. Place body 0 slightly displaced inward along the rank
+	# but marginally behind the front rank by 0.6 * rank_pitch.
+	var own_slot: Vector2 = slots[0]
+	var ang: float = u.soldier_block_world_angle()
+	var rank_pitch: float = u.rank_pitch_wu()
+	var spacing: float = u.file_pitch_wu()
+
+	# Position body 0 between flank and slot, slightly behind front rank:
+	# In local space: t_local.y is front. Displace p_local by +0.6 * rank_pitch in depth
+	# and +2.0 * spacing laterally from slot toward flank.
+	var t_local: Vector2 = (own_slot - u.position).rotated(-ang)
+	var flank_sign: float = 1.0 if t_local.x >= 0.0 else -1.0
+	var p_local: Vector2 = Vector2(t_local.x + flank_sign * spacing * 2.0, t_local.y + rank_pitch * 0.6)
+	u._sim_soldier_pos[0] = u.position + p_local.rotated(ang)
+
+	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, 0, own_slot, u.soldiers)
+	var target_pos: Vector2 = u._sim_soldier_pos[0] + to_target
+	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
+
+	# Target x should head inward toward t_local.x, NOT outward toward flank
+	var dx_to_slot: float = absf(target_local.x - t_local.x)
+	var dx_to_flank: float = absf(target_local.x - (t_local.x + flank_sign * spacing * 10.0))
+	assert_true(dx_to_slot < dx_to_flank,
+		"a body walking inward along its target rank must steer inward toward its slot (dx=%.2f), not outward to the outer flank" % dx_to_slot)
+
+
+func test_corridor_to_slot_rear_rank_arrival_routes_directly() -> void:
+	var u := _make_unit(51, 40)
+	u.seed_sim_soldiers()
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	# Slot 39 is in the rear rank. Displace body 39 slightly behind the rear rank.
+	var rear_idx: int = u.soldiers - 1
+	var own_slot: Vector2 = slots[rear_idx]
+	var ang: float = u.soldier_block_world_angle()
+	var depth: float = u.rank_pitch_wu()
+	var spacing: float = u.file_pitch_wu()
+
+	var t_local: Vector2 = (own_slot - u.position).rotated(-ang)
+	# Displaced 1 rank behind rear rank and 1 file laterally:
+	var p_local: Vector2 = Vector2(t_local.x + spacing * 1.0, t_local.y + depth * 1.0)
+	u._sim_soldier_pos[rear_idx] = u.position + p_local.rotated(ang)
+
+	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, rear_idx, own_slot, u.soldiers)
+	var target_pos: Vector2 = u._sim_soldier_pos[rear_idx] + to_target
+	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
+
+	# Target lateral x should be t_local.x (the rear slot's column along the rear corridor),
+	# not the outer flank of the unit:
+	assert_almost_eq(target_local.x, t_local.x, 0.1,
+		"rear-rank slot arrival routes along rear corridor directly to slot file (%.2f), not to outer flank" % target_local.x)
+
+
