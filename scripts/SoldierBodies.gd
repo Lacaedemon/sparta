@@ -671,24 +671,18 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 	var rank_pitch: float = unit.rank_pitch_wu()
 	var depth: float = rank_pitch if rank_pitch >= 0.0 else spacing
 
-	# Radial grid scaling (uniform density contraction or expansion) moves directly to slot:
-	var same_quadrant: bool = (p_local.x * t_local.x >= -0.01) and (p_local.y * t_local.y >= -0.01)
-	if same_quadrant:
-		var p_sq: float = p_local.length_squared()
-		var t_sq: float = t_local.length_squared()
-		if p_sq < 0.0001 or t_sq < 0.0001:
-			if unit._formation_mirror_x:
-				t_local.x = -t_local.x
-			var target_world_direct: Vector2 = unit.position + t_local.rotated(ang)
-			return target_world_direct - pos
-		var cross: float = absf(p_local.x * t_local.y - p_local.y * t_local.x)
-		var sin_sq: float = (cross * cross) / (p_sq * t_sq)
-		# Collinear radial scaling from formation origin (sin < 0.35, angle < 20 deg):
-		if sin_sq < 0.12:
-			if unit._formation_mirror_x:
-				t_local.x = -t_local.x
-			var target_world_direct: Vector2 = unit.position + t_local.rotated(ang)
-			return target_world_direct - pos
+	# Radial grid scaling (uniform density contraction or expansion during march):
+	if marching and unit.state == Unit.State.MOVING and not unit._reform_holding():
+		var same_quadrant: bool = (p_local.x * t_local.x >= -0.01) and (p_local.y * t_local.y >= -0.01)
+		if same_quadrant and absf(t_local.x) > spacing * 0.2 and absf(t_local.y) > depth * 0.2:
+			var k_x: float = p_local.x / t_local.x
+			var k_y: float = p_local.y / t_local.y
+			if absf(k_x - k_y) < 0.3 and k_x > 0.4 and k_x < 2.5:
+				if unit._formation_mirror_x:
+					t_local.x = -t_local.x
+				var target_world_direct: Vector2 = unit.position + t_local.rotated(ang)
+				return target_world_direct - pos
+
 
 	# Only route through perimeter corridors when moving across both ranks and files:
 	if absf(p_local.y - t_local.y) > depth * 0.5 and absf(p_local.x - t_local.x) > spacing * 0.5:

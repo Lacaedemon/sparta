@@ -223,6 +223,9 @@ func test_on_slot_body_preserves_carried_knockback_velocity_through_step() -> vo
 
 func test_corridor_to_slot_monotonic_scaling_routes_direct() -> void:
 	var u := _make_unit(55, 60)
+	u.state = Unit.State.MOVING
+	u.facing = Vector2.DOWN
+	u._approach_velocity = Vector2.DOWN * 40.0
 	u.seed_sim_soldiers()
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	var slot_idx: int = 0
