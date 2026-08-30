@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/funnel-hug-lanes.json",
-  "caption": "Refined perimeter corridor routing ensures marching units navigate terrain obstacles with tight formation integrity without false flank detours.",
+  "input": "demos/inputs/bolt-perf.json",
+  "caption": "Backend-only performance optimization: distance checks in high-frequency loops (SoldierMeleeStandoff.standoff_bias and SoldierSteering._overlaps_friendly) use length_squared() pre-filtering to avoid square roots, verified with identical visual combat flow.",
   "fixed_fps": 30,
-  "max_frames": 540,
+  "max_frames": 300,
   "fps": 15,
   "width": 640
 }
