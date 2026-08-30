@@ -360,6 +360,33 @@ func test_corridor_to_slot_stationary_moderate_lag_routes_via_corridor() -> void
 		"a stationary reform body exceeding stationary thresholds must route via corridor (dx=%.2f), not cut through standing ranks" % dx_to_slot)
 
 
+func test_corridor_to_slot_monotonic_scaling_routes_direct() -> void:
+	var u := _make_unit(55, 60)
+	u.seed_sim_soldiers()
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var slot_idx: int = 0
+	var own_slot: Vector2 = slots[slot_idx]
+	var ang: float = u.soldier_block_world_angle()
+	var rank_pitch: float = u.rank_pitch_wu()
+	var spacing: float = u.file_pitch_wu()
+
+	# Place body in the same quadrant with inward contraction displacement:
+	var t_local: Vector2 = (own_slot - u.position).rotated(-ang)
+	var p_local: Vector2 = Vector2(t_local.x * 1.5, t_local.y * 1.5)
+	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
+
+	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers)
+	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
+	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
+
+	assert_almost_eq(target_local.x, t_local.x, 0.1,
+		"monotonic quadrant contraction must route directly to slot, not detour via flank")
+	assert_almost_eq(target_local.y, t_local.y, 0.1,
+		"monotonic quadrant contraction must route directly to slot y")
+
+
+
+
 
 
 

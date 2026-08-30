@@ -303,6 +303,7 @@ static func analyze(snapshots: Array) -> Dictionary:
 				series[uid] = {
 					"ticks": [], "engaged": [], "in_enemy_contact": [],
 					"moving": [], "routing": [], "counts": [],
+					"formation": [], "frontage": [],
 					"nnd_min": [], "nnd_med": [], "angle": [], "residual": [],
 					"misslotted": [], "facing_angle": [], "pos": [],
 					"motion_ref": u["motion_ref"],
@@ -321,6 +322,8 @@ static func analyze(snapshots: Array) -> Dictionary:
 			s["moving"].append(String(u.get("state", "")) == "MOVING")
 			s["routing"].append(String(u.get("state", "")) == "ROUTING")
 			s["counts"].append(bodies.size())
+			s["formation"].append(String(u.get("formation", "")))
+			s["frontage"].append(int(u.get("frontage", 0)))
 			s["nnd_min"].append(nnd["min"])
 			s["nnd_med"].append(nnd["median"])
 			s["angle"].append(fit["angle"])
@@ -380,11 +383,17 @@ static func judged_mask(s: Dictionary) -> Array:
 	var contact: Array = []
 	for i in range(n):
 		contact.append(bool(s["engaged"][i]) or bool(s["in_enemy_contact"][i]))
+	var reshaped: Array = []
+	for i in range(n):
+		reshaped.append(i > 0 and (
+				(s.has("formation") and s["formation"].size() > i and String(s["formation"][i]) != String(s["formation"][i - 1]))
+				or (s.has("frontage") and s["frontage"].size() > i and int(s["frontage"][i]) != int(s["frontage"][i - 1]))
+		))
 	var mask: Array = []
 	for i in range(n):
 		var ok: bool = not contact[i] and not s["routing"][i] \
 				and int(s["counts"][i]) >= 2
-		if ok and i > 0 and (contact[i - 1] or int(s["counts"][i]) < int(s["counts"][i - 1])):
+		if ok and i > 0 and (contact[i - 1] or int(s["counts"][i]) < int(s["counts"][i - 1]) or reshaped[i] or reshaped[i - 1]):
 			ok = false
 		if ok and i + 1 < n and contact[i + 1]:
 			ok = false
@@ -504,7 +513,9 @@ static func _sustained_verdict(uid: int, metric: String, s: Dictionary, key: Str
 		else:
 			var improving := false
 			if not is_nan(prev_v):
-				var margin: float = absf(prev_v) * CONVERGING_IMPROVEMENT_FRAC
+				var dt: float = float(int(s["ticks"][i]) - int(s["ticks"][i - 1])) if i > 0 else 60.0
+				var dt_scale: float = maxf(0.1, dt / 60.0)
+				var margin: float = absf(prev_v) * CONVERGING_IMPROVEMENT_FRAC * dt_scale
 				improving = (v < prev_v - margin) if above else (v > prev_v + margin)
 			run = 1 if improving else run + 1
 		worst_run = maxi(worst_run, run)

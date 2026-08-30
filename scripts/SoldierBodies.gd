@@ -281,6 +281,9 @@ static func step(unit: Unit, delta: float) -> void:
 	# looking it up once per unit-step -- like body_accel and max_arrive above -- avoids
 	# allocating a fresh combat_profile() Dictionary on every soldier, every tick.
 	var mass: float = unit.combat_profile()["mass"]
+	var files: int = unit.formation_files(n)
+	var body_radius: float = unit.soldier_body_radius()
+	var two_bodies: float = body_radius * 2.0
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
@@ -370,6 +373,28 @@ static func step(unit: Unit, delta: float) -> void:
 				# post-step stored velocity so leftover arrival speed does not coast past the slot on
 				# subsequent ticks.
 				new_vel = step_vel - dir * max_inbound
+		# Lane follower forward speed cap: prevent sprinting through a friendly body directly ahead in travel path:
+		if not turning and unit.state == Unit.State.MOVING and not unit._reform_holding():
+			var speed_sq: float = step_vel.length_squared()
+			if speed_sq > 0.01:
+				var my_speed: float = sqrt(speed_sq)
+				var v_dir: Vector2 = step_vel / my_speed
+				var my_pos: Vector2 = unit._sim_soldier_pos[i]
+				var min_follow_dist: float = two_bodies * 0.9
+				for j in range(n):
+					if j == i:
+						continue
+					var other_pos: Vector2 = unit._sim_soldier_pos[j]
+					var d_fwd: float = (other_pos - my_pos).dot(v_dir)
+					if d_fwd > 0.0 and d_fwd < min_follow_dist:
+						var d_lat: float = absf((other_pos - my_pos).cross(v_dir))
+						if d_lat < body_radius * 1.5:
+							var other_fwd_speed: float = maxf(0.0, unit._sim_body_vel[j].dot(v_dir))
+							if my_speed > other_fwd_speed:
+								var excess: float = my_speed - other_fwd_speed
+								step_vel -= v_dir * excess
+								new_vel -= v_dir * excess
+								my_speed = other_fwd_speed
 		# Cap individual soldier speed to this unit's own jog pace while the unit is
 		# stationary: during the reform hold phase AND whenever a formation reshape
 		# (frontage change, centre pivot) plays out on an idle unit. A marching unit is
@@ -404,6 +429,7 @@ static func step(unit: Unit, delta: float) -> void:
 		# MultiMesh rewrite while a block sits at rest (REST_SPEED is well below visible).
 		if unit._sim_body_vel[i].length_squared() > REST_SPEED * REST_SPEED:
 			unit._render_dirty = true
+
 	# One arrival integration per body, each with exactly one `to_slot.length()`.
 	SimOps.add(SimOps.BODY_STEP, n)
 	SimOps.add(SimOps.SQRT_EVAL, n)
@@ -574,6 +600,26 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 	var marching: bool = unit._approach_velocity.length_squared() > 0.0001
 	var min_rank_depth: float = depth * 1.5 if marching else depth * 0.5
 	var min_file_spacing: float = spacing * 1.0 if marching else spacing * 0.5
+
+	# Radial grid scaling (uniform density contraction or expansion) moves directly to slot:
+	var same_quadrant: bool = (p_local.x * t_local.x >= -0.01) and (p_local.y * t_local.y >= -0.01)
+	if same_quadrant:
+		var p_sq: float = p_local.length_squared()
+		var t_sq: float = t_local.length_squared()
+		if p_sq < 0.0001 or t_sq < 0.0001:
+			if unit._formation_mirror_x:
+				t_local.x = -t_local.x
+			var target_world_direct: Vector2 = unit.position + t_local.rotated(ang)
+			return target_world_direct - pos
+		var cross: float = absf(p_local.x * t_local.y - p_local.y * t_local.x)
+		var sin_sq: float = (cross * cross) / (p_sq * t_sq)
+		# Collinear radial scaling from formation origin (sin < 0.35, angle < 20 deg):
+		if sin_sq < 0.12:
+			if unit._formation_mirror_x:
+				t_local.x = -t_local.x
+			var target_world_direct: Vector2 = unit.position + t_local.rotated(ang)
+			return target_world_direct - pos
+
 	# Only route through perimeter corridors when moving across both ranks and files:
 	if absf(p_local.y - t_local.y) > min_rank_depth and absf(p_local.x - t_local.x) > min_file_spacing:
 		var files: int = unit.formation_files(n)
