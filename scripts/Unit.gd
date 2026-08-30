@@ -1058,6 +1058,13 @@ const MORALE_RECOVER_PER_SEC: float = 2.0
 const MERGE_COHESION_FLOOR: float = 0.6
 const COHESION_RECOVER_PER_SEC: float = 0.1
 
+# Scrambling ranks or changing formation density/stance while moving faster than
+# walk speed breaks cadence and dress. Drops speed to walk_speed, resets charge
+# momentum, and inflicts a transient cohesion drop and fatigue cost.
+const SPRINT_RESHAPE_COHESION_PENALTY: float = 0.25
+const SPRINT_RESHAPE_COHESION_FLOOR: float = 0.5
+const SPRINT_RESHAPE_FATIGUE_PENALTY: float = 15.0
+
 # Per-type collision footprint: the center-to-center separation floor used in
 # _separate(). RADIUS stays the visual/contact size; this is purely the body
 # width for crowding, assigned per type in _ready(). Each stays below that type's
@@ -3555,6 +3562,7 @@ func set_formation(mode: int) -> void:
 		# line: the bodies have moved since, and reusing it would put the reform back
 		# on an arbitrary labelling. -1 forces the next query to pair fresh.
 		_square_slot_files = -1
+		_apply_moving_reshape_penalty()
 	formation_mode = mode
 	var base := _base_separation_radius
 	# The close-order stances all build on TIGHT's locked-shield collision footprint.
@@ -3576,6 +3584,20 @@ func set_formation(mode: int) -> void:
 		separation_radius = base
 	spacing_scale = spacing_scale_for_mode(mode)
 	_reset_shield_hold_angles()
+
+
+## Penalize mid-move formation density, stance, or frontage changes when moving
+## faster than walk speed: drop to walk_speed, clear charge gait, and inflict
+## transient cohesion and fatigue penalties.
+func _apply_moving_reshape_penalty() -> void:
+	if _current_speed > walk_speed:
+		_current_speed = walk_speed
+		if _approach_velocity.length_squared() > 0.0001:
+			_approach_velocity = _approach_velocity.normalized() * _current_speed
+		if current_order != null and current_order.gait > GAIT_WALK:
+			current_order.gait = GAIT_WALK
+		cohesion = maxf(SPRINT_RESHAPE_COHESION_FLOOR, cohesion - SPRINT_RESHAPE_COHESION_PENALTY)
+		fatigue = minf(100.0, fatigue + SPRINT_RESHAPE_FATIGUE_PENALTY)
 
 
 ## The rest-pose hold angle for this unit's weapon type (docs/soldier-loadout-design.md
@@ -3629,6 +3651,7 @@ func set_frontage(files: int, anchor_offset: float = 0.0) -> void:
 	if frontage_override != old_files:
 		_last_reshape_tick = Engine.get_physics_frames()
 		_last_reshape_widened = frontage_override > old_files
+		_apply_moving_reshape_penalty()
 
 
 ## Multiplier applied to incoming ranged damage. Shielded stances raise shields to
