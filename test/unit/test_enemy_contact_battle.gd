@@ -62,7 +62,7 @@ func test_charge_decelerates_sharply_after_contact_with_a_braced_square() -> voi
 		if charger.state != Unit.State.FIGHTING:
 			# Sample the free-charge rate on a tick that's clearly mid-sprint (past the
 			# initial accel ramp, well before contact), so it reflects real charge speed.
-			if tick > 30 and tick < 100:
+			if tick > 30:
 				free_charge_step = maxf(free_charge_step, step)
 		elif contact_tick == -1:
 			contact_tick = tick

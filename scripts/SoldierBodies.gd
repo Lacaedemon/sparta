@@ -65,6 +65,9 @@ const MARCHING_CORRIDOR_PROXIMITY_MULT: float = 4.5
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
 # Stagger fraction between alternate soldier lanes in perimeter corridor.
 const CORRIDOR_LANE_STAGGER_FRAC: float = 0.25
+# Distance and lateral clearances for intra-file lane follower speed damping:
+const LANE_FOLLOWER_DIST_MULT: float = 0.9
+const LANE_FOLLOWER_LATERAL_MULT: float = 1.5
 
 
 ## Seed a unit's bodies onto its current formation slots, at rest (zero velocity) and
@@ -291,6 +294,51 @@ static func step(unit: Unit, delta: float) -> void:
 	# looking it up once per unit-step -- like body_accel and max_arrive above -- avoids
 	# allocating a fresh combat_profile() Dictionary on every soldier, every tick.
 	var mass: float = unit.combat_profile()["mass"]
+	var files: int = unit.formation_files(n)
+	var body_radius: float = unit.soldier_body_radius()
+	var two_bodies: float = body_radius * 2.0
+	var turning: bool = unit.is_maneuver_turning()
+	# Precompute true file-column front and rear neighbors in O(n) for lane follower speed damping
+	# (exempting maneuver turns, stationary/reform-holding units, and square/schiltron formations):
+	var file_front_neighbor: PackedInt32Array = PackedInt32Array()
+	var file_rear_neighbor: PackedInt32Array = PackedInt32Array()
+	if not turning and unit.state == Unit.State.MOVING and not unit._reform_holding() and not unit.in_square() and files > 0:
+		file_front_neighbor.resize(n)
+		file_front_neighbor.fill(-1)
+		file_rear_neighbor.resize(n)
+		file_rear_neighbor.fill(-1)
+		if unit._sim_soldier_file.size() == n:
+			var max_r: int = ceili(float(n) / float(files)) + 2
+			var grid: PackedInt32Array = PackedInt32Array()
+			grid.resize(files * max_r)
+			grid.fill(-1)
+			var explicit: bool = unit._sim_soldier_rank.size() == n
+			var rank_counts: PackedInt32Array = PackedInt32Array()
+			if not explicit:
+				rank_counts.resize(files)
+			var soldier_ranks: PackedInt32Array = PackedInt32Array()
+			soldier_ranks.resize(n)
+			for j in range(n):
+				var f: int = clampi(unit._sim_soldier_file[j], 0, files - 1)
+				var r: int = maxi(0, unit._sim_soldier_rank[j]) if explicit else rank_counts[f]
+				if not explicit:
+					rank_counts[f] += 1
+				soldier_ranks[j] = r
+				if r >= 0 and r < max_r:
+					grid[f * max_r + r] = j
+			for j in range(n):
+				var f: int = clampi(unit._sim_soldier_file[j], 0, files - 1)
+				var r: int = soldier_ranks[j]
+				if r > 0 and r - 1 < max_r:
+					file_front_neighbor[j] = grid[f * max_r + r - 1]
+				if r + 1 < max_r:
+					file_rear_neighbor[j] = grid[f * max_r + r + 1]
+		else:
+			for j in range(n):
+				if j - files >= 0:
+					file_front_neighbor[j] = j - files
+				if j + files < n:
+					file_rear_neighbor[j] = j + files
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
@@ -315,7 +363,6 @@ static func step(unit: Unit, delta: float) -> void:
 		# instead of chasing the swinging slots. This covers the order-driven maneuvers (the
 		# drill turns and the wheel, read off current_order) AND the engage re-face (a fighting
 		# unit turning its front onto a new enemy) -- see Unit.is_maneuver_turning.
-		var turning: bool = unit.is_maneuver_turning()
 		var own_slot: Vector2 = target_slots[i]
 		var to_slot: Vector2 = Vector2.ZERO if turning \
 				else _corridor_to_slot(unit, i, own_slot, n)
@@ -380,6 +427,42 @@ static func step(unit: Unit, delta: float) -> void:
 				# post-step stored velocity so leftover arrival speed does not coast past the slot on
 				# subsequent ticks.
 				new_vel = step_vel - dir * max_inbound
+		# Lane follower forward speed cap: prevent sprinting through a friendly body directly ahead in the file lane:
+		if file_front_neighbor.size() == n:
+			var speed_sq: float = step_vel.length_squared()
+			if speed_sq > 0.01:
+				var my_speed: float = sqrt(speed_sq)
+				var v_dir: Vector2 = step_vel / my_speed
+				var my_pos: Vector2 = unit._sim_soldier_pos[i]
+				var min_follow_dist: float = two_bodies * LANE_FOLLOWER_DIST_MULT
+				var max_lat_dist: float = body_radius * LANE_FOLLOWER_LATERAL_MULT
+				# Bounded O(1) check against resolved file-column neighbors:
+				var prev_file_idx: int = file_front_neighbor[i]
+				var next_file_idx: int = file_rear_neighbor[i]
+				if prev_file_idx >= 0 and prev_file_idx < n:
+					var other_pos: Vector2 = unit._sim_soldier_pos[prev_file_idx]
+					var d_fwd: float = (other_pos - my_pos).dot(v_dir)
+					if d_fwd > 0.0 and d_fwd < min_follow_dist:
+						var d_lat: float = absf((other_pos - my_pos).cross(v_dir))
+						if d_lat < max_lat_dist:
+							var other_fwd_speed: float = maxf(0.0, unit._sim_body_vel[prev_file_idx].dot(v_dir))
+							if my_speed > other_fwd_speed:
+								var excess: float = my_speed - other_fwd_speed
+								step_vel -= v_dir * excess
+								new_vel -= v_dir * excess
+								my_speed = other_fwd_speed
+				if next_file_idx >= 0 and next_file_idx < n:
+					var other_pos: Vector2 = unit._sim_soldier_pos[next_file_idx]
+					var d_fwd: float = (other_pos - my_pos).dot(v_dir)
+					if d_fwd > 0.0 and d_fwd < min_follow_dist:
+						var d_lat: float = absf((other_pos - my_pos).cross(v_dir))
+						if d_lat < max_lat_dist:
+							var other_fwd_speed: float = maxf(0.0, unit._sim_body_vel[next_file_idx].dot(v_dir))
+							if my_speed > other_fwd_speed:
+								var excess: float = my_speed - other_fwd_speed
+								step_vel -= v_dir * excess
+								new_vel -= v_dir * excess
+								my_speed = other_fwd_speed
 		# Cap individual soldier speed to this unit's own jog pace while the unit is
 		# stationary: during the reform hold phase AND whenever a formation reshape
 		# (frontage change, centre pivot) plays out on an idle unit. A marching unit is
@@ -414,6 +497,7 @@ static func step(unit: Unit, delta: float) -> void:
 		# MultiMesh rewrite while a block sits at rest (REST_SPEED is well below visible).
 		if unit._sim_body_vel[i].length_squared() > REST_SPEED * REST_SPEED:
 			unit._render_dirty = true
+
 	# One arrival integration per body, each with exactly one `to_slot.length()`.
 	SimOps.add(SimOps.BODY_STEP, n)
 	SimOps.add(SimOps.SQRT_EVAL, n)
@@ -587,6 +671,20 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 
 	var rank_pitch: float = unit.rank_pitch_wu()
 	var depth: float = rank_pitch if rank_pitch >= 0.0 else spacing
+	# Radial grid scaling (uniform density contraction or expansion during march):
+	if marching and unit.state == Unit.State.MOVING and not unit._reform_holding():
+		var same_quadrant: bool = (p_local.x * t_local.x >= -0.01) and (p_local.y * t_local.y >= -0.01)
+		if same_quadrant and absf(t_local.x) > spacing * 0.2 and absf(t_local.y) > depth * 0.2:
+			var k_x: float = p_local.x / t_local.x
+			var k_y: float = p_local.y / t_local.y
+			var max_k: float = maxf(k_x, k_y)
+			if max_k > 0.0 and k_x > 0.0 and k_y > 0.0 and absf(k_x - k_y) <= 0.35 * max_k:
+				if unit._formation_mirror_x:
+					t_local.x = -t_local.x
+				var target_world_direct: Vector2 = unit.position + t_local.rotated(ang)
+				return target_world_direct - pos
+
+
 	# Only route through perimeter corridors when moving across both ranks and files:
 	if absf(p_local.y - t_local.y) > depth * 0.5 and absf(p_local.x - t_local.x) > spacing * 0.5:
 		var files: int = unit.formation_files(n)

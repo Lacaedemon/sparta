@@ -23,7 +23,8 @@ func _grid(files: int, ranks: int, spacing: float, origin: Vector2 = Vector2.ZER
 
 func _snapshot(tick: int, bodies: Array, slots: Array, engaged: bool = false,
 		state: String = "MOVING", facing: Array = [0.0, 1.0],
-		motion_ref: Dictionary = {}, in_enemy_contact: bool = false) -> Dictionary:
+		motion_ref: Dictionary = {}, in_enemy_contact: bool = false,
+		formation: String = "NORMAL", frontage: int = 6) -> Dictionary:
 	var ref: Dictionary = {"formation_spacing": SPACING, "soldier_body_radius": SPACING * 0.5,
 			"walk_speed": 34.0, "jog_speed": 64.0, "move_speed": 126.0,
 			"pivot_radius": 56.0, "turn_rate": PI}
@@ -31,6 +32,7 @@ func _snapshot(tick: int, bodies: Array, slots: Array, engaged: bool = false,
 	return {"tick": tick, "units": [{
 		"uid": 1, "engaged": engaged, "in_enemy_contact": in_enemy_contact,
 		"state": state, "facing": facing,
+		"formation": formation, "frontage": frontage,
 		"soldiers_full": {"pos": bodies, "slots": slots},
 		"motion_ref": ref,
 	}]}
@@ -289,6 +291,22 @@ func test_the_sample_after_a_casualty_compaction_is_exempt() -> void:
 		_snapshot(120, press20, slots20)]
 	assert_false(bool(_verdict(DemoDefects.analyze(persisting), "overlap")["pass"]),
 			"compression that persists past the re-slot sample is judged and fails")
+
+
+func test_the_sample_after_a_formation_reshape_is_exempt() -> void:
+	# A formation reshape or frontage resize assigns a new slot grid instantly while bodies
+	# take time to transition onto the new shape: the transition window right after the change
+	# is a legitimate physical transient.
+	var slots_norm: Array = _grid(6, 4, SPACING)
+	var slots_tight: Array = _grid(6, 4, SPACING * 0.67)
+	var transient: Array = [
+		_snapshot(0, slots_norm.duplicate(), slots_norm, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6),
+		_snapshot(60, slots_norm.duplicate(), slots_tight, false, "MOVING", [0.0, 1.0], {}, false, "TIGHT", 6), # reshape tick
+		_snapshot(120, slots_tight.duplicate(), slots_tight, false, "MOVING", [0.0, 1.0], {}, false, "TIGHT", 6), # settled
+	]
+	assert_true(bool(_verdict(DemoDefects.analyze(transient), "shape_residual")["pass"]),
+			"shape residual right after a formation reshape is exempt during transition")
+
 
 
 func test_a_lone_survivor_is_not_a_blob() -> void:

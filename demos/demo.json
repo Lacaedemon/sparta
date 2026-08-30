@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/bolt-perf.json",
-  "caption": "Backend-only performance optimization: distance checks in high-frequency loops (SoldierMeleeStandoff.standoff_bias and SoldierSteering._overlaps_friendly) use length_squared() pre-filtering to avoid square roots, verified with identical visual combat flow.",
+  "input": "demos/inputs/sprint-reshape-reversal.json",
+  "caption": "A 120-man infantry regiment sprints at full pace, executing mid-sprint density shifts and an abrupt 180-degree move-order reversal with tight formation integrity.",
   "fixed_fps": 30,
-  "max_frames": 300,
+  "max_frames": 360,
   "fps": 15,
   "width": 640
 }
