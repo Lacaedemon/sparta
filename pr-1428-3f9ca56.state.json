@@ -296,7 +296,7 @@
             "broken_count": 0,
             "centroid": [
               800.0,
-              257.36
+              257.37
             ],
             "count": 120,
             "prone_count": 0
@@ -360,11 +360,11 @@
           "order_phase": "TURN",
           "position": [
             800.0,
-            268.32
+            268.34
           ],
           "position_m": [
             40.0,
-            13.416
+            13.417
           ],
           "queue_tail": [],
           "rank_pitch": 9.0,
@@ -377,7 +377,7 @@
             "broken_count": 0,
             "centroid": [
               800.0,
-              265.71
+              265.75
             ],
             "count": 120,
             "prone_count": 0
@@ -389,7 +389,7 @@
             ],
             "centroid_m": [
               40.0,
-              13.286
+              13.287
             ]
           },
           "soldiers": 120,
@@ -441,24 +441,24 @@
           "order_phase": "TURN",
           "position": [
             800.0,
-            278.6
+            278.66
           ],
           "position_m": [
             40.0,
-            13.93
+            13.933
           ],
           "queue_tail": [],
           "rank_pitch": 9.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              216.18,
+              216.19,
               106.37
             ],
             "broken_count": 0,
             "centroid": [
               800.0,
-              277.83
+              277.89
             ],
             "count": 120,
             "prone_count": 0
@@ -470,7 +470,7 @@
             ],
             "centroid_m": [
               40.0,
-              13.891
+              13.894
             ]
           },
           "soldiers": 120,
@@ -522,11 +522,11 @@
           "order_phase": "MARCH",
           "position": [
             800.0,
-            289.79
+            289.85
           ],
           "position_m": [
             40.0,
-            14.49
+            14.493
           ],
           "queue_tail": [],
           "rank_pitch": 36.0,
@@ -539,7 +539,7 @@
             "broken_count": 0,
             "centroid": [
               800.0,
-              290.28
+              290.34
             ],
             "count": 120,
             "prone_count": 0
@@ -547,11 +547,11 @@
           "soldier_summary_m": {
             "bbox_m": [
               10.712,
-              5.215
+              5.216
             ],
             "centroid_m": [
               40.0,
-              14.514
+              14.517
             ]
           },
           "soldiers": 120,
@@ -603,36 +603,36 @@
           "order_phase": "MARCH",
           "position": [
             800.0,
-            289.27
+            289.32
           ],
           "position_m": [
             40.0,
-            14.463
+            14.466
           ],
           "queue_tail": [],
           "rank_pitch": 36.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              218.77,
-              106.65
+              218.76,
+              106.4
             ],
             "broken_count": 0,
             "centroid": [
               800.0,
-              291.47
+              291.51
             ],
             "count": 120,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              10.939,
-              5.332
+              10.938,
+              5.32
             ],
             "centroid_m": [
               40.0,
-              14.573
+              14.576
             ]
           },
           "soldiers": 120,
@@ -684,24 +684,24 @@
           "order_phase": "MARCH",
           "position": [
             800.0,
-            281.89
+            281.91
           ],
           "position_m": [
             40.0,
-            14.095
+            14.096
           ],
           "queue_tail": [],
           "rank_pitch": 36.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              246.65,
+              246.64,
               129.2
             ],
             "broken_count": 0,
             "centroid": [
               800.0,
-              285.74
+              285.76
             ],
             "count": 120,
             "prone_count": 0
@@ -713,7 +713,7 @@
             ],
             "centroid_m": [
               40.0,
-              14.287
+              14.288
             ]
           },
           "soldiers": 120,
