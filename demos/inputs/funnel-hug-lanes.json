@@ -131,6 +131,36 @@
       ]
     },
     {
+      "tick": 8,
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    },
+    {
+      "tick": 8,
+      "uid": 1,
+      "field": "state",
+      "value": "IDLE"
+    },
+    {
+      "tick": [
+        120,
+        1000
+      ],
+      "uid": 0,
+      "field": "state",
+      "value": "MOVING"
+    },
+    {
+      "tick": [
+        120,
+        1000
+      ],
+      "uid": 1,
+      "field": "state",
+      "value": "MOVING"
+    },
+    {
       "tick": [
         120,
         1000
