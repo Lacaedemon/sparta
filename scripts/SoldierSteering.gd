@@ -187,10 +187,13 @@ static func _overlaps_friendly(u: Unit, sorted_units: Array, extents: Dictionary
 		if v == null or v == u or v.state == Unit.State.DEAD or v.team != u.team:
 			continue
 		var delta: Vector2 = v.position - u.position
+		var max_dist: float = reach_u + extents[v]
+		# ⚡ Bolt: Optimize circumradius rejection by checking squared distance first
+		# to bypass the expensive sqrt operation for clearly non-overlapping bodies.
+		if delta.length_squared() >= max_dist * max_dist * SQRT_SKIP_BAND:
+			continue   # cheap circumradius reject -- the blocks can't possibly overlap
 		lengths += 1
 		var d: float = delta.length()
-		if d >= reach_u + extents[v]:
-			continue   # cheap circumradius reject -- the blocks can't possibly overlap
 		if _oriented_overlap(delta, d, half_extents[u], angles[u], half_extents[v], angles[v]):
 			SimOps.add(SimOps.SQRT_EVAL, lengths)
 			return true
