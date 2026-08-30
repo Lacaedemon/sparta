@@ -797,6 +797,20 @@ Changing formation density (<kbd>T</kbd>), assuming holding stances (Shield Wall
 
 Order formation density shifts and stance transitions while stationary or at a measured walking pace to preserve speed, charge momentum, and full combat cohesion.
 
+::: {#fig-sprint-reshape .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/sprint_reshape.jpg">
+  <source src="media/sprint_reshape.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A 120-man infantry regiment sprints at full pace, dropping speed to dress ranks and suffering a transient cohesion and fatigue penalty on a mid-sprint density change.
+:::
+
 ## Form square against cavalry
 
 When horse threatens a unit's flank or rear and you have no spear screen to spare,
