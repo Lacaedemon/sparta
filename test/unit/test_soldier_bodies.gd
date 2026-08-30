@@ -220,6 +220,7 @@ func test_on_slot_body_preserves_carried_knockback_velocity_through_step() -> vo
 	assert_true(u._sim_soldier_pos[0].distance_to(initial_slot) > 1.0,
 		"on-slot body carrying knockback must advance away from slot by its integrated displacement")
 
+<<<<<<< HEAD
 
 # --- corridor routing inward rank approach & rear rank arrivals --------------------
 
@@ -441,12 +442,3 @@ func test_lane_follower_exempts_squared_formation() -> void:
 	# In square, neighbor math is bypassed so bodies follow standard steering without file-lane speed clamp:
 	assert_gt(u._sim_body_vel[rear_idx].y, 20.0,
 		"squared formation must bypass file-lane speed follower clamp")
-
-
-
-
-
-
-
-
-
