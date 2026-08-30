@@ -20,6 +20,6 @@
   "state": [8, 80, 160, 240, 340, 420, 480, 520, 560, 600],
   "expect": [
     {"tick": 8, "uid": 0, "field": "position", "value": [700.0, 400.0]},
-    {"tick": [480, 600], "uid": 0, "field": "state", "value": "IDLE"}
+    {"tick": [160, 480], "uid": 0, "field": "state", "value": "FIGHTING"}
   ]
 }

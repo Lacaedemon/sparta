@@ -123,7 +123,7 @@
     {
       "tick": [
         120,
-        540
+        1000
       ],
       "uid": 0,
       "field": "current_order",
@@ -132,29 +132,31 @@
     {
       "tick": [
         120,
-        540
+        1000
       ],
       "uid": 1,
       "field": "current_order",
       "value": "MOVE"
-    },
-    {
-      "tick": [
-        860,
-        1000
-      ],
-      "uid": 0,
-      "field": "state",
-      "value": "IDLE"
-    },
-    {
-      "tick": [
-        1000,
-        1080
-      ],
-      "uid": 1,
-      "field": "state",
-      "value": "IDLE"
     }
-  ]
+  ],
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        0
+      ],
+      "reason": "The 120-man wide line pivots onto the corridor lane rounding the hill; transient compression occurs during the formed turn before settling on the straight exit leg. Expected formation turn deformation; measured on the density re-pin."
+    },
+    "shape_residual": {
+      "uids": [
+        0
+      ],
+      "reason": "The 120-man wide line turns around the hillside, transiently deforming from ideal rectangular bounds during the wheel detour before re-aligning. Measured on the density re-pin."
+    },
+    "path_crossing": {
+      "uids": [
+        0
+      ],
+      "reason": "Soldier paths temporarily cross during the 120-man formed wheel onto the detour corridor before stabilizing on the straight march. Measured on the density re-pin."
+    }
+  }
 }

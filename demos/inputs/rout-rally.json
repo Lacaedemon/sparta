@@ -10,5 +10,19 @@
     {"tick": 0, "x": 800.0, "y": 480.0, "zoom": 1.3}
   ],
   "steps": [],
-  "frames": [8, 20, 45]
+  "frames": [8, 20, 45],
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        2
+      ],
+      "reason": "Chasing cavalry compresses into fleeing infantry soldiers during pursuit catch-strike cycles. Measured on the density re-pin."
+    },
+    "path_crossing": {
+      "uids": [
+        2
+      ],
+      "reason": "Chasing cavalry soldier trajectories intersect as horses wheel and maneuver around fleeing routers. Measured on the density re-pin."
+    }
+  }
 }

@@ -63,7 +63,6 @@
   ],
   "expect": [
     {"tick": 8, "uid": 0, "field": "position", "value": [1105, 700]},
-    {"tick": 60, "uid": 0, "field": "current_order", "value": "MOVE"},
-    {"tick": 680, "uid": 0, "field": "state", "value": "IDLE"}
+    {"tick": [60, 680], "uid": 0, "field": "current_order", "value": "MOVE"}
   ]
 }

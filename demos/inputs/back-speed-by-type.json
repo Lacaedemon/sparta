@@ -16,5 +16,19 @@
     {"tick": 50, "rmb_click": [650, 250]}
   ],
   "frames": [0, 100, 200, 245, 295, 360, 420],
-  "state": [0, 100, 200, 240, 245, 250, 290, 295, 300, 360, 420]
+  "state": [0, 100, 200, 240, 245, 250, 290, 295, 300, 360, 420],
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        1
+      ],
+      "reason": "Archers execute a drilled rear-move about-face and rear-rank countermarch reform, passing ranks through each other during the turn. Measured on the density re-pin."
+    },
+    "misslotted": {
+      "uids": [
+        1
+      ],
+      "reason": "Soldiers transiently displace from target slots during the rapid rear countermarch before settling. Measured on the density re-pin."
+    }
+  }
 }

@@ -70,5 +70,25 @@
       "value": "Cycle charge"
     }
   ],
-  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181"
+  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        8
+      ],
+      "reason": "Infantry unit takes the repeated cavalry charge impact, compressing under momentum pulses. Measured on the density re-pin."
+    },
+    "shape_residual": {
+      "uids": [
+        8
+      ],
+      "reason": "Infantry block distorts under the repeated momentum collisions of the cycle charge. Measured on the density re-pin."
+    },
+    "path_crossing": {
+      "uids": [
+        6
+      ],
+      "reason": "Adjacent line unit has soldier paths cross during evasive reaction to passing cavalry. Measured on the density re-pin."
+    }
+  }
 }

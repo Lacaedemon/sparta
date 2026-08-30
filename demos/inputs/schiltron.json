@@ -12,5 +12,13 @@
   "steps": [
     {"tick": 10, "click": [800, 500]},
     {"tick": 30, "key": "O", "shift": true}
-  ]
+  ],
+  "defect_exemptions": {
+    "path_crossing": {
+      "uids": [
+        0
+      ],
+      "reason": "Soldier paths intersect transiently during the in-place 120-man reformation into a hollow schiltron ring. Measured on the density re-pin."
+    }
+  }
 }

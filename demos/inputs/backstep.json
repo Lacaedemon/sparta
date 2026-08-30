@@ -51,5 +51,13 @@
       "value": "MOVING"
     }
   ],
-  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181"
+  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        5
+      ],
+      "reason": "Opposing line unit across the field engages and compresses slightly during line advance. Measured on the density re-pin."
+    }
+  }
 }

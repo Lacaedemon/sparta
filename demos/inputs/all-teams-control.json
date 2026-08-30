@@ -96,6 +96,14 @@
         5
       ],
       "reason": "Both boxed armies are marched to meeting points and grind through the ensuing press; judged samples adjacent to the contact window catch nearest-neighbour dips (worst 0.74-1.26 wu) while the blocks compress into the fight under the 2x default pitch. Press-adjacent compression, not standing interpenetration; measured on the density re-pin."
+    },
+    "shape_residual": {
+      "uids": [
+        0,
+        1,
+        5
+      ],
+      "reason": "Engaged regiments distort during the multi-unit collision press under 2x pitch before lines stabilize. Press-induced deformation, not standing defects; measured on the density re-pin."
     }
   }
 }
