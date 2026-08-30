@@ -671,7 +671,6 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 
 	var rank_pitch: float = unit.rank_pitch_wu()
 	var depth: float = rank_pitch if rank_pitch >= 0.0 else spacing
-
 	# Radial grid scaling (uniform density contraction or expansion during march):
 	if marching and unit.state == Unit.State.MOVING and not unit._reform_holding():
 		var same_quadrant: bool = (p_local.x * t_local.x >= -0.01) and (p_local.y * t_local.y >= -0.01)
@@ -679,7 +678,7 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 			var k_x: float = p_local.x / t_local.x
 			var k_y: float = p_local.y / t_local.y
 			var max_k: float = maxf(k_x, k_y)
-			if max_k > 0.0 and absf(k_x - k_y) <= 0.35 * max_k and k_x >= 0.2 and k_x <= 5.0:
+			if max_k > 0.0 and k_x > 0.0 and k_y > 0.0 and absf(k_x - k_y) <= 0.35 * max_k:
 				if unit._formation_mirror_x:
 					t_local.x = -t_local.x
 				var target_world_direct: Vector2 = unit.position + t_local.rotated(ang)
