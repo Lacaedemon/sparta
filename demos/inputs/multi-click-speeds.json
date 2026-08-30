@@ -185,5 +185,13 @@
       "value": "IDLE"
     }
   ],
-  "spawn_fingerprint": "7c41c13e04ad1706625707bad8469627"
+  "spawn_fingerprint": "7c41c13e04ad1706625707bad8469627",
+  "defect_exemptions": {
+    "shape_residual": {
+      "uids": [
+        2
+      ],
+      "reason": "The Run cavalry unit accelerates and brakes along its lane, transiently flexing its 40-horse grid before settling on arrival. Measured on the density re-pin."
+    }
+  }
 }

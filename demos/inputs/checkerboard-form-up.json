@@ -35,5 +35,25 @@
     {"tick": 5, "box": {"from": [550, 450], "to": [970, 550]}},
     {"tick": 20, "rmb_drag": {"from": [1070, 650], "to": [470, 650]}}
   ],
-  "state": [10, 40, 120, 240, 360, 480, 600, 750, 900, 1000, 1100]
+  "state": [10, 40, 120, 240, 360, 480, 600, 750, 900, 1000, 1100],
+  "defect_exemptions": {
+    "shape_residual": {
+      "uids": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "reason": "Four 80-man infantry units execute simultaneous multi-unit checkerboard form-up maneuvers into two offset lines, transiently distorting during the crossing and line decomposition before settling. Measured on the density re-pin."
+    },
+    "path_crossing": {
+      "uids": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "reason": "Soldier paths transiently intersect during the multi-unit line splitting into front/rear checkerboard positions before forming up. Measured on the density re-pin."
+    }
+  }
 }

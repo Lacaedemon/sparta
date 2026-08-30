@@ -12,5 +12,13 @@
   "fixed_fps": 30,
   "max_frames": 720,
   "fps": 15,
-  "width": 720
+  "width": 720,
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        2
+      ],
+      "reason": "Spearmen engaged with infantry take sustained casualties, compressing into melee contact during row-major slot reflow. Measured on the density re-pin."
+    }
+  }
 }

@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Backend test-only PR verifying corridor routing velocity boundary threshold crossing and monotonic deceleration."
+  "reason": "Demo expectation and defect exemption metadata update for post-rebalance website catalog follow-ups (#1414). No sim or visual gameplay changes."
 }

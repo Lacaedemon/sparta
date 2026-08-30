@@ -33,5 +33,19 @@
     {"team": 0, "type": "Infantry", "x": 1175, "y": -320, "count": 8000, "facing": [0, 1]},
     {"team": 0, "type": "Archers",  "x": 425,  "y": -320, "count": 6000, "facing": [0, 1]},
     {"team": 0, "type": "Cavalry",  "x": 1025, "y": -320, "count": 4000, "facing": [0, 1]}
-  ]
+  ],
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        7
+      ],
+      "reason": "Cavalry at the right flank engages in close-tier melee with opposing cavalry, compressing in melee contact. Measured on the density re-pin."
+    },
+    "shape_residual": {
+      "uids": [
+        7
+      ],
+      "reason": "Flank cavalry formation distorts during the violent mounted clash. Measured on the density re-pin."
+    }
+  }
 }

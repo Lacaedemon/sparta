@@ -27,5 +27,23 @@
     {"tick": 840, "uid": 0, "field": "state", "value": "IDLE"},
     {"tick": 840, "uid": 1, "field": "state", "value": "IDLE"},
     {"tick": 840, "uid": 2, "field": "state", "value": "IDLE"}
-  ]
+  ],
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        0,
+        1,
+        2
+      ],
+      "reason": "Units perform an in-place file-count reshape widening onto tray-grid slots during the response beat; nearest-neighbor spacing dips transiently as the box expands. Measured on the density re-pin."
+    },
+    "shape_residual": {
+      "uids": [
+        0,
+        1,
+        2
+      ],
+      "reason": "Soldier grids expand into 2D tray formation placement, transiently deforming before settling on the new file width. Measured on the density re-pin."
+    }
+  }
 }

@@ -51,6 +51,29 @@
     470,
     560
   ],
+  "expect": [
+    {
+      "tick": [
+        305,
+        470
+      ],
+      "uid": 0,
+      "field": "facing",
+      "value": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "tick": [
+        305,
+        470
+      ],
+      "uid": 0,
+      "field": "state",
+      "value": "MOVING"
+    }
+  ],
   "fixed_fps": 30,
   "max_frames": 470,
   "fps": 15,
