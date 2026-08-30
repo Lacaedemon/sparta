@@ -59,10 +59,13 @@
     420,
     510,
     570,
-    680
+    680,
+    1150,
+    1200
   ],
   "expect": [
     {"tick": 8, "uid": 0, "field": "position", "value": [1105, 700]},
-    {"tick": [60, 680], "uid": 0, "field": "current_order", "value": "MOVE"}
+    {"tick": [60, 680], "uid": 0, "field": "current_order", "value": "MOVE"},
+    {"tick": [1150, 1200], "uid": 0, "field": "state", "value": "IDLE"}
   ]
 }
