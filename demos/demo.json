@@ -1,8 +1,8 @@
 {
   "input": "demos/inputs/sprint-reshape-reversal.json",
-  "caption": "A 120-man infantry regiment sprints at full pace, executing mid-sprint density shifts and an abrupt 180-degree move-order reversal with tight formation integrity.",
+  "caption": "A 120-man infantry regiment sprints at full pace, dropping speed to dress ranks and suffering a transient cohesion and fatigue penalty on a mid-sprint density change.",
   "fixed_fps": 30,
-  "max_frames": 360,
+  "max_frames": 340,
   "fps": 15,
   "width": 640
 }

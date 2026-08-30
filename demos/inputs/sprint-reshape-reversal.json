@@ -1,5 +1,5 @@
 {
-  "_comment": "Sprint reshape and reversal: a 120-man infantry regiment sprints south at full pace, executing mid-sprint density shifts (NORMAL -> TIGHT -> LOOSE) and an abrupt 180-degree move-order reversal. Radial corridor routing and lane follower speed caps maintain safe standoff and tight formation integrity throughout the maneuvers without overlap, shape residual, or misslotting.",
+  "_comment": "Sprint reshape and reversal: a 120-man infantry regiment sprints south at full pace, executing a mid-sprint density shift (NORMAL -> TIGHT) and an abrupt 180-degree move-order reversal. Mid-sprint density changes drop pace to a walk and penalize cohesion and fatigue while radial corridor routing and lane follower speed caps maintain safe standoff and tight formation integrity throughout the maneuvers without overlap, shape residual, or misslotting.",
   "seed": "12345",
   "drill": true,
   "scenario": [
@@ -16,7 +16,7 @@
     {
       "tick": 0,
       "x": 800.0,
-      "y": 500.0,
+      "y": 550.0,
       "zoom": 0.85
     }
   ],
@@ -27,44 +27,40 @@
     },
     {
       "tick": 14,
-      "rmb_click": [800, 1100]
+      "rmb_click": [800, 1200]
     },
     {
       "tick": 20,
-      "rmb_click": [800, 1100]
+      "rmb_click": [800, 1200]
     },
     {
       "tick": 26,
-      "rmb_click": [800, 1100]
+      "rmb_click": [800, 1200]
     },
     {
       "tick": 32,
-      "rmb_click": [800, 1100]
+      "rmb_click": [800, 1200]
     },
     {
-      "tick": 100,
+      "tick": 180,
       "key": "T"
-    },
-    {
-      "tick": 160,
-      "rmb_click": [800, 200]
-    },
-    {
-      "tick": 166,
-      "rmb_click": [800, 200]
-    },
-    {
-      "tick": 172,
-      "rmb_click": [800, 200]
-    },
-    {
-      "tick": 178,
-      "rmb_click": [800, 200]
     },
     {
       "tick": 240,
-      "key": "T"
+      "rmb_click": [800, 200]
+    },
+    {
+      "tick": 246,
+      "rmb_click": [800, 200]
+    },
+    {
+      "tick": 252,
+      "rmb_click": [800, 200]
+    },
+    {
+      "tick": 258,
+      "rmb_click": [800, 200]
     }
   ],
-  "state": [8, 50, 100, 130, 160, 190, 240, 270, 320]
+  "state": [8, 50, 150, 180, 210, 240, 280, 320]
 }
