@@ -1,0 +1,70 @@
+{
+  "_comment": "Sprint reshape and reversal: a 120-man infantry regiment sprints south at full pace, executing mid-sprint density shifts (NORMAL -> TIGHT -> LOOSE) and an abrupt 180-degree move-order reversal. Radial corridor routing and lane follower speed caps maintain safe standoff and tight formation integrity throughout the maneuvers without overlap, shape residual, or misslotting.",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 800,
+      "y": 250,
+      "count": 120,
+      "facing": [0, 1]
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 800.0,
+      "y": 500.0,
+      "zoom": 0.85
+    }
+  ],
+  "steps": [
+    {
+      "tick": 8,
+      "click": [800, 250]
+    },
+    {
+      "tick": 14,
+      "rmb_click": [800, 1100]
+    },
+    {
+      "tick": 20,
+      "rmb_click": [800, 1100]
+    },
+    {
+      "tick": 26,
+      "rmb_click": [800, 1100]
+    },
+    {
+      "tick": 32,
+      "rmb_click": [800, 1100]
+    },
+    {
+      "tick": 100,
+      "key": "T"
+    },
+    {
+      "tick": 160,
+      "rmb_click": [800, 200]
+    },
+    {
+      "tick": 166,
+      "rmb_click": [800, 200]
+    },
+    {
+      "tick": 172,
+      "rmb_click": [800, 200]
+    },
+    {
+      "tick": 178,
+      "rmb_click": [800, 200]
+    },
+    {
+      "tick": 240,
+      "key": "T"
+    }
+  ],
+  "state": [8, 50, 100, 130, 160, 190, 240, 270, 320]
+}

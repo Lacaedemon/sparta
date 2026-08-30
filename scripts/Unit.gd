@@ -3549,7 +3549,6 @@ static func spacing_scale_for_mode(mode: int) -> float:
 ## cycle on a merged unit doesn't discard the merge-widened body.
 func set_formation(mode: int) -> void:
 	if mode != formation_mode:
-		_last_reshape_tick = Engine.get_physics_frames()
 		# A deliberate reshape. The square slot pairing is taken from where the men
 		# stand at the moment the square forms (_ensure_square_slot_assignment), so a
 		# pairing left over from an earlier square must not survive a spell back in

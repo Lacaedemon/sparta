@@ -373,23 +373,36 @@ static func step(unit: Unit, delta: float) -> void:
 				# post-step stored velocity so leftover arrival speed does not coast past the slot on
 				# subsequent ticks.
 				new_vel = step_vel - dir * max_inbound
-		# Lane follower forward speed cap: prevent sprinting through a friendly body directly ahead in travel path:
-		if not turning and unit.state == Unit.State.MOVING and not unit._reform_holding():
+		# Lane follower forward speed cap: prevent sprinting through a friendly body directly ahead in the file lane:
+		if not turning and unit.state == Unit.State.MOVING and not unit._reform_holding() and files > 0:
 			var speed_sq: float = step_vel.length_squared()
 			if speed_sq > 0.01:
 				var my_speed: float = sqrt(speed_sq)
 				var v_dir: Vector2 = step_vel / my_speed
 				var my_pos: Vector2 = unit._sim_soldier_pos[i]
 				var min_follow_dist: float = two_bodies * 0.9
-				for j in range(n):
-					if j == i:
-						continue
-					var other_pos: Vector2 = unit._sim_soldier_pos[j]
+				# Bounded O(1) check against immediate file-column neighbors:
+				var prev_file_idx: int = i - files
+				var next_file_idx: int = i + files
+				if prev_file_idx >= 0 and prev_file_idx < n:
+					var other_pos: Vector2 = unit._sim_soldier_pos[prev_file_idx]
 					var d_fwd: float = (other_pos - my_pos).dot(v_dir)
 					if d_fwd > 0.0 and d_fwd < min_follow_dist:
 						var d_lat: float = absf((other_pos - my_pos).cross(v_dir))
 						if d_lat < body_radius * 1.5:
-							var other_fwd_speed: float = maxf(0.0, unit._sim_body_vel[j].dot(v_dir))
+							var other_fwd_speed: float = maxf(0.0, unit._sim_body_vel[prev_file_idx].dot(v_dir))
+							if my_speed > other_fwd_speed:
+								var excess: float = my_speed - other_fwd_speed
+								step_vel -= v_dir * excess
+								new_vel -= v_dir * excess
+								my_speed = other_fwd_speed
+				if next_file_idx >= 0 and next_file_idx < n:
+					var other_pos: Vector2 = unit._sim_soldier_pos[next_file_idx]
+					var d_fwd: float = (other_pos - my_pos).dot(v_dir)
+					if d_fwd > 0.0 and d_fwd < min_follow_dist:
+						var d_lat: float = absf((other_pos - my_pos).cross(v_dir))
+						if d_lat < body_radius * 1.5:
+							var other_fwd_speed: float = maxf(0.0, unit._sim_body_vel[next_file_idx].dot(v_dir))
 							if my_speed > other_fwd_speed:
 								var excess: float = my_speed - other_fwd_speed
 								step_vel -= v_dir * excess

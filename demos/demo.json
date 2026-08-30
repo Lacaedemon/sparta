@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/funnel-hug-lanes.json",
-  "caption": "Refined perimeter corridor routing ensures marching units navigate terrain obstacles with tight formation integrity without false flank detours.",
+  "input": "demos/inputs/sprint-reshape-reversal.json",
+  "caption": "A 120-man infantry regiment sprints at full pace, executing mid-sprint density shifts and an abrupt 180-degree move-order reversal with tight formation integrity.",
   "fixed_fps": 30,
-  "max_frames": 540,
+  "max_frames": 360,
   "fps": 15,
   "width": 640
 }
