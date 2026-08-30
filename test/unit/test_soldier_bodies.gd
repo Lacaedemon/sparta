@@ -418,6 +418,32 @@ func test_lane_follower_caps_overtaking_body_under_file_major() -> void:
 		"rear soldier in file lane must be capped to front soldier forward speed")
 
 
+func test_lane_follower_exempts_squared_formation() -> void:
+	var u := _make_unit(56, 60)
+	u.seed_sim_soldiers()
+	u.state = Unit.State.MOVING
+	u.formation_mode = Unit.FormationMode.SQUARE
+	u.facing = Vector2.DOWN
+	u._approach_velocity = Vector2.DOWN * 40.0
+	assert_true(u.in_square(), "unit must be in square formation")
+
+	var front_idx: int = 0
+	var rear_idx: int = 1
+	var front_pos := Vector2(800.0, 300.0)
+	var rear_pos := Vector2(800.0, 294.0)
+	u._sim_soldier_pos[front_idx] = front_pos
+	u._sim_soldier_pos[rear_idx] = rear_pos
+	u._sim_body_vel[front_idx] = Vector2.DOWN * 10.0
+	u._sim_body_vel[rear_idx] = Vector2.DOWN * 80.0
+
+	SoldierBodies.step(u, 1.0 / 60.0)
+
+	# In square, neighbor math is bypassed so bodies follow standard steering without file-lane speed clamp:
+	assert_gt(u._sim_body_vel[rear_idx].y, 20.0,
+		"squared formation must bypass file-lane speed follower clamp")
+
+
+
 
 
 

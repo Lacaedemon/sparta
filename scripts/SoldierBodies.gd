@@ -291,7 +291,7 @@ static func step(unit: Unit, delta: float) -> void:
 	# Precompute true file-column front and rear neighbors in O(n) for lane follower speed damping:
 	var file_front_neighbor: PackedInt32Array = PackedInt32Array()
 	var file_rear_neighbor: PackedInt32Array = PackedInt32Array()
-	if not turning and unit.state == Unit.State.MOVING and not unit._reform_holding() and files > 0:
+	if not turning and unit.state == Unit.State.MOVING and not unit._reform_holding() and not unit.in_square() and files > 0:
 		file_front_neighbor.resize(n)
 		file_front_neighbor.fill(-1)
 		file_rear_neighbor.resize(n)
