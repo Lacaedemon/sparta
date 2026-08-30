@@ -448,7 +448,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "2 x 6 m",
-        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 97 (impetuous)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 4.4 m/s\nAccel: -0.5 m/s²",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 97 (impetuous)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 4.4 m/s\nAccel: -0.7 m/s²",
         "order_mode_text": "Order: Cycle charge",
         "paused": false,
         "shown_unit_uid": 0,
@@ -480,36 +480,36 @@
           "order_phase": "NONE",
           "position": [
             842.44,
-            575.4
+            575.41
           ],
           "position_m": [
             42.122,
-            28.77
+            28.771
           ],
           "queue_tail": [],
           "rank_pitch": 120.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              160.1,
-              482.12
+              160.13,
+              481.82
             ],
             "broken_count": 0,
             "centroid": [
-              842.63,
-              606.91
+              842.59,
+              606.94
             ],
             "count": 24,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              8.005,
-              24.106
+              8.006,
+              24.091
             ],
             "centroid_m": [
-              42.132,
-              30.345
+              42.129,
+              30.347
             ]
           },
           "soldiers": 24,
@@ -596,7 +596,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "2 x 6 m",
-        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 3.8 m/s\nAccel: -0.6 m/s²",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 3.8 m/s\nAccel: -0.5 m/s²",
         "order_mode_text": "Order: Cycle charge",
         "paused": false,
         "shown_unit_uid": 0,
@@ -607,13 +607,13 @@
         {
           "countermarch_variant": null,
           "current_order": "ATTACK",
-          "current_speed": 45.1,
-          "current_speed_mps": 2.256,
+          "current_speed": 44.8,
+          "current_speed_mps": 2.24,
           "delegated_group_id": null,
           "engaged": false,
           "facing": [
-            0.99,
-            0.12
+            1.0,
+            0.08
           ],
           "file_pitch": 40.0,
           "formation": "NORMAL",
@@ -627,37 +627,37 @@
           "order_mode": "Cycle charge",
           "order_phase": "NONE",
           "position": [
-            1082.73,
-            611.75
+            1078.61,
+            607.4
           ],
           "position_m": [
-            54.136,
-            30.588
+            53.931,
+            30.37
           ],
           "queue_tail": [],
           "rank_pitch": 120.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              184.0,
-              284.53
+              161.75,
+              271.53
             ],
             "broken_count": 0,
             "centroid": [
-              1084.12,
-              601.36
+              1079.75,
+              596.39
             ],
             "count": 24,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              9.2,
-              14.227
+              8.088,
+              13.576
             ],
             "centroid_m": [
-              54.206,
-              30.068
+              53.988,
+              29.82
             ]
           },
           "soldiers": 24,
@@ -679,8 +679,8 @@
           "delegated_group_id": null,
           "engaged": false,
           "facing": [
-            0.99,
-            0.12
+            1.0,
+            0.08
           ],
           "file_pitch": 18.0,
           "formation": "NORMAL",
@@ -688,43 +688,43 @@
           "frontage": 11,
           "in_enemy_contact": false,
           "maneuver": "MARCHING",
-          "morale": 17.6,
+          "morale": 17.4,
           "name": "Infantry 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            835.92,
-            582.22
+            830.39,
+            587.09
           ],
           "position_m": [
-            41.796,
-            29.111
+            41.52,
+            29.354
           ],
           "queue_tail": [],
           "rank_pitch": 18.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              216.38,
-              109.51
+              214.61,
+              109.52
             ],
             "broken_count": 0,
             "centroid": [
-              837.03,
-              586.3
+              831.3,
+              591.66
             ],
             "count": 70,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              10.819,
+              10.731,
               5.476
             ],
             "centroid_m": [
-              41.852,
-              29.315
+              41.565,
+              29.583
             ]
           },
           "soldiers": 70,
@@ -744,7 +744,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "2 x 6 m",
-        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 1.6 m/s\nAccel: -0.3 m/s²",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 1.9 m/s\nAccel: -0.6 m/s²",
         "order_mode_text": "Order: Cycle charge",
         "paused": false,
         "shown_unit_uid": 0,
@@ -755,13 +755,13 @@
         {
           "countermarch_variant": null,
           "current_order": "ATTACK",
-          "current_speed": 24.9,
-          "current_speed_mps": 1.243,
+          "current_speed": 30.2,
+          "current_speed_mps": 1.508,
           "delegated_group_id": null,
           "engaged": false,
           "facing": [
-            0.96,
-            0.27
+            0.99,
+            0.13
           ],
           "file_pitch": 40.0,
           "formation": "NORMAL",
@@ -775,37 +775,37 @@
           "order_mode": "Cycle charge",
           "order_phase": "NONE",
           "position": [
-            1227.88,
-            636.17
+            1240.98,
+            610.0
           ],
           "position_m": [
-            61.394,
-            31.808
+            62.049,
+            30.5
           ],
           "queue_tail": [],
           "rank_pitch": 120.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              278.49,
-              500.37
+              205.1,
+              474.24
             ],
             "broken_count": 0,
             "centroid": [
-              1230.24,
-              626.93
+              1242.73,
+              599.84
             ],
             "count": 24,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              13.925,
-              25.019
+              10.255,
+              23.712
             ],
             "centroid_m": [
-              61.512,
-              31.347
+              62.137,
+              29.992
             ]
           },
           "soldiers": 24,
@@ -827,8 +827,8 @@
           "delegated_group_id": null,
           "engaged": false,
           "facing": [
-            0.96,
-            0.27
+            0.99,
+            0.13
           ],
           "file_pitch": 18.0,
           "formation": "NORMAL",
@@ -836,43 +836,43 @@
           "frontage": 11,
           "in_enemy_contact": false,
           "maneuver": "MARCHING",
-          "morale": 27.6,
+          "morale": 27.4,
           "name": "Infantry 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            967.28,
-            564.04
+            977.52,
+            574.4
           ],
           "position_m": [
-            48.364,
-            28.202
+            48.876,
+            28.72
           ],
           "queue_tail": [],
           "rank_pitch": 18.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              181.15,
-              120.75
+              197.38,
+              121.01
             ],
             "broken_count": 0,
             "centroid": [
-              967.09,
-              568.7
+              979.14,
+              579.61
             ],
             "count": 70,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              9.057,
-              6.038
+              9.869,
+              6.051
             ],
             "centroid_m": [
-              48.354,
-              28.435
+              48.957,
+              28.981
             ]
           },
           "soldiers": 70,
@@ -892,7 +892,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "2 x 6 m",
-        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 1.5 m/s\nAccel: +0.0 m/s²",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 1.5 m/s\nAccel: -0.4 m/s²",
         "order_mode_text": "Order: Cycle charge",
         "paused": false,
         "shown_unit_uid": 0,
@@ -903,13 +903,13 @@
         {
           "countermarch_variant": null,
           "current_order": "ATTACK",
-          "current_speed": 17.8,
-          "current_speed_mps": 0.889,
+          "current_speed": 26.4,
+          "current_speed_mps": 1.321,
           "delegated_group_id": null,
           "engaged": false,
           "facing": [
-            0.96,
-            0.28
+            0.99,
+            0.13
           ],
           "file_pitch": 40.0,
           "formation": "NORMAL",
@@ -923,37 +923,37 @@
           "order_mode": "Cycle charge",
           "order_phase": "NONE",
           "position": [
-            1248.95,
-            648.4
+            1272.08,
+            613.85
           ],
           "position_m": [
-            62.447,
-            32.42
+            63.604,
+            30.692
           ],
           "queue_tail": [],
           "rank_pitch": 120.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              255.55,
-              524.38
+              206.64,
+              493.51
             ],
             "broken_count": 0,
             "centroid": [
-              1252.15,
-              640.07
+              1273.87,
+              604.05
             ],
             "count": 24,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              12.777,
-              26.219
+              10.332,
+              24.676
             ],
             "centroid_m": [
-              62.607,
-              32.004
+              63.694,
+              30.203
             ]
           },
           "soldiers": 24,
@@ -975,8 +975,8 @@
           "delegated_group_id": null,
           "engaged": false,
           "facing": [
-            0.96,
-            0.29
+            0.99,
+            0.13
           ],
           "file_pitch": 18.0,
           "formation": "NORMAL",
@@ -984,43 +984,43 @@
           "frontage": 11,
           "in_enemy_contact": false,
           "maneuver": "MARCHING",
-          "morale": 29.6,
+          "morale": 29.4,
           "name": "Infantry 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            986.07,
-            567.14
+            1005.36,
+            577.87
           ],
           "position_m": [
-            49.304,
-            28.357
+            50.268,
+            28.894
           ],
           "queue_tail": [],
           "rank_pitch": 18.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              189.81,
-              124.82
+              187.85,
+              123.19
             ],
             "broken_count": 0,
             "centroid": [
-              985.24,
-              572.04
+              1006.8,
+              583.2
             ],
             "count": 70,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              9.49,
-              6.241
+              9.393,
+              6.16
             ],
             "centroid_m": [
-              49.262,
-              28.602
+              50.34,
+              29.16
             ]
           },
           "soldiers": 70,
@@ -1040,7 +1040,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "2 x 6 m",
-        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 1.2 m/s\nAccel: -0.2 m/s²",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 1.4 m/s\nAccel: +0.0 m/s²",
         "order_mode_text": "Order: Cycle charge",
         "paused": false,
         "shown_unit_uid": 0,
@@ -1051,13 +1051,13 @@
         {
           "countermarch_variant": null,
           "current_order": "ATTACK",
-          "current_speed": 10.0,
-          "current_speed_mps": 0.499,
+          "current_speed": 25.9,
+          "current_speed_mps": 1.293,
           "delegated_group_id": null,
           "engaged": false,
           "facing": [
-            0.96,
-            0.28
+            0.99,
+            0.13
           ],
           "file_pitch": 40.0,
           "formation": "NORMAL",
@@ -1071,37 +1071,37 @@
           "order_mode": "Cycle charge",
           "order_phase": "NONE",
           "position": [
-            1267.42,
-            658.68
+            1300.18,
+            617.75
           ],
           "position_m": [
-            63.371,
-            32.934
+            65.009,
+            30.887
           ],
           "queue_tail": [],
           "rank_pitch": 120.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              253.51,
-              498.4
+              206.72,
+              494.41
             ],
             "broken_count": 0,
             "centroid": [
-              1271.33,
-              649.56
+              1301.87,
+              607.88
             ],
             "count": 24,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              12.675,
-              24.92
+              10.336,
+              24.721
             ],
             "centroid_m": [
-              63.567,
-              32.478
+              65.093,
+              30.394
             ]
           },
           "soldiers": 24,
@@ -1123,8 +1123,8 @@
           "delegated_group_id": null,
           "engaged": false,
           "facing": [
-            0.95,
-            0.31
+            0.99,
+            0.13
           ],
           "file_pitch": 18.0,
           "formation": "NORMAL",
@@ -1132,43 +1132,43 @@
           "frontage": 11,
           "in_enemy_contact": false,
           "maneuver": "MARCHING",
-          "morale": 31.6,
+          "morale": 31.4,
           "name": "Infantry 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            1002.61,
-            572.64
+            1033.05,
+            581.69
           ],
           "position_m": [
-            50.13,
-            28.632
+            51.653,
+            29.085
           ],
           "queue_tail": [],
           "rank_pitch": 18.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              188.75,
-              128.94
+              191.62,
+              123.17
             ],
             "broken_count": 0,
             "centroid": [
-              1001.69,
-              577.81
+              1034.58,
+              587.03
             ],
             "count": 70,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              9.438,
-              6.447
+              9.581,
+              6.159
             ],
             "centroid_m": [
-              50.085,
-              28.891
+              51.729,
+              29.352
             ]
           },
           "soldiers": 70,
