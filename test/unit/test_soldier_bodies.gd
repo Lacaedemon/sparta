@@ -283,7 +283,7 @@ func test_lane_follower_exempts_squared_formation() -> void:
 	var u := _make_unit(56, 60)
 	u.seed_sim_soldiers()
 	u.state = Unit.State.MOVING
-	u.formation_mode = Unit.FormationMode.SQUARE
+	u.formation_mode = Unit.FORMATION_SQUARE
 	u.facing = Vector2.DOWN
 	u._approach_velocity = Vector2.DOWN * 40.0
 	assert_true(u.in_square(), "unit must be in square formation")
