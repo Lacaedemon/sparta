@@ -787,6 +787,16 @@ later in the clip --- ordinary flank pressure from the one remaining attacker, n
 second encirclement.
 :::
 
+### Reshaping and changing density on the move
+
+Changing formation density (<kbd>T</kbd>), assuming holding stances (Shield Wall, Testudo, Square), or adjusting frontage while a unit is actively moving faster than walking speed forces the regiment to brake and dress ranks. Close-order infantry cannot compress or expand spacing mid-sprint without disrupting cadence:
+
+- **Pace drops to a walk**: The unit drops its speed to `walk_speed`, and any active sprint gait resets to a walking pace until the men settle into their newly assigned slots.
+- **Cohesion penalty**: Rushing to dress ranks mid-move disrupts file alignment, inflicting a transient cohesion penalty that recovers back to full over time.
+- **Fatigue cost**: Scrambling ranks mid-stride expends physical effort, adding an immediate fatigue cost.
+
+Order formation density shifts and stance transitions while stationary or at a measured walking pace to preserve speed, charge momentum, and full combat cohesion.
+
 ## Form square against cavalry
 
 When horse threatens a unit's flank or rear and you have no spear screen to spare,

@@ -2,7 +2,7 @@
   "input": "demos/inputs/sprint-reshape-reversal.json",
   "caption": "A 120-man infantry regiment sprints at full pace, dropping speed to dress ranks and suffering transient cohesion/fatigue penalties during mid-sprint density shifts and reversals.",
   "fixed_fps": 30,
-  "max_frames": 360,
+  "max_frames": 460,
   "fps": 15,
   "width": 640
 }
