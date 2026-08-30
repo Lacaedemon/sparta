@@ -297,6 +297,7 @@ static func step(unit: Unit, delta: float) -> void:
 	var files: int = unit.formation_files(n)
 	var body_radius: float = unit.soldier_body_radius()
 	var two_bodies: float = body_radius * 2.0
+	var turning: bool = unit.is_maneuver_turning()
 	# Precompute true file-column front and rear neighbors in O(n) for lane follower speed damping
 	# (exempting maneuver turns, stationary/reform-holding units, and square/schiltron formations):
 	var file_front_neighbor: PackedInt32Array = PackedInt32Array()
