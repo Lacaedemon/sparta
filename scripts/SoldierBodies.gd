@@ -571,8 +571,11 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 
 	var rank_pitch: float = unit.rank_pitch_wu()
 	var depth: float = rank_pitch if rank_pitch >= 0.0 else spacing
+	var marching: bool = unit._approach_velocity.length_squared() > 0.0001
+	var min_rank_depth: float = depth * 1.5 if marching else depth * 0.5
+	var min_file_spacing: float = spacing * 1.0 if marching else spacing * 0.5
 	# Only route through perimeter corridors when moving across both ranks and files:
-	if absf(p_local.y - t_local.y) > depth * 0.5 and absf(p_local.x - t_local.x) > spacing * 0.5:
+	if absf(p_local.y - t_local.y) > min_rank_depth and absf(p_local.x - t_local.x) > min_file_spacing:
 		var files: int = unit.formation_files(n)
 		var ranks: int = UnitFormation.ranks_for(n, files)
 		var rx_half: float = (files - 1) * 0.5 * spacing
