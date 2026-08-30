@@ -367,33 +367,30 @@ static func step(unit: Unit, delta: float) -> void:
 		# (velocity relative to the feed-forward) so it advances at most the remaining distance
 		# this tick, for any positive distance -- the body lands exactly on the slot instead of
 		# coasting through it. No overshoot, no oscillation.
-		if not turning and delta > 0.0:
-			if dist > MIN_DIST:
-				var dir: Vector2 = to_slot / dist
-				var arrival_vel: Vector2 = new_vel - feed_forward
-				var inbound: float = arrival_vel.dot(dir)
-				var max_inbound: float = dist / delta
-				if inbound > max_inbound:
-					new_vel -= dir * (inbound - max_inbound)
-			else:
-				# dist has collapsed to (effectively) zero: the body already sits on the slot, so
-				# there is no meaningful direction left to project an inbound component onto -- but
-				# the branch above never runs once dist <= MIN_DIST, so any leftover arrival
-				# velocity (beyond the feed-forward) would otherwise carry the body straight past
-				# the slot this tick with nothing left to clamp it. Zero the arrival component
-				# instead of leaving it unclamped, so a body that just landed doesn't fling itself
-				# to the far side on the very next tick (a gap this friction damping's carried-over
-				# velocity can now expose, since a well-timed arrival used to leave almost no
-				# residual speed at this exact transition).
-				new_vel = feed_forward
-		unit._sim_body_vel[i] = new_vel
+		var step_vel: Vector2 = new_vel
+		if not turning and delta > 0.0 and dist > MIN_DIST:
+			var dir: Vector2 = to_slot / dist
+			var arrival_vel: Vector2 = new_vel - feed_forward
+			var inbound: float = arrival_vel.dot(dir)
+			var max_inbound: float = dist / delta
+			if inbound >= max_inbound:
+				step_vel -= dir * (inbound - max_inbound)
+				# The body arrives on slot this tick: use step_vel (clamped to dist/delta) to advance
+				# the body onto the slot this tick, and zero the arrival component along dir for the
+				# post-step stored velocity so leftover arrival speed does not coast past the slot on
+				# subsequent ticks.
+				new_vel = step_vel - dir * max_inbound
 		# Cap individual soldier speed to this unit's own jog pace while the unit is
 		# stationary: during the reform hold phase AND whenever a formation reshape
 		# (frontage change, centre pivot) plays out on an idle unit. A marching unit is
 		# exempt — its bodies need to keep up with moving slots — so the cap only
 		# applies when state == IDLE.
 		if unit._reform_holding() or unit.state == Unit.State.IDLE:
-			unit._sim_body_vel[i] = _cap_body_speed(unit, i)
+			var facing: Vector2 = unit._sim_soldier_facing[i] if i < unit._sim_soldier_facing.size() \
+					else unit.facing
+			step_vel = _cap_body_speed_vec(step_vel, facing, unit.jog_speed, unit.back_speed_fraction)
+			new_vel = _cap_body_speed_vec(new_vel, facing, unit.jog_speed, unit.back_speed_fraction)
+		unit._sim_body_vel[i] = new_vel
 		# Final physical ceiling, applied after every adjustment above and to every body
 		# alike (marching, engaged, idle/reforming): a man cannot exceed his own sprint by
 		# more than a hard margin no matter how fast his slot is receding out from under him.
@@ -412,7 +409,7 @@ static func step(unit: Unit, delta: float) -> void:
 		var superphysical_cap: float = maxf(
 			unit.move_speed * unit.superphysical_speed_frac, pre_tick_speed)
 		unit._sim_body_vel[i] = unit._sim_body_vel[i].limit_length(superphysical_cap)
-		unit._sim_soldier_pos[i] += unit._sim_body_vel[i] * delta
+		unit._sim_soldier_pos[i] += step_vel.limit_length(superphysical_cap) * delta
 		# Tell the render a body actually moved this tick, so _process can skip the
 		# MultiMesh rewrite while a block sits at rest (REST_SPEED is well below visible).
 		if unit._sim_body_vel[i].length_squared() > REST_SPEED * REST_SPEED:
@@ -433,29 +430,26 @@ static func step(unit: Unit, delta: float) -> void:
 ## body moving diagonally backward-and-sideways never exceeds jog overall (the backward
 ## axis just eats a bigger share of that budget). Pure function of the body's velocity and
 ## facing; no RNG, order-free -- replay-safe.
-static func _cap_body_speed(unit: Unit, i: int) -> Vector2:
-	var vel: Vector2 = unit._sim_body_vel[i]
-	var facing: Vector2 = unit._sim_soldier_facing[i] if i < unit._sim_soldier_facing.size() \
-			else unit.facing
+static func _cap_body_speed_vec(vel: Vector2, facing: Vector2, jog_speed: float, back_speed_fraction: float) -> Vector2:
 	# facing is always a unit vector -- every assignment site in Unit.gd normalises it
 	# (dir.normalized(), Vector2.from_angle, rotation ops, the axis constants) -- so the
 	# facing * forward_component projection below is exact. Guard the degenerate zero case.
 	if facing.length_squared() < 0.0001:
-		return vel.limit_length(unit.jog_speed)
+		return vel.limit_length(jog_speed)
 	# A body moving forward or sideways (non-negative facing component) uses the full jog
 	# cap. Only a body whose motion leans backward -- against its facing -- is capped slower.
 	var forward_component: float = vel.dot(facing)
 	if forward_component >= 0.0:
-		return vel.limit_length(unit.jog_speed)
+		return vel.limit_length(jog_speed)
 	# Split the velocity into its along-facing (backward) part and its sideways part, cap the
 	# backward part to the slower pace, then re-limit the sum to jog so total speed stays
 	# within the jog ceiling even for a diagonal backward-and-sideways body.
-	var back_cap: float = unit.jog_speed * unit.back_speed_fraction
+	var back_cap: float = jog_speed * back_speed_fraction
 	var along: Vector2 = facing * forward_component            # points backward (component < 0)
 	var side: Vector2 = vel - along
 	if along.length_squared() > back_cap * back_cap:
 		along = along.normalized() * back_cap
-	return (along + side).limit_length(unit.jog_speed)
+	return (along + side).limit_length(jog_speed)
 
 
 ## Slide the regiment center toward its soldiers' centroid, at a bounded velocity (phase 5).
