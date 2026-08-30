@@ -1,0 +1,1188 @@
+{
+  "ticks": [
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Holding position\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 8,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 5,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            500.0,
+            600.0
+          ],
+          "position_m": [
+            25.0,
+            30.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              160.0,
+              480.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              500.0,
+              610.0
+            ],
+            "count": 24,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.0,
+              24.0
+            ],
+            "centroid_m": [
+              25.0,
+              30.5
+            ]
+          },
+          "soldiers": 24,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spatha"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 2.3,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.0,
+            600.0
+          ],
+          "position_m": [
+            40.0,
+            30.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              180.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              799.49,
+              594.6
+            ],
+            "count": 70,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.0,
+              5.4
+            ],
+            "centroid_m": [
+              39.974,
+              29.73
+            ]
+          },
+          "soldiers": 70,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 5.4 m/s\nAccel: +1.9 m/s²",
+        "order_mode_text": "Order: Cycle charge",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Cycle charge"
+      },
+      "tick": 240,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 104.0,
+          "current_speed_mps": 5.2,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 5,
+          "in_enemy_contact": false,
+          "maneuver": "CYCLE_CHARGE",
+          "morale": 100.0,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Cycle charge",
+          "order_phase": "NONE",
+          "position": [
+            679.12,
+            600.0
+          ],
+          "position_m": [
+            33.956,
+            30.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              160.0,
+              480.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              679.81,
+              610.0
+            ],
+            "count": 24,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.0,
+              24.0
+            ],
+            "centroid_m": [
+              33.991,
+              30.5
+            ]
+          },
+          "soldiers": 24,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spatha"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 10.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.0,
+            600.0
+          ],
+          "position_m": [
+            40.0,
+            30.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              180.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              799.49,
+              594.6
+            ],
+            "count": 70,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.0,
+              5.4
+            ],
+            "centroid_m": [
+              39.974,
+              29.73
+            ]
+          },
+          "soldiers": 70,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 98 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 5.2 m/s\nAccel: -2.0 m/s²",
+        "order_mode_text": "Order: Cycle charge",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Cycle charge"
+      },
+      "tick": 300,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 102.0,
+          "current_speed_mps": 5.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.97,
+            -0.26
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 5,
+          "in_enemy_contact": true,
+          "maneuver": "CYCLE_CHARGE",
+          "morale": 98.5,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Cycle charge",
+          "order_phase": "NONE",
+          "position": [
+            767.96,
+            597.72
+          ],
+          "position_m": [
+            38.398,
+            29.886
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              160.14,
+              480.08
+            ],
+            "broken_count": 0,
+            "centroid": [
+              796.14,
+              609.98
+            ],
+            "count": 24,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.007,
+              24.004
+            ],
+            "centroid_m": [
+              39.807,
+              30.499
+            ]
+          },
+          "soldiers": 24,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spatha"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.97,
+            -0.26
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 12.3,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            789.84,
+            603.67
+          ],
+          "position_m": [
+            39.492,
+            30.183
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              180.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              799.47,
+              594.61
+            ],
+            "count": 70,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.0,
+              5.4
+            ],
+            "centroid_m": [
+              39.973,
+              29.73
+            ]
+          },
+          "soldiers": 70,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 97 (impetuous)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 4.4 m/s\nAccel: -0.5 m/s²",
+        "order_mode_text": "Order: Cycle charge",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Cycle charge"
+      },
+      "tick": 330,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 82.0,
+          "current_speed_mps": 4.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.53,
+            -0.85
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 5,
+          "in_enemy_contact": true,
+          "maneuver": "CYCLE_CHARGE",
+          "morale": 97.8,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Cycle charge",
+          "order_phase": "NONE",
+          "position": [
+            842.44,
+            575.4
+          ],
+          "position_m": [
+            42.122,
+            28.77
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              160.1,
+              482.12
+            ],
+            "broken_count": 0,
+            "centroid": [
+              842.63,
+              606.91
+            ],
+            "count": 24,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.005,
+              24.106
+            ],
+            "centroid_m": [
+              42.132,
+              30.345
+            ]
+          },
+          "soldiers": 24,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spatha"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.53,
+            -0.85
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 12.3,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.76,
+            601.39
+          ],
+          "position_m": [
+            41.038,
+            30.069
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              181.48,
+              111.18
+            ],
+            "broken_count": 0,
+            "centroid": [
+              798.71,
+              595.47
+            ],
+            "count": 70,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.074,
+              5.559
+            ],
+            "centroid_m": [
+              39.935,
+              29.774
+            ]
+          },
+          "soldiers": 70,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 3.8 m/s\nAccel: -0.6 m/s²",
+        "order_mode_text": "Order: Cycle charge",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Cycle charge"
+      },
+      "tick": 540,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 45.1,
+          "current_speed_mps": 2.256,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.99,
+            0.12
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 5,
+          "in_enemy_contact": false,
+          "maneuver": "CYCLE_CHARGE",
+          "morale": 100.0,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Cycle charge",
+          "order_phase": "NONE",
+          "position": [
+            1082.73,
+            611.75
+          ],
+          "position_m": [
+            54.136,
+            30.588
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              184.0,
+              284.53
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1084.12,
+              601.36
+            ],
+            "count": 24,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.2,
+              14.227
+            ],
+            "centroid_m": [
+              54.206,
+              30.068
+            ]
+          },
+          "soldiers": 24,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spatha"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 26.0,
+          "current_speed_mps": 1.3,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.99,
+            0.12
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 17.6,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            835.92,
+            582.22
+          ],
+          "position_m": [
+            41.796,
+            29.111
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.38,
+              109.51
+            ],
+            "broken_count": 0,
+            "centroid": [
+              837.03,
+              586.3
+            ],
+            "count": 70,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.819,
+              5.476
+            ],
+            "centroid_m": [
+              41.852,
+              29.315
+            ]
+          },
+          "soldiers": 70,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 1.6 m/s\nAccel: -0.3 m/s²",
+        "order_mode_text": "Order: Cycle charge",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Cycle charge"
+      },
+      "tick": 840,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 24.9,
+          "current_speed_mps": 1.243,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.96,
+            0.27
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 5,
+          "in_enemy_contact": false,
+          "maneuver": "CYCLE_CHARGE",
+          "morale": 100.0,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Cycle charge",
+          "order_phase": "NONE",
+          "position": [
+            1227.88,
+            636.17
+          ],
+          "position_m": [
+            61.394,
+            31.808
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              278.49,
+              500.37
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1230.24,
+              626.93
+            ],
+            "count": 24,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              13.925,
+              25.019
+            ],
+            "centroid_m": [
+              61.512,
+              31.347
+            ]
+          },
+          "soldiers": 24,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spatha"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 26.0,
+          "current_speed_mps": 1.3,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.96,
+            0.27
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 27.6,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            967.28,
+            564.04
+          ],
+          "position_m": [
+            48.364,
+            28.202
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              181.15,
+              120.75
+            ],
+            "broken_count": 0,
+            "centroid": [
+              967.09,
+              568.7
+            ],
+            "count": 70,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.057,
+              6.038
+            ],
+            "centroid_m": [
+              48.354,
+              28.435
+            ]
+          },
+          "soldiers": 70,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 1.5 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "Order: Cycle charge",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Cycle charge"
+      },
+      "tick": 900,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 17.8,
+          "current_speed_mps": 0.889,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.96,
+            0.28
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 5,
+          "in_enemy_contact": false,
+          "maneuver": "CYCLE_CHARGE",
+          "morale": 100.0,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Cycle charge",
+          "order_phase": "NONE",
+          "position": [
+            1248.95,
+            648.4
+          ],
+          "position_m": [
+            62.447,
+            32.42
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              255.55,
+              524.38
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1252.15,
+              640.07
+            ],
+            "count": 24,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.777,
+              26.219
+            ],
+            "centroid_m": [
+              62.607,
+              32.004
+            ]
+          },
+          "soldiers": 24,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spatha"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 26.0,
+          "current_speed_mps": 1.3,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.96,
+            0.29
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 29.6,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            986.07,
+            567.14
+          ],
+          "position_m": [
+            49.304,
+            28.357
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              189.81,
+              124.82
+            ],
+            "broken_count": 0,
+            "centroid": [
+              985.24,
+              572.04
+            ],
+            "count": 70,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.49,
+              6.241
+            ],
+            "centroid_m": [
+              49.262,
+              28.602
+            ]
+          },
+          "soldiers": 70,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 24 / 24\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 5 files\nOrder: Attacking Infantry 1\nHP per man: 135 ±18 of 140\nGait: Auto\nSpeed: 1.2 m/s\nAccel: -0.2 m/s²",
+        "order_mode_text": "Order: Cycle charge",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Cycle charge"
+      },
+      "tick": 960,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 10.0,
+          "current_speed_mps": 0.499,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.96,
+            0.28
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 5,
+          "in_enemy_contact": false,
+          "maneuver": "CYCLE_CHARGE",
+          "morale": 100.0,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Cycle charge",
+          "order_phase": "NONE",
+          "position": [
+            1267.42,
+            658.68
+          ],
+          "position_m": [
+            63.371,
+            32.934
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              253.51,
+              498.4
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1271.33,
+              649.56
+            ],
+            "count": 24,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.675,
+              24.92
+            ],
+            "centroid_m": [
+              63.567,
+              32.478
+            ]
+          },
+          "soldiers": 24,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spatha"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 26.0,
+          "current_speed_mps": 1.3,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.95,
+            0.31
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 31.6,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1002.61,
+            572.64
+          ],
+          "position_m": [
+            50.13,
+            28.632
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              188.75,
+              128.94
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1001.69,
+              577.81
+            ],
+            "count": 70,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.438,
+              6.447
+            ],
+            "centroid_m": [
+              50.085,
+              28.891
+            ]
+          },
+          "soldiers": 70,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    }
+  ]
+}
