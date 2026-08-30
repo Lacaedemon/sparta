@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/sprint-reshape-reversal.json",
-  "caption": "A 120-man infantry regiment sprints at full pace, dropping speed to dress ranks and suffering a transient cohesion and fatigue penalty on a mid-sprint density change.",
-  "fixed_fps": 30,
-  "max_frames": 340,
-  "fps": 15,
-  "width": 640
+  "skip": true,
+  "reason": "Backend test-only PR verifying corridor routing velocity boundary threshold crossing and monotonic deceleration."
 }
