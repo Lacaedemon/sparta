@@ -380,7 +380,6 @@ static func step(unit: Unit, delta: float) -> void:
 				# post-step stored velocity so leftover arrival speed does not coast past the slot on
 				# subsequent ticks.
 				new_vel = step_vel - dir * max_inbound
-		unit._sim_body_vel[i] = new_vel
 		# Cap individual soldier speed to this unit's own jog pace while the unit is
 		# stationary: during the reform hold phase AND whenever a formation reshape
 		# (frontage change, centre pivot) plays out on an idle unit. A marching unit is
@@ -431,13 +430,6 @@ static func step(unit: Unit, delta: float) -> void:
 ## body moving diagonally backward-and-sideways never exceeds jog overall (the backward
 ## axis just eats a bigger share of that budget). Pure function of the body's velocity and
 ## facing; no RNG, order-free -- replay-safe.
-static func _cap_body_speed(unit: Unit, i: int) -> Vector2:
-	var vel: Vector2 = unit._sim_body_vel[i]
-	var facing: Vector2 = unit._sim_soldier_facing[i] if i < unit._sim_soldier_facing.size() \
-			else unit.facing
-	return _cap_body_speed_vec(vel, facing, unit.jog_speed, unit.back_speed_fraction)
-
-
 static func _cap_body_speed_vec(vel: Vector2, facing: Vector2, jog_speed: float, back_speed_fraction: float) -> Vector2:
 	# facing is always a unit vector -- every assignment site in Unit.gd normalises it
 	# (dir.normalized(), Vector2.from_angle, rotation ops, the axis constants) -- so the

@@ -132,6 +132,7 @@ func test_scenario_routs_then_is_annihilated_under_pursuit() -> void:
 		var unit: Unit = _infantry()
 		if unit == null:
 			annihilated_tick = tick
+			last_soldiers = 0
 			break
 		if unit.state == Unit.State.ROUTING and routed_tick < 0:
 			routed_tick = tick
