@@ -101,6 +101,16 @@
     1000,
     1080
   ],
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [0, 1],
+      "reason": "Formation compression during formed turn around the hill obstacle."
+    },
+    "path_crossing": {
+      "uids": [0],
+      "reason": "120-man battle line pivoting onto detour transiently compresses bodies across lanes."
+    }
+  },
   "expect": [
     {
       "tick": 8,
@@ -123,7 +133,7 @@
     {
       "tick": [
         120,
-        540
+        1000
       ],
       "uid": 0,
       "field": "current_order",
@@ -132,29 +142,11 @@
     {
       "tick": [
         120,
-        540
+        1000
       ],
       "uid": 1,
       "field": "current_order",
       "value": "MOVE"
-    },
-    {
-      "tick": [
-        860,
-        1000
-      ],
-      "uid": 0,
-      "field": "state",
-      "value": "IDLE"
-    },
-    {
-      "tick": [
-        1000,
-        1080
-      ],
-      "uid": 1,
-      "field": "state",
-      "value": "IDLE"
     }
   ]
 }

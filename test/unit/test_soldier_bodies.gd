@@ -303,4 +303,60 @@ func test_corridor_to_slot_far_outboard_routes_to_flank_corridor() -> void:
 		"a body far outboard from an interior slot (4 spacings away) must route via flank corridor (dx=%.2f), not cut through standing ranks" % dx_to_slot)
 
 
+func test_corridor_to_slot_marching_moderate_lag_routes_directly() -> void:
+	var u := _make_unit(53, 40)
+	u.state = Unit.State.MOVING
+	u._approach_velocity = u.facing * u.move_speed   # marching actively
+	u.seed_sim_soldiers()
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var slot_idx: int = 4
+	var own_slot: Vector2 = slots[slot_idx]
+	var ang: float = u.soldier_block_world_angle()
+	var rank_pitch: float = u.rank_pitch_wu()
+	var spacing: float = u.file_pitch_wu()
+
+	# Displace body by moderate march/turn inertia (0.8 depth, 0.8 spacing outboard)
+	var t_local: Vector2 = (own_slot - u.position).rotated(-ang)
+	var flank_sign: float = 1.0 if t_local.x >= 0.0 else -1.0
+	var p_local: Vector2 = Vector2(t_local.x + flank_sign * spacing * 0.8, t_local.y + rank_pitch * 0.8)
+	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
+
+	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers)
+	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
+	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
+
+	# Under marching, moderate lag within (depth * 1.5, spacing * 1.0) routes directly to own slot:
+	assert_almost_eq(target_local.x, t_local.x, 0.1,
+		"a marching body with moderate gait lag must walk direct (%.2f), not trigger a flank detour" % target_local.x)
+
+
+func test_corridor_to_slot_stationary_moderate_lag_routes_via_corridor() -> void:
+	var u := _make_unit(54, 40)
+	u.state = Unit.State.IDLE
+	u._approach_velocity = Vector2.ZERO   # stationary drill/reform
+	u.seed_sim_soldiers()
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var slot_idx: int = 4
+	var own_slot: Vector2 = slots[slot_idx]
+	var ang: float = u.soldier_block_world_angle()
+	var rank_pitch: float = u.rank_pitch_wu()
+	var spacing: float = u.file_pitch_wu()
+
+	# Displaced across ranks and files (2.0 depth, 2.5 spacing outboard exceeding proximity mult):
+	var t_local: Vector2 = (own_slot - u.position).rotated(-ang)
+	var flank_sign: float = 1.0 if t_local.x >= 0.0 else -1.0
+	var p_local: Vector2 = Vector2(t_local.x + flank_sign * spacing * 2.5, t_local.y + rank_pitch * 2.0)
+	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
+
+	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers)
+	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
+	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
+
+	# Under stationary conditions, exceeding thresholds routes via flank corridor:
+	var dx_to_slot: float = absf(target_local.x - t_local.x)
+	assert_true(dx_to_slot > spacing * 1.0,
+		"a stationary reform body exceeding spacing/depth thresholds must route via corridor (dx=%.2f), not cut through standing ranks" % dx_to_slot)
+
+
+
 

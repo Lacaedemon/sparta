@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/cycle-charge-flee.json",
-  "caption": "Refined perimeter corridor routing ensures post-melee infantry re-spreads smoothly and maintains formation integrity without outer flank oscillations or diagonal rank shortcuts.",
+  "input": "demos/inputs/funnel-hug-lanes.json",
+  "caption": "Refined perimeter corridor inward approach and rear rank arrivals prevent formation deformity and diagonal shortcuts during curved marches around terrain obstacles.",
   "fixed_fps": 30,
-  "max_frames": 480,
+  "max_frames": 540,
   "fps": 15,
   "width": 640
 }
