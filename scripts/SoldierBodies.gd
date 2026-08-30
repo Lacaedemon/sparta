@@ -387,7 +387,11 @@ static func step(unit: Unit, delta: float) -> void:
 		# exempt — its bodies need to keep up with moving slots — so the cap only
 		# applies when state == IDLE.
 		if unit._reform_holding() or unit.state == Unit.State.IDLE:
-			unit._sim_body_vel[i] = _cap_body_speed(unit, i)
+			var facing: Vector2 = unit._sim_soldier_facing[i] if i < unit._sim_soldier_facing.size() \
+					else unit.facing
+			step_vel = _cap_body_speed_vec(step_vel, facing, unit.jog_speed, unit.back_speed_fraction)
+			new_vel = _cap_body_speed_vec(new_vel, facing, unit.jog_speed, unit.back_speed_fraction)
+		unit._sim_body_vel[i] = new_vel
 		# Final physical ceiling, applied after every adjustment above and to every body
 		# alike (marching, engaged, idle/reforming): a man cannot exceed his own sprint by
 		# more than a hard margin no matter how fast his slot is receding out from under him.
@@ -431,25 +435,29 @@ static func _cap_body_speed(unit: Unit, i: int) -> Vector2:
 	var vel: Vector2 = unit._sim_body_vel[i]
 	var facing: Vector2 = unit._sim_soldier_facing[i] if i < unit._sim_soldier_facing.size() \
 			else unit.facing
+	return _cap_body_speed_vec(vel, facing, unit.jog_speed, unit.back_speed_fraction)
+
+
+static func _cap_body_speed_vec(vel: Vector2, facing: Vector2, jog_speed: float, back_speed_fraction: float) -> Vector2:
 	# facing is always a unit vector -- every assignment site in Unit.gd normalises it
 	# (dir.normalized(), Vector2.from_angle, rotation ops, the axis constants) -- so the
 	# facing * forward_component projection below is exact. Guard the degenerate zero case.
 	if facing.length_squared() < 0.0001:
-		return vel.limit_length(unit.jog_speed)
+		return vel.limit_length(jog_speed)
 	# A body moving forward or sideways (non-negative facing component) uses the full jog
 	# cap. Only a body whose motion leans backward -- against its facing -- is capped slower.
 	var forward_component: float = vel.dot(facing)
 	if forward_component >= 0.0:
-		return vel.limit_length(unit.jog_speed)
+		return vel.limit_length(jog_speed)
 	# Split the velocity into its along-facing (backward) part and its sideways part, cap the
 	# backward part to the slower pace, then re-limit the sum to jog so total speed stays
 	# within the jog ceiling even for a diagonal backward-and-sideways body.
-	var back_cap: float = unit.jog_speed * unit.back_speed_fraction
+	var back_cap: float = jog_speed * back_speed_fraction
 	var along: Vector2 = facing * forward_component            # points backward (component < 0)
 	var side: Vector2 = vel - along
 	if along.length_squared() > back_cap * back_cap:
 		along = along.normalized() * back_cap
-	return (along + side).limit_length(unit.jog_speed)
+	return (along + side).limit_length(jog_speed)
 
 
 ## Slide the regiment center toward its soldiers' centroid, at a bounded velocity (phase 5).

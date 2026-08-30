@@ -237,3 +237,25 @@ func test_step_all_skips_dead_regiments() -> void:
 	dead.state = Unit.State.DEAD
 	Unit.step_all_sim_soldiers([dead], DT)
 	assert_eq(dead._sim_soldier_pos.size(), 0, "a dead regiment's bodies are not stepped")
+
+
+func test_arrival_clamp_bounds_displacement_to_jog_speed_and_zeroes_residual_velocity() -> void:
+	var u := _idle_unit(15, 24)
+	u.step_sim_soldiers(DT)
+	var slot0: Vector2 = u.soldier_world_slots(u.soldiers)[0]
+	# Place body 1.5 wu away from slot and give it a fast inbound velocity (e.g. 150 wu/s)
+	u._sim_soldier_pos[0] = slot0 + Vector2(1.5, 0.0)
+	u._sim_body_vel[0] = Vector2(-150.0, 0.0)
+	var pos_before: Vector2 = u._sim_soldier_pos[0]
+	u.step_sim_soldiers(DT)
+	var pos_after: Vector2 = u._sim_soldier_pos[0]
+	var displacement: float = pos_before.distance_to(pos_after)
+	var max_expected_disp: float = u.jog_speed * DT
+	assert_lte(displacement, max_expected_disp + 1e-4,
+		"arrival clamp displacement on idle body is bounded by jog pace (displacement %.4f <= max %.4f)"
+			% [displacement, max_expected_disp])
+	# Step again and verify that the body does not coast past the slot on the -x side
+	u.step_sim_soldiers(DT)
+	assert_gte(u._sim_soldier_pos[0].x - slot0.x, -SoldierBodies.ARRIVE_EPS,
+		"stored velocity did not carry arrival surplus past the slot")
+
