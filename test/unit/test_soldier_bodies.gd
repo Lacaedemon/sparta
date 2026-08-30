@@ -249,6 +249,59 @@ func test_corridor_to_slot_monotonic_scaling_routes_direct() -> void:
 		"monotonic quadrant contraction must route directly to slot y")
 
 
+func test_corridor_to_slot_tight_to_loose_extreme_ratio_routes_direct() -> void:
+	var u := _make_unit(55, 60)
+	u.state = Unit.State.MOVING
+	u.facing = Vector2.DOWN
+	u._approach_velocity = Vector2.DOWN * 40.0
+	u.seed_sim_soldiers()
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var slot_idx: int = 0
+	var own_slot: Vector2 = slots[slot_idx]
+	var ang: float = u.soldier_block_world_angle()
+
+	# k = 0.25 represents instant switch from TIGHT (scale 1.0) to LOOSE (scale 4.0):
+	var t_local: Vector2 = (own_slot - u.position).rotated(-ang)
+	var p_local: Vector2 = Vector2(t_local.x * 0.25, t_local.y * 0.25)
+	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
+
+	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers)
+	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
+	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
+
+	assert_almost_eq(target_local.x, t_local.x, 0.1,
+		"tight-to-loose 0.25 scale ratio must route directly to slot")
+	assert_almost_eq(target_local.y, t_local.y, 0.1,
+		"tight-to-loose 0.25 scale ratio must route directly to slot y")
+
+
+func test_corridor_to_slot_loose_to_tight_extreme_ratio_routes_direct() -> void:
+	var u := _make_unit(55, 60)
+	u.state = Unit.State.MOVING
+	u.facing = Vector2.DOWN
+	u._approach_velocity = Vector2.DOWN * 40.0
+	u.seed_sim_soldiers()
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var slot_idx: int = 0
+	var own_slot: Vector2 = slots[slot_idx]
+	var ang: float = u.soldier_block_world_angle()
+
+	# k = 4.0 represents instant switch from LOOSE (scale 4.0) to TIGHT (scale 1.0):
+	var t_local: Vector2 = (own_slot - u.position).rotated(-ang)
+	var p_local: Vector2 = Vector2(t_local.x * 4.0, t_local.y * 4.0)
+	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
+
+	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers)
+	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
+	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
+
+	assert_almost_eq(target_local.x, t_local.x, 0.1,
+		"loose-to-tight 4.0 scale ratio must route directly to slot")
+	assert_almost_eq(target_local.y, t_local.y, 0.1,
+		"loose-to-tight 4.0 scale ratio must route directly to slot y")
+
+
+
 func test_lane_follower_caps_overtaking_body_under_file_major() -> void:
 	var u := _make_unit(55, 60)
 	u.seed_sim_soldiers()

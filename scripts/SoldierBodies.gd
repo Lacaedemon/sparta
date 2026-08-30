@@ -297,8 +297,8 @@ static func step(unit: Unit, delta: float) -> void:
 	var files: int = unit.formation_files(n)
 	var body_radius: float = unit.soldier_body_radius()
 	var two_bodies: float = body_radius * 2.0
-	var turning: bool = unit.is_maneuver_turning()
-	# Precompute true file-column front and rear neighbors in O(n) for lane follower speed damping:
+	# Precompute true file-column front and rear neighbors in O(n) for lane follower speed damping
+	# (exempting maneuver turns, stationary/reform-holding units, and square/schiltron formations):
 	var file_front_neighbor: PackedInt32Array = PackedInt32Array()
 	var file_rear_neighbor: PackedInt32Array = PackedInt32Array()
 	if not turning and unit.state == Unit.State.MOVING and not unit._reform_holding() and not unit.in_square() and files > 0:
@@ -677,7 +677,8 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 		if same_quadrant and absf(t_local.x) > spacing * 0.2 and absf(t_local.y) > depth * 0.2:
 			var k_x: float = p_local.x / t_local.x
 			var k_y: float = p_local.y / t_local.y
-			if absf(k_x - k_y) < 0.3 and k_x > 0.4 and k_x < 2.5:
+			var max_k: float = maxf(k_x, k_y)
+			if max_k > 0.0 and absf(k_x - k_y) <= 0.35 * max_k and k_x >= 0.2 and k_x <= 5.0:
 				if unit._formation_mirror_x:
 					t_local.x = -t_local.x
 				var target_world_direct: Vector2 = unit.position + t_local.rotated(ang)
