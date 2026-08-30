@@ -367,13 +367,19 @@ static func step(unit: Unit, delta: float) -> void:
 		# (velocity relative to the feed-forward) so it advances at most the remaining distance
 		# this tick, for any positive distance -- the body lands exactly on the slot instead of
 		# coasting through it. No overshoot, no oscillation.
+		var step_vel: Vector2 = new_vel
 		if not turning and delta > 0.0 and dist > MIN_DIST:
 			var dir: Vector2 = to_slot / dist
 			var arrival_vel: Vector2 = new_vel - feed_forward
 			var inbound: float = arrival_vel.dot(dir)
 			var max_inbound: float = dist / delta
-			if inbound > max_inbound:
-				new_vel -= dir * (inbound - max_inbound)
+			if inbound >= max_inbound:
+				step_vel -= dir * (inbound - max_inbound)
+				# The body arrives on slot this tick: use step_vel (clamped to dist/delta) to advance
+				# the body onto the slot this tick, and zero the arrival component along dir for the
+				# post-step stored velocity so leftover arrival speed does not coast past the slot on
+				# subsequent ticks.
+				new_vel = step_vel - dir * max_inbound
 		unit._sim_body_vel[i] = new_vel
 		# Cap individual soldier speed to this unit's own jog pace while the unit is
 		# stationary: during the reform hold phase AND whenever a formation reshape
@@ -400,7 +406,7 @@ static func step(unit: Unit, delta: float) -> void:
 		var superphysical_cap: float = maxf(
 			unit.move_speed * unit.superphysical_speed_frac, pre_tick_speed)
 		unit._sim_body_vel[i] = unit._sim_body_vel[i].limit_length(superphysical_cap)
-		unit._sim_soldier_pos[i] += unit._sim_body_vel[i] * delta
+		unit._sim_soldier_pos[i] += step_vel.limit_length(superphysical_cap) * delta
 		# Tell the render a body actually moved this tick, so _process can skip the
 		# MultiMesh rewrite while a block sits at rest (REST_SPEED is well below visible).
 		if unit._sim_body_vel[i].length_squared() > REST_SPEED * REST_SPEED:
