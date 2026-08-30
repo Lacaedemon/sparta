@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/funnel-hug-lanes.json",
-  "caption": "Refined perimeter corridor inward approach and rear rank arrivals prevent formation deformity and diagonal shortcuts during curved marches around terrain obstacles.",
+  "input": "demos/inputs/cycle-charge-flee.json",
+  "caption": "Perimeter corridor routing refinement: bodies approaching target slots maintain formation perimeter lanes during post-melee re-spreads and march reforms.",
   "fixed_fps": 30,
-  "max_frames": 540,
+  "max_frames": 480,
   "fps": 15,
   "width": 640
 }
