@@ -227,30 +227,27 @@ func test_corridor_to_slot_inward_approach_does_not_fling_to_flank() -> void:
 	var u := _make_unit(50, 40)
 	u.seed_sim_soldiers()
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
-	# Slot 0 is in the front rank. Place body 0 slightly displaced inward along the rank
-	# but marginally behind the front rank by 0.6 * rank_pitch.
-	var own_slot: Vector2 = slots[0]
+	# Pick an interior front-rank slot (e.g. index 3, which is 2 files away from the flank).
+	var slot_idx: int = 3
+	var own_slot: Vector2 = slots[slot_idx]
 	var ang: float = u.soldier_block_world_angle()
 	var rank_pitch: float = u.rank_pitch_wu()
 	var spacing: float = u.file_pitch_wu()
 
-	# Position body 0 between flank and slot, slightly behind front rank:
-	# In local space: t_local.y is front. Displace p_local by +0.6 * rank_pitch in depth
-	# and +2.0 * spacing laterally from slot toward flank.
+	# Position body slightly displaced inward along the rank lane (1.0 * spacing outboard),
+	# but marginally behind the front rank by 0.6 * rank_pitch (exceeding depth * 0.5 threshold).
 	var t_local: Vector2 = (own_slot - u.position).rotated(-ang)
 	var flank_sign: float = 1.0 if t_local.x >= 0.0 else -1.0
-	var p_local: Vector2 = Vector2(t_local.x + flank_sign * spacing * 2.0, t_local.y + rank_pitch * 0.6)
-	u._sim_soldier_pos[0] = u.position + p_local.rotated(ang)
+	var p_local: Vector2 = Vector2(t_local.x + flank_sign * spacing * 1.0, t_local.y + rank_pitch * 0.6)
+	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, 0, own_slot, u.soldiers)
-	var target_pos: Vector2 = u._sim_soldier_pos[0] + to_target
+	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers)
+	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
-	# Target x should head inward toward t_local.x, NOT outward toward flank
-	var dx_to_slot: float = absf(target_local.x - t_local.x)
-	var dx_to_flank: float = absf(target_local.x - (t_local.x + flank_sign * spacing * 10.0))
-	assert_true(dx_to_slot < dx_to_flank,
-		"a body walking inward along its target rank must steer inward toward its slot (dx=%.2f), not outward to the outer flank" % dx_to_slot)
+	# Target lateral x should be t_local.x (the slot's column), NOT target_flank_x on the outer edge
+	assert_almost_eq(target_local.x, t_local.x, 0.1,
+		"a body walking inward along its target rank must steer inward to its slot column (%.2f), not outward to outer flank" % target_local.x)
 
 
 func test_corridor_to_slot_rear_rank_arrival_routes_directly() -> void:

@@ -600,7 +600,7 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 				var target_flank_x: float = target_flank_sign * (rx_half + spacing * (CORRIDOR_CLEARANCE_MULT + CORRIDOR_LANE_STAGGER_FRAC * float(i % 2)))
 				if absf(p_local.x - target_flank_x) > spacing * 0.5 and p_local.y >= rear_corridor_y - depth * 0.5:
 					t_local = Vector2(target_flank_x, rear_corridor_y)
-				elif (p_local.x - t_local.x) * target_flank_sign > 0.0 and absf(p_local.y - t_local.y) <= depth * 1.5:
+				elif (p_local.x - t_local.x) * target_flank_sign > 0.0 and absf(p_local.x - t_local.x) <= spacing * CORRIDOR_PROXIMITY_MULT and absf(p_local.y - t_local.y) <= depth * 1.5:
 					t_local = Vector2(t_local.x, t_local.y)
 				elif p_local.y >= t_local.y + depth * 0.5:
 					t_local = Vector2(target_flank_x, t_local.y)
