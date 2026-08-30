@@ -2694,7 +2694,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "0.9 m",
-        "info_text": "Infantry 2\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 15 files\nOrder: Attacking Infantry 2\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.9 m/s\nAccel: +1.0 m/s²",
+        "info_text": "Infantry 2\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 15 files\nOrder: Attacking Infantry 2\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.9 m/s\nAccel: +0.8 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 1,
@@ -3332,7 +3332,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "0.9 m",
-        "info_text": "Infantry 2\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 15 files\nOrder: Attacking Infantry 2\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.8 m/s\nAccel: -0.5 m/s²",
+        "info_text": "Infantry 2\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 15 files\nOrder: Attacking Infantry 2\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.8 m/s\nAccel: +0.6 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 1,
