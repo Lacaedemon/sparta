@@ -1,4 +1,4 @@
-﻿extends GutTest
+extends GutTest
 ## Unit tests verifying restrictions and penalties on mid-sprint formation density,
 ## stance, and frontage transitions.
 
