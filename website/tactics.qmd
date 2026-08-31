@@ -1140,20 +1140,18 @@ reach-versus-rate trade the section above describes:
 
 ::: {#tbl-pilum-gladius}
 
-| Weapon | Reach | Blow every | Sustained killing rate |
-| --- | --- | --- | --- |
-| Gladius | 1.3 m | 1.2 s | 0.83 |
-| Pilum | 2.0 m | 1.5 s | 0.40 |
+| Weapon | Type | Reach | Blow every | Sustained killing rate | Knockback shove |
+| --- | --- | --- | --- | --- | --- |
+| Gladius | Cutting / balanced | 1.3 m | 1.2 s | 0.83 | Full (1.0&times;) |
+| Pilum | Piercing thrust | 2.0 m | 1.5 s | 0.40 | Reduced (0.35&times;) |
 
 The two weapons a legionary carries, and the trade between them.
 :::
 
-The pilum reaches most of the way to a spear's 2.4 m, so a regiment holding it lands the
-opening strikes of a clash and can field more ranks in its engaged tier --- but it swings
-slower and wounds less when it lands, so a line that keeps holding it once the fight is
-locked kills at roughly half the rate it would with the blade. The historical use follows
-from that: draw the pilum as an enemy closes, then switch to the gladius when the lines
-actually meet. Leave it too late and you've spent the approach with the wrong weapon;
+The pilum reaches most of the way to a spear's 2.4 m and penetrates 25% of defender armour as a piercing weapon, so a regiment holding it lands the opening strikes of a clash and can field more ranks in its engaged tier --- but it swings slower, deals less baseline damage, and imparts minimal whole-body knockback shove, so a line that keeps holding it once the fight is locked kills at roughly half the rate it would with the blade.
+The historical use follows from that:
+draw the pilum as an enemy closes, then switch to the gladius when the lines actually meet.
+Leave it too late and you've spent the approach with the wrong weapon;
 switch too early and you throw away the reach you were carrying it for.
 
 ::: {#fig-weapon-switch .demo}

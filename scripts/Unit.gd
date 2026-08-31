@@ -6238,6 +6238,18 @@ func soldier_shield_block(i: int) -> float:
 	return s.block_value if s != null else 0.0
 
 
+## Whether the weapon soldier `i` carries deals piercing damage (spears, lances,
+## daggers, pilum thrusts). Resolved through the per-soldier weapon id. Piercing hits
+## penetrate armor with minimal whole-body knockback, while non-piercing hits deliver
+## a full mix of knockback and standard-armor damage. Same fallback chain as soldier_lethality.
+func soldier_is_piercing(i: int) -> bool:
+	var type_id: int = _sim_soldier_weapon_id[i] if i < _sim_soldier_weapon_id.size() else weapon_type_id
+	var w: Weapon = LoadoutRegistry.weapon(type_id)
+	if w == null:
+		w = LoadoutRegistry.weapon(weapon_type_id)
+	return w.is_piercing if w != null else false
+
+
 # --- Order summary (for the HUD / selection overlay) -----------------------
 
 ## Human-readable description of this unit's current order — what the player

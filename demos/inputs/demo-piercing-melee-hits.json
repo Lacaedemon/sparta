@@ -1,0 +1,81 @@
+{
+  "seed": "109901",
+  "spawn_fingerprint": "678ca7de683f9ab775f6e7c95e125977",
+  "camera": [
+    {
+      "tick": 0,
+      "x": 510.0,
+      "y": 370.0,
+      "zoom": 1.5
+    }
+  ],
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 440.0,
+      "y": 420.0,
+      "facing": [
+        0.0,
+        -1.0
+      ],
+      "count": 40
+    },
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 580.0,
+      "y": 420.0,
+      "facing": [
+        0.0,
+        -1.0
+      ],
+      "count": 40
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 440.0,
+      "y": 320.0,
+      "facing": [
+        0.0,
+        1.0
+      ],
+      "count": 40
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 580.0,
+      "y": 320.0,
+      "facing": [
+        0.0,
+        1.0
+      ],
+      "count": 40
+    }
+  ],
+  "steps": [
+    {
+      "tick": 5,
+      "click": [
+        440,
+        420
+      ]
+    },
+    {
+      "tick": 10,
+      "shift_click": [
+        580,
+        420
+      ]
+    },
+    {
+      "tick": 20,
+      "rmb_click": [
+        510,
+        320
+      ]
+    }
+  ]
+}

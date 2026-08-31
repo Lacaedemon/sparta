@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/demo-piercing-melee-hits.json",
+  "caption": "Demonstrating piercing (spear thrusts: damage-focused, minimal knockback) vs non-piercing (swords: damage and knockback mix) melee combat.",
+  "fixed_fps": 30,
+  "max_frames": 240,
+  "fps": 12,
+  "width": 640
+}

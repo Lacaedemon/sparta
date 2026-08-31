@@ -117,6 +117,17 @@ func test_growth_seeds_tail_bodies_with_the_units_loadout() -> void:
 	assert_eq(mismatched, 0, "fresh tail bodies carry the unit's loadout ids")
 
 
+func test_soldier_is_piercing_resolves_and_falls_back() -> void:
+	var u: Unit = _bare_unit(4, 0, 4)
+	u.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR
+	u.seed_sim_soldiers()
+	assert_true(u.soldier_is_piercing(0), "spear equipped soldier is piercing")
+	u._sim_soldier_weapon_id[1] = LoadoutRegistry.WEAPON_GLADIUS
+	assert_false(u.soldier_is_piercing(1), "gladius equipped soldier is non-piercing")
+	# Out-of-bounds index falls back to unit weapon_type_id
+	assert_true(u.soldier_is_piercing(99), "out-of-bounds index falls back to unit's spear type")
+
+
 func _bare_unit(uid: int, team: int, n: int) -> Unit:
 	var u: Unit = Unit.new()
 	u.max_soldiers = n
