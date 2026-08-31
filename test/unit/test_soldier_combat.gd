@@ -337,6 +337,25 @@ func test_wound_is_never_negative() -> void:
 	assert_almost_eq(SoldierCombat.wound(1.0, -5.0, 1.5), 0.0, TOL)
 
 
+func test_wound_piercing_partially_bypasses_armour() -> void:
+	# Against 40% armour:
+	# Non-piercing: effective armour 0.40 -> wound = DAMAGE_SCALE * 0.60
+	# Piercing: effective armour 0.40 * (1 - 0.25) = 0.30 -> wound = DAMAGE_SCALE * 0.70
+	var non_piercing: float = SoldierCombat.wound(1.0, 0.0, 0.40, 1.0, false)
+	var piercing: float = SoldierCombat.wound(1.0, 0.0, 0.40, 1.0, true)
+	assert_almost_eq(non_piercing, SoldierCombat.DAMAGE_SCALE * 0.60, TOL)
+	assert_almost_eq(piercing, SoldierCombat.DAMAGE_SCALE * 0.70, TOL)
+	assert_gt(piercing, non_piercing, "piercing hits deal more damage against armoured targets")
+
+
+func test_wound_piercing_unarmoured_matches_non_piercing() -> void:
+	# Unarmoured target (armour 0.0): both deal full baseline wound
+	var non_piercing: float = SoldierCombat.wound(1.0, 0.0, 0.0, 1.0, false)
+	var piercing: float = SoldierCombat.wound(1.0, 0.0, 0.0, 1.0, true)
+	assert_almost_eq(non_piercing, SoldierCombat.DAMAGE_SCALE, TOL)
+	assert_almost_eq(piercing, SoldierCombat.DAMAGE_SCALE, TOL)
+
+
 # --- Determinism: the math is a pure function of its inputs -------------------
 
 func test_math_is_deterministic() -> void:
@@ -497,6 +516,14 @@ func test_defended_impulse_is_a_fraction_of_a_landed_one() -> void:
 func test_knockback_impulse_never_negative() -> void:
 	assert_eq(SoldierCombat.knockback_impulse(-1.0, 0.0, 1.0, 1.0), 0.0, "negative lethality clamps to no impulse")
 	assert_gt(SoldierCombat.knockback_impulse(1.0, 0.0, 0.0, 1.0), 0.0, "zero mass is floored, not a divide-by-zero")
+
+
+func test_knockback_impulse_piercing_is_reduced() -> void:
+	var standard: float = SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, 1.0, 1.0, false)
+	var piercing: float = SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, 1.0, 1.0, true)
+	assert_almost_eq(piercing, standard * SoldierCombat.PIERCING_IMPULSE_MULT, 1e-6,
+			"piercing strikes impart reduced knockback impulse")
+	assert_lt(piercing, standard, "piercing strikes shove less than non-piercing blows")
 
 
 # --- capped knockback velocity (add-then-clamp per strike) --------------------------------

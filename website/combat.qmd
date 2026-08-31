@@ -102,15 +102,20 @@ footwork all live on the front. Wound the attacker or wind the defender and thes
 scores shift; nothing is ever a guaranteed hit or miss.
 
 **2. Does it wound?** A blow that lands subtracts from the defender's **health** ---
-we don't flip a kill-or-not coin, we track damage. Its size is the weapon's
-lethality, boosted by the charge and blunted by armour:
+we don't flip a kill-or-not coin, we track damage.
+Its size is the weapon's lethality, boosted by the charge and blunted by armour:
 
-$$\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_D)\cdots$$
+$$\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_{\mathrm{eff}})\cdots$$
 
-Here $\Delta h$ is the health lost and $D_0$ a base damage scale. There is no
-separate "injured" flag: health just drops, and a soldier near death
-fights weaker, so the next wound comes easier than the last. At zero health they
-fall. Armour is the only thing that protects a man hit from behind.
+Here $\Delta h$ is the health lost, $D_0$ a base damage scale, and $a_{\mathrm{eff}}$ the effective armour rating.
+Piercing weapons (spears, lances, daggers, pilum thrusts) concentrate impact force onto a narrow contact point,
+bypassing 25% of the defender's armour ($a_{\mathrm{eff}} = 0.75\,a_D$).
+Non-piercing weapons (swords, spathas, axes) meet full armour ($a_{\mathrm{eff}} = a_D$).
+There is no separate "injured" flag:
+health just drops, and a soldier near death fights weaker,
+so the next wound comes easier than the last.
+At zero health they fall.
+Armour is the only thing that protects a man hit from behind.
 
 **3. Everyone tires.** Stamina is spent by **attacking**, by **defending** (every
 blow you meet costs you --- a charge costs more), and by **getting up** after being
@@ -119,13 +124,16 @@ or surrounded, burns through stamina, their defence collapses, and then blows la
 freely. Fatigue, not a hidden timer, is what breaks a line.
 
 **4. The shove.** Every blow that connects --- even a blocked one --- shoves the
-target back, harder from a charge and less against a heavy soldier:
+target back, harder from a charge, scaled by weapon delivery type, and less against a heavy soldier:
 
-$$J = J_0\,\frac{\ell_A\,(1 + c)}{m_D}\cdots$$
+$$J = J_0\,\frac{\ell_A\,(1 + c)}{m_D}\;\gamma_{\mathrm{type}}\cdots$$
 
-Here $J$ is the shove (an impulse) and $J_0$ its base strength. A blocked blow draws
-no blood but still pushes --- which is how a spear wall drives a stalled enemy
-backward.
+Here $J$ is the shove (an impulse) and $J_0$ its base strength.
+Delivery type scales the impulse:
+piercing strikes slip into tissue rather than shoving whole body mass backward,
+transmitting only 35% of standard knockback ($\gamma_{\mathrm{type}} = 0.35$).
+Non-piercing weapons deliver full whole-body displacement ($\gamma_{\mathrm{type}} = 1$).
+A blocked blow draws no blood but still pushes --- which is how a spear wall drives a stalled enemy backward.
 
 Shoves from several attackers in the same moment add up, but the summed speed is
 capped: a pile-on in a crowded press hurls a man back a few body-lengths at most,
@@ -224,6 +232,28 @@ Everything tactical comes out of the rolls above:
 - **Fight fresh, fight skilled.** Skill and stamina help at *both* ends --- landing
   more, defending more, tiring slower. Rested veterans beat winded levies by more
   than the headcount suggests, so pace your commitment.
+- **Piercing vs. cutting/blunt strikes.**
+  Spear thrusts, daggers, and pila concentrate impact force onto a narrow point:
+  they bypass 25% of the defender's armour to inflict deeper wounds on armoured foes,
+  while imparting minimal whole-body shove (35% knockback impulse).
+  Swords, spathas, and chopping weapons meet full armour but deliver a strong,
+  displacing shove with every blow that connects.
+
+::: {#fig-combat-piercing .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/piercing_melee_hits.jpg">
+  <source src="media/piercing_melee_hits.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Piercing vs. non-piercing melee hits:
+spearmen thrust with high armour penetration and minimal whole-body shove,
+while swordsmen exchange chopping blows with substantial knockback displacement.
+:::
 
 ::: {#fig-combat-brace .demo}
 

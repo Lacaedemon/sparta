@@ -45,6 +45,16 @@ func test_every_roster_weapon_resolves() -> void:
 		assert_gt(w.attack_interval_s, 0.0, "every weapon has a positive attack cadence")
 
 
+func test_weapon_piercing_attributes() -> void:
+	# Spear, sidearm, and pilum are piercing weapons (thrusts/javelins)
+	assert_true(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPEAR).is_piercing, "spear is piercing")
+	assert_true(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_PILUM).is_piercing, "pilum is piercing")
+	assert_true(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SIDEARM).is_piercing, "sidearm is piercing")
+	# Gladius and Spatha are non-piercing / cutting / balanced
+	assert_false(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_GLADIUS).is_piercing, "gladius is non-piercing")
+	assert_false(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPATHA).is_piercing, "spatha is non-piercing")
+
+
 func test_every_roster_shield_resolves() -> void:
 	for type_id in ROSTER_SHIELDS:
 		var s: Shield = LoadoutRegistry.shield(type_id)
