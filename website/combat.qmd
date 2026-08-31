@@ -140,6 +140,8 @@ capped: a pile-on in a crowded press hurls a man back a few body-lengths at most
 never across the field. The uncapped force still decides whether he is knocked
 down, so a heavy hit fells as hard as ever.
 
+**Cavalry charge separation:** For mounted cavalry, the charge separates naturally across ticks. The rider's lance strikes first at weapon reach ($\approx 3.0$ m), landing an early piercing wound. When the horse's physical body arrives at contact distance, the physical collision delivers massive blunt damage, heavy knockback, and topples unbraced defenders prone.
+
 ::: {#fig-combat-clash .demo}
 
 ```{=html}

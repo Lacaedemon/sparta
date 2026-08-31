@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/demo-cavalry-lance-impact.json",
+  "caption": "Demonstrating cavalry charge mechanics: rider's lance thrust damage lands first at weapon reach (~3.0m) followed by horse physical body collision knockback and blunt impact on contact.",
+  "fixed_fps": 30,
+  "max_frames": 240,
+  "fps": 12,
+  "width": 640
+}

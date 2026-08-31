@@ -21,6 +21,7 @@ const WEAPON_GLADIUS: int = 2
 const WEAPON_SIDEARM: int = 3
 const WEAPON_SPATHA: int = 4
 const WEAPON_PILUM: int = 5
+const WEAPON_LANCE: int = 6
 
 const SHIELD_SCUTUM: int = 101
 const SHIELD_ROUND: int = 102
@@ -81,6 +82,7 @@ static var _weapons: Dictionary = {
 	WEAPON_SIDEARM: Weapon.make(WEAPON_SIDEARM, "Sidearm", 0.6, 0.5, 0.6, 0.0, true),
 	WEAPON_SPATHA: Weapon.make(WEAPON_SPATHA, "Spatha", 1.5, 1.1, 0.6, 0.0, false),
 	WEAPON_PILUM: Weapon.make(WEAPON_PILUM, "Pilum", 2.0, 0.6, 1.5, deg_to_rad(15.0), true),
+	WEAPON_LANCE: Weapon.make(WEAPON_LANCE, "Lance", 3.0, 1.2, 1.2, deg_to_rad(15.0), true),
 }
 
 # block_value: the shield's OWN contribution to the defensive shield weight.
