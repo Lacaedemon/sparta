@@ -1146,6 +1146,7 @@ var _shattered: bool = false
 # take effect immediately regardless of the timer).
 var _order_response_timer: float = 0.0
 var _moved_last_frame: bool = false
+var _is_facing_turning: bool = false
 # This unit's actual travel velocity (direction + magnitude, world units/s) — not a
 # combat-only quantity, just historically under-documented as one: the cavalry charge
 # bonus (UnitCombat.charge_multiplier) reads it at contact, but so does the soldier-body
@@ -1315,6 +1316,7 @@ func _physics_process(delta: float) -> void:
 			soldiers = 0
 			UnitCombat.register_casualties(self, lost, null, 1.0)
 	_moved_last_frame = false
+	_is_facing_turning = false
 
 	_think(delta)
 	_tick_intermixing(delta)
@@ -1670,6 +1672,12 @@ func is_wheeling() -> bool:
 ## intermediate slot targets.
 func is_maneuver_turning() -> bool:
 	return is_order_turning() or is_wheeling() or _engage_turn_target != Vector2.ZERO
+
+
+## True while the unit is turning or wheeling its formation: during in-place turns,
+## wheels, combat engage re-facing, or active pivot steering during a march.
+func is_turning() -> bool:
+	return is_maneuver_turning() or _is_facing_turning
 
 
 ## Goal facing of the in-place 180° reversal the active leaf is running (a rear move's
@@ -3307,6 +3315,8 @@ func _rotate_facing_toward(target_dir: Vector2, delta: float, rate: float = TURN
 		return
 	var cur: float = facing.angle()
 	var diff: float = angle_difference(cur, target_dir.angle())
+	if absf(diff) > 0.001:
+		_is_facing_turning = true
 	var step: float = clampf(diff, -rate * delta, rate * delta)
 	facing = Vector2.from_angle(cur + step)
 

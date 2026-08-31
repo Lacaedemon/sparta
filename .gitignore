@@ -49,3 +49,6 @@ __pycache__/
 
 # Generated scripted-input files for the relief-balance study (tools/study/relief-balance).
 tools/study/relief-balance/_generated/
+
+# Conductor workspace directory
+/conductor/
