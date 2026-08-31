@@ -195,8 +195,8 @@ architecture, and CI changes are exempt.
     battle and copying it from `user://replays/` into `demos/`.
   - **`type=input`**: drives the game from a scripted-input file
     (`demos/inputs/*.json`) via `DemoInputRecorder.tscn` -- preferred for
-    mechanics that need specific player gestures (a key toggle, a multi-unit
-    drag). Reuse the file you wrote for `demos/demo.<slug>.json`.
+    mechanics that need specific player gestures (a key toggle, a multi-unit drag).
+    Reuse the file you wrote for `demos/demo.<slug>.json`.
   See `website/README.md` for the full pipeline.
 
   **`demos/demo.<slug>.json` manifest:** naming each manifest with your PR or
