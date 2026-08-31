@@ -170,9 +170,10 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 		var cond_d: float = SoldierCombat.condition(defender._sim_soldier_hp[target], en_maxhp) \
 				* SoldierCombat.stamina_factor(stam_d, en_maxstam)
 		# Strike-time loadout reads, through the per-soldier id arrays: the
-		# attacker's weapon sets the blow's lethality, the struck soldier's
-		# shield adds its block value to the defender's stance residual.
+		# attacker's weapon sets the blow's lethality and piercing nature, the struck
+		# soldier's shield adds its block value to the defender's stance residual.
 		var lethality_a: float = attacker.soldier_lethality(ai)
+		var is_piercing: bool = attacker.soldier_is_piercing(ai)
 		var shield_d: float = en_shield_residual + defender.soldier_shield_block(target)
 		var p_land: float = SoldierCombat.land_chance(my_prof["skill"], en_prof["skill"], shield_d, phi, c, cond_a, cond_d)
 		# One seeded draw per striking attacker, in id order, after the target is fixed.
@@ -193,7 +194,7 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 		var kb_focus: bool = attacker.order_mode == Unit.ORDER_KNOCKBACK_FOCUS
 		var impulse_mult: float = SoldierCombat.KNOCKBACK_FOCUS_IMPULSE_MULT if kb_focus else 1.0
 		var impulse_mag: float = SoldierCombat.knockback_impulse(
-				lethality_a, c, en_prof["mass"], eta, impulse_mult)
+				lethality_a, c, en_prof["mass"], eta, impulse_mult, is_piercing)
 		# Bracing: a front-facing, set, deep file resists a shove with the whole column's
 		# footing (docs/combat-model.md "Bracing"). Walk the target's file rearward (phi > 0 only:
 		# a flank/rear blow gets no buttress), stopping at the first dead/missing rank. A
@@ -287,7 +288,7 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 		# knocks a man back body-lengths, never launches him across the field.
 		if landed:
 			defender._sim_soldier_hp[target] -= \
-					SoldierCombat.wound(lethality_a, c, en_prof["armour"], cond_a) * wound_scale
+					SoldierCombat.wound(lethality_a, c, en_prof["armour"], cond_a, is_piercing) * wound_scale
 		# Going prone: a big enough impulse fells the defender. The fall roll is a second seeded
 		# draw per striking attacker, ALWAYS drawn (after the land roll, in id order) so the draw
 		# count per in-reach strike is fixed -- the size guard gates only the assignment, never

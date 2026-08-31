@@ -226,12 +226,18 @@ A blow that lands wounds. We do **not** roll kill-or-not; we subtract damage fro
 the defender's health. Its size is the weapon's lethality, amplified by closing
 momentum, blunted by armour, and scaled by the attacker's own condition:
 
-$$\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_D)\,q(h_A)\,g(\sigma_A),
+$$\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_{\mathrm{eff}})\,q(h_A)\,g(\sigma_A),
+\qquad
+a_{\mathrm{eff}} = \begin{cases} a_D\,(1 - \alpha_{\mathrm{pierce}}) & \text{piercing weapon} \\ a_D & \text{non-piercing,} \end{cases}
 \qquad
 h_D \leftarrow h_D - \Delta h.$$
 
 $D_0 > 0$ is a base damage scale (the wound a baseline weapon, $\ell = 1$, deals to
-an unarmoured, standing target). The soldier **dies** when $h_D \le 0$. Until then it fights on at reduced capacity
+an unarmoured, standing target). Piercing weapons (spears, lances, daggers, pilum thrusts)
+concentrate impact force onto a narrow point, bypassing a fraction $\alpha_{\mathrm{pierce}} = 0.25$
+(`PIERCING_ARMOR_PENETRATION`) of the defender's armour. Non-piercing weapons (swords, spathas,
+axes, blunt impacts) meet the defender's full armour rating $a_D$.
+The soldier **dies** when $h_D \le 0$. Until then it fights on at reduced capacity
 through $q(h_D)$ -- wounds compound, because a hurt soldier both defends and hits
 worse, so the second and third wounds come easier than the first. Armour $a_D$ is
 the only thing that protects a back-turned or downed man, since it sits outside the
@@ -267,15 +273,21 @@ stand and defends nothing while down.
 ### 4. Knockback impulse
 
 Every committed strike imparts an impulse along the strike axis, scaled by the
-blow's force, inversely by the defender's mass, and reduced (not erased) when the
-blow is actively defended rather than landing clean:
+blow's force, inversely by the defender's mass, reduced (not erased) when the
+blow is actively defended rather than landing clean, and scaled by weapon impact type:
 
-$$J = J_0\,\frac{\ell_A\,(1 + c)}{m_D}\;\eta,
+$$J = J_0\,\frac{\ell_A\,(1 + c)}{m_D}\;\eta\;\gamma_{\mathrm{type}},
 \qquad
-\eta = \begin{cases} \eta_{\mathrm{def}} \in (0,1) & \text{defended (turned aside)} \\ 1 & \text{landed.} \end{cases}$$
+\eta = \begin{cases} \eta_{\mathrm{def}} \in (0,1) & \text{defended (turned aside)} \\ 1 & \text{landed,} \end{cases}
+\qquad
+\gamma_{\mathrm{type}} = \begin{cases} \gamma_{\mathrm{pierce}} \in (0,1) & \text{piercing weapon} \\ 1 & \text{non-piercing.} \end{cases}$$
 
 $J_0 > 0$ is a base impulse scale, and $\eta$ is the fraction of momentum
 transmitted -- $\eta_{\mathrm{def}}$ for a defended blow, $1$ for a clean landing.
+$\gamma_{\mathrm{type}}$ reflects kinetic energy delivery: piercing weapons slip into tissue
+rather than shoving whole body mass backward, transmitting a reduced fraction
+$\gamma_{\mathrm{pierce}} = 0.35$ (`PIERCING_IMPULSE_MULT`) of knockback impulse. Non-piercing
+weapons deliver full whole-body displacement ($\gamma_{\mathrm{type}} = 1$).
 The struck soldier is displaced by $J\,\hat{u}_{A\to D}$; the formation's bounded
 arrival dynamics then decelerate and return it over the following ticks. A blocked blow draws no blood but still
 shoves -- which is how a spear wall pushes a stalled enemy back even when it can't

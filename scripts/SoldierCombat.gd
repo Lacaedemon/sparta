@@ -35,6 +35,14 @@ const CHARGE_REFERENCE_SPEED: float = 8.5 * WorldScaleRef.WU_PER_M
 # fraction of full effectiveness. q scales both offence and active defence.
 const COND_HEALTH_FLOOR: float = 0.5
 
+# Piercing vs non-piercing hits (docs/combat-model.md "Piercing vs. non-piercing melee hits"):
+# Piercing weapons (spears, lances, daggers, pilums) concentrate impact force on a narrow point,
+# penetrating armour (PIERCING_ARMOR_PENETRATION) while transmitting minimal whole-body shove
+# (PIERCING_IMPULSE_MULT). Non-piercing weapons (swords, spathas, axes, maces) deliver a full
+# mix of knockback and standard-armour damage.
+const PIERCING_IMPULSE_MULT: float = 0.35
+const PIERCING_ARMOR_PENETRATION: float = 0.25
+
 # Knockback impulse (docs/combat-model.md "Knockback impulse"):
 #   J = KNOCKBACK_IMPULSE_SCALE * lethality_A * (1 + c) * eta / m_D
 # the velocity (world units/sec) added to the struck body along the strike axis. Scaled by
@@ -190,10 +198,12 @@ static func land_chance(skill_a: float, skill_d: float, shield_d: float, phi_d: 
 
 
 ## The wound (health removed) from a landed blow: lethality, amplified by closing
-## momentum (1 + c), blunted by the defender's armour, scaled by the attacker's
-## condition. Always >= 0. See docs/combat-model.md "Wound".
-static func wound(lethality_a: float, c: float, armour_d: float, cond_a: float = 1.0) -> float:
-	var armour: float = clampf(armour_d, 0.0, 1.0)
+## momentum (1 + c), blunted by the defender's armour (piercing hits partially bypass armour
+## via PIERCING_ARMOR_PENETRATION), scaled by the attacker's condition. Always >= 0.
+## See docs/combat-model.md "Wound".
+static func wound(lethality_a: float, c: float, armour_d: float, cond_a: float = 1.0, is_piercing: bool = false) -> float:
+	var effective_armour: float = armour_d * (1.0 - PIERCING_ARMOR_PENETRATION) if is_piercing else armour_d
+	var armour: float = clampf(effective_armour, 0.0, 1.0)
 	var cond: float = clampf(cond_a, 0.0, 1.0)
 	return DAMAGE_SCALE * maxf(0.0, lethality_a) * (1.0 + maxf(0.0, c)) * (1.0 - armour) * cond
 
@@ -202,13 +212,14 @@ static func wound(lethality_a: float, c: float, armour_d: float, cond_a: float =
 ## (lethality * (1 + charge)) divided by the defender's mass, times eta (1 landed, < 1
 ## defended), times an optional `impulse_mult` (KNOCKBACK_FOCUS_IMPULSE_MULT for a
 ## knockback-focus attacker, 1.0 -- the default, unchanged behaviour -- for every other
-## stance). See docs/combat-model.md "Knockback impulse". Pure; never negative.
+## stance), and scaled by PIERCING_IMPULSE_MULT for piercing attacks. See docs/combat-model.md
+## "Knockback impulse". Pure; never negative.
 static func knockback_impulse(lethality_a: float, c: float, defender_mass: float, eta: float,
-		impulse_mult: float = 1.0) -> float:
-	# Numerator (force * charge * eta * impulse_mult) over the defender's mass -- grouped so
-	# eta/impulse_mult read as numerator terms, not part of the denominator.
+		impulse_mult: float = 1.0, is_piercing: bool = false) -> float:
+	# Numerator (force * charge * eta * impulse_mult * piercing_factor) over the defender's mass.
+	var piercing_factor: float = PIERCING_IMPULSE_MULT if is_piercing else 1.0
 	var force: float = KNOCKBACK_IMPULSE_SCALE * maxf(0.0, lethality_a) * (1.0 + maxf(0.0, c)) \
-			* maxf(0.0, eta) * maxf(0.0, impulse_mult)
+			* maxf(0.0, eta) * maxf(0.0, impulse_mult) * piercing_factor
 	return force / maxf(0.01, defender_mass)
 
 

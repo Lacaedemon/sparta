@@ -31,12 +31,17 @@ const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 # literal per-soldier swing rate). Per-weapon-type since a telegraphed thrust and a
 # quick slashing exchange land at genuinely different tempos.
 @export var attack_interval_s: float
+# Attack hit mechanics: piercing attacks (spears, lances, daggers, pilum thrusts) focus
+# force into tissue penetration (bypassing partial armor) with minimal whole-body knockback.
+# Non-piercing attacks (swords, spathas, axes, blunt impacts) deliver a mix of knockback
+# and standard armor-mitigated damage.
+@export var is_piercing: bool = false
 
 
 ## Build one interned type instance. Registry construction only — everything
 ## else reads shared instances through LoadoutRegistry.weapon(id).
 static func make(p_id: int, p_name: String, p_reach_m: float, p_lethality: float,
-		p_attack_interval_s: float, p_hold_angle: float = 0.0) -> Weapon:
+		p_attack_interval_s: float, p_hold_angle: float = 0.0, p_is_piercing: bool = false) -> Weapon:
 	var w := Weapon.new()
 	w.id = p_id
 	w.display_name = p_name
@@ -45,6 +50,7 @@ static func make(p_id: int, p_name: String, p_reach_m: float, p_lethality: float
 	w.lethality = p_lethality
 	w.attack_interval_s = p_attack_interval_s
 	w.default_hold_angle = p_hold_angle
+	w.is_piercing = p_is_piercing
 	return w
 
 
