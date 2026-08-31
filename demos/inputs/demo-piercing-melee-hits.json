@@ -1,7 +1,6 @@
 {
   "seed": "109901",
   "spawn_fingerprint": "678ca7de683f9ab775f6e7c95e125977",
-  "drill": true,
   "camera": [
     {
       "tick": 0,
@@ -72,12 +71,8 @@
       ]
     },
     {
-      "tick": 15,
-      "key": "a"
-    },
-    {
       "tick": 20,
-      "click": [
+      "rmb_click": [
         510,
         320
       ]
