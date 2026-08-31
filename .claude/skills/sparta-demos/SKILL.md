@@ -7,11 +7,12 @@ allowed-tools: Bash, Read, Grep, Glob, Write, Edit
 
 # Sparta -- demo authoring & verification
 
-The scripted-input recorder is the **standard** demo path as of #318/#321. The
-older hand-authored/recorded `replay` path (documented in the main `.claude/memories/sparta.md`
-"Authoring & verifying demo scenarios" section) still works and is fine for a
-quick reuse of `demos/showcase.json`, but prefer scripted input for anything that
-shows a specific player gesture.
+**Every PR requires a fresh demo.**
+The scripted-input recorder is the **standard** demo path as of #318/#321.
+The older hand-authored/recorded `replay` path
+(documented in the main `.claude/memories/sparta.md` "Authoring & verifying demo scenarios" section)
+still works,
+but prefer freshly authored scripted input for anything that shows a specific player gesture.
 
 ## Standing rule: "not legible in a compressed clip" is never a valid reason to skip
 

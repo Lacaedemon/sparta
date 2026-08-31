@@ -1,24 +1,25 @@
 # Gameplay demos in PRs
 
-When a PR makes a **user-visible change** (anything affecting how the game looks
-or plays), a short clip is inserted so reviewers can *see* the change, not just read
-the diff.
+**Every PR needs a fresh demo** so reviewers can *see* the change, not just read the diff.
 [`.github/workflows/demo-video.yml`](../.github/workflows/demo-video.yml) plays a
-replay back headlessly (Godot Movie Maker → ffmpeg) and upserts it into the PR
-**description** as an inline GIF that **plays once** (it freezes on the final frame
-instead of looping) -- plus a link to an **MP4 with sound** (the GIF is silent; see
-[Sound](#sound) below). It lives in the description (not a comment) so it stays
-visible at the top of the PR page no matter how long the review thread grows; a
-compact **state transcript** (when one dumps) still posts as its own comment -- see
-[CI posts the transcript automatically](#ci-posts-the-transcript-automatically). An
-inline GIF is used rather than a poster-linked MP4 because GitHub's blob-view video
-player doesn't work on the mobile site or app, while a GIF renders inline everywhere.
+replay or scripted-input scenario back headlessly (Godot Movie Maker → ffmpeg)
+and upserts it into the PR **description** as an inline GIF that **plays once**
+(it freezes on the final frame instead of looping) --
+plus a link to an **MP4 with sound** (the GIF is silent; see [Sound](#sound) below).
+It lives in the description (not a comment)
+so it stays visible at the top of the PR page no matter how long the review thread grows;
+a compact **state transcript** (when one dumps) still posts as its own comment --
+see [CI posts the transcript automatically](#ci-posts-the-transcript-automatically).
+An inline GIF is used rather than a poster-linked MP4
+because GitHub's blob-view video player doesn't work on the mobile site or app,
+while a GIF renders inline everywhere.
 
-CI can't infer what a diff changed, so to make the clip *demonstrate your change*
-you **declare what to show**: commit a small **manifest** pointing at a **replay**
-that exercises it. If you don't, CI still posts a demo -- the default
-`showcase.json` battle, labelled as a generic build demo -- but a tailored one is
-far more useful, so prefer to add a manifest.
+CI can't infer what a diff changed,
+so to make the clip *demonstrate your change* you **declare what to show**:
+commit a small **manifest** (`demos/demo.<slug>.json`)
+pointing at a **freshly authored scripted input** (`demos/inputs/*.json`) that exercises it.
+Every PR must include a fresh demo
+rather than relying on generic showcases or copying stale scenarios without tailoring.
 
 ## The contract
 

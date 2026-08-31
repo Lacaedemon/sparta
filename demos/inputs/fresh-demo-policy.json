@@ -1,0 +1,51 @@
+{
+  "_comment": "Fresh demo scenario demonstrating drill advance and formation evolution under the new policy.",
+  "seed": "98765",
+  "drill": true,
+  "camera": [
+    {
+      "tick": 0,
+      "x": 400.0,
+      "y": 420.0,
+      "zoom": 1.8
+    }
+  ],
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 400.0,
+      "y": 350.0,
+      "count": 80,
+      "morale": 100
+    }
+  ],
+  "steps": [
+    {
+      "tick": 8,
+      "click": [
+        400,
+        350
+      ]
+    },
+    {
+      "tick": 20,
+      "rmb_click": [
+        400,
+        520
+      ]
+    },
+    {
+      "tick": 80,
+      "key": "O"
+    }
+  ],
+  "state": [
+    8,
+    20,
+    50,
+    100,
+    180,
+    240
+  ]
+}

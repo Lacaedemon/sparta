@@ -1,0 +1,9 @@
+{
+  "_comment": "Demo manifest for PR establishing the policy that every PR needs a fresh demo.",
+  "input": "demos/inputs/fresh-demo-policy.json",
+  "caption": "Fresh demo scenario demonstrating isolated drill advance and formation evolution into square.",
+  "fixed_fps": 30,
+  "max_frames": 240,
+  "fps": 12,
+  "width": 640
+}
