@@ -251,6 +251,7 @@ For charging cavalry, combat separates into two distinct physical phases across 
 1. **Lance thrust (weapon reach strike)**: When closing, the rider's lance or spear point makes contact first at weapon reach ($r_{\mathrm{lance}} \approx 3.0\text{ m} = 60\text{ wu}$).
 The thrust lands on this earlier tick in `SoldierMelee`, dealing piercing wound damage that bypasses partial armor ($\alpha_{\mathrm{pierce}} = 0.25$) scaled by the closing charge factor $c$.
 Because piercing thrusts concentrate force on penetration, the weapon thrust imparts minimal whole-body displacement (`PIERCING_IMPULSE_MULT`).
+
 2. **Body collision (horse impact)**: As the horse's mount continues closing and reaches body contact radius ($r_{\mathrm{mount}} + r_{\mathrm{target}} \approx 1.8\text{ m} = 36\text{ wu}$), `SoldierEnemyContact` resolves the physical body-to-body collision.
 This impact transfers momentum from the full 525 kg warhorse mass, delivering blunt collision damage, massive knockback displacement, and rolling prone knockdown ($p_{\mathrm{prone}}$) against unbraced defenders.
 
