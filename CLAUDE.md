@@ -96,6 +96,7 @@ so CI records a short clip and inserts it into the PR **description**
   commit a `demos/demo.<slug>.json` with `"skip": true` and a `"reason"`.
   CI then inserts a short note explaining the absence into the same description section instead
   (`demos/demo.skip.example.json` is a template).
+
 - **Keep each demo simple and focused on one thing -- use multiple demos when a PR
   touches multiple features, rather than one clip trying to show everything.** A
   clip that chains an unrelated setup phase (spawning, an AI unit's first move

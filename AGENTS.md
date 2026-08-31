@@ -37,6 +37,7 @@ There is no backend/server/database -- everything runs inside the Godot engine.
   installed to `~/.local/bin`, which is added to `PATH` via `~/.bashrc` -- so a
   fresh non-login shell may need `export PATH="$HOME/.local/bin:$PATH"` before
   `gdlint` resolves (only the optional `lint` check needs it).
+
 - **Lint / test / validate / build-run:** use `tools/check.sh` (see
   `tools/README.md` and `test/README.md`); it vendors GUT into `addons/gut/`
   on demand and runs `godot --headless --import` itself, so no separate
@@ -44,6 +45,7 @@ There is no backend/server/database -- everything runs inside the Godot engine.
   + doc checks. The **full GUT suite takes ~7 minutes** (2769 tests) -- budget a
   generous timeout; it is not hung. For a `scripts/` change also run
   `patch_coverage` in the *same* invocation (see `CLAUDE.md`).
+
 - **Running/seeing the game (no display):** the VM is headless, so you cannot open the editor.
   Drive a real battle through the demo pipeline instead (see the `sparta-demos` skill and `demos/README.md`).
   Every PR requires a fresh demo.
@@ -55,11 +57,13 @@ There is no backend/server/database -- everything runs inside the Godot engine.
   it crashes with a null-texture error (dummy renderer);
   use `xvfb-run` + `--rendering-driver opengl3` (see `CLAUDE.md`).
   Machine-readable **state dumps** (`tools/demo/dump-state.sh`) do run under `--headless`.
+
 - **Cloud Agent bootstrap gotcha:** some Cloud Agent runs start with *no linked
   environment* (so the repo-defined update script hasn't been applied yet).
   When that happens, install/verify the dependencies needed by `tools/check.sh`
   first: Godot 4.7 Standard (`/usr/local/bin/godot`), then `gdtoolkit==4.5.0`
   (provides `gdlint`/`gdformat`).
+
 - **Godot exit noise:** headless runs may print warnings/errors about leaked
   rendering resources ("CanvasItem ... were leaked", "ObjectDB instances ... leaked",
   "resources still in use at exit"). `tools/check.sh` still treats the suite as
