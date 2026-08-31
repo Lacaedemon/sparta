@@ -7123,14 +7123,11 @@ func _build_figure_meshes(mark_r: float) -> void:
 ##
 ## Prefers the soldier's actual equipped weapon type (docs/soldier-loadout-design.md
 ## phase 3) over the coarse anti_cavalry/is_ranged flags, since weapon_type_id is the
-## field a future weapon-switch order would actually write -- reading it here means
-## the render follows a switch immediately instead of needing its own update.
-## Falls back to the flags when weapon_type_id doesn't resolve to either archetype
-## (a bare/synthetic unit built directly in a test, which sets anti_cavalry/is_ranged
-## but keeps Unit's default WEAPON_GLADIUS): under today's roster every real spawned
-## unit's weapon_type_id and flags agree (WEAPON_SPEAR <-> anti_cavalry, WEAPON_SIDEARM
-## <-> is_ranged), so this is a behavior-preserving remap of the old flag-only logic,
-## not a new selection.
+## field a weapon-switch order writes -- reading it here means the render follows a switch
+## immediately instead of needing its own update. When Spearmen (anti_cavalry = true) draw
+## their secondary sidearm blade, they switch from the spear shaft to the infantry shield/blade
+## figure. Falls back to the flags when weapon_type_id doesn't resolve to either archetype
+## (such as a synthetic unit built in a test that sets flags directly).
 func _foot_kind() -> int:
 	# Both shafted types share the shaft glyph: a held pilum reads as a shaft at this
 	# scale, so a legionary switching pilum -> gladius visibly drops the shaft and

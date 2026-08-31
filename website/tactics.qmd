@@ -1180,6 +1180,21 @@ picks up the shaft and then drops back to the shield, and the block holds its gr
 throughout --- re-equipping never moves or reforms it.
 :::
 
+::: {#fig-spearmen-weapon-switch .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/spearmen_weapon_switch.jpg">
+  <source src="media/spearmen_weapon_switch.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A Spearmen regiment switches to its sidearm blade via <kbd>Shift+I</kbd> and engages in close melee.
+Every soldier puts away the spear shaft to wield their sidearm blade and scutum shield.
+:::
+
 ## Movement speed
 
 Units move at **realistic real-world speeds**, measured in metres per second, with
