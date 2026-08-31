@@ -62,30 +62,13 @@ that against a same-invocation `test` automatically; a second, separate
 that dedup state doesn't survive across process invocations.
 
 ## Gameplay demos in PRs
-When your change is **user-visible** -- it affects how the game looks or plays
-(`scenes/`, `scripts/`, `assets/`, `project.godot`) -- help reviewers *see* it:
-commit a **`demos/demo.json`** so CI records a short clip and inserts it into the
-PR **description** (not a comment -- the description stays visible at the top of
-the PR page no matter how long the review thread grows).
+**Every PR needs a fresh demo.** Help reviewers *see* the change or verify the build in action: commit a per-PR manifest **`demos/demo.<slug>.json`** (where `<slug>` is the issue or PR number) pointing at a freshly authored scripted-input recording (`demos/inputs/*.json`) with the `input` field so CI records a short clip and inserts it into the PR **description** (not a comment -- the description stays visible at the top of the PR page no matter how long the review thread grows).
 
-- **Author demos as a scripted-input recording -- not a hand-authored replay.** Write a
-  deterministic input script (`demos/inputs/*.json`: a list of mouse clicks/drags and
-  keystrokes stamped with the tick they fire on) and point `demos/demo.json` at it with
-  the `input` field. The recorder drives a live battle through the *real* controls, so the
-  clip exercises the actual code and the script stays editable as text. See the
-  **Scripted-input demos** section of `demos/README.md`.
-- The older `replay` field (play-and-save, or hand-authored scenario JSON) still works and
-  is fine for a quick reuse of `demos/showcase.json`, but prefer `input` for anything that
-  shows a specific interaction. Always write a `caption` describing what changed.
-- See `demos/README.md` for the full contract and `demos/demo.example.json` for a
-  template.
-- If you skip this, CI still posts a *generic* build demo, but it won't show your
-  specific change -- so add a tailored manifest whenever the change is worth seeing.
-- If your change genuinely **can't** be shown by a recorded battle (a paused-overlay
-  interaction, an editor-only tool, a non-visual refactor), don't let CI post an
-  unrelated generic clip: commit a `demos/demo.json` with `"skip": true` and a
-  `"reason"`. CI then inserts a short note explaining the absence into the same
-  description section instead (`demos/demo.skip.example.json` is a template).
+- **Author each demo scenario fresh -- do not copy an existing one's scenario/steps.** Write each new scenario from scratch: its own unit types, its own coordinates, its own seed, and its own step sequence, chosen to fit what THIS demo needs to show, not inherited from whatever scenario happened to be handy.
+- **Author demos as a scripted-input recording -- not a hand-authored replay.** Write a deterministic input script (`demos/inputs/*.json`: a list of mouse clicks/drags and keystrokes stamped with the tick they fire on) and point `demos/demo.<slug>.json` at it with the `input` field. The recorder drives a live battle through the *real* controls, so the clip exercises the actual code and the script stays editable as text. See the **Scripted-input demos** section of `demos/README.md`.
+- The older `replay` field (play-and-save, or hand-authored scenario JSON) still works, but prefer `input` for anything that shows a specific interaction. Always write a `caption` describing what changed.
+- See `demos/README.md` for the full contract and `demos/demo.example.json` for a template.
+- If your change genuinely **can't** be shown by a recorded battle (a paused-overlay interaction, an editor-only tool, a non-visual refactor, or a pure documentation change), don't let CI post an unrelated generic clip: commit a `demos/demo.<slug>.json` with `"skip": true` and a `"reason"`. CI then inserts a short note explaining the absence into the same description section instead (`demos/demo.skip.example.json` is a template).
 - **Keep each demo simple and focused on one thing -- use multiple demos when a PR
   touches multiple features, rather than one clip trying to show everything.** A
   clip that chains an unrelated setup phase (spawning, an AI unit's first move
