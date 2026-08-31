@@ -107,7 +107,7 @@ so CI records a short clip and inserts it into the PR **description**
   (`demos/demo.*.json` -- if several exist, it warns and picks the first
   alphabetically), so when a PR genuinely has multiple features worth showing
   separately: pick the most complete/representative one as the primary
-  `demos/demo.json`, and record any others as supplementary GIFs committed under
+  `demos/demo.<slug>.json`, and record any others as supplementary GIFs committed under
   `demos/shots/` and embedded directly in the PR description (same raw-URL/commit-SHA
   pattern as the static-image case below, but animated). (Learned on PR #615: the
   original single clip conflated a pre-existing spawn/facing-flip transient with
@@ -196,12 +196,13 @@ architecture, and CI changes are exempt.
   - **`type=input`**: drives the game from a scripted-input file
     (`demos/inputs/*.json`) via `DemoInputRecorder.tscn` -- preferred for
     mechanics that need specific player gestures (a key toggle, a multi-unit
-    drag). Reuse the file you wrote for `demos/demo.json`.
+    drag). Reuse the file you wrote for `demos/demo.<slug>.json`.
   See `website/README.md` for the full pipeline.
 
-  **`demos/demo.json` conflict:** every PR updates this file to point to its
-  own demo clip. When you merge `main` after another PR also changed it, you
-  get a conflict. Keep YOUR version (it describes the change being merged).
+  **`demos/demo.<slug>.json` manifest:** naming each manifest with your PR or
+  issue number avoids merge conflicts when multiple PRs in flight add demo manifests.
+  If the legacy shared `demos/demo.json` is encountered in a merge conflict, keep
+  YOUR version (it describes the change being merged).
 
 **Figures and tables get labels + captions, via div syntax.** Every figure and
 table on the site -- images, markdown tables, and the raw-HTML `<video>` embeds --

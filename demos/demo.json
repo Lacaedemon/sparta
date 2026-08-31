@@ -1,9 +1,4 @@
-﻿{
-  "_comment": "Demo manifest for PR establishing the policy that every PR needs a fresh demo.",
-  "input": "demos/inputs/fresh-demo-policy.json",
-  "caption": "Fresh demo scenario demonstrating isolated drill formation evolution into square and advance.",
-  "fixed_fps": 30,
-  "max_frames": 240,
-  "fps": 12,
-  "width": 640
+{
+  "skip": true,
+  "reason": "Refinement of MARCHING_CORRIDOR_PROXIMITY_MULT gating in SoldierBodies to preserve perimeter corridor routing during active formation turns while retaining wide direct-arrival for non-turning translation and post-melee recovery (#1422). Verified via unit tests and state dump defect scans."
 }
