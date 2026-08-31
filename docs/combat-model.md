@@ -443,7 +443,7 @@ slide-while-standing window.
 Under the partition $J_{\mathrm{fall}}$ is scaled by the stance geometry $\Lambda = 0.25$ (`PIVOT_ADVANTAGE`),
 coupling tipping resistance directly to effective mass and kinetic motion:
 
-$$J_{\mathrm{fall}} \;=\; \Lambda\,\mathrm{PRONE\_FALL\_THRESHOLD}\,m_{\mathrm{eff}}\,(\kappa\text{ if moving else } 1.0).$$
+$$J_{\mathrm{fall}} = \Lambda\,\mathrm{PRONE\_FALL\_THRESHOLD}\,m_{\mathrm{eff}}\,(\kappa\text{ if moving else } 1.0).$$
 
 > **Implemented:** `SoldierCombat.anchor_capacity`, `SoldierCombat.translational_impulse`, `SoldierCombat.partition_impulse`,
 > and `SoldierCombat.prone_chance` with $\Lambda = 0.25$ (`PIVOT_ADVANTAGE`)
