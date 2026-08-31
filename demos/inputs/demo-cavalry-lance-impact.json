@@ -1,6 +1,6 @@
 {
   "seed": "109801",
-  "spawn_fingerprint": "6f6709e28bdf640f89813078cd0b3b16",
+  "spawn_fingerprint": "3ce3433e7763a2969d255ae3e60cd9ea",
   "camera": [
     {
       "tick": 0,
@@ -40,6 +40,11 @@
         512,
         480
       ]
+    },
+    {
+      "tick": 10,
+      "key": "I",
+      "shift": true
     },
     {
       "tick": 15,

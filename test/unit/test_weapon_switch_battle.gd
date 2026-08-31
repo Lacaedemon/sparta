@@ -34,10 +34,10 @@ func test_the_roster_gives_infantry_and_cavalry_a_second_weapon() -> void:
 				"Infantry carry the pilum as their second weapon")
 			infantry_checked += 1
 		elif u.unit_name.split(" ")[0] == "Cavalry":
-			assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_LANCE,
-				"Cavalry deploy holding the lance")
-			assert_eq(u.sidearm_type_id, LoadoutRegistry.WEAPON_SPATHA,
-				"Cavalry carry the spatha as their second weapon")
+			assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_SPATHA,
+				"Cavalry deploy holding the spatha")
+			assert_eq(u.sidearm_type_id, LoadoutRegistry.WEAPON_LANCE,
+				"Cavalry carry the lance as their second weapon")
 			cavalry_checked += 1
 		else:
 			assert_null(LoadoutRegistry.weapon(u.sidearm_type_id),
@@ -53,16 +53,16 @@ func test_cavalry_order_switches_between_lance_and_spatha() -> void:
 	var battle: Node = await _spawned_battle()
 	var u: Unit = _first_cavalry()
 	assert_not_null(u, "found a Cavalry unit to switch")
-	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_LANCE)
-	var reach_lance: float = u.attack_range
-
-	battle.enqueue_switch_weapon([u.uid], LoadoutRegistry.WEAPON_SPATHA)
-	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_SPATHA, "cavalry drew its spatha")
-	assert_lt(u.attack_range, reach_lance, "and reach shortened to spatha reach")
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_SPATHA)
+	var reach_spatha: float = u.attack_range
 
 	battle.enqueue_switch_weapon([u.uid], LoadoutRegistry.WEAPON_LANCE)
-	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_LANCE, "cavalry re-equipped lance")
-	assert_almost_eq(u.attack_range, reach_lance, 0.0001, "and restored lance reach")
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_LANCE, "cavalry drew its lance")
+	assert_gt(u.attack_range, reach_spatha, "and reach lengthened to lance reach")
+
+	battle.enqueue_switch_weapon([u.uid], LoadoutRegistry.WEAPON_SPATHA)
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_SPATHA, "cavalry re-equipped spatha")
+	assert_almost_eq(u.attack_range, reach_spatha, 0.0001, "and restored spatha reach")
 	battle.queue_free()
 
 
