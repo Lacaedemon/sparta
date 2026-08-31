@@ -8,14 +8,14 @@ Refine `_corridor_to_slot` steering behavior to preserve corridor detours during
 
 ## Proposed Changes
 
-### Phase 1: Investigation & Reproducing Tests
-- [ ] Task: Trace corridor routing and capture baseline defect metrics
-  - [ ] Run state dump on `demos/inputs/funnel-hug-lanes.json` at declared ticks and record `shape_residual` values
-  - [ ] Run state dump on `demos/showcase.json` and record `uid8` overlap values
-- [ ] Task: Author failing / boundary unit tests for curved march vs catch-up corridor gating
-  - [ ] Add unit tests in `test/unit/test_soldier_steering.gd` verifying corridor entry behavior under active formation angular turn vs straight-line lagging displacement
-  - [ ] Confirm tests exercise the boundary condition
-- [ ] Task: Phase 1 Verification & Checkpoint (Refer to workflow.md)
+### Phase 1: Investigation & Reproducing Tests [checkpoint: dac0847]
+- [x] Task: Trace corridor routing and capture baseline defect metrics (dac0847)
+  - [x] Run state dump on `demos/inputs/funnel-hug-lanes.json` at declared ticks and record `shape_residual` values
+  - [x] Run state dump on `demos/showcase.json` and record `uid8` overlap values
+- [x] Task: Author failing / boundary unit tests for curved march vs catch-up corridor gating (dac0847)
+  - [x] Add unit tests in `test/unit/test_soldier_steering.gd` / `test/unit/test_corridor_gating_curved_march.gd` verifying corridor entry behavior under active formation angular turn vs straight-line lagging displacement
+  - [x] Confirm tests exercise the boundary condition
+- [x] Task: Phase 1 Verification & Checkpoint (Refer to workflow.md) (dac0847)
 
 ### Phase 2: Implementation & Steering Refinement
 - [ ] Task: Refine `_corridor_to_slot` in steering logic
