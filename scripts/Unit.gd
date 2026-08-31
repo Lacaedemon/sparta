@@ -2069,6 +2069,9 @@ func can_equip_weapon(type_id: int) -> bool:
 		return false
 	if type_id == weapon_type_id:
 		return true
+	if is_cavalry:
+		return type_id == LoadoutRegistry.WEAPON_LANCE or type_id == LoadoutRegistry.WEAPON_SPATHA \
+				or type_id == spawn_weapon_type_id or type_id == sidearm_type_id
 	return type_id == spawn_weapon_type_id or type_id == sidearm_type_id
 
 
@@ -7133,7 +7136,8 @@ func _foot_kind() -> int:
 	# scale, so a legionary switching pilum -> gladius visibly drops the shaft and
 	# shows his shield instead (equip_weapon rebuilds these meshes).
 	if weapon_type_id == LoadoutRegistry.WEAPON_SPEAR \
-			or weapon_type_id == LoadoutRegistry.WEAPON_PILUM:
+			or weapon_type_id == LoadoutRegistry.WEAPON_PILUM \
+			or weapon_type_id == LoadoutRegistry.WEAPON_LANCE:
 		return UnitMeshes.FOOT_SPEAR
 	if weapon_type_id == LoadoutRegistry.WEAPON_SIDEARM:
 		return UnitMeshes.FOOT_ARCHER

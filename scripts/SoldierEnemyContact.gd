@@ -29,7 +29,9 @@ class_name SoldierEnemyContact
 ## SoldierSpatialHash query then visits candidates in a reproducible order, and every pair is
 ## resolved once (canonical lower-id-first) against the frozen input (Jacobi: every impulse
 ## this tick is computed from last tick's velocities/positions, applied in one pass at the
-## end). No RNG, no instance-id/wall-clock -- replay-safe like the rest of the soldier layer.
+## end). Hard-collision prone knockdown draws deterministically from the seeded Replay.rng
+## stream in global-soldier-id order, with no instance-id/wall-clock -- replay-safe like the rest
+## of the soldier layer.
 
 
 ## Squared-distance safety factor for accumulate()'s square-root skip. A pair whose squared
@@ -153,6 +155,8 @@ static func accumulate(units: Array, frame: int) -> void:
 	# first-opponent approximation SoldierMelee.resolve already makes elsewhere.
 	var damage_eligible := PackedByteArray()
 	damage_eligible.resize(n)
+	var max_collision_impulse := PackedFloat32Array()
+	max_collision_impulse.resize(n)
 	var contact_enemy: Array = []
 	contact_enemy.resize(n)
 	# Work tallies for this pass, reported once after the loop rather than per soldier: a
@@ -221,6 +225,12 @@ static func accumulate(units: Array, frame: int) -> void:
 				if damage_eligible[b] == 0:
 					damage_eligible[b] = 1
 					contact_enemy[b] = sowners[a]
+				var mu: float = (smass[a] * smass[b]) / maxf(0.01, smass[a] + smass[b])
+				var imp: float = closing_speed * mu
+				if imp > max_collision_impulse[a]:
+					max_collision_impulse[a] = imp
+				if imp > max_collision_impulse[b]:
+					max_collision_impulse[b] = imp
 	SimOps.add(SimOps.GRID_CANDIDATE, candidates_seen)
 	SimOps.add(SimOps.CONTACT_PAIR, pair_a.size())
 	SimOps.add(SimOps.SQRT_EVAL, sqrt_evals)
@@ -281,7 +291,7 @@ static func accumulate(units: Array, frame: int) -> void:
 			owner._sim_body_vel[slot] = SoldierCombat.capped_knockback_velocity(
 				owner._sim_body_vel[slot], scaled_delta_v[k])
 
-	# Collision damage: derived from each flagged soldier's ACTUAL velocity change this tick
+	# Collision damage and prone knockdown: derived from each flagged soldier's ACTUAL velocity change this tick
 	# (post-clamp velocity minus the pre-tick svel[k] snapshot) -- the fully-resolved delta the
 	# loop above just computed, already correctly bounded across multiple simultaneous contacts
 	# and per-tick. See SoldierCombat.collision_damage's own doc comment for why this is derived
@@ -296,6 +306,14 @@ static func accumulate(units: Array, frame: int) -> void:
 		if actual_delta_v == Vector2.ZERO or slot >= owner._sim_soldier_hp.size():
 			continue
 		owner._sim_soldier_hp[slot] -= SoldierCombat.collision_damage(actual_delta_v)
+		# Hard physical body collision impulse: fells the defender prone when impact momentum
+		# overcomes friction anchoring and bracing (docs/combat-model.md).
+		var collision_impulse: float = max_collision_impulse[k]
+		var is_moving: bool = (svel[k] as Vector2).length_squared() > SoldierCombat.STATIC_FRICTION_VELOCITY_GATE * SoldierCombat.STATIC_FRICTION_VELOCITY_GATE
+		var fall_roll: float = Replay.rng.randf()
+		if slot < owner._sim_prone.size() \
+				and fall_roll < SoldierCombat.prone_chance(collision_impulse, smass[k], sbrace[k], is_moving):
+			owner._sim_prone[slot] = SoldierCombat.PRONE_RISE_TIME
 		if not killer.has(owner):
 			killer[owner] = contact_enemy[k]
 

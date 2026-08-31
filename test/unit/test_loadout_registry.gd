@@ -12,6 +12,7 @@ const ROSTER_WEAPONS: Array = [
 	LoadoutRegistry.WEAPON_SIDEARM,
 	LoadoutRegistry.WEAPON_SPATHA,
 	LoadoutRegistry.WEAPON_PILUM,
+	LoadoutRegistry.WEAPON_LANCE,
 ]
 const ROSTER_SHIELDS: Array = [
 	LoadoutRegistry.SHIELD_SCUTUM,
@@ -46,10 +47,11 @@ func test_every_roster_weapon_resolves() -> void:
 
 
 func test_weapon_piercing_attributes() -> void:
-	# Spear, sidearm, and pilum are piercing weapons (thrusts/javelins)
+	# Spear, sidearm, pilum, and lance are piercing weapons (thrusts/javelins)
 	assert_true(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPEAR).is_piercing, "spear is piercing")
 	assert_true(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_PILUM).is_piercing, "pilum is piercing")
 	assert_true(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SIDEARM).is_piercing, "sidearm is piercing")
+	assert_true(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_LANCE).is_piercing, "lance is piercing")
 	# Gladius and Spatha are non-piercing / cutting / balanced
 	assert_false(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_GLADIUS).is_piercing, "gladius is non-piercing")
 	assert_false(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPATHA).is_piercing, "spatha is non-piercing")
@@ -232,6 +234,7 @@ func test_reach_matches_pre_registry_loadout_values() -> void:
 	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_GLADIUS).reach_m, 1.3, 0.0001)
 	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SIDEARM).reach_m, 0.6, 0.0001)
 	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPATHA).reach_m, 1.5, 0.0001)
+	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_LANCE).reach_m, 3.0, 0.0001)
 
 
 func test_attack_interval_matches_the_decided_per_type_values() -> void:
@@ -246,6 +249,8 @@ func test_attack_interval_matches_the_decided_per_type_values() -> void:
 		0.6, 0.0001, "sidearm keeps the flat baseline cadence")
 	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPATHA).attack_interval_s,
 		0.6, 0.0001, "spatha keeps the flat baseline cadence")
+	assert_almost_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_LANCE).attack_interval_s,
+		1.2, 0.0001, "lance strikes on 1.2s cadence")
 
 
 func test_lethality_matches_the_pre_registry_combat_table() -> void:
@@ -263,6 +268,8 @@ func test_lethality_matches_the_pre_registry_combat_table() -> void:
 		0.50, "sidearm lethality matches the pre-registry archer literal")
 	assert_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_SPATHA).lethality,
 		1.10, "spatha lethality matches the pre-registry cavalry literal")
+	assert_eq(LoadoutRegistry.weapon(LoadoutRegistry.WEAPON_LANCE).lethality,
+		1.20, "lance lethality is 1.20")
 
 
 func test_shield_block_values_compose_with_the_stance_residuals() -> void:

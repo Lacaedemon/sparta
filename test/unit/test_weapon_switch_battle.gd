@@ -14,12 +14,12 @@ func before_each() -> void:
 	Replay.rng.seed = SEED
 
 
-## Infantry deploy holding the gladius and carry the pilum alongside it -- the pair the
-## switch swaps between. Every other roster type carries no second weapon, so a switch
-## simply isn't available to them rather than needing a branch of its own.
-func test_the_roster_gives_infantry_a_second_weapon_and_nobody_else() -> void:
+## Infantry and Cavalry carry a second weapon they can switch between.
+## Archers and Spearmen carry no second weapon.
+func test_the_roster_gives_infantry_and_cavalry_a_second_weapon() -> void:
 	var battle: Node = await _spawned_battle()
 	var infantry_checked: int = 0
+	var cavalry_checked: int = 0
 	var others_checked: int = 0
 	for node in get_tree().get_nodes_in_group("units"):
 		var u: Unit = node as Unit
@@ -33,13 +33,38 @@ func test_the_roster_gives_infantry_a_second_weapon_and_nobody_else() -> void:
 			assert_eq(u.sidearm_type_id, LoadoutRegistry.WEAPON_PILUM,
 				"Infantry carry the pilum as their second weapon")
 			infantry_checked += 1
+		elif u.unit_name.split(" ")[0] == "Cavalry":
+			assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_SPATHA,
+				"Cavalry deploy holding the spatha")
+			assert_eq(u.sidearm_type_id, LoadoutRegistry.WEAPON_LANCE,
+				"Cavalry carry the lance as their second weapon")
+			cavalry_checked += 1
 		else:
 			assert_null(LoadoutRegistry.weapon(u.sidearm_type_id),
 				"%s carries no second weapon" % u.unit_name)
 			others_checked += 1
 	assert_gt(infantry_checked, 0, "the battle spawned Infantry to check")
+	assert_gt(cavalry_checked, 0, "the battle spawned Cavalry to check")
 	assert_gt(others_checked, 0, "and other roster types to check against")
 	battle.queue_free()
+
+
+func test_cavalry_order_switches_between_lance_and_spatha() -> void:
+	var battle: Node = await _spawned_battle()
+	var u: Unit = _first_cavalry()
+	assert_not_null(u, "found a Cavalry unit to switch")
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_SPATHA)
+	var reach_spatha: float = u.attack_range
+
+	battle.enqueue_switch_weapon([u.uid], LoadoutRegistry.WEAPON_LANCE)
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_LANCE, "cavalry drew its lance")
+	assert_gt(u.attack_range, reach_spatha, "and reach lengthened to lance reach")
+
+	battle.enqueue_switch_weapon([u.uid], LoadoutRegistry.WEAPON_SPATHA)
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_SPATHA, "cavalry re-equipped spatha")
+	assert_almost_eq(u.attack_range, reach_spatha, 0.0001, "and restored spatha reach")
+	battle.queue_free()
+
 
 
 ## The order re-equips every unit it names, and the sim reads the new type immediately:
@@ -145,3 +170,12 @@ func _first_infantry() -> Unit:
 		if u != null and u.unit_name.split(" ")[0] == "Infantry":
 			return u
 	return null
+
+
+func _first_cavalry() -> Unit:
+	for node in get_tree().get_nodes_in_group("units"):
+		var u: Unit = node as Unit
+		if u != null and u.unit_name.split(" ")[0] == "Cavalry":
+			return u
+	return null
+
