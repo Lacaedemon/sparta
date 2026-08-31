@@ -57,6 +57,12 @@ func _ready() -> void:
 				% replay_path)
 	else:
 		print("[demo] SPARTA_DEMO_REPLAY unset; recording a fresh battle.")
+	var env_time_scale := OS.get_environment("SPARTA_DEMO_TIME_SCALE")
+	if env_time_scale != "":
+		var ts := float(env_time_scale)
+		if ts > 0.0:
+			Engine.time_scale = ts
+			print("[demo] Set initial time_scale to %f from SPARTA_DEMO_TIME_SCALE" % ts)
 	# Defer the swap so this bootstrap scene finishes _ready before it's replaced.
 	# Movie Maker keeps recording across the scene change.
 	_enter_battle.call_deferred()
