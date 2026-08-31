@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # tools/demo/compare-demos.sh -- compare demo state dumps and hash streams between two directories
 # or between a base git commit and the current branch.
 #

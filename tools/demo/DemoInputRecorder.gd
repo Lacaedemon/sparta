@@ -525,7 +525,9 @@ func _set_time_scale(scale: float, tick: int) -> void:
 	if _battle != null and is_instance_valid(_battle):
 		Replay.record_time_scale_change(tick, scale)
 	if _hud != null and is_instance_valid(_hud):
-		var presets: Array = [1.0, 0.5, 0.25, 0.1]
+		var presets = _hud.get("SLOWMO_PRESETS")
+		if presets == null:
+			presets = preload("res://scripts/HUD.gd").SLOWMO_PRESETS
 		var idx: int = presets.find(scale)
 		if idx != -1:
 			_hud._slowmo_index = idx
