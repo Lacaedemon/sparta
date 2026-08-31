@@ -335,7 +335,8 @@ func test_in_reach_strike_shoves_the_defender_away() -> void:
 		"sanity: this charge clears the resting defender's static-friction threshold even at the defended floor")
 	var attacker_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * Unit.BRACE_BASELINE_ENGAGED)
 	var defender_m_eff: float = 1.0 * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 0.0)
-	var min_shove: float = min_impulse * attacker_m_eff / (attacker_m_eff + defender_m_eff)
+	var min_trans: float = min_impulse - SoldierCombat.STATIC_FRICTION_THRESHOLD
+	var min_shove: float = min_trans * attacker_m_eff / (attacker_m_eff + defender_m_eff)
 	assert_gte(b._sim_body_vel[0].y, min_shove - 1e-3,
 		"the struck soldier is knocked back at least its share of the defended-blow impulse, away from the attacker")
 	assert_almost_eq(b._sim_body_vel[0].x, 0.0, 1e-3, "no lateral knockback for a head-on strike")
@@ -419,12 +420,10 @@ func test_settled_brace_order_absorbs_more_than_the_merely_engaged_default() -> 
 func test_knockback_points_away_from_the_attacker() -> void:
 	# Off-axis geometry: the impulse follows the attacker->defender line, not a fixed axis.
 	# Defender is in skirmish (unbraced) so the impulse is never absorbed by brace capacity.
-	# This test is about DIRECTION, not the (separately tested) static-friction gate, so start
-	# the defender already moving -- above SoldierCombat.STATIC_FRICTION_VELOCITY_GATE, so the
-	# strike is in the kinetic-friction regime and always moves the body -- and in the OPPOSITE
-	# direction from the expected knockback, so a positive result still proves the shove
-	# overcomes that initial motion rather than merely inheriting its sign.
+	# With approach velocity clearing the moving anchoring threshold, the translational
+	# shove pushes the defender along +x and +y, overcoming its initial -x/-y motion.
 	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	a._approach_velocity = Vector2(80, 80)
 	var b := _unit(2, 1, 1, Vector2(5, 5), Vector2.UP, false)
 	b.order_mode = Unit.ORDER_SKIRMISH
 	b._sim_soldier_hp[0] = 9999.0

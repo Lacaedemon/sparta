@@ -291,6 +291,7 @@ func test_knockback_focus_indefinite_speed_survives_a_subsequent_body_step() -> 
 	# very next physics tick.
 	Replay.rng.seed = 12345
 	var attacker := _make_engaged_unit(12, Vector2(0, 0), Vector2.DOWN)
+	attacker._approach_velocity = Vector2(0, 100)
 	attacker.order_mode = Unit.ORDER_KNOCKBACK_FOCUS
 	attacker.knockback_push_indefinite = true
 	var defender := _make_engaged_unit(12, Vector2(0, 10), Vector2.UP)
@@ -326,6 +327,7 @@ func test_knockback_focus_indefinite_speed_survives_step_on_exact_slot() -> void
 	# without being discarded by on-slot arrival clamping.
 	Replay.rng.seed = 12345
 	var attacker := _make_engaged_unit(12, Vector2(0, 0), Vector2.DOWN)
+	attacker._approach_velocity = Vector2(0, 100)
 	attacker.order_mode = Unit.ORDER_KNOCKBACK_FOCUS
 	attacker.knockback_push_indefinite = true
 	var defender := _make_engaged_unit(12, Vector2(0, 10), Vector2.UP)
