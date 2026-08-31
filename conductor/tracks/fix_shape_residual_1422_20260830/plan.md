@@ -26,11 +26,11 @@ Refine `_corridor_to_slot` steering behavior to preserve corridor detours during
   - [x] Run `./tools/check.sh test` and confirm all steering and unit tests pass
 - [x] Task: Phase 2 Verification & Checkpoint (Refer to workflow.md) (cce34a9)
 
-### Phase 3: Demo Defect Verification & Quality Assurance
-- [ ] Task: Verify demo state dumps
-  - [ ] Re-run `funnel_lanes` state dump and confirm `shape_residual` is back within passing bounds (< 18.0)
-  - [ ] Re-run `showcase` state dump and confirm `uid8` has no new overlap defects
-  - [ ] Verify post-melee catch-up test from #1415 still passes
-- [ ] Task: Run full validation suite
-  - [ ] Run `./tools/check.sh validate test chars comments units patch_coverage`
-- [ ] Task: Phase 3 Verification & Checkpoint (Refer to workflow.md)
+### Phase 3: Demo Defect Verification & Quality Assurance [checkpoint: 133517e]
+- [x] Task: Verify demo state dumps (133517e)
+  - [x] Re-run `funnel_lanes` state dump and confirm `shape_residual` is back within passing bounds (< 18.0)
+  - [x] Re-run `showcase` state dump and confirm `uid8` has no new overlap defects
+  - [x] Verify post-melee catch-up test from #1415 still passes
+- [x] Task: Run full validation suite (133517e)
+  - [x] Run `./tools/check.sh validate test chars comments units patch_coverage`
+- [x] Task: Phase 3 Verification & Checkpoint (Refer to workflow.md) (133517e)
