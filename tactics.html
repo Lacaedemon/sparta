@@ -83,6 +83,35 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 <style>html{ scroll-behavior: smooth; }</style>
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -745,6 +774,7 @@ Figure&nbsp;8: A tray-authored quincunx: two units on the front rank with a gap,
 <li><strong>Zoomed in (figure LOD):</strong> the figure silhouette is rotated 90° to show a person lying on their side.</li>
 </ul>
 <p><strong>Engaged lines resist knockdown.</strong> A unit that is actively locked in melee (and not in Skirmish stance) braces automatically, raising the impulse threshold needed to knock a soldier flat. A skirmishing or unengaged unit does not brace and is easier to topple. A deeper file also helps — more soldiers absorbing the same front-rank pressure means fewer individual soldiers pushed past the knockdown threshold.</p>
+<p><strong>Motion weakens footing.</strong> A soldier caught moving or running has kinetic footing rather than a settled static stance, lowering their anchoring capacity by 20% (<span class="math inline">\(\kappa = 0.8\)</span>). A stationary, settled rank resists being bowled over far more reliably than troops struck mid-stride.</p>
 <p>A cluster of prone soldiers in the front rank is a warning sign: your line is tired or outmatched there, and each fallen body briefly opens a gap in your defence before they can rise.</p>
 </section>
 <section id="collision-damage" class="level2">

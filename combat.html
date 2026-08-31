@@ -581,7 +581,7 @@ Figure&nbsp;1: A clash in the open: every soldier on the line is fighting their 
 </section>
 <section id="knocked-down-and-the-domino" class="level2">
 <h2 class="anchored" data-anchor-id="knocked-down-and-the-domino">Knocked down — and the domino</h2>
-<p>A hard enough shove <strong>knocks a soldier prone</strong>. Bracing and mass make you harder to topple; once down, you defend nothing, can’t strike, and must spend time <em>and</em> stamina scrambling up — which is exactly when the next blow kills you. Prone soldiers appear as dark horizontal marks (or a lying silhouette at high zoom), so a charge that bowls men over is visible at a glance.</p>
+<p>A hard enough shove <strong>knocks a soldier prone</strong>. A blow delivered above the feet acts on a lever arm and exerts <strong>torque about the soldier’s footing</strong>. Because toppling an upright body takes roughly a fourth of the force needed to slide their feet across the earth (<span class="math inline">\(\Lambda \approx 0.25\)</span>), a blow trips and fells a defender in place first; only the surplus impulse that breaks their footing loose translates their body backward into a slide. Bracing and mass make you harder to topple; once down, you defend nothing, can’t strike, and must spend time <em>and</em> stamina scrambling up — which is exactly when the next blow kills you. Prone soldiers appear as dark horizontal marks (or a lying silhouette at high zoom), so a charge that bowls men over is visible at a glance.</p>
 <p>A shoved soldier also collides with whoever is behind them. Bracing soaks only so much — but the men behind help. <strong>Braced comrades in a tight file back up the man in front</strong>, so the front rank resists with the <em>whole column’s</em> footing, not one man’s. A shove smaller than that combined footing dies at the front; a hit <strong>stronger</strong> than the column can absorb bowls the front man over and the surplus dominoes rearward, fading as it goes:</p>
 <p><span class="math display">\[J_{i+1} = \tau\,\big(J_i - \mathrm{capacity}_i\big)_+, \qquad 0 &lt; \tau &lt; 1.\]</span></p>
 <p>Here <span class="math inline">\(J_i\)</span> is the shove reaching the <span class="math inline">\(i\)</span>-th man back, <span class="math inline">\(\mathrm{capacity}_i\)</span> his rank’s combined footing, and <span class="math inline">\(\tau\)</span> how much of the surplus carries on to the next rank (<span class="math inline">\((\,\cdot\,)_+\)</span> just means a negative result is zero — a shove fully absorbed stops). So a light shove dies at the first set rank; a heavy charge punches <em>through</em>, toppling rank after rank until it is spent — and the <strong>deeper</strong> the braced file, the bigger the hit it takes to break through. You are more braced when <strong>set</strong> (the braced stance), in <strong>tight formation</strong>, and <strong>facing into</strong> the blow — the same facing that lets you defend, and the support vanishes the instant the file loosens, opens a gap, or is hit from a side it isn’t facing. A loose, flanked, or sprinting file dominoes and goes down; a deep, set, front-facing shield wall stands.</p>
@@ -596,6 +596,20 @@ Figure&nbsp;1: A clash in the open: every soldier on the line is fighting their 
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-combat-knockback-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;2: Every landed strike shoves the target back — here with the Knockback Focus stance active, which trades damage for a larger, more reliable push, making the shove easy to see on a single exchange.
+</figcaption>
+</figure>
+</div>
+<div id="fig-combat-torque" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-combat-torque-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/knockback_torque_coupling.jpg">
+  <source src="media/knockback_torque_coupling.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-combat-torque-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Coupled knockback slide and knockdown: blows impart tipping torque about the friction-anchored feet to fell defenders in place, while surplus impulse translates their bodies into knockback displacement.
 </figcaption>
 </figure>
 </div>
@@ -622,7 +636,7 @@ Figure&nbsp;2: Every landed strike shoves the target back — here with the Knoc
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-combat-piercing-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3: Piercing vs.&nbsp;non-piercing melee hits: spearmen thrust with high armour penetration and minimal whole-body shove, while swordsmen exchange chopping blows with substantial knockback displacement.
+Figure&nbsp;4: Piercing vs.&nbsp;non-piercing melee hits: spearmen thrust with high armour penetration and minimal whole-body shove, while swordsmen exchange chopping blows with substantial knockback displacement.
 </figcaption>
 </figure>
 </div>
@@ -636,7 +650,7 @@ Figure&nbsp;3: Piercing vs.&nbsp;non-piercing melee hits: spearmen thrust with h
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-combat-brace-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;4: Two identical spear lines against a cavalry charge. Both wait in place (the no-order default holds formation). The left is left unbraced; the right is ordered to Brace early and settles well before contact. On impact the unbraced line is shoved forward into the melee; the braced line holds.
+Figure&nbsp;5: Two identical spear lines against a cavalry charge. Both wait in place (the no-order default holds formation). The left is left unbraced; the right is ordered to Brace early and settles well before contact. On impact the unbraced line is shoved forward into the melee; the braced line holds.
 </figcaption>
 </figure>
 </div>
