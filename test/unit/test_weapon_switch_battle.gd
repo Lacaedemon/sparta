@@ -14,12 +14,13 @@ func before_each() -> void:
 	Replay.rng.seed = SEED
 
 
-## Infantry and Cavalry carry a second weapon they can switch between.
-## Archers and Spearmen carry no second weapon.
-func test_the_roster_gives_infantry_and_cavalry_a_second_weapon() -> void:
+## Infantry, Cavalry, and Spearmen carry a second weapon they can switch between.
+## Archers carry no second weapon.
+func test_the_roster_gives_infantry_cavalry_and_spearmen_a_second_weapon() -> void:
 	var battle: Node = await _spawned_battle()
 	var infantry_checked: int = 0
 	var cavalry_checked: int = 0
+	var spearmen_checked: int = 0
 	var others_checked: int = 0
 	for node in get_tree().get_nodes_in_group("units"):
 		var u: Unit = node as Unit
@@ -39,12 +40,19 @@ func test_the_roster_gives_infantry_and_cavalry_a_second_weapon() -> void:
 			assert_eq(u.sidearm_type_id, LoadoutRegistry.WEAPON_LANCE,
 				"Cavalry carry the lance as their second weapon")
 			cavalry_checked += 1
+		elif u.unit_name.split(" ")[0] == "Spearmen":
+			assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_SPEAR,
+				"Spearmen deploy holding the spear")
+			assert_eq(u.sidearm_type_id, LoadoutRegistry.WEAPON_SIDEARM,
+				"Spearmen carry the sidearm as their second weapon")
+			spearmen_checked += 1
 		else:
 			assert_null(LoadoutRegistry.weapon(u.sidearm_type_id),
 				"%s carries no second weapon" % u.unit_name)
 			others_checked += 1
 	assert_gt(infantry_checked, 0, "the battle spawned Infantry to check")
 	assert_gt(cavalry_checked, 0, "the battle spawned Cavalry to check")
+	assert_gt(spearmen_checked, 0, "the battle spawned Spearmen to check")
 	assert_gt(others_checked, 0, "and other roster types to check against")
 	battle.queue_free()
 
@@ -63,6 +71,23 @@ func test_cavalry_order_switches_between_lance_and_spatha() -> void:
 	battle.enqueue_switch_weapon([u.uid], LoadoutRegistry.WEAPON_SPATHA)
 	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_SPATHA, "cavalry re-equipped spatha")
 	assert_almost_eq(u.attack_range, reach_spatha, 0.0001, "and restored spatha reach")
+	battle.queue_free()
+
+
+func test_spearmen_order_switches_between_spear_and_sidearm() -> void:
+	var battle: Node = await _spawned_battle()
+	var u: Unit = _first_spearmen()
+	assert_not_null(u, "found a Spearmen unit to switch")
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_SPEAR)
+	var reach_spear: float = u.attack_range
+
+	battle.enqueue_switch_weapon([u.uid], LoadoutRegistry.WEAPON_SIDEARM)
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_SIDEARM, "spearmen drew their sidearm")
+	assert_lt(u.attack_range, reach_spear, "and reach shortened to sidearm reach")
+
+	battle.enqueue_switch_weapon([u.uid], LoadoutRegistry.WEAPON_SPEAR)
+	assert_eq(u.weapon_type_id, LoadoutRegistry.WEAPON_SPEAR, "spearmen re-equipped spear")
+	assert_almost_eq(u.attack_range, reach_spear, 0.0001, "and restored spear reach")
 	battle.queue_free()
 
 
@@ -178,4 +203,13 @@ func _first_cavalry() -> Unit:
 		if u != null and u.unit_name.split(" ")[0] == "Cavalry":
 			return u
 	return null
+
+
+func _first_spearmen() -> Unit:
+	for node in get_tree().get_nodes_in_group("units"):
+		var u: Unit = node as Unit
+		if u != null and u.unit_name.split(" ")[0] == "Spearmen":
+			return u
+	return null
+
 

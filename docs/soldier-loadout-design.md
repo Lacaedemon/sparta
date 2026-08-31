@@ -177,7 +177,7 @@ exists concretely:
 |---|---|---|---|
 | `WEAPON_SPEAR` | spear | 2.4 | Spearmen |
 | `WEAPON_GLADIUS` | short sword | 1.3 | Infantry |
-| `WEAPON_SIDEARM` | archer's melee backup (dagger/knife) | 0.6 | Archers |
+| `WEAPON_SIDEARM` | melee backup blade (dagger/short sword) | 0.6 | Archers, Spearmen (sidearm) |
 | `WEAPON_SPATHA` | cavalry longsword | 1.5 | Cavalry |
 | `WEAPON_PILUM` | heavy javelin | 2.0 | Infantry |
 | `WEAPON_LANCE` | cavalry lance | 3.0 | Cavalry |

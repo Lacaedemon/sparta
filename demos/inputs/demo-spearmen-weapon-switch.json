@@ -1,0 +1,58 @@
+{
+  "seed": "39101",
+  "spawn_fingerprint": "60c8a2f98fbecddf4b051b015858467f",
+  "camera": [
+    {
+      "tick": 0,
+      "x": 512.0,
+      "y": 380.0,
+      "zoom": 1.4
+    }
+  ],
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 512.0,
+      "y": 480.0,
+      "facing": [
+        0.0,
+        -1.0
+      ],
+      "count": 40
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 512.0,
+      "y": 280.0,
+      "facing": [
+        0.0,
+        1.0
+      ],
+      "count": 40
+    }
+  ],
+  "steps": [
+    {
+      "tick": 5,
+      "click": [
+        512,
+        480
+      ]
+    },
+    {
+      "tick": 10,
+      "key": "I",
+      "shift": true
+    },
+    {
+      "tick": 15,
+      "rmb_click": [
+        512,
+        280
+      ]
+    }
+  ],
+  "state": [8, 12, 60, 140, 180, 240]
+}

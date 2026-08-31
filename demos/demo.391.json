@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/demo-spearmen-weapon-switch.json",
+  "caption": "Spearmen weapon switch: regiment deploys with long spears, switches to sidearm blade via Shift+I for close-quarters engagement, and engages enemy infantry.",
+  "fixed_fps": 30,
+  "max_frames": 240,
+  "fps": 12,
+  "width": 640
+}

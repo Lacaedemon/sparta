@@ -7139,12 +7139,10 @@ func _foot_kind() -> int:
 			or weapon_type_id == LoadoutRegistry.WEAPON_PILUM \
 			or weapon_type_id == LoadoutRegistry.WEAPON_LANCE:
 		return UnitMeshes.FOOT_SPEAR
-	if weapon_type_id == LoadoutRegistry.WEAPON_SIDEARM:
+	if is_ranged or (weapon_type_id == LoadoutRegistry.WEAPON_SIDEARM and shield_type_id == LoadoutRegistry.SHIELD_NONE):
 		return UnitMeshes.FOOT_ARCHER
-	if anti_cavalry:
+	if anti_cavalry and weapon_type_id == LoadoutRegistry.WEAPON_SPEAR:
 		return UnitMeshes.FOOT_SPEAR
-	if is_ranged:
-		return UnitMeshes.FOOT_ARCHER
 	return UnitMeshes.FOOT_INFANTRY
 
 
