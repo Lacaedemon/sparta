@@ -61,10 +61,6 @@ const CORRIDOR_PROXIMITY_MULT: float = 1.5
 # narrower radius, so a genuine casualty-thinned or frontage-fold reform still corridors
 # around its own formation's interior exactly as before.
 const MARCHING_CORRIDOR_PROXIMITY_MULT: float = 4.5
-# Minimum directional alignment (dot product) between approach velocity and facing to
-# qualify as a straight-line march for the wider corridor proximity check: a unit
-# curving around terrain, wheeling, or turning keeps standard corridor routing.
-const MARCHING_ALIGNMENT_MIN_DOT: float = 0.95
 # Lateral clearance beyond outer formed file for perimeter corridor routing.
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
 # Stagger fraction between alternate soldier lanes in perimeter corridor.
@@ -663,9 +659,7 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 	# own doc comment for why a moving target needs a wider direct-arrival band than a
 	# stationary reform does.
 	var marching: bool = unit._approach_velocity.length_squared() > 0.0001
-	var straight_march: bool = marching and not unit.is_maneuver_turning() and (
-		unit._approach_velocity.normalized().dot(unit.facing) >= MARCHING_ALIGNMENT_MIN_DOT
-	)
+	var straight_march: bool = marching and not unit.is_turning()
 	var proximity_mult: float = MARCHING_CORRIDOR_PROXIMITY_MULT if straight_march else CORRIDOR_PROXIMITY_MULT
 	if diff.length_squared() <= (spacing * proximity_mult) * (spacing * proximity_mult):
 		return diff

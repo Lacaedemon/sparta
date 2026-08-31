@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Demo expectation and defect exemption metadata update for post-rebalance website catalog follow-ups (#1414). No sim or visual gameplay changes."
+  "reason": "Refinement of MARCHING_CORRIDOR_PROXIMITY_MULT gating in SoldierBodies to preserve perimeter corridor routing during active formation turns while retaining wide direct-arrival for non-turning translation and post-melee recovery (#1422). Verified via unit tests and state dump defect scans."
 }
