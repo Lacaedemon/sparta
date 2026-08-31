@@ -5325,6 +5325,7 @@ func disengage_with_sacrifice(step_distance: float = disengage_step_distance,
 	# stepping back to safety, so the sacrifice must never annihilate the unit itself.
 	sacrifice_count = mini(sacrifice_count, soldiers - 1)
 	soldiers -= sacrifice_count
+	var prev_foe: Unit = target_enemy
 	set_current_order(Order.new_nudge(NUDGE_BACK))
 	target_enemy = null
 	support_target = null
@@ -5334,7 +5335,7 @@ func disengage_with_sacrifice(step_distance: float = disengage_step_distance,
 	move_target = position + disengage_offset(facing, step_distance)
 	has_move_target = true
 	start_order_response()
-	return {"sacrifice_count": sacrifice_count, "delay_sec": delay_sec}
+	return {"sacrifice_count": sacrifice_count, "delay_sec": delay_sec, "target_enemy": prev_foe}
 
 
 ## Wheel (circumductio, Aelian/Asclepiodotus): the block swings about one fixed flank file like a
