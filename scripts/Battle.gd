@@ -1386,12 +1386,6 @@ func _spawn_rearguard_detachment(parent: Unit, soldier_count: int, delay_sec: fl
 	_by_uid[u.uid] = u
 	u.is_rearguard_detachment = true
 	u._rearguard_lifetime_timer = delay_sec
-	# _spawn_from_snapshot/apply_snapshot_dict never resolve target_enemy/support_target --
-	# that's a second pass restore_snapshot runs separately, over uids, once every unit in a
-	# whole-battle restore exists. Set it directly from the live parent instead.
-	u.target_enemy = parent.target_enemy
-	if parent.target_enemy != null and parent.target_enemy.target_enemy == parent:
-		parent.target_enemy.target_enemy = u
 	return u
 
 
