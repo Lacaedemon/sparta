@@ -61,6 +61,10 @@ const CORRIDOR_PROXIMITY_MULT: float = 1.5
 # narrower radius, so a genuine casualty-thinned or frontage-fold reform still corridors
 # around its own formation's interior exactly as before.
 const MARCHING_CORRIDOR_PROXIMITY_MULT: float = 4.5
+# Minimum directional alignment (dot product) between approach velocity and facing to
+# qualify as a straight-line march for the wider corridor proximity check: a unit
+# curving around terrain, wheeling, or turning keeps standard corridor routing.
+const MARCHING_ALIGNMENT_MIN_DOT: float = 0.95
 # Lateral clearance beyond outer formed file for perimeter corridor routing.
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
 # Stagger fraction between alternate soldier lanes in perimeter corridor.
@@ -659,7 +663,10 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 	# own doc comment for why a moving target needs a wider direct-arrival band than a
 	# stationary reform does.
 	var marching: bool = unit._approach_velocity.length_squared() > 0.0001
-	var proximity_mult: float = MARCHING_CORRIDOR_PROXIMITY_MULT if marching else CORRIDOR_PROXIMITY_MULT
+	var straight_march: bool = marching and not unit.is_maneuver_turning() and (
+		unit._approach_velocity.normalized().dot(unit.facing) >= MARCHING_ALIGNMENT_MIN_DOT
+	)
+	var proximity_mult: float = MARCHING_CORRIDOR_PROXIMITY_MULT if straight_march else CORRIDOR_PROXIMITY_MULT
 	if diff.length_squared() <= (spacing * proximity_mult) * (spacing * proximity_mult):
 		return diff
 	var ang: float = unit.soldier_block_world_angle()
@@ -671,8 +678,8 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 
 	var rank_pitch: float = unit.rank_pitch_wu()
 	var depth: float = rank_pitch if rank_pitch >= 0.0 else spacing
-	# Radial grid scaling (uniform density contraction or expansion during march):
-	if marching and unit.state == Unit.State.MOVING and not unit._reform_holding():
+	# Radial grid scaling (uniform density contraction or expansion during straight march):
+	if straight_march and unit.state == Unit.State.MOVING and not unit._reform_holding():
 		var same_quadrant: bool = (p_local.x * t_local.x >= -0.01) and (p_local.y * t_local.y >= -0.01)
 		if same_quadrant and absf(t_local.x) > spacing * 0.2 and absf(t_local.y) > depth * 0.2:
 			var k_x: float = p_local.x / t_local.x
