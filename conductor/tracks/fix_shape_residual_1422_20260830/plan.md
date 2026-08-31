@@ -17,14 +17,14 @@ Refine `_corridor_to_slot` steering behavior to preserve corridor detours during
   - [x] Confirm tests exercise the boundary condition
 - [x] Task: Phase 1 Verification & Checkpoint (Refer to workflow.md) (dac0847)
 
-### Phase 2: Implementation & Steering Refinement
-- [ ] Task: Refine `_corridor_to_slot` in steering logic
-  - [ ] Implement turning rate / displacement vector alignment check for `MARCHING_CORRIDOR_PROXIMITY_MULT` gating
-  - [ ] Ensure all distance comparisons use `distance_squared_to`
-  - [ ] Keep constants caller-configurable in `SoldierSteering.gd`
-- [ ] Task: Verify unit tests pass (Green phase)
-  - [ ] Run `./tools/check.sh test` and confirm all steering and unit tests pass
-- [ ] Task: Phase 2 Verification & Checkpoint (Refer to workflow.md)
+### Phase 2: Implementation & Steering Refinement [checkpoint: cce34a9]
+- [x] Task: Refine `_corridor_to_slot` in steering logic (cce34a9)
+  - [x] Implement turning rate / displacement vector alignment check for `MARCHING_CORRIDOR_PROXIMITY_MULT` gating
+  - [x] Ensure all distance comparisons use `distance_squared_to`
+  - [x] Keep constants caller-configurable in `SoldierBodies.gd`
+- [x] Task: Verify unit tests pass (Green phase) (cce34a9)
+  - [x] Run `./tools/check.sh test` and confirm all steering and unit tests pass
+- [x] Task: Phase 2 Verification & Checkpoint (Refer to workflow.md) (cce34a9)
 
 ### Phase 3: Demo Defect Verification & Quality Assurance
 - [ ] Task: Verify demo state dumps
