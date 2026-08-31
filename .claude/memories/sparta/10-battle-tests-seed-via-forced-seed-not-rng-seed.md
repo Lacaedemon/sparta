@@ -221,8 +221,10 @@ Never rely on a generic fallback clip (`showcase.json`) or copy an existing demo
 
 - **Author from scratch**: Write each new scenario (`demos/inputs/*.json`) with its
   own unit types, coordinates, seed, and step sequence tailored to what the PR changes.
+
 - **Commit a per-PR manifest**: Add `demos/demo.<slug>.json` (where `<slug>` is the
   PR or issue number) pointing at the new input script via the `input` field.
+
 - **Legitimate skips**: Reserve `"skip": true` solely for changes that have no
   battlefield manifestation at all (such as pure documentation or CI-only tooling changes),
   with an honest `"reason"` specified in the manifest.

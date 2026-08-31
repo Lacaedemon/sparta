@@ -35,6 +35,7 @@ When the diff touches `scripts/`, also run `patch_coverage` before pushing -- a 
 
 ## Gameplay demos in PRs
 **Every PR needs a fresh demo.** Every PR must provide proof a reviewer can actually see, not just a claim:
+
 - Commit a per-PR manifest **`demos/demo.<slug>.json`** (where `<slug>` is the issue or PR number) pointing at a freshly authored scripted-input recording (`demos/inputs/*.json`) with the `input` field so CI records a fresh clip and embeds it in the PR description.
 - **Author each demo scenario fresh**: Never copy or reuse an existing demo scenario's `scenario`/`steps` block as a template without writing a fresh scenario tailored to what the PR changes.
 - **The recorder can only click the battlefield and press keys -- it cannot open a ☰-menu popup.** A setting only reachable through a menu checkbox (no bound hotkey) can't be toggled on by a scripted clip; staging one anyway records an ordinary battle with the feature never turned on, which is worse than an honest skip. For a feature the recorder genuinely can't reach (a menu-only toggle, a screen with no entry point yet, a pure-data API with no UI at all), use `"skip": true` with the real reason, and post a hand-captured still image in the PR description instead (`demos/README.md`, "Still images for static features") -- don't fabricate a clip that doesn't actually show the change just to avoid `skip: true`.
