@@ -232,16 +232,17 @@ a_{\mathrm{eff}} = \begin{cases} a_D\,(1 - \alpha_{\mathrm{pierce}}) & \text{pie
 \qquad
 h_D \leftarrow h_D - \Delta h.$$
 
-$D_0 > 0$ is a base damage scale (the wound a baseline weapon, $\ell = 1$, deals to
-an unarmoured, standing target). Piercing weapons (spears, lances, daggers, pilum thrusts)
-concentrate impact force onto a narrow point, bypassing a fraction $\alpha_{\mathrm{pierce}} = 0.25$
-(`PIERCING_ARMOR_PENETRATION`) of the defender's armour. Non-piercing weapons (swords, spathas,
-axes, blunt impacts) meet the defender's full armour rating $a_D$.
-The soldier **dies** when $h_D \le 0$. Until then it fights on at reduced capacity
-through $q(h_D)$ -- wounds compound, because a hurt soldier both defends and hits
-worse, so the second and third wounds come easier than the first. Armour $a_D$ is
-the only thing that protects a back-turned or downed man, since it sits outside the
-facing-gated contest.
+$D_0 > 0$ is a base damage scale
+(the wound a baseline weapon, $\ell = 1$, deals to an unarmoured, standing target).
+Piercing weapons (spears, lances, daggers, pilum thrusts) concentrate impact force onto a narrow point,
+bypassing a fraction $\alpha_{\mathrm{pierce}} = 0.25$ (`PIERCING_ARMOR_PENETRATION`) of the defender's armour.
+Non-piercing weapons (swords, spathas, axes, blunt impacts) meet the defender's full armour rating $a_D$.
+The soldier **dies** when $h_D \le 0$.
+Until then it fights on at reduced capacity through $q(h_D)$ -- wounds compound,
+because a hurt soldier both defends and hits worse,
+so the second and third wounds come easier than the first.
+Armour $a_D$ is the only thing that protects a back-turned or downed man,
+since it sits outside the facing-gated contest.
 
 ### 3. Stamina: attacking, defending, and rising all cost
 
@@ -282,16 +283,17 @@ $$J = J_0\,\frac{\ell_A\,(1 + c)}{m_D}\;\eta\;\gamma_{\mathrm{type}},
 \qquad
 \gamma_{\mathrm{type}} = \begin{cases} \gamma_{\mathrm{pierce}} \in (0,1) & \text{piercing weapon} \\ 1 & \text{non-piercing.} \end{cases}$$
 
-$J_0 > 0$ is a base impulse scale, and $\eta$ is the fraction of momentum
-transmitted -- $\eta_{\mathrm{def}}$ for a defended blow, $1$ for a clean landing.
-$\gamma_{\mathrm{type}}$ reflects kinetic energy delivery: piercing weapons slip into tissue
-rather than shoving whole body mass backward, transmitting a reduced fraction
-$\gamma_{\mathrm{pierce}} = 0.35$ (`PIERCING_IMPULSE_MULT`) of knockback impulse. Non-piercing
-weapons deliver full whole-body displacement ($\gamma_{\mathrm{type}} = 1$).
-The struck soldier is displaced by $J\,\hat{u}_{A\to D}$; the formation's bounded
-arrival dynamics then decelerate and return it over the following ticks. A blocked blow draws no blood but still
-shoves -- which is how a spear wall pushes a stalled enemy back even when it can't
-wound it.
+$J_0 > 0$ is a base impulse scale,
+and $\eta$ is the fraction of momentum transmitted -- $\eta_{\mathrm{def}}$ for a defended blow,
+$1$ for a clean landing.
+$\gamma_{\mathrm{type}}$ reflects kinetic energy delivery:
+piercing weapons slip into tissue rather than shoving whole body mass backward,
+transmitting a reduced fraction $\gamma_{\mathrm{pierce}} = 0.35$ (`PIERCING_IMPULSE_MULT`) of knockback impulse.
+Non-piercing weapons deliver full whole-body displacement ($\gamma_{\mathrm{type}} = 1$).
+The struck soldier is displaced by $J\,\hat{u}_{A\to D}$;
+the formation's bounded arrival dynamics then decelerate and return it over the following ticks.
+A blocked blow draws no blood but still shoves -- which is how a spear wall pushes a stalled enemy back
+even when it can't wound it.
 
 Impulses **accumulate under a clamp**: in an intermixed press several attackers
 commonly shove the same body within one melee cadence, so their impulses
