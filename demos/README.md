@@ -118,10 +118,8 @@ script under `demos/inputs/`:
     `how-to-play.qmd`) or `"shift": true` to chord it with Shift (e.g.
     `{"key": "O", "shift": true}` jumps straight to the schiltron stance, sharing
     orbis's O key -- see "Square: orbis and schiltron" in `how-to-play.qmd`).
-  - `time_scale 0.5` / `slow_motion 0.25` -- change the engine playback speed / slow motion
-    at that tick (e.g. `{"tick": 60, "time_scale": 0.25}` or `{"tick": 60, "slow_motion": true}`).
-- `time_scale` / `slow_motion` (optional) -- set a starting speed scalar (e.g. `"time_scale": 0.5`)
-  or declare a keyframed speed track `[{"tick": 0, "value": 1.0}, {"tick": 60, "value": 0.25}]`.
+  - `time_scale <val>` / `slow_motion <val>` -- change the engine playback speed / slow motion at that tick (e.g. `{"tick": 60, "time_scale": 0.25}` or `{"tick": 60, "slow_motion": true}`).
+- `time_scale` / `slow_motion` (optional) -- set a starting speed scalar (e.g. `"time_scale": 0.5`) or declare a keyframed speed track `[{"tick": 0, "value": 1.0}, {"tick": 60, "value": 0.25}]`.
 - `map` (optional) -- **declare the demo's own battlefield** instead of the default map:
   `{"field": [w, h], "terrain": [{"rect": [x, y, w, h], "type": "hill", "kind": "block"},
   {"rect": [...], "type": "forest", "kind": "slow", "speed": 0.6}], "spawn_lines":
@@ -519,7 +517,7 @@ strict digest, a clip it calls `SAME` is genuinely unchanged and skips the expen
 -- each reported with its exact first divergent tick and tier. `UNKNOWN` (a tree lacking a stream,
 e.g. one predating the hashing) falls back to the full `jq` compare.
 
-### The wrapper
+### State dump wrapper (`dump-state.sh`) and comparator (`compare-demos.sh`)
 
 `tools/demo/dump-state.sh` wraps it, mirroring `capture-frames.sh`:
 
@@ -536,6 +534,16 @@ GODOT_BIN="C:\Users\you\Documents\apps\Godot_v4.7-stable_win64_console.exe" \
 
 On Linux/CI, drop `GODOT_BIN` if `godot` is on `PATH`. No `xvfb-run` needed -- the dump is headless.
 
+`tools/demo/compare-demos.sh` compares two demo state dump runs or checks whether a branch changed simulation behavior relative to a base commit:
+
+```sh
+# Compare state and hash streams between two dump directories:
+tools/demo/compare-demos.sh --dirs /tmp/state1 /tmp/state2
+
+# Run a demo scenario against a base commit and compare against this branch:
+tools/demo/compare-demos.sh demos/inputs/rout-rally.json origin/main 30,60,120
+```
+
 Or invoke Godot directly (no wrapper):
 
 ```sh
@@ -549,18 +557,6 @@ Then `Read` each `/tmp/state/state_<tick>.json` and assert on the values. As wit
 **pick ticks the demo actually reaches** -- a battle freezes its physics tick when it ends, so a
 tick armed past that never fires (the run quits on a wall-clock timeout, warning which snapshots
 it managed to write).
-
-### Before/after comparisons
-
-`tools/demo/compare-demos.sh` compares two demo state dump runs or checks whether a branch changed simulation behavior relative to a base commit:
-
-```sh
-# Compare state and hash streams between two dump directories:
-tools/demo/compare-demos.sh --dirs /tmp/state1 /tmp/state2
-
-# Run a demo scenario against a base commit and compare against this branch:
-tools/demo/compare-demos.sh demos/inputs/rout-rally.json origin/main 30,60,120
-```
 
 ### Worked example -- the staged rout
 
