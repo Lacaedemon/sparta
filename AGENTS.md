@@ -44,15 +44,17 @@ There is no backend/server/database -- everything runs inside the Godot engine.
   + doc checks. The **full GUT suite takes ~7 minutes** (2769 tests) -- budget a
   generous timeout; it is not hung. For a `scripts/` change also run
   `patch_coverage` in the *same* invocation (see `CLAUDE.md`).
-- **Running/seeing the game (no display):** the VM is headless, so you cannot open
-  the editor. Drive a real battle through the demo pipeline instead (see the
-  `sparta-demos` skill and `demos/README.md`). Every PR requires a fresh demo. `xvfb-run`,
-  `ffmpeg`, and `jq` are available. Record a clip with Movie Maker under Xvfb -- e.g.
+- **Running/seeing the game (no display):** the VM is headless, so you cannot open the editor.
+  Drive a real battle through the demo pipeline instead (see the `sparta-demos` skill and `demos/README.md`).
+  Every PR requires a fresh demo.
+  `xvfb-run`, `ffmpeg`, and `jq` are available.
+  Record a clip with Movie Maker under Xvfb -- e.g.
   `SPARTA_DEMO_INPUT="res://demos/inputs/<name>.json" xvfb-run -a godot --rendering-driver opengl3 --path . --write-movie /tmp/out.avi --fixed-fps 30 --quit-after 260 res://tools/demo/DemoInputRecorder.tscn`
-  then convert with `ffmpeg`. **Do not** pass `--headless` to a Movie Maker /
-  frame-capture run -- it crashes with a null-texture error (dummy renderer); use
-  `xvfb-run` + `--rendering-driver opengl3` (see `CLAUDE.md`). Machine-readable
-  **state dumps** (`tools/demo/dump-state.sh`) do run under `--headless`.
+  then convert with `ffmpeg`.
+  **Do not** pass `--headless` to a Movie Maker / frame-capture run --
+  it crashes with a null-texture error (dummy renderer);
+  use `xvfb-run` + `--rendering-driver opengl3` (see `CLAUDE.md`).
+  Machine-readable **state dumps** (`tools/demo/dump-state.sh`) do run under `--headless`.
 - **Cloud Agent bootstrap gotcha:** some Cloud Agent runs start with *no linked
   environment* (so the repo-defined update script hasn't been applied yet).
   When that happens, install/verify the dependencies needed by `tools/check.sh`
