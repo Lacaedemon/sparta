@@ -101,27 +101,33 @@ script under `demos/inputs/`:
 - `seed` -- the battle seed (string). Use `"12345"` for the documented standard 5v5
   layout (the unit table below); spawn **positions** are seed-independent, so clicks
   land regardless -- the seed only fixes combat RNG for reproducibility.
+
 - `time_scale` / `slow_motion` (optional) -- set a starting speed scalar (e.g. `"time_scale": 0.5`)
   or declare a keyframed speed track `[{"tick": 0, "value": 1.0}, {"tick": 60, "value": 0.25}]`.
+
 - `camera` (optional) -- a list of keyframes `{tick,x,y,zoom}` (world coordinates), sorted
   by tick. The recorder interpolates position and zoom linearly between them, so the clip
   pans and zooms over time; outside the track's range it holds the first / last frame. A
   single keyframe just statically frames the whole clip. Omit for the default whole-field
   camera. (`demos/inputs/camera-zoom.json` shows a multi-keyframe pan-and-zoom.)
+
 - `steps` -- each stamped with a `tick` (physics ticks, 60/s). Coordinates are world-space:
   - `click [x,y]` / `shift_click [x,y]` / `rmb_click [x,y]` -- a press+release at a point.
   - `box { "from": [x,y], "to": [x,y] }` -- a left-drag box-select.
   - `rmb_drag { "from": [x,y], "to": [x,y], "shift": false }` -- a right-drag (move / form-up;
     `shift` toggles the form-up ordering variant). Drags animate over a few ticks so the
     live preview renders.
+
   - `time_scale <val>` / `slow_motion <val>` -- change the engine playback speed / slow motion
     at that tick (e.g. `{"tick": 60, "time_scale": 0.25}` or `{"tick": 60, "slow_motion": true}`).
+
   - `key "Y"` -- a gameplay hotkey press (formation cycle, order stance, etc.). Add
     `"ctrl": true` to chord it with Ctrl (e.g. `{"key": "H", "ctrl": true}` writes the
     Hold stance on the selection in place -- see the stance-order gesture in
     `how-to-play.qmd`) or `"shift": true` to chord it with Shift (e.g.
     `{"key": "O", "shift": true}` jumps straight to the schiltron stance, sharing
     orbis's O key -- see "Square: orbis and schiltron" in `how-to-play.qmd`).
+
 - `map` (optional) -- **declare the demo's own battlefield** instead of the default map:
   `{"field": [w, h], "terrain": [{"rect": [x, y, w, h], "type": "hill", "kind": "block"},
   {"rect": [...], "type": "forest", "kind": "slow", "speed": 0.6}], "spawn_lines":
