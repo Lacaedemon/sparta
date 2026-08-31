@@ -5153,6 +5153,17 @@ func test_foot_kind_prefers_the_actual_equipped_weapon_type_over_the_flags() -> 
 		"weapon_type_id alone (no is_ranged flag) selects the archer figure")
 
 
+func test_foot_kind_renders_infantry_figure_when_spearman_draws_sidearm() -> void:
+	var u := _spearman_unit()
+	u.spawn_weapon_type_id = LoadoutRegistry.WEAPON_SPEAR
+	u.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR
+	assert_eq(u._foot_kind(), UnitMeshes.FOOT_SPEAR, "spearman holding spear -> foot spear")
+
+	u.weapon_type_id = LoadoutRegistry.WEAPON_SIDEARM
+	assert_eq(u._foot_kind(), UnitMeshes.FOOT_INFANTRY, "spearman drawn sidearm -> foot infantry")
+
+
+
 func test_weapon_rest_angle_reads_the_registry_default() -> void:
 	var u := _make_unit(4)
 	u.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR

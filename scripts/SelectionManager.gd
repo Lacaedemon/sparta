@@ -1460,8 +1460,8 @@ func _toggle_rank_relief() -> void:
 ## field that cannot drift beats a second piece of live state to keep in sync.
 ##
 ## No-ops for a selection whose lead unit carries no second weapon (sidearm_type_id 0 --
-## every roster type but Infantry and Cavalry today), with a message saying so rather than
-## a silent nothing: an unbound-feeling key is worse than a refusal that explains itself.
+## every roster type but Infantry, Cavalry, and Spearmen today), with a message saying
+## so rather than a silent nothing: an unbound-feeling key is worse than a refusal that explains itself.
 func _toggle_weapon() -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return

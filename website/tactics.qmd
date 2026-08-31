@@ -1130,12 +1130,16 @@ the lighter attacker.
 
 ## Drawing the other weapon
 
-Some troops carry two weapons and deploy holding one of them. Legionary Infantry march
-with the **gladius** drawn and a **pilum** stowed; press <kbd>Shift+I</kbd> and the whole
-selection draws the other one, with a second press putting it away again. You can see the
-change on the men themselves once you're zoomed in far enough for the figure silhouettes:
-the shaft appears in every soldier's hand, and the shield-forward stance returns when the
-pilum is stowed.
+Some troops carry two weapons and deploy holding one of them:
+legionary Infantry march with the **gladius** drawn and a **pilum** stowed;
+Spearmen deploy holding the long **spear** with a secondary **sidearm** dagger/blade;
+Cavalry ride holding the **spatha** longsword with a heavy **lance** sidearm.
+Press <kbd>Shift+I</kbd> and the whole selection draws the other weapon,
+with a second press stowing it again.
+You can see the change on the men themselves once you're zoomed in far enough for figure silhouettes:
+Infantry pick up the long shaft when drawing the pilum and restore the shield-forward stance when stowing it;
+Spearmen drop the spear shaft and draw their sidearm short blade;
+Cavalry switch between the spatha and the long lance shaft.
 
 Switching is an **in-place order** --- the block doesn't march, wheel or reform to do it,
 so it costs you nothing positionally and can be done in contact.
@@ -1145,12 +1149,13 @@ reach-versus-rate trade the section above describes:
 
 ::: {#tbl-pilum-gladius}
 
-| Weapon | Type | Reach | Blow every | Sustained killing rate | Knockback shove |
+| Troop | Deployed weapon | Reach | Sidearm | Reach | Gameplay trade |
 | --- | --- | --- | --- | --- | --- |
-| Gladius | Cutting / balanced | 1.3 m | 1.2 s | 0.83 | Full (1.0&times;) |
-| Pilum | Piercing thrust | 2.0 m | 1.5 s | 0.40 | Reduced (0.35&times;) |
+| Infantry | Gladius (1.3 m) | 1.3 m | Pilum (2.0 m) | 2.0 m | Pilum trades rate for reach and piercing against armour; gladius maximizes sustained DPS |
+| Spearmen | Spear (2.4 m) | 2.4 m | Sidearm (0.6 m) | 0.6 m | Spear stops cavalry charges and reaches forward; sidearm speeds close-quarters infighting |
+| Cavalry | Spatha (1.5 m) | 1.5 m | Lance (3.0 m) | 3.0 m | Lance extends reach and delivers prone knockdown; spatha cuts in sustained melee |
 
-The two weapons a legionary carries, and the trade between them.
+Carried weapon combinations across the roster, and the tactical trades between them.
 :::
 
 The pilum reaches most of the way to a spear's 2.4 m and penetrates 25% of defender armour as a piercing weapon, so a regiment holding it lands the opening strikes of a clash and can field more ranks in its engaged tier --- but it swings slower, deals less baseline damage, and imparts minimal whole-body knockback shove, so a line that keeps holding it once the fight is locked kills at roughly half the rate it would with the blade.
@@ -1173,6 +1178,21 @@ switch too early and you throw away the reach you were carrying it for.
 An Infantry regiment draws its pilum and then stows it again. Every soldier's silhouette
 picks up the shaft and then drops back to the shield, and the block holds its ground
 throughout --- re-equipping never moves or reforms it.
+:::
+
+::: {#fig-spearmen-weapon-switch .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/spearmen_weapon_switch.jpg">
+  <source src="media/spearmen_weapon_switch.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A Spearmen regiment switches to its sidearm blade via <kbd>Shift+I</kbd> and engages in close melee.
+Every soldier puts away the spear shaft to wield their sidearm blade and scutum shield.
 :::
 
 ## Movement speed
