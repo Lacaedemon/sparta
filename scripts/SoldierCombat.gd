@@ -282,6 +282,12 @@ static func anchor_capacity(defender_mass: float, brace_d: float = 0.0, is_movin
 	return base * KINETIC_ANCHOR_RATIO if is_moving else base
 
 
+## Translational surplus impulse that breaks footing loose into translation. Pure; never negative.
+static func translational_impulse(impulse_j: float, defender_mass: float, brace_d: float = 0.0, is_moving: bool = false) -> float:
+	var anchor: float = anchor_capacity(defender_mass, brace_d, is_moving)
+	return maxf(0.0, impulse_j - anchor)
+
+
 ## Partition a knockback impulse into rotational (torque about feet) and translational
 ## (center-of-mass slide) components (docs/combat-model.md "Coupling the slide and the fall: a friction-anchored pivot").
 ## The anchored share J_rot is held by the footing, generating torque that drives the prone

@@ -440,18 +440,17 @@ it sends a moving body's whole impulse into translation and none into rotation,
 which is the least physical case of all and the one that produces the widest
 slide-while-standing window.
 
-Under the partition $J_{\mathrm{fall}}$ stops being a free parameter.
-It is the anchoring capacity scaled by the stance geometry, so a single ratio
-replaces two independently tuned knobs:
+Under the partition $J_{\mathrm{fall}}$ is scaled by the stance geometry $\Lambda = 0.25$ (`PIVOT_ADVANTAGE`),
+coupling tipping resistance directly to effective mass and kinetic motion:
 
-$$J_{\mathrm{fall}} \;=\; \Lambda\,J_{\mathrm{anchor}} \;=\; \frac{d_b}{\mu_s\,z_b}\,J_{\mathrm{anchor}}.$$
+$$J_{\mathrm{fall}} \;=\; \Lambda\,\mathrm{PRONE\_FALL\_THRESHOLD}\,m_{\mathrm{eff}}\,(\kappa\text{ if moving else } 1.0).$$
 
-> **Implemented:** `SoldierCombat.anchor_capacity`, `SoldierCombat.partition_impulse`,
+> **Implemented:** `SoldierCombat.anchor_capacity`, `SoldierCombat.translational_impulse`, `SoldierCombat.partition_impulse`,
 > and `SoldierCombat.prone_chance` with $\Lambda = 0.25$ (`PIVOT_ADVANTAGE`)
 > and $\kappa = 0.8$ (`KINETIC_ANCHOR_RATIO`).
 > Wired into `SoldierMelee`:
 > the defender's footing anchors impulse up to $J_{\mathrm{anchor}}$,
-> converting the anchored share $J_{\mathrm{rot}}$ into tipping torque that drives the prone fall roll,
+> converting the anchored share into tipping torque that drives the prone fall roll,
 > while only the surplus $J_{\mathrm{trans}} = (J - J_{\mathrm{anchor}})_+$
 > breaks the feet loose into translational knockback slide.
 

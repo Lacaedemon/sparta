@@ -1,4 +1,4 @@
-﻿{
+{
   "input": "demos/inputs/demo-knockback-torque-coupling.json",
   "caption": "Demonstrating coupled knockback slide and prone/fall resolution via torque vs translation impulse partition.",
   "fixed_fps": 30,

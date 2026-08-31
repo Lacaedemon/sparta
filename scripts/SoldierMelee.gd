@@ -241,6 +241,9 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 				var clear_dist: float = attacker._front_depth() + defender._front_depth()
 				defender_speed_cap = SoldierCombat.knockback_focus_clear_line_cap(
 						clear_dist, SoldierBodies.BODY_ACCEL_FLOOR)
+		# Pre-strike defender motion status (read before this blow's velocity mutations).
+		var defender_speed_sq: float = defender._sim_body_vel[target].length_squared()
+		var is_moving: bool = defender_speed_sq > SoldierCombat.STATIC_FRICTION_VELOCITY_GATE * SoldierCombat.STATIC_FRICTION_VELOCITY_GATE
 		# Newton's laws collision (bidirectional impulses): both attacker and defender
 		# exchange momentum. The impulse is split inversely by effective mass (which
 		# includes bracing). Bracing gates the DEFENDER's forward motion (via `cap`
@@ -268,10 +271,7 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 			# A defender's footing anchors the impulse up to J_anchor (mass & bracing scaled).
 			# The anchored share J_rot turns into tipping torque; only the surplus J_trans breaks
 			# the footing loose to translate/shove the body.
-			var defender_speed_sq: float = defender._sim_body_vel[target].length_squared()
-			var is_moving: bool = defender_speed_sq > SoldierCombat.STATIC_FRICTION_VELOCITY_GATE * SoldierCombat.STATIC_FRICTION_VELOCITY_GATE
-			var parts: Array[float] = SoldierCombat.partition_impulse(received, en_prof["mass"], brace_d, is_moving)
-			var j_trans: float = parts[1]
+			var j_trans: float = SoldierCombat.translational_impulse(received, en_prof["mass"], brace_d, is_moving)
 			if j_trans > 0.0:
 				var braced_impulse_defender: Vector2 = SoldierCollision.braced_defender_impulse(
 						impulse_defender, j_trans, impulse_mag)
@@ -293,8 +293,7 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 		# fresh blow on a downed man refreshes the timer, keeping him down under assault.
 		var fall_roll: float = Replay.rng.randf()
 		if target < defender._sim_prone.size() \
-				and fall_roll < SoldierCombat.prone_chance(impulse_mag, en_prof["mass"], brace_d,
-					defender._sim_body_vel[target].length_squared() > SoldierCombat.STATIC_FRICTION_VELOCITY_GATE * SoldierCombat.STATIC_FRICTION_VELOCITY_GATE):
+				and fall_roll < SoldierCombat.prone_chance(impulse_mag, en_prof["mass"], brace_d, is_moving):
 			defender._sim_prone[target] = SoldierCombat.PRONE_RISE_TIME
 		# Stamina drain: attacker pays KAPPA_A per strike thrown; defender pays KAPPA_D
 		# scaled by how much of the blow it had to meet (phi*(1+c) — zero for prone/flanked).

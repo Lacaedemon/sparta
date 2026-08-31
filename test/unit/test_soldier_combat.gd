@@ -637,6 +637,15 @@ func test_partition_impulse_above_anchor_splits_into_translation() -> void:
 	assert_almost_eq(parts[1], 15.0, 1e-6, "surplus impulse goes into translational slide")
 
 
+func test_translational_impulse_matches_partition_surplus() -> void:
+	var below: float = SoldierCombat.translational_impulse(15.0, 1.0, 0.0, false)
+	assert_almost_eq(below, 0.0, 1e-6, "sub-anchor translational impulse is zero")
+	var above: float = SoldierCombat.translational_impulse(35.0, 1.0, 0.0, false)
+	assert_almost_eq(above, 15.0, 1e-6, "super-anchor translational impulse is surplus")
+	var moving: float = SoldierCombat.translational_impulse(20.0, 1.0, 0.0, true)
+	assert_almost_eq(moving, 4.0, 1e-6, "moving defender has lower anchor capacity so higher translational surplus")
+
+
 # --- bracing depth and capacity (docs/combat-model.md "Bracing") ---------------
 
 func test_brace_depth_lone_man_is_one() -> void:
