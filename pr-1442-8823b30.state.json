@@ -77,7 +77,7 @@
           "team": 0,
           "tier": "CLOSE",
           "uid": 0,
-          "weapon": "Spatha"
+          "weapon": "Lance"
         },
         {
           "countermarch_variant": null,
@@ -225,7 +225,7 @@
           "team": 0,
           "tier": "CLOSE",
           "uid": 0,
-          "weapon": "Spatha"
+          "weapon": "Lance"
         },
         {
           "countermarch_variant": null,
@@ -300,7 +300,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "2 x 6 m",
-        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 40 / 40\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 7 files\nOrder: Attacking Infantry 1\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.5 m/s\nAccel: +2.0 m/s²",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 40 / 40\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 7 files\nOrder: Attacking Infantry 1\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.3 m/s\nAccel: -2.0 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 0,
@@ -311,10 +311,10 @@
         {
           "countermarch_variant": null,
           "current_order": "ATTACK",
-          "current_speed": 71.3,
-          "current_speed_mps": 3.567,
+          "current_speed": 68.7,
+          "current_speed_mps": 3.433,
           "delegated_group_id": null,
-          "engaged": false,
+          "engaged": true,
           "facing": [
             0.0,
             -1.0
@@ -323,8 +323,8 @@
           "formation": "NORMAL",
           "formation_label": "2 x 6 m",
           "frontage": 7,
-          "in_enemy_contact": false,
-          "maneuver": "MARCHING",
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
           "morale": 100.0,
           "name": "Cavalry 1",
           "order_guard": null,
@@ -332,11 +332,11 @@
           "order_phase": "NONE",
           "position": [
             512.0,
-            416.21
+            414.62
           ],
           "position_m": [
             25.6,
-            20.81
+            20.731
           ],
           "queue_tail": [],
           "rank_pitch": 120.0,
@@ -349,7 +349,7 @@
             "broken_count": 0,
             "centroid": [
               512.0,
-              401.31
+              401.54
             ],
             "count": 40,
             "prone_count": 0
@@ -361,11 +361,11 @@
             ],
             "centroid_m": [
               25.6,
-              20.066
+              20.077
             ]
           },
           "soldiers": 40,
-          "state": "MOVING",
+          "state": "FIGHTING",
           "subcommander_rank": null,
           "subunit_size": 0,
           "subunit_structure": "NONE",
@@ -373,7 +373,7 @@
           "team": 0,
           "tier": "CLOSE",
           "uid": 0,
-          "weapon": "Spatha"
+          "weapon": "Lance"
         },
         {
           "countermarch_variant": null,
@@ -390,7 +390,7 @@
           "formation": "NORMAL",
           "formation_label": "0.9 m",
           "frontage": 9,
-          "in_enemy_contact": false,
+          "in_enemy_contact": true,
           "maneuver": "MARCHING",
           "morale": 100.0,
           "name": "Infantry 1",
