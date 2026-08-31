@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/demo-options-slowmo.json",
+  "caption": "Demonstrating scripted-input slow motion (time_scale) demo options and before/after comparison tooling.",
+  "fixed_fps": 30,
+  "max_frames": 240,
+  "fps": 12,
+  "width": 640
+}

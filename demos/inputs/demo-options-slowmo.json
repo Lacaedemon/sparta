@@ -1,0 +1,32 @@
+{
+  "seed": "46700",
+  "spawn_fingerprint": "b650d22b245636ca26bd9c7a829f0794",
+  "drill": true,
+  "camera": [
+    { "tick": 0, "x": 510.0, "y": 380.0, "zoom": 1.6 }
+  ],
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 450.0,
+      "y": 420.0,
+      "facing": [0.0, -1.0],
+      "count": 40
+    },
+    {
+      "team": 0,
+      "type": "Cavalry",
+      "x": 570.0,
+      "y": 420.0,
+      "facing": [0.0, -1.0],
+      "count": 20
+    }
+  ],
+  "steps": [
+    { "tick": 5, "click": [450, 420] },
+    { "tick": 15, "rmb_drag": { "from": [450, 420], "to": [450, 300] } },
+    { "tick": 30, "time_scale": 0.25 },
+    { "tick": 100, "time_scale": 1.0 }
+  ]
+}

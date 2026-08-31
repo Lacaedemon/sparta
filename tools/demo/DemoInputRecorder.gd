@@ -57,6 +57,7 @@ var _show_unit_card_tray: bool = false
 # this build's spawn layout fails the recording LOUDLY (the silent spawn-drift failure mode:
 # a re-spaced spawn line leaves the script's fixed clicks landing on empty ground).
 var _spawn_fingerprint: String = ""
+var _initial_time_scale: float = 1.0   # starting time_scale override (1.0 = normal)
 var _frame_ticks: Array = []           # ticks to save a viewport PNG at (frame capture; empty = off)
 var _frame_dir: String = ""            # output dir for captured frames
 var _captured: Dictionary = {}         # tick -> true, so each frame is saved at most once
@@ -136,6 +137,30 @@ func _ready() -> void:
 	var raw_tray_grid = script.get("tray_grid", [])
 	_tray_grid = raw_tray_grid if raw_tray_grid is Array else []
 	_spawn_fingerprint = str(script.get("spawn_fingerprint", ""))
+	# Optional slow-motion / time_scale setting: a script (or SPARTA_DEMO_TIME_SCALE env)
+	# that wants to record at a custom speed. Top-level slow_motion / time_scale can be a scalar
+	# or an array of keyframes [{tick, value}], and steps can also carry {"slow_motion": ...}
+	# or {"time_scale": ...}.
+	if OS.has_environment("SPARTA_DEMO_TIME_SCALE"):
+		_initial_time_scale = float(OS.get_environment("SPARTA_DEMO_TIME_SCALE"))
+	elif script.has("time_scale"):
+		var raw_ts = script["time_scale"]
+		if raw_ts is Array:
+			for entry in raw_ts:
+				if entry is Dictionary and entry.has("tick") and entry.has("value"):
+					_at(int(entry["tick"]), {"kind": "time_scale", "scale": float(entry["value"])})
+		else:
+			_initial_time_scale = float(raw_ts)
+	elif script.has("slow_motion"):
+		var raw_sm = script["slow_motion"]
+		if raw_sm is bool:
+			_initial_time_scale = 0.5 if raw_sm else 1.0
+		elif raw_sm is Array:
+			for entry in raw_sm:
+				if entry is Dictionary and entry.has("tick") and entry.has("value"):
+					_at(int(entry["tick"]), {"kind": "time_scale", "scale": float(entry["value"])})
+		else:
+			_initial_time_scale = float(raw_sm)
 	_arm_frame_capture(DemoFrames.script_array(script, "frames"))
 	# Declared expectations (the `expect` list) are checked offline against dumped
 	# snapshots, so every expect tick joins the state-dump defaults -- declaring an
@@ -193,6 +218,8 @@ func _start_battle() -> void:
 	if _form_up_dist >= 0:
 		_sel._form_up_dist = _form_up_dist
 	_apply_demo_tray()
+	if _initial_time_scale != 1.0 and _initial_time_scale > 0.0:
+		_set_time_scale(_initial_time_scale, 0)
 	_cam = _battle.get_node("Camera2D")
 	_apply_camera(0)
 	get_tree().physics_frame.connect(_on_physics_frame)
@@ -350,6 +377,7 @@ func _all_artifacts_done() -> bool:
 ## wall-clock timeout. A state-only dump reads sim state, never the drawn frame, so it quits
 ## straight away.
 func _quit_after_captures() -> void:
+	Engine.time_scale = 1.0
 	if not _frame_ticks.is_empty():
 		await RenderingServer.frame_post_draw
 	print("[demo-input] all artifacts done (%d frames, %d state snapshots); quitting."
@@ -363,6 +391,7 @@ func _quit_after_captures() -> void:
 ## landed but the quit-after path stalled. Either way we are done waiting — quit unconditionally,
 ## warning only when something is actually missing.
 func _on_capture_timeout() -> void:
+	Engine.time_scale = 1.0
 	if not _all_artifacts_done():
 		push_warning("[demo-input] run timed out: %d/%d frames, %d/%d state snapshots (a tick may be past the battle's end)."
 			% [_captured.size(), _frame_ticks.size(), _state_dumped.size(), _state_ticks.size()])
@@ -485,6 +514,27 @@ func _fire(ev: Dictionary) -> void:
 			k.physical_keycode = KEY_SPACE
 			k.pressed = true
 			Input.parse_input_event(k)
+		"time_scale":
+			var scale: float = float(ev.get("scale", 1.0))
+			_set_time_scale(scale, _battle.current_tick() if _battle != null and is_instance_valid(_battle) else 0)
+
+
+## Set Engine.time_scale and update Replay and HUD state.
+func _set_time_scale(scale: float, tick: int) -> void:
+	Engine.time_scale = scale
+	if _battle != null and is_instance_valid(_battle):
+		Replay.record_time_scale_change(tick, scale)
+	if _hud != null and is_instance_valid(_hud):
+		var presets = _hud.get("SLOWMO_PRESETS")
+		if presets == null:
+			presets = preload("res://scripts/HUD.gd").SLOWMO_PRESETS
+		var idx: int = presets.find(scale)
+		if idx != -1:
+			_hud._slowmo_index = idx
+		if _hud.has_method("_update_slowmo_label"):
+			_hud._update_slowmo_label()
+		if _hud.has_method("flash_message"):
+			_hud.flash_message("Speed: %d%%" % roundi(scale * 100.0))
 
 
 # --- script -> per-tick event schedule -------------------------------------
@@ -511,6 +561,12 @@ func _schedule(steps: Array) -> void:
 			# Uses Input.parse_input_event (not _unhandled_input) so Input.is_key_pressed()
 			# reflects the held state — that's what _draw_orders() checks.
 			_at(tick, {"kind": "hold_space"})
+		elif step.has("time_scale"):
+			_at(tick, {"kind": "time_scale", "scale": float(step["time_scale"])})
+		elif step.has("slow_motion"):
+			var raw_sm = step["slow_motion"]
+			var scale: float = (0.5 if raw_sm else 1.0) if raw_sm is bool else float(raw_sm)
+			_at(tick, {"kind": "time_scale", "scale": scale})
 		else:
 			# A step matching none of the recognized action keys above is a no-op:
 			# it schedules nothing and the recording silently proceeds without it.

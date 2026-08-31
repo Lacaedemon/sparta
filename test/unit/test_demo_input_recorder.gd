@@ -107,3 +107,38 @@ func test_state_only_dump_is_done_when_every_state_tick_is_written() -> void:
 	r._state_dumped = {0: true, 60: true, 120: true}
 	assert_true(r._all_artifacts_done(),
 		"a state-only dump reports done once all snapshots land, with no frames armed")
+
+
+# --- slow-motion / time_scale options --------------------------------------
+
+func test_time_scale_step_expands_to_time_scale_event() -> void:
+	var r = _rec()
+	r._schedule([{"tick": 50, "time_scale": 0.25}])
+	var evs: Array = r._by_tick.get(50, [])
+	assert_eq(evs.size(), 1, "schedules one time_scale event")
+	assert_eq(evs[0]["kind"], "time_scale", "event kind is time_scale")
+	assert_almost_eq(float(evs[0]["scale"]), 0.25, 0.001, "time_scale value preserved")
+
+
+func test_slow_motion_step_expands_to_time_scale_event() -> void:
+	var r = _rec()
+	r._schedule([
+		{"tick": 20, "slow_motion": true},
+		{"tick": 80, "slow_motion": 0.1},
+	])
+	var evs20: Array = r._by_tick.get(20, [])
+	assert_eq(evs20.size(), 1, "schedules slow_motion event at tick 20")
+	assert_almost_eq(float(evs20[0]["scale"]), 0.5, 0.001, "slow_motion: true defaults to 0.5")
+	var evs80: Array = r._by_tick.get(80, [])
+	assert_eq(evs80.size(), 1, "schedules slow_motion event at tick 80")
+	assert_almost_eq(float(evs80[0]["scale"]), 0.1, 0.001, "slow_motion float value preserved")
+
+
+func test_time_scale_fire_updates_engine_time_scale() -> void:
+	var r = _rec()
+	var original: float = Engine.time_scale
+	r._fire({"kind": "time_scale", "scale": 0.25})
+	assert_almost_eq(Engine.time_scale, 0.25, 0.001, "firing time_scale updates Engine.time_scale")
+	# Restore to prevent test bleed
+	Engine.time_scale = original
+
