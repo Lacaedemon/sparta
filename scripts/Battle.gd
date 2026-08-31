@@ -1386,10 +1386,6 @@ func _spawn_rearguard_detachment(parent: Unit, soldier_count: int, delay_sec: fl
 	_by_uid[u.uid] = u
 	u.is_rearguard_detachment = true
 	u._rearguard_lifetime_timer = delay_sec
-	# _spawn_from_snapshot/apply_snapshot_dict never resolve target_enemy/support_target --
-	# that's a second pass restore_snapshot runs separately, over uids, once every unit in a
-	# whole-battle restore exists. Set it directly from the live parent instead.
-	u.target_enemy = parent.target_enemy
 	return u
 
 
@@ -2241,7 +2237,12 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				var result: Dictionary = u.disengage_with_sacrifice()
 				var sacrifice_count: int = int(result["sacrifice_count"])
 				if sacrifice_count > 0:
-					_spawn_rearguard_detachment(u, sacrifice_count, float(result["delay_sec"]))
+					var rearguard: Unit = _spawn_rearguard_detachment(u, sacrifice_count, float(result["delay_sec"]))
+					var foe: Unit = result.get("target_enemy", null) as Unit
+					if foe != null:
+						rearguard.target_enemy = foe
+						if foe.target_enemy == u:
+							foe.target_enemy = rearguard
 		return
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the

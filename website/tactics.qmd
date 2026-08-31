@@ -434,6 +434,11 @@ a soldier flat. A skirmishing or unengaged unit does not brace and is easier to 
 A deeper file also helps --- more soldiers absorbing the same front-rank pressure means
 fewer individual soldiers pushed past the knockdown threshold.
 
+**Motion weakens footing.**
+A soldier caught moving or running has kinetic footing rather than a settled static stance,
+lowering their anchoring capacity by 20% ($\kappa = 0.8$).
+A stationary, settled rank resists being bowled over far more reliably than troops struck mid-stride.
+
 A cluster of prone soldiers in the front rank is a warning sign: your line is tired or
 outmatched there, and each fallen body briefly opens a gap in your defence before they
 can rise.

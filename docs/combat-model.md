@@ -440,47 +440,19 @@ it sends a moving body's whole impulse into translation and none into rotation,
 which is the least physical case of all and the one that produces the widest
 slide-while-standing window.
 
-Under the partition $J_{\mathrm{fall}}$ stops being a free parameter.
-It is the anchoring capacity scaled by the stance geometry, so a single ratio
-replaces two independently tuned knobs:
+Under the partition $J_{\mathrm{fall}}$ is scaled by the stance geometry $\Lambda = 0.25$ (`PIVOT_ADVANTAGE`),
+coupling tipping resistance directly to effective mass and kinetic motion:
 
-$$J_{\mathrm{fall}} \;=\; \Lambda\,J_{\mathrm{anchor}} \;=\; \frac{d_b}{\mu_s\,z_b}\,J_{\mathrm{anchor}}.$$
+$$J_{\mathrm{fall}} = \Lambda\,\mathrm{PRONE\_FALL\_THRESHOLD}\,m_{\mathrm{eff}}\,(\kappa\text{ if moving else } 1.0).$$
 
-> **Not yet implemented, and each of the following still needs pinning down.**
->
-> *The scale of $J$.* The geometry above constrains the **form** of the relation
-> between the two thresholds, not the absolute scale of $J$ itself, which is a
-> tuned quantity (`KNOCKBACK_IMPULSE_SCALE`, calibrated to a pre-mass
-> flat-knockback feel rather than to newton-seconds).
-> Substituting $\Lambda \approx 0.21$ naively takes $J_{\mathrm{fall}}$ from 55 to about 4.2,
-> which fells a man on roughly 40% of ordinary blows --- a physically-sound
-> ordering hung off an uncalibrated scale.
->
-> *The value of $\Lambda$.* The three stance constants are estimates, not
-> measurements, and $\Lambda$ is linear in $d_b$ and inverse-linear in $\mu_s$ and
-> $z_b$, so it is more sensitive than a single quoted figure suggests.
-> Across a tight plausible band ($\mu_s\ 0.5$--$0.7$, $d_b\ 0.12$--$0.20$ m,
-> $z_b\ 1.1$--$1.3$ m) $\Lambda$ spans about $0.13$--$0.36$, a 2.8x swing ---
-> comparable to the 2.75x inversion diagnosed above.
-> Every figure derived from it inherits that spread, the "roughly a fifth" and
-> the "about 4.2" included.
-> What survives the whole band is the ordering $\Lambda < 1$, which is what the
-> partition actually rests on.
->
-> *The anchoring capacity.* $J_{\mathrm{anchor}}$ is pinned at rest, where it is
-> the shipped `STATIC_FRICTION_THRESHOLD` gate, and unpinned in motion: $\kappa$
-> has no shipped counterpart to inherit, since the existing kinetic-friction
-> constants are a damping rate rather than a capacity.
-> A physical starting point is that kinetic friction typically runs somewhat below
-> static, so $\kappa$ near $0.8$ is a plausible opening guess --- but it is a guess,
-> and it belongs in the calibration rather than in this specification.
->
-> Landing this therefore needs $J_0$, $J_{\mathrm{scale}}$,
-> $p_{\mathrm{prone}}^{\max}$, $\Lambda$ and $\kappa$ re-derived together, with the
-> demo catalog's own defect sweep as the check that a melee still looks like a
-> melee.
-> Tracked separately; the equations here are the specification that work
-> implements, not a description of shipped behaviour.
+> **Implemented:** `SoldierCombat.anchor_capacity`, `SoldierCombat.translational_impulse`, `SoldierCombat.partition_impulse`,
+> and `SoldierCombat.prone_chance` with $\Lambda = 0.25$ (`PIVOT_ADVANTAGE`)
+> and $\kappa = 0.8$ (`KINETIC_ANCHOR_RATIO`).
+> Wired into `SoldierMelee`:
+> the defender's footing anchors impulse up to $J_{\mathrm{anchor}}$,
+> converting the anchored share into tipping torque that drives the prone fall roll,
+> while only the surplus $J_{\mathrm{trans}} = (J - J_{\mathrm{anchor}})_+$
+> breaks the feet loose into translational knockback slide.
 
 ## Bracing and the knockback chain (domino)
 

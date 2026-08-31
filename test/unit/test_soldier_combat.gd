@@ -601,6 +601,51 @@ func test_heavier_and_braced_defenders_resist_going_prone() -> void:
 	assert_lt(braced, unbraced, "bracing raises the knockdown threshold")
 
 
+func test_moving_defender_is_easier_to_fell() -> void:
+	var stationary: float = SoldierCombat.prone_chance(50.0, 1.0, 0.0, false)
+	var moving: float = SoldierCombat.prone_chance(50.0, 1.0, 0.0, true)
+	assert_gt(moving, stationary, "a moving defender is easier to topple than a settled stance")
+
+
+# --- torque vs translation impulse partition (docs/combat-model.md) ------------
+
+func test_anchor_capacity_stationary_vs_moving() -> void:
+	var base: float = SoldierCombat.anchor_capacity(1.0, 0.0, false)
+	assert_almost_eq(base, SoldierCombat.STATIC_FRICTION_THRESHOLD, 1e-6, "stationary unbraced is baseline")
+	var moving: float = SoldierCombat.anchor_capacity(1.0, 0.0, true)
+	assert_almost_eq(moving, SoldierCombat.STATIC_FRICTION_THRESHOLD * SoldierCombat.KINETIC_ANCHOR_RATIO, 1e-6,
+		"moving anchor capacity is attenuated by kappa")
+
+
+func test_anchor_capacity_bracing_scales_effective_mass() -> void:
+	var unbraced: float = SoldierCombat.anchor_capacity(1.0, 0.0, false)
+	var braced: float = SoldierCombat.anchor_capacity(1.0, 1.0, false)
+	var expected: float = SoldierCombat.STATIC_FRICTION_THRESHOLD * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 1.0)
+	assert_almost_eq(braced, expected, 1e-6, "bracing scales anchor capacity with effective mass")
+	assert_gt(braced, unbraced, "braced footing holds more shear before slipping")
+
+
+func test_partition_impulse_below_anchor_is_pure_torque() -> void:
+	var parts: Array[float] = SoldierCombat.partition_impulse(15.0, 1.0, 0.0, false)
+	assert_almost_eq(parts[0], 15.0, 1e-6, "rotational torque takes entire sub-anchor impulse")
+	assert_almost_eq(parts[1], 0.0, 1e-6, "translational knockback is zero below anchor capacity")
+
+
+func test_partition_impulse_above_anchor_splits_into_translation() -> void:
+	var parts: Array[float] = SoldierCombat.partition_impulse(35.0, 1.0, 0.0, false)
+	assert_almost_eq(parts[0], 20.0, 1e-6, "rotational share caps at anchor capacity")
+	assert_almost_eq(parts[1], 15.0, 1e-6, "surplus impulse goes into translational slide")
+
+
+func test_translational_impulse_matches_partition_surplus() -> void:
+	var below: float = SoldierCombat.translational_impulse(15.0, 1.0, 0.0, false)
+	assert_almost_eq(below, 0.0, 1e-6, "sub-anchor translational impulse is zero")
+	var above: float = SoldierCombat.translational_impulse(35.0, 1.0, 0.0, false)
+	assert_almost_eq(above, 15.0, 1e-6, "super-anchor translational impulse is surplus")
+	var moving: float = SoldierCombat.translational_impulse(20.0, 1.0, 0.0, true)
+	assert_almost_eq(moving, 4.0, 1e-6, "moving defender has lower anchor capacity so higher translational surplus")
+
+
 # --- bracing depth and capacity (docs/combat-model.md "Bracing") ---------------
 
 func test_brace_depth_lone_man_is_one() -> void:
