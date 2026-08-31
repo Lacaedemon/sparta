@@ -557,12 +557,12 @@ Note
 \mathcal{D} = \phi\,(s_D + \lambda\,b_D\,s_D)\cdots\]</span></p>
 <p>Here <span class="math inline">\(\mathcal{A}\)</span> and <span class="math inline">\(\mathcal{D}\)</span> are the attacker’s and defender’s scores, <span class="math inline">\(L\)</span> turns the gap between them into a hit chance (an even gap is even odds), and <span class="math inline">\(\beta\)</span> sets how sharply skill tells. <span class="math inline">\(\phi\)</span> is your <strong>facing</strong> against the incoming blow: full to the front, little to the flank, <strong>zero to the back</strong> — and <span class="math inline">\(\lambda\)</span> is how much a shield (<span class="math inline">\(b_D\)</span>) multiplies the defence your <em>training</em> already buys. A shield is something a soldier uses, not armour that works regardless: it is worth almost nothing to a raw recruit and more the better trained they are. A blow to a soldier’s back meets no parry and no shield — only armour. Skill, shields, and footwork all live on the front. Wound the attacker or wind the defender and these scores shift; nothing is ever a guaranteed hit or miss.</p>
 <p><strong>2. Does it wound?</strong> A blow that lands subtracts from the defender’s <strong>health</strong> — we don’t flip a kill-or-not coin, we track damage. Its size is the weapon’s lethality, boosted by the charge and blunted by armour:</p>
-<p><span class="math display">\[\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_D)\cdots\]</span></p>
-<p>Here <span class="math inline">\(\Delta h\)</span> is the health lost and <span class="math inline">\(D_0\)</span> a base damage scale. There is no separate “injured” flag: health just drops, and a soldier near death fights weaker, so the next wound comes easier than the last. At zero health they fall. Armour is the only thing that protects a man hit from behind.</p>
+<p><span class="math display">\[\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_{\mathrm{eff}})\cdots\]</span></p>
+<p>Here <span class="math inline">\(\Delta h\)</span> is the health lost, <span class="math inline">\(D_0\)</span> a base damage scale, and <span class="math inline">\(a_{\mathrm{eff}}\)</span> the effective armour rating. Piercing weapons (spears, lances, daggers, pilum thrusts) concentrate impact force onto a narrow contact point, bypassing 25% of the defender’s armour (<span class="math inline">\(a_{\mathrm{eff}} = 0.75\,a_D\)</span>). Non-piercing weapons (swords, spathas, axes) meet full armour (<span class="math inline">\(a_{\mathrm{eff}} = a_D\)</span>). There is no separate “injured” flag: health just drops, and a soldier near death fights weaker, so the next wound comes easier than the last. At zero health they fall. Armour is the only thing that protects a man hit from behind.</p>
 <p><strong>3. Everyone tires.</strong> Stamina is spent by <strong>attacking</strong>, by <strong>defending</strong> (every blow you meet costs you — a charge costs more), and by <strong>getting up</strong> after being knocked down. It refills only while resting. So a soldier under sustained pressure, or surrounded, burns through stamina, their defence collapses, and then blows land freely. Fatigue, not a hidden timer, is what breaks a line.</p>
-<p><strong>4. The shove.</strong> Every blow that connects — even a blocked one — shoves the target back, harder from a charge and less against a heavy soldier:</p>
-<p><span class="math display">\[J = J_0\,\frac{\ell_A\,(1 + c)}{m_D}\cdots\]</span></p>
-<p>Here <span class="math inline">\(J\)</span> is the shove (an impulse) and <span class="math inline">\(J_0\)</span> its base strength. A blocked blow draws no blood but still pushes — which is how a spear wall drives a stalled enemy backward.</p>
+<p><strong>4. The shove.</strong> Every blow that connects — even a blocked one — shoves the target back, harder from a charge, scaled by weapon delivery type, and less against a heavy soldier:</p>
+<p><span class="math display">\[J = J_0\,\frac{\ell_A\,(1 + c)}{m_D}\;\gamma_{\mathrm{type}}\cdots\]</span></p>
+<p>Here <span class="math inline">\(J\)</span> is the shove (an impulse) and <span class="math inline">\(J_0\)</span> its base strength. Delivery type scales the impulse: piercing strikes slip into tissue rather than shoving whole body mass backward, transmitting only 35% of standard knockback (<span class="math inline">\(\gamma_{\mathrm{type}} = 0.35\)</span>). Non-piercing weapons deliver full whole-body displacement (<span class="math inline">\(\gamma_{\mathrm{type}} = 1\)</span>). A blocked blow draws no blood but still pushes — which is how a spear wall drives a stalled enemy backward.</p>
 <p>Shoves from several attackers in the same moment add up, but the summed speed is capped: a pile-on in a crowded press hurls a man back a few body-lengths at most, never across the field. The uncapped force still decides whether he is knocked down, so a heavy hit fells as hard as ever.</p>
 <div id="fig-combat-clash" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
@@ -610,7 +610,22 @@ Figure&nbsp;2: Every landed strike shoves the target back — here with the Knoc
 <li><strong>Brace for the charge — in time.</strong> A charge lights up everything at once — harder to dodge, deadlier, and a shove that bowls men over and lays them out. Into a loose line it’s a massacre. A <strong>braced, deep</strong> spear line, set and facing, soaks it at the front rank — the ranks behind buttressing the front — stays on its feet, and out-reaches the horse: the charge breaks on the hedge. But setting the brace takes time, so order it <em>before</em> contact (a line caught still at ease is ridden down), keep it <strong>deep</strong> (a shallow braced line can be punched through), and a heavy enough charge topples men even when braced. Never take a charge loose or in the flank; never send horse into set spears.</li>
 <li><strong>Armour and shields buy time — but shields only for troops who can use them.</strong> Heavy, shielded troops turn wounds into blocked shoves and glancing hits, so they grind slowly and endure, and light troops caught in the press evaporate. Armour protects whoever wears it; a shield’s worth scales with training, so handing shields to a raw levy buys far less than handing them to veterans.</li>
 <li><strong>Fight fresh, fight skilled.</strong> Skill and stamina help at <em>both</em> ends — landing more, defending more, tiring slower. Rested veterans beat winded levies by more than the headcount suggests, so pace your commitment.</li>
+<li><strong>Piercing vs.&nbsp;cutting/blunt strikes.</strong> Spear thrusts, daggers, and pila concentrate impact force onto a narrow point: they bypass 25% of the defender’s armour to inflict deeper wounds on armoured foes, while imparting minimal whole-body shove (35% knockback impulse). Swords, spathas, and chopping weapons meet full armour but deliver a strong, displacing shove with every blow that connects.</li>
 </ul>
+<div id="fig-combat-piercing" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-combat-piercing-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/piercing_melee_hits.jpg">
+  <source src="media/piercing_melee_hits.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-combat-piercing-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Piercing vs.&nbsp;non-piercing melee hits: spearmen thrust with high armour penetration and minimal whole-body shove, while swordsmen exchange chopping blows with substantial knockback displacement.
+</figcaption>
+</figure>
+</div>
 <div id="fig-combat-brace" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-combat-brace-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -621,7 +636,7 @@ Figure&nbsp;2: Every landed strike shoves the target back — here with the Knoc
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-combat-brace-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3: Two identical spear lines against a cavalry charge. Both wait in place (the no-order default holds formation). The left is left unbraced; the right is ordered to Brace early and settles well before contact. On impact the unbraced line is shoved forward into the melee; the braced line holds.
+Figure&nbsp;4: Two identical spear lines against a cavalry charge. Both wait in place (the no-order default holds formation). The left is left unbraced; the right is ordered to Brace early and settles well before contact. On impact the unbraced line is shoved forward into the melee; the braced line holds.
 </figcaption>
 </figure>
 </div>
