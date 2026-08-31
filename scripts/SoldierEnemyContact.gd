@@ -29,7 +29,9 @@ class_name SoldierEnemyContact
 ## SoldierSpatialHash query then visits candidates in a reproducible order, and every pair is
 ## resolved once (canonical lower-id-first) against the frozen input (Jacobi: every impulse
 ## this tick is computed from last tick's velocities/positions, applied in one pass at the
-## end). No RNG, no instance-id/wall-clock -- replay-safe like the rest of the soldier layer.
+## end). Hard-collision prone knockdown draws deterministically from the seeded Replay.rng
+## stream in global-soldier-id order, with no instance-id/wall-clock -- replay-safe like the rest
+## of the soldier layer.
 
 
 ## Squared-distance safety factor for accumulate()'s square-root skip. A pair whose squared
