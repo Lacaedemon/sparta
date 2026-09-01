@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/checkerboard-form-up.json",
+  "caption": "Acies Triplex persistent line membership (#819): persistent line indices across checkerboard form-up, unit tray grid, and unit line queries.",
+  "fixed_fps": 30,
+  "max_frames": 350,
+  "fps": 20,
+  "width": 640
+}
