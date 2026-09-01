@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/flanking-maneuver.json",
-  "caption": "Melee maneuver: flanking maneuver (#1018). An engaged player Infantry regiment (80 soldiers) locks in melee combat with an opposing enemy line (40 soldiers, 8 files wide). Under the Flanking maneuver stance, the unit expands its frontage to 12 files (8 enemy files + 4 wrap files), wrapping its outer ranks around both flanks of the enemy line while maintaining forward line facing.",
+  "caption": "Melee maneuver: flanking maneuver. An engaged player Infantry regiment (80 soldiers) locks in melee combat with an opposing enemy line (40 soldiers, 8 files wide). Under the Flanking maneuver stance, the unit expands its frontage to 12 files (8 enemy files + 4 wrap files), wrapping its outer ranks around both flanks of the enemy line while maintaining forward line facing.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 20,
