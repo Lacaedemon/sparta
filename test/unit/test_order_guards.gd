@@ -6,6 +6,10 @@ extends GutTest
 ## join the "units" group for the guards that scan it) with no Battle needed.
 
 
+func before_each() -> void:
+	SpatialHash.reset()
+
+
 func _make_unit(uid: int = 1, team: int = 0) -> Unit:
 	var u: Unit = Unit.new()
 	u.max_soldiers = 10
