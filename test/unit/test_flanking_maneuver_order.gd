@@ -188,6 +188,24 @@ func test_flanking_maneuver_reflow_null_enemy_safe() -> void:
 	assert_eq(UnitFormation.frontage(u), 8, "null enemy is a safe no-op")
 
 
+func test_flanking_maneuver_reflow_caller_configurable_tunables() -> void:
+	var u := _make_unit(100)
+	u.set_frontage(8)
+	u._last_reshape_tick = -1
+	var enemy := _make_unit(60)
+	enemy.set_frontage(10)
+
+	# Caller provides custom wrap_files = 6 (widens from 8 to 16 files)
+	u._flanking_maneuver_reflow(enemy, 6)
+	assert_eq(UnitFormation.frontage(u), 16, "custom wrap_files expands to enemy + custom wrap")
+
+	# Field-level configuration on the Unit instance
+	u.flanking_maneuver_wrap_files = 2
+	u._last_reshape_tick = -1
+	u._flanking_maneuver_reflow(enemy)
+	assert_eq(UnitFormation.frontage(u), 12, "instance field flanking_maneuver_wrap_files governs default")
+
+
 # --- End-to-end _think() integration ----------------------------------------
 
 func test_flanking_maneuver_driven_by_unit_think_in_melee() -> void:

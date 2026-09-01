@@ -1727,6 +1727,12 @@ into different tools:
   Hold. A grounded spear/pike line braces harder than a shield-only one at
   the same posture, so set spears before contact rather than shields alone
   when you can choose which.
+- **Flanking maneuver** (<kbd>F6</kbd>) --- an envelopment stance for an engaged unit:
+  rear ranks spread outward beyond the opposing regiment's frontage so the outer
+  files wrap around both flanks of the enemy line. While engaged in melee under this
+  stance, the unit holds its forward facing instead of turning off-axis as wing
+  soldier collisions jostle, allowing the enveloping wings to deliver flank strikes
+  into the enemy's exposed flank arc (@fig-flanking-maneuver).
 
 ::: {#fig-brace-vs-unbraced .demo}
 
@@ -1813,10 +1819,6 @@ Infantry regiments, closing from different bearings, reach contact. The
 first enemy engages normally; once the second also presses in, the
 regiment's frontage widens from 11 to 14 files (their combined width) and
 its facing holds steady instead of swinging between the two of them.
-:::
-
-**Flanking maneuver** (<kbd>F6</kbd>) is the envelopment stance for an engaged unit: rear ranks spread outward beyond the opposing regiment's frontage so the outer files wrap around the enemy's flanks, striking into the enemy's exposed flank arc while the main line holds forward engagement.
-
 ::: {#fig-flanking-maneuver .demo}
 
 ```{=html}

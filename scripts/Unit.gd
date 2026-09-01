@@ -3168,28 +3168,28 @@ func _multiple_engage_reflow(adjacent: Array[Unit]) -> void:
 	set_frontage(target_files)
 
 
-# FLANKING_MANEUVER's default wing wrap file count (additional files beyond enemy frontage).
-const FLANKING_MANEUVER_WRAP_FILES: int = 4
+## FLANKING_MANEUVER's default wing wrap file count (additional files beyond enemy frontage).
+var flanking_maneuver_wrap_files: int = 4
 
-# FLANKING_MANEUVER's frontage-widening cooldown: minimum ticks between two automatic reflows.
-const FLANKING_MANEUVER_FRONTAGE_COOLDOWN_TICKS: int = 60
+## FLANKING_MANEUVER's frontage-widening cooldown in physics frames.
+var flanking_maneuver_cooldown_ticks: int = 60
 
-# FLANKING_MANEUVER's frontage hysteresis deadband: deltas <= this value (1 file) are ignored; deltas >= 2 trigger reflow.
-const FLANKING_MANEUVER_FRONTAGE_HYSTERESIS: int = 1
+## FLANKING_MANEUVER's frontage hysteresis deadband: deltas <= this value (1 file) are ignored; deltas >= 2 trigger reflow.
+var flanking_maneuver_hysteresis: int = 1
 
 ## FLANKING_MANEUVER stance: reflow this unit's frontage outward past the opposing unit's
 ## frontage (`enemy`), widening files so the outer ranks extend past the enemy line to
 ## wrap around its flanks.
-func _flanking_maneuver_reflow(enemy: Unit) -> void:
+func _flanking_maneuver_reflow(enemy: Unit, wrap_files: int = flanking_maneuver_wrap_files, cooldown_ticks: int = flanking_maneuver_cooldown_ticks, hysteresis: int = flanking_maneuver_hysteresis) -> void:
 	if enemy == null:
 		return
 	var enemy_files: int = enemy.formation_files(enemy.soldiers)
-	var target_files: int = clampi(enemy_files + FLANKING_MANEUVER_WRAP_FILES, 1, maxi(1, max_soldiers))
+	var target_files: int = clampi(enemy_files + wrap_files, 1, maxi(1, max_soldiers))
 	var current_files: int = formation_files(soldiers)
-	if abs(target_files - current_files) <= FLANKING_MANEUVER_FRONTAGE_HYSTERESIS:
+	if abs(target_files - current_files) <= hysteresis:
 		return
 	if _last_reshape_tick >= 0 \
-			and Engine.get_physics_frames() - _last_reshape_tick < FLANKING_MANEUVER_FRONTAGE_COOLDOWN_TICKS:
+			and Engine.get_physics_frames() - _last_reshape_tick < cooldown_ticks:
 		return
 	set_frontage(target_files)
 
