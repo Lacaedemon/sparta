@@ -18,6 +18,8 @@
   "state": [10, 30, 60, 100, 150, 200, 250, 300, 350],
   "frames": [22, 100, 200, 300],
   "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [400.0, 280.0]},
+    {"tick": 8, "uid": 1, "field": "position", "value": [530.0, 420.0]},
     {"tick": 22, "uid": 0, "field": "order_guard", "value": "ENGAGED_FRACTION_ABOVE"},
     {"tick": [30, 250], "uid": 0, "field": "current_order", "value": "MOVE"}
   ],
