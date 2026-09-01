@@ -1,4 +1,4 @@
-# Design note: Standard-bearer (formation anchor, visual hierarchy, and casualty succession)
+# Design note: Standard-bearer (bearer slot, visual hierarchy, and casualty succession)
 
 Status: **design drafted** -- establishes architectural and historical grounding for the regimental standard-bearer mechanic.
 Builds on [#820](https://github.com/Lacaedemon/sparta/issues/820) and ties into [#821](https://github.com/Lacaedemon/sparta/issues/821) (the position-anchor question, closed 2026-07-15 and implemented in [#861](https://github.com/Lacaedemon/sparta/pull/861) as a two-rank near-front anchor) and [#818](https://github.com/Lacaedemon/sparta/pull/818) (where a front-rank-midpoint anchor was tried and reverted).
@@ -34,7 +34,7 @@ Thucydides, *History of the Peloponnesian War* V.70.
 ### 1. Designated Bearer Slot and Positioning
 
 - Each regiment (`Unit.gd`) designates the soldier occupying one formation slot as the active standard-bearer.
-  Because `SoldierMelee.reap()` compacts the soldiers array on casualties -- shifting every later soldier's file and rank -- the bearer is tracked as the occupant of a designated slot, re-resolved after every compaction, rather than as a raw array index that would silently re-point to a different soldier when any lower-indexed soldier dies.
+  Because `SoldierMelee.reap()` compacts the soldiers array on casualties -- shifting the array index of every later soldier, and with it the cell the default row-major layout assigns that index -- the bearer is tracked as the occupant of a designated slot, re-resolved after every compaction, rather than as a raw array index that would silently re-point to a different soldier when any lower-indexed soldier dies.
 
 - The designated slot defaults to the center file of the front rank, identified by its (rank, file) cell rather than by a raw slot index,
   because the index-to-cell mapping differs per layout:
