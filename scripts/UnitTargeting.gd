@@ -40,7 +40,8 @@ static func nearest_enemy(u: Unit) -> Unit:
 ## prioritize.
 static func nearest_routing_enemy(u: Unit) -> Unit:
 	var best_router: Unit = null
-	var best_router_d_sq: float = u.detection_range * u.detection_range
+	var max_radius_sq: float = u.detection_range * u.detection_range
+	var best_router_d_sq: float = max_radius_sq
 
 	for o in u.get_tree().get_nodes_in_group("routers"):
 		var other: Unit = o as Unit
@@ -51,7 +52,7 @@ static func nearest_routing_enemy(u: Unit) -> Unit:
 
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		var d_sq: float = u.position.distance_squared_to(other.position)
-		if d_sq <= best_router_d_sq:
+		if d_sq <= max_radius_sq and (best_router == null or d_sq < best_router_d_sq):
 			best_router_d_sq = d_sq
 			best_router = other
 
@@ -88,7 +89,8 @@ static func roll_the_line_target(u: Unit) -> Unit:
 static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 		include_routing: bool = false) -> Unit:
 	var best: Unit = null
-	var best_d_sq: float = radius * radius
+	var max_radius_sq: float = radius * radius
+	var best_d_sq: float = max_radius_sq
 	var groups: Array = ["units", "routers"] if include_routing else ["units"]
 	for group in groups:
 		for o in u.get_tree().get_nodes_in_group(group):
@@ -99,7 +101,7 @@ static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 				continue
 			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 			var d_sq: float = center.distance_squared_to(other.position)
-			if d_sq <= best_d_sq:
+			if d_sq <= max_radius_sq and (best == null or d_sq < best_d_sq):
 				best_d_sq = d_sq
 				best = other
 	return best
