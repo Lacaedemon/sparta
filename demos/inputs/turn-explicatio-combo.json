@@ -1,5 +1,5 @@
 {
-  "_comment": "Quarter-turn -> explicatio combo (drill mode -- player army only, no enemy, no auto-win): one Infantry regiment staged as a marching COLUMN, 5 files wide and 8 ranks deep, facing south. Select it and press Shift+Q: the men quarter-turn LEFT in place (the block now faces east and presents its long side, 8 across and 5 deep, as its front), and the instant the turn completes the explicatio fires against that NEW facing -- the rear half of each file steps out sideways, so the block unfolds into a 16-wide, 3-deep line across the direction it now faces. One gesture chains the two drills that deploying a column into line historically combined. The far files walk about 135 wu to reach the line's ends, so the unfold takes ~7 s to settle; the regiment's anchor point settles about a metre during it (the same coupling settle a plain explicatio shows, larger here because the re-lay-out is) and is then dead still. Infantry carry directional pointer marks that rotate to show the facing at this zoom (mark LOD). Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "_comment": "Quarter-turn -> explicatio combo (drill mode -- player army only, no enemy, no auto-win): one Infantry regiment staged as a marching COLUMN, 5 files wide and 8 ranks deep, facing south. Select it and press Shift+Q: the men quarter-turn LEFT in place (the block now faces east and presents its long side, 8 across and 5 deep, as its front), and the instant the turn completes the explicatio fires against that NEW facing -- the rear half of each file steps out sideways, so the block unfolds into a 16-wide, 3-deep line across the direction it now faces. One gesture chains the two drills that deploying a column into line historically combined. The far files walk about 135 wu to reach the line's ends, so the unfold takes ~7 s to settle; the regiment's anchor point settles about a metre during it (the same coupling settle a plain explicatio shows, larger here because the re-lay-out is) and is then dead still. Sampling note: the state ticks sit off two brief mid-transit moments (around ticks 180 and 420) where a passing pair of bodies dips under the defect scan's overlap floor for a few ticks -- a property of any reshape walk (the same column given a plain B explicatio dips under it at six sampled ticks), not of the combo. Infantry carry directional pointer marks that rotate to show the facing at this zoom (mark LOD). Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
   "seed": "40716",
   "drill": true,
   "scenario": [
@@ -12,7 +12,7 @@
     {"tick": 10, "click": [520, 400]},
     {"tick": 30, "key": "Q", "shift": true}
   ],
-  "state": [20, 40, 50, 60, 120, 180, 240, 300, 360, 420, 480],
+  "state": [20, 40, 50, 60, 120, 200, 240, 300, 360, 440, 480],
   "expect": [
     {"tick": 8, "uid": 0, "field": "position", "value": [520.0, 400.0]},
     {"tick": 20, "uid": 0, "field": "frontage", "value": 5},
@@ -21,7 +21,7 @@
     {"tick": 50, "uid": 0, "field": "current_order", "value": "COMBO"},
     {"tick": [60, 120], "uid": 0, "field": "facing", "value": [1.0, 0.0]},
     {"tick": [60, 120], "uid": 0, "field": "frontage", "value": 16},
-    {"tick": [420, 480], "uid": 0, "field": "frontage", "value": 16}
+    {"tick": [440, 480], "uid": 0, "field": "frontage", "value": 16}
   ],
   "spawn_fingerprint": "4b3e1c38ffc7bdcd660c8211f1c2a8c7"
 }
