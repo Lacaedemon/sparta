@@ -281,6 +281,8 @@ const DEFAULT_ORDER_BINDINGS := {
 	# F1/F2/F3 are already claimed (tray toggle, multiple_engage, march_to_contact above);
 	# F4 is the next free function key.
 	"brace": KEY_F4,
+	# F1..F5 are claimed (F5 is slowmo); F6 is the next free function key.
+	"flanking_maneuver": KEY_F6,
 }
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.
