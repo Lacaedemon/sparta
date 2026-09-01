@@ -24,7 +24,10 @@ In Mediterranean ancient warfare, unit standards served as the primary physical 
   Classical hoplite phalanxes coordinated by sound rather than by unit standards -- trumpeters (*salpingktes*) and voice, with Sparta famously pacing its advance by aulos players (Thucydides V.70).
   Distinct pennants (*semeia*) serving as unit standards are attested mainly in Hellenistic and Macedonian practice, stationed near the file leaders (*lochagoi*).
 
-Sources: Polybius, *Histories* VI (maniple organization and standard-bearers); Vegetius, *Epitoma Rei Militaris* II (the legion's *signiferi*); Pliny, *Natural History* X (Marius and the *aquila*); Thucydides, *History of the Peloponnesian War* V.70.
+Sources: Polybius, *Histories* VI (maniple organization and standard-bearers);
+Vegetius, *Epitoma Rei Militaris* II (the legion's *signiferi*);
+Pliny, *Natural History* X (Marius and the *aquila*);
+Thucydides, *History of the Peloponnesian War* V.70.
 
 ## Architecture and Core Mechanics
 
