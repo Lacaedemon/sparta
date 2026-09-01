@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/multiple-engage.json",
+  "caption": "Event-driven range queries and anti-dogpile target scoring (#955): RangeQueries spatial query service with enter/exit diff callbacks and anti-dogpile target weighting in UnitTargeting.",
+  "fixed_fps": 30,
+  "max_frames": 350,
+  "fps": 20,
+  "width": 640
+}
