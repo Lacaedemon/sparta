@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/line-relief-queue.json",
+  "caption": "Unit-group battle line management and line relief (#1033): unit group reserve line support, gap plugging, and multi-unit rotation.",
+  "fixed_fps": 30,
+  "max_frames": 350,
+  "fps": 20,
+  "width": 640
+}
