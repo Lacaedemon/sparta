@@ -6,6 +6,10 @@ extends GutTest
 ## join the "units" group for the guards that scan it) with no Battle needed.
 
 
+func before_each() -> void:
+	SpatialHash.reset()
+
+
 func _make_unit(uid: int = 1, team: int = 0) -> Unit:
 	var u: Unit = Unit.new()
 	u.max_soldiers = 10
@@ -221,6 +225,84 @@ func test_current_engaged_fraction_zero_when_not_engaged() -> void:
 	var u := _make_unit()
 	u.soldiers = 10
 	assert_eq(OrderGuards.current_engaged_fraction(u), 0.0)
+
+
+func test_current_engaged_fraction_measures_real_per_soldier_contact_with_enemy_unit() -> void:
+	# Unit u (40 infantry) facing down at (500, 300)
+	var u: Unit = Unit.new()
+	u.uid = 1
+	u.team = 0
+	u.max_soldiers = 40
+	add_child_autofree(u)
+	u.soldiers = 40
+	u.position = Vector2(500, 300)
+	u.facing = Vector2.DOWN
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+
+	# Enemy unit placed directly facing u in close melee contact, derived from weapon reach
+	var enemy: Unit = Unit.new()
+	enemy.uid = 2
+	enemy.team = 1
+	enemy.max_soldiers = 40
+	add_child_autofree(enemy)
+	enemy.soldiers = 40
+	var contact_reach: float = maxf(u.soldier_reach(), enemy.soldier_reach())
+	enemy.position = u.position + Vector2(0, contact_reach * 0.8)
+	enemy.facing = Vector2.UP
+	enemy.seed_sim_soldiers()
+	enemy.state = Unit.State.FIGHTING
+	enemy.tick_engaged(0.0)
+
+	# With opposing front ranks in contact, a significant fraction is engaged (>= 10%)
+	var frac: float = OrderGuards.current_engaged_fraction(u)
+	assert_true(frac >= 0.10, "front rank contact engages a substantial fraction of the unit")
+	assert_true(OrderGuards.engaged_fraction_above(u, 0.10))
+
+
+func test_current_engaged_fraction_low_on_light_flank_graze() -> void:
+	# Unit u (100 soldiers) at (500, 300), 10 files wide
+	var u: Unit = Unit.new()
+	u.uid = 1
+	u.team = 0
+	u.max_soldiers = 100
+	add_child_autofree(u)
+	u.soldiers = 100
+	u.frontage_override = 10
+	u.position = Vector2(500, 300)
+	u.facing = Vector2.DOWN
+	u.file_major_reform = false
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.0)
+
+	# A small 2-soldier enemy placed at the far right corner of u's line
+	var enemy: Unit = Unit.new()
+	enemy.uid = 2
+	enemy.team = 1
+	enemy.max_soldiers = 2
+	add_child_autofree(enemy)
+	enemy.soldiers = 2
+	# Place enemy near the rightmost soldier of u, derived from weapon reach
+	var contact_reach: float = maxf(u.soldier_reach(), enemy.soldier_reach())
+	var right_soldier_pos: Vector2 = u._sim_soldier_pos[0]
+	for p in u._sim_soldier_pos:
+		if p.x > right_soldier_pos.x:
+			right_soldier_pos = p
+	enemy.position = right_soldier_pos + Vector2(0, contact_reach * 0.7)
+	enemy.facing = Vector2.UP
+	enemy.seed_sim_soldiers()
+	if not enemy._sim_soldier_pos.is_empty():
+		enemy._sim_soldier_pos[0] = right_soldier_pos + Vector2(0, contact_reach * 0.5)
+	enemy.state = Unit.State.FIGHTING
+	enemy.tick_engaged(0.0)
+
+	# Only 1-2 soldiers of u are within reach of the small enemy (< 5% of 100 soldiers)
+	var frac: float = OrderGuards.current_engaged_fraction(u)
+	assert_true(frac > 0.0, "flank graze detects real soldier contact")
+	assert_true(frac < 0.10, "light graze is below the 10% heavy threshold")
+	assert_false(OrderGuards.engaged_fraction_above(u, 0.10))
 
 
 # --- move_target_occupied_by_enemy ------------------------------------------------

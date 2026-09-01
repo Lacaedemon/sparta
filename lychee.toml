@@ -77,11 +77,15 @@ exclude = [
   # from docs/combat-model.md.
   "^https://www\\.romanobritain\\.org",
   # codecov.io's own badge.svg generation endpoint (linked from README.md's
-  # coverage badge) intermittently returns HTTP 503 Service Unavailable —
+  # coverage badge) intermittently returns HTTP 503 Service Unavailable --
   # confirmed reproducible across two separate CI re-runs within minutes of
   # each other on 2026-07-28, unrelated to any PR's own content (README.md's
   # badge line never changes). A dynamically-generated status badge isn't
   # meaningful link-check content anyway; skip it rather than reddening
   # every PR on a third-party rate-limit/outage this repo doesn't control.
   "^https://codecov\\.io/gh/[^/]+/[^/]+/graph/badge\\.svg",
+  # gamedeveloper.com rejects lychee's automated requests with HTTP 500
+  # Internal Server Error / bot protection even though the pages load in a
+  # browser. Linked as citations from docs/3d-conversion-design.md.
+  "^https://www\\.gamedeveloper\\.com",
 ]

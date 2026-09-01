@@ -116,26 +116,120 @@ static func flanked(u: Unit, range_units: float) -> bool:
 
 
 ## The CURRENT fraction (0..1) of u's living soldiers (u.soldiers, not max_soldiers) that
-## are melee-engaged -- 0.0 whenever the unit has no living soldiers, or isn't engaged at
-## all (Unit.is_engaged() false, the FIGHTING-plus-linger latch). Exposed as a raw value,
-## not just a threshold test, so a caller (Unit._move_order_peak_engaged_fraction) can track
-## its PEAK over time -- a point-in-time read alone can't tell "this fight got heavy, then
-## eased off" from "this fight was always light", since both read 0.0 the instant the unit
-## actually disengages.
+## are actively engaged in melee contact -- measuring real per-soldier enemy contact and
+## weapon reach against adjacent enemy soldiers, rather than a static formation-shape
+## rank capacity. 0.0 whenever the unit has no living soldiers or is not in contact/engaged.
+## Exposed as a raw value, not just a threshold test, so a caller
+## (Unit._move_order_peak_engaged_fraction) can track its PEAK over time -- a point-in-time
+## read alone can't tell "this fight got heavy, then eased off" from "this fight was always light",
+## since both read 0.0 the instant the unit actually disengages.
 ##
-## Reuses engaged_soldier_indices() -- the same front-rank selection SoldierMelee.resolve()
-## already strikes from each melee cadence -- rather than counting soldiers that actually
-## landed/received a blow on THIS specific tick. Melee cadence is gated by
-## melee_attack_interval(), so a "struck this tick" count is zero on most ticks and would
-## make the fraction jump discontinuously between 0 and a spike every cadence -- a poor,
-## jittery signal for "how much of the line is in this fight" compared to the standing
-## engaged-tier selection.
+## Evaluates perimeter and contact-candidate living soldiers of u against adjacent enemy
+## units within contact range: a soldier counts as engaged if at least one living enemy soldier
+## sits within striking distance (max of either weapon reach, matching reach-standoff semantics).
+## Falls back to the formation-capacity ratio for synthetic unit tests where u is marked fighting
+## with no enemy units on the battlefield, or when soldier-body arrays are not yet seeded.
 static func current_engaged_fraction(u: Unit) -> float:
 	var total: int = u.soldiers
 	if total <= 0:
 		return 0.0
-	var engaged: int = u.engaged_soldier_indices(total).size()
-	return float(engaged) / float(total)
+	if not (u.is_engaged() or u._in_enemy_contact):
+		return 0.0
+
+	# Find candidate enemy units in physical contact/striking range of u.
+	var defenders: Array[Unit] = []
+	var has_live_enemy_in_tree: bool = false
+	if u.is_inside_tree():
+		var candidates: Array = u._separation_candidates()
+		var u_extent: float = u.separation_radius + u.render_block_extent() + u.block_centre_offset().length()
+		for o in candidates:
+			var other: Unit = o as Unit
+			if other == null or other == u or other.team == u.team or other.state == Unit.State.DEAD:
+				continue
+			has_live_enemy_in_tree = true
+			var other_extent: float = other.separation_radius + other.render_block_extent() + other.block_centre_offset().length()
+			var contact: float = maxf(u.attack_range, other.attack_range) + u_extent + other_extent
+			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+			if u.position.distance_squared_to(other.position) <= contact * contact:
+				defenders.append(other)
+
+	# If SpatialHash is current or living enemies were found in the candidate pool:
+	# when defenders is empty, no enemy is within physical contact reach (0.0).
+	# Fallback to formation capacity is strictly for synthetic single-unit test fixtures
+	# (no SpatialHash grid and no enemy units in tree) or unseeded soldier arrays.
+	if SpatialHash.is_current(Engine.get_physics_frames()) or has_live_enemy_in_tree:
+		if defenders.is_empty():
+			return 0.0
+	else:
+		if u.is_engaged():
+			var engaged_indices: PackedInt32Array = u.engaged_soldier_indices(total)
+			return float(engaged_indices.size()) / float(total)
+		return 0.0
+
+	# Measure actual living soldiers in physical striking/contact reach of any adjacent enemy soldier.
+	var reach_u: float = u.soldier_reach()
+	var n_pos: int = u._sim_soldier_pos.size()
+	if n_pos == 0:
+		var engaged_indices: PackedInt32Array = u.engaged_soldier_indices(total)
+		return float(engaged_indices.size()) / float(total)
+
+	var u_live: int = mini(total, n_pos)
+	var u_candidates: PackedInt32Array = u.contact_soldier_indices(u_live)
+	if u_candidates.is_empty():
+		u_candidates = u.engaged_soldier_indices(u_live)
+	if u_candidates.is_empty():
+		return 0.0
+
+	# Pre-gather invariant defender candidate data before iterating querier soldiers
+	var d_max_dist_sq: PackedFloat32Array = PackedFloat32Array()
+	var d_cand_list: Array[PackedInt32Array] = []
+	var d_pos_list: Array[PackedVector2Array] = []
+	var d_hp_list: Array[PackedFloat32Array] = []
+	for d in defenders:
+		var d_n_pos: int = d._sim_soldier_pos.size()
+		if d_n_pos == 0:
+			continue
+		var d_live: int = mini(d.soldiers, d_n_pos)
+		var d_candidates: PackedInt32Array = d.contact_soldier_indices(d_live)
+		if d_candidates.is_empty():
+			d_candidates = d.engaged_soldier_indices(d_live)
+		if d_candidates.is_empty():
+			continue
+		var reach_d: float = d.soldier_reach()
+		var max_dist: float = maxf(reach_u, reach_d)
+		d_max_dist_sq.push_back(max_dist * max_dist)
+		d_cand_list.append(d_candidates)
+		d_pos_list.append(d._sim_soldier_pos)
+		d_hp_list.append(d._sim_soldier_hp)
+
+	var n_defenders: int = d_cand_list.size()
+	if n_defenders == 0:
+		return 0.0
+
+	var in_reach_count: int = 0
+	for i in u_candidates:
+		if i < u._sim_soldier_hp.size() and u._sim_soldier_hp[i] <= 0.0:
+			continue
+		var p_u: Vector2 = u._sim_soldier_pos[i]
+		var soldier_engaged: bool = false
+		for k in range(n_defenders):
+			var max_dist_sq: float = d_max_dist_sq[k]
+			var d_candidates: PackedInt32Array = d_cand_list[k]
+			var d_pos: PackedVector2Array = d_pos_list[k]
+			var d_hp: PackedFloat32Array = d_hp_list[k]
+			for j in d_candidates:
+				if j < d_hp.size() and d_hp[j] <= 0.0:
+					continue
+				# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+				if p_u.distance_squared_to(d_pos[j]) <= max_dist_sq:
+					soldier_engaged = true
+					break
+			if soldier_engaged:
+				break
+		if soldier_engaged:
+			in_reach_count += 1
+
+	return float(in_reach_count) / float(total)
 
 
 ## At least `fraction` (0..1) of u's CURRENT living soldiers are melee-engaged --
