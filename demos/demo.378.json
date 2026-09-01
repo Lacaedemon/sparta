@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Design-document-only PR: docs/reinforcement-insertion-design.md plans the reinforcement-insertion maneuver (doubling by number) without implementing it, so no recorded battle can show the change; the maneuver's own scripted-input demo is specified in the doc for the implementation PR."
+}

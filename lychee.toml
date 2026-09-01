@@ -9,6 +9,8 @@ accept = [200, 201, 202, 203, 204, 206, 301, 302, 303, 307, 308, 429]
 timeout = 20
 
 exclude = [
+  # LacusCurtius answers slowly enough that the link checker times out; the pages are stable.
+  "https://penelope.uchicago.edu/",
   # Bundled-default placeholders / local-only URLs.
   "https://github.com/YOUR-USERNAME/.*",
   "https://YOUR-USERNAME.github.io/.*",
