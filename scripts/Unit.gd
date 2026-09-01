@@ -228,10 +228,15 @@ var selected: bool = false
 # ATTACK/RELIEF/SUPPORT orders by reading them.
 var orders: Array[Order] = []
 var current_order: Order = null
-# Order stance, set by Battle._apply_order_cmd from the order's mode.
-# Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
-# The smart-order behaviours read this; NORMAL is current behaviour.
-var order_mode: int = 0
+# Stance and leash properties (StanceTable)
+var held_position: Vector2 = Vector2.ZERO
+var leash_radius: float = 0.0
+var order_mode: int = 0:
+	set(val):
+		order_mode = val
+		leash_radius = StanceTable.default_leash(val)
+		if held_position == Vector2.ZERO and val != 0:
+			held_position = position
 # Whether this unit auto-advances onto a merely-detected, out-of-weapon-range enemy while
 # it has no order -- the reactive close-the-distance fallback at the bottom of _think's
 # enemy branch. True by default, so a bare unit (most tests) keeps the historical
@@ -2374,7 +2379,7 @@ func _think(delta: float) -> void:
 		# own once the fight ends).
 		if is_ranged and not in_contact and dist_sq <= RANGED_RANGE * RANGED_RANGE \
 				and (target_enemy != null or not has_move_target or chasing \
-					or order_mode == ORDER_MARCH_TO_CONTACT):
+					or StanceTable.is_march_to_contact(order_mode)):
 			state = State.FIGHTING
 			# Commit the auto-acquired foe so next tick's current_target() returns it
 			# instead of re-running nearest_enemy() from scratch -- see the melee branch's
@@ -2385,8 +2390,7 @@ func _think(delta: float) -> void:
 			# chase branch below march this unit off after a foe that has broken contact,
 			# instead of letting it go and resuming the queued move (see ORDER_MARCH_TO_
 			# CONTACT's own doc comment).
-			if order_mode != ORDER_HOLD and order_mode != ORDER_MARCH_TO_CONTACT \
-					and order_mode != ORDER_BRACE:
+			if StanceTable.can_auto_advance(order_mode) and not StanceTable.is_march_to_contact(order_mode):
 				target_enemy = enemy
 			# Turn to bring the line to bear before loosing; a large swing turns in place
 			# gradually, a small correction snaps. Fire is withheld until faced.
@@ -2407,7 +2411,7 @@ func _think(delta: float) -> void:
 		# either -- see ORDER_MARCH_TO_CONTACT's own doc comment for the stop-then-
 		# resume mechanism this shares with the "obey a move order" branch below.
 		if in_contact and (target_enemy != null or not has_move_target or chasing \
-				or order_mode == ORDER_MARCH_TO_CONTACT):
+				or StanceTable.is_march_to_contact(order_mode)):
 			state = State.FIGHTING
 			# Commit the auto-acquired foe: current_target() (UnitTargeting.gd) only keeps
 			# returning an already-live target_enemy -- it never writes back the nearest_enemy()
@@ -2440,8 +2444,7 @@ func _think(delta: float) -> void:
 			# deliberately keeps pursuing). Committing target_enemy here would make the chase
 			# branch below pursue it anyway the instant contact breaks -- exactly the HOLD
 			# failure mode above, just reached via a plain move order instead of a HELD one.
-			if order_mode != ORDER_HOLD and order_mode != ORDER_MARCH_TO_CONTACT \
-					and order_mode != ORDER_BRACE:
+			if StanceTable.can_auto_advance(order_mode) and not StanceTable.is_march_to_contact(order_mode):
 				target_enemy = enemy
 			# Re-face for action: a large swing off the current fronting turns the men in
 			# place gradually (they hold their ground) before the line strikes; a small
@@ -2459,9 +2462,9 @@ func _think(delta: float) -> void:
 			# of every distinct enemy currently pressing it, once there are genuinely 2+ of
 			# them in contact -- see _multiple_engage_reflow's own doc for the debounce/
 			# hysteresis that keeps this from flapping every tick.
-			if order_mode == ORDER_MULTIPLE_ENGAGE:
+			if StanceTable.has_multi_engage_reflow(order_mode):
 				_multiple_engage_reflow(_adjacent_engaged_enemy_units())
-			if order_mode == ORDER_FLANKING_MANEUVER:
+			if StanceTable.has_flank_wrap(order_mode):
 				_flanking_maneuver_reflow(enemy)
 			# Press into contact: a committed melee unit keeps advancing onto the enemy
 			# while it fights, so the lines close to body contact (separation provides the
@@ -2471,7 +2474,7 @@ func _think(delta: float) -> void:
 			# bring the front to bear, hold position — the men turn where they stand, so the
 			# press waits until the turn fully finishes.
 			if _engage_turn_target == Vector2.ZERO and not is_ranged \
-					and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
+					and StanceTable.can_auto_advance(order_mode):
 				_press_into(enemy.position, delta)
 			return
 		elif target_enemy != null or (chasing and not in_contact):
@@ -2587,7 +2590,7 @@ func _think(delta: float) -> void:
 				# (has_move_target false, active_leaf().turn_target still zero), leaving
 				# the unit facing the pivoted heading instead of turning back.
 	elif enemy != null and auto_advance_on_detect \
-			and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
+			and StanceTable.can_auto_advance(order_mode):
 		# Auto-advance on a near enemy the combat branches didn't engage this tick (out of
 		# range/contact). Gated by auto_advance_on_detect: a directly player-commanded unit
 		# leaves this false and holds formation instead (the else branch below), waiting for
@@ -3971,7 +3974,7 @@ func _separate(delta: float) -> void:
 ## Advance or decay this unit's intermixing meter. Rises while a non-ranged unit is
 ## actively fighting without a hold or brace order; decays at 4x speed when not fighting.
 func _tick_intermixing(delta: float) -> void:
-	if state == State.FIGHTING and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE \
+	if state == State.FIGHTING and StanceTable.allows_intermixing(order_mode) \
 			and not is_ranged:
 		_combat_intermixing = minf(MELEE_INTERMIX_MAX,
 				_combat_intermixing + MELEE_INTERMIX_RATE * delta)
@@ -3989,8 +3992,8 @@ func _is_melee_intermixing_with(other: Unit) -> bool:
 		return false
 	return state == State.FIGHTING \
 			and other.state == State.FIGHTING \
-			and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE \
-			and other.order_mode != ORDER_HOLD and other.order_mode != ORDER_BRACE
+			and StanceTable.allows_intermixing(order_mode) \
+			and StanceTable.allows_intermixing(other.order_mode)
 
 
 # --- Individual-soldier simulation (simulated bodies, rendered + authoritative melee) ---
