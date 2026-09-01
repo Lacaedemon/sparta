@@ -1727,6 +1727,12 @@ into different tools:
   Hold. A grounded spear/pike line braces harder than a shield-only one at
   the same posture, so set spears before contact rather than shields alone
   when you can choose which.
+- **Flanking maneuver** (<kbd>F6</kbd>) --- an envelopment stance for an engaged unit:
+  rear ranks spread outward beyond the opposing regiment's frontage so the outer
+  files wrap around both flanks of the enemy line. While engaged in melee under this
+  stance, the unit holds its forward facing instead of turning off-axis as wing
+  soldier collisions jostle, allowing the enveloping wings to deliver flank strikes
+  into the enemy's exposed flank arc (@fig-flanking-maneuver).
 
 ::: {#fig-brace-vs-unbraced .demo}
 
@@ -1813,6 +1819,20 @@ Infantry regiments, closing from different bearings, reach contact. The
 first enemy engages normally; once the second also presses in, the
 regiment's frontage widens from 11 to 14 files (their combined width) and
 its facing holds steady instead of swinging between the two of them.
+:::
+
+::: {#fig-flanking-maneuver .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/flanking_maneuver.jpg">
+  <source src="media/flanking_maneuver.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A player Infantry regiment locked in melee with an enemy line executes a Flanking maneuver. Its frontage widens beyond the enemy's line width, allowing its outer wings to envelop the opponent's flanks and land flank strikes while holding forward facing.
 :::
 
 ::: {#fig-march-to-contact .demo}

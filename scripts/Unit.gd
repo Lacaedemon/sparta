@@ -468,6 +468,7 @@ const ORDER_MARCH_TO_CONTACT := 17
 # held still under this order for BRACE_SETTLE_TIME, it grants the full braced-posture
 # bonus instead of the lesser merely-engaged baseline.
 const ORDER_BRACE := 18
+const ORDER_FLANKING_MANEUVER := 19
 
 # Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
 # decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),
@@ -2460,6 +2461,8 @@ func _think(delta: float) -> void:
 			# hysteresis that keeps this from flapping every tick.
 			if order_mode == ORDER_MULTIPLE_ENGAGE:
 				_multiple_engage_reflow(_adjacent_engaged_enemy_units())
+			if order_mode == ORDER_FLANKING_MANEUVER:
+				_flanking_maneuver_reflow(enemy)
 			# Press into contact: a committed melee unit keeps advancing onto the enemy
 			# while it fights, so the lines close to body contact (separation provides the
 			# counterforce, settling them at the engaged-enemy front-rank floor) instead
@@ -3164,6 +3167,32 @@ func _multiple_engage_reflow(adjacent: Array[Unit]) -> void:
 		return
 	set_frontage(target_files)
 
+
+## FLANKING_MANEUVER's default wing wrap file count (additional files beyond enemy frontage).
+var flanking_maneuver_wrap_files: int = 4
+
+## FLANKING_MANEUVER's frontage-widening cooldown in physics frames.
+var flanking_maneuver_cooldown_ticks: int = 60
+
+## FLANKING_MANEUVER's frontage hysteresis deadband: deltas <= this value (1 file) are ignored; deltas >= 2 trigger reflow.
+var flanking_maneuver_hysteresis: int = 1
+
+## FLANKING_MANEUVER stance: reflow this unit's frontage outward past the opposing unit's
+## frontage (`enemy`), widening files so the outer ranks extend past the enemy line to
+## wrap around its flanks.
+func _flanking_maneuver_reflow(enemy: Unit = null, wrap_files: int = flanking_maneuver_wrap_files, cooldown_ticks: int = flanking_maneuver_cooldown_ticks, hysteresis: int = flanking_maneuver_hysteresis) -> void:
+	if enemy == null:
+		return
+	var enemy_files: int = enemy.formation_files(enemy.soldiers)
+	var target_files: int = clampi(enemy_files + wrap_files, 1, maxi(1, max_soldiers))
+	var current_files: int = formation_files(soldiers)
+	if abs(target_files - current_files) <= hysteresis:
+		return
+	if _last_reshape_tick >= 0 \
+			and Engine.get_physics_frames() - _last_reshape_tick < cooldown_ticks:
+		return
+	set_frontage(target_files)
+
 ## Face `point` for an engage/attack action against `enemy_unit` (the target the turn is
 ## bringing the front to bear on; kept so the settle step can reshape toward it under
 ## MATCH_TARGET -- see engage_reshape_mode). A small heading correction snaps (stays
@@ -3203,6 +3232,13 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	# only one opponent in contact so far), fall through unchanged so a normal single-opponent
 	# fight under this stance looks identical to any other stance.
 	if order_mode == ORDER_MULTIPLE_ENGAGE and _adjacent_engaged_enemy_units().size() >= 2:
+		if _engage_turn_target != Vector2.ZERO:
+			_settle_engage_turn()
+		return true
+	# FLANKING_MANEUVER, while in active melee combat with the enemy: hold the line facing so the unit
+	# maintains its forward engagement while the outer wings envelop the enemy flanks,
+	# rather than rotating off-axis as wing soldier collisions jostle.
+	if order_mode == ORDER_FLANKING_MANEUVER and state == State.FIGHTING:
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
 		return true
