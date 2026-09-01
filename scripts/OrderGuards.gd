@@ -174,9 +174,10 @@ static func current_engaged_fraction(u: Unit) -> float:
 		var engaged_indices: PackedInt32Array = u.engaged_soldier_indices(total)
 		return float(engaged_indices.size()) / float(total)
 
-	var u_candidates: PackedInt32Array = u.contact_soldier_indices(n_pos)
+	var u_live: int = mini(total, n_pos)
+	var u_candidates: PackedInt32Array = u.contact_soldier_indices(u_live)
 	if u_candidates.is_empty():
-		u_candidates = u.engaged_soldier_indices(n_pos)
+		u_candidates = u.engaged_soldier_indices(u_live)
 	if u_candidates.is_empty():
 		return 0.0
 
@@ -184,9 +185,12 @@ static func current_engaged_fraction(u: Unit) -> float:
 	var defender_data: Array[Dictionary] = []
 	for d in defenders:
 		var d_n_pos: int = d._sim_soldier_pos.size()
-		var d_candidates: PackedInt32Array = d.contact_soldier_indices(d_n_pos)
+		if d_n_pos == 0:
+			continue
+		var d_live: int = mini(d.soldiers, d_n_pos)
+		var d_candidates: PackedInt32Array = d.contact_soldier_indices(d_live)
 		if d_candidates.is_empty():
-			d_candidates = d.engaged_soldier_indices(d_n_pos)
+			d_candidates = d.engaged_soldier_indices(d_live)
 		if d_candidates.is_empty():
 			continue
 		var r_d: float = d.soldier_body_radius()
