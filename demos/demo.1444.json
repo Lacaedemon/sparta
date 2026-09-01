@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/graded-engagement-intensity.json",
+  "caption": "Graded engagement-intensity signal (closes #1138): Team 0 (60 Infantry) receives a plain MOVE order marching south past Team 1 (40 Infantry on Hold). The line grazes the enemy's outer flank, placing only 2-3 soldiers in contact (< 5% of the regiment, well below the 10% heavy-engagement threshold). With the graded engagement-intensity signal measuring real per-soldier contact rather than static formation rank capacity, the move order is not cancelled and the regiment continues marching past to its destination.",
+  "fixed_fps": 30,
+  "max_frames": 220,
+  "fps": 12,
+  "width": 640
+}

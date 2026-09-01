@@ -1,0 +1,28 @@
+{
+  "_comment": "Issue #1138: Graded engagement-intensity signal for the move-cancel guard. Team 0 (60 Infantry) marches south to (400, 620) under a plain MOVE order. It grazes the outer flank of Team 1 (40 Infantry on Hold at 530, 420). Only 2-3 soldiers make contact (< 5% of the unit, well below the 10% threshold). With the graded engagement-intensity signal measuring real per-soldier contact rather than static formation rank capacity, the move order is not cancelled and the regiment continues marching past to its destination.",
+  "seed": "12345",
+  "all_teams_control": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 400, "y": 280, "count": 60},
+    {"team": 1, "type": "Infantry", "x": 530, "y": 420, "count": 40}
+  ],
+  "camera": [
+    {"tick": 0, "x": 460.0, "y": 440.0, "zoom": 1.4}
+  ],
+  "steps": [
+    {"tick": 5, "click": [530, 420]},
+    {"tick": 6, "key": "H", "ctrl": true},
+    {"tick": 20, "click": [400, 280]},
+    {"tick": 22, "rmb_click": [400, 620]}
+  ],
+  "state": [10, 30, 60, 100, 150, 200, 250, 300, 350],
+  "frames": [22, 100, 200, 300],
+  "expect": [
+    {"tick": 22, "uid": 0, "field": "order_guard", "value": "ENGAGED_FRACTION_ABOVE"},
+    {"tick": [30, 250], "uid": 0, "field": "current_order", "value": "MOVE"}
+  ],
+  "fixed_fps": 30,
+  "max_frames": 220,
+  "fps": 12,
+  "width": 640
+}

@@ -198,25 +198,21 @@ enum Gait { WALK, JOG, RUN, SPRINT }
 ##   re-enters State.FIGHTING for this order, it does NOT pause while still fighting. What
 ##   actually delays the resume-vs-cancel decision by ~ENGAGED_LINGER (0.5s) is that latch
 ##   decaying on an ALREADY-MARCHING unit, not a fight holding the order in place.
-## - OrderGuards.current_engaged_fraction() reuses engaged_soldier_indices(), a formation-SHAPE
-##   selection, not a measure of fight intensity -- for any realistic formation this resolves
-##   to exactly 0.0 or 1.0, never a graded value (confirmed: a 40-soldier Spearmen unit in
-##   TIGHT formation is always "0% or 100% engaged", never something between). So in practice
-##   there is no reachable "light graze" tier that resumes purely on threshold: the real
-##   policy is "any engagement at all, once the destination is occupied by a living enemy,
-##   cancels the order; otherwise it resumes" -- a genuine graded engagement-intensity signal
-##   is a deferred idea, tracked separately, if the binary behavior ever proves unsatisfying.
+## - OrderGuards.current_engaged_fraction() evaluates real per-soldier contact/weapon reach
+##   against adjacent enemy soldiers. A light flank or corner graze where fewer than ~10% of
+##   the unit's soldiers are in reach records a low peak fraction (< 0.10) and allows the
+##   march to resume automatically without cancelling, whereas a heavier engagement (>= 0.10)
+##   vets the destination on disengage.
 ##
-## What ships today:
+## What ships:
 ##
-## - The unit was never engaged at all during this move (no fight happened): the march
-##   resumes automatically once _move_order_peak_engaged_fraction's tracking finds nothing to
-##   act on.
-## - It was engaged, but the destination is still clear of any living enemy: the march
+## - The fight never crossed the threshold (e.g. a brief flank graze): the march resumes
+##   automatically once disengaged.
+## - It crossed the threshold, but the destination is still clear of any living enemy: the march
 ##   resumes anyway -- a real fight happened, but the original plan is still valid, so the
 ##   commander isn't forced to re-decide something that isn't actually stale.
-## - It was engaged AND the destination now sits inside a living enemy's own footprint: the
-##   order cancels outright, rather than blindly marching into ground the enemy now holds --
+## - It crossed the threshold AND the destination now sits inside a living enemy's own footprint:
+##   the order cancels outright, rather than blindly marching into ground the enemy now holds --
 ##   the actual motivating case for gating a plain move on engagement at all.
 ##
 ## Only a NORMAL-stance plain move gets this guard (see _apply_order_cmd's two
