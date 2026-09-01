@@ -174,26 +174,44 @@ static func current_engaged_fraction(u: Unit) -> float:
 	if u_candidates.is_empty():
 		return 0.0
 
+	# Pre-gather invariant defender candidate data before iterating querier soldiers
+	var defender_data: Array[Dictionary] = []
+	for d in defenders:
+		var d_n_pos: int = d._sim_soldier_pos.size()
+		var d_candidates: PackedInt32Array = d.contact_soldier_indices(d_n_pos)
+		if d_candidates.is_empty():
+			d_candidates = d.engaged_soldier_indices(d_n_pos)
+		if d_candidates.is_empty():
+			continue
+		var r_d: float = d.soldier_body_radius()
+		var reach_d: float = d.soldier_reach()
+		var max_dist: float = r_u + r_d + maxf(reach_u, reach_d)
+		defender_data.append({
+			"max_dist_sq": max_dist * max_dist,
+			"candidates": d_candidates,
+			"pos": d._sim_soldier_pos,
+			"hp": d._sim_soldier_hp,
+		})
+
+	if defender_data.is_empty():
+		return 0.0
+
 	var in_reach_count: int = 0
 	for i in u_candidates:
 		if i < u._sim_soldier_hp.size() and u._sim_soldier_hp[i] <= 0.0:
 			continue
 		var p_u: Vector2 = u._sim_soldier_pos[i]
 		var soldier_engaged: bool = false
-		for d in defenders:
-			var r_d: float = d.soldier_body_radius()
-			var reach_d: float = d.soldier_reach()
-			var max_dist: float = r_u + r_d + maxf(reach_u, reach_d)
-			var max_dist_sq: float = max_dist * max_dist
-			var d_n_pos: int = d._sim_soldier_pos.size()
-			var d_candidates: PackedInt32Array = d.contact_soldier_indices(d_n_pos)
-			if d_candidates.is_empty():
-				d_candidates = d.engaged_soldier_indices(d_n_pos)
+		for entry in defender_data:
+			var max_dist_sq: float = entry["max_dist_sq"]
+			var d_candidates: PackedInt32Array = entry["candidates"]
+			var d_pos: PackedVector2Array = entry["pos"]
+			var d_hp: PackedFloat32Array = entry["hp"]
 			for j in d_candidates:
-				if j < d._sim_soldier_hp.size() and d._sim_soldier_hp[j] <= 0.0:
+				if j < d_hp.size() and d_hp[j] <= 0.0:
 					continue
 				# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-				if p_u.distance_squared_to(d._sim_soldier_pos[j]) <= max_dist_sq:
+				if p_u.distance_squared_to(d_pos[j]) <= max_dist_sq:
 					soldier_engaged = true
 					break
 			if soldier_engaged:
