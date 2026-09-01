@@ -35,7 +35,8 @@ the concrete cell values are provisional, to be pinned down by the Phase 2 behav
 | `CHASE` | `true` | `true` | `false` | `true` | `false` | `INF` | `true` |
 | `SWEEP_ROUTERS` | `true` | `false` | `true` | `true` | `false` | `100.0` | `true` |
 
-Stance-specific combat modifiers (`PIN_DOWN`'s slower cadence and exposure window, `ALL_OUT_ATTACK`'s hit bonus and defense penalty) are cadence/damage tuning, not acquisition/response/leash behavior, so they stay as per-stance constants in `scripts/Unit.gd` / `scripts/UnitCombat.gd` rather than gaining columns here.
+Stance-specific combat modifiers (`PIN_DOWN`'s slower cadence and exposure window, `ALL_OUT_ATTACK`'s hit bonus and defense penalty) are cadence/damage tuning, not acquisition/response/leash behavior;
+they stay as per-stance constants in `scripts/Unit.gd` / `scripts/UnitCombat.gd` rather than gaining columns here.
 
 ### 2. Three Unified Choke Points
 
@@ -53,6 +54,9 @@ Instead of ad-hoc branching, the simulation evaluates stance behavior at three s
 3. **Abandon / Leash Choke Point (`Unit.gd`)**:
    Monitors distance from `held_position` inside the movement/arrival logic that `Unit.gd` already owns;
    when distance exceeds `leash_radius_m`, the unit breaks engagement and returns to `held_position`.
+   The same abandon decision reads `chase_beyond_vision`:
+   a stance with it `false` abandons a chase once the quarry leaves vision range,
+   while a `true` stance keeps riding the quarry down.
 
 ### 3. Forced Order Tagging (`is_forced`)
 
