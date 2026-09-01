@@ -3174,7 +3174,7 @@ const FLANKING_MANEUVER_WRAP_FILES: int = 4
 # FLANKING_MANEUVER's frontage-widening cooldown: minimum ticks between two automatic reflows.
 const FLANKING_MANEUVER_FRONTAGE_COOLDOWN_TICKS: int = 60
 
-# FLANKING_MANEUVER's minimum file-count delta worth re-widening for.
+# FLANKING_MANEUVER's frontage hysteresis deadband: deltas <= this value (1 file) are ignored; deltas >= 2 trigger reflow.
 const FLANKING_MANEUVER_FRONTAGE_HYSTERESIS: int = 1
 
 ## FLANKING_MANEUVER stance: reflow this unit's frontage outward past the opposing unit's

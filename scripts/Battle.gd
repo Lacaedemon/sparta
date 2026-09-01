@@ -169,11 +169,10 @@ const ORDER_CANCEL_ONLY := -13
 const ORDER_SWITCH_WEAPON := -14
 
 ## Order modes: the "stance" an order applies to its units. NORMAL is the
-## current move/attack behaviour. The smart modes are chosen by the player's armed
+## standard move/attack behaviour. Stances are chosen by the player's armed
 ## mode (SelectionManager), recorded in the replay ("mode") and stamped on
-## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues.
-## Until then a non-NORMAL stance is stored but behaves as
-## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
+## Unit.order_mode with corresponding per-unit tactical behaviours in Unit.gd.
+## NORMAL is 0 so it matches Unit.order_mode's default.
 enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE, PIN_DOWN, ALL_OUT_ATTACK, CHASE, WEDGE_CHARGE, KNOCKBACK_FOCUS, GIVE_GROUND, PUSH, MULTIPLE_ENGAGE, MARCH_TO_CONTACT, BRACE, FLANKING_MANEUVER }
 
 ## Movement gait for a MOVE order: WALK (single click), JOG (double), RUN (triple),
