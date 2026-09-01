@@ -281,7 +281,7 @@ func test_current_engaged_fraction_low_on_light_flank_graze() -> void:
 	enemy.soldiers = 2
 	# Place enemy near the rightmost front-rank soldier of u, derived from combat reach and body radii
 	var contact_reach: float = u.soldier_body_radius() + enemy.soldier_body_radius() + maxf(u.soldier_reach(), enemy.soldier_reach())
-	var right_idx: int = mini(u.formation_front_files() - 1, u._sim_soldier_pos.size() - 1)
+	var right_idx: int = mini(u.formation_files(u.soldiers) - 1, u._sim_soldier_pos.size() - 1)
 	var right_soldier_pos: Vector2 = u._sim_soldier_pos[right_idx]
 	enemy.position = right_soldier_pos + Vector2(0, contact_reach * 0.7)
 	enemy.facing = Vector2.UP
