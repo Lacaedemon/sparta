@@ -142,6 +142,7 @@ const _STANCE_ENTRIES := [
 	{"id": 17, "mode": BattleRef.OrderMode.MARCH_TO_CONTACT, "label": "March to contact",
 		"slug": "march_to_contact"},
 	{"id": 18, "mode": BattleRef.OrderMode.BRACE, "label": "Brace", "slug": "brace"},
+	{"id": 19, "mode": BattleRef.OrderMode.FLANKING_MANEUVER, "label": "Flanking maneuver", "slug": "flanking_maneuver"},
 ]
 
 # The multi-unit form-up distribution modes, in menu order (the default, EQUAL_DEPTH_SPACE,

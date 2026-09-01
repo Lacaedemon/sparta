@@ -2295,6 +2295,7 @@ func _order_mode_color(mode: int) -> Color:
 		BattleRef.OrderMode.MULTIPLE_ENGAGE: return Color(0.75, 0.2, 0.85)
 		BattleRef.OrderMode.MARCH_TO_CONTACT: return Color(0.5, 0.75, 0.45)
 		BattleRef.OrderMode.BRACE: return Color(0.75, 0.55, 0.25)
+		BattleRef.OrderMode.FLANKING_MANEUVER: return Color(0.85, 0.55, 0.15)
 		_: return Color.WHITE
 
 

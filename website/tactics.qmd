@@ -1815,6 +1815,22 @@ regiment's frontage widens from 11 to 14 files (their combined width) and
 its facing holds steady instead of swinging between the two of them.
 :::
 
+**Flanking maneuver** (<kbd>F6</kbd>) is the envelopment stance for an engaged unit: rear ranks spread outward beyond the opposing regiment's frontage so the outer files wrap around the enemy's flanks, striking into the enemy's exposed flank arc while the main line holds forward engagement.
+
+::: {#fig-flanking-maneuver .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/flanking_maneuver.jpg">
+  <source src="media/flanking_maneuver.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A player Infantry regiment locked in melee with an enemy line executes a Flanking maneuver. Its frontage widens beyond the enemy's line width, allowing its outer wings to envelop the opponent's flanks and land flank strikes while holding forward facing.
+:::
+
 ::: {#fig-march-to-contact .demo}
 
 ```{=html}
