@@ -1,7 +1,7 @@
 # Design note: Standard-bearer (formation anchor, visual hierarchy, and casualty succession)
 
 Status: **design drafted** -- establishes architectural and historical grounding for the regimental standard-bearer mechanic.
-Builds on [#820](https://github.com/Lacaedemon/sparta/issues/820) and ties into [#818](https://github.com/Lacaedemon/sparta/issues/818) position-anchoring.
+Builds on [#820](https://github.com/Lacaedemon/sparta/issues/820) and ties into [#821](https://github.com/Lacaedemon/sparta/issues/821) (the position-anchor options) and [#818](https://github.com/Lacaedemon/sparta/pull/818) (where a front-rank-midpoint anchor was tried and reverted).
 
 ## Historical background
 
@@ -36,9 +36,14 @@ Thucydides, *History of the Peloponnesian War* V.70.
 - Each regiment (`Unit.gd`) designates the soldier occupying one formation slot as the active standard-bearer.
   Because `SoldierMelee.reap()` compacts the soldiers array on casualties -- shifting every later soldier's file and rank -- the bearer is tracked as the occupant of a designated slot, re-resolved after every compaction, rather than as a raw array index that would silently re-point to a different soldier when any lower-indexed soldier dies.
 
-- The designated slot defaults to the center file of the front rank: in the block slot model (`file = i % files`, `rank = i / files`), index `floor(files / 2)`.
+- The designated slot defaults to the center file of the front rank, identified by its (rank, file) cell rather than by a raw slot index,
+  because the index-to-cell mapping differs per layout:
+  the default row-major block layout (`UnitFormation.block_slots`: `file = i % files`, `rank = i / files`) puts that cell at index `floor(files / 2)`,
+  the square/schiltron layout permutes the grid through `_sim_soldier_square_slot`,
+  and file-major reform reads `_sim_soldier_file` / `_sim_soldier_rank` directly --
+  so the bearer resolves through whichever layout `Unit.formation_slots` is currently producing.
 
-- Formation anchoring is unchanged by this design, which settles #820's first open question: the standard-bearer complements, and does not replace, the position-anchor options weighed in #818.
+- Formation anchoring is unchanged by this design, which settles #820's first open question: the standard-bearer complements, and does not replace, the position-anchor options enumerated in #821 (the front-rank-midpoint anchor tried in #818 was reverted there and redirected to #821).
   Formation slots remain a pure function of `Unit.position`, facing, and soldier count (`Unit.formation_slots` -> `soldier_world_slots`), and soldier bodies are steered onto those slots -- so the bearer's own body position is an output of dressing, and using it as the dressing input would be circular.
   The carried standard is the visual embodiment of the unit's anchor, not its source of truth.
 
@@ -62,7 +67,7 @@ Thucydides, *History of the Peloponnesian War* V.70.
 
 ### 4. Visual Rendering Hierarchy
 
-- The game already renders a per-unit raised standard: `UnitSprites.flag()` draws a pole, swallowtail pennant, and unit-type emblem above every live unit, serves as the click target for selection, and fades with morale.
+- The game already renders a per-unit raised standard: `UnitSprites.flag()` draws a pole, swallowtail pennant, and unit-type emblem above every live unit, serves as the click target for selection, and fades on rout (its alpha eases from full to `ROUTING_ALPHA` once the unit enters `State.ROUTING`, which the morale threshold triggers).
   A second free-floating standard per unit would create exactly the clutter and confusion #820's open question warns about.
 
 - This design therefore relocates the existing flag rather than adding a rival: the unit standard renders at the standard-bearer's body, so the one standard is carried by a soldier instead of hovering over the formation.
