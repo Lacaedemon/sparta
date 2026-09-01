@@ -79,9 +79,11 @@ A report that ends with anything else -- including a plain "Verdict: Clean" --
 is invisible to the guard's parser.
 The guard scans the whole transcript and keeps the LAST parseable verdict,
 whatever commit it names, and only afterwards compares that verdict's
-`Reviewed-Commit` against the commits being pushed -- so an older, blocking
-"Needs more work" wins over a later review that said "Clean", and the push is
-refused on stale grounds even though the actual latest review was clean.
+`Reviewed-Commit` against the commits being pushed.
+A later review that ended "Verdict: Clean" is skipped as unparseable, so an
+older, blocking "Needs more work" stays the last parseable verdict and the
+push is refused on stale grounds even though the actual latest review was
+clean.
 
 - **Do:** brief any local/self-dispatched reviewer with the two exact heading
   phrases above, verbatim, plus the `Reviewed-Commit: <sha>` line.
