@@ -83,10 +83,58 @@ const HISTORICAL_FORMATIONS := {
 		UnitRef.FORMATION_TIGHT: "synaspismos",
 		UnitRef.FORMATION_LOOSE: "araios",
 		UnitRef.FORMATION_SQUARE: "plinthion",
-		UnitRef.FORMATION_SCHILTRON: "schiltron",
-		UnitRef.FORMATION_SHIELD_WALL: "synaspismos",
-		UnitRef.FORMATION_TESTUDO: "testudo",
+		UnitRef.FORMATION_SCHILTRON: "kyklos",
+		UnitRef.FORMATION_SHIELD_WALL: "phalanx",
+		UnitRef.FORMATION_TESTUDO: "chelone",
 	},
+	Type.CARTHAGE: {
+		UnitRef.FORMATION_NORMAL: "sadir",
+		UnitRef.FORMATION_TIGHT: "mutabaq",
+		UnitRef.FORMATION_LOOSE: "munfasil",
+		UnitRef.FORMATION_SQUARE: "murabba",
+		UnitRef.FORMATION_SCHILTRON: "halqa",
+		UnitRef.FORMATION_SHIELD_WALL: "surs",
+		UnitRef.FORMATION_TESTUDO: "muttaka",
+	},
+	Type.MACEDON: {
+		UnitRef.FORMATION_NORMAL: "syntagma",
+		UnitRef.FORMATION_TIGHT: "synaspismos",
+		UnitRef.FORMATION_LOOSE: "araioma",
+		UnitRef.FORMATION_SQUARE: "plinthion",
+		UnitRef.FORMATION_SCHILTRON: "kyklos",
+		UnitRef.FORMATION_SHIELD_WALL: "phalanx",
+		UnitRef.FORMATION_TESTUDO: "chelone",
+	},
+}
+
+const HISTORICAL_FORM_UP := {
+	Type.ROME: {
+		4: "quincunx",
+		5: "acies obliqua dextra",
+		6: "acies obliqua sinistra",
+	},
+	Type.SPARTA: {
+		4: "epallax",
+		5: "lophos dexios",
+		6: "lophos aristeros",
+	},
+	Type.CARTHAGE: {
+		4: "shatranj",
+		5: "junah maymana",
+		6: "junah maysara",
+	},
+	Type.MACEDON: {
+		4: "epallax",
+		5: "loxe phalanx",
+		6: "loxe phalanx",
+	},
+}
+
+const FACTION_STRATEGIES := {
+	Type.ROME: "Manipular Line Rotation (acies triplex)",
+	Type.SPARTA: "Phalanx Shock Push (othismos)",
+	Type.CARTHAGE: "Double Envelopment (Cannae)",
+	Type.MACEDON: "Hammer and Anvil (sarissa and hetairoi)",
 }
 
 
@@ -122,3 +170,15 @@ static func get_formation_display_name(faction_id: int, formation_mode: int, pla
 		if dict.has(formation_mode):
 			return "%s (%s)" % [plain_name, dict[formation_mode]]
 	return plain_name
+
+
+static func get_form_up_display_name(faction_id: int, form_up_dist: int, plain_name: String) -> String:
+	if HISTORICAL_FORM_UP.has(faction_id):
+		var dict: Dictionary = HISTORICAL_FORM_UP[faction_id]
+		if dict.has(form_up_dist):
+			return "%s (%s)" % [plain_name, dict[form_up_dist]]
+	return plain_name
+
+
+static func get_strategy_name(faction_id: int) -> String:
+	return FACTION_STRATEGIES.get(faction_id, "Standard Doctrine")
