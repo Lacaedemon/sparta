@@ -1,6 +1,6 @@
 {
-  "input": "demos/inputs/checkerboard-form-up.json",
-  "caption": "Acies Triplex persistent line membership (#819): persistent line indices across checkerboard form-up, unit tray grid, and unit line queries.",
+  "input": "demos/inputs/line-membership-checkerboard.json",
+  "caption": "Acies Triplex persistent line membership (#819, phase 2): a checkerboard form-up stamps each unit's persistent Unit.line_index (0 = front, 1+ = reserve) as it splits into two offset lines -- the same tag then survives a unit-card-tray row move or grid reapply. The line-index bookkeeping itself has no on-screen representation yet (the flank-vulnerability/withdrawal mechanics that will read it are a later phase); this clip shows the checkerboard deploy that stamps it, verified separately by the unit tests.",
   "fixed_fps": 30,
   "max_frames": 350,
   "fps": 20,

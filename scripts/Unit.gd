@@ -240,7 +240,9 @@ var order_mode: int = 0:
 		leash_radius = StanceTable.default_leash(val)
 		if held_position == Vector2.ZERO and val != 0:
 			held_position = position
-## Persistent line-membership index in an army formation (0 = front line, 1 = second line, 2+ = reserve line).
+## Persistent line-membership index in an army formation, tracking which line a unit
+## belongs to across form-up commands and tray reassignment (0 = front line, 1+ = reserve
+## line -- see is_front_line()/is_reserve_line() below, which treat any index > 0 as reserve).
 var line_index: int = 0
 # Whether this unit auto-advances onto a merely-detected, out-of-weapon-range enemy while
 # it has no order -- the reactive close-the-distance fallback at the bottom of _think's

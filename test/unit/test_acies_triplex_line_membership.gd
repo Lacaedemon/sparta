@@ -2,8 +2,12 @@ extends GutTest
 
 ## Unit tests for Acies Triplex persistent line membership and queries.
 
+const UnitScript = preload("res://scripts/Unit.gd")
+const SelectionManagerScript = preload("res://scripts/SelectionManager.gd")
+
+
 func test_unit_line_membership_defaults_and_queries() -> void:
-	var u := Unit.new()
+	var u := UnitScript.new()
 	add_child_autofree(u)
 	assert_eq(u.line_index, 0, "default line index is 0")
 	assert_true(u.is_front_line(), "unit is front line by default")
@@ -17,12 +21,12 @@ func test_unit_line_membership_defaults_and_queries() -> void:
 	assert_true(u.is_reserve_line(), "unit with line 2 is reserve line")
 
 func test_checkerboard_slices_line_assignment() -> void:
-	var sel_mgr := SelectionManager.new()
+	var sel_mgr := SelectionManagerScript.new()
 	add_child_autofree(sel_mgr)
-	var u1 := Unit.new()
-	var u2 := Unit.new()
-	var u3 := Unit.new()
-	var u4 := Unit.new()
+	var u1 := UnitScript.new()
+	var u2 := UnitScript.new()
+	var u3 := UnitScript.new()
+	var u4 := UnitScript.new()
 	add_child_autofree(u1)
 	add_child_autofree(u2)
 	add_child_autofree(u3)

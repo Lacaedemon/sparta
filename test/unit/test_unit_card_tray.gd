@@ -145,6 +145,29 @@ func test_move_unit_swaps_two_occupied_cells() -> void:
 	assert_eq(tray._grid[0][1], u1)
 
 
+func test_move_unit_syncs_line_index_to_the_new_row_on_a_cross_row_swap() -> void:
+	var tray := _tray()
+	var u1 := _named_unit("Hastati 1")
+	var u2 := _named_unit("Principes 1")
+	tray.sync_units([u1, u2])   # both at row 0
+	tray.add_row()
+	tray.move_unit(0, 1, 1, 1)   # u2 moves down to row 1, an empty target cell
+
+	assert_eq(u2.line_index, 1, "u2's persistent line follows it to the new row")
+	assert_eq(u1.line_index, 0, "u1, untouched, keeps its original line")
+
+
+func test_move_unit_syncs_line_index_for_both_units_on_a_swap() -> void:
+	var tray := _tray()
+	var u1 := _named_unit("Hastati 1")
+	var u2 := _named_unit("Principes 1")
+	tray.sync_units([u1, u2])   # both at row 0
+	tray.add_row()
+	tray.move_unit(1, 0, 0, 0)   # an empty row-1 cell swaps into u1's row-0 cell
+
+	assert_eq(u1.line_index, 1, "the unit swapped out to row 1 picks up that row's line")
+
+
 func test_move_unit_ignores_a_stale_endpoint() -> void:
 	var tray := _tray()
 	var u := _named_unit("Cavalry 1")
@@ -394,6 +417,15 @@ func test_apply_grid_keeps_empty_cells_and_pads_rows_to_one_width() -> void:
 	assert_eq(tray._grid[0][2], u2)
 	assert_eq(tray._grid[1].size(), 3, "a shorter second row is padded to the same width")
 	assert_null(tray._grid[1][2], "the padded cell is empty")
+
+
+func test_apply_grid_syncs_each_occupants_line_index_to_its_row() -> void:
+	var tray := _tray()
+	var u1 := _named_unit("Hastati 1")
+	var u2 := _named_unit("Triarii 1")
+	tray.apply_grid([[u1, null], [null, u2]])
+	assert_eq(u1.line_index, 0, "row-0 occupant is line 0")
+	assert_eq(u2.line_index, 1, "row-1 occupant picks up its row as its line")
 
 
 func test_apply_uid_grid_resolves_uids_and_treats_missing_as_empty() -> void:

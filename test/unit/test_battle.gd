@@ -433,6 +433,40 @@ func test_enqueue_order_carries_the_mode() -> void:
 		"the armed mode is recorded on the pending order")
 
 
+# --- persistent line membership (Acies Triplex) -----------------
+
+func test_apply_order_cmd_stamps_the_line_when_present() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1, "line": 1})
+	assert_eq(u.line_index, 1, "a queued form-up command persists its line onto the unit")
+
+
+func test_apply_order_cmd_leaves_the_line_unset_when_absent() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.line_index = 1   # a prior line assignment
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1})   # no "line"
+	assert_eq(u.line_index, 1,
+		"a command with no 'line' key is backward compatible and leaves the unit's line alone")
+
+
+func test_enqueue_form_up_carries_the_line_index() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_form_up([1], Vector2(50, 0), 0.0, 4, BattleScript.OrderMode.NORMAL, false, -1, 1)
+	assert_eq(int(b._pending_orders[-1]["line"]), 1,
+		"the requested line index is recorded on the pending form-up command")
+
+
+func test_enqueue_form_up_defaults_the_line_index_to_front() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_form_up([1], Vector2(50, 0), 0.0, 4)   # no line_index argument
+	assert_eq(int(b._pending_orders[-1]["line"]), 0,
+		"a caller that doesn't track lines defaults to the front line")
+
+
 func test_append_preserves_the_existing_stance() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	u.set_current_order(Order.new_move(Vector2(200, 0)))
