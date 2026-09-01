@@ -19,79 +19,30 @@ class StanceFlags extends RefCounted:
 	var allow_intermixing: bool = true
 	var default_leash_radius: float = 0.0
 
-	func _init(
-		p_target_visible: bool = true,
-		p_target_attackers: bool = true,
-		p_chase: bool = false,
-		p_stand_ground: bool = false,
-		p_hold_ground: bool = false,
-		p_give_ground: bool = false,
-		p_push: bool = false,
-		p_flank_wrap: bool = false,
-		p_multi_engage: bool = false,
-		p_march_to_contact: bool = false,
-		p_auto_advance: bool = true,
-		p_allow_intermix: bool = true,
-		p_leash: float = 0.0
-	) -> void:
-		target_visible_enemies = p_target_visible
-		target_attackers_always = p_target_attackers
-		respond_chase = p_chase
-		respond_stand_ground = p_stand_ground
-		respond_hold_ground = p_hold_ground
-		can_give_ground = p_give_ground
-		is_pushing = p_push
-		flank_wrap = p_flank_wrap
-		multi_engage_reflow = p_multi_engage
-		march_to_contact = p_march_to_contact
-		auto_advance = p_auto_advance
-		allow_intermixing = p_allow_intermix
-		default_leash_radius = p_leash
-
 static var _default := StanceFlags.new()
 
-static var _table: Dictionary = {
-	# NORMAL (0): standard aggressive stance, advances on near foes, allows intermix
-	0: StanceFlags.new(true, true, false, false, false, false, false, false, false, false, true, true, 0.0),
-	# HOLD (1): holds ground, no auto-advance, no intermixing, defends only in place
-	1: StanceFlags.new(false, true, false, true, true, false, false, false, false, false, false, false, 0.0),
-	# ATTACK_FLANK (2): biases approach to enemy flanks
-	2: StanceFlags.new(true, true, false, false, false, false, false, false, false, false, true, true, 0.0),
-	# ATTACK_REAR (3): biases approach to enemy rear
-	3: StanceFlags.new(true, true, false, false, false, false, false, false, false, false, true, true, 0.0),
-	# SKIRMISH (4): kites at missile range
-	4: StanceFlags.new(true, true, false, false, false, false, false, false, false, false, true, true, 0.0),
-	# SUPPORT (5): guards a friendly unit
-	5: StanceFlags.new(true, true, false, false, false, false, false, false, false, false, true, true, 0.0),
-	# CYCLE_CHARGE (6): charge, strike, withdraw, and recharge
-	6: StanceFlags.new(true, true, false, false, false, false, false, false, false, false, true, true, 0.0),
-	# SWEEP_ROUTERS (7): actively chases routing units
-	7: StanceFlags.new(true, true, true, false, false, false, false, false, false, false, true, true, 0.0),
-	# ROLL_THE_LINE (8): rolls along the enemy line
-	8: StanceFlags.new(true, true, true, false, false, false, false, false, false, false, true, true, 0.0),
-	# PIN_DOWN (9): fixes enemy unit in place within leash
-	9: StanceFlags.new(true, true, false, true, false, false, false, false, false, false, false, true, 300.0),
-	# ALL_OUT_ATTACK (10): aggressive attack, pursues relentlessly
-	10: StanceFlags.new(true, true, true, false, false, false, false, false, false, false, true, true, 0.0),
-	# CHASE (11): relentless pursuit of quarry
-	11: StanceFlags.new(true, true, true, false, false, false, false, false, false, false, true, true, 0.0),
-	# WEDGE_CHARGE (12): wedge formation charge
-	12: StanceFlags.new(true, true, false, false, false, false, false, false, false, false, true, true, 0.0),
-	# KNOCKBACK_FOCUS (13): focuses melee impulse
-	13: StanceFlags.new(true, true, false, false, false, false, false, false, false, false, true, true, 0.0),
-	# GIVE_GROUND (14): fighting retreat
-	14: StanceFlags.new(true, true, false, false, false, true, false, false, false, false, false, true, 0.0),
-	# PUSH (15): aggressive forward shove
-	15: StanceFlags.new(true, true, false, false, false, false, true, false, false, false, true, true, 0.0),
-	# MULTIPLE_ENGAGE (16): widens front when pressed by multiple foes
-	16: StanceFlags.new(true, true, false, false, false, false, false, false, true, false, true, true, 0.0),
-	# MARCH_TO_CONTACT (17): plain move that stops to fight in path, then resumes
-	17: StanceFlags.new(true, true, false, false, false, false, false, false, false, true, false, true, 0.0),
-	# BRACE (18): plant and hold against charge, receives full brace bonus
-	18: StanceFlags.new(false, true, false, true, true, false, false, false, false, false, false, false, 0.0),
-	# FLANKING_MANEUVER (19): wraps outer ranks around enemy flanks
-	19: StanceFlags.new(true, true, false, false, false, false, false, true, false, false, true, true, 0.0),
-}
+static var _table: Dictionary = _init_table()
+
+static func _init_table() -> Dictionary:
+	var t: Dictionary = {}
+	var make_flags = func(d: Dictionary) -> StanceFlags:
+		var f := StanceFlags.new()
+		for k in d:
+			f.set(k, d[k])
+		return f
+	t[1] = make_flags.call({"target_visible_enemies": false, "respond_stand_ground": true, "respond_hold_ground": true, "auto_advance": false, "allow_intermixing": false})
+	t[7] = make_flags.call({"respond_chase": true})
+	t[8] = make_flags.call({"respond_chase": true})
+	t[9] = make_flags.call({"respond_stand_ground": true, "auto_advance": false, "default_leash_radius": 300.0})
+	t[10] = make_flags.call({"respond_chase": true})
+	t[11] = make_flags.call({"respond_chase": true})
+	t[14] = make_flags.call({"can_give_ground": true, "auto_advance": false})
+	t[15] = make_flags.call({"is_pushing": true})
+	t[16] = make_flags.call({"multi_engage_reflow": true})
+	t[17] = make_flags.call({"march_to_contact": true, "auto_advance": false})
+	t[18] = make_flags.call({"target_visible_enemies": false, "respond_stand_ground": true, "respond_hold_ground": true, "auto_advance": false, "allow_intermixing": false})
+	t[19] = make_flags.call({"flank_wrap": true})
+	return t
 
 static func get_flags(mode: int) -> StanceFlags:
 	return _table.get(mode, _default)
