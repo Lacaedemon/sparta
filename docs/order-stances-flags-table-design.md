@@ -5,7 +5,7 @@ Builds on [#956](https://github.com/Lacaedemon/sparta/issues/956) and connects t
 
 ## Problem Statement
 
-Order-mode stances (`Hold`, `All-out attack`, `Pin down`, `Chase`, `Sweep routers`, etc.) were originally implemented as disparate `match` branches scattered across `Unit._think`, `UnitCombat`, and targeting subroutines.
+Order-mode stances (`HOLD`, `ALL_OUT_ATTACK`, `PIN_DOWN`, `CHASE`, `SWEEP_ROUTERS`) were originally implemented as disparate `match` branches scattered across `Unit._think`, `UnitCombat`, and targeting subroutines.
 
 This architectural shape has three critical drawbacks:
 
@@ -22,27 +22,29 @@ This architectural shape has three critical drawbacks:
 
 ### 1. Orthogonal Stance Flags Table
 
-Stances are expressed as a data dictionary (`STANCE_PROFILES`) containing orthogonal boolean and numeric properties:
+Stances are expressed as a data dictionary (`STANCE_PROFILES`) containing orthogonal boolean and numeric properties scoped to the 5 Sparta order modes:
 
-| Stance | `target_visible` | `target_attackers` | `respond_chase` | `hold_ground` | `leash_radius_m` | `chase_beyond_vision` |
-|---|---|---|---|---|---|---|
-| `HOLD` | `false` | `true` | `false` | `true` | `0.0` | `false` |
-| `STAND_GROUND` | `true` | `true` | `false` | `true` | `15.0` | `false` |
-| `AGGRESSIVE` | `true` | `true` | `true` | `false` | `INF` | `true` |
-| `PIN_DOWN` | `true` | `true` | `true` | `false` | `30.0` | `false` |
-| `SWEEP_ROUTERS` | `true` (routing only) | `false` | `true` | `false` | `100.0` | `true` |
+| Stance | `target_visible` | `target_attackers` | `respond_chase` | `hold_ground` | `routing_only` | `leash_radius_m` | `chase_beyond_vision` |
+|---|---|---|---|---|---|---|---|
+| `HOLD` | `false` | `true` | `false` | `true` | `false` | `0.0` | `false` |
+| `PIN_DOWN` | `true` | `true` | `true` | `false` | `false` | `30.0` | `false` |
+| `ALL_OUT_ATTACK` | `true` | `true` | `true` | `false` | `false` | `INF` | `true` |
+| `CHASE` | `true` | `true` | `true` | `false` | `false` | `100.0` | `true` |
+| `SWEEP_ROUTERS` | `true` | `false` | `true` | `false` | `true` | `100.0` | `true` |
 
 ### 2. Three Unified Choke Points
 
 Instead of ad-hoc branching, the simulation evaluates stance behavior at three standardized choke points:
 
-1. **Acquisition Choke Point (`UnitTargeting.gd`)**:
-   Determines candidate target eligibility based on `target_visible` and `target_attackers` flags.
+1. **Acquisition Choke Point (`scripts/UnitTargeting.gd`)**:
+   Determines candidate target eligibility based on `target_visible`, `target_attackers`, and `routing_only` flags.
+   Also evaluates `chase_beyond_vision` to determine whether targets outside standard detection range remain eligible during pursuit.
 
-2. **Response Choke Point (`UnitCombat.gd`)**:
-   Executes the priority response chain (`respond_chase` -> `stand_ground` -> `hold_ground` -> `flee`).
+2. **Response Choke Point (`scripts/UnitCombat.gd`)**:
+   Executes the priority response chain (`respond_chase` -> `hold_ground` -> `flee`).
+   Governs whether counter-attacks trigger active pursuit or strict defensive engagement within the unit's local boundary.
 
-3. **Abandon / Leash Choke Point (`UnitMovement.gd`)**:
+3. **Abandon / Leash Choke Point (`scripts/Unit.gd`)**:
    Monitors distance from `held_position`;
    when distance exceeds `leash_radius_m`, the unit breaks engagement and returns to `held_position`.
 
@@ -64,7 +66,11 @@ Every order in the unit order stream carries an explicit `is_forced: bool` field
    Publish `docs/order-stances-flags-table-design.md` (this document) defining schemas and flags.
 
 2. **Phase 2 (Choke Point Refactoring)**:
-   Extract stance evaluations in `scripts/Unit.gd` into the three choke points reading `STANCE_PROFILES`.
+   Extract stance evaluations across `scripts/Unit.gd`, `scripts/UnitTargeting.gd`, and `scripts/UnitCombat.gd` into the three choke points reading `STANCE_PROFILES`.
 
 3. **Phase 3 (Leash Anchor & Order Tagging)**:
    Record `held_position` on player move arrival and tag player orders with `is_forced = true`.
+
+4. **Verification & Replay Regression Safety**:
+   Verify byte-for-byte behavioral preservation across all stance test scenarios (`test/unit/test_unit_order_mode.gd`, `test/unit/test_unit_targeting.gd`).
+   Run machine-readable state dumps (`tools/demo/dump-state.sh`) across existing stance demo scripts (`demos/inputs/stance-*.json`) to ensure zero deviation in unit positions, target assignments, and combat resolution ticks.
