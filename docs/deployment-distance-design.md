@@ -18,24 +18,24 @@ Ancient Mediterranean armies did not deploy within a stone's throw of one anothe
   at Mantinea the Spartans stepped off slowly to the music of many flute players for exactly that reason (Thucydides 5.70).
   The run came only at the end.
   At Cunaxa the Greek line raised the war cry and broke into a run as it closed (*Anabasis* 1.8.18),
-  and modern reconstructions put that final run at roughly the last hundred metres or less,
-  with a Roman line closing behind a pilum volley thrown from within some twenty metres (Hanson 1989; Goldsworthy 1996).
+  and modern reconstructions keep the hoplite run to the last stretch of the approach rather than the whole of it (Hanson 1989),
+  while a Roman line closed behind a pilum volley thrown from within some twenty metres (Goldsworthy 1996).
 
 - **Skirmisher screening**:
   The opening minutes belonged to the light troops (*velites*, *psiloi*, *peltasts*), who contested the ground between the lines and withdrew through the intervals as the heavy infantry closed.
   Polybius has both Cannae and Zama open this way (3.115; 15.9-12),
-  and Livy's account of the manipular legion has the light troops open the fight in front of the line and the heavy ranks behind them retire through the intervals (8.8).
+  and Livy's account of the manipular legion has the front line open the fight and, if repulsed, fall back through the intervals of the line behind it (8.8).
 
 Sources: Xenophon, *Anabasis* 1.8.17-18;
 Thucydides, *History of the Peloponnesian War* 5.70;
 Polybius, *Histories* 3.115 and 15.9-12;
 Livy, *Ab Urbe Condita* 8.8;
-V. D. Hanson, *The Western Way of War* (1989);
-A. Goldsworthy, *The Roman Army at War 100 BC-AD 200* (1996).
+Victor Davis Hanson, *The Western Way of War* (1989);
+Adrian Goldsworthy, *The Roman Army at War 100 BC-AD 200* (1996).
 
 ## Where the game stands today
 
-The design below is a set of deltas against the current build, so the baseline comes first.
+The design is a set of deltas against the current build, so this section records the baseline.
 World scale is 20 wu per metre (`WorldScale.WU_PER_M`).
 
 - **Field and deployment**:
@@ -104,14 +104,17 @@ the promotion has to read as deliberate, and the march has to be worth watching 
 
 - **What the promotion looks like, and how to check it.**
   Because the far-tier render already draws the block's marks on its grid, the promotion changes neither the footprint nor the head count.
-  What changes is that each mark becomes a body scattered within a quarter of the slot pitch of its slot (about 2 wu, 11 cm, at infantry's 0.45 m pitch) and then eases back onto it.
+  What changes is that each mark becomes a body scattered within a quarter of the live slot pitch of its slot and then eases back onto it:
+  infantry in normal order form at twice the 0.45 m base pitch, so about 4.5 wu (22 cm);
+  spearmen in tight order at the base pitch, about 2 wu (11 cm);
+  archers in loose order at four times it, about 9 wu (45 cm).
   That is a small shiver, not a pop-in.
   Whether it reads cleanly at the default battle zoom and at the demo recorder's usual close and wide zooms is an empirical question, so Phase 2 answers it the way every demo is verified:
   record a far-deployment scenario through a demo input script's `map` block, dump per-tick state around the promotion tick, and run the standard demo defect checklist (pulsing, facing surge, rank swapping) across it.
 
 - **Where to stage it if it does not read cleanly.**
   `PROMOTE_RANGE` is not the knob.
-  It is pinned from below by the detection-plus-charge floor and from above by the measured close-tier budget, so moving it means re-running the benchmark sweep and echelon pair and updating that doc's recorded numbers.
+  It is pinned from below by the detection-plus-charge floor and from above by the measured close-tier budget, so moving it means re-running the benchmark sweep and echelon pair and updating the recorded numbers in `docs/large-scale-simulation-design.md`.
   The presentation knobs are `TierTransition.SCATTER_FRACTION` (a smaller scatter makes the promotion invisible, at the cost of a parade-exact reappearance) and, if the shiver itself is the problem, carrying the same seeded scatter into the far-tier marks so the marks and the bodies they become sit in the same places.
   Either is render-side or a single constant, and neither touches the tier thresholds.
 
@@ -183,7 +186,7 @@ A setup preset decides how far apart the armies start, fast-forward decides how 
   Answered by construction and by measurement:
   the far-tier render keeps footprint and head count continuous, so the transition is a sub-pitch shiver, and Phase 2 verifies it by state dump and clip at the usual zooms.
   The thresholds stay where the benchmark put them;
-  `SCATTER_FRACTION` and the far-tier marks are the staging knobs if the shiver reads.
+  `SCATTER_FRACTION` and the far-tier marks are the staging knobs if the shiver is visible.
 
 - **Which of a paced AI advance, a time-acceleration control, or a setup-time engagement range comes first?**
   All three, in this order:
@@ -197,12 +200,12 @@ A setup preset decides how far apart the armies start, fast-forward decides how 
   Owned by the preset:
   grow the field downward from the spawn anchor by the preset's gap, with the default untouched so the demo catalog needs no retiming.
 
-Deferred, each to its own issue when its phase opens:
-the per-gait stamina flow and the far-tier gait that a jog approach needs;
-the skirmisher-screen subcommander directive;
-a charge-distance retune once sprinting costs stamina;
-per-clash deployment distances for campaign battles;
-and any longer-range missile model.
+Deferred, each tracked in its own issue:
+the per-gait stamina flow and the far-tier gait that a jog approach needs ([#1466](https://github.com/Lacaedemon/sparta/issues/1466));
+the skirmisher-screen subcommander directive ([#1467](https://github.com/Lacaedemon/sparta/issues/1467));
+a charge-distance retune once sprinting costs stamina ([#1468](https://github.com/Lacaedemon/sparta/issues/1468));
+per-clash deployment distances for campaign battles ([#1469](https://github.com/Lacaedemon/sparta/issues/1469));
+and any longer-range missile model ([#1470](https://github.com/Lacaedemon/sparta/issues/1470)).
 
 ## Implementation roadmap
 
@@ -211,7 +214,7 @@ and any longer-range missile model.
 
 2. **Phase 2 (far-tier opening verified as a presented feature)**:
    Author a far-deployment demo input script using the `map` block, dump state around the promotion tick, run the standard defect checklist, and record the verdict in this document;
-   adjust `SCATTER_FRACTION` or the far-tier marks only if the shiver reads.
+   adjust `SCATTER_FRACTION` or the far-tier marks only if the shiver is visible.
    Optionally spawn directly at `FormationTier.FAR` for units that would demote on tick one.
 
 3. **Phase 3 (fast-forward)**:
