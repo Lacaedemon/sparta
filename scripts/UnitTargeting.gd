@@ -53,7 +53,7 @@ static func nearest_routing_enemy(u: Unit) -> Unit:
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		var d_sq: float = u.position.distance_squared_to(other.position)
 		if d_sq <= max_radius_sq:
-			if best_router == null or d_sq < best_router_d_sq or (is_equal_approx(d_sq, best_router_d_sq) and other.uid < best_router.uid):
+			if best_router == null or d_sq < best_router_d_sq or (d_sq == best_router_d_sq and other.uid < best_router.uid):
 				best_router_d_sq = d_sq
 				best_router = other
 
@@ -103,7 +103,7 @@ static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 			var d_sq: float = center.distance_squared_to(other.position)
 			if d_sq <= max_radius_sq:
-				if best == null or d_sq < best_d_sq or (is_equal_approx(d_sq, best_d_sq) and other.uid < best.uid):
+				if best == null or d_sq < best_d_sq or (d_sq == best_d_sq and other.uid < best.uid):
 					best_d_sq = d_sq
 					best = other
 	return best
