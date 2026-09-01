@@ -138,6 +138,7 @@ static func current_engaged_fraction(u: Unit) -> float:
 
 	# Find candidate enemy units in physical contact/striking range of u.
 	var defenders: Array[Unit] = []
+	var has_live_enemy_in_tree: bool = false
 	if u.is_inside_tree():
 		var tree: SceneTree = u.get_tree()
 		if tree != null:
@@ -147,14 +148,19 @@ static func current_engaged_fraction(u: Unit) -> float:
 				var other: Unit = o as Unit
 				if other == null or other == u or other.team == u.team or other.state == Unit.State.DEAD:
 					continue
+				has_live_enemy_in_tree = true
 				var contact: float = maxf(u.attack_range, other.attack_range) + Unit.RADIUS + other.RADIUS
 				# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 				if u.position.distance_squared_to(other.position) <= contact * contact:
 					defenders.append(other)
 
-	# If no enemy units exist in the tree (e.g. synthetic single-unit test fixtures where
-	# u is marked fighting without enemies), fall back to the formation-shape selection.
-	if defenders.is_empty():
+	# If live enemy units exist in the tree but none are within physical contact distance,
+	# the unit has 0.0 soldiers actively in contact (e.g. disengaged during linger window).
+	if has_live_enemy_in_tree:
+		if defenders.is_empty():
+			return 0.0
+	else:
+		# Synthetic single-unit test fixtures where u is marked fighting with no enemy units in tree.
 		if u.is_engaged():
 			var engaged_indices: PackedInt32Array = u.engaged_soldier_indices(total)
 			return float(engaged_indices.size()) / float(total)
