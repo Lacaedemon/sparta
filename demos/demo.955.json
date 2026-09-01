@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/multiple-engage-target-cycling.json",
+  "caption": "Range queries with enter/exit diffs and anti-dogpile scoring (#955): event-driven detection, query diff updates, and distributed target selection.",
+  "fixed_fps": 30,
+  "max_frames": 350,
+  "fps": 20,
+  "width": 640
+}
