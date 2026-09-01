@@ -48,9 +48,9 @@ class StanceFlags extends RefCounted:
 		allow_intermixing = p_allow_intermix
 		default_leash_radius = p_leash
 
-static var _DEFAULT := StanceFlags.new()
+static var _default := StanceFlags.new()
 
-static var _TABLE: Dictionary = {
+static var _table: Dictionary = {
 	# NORMAL (0): standard aggressive stance, advances on near foes, allows intermix
 	0: StanceFlags.new(true, true, false, false, false, false, false, false, false, false, true, true, 0.0),
 	# HOLD (1): holds ground, no auto-advance, no intermixing, defends only in place
@@ -94,7 +94,7 @@ static var _TABLE: Dictionary = {
 }
 
 static func get_flags(mode: int) -> StanceFlags:
-	return _TABLE.get(mode, _DEFAULT)
+	return _table.get(mode, _default)
 
 static func can_auto_advance(mode: int) -> bool:
 	return get_flags(mode).auto_advance
