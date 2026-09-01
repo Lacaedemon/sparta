@@ -143,12 +143,11 @@ static func current_engaged_fraction(u: Unit) -> float:
 		if tree != null:
 			var candidates: Array = tree.get_nodes_in_group("units")
 			candidates.append_array(tree.get_nodes_in_group("routers"))
-			var u_r: float = u.attack_range + Unit.RADIUS
 			for o in candidates:
 				var other: Unit = o as Unit
 				if other == null or other == u or other.team == u.team or other.state == Unit.State.DEAD:
 					continue
-				var contact: float = u_r + other.attack_range + other.RADIUS
+				var contact: float = maxf(u.attack_range, other.attack_range) + Unit.RADIUS + other.RADIUS
 				# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 				if u.position.distance_squared_to(other.position) <= contact * contact:
 					defenders.append(other)
@@ -169,8 +168,14 @@ static func current_engaged_fraction(u: Unit) -> float:
 		var engaged_indices: PackedInt32Array = u.engaged_soldier_indices(total)
 		return float(engaged_indices.size()) / float(total)
 
+	var u_candidates: PackedInt32Array = u.contact_soldier_indices(n_pos)
+	if u_candidates.is_empty():
+		u_candidates = u.engaged_soldier_indices(n_pos)
+	if u_candidates.is_empty():
+		return 0.0
+
 	var in_reach_count: int = 0
-	for i in range(n_pos):
+	for i in u_candidates:
 		if i < u._sim_soldier_hp.size() and u._sim_soldier_hp[i] <= 0.0:
 			continue
 		var p_u: Vector2 = u._sim_soldier_pos[i]
@@ -181,7 +186,10 @@ static func current_engaged_fraction(u: Unit) -> float:
 			var max_dist: float = r_u + r_d + maxf(reach_u, reach_d)
 			var max_dist_sq: float = max_dist * max_dist
 			var d_n_pos: int = d._sim_soldier_pos.size()
-			for j in range(d_n_pos):
+			var d_candidates: PackedInt32Array = d.contact_soldier_indices(d_n_pos)
+			if d_candidates.is_empty():
+				d_candidates = d.engaged_soldier_indices(d_n_pos)
+			for j in d_candidates:
 				if j < d._sim_soldier_hp.size() and d._sim_soldier_hp[j] <= 0.0:
 					continue
 				# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt

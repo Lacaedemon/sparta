@@ -278,11 +278,13 @@ func test_current_engaged_fraction_low_on_light_flank_graze() -> void:
 	enemy.max_soldiers = 2
 	add_child_autofree(enemy)
 	enemy.soldiers = 2
-	# Place enemy near the rightmost soldier of u
+	# Place enemy near the rightmost soldier of u and pin its soldier position directly
 	var right_soldier_pos: Vector2 = u._sim_soldier_pos[9]
 	enemy.position = right_soldier_pos + Vector2(0, 15)
 	enemy.facing = Vector2.UP
 	enemy.seed_sim_soldiers()
+	if not enemy._sim_soldier_pos.is_empty():
+		enemy._sim_soldier_pos[0] = right_soldier_pos + Vector2(0, 10)
 	enemy.state = Unit.State.FIGHTING
 	enemy.tick_engaged(0.0)
 
