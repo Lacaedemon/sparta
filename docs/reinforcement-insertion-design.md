@@ -129,7 +129,9 @@ Runs once, inside the physics tick, and does five things in order.
    The arrays to carry, all index-aligned with `_sim_soldier_pos`: `_sim_body_vel`, `_sim_steer`, `_sim_soldier_hp`, `_sim_prone`, `_sim_soldier_stamina`, `_sim_soldier_broken`, `_sim_soldier_weapon_id`, `_sim_soldier_shield_id`, `_sim_soldier_shield_hold_angle`, `_sim_soldier_facing`, and the two render-only progress arrays.
    `_sim_soldier_square_slot` and `_sim_soldier_row_slot` stay empty, since a file-major host never holds them.
    For the arrays reap trims, this mirrors `SoldierMelee.reap` in reverse: reap removes one index from each, and commit appends one entry to each at the tail.
-   `_sim_soldier_facing` and the two render-only progress arrays are not trimmed by reap; they resize lazily on the next body step or draw whenever their length no longer matches the soldier count, and commit can leave them to the same self-healing.
+   `_sim_soldier_facing` and the two render-only progress arrays are not trimmed by reap;
+   they resize lazily on the next body step or draw whenever their length no longer matches the soldier count,
+   and commit can leave them to the same self-healing.
 
 3. **Install the assignment** through a new `Unit.install_file_assignment(file_ids, ranks, files)` setter that writes `_sim_soldier_file`, `_sim_soldier_rank`, `_file_assignment_files`, and `frontage_override` together.
    Writing `_file_assignment_files` is what stops `_ensure_file_assignment` from re-dealing the files by lateral order on the next slot query and undoing the interleave;
