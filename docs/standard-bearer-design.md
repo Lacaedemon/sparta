@@ -1,7 +1,7 @@
 # Design note: Standard-bearer (formation anchor, visual hierarchy, and casualty succession)
 
 Status: **design drafted** -- establishes architectural and historical grounding for the regimental standard-bearer mechanic.
-Builds on [#820](https://github.com/Lacaedemon/sparta/issues/820) and ties into [#821](https://github.com/Lacaedemon/sparta/issues/821) (the position-anchor options) and [#818](https://github.com/Lacaedemon/sparta/pull/818) (where a front-rank-midpoint anchor was tried and reverted).
+Builds on [#820](https://github.com/Lacaedemon/sparta/issues/820) and ties into [#821](https://github.com/Lacaedemon/sparta/issues/821) (the position-anchor question, closed 2026-07-15 and implemented in [#861](https://github.com/Lacaedemon/sparta/pull/861) as a two-rank near-front anchor) and [#818](https://github.com/Lacaedemon/sparta/pull/818) (where a front-rank-midpoint anchor was tried and reverted).
 
 ## Historical background
 
@@ -39,11 +39,13 @@ Thucydides, *History of the Peloponnesian War* V.70.
 - The designated slot defaults to the center file of the front rank, identified by its (rank, file) cell rather than by a raw slot index,
   because the index-to-cell mapping differs per layout:
   the default row-major block layout (`UnitFormation.block_slots`: `file = i % files`, `rank = i / files`) puts that cell at index `floor(files / 2)`,
+  a hold-ground reform permutes that same grid through `_sim_soldier_row_slot` (which `SoldierMelee.reap()` trims on casualties exactly as it trims the square slots),
   the square/schiltron layout permutes the grid through `_sim_soldier_square_slot`,
   and file-major reform reads `_sim_soldier_file` / `_sim_soldier_rank` directly --
   so the bearer resolves through whichever layout `Unit.formation_slots` is currently producing.
 
-- Formation anchoring is unchanged by this design, which settles #820's first open question: the standard-bearer complements, and does not replace, the position-anchor options enumerated in #821 (the front-rank-midpoint anchor tried in #818 was reverted there and redirected to #821).
+- Formation anchoring is unchanged by this design, which settles #820's first open question: the standard-bearer complements, and does not replace, the position anchor that #821 settled and #861 shipped (`Unit.ANCHOR_RANKS = 2`, the near-front anchor computed by `Unit.near_front_soldier_indices()`);
+  the front-rank-midpoint anchor tried in #818 was reverted there and redirected to #821.
   Formation slots remain a pure function of `Unit.position`, facing, and soldier count (`Unit.formation_slots` -> `soldier_world_slots`), and soldier bodies are steered onto those slots -- so the bearer's own body position is an output of dressing, and using it as the dressing input would be circular.
   The carried standard is the visual embodiment of the unit's anchor, not its source of truth.
 
