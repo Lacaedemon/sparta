@@ -30,6 +30,15 @@ func test_stance_table_flags_sanity() -> void:
 	assert_true(StanceTable.has_multi_engage_reflow(16), "16 has multi engage reflow")
 	assert_true(StanceTable.has_flank_wrap(19), "19 has flank wrap")
 	assert_true(StanceTable.is_march_to_contact(17), "17 is march to contact")
+	assert_true(StanceTable.should_chase(11), "11 is chase")
+	assert_true(StanceTable.can_acquire_visible(0), "0 can acquire visible")
+	assert_false(StanceTable.can_acquire_visible(1), "1 cannot acquire visible")
+	assert_true(StanceTable.can_auto_advance(0), "0 can auto advance")
+	assert_false(StanceTable.can_auto_advance(1), "1 cannot auto advance")
+	assert_true(StanceTable.allows_intermixing(0), "0 allows intermixing")
+	assert_false(StanceTable.allows_intermixing(1), "1 disallows intermixing")
+	assert_eq(StanceTable.default_leash(9), 300.0, "pin down default leash is 300")
+	assert_eq(StanceTable.default_leash(0), 0.0, "normal default leash is 0")
 
 func test_unit_held_position_and_leash_initialization() -> void:
 	var u := Unit.new()
