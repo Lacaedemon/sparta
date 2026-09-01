@@ -228,7 +228,7 @@ func test_current_engaged_fraction_zero_when_not_engaged() -> void:
 
 
 func test_current_engaged_fraction_measures_real_per_soldier_contact_with_enemy_unit() -> void:
-	# Unit u (40 spearmen) facing down at (500, 300)
+	# Unit u (40 infantry) facing down at (500, 300)
 	var u: Unit = Unit.new()
 	u.uid = 1
 	u.team = 0
