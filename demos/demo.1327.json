@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/file-doubling.json",
+  "caption": "Unit reshaping vs. formal maneuvers analysis (#1327): duplicatio and explicatio drill execution, subunit integrity, and cohesion dynamics.",
+  "fixed_fps": 30,
+  "max_frames": 350,
+  "fps": 20,
+  "width": 640
+}
