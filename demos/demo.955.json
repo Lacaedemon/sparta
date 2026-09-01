@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Revert of #1460: removes scripts/RangeQueries.gd and its tests, which nothing in the battle loop referenced, so nothing player-visible changes and no recorded battle can show the difference."
+}
