@@ -3235,10 +3235,10 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
 		return true
-	# FLANKING_MANEUVER, once engaged with the enemy: hold the line facing so the unit
+	# FLANKING_MANEUVER, while in active melee combat with the enemy: hold the line facing so the unit
 	# maintains its forward engagement while the outer wings envelop the enemy flanks,
 	# rather than rotating off-axis as wing soldier collisions jostle.
-	if order_mode == ORDER_FLANKING_MANEUVER and is_engaged():
+	if order_mode == ORDER_FLANKING_MANEUVER and state == State.FIGHTING:
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
 		return true

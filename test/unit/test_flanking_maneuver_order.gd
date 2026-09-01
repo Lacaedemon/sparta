@@ -119,6 +119,18 @@ func test_face_for_action_settles_an_in_progress_turn_when_flanking_maneuver_tak
 		"picking up FLANKING_MANEUVER mid-turn settles the in-progress engage turn")
 
 
+func test_face_for_action_does_not_hold_facing_outside_fighting_state_even_if_linger_active() -> void:
+	var u := _make_unit()
+	u.uid = 1
+	u.state = Unit.State.MOVING
+	u.tick_engaged(0.1) # linger timer is active
+	u.order_mode = Unit.ORDER_FLANKING_MANEUVER
+	var far_point := Vector2(500.0, 0.0)
+	var faced: bool = u._face_for_action(far_point, 0.1)
+	assert_false(faced, "not fighting: facing is not held and turn is armed")
+	assert_ne(u._engage_turn_target, Vector2.ZERO, "engage turn target is armed for movement")
+
+
 # --- Frontage reflow in _flanking_maneuver_reflow ----------------------------
 
 func test_flanking_maneuver_reflow_widens_frontage_beyond_enemy_frontage() -> void:

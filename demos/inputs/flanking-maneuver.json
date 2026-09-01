@@ -20,9 +20,5 @@
     { "tick": [10, 300], "uid": 0, "field": "order_mode", "value": "Flanking maneuver" },
     { "tick": 10, "uid": 0, "field": "frontage", "value": 8 },
     { "tick": 240, "uid": 0, "field": "frontage", "value": 12 }
-  ],
-  "fixed_fps": 30,
-  "max_frames": 300,
-  "fps": 20,
-  "width": 640
+  ]
 }
