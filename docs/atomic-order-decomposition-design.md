@@ -286,6 +286,14 @@ not to start a foundational refactor with reduced context budget remaining).
   itself needed no changes for it. This question is really about a FUTURE
   composite whose children are queued (not-yet-current) orders on the SAME
   unit, which nothing built so far exercises.
+  **Exercised by the `COMBO` composite** (`Unit.begin_combo`,
+  `orders-queue-design.md`'s "Macro expansion"): its children are exactly such
+  same-unit, not-yet-current steps, and `retire_current_order` still needed no
+  change -- the promotion happens inside `_advance_order_tree`'s cascade, which
+  arms the promoted step itself (`_arm_combo_step`) and cascades straight
+  through an instantaneous one. What that settles is the drill-primitive case;
+  a composite whose children are MARCH legs (needing `_start_promoted_move`'s
+  commit) is still the open half.
 - Is `Order.Phase` fully removable once the two composites currently using it
   are ported, or does something else (transcript format stability for
   existing replays, a test) still expect it to exist?

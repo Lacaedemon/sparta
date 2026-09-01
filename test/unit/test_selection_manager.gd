@@ -501,6 +501,10 @@ func test_key_label_uses_glyphs_for_brackets_and_escape() -> void:
 	assert_eq(sm._key_label(_key_event(KEY_ESCAPE)), "Esc", "escape shows as Esc")
 	assert_eq(sm._key_label(_key_event(KEY_T)), "T", "a letter shows as itself")
 	assert_eq(sm._key_label(_key_event(KEY_1, true)), "Ctrl+1", "a chorded digit shows the modifier")
+	assert_eq(sm._key_label(_key_event(KEY_E, false, true)), "Shift+E",
+		"a Shift chord shows its modifier too (the turn-and-double combo vs the plain quarter-turn)")
+	assert_eq(sm._key_label(_key_event(KEY_V, true, true)), "Ctrl+Shift+V",
+		"a double chord lists both modifiers, Ctrl first")
 
 
 func test_take_keys_this_tick_drains_the_buffer() -> void:

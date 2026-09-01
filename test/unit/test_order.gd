@@ -17,6 +17,8 @@ func test_type_name_maps_every_known_type() -> void:
 	assert_eq(Order.type_name(Order.Type.QUARTER_TURN), "QUARTER_TURN")
 	assert_eq(Order.type_name(Order.Type.STANCE), "STANCE")
 	assert_eq(Order.type_name(Order.Type.FORM_UP), "FORM_UP")
+	assert_eq(Order.type_name(Order.Type.SWITCH_WEAPON), "SWITCH_WEAPON")
+	assert_eq(Order.type_name(Order.Type.COMBO), "COMBO")
 
 
 func test_phase_name_maps_every_known_phase() -> void:
@@ -175,3 +177,54 @@ func test_describe_orders_phase_before_guard() -> void:
 	var o := Order.new_move(Vector2(1, 1)).with_guard(Order.Guard.ENEMY_IN_RANGE)
 	o.phase = Order.Phase.MARCH
 	assert_eq(o.describe(), "MOVE:MARCH until ENEMY_IN_RANGE")
+
+
+# --- COMBO composite and the relative file-double step -----------------------------------
+
+func test_new_file_double_is_a_relative_unresolved_frontage_step() -> void:
+	var widen := Order.new_file_double(1)
+	assert_eq(widen.type, Order.Type.FRONTAGE)
+	assert_eq(widen.dir, 1, "explicatio marks the step +1")
+	assert_eq(widen.frontage, -1, "the absolute count stays unresolved until the step arms")
+	var narrow := Order.new_file_double(-3)
+	assert_eq(narrow.dir, -1, "any negative direction normalizes to a duplicatio (-1)")
+
+
+func test_new_combo_links_every_step_back_to_the_composite() -> void:
+	var turn := Order.new_quarter_turn(1)
+	var widen := Order.new_file_double(1)
+	var steps: Array[Order] = [turn, widen]
+	var combo := Order.new_combo(steps)
+	assert_eq(combo.type, Order.Type.COMBO)
+	assert_eq(combo.children.size(), 2)
+	assert_eq(combo.children[0], turn, "steps keep their issue order")
+	assert_eq(combo.children[1], widen)
+	assert_eq(turn.parent, combo, "each step points back at the composite")
+	assert_eq(widen.parent, combo)
+	assert_eq(combo.active_leaf(), turn, "the cursor starts on the first step")
+
+
+func test_combo_effective_phase_reports_the_active_step_itself() -> void:
+	# A combo's steps carry no positional meaning, so the transcript's order_phase names the
+	# step (its type) rather than the rear-move composites' by-position TURN/RETURN_TURN.
+	var steps: Array[Order] = [Order.new_about_face(), Order.new_quarter_turn(-1)]
+	var combo := Order.new_combo(steps)
+	assert_eq(combo.effective_phase_name(), "ABOUT_FACE")
+	combo._active_child = 1
+	assert_eq(combo.effective_phase_name(), "QUARTER_TURN",
+		"the second step is NOT reported as a RETURN_TURN, unlike a lateral pivot's last child")
+
+
+func test_combo_round_trips_through_the_snapshot_dict() -> void:
+	var steps: Array[Order] = [Order.new_quarter_turn(-1), Order.new_file_double(1)]
+	var combo := Order.new_combo(steps)
+	combo._active_child = 1
+	var rebuilt := Order.from_dict(combo.to_dict())
+	assert_eq(rebuilt.type, Order.Type.COMBO)
+	assert_eq(rebuilt.children.size(), 2)
+	assert_eq(rebuilt._active_child, 1, "the cursor survives the round trip")
+	assert_eq(rebuilt.children[0].type, Order.Type.QUARTER_TURN)
+	assert_eq(rebuilt.children[0].dir, -1)
+	assert_eq(rebuilt.children[1].type, Order.Type.FRONTAGE)
+	assert_eq(rebuilt.children[1].dir, 1, "the relative file-double marker survives too")
+	assert_eq(rebuilt.children[1].parent, rebuilt, "children re-link to the rebuilt composite")

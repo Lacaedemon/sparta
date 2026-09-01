@@ -379,6 +379,16 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_V:
 		_issue_conversio()   # conversio: every soldier reverses 180° in place
 		return true
+	elif event.keycode == KEY_Q and event.shift_pressed:
+		# Shift+Q / Shift+E: the quarter-turn -> explicatio combo -- the same turn as the
+		# plain key, then the block doubles the frontage it presents once turned. Shares
+		# Q/E with the bare drill since every plain letter is already claimed (the same
+		# reuse-with-a-modifier convention as the Shift/Ctrl+V countermarch variants).
+		_issue_turn_explicatio(-1)
+		return true
+	elif event.keycode == KEY_E and event.shift_pressed:
+		_issue_turn_explicatio(1)
+		return true
 	elif event.keycode == KEY_Q:
 		_issue_quarter_turn(-1)   # quarter-turn left: every soldier pivots 90° CCW
 		return true
@@ -1344,6 +1354,28 @@ func _issue_countermarch(variant: int) -> void:
 	if uids.is_empty():
 		return
 	_battle.enqueue_countermarch(uids, variant)
+	Sfx.play(&"order")
+
+
+## Quarter-turn -> explicatio combo (Shift+Q / Shift+E): each selected friendly unit
+## quarter-turns in place to `dir`'s side (-1 left / +1 right, as the plain Q/E drill) and,
+## the moment the turn completes, doubles the frontage it now presents. UNLIKE the plain
+## quarter-turn -- visual-only, never recorded -- the explicatio reshapes the block, which
+## the sim reads, so the combo goes through the recorded order path
+## (Battle.enqueue_turn_explicatio), the same as a file-double or a countermarch. Blocked
+## during replay playback; combat-engaged or already-maneuvering units ignore it in
+## Unit.quarter_turn_explicatio() (_can_drill()).
+func _issue_turn_explicatio(dir: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = []
+	for unit in _selected:
+		if is_instance_valid(unit) and _is_own_team(unit.team):
+			uids.append(unit.uid)
+	if uids.is_empty():
+		return
+	_battle.enqueue_turn_explicatio(uids, dir)
+	_refresh_hud()
 	Sfx.play(&"order")
 
 
@@ -2472,7 +2504,9 @@ func _note_key(label: String) -> void:
 
 
 ## Short on-screen label for a pressed hotkey: a glyph for the brackets, "Esc" for escape,
-## the bare letter/digit otherwise (prefixed "Ctrl+" when chorded).
+## the bare letter/digit otherwise -- prefixed "Ctrl+" and/or "Shift+" when chorded, so the
+## replay flash tells a Shift+E turn-and-double from a plain E quarter-turn (and a Shift+V
+## countermarch from a plain V conversio) the way the player's own hands did.
 func _key_label(event: InputEventKey) -> String:
 	if event.keycode == KEY_BRACKETLEFT:
 		return "["
@@ -2481,9 +2515,14 @@ func _key_label(event: InputEventKey) -> String:
 	if event.keycode == KEY_ESCAPE:
 		return "Esc"
 	var s: String = OS.get_keycode_string(event.keycode)
-	if s.length() == 1 and event.ctrl_pressed:
-		return "Ctrl+" + s
-	return s
+	if s.length() != 1:
+		return s
+	var prefix: String = ""
+	if event.ctrl_pressed:
+		prefix += "Ctrl+"
+	if event.shift_pressed:
+		prefix += "Shift+"
+	return prefix + s
 
 
 ## Replay-only: draw the recorded pointer for the current tick — selection halos on the

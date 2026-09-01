@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/turn-explicatio-combo.json",
+  "caption": "Quarter-turn -> explicatio combo (#376, Shift+Q / Shift+E): an Infantry column 5 files wide and 8 deep, facing south, is ordered through the chained maneuver with one Shift+Q press. The men quarter-turn left in place -- nobody moves, the block now faces east with its long side (8 across, 5 deep) to the front -- and the instant the turn completes the explicatio fires against that NEW facing: the rear half of each file steps out sideways and the block unfolds into a 16-wide, 3-deep line. The frontage doubled relative to the direction the men now face, not relative to the grid they started in, which is what makes the chain a single drill rather than two unrelated keypresses. The far files walk about 135 wu to the line's ends, so the unfold takes ~7 s to settle; the regiment's anchor settles about a metre during it (the same one-time coupling settle a plain explicatio shows, larger here because the re-lay-out is) and is then still.",
+  "fixed_fps": 30,
+  "max_frames": 250,
+  "fps": 15,
+  "width": 640
+}

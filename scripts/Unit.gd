@@ -4711,8 +4711,7 @@ func conversio() -> void:
 	if not _can_drill():
 		return
 	var order := Order.new_about_face()
-	order.turn_start_facing = facing
-	order.turn_target = Vector2(-facing.x, -facing.y)
+	_arm_in_place_turn(order)
 	set_current_order(order)
 	_start_atomic_response()
 
@@ -4730,10 +4729,130 @@ func quarter_turn(dir: int) -> void:
 	if dir == 0 or not _can_drill():
 		return
 	var order := Order.new_quarter_turn(dir)
-	order.turn_start_facing = facing
-	order.turn_target = facing.rotated(signf(dir) * PI * 0.5)
+	_arm_in_place_turn(order)
 	set_current_order(order)
 	_start_atomic_response()
+
+
+## Arm a standalone in-place turn leaf (ABOUT_FACE or QUARTER_TURN) from the CURRENT
+## facing: the goal is a full reversal for an about-face, or a quarter turn to `order.dir`'s
+## side (-1 left / +1 right, Vector2.rotated's convention) for a quarter-turn. Shared by the
+## standalone drills above and by a combo arming its next step (_arm_combo_step), where
+## "current facing" is whatever the previous step left -- which is exactly why the goal is
+## read here, at arming time, and not at issue time.
+func _arm_in_place_turn(order: Order) -> void:
+	order.turn_start_facing = facing
+	if order.type == Order.Type.ABOUT_FACE:
+		order.turn_target = Vector2(-facing.x, -facing.y)
+	else:
+		order.turn_target = facing.rotated(signf(order.dir) * PI * 0.5)
+
+
+# --- Combos: drill primitives chained into one order ------------------------------------
+# docs/orders-queue-design.md, "Macro expansion". A combo is a COMBO composite whose children
+# are the atomic steps in order; the tree cursor walks them exactly as it walks a rear-move
+# composite's turn/reform/march children, and _advance_order_tree arms each promoted step
+# (see _arm_combo_step) instead of leaving that "commit" half to a per-composite caller.
+
+## The step kinds a combo may chain today: the two in-place turns, and a file-double (a
+## FRONTAGE step, relative -- Order.new_file_double -- or absolute). Closed on purpose, like
+## Order.Guard's vocabulary: a step's arming has to be written here (_arm_combo_step), so
+## an unlisted kind is refused up front rather than silently skipped mid-combo.
+const COMBO_STEP_TYPES: Array[int] = [
+	Order.Type.ABOUT_FACE, Order.Type.QUARTER_TURN, Order.Type.FRONTAGE,
+]
+
+
+## Chain `steps` (each a fresh, un-armed Order of a COMBO_STEP_TYPES kind) into one COMBO
+## order and start it: installs the composite as current_order, arms its first step, and
+## lets any instantaneous opening step (a file-double) cascade straight into the next.
+## Gated like every standalone drill (_can_drill: idle, bodies seeded, nothing else in
+## flight); returns false -- installing nothing -- when refused, when `steps` is empty, or
+## when any step is not a supported kind (a push_error names it, since a caller building an
+## unsupported chain is a programming error, not a battlefield refusal).
+func begin_combo(steps: Array[Order]) -> bool:
+	if steps.is_empty() or not _can_drill():
+		return false
+	for step in steps:
+		if not COMBO_STEP_TYPES.has(step.type):
+			push_error("Unit.begin_combo: unsupported combo step %s" % Order.type_name(step.type))
+			return false
+	var combo := Order.new_combo(steps)
+	set_current_order(combo)
+	_start_atomic_response()
+	var first: Order = combo.children[0]
+	if not _arm_combo_step(first):
+		# An instantaneous opening step is already spent: cascade onto the next one (or
+		# retire the whole combo, when that was its only step).
+		_advance_order_tree(first)
+	return true
+
+
+## The first concrete combo (docs/orders-queue-design.md): a quarter-turn to `dir`'s side
+## (-1 left / +1 right, as quarter_turn), then an explicatio measured against the NEW facing
+## -- the frontage the block presents after turning (its old depth) doubles, and its new
+## depth (the old frontage) halves. A column marching by files quarter-turns to bring its
+## long side to the front and then unfolds into line; the one gesture historically combines
+## the two evolutions. Recorded (Battle.enqueue_turn_explicatio / ORDER_TURN_EXPLICATIO):
+## unlike the visual-only quarter-turn drill, the explicatio reshapes the block, which the
+## sim reads, so it must replay -- the same reasoning as a countermarch or a file-double.
+func quarter_turn_explicatio(dir: int) -> bool:
+	if dir == 0:
+		return false
+	var steps: Array[Order] = [Order.new_quarter_turn(dir), Order.new_file_double(1)]
+	return begin_combo(steps)
+
+
+## Arm `step` -- just promoted to the combo's active child -- from the unit's state at this
+## moment. Returns true when the step now runs over the coming ticks (an in-place turn,
+## driven by _think's is_order_turning() branch until _finish_order_turn cascades past it),
+## or false when it completed on arming (a file-double: applied at once, exactly as
+## Battle._apply_order_cmd applies a standalone FRONTAGE command), so the caller keeps
+## cascading. An unsupported kind never reaches here -- begin_combo refuses the chain.
+func _arm_combo_step(step: Order) -> bool:
+	match step.type:
+		Order.Type.ABOUT_FACE, Order.Type.QUARTER_TURN:
+			_arm_in_place_turn(step)
+			return true
+		Order.Type.FRONTAGE:
+			_apply_file_double_step(step)
+			return false
+		_:
+			push_error("Unit._arm_combo_step: unsupported combo step %s" % Order.type_name(step.type))
+			return false
+
+
+## Apply a combo's FRONTAGE step. A relative step (step.dir != 0) resolves its target file
+## count from the block's live width IN THE FRAME OF THE CURRENT FACING: a completed
+## quarter-turn leaves the slot grid laid along the PRE-turn axes (its rotation folded into
+## _formation_angle so nobody moved), so "frontage" -- the extent across the facing -- is
+## then the grid's RANK count, not its file count. Transposing first (UnitFormation.
+## transposed_files) and dropping the fold re-squares the grid to the new heading at the
+## same footprint, and the widen/narrow then lands across the direction the men now face.
+## Without the transposition an explicatio after a quarter-turn would double the grid's
+## files along what is now the block's DEPTH -- a duplicatio in everything but name. An
+## about-face fold (+-PI) needs no such step: files stay lateral under a half-turn. An
+## absolute step (dir == 0, `frontage` set) applies as-is. Either way the bodies ease onto
+## the reshaped slots at velocity (set_frontage); nothing snaps.
+func _apply_file_double_step(step: Order) -> void:
+	var files: int = step.frontage
+	if step.dir != 0:
+		var current: int = UnitFormation.frontage(self)
+		if _holds_quarter_fold():
+			current = UnitFormation.transposed_files(soldiers, current)
+			_formation_angle = 0.0
+			_render_dirty = true
+		files = UnitFormation.widened_files(soldiers, current) if step.dir > 0 \
+				else UnitFormation.narrowed_files(current)
+	set_frontage(files, step.frontage_anchor_offset)
+
+
+## True while the folded maneuver rotation is a quarter turn either way -- the grid is laid
+## a quarter off the heading, so its file axis runs along the block's depth. False for a
+## square grid (no fold) and for an about-face fold, whose file axis is still lateral.
+func _holds_quarter_fold() -> bool:
+	var angle: float = absf(wrapf(_formation_angle, -PI, PI))
+	return absf(angle - PI * 0.5) < 0.01
 
 
 ## Arm the in-place turn opening (or, on a second call, closing) a phased MOVE order,
@@ -4940,7 +5059,11 @@ func _settle_order_turn() -> void:
 ## "promote, then commit the promoted order's first tick" shape, just run one level higher
 ## in the tree instead of only ever at the queue's own head -- the caller still does the
 ## "commit" half itself, since what that means (arm a march, retire outright) depends on
-## the kind of step being promoted to.
+## the kind of step being promoted to. The one composite that commits its own promoted
+## step here is a COMBO (see begin_combo): its steps are self-contained drill primitives
+## with a single arming routine (_arm_combo_step), so the cascade arms each one as it is
+## promoted, and an instantaneous step is treated as spent at once so the cascade keeps
+## going -- the MOVE composites' turn/reform/march children are untouched by this branch.
 ##
 ## Stops at `current_order` specifically, not merely at a null `parent`: a per-unit order
 ## that belongs to a multi-unit form-up group has its own `parent` pointing at the shared
@@ -4958,7 +5081,19 @@ func _advance_order_tree(leaf: Order) -> void:
 		var parent: Order = node.parent
 		parent._active_child += 1
 		if parent._active_child < parent.children.size():
-			return
+			if parent.type != Order.Type.COMBO:
+				return
+			# A combo's steps are self-contained drill primitives, so the cascade arms the
+			# promoted step itself (the "commit" half the MOVE composites leave to their own
+			# callers): an in-place turn is now running and needs ticks, while an
+			# instantaneous step (a file-double) is spent on arming, so treat it as the
+			# just-completed leaf and keep cascading -- onto the next step, or out to the
+			# combo's own retirement when it was the last.
+			var next_step: Order = parent.children[parent._active_child]
+			if _arm_combo_step(next_step):
+				return
+			node = next_step
+			continue
 		node = parent
 	retire_current_order()
 
@@ -6332,9 +6467,12 @@ func order_summary() -> String:
 		if is_wheeling():
 			return "Wheeling"
 		if is_order_turning():
-			if current_order.type == Order.Type.QUARTER_TURN:
-				return "Quarter-turning"
-			return "About-facing"   # the V-key drill, or a rear move's turn phase
+			# Read the LEAF's type, not current_order's: a combo's turn step is a child of a
+			# COMBO order, and a rear move's turn phase a child of a MOVE order.
+			var turning: String = "Quarter-turning" \
+					if active_leaf().type == Order.Type.QUARTER_TURN \
+					else "About-facing"   # the V-key drill, or a rear move's turn phase
+			return _combo_step_summary(turning)
 		if _reform_holding():
 			# A REFORM leaf's hold: a plain move's reform-before-move pause, a form-up's
 			# reshape, or a rear-move composite's middle step (the ranks counter-march square
@@ -6352,6 +6490,17 @@ func order_summary() -> String:
 		if state == State.MOVING:
 			return "Advancing on enemy"
 	return "Holding position"
+
+
+## `text` (a running step's own order_summary wording) suffixed with its place in the
+## combo when current_order is a COMBO -- "Quarter-turning (step 1 of 2)" -- so the panel
+## says the drill is one beat of a chain rather than a standalone command; unchanged for
+## every other order.
+func _combo_step_summary(text: String) -> String:
+	if current_order == null or current_order.type != Order.Type.COMBO:
+		return text
+	return "%s (step %d of %d)" % [text, current_order._active_child + 1,
+			current_order.children.size()]
 
 
 ## Human-readable gait names for the HUD, keyed by the GAIT_* constants above.

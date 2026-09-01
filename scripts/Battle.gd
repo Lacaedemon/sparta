@@ -167,6 +167,16 @@ const ORDER_CANCEL_ONLY := -13
 # weapon switch carries no order_mode of its own, and "mode" is always recorded -- so the
 # replay format is unchanged. Handled like the stance-only order.
 const ORDER_SWITCH_WEAPON := -14
+# Sentinel for the quarter-turn -> explicatio combo (docs/orders-queue-design.md, "Macro
+# expansion"): each unit quarter-turns in place to the side carried in the "x" field (-1
+# left / +1 right, as the Q/E drill) and, the instant the turn completes, doubles the
+# frontage it now presents (an explicatio measured against the NEW facing). Unit.
+# quarter_turn_explicatio() builds and installs its own COMBO composite when the unit
+# stands idle, and no-ops otherwise -- the same refusal contract Unit.wheel()/
+# countermarch() have. UNLIKE the visual-only quarter-turn drill, the explicatio reshapes
+# the block, which the sim reads, so the combo IS recorded and replayed like a file-double
+# (see ORDER_FRONTAGE_ONLY / ORDER_COUNTERMARCH).
+const ORDER_TURN_EXPLICATIO := -15
 
 ## Order modes: the "stance" an order applies to its units. NORMAL is the
 ## standard move/attack behaviour. Stances are chosen by the player's armed
@@ -1839,6 +1849,25 @@ func enqueue_countermarch(uids: Array, variant: int) -> void:
 	_apply_order_live(cmd)
 
 
+## Quarter-turn -> explicatio combo: each selected unit quarter-turns in place to `dir`'s
+## side (-1 left / +1 right, the Q/E drill's own convention, riding in the "x" field) and
+## then doubles the frontage it presents after the turn. Recorded so replays reproduce
+## the reshape -- see ORDER_TURN_EXPLICATIO. Unit.quarter_turn_explicatio() derives the
+## whole chain from each unit's own live state, so no per-unit geometry is computed here.
+func enqueue_turn_explicatio(uids: Array, dir: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK or dir == 0:
+		return
+	var cmd := {
+		"units": uids,
+		"x": float(dir),
+		"y": 0.0,
+		"target": ORDER_TURN_EXPLICATIO,
+		"mode": OrderMode.NORMAL,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_live(cmd)
+
+
 ## Disengage and step back: each selected friendly unit currently in melee
 ## breaks contact and steps back a short, fixed distance, holding facing. Unlike
 ## enqueue_wheel/enqueue_countermarch, no per-unit geometry needs computing here --
@@ -2215,6 +2244,17 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 			var u: Unit = _unit_by_uid(int(uid))
 			if u != null:
 				u.countermarch(variant)
+		return
+	# Quarter-turn -> explicatio combo: the turn side rides in "x". Unit.
+	# quarter_turn_explicatio() builds its own COMBO composite (the turn, then the relative
+	# file-double resolved once the turn completes) when idle, and no-ops otherwise -- see
+	# ORDER_TURN_EXPLICATIO.
+	if target_uid == ORDER_TURN_EXPLICATIO:
+		var turn_dir: int = int(round(float(cmd["x"])))
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u != null:
+				u.quarter_turn_explicatio(turn_dir)
 		return
 	# Disengage and step back: each unit peels off its current fight and steps back a
 	# short distance, holding facing. Unit.disengage() creates its own order and no-ops
