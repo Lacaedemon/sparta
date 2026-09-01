@@ -49,3 +49,28 @@ func test_faction_formation_display_names() -> void:
 	var spartan_name := Faction.get_formation_display_name(
 			Faction.Type.SPARTA, UnitScript.FORMATION_TIGHT, "Tight formation")
 	assert_eq(spartan_name, "Tight formation (synaspismos)")
+
+	var carthage_name := Faction.get_formation_display_name(
+			Faction.Type.CARTHAGE, UnitScript.FORMATION_SHIELD_WALL, "Shield Wall")
+	assert_eq(carthage_name, "Shield Wall (surs)")
+
+	var macedon_name := Faction.get_formation_display_name(
+			Faction.Type.MACEDON, UnitScript.FORMATION_NORMAL, "Normal formation")
+	assert_eq(macedon_name, "Normal formation (syntagma)")
+
+
+func test_faction_form_up_and_strategy_names() -> void:
+	var quincunx := Faction.get_form_up_display_name(Faction.Type.ROME, 4, "Checkerboard")
+	assert_eq(quincunx, "Checkerboard (quincunx)")
+
+	var strategy_rome := Faction.get_strategy_name(Faction.Type.ROME)
+	assert_true(strategy_rome.contains("acies triplex"))
+
+	var strategy_sparta := Faction.get_strategy_name(Faction.Type.SPARTA)
+	assert_true(strategy_sparta.contains("othismos"))
+
+	var strategy_carthage := Faction.get_strategy_name(Faction.Type.CARTHAGE)
+	assert_true(strategy_carthage.contains("Cannae"))
+
+	var strategy_macedon := Faction.get_strategy_name(Faction.Type.MACEDON)
+	assert_true(strategy_macedon.contains("sarissa"))

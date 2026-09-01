@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/cannae-scale.json",
+  "caption": "Faction historical naming and doctrines (#875): historical formation and form-up names, rosters, and tactical strategies across Rome, Sparta, Carthage, and Macedon.",
+  "fixed_fps": 30,
+  "max_frames": 350,
+  "fps": 20,
+  "width": 640
+}
