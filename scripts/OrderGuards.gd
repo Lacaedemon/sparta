@@ -124,11 +124,11 @@ static func flanked(u: Unit, range_units: float) -> bool:
 ## read alone can't tell "this fight got heavy, then eased off" from "this fight was always light",
 ## since both read 0.0 the instant the unit actually disengages.
 ##
-## Evaluates each living soldier of u against adjacent enemy units within contact range: a
-## soldier counts as engaged if at least one living enemy soldier sits within their combined
-## body radius plus weapon reach (max of either reach, matching reach-standoff semantics).
-## For synthetic unit tests where u is marked fighting with no enemy units in tree, falls back
-## to the formation-capacity ratio.
+## Evaluates perimeter and contact-candidate living soldiers of u against adjacent enemy
+## units within contact range: a soldier counts as engaged if at least one living enemy soldier
+## sits within their combined body radius plus weapon reach (max of either reach, matching
+## reach-standoff semantics). For synthetic unit tests where u is marked fighting with no
+## enemy units in tree, falls back to the formation-capacity ratio.
 static func current_engaged_fraction(u: Unit) -> float:
 	var total: int = u.soldiers
 	if total <= 0:
@@ -151,9 +151,9 @@ static func current_engaged_fraction(u: Unit) -> float:
 			if u.position.distance_squared_to(other.position) <= contact * contact:
 				defenders.append(other)
 
-	# If live enemy units exist in the tree but none are within physical contact distance,
+	# If live enemy units exist in the tree/candidate pool but none are within physical contact distance,
 	# the unit has 0.0 soldiers actively in contact (e.g. disengaged during linger window).
-	if has_live_enemy_in_tree or SpatialHash.is_current(Engine.get_physics_frames()):
+	if has_live_enemy_in_tree:
 		if defenders.is_empty():
 			return 0.0
 	else:
