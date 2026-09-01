@@ -9,8 +9,9 @@ Those whole-repo findings are advisory noise, not something a PR is expected
 to clear.
 
 The step that actually blocks is diff-scoped: "Check list-item merge splices"
-(`check_list_item_splices.mjs`, run with `fail-on-item-splices: true` per
-`.github/workflows/lint-markdown.yml`).
+(`check_list_item_splices.mjs`; `fail-on-item-splices` defaults to `true` in the
+reusable `Morrison-Lab/gha` `lint-markdown.yml@v2` workflow, and this repo's
+caller `.github/workflows/lint-markdown.yml` only passes `base-ref` and `fail`).
 It fails when a list item follows directly after the previous item's
 continuation line with no blank line between them, reported as "List-item
 merged directly onto continuation line."
@@ -19,9 +20,9 @@ adjacent items with no blank line between them.
 
 - **Do:** make a Markdown list loose (a blank line between items) whenever an
   item's text wraps onto a continuation line before the next item starts.
-- **Do:** read `.github/workflows/lint-markdown.yml` itself for the exact
-  input names (`fail-on-item-splices`, etc.) before citing them in a PR
-  description or a review reply.
+- **Do:** read the reusable `Morrison-Lab/gha` workflow at the pinned `@v2`
+  ref for the exact input names (`fail-on-item-splices`, `base-ref`) before
+  citing them; the caller file in this repo sets only `base-ref` and `fail`.
 - **Don't:** treat the ~255 whole-repo markdownlint findings as something this
   PR must fix -- they are pre-existing and pass on `main` too.
 - **Don't:** assume a tight (no-blank-line) list is safe just because it
@@ -76,10 +77,11 @@ review report for exactly two verdict lines:
 each expected to be followed by a `Reviewed-Commit: <sha>` line.
 A report that ends with anything else -- including a plain "Verdict: Clean" --
 is invisible to the guard's parser.
-When the guard finds no parseable verdict at the current head, it falls back
-to the most recent *parseable* verdict it can find, which can be an older,
-blocking "Needs more work" -- so a push gets refused on stale grounds even
-though the actual latest review was clean.
+The guard scans the whole transcript and keeps the LAST parseable verdict,
+whatever commit it names, and only afterwards compares that verdict's
+`Reviewed-Commit` against the commits being pushed -- so an older, blocking
+"Needs more work" wins over a later review that said "Clean", and the push is
+refused on stale grounds even though the actual latest review was clean.
 
 - **Do:** brief any local/self-dispatched reviewer with the two exact heading
   phrases above, verbatim, plus the `Reviewed-Commit: <sha>` line.
