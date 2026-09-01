@@ -92,4 +92,6 @@ exclude = [
   # intermittently times out under lychee's 20s budget even though the site
   # loads in a browser.
   "^https://play0ad\\.com",
+  # jules.google returns HTTP 500 intermittently for automated probes.
+  "^https://jules\\.google",
 ]
