@@ -10,10 +10,12 @@ Historical Mediterranean armies did not spawn within stone-throwing distance of 
 - **Deployment Separation**:
   Ancient armies typically drew up their battle lines at distances of 200 to 800 metres (well out of missile range), allowing commanders to survey enemy disposition, dress their lines, and give final pre-battle harangues.
   Polybius documents Cannae and Zama opening with deliberate separations that took minutes to traverse.
+
 - **Paced and Phased Advance**:
   Phalanxes and legions did not sprint across hundreds of metres.
   They maintained a steady, measured march to prevent disordered gaps from tearing open the line (Thucydides 5.70 at Mantinea).
   Only in the final 50 to 100 metres did the front ranks raise the war cry (*barritus* / *alalagmos*) and accelerate to charge velocity to maximize impact momentum while conserving vital breath for melee.
+
 - **Skirmisher Screening**:
   The opening minutes were dominated by light troops (*velites*, *psiloi*, *peltasts*) contesting the space between armies before retreating through gaps as the main lines met.
 
@@ -22,7 +24,9 @@ Historical Mediterranean armies did not spawn within stone-throwing distance of 
 ### 1. Far-Tier Battle Openings
 
 - When armies spawn at historical deployment distances (exceeding `FormationTier.DEMOTE_RANGE = 600`), units spawn directly in `FormationTier.FAR`.
+
 - Aggregate bounding boxes and coarse position vectors represent formations during the initial approach, minimizing CPU simulation overhead during the non-combat march.
+
 - As formations approach within `FormationTier.PROMOTE_RANGE = 400`, the promotion pipeline reconstructs individual soldier slots smoothly without visual pop-in or collision impulses.
 
 ### 2. Multi-Phase AI Advance Pacing
@@ -31,8 +35,10 @@ The battle AI (`scripts/BattleAI.gd`) coordinates the army advance through three
 
 - **Approach Phase (Distance > 150m)**:
   Main battle line advances at steady march pace (`Unit.default_speed`), maintaining formation alignment with adjacent wings.
+
 - **Skirmish & Missile Phase (Distance 50m - 150m)**:
   Skirmishers deploy ahead to trade missile volleys while heavy infantry dresses its ranks and readies weapons (e.g. javelin throw or spear bracing).
+
 - **Charge & Shock Phase (Distance < 50m)**:
   Frontline regiments initiate charge sprint, expending stamina for physical collision momentum and impact penetration.
 
