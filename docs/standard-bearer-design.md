@@ -46,15 +46,20 @@ Thucydides, *History of the Peloponnesian War* V.70.
 
 - Formation anchoring is unchanged by this design, which settles #820's first open question: the standard-bearer complements, and does not replace, the position anchor that #821 settled and #861 shipped (`Unit.ANCHOR_RANKS = 2`, the near-front anchor computed by `Unit.near_front_soldier_indices()`);
   the front-rank-midpoint anchor tried in #818 was reverted there and redirected to #821.
-  Formation slots remain a pure function of `Unit.position`, facing, and soldier count (`Unit.formation_slots` -> `soldier_world_slots`), and soldier bodies are steered onto those slots -- so the bearer's own body position is an output of dressing, and using it as the dressing input would be circular.
+  Formation slots are computed from `Unit.position`, facing, and soldier count (`Unit.formation_slots` -> `soldier_world_slots`), and soldier bodies are steered onto those slots.
+  The one existing feedback path is transient and per-soldier: during a hold-ground reform, `UnitFormation.apply_traverse_flank_arcs()` reads live soldier positions to shape the flank arcs.
+  Anchoring every slot on the bearer's body would instead make one soldier's dressing output the whole unit's dressing input, a standing unit-wide loop this design does not add.
   The carried standard is the visual embodiment of the unit's anchor, not its source of truth.
 
 ### 2. Casualty and Succession Protocol
 
 - When the soldier designated as the standard-bearer receives fatal damage:
   1. The standard enters a transitional "fallen" state.
-  2. The simulation selects the surviving front-rank soldier nearest to the fallen bearer's slot as the successor, ties broken by lowest soldier index so replays stay deterministic.
-  3. The successor takes over standard-bearer status.
+  2. `SoldierMelee.reap()` compacts the soldiers array and the designated cell is re-resolved through the layout in force (Section 1),
+     so the soldier the layout now places in that cell is the successor;
+     no proximity search runs, which keeps succession deterministic in replays without needing a tie-break rule.
+  3. The successor takes over standard-bearer status once the recovery delay below elapses;
+     until then the standard is fallen.
   4. A brief recovery delay (e.g. 1.0s) models the physical act of securing the standard, during which formation cohesion receives a minor temporary dampening.
 
 ### 3. Morale and Cohesion Coupling
@@ -73,7 +78,9 @@ Thucydides, *History of the Peloponnesian War* V.70.
   A second free-floating standard per unit would create exactly the clutter and confusion #820's open question warns about.
 
 - This design therefore relocates the existing flag rather than adding a rival: the unit standard renders at the standard-bearer's body, so the one standard is carried by a soldier instead of hovering over the formation.
-  Selection click-targeting and the morale fade carry over unchanged, with the selection hitbox following the bearer.
+  The rout fade carries over unchanged.
+  Click-targeting does not: `SelectionManager._unit_at()` tries the flag hit-test only when no body hit lands, and a flag drawn at the bearer's body sits inside the body-hit region,
+  so Phase 3 should expect the flag hit-test to become redundant for that unit and settle the hitbox geometry then.
 
 - During the fallen/recovery window the standard renders lowered at the fallen bearer's position, giving the succession mechanic a readable visual beat.
 
