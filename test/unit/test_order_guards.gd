@@ -237,14 +237,14 @@ func test_current_engaged_fraction_measures_real_per_soldier_contact_with_enemy_
 	u.state = Unit.State.FIGHTING
 	u.tick_engaged(0.0)
 
-	# Enemy unit placed directly facing u in close melee contact, derived from combat reach and body radii
+	# Enemy unit placed directly facing u in close melee contact, derived from weapon reach
 	var enemy: Unit = Unit.new()
 	enemy.uid = 2
 	enemy.team = 1
 	enemy.max_soldiers = 40
 	add_child_autofree(enemy)
 	enemy.soldiers = 40
-	var contact_reach: float = u.soldier_body_radius() + enemy.soldier_body_radius() + maxf(u.soldier_reach(), enemy.soldier_reach())
+	var contact_reach: float = maxf(u.soldier_reach(), enemy.soldier_reach())
 	enemy.position = u.position + Vector2(0, contact_reach * 0.8)
 	enemy.facing = Vector2.UP
 	enemy.seed_sim_soldiers()
@@ -280,8 +280,8 @@ func test_current_engaged_fraction_low_on_light_flank_graze() -> void:
 	enemy.max_soldiers = 2
 	add_child_autofree(enemy)
 	enemy.soldiers = 2
-	# Place enemy near the rightmost soldier of u, derived from combat reach and body radii
-	var contact_reach: float = u.soldier_body_radius() + enemy.soldier_body_radius() + maxf(u.soldier_reach(), enemy.soldier_reach())
+	# Place enemy near the rightmost soldier of u, derived from weapon reach
+	var contact_reach: float = maxf(u.soldier_reach(), enemy.soldier_reach())
 	var right_soldier_pos: Vector2 = u._sim_soldier_pos[0]
 	for p in u._sim_soldier_pos:
 		if p.x > right_soldier_pos.x:

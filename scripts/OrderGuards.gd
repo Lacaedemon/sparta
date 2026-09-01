@@ -126,10 +126,9 @@ static func flanked(u: Unit, range_units: float) -> bool:
 ##
 ## Evaluates perimeter and contact-candidate living soldiers of u against adjacent enemy
 ## units within contact range: a soldier counts as engaged if at least one living enemy soldier
-## sits within their combined body radius plus weapon reach (max of either reach, matching
-## reach-standoff semantics). Falls back to the formation-capacity ratio for synthetic unit
-## tests where u is marked fighting with no enemy units on the battlefield, or when soldier-body
-## arrays are not yet seeded.
+## sits within striking distance (max of either weapon reach, matching reach-standoff semantics).
+## Falls back to the formation-capacity ratio for synthetic unit tests where u is marked fighting
+## with no enemy units on the battlefield, or when soldier-body arrays are not yet seeded.
 static func current_engaged_fraction(u: Unit) -> float:
 	var total: int = u.soldiers
 	if total <= 0:
@@ -167,7 +166,6 @@ static func current_engaged_fraction(u: Unit) -> float:
 		return 0.0
 
 	# Measure actual living soldiers in physical striking/contact reach of any adjacent enemy soldier.
-	var r_u: float = u.soldier_body_radius()
 	var reach_u: float = u.soldier_reach()
 	var n_pos: int = u._sim_soldier_pos.size()
 	if n_pos == 0:
@@ -196,9 +194,8 @@ static func current_engaged_fraction(u: Unit) -> float:
 			d_candidates = d.engaged_soldier_indices(d_live)
 		if d_candidates.is_empty():
 			continue
-		var r_d: float = d.soldier_body_radius()
 		var reach_d: float = d.soldier_reach()
-		var max_dist: float = r_u + r_d + maxf(reach_u, reach_d)
+		var max_dist: float = maxf(reach_u, reach_d)
 		d_max_dist_sq.push_back(max_dist * max_dist)
 		d_cand_list.append(d_candidates)
 		d_pos_list.append(d._sim_soldier_pos)
