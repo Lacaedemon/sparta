@@ -127,8 +127,9 @@ static func flanked(u: Unit, range_units: float) -> bool:
 ## Evaluates perimeter and contact-candidate living soldiers of u against adjacent enemy
 ## units within contact range: a soldier counts as engaged if at least one living enemy soldier
 ## sits within their combined body radius plus weapon reach (max of either reach, matching
-## reach-standoff semantics). For synthetic unit tests where u is marked fighting with no
-## enemy units in tree, falls back to the formation-capacity ratio.
+## reach-standoff semantics). Falls back to the formation-capacity ratio for synthetic unit
+## tests where u is marked fighting with no enemy units on the battlefield, or when soldier-body
+## arrays are not yet seeded.
 static func current_engaged_fraction(u: Unit) -> float:
 	var total: int = u.soldiers
 	if total <= 0:
@@ -140,19 +141,22 @@ static func current_engaged_fraction(u: Unit) -> float:
 	var defenders: Array[Unit] = []
 	var has_live_enemy_in_tree: bool = false
 	if u.is_inside_tree():
-		var candidates: Array = u._separation_candidates()
-		var u_extent: float = u.separation_radius + u.soldier_block_extent()
-		for o in candidates:
-			var other: Unit = o as Unit
-			if other == null or other == u or other.team == u.team or other.state == Unit.State.DEAD:
-				continue
-			has_live_enemy_in_tree = true
-			var contact: float = maxf(u.attack_range, other.attack_range) + u_extent + other.separation_radius + other.soldier_block_extent()
-			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-			if u.position.distance_squared_to(other.position) <= contact * contact:
-				defenders.append(other)
+		var tree: SceneTree = u.get_tree()
+		if tree != null:
+			var candidates: Array = tree.get_nodes_in_group("units")
+			candidates.append_array(tree.get_nodes_in_group("routers"))
+			var u_extent: float = u.separation_radius + u.soldier_block_extent()
+			for o in candidates:
+				var other: Unit = o as Unit
+				if other == null or other == u or other.team == u.team or other.state == Unit.State.DEAD:
+					continue
+				has_live_enemy_in_tree = true
+				var contact: float = maxf(u.attack_range, other.attack_range) + u_extent + other.separation_radius + other.soldier_block_extent()
+				# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+				if u.position.distance_squared_to(other.position) <= contact * contact:
+					defenders.append(other)
 
-	# If live enemy units exist in the tree/candidate pool but none are within physical contact distance,
+	# If live enemy units exist in the tree but none are within physical contact distance,
 	# the unit has 0.0 soldiers actively in contact (e.g. disengaged during linger window).
 	if has_live_enemy_in_tree:
 		if defenders.is_empty():
