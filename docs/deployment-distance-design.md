@@ -84,7 +84,7 @@ World scale is 20 wu per metre (`WorldScale.WU_PER_M`).
 
 ### The arithmetic of a deep deployment
 
-Infantry walks at 22-26 wu/s.
+Foot troops walk at 22-26 wu/s (spearmen at 1.1 m/s, infantry at 1.3 m/s).
 A 1000-wu (50 m) gap closes in roughly 20 s when both lines advance and roughly 40 s when the player holds;
 a 200 m gap takes about a minute and a half with both armies advancing and nearly three minutes when one holds.
 Promotion fires when the centroids come within 400 wu, so at a 200 m gap the first minute or more of every battle is a far-tier march, and the promotion lands mid-march, on screen, every time.
@@ -129,7 +129,7 @@ A setup preset decides how far apart the armies start, fast-forward decides how 
   The AUTO ladder is the historical profile:
   a walk for the whole approach and a run only at the end.
   Historically that run covered the last hundred metres or less;
-  in the game it covers the last 10 m (`SPRINT_START_DISTANCE`), about three seconds at infantry's sprint.
+  in the game it covers the last 10 m (`SPRINT_START_DISTANCE`), two and a half seconds at infantry's 4 m/s sprint.
   Stretching the charge toward the historical distance is a retune of one constant, but a 40 m sprint at 4 m/s is ten seconds of the fastest gait, and movement is free today, so that retune waits for per-gait stamina.
 
 - **A jog approach is gated on two things this design does not build.**
@@ -190,7 +190,7 @@ A setup preset decides how far apart the armies start, fast-forward decides how 
 
 - **Which of a paced AI advance, a time-acceleration control, or a setup-time engagement range comes first?**
   All three, in this order:
-  the setup preset (Phase 4), fast-forward with an automatic return at first promotion (Phase 3), and the AI approach pace last (Phase 5), because a jog approach is gated on per-gait stamina and a far-tier gait that belong to other designs.
+  fast-forward with an automatic return at first promotion (Phase 3), then the setup preset (Phase 4), and the AI approach pace last (Phase 5), because a jog approach is gated on per-gait stamina and a far-tier gait that belong to other designs.
 
 - **The player convenience.**
   The fast-forward key and the preset cover it;
