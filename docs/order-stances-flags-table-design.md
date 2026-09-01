@@ -42,8 +42,8 @@ Instead of ad-hoc branching, the simulation evaluates stance behavior at three s
 2. **Response Choke Point (`UnitCombat.gd`)**:
    Executes the priority response chain (`respond_chase` -> `stand_ground` -> `hold_ground` -> `flee`).
 
-3. **Abandon / Leash Choke Point (`UnitMovement.gd`)**:
-   Monitors distance from `held_position`;
+3. **Abandon / Leash Choke Point (`Unit.gd`)**:
+   Monitors distance from `held_position` inside the movement/arrival logic that `Unit.gd` already owns;
    when distance exceeds `leash_radius_m`, the unit breaks engagement and returns to `held_position`.
 
 ### 3. Forced Order Tagging (`is_forced`)
