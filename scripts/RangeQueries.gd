@@ -88,7 +88,7 @@ static func score_target_anti_dogpile(attacker: Unit, target: Unit, max_attacker
 	var count := get_assignment_count(target)
 	if count >= max_attackers:
 		return -1000.0 - count * 100.0
-	var dist_m := attacker.position.distance_to(target.position) / WorldScaleRef.WU_PER_M
+	var dist_m := attacker.position.distance_to(target.position) / WorldScale.WU_PER_M
 	var score := 100.0 - dist_m
 	if target.state == Unit.State.ROUTING:
 		score += 20.0
