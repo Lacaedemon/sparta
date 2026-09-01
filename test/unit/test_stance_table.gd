@@ -1,4 +1,4 @@
-﻿extends GutTest
+extends GutTest
 
 ## Unit tests for StanceTable and order-mode orthogonal flags table (#956).
 

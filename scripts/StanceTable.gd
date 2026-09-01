@@ -1,4 +1,4 @@
-﻿class_name StanceTable
+class_name StanceTable
 extends RefCounted
 ## Central flags table and query API for OrderMode stances (Issue #956).
 ## Defines orthogonal behavioral flags for each stance (acquisition, response,

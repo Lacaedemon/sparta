@@ -1,4 +1,4 @@
-﻿{
+{
   "input": "demos/inputs/march-to-contact.json",
   "caption": "Order-mode stance restructuring (#956): orthogonal flags table (StanceTable) driving acquisition, combat response, intermixing, and leashing with per-order forced tag.",
   "fixed_fps": 30,
