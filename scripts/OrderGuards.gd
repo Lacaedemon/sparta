@@ -140,23 +140,20 @@ static func current_engaged_fraction(u: Unit) -> float:
 	var defenders: Array[Unit] = []
 	var has_live_enemy_in_tree: bool = false
 	if u.is_inside_tree():
-		var tree: SceneTree = u.get_tree()
-		if tree != null:
-			var candidates: Array = tree.get_nodes_in_group("units")
-			candidates.append_array(tree.get_nodes_in_group("routers"))
-			for o in candidates:
-				var other: Unit = o as Unit
-				if other == null or other == u or other.team == u.team or other.state == Unit.State.DEAD:
-					continue
-				has_live_enemy_in_tree = true
-				var contact: float = maxf(u.attack_range, other.attack_range) + Unit.RADIUS + other.RADIUS
-				# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-				if u.position.distance_squared_to(other.position) <= contact * contact:
-					defenders.append(other)
+		var candidates: Array = u._separation_candidates()
+		for o in candidates:
+			var other: Unit = o as Unit
+			if other == null or other == u or other.team == u.team or other.state == Unit.State.DEAD:
+				continue
+			has_live_enemy_in_tree = true
+			var contact: float = maxf(u.attack_range, other.attack_range) + Unit.RADIUS + other.RADIUS
+			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+			if u.position.distance_squared_to(other.position) <= contact * contact:
+				defenders.append(other)
 
 	# If live enemy units exist in the tree but none are within physical contact distance,
 	# the unit has 0.0 soldiers actively in contact (e.g. disengaged during linger window).
-	if has_live_enemy_in_tree:
+	if has_live_enemy_in_tree or SpatialHash.is_current(Engine.get_physics_frames()):
 		if defenders.is_empty():
 			return 0.0
 	else:

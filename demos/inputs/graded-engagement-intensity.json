@@ -1,5 +1,5 @@
 {
-  "_comment": "Issue #1138: Graded engagement-intensity signal for the move-cancel guard. Team 0 (60 Infantry) marches south to (400, 620) under a plain MOVE order. It grazes the outer flank of Team 1 (40 Infantry on Hold at 530, 420). Only 2-3 soldiers make contact (< 5% of the unit, well below the 10% threshold). With the graded engagement-intensity signal measuring real per-soldier contact rather than static formation rank capacity, the move order is not cancelled and the regiment continues marching past to its destination.",
+  "_comment": "Graded engagement-intensity signal for the move-cancel guard. Team 0 (60 Infantry) marches south to (400, 620) under a plain MOVE order. It grazes the outer flank of Team 1 (40 Infantry on Hold at 530, 420). Only 2-3 soldiers make contact (< 5% of the unit, well below the 10% threshold). With the graded engagement-intensity signal measuring real per-soldier contact rather than static formation rank capacity, the move order is not cancelled and the regiment continues marching past to its destination.",
   "seed": "12345",
   "all_teams_control": true,
   "scenario": [
