@@ -88,10 +88,4 @@ exclude = [
   # Internal Server Error / bot protection even though the pages load in a
   # browser. Linked as citations from docs/3d-conversion-design.md.
   "^https://www\\.gamedeveloper\\.com",
-  # play0ad.com (linked from docs/asset-sources.md, docs/related-games.md)
-  # intermittently times out under lychee's 20s budget even though the site
-  # loads in a browser.
-  "^https://play0ad\\.com",
-  # jules.google (linked from AGENTS.md) returns HTTP 500 intermittently for automated probes.
-  "^https://jules\\.google",
 ]

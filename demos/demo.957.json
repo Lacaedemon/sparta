@@ -1,8 +1,0 @@
-{
-  "input": "demos/inputs/cannae-scale.json",
-  "caption": "Historical deployment distances and far-tier openings design (#957): deep formation separation, smooth promotion transition, and paced multi-phase advance.",
-  "fixed_fps": 30,
-  "max_frames": 350,
-  "fps": 20,
-  "width": 640
-}

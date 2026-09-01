@@ -1,8 +1,0 @@
-{
-  "input": "demos/inputs/banner-standards.json",
-  "caption": "Standard-bearer architectural design (#820): formation alignment reference, casualty succession, and distinct visual standard hierarchy.",
-  "fixed_fps": 30,
-  "max_frames": 350,
-  "fps": 20,
-  "width": 640
-}
