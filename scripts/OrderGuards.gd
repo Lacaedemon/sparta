@@ -183,7 +183,10 @@ static func current_engaged_fraction(u: Unit) -> float:
 		return 0.0
 
 	# Pre-gather invariant defender candidate data before iterating querier soldiers
-	var defender_data: Array[Dictionary] = []
+	var d_max_dist_sq: PackedFloat32Array = PackedFloat32Array()
+	var d_cand_list: Array[PackedInt32Array] = []
+	var d_pos_list: Array[PackedVector2Array] = []
+	var d_hp_list: Array[PackedFloat32Array] = []
 	for d in defenders:
 		var d_n_pos: int = d._sim_soldier_pos.size()
 		if d_n_pos == 0:
@@ -197,14 +200,13 @@ static func current_engaged_fraction(u: Unit) -> float:
 		var r_d: float = d.soldier_body_radius()
 		var reach_d: float = d.soldier_reach()
 		var max_dist: float = r_u + r_d + maxf(reach_u, reach_d)
-		defender_data.append({
-			"max_dist_sq": max_dist * max_dist,
-			"candidates": d_candidates,
-			"pos": d._sim_soldier_pos,
-			"hp": d._sim_soldier_hp,
-		})
+		d_max_dist_sq.push_back(max_dist * max_dist)
+		d_cand_list.append(d_candidates)
+		d_pos_list.append(d._sim_soldier_pos)
+		d_hp_list.append(d._sim_soldier_hp)
 
-	if defender_data.is_empty():
+	var n_defenders: int = d_cand_list.size()
+	if n_defenders == 0:
 		return 0.0
 
 	var in_reach_count: int = 0
@@ -213,11 +215,11 @@ static func current_engaged_fraction(u: Unit) -> float:
 			continue
 		var p_u: Vector2 = u._sim_soldier_pos[i]
 		var soldier_engaged: bool = false
-		for entry in defender_data:
-			var max_dist_sq: float = entry["max_dist_sq"]
-			var d_candidates: PackedInt32Array = entry["candidates"]
-			var d_pos: PackedVector2Array = entry["pos"]
-			var d_hp: PackedFloat32Array = entry["hp"]
+		for k in range(n_defenders):
+			var max_dist_sq: float = d_max_dist_sq[k]
+			var d_candidates: PackedInt32Array = d_cand_list[k]
+			var d_pos: PackedVector2Array = d_pos_list[k]
+			var d_hp: PackedFloat32Array = d_hp_list[k]
 			for j in d_candidates:
 				if j < d_hp.size() and d_hp[j] <= 0.0:
 					continue

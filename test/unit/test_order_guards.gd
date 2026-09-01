@@ -237,14 +237,15 @@ func test_current_engaged_fraction_measures_real_per_soldier_contact_with_enemy_
 	u.state = Unit.State.FIGHTING
 	u.tick_engaged(0.0)
 
-	# Enemy unit placed directly facing u in close melee contact (500, 350)
+	# Enemy unit placed directly facing u in close melee contact, derived from combat reach and body radii
 	var enemy: Unit = Unit.new()
 	enemy.uid = 2
 	enemy.team = 1
 	enemy.max_soldiers = 40
 	add_child_autofree(enemy)
 	enemy.soldiers = 40
-	enemy.position = Vector2(500, 350)
+	var contact_reach: float = u.soldier_body_radius() + enemy.soldier_body_radius() + maxf(u.soldier_reach(), enemy.soldier_reach())
+	enemy.position = u.position + Vector2(0, contact_reach * 0.8)
 	enemy.facing = Vector2.UP
 	enemy.seed_sim_soldiers()
 	enemy.state = Unit.State.FIGHTING
