@@ -3119,7 +3119,7 @@ func _adjacent_engaged_enemy_units() -> Array[Unit]:
 			continue
 		if other.team == team:
 			continue
-		var contact: float = _front_depth() + other._front_depth()
+		var contact: float = maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS
 		if position.distance_squared_to(other.position) <= contact * contact:
 			out.append(other)
 	_adjacent_engaged_cache = out
@@ -6793,7 +6793,7 @@ func _process_rout(delta: float) -> void:
 	# can never reach regardless of terrain -- silently defeating this whole detour.
 	var step: Vector2 = position + flee * 1000.0
 	if PathField.active != null:
-		step = PathField.active.next_step_fleeing(position, flee, terrain_clearance())
+		step = PathField.active.next_step_fleeing(position, flee, _rout_clearance())
 
 	# next_step() returns an absolute world-space point, not a direction -- subtract
 	# position first (as _move_to() does) before normalizing.
@@ -6919,11 +6919,18 @@ func _is_escape_path_blocked(flee_direction: Vector2) -> bool:
 	# isn't asking for a route to an inherently unreachable off-map point.
 	for angle in angles_to_check:
 		var direction: Vector2 = Vector2.from_angle(angle)
-		if PathField.active.has_escape_route(position, direction, terrain_clearance()):
+		if PathField.active.has_escape_route(position, direction, _rout_clearance()):
 			return false
 
 	# All directions blocked: unit is trapped.
 	return true
+
+
+## Clearance margin for a routing unit. A routing mob does not hold a rigid formation
+## grid, so its clearance needs only to keep the loose cluster of bodies off obstacles
+## rather than clearing a full formed pivot radius.
+func _rout_clearance() -> float:
+	return soldier_body_radius() + RADIUS
 
 
 ## Unit is trapped by terrain with no viable escape path: stop routing and stand ground
