@@ -102,6 +102,15 @@ func test_combo_refuses_while_another_drill_runs() -> void:
 	assert_eq(u.current_order.type, Order.Type.QUARTER_TURN, "the running drill is untouched")
 
 
+## dir == 0 has no side to turn toward, so the combo is refused up front -- the same shape
+## as the empty-chain and unsupported-step guards above -- rather than arming a zero-degree
+## turn step.
+func test_combo_refuses_dir_zero() -> void:
+	var u := _make_unit()
+	assert_false(u.quarter_turn_explicatio(0), "dir == 0 has no side to turn toward")
+	assert_null(u.current_order, "nothing is installed for a zero-degree turn")
+
+
 # --- the composite's shape and how it reads out --------------------------------------------
 
 func test_combo_installs_a_composite_with_the_turn_armed_first() -> void:
