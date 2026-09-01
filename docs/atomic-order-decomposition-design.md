@@ -295,6 +295,7 @@ not to start a foundational refactor with reduced context budget remaining).
   What that settles is the drill-primitive case;
   a composite whose children are MARCH legs (needing `_start_promoted_move`'s
   commit) is still the open half.
+
 - Is `Order.Phase` fully removable once the two composites currently using it
   are ported, or does something else (transcript format stability for
   existing replays, a test) still expect it to exist?
