@@ -1913,7 +1913,7 @@ static func nudge_offset(facing: Vector2, dir: int) -> Vector2:
 ## form-up drag, unaffected by any of this and identical to before this field existed.
 func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		order_mode: int = OrderMode.NORMAL, knockback_indefinite: bool = false,
-		form_up_group: int = -1) -> void:
+		form_up_group: int = -1, line_index: int = 0) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -1925,6 +1925,7 @@ func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		"frontage": frontage,
 		"face": face,
 		"knockback_indefinite": knockback_indefinite,
+		"line": line_index,
 	}
 	if form_up_group >= 0:
 		cmd["form_up_group"] = form_up_group
@@ -2346,6 +2347,8 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 		# duty; a SUPPORT order re-sets it in the friendly-target branch below.
 		if not append:
 			u.order_mode = mode
+			if cmd.has("line"):
+				u.line_index = int(cmd["line"])
 			# Same per-order push-distance parameter as the stance-only branch above,
 			# carried on an ordinary move/attack order too (arming KNOCKBACK_FOCUS then
 			# issuing a move/attack is the normal way to use it).

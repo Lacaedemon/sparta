@@ -237,6 +237,8 @@ var order_mode: int = 0:
 		leash_radius = StanceTable.default_leash(val)
 		if held_position == Vector2.ZERO and val != 0:
 			held_position = position
+## Persistent line-membership index in an army formation (0 = front line, 1 = second line, 2+ = reserve line).
+var line_index: int = 0
 # Whether this unit auto-advances onto a merely-detected, out-of-weapon-range enemy while
 # it has no order -- the reactive close-the-distance fallback at the bottom of _think's
 # enemy branch. True by default, so a bare unit (most tests) keeps the historical
@@ -5713,6 +5715,16 @@ func is_engaged() -> bool:
 ## an AI subcommander group. A function of player_group_id only -- see its own doc comment.
 func is_delegated() -> bool:
 	return player_group_id != UNDELEGATED
+
+
+## Whether this unit is assigned to the front line (line_index == 0).
+func is_front_line() -> bool:
+	return line_index == 0
+
+
+## Whether this unit is assigned to a reserve/rear line (line_index > 0).
+func is_reserve_line() -> bool:
+	return line_index > 0
 
 
 ## How braced (set to receive) this regiment's soldiers are, in [0, 1], graded per
