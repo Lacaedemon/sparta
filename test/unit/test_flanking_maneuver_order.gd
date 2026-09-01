@@ -186,6 +186,8 @@ func test_flanking_maneuver_reflow_null_enemy_safe() -> void:
 	u._last_reshape_tick = -1
 	u._flanking_maneuver_reflow(null)
 	assert_eq(UnitFormation.frontage(u), 8, "null enemy is a safe no-op")
+	u._flanking_maneuver_reflow()
+	assert_eq(UnitFormation.frontage(u), 8, "default null argument is a safe no-op")
 
 
 func test_flanking_maneuver_reflow_caller_configurable_tunables() -> void:

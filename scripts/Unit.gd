@@ -3180,7 +3180,7 @@ var flanking_maneuver_hysteresis: int = 1
 ## FLANKING_MANEUVER stance: reflow this unit's frontage outward past the opposing unit's
 ## frontage (`enemy`), widening files so the outer ranks extend past the enemy line to
 ## wrap around its flanks.
-func _flanking_maneuver_reflow(enemy: Unit, wrap_files: int = flanking_maneuver_wrap_files, cooldown_ticks: int = flanking_maneuver_cooldown_ticks, hysteresis: int = flanking_maneuver_hysteresis) -> void:
+func _flanking_maneuver_reflow(enemy: Unit = null, wrap_files: int = flanking_maneuver_wrap_files, cooldown_ticks: int = flanking_maneuver_cooldown_ticks, hysteresis: int = flanking_maneuver_hysteresis) -> void:
 	if enemy == null:
 		return
 	var enemy_files: int = enemy.formation_files(enemy.soldiers)
