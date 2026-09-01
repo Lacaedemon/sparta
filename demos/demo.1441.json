@@ -1,8 +1,0 @@
-﻿{
-  "input": "demos/inputs/multiple-engage.json",
-  "caption": "Website demo catalog defect sweep (#1441): fixes multiple-engage order reflow when pressed by multiple opponents simultaneously, ensures routing clearance accounts for loose mobs rather than rigid formed grids, triggers rout upon zero morale in tick_morale, and updates demo expect pins across the catalog.",
-  "fixed_fps": 30,
-  "max_frames": 350,
-  "fps": 20,
-  "width": 640
-}
