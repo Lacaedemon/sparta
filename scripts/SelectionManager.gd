@@ -725,7 +725,7 @@ func _issue_form_up(a: Vector2, b: Vector2, by_selection_order: bool = false) ->
 		_next_form_up_group_id += 1
 	for slice in slices:
 		_battle.enqueue_form_up([slice["unit"].uid], slice["center"], face, slice["files"],
-				_armed_mode, _armed_knockback_indefinite, group_id, int(slice.get("line", 0)))
+				_armed_mode, _armed_knockback_indefinite, group_id)
 	Sfx.play(&"order")
 
 
@@ -974,7 +974,6 @@ func _tray_grid_slices(units: Array, a: Vector2, b: Vector2) -> Array:
 					"unit": occupant,
 					"center": center,
 					"files": int(files_of[occupant.get_instance_id()]),
-					"line": r,
 				})
 			cursor += col_width + MULTI_FORM_UP_GAP
 	return out
@@ -1032,7 +1031,7 @@ func _checkerboard_slices(units: Array, a: Vector2, b: Vector2) -> Array:
 	for i in range(front.size()):
 		var center: Vector2 = a + dir * (cursor + front_widths[i] * 0.5)
 		front_centers.append(center)
-		out.append({"unit": front[i], "center": center, "files": int(front_files[i]), "line": 0})
+		out.append({"unit": front[i], "center": center, "files": int(front_files[i])})
 		cursor += front_widths[i]
 		if i < front_gaps.size():
 			cursor += front_gaps[i]
@@ -1054,7 +1053,7 @@ func _checkerboard_slices(units: Array, a: Vector2, b: Vector2) -> Array:
 			# Only one front unit (no gap exists at all): the sole rear unit sits directly
 			# behind it, laterally centred.
 			lateral = front_centers[0] if not front_centers.is_empty() else (a + b) * 0.5
-		out.append({"unit": rear[i], "center": lateral + back_offset, "files": int(rear_files[i]), "line": 1})
+		out.append({"unit": rear[i], "center": lateral + back_offset, "files": int(rear_files[i])})
 	return out
 
 
@@ -2296,7 +2295,6 @@ func _order_mode_color(mode: int) -> Color:
 		BattleRef.OrderMode.MULTIPLE_ENGAGE: return Color(0.75, 0.2, 0.85)
 		BattleRef.OrderMode.MARCH_TO_CONTACT: return Color(0.5, 0.75, 0.45)
 		BattleRef.OrderMode.BRACE: return Color(0.75, 0.55, 0.25)
-		BattleRef.OrderMode.FLANKING_MANEUVER: return Color(0.85, 0.55, 0.15)
 		_: return Color.WHITE
 
 

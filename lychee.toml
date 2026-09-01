@@ -34,10 +34,6 @@ exclude = [
   # loads in a browser — same false-positive pattern as divideetimperamod.com
   # above. Skip it rather than reddening unrelated PRs on an upstream flake.
   "^https://freesound\\.org",
-  # play0ad.com (linked from docs/asset-sources.md, docs/related-games.md)
-  # intermittently times out under lychee's 20s budget even though the site
-  # loads in a browser.
-  "^https://play0ad\\.com",
   # opengameart.org (linked from ASSETS.md, assets/sfx/CREDITS.md,
   # assets/sfx/README.md, docs/asset-sources.md, website/assets.qmd) rejects
   # lychee's automated requests with HTTP 502 Bad Gateway, even though the
@@ -92,4 +88,10 @@ exclude = [
   # Internal Server Error / bot protection even though the pages load in a
   # browser. Linked as citations from docs/3d-conversion-design.md.
   "^https://www\\.gamedeveloper\\.com",
+  # play0ad.com (linked from docs/asset-sources.md, docs/related-games.md)
+  # intermittently times out under lychee's 20s budget even though the site
+  # loads in a browser.
+  "^https://play0ad\\.com",
+  # jules.google (linked from AGENTS.md) returns HTTP 500 intermittently for automated probes.
+  "^https://jules\\.google",
 ]

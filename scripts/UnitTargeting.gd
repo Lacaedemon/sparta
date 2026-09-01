@@ -40,7 +40,8 @@ static func nearest_enemy(u: Unit) -> Unit:
 ## prioritize.
 static func nearest_routing_enemy(u: Unit) -> Unit:
 	var best_router: Unit = null
-	var best_router_d_sq: float = u.detection_range * u.detection_range
+	var max_radius_sq: float = u.detection_range * u.detection_range
+	var best_router_d_sq: float = max_radius_sq
 
 	for o in u.get_tree().get_nodes_in_group("routers"):
 		var other: Unit = o as Unit
@@ -51,9 +52,10 @@ static func nearest_routing_enemy(u: Unit) -> Unit:
 
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		var d_sq: float = u.position.distance_squared_to(other.position)
-		if d_sq < best_router_d_sq:
-			best_router_d_sq = d_sq
-			best_router = other
+		if d_sq <= max_radius_sq:
+			if best_router == null or d_sq < best_router_d_sq or (d_sq == best_router_d_sq and other.uid < best_router.uid):
+				best_router_d_sq = d_sq
+				best_router = other
 
 	return best_router
 
@@ -73,31 +75,10 @@ static func roll_the_line_target(u: Unit) -> Unit:
 	return nearest_enemy_to(u, u.position, u.detection_range, false)
 
 
-## Max preferred simultaneous friendly attackers per enemy before applying anti-dogpile penalty.
-const MAX_ATTACKERS_PER_TARGET: int = 2
-
-
-## Score an enemy target candidate considering distance and anti-dogpile attacker load.
-static func score_target(u: Unit, candidate: Unit, center: Vector2) -> float:
-	var d_sq: float = center.distance_squared_to(candidate.position)
-	var score: float = -d_sq
-	# Attacker load penalty: count friendly units already committed to this candidate
-	var attackers: int = 0
-	var tree := u.get_tree()
-	if tree != null:
-		for o in tree.get_nodes_in_group("units"):
-			var ally := o as Unit
-			if ally != null and ally != u and ally.team == u.team and ally.target_enemy == candidate:
-				attackers += 1
-	if attackers >= MAX_ATTACKERS_PER_TARGET:
-		score -= 100000000.0
-	return score
-
-
-## Nearest living enemy within `radius` of `center`, scored with anti-dogpile weighting.
-## Backs both normal auto-acquisition (centred on this unit, u.detection_range, routing
-## enemies included) and the support stance, which scans around the WARD's position so a
-## supporter meets threats closing on its charge rather than only ones near itself.
+## Nearest living enemy within `radius` of `center`. Backs both normal auto-acquisition
+## (centred on this unit, u.detection_range, routing enemies included) and the support
+## stance, which scans around the WARD's position so a supporter meets threats closing on
+## its charge rather than only ones near itself.
 ##
 ## `include_routing` (default false) governs whether a routing enemy (broken or
 ## shattered --- still on the field, in the "routers" group, until it escapes or is
@@ -109,21 +90,22 @@ static func score_target(u: Unit, candidate: Unit, center: Vector2) -> float:
 static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 		include_routing: bool = false) -> Unit:
 	var best: Unit = null
-	var best_score: float = -INF
-	var radius_sq: float = radius * radius
+	var max_radius_sq: float = radius * radius
+	var best_d_sq: float = max_radius_sq
 	var groups: Array = ["units", "routers"] if include_routing else ["units"]
 	for group in groups:
 		for o in u.get_tree().get_nodes_in_group(group):
 			var other: Unit = o as Unit
-			if other == null or other.team == u.team or other.state == Unit.State.DEAD:
+			if other == null or other.team == u.team:
 				continue
+			if other.state == Unit.State.DEAD:
+				continue
+			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 			var d_sq: float = center.distance_squared_to(other.position)
-			if d_sq > radius_sq:
-				continue
-			var s: float = score_target(u, other, center)
-			if s > best_score:
-				best_score = s
-				best = other
+			if d_sq <= max_radius_sq:
+				if best == null or d_sq < best_d_sq or (d_sq == best_d_sq and other.uid < best.uid):
+					best_d_sq = d_sq
+					best = other
 	return best
 
 

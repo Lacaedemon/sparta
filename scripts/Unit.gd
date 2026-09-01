@@ -228,17 +228,10 @@ var selected: bool = false
 # ATTACK/RELIEF/SUPPORT orders by reading them.
 var orders: Array[Order] = []
 var current_order: Order = null
-# Stance and leash properties (StanceTable)
-var held_position: Vector2 = Vector2.ZERO
-var leash_radius: float = 0.0
-var order_mode: int = 0:
-	set(val):
-		order_mode = val
-		leash_radius = StanceTable.default_leash(val)
-		if held_position == Vector2.ZERO and val != 0:
-			held_position = position
-## Persistent line-membership index in an army formation (0 = front line, 1 = second line, 2+ = reserve line).
-var line_index: int = 0
+# Order stance, set by Battle._apply_order_cmd from the order's mode.
+# Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
+# The smart-order behaviours read this; NORMAL is current behaviour.
+var order_mode: int = 0
 # Whether this unit auto-advances onto a merely-detected, out-of-weapon-range enemy while
 # it has no order -- the reactive close-the-distance fallback at the bottom of _think's
 # enemy branch. True by default, so a bare unit (most tests) keeps the historical
@@ -475,7 +468,6 @@ const ORDER_MARCH_TO_CONTACT := 17
 # held still under this order for BRACE_SETTLE_TIME, it grants the full braced-posture
 # bonus instead of the lesser merely-engaged baseline.
 const ORDER_BRACE := 18
-const ORDER_FLANKING_MANEUVER := 19
 
 # Movement gait for a MOVE order (Battle.Gait), duplicated as plain ints for the same
 # decoupling reason as the ORDER_* constants above: WALK (single click), JOG (double),
@@ -2381,7 +2373,7 @@ func _think(delta: float) -> void:
 		# own once the fight ends).
 		if is_ranged and not in_contact and dist_sq <= RANGED_RANGE * RANGED_RANGE \
 				and (target_enemy != null or not has_move_target or chasing \
-					or StanceTable.is_march_to_contact(order_mode)):
+					or order_mode == ORDER_MARCH_TO_CONTACT):
 			state = State.FIGHTING
 			# Commit the auto-acquired foe so next tick's current_target() returns it
 			# instead of re-running nearest_enemy() from scratch -- see the melee branch's
@@ -2392,7 +2384,8 @@ func _think(delta: float) -> void:
 			# chase branch below march this unit off after a foe that has broken contact,
 			# instead of letting it go and resuming the queued move (see ORDER_MARCH_TO_
 			# CONTACT's own doc comment).
-			if StanceTable.can_auto_advance(order_mode) and not StanceTable.is_march_to_contact(order_mode):
+			if order_mode != ORDER_HOLD and order_mode != ORDER_MARCH_TO_CONTACT \
+					and order_mode != ORDER_BRACE:
 				target_enemy = enemy
 			# Turn to bring the line to bear before loosing; a large swing turns in place
 			# gradually, a small correction snaps. Fire is withheld until faced.
@@ -2413,7 +2406,7 @@ func _think(delta: float) -> void:
 		# either -- see ORDER_MARCH_TO_CONTACT's own doc comment for the stop-then-
 		# resume mechanism this shares with the "obey a move order" branch below.
 		if in_contact and (target_enemy != null or not has_move_target or chasing \
-				or StanceTable.is_march_to_contact(order_mode)):
+				or order_mode == ORDER_MARCH_TO_CONTACT):
 			state = State.FIGHTING
 			# Commit the auto-acquired foe: current_target() (UnitTargeting.gd) only keeps
 			# returning an already-live target_enemy -- it never writes back the nearest_enemy()
@@ -2446,7 +2439,8 @@ func _think(delta: float) -> void:
 			# deliberately keeps pursuing). Committing target_enemy here would make the chase
 			# branch below pursue it anyway the instant contact breaks -- exactly the HOLD
 			# failure mode above, just reached via a plain move order instead of a HELD one.
-			if StanceTable.can_auto_advance(order_mode) and not StanceTable.is_march_to_contact(order_mode):
+			if order_mode != ORDER_HOLD and order_mode != ORDER_MARCH_TO_CONTACT \
+					and order_mode != ORDER_BRACE:
 				target_enemy = enemy
 			# Re-face for action: a large swing off the current fronting turns the men in
 			# place gradually (they hold their ground) before the line strikes; a small
@@ -2464,10 +2458,8 @@ func _think(delta: float) -> void:
 			# of every distinct enemy currently pressing it, once there are genuinely 2+ of
 			# them in contact -- see _multiple_engage_reflow's own doc for the debounce/
 			# hysteresis that keeps this from flapping every tick.
-			if StanceTable.has_multi_engage_reflow(order_mode):
+			if order_mode == ORDER_MULTIPLE_ENGAGE:
 				_multiple_engage_reflow(_adjacent_engaged_enemy_units())
-			if StanceTable.has_flank_wrap(order_mode):
-				_flanking_maneuver_reflow(enemy)
 			# Press into contact: a committed melee unit keeps advancing onto the enemy
 			# while it fights, so the lines close to body contact (separation provides the
 			# counterforce, settling them at the engaged-enemy front-rank floor) instead
@@ -2476,7 +2468,7 @@ func _think(delta: float) -> void:
 			# bring the front to bear, hold position — the men turn where they stand, so the
 			# press waits until the turn fully finishes.
 			if _engage_turn_target == Vector2.ZERO and not is_ranged \
-					and StanceTable.can_auto_advance(order_mode):
+					and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
 				_press_into(enemy.position, delta)
 			return
 		elif target_enemy != null or (chasing and not in_contact):
@@ -2592,7 +2584,7 @@ func _think(delta: float) -> void:
 				# (has_move_target false, active_leaf().turn_target still zero), leaving
 				# the unit facing the pivoted heading instead of turning back.
 	elif enemy != null and auto_advance_on_detect \
-			and StanceTable.can_auto_advance(order_mode):
+			and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
 		# Auto-advance on a near enemy the combat branches didn't engage this tick (out of
 		# range/contact). Gated by auto_advance_on_detect: a directly player-commanded unit
 		# leaves this false and holds formation instead (the else branch below), waiting for
@@ -3124,7 +3116,7 @@ func _adjacent_engaged_enemy_units() -> Array[Unit]:
 			continue
 		if other.team == team:
 			continue
-		var contact: float = maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS
+		var contact: float = _front_depth() + other._front_depth()
 		if position.distance_squared_to(other.position) <= contact * contact:
 			out.append(other)
 	_adjacent_engaged_cache = out
@@ -3172,32 +3164,6 @@ func _multiple_engage_reflow(adjacent: Array[Unit]) -> void:
 		return
 	set_frontage(target_files)
 
-
-# FLANKING_MANEUVER's default wing wrap file count (additional files beyond enemy frontage).
-const FLANKING_MANEUVER_WRAP_FILES: int = 4
-
-# FLANKING_MANEUVER's frontage-widening cooldown: minimum ticks between two automatic reflows.
-const FLANKING_MANEUVER_FRONTAGE_COOLDOWN_TICKS: int = 60
-
-# FLANKING_MANEUVER's minimum file-count delta worth re-widening for.
-const FLANKING_MANEUVER_FRONTAGE_HYSTERESIS: int = 1
-
-## FLANKING_MANEUVER stance: reflow this unit's frontage outward past the opposing unit's
-## frontage (`enemy`), widening files so the outer ranks extend past the enemy line to
-## wrap around its flanks.
-func _flanking_maneuver_reflow(enemy: Unit) -> void:
-	if enemy == null:
-		return
-	var enemy_files: int = enemy.formation_files(enemy.soldiers)
-	var target_files: int = clampi(enemy_files + FLANKING_MANEUVER_WRAP_FILES, 1, maxi(1, max_soldiers))
-	var current_files: int = formation_files(soldiers)
-	if abs(target_files - current_files) <= FLANKING_MANEUVER_FRONTAGE_HYSTERESIS:
-		return
-	if _last_reshape_tick >= 0 \
-			and Engine.get_physics_frames() - _last_reshape_tick < FLANKING_MANEUVER_FRONTAGE_COOLDOWN_TICKS:
-		return
-	set_frontage(target_files)
-
 ## Face `point` for an engage/attack action against `enemy_unit` (the target the turn is
 ## bringing the front to bear on; kept so the settle step can reshape toward it under
 ## MATCH_TARGET -- see engage_reshape_mode). A small heading correction snaps (stays
@@ -3237,13 +3203,6 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	# only one opponent in contact so far), fall through unchanged so a normal single-opponent
 	# fight under this stance looks identical to any other stance.
 	if order_mode == ORDER_MULTIPLE_ENGAGE and _adjacent_engaged_enemy_units().size() >= 2:
-		if _engage_turn_target != Vector2.ZERO:
-			_settle_engage_turn()
-		return true
-	# FLANKING_MANEUVER, once engaged with the enemy: hold the line facing so the unit
-	# maintains its forward engagement while the outer wings envelop the enemy flanks,
-	# rather than rotating off-axis as wing soldier collisions jostle.
-	if order_mode == ORDER_FLANKING_MANEUVER and is_engaged():
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
 		return true
@@ -3976,7 +3935,7 @@ func _separate(delta: float) -> void:
 ## Advance or decay this unit's intermixing meter. Rises while a non-ranged unit is
 ## actively fighting without a hold or brace order; decays at 4x speed when not fighting.
 func _tick_intermixing(delta: float) -> void:
-	if state == State.FIGHTING and StanceTable.allows_intermixing(order_mode) \
+	if state == State.FIGHTING and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE \
 			and not is_ranged:
 		_combat_intermixing = minf(MELEE_INTERMIX_MAX,
 				_combat_intermixing + MELEE_INTERMIX_RATE * delta)
@@ -3994,8 +3953,8 @@ func _is_melee_intermixing_with(other: Unit) -> bool:
 		return false
 	return state == State.FIGHTING \
 			and other.state == State.FIGHTING \
-			and StanceTable.allows_intermixing(order_mode) \
-			and StanceTable.allows_intermixing(other.order_mode)
+			and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE \
+			and other.order_mode != ORDER_HOLD and other.order_mode != ORDER_BRACE
 
 
 # --- Individual-soldier simulation (simulated bodies, rendered + authoritative melee) ---
@@ -5717,16 +5676,6 @@ func is_delegated() -> bool:
 	return player_group_id != UNDELEGATED
 
 
-## Whether this unit is assigned to the front line (line_index == 0).
-func is_front_line() -> bool:
-	return line_index == 0
-
-
-## Whether this unit is assigned to a reserve/rear line (line_index > 0).
-func is_reserve_line() -> bool:
-	return line_index > 0
-
-
 ## How braced (set to receive) this regiment's soldiers are, in [0, 1], graded per
 ## docs/combat-model.md's `br` formula. A regiment engaged and not skirmishing
 ## is "at attention" -- some footing, not fully set. Being under way (current_speed > 0)
@@ -6808,7 +6757,7 @@ func _process_rout(delta: float) -> void:
 	# can never reach regardless of terrain -- silently defeating this whole detour.
 	var step: Vector2 = position + flee * 1000.0
 	if PathField.active != null:
-		step = PathField.active.next_step_fleeing(position, flee, _rout_clearance())
+		step = PathField.active.next_step_fleeing(position, flee, terrain_clearance())
 
 	# next_step() returns an absolute world-space point, not a direction -- subtract
 	# position first (as _move_to() does) before normalizing.
@@ -6934,18 +6883,11 @@ func _is_escape_path_blocked(flee_direction: Vector2) -> bool:
 	# isn't asking for a route to an inherently unreachable off-map point.
 	for angle in angles_to_check:
 		var direction: Vector2 = Vector2.from_angle(angle)
-		if PathField.active.has_escape_route(position, direction, _rout_clearance()):
+		if PathField.active.has_escape_route(position, direction, terrain_clearance()):
 			return false
 
 	# All directions blocked: unit is trapped.
 	return true
-
-
-## Clearance margin for a routing unit. A routing mob does not hold a rigid formation
-## grid, so its clearance needs only to keep the loose cluster of bodies off obstacles
-## rather than clearing a full formed pivot radius.
-func _rout_clearance() -> float:
-	return soldier_body_radius() + RADIUS
 
 
 ## Unit is trapped by terrain with no viable escape path: stop routing and stand ground

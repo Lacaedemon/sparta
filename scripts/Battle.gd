@@ -174,7 +174,7 @@ const ORDER_SWITCH_WEAPON := -14
 ## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues.
 ## Until then a non-NORMAL stance is stored but behaves as
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
-enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE, PIN_DOWN, ALL_OUT_ATTACK, CHASE, WEDGE_CHARGE, KNOCKBACK_FOCUS, GIVE_GROUND, PUSH, MULTIPLE_ENGAGE, MARCH_TO_CONTACT, BRACE, FLANKING_MANEUVER }
+enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE, SWEEP_ROUTERS, ROLL_THE_LINE, PIN_DOWN, ALL_OUT_ATTACK, CHASE, WEDGE_CHARGE, KNOCKBACK_FOCUS, GIVE_GROUND, PUSH, MULTIPLE_ENGAGE, MARCH_TO_CONTACT, BRACE }
 
 ## Movement gait for a MOVE order: WALK (single click), JOG (double), RUN (triple),
 ## or SPRINT (quadruple) -- see SelectionManager._gait_from_click_count. Applies to
@@ -261,7 +261,6 @@ const ORDER_MODE_NAMES := {
 	OrderMode.MULTIPLE_ENGAGE: "Multiple engage",
 	OrderMode.MARCH_TO_CONTACT: "March to contact",
 	OrderMode.BRACE: "Brace",
-	OrderMode.FLANKING_MANEUVER: "Flanking maneuver",
 }
 
 ## Rebindable order-mode hotkeys, in menu/HUD order. Each entry pairs the
@@ -288,7 +287,6 @@ const ORDER_MODE_HOTKEYS := [
 	{"mode": OrderMode.MULTIPLE_ENGAGE, "slug": "multiple_engage"},
 	{"mode": OrderMode.MARCH_TO_CONTACT, "slug": "march_to_contact"},
 	{"mode": OrderMode.BRACE, "slug": "brace"},
-	{"mode": OrderMode.FLANKING_MANEUVER, "slug": "flanking_maneuver"},
 ]
 
 # Global movement multiplier applied on top of each unit's real-world speed (which
@@ -455,8 +453,7 @@ func _ready() -> void:
 			and UnitRef.ORDER_PUSH == OrderMode.PUSH \
 			and UnitRef.ORDER_MULTIPLE_ENGAGE == OrderMode.MULTIPLE_ENGAGE \
 			and UnitRef.ORDER_MARCH_TO_CONTACT == OrderMode.MARCH_TO_CONTACT \
-			and UnitRef.ORDER_BRACE == OrderMode.BRACE \
-			and UnitRef.ORDER_FLANKING_MANEUVER == OrderMode.FLANKING_MANEUVER,
+			and UnitRef.ORDER_BRACE == OrderMode.BRACE,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 	# Same mirror-and-assert pattern for Unit's NUDGE_* constants (Battle.NudgeDir).
 	assert(UnitRef.NUDGE_LEFT == NudgeDir.LEFT \
@@ -1913,7 +1910,7 @@ static func nudge_offset(facing: Vector2, dir: int) -> Vector2:
 ## form-up drag, unaffected by any of this and identical to before this field existed.
 func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		order_mode: int = OrderMode.NORMAL, knockback_indefinite: bool = false,
-		form_up_group: int = -1, line_index: int = 0) -> void:
+		form_up_group: int = -1) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -1925,7 +1922,6 @@ func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		"frontage": frontage,
 		"face": face,
 		"knockback_indefinite": knockback_indefinite,
-		"line": line_index,
 	}
 	if form_up_group >= 0:
 		cmd["form_up_group"] = form_up_group
@@ -2347,8 +2343,6 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 		# duty; a SUPPORT order re-sets it in the friendly-target branch below.
 		if not append:
 			u.order_mode = mode
-			if cmd.has("line"):
-				u.line_index = int(cmd["line"])
 			# Same per-order push-distance parameter as the stance-only branch above,
 			# carried on an ordinary move/attack order too (arming KNOCKBACK_FOCUS then
 			# issuing a move/attack is the normal way to use it).

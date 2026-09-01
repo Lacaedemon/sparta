@@ -8,7 +8,7 @@
       "x": 1100,
       "y": 620,
       "count": 60,
-      "morale": 0.5
+      "morale": 3.0
     },
     {
       "team": 1,
@@ -31,9 +31,7 @@
     120,
     180,
     240,
-    350,
     480,
-    500,
     680
   ],
   "expect": [
@@ -70,17 +68,14 @@
     {
       "tick": [
         180,
-        350
+        240
       ],
       "uid": 0,
       "field": "state",
-      "value": "FIGHTING"
+      "value": "ROUTING"
     },
     {
-      "tick": [
-        500,
-        680
-      ],
+      "tick": 480,
       "uid": 0,
       "field": "state",
       "value": "ROUTING"

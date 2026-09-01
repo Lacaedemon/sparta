@@ -128,9 +128,9 @@ static func accumulate(units: Array, frame: int) -> void:
 		var u: Unit = o as Unit
 		if u == null or u.state == Unit.State.DEAD or not u.is_engaged():
 			continue
-		if StanceTable.is_giving_ground(u.order_mode):
+		if u.order_mode == Unit.ORDER_GIVE_GROUND:
 			any_give_ground = true
-		elif StanceTable.is_pushing(u.order_mode):
+		elif u.order_mode == Unit.ORDER_PUSH:
 			any_push = true
 		var r: float = u.soldier_reach()
 		if r > max_reach_by_team.get(u.team, -1.0):
@@ -162,8 +162,8 @@ static func accumulate(units: Array, frame: int) -> void:
 			continue
 		var r: float = u.soldier_body_radius()
 		var reach: float = u.soldier_reach()
-		var give_ground: bool = StanceTable.is_giving_ground(u.order_mode)
-		var push: bool = StanceTable.is_pushing(u.order_mode)
+		var give_ground: bool = u.order_mode == Unit.ORDER_GIVE_GROUND
+		var push: bool = u.order_mode == Unit.ORDER_PUSH
 		var could_be_outreached: bool = give_ground or push \
 				or reach < _max_opposing_reach(max_reach_by_team, u.team)
 		for i in idxs:
@@ -187,9 +187,9 @@ static func accumulate(units: Array, frame: int) -> void:
 		if enemy.is_empty():
 			continue
 		var owner: Unit = eowners[k]
-		if StanceTable.is_giving_ground(owner.order_mode):
+		if owner.order_mode == Unit.ORDER_GIVE_GROUND:
 			owner._sim_steer[eslots[k]] += give_ground_bias(epos[k], enemy["position"])
-		elif StanceTable.is_pushing(owner.order_mode):
+		elif owner.order_mode == Unit.ORDER_PUSH:
 			owner._sim_steer[eslots[k]] += push_bias(epos[k], enemy["position"])
 		else:
 			owner._sim_steer[eslots[k]] += standoff_bias(epos[k], enemy["position"], ereach[k], enemy["reach"])
