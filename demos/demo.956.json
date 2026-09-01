@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "skip_reason": "Design document and architecture specification for order stances flags table, leash enforcement, and forced-order tags (#956); no runtime sim or UI changes."
+  "reason": "Design document and architecture specification for order stances flags table, leash enforcement, and forced-order tags (#956); no runtime sim or UI changes."
 }

@@ -72,5 +72,6 @@ Every order in the unit order stream carries an explicit `is_forced: bool` field
    Record `held_position` on player move arrival and tag player orders with `is_forced = true`.
 
 4. **Verification & Replay Regression Safety**:
-   Verify byte-for-byte behavioral preservation across all stance test scenarios (`test/unit/test_unit_order_mode.gd`, `test/unit/test_unit_targeting.gd`).
-   Run machine-readable state dumps (`tools/demo/dump-state.sh`) across existing stance demo scripts (`demos/inputs/stance-*.json`) to ensure zero deviation in unit positions, target assignments, and combat resolution ticks.
+   Verify byte-for-byte behavioral preservation across real stance test suites:
+   `test/unit/test_chase_order.gd`, `test/unit/test_sweep_routers_order.gd`, `test/unit/test_hud_stance.gd`, and `test/unit/test_order_guards.gd`.
+   Run machine-readable state dumps (`tools/demo/dump-state.sh`) across stance demo scripts (`demos/inputs/stance-order-gesture.json`, `demos/inputs/push-stance.json`, `demos/inputs/queued-leg-hold-stance.json`, `demos/inputs/shielded-stance-visuals.json`) to ensure zero deviation in unit positions, target assignments, and combat resolution ticks.
