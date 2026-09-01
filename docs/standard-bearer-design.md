@@ -55,11 +55,14 @@ Thucydides, *History of the Peloponnesian War* V.70.
 
 - When the soldier designated as the standard-bearer receives fatal damage:
   1. The standard enters a transitional "fallen" state.
+
   2. `SoldierMelee.reap()` compacts the soldiers array and the designated cell is re-resolved through the layout in force (Section 1),
      so the soldier the layout now places in that cell is the successor;
      no proximity search runs, which keeps succession deterministic in replays without needing a tie-break rule.
+
   3. The successor takes over standard-bearer status once the recovery delay elapses;
      until then the standard is fallen.
+
   4. A brief recovery delay (e.g. 1.0s) models the physical act of securing the standard, during which formation cohesion receives a minor temporary dampening.
 
 ### 3. Morale and Cohesion Coupling
