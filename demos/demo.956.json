@@ -1,8 +1,0 @@
-{
-  "input": "demos/inputs/stance-order-gesture.json",
-  "caption": "Order stance architecture (#956): orthogonal flags table, held-position leash, and forced-order tag evaluation.",
-  "fixed_fps": 30,
-  "max_frames": 350,
-  "fps": 20,
-  "width": 640
-}

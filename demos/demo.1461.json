@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation-only PR: corrects review defects in the order-stances design doc (real OrderMode stance names, choke-point hosts, verification strategy); nothing player-visible changed, so no recorded battle can show it."
+}
