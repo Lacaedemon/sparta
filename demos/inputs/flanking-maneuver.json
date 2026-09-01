@@ -1,0 +1,28 @@
+{
+  "_comment": "Flanking maneuver (#1018): an engaged unit expands its frontage to wrap around the opposing enemy line's flanks. One player Infantry regiment (team 0, 80 soldiers, natural 10-file frontage) faces an enemy Infantry regiment (team 1, 40 soldiers, 8-file frontage). At tick 8, the player selects the unit and issues Ctrl+F6 (Flanking maneuver). When the two lines close and engage in melee (~tick 150), the player unit reflows its frontage from 10 to 12 files (enemy frontage of 8 files + 4 wrap files), wrapping its outer ranks around the enemy line. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "seed": "101018",
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 600, "y": 500, "count": 80 },
+    { "team": 1, "type": "Infantry", "x": 600, "y": 650, "count": 40 }
+  ],
+  "camera": [
+    { "tick": 0, "x": 600, "y": 575, "zoom": 0.95 }
+  ],
+  "steps": [
+    { "tick": 5, "click": [600, 500] },
+    { "tick": 8, "key": "F6", "ctrl": true }
+  ],
+  "frames": [10, 100, 180, 240, 300],
+  "state": [10, 50, 100, 150, 180, 240, 300],
+  "expect": [
+    { "tick": 8, "uid": 0, "field": "position", "value": [600.0, 500.0] },
+    { "tick": 8, "uid": 1, "field": "position", "value": [600.0, 650.0] },
+    { "tick": [10, 300], "uid": 0, "field": "order_mode", "value": "Flanking maneuver" },
+    { "tick": 10, "uid": 0, "field": "frontage", "value": 10 },
+    { "tick": 240, "uid": 0, "field": "frontage", "value": 12 }
+  ],
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 20,
+  "width": 640
+}
