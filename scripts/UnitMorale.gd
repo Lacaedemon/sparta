@@ -205,3 +205,7 @@ static func tick_morale(u: Unit, delta: float) -> void:
 					* strength_ratio \
 					* delta
 			u.morale = minf(100.0, u.morale + recovery)
+
+	if u.morale <= 0.0 and u.state != Unit.State.ROUTING and u.state != Unit.State.DEAD:
+		u._rout()
+		Sfx.play(&"rout")
