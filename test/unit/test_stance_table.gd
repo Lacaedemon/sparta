@@ -1,6 +1,6 @@
 extends GutTest
 
-## Unit tests for StanceTable and order-mode orthogonal flags table (#956).
+## Unit tests for StanceTable and order-mode orthogonal flags table.
 
 func test_stance_table_flags_sanity() -> void:
 	# Check normal stance

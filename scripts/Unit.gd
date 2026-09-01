@@ -228,7 +228,7 @@ var selected: bool = false
 # ATTACK/RELIEF/SUPPORT orders by reading them.
 var orders: Array[Order] = []
 var current_order: Order = null
-# Stance and leash properties (Issue #956, StanceTable)
+# Stance and leash properties (StanceTable)
 var held_position: Vector2 = Vector2.ZERO
 var leash_radius: float = 0.0
 var order_mode: int = 0:
