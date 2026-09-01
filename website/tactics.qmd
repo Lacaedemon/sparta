@@ -1819,6 +1819,8 @@ Infantry regiments, closing from different bearings, reach contact. The
 first enemy engages normally; once the second also presses in, the
 regiment's frontage widens from 11 to 14 files (their combined width) and
 its facing holds steady instead of swinging between the two of them.
+:::
+
 ::: {#fig-flanking-maneuver .demo}
 
 ```{=html}
