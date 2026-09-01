@@ -268,6 +268,7 @@ func test_current_engaged_fraction_low_on_light_flank_graze() -> void:
 	u.frontage_override = 10
 	u.position = Vector2(500, 300)
 	u.facing = Vector2.DOWN
+	u.file_major_reform = false
 	u.seed_sim_soldiers()
 	u.state = Unit.State.FIGHTING
 	u.tick_engaged(0.0)
@@ -279,10 +280,12 @@ func test_current_engaged_fraction_low_on_light_flank_graze() -> void:
 	enemy.max_soldiers = 2
 	add_child_autofree(enemy)
 	enemy.soldiers = 2
-	# Place enemy near the rightmost front-rank soldier of u, derived from combat reach and body radii
+	# Place enemy near the rightmost soldier of u, derived from combat reach and body radii
 	var contact_reach: float = u.soldier_body_radius() + enemy.soldier_body_radius() + maxf(u.soldier_reach(), enemy.soldier_reach())
-	var right_idx: int = mini(u.formation_files(u.soldiers) - 1, u._sim_soldier_pos.size() - 1)
-	var right_soldier_pos: Vector2 = u._sim_soldier_pos[right_idx]
+	var right_soldier_pos: Vector2 = u._sim_soldier_pos[0]
+	for p in u._sim_soldier_pos:
+		if p.x > right_soldier_pos.x:
+			right_soldier_pos = p
 	enemy.position = right_soldier_pos + Vector2(0, contact_reach * 0.7)
 	enemy.facing = Vector2.UP
 	enemy.seed_sim_soldiers()
