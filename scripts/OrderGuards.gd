@@ -142,12 +142,13 @@ static func current_engaged_fraction(u: Unit) -> float:
 	var has_live_enemy_in_tree: bool = false
 	if u.is_inside_tree():
 		var candidates: Array = u._separation_candidates()
+		var u_extent: float = u.separation_radius + u.soldier_block_extent()
 		for o in candidates:
 			var other: Unit = o as Unit
 			if other == null or other == u or other.team == u.team or other.state == Unit.State.DEAD:
 				continue
 			has_live_enemy_in_tree = true
-			var contact: float = maxf(u.attack_range, other.attack_range) + Unit.RADIUS + other.RADIUS
+			var contact: float = maxf(u.attack_range, other.attack_range) + u_extent + other.separation_radius + other.soldier_block_extent()
 			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 			if u.position.distance_squared_to(other.position) <= contact * contact:
 				defenders.append(other)
