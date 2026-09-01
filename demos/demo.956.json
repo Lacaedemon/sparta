@@ -1,4 +1,0 @@
-{
-  "skip": true,
-  "reason": "Design doc only (Phase 1 architecture documentation): the STANCE_PROFILES flags table, held-position leash, and is_forced order tagging are specified but not implemented in this PR, so no recorded battle can show them yet."
-}
