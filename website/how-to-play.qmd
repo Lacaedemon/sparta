@@ -1421,7 +1421,7 @@ nothing moves while you read the map.
 | Control | What it does |
 | --- | --- |
 | **Resume** / **Pause** button, or <kbd>Space</kbd> | Starts and stops campaign time. A paused date greys out and reads "(paused)" |
-| **Speed** button | Steps to the next speed: 1x, 2x, 4x, 8x, then back to 1x |
+| **Speed** button | Steps to the next speed: 1x, 2x, 4x, 8x, then back to 1x, and resumes if time was paused |
 | <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> | Picks that speed directly, and resumes if time was paused |
 
 The campaign clock's controls. Time pauses on its own when a campaign is won.
@@ -1435,9 +1435,10 @@ Turn order still decides who moves: the clock is the timeline the campaign layer
 later phases hang march times, supply, and truce expiry on, so for now it counts the
 days your war has run rather than pacing it.
 
-**Distances.** Provinces sit on real ground rather than on bare pixels, so a completed
-move reports how far the army marched --- "Reinforced Cisalpina. (311.3 km march)" ---
-in the same metric units the battlefield's scale bar uses.
+**Distances.** Each campaign map carries a ground scale --- so many metres to the map
+unit --- rather than being measured in bare pixels, so a completed move reports how far
+the army marched --- "Reinforced Cisalpina. (311.3 km march)" --- in the same metric
+units the battlefield's scale bar uses.
 
 **Diplomacy:** the right-hand panel lists every surviving rival. Click **Declare War** or
 **Sue for Peace** to change your stance. Suing for peace sets a truce that prevents
