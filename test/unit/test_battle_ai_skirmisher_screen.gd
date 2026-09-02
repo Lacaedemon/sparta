@@ -28,6 +28,23 @@ const MARCH_TICKS: int = 120
 const LINE_Y: float = 700.0
 const REAR_Y: float = 780.0
 
+## Team 0's own line in the recall scenario. Deliberately NOT inside the withdraw trigger at
+## tick 0: the archers spawn 316 wu from the nearest enemy (100 wu across, 300 wu up), well
+## outside the 120-wu trigger, so the first AI tick issues a SCREEN and the recall has a
+## SKIRMISH stance to reset later. Near enough that the two lines close inside the trigger
+## once the screen has marched out to the contest line.
+const RECALL_ENEMY_Y: float = 480.0
+
+## Tick cap for the recall run rather than a fixed length: the screen has to march the 240 wu
+## out to the contest line, and the enemy has to close on it, before there is anything to
+## recall. The loop stops the tick the recall is observed, so a healthy run ends well short
+## of this.
+const RECALL_TICK_CAP: int = 600
+
+## Ticks to keep stepping after the recall is issued, so the fall-back shows up as ground
+## actually given up rather than as a fresh order sitting in the response delay.
+const FALLBACK_TICKS: int = 90
+
 
 func after_each() -> void:
 	Replay.forced_seed = -1
@@ -83,20 +100,43 @@ func test_the_screen_advances_ahead_of_the_heavy_line_as_a_skirmish_stance_order
 
 
 func test_the_screen_is_recalled_behind_the_line_once_the_enemy_closes() -> void:
-	# The archers open already out in front, with the enemy inside the withdraw trigger, so
-	# the very first AI tick recalls them instead of pushing them further forward.
-	var start_y: float = LINE_Y - SkirmisherScreen.SCREEN_LEAD_DISTANCE
-	var battle: Node = _spawn_screen_battle(
-		start_y, start_y - (SkirmisherScreen.WITHDRAW_TRIGGER_RANGE - 20.0))
-	while battle.current_tick() <= MARCH_TICKS:
-		await get_tree().physics_frame
-
+	# Staged as the whole sequence, not as a recall in isolation: the archers spawn behind
+	# their own line, march out under a SKIRMISH-stance SCREEN order, and only then does the
+	# advancing enemy come inside the withdraw trigger. Asserting the recall against a unit
+	# that never received a screen order would assert nothing -- Unit.order_mode already
+	# spawns NORMAL, so "the recall resets the stance" is only a claim once the stance was
+	# something else first.
+	var battle: Node = _spawn_screen_battle(REAR_Y, RECALL_ENEMY_Y)
 	var archers: Unit = _archers_of(battle)
-	assert_not_null(archers)
-	assert_gt(archers.position.y, start_y + 5.0,
+	assert_not_null(archers, "the staged matchup deployed a team-1 archer unit")
+	if archers == null:
+		return
+
+	var saw_screen_order: bool = false
+	var saw_recall: bool = false
+	var recall_y: float = 0.0
+	while battle.current_tick() <= RECALL_TICK_CAP:
+		await get_tree().physics_frame
+		if archers.order_mode == BattleScript.OrderMode.SKIRMISH:
+			saw_screen_order = true
+			continue
+		# The recall, and the only thing that looks like it: the default stance again, and a
+		# march on a point BEHIND the unit's own heavy line (the rally, one rally depth past
+		# it) rather than on the contest line ahead of it.
+		if saw_screen_order and archers.has_move_target and archers.move_target.y > LINE_Y:
+			saw_recall = true
+			recall_y = archers.position.y
+			break
+
+	assert_true(saw_screen_order,
+		"the screen went out under a SKIRMISH-stance order before anything recalled it")
+	assert_true(saw_recall,
+		"and the closing enemy recalled it to the rally, in the default stance not SKIRMISH")
+	var until: int = battle.current_tick() + FALLBACK_TICKS
+	while battle.current_tick() <= until:
+		await get_tree().physics_frame
+	assert_gt(archers.position.y, recall_y + 5.0,
 		"falling back toward its own line rather than standing to be caught")
-	assert_eq(archers.order_mode, BattleScript.OrderMode.NORMAL,
-		"the recall marches in the default stance, so kiting cannot hold the withdrawal up")
 
 
 func test_the_screen_replays_identically_on_the_same_seed() -> void:
