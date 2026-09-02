@@ -79,17 +79,47 @@ func test_the_lead_distance_is_caller_configurable() -> void:
 		"a shorter lead puts the contest line nearer the heavy blocks")
 
 
-func test_a_unit_already_claimed_this_tick_keeps_the_higher_priority_directive() -> void:
-	var group: Array = _heavy_line()
-	var light := _archers(3, Vector2(600, 780))
-	group.append(light)
-	var enemy := _unit(4, Vector2(600, 100), 0)
-	var out: Dictionary = {light.uid: {"type": Subcommander.DIRECTIVE_SUPPORT, "ward_uid": 1}}
+# --- flank coverage and the screen -------------------------------------------------
+# Exercised through decide_group rather than through ScreenScript.directives: the ordering
+# lives in the merge decide_group does, not in this class, which writes its own dictionary
+# unconditionally and cannot know what else claimed a unit. The mutual-support half of the
+# same order is test_an_ally_in_a_real_fight_still_outranks_the_screen, further down.
 
-	ScreenScript.directives(group, group + [enemy], AXIS, out)
+func test_a_screening_flank_still_gets_an_ally_sent_to_cover_it() -> void:
+	# The group's own lateral extreme is the screener -- the common deployment for light
+	# troops -- with an enemy rounding it. The screen holding that uid must not make the
+	# flank look already handled: some other ally is still sent out past the exposed edge.
+	var light := _archers(3, Vector2(300, 780))
+	var group: Array = [_unit(1, Vector2(600, 780)), _unit(2, Vector2(800, 780)), light]
+	var outflanker := _unit(4, Vector2(200, 640), 0)
+	var far_enemy := _unit(5, Vector2(933.34, 300), 0)   # balances the axis to straight up
 
-	assert_eq(out[light.uid]["type"], Subcommander.DIRECTIVE_SUPPORT,
-		"mutual support and flank coverage both run first and are not overwritten")
+	var directives: Dictionary = Subcommander.decide_group(
+		group, group + [outflanker, far_enemy], General.PLAN_ADVANCE_LINE, true)
+
+	assert_eq(directives[3]["type"], ScreenScript.DIRECTIVE_SCREEN,
+		"the screener keeps the screen -- no enemy is inside its own withdraw trigger")
+	assert_eq(directives[1]["type"], Subcommander.DIRECTIVE_COVER_FLANK,
+		"and a heavy block is still dispatched to cover the flank the screener stands on")
+
+
+func test_a_screening_unit_is_never_drafted_to_cover_a_flank() -> void:
+	# The screener is the nearest available ally to the threatened flank, and is passed over
+	# anyway: pulling it off the screen would undo the maneuver, the same carve-out mutual
+	# support already gets (a screening unit is not rescued either).
+	var light := _archers(3, Vector2(400, 780))
+	var flank := _unit(1, Vector2(300, 780))
+	var group: Array = [flank, _unit(2, Vector2(800, 780)), light]
+	var outflanker := _unit(4, Vector2(200, 700), 0)
+	var far_enemy := _unit(5, Vector2(800, 700), 0)   # balances the axis to straight up
+
+	var directives: Dictionary = Subcommander.decide_group(
+		group, group + [outflanker, far_enemy], General.PLAN_ADVANCE_LINE, true)
+
+	assert_eq(directives[3]["type"], ScreenScript.DIRECTIVE_SCREEN,
+		"the nearer screener stays out in front")
+	assert_eq(directives[2]["type"], Subcommander.DIRECTIVE_COVER_FLANK,
+		"the far heavy block covers the flank instead")
 
 
 # --- the withdrawal trigger --------------------------------------------------------

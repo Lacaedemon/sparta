@@ -35,12 +35,14 @@ const RALLY_DEPTH := 8.0 * WorldScaleRef.WU_PER_M
 const SCREEN_STATION_RADIUS := 7.0 * WorldScaleRef.WU_PER_M
 
 
-## Screen and withdraw directives for `group`'s light troops, written into `out`. A uid
-## already in `out` keeps the higher-priority directive Subcommander gave it -- mutual
-## support and flank coverage both run first. `axis` is the group's advance axis
-## (Subcommander._advance_axis); `all_units` is the usual omniscient perception. No-ops
-## without an axis, without light troops, or without a heavy line to screen for -- a screen
-## with nothing behind it has no intervals to withdraw through.
+## Screen and withdraw directives for `group`'s light troops, written into `out` -- one entry
+## per light unit, unconditionally. `out` is the screen's OWN dictionary, not the group's
+## directive table: Subcommander.decide_group runs this first (so mutual support and flank
+## coverage can read the screen's membership), then merges `out` in behind whatever those two
+## already assigned -- priority belongs there, since this class cannot know what else claimed
+## a unit. `axis` is the group's advance axis (Subcommander._advance_axis); `all_units` is the
+## usual omniscient perception. No-ops without an axis, without light troops, or without a
+## heavy line to screen for -- a screen with nothing behind it has no intervals to fall through.
 static func directives(group: Array, all_units: Array, axis: Vector2, out: Dictionary,
 		lead: float = SCREEN_LEAD_DISTANCE, trigger: float = WITHDRAW_TRIGGER_RANGE,
 		rally: float = RALLY_DEPTH, station: float = SCREEN_STATION_RADIUS) -> void:
@@ -56,8 +58,6 @@ static func directives(group: Array, all_units: Array, axis: Vector2, out: Dicti
 	var gaps: Array[float] = ScreenIntervals.interval_laterals(heavy, perp)
 	for node in light:
 		var u := node as Unit
-		if out.has(u.uid):
-			continue
 		var lateral: float = u.position.dot(perp)
 		if _enemy_within(u, all_units, trigger):
 			# Reconstructed from the (axis, perp) basis like Subcommander's hold-line point:
