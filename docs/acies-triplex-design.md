@@ -147,13 +147,15 @@ standard-bearer soldier the unit forms up relative to) is tracked in
 - **Persistent line-membership state.** `General.gd`'s reserve-commit logic
   (#586/PR #794) is an army-composition decision -- which units join the fight
   at all -- not a spatial "this unit belongs to line 2, standing in reserve
-  behind a gap" concept. That spatial concept now exists as `Unit.line_index`:
+  behind a gap" concept.
+  That spatial concept now exists as `Unit.line_index`:
   a checkerboard or tray-grid form-up tags each slice, the deploy order carries
   the tag, and the recorded order carries it into the replay stream so a saved
-  deployment replays with the same line assignments. Nothing reads the tag yet
-  -- the flank-vulnerability and withdrawal items under "Deferred" below are
-  what will. A unit-card-tray row move writes `line_index` directly rather than
-  through an order, so it is still outside the replay stream.
+  deployment replays with the same line assignments.
+  Nothing reads the tag yet -- the flank-vulnerability and withdrawal items
+  under "Deferred" below are what will.
+  A unit-card-tray row move writes `line_index` directly rather than through
+  an order, so it is still outside the replay stream.
 
 ## Deferred (tracked in [#819](https://github.com/Lacaedemon/sparta/issues/819))
 

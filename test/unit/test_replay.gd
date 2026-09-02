@@ -391,8 +391,10 @@ func test_the_recording_drain_carries_a_form_ups_line_index_into_the_replay() ->
 	Replay.forced_seed = 148401
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	battle.scenario = [{"team": 0, "type": "Infantry", "x": 500, "y": 700, "count": 20}]
+	# No team 1, so nothing ends the battle out from under us. Set BEFORE the node enters
+	# the tree, per drill_mode's own doc comment -- _ready() is what reads it.
+	battle.drill_mode = true
 	add_child_autofree(battle)   # _ready() -> Replay.start_recording(): mode = RECORD
-	battle.drill_mode = true     # no team 1, so nothing ends the battle out from under us
 	await get_tree().physics_frame
 
 	var spawned: Array = get_tree().get_nodes_in_group("units")
