@@ -8,8 +8,10 @@ class_name ProjectileField
 ##
 ## Determinism (replays depend on it): projectiles are appended in launch order and resolved
 ## in that order, on the fixed physics delta, and the shield roll below draws from the one
-## seeded stream once per arrow -- unconditionally, so the stream advances by the same count
-## whichever way the geometry falls. Same seed + orders reproduce the same battle.
+## seeded stream once per arrow that finds a man -- a volley carrying more arrows than the
+## target has living men draws one roll per man reached, not one per arrow. Within that loop
+## the draw is unconditional, so the stream advances by the same count whichever way the
+## geometry falls. Same seed + orders reproduce the same battle.
 ##
 ## Landing is now per arrow, not per volley: each of the near-side men the volley reaches
 ## takes one arrow against the shield he is actually holding, so a shield wall facing the
@@ -97,8 +99,9 @@ func launch(from: Vector2, to: Vector2, shooter_uid: int, target_uid: int,
 
 
 ## Advance every projectile by `delta`; resolve and remove any that have landed. Landed
-## projectiles resolve in launch (array) order — deterministic, no RNG. `battle` supplies the
-## uid->unit lookup.
+## projectiles resolve in launch (array) order, on the fixed physics delta -- so the order in
+## which their per-arrow shield rolls draw from the seeded stream is fixed too. `battle`
+## supplies the uid->unit lookup.
 func step(delta: float, battle: Node) -> void:
 	var i: int = 0
 	while i < _elapsed.size():
@@ -150,10 +153,11 @@ func _resolve(i: int, battle: Node) -> void:
 ## loses far fewer men to an identical volley than an exposed flank does, and arrows that
 ## lodge stay to weigh the wall down.
 ##
-## One roll is drawn per arrow, always -- before the arc is even consulted -- so the seeded
-## stream advances by the same number of draws whichever way the geometry falls, and a replay
-## stays in step with the run it recorded. `reap` runs once, after the whole volley, so the
-## morale hit still arrives as one blow rather than as one per man.
+## One roll is drawn per arrow that finds a man -- `ranged_victims` returns min(arrows,
+## living) indices and every one of them draws, before the arc is even consulted. So the draw
+## count is fixed by the volley size and the survivor count, never by which way the men are
+## turned, and a replay stays in step with the run it recorded. `reap` runs once, after the
+## whole volley, so the morale hit still arrives as one blow rather than as one per man.
 func _land_on_soldiers(target, killer, origin: Vector2, arrows: int, morale_flank: float) -> void:
 	var sag: float = shield_sag(target)
 	var pierced: int = 0
