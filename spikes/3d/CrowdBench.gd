@@ -24,6 +24,12 @@ extends Node3D
 @export var field_half_extent_m: float = 60.0
 ## Metres each instance sways per second, so every transform genuinely changes.
 @export var sway_amplitude_m: float = 1.5
+## Soldier proxy box, in metres: roughly a man's footprint and height. Matches
+## ProjectionShell.gd's soldier_size_m, so the two spikes render the same body.
+@export var soldier_size_m: Vector3 = Vector3(0.5, 1.8, 0.5)
+## Seed for the scatter RNG, so a run is reproducible unless the caller wants
+## a different scatter.
+@export var rng_seed: int = 947
 
 var _mm: MultiMesh
 var _elapsed: float = 0.0
@@ -41,8 +47,7 @@ func _ready() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
 	var mesh := BoxMesh.new()
-	# A soldier-sized box: roughly 0.5 m across and 1.8 m tall.
-	mesh.size = Vector3(0.5, 1.8, 0.5)
+	mesh.size = soldier_size_m
 	_mm = MultiMesh.new()
 	_mm.transform_format = MultiMesh.TRANSFORM_3D
 	_mm.use_colors = true
@@ -52,7 +57,7 @@ func _ready() -> void:
 	mmi.multimesh = _mm
 	add_child(mmi)
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 947
+	rng.seed = rng_seed
 	for i in range(instance_count):
 		var x: float = rng.randf_range(-field_half_extent_m, field_half_extent_m)
 		var z: float = rng.randf_range(-field_half_extent_m, field_half_extent_m)
