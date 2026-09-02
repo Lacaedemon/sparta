@@ -2,8 +2,8 @@
 
 Status: **design -- not yet implemented.**
 This note is the design deliverable for
-[#414](https://github.com/Lacaedemon/sparta/issues/414) ("add fog of war --
-both in battles and in campaigns and sagas"), following the same
+[#414](https://github.com/Lacaedemon/sparta/issues/414) (title: "add fog of
+war"; body: "both in battles and in campaigns and sagas"), following the same
 design-doc-first pattern as [`docs/battle-ai-design.md`](battle-ai-design.md)
 (#498), [`docs/orders-queue-design.md`](orders-queue-design.md) (#516), and
 [`docs/campaign-layer-design.md`](campaign-layer-design.md) (#582).
@@ -22,9 +22,16 @@ This note is the producer side of that contract.
 ### Both armies currently see everything, and nothing in the code pretends otherwise
 
 There is no visibility layer in the tree at all.
-A grep for `fog` across `scripts/` returns nothing; the only hits anywhere in
-the repo are `docs/battle-ai-design.md`'s forward references to this issue and
-one passing mention of another game in `docs/related-games.md`.
+`git grep -in fog` finds no visibility *code*: the three hits under `scripts/`
+are all comments saying the feature is absent.
+`scripts/Battle.gd`'s `ROUT_MARGIN` comment calls `Unit.DETECTION_RANGE` "the
+closest existing stand-in for a fog-of-war vision range, which this game
+doesn't have yet", and `scripts/UnitLeader.gd` twice describes its own
+perception as omniscient today and fogged only in battle-AI phase 5.
+The remaining hits are prose: `docs/battle-ai-design.md`'s forward references
+to this issue, two passing mentions of other games in `docs/related-games.md`
+(lines 173 and 323), and `website/roadmap.qmd`'s roadmap line about
+"fog-of-war-aware perception".
 Every living unit is a `Node2D` that draws itself, so anything inside the
 camera's view renders regardless of which team is looking, and every AI read
 goes straight to `get_tree().get_nodes_in_group("units")`.
@@ -45,9 +52,12 @@ Polybius records Hannibal at Lake Trasimene concealing his army on the wooded
 heights above the lake and attacking a Roman column marching through morning
 mist that hid the ambush until it closed
 ([Polybius, *Histories* III.83-84](https://www.perseus.tufts.edu/hopper/text?doc=Perseus:text:1999.01.0234:book=3:chapter=83)).
-The same author's account of Cannae turns on Hasdrubal's cavalry arriving in
-the Roman rear at a moment the Roman command could not have anticipated it
+The same author's account of Cannae records Hasdrubal's cavalry breaking the
+Roman horse, riding round behind the line, and charging the Roman rear
 ([Polybius, *Histories* III.116](https://www.perseus.tufts.edu/hopper/text?doc=Perseus:text:1999.01.0234:book=3:chapter=116)).
+Polybius says nothing there about what the Roman command could or could not
+see; the reading that an envelopment completed behind an already-engaged
+infantry line is learned about late is this note's inference, not his claim.
 Clausewitz generalized the condition a great deal later: war is "the realm of
 uncertainty", in which "three quarters of the factors on which action in war is
 based are wrapped in a fog of greater or lesser uncertainty"
@@ -93,6 +103,10 @@ Verified against the tree at the time of writing.
   The default spawn lines (`Battle.SPAWN_LINE_YS`) are y = 300 and y = 880, so the two armies start 580 wu = 29 m apart.
   This is the single most important constraint on the whole design; see "The scale problem" below.
 
+- `Battle.ROUT_MARGIN` is `maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)` = 190 wu, and `field_with_margin = field.grow(ROUT_MARGIN)` (`scripts/Battle.gd:41-42`, recomputed for the live map at `:517`) is what every spawned unit receives as `Unit.retreat_bounds` (`:1074`); a router that leaves it is removed from play by `Unit._escape()`.
+  The comment above it states an invariant this design has to honour: the margin is sized to "the game's maximum visual range", with `DETECTION_RANGE` standing in for "a fog-of-war vision range, which this game doesn't have yet", "so a fleeing unit stays a plausible target for as long as it's still visible, rather than vanishing early".
+  A real sight range longer than 190 wu breaks that invariant, so the parameter section below has to say what happens to the margin.
+
 ### What the AI can see
 
 - The chain-of-command AI is implemented through phase 4: `scripts/UnitLeader.gd`, `scripts/Subcommander.gd`, `scripts/General.gd`, `scripts/DoctrineRegistry.gd`, and `scripts/PlayerDelegation.gd`, dispatched from `Battle._run_enemy_ai()` and `Battle._run_player_delegated_ai()` on the `ai_period` cadence (default 60 ticks, once per second at `Replay.PHYSICS_TPS` 60).
@@ -119,7 +133,8 @@ Verified against the tree at the time of writing.
 
 - `scripts/PathField.gd` already carries the occlusion primitive this design needs.
   Its own class doc describes two layers of obstacle geometry, of which the first is exact: "The EXACT terrain rects decide what is actually blocked: every sightline test (the straight-line fast path, string-pulling visibility, `is_blocked`) runs against the drawn rects themselves, grown by the caller's own `clearance`".
-  The segment test itself is `PathField._segment_blocked(from, to, clearance)` -- private today, and the natural thing to promote to a public `segment_blocked` for a visibility caller passing `clearance` 0.0.
+  The segment test itself is the private `PathField._segment_blocked(from, to, clearance)`, and it already has a public wrapper: `PathField.is_leg_blocked(from, to, clearance := 0.0)` (`scripts/PathField.gd:184-185`) forwards to it verbatim, so a visibility caller passing `clearance` 0.0 needs no new entry point and no rename.
+  Its only caller today is `Unit.funnel_lane_offset`'s same-team congestion gate (`scripts/Unit.gd:3508`), and its doc comment frames it as a cheap "is this unit actually about to detour" test, which is the same question a sightline asks.
 
 - Terrain is **flat**: a `"block"` patch is an impassable rect, not a height.
   There is no heightfield and no elevation anywhere in the sim, so elevation-driven vision (seeing over a wall, being seen from a ridge) has nothing to read and is out of scope until one exists.
@@ -269,16 +284,45 @@ Proposed parameters:
 | `Unit.sight_range` | resolved from `is_cavalry` and `is_ranged` at spawn, overridable before `_ready` | The same set-before-tree contract `detection_range`, `drill_mode`, and `ai_doctrine` already follow |
 | `Unit.SIGHT_SCREEN_FACTOR` | 0.5 | Remaining range through one screening patch |
 | `Unit.SIGHT_ROUTING_PENALTY` | 0.6 | A routing unit is not observing; multiplies its own sight range while its state is ROUTING |
+| `Battle.ROUT_MARGIN` | redefined to include the largest sight range: 420 wu on these defaults, up from 190 wu | Keeps the invariant its own comment states -- the margin a router must clear is never shorter than the longest sight range in play |
 
 The multipliers are gameplay tuning and are labelled as such; only
 `sight_scale`'s tie to field size is a structural claim.
-The three flags the defaults key off (`Unit.is_cavalry`, `Unit.is_ranged`,
-`Unit.anti_cavalry`) all exist today.
+The defaults key off two flags, `Unit.is_cavalry` and `Unit.is_ranged`, both of
+which exist today (`scripts/Unit.gd:148,150`).
+`Unit.anti_cavalry` exists too (`:149`) but drives no sight default: spearmen
+sit at the `SIGHT_FOOT` 1.0 baseline.
 
 Deliberately **not** modelled in the first battle phase, each because the sim
 has nothing to read: facing-limited vision cones (a unit sees a full disc),
 elevation, weather, dust, and night.
 Each is a natural later phase and none of them changes the interface.
+
+**The rout margin has to grow with sight range.**
+`Battle.ROUT_MARGIN` is `maxf(RANGED_RANGE, DETECTION_RANGE)` = 190 wu, and its
+comment (`scripts/Battle.gd:32-41`) sizes it to "the game's maximum visual
+range" so that "a fleeing unit stays a plausible target for as long as it's
+still visible".
+The defaults above put foot sight at 300 wu and mounted sight at 420 wu, which
+is 1.6x to 2.2x that margin, so leaving the margin alone would have a routing
+enemy cross `Unit.retreat_bounds`, be removed by `Unit._escape()`, and visibly
+pop out of existence while still well inside a friendly unit's sight radius.
+The proposal is to redefine the margin as the maximum of every range that makes
+a unit worth watching, sight included: `maxf(RANGED_RANGE, maxf(DETECTION_RANGE,
+max_sight_range))`, where `max_sight_range` is `sight_scale` times the largest
+sight multiplier (`SIGHT_MOUNTED` 1.4, so 420 wu on the default field).
+That makes it a per-battle instance value rather than a `const`, since
+`sight_scale` is itself per-battle; `field_with_margin` is then recomputed in
+the one place it is already recomputed for a non-default map
+(`scripts/Battle.gd:517`), so nothing else in the spawn path changes.
+The visible costs are a wider margin strip drawn under the field
+(`scripts/Battle.gd:674`) and a longer flight before escape, both of which are
+the intended behaviour rather than a regression.
+The alternative -- keep the margin at 190 wu and accept the pop-out -- is
+rejected here rather than left unstated, because a unit vanishing inside your
+own sight radius reads as a bug to the player and would undercut the
+ghost-marker model in the same breath.
+Phase 1 owns the change, since that is where sight ranges first exist.
 
 ### Last-known contact
 
@@ -418,8 +462,27 @@ should be rejected on sight.
 Instantaneous visibility is a pure function of serialized sim state: unit
 positions, unit sight ranges, and the terrain table, all of which the replay
 already reconstructs.
-So playback recomputes it on the same cadence, the replay format does not
-change, and `Replay.FORMAT_VERSION` does not bump.
+So playback recomputes it on the same cadence and **no visibility state is
+recorded**: no per-tick visible set, no explored grid, and no contact table
+ever reaches the file.
+The replay *header* does change shape in one place, and this note should not
+claim otherwise: `Replay.map` records "the battle's MAP block
+(`BattleMap.serialize`'s shape)" (`scripts/Replay.gd:143`), so once phase 1
+adds a `sight` axis to terrain patches, a map carrying a non-default `sight`
+writes a key older builds never wrote.
+The version policy for that key is the additive one the map block itself
+already follows: `sight` is omitted whenever a patch takes the default, so
+every default-sight replay stays byte-identical to today's.
+`Replay.FORMAT_VERSION` deliberately does **not** bump, because
+`Replay.start_playback` rejects on strict inequality
+(`scripts/Replay.gd:222`), so a bump would invalidate every replay already
+recorded rather than merely teaching old builds to refuse new ones.
+The residual gap is one-directional and accepted: an old build reading a new
+replay whose map carries a non-default `sight` ignores the key and replays the
+battle at default sight.
+Nothing in the sim reads `sight` before phase 3, and the cheaper fix when it
+does start to matter is a per-key capability check in the header rather than a
+global version bump.
 This is the same rule `docs/battle-ai-design.md` applies to AI decisions
 ("re-derive, don't record"), and it holds for the same reason.
 
@@ -481,7 +544,10 @@ contact table on the AI cadence.
 Per-unit `sight_range` with type-derived defaults.
 The `sight` axis on terrain patches in `BattleMap.parse` and
 `BattleMap.serialize`.
-Promotion of `PathField._segment_blocked` to a public `segment_blocked`.
+Sightline tests reuse the existing public `PathField.is_leg_blocked` with
+`clearance` 0.0; no new `PathField` entry point is added.
+`Battle.ROUT_MARGIN` widened to the largest sight range, per "The rout margin
+has to grow with sight range" above.
 No rendering and no AI consumption: the sim runs exactly as today and the new
 state is computed alongside it.
 
@@ -498,6 +564,10 @@ A target across the `forest` screen patch is visible within the reduced range
 and not beyond it.
 A contact record is written on the tick of last sighting and not after.
 A unit that dies while unobserved keeps its record.
+A routing unit spawned on the default map is still in play at 300 wu beyond
+the field edge and removed by `Unit._escape()` only past the widened margin, so
+the distance it must clear is never shorter than the longest sight range in the
+battle.
 A fixed-seed battle produces a byte-identical replay with the module active,
 proving no simulation feedback.
 `BattleMap.parse(BattleMap.serialize(...))` round-trips the new key, and a map
@@ -617,8 +687,10 @@ models above, and one that should be designed then rather than guessed now.
 
 - **Stealth and ambush as unit abilities.** Hiding in woods as an active choice is a mechanic on top of this model, not part of it.
 
-- **Multiplayer information security.** Lockstep multiplayer (#290) would put both players' full state on both peers, so fog there is a rendering convention rather than a security boundary.
-  Out of scope until #290 has a design.
+- **Multiplayer information security.** [#290](https://github.com/Lacaedemon/sparta/issues/290) is titled "add mutliplayer battles and campaigns" with the body "(multi-computer, not hotseat)"; it names no network architecture and has no design yet.
+  *If* it lands as lockstep -- every peer simulating the same battle from the same seed and the same inputs, which is the shape this game's replay recorder already implies -- then both players hold full state locally, fog is a rendering convention on each peer rather than a security boundary, and a modified client can see through it.
+  A server-authoritative design would instead make fog a filter on what each peer is sent, which is a different and larger piece of work.
+  Either way it is out of scope until #290 has a design.
 
 ## Open questions
 
