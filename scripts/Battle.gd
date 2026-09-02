@@ -2882,8 +2882,9 @@ func _tick_tier_transitions() -> Array:
 ## their own strikes in Unit._think as before (UnitCombat.strike/shoot return early for a
 ## far-tier attacker, so a fight is never billed by both paths).
 ##
-## Only the "units" group is scanned: a routing formation deals no attrition until it
-## rallies (FarTierCombat.can_fight), so it can never be an attacker here. It can still be a
+## `units` is the "units" group alone, as the tier pass fetched it -- routers excluded. That
+## costs nothing: a routing formation deals no attrition until it rallies
+## (FarTierCombat.can_fight), so it could never be an attacker here anyway. It can still be a
 ## DEFENDER -- the target comes from UnitTargeting, which includes routing enemies -- so a
 ## far-tier formation still runs a broken one down, matching the close tier's own "fleeing
 ## does not grant immunity" rule.
