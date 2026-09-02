@@ -2867,13 +2867,13 @@ func _tick_tier_transitions() -> void:
 ## their own strikes in Unit._think as before (UnitCombat.strike/shoot return early for a
 ## far-tier attacker, so a fight is never billed by both paths).
 ##
-## Routers are included in the scan on the DEFENDING side only -- FarTierCombat.can_fight
-## excludes a routing attacker, while can_be_struck admits a routing defender, matching the
-## close tier's own "fleeing does not grant immunity" rule.
+## Only the "units" group is scanned: a routing formation deals no attrition until it
+## rallies (FarTierCombat.can_fight), so it can never be an attacker here. It can still be a
+## DEFENDER -- the target comes from UnitTargeting, which includes routing enemies -- so a
+## far-tier formation still runs a broken one down, matching the close tier's own "fleeing
+## does not grant immunity" rule.
 func _tick_far_tier_combat(delta: float) -> void:
-	var targets: Array = get_tree().get_nodes_in_group("units")
-	targets.append_array(get_tree().get_nodes_in_group("routers"))
-	FarTierCombat.tick_all(targets, delta)
+	FarTierCombat.tick_all(get_tree().get_nodes_in_group("units"), delta)
 
 
 ## Battle AI phases 1-3 (docs/battle-ai-design.md): every AI-controlled (team 1) unit gets
