@@ -1,0 +1,23 @@
+{
+  "_comment": "Live far-tier combat. Both formations spawn 120 wu apart -- beyond this demo's demote range (95 wu) -- so Battle's first tier pass collapses BOTH to the far tier, and the promote range is pulled down to 6 wu, below anything two pressing regiments reach, so they stay far-tier all the way through contact instead of being handed back to close-tier combat. All-teams control lets the script order both sides in: the spearmen onto the infantry, then the infantry onto the spearmen, so the exchange is mutual. Wide, shallow blocks on purpose (frontage_override): a far-tier formation has no soldier bodies to hold the two grids apart at the 62 wu regiment contact distance, so deep blocks visibly interpenetrate. Casualties accrue on both sides, the weak enemy's morale runs out, and it breaks and flees while the spearmen run it down. Before this change a demoted formation could not take a casualty at all, so this clip was impossible to record.",
+  "seed": "80517",
+  "spawn_fingerprint": "a8e9d434082889e76f9c7ba030055245",
+  "tier_ranges": {"promote": 6.0, "demote": 95.0},
+  "all_teams_control": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 760, "y": 480, "count": 60, "frontage_override": 20, "facing": [0.0, 1.0]},
+    {"team": 1, "type": "Infantry", "x": 760, "y": 600, "count": 28, "frontage_override": 14, "morale": 26.0, "facing": [0.0, -1.0]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 760.0, "y": 540.0, "zoom": 1.5},
+    {"tick": 320, "x": 760.0, "y": 590.0, "zoom": 1.4}
+  ],
+  "steps": [
+    {"tick": 10, "click": [760, 480]},
+    {"tick": 24, "rmb_click": [760, 600]},
+    {"tick": 40, "click": [760, 600]},
+    {"tick": 54, "rmb_click": [760, 480]}
+  ],
+  "state": [8, 60, 100, 140, 170, 200, 230, 260, 300],
+  "frames": [8, 140, 210, 280]
+}

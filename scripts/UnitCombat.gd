@@ -105,6 +105,21 @@ static func order_mode_modifiers(u: Unit, target: Unit) -> Vector2:
 
 
 static func strike(u: Unit, enemy: Unit) -> void:
+	# Far tier: this regiment's attrition is resolved once per tick as a continuous
+	# expectation (FarTierCombat.tick_all, driven from Battle's own tick) rather than as a
+	# per-cooldown damage roll here, so landing the strike as well would bill one fight
+	# twice. Returning BEFORE the RNG draw below keeps the seeded stream a deterministic
+	# function of tier state -- the far tier is RNG-free by design. Unit._think still runs
+	# its ordinary fighting branch for a far-tier unit (state, facing, the press into
+	# contact); only the casualties move.
+	#
+	# The charge is still SPENT on this contact, exactly as both paths below do. The far
+	# tier's own model carries no charge term, so an unspent _approach_velocity would sit on
+	# the unit until it promoted and then land an undeserved momentum bonus on its first
+	# close-tier strike.
+	if u.tier == FormationTier.FAR:
+		u._approach_velocity = Vector2.ZERO
+		return
 	# Phase 4b: when both regiments have a soldier layer, resolve melee per soldier
 	# (the model's opposed roll + wound against per-soldier health) instead of the
 	# regiment damage formula. This is where flanking, reach (spear vs. sword), and
@@ -161,6 +176,11 @@ static func strike(u: Unit, enemy: Unit) -> void:
 ## volleys inherit the same flank/rear multiplier as melee (relative to the TARGET's
 ## facing): fire into a flank or rear deals the full bonus.
 static func shoot(u: Unit, enemy: Unit) -> void:
+	# Far tier: same split as strike() above -- the volley's expected casualties are booked
+	# continuously by FarTierCombat, so this path returns before the RNG draw rather than
+	# loosing a second, rolled volley for the same tick.
+	if u.tier == FormationTier.FAR:
+		return
 	# RNG consumed first so the seeded stream stays deterministic regardless of which unit
 	# is ultimately hit.
 	var rng_roll: float = Replay.rng.randf_range(0.6, 1.4)
