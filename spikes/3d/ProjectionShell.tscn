@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://spikes/3d/ProjectionShell.gd" id="1"]
+[ext_resource type="Script" path="res://spikes/3d/OrbitCamera.gd" id="2"]
+
+[node name="ProjectionShell" type="Node3D"]
+script = ExtResource("1")
+
+[node name="SimViewport" type="SubViewport" parent="."]
+
+[node name="Crowd" type="Node3D" parent="."]
+
+[node name="OrbitCamera" type="Camera3D" parent="."]
+script = ExtResource("2")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.5, -0.8660254, 0, 0.8660254, 0.5, 0, 80, 0)
