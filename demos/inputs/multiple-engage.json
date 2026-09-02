@@ -18,7 +18,7 @@
   "expect": [
     { "tick": [10, 700], "uid": 0, "field": "order_mode", "value": "Multiple engage" },
     { "tick": 10, "uid": 0, "field": "frontage", "value": 11 },
-    { "tick": 300, "uid": 0, "field": "frontage", "value": 11 },
+    { "tick": 200, "uid": 0, "field": "frontage", "value": 11 },
     { "tick": 400, "uid": 0, "field": "frontage", "value": 14 }
   ],
   "fixed_fps": 30,
