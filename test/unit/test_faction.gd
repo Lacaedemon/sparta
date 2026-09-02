@@ -74,3 +74,15 @@ func test_faction_form_up_and_strategy_names() -> void:
 
 	var strategy_macedon := Faction.get_strategy_name(Faction.Type.MACEDON)
 	assert_true(strategy_macedon.contains("sarissa"))
+
+
+func test_get_form_up_display_name_falls_back_to_plain_name_for_an_unlisted_mode() -> void:
+	# HISTORICAL_FORM_UP only covers the CHECKERBOARD/ECHELON_RIGHT/ECHELON_LEFT modes (4-6);
+	# any other form-up distribution (or an unknown faction) must return the bare plain name,
+	# same fallback contract as get_formation_display_name().
+	var plain := "Equal depth"
+	assert_eq(Faction.get_form_up_display_name(Faction.Type.ROME, 0, plain), plain)
+
+
+func test_get_strategy_name_falls_back_to_standard_doctrine_for_an_unknown_faction() -> void:
+	assert_eq(Faction.get_strategy_name(-1), "Standard Doctrine")

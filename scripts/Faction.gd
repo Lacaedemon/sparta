@@ -164,6 +164,12 @@ static func get_subunit_override(roster_name: String) -> Dictionary:
 	return d.duplicate()
 
 
+## "<plain name> (<historical name>)" for a faction/formation pair HISTORICAL_FORMATIONS
+## covers, or the bare plain name otherwise -- e.g. a faction with no entry, or a formation
+## mode a faction's entry doesn't list. No caller resolves a battle side's Faction.Type today
+## (Battle.gd only reads FACTION_ROSTERS' flavor names at prebattle time -- see
+## Faction.get_unit_type()'s doc comment); wiring HUD.gd's formation label/menu through this
+## once a side's faction is tracked at runtime is tracked separately.
 static func get_formation_display_name(faction_id: int, formation_mode: int, plain_name: String) -> String:
 	if HISTORICAL_FORMATIONS.has(faction_id):
 		var dict: Dictionary = HISTORICAL_FORMATIONS[faction_id]
@@ -172,6 +178,9 @@ static func get_formation_display_name(faction_id: int, formation_mode: int, pla
 	return plain_name
 
 
+## Same contract as get_formation_display_name(), for a multi-unit drag-line form-up
+## distribution mode (Settings.gd's FORM_UP_DIST_CHECKERBOARD/ECHELON_RIGHT/ECHELON_LEFT,
+## 4-6 -- SelectionManager._issue_form_up's own cycle) instead of a live formation mode.
 static func get_form_up_display_name(faction_id: int, form_up_dist: int, plain_name: String) -> String:
 	if HISTORICAL_FORM_UP.has(faction_id):
 		var dict: Dictionary = HISTORICAL_FORM_UP[faction_id]
@@ -180,5 +189,9 @@ static func get_form_up_display_name(faction_id: int, form_up_dist: int, plain_n
 	return plain_name
 
 
+## The faction's named historical doctrine/strategy, or "Standard Doctrine" for a faction
+## FACTION_STRATEGIES doesn't list. No AI strategy code reads this yet -- it's the display
+## label for whatever doctrine a future battle-AI faction profile picks, not itself a
+## behavioral switch.
 static func get_strategy_name(faction_id: int) -> String:
 	return FACTION_STRATEGIES.get(faction_id, "Standard Doctrine")

@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/cannae-scale.json",
-  "caption": "Faction historical naming and doctrines (#875): historical formation and form-up names, rosters, and tactical strategies across Rome, Sparta, Carthage, and Macedon.",
-  "fixed_fps": 30,
-  "max_frames": 350,
-  "fps": 20,
-  "width": 640
+  "skip": true,
+  "reason": "Adds only static historical formation/form-up/strategy name lookup tables (Faction.HISTORICAL_FORMATIONS, HISTORICAL_FORM_UP, FACTION_STRATEGIES) and their display-name helper functions. Nothing draws or reads a battle side's Faction.Type at runtime yet -- Battle.gd only consumes FACTION_ROSTERS' flavor names at prebattle roster-selection time, before a unit is even spawned -- so there is no render path for a recorded battle to show. Wiring these into HUD.gd's formation label/menu once a side's faction is tracked at runtime is a separate follow-up."
 }
