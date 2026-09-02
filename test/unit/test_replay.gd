@@ -1,6 +1,8 @@
 extends GutTest
 ## Tests for the Replay presentation (camera) track: recording with dedup, playback
 ## stepping, save/load round-trip, and back-compat with replays that have no track.
+## Also the per-order optional fields' record/save/load/apply round trips, including the
+## one seam that needs a real ticking Battle: the per-tick recording drain.
 
 const ReplayScript = preload("res://scripts/Replay.gd")
 const BattleScript = preload("res://scripts/Battle.gd")
@@ -376,3 +378,38 @@ func test_a_loaded_replays_line_index_reaches_the_unit_through_apply_order_cmd()
 	assert_eq(u.line_index, 2,
 			"the recorded line index survives save/load and is written onto the unit by " +
 			"the same _apply_order_cmd call playback makes -- not only by a live order")
+
+
+func test_the_recording_drain_carries_a_form_ups_line_index_into_the_replay() -> void:
+	# The one seam the script-only tests above can't reach: Battle._physics_process's own
+	# per-tick drain, which is what actually hands a live order to Replay.record_order. A
+	# real ticking Battle is needed because the drain reads _pending_orders on the tick
+	# AFTER the order is enqueued. Drop the line argument from that call and every other
+	# test here still passes -- the order simply reaches the replay stream with no "line"
+	# key, and the recorded deployment loses its front/reserve split on playback.
+	var prev_mode: int = Replay.mode
+	Replay.forced_seed = 148401
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [{"team": 0, "type": "Infantry", "x": 500, "y": 700, "count": 20}]
+	add_child_autofree(battle)   # _ready() -> Replay.start_recording(): mode = RECORD
+	battle.drill_mode = true     # no team 1, so nothing ends the battle out from under us
+	await get_tree().physics_frame
+
+	var spawned: Array = get_tree().get_nodes_in_group("units")
+	assert_gt(spawned.size(), 0, "the scenario spawned a unit to order")
+	var u: Unit = spawned[0] as Unit
+	var uid: int = u.uid
+	battle.enqueue_form_up([uid], Vector2(500, 600), 0.0, 5,
+			BattleScript.OrderMode.NORMAL, false, -1, 1)
+	await get_tree().physics_frame   # the drain records the pending order on the next tick
+
+	var recorded: Dictionary = {}
+	for o in Replay._orders:
+		if int(o.get("target", 0)) == -1 and (o["units"] as Array).has(uid):
+			recorded = o
+	assert_false(recorded.is_empty(), "the form-up order reached the replay stream")
+	assert_eq(int(recorded.get("line", BattleScript.LINE_INDEX_UNCHANGED)), 1,
+			"the drain forwards the pending form-up's line index to Replay.record_order, " +
+			"so the recorded order carries the reserve line the deploy assigned")
+
+	Replay.mode = prev_mode

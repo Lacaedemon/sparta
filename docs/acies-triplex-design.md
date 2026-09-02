@@ -2,8 +2,9 @@
 
 Status: **phase 1 landed** -- checkerboard (quincunx) spacing as a new multi-unit
 form-up distribution mode (`SelectionManager.FormUpDist.CHECKERBOARD`). Persistent
-line-membership state, cavalry-flank-vulnerability tradeoffs, and century-level
-partial withdrawal are **not yet built** -- tracked in
+line-membership state has since landed too -- see "Landed since phase 1" below.
+Cavalry-flank-vulnerability tradeoffs and century-level partial withdrawal are
+**not yet built** -- tracked in
 [#819](https://github.com/Lacaedemon/sparta/issues/819), see "Deferred" below.
 
 Tracks [#805](https://github.com/Lacaedemon/sparta/issues/805) (phase 1, closed) and
@@ -141,19 +142,21 @@ regiment's centre) and is tracked separately in
 standard-bearer soldier the unit forms up relative to) is tracked in
 [#820](https://github.com/Lacaedemon/sparta/issues/820).
 
+## Landed since phase 1
+
+- **Persistent line-membership state.** `General.gd`'s reserve-commit logic
+  (#586/PR #794) is an army-composition decision -- which units join the fight
+  at all -- not a spatial "this unit belongs to line 2, standing in reserve
+  behind a gap" concept. That spatial concept now exists as `Unit.line_index`:
+  a checkerboard or tray-grid form-up tags each slice, the deploy order carries
+  the tag, and the recorded order carries it into the replay stream so a saved
+  deployment replays with the same line assignments. Nothing reads the tag yet
+  -- the flank-vulnerability and withdrawal items under "Deferred" below are
+  what will. A unit-card-tray row move writes `line_index` directly rather than
+  through an order, so it is still outside the replay stream.
+
 ## Deferred (tracked in [#819](https://github.com/Lacaedemon/sparta/issues/819))
 
-- **Persistent line-membership state.** *Landed.* `General.gd`'s
-  reserve-commit logic (#586/PR #794) is an army-composition decision -- which
-  units join the fight at all -- not a spatial "this unit belongs to line 2,
-  standing in reserve behind a gap" concept. That spatial concept now exists
-  as `Unit.line_index`: a checkerboard or tray-grid form-up tags each slice,
-  the deploy order carries the tag, and the recorded order carries it into the
-  replay stream so a saved deployment replays with the same line assignments.
-  Nothing reads the tag yet -- the flank-vulnerability and withdrawal
-  mechanics below are what will. A unit-card-tray row move writes
-  `line_index` directly rather than through an order, so it is still outside
-  the replay stream.
 - **Cavalry-flank-vulnerability tradeoff.** The historical system's chief
   weakness (thin cavalry can't cover the flanks of a gapped multi-line
   formation) isn't modeled -- a checkerboard-formed army isn't currently more

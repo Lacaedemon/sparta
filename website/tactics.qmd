@@ -360,7 +360,6 @@ remembers the **row** it was placed from (the top row is Line 1), recorded on
 the deploy order so a replay reproduces it. The **column** is not carried, so
 a unit doesn't remember its exact cell -- and, as with checkerboard, nothing
 reads the tag yet, so the arrangement itself is still one-shot in play.
-Echelon assigns no line at all, leaving each unit's existing tag alone.
 
 ::: {#fig-tray-formation-tactics .demo}
 
@@ -403,9 +402,11 @@ units at once" entry) for the drag mechanics --- echelon reuses the exact
 same box-select-then-drag gesture every other split mode does, just with a
 staggered depth instead of one flat line.
 
-Like checkerboard, this is a **one-shot layout, not a standing formation**: a
-unit dragged into an echelon doesn't remember which flank it led from, so a
-later reform or reshape doesn't preserve the stagger. And nothing currently
+Unlike checkerboard and tray formation, echelon assigns **no line at all**,
+leaving each unit's existing line tag alone. The stagger itself is a
+**one-shot layout**: a unit dragged into an echelon doesn't remember which
+flank it led from, so a later reform or reshape doesn't preserve it. And
+nothing currently
 models the tactical risk a real refused flank carries either --- the
 trailing units aren't rendered any more exposed to being turned than a
 straight line would be, so the payoff (concentrating force where you choose)
