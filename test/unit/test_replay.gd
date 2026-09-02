@@ -8,6 +8,80 @@ const ReplayScript = preload("res://scripts/Replay.gd")
 const BattleScript = preload("res://scripts/Battle.gd")
 const UnitScript = preload("res://scripts/Unit.gd")
 
+## Every test but one here works on its own isolated Replay instance (`_fresh()`), but the
+## recording-drain case has to spawn a real Battle, and Battle._ready() calls
+## start_recording() on the GLOBAL Replay autoload -- which clears the order list and every
+## presentation track, rewrites the seed/mode/path fields, and then has the battle republish
+## `map` and `spawn_fingerprint`. Left alone that leaks a recorded order (and a RECORD mode)
+## into whatever runs next, which is how a suite becomes order-dependent: test_selection_
+## manager.gd and the demo-state tests both read the autoload. So snapshot the whole
+## autoload before each test and put it back after. Capturing EVERY field rather than the
+## subset start_recording() happens to touch today means a new field can't silently escape
+## the restore -- and running it for all the _fresh() tests too costs a few duplicated empty
+## arrays, which is cheaper than reasoning about which tests need it.
+var _replay_snapshot: Dictionary = {}
+
+
+func before_each() -> void:
+	_replay_snapshot = {
+		"mode": Replay.mode,
+		# seed must be restored before state: assigning seed resets state.
+		"rng_seed": Replay.rng.seed,
+		"rng_state": Replay.rng.state,
+		"seed_value": Replay.seed_value,
+		"forced_seed": Replay.forced_seed,
+		"orders": Replay._orders.duplicate(true),
+		"play_index": Replay._play_index,
+		"camera_track": Replay._camera_track.duplicate(true),
+		"camera_index": Replay._camera_index,
+		"pointer_track": Replay._pointer_track.duplicate(true),
+		"pointer_index": Replay._pointer_index,
+		"key_track": Replay._key_track.duplicate(true),
+		"time_scale_track": Replay._time_scale_track.duplicate(true),
+		"time_scale_index": Replay._time_scale_index,
+		"drive_camera": Replay.drive_camera,
+		"show_demo_orders": Replay.show_demo_orders,
+		"map": Replay.map.duplicate(true),
+		"save_counter": Replay._save_counter,
+		"loaded_path": Replay.loaded_path,
+		"last_saved_path": Replay.last_saved_path,
+		"last_load_sha_mismatch": Replay.last_load_sha_mismatch,
+		"spawn_fingerprint": Replay.spawn_fingerprint,
+		"loaded_spawn_fingerprint": Replay.loaded_spawn_fingerprint,
+		"last_load_spawn_mismatch": Replay.last_load_spawn_mismatch,
+	}
+
+
+func after_each() -> void:
+	if _replay_snapshot.is_empty():
+		return
+	var s: Dictionary = _replay_snapshot
+	Replay.mode = int(s["mode"])
+	Replay.rng.seed = int(s["rng_seed"])
+	Replay.rng.state = int(s["rng_state"])
+	Replay.seed_value = int(s["seed_value"])
+	Replay.forced_seed = int(s["forced_seed"])
+	Replay._orders = s["orders"]
+	Replay._play_index = int(s["play_index"])
+	Replay._camera_track = s["camera_track"]
+	Replay._camera_index = int(s["camera_index"])
+	Replay._pointer_track = s["pointer_track"]
+	Replay._pointer_index = int(s["pointer_index"])
+	Replay._key_track = s["key_track"]
+	Replay._time_scale_track = s["time_scale_track"]
+	Replay._time_scale_index = int(s["time_scale_index"])
+	Replay.drive_camera = bool(s["drive_camera"])
+	Replay.show_demo_orders = bool(s["show_demo_orders"])
+	Replay.map = s["map"]
+	Replay._save_counter = int(s["save_counter"])
+	Replay.loaded_path = str(s["loaded_path"])
+	Replay.last_saved_path = str(s["last_saved_path"])
+	Replay.last_load_sha_mismatch = str(s["last_load_sha_mismatch"])
+	Replay.spawn_fingerprint = str(s["spawn_fingerprint"])
+	Replay.loaded_spawn_fingerprint = str(s["loaded_spawn_fingerprint"])
+	Replay.last_load_spawn_mismatch = str(s["last_load_spawn_mismatch"])
+	_replay_snapshot = {}
+
 
 ## A fresh, isolated Replay instance so tests never touch the live autoload's state.
 func _fresh() -> Node:
@@ -387,7 +461,9 @@ func test_the_recording_drain_carries_a_form_ups_line_index_into_the_replay() ->
 	# AFTER the order is enqueued. Drop the line argument from that call and every other
 	# test here still passes -- the order simply reaches the replay stream with no "line"
 	# key, and the recorded deployment loses its front/reserve split on playback.
-	var prev_mode: int = Replay.mode
+	#
+	# This is the case the before_each/after_each snapshot at the top of the file exists for:
+	# everything it does to the global Replay autoload below is undone in teardown.
 	Replay.forced_seed = 148401
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	battle.scenario = [{"team": 0, "type": "Infantry", "x": 500, "y": 700, "count": 20}]
@@ -413,5 +489,3 @@ func test_the_recording_drain_carries_a_form_ups_line_index_into_the_replay() ->
 	assert_eq(int(recorded.get("line", BattleScript.LINE_INDEX_UNCHANGED)), 1,
 			"the drain forwards the pending form-up's line index to Replay.record_order, " +
 			"so the recorded order carries the reserve line the deploy assigned")
-
-	Replay.mode = prev_mode
