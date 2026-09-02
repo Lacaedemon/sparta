@@ -1,5 +1,5 @@
 {
-  "_comment": "Faction identity in the HUD. Two Spartan spear blocks face two Roman ones, each pair already standing in a different stance, with all-teams control so the clip can select a regiment from EACH side. The clip is deliberately still -- nobody moves, nobody fights, and no formation is re-formed mid-clip -- because the whole change is display text: what moves is the control-bar formation button, the info panel's Formation line, and its new Faction / Doctrine lines. Selecting the four blocks in turn reads pyknosis, phalanx, acies, agmen quadratum: the same two stances named twice over, once in each side's own language. Formation ints are the FORMATION_* consts on scripts/Unit.gd (NORMAL 0, SQUARE 3, SHIELD_WALL 4).",
+  "_comment": "Faction identity in the HUD. Two Spartan spear blocks face two Roman ones, each pair already standing in a different stance, with all-teams control so the clip can select a regiment from EACH side. The clip is deliberately still -- nobody moves, nobody fights, and no formation is re-formed mid-clip -- because the whole change is display text: what moves is the control-bar formation button, the info panel's Formation line, and its new Faction / Doctrine lines. Both sides stand in the SAME two stances -- normal order and shield wall -- so selecting the four blocks in turn reads pyknosis, phalanx, acies, scuta undique: one pair of stances named twice over, once in each side's own language. Formation ints are the FORMATION_* consts on scripts/Unit.gd (NORMAL 0, SHIELD_WALL 4).",
   "seed": "88213",
   "factions": [
     "Sparta",
@@ -42,7 +42,7 @@
       "type": "Infantry",
       "x": 940.0,
       "y": 700.0,
-      "formation": 3
+      "formation": 4
     }
   ],
   "steps": [
