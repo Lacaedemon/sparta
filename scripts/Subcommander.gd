@@ -42,13 +42,20 @@ class_name Subcommander
 ## mirrors UnitLeader's own documented priority order (flank threat > square > relief > fallback):
 ## react to the sharpest need first.
 ##
-## The screen sits at that third rank in one direction only. A screening unit still loses its
-## screen directive to support or to flank coverage, but neither may CONSCRIPT one: the two
-## higher behaviours are handed the screen's own uids and skip them when picking a ward or a
-## coverer, so a screening unit is never the ally sent to rescue or to extend the line. A
-## screening unit standing at the group's own lateral extreme therefore still gets its flank
-## covered -- by some other ally -- rather than the coverage being skipped because the screen
-## claimed it first.
+## The screen sits at that third rank asymmetrically, and the two behaviours above it are
+## handed the screen's own uids for DIFFERENT reasons -- so the asymmetry is not the same in
+## both. A screening unit always loses its own screen directive to either of them. What each
+## may still do with a screener differs:
+##   - Mutual support never treats a screener as the WARD: its firefight out in front is the
+##     fight the heavy line is supposed to leave it to, and a block breaking line to rescue
+##     its own skirmishers would undo the maneuver. But a screener remains an ordinary
+##     candidate for the RESCUING ally -- it is still the nearest available body when a heavy
+##     block behind it is genuinely in trouble, and mutual support will draft it.
+##   - Flank coverage is the mirror: a screener is never the COVERER sent out to extend the
+##     line, since that pulls it off station. It may still be the exposed flank unit that
+##     coverage reacts to -- a screening unit standing at the group's own lateral extreme
+##     gets its flank covered by some other ally, rather than the coverage being skipped
+##     because the screen claimed it first.
 
 const DIRECTIVE_SUPPORT := "support"
 const DIRECTIVE_HOLD_LINE := "hold_line"
@@ -102,10 +109,13 @@ static func decide_group(group: Array, all_units: Array, plan: String = General.
 	# Computed before mutual support so the screen's own members are known to both of the
 	# behaviours that outrank it, but merged in AFTER them, so an ally already in a real
 	# fight and an enemy already rounding an open flank both still outrank a screening
-	# unit's standing orders. What the screen does outrank is being CONSCRIPTED by either:
-	# a heavy block that broke line to rescue its skirmishers, or a skirmisher pulled off
-	# the screen to extend the line, would each undo the whole maneuver -- whose point is
-	# that the light troops fight alone out in front and then fall back through the line.
+	# unit's standing orders. What the screen is protected from is narrower, and differs per
+	# behaviour (see the class doc): mutual support skips screeners when picking a WARD, and
+	# flank coverage skips them when picking a COVERER. A heavy block breaking line to rescue
+	# its skirmishers, or a skirmisher pulled off station to extend the line, would each undo
+	# the whole maneuver -- whose point is that the light troops fight alone out in front and
+	# then fall back through the line. Neither exclusion stops mutual support from drafting a
+	# screener as the ally that rescues a genuinely fighting block.
 	var screened: Dictionary = {}
 	if screen:
 		SkirmisherScreen.directives(living, all_units, axis, screened)
@@ -172,7 +182,9 @@ static func _advance_axis(group: Array, all_units: Array) -> Vector2:
 ## Runs first (highest priority): an ally already in a fight is the sharpest need a group
 ## has this tick. `exclude_wards` is a uid set of units that must NOT be rescued this tick
 ## (SkirmisherScreen's own screening units, whose firefight out in front of the line is
-## exactly the fight the line is supposed to leave them to).
+## exactly the fight the line is supposed to leave them to). It gates the WARD only: an
+## excluded unit is still offered as the rescuing ally, since a screener is a body the group
+## can spare far more readily than the block it would be going to save.
 static func _mutual_support_directives(group: Array, directives: Dictionary,
 		exclude_wards: Dictionary = {}) -> void:
 	for node in group:
@@ -212,7 +224,8 @@ static func _is_available(u: Unit, self_unit: Unit, directives: Dictionary) -> b
 ## Nearest unit in `group` (besides `self_unit`) that passes _is_available, within
 ## `max_range` of `target_pos`. Null when nothing qualifies. `exclude` is a uid set that is
 ## never offered however available it looks -- SkirmisherScreen's own screening units, which
-## are out in front doing the job the screen exists for.
+## are out in front doing the job the screen exists for. Only flank coverage passes one;
+## mutual support deliberately leaves it empty, so a screener can still answer a rescue call.
 static func _nearest_available(target_pos: Vector2, self_unit: Unit, group: Array,
 		directives: Dictionary, max_range: float, exclude: Dictionary = {}) -> Unit:
 	var best: Unit = null
