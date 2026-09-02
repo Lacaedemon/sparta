@@ -42,6 +42,23 @@ func test_empty_map_builds_an_empty_overlay() -> void:
 			"nothing to fall inside")
 
 
+func test_malformed_entries_are_skipped_not_fatal() -> void:
+	# A province with no id, and a second copy of an id already taken: the overlay
+	# keeps the first declaration of each id and drops the rest rather than letting a
+	# broken data file silently redefine a province's shape.
+	var geo := CampaignGeography.new({
+		"provinces": [
+			{"id": 0, "adj": [], "polygon": [[0, 0], [100, 0], [100, 100], [0, 100]]},
+			{"adj": [], "polygon": [[0, 0], [10, 0], [10, 10], [0, 10]]},
+			{"id": 0, "adj": [], "polygon": [[500, 500], [600, 500], [600, 600]]},
+		],
+	})
+	assert_eq(geo.ids(), [0], "one usable province out of three entries")
+	assert_eq(geo.province_at(Vector2(50, 50)), 0, "the first declaration is the one kept")
+	assert_eq(geo.province_at(Vector2(550, 530)), CampaignGeography.NO_PROVINCE,
+			"the duplicate never became a province")
+
+
 func test_province_at_resolves_a_position_to_its_province() -> void:
 	var geo := _geo()
 	assert_eq(geo.province_at(Vector2(50, 50)), 0, "inside the western square")

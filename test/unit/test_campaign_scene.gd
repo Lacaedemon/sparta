@@ -191,3 +191,104 @@ func test_resume_applies_won_battle_result() -> void:
 	assert_eq(map._state.army_of(6), 2, "with the battle's surviving strength")
 	assert_eq(map._state.army_of(0), 0, "the attacking army left its origin")
 	assert_true(CampaignBattle.result.is_empty(), "the holder is cleared after applying")
+
+
+# --- campaign clock wiring -------------------------------------------------
+
+func test_clock_starts_paused_and_reads_day_one() -> void:
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	var hud := s.get_node("CampaignHUD")
+	assert_true(map._clock.is_paused(), "a freshly opened campaign waits for the player")
+	assert_eq(map._clock.tick(), 0, "no campaign time has passed")
+	assert_string_contains(hud._clock_label.text, "Day 1, 00:00", "the HUD shows the date")
+	assert_string_contains(hud._clock_label.text, "paused", "and says time is stopped")
+	assert_eq(hud._pause_button.text, "Resume", "the button offers to start time")
+
+
+func test_hud_buttons_drive_pause_and_speed() -> void:
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	var hud := s.get_node("CampaignHUD")
+	map._on_pause_pressed()
+	assert_false(map._clock.is_paused(), "the pause button resumes a stopped clock")
+	assert_eq(hud._pause_button.text, "Pause", "and the button now offers to stop it")
+	map._on_speed_pressed()
+	assert_eq(map._clock.speed(), 2.0, "the speed button steps up the ladder")
+	assert_eq(hud._speed_button.text, "Speed 2x", "and the label follows")
+	map._on_pause_pressed()
+	assert_true(map._clock.is_paused(), "pressing pause again stops time")
+
+
+func test_space_and_number_keys_control_time() -> void:
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	assert_true(map._on_clock_key(KEY_SPACE), "space is a time control")
+	assert_false(map._clock.is_paused(), "space resumes a paused clock")
+	assert_true(map._on_clock_key(KEY_3), "the number row is a time control")
+	assert_eq(map._clock.speed(), 4.0, "the third rung of the ladder")
+	map._on_clock_key(KEY_SPACE)
+	assert_true(map._clock.is_paused(), "space pauses a running clock")
+	assert_true(map._on_clock_key(KEY_2), "picking a speed while paused")
+	assert_false(map._clock.is_paused(), "...also resumes time")
+	assert_false(map._on_clock_key(KEY_K), "an unrelated key is not a time control")
+
+
+func test_process_advances_the_clock_only_while_running() -> void:
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	var hud := s.get_node("CampaignHUD")
+	map._process(1.0)
+	assert_eq(map._clock.tick(), 0, "a paused clock ignores elapsed time")
+	map._on_pause_pressed()
+	map._process(1.0)
+	assert_gt(map._clock.tick(), 0, "a running clock advances")
+	assert_string_contains(hud._clock_label.text, "Day 1", "and pushes the new date")
+
+
+func test_process_stops_the_clock_when_the_campaign_is_won() -> void:
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	map._on_pause_pressed()
+	# Hand every province to Rome, which is the victory condition.
+	for id in map._state.provinces:
+		map._state.provinces[id]["owner"] = 0
+	map._process(1.0)
+	assert_true(map._clock.is_paused(), "time stops for a decided campaign")
+
+
+func test_move_announces_its_ground_distance() -> void:
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	var hud := s.get_node("CampaignHUD")
+	var c := _centroids()
+	# Narbonensis (0) reinforcing Cisalpina (5): both Roman, so no battle launches.
+	map._on_click(c[0])
+	map._on_click(c[5])
+	assert_string_contains(hud._flash_label.text, "Reinforced", "the move resolved")
+	assert_string_contains(hud._flash_label.text, "km march", "and reported its distance")
+
+
+func test_march_label_declines_an_unknown_province() -> void:
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	assert_eq(map._march_label(0, 999), "", "no distance to a province that does not exist")
+	assert_ne(map._march_label(0, 5), "", "but a real pair measures")
+
+
+func test_clock_freezes_across_a_tactical_battle() -> void:
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	map._on_pause_pressed()
+	map._process(4.0)
+	var launched_at: int = map._clock.tick()
+	assert_gt(launched_at, 0, "precondition: time has passed before the clash")
+	map._capture_clash(0, 6)
+	assert_eq(CampaignBattle.campaign_tick, launched_at, "the tick rides the scene swap")
+
+	# A second scene stands in for the post-battle reload, which rebuilds from scratch.
+	CampaignBattle.result = {"attacker_won": true, "survivors": 2}
+	var returned = await _scene()
+	var resumed := returned.get_node("CampaignMap")
+	assert_eq(resumed._clock.tick(), launched_at, "the campaign resumes where it stopped")
+	assert_true(resumed._clock.is_paused(), "and hands the world back to the player")
