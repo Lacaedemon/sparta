@@ -71,8 +71,9 @@ const ROSTER_SUBUNIT_OVERRIDES := {
 ## Per-faction historical names for the live formation modes, keyed by UnitRef.FORMATION_*.
 ## Every faction carries all seven keys, so a caller may index any faction's row with any mode.
 ##
-## The four languages are not equally documented, so the table follows an explicit sourcing
-## rule rather than a uniform one:
+## The table names its modes in three languages: Latin for Rome, Greek for Sparta and Macedon,
+## and for Carthage a mix of Punic and Greek that the second bullet below explains. The three
+## are not equally documented, so the sourcing rule is explicit rather than uniform:
 ##
 ##   * Greek (Sparta, Macedon) tactical vocabulary is attested in the Greek tacticians --
 ##     Asclepiodotus, Tactica 4, "The Intervals between the Soldiers", gives the three
@@ -93,8 +94,9 @@ const ROSTER_SUBUNIT_OVERRIDES := {
 ## acies and scuta undique are descriptive Latin for the modes they label, and no classical
 ## attestation is claimed for them. Punic entries cite Krahmalkov, Phoenician-Punic Dictionary
 ## (Studia Phoenicia XV, Leuven 2000) by headword, with the inscription attesting the word.
-## Where Greek has exactly one word for a concept, two factions carry the same string
-## (synaspismos, kyklos, araios) rather than one of them getting an invented synonym.
+## Where Greek has exactly one word for a concept, more than one faction carries the same
+## string rather than one of them getting an invented synonym: synaspismos and kyklos each
+## stand in three rows (Sparta, Carthage, Macedon), and araios in two (Sparta, Carthage).
 ##
 ## An earlier revision of this table gave Carthage Classical Arabic words. The Carthaginian
 ## army ended with the city in 146 BC, and Classical Arabic is a different language with no
