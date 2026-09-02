@@ -44,9 +44,11 @@ What *is* live, wired through `Battle._tick_tier_transitions` (`scripts/Battle.g
   >
   > The real reason the case never arises is **distance**: `PROMOTE_RANGE` (400 wu) is far larger than any combat reach -- melee contact is `attack_range + RADIUS * 2` = 62 wu at the default gladius, and `RANGED_RANGE` is 160 wu -- and `Battle._tick_tier_transitions` runs *before* the units act each tick, so a far-tier formation is always promoted back to the close tier before anything can strike it or be struck.
   >
-  > The one exception, which the original bullet also missed: `_tick_tier_transitions` scans only the `units` group, so a **routing** enemy is invisible to the promote trigger. A far-tier formation running down a broken enemy therefore stays far-tier while in contact with it, and was already dealing formula-path casualties to it before phase 0.
+  > The one exception, which the original bullet also missed: `_tick_tier_transitions` scans only the `units` group, so a **routing** enemy is invisible to the promote trigger.
+  > A far-tier formation running down a broken enemy therefore stays far-tier while in contact with it, and was already dealing formula-path casualties to it before phase 0.
   >
-  > This matters for the conclusion, not against it: the case is empty at the shipped tier band either way, so the gap phase 0 closes is real. It changes what phase 0 has to *do* -- see "Phase 0 as built" below.
+  > This matters for the conclusion, not against it: the case is empty at the shipped tier band either way, so the gap phase 0 closes is real.
+  > It changes what phase 0 has to *do* -- see "Phase 0 as built" below.
 
 So the honest current behaviour of "far tier" is: a performance optimization for formations that are marching, idle, or holding reserve, not a second combat model.
 It moves, follows orders, recovers morale at the ordinary rate, and reconstitutes into full soldier fidelity the moment an enemy closes inside `PROMOTE_RANGE` -- at which point *close-tier* combat takes over.
@@ -99,23 +101,51 @@ This design keeps the tier boundary exactly where `docs/large-scale-simulation-d
 
 ## Phase 0 as built
 
-Shipped for #1485. Deviations from the sketch above, and the open questions it settled:
+Shipped for #1485.
+Deviations from the sketch above, and the open questions it settled:
 
 - **`FarTierCombat.tick_all(units, delta)`, not `tick(u, delta)`.**
-  The pass plans every formation's rate against the pre-tick state before booking any casualty, so an exchange stays simultaneous -- the guarantee `FarTierRules.tick_pair` gives a *pair*, generalized to the whole field. A per-unit entry point would have given whichever formation the tree visited first a thinning-term advantage.
-- **The expectation math lives in `scripts/FarTierRates.gd`**, a Unit-shaped twin of `FarTierRules`'s record-shaped formulas, split out because `tools/check.sh file_length` caps a new `scripts/*.gd` file at 100 lines.
-  This answers the third open question below: `FarTierRules` keeps its `FarTierFormation` parameter shape and stays the isolated reference model; `FarTierRates` is the live twin, and `test_far_tier_combat.gd` pins the two against each other across stances, angles, thinning, and the ranged/melee split so they cannot drift apart silently.
-  Two deliberate divergences. The **cadence**: `FarTierRates` reads the attacker's own `Unit.melee_attack_interval()`, where the record carries no weapon and `FarTierRules` must use `Unit.ATTACK_INTERVAL`; the parity test compares per-strike expectation, which is interval-independent. And the **ranged fall-through**: `Unit._think` gates its ranged branch on `not in_contact`, so an archer regiment whose enemy has closed to melee contact falls through to `UnitCombat.strike`. `FarTierRates.resolves_as_ranged` mirrors that, which `FarTierRules` cannot -- so parity for a ranged attacker holds outside melee contact, and the melee branch takes over inside it.
+  The pass plans every formation's rate against the pre-tick state before booking any casualty, so an exchange stays simultaneous -- the guarantee `FarTierRules.tick_pair` gives a *pair*, generalized to the whole field.
+  A per-unit entry point would have given whichever formation the tree visited first a thinning-term advantage.
 
-  **A known balance divergence, distinct from those two.** Holding parity with `FarTierRules` means `FarTierRates` drops fatigue, cohesion, and the order-mode modifiers -- and unlike the record, which has no such fields, the live `Unit` genuinely carries all three. `UnitMorale.tick_fatigue` accrues fatigue for exactly as long as a unit is `FIGHTING` (which is now the far tier's own gate), `cohesion` sits below 1.0 after a merge and ramps back, and `UnitCombat.order_mode_modifiers` is non-identity under `ALL_OUT_ATTACK`, `KNOCKBACK_FOCUS`, and `WEDGE_CHARGE`. Fatigue and cohesion only ever scale output *down*, so a fatigued or freshly-merged far-tier attacker hits **harder** than the close-tier equivalent would; the order-mode modifiers cut both ways. Phase 2's balance measurement is where this gets priced, since carrying the three across is a small change to `strike_expectation` and a real change to the parity test's premise.
+- **The expectation math lives in `scripts/FarTierRates.gd`**, a Unit-shaped twin of `FarTierRules`'s record-shaped formulas, split out because `tools/check.sh file_length` caps a new `scripts/*.gd` file at 100 lines.
+  This answers the third open question below:
+  `FarTierRules` keeps its `FarTierFormation` parameter shape and stays the isolated reference model;
+  `FarTierRates` is the live twin, and `test_far_tier_combat.gd` pins the two against each other across stances, angles, thinning, and the ranged/melee split so they cannot drift apart silently.
+  Two deliberate divergences.
+  The **cadence**: `FarTierRates` reads the attacker's own `Unit.melee_attack_interval()`, where the record carries no weapon and `FarTierRules` must use `Unit.ATTACK_INTERVAL`;
+  the parity test compares per-strike expectation, which is interval-independent.
+  And the **ranged fall-through**: `Unit._think` gates its ranged branch on `not in_contact`, so an archer regiment whose enemy has closed to melee contact falls through to `UnitCombat.strike`.
+  `FarTierRates.resolves_as_ranged` mirrors that, which `FarTierRules` cannot -- so parity for a ranged attacker holds outside melee contact, and the melee branch takes over inside it.
+
+  **A known balance divergence, distinct from those two.**
+  Holding parity with `FarTierRules` means `FarTierRates` drops fatigue, cohesion, and the order-mode modifiers -- and unlike the record, which has no such fields, the live `Unit` genuinely carries all three.
+  `UnitMorale.tick_fatigue` accrues fatigue for exactly as long as a unit is `FIGHTING` (which is now the far tier's own gate), `cohesion` sits below 1.0 after a merge and ramps back, and `UnitCombat.order_mode_modifiers` is non-identity under `ALL_OUT_ATTACK`, `KNOCKBACK_FOCUS`, and `WEDGE_CHARGE`.
+  Fatigue and cohesion only ever scale output *down*, so a fatigued or freshly-merged far-tier attacker hits **harder** than the close-tier equivalent would;
+  the order-mode modifiers cut both ways.
+  Phase 2's balance measurement is where this gets priced, since carrying the three across is a small change to `strike_expectation` and a real change to the parity test's premise.
+
 - **`UnitCombat.strike`/`shoot` return early for a far-tier attacker**, before the RNG draw.
-  Required by the correction above: those paths were reachable for a far-tier formation, so without the guard a fight would be billed twice (once as a rolled strike, once as continuous attrition). Returning before the draw also keeps the far tier RNG-free, as `FarTierRules` documents it.
-  Everything else in `Unit._think` still runs for a far-tier formation -- targeting, facing, the `FIGHTING` state, the press into contact -- so only casualty resolution moved. The early return still spends `_approach_velocity`, as both paths below it do, so a far-tier formation cannot bank an unspent charge and cash it on its first close-tier strike after promotion.
-  `FarTierCombat.engaged_target` then *reads* that state rather than reimplementing its gates: it books nothing unless the unit is already `FIGHTING` and not `is_maneuver_turning()`, which inherits `_think`'s disengage rule (a plain move order past a broken enemy marches by instead of grinding it down) and its `_face_for_action` hold (no attrition while the men are mid-arc).
+  Required by the correction above:
+  those paths were reachable for a far-tier formation, so without the guard a fight would be billed twice (once as a rolled strike, once as continuous attrition).
+  Returning before the draw also keeps the far tier RNG-free, as `FarTierRules` documents it.
+  Everything else in `Unit._think` still runs for a far-tier formation -- targeting, facing, the `FIGHTING` state, the press into contact -- so only casualty resolution moved.
+  The early return still spends `_approach_velocity`, as both paths below it do, so a far-tier formation cannot bank an unspent charge and cash it on its first close-tier strike after promotion.
+  `FarTierCombat.engaged_target` then *reads* that state rather than reimplementing its gates:
+  it books nothing unless the unit is already `FIGHTING` and not `is_maneuver_turning()`, which inherits `_think`'s disengage rule (a plain move order past a broken enemy marches by instead of grinding it down) and its `_face_for_action` hold (no attrition while the men are mid-arc).
+
 - **`Battle.promote_range` / `demote_range` are now instance fields** (defaulting to `FormationTier.PROMOTE_RANGE`/`DEMOTE_RANGE`), with the trigger distance a parameter on `FormationTier.should_promote`/`should_demote`.
-  Without this the feature is untestable and undemonstrable: at the shipped band no formation can be both far-tier and in reach. `demos/inputs/far-tier-contact-1485.json` sets `"tier_ranges": {"promote": 6.0, "demote": 95.0}` through the recorder's new field of the same name. Promote had to go that low because two pressing regiments close well inside the 36 wu separation floor: measured at 17.8 wu, which promoted them mid-fight at a 20 wu trigger.
+  Without this the feature is untestable and undemonstrable:
+  at the shipped band no formation can be both far-tier and in reach.
+  `demos/inputs/far-tier-contact-1485.json` sets `"tier_ranges": {"promote": 6.0, "demote": 95.0}` through the recorder's new field of the same name.
+  Promote had to go that low because two pressing regiments close well inside the 36 wu separation floor:
+  measured at 17.8 wu, which promoted them mid-fight at a 20 wu trigger.
+
 - **The second open question below is answered, and the answer is "empty at the default band".**
-  Two far-tier formations in mutual reach cannot occur with `PROMOTE_RANGE` at 400 wu, since every reach is well inside it. So live far-tier combat at the shipped band is confined to running down a **routing** enemy (invisible to the promote trigger), and shipped play changes only in that this now resolves as a continuous expectation rather than as rolled per-cooldown strikes. Making the general case reachable is a **tuning** decision about the tier band, not more code; phase 2's measurement is the natural place to take it.
+  Two far-tier formations in mutual reach cannot occur with `PROMOTE_RANGE` at 400 wu, since every reach is well inside it.
+  So live far-tier combat at the shipped band is confined to running down a **routing** enemy (invisible to the promote trigger), and shipped play changes only in that this now resolves as a continuous expectation rather than as rolled per-cooldown strikes.
+  Making the general case reachable is a **tuning** decision about the tier band, not more code;
+  phase 2's measurement is the natural place to take it.
 
 ## Open questions this doc does not resolve
 

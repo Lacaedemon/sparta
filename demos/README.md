@@ -154,18 +154,22 @@ script under `demos/inputs/`:
   `DoctrineRegistry` id, e.g. `"aggressive"` or `"cautious"` -- see `data/doctrines/*.json`
   and `docs/battle-ai-design.md`'s phase-3 section). Set before the battle spawns, like
   `drill`/`scenario` above. Omit to use `Battle.ai_doctrine`'s own default.
+
 - `tier_ranges` (optional) -- **override the simulation-tier trigger distances** for this
   demo: `{"promote": <wu>, "demote": <wu>}`, in world units, replacing
   `FormationTier.PROMOTE_RANGE` / `DEMOTE_RANGE` on the spawned battle
-  (`Battle.promote_range` / `demote_range`). Needed by any demo *about* far-tier behaviour:
+  (`Battle.promote_range` / `demote_range`).
+  Needed by any demo *about* far-tier behaviour:
   the shipped promote range (400 wu) sits far outside every combat reach (melee contact is
   ~62 wu, `RANGED_RANGE` 160 wu), so at the default a formation always promotes back to the
   close tier before anything can strike it, and a clip captioned as a far-tier fight would
-  actually be a close-tier one. Applied before the battle spawns, like `drill`/`scenario`
-  above. Strict like `scenario`/`map` (it decides which tier the demo simulates, so a
+  actually be a close-tier one.
+  Applied before the battle spawns, like `drill`/`scenario` above.
+  Strict like `scenario`/`map` (it decides which tier the demo simulates, so a
   malformed block fails the recording loudly): the block must carry both keys, with
   `0 < promote < demote` so the hysteresis gap survives.
   `demos/inputs/far-tier-contact-1485.json` is the worked example.
+
 - `all_teams_control` (optional bool, default `false`) -- debug/testing mode: the player
   commands every team's units directly (`SelectionManager`'s team checks are relaxed) and
   team 1's AI never runs, so a script can select and order BOTH sides of a real clash by
