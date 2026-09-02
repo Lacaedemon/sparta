@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/skirmish-line.json",
-  "caption": "World scale rebase to 1 wu = 1 m architecture (#891): migration plan for simulation core, screen-space chrome separation, and content flag-day coordinate rebase.",
-  "fixed_fps": 30,
-  "max_frames": 350,
-  "fps": 20,
-  "width": 640
+  "skip": true,
+  "reason": "Design-doc-only change (docs/world-scale-rebase-plan.md); no scene, script, or asset behavior is modified, so there is nothing a recorded battle could show."
 }
