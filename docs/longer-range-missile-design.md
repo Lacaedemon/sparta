@@ -50,7 +50,7 @@ Sources: Xenophon, *Anabasis* 3.3.7-18;
 Vegetius, *Epitoma rei militaris* 2.23;
 Josephus, *Bellum Judaicum* 3.7;
 Manfred Korfmann, "The Sling as a Weapon", *Scientific American* 229 (1973);
-E. W. Marsden, *Greek and Roman Artillery: Historical Development* (Oxford, 1969);
+E W Marsden, *Greek and Roman Artillery: Historical Development* (Oxford, 1969);
 Adrian Goldsworthy, *The Roman Army at War 100 BC - AD 200* (Oxford, 1996).
 
 ### The figures in world units
@@ -148,16 +148,15 @@ Both factors are the same square root read in opposite directions: at a fixed ra
 
 ### The far tier
 
-`FarTierRules` (`scripts/FarTierRules.gd`) already carries a ranged branch, and it is a faithful mirror of the close tier's numbers rather than an independent model.
-`strike_expectation` branches on `attacker.is_ranged` to skip the melee-stance offence penalty, apply `Unit.RANGED_DAMAGE_FACTOR`, and blunt through `missile_defense_factor`;
-`casualty_rate` uses `Unit.RANGED_INTERVAL` for the cadence and deliberately does not apply the Lanchester thinning term to a ranged attacker, because `UnitCombat.shoot` draws from the flat attack stat with no soldier-count scaling;
-`in_striking_range` uses `Unit.RANGED_RANGE` for a ranged attacker instead of the melee reach.
-`FarTierFormation.is_ranged` mirrors `Unit.is_ranged` and is copied across on demotion.
+`FarTierRates` (`scripts/FarTierRates.gd`) is the live twin of `FarTierRules`, evaluating the same expectation math directly against a real `Unit`'s own fields, and it already carries a ranged branch that is a faithful mirror of the close tier's numbers rather than an independent model.
+`strike_expectation` branches on `resolves_as_ranged` (gated on `attacker.is_ranged`) to skip the melee-stance offence penalty, apply `Unit.RANGED_DAMAGE_FACTOR`, and blunt through `missile_defense_factor`;
+`casualty_rate` uses `Unit.RANGED_INTERVAL` for the cadence (via `attack_interval`) and deliberately does not apply the Lanchester thinning term to a ranged attacker, because `UnitCombat.shoot` draws from the flat attack stat with no soldier-count scaling;
+`in_striking_range` uses `Unit.RANGED_RANGE` for a ranged attacker instead of the melee reach (via `striking_reach`).
+`FarTierRules` still carries the same arithmetic against the standalone `FarTierFormation` record, and `FarTierFormation.is_ranged` mirrors `Unit.is_ranged` and is copied across on demotion, but it stays the isolated reference model that no live battle constructs.
 
-Two facts about that tier bound everything below.
-There is no `FarTierRates` script in the tree (`scripts/` holds only `FarTierFormation.gd` and `FarTierRules.gd` under that prefix), so the rate constants a far-tier missile model would need do not exist yet under that or any other name.
-And, as [`docs/far-tier-pursuit-contagion-design.md`](far-tier-pursuit-contagion-design.md) establishes and this branch re-confirms, `FarTierRules.tick_pair` has exactly one caller in the whole tree and it is a unit test:
-no live battle resolves far-tier combat at all, which that document tracks as its Phase 0 ([#1485](https://github.com/Lacaedemon/sparta/issues/1485)).
+Two facts about that tier bound everything below, and both have changed since this design was first drafted.
+`FarTierCombat.tick_all` (`scripts/FarTierCombat.gd`), driven every tick by `Battle._tick_far_tier_combat`, now resolves far-tier attrition in real gameplay through `FarTierRates`, and `UnitCombat.shoot`/`strike` early-return for a far-tier attacker so the same exchange is not billed twice.
+And, as [`docs/far-tier-pursuit-contagion-design.md`](far-tier-pursuit-contagion-design.md) records, `FarTierRules.tick_pair` is what has exactly one caller left in the whole tree, and it is a unit test: that was the Phase 0 gap ([#1485](https://github.com/Lacaedemon/sparta/issues/1485), now closed), and live far-tier combat resolves through `FarTierRates`/`FarTierCombat` instead of `FarTierRules`.
 
 `FormationTier.PROMOTE_RANGE` is 400.0 wu and `DEMOTE_RANGE` is 600.0 wu (`scripts/FormationTier.gd`), both benchmark-tuned rather than authored.
 
@@ -173,8 +172,9 @@ A 3600-wu sling range inverts that by a factor of nine.
 A formation would be shot at from far outside `DEMOTE_RANGE`, which means one of exactly three things, and the choice is the central architectural decision of this design.
 
 1. **Resolve long-range fire at the far tier.**
-   `FarTierRules` already has the ranged branch, so this is the option the existing code points at.
-   It is gated on the far-tier combat wiring being live at all, which is [#1485](https://github.com/Lacaedemon/sparta/issues/1485), not this design.
+   `FarTierRates` already has the ranged branch and now resolves it every tick through `FarTierCombat` in live gameplay, so this is the option the existing code points at.
+   Far-tier combat wiring was the gate ([#1485](https://github.com/Lacaedemon/sparta/issues/1485)), and it is now closed.
+   What remains is teaching `FarTierRates.striking_reach` the per-formation missile range instead of `Unit.RANGED_RANGE`, which is this design's own Phase 5.
 
 2. **Drive promotion from missile range instead of a fixed radius.**
    Rejected.
@@ -184,9 +184,10 @@ A formation would be shot at from far outside `DEMOTE_RANGE`, which means one of
 3. **Let long-range fire be a far-tier-only effect that stops mattering once a formation promotes.**
    Rejected as a model, kept as a fallback presentation: it makes the same weapon behave differently on either side of an invisible radius.
 
-This design adopts option 1 and states the dependency plainly:
-**a longer-range missile model past `PROMOTE_RANGE` cannot be implemented before far-tier combat is live.**
-Phase 2 below is therefore bounded to ranges that stay inside the close tier.
+This design adopts option 1.
+Far-tier combat is live now, so nothing but sequencing gates a longer-range missile model past `PROMOTE_RANGE`:
+Phase 2 profiles the close-tier ranges first, and Phase 5 carries the same profiles out to the far tier once the trajectory and suppression work in between have landed.
+Phase 2 below is therefore bounded to ranges that stay inside the close tier by choice, not because the far tier is unreachable.
 
 ### Deployment distances become the thing the ranges are measured against
 
@@ -358,13 +359,13 @@ the accuracy falloff at its 1.0 default leaves the damage formula bit-identical.
 
 Demo: a lobbed volley passing over a friendly line to land on the enemy behind it, with the state dump confirming the interception did not fire.
 
-### Phase 5 (long ranges at the far tier, gated)
+### Phase 5 (long ranges at the far tier)
 
-Blocked on live far-tier combat ([#1485](https://github.com/Lacaedemon/sparta/issues/1485)).
-Once that is wired, assign the sling, bow, composite-bow, and artillery profiles their historical ranges and let `FarTierRules.in_striking_range` read the per-formation missile range instead of `Unit.RANGED_RANGE`.
+Sequenced after Phases 1-4 rather than blocked on them: far-tier combat wiring ([#1485](https://github.com/Lacaedemon/sparta/issues/1485)) is now closed and live through `FarTierRates`/`FarTierCombat`.
+What is left is to assign the sling, bow, composite-bow, and artillery profiles their historical ranges and let `FarTierRates.striking_reach` (used by `in_striking_range`) read the per-formation missile range instead of `Unit.RANGED_RANGE`.
 
 Acceptance tests: a far-tier formation takes casualties from a shooter outside `DEMOTE_RANGE`;
-the far-tier and close-tier casualty rates agree for the same profile at the same range, which is the mirror property `FarTierRules` already documents for the existing ranged branch;
+the far-tier and close-tier casualty rates agree for the same profile at the same range, which is the mirror property `FarTierRules` already documents (in expectation) and `FarTierRates` inherits for the existing ranged branch;
 a battle at the *Historical* deployment preset opens with artillery fire and nothing else.
 
 Demo: a *Historical*-preset opening in which the approach march is conducted under fire, at the deployment design's own far-deployment scenario.
