@@ -1,8 +1,8 @@
 {
-  "_comment": "Skirmisher-screen subcommander directive (#1467). Team 1 runs the new 'screening' doctrine: three heavy blocks holding their line, with one archer unit spawned behind the middle one. On the first AI tick the subcommander pushes the archers out ahead of the line to contest the ground between the armies (SKIRMISH stance); the player line is then walked forward by a scripted box-select and right-click, and once it closes inside the withdraw trigger the same subcommander recalls the archers -- back through the INTERVAL between two blocks, not through a block. Deterministic (scenario + seed + doctrine + scripted input).",
+  "_comment": "Skirmisher-screen subcommander directive (#1467). Team 1 runs the new 'screening' doctrine: three heavy blocks holding their line at x = 340 / 760 / 1180, with one archer unit spawned behind and 60 wu left of the middle one. That offset is deliberate: the line's intervals sit at 260 / 550 / 970 / 1260, so an archer at x = 700 is 150 wu from the left interval and 270 wu from the right one -- the fall-back direction the caption claims is decided by a clear margin rather than by an exact tie the unit could drift out of. On the first AI tick the subcommander pushes the archers out ahead of the line to contest the ground between the armies (SKIRMISH stance); the player line is then walked forward by a scripted box-select and right-click, and once it closes inside the withdraw trigger the same subcommander recalls the archers -- back through the INTERVAL between two blocks, not through a block. Deterministic (scenario + seed + doctrine + scripted input).",
   "seed": "1467001",
   "doctrine": "screening",
-  "spawn_fingerprint": "497023933be67696c88e171315449b43",
+  "spawn_fingerprint": "cbab1414c6372e667004ffee2fe3cde3",
   "camera": [
     {"tick": 0, "x": 760.0, "y": 620.0, "zoom": 0.95}
   ],
@@ -14,7 +14,7 @@
     {"team": 1, "type": "Infantry", "x": 340,  "y": 800},
     {"team": 1, "type": "Infantry", "x": 760,  "y": 800},
     {"team": 1, "type": "Infantry", "x": 1180, "y": 800},
-    {"team": 1, "type": "Archers",  "x": 760,  "y": 880, "count": 45}
+    {"team": 1, "type": "Archers",  "x": 700,  "y": 880, "count": 45}
   ],
   "steps": [
     {"tick": 10, "box": {"from": [220, 230], "to": [1320, 370]}},
