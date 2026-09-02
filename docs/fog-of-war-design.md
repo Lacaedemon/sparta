@@ -226,9 +226,26 @@ claim rather than an aspiration.
 For an observing unit `u` and a candidate target `t`, `t` is perceived when
 both of these hold.
 
-1. **Range.** `u.position.distance_squared_to(t.position) <= u.sight_range * u.sight_range`, using squared distance for the same reason `UnitTargeting.nearest_routing_enemy` already does.
+1. **Line of sight.** The segment from `u.position` to `t.position` is not blocked by an occluding terrain patch, evaluated against the exact drawn rects via the existing public `PathField.is_leg_blocked(from, to, 0.0)` (`scripts/PathField.gd:184-185`).
 
-2. **Line of sight.** The segment from `u.position` to `t.position` is not blocked by an occluding terrain patch, evaluated against the exact drawn rects via the existing public `PathField.is_leg_blocked(from, to, 0.0)` (`scripts/PathField.gd:184-185`), and attenuated by any screening patches the segment crosses (below).
+2. **Range, attenuated by screening.** `u.position.distance_squared_to(t.position) <= effective_sq`, where `effective_sq` is `pow(u.sight_range * pow(SIGHT_SCREEN_FACTOR, n_screens), 2.0)` and `n_screens` is the number of distinct screening patches that same segment crosses.
+
+The two conditions compose rather than stacking independently: the range test
+is against the *attenuated* range, never the full one.
+Spelling that out matters because the two are easy to read as separate gates.
+On the defaults below, a foot unit's 300 wu becomes 150 wu behind one screening
+patch and 75 wu behind two, so a target at 290 wu across one forest patch is
+**not** visible even though it is inside the unattenuated radius.
+Squared distance is used for the same reason
+`UnitTargeting.nearest_routing_enemy` already does, and `effective_sq` is
+computed once per observer-target pair rather than per comparison.
+
+Attenuation counts patches crossed and ignores where along the segment each one
+sits, and how much of the segment lies inside it.
+A unit standing at the far edge of a wood is therefore screened exactly as much
+as one standing a hair inside it.
+That is the cheap and predictable reading; a chord-length-weighted alternative
+is a later tuning question, not a phase-1 one.
 
 Both operands are `Node2D.position` and therefore parent-local, which is the
 same convention the soldier body arrays and `UnitCombat.flank_multiplier`
@@ -298,6 +315,27 @@ has nothing to read: facing-limited vision cones (a unit sees a full disc),
 elevation, weather, dust, and night.
 Each is a natural later phase and none of them changes the interface.
 
+**A unit is a point, for both tests.**
+Range and line of sight are both evaluated between `u.position` and
+`t.position` -- the unit centers -- so a unit is either wholly visible or
+wholly invisible, with no partial state.
+That is a material approximation at this scale rather than a free
+simplification: `Unit.FORMATION_SPACING` is `0.45 * WU_PER_M` = 9 wu
+(`scripts/Unit.gd:7145`) and `NORMAL_SPACING_SCALE` is 2.0 (`:588`), so a
+normally-spaced line's file pitch is 18 wu and a modest frontage is a large
+fraction of the 300 wu foot sight radius proposed below.
+Two consequences follow, and both are accepted here.
+A unit half-emerged from behind the default `hill` block patch is entirely
+invisible until its center clears the patch.
+A wide line whose center sits just outside sight range is entirely invisible
+even while part of it stands well inside.
+The alternative -- testing the unit's extent, or sampling its soldier slots --
+costs a per-soldier loop in a per-tick per-pair test and buys a partial
+visibility state that nothing downstream (the ghost markers, the AI view, the
+explored grid) currently has a representation for.
+Extent-based or partial visibility is therefore a named later phase, listed
+under the open questions below.
+
 **The rout margin has to grow with sight range.**
 `Battle.ROUT_MARGIN` is `maxf(RANGED_RANGE, DETECTION_RANGE)` = 190 wu, and its
 comment (`scripts/Battle.gd:32-41`) sizes it to "the game's maximum visual
@@ -314,7 +352,28 @@ sight multiplier (`SIGHT_MOUNTED` 1.4, so 420 wu on the default field).
 That makes it a per-battle instance value rather than a `const`, since
 `sight_scale` is itself per-battle; `field_with_margin` is then recomputed in
 the one place it is already recomputed for a non-default map
-(`scripts/Battle.gd:517`), so nothing else in the spawn path changes.
+(`scripts/Battle.gd:517`), so nothing else in the *spawn path* changes.
+Two things outside the spawn path do change, and phase 1 owns both.
+
+The member has to be renamed `rout_margin`.
+`.gdlintrc` leaves gdlint's `class-variable-name` rule enabled (it is absent
+from that file's `disable:` list) and `.github/workflows/check-gdlint.yml` runs
+gdlint in CI, so a member `var ROUT_MARGIN` fails lint where the current
+`const ROUT_MARGIN` (`scripts/Battle.gd:41`) passes.
+The rename also reverses a deliberate earlier change: `demos/demo.1103.json`
+records `ROUT_MARGIN` being promoted var-to-const as one of the
+naming-convention fixes gdlint itself flagged.
+That is a cost worth naming rather than a blocker -- the promotion was made
+because the value was constant, and this design is exactly what stops it being
+constant.
+
+`test/unit/test_battle_map.gd` has to be updated in the same commit.
+Both `:101` and `:166` assert `battle.field_with_margin == <rect>.grow(battle.ROUT_MARGIN)`,
+so the rename breaks them outright, and the per-battle value changes what they
+assert: the margin they compare against is now a function of the battle's own
+`sight_scale` rather than a compile-time constant.
+Reading the margin off the battle instance keeps both assertions honest under
+the new definition.
 The visible costs are a wider margin strip drawn under the field
 (`scripts/Battle.gd:674`) and a longer flight before escape, both of which are
 the intended behaviour rather than a regression.
@@ -547,7 +606,10 @@ The `sight` axis on terrain patches in `BattleMap.parse` and
 Sightline tests reuse the existing public `PathField.is_leg_blocked` with
 `clearance` 0.0; no new `PathField` entry point is added.
 `Battle.ROUT_MARGIN` widened to the largest sight range, per "The rout margin
-has to grow with sight range" above.
+has to grow with sight range" above -- which includes renaming the member
+`rout_margin` to satisfy gdlint's `class-variable-name` rule, and updating the
+two assertions in `test/unit/test_battle_map.gd` (`:101` and `:166`) that read
+it.
 No rendering and no AI consumption: the sim runs exactly as today and the new
 state is computed alongside it.
 
@@ -711,6 +773,10 @@ models above, and one that should be designed then rather than guessed now.
 
 - **Is 0.25 of the field the right `sight_scale` fraction?** Purely empirical.
   It should be tuned against the phase-2 demo and settled before phase 3, since AI behaviour will be sensitive to it.
+
+- **Should visibility model a unit's extent rather than its center?** Phase 1 treats a unit as a point for both the range and the line-of-sight test, so visibility is all-or-nothing.
+  At a file pitch of 18 wu against a 300 wu sight radius that is visible in play: a line half out from behind the `hill` patch is entirely hidden, and one marginally outside range is entirely hidden while part of it stands inside.
+  Lean: keep the point test through phase 2, and revisit extent or partial visibility only if the ghost-marker UI turns out to need a partial state anyway.
 
 - **Does fog change combat balance?** It should not, since targeting stays unfogged, but a screening skirmisher line becomes far more valuable and cavalry's longer sight becomes a real advantage.
   That is intended, and worth measuring rather than assuming.
