@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Data-only correction to the historical formation/form-up name tables in scripts/Faction.gd (Punic entries were Classical Arabic, lophos is a helmet crest rather than a wing, and Macedon's two echelon directions shared one label). Nothing reads these strings at runtime yet -- get_formation_display_name()/get_form_up_display_name() have no caller, and wiring them into the HUD is tracked separately -- so a recorded battle would show exactly the same pixels before and after. GUT tests in test/unit/test_faction.gd cover the change instead."
+}
