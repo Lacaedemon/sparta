@@ -154,7 +154,12 @@ func _ready() -> void:
 	_scenario = script.get("scenario", [])
 	_doctrine = str(script.get("doctrine", ""))
 	_all_teams_control = bool(script.get("all_teams_control", false))
-	_team_factions = _parse_factions(script.get("factions", []))
+	var factions_result: Dictionary = parse_factions(script.get("factions", []), _drill)
+	if factions_result.has("error"):
+		push_error("[demo-input] %s" % factions_result["error"])
+		get_tree().quit(2)
+		return
+	_team_factions = factions_result["factions"]
 	# Tier band, strict like scenario/map: it decides WHICH SIMULATION TIER the demo's
 	# formations run at, so a malformed block must fail loudly rather than silently record a
 	# close-tier fight in a clip captioned as a far-tier one.
@@ -653,26 +658,39 @@ func _at(tick: int, ev: Dictionary) -> void:
 # --- helpers ---------------------------------------------------------------
 
 ## Resolve an input script's "factions" list (per-team faction names, e.g. ["Sparta", "Rome"])
-## into Battle.team_factions' Faction.Type ids. Strict, like `steps`/`scenario` and unlike
-## `camera`/`frames`: a name no faction claims would silently record a clip whose captions
-## show the plain names while the script claims a faction, and a plausible-looking wrong clip
-## is worse than a red job. A missing/empty list is not an error -- it just means "no faction",
-## which is what every script written before this field says.
-func _parse_factions(raw) -> Array[int]:
-	var out: Array[int] = []
+## into {"factions": Array[int]} of Battle.team_factions' Faction.Type ids, or {"error": String}
+## describing the first problem. Shaped like parse_tier_band above so the caller reports and
+## quits the same way, and pure so it is unit-testable without a tree.
+##
+## Strict, like `steps`/`scenario` and unlike `camera`/`frames`: a name no faction claims, or a
+## list that doesn't name every team, would silently record a clip whose captions show the
+## plain names while the script claims a faction, and a plausible-looking wrong clip is worse
+## than a red job. A missing/empty list is not an error -- it just means "no faction", which is
+## what every script written before this field says.
+##
+## docs/README.md documents this as "one name per team", so a non-empty list must name every
+## team that will actually spawn: exactly two entries for a normal two-army battle, or one entry
+## when `is_drill` (Battle.drill_mode -- team 1 never spawns, so it has no faction to name). A
+## one-entry list on a non-drill battle would otherwise silently leave team 1 with no faction
+## while looking like it named both sides.
+static func parse_factions(raw, is_drill: bool) -> Dictionary:
 	if not (raw is Array):
-		push_error("[demo-input] 'factions' must be an array of faction names, got %s." % typeof(raw))
-		get_tree().quit(2)
-		return out
+		return {"error": "'factions' must be an array of faction names, got %s." % typeof(raw)}
+	if raw.is_empty():
+		return {"factions": [] as Array[int]}
+	var expected: int = 1 if is_drill else 2
+	if raw.size() != expected:
+		return {"error": ("'factions' must name exactly %d team(s) for %s, got %d entries. " +
+				"One name per team; team 1 has no faction to name in drill mode.") %
+				[expected, "a drill" if is_drill else "a normal battle", raw.size()]}
+	var out: Array[int] = []
 	for entry in raw:
 		var f_id: int = Faction.type_from_name(str(entry))
 		if f_id == Faction.NONE:
-			push_error("[demo-input] unknown faction '%s'; expected one of %s." %
-					[entry, Faction.ALL_TYPES.map(func(f): return Faction.get_faction_name(f))])
-			get_tree().quit(2)
-			return out
+			return {"error": "unknown faction '%s'; expected one of %s." %
+					[entry, Faction.ALL_TYPES.map(func(f): return Faction.get_faction_name(f))]}
 		out.append(f_id)
-	return out
+	return {"factions": out}
 
 
 func _vec(a) -> Vector2:

@@ -391,6 +391,10 @@ func _ready() -> void:
 	# has no enemy to win against) — also handy as a plain "give up" from any other battle.
 	popup.add_item("Quit to Main Menu", MENU_QUIT_TO_MENU)
 	_sync_setting_toggles()
+	# Re-stamp the form-up labels now that the popup exists, in case set_team_factions()
+	# was already called before _ready() ran (Battle hands factions over in its own _ready,
+	# and node ready order isn't guaranteed). A no-op when team_factions is still empty.
+	_refresh_form_up_menu_labels()
 	popup.id_pressed.connect(_on_menu_id)
 	# Keep the check items in sync if a setting changes elsewhere. Use a named
 	# method (not a lambda) so the connection is tied to this node's lifetime and
@@ -1601,7 +1605,9 @@ func _ctrl_bar_refresh_stance_popup() -> void:
 ## caption they change. Only the form-up menu is restamped eagerly: the formation button and
 ## its menu are per-unit, and both are rebuilt from scratch by show_unit/_ctrl_bar_update_formation
 ## the next time a unit is selected -- which is always after this call, since Battle hands the
-## factions over in its own _ready, before any input can select anything.
+## factions over in its own _ready, before any input can select anything. If this runs before
+## the HUD's own _ready() has built the menu popup, _refresh_form_up_menu_labels() is a no-op
+## here; _ready() re-applies the stored team_factions once the popup exists.
 func set_team_factions(factions: Array) -> void:
 	team_factions = factions.duplicate()
 	_refresh_form_up_menu_labels()

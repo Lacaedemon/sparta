@@ -181,7 +181,12 @@ script under `demos/inputs/`:
   `"factions": ["Sparta", "Rome"]`.
   Names, not enum ints, and matched case-insensitively against `Faction.FACTION_NAMES`
   in either its full form (`"Rome (Latin / Roman)"`) or its bare leading name (`"Rome"`).
-  An unrecognized name fails the recording loudly, like a malformed `steps`/`scenario`.
+  Strict on length as well as spelling: a non-empty list must name every team that will
+  actually spawn -- exactly two entries for a normal battle, or exactly one when `drill` is
+  set (team 1 never spawns in a drill, so it has no faction to name). A one-entry list on a
+  non-drill battle would otherwise silently leave team 1 with no faction.
+  An unrecognized name, or a list of the wrong length, fails the recording loudly,
+  like a malformed `steps`/`scenario`.
   This is **display identity only** -- nothing in the simulation reads it.
   What it changes is the HUD: the control-bar formation button, its drop-up menu,
   the info panel's Formation line, the Menu's form-up items, and the panel's own

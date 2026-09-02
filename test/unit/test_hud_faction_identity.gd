@@ -241,3 +241,20 @@ func test_set_team_factions_before_the_menu_exists_is_safe() -> void:
 	autofree(h)
 	h.set_team_factions([FactionScript.Type.MACEDON])
 	assert_eq(h.faction_for_team(0), FactionScript.Type.MACEDON)
+
+
+func test_set_team_factions_before_ready_still_stamps_the_form_up_menu() -> void:
+	# Node ready order isn't guaranteed, so a caller (or Battle itself, if it ever runs earlier)
+	# may call set_team_factions() before this HUD's own _ready() has built the Menu popup. The
+	# labels must not be stuck plain for the rest of the HUD's lifetime once the popup exists --
+	# _ready() has to re-apply the stored team_factions after building it.
+	var h = HUDScript.new()
+	h.set_team_factions([FactionScript.Type.SPARTA, FactionScript.Type.ROME])
+	add_child_autofree(h)   # triggers _ready(), building the Menu popup for the first time
+	var popup: PopupMenu = h._menu_button.get_popup()
+	var sparta_echelon_right: String = FactionScript.HISTORICAL_FORM_UP[FactionScript.Type.SPARTA][
+			SelectionManagerScript.FormUpDist.ECHELON_RIGHT]
+	var echelon_right: int = popup.get_item_index(HUDScript.MENU_FORMUP_ECHELON_RIGHT)
+	assert_string_contains(popup.get_item_text(echelon_right), "(%s)" % sparta_echelon_right,
+			"the form-up menu is stamped with the player faction even though the factions " +
+			"arrived before the popup existed")
