@@ -399,7 +399,7 @@ func test_a_non_positive_cadence_yields_no_rate_rather_than_an_infinite_one() ->
 		"a zero strike cadence yields no attrition instead of dividing by zero")
 
 
-func test_apply_attrition_books_nothing_against_an_emptied_formation() -> void:
+func test_far_tier_attrition_books_nothing_against_an_emptied_formation() -> void:
 	var pair := _frontal_pair()
 	pair[1].soldiers = 0
 	assert_eq(FarTierAttrition.apply(pair[1], pair[0], 100.0, 1.0), 0,

@@ -405,6 +405,11 @@ var scenario: Array = []
 # leaves both at FormationTier's tuned defaults, byte-for-byte.
 var promote_range: float = FormationTier.PROMOTE_RANGE
 var demote_range: float = FormationTier.DEMOTE_RANGE
+# Far-tier formations counted by this tick's tier pass, so _tick_far_tier_combat can skip
+# its whole scan when there are none -- the case for every tick of an ordinary battle at the
+# shipped band. Recomputed each tick rather than maintained incrementally: the tier pass
+# already visits every unit, so counting there is free and cannot drift out of sync.
+var _far_tier_count: int = 0
 
 # Derived replay state-snapshot cache: lets a PLAYBACK rewind resume from a
 # cached mid-battle moment instead of resimulating from tick 0 -- see
@@ -1521,11 +1526,12 @@ func _physics_process(delta: float) -> void:
 	# Simulation-tier transitions are part of the deterministic sim too: evaluate the
 	# distance triggers and promote/demote BEFORE the units act this tick, so both runs
 	# of a replay cross the tier boundary on the same tick from the same positions.
-	_tick_tier_transitions()
+	var live_units: Array = _tick_tier_transitions()
 
 	# Far-tier combat resolution, immediately after the transitions that decide who is at
-	# which tier this tick. Close-tier formations still fight in their own _think.
-	_tick_far_tier_combat(delta)
+	# which tier this tick, reusing the unit array that pass already fetched. Close-tier
+	# formations still fight in their own _think.
+	_tick_far_tier_combat(live_units, delta)
 
 	# Enemy AI is part of the deterministic sim (not player input): re-run it on
 	# the same cadence during playback so it reaches the same decisions. Skipped entirely
@@ -2833,8 +2839,9 @@ func unit_by_uid(uid: int) -> UnitRef:
 ## and it keeps its own tier until it rallies back into "units". Runs every tick over the
 ## live units in tree order — a pure function of already-serialized positions, so both
 ## runs of a replay transition the same units on the same ticks.
-func _tick_tier_transitions() -> void:
+func _tick_tier_transitions() -> Array:
 	var all_units: Array = get_tree().get_nodes_in_group("units")
+	_far_tier_count = 0
 	for node in all_units:
 		var u = node as UnitRef
 		if u == null or u.state == UnitRef.State.DEAD:
@@ -2850,13 +2857,21 @@ func _tick_tier_transitions() -> void:
 				nearest_dist_sq = d_sq
 				nearest_pos = e.position
 		if nearest_dist_sq == INF:
-			continue   # no enemy in play: hold the current tier (the victory check ends the battle)
+			# No enemy in play: hold the current tier (the victory check ends the battle).
+			# Still counted, since it keeps whatever tier it is already on.
+			if u.tier == FormationTier.FAR:
+				_far_tier_count += 1
+			continue
 		if u.tier == FormationTier.FAR:
 			if FormationTier.should_promote(u.position, nearest_pos, promote_range):
 				TierTransition.promote(u, _tick, Replay.seed_value)
 		elif TierTransition.can_demote(u) \
 				and FormationTier.should_demote(u.position, nearest_pos, demote_range):
 			TierTransition.demote(u)
+		# Counted AFTER the transition, so the tally is this tick's tiers, not last tick's.
+		if u.tier == FormationTier.FAR:
+			_far_tier_count += 1
+	return all_units
 
 
 ## Resolve one tick of far-tier combat (docs/far-tier-pursuit-contagion-design.md, phase 0).
@@ -2872,8 +2887,14 @@ func _tick_tier_transitions() -> void:
 ## DEFENDER -- the target comes from UnitTargeting, which includes routing enemies -- so a
 ## far-tier formation still runs a broken one down, matching the close tier's own "fleeing
 ## does not grant immunity" rule.
-func _tick_far_tier_combat(delta: float) -> void:
-	FarTierCombat.tick_all(get_tree().get_nodes_in_group("units"), delta)
+##
+## Takes the array `_tick_tier_transitions` already fetched rather than re-querying the group
+## a second time in the same tick, and returns immediately when that pass counted no far-tier
+## formation -- which is every tick of an all-close-tier battle, so those pay one int compare.
+func _tick_far_tier_combat(units: Array, delta: float) -> void:
+	if _far_tier_count == 0:
+		return
+	FarTierCombat.tick_all(units, delta)
 
 
 ## Battle AI phases 1-3 (docs/battle-ai-design.md): every AI-controlled (team 1) unit gets

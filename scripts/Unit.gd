@@ -305,7 +305,7 @@ var engage_reshape_mode: int = EngageReshapeMode.KEEP_NEW_FRONTING
 # the transitions (Battle._tick_tier_transitions -> TierTransition).
 var tier: int = FormationTier.CLOSE
 # Fractional casualties accumulated by the far tier's continuous attrition rate
-# (FarTierCombat.apply_attrition), carried between ticks until a whole soldier falls.
+# (FarTierAttrition.apply), carried between ticks until a whole soldier falls.
 # Sub-soldier BOOKKEEPING, not per-soldier state: one scalar per regiment, no array, so it
 # survives a demotion the way every other aggregate field does. Lives on the DEFENDER, so
 # several far-tier attackers pressing one formation accumulate into the same carry instead
