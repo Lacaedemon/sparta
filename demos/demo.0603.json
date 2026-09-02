@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This change is entirely in the campaign scene (scenes/Campaign.tscn): a pausable campaign clock with speed controls and a day counter, plus the province-overlay and lat-long projection modules underneath it. Both demo paths record the tactical battle and nothing else -- DemoInputRecorder loads res://scenes/Battle.tscn and DemoRunner replays a battle -- so no recorded battle can show a campaign-map clock, whatever the scenario. The campaign scene is shown instead by three labelled screenshots in the PR description (demos/shots/campaign-clock-paused.png, campaign-clock-running.png, campaign-march-distance.png), captured from the running scene on this branch. No battle behaviour changed: the campaign-to-battle hand-off gains only the campaign tick it carries across the scene swap."
+}
