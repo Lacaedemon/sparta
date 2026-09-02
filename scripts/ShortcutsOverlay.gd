@@ -41,6 +41,7 @@ const _ROWS: Array = [
 	["Disengage and step back (breaks contact, holds facing)", "Ctrl+Down"],
 	["About-face (180° in place)", "V"],
 	["Quarter-turn left / right (90° in place)", "Q / E"],
+	["Quarter-turn then explicatio (turn and unfold into line)", "Shift+Q / Shift+E"],
 	["Wheel left / right (90° hinge on flank)", "Z / C"],
 	["Countermarch: Choral/Persian (same ground)", "Shift+V"],
 	["Countermarch: Macedonian (advance)", "Ctrl+V"],
