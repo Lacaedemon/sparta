@@ -1,8 +1,86 @@
 extends GutTest
 ## Tests for the Replay presentation (camera) track: recording with dedup, playback
 ## stepping, save/load round-trip, and back-compat with replays that have no track.
+## Also the per-order optional fields' record/save/load/apply round trips, including the
+## one seam that needs a real ticking Battle: the per-tick recording drain.
 
 const ReplayScript = preload("res://scripts/Replay.gd")
+const BattleScript = preload("res://scripts/Battle.gd")
+const UnitScript = preload("res://scripts/Unit.gd")
+
+## Every test but one here works on its own isolated Replay instance (`_fresh()`), but the
+## recording-drain case has to spawn a real Battle, and Battle._ready() calls
+## start_recording() on the GLOBAL Replay autoload -- which clears the order list and every
+## presentation track, rewrites the seed/mode/path fields, and then has the battle republish
+## `map` and `spawn_fingerprint`. Left alone that leaks a recorded order (and a RECORD mode)
+## into whatever runs next, which is how a suite becomes order-dependent: test_selection_
+## manager.gd and the demo-state tests both read the autoload. So snapshot the whole
+## autoload before each test and put it back after. Capturing EVERY field rather than the
+## subset start_recording() happens to touch today means a new field can't silently escape
+## the restore -- and running it for all the _fresh() tests too costs a few duplicated empty
+## arrays, which is cheaper than reasoning about which tests need it.
+var _replay_snapshot: Dictionary = {}
+
+
+func before_each() -> void:
+	_replay_snapshot = {
+		"mode": Replay.mode,
+		# seed must be restored before state: assigning seed resets state.
+		"rng_seed": Replay.rng.seed,
+		"rng_state": Replay.rng.state,
+		"seed_value": Replay.seed_value,
+		"forced_seed": Replay.forced_seed,
+		"orders": Replay._orders.duplicate(true),
+		"play_index": Replay._play_index,
+		"camera_track": Replay._camera_track.duplicate(true),
+		"camera_index": Replay._camera_index,
+		"pointer_track": Replay._pointer_track.duplicate(true),
+		"pointer_index": Replay._pointer_index,
+		"key_track": Replay._key_track.duplicate(true),
+		"time_scale_track": Replay._time_scale_track.duplicate(true),
+		"time_scale_index": Replay._time_scale_index,
+		"drive_camera": Replay.drive_camera,
+		"show_demo_orders": Replay.show_demo_orders,
+		"map": Replay.map.duplicate(true),
+		"save_counter": Replay._save_counter,
+		"loaded_path": Replay.loaded_path,
+		"last_saved_path": Replay.last_saved_path,
+		"last_load_sha_mismatch": Replay.last_load_sha_mismatch,
+		"spawn_fingerprint": Replay.spawn_fingerprint,
+		"loaded_spawn_fingerprint": Replay.loaded_spawn_fingerprint,
+		"last_load_spawn_mismatch": Replay.last_load_spawn_mismatch,
+	}
+
+
+func after_each() -> void:
+	if _replay_snapshot.is_empty():
+		return
+	var s: Dictionary = _replay_snapshot
+	Replay.mode = int(s["mode"])
+	Replay.rng.seed = int(s["rng_seed"])
+	Replay.rng.state = int(s["rng_state"])
+	Replay.seed_value = int(s["seed_value"])
+	Replay.forced_seed = int(s["forced_seed"])
+	Replay._orders = s["orders"]
+	Replay._play_index = int(s["play_index"])
+	Replay._camera_track = s["camera_track"]
+	Replay._camera_index = int(s["camera_index"])
+	Replay._pointer_track = s["pointer_track"]
+	Replay._pointer_index = int(s["pointer_index"])
+	Replay._key_track = s["key_track"]
+	Replay._time_scale_track = s["time_scale_track"]
+	Replay._time_scale_index = int(s["time_scale_index"])
+	Replay.drive_camera = bool(s["drive_camera"])
+	Replay.show_demo_orders = bool(s["show_demo_orders"])
+	Replay.map = s["map"]
+	Replay._save_counter = int(s["save_counter"])
+	Replay.loaded_path = str(s["loaded_path"])
+	Replay.last_saved_path = str(s["last_saved_path"])
+	Replay.last_load_sha_mismatch = str(s["last_load_sha_mismatch"])
+	Replay.spawn_fingerprint = str(s["spawn_fingerprint"])
+	Replay.loaded_spawn_fingerprint = str(s["loaded_spawn_fingerprint"])
+	Replay.last_load_spawn_mismatch = str(s["last_load_spawn_mismatch"])
+	_replay_snapshot = {}
 
 
 ## A fresh, isolated Replay instance so tests never touch the live autoload's state.
@@ -10,6 +88,23 @@ func _fresh() -> Node:
 	var r: Node = ReplayScript.new()
 	add_child_autofree(r)
 	return r
+
+
+## A Unit registered under `uid`, and a bare Battle that knows about it -- the same
+## script-only fixture test_battle.gd uses to exercise _apply_order_cmd without standing up
+## a full battle scene (the dispatch reads only _by_uid and the static formation helpers).
+## reform_before_move is defaulted off so a bare order marches immediately, matching that
+## suite's convention.
+func _battle_with_unit(uid: int, pos: Vector2) -> Array:
+	var u: Unit = UnitScript.new()
+	add_child_autofree(u)
+	u.uid = uid
+	u.position = pos
+	u.reform_before_move = false
+	var b = BattleScript.new()
+	autofree(b)
+	b._by_uid[uid] = u
+	return [b, u]
 
 
 func test_record_camera_dedups_static_frames() -> void:
@@ -257,3 +352,140 @@ func test_delegating_to_group_0_round_trips_distinctly_from_an_omitted_frontage(
 		+ "revoke (group_id Unit.UNDELEGATED = -1 encodes to frontage 0, which IS omitted, and "
 		+ "correctly decodes right back to UNDELEGATED on an absent key)")
 	assert_eq(int(due[0]["frontage"]) - 1, 0, "decodes back to group 0, not UNDELEGATED (-1)")
+
+
+func test_save_load_round_trips_a_checkerboard_form_ups_line_index() -> void:
+	# A checkerboard (acies triplex) deploy assigns each slice a persistent line index
+	# (Unit.line_index, carried on the order as "line" -- see Battle.enqueue_form_up). That
+	# assignment has to survive save/load like every other order field: without it a REPLAYED
+	# recording of the same deploy reaches Battle._apply_order_cmd with no "line" key at all,
+	# which reads as LINE_INDEX_UNCHANGED, so every unit keeps whatever line it already had
+	# and the recorded front/reserve split silently vanishes -- a live-vs-replay divergence,
+	# since the live session assigned the lines the instant the drag was released.
+	var r := _fresh()
+	r.start_recording()
+	# Two slices of one checkerboard drag (shared form-up group 2): front line, then reserve.
+	r.record_order(5, [11], Vector2(10, 20), -1, 0, 0, 4, 0.5, 0, 0.0, 2, 0, 0, -1, 0)
+	r.record_order(5, [12], Vector2(30, 60), -1, 0, 0, 4, 0.5, 0, 0.0, 2, 0, 0, -1, 1)
+	var path: String = r.save("Test", 5)
+	assert_ne(path, "", "the recording saves")
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 2, "both checkerboard slices round-trip")
+	assert_eq(int(due[0].get("line", -1)), 0,
+			"the front-line slice's line index round-trips through save/load, not just live")
+	assert_eq(int(due[1].get("line", -1)), 1,
+			"the reserve slice reads back on line 1, not demoted to the front line")
+
+
+func test_a_plain_form_up_omits_the_line_index_on_round_trip() -> void:
+	# An ordinary drag-to-form-up assigns no line of its own, so it records the
+	# LINE_INDEX_UNCHANGED sentinel (-1) and the key is omitted on save -- matching the
+	# in-memory record_order behaviour for every other optional field, and keeping a replayed
+	# plain drag from demoting a reserve-line unit back to the front line.
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [0], Vector2.ZERO, -1, 0, 0, 4, 0.5)   # a plain form-up, no line
+	var path: String = r.save("Test", 5)
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 1)
+	assert_false(due[0].has("line"),
+			"a plain form-up carries no line key at all, like a pre-line-index replay")
+
+
+func test_a_replay_recorded_before_the_line_index_field_still_loads() -> void:
+	# Back-compat: a replay saved before this field existed has no "line" key on any order.
+	# It must still load and play, with no key invented on the way in -- _apply_order_cmd's
+	# missing-key read is the same "leave it alone" case as the explicit sentinel, so those
+	# replays behave exactly as they did before.
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [11], Vector2(10, 20), -1, 0, 0, 4, 0.5, 0, 0.0, 2, 0, 0, -1, 1)
+	var path: String = r.save("Test", 5)
+	var f := FileAccess.open(path, FileAccess.READ)
+	var data: Dictionary = JSON.parse_string(f.get_as_text())
+	f.close()
+	for o in data["orders"]:
+		o.erase("line")   # simulate a replay file saved before the field existed
+	f = FileAccess.open(path, FileAccess.WRITE)
+	f.store_string(JSON.stringify(data))
+	f.close()
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path),
+			"a replay with no line key on any order still loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 1, "the order itself round-trips unchanged")
+	assert_false(due[0].has("line"),
+			"no line key is invented on load -- the order reads as LINE_INDEX_UNCHANGED")
+
+
+func test_a_loaded_replays_line_index_reaches_the_unit_through_apply_order_cmd() -> void:
+	# End to end along the path Battle actually takes on playback: record a checkerboard
+	# slice deploying a unit to a reserve line, save it, load it, pull the order back with
+	# orders_for_tick, and hand that order to Battle._apply_order_cmd -- which is exactly
+	# what Battle._physics_process does for every recorded order. The unit has to come out
+	# on the RECORDED line: drop the "line" key anywhere between record_order and the load
+	# and _apply_order_cmd reads LINE_INDEX_UNCHANGED instead, silently leaving the unit on
+	# whatever line it already had (0, the front line, for a freshly spawned one).
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [7], Vector2(200, 300), -1, 0, 0, 4, 0.5, 0, 0.0, -1, 0, 0, -1, 2)
+	var path: String = r.save("Test", 5)
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 1, "the form-up order is due at its recorded tick")
+
+	var fixture: Array = _battle_with_unit(7, Vector2.ZERO)
+	var b = fixture[0]
+	var u: Unit = fixture[1]
+	assert_eq(u.line_index, 0, "a freshly spawned unit starts on the front line")
+
+	b._apply_order_cmd(due[0])
+	assert_eq(u.line_index, 2,
+			"the recorded line index survives save/load and is written onto the unit by " +
+			"the same _apply_order_cmd call playback makes -- not only by a live order")
+
+
+func test_the_recording_drain_carries_a_form_ups_line_index_into_the_replay() -> void:
+	# The one seam the script-only tests above can't reach: Battle._physics_process's own
+	# per-tick drain, which is what actually hands a live order to Replay.record_order. A
+	# real ticking Battle is needed because the drain reads _pending_orders on the tick
+	# AFTER the order is enqueued. Drop the line argument from that call and every other
+	# test here still passes -- the order simply reaches the replay stream with no "line"
+	# key, and the recorded deployment loses its front/reserve split on playback.
+	#
+	# This is the case the before_each/after_each snapshot at the top of the file exists for:
+	# everything it does to the global Replay autoload below is undone in teardown.
+	Replay.forced_seed = 148401
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [{"team": 0, "type": "Infantry", "x": 500, "y": 700, "count": 20}]
+	# No team 1, so nothing ends the battle out from under us. Set BEFORE the node enters
+	# the tree, per drill_mode's own doc comment -- _ready() is what reads it.
+	battle.drill_mode = true
+	add_child_autofree(battle)   # _ready() -> Replay.start_recording(): mode = RECORD
+	await get_tree().physics_frame
+
+	var spawned: Array = get_tree().get_nodes_in_group("units")
+	assert_gt(spawned.size(), 0, "the scenario spawned a unit to order")
+	var u: Unit = spawned[0] as Unit
+	var uid: int = u.uid
+	battle.enqueue_form_up([uid], Vector2(500, 600), 0.0, 5,
+			BattleScript.OrderMode.NORMAL, false, -1, 1)
+	await get_tree().physics_frame   # the drain records the pending order on the next tick
+
+	var recorded: Dictionary = {}
+	for o in Replay._orders:
+		if int(o.get("target", 0)) == -1 and (o["units"] as Array).has(uid):
+			recorded = o
+	assert_false(recorded.is_empty(), "the form-up order reached the replay stream")
+	assert_eq(int(recorded.get("line", BattleScript.LINE_INDEX_UNCHANGED)), 1,
+			"the drain forwards the pending form-up's line index to Replay.record_order, " +
+			"so the recorded order carries the reserve line the deploy assigned")

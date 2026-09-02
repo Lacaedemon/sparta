@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation only: this PR adds docs/body-stat-distributions-design.md, a design note for per-soldier height/weight/strength/speed distributions. No scripts/, scenes/, or assets/ changes, so a recorded battle would look identical to main and would show nothing about the change. The design's own phased plan schedules a real clip for each implementing phase from phase 2 onward."
+}

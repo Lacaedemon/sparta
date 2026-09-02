@@ -86,14 +86,18 @@ jobs:
         with:
           # Full history so "Resolve demo source" can diff against the PR's actual
           # merge base (recomputed live, not the PR-creation-time base SHA) to find a
-          # per-PR demo manifest (demos/demo.<slug>.json) added in this PR.
+          # per-PR demo manifest (demos/demo.<slug>.json) added or modified in this PR.
           fetch-depth: 0
 
       - name: Resolve demo source
         id: demo
         # Pick what to record, preferring the most specific manifest available:
-        #   1. A per-PR manifest (demos/demo.<slug>.json) ADDED in this PR's diff --
-        #      a uniquely-named file, so two PRs in flight never conflict on it.
+        #   1. A per-PR manifest (demos/demo.<slug>.json) ADDED OR MODIFIED in this
+        #      PR's diff -- a uniquely-named file, so two PRs in flight never
+        #      conflict on it. Modified counts because a follow-up slice of a
+        #      multi-PR issue re-points the manifest its own earlier slice added;
+        #      added-only made that slice's demo invisible and fell through to the
+        #      stale legacy pointer instead.
         #   2. The legacy shared demos/demo.json, if present (still supported).
         #   3. The default showcase battle (generic, honestly labelled).
         # Records as long as some replay file resolves; only skips if even the
@@ -118,13 +122,13 @@ jobs:
           # on the base branch after this merge-base can't leak in either.
           git fetch -q origin "$BASE_REF" || true
           MERGE_BASE=$(git merge-base "origin/$BASE_REF" "$HEAD_SHA" 2>/dev/null || echo "$HEAD_SHA")
-          ADDED=$(git diff --name-only --diff-filter=A \
+          TOUCHED=$(git diff --name-only --diff-filter=AM \
               "$MERGE_BASE"..."$HEAD_SHA" -- 'demos/demo.*.json' \
               2>/dev/null | sort || true)
-          if [ -n "$ADDED" ]; then
-            M=$(echo "$ADDED" | head -n1)
-            if [ "$(echo "$ADDED" | wc -l)" -gt 1 ]; then
-              echo "::warning::Multiple demos/demo.*.json manifests added in this PR; using $M (first alphabetically)."
+          if [ -n "$TOUCHED" ]; then
+            M=$(echo "$TOUCHED" | head -n1)
+            if [ "$(echo "$TOUCHED" | wc -l)" -gt 1 ]; then
+              echo "::warning::Multiple demos/demo.*.json manifests touched in this PR; using $M (first alphabetically)."
             fi
             echo "Using per-PR demo manifest: $M"
           elif [ -f demos/demo.json ]; then

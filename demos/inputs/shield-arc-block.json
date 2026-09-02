@@ -1,0 +1,16 @@
+{
+  "_comment": "Shield arc vs an exposed flank under archery. Two identical 60-man Infantry blocks (scutum, plain NORMAL order so no stance missile bonus is in play either way) stand 170 world units south of one Archers regiment each, and the archers loose volley after volley. The left block faces north, straight into the arrows, so its shields cover the incoming line and most arrows are deflected or lodge in the shield faces. The right block is turned east, presenting a flank the shields do not cover, so the same volleys drive through. No player input -- the scenario, the facings, and the seed make the contrast deterministic; the camera frames both blocks at once so the two casualty counts can be read side by side.",
+  "seed": "435002",
+  "spawn_fingerprint": "51270cb8caf92c9d6608c402f4276ac8",
+  "scenario": [
+    {"team": 1, "type": "Archers", "x": 520, "y": 400, "count": 40},
+    {"team": 1, "type": "Archers", "x": 1080, "y": 400, "count": 40},
+    {"team": 0, "type": "Infantry", "x": 520, "y": 570, "count": 60, "formation": 0, "facing": [0, -1]},
+    {"team": 0, "type": "Infantry", "x": 1080, "y": 570, "count": 60, "formation": 0, "facing": [1, 0]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 500.0, "zoom": 1.05}
+  ],
+  "steps": [],
+  "state": [30, 120, 240, 360, 480, 600, 660]
+}
