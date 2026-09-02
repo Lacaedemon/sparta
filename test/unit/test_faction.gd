@@ -213,6 +213,15 @@ const EXPECTED_CROSS_FACTION_SHARED_LABELS := {
 	"araios": 2,
 }
 
+## The same, for HISTORICAL_FORM_UP. Kept as its own constant because the two tables are
+## counted separately: the doc block states one inventory per table, and a label shared in
+## one of them says nothing about the other.
+const EXPECTED_CROSS_FACTION_SHARED_FORM_UP_LABELS := {
+	"epallax": 3,
+	"dexion keras": 2,
+	"euonymon keras": 2,
+}
+
 
 ## Sorted "label=count" rows. Compared as a string rather than by Dictionary equality so the
 ## assertion means the same thing on any engine version and a mismatch prints both sides.
@@ -225,14 +234,13 @@ func _shared_label_summary(counts: Dictionary) -> String:
 	return ", ".join(rows)
 
 
-func test_cross_faction_shared_labels_match_the_doc_block() -> void:
-	# Derive, at runtime, every label HISTORICAL_FORMATIONS uses in more than one faction row,
-	# with the number of rows it stands in. Counted per ROW rather than per entry: a label
-	# repeated inside a single faction is a different defect, and
-	# test_a_factions_own_labels_are_all_distinct already forbids that one.
+## Every label a table uses in more than one faction row, mapped to the number of rows it
+## stands in. Counted per ROW rather than per entry: a label repeated inside a single faction
+## is a different defect, and test_a_factions_own_labels_are_all_distinct already forbids it.
+func _cross_faction_shared_labels(table: Dictionary) -> Dictionary:
 	var row_counts: Dictionary = {}
-	for faction_id in Faction.HISTORICAL_FORMATIONS:
-		var row: Dictionary = Faction.HISTORICAL_FORMATIONS[faction_id]
+	for faction_id in table:
+		var row: Dictionary = table[faction_id]
 		var counted_in_this_row: Dictionary = {}
 		for mode in row:
 			var label: String = str(row[mode])
@@ -245,9 +253,24 @@ func test_cross_faction_shared_labels_match_the_doc_block() -> void:
 	for label in row_counts:
 		if int(row_counts[label]) > 1:
 			shared[label] = row_counts[label]
+	return shared
 
-	assert_eq(_shared_label_summary(shared),
+
+func test_cross_faction_shared_labels_match_the_doc_block() -> void:
+	var derived := _cross_faction_shared_labels(Faction.HISTORICAL_FORMATIONS)
+	assert_eq(_shared_label_summary(derived),
 			_shared_label_summary(EXPECTED_CROSS_FACTION_SHARED_LABELS),
-			"Cross-faction shared labels changed. The doc block above HISTORICAL_FORMATIONS in "
-					+ "scripts/Faction.gd names this set in prose, with a row count per string "
-					+ "-- update that paragraph to match, then update this expectation.")
+			"Cross-faction shared labels changed in HISTORICAL_FORMATIONS. The doc block above "
+					+ "that table in scripts/Faction.gd names this set in prose, with a row count "
+					+ "per string -- update the paragraph that opens Six strings repeat in this "
+					+ "table, then update this expectation.")
+
+
+func test_cross_faction_shared_form_up_labels_match_the_doc_block() -> void:
+	var derived := _cross_faction_shared_labels(Faction.HISTORICAL_FORM_UP)
+	assert_eq(_shared_label_summary(derived),
+			_shared_label_summary(EXPECTED_CROSS_FACTION_SHARED_FORM_UP_LABELS),
+			"Cross-faction shared labels changed in HISTORICAL_FORM_UP. That table has its own "
+					+ "inventory in the doc block above HISTORICAL_FORMATIONS in scripts/Faction.gd "
+					+ "-- update the paragraph that opens HISTORICAL_FORM_UP below repeats three "
+					+ "strings of its own, then update this expectation.")
