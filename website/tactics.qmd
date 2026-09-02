@@ -1970,16 +1970,18 @@ before any stance bonus enters:
   than trying to turn them into it.
 
 Arrows that stick in a shield stay there, and their weight tells. A regiment that
-has stood under archery long enough is dragging a growing load of spent shafts, and
-its cover slowly degrades --- never to nothing, but enough that a wall which held
-the first volleys comfortably starts to leak by the tenth. Rotating a battered
-regiment out, or closing the distance, both beat standing still and absorbing it.
+has stood under archery long enough is dragging a growing load of spent shafts,
+and its cover degrades as it does --- capped, so a bombardment never strips a
+shield bare, but a wall that has absorbed a long exchange no longer blocks the way
+it did at the first volley. It takes a sustained pounding to matter, so this is a
+reason to rotate a battered regiment out or close the distance, not a reason to
+fear the opening exchange.
 
 This is separate from the stance bonuses in
 [Formation stances](#formation-stances): shield wall and testudo change how much
 damage a volley does in the first place, while the arc above decides, arrow by
-arrow, whether an individual man's shield was in the way at all. The two stack ---
-a testudo whose men are also facing the archers is the hardest target in the game.
+arrow, whether an individual man's shield was in the way at all. The two stack, so
+a testudo whose men are also facing the archers gets both.
 
 ::: {#fig-shield-arc-block .demo}
 
