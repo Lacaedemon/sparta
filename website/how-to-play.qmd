@@ -1410,11 +1410,14 @@ so the same normal-order line reads *pyknosis* under a Spartan banner and
 *acies* under a Roman one, and the hollow anti-cavalry square reads *plinthion*
 or *agmen quadratum*. The **Form-up** section of the ☰ Menu does the
 same for the multi-unit drag-line splits your own army uses, and your side's own
-word *replaces* the generic gloss rather than sitting beside it: the checkerboard
-item reads **Checkerboard (quincunx)** under Rome, **Checkerboard (epallax)**
-under Sparta, and **Checkerboard (shatranj)** under Carthage. A split no faction
-has a name for keeps its plain label, as does every item in a battle fought under
-no faction at all.
+word *replaces* the generic gloss rather than sitting beside it. The checkerboard
+item, whose plain label already carries Rome's own name for the split, therefore
+reads that name unchanged under Rome and swaps in each other side's own term
+under the others --- never both at once. A split no faction has a name for keeps
+its plain label, as does every item in a battle fought under no faction at all.
+The words themselves live in `HISTORICAL_FORMATIONS`, `HISTORICAL_FORM_UP`, and
+`FACTION_STRATEGIES` in `scripts/Faction.gd`, which is where to read the current
+term for any given side and mode.
 
 The info panel also gains two lines naming the side outright: **Faction** and
 **Doctrine**, the latter that army's own named way of fighting --- Sparta's
