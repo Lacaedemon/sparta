@@ -48,13 +48,21 @@ static func tier_name(value: int) -> String:
 ## when the nearest enemy (contact point, or nearest enemy formation before any contact)
 ## closes within PROMOTE_RANGE. Deliberately a pure predicate over two already-serialized
 ## positions — no camera/attention signal — so replay determinism can't depend on rendering.
-static func should_promote(formation_pos: Vector2, nearest_enemy_pos: Vector2) -> bool:
+## `range_wu` is the trigger distance, defaulting to PROMOTE_RANGE. It is a parameter
+## because the default sits far outside every combat reach (400 wu against a 62 wu melee
+## contact and a 160 wu RANGED_RANGE), so at the default a formation always promotes back
+## to the close tier before it can be struck -- which makes live far-tier combat
+## unreachable, and unstageable for a test or a demo, unless the caller can tighten the
+## band. Battle.promote_range/demote_range carry the per-battle values.
+static func should_promote(formation_pos: Vector2, nearest_enemy_pos: Vector2,
+		range_wu: float = PROMOTE_RANGE) -> bool:
 	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-	return formation_pos.distance_squared_to(nearest_enemy_pos) < PROMOTE_RANGE * PROMOTE_RANGE
+	return formation_pos.distance_squared_to(nearest_enemy_pos) < range_wu * range_wu
 
 
 ## Placeholder demote trigger: the mirror check against the farther DEMOTE_RANGE. Between
 ## the two thresholds neither predicate fires, so the formation keeps its current tier.
-static func should_demote(formation_pos: Vector2, nearest_enemy_pos: Vector2) -> bool:
+static func should_demote(formation_pos: Vector2, nearest_enemy_pos: Vector2,
+		range_wu: float = DEMOTE_RANGE) -> bool:
 	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-	return formation_pos.distance_squared_to(nearest_enemy_pos) > DEMOTE_RANGE * DEMOTE_RANGE
+	return formation_pos.distance_squared_to(nearest_enemy_pos) > range_wu * range_wu

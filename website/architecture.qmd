@@ -94,7 +94,14 @@ A single battle scene can mix two simulation fidelities at once, one per formati
 
 A formation crosses tiers automatically as it nears or leaves combat --- promoting to
 close tier as an enemy closes to strike range, demoting back to far tier once it
-disengages and falls back. See
+disengages and falls back.
+
+Where a far tier formation *is* within reach of an enemy --- running down a broken one,
+which the tier triggers deliberately ignore, or in a scenario that deliberately tightens
+the promote/demote band --- its attrition resolves through the same casualty, morale, and
+rout machinery the close tier uses, at aggregate cost: it takes losses, its morale erodes,
+and it breaks and flees like any other regiment, instead of standing locked until it
+promotes. See
 [`docs/large-scale-simulation-design.md`](https://github.com/Lacaedemon/sparta/blob/main/docs/large-scale-simulation-design.md)
 for the full design and the phased build-out.
 
