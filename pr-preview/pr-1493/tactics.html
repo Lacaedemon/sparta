@@ -51,9 +51,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-0d18f0dfac312b9a8eb238ea32915223.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/bootstrap/bootstrap-dark-f5209645f978859cdd860952f647b33b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="site_libs/bootstrap/bootstrap-0d18f0dfac312b9a8eb238ea32915223.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-63ef86667c664f1a8ce28e0ca6d17af4.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-2058be2536942cc72f0d054e849053c8.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-63ef86667c664f1a8ce28e0ca6d17af4.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -505,6 +505,7 @@ window.Quarto = {
   <li><a href="#the-centre-pivot" id="toc-the-centre-pivot" class="nav-link" data-scroll-target="#the-centre-pivot">The centre pivot</a></li>
   <li><a href="#wheeling-on-a-flank" id="toc-wheeling-on-a-flank" class="nav-link" data-scroll-target="#wheeling-on-a-flank">Wheeling on a flank</a></li>
   <li><a href="#order-stances" id="toc-order-stances" class="nav-link" data-scroll-target="#order-stances">Order stances</a></li>
+  <li><a href="#turn-your-shields-toward-the-archers" id="toc-turn-your-shields-toward-the-archers" class="nav-link" data-scroll-target="#turn-your-shields-toward-the-archers">Turn your shields toward the archers</a></li>
   <li><a href="#group-attack-distribution" id="toc-group-attack-distribution" class="nav-link" data-scroll-target="#group-attack-distribution">Group attack distribution</a></li>
   <li><a href="#terrain" id="toc-terrain" class="nav-link" data-scroll-target="#terrain">Terrain</a></li>
   <li><a href="#order-response-delay" id="toc-order-response-delay" class="nav-link" data-scroll-target="#order-response-delay">Order-response delay</a></li>
@@ -1609,6 +1610,32 @@ Figure&nbsp;44: Two evenly-matched Infantry regiments hold a stalemate in melee.
 </div>
 <p>A volley is not instant: the arrows fly a real arc and <strong>land where they were aimed a moment later</strong>, so a fast unit can partly outrun a shot loosed at long range, and casualties arrive on the beat the arrows come down rather than the instant they leave the bow.</p>
 </section>
+<section id="turn-your-shields-toward-the-archers" class="level2">
+<h2 class="anchored" data-anchor-id="turn-your-shields-toward-the-archers">Turn your shields toward the archers</h2>
+<p>Arrows are resolved <strong>one man at a time</strong> when they land, and each one is tested against the shield the man it reaches is actually holding. A shield covers an arc in front of its bearer — a body shield like the scutum covers a wide front, a cavalry round shield much less, and archers carry no shield at all. An arrow that arrives <strong>inside</strong> that arc is usually stopped: it either glances off, or sticks fast in the shield face. An arrow that arrives from outside the arc has nothing in its way and kills.</p>
+<p>So which way a regiment is <strong>standing</strong> now decides how much a volley costs it, before any stance bonus enters:</p>
+<ul>
+<li><strong>Face the archers.</strong> A regiment turned toward the incoming fire puts its shields between its men and the arrows, and most of the volley is wasted on wood.</li>
+<li><strong>Never let archery reach a turned flank or an exposed back.</strong> The shields point the wrong way, so the volley lands nearly in full — and the flank casualty multiplier stacks on top of that, so an enfilading volley is far worse than the sum of its parts.</li>
+<li><strong>Shields do not help everyone equally.</strong> Cavalry carry a smaller shield and stop a good deal less, and your own archers carry none, so they are as exposed facing the enemy as they are running from them — keep them out of the beaten zone rather than trying to turn them into it.</li>
+</ul>
+<p>Arrows that stick in a shield stay there, and their weight tells. A regiment that has stood under archery long enough is dragging a growing load of spent shafts, and its cover degrades as it does — capped, so a bombardment never strips a shield bare, but a wall that has absorbed a long exchange no longer blocks the way it did at the first volley. It takes a sustained pounding to matter, so this is a reason to rotate a battered regiment out or close the distance, not a reason to fear the opening exchange.</p>
+<p>This is separate from the stance bonuses in <a href="#formation-stances">Formation stances</a>: shield wall and testudo change how much damage a volley does in the first place, while the arc above decides, arrow by arrow, whether an individual man’s shield was in the way at all. The two stack, so a testudo whose men are also facing the archers gets both.</p>
+<div id="fig-shield-arc-block" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-shield-arc-block-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/shield_arc_block.jpg">
+  <source src="media/shield_arc_block.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-shield-arc-block-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;45: Shield arc under archery: two identical 60-man Infantry blocks, each under fire from its own Archers regiment due north. The left block faces the arrows and its shields cover them, while the right block is turned east and its flank is bare. Watch the two soldier counts diverge — the facing block ends the clip at 53 of 60 with morale 75, the turned one at 25 of 60 with morale 32.
+</figcaption>
+</figure>
+</div>
+</section>
 <section id="group-attack-distribution" class="level2">
 <h2 class="anchored" data-anchor-id="group-attack-distribution">Group attack distribution</h2>
 <p>When you have several units selected and right-click a target, press <kbd>X</kbd> to cycle between two group-order modes. The same toggle governs both an attack on an enemy and a relief order on a friendly (see <a href="#passage-of-lines">Passage of lines</a>) — which pair of behaviours applies depends only on what you right-click:</p>
@@ -1627,7 +1654,7 @@ Figure&nbsp;44: Two evenly-matched Infantry regiments hold a stalemate in melee.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-group-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;45: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
+Figure&nbsp;46: Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.
 </figcaption>
 </figure>
 </div>
@@ -1671,7 +1698,7 @@ Table&nbsp;4: Terrain patches and their movement effects.
 </figure>
 </div>
 <p>Units automatically path around impassable terrain when ordered to move. A formed regiment takes the detour in good order: it steers by the corridor’s long-run direction and pivots onto it no faster than its corner man can run, so the block holds rank-and-file around the turn instead of smearing into a crowd. The forest is a different trade-off: going <em>around</em> it costs distance; going <em>through</em> it costs time. Generally it is faster to push cavalry or fast-moving infantry through rather than around a narrow forest.</p>
-<p>The obstacle a unit routes around is the terrain you see, plus the unit’s own footprint: each block keeps a margin equal to its corner man’s reach from the centre, so a small squad slips through a lane that a wide battle line must round with a broad swing. A lane that looks clear of the hill <em>is</em> clear — for any unit narrow enough to fit through it. The walked detour hugs that margin the whole way around: straight legs run along the obstacle’s own grown boundary rather than a wider routing-grid lane, so two blocks of different widths round the same hill on two visibly different tracks (<a href="#fig-funnel-lanes" class="quarto-xref">Figure&nbsp;47</a>).</p>
+<p>The obstacle a unit routes around is the terrain you see, plus the unit’s own footprint: each block keeps a margin equal to its corner man’s reach from the centre, so a small squad slips through a lane that a wide battle line must round with a broad swing. A lane that looks clear of the hill <em>is</em> clear — for any unit narrow enough to fit through it. The walked detour hugs that margin the whole way around: straight legs run along the obstacle’s own grown boundary rather than a wider routing-grid lane, so two blocks of different widths round the same hill on two visibly different tracks (<a href="#fig-funnel-lanes" class="quarto-xref">Figure&nbsp;48</a>).</p>
 <div id="fig-terrain-exact-footprint" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-terrain-exact-footprint-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1682,7 +1709,7 @@ Table&nbsp;4: Terrain patches and their movement effects.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-terrain-exact-footprint-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;46: A 30-man squad ordered straight down the lane just west of the hill holds its lane the whole way — its flank passes less than a metre off the drawn hillside. The routed obstacle is the drawn slope plus the squad’s own footprint margin, so the narrow lane fits it exactly; a full-width line given the same order would swing around instead.
+Figure&nbsp;47: A 30-man squad ordered straight down the lane just west of the hill holds its lane the whole way — its flank passes less than a metre off the drawn hillside. The routed obstacle is the drawn slope plus the squad’s own footprint margin, so the narrow lane fits it exactly; a full-width line given the same order would swing around instead.
 </figcaption>
 </figure>
 </div>
@@ -1696,7 +1723,7 @@ Figure&nbsp;46: A 30-man squad ordered straight down the lane just west of the h
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-funnel-lanes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;47: Two widths, two lanes: a wide battle line and a narrow squad round the same hillside, and each walks the drawn terrain plus exactly its own footprint margin — the line swinging out around the shoulder, the squad tucking in tight along the face — instead of both converging onto one wide routing-grid lane.
+Figure&nbsp;48: Two widths, two lanes: a wide battle line and a narrow squad round the same hillside, and each walks the drawn terrain plus exactly its own footprint margin — the line swinging out around the shoulder, the squad tucking in tight along the face — instead of both converging onto one wide routing-grid lane.
 </figcaption>
 </figure>
 </div>
@@ -1753,7 +1780,7 @@ Figure&nbsp;47: Two widths, two lanes: a wide battle line and a narrow squad rou
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-disengaged-march-through-contact-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;48: A player Infantry regiment is ordered straight through a held enemy line. The front arrests at contact and the rear ranks stay dressed instead of compressing into the held men.
+Figure&nbsp;49: A player Infantry regiment is ordered straight through a held enemy line. The front arrests at contact and the rear ranks stay dressed instead of compressing into the held men.
 </figcaption>
 </figure>
 </div>
@@ -1768,11 +1795,11 @@ Figure&nbsp;48: A player Infantry regiment is ordered straight through a held en
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-move-cancel-on-engagement-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;49: Redirecting an engaged unit: a mid-fight move order marches the unit off right away, but once its engagement with the enemy dies down the destination is checked one last time — if the enemy still holds that ground, the order cancels outright and the unit falls back into the fight instead of marching into occupied territory.
+Figure&nbsp;50: Redirecting an engaged unit: a mid-fight move order marches the unit off right away, but once its engagement with the enemy dies down the destination is checked one last time — if the enemy still holds that ground, the order cancels outright and the unit falls back into the fight instead of marching into occupied territory.
 </figcaption>
 </figure>
 </div>
-<p>When that mid-fight destination lies <strong>behind</strong> the regiment — a genuine pull-back out of the fight — a well-drilled unit doesn’t pivot in place under pressure. It backs straight out instead, shields still toward the line it just left, ranks square the whole way, and only once it is clear of the grapple does it drill its about-face and march the rest of the way (<a href="#fig-plain-move-withdrawal" class="quarto-xref">Figure&nbsp;50</a>). The same drill the relieved regiment uses during a line relief, available on demand: order any disciplined, non-hasting unit rearward while it is engaged and it withdraws as a fighting body rather than turning tail. Undisciplined units, and any move ordered at the run, still break off the old way — pace over poise.</p>
+<p>When that mid-fight destination lies <strong>behind</strong> the regiment — a genuine pull-back out of the fight — a well-drilled unit doesn’t pivot in place under pressure. It backs straight out instead, shields still toward the line it just left, ranks square the whole way, and only once it is clear of the grapple does it drill its about-face and march the rest of the way (<a href="#fig-plain-move-withdrawal" class="quarto-xref">Figure&nbsp;51</a>). The same drill the relieved regiment uses during a line relief, available on demand: order any disciplined, non-hasting unit rearward while it is engaged and it withdraws as a fighting body rather than turning tail. Undisciplined units, and any move ordered at the run, still break off the old way — pace over poise.</p>
 <div id="fig-plain-move-withdrawal" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-plain-move-withdrawal-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1783,7 +1810,7 @@ Figure&nbsp;49: Redirecting an engaged unit: a mid-fight move order marches the 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-plain-move-withdrawal-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;50: A fighting regiment ordered to a destination behind it backs out facing-held first — no mid-press pivot — then turns about and marches on once clear of the fight.
+Figure&nbsp;51: A fighting regiment ordered to a destination behind it backs out facing-held first — no mid-press pivot — then turns about and marches on once clear of the fight.
 </figcaption>
 </figure>
 </div>
@@ -1791,7 +1818,7 @@ Figure&nbsp;50: A fighting regiment ordered to a destination behind it backs out
 <section id="facing-a-skirmisher-screen" class="level2">
 <h2 class="anchored" data-anchor-id="facing-a-skirmisher-screen">Facing a skirmisher screen</h2>
 <p><strong>Not in play yet.</strong> Screening is a property of a general’s doctrine profile, and nothing in the game selects a profile yet — every battle runs the aggressive doctrine, which does not screen. The behaviour below is built, tested, and shown in the clip; what it is waiting on is a scenario or campaign that can hand a general a different profile. It is described here so the tactics are on the page when that lands.</p>
-<p>A screening general opens the battle by pushing its light troops out in front of the heavy line rather than keeping them in it. The archers move out to a contest line about eight metres ahead of that line — one ranged reach, so their fire covers the ground immediately in front of it — hold there in the skirmish stance, and shoot at whatever comes into range. Their own heavy blocks do not break formation to rescue them. Once the opposing line closes to within about six metres of the screen, the same subcommander pulls it back — the archers break off the exchange, turn about, and fall back on a diagonal aimed at a gap <strong>between</strong> two of their own blocks rather than straight back through one (<a href="#fig-skirmisher-screen" class="quarto-xref">Figure&nbsp;51</a>).</p>
+<p>A screening general opens the battle by pushing its light troops out in front of the heavy line rather than keeping them in it. The archers move out to a contest line about eight metres ahead of that line — one ranged reach, so their fire covers the ground immediately in front of it — hold there in the skirmish stance, and shoot at whatever comes into range. Their own heavy blocks do not break formation to rescue them. Once the opposing line closes to within about six metres of the screen, the same subcommander pulls it back — the archers break off the exchange, turn about, and fall back on a diagonal aimed at a gap <strong>between</strong> two of their own blocks rather than straight back through one (<a href="#fig-skirmisher-screen" class="quarto-xref">Figure&nbsp;52</a>).</p>
 <p>Two things will follow for you. Chasing the screen with your own heavy line pulls that line forward out of dressing and hands the enemy blocks a ragged target, so it is usually better to walk up steadily and let the screen retire. And the moment the screen turns is the moment it is most exposed: cavalry sent wide, or a unit already on that flank, can catch it in the open before it reaches the interval, because its own line will not come out to save it.</p>
 <div id="fig-skirmisher-screen" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
@@ -1803,7 +1830,7 @@ Figure&nbsp;50: A fighting regiment ordered to a destination behind it backs out
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-skirmisher-screen-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;51: An enemy archer unit walks out ahead of its own heavy line, holds the ground between the armies as the player line advances, then breaks off and falls back toward the interval between two blocks while the line behind it holds its ground.
+Figure&nbsp;52: An enemy archer unit walks out ahead of its own heavy line, holds the ground between the armies as the player line advances, then breaks off and falls back toward the interval between two blocks while the line behind it holds its ground.
 </figcaption>
 </figure>
 </div>
