@@ -16,9 +16,11 @@ extends Resource
 # (SoldierCombat.profile_for's "shield_residual") plus this block value, then
 # multiplies by SHIELD_DEFENSE_WEIGHT and the defender's skill (see SoldierCombat.land_chance).
 @export var block_value: float
-# Coverage arc in degrees, centred on the hold angle. Shape data for a
-# discrete arc-coverage check; today's combat uses the continuous facing gate
-# (SoldierCombat.facing_gate), which doesn't read it.
+# Coverage arc in degrees, centred on the hold angle. Read for gameplay by the
+# projectile landing path: ProjectileField tests every arrow that reaches a man
+# against covers() below, so one arriving outside this arc pierces. Melee is
+# separate -- the land contest still uses the continuous facing gate
+# (SoldierCombat.facing_gate), which doesn't read this.
 @export var arc_deg: float
 # Rest pose: the angle (radians, relative to the soldier's facing) the shield
 # is held at by default. Feeds the render once visuals read the type.
@@ -43,7 +45,8 @@ static func make(p_id: int, p_name: String, p_block_value: float, p_arc_deg: flo
 ## difference wraps, so an attack across the -PI/PI seam still compares
 ## correctly. A zero-arc shield (SHIELD_NONE) covers nothing, which keeps
 ## "no shield" a uniform case instead of a null check at every call site.
-## Pure; nothing reads it for gameplay yet.
+## Pure; ProjectileField's landing path calls it once per arrow that reaches a
+## man, and the caller owns any RNG the outcome then needs.
 func covers(attack_angle: float, hold_angle: float) -> bool:
 	if arc_deg <= 0.0:
 		return false

@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Slice 1 makes ranged volleys fly as real projectile entities that deliver their casualties on LANDING (travel time), but the casualty count is unchanged and real arrows aren't rendered yet -- the cosmetic volley trail already streaks across, so a short clip looks the same at a glance. The visible payoff (arcing arrows, arc-over-ranks, shield blocking) comes with the rendering + shield slices. Covered by test_projectile_physics.gd and test_projectile_field.gd."
+  "input": "demos/inputs/shield-arc-block.json",
+  "caption": "Shield arc vs an exposed flank. Two identical 60-man Infantry blocks, same scutum, same plain order, each under fire from its own Archers regiment 170 world units due north. The LEFT block faces the arrows, so its shields cover the incoming line and most arrows are deflected or lodge in the shield faces; the RIGHT block is turned east, presenting a flank the shields do not cover, so the same volleys drive straight through. By the end of the clip the left block is at 53 of 60 with morale 75, the right at 25 of 60 with morale 32 and sagging toward a break. Both blocks are in NORMAL order, so no stance missile bonus is in play either way -- the gap is the new per-arrow shield-arc gate plus the flank casualty multiplier that already applied before it.",
+  "fixed_fps": 30,
+  "max_frames": 330,
+  "fps": 12,
+  "width": 640
 }

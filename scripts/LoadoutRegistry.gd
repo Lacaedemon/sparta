@@ -94,9 +94,10 @@ static var _weapons: Dictionary = {
 # and the round cavalry shield carries the cavalry weight (0.25). SHIELD_NONE
 # is a real interned type (block 0, arc 0), not a null: archers carry it, and
 # a uniform object keeps call sites free of "no shield" special cases (their
-# 0.05 stance residual is unshielded deflection, not a shield). arc_deg is
-# provisional shape data (nothing reads it for gameplay yet): the big body
-# scutum covers a wide front, the round shield less.
+# 0.05 stance residual is unshielded deflection, not a shield). arc_deg is the
+# coverage arc the projectile landing path gates each arrow on (ProjectileField
+# calls Shield.covers): the big body scutum covers a wide front, the round
+# shield less, and SHIELD_NONE's zero arc covers nothing at all.
 #
 # default_hold_angle (phase 3): the rest-pose angle Unit.shield_rest_angle() resolves
 # and UnitMeshes.figure_mesh's held-item geometry rotates the shield glyph by (see the

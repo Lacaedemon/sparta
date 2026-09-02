@@ -1603,9 +1603,9 @@ func _on_soldier_tick() -> void:
 	SoldierEnemyContact.accumulate(units, -frame - 1)
 	UnitRef.step_all_sim_soldiers(units, delta)
 	UnitRef.couple_all_sim_soldiers(units, delta)
-	# Advance in-flight volleys and land any that arrived this tick (delivers their casualties
-	# in launch order, no RNG -- see ProjectileField). After the bodies settle so a landing
-	# reads current positions.
+	# Advance in-flight volleys and land any that arrived this tick (resolved in launch order,
+	# one seeded shield roll per arrow -- see ProjectileField). After the bodies settle so a
+	# landing reads current positions.
 	if ProjectileField.active != null:
 		ProjectileField.active.step(delta, self)
 
