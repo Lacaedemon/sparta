@@ -160,12 +160,14 @@ A setup preset decides how far apart the armies start, fast-forward decides how 
   Shipped as `scripts/SkirmisherScreen.gd` and `scripts/ScreenIntervals.gd` ([#1467](https://github.com/Lacaedemon/sparta/issues/1467)):
   the contest line sits one ranged reach ahead of the heavy line's median depth, the recall fires at 6 m (just outside `Unit.SKIRMISH_KITE_DISTANCE`, so it supersedes the kite reflex rather than competing with it),
   and the withdrawal aims at the nearest lateral gap between two heavy blocks rather than at the unit's own file.
-  It is opt-in per doctrine (`skirmisher_screen` in `data/doctrines/*.json`; `screening.json` is the shipped profile that asks for one), so every doctrine without the key keeps the behaviour it had before.
+  It is opt-in per doctrine (`skirmisher_screen` in `data/doctrines/*.json`;
+  `screening.json` is the shipped profile that asks for one), so every doctrine without the key keeps the behaviour it had before.
   Two limits on how far that reaches today.
   Nothing in the game selects a doctrine yet: `Battle.ai_doctrine` is a settable field defaulting to `aggressive`, and only the demo recorder and the unit tests set it, so a player meets the screen once a scenario, campaign, or pre-battle screen can pick a general's profile -- the directive is what shipped, not a play path to it.
   Its `envelop_ratio_threshold` of 3.0 is inert, and present only because `DoctrineRegistry.REQUIRED_KEYS` demands it of every profile: `plans` omits `envelop`, so `General.select_plan` never reads the threshold, and dropping the key would fail the whole profile to `{}` and silently revert the army to the built-in defaults.
   And `screening.json`'s own `defend_ratio_threshold` of 1.5 means that profile picks `PLAN_DEFEND` unless its active line outnumbers the enemy by more than 3:2, so in both artifacts shipped alongside it (a 4-v-3 demo and a 3-v-2 battle test) the heavy blocks stand while the screen works in front of them.
-  That is the right reading of "cover the approach" for a line already in position and not for one advancing to contact; a screening profile meant to cover an advance wants a lower threshold.
+  That is the right reading of "cover the approach" for a line already in position and not for one advancing to contact;
+  a screening profile meant to cover an advance wants a lower threshold.
 
 ### 3. Pre-battle deployment presets
 
