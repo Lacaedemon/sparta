@@ -183,7 +183,8 @@ script under `demos/inputs/`:
   in either its full form (`"Rome (Latin / Roman)"`) or its bare leading name (`"Rome"`).
   Strict on length as well as spelling: a non-empty list must name every team that will
   actually spawn -- exactly two entries for a normal battle, or exactly one when `drill` is
-  set (team 1 never spawns in a drill, so it has no faction to name). A one-entry list on a
+  set (team 1 never spawns in a drill, so it has no faction to name).
+  A one-entry list on a
   non-drill battle would otherwise silently leave team 1 with no faction.
   An unrecognized name, or a list of the wrong length, fails the recording loudly,
   like a malformed `steps`/`scenario`.
