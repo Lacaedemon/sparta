@@ -34,6 +34,13 @@ var _all_teams_control: bool = false
 # from the input script's optional "doctrine" field (a DoctrineRegistry id). Empty string ==
 # "don't override" -- Battle keeps its own default (see Battle.ai_doctrine's own doc comment).
 var _doctrine: String = ""
+# Simulation-tier trigger distances (world units) from the input script's optional
+# "tier_ranges": {"promote": <wu>, "demote": <wu>} block. -1.0 == "don't override", so
+# Battle keeps FormationTier's tuned defaults. A demo about live FAR-tier behaviour needs
+# these: the defaults sit far outside every combat reach, so a formation always promotes
+# back to the close tier before anything can strike it -- see Battle.promote_range.
+var _promote_range: float = -1.0
+var _demote_range: float = -1.0
 # Parsed per-demo map overrides (BattleMap.parse's shape) from the input script's
 # optional "map" field. Empty == run on the default map.
 var _map: Dictionary = {}
@@ -121,6 +128,21 @@ func _ready() -> void:
 	_scenario = script.get("scenario", [])
 	_doctrine = str(script.get("doctrine", ""))
 	_all_teams_control = bool(script.get("all_teams_control", false))
+	# Tier band, strict like scenario/map: it decides WHICH SIMULATION TIER the demo's
+	# formations run at, so a malformed block must fail loudly rather than silently record a
+	# close-tier fight in a clip captioned as a far-tier one.
+	if script.has("tier_ranges"):
+		var band = script["tier_ranges"]
+		if typeof(band) != TYPE_DICTIONARY or not band.has("promote") or not band.has("demote"):
+			push_error("[demo-input] tier_ranges must be {\"promote\": <wu>, \"demote\": <wu>}.")
+			get_tree().quit(2)
+			return
+		_promote_range = float(band["promote"])
+		_demote_range = float(band["demote"])
+		if _promote_range <= 0.0 or _demote_range <= _promote_range:
+			push_error("[demo-input] tier_ranges needs 0 < promote < demote (the hysteresis gap).")
+			get_tree().quit(2)
+			return
 	# The optional per-demo map block (field size, terrain patches, spawn lines).
 	# Strict like steps/scenario: map geometry decides WHAT battlefield the demo
 	# simulates, so a malformed block must fail the recording loudly rather than
@@ -198,6 +220,10 @@ func _start_battle() -> void:
 		_battle.spawn_line_ys = _map["spawn_lines"]
 	if _doctrine != "":
 		_battle.ai_doctrine = _doctrine   # likewise: overrides Battle's own default doctrine
+	if _promote_range > 0.0:
+		# Likewise before add_child: Battle's first tier pass runs on the first tick.
+		_battle.promote_range = _promote_range
+		_battle.demote_range = _demote_range
 	add_child(_battle)
 	# Battle._ready spawns synchronously during add_child, so every unit is on the field now.
 	# Print the layout's fingerprint (so a new script can be stamped by copying it) and, when the
