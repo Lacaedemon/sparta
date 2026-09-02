@@ -65,7 +65,7 @@ var _speed: Array[float] = []        # launch speed (for the height arc)
 var _angle: Array[float] = []        # launch angle
 var _shooter_uid: Array[int] = []
 var _target_uid: Array[int] = []
-var _casualties: Array[int] = []
+var _arrows: Array[int] = []         # arrows in the volley (potential hits, not guaranteed kills)
 var _flank: Array[float] = []
 
 
@@ -74,12 +74,16 @@ func count() -> int:
 	return _elapsed.size()
 
 
-## Enqueue a volley projectile flying from `from` to `to`, carrying `casualties` (flank already
+## Enqueue a volley projectile flying from `from` to `to`, carrying `arrows` (flank already
 ## folded in) against `target_uid`, keyed to `shooter_uid` for the morale/fallen direction.
+## `arrows` is how many arrows the volley delivers, NOT how many men it kills: against a
+## target with a soldier layer each arrow is tested against the shield the man it reaches is
+## holding, so only some of them pierce. It collapses to a casualty count only on the
+## fieldless fallback path, which has no shields to test.
 ## `arced` picks the lob vs the flat trajectory. A degenerate (zero-distance) solve lands on
-## the next tick so the casualties still resolve.
+## the next tick so the volley still resolves.
 func launch(from: Vector2, to: Vector2, shooter_uid: int, target_uid: int,
-		casualties: int, flank: float, arced: bool) -> void:
+		arrows: int, flank: float, arced: bool) -> void:
 	var dist: float = from.distance_to(to)
 	var angle: float = ProjectilePhysics.ANGLE_ARCED if arced else ProjectilePhysics.ANGLE_FLAT
 	var sol: Dictionary = ProjectilePhysics.solve_launch(dist, GRAVITY, angle)
@@ -94,7 +98,7 @@ func launch(from: Vector2, to: Vector2, shooter_uid: int, target_uid: int,
 	_angle.append(angle)
 	_shooter_uid.append(shooter_uid)
 	_target_uid.append(target_uid)
-	_casualties.append(casualties)
+	_arrows.append(arrows)
 	_flank.append(flank)
 
 
@@ -124,11 +128,12 @@ func ground_of(i: int) -> Vector2:
 	return ProjectilePhysics.ground_at(_from[i], _to[i], f)
 
 
-## Deliver projectile `i`'s casualties to its target. Skips a dead/freed target --- a
+## Deliver projectile `i`'s arrows to its target. Skips a dead/freed target --- a
 ## routing one (broken or shattered) is still fair game; fleeing doesn't dodge an arrow
 ## already in flight. Uses the launch point as the near-side selection origin; the shooter
 ## (if still alive) is the killer for morale/fallen direction. Falls back to the regiment
-## formula if the target has no soldier layer.
+## formula if the target has no soldier layer, and only on THAT path is the payload a
+## casualty count -- with a soldier layer each arrow still has to beat a shield.
 func _resolve(i: int, battle: Node) -> void:
 	var target = battle.unit_by_uid(_target_uid[i])
 	if target == null or not is_instance_valid(target):
@@ -137,13 +142,15 @@ func _resolve(i: int, battle: Node) -> void:
 		return
 	var killer = battle.unit_by_uid(_shooter_uid[i])   # may be null if the shooter has died
 	if not target._sim_soldier_hp.is_empty():
-		_land_on_soldiers(target, killer, _from[i], _casualties[i], _flank[i])
+		_land_on_soldiers(target, killer, _from[i], _arrows[i], _flank[i])
 	elif killer != null:
-		# Fallback for a target with no soldier layer. `_casualties[i]` ALREADY has the flank
-		# folded in (in shoot), so apply it directly -- routing it through take_casualties would
-		# re-apply flank_multiplier and double it. register_casualties handles morale/rout.
-		target.soldiers = maxi(0, target.soldiers - _casualties[i])
-		UnitCombat.register_casualties(target, _casualties[i], killer, _flank[i])
+		# Fallback for a target with no soldier layer: no shields to test, so every arrow
+		# lands as a kill. `_arrows[i]` ALREADY has the flank folded in (in shoot), so apply
+		# it directly -- routing it through take_casualties would re-apply flank_multiplier
+		# and double it. register_casualties handles morale/rout.
+		var kills: int = _arrows[i]
+		target.soldiers = maxi(0, target.soldiers - kills)
+		UnitCombat.register_casualties(target, kills, killer, _flank[i])
 
 
 ## Land a volley's arrows on individual men. The near-side soldiers the arrows reach first
@@ -242,7 +249,7 @@ func _remove_at(index: int) -> void:
 	_angle.remove_at(index)
 	_shooter_uid.remove_at(index)
 	_target_uid.remove_at(index)
-	_casualties.remove_at(index)
+	_arrows.remove_at(index)
 	_flank.remove_at(index)
 
 
