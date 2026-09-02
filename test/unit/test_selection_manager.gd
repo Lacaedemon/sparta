@@ -2319,7 +2319,7 @@ func test_single_unit_form_up_is_not_tagged_with_a_group_parent() -> void:
 
 
 func test_plain_form_up_preserves_reserve_line_assigned_by_an_earlier_checkerboard() -> void:
-	# Regression test for the bug the forge review of #1478 found: _line_slices/_echelon_slices
+	# Regression test: _line_slices/_echelon_slices
 	# never tag a "line" key, so _issue_form_up's slice.get("line", 0) fallback used to pass a
 	# hard 0 into enqueue_form_up, and Battle._apply_order_cmd stamped every ordered unit's
 	# line_index back to 0 -- silently wiping the reserve-line status a checkerboard deploy had
