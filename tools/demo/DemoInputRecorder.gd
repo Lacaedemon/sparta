@@ -76,6 +76,26 @@ var _hash_stream: FileAccess = null    # per-tick state-hash stream (armed with 
 var _hash_last_tick: int = -1          # last tick hashed, so a frozen tick writes one line only
 
 
+## Parse an input script's "tier_ranges" block into {"promote": float, "demote": float}, or
+## {"error": String} describing the first problem. Shaped like BattleMap.parse so the caller
+## reports and quits the same way for both, and pure so it is unit-testable without a tree.
+##
+## Finiteness is checked BEFORE the ordering rule, because every comparison against NaN is
+## false: a NaN promote would pass `promote <= 0.0` and `demote <= promote` alike and reach
+## Battle as a trigger distance no formation can ever satisfy -- a silently tier-frozen
+## recording rather than a loud failure. INF slips through the ordering rule just as quietly.
+static func parse_tier_band(band) -> Dictionary:
+	if typeof(band) != TYPE_DICTIONARY or not band.has("promote") or not band.has("demote"):
+		return {"error": "tier_ranges must be {\"promote\": <wu>, \"demote\": <wu>}."}
+	var promote: float = float(band["promote"])
+	var demote: float = float(band["demote"])
+	if not is_finite(promote) or not is_finite(demote):
+		return {"error": "tier_ranges promote/demote must be finite numbers."}
+	if promote <= 0.0 or demote <= promote:
+		return {"error": "tier_ranges needs 0 < promote < demote (the hysteresis gap)."}
+	return {"promote": promote, "demote": demote}
+
+
 func _ready() -> void:
 	# Unconditional wall-clock safety net (same as DemoRunner): whatever mode this
 	# run is in -- movie recording, frame capture, state dump -- it quits itself
@@ -132,17 +152,13 @@ func _ready() -> void:
 	# formations run at, so a malformed block must fail loudly rather than silently record a
 	# close-tier fight in a clip captioned as a far-tier one.
 	if script.has("tier_ranges"):
-		var band = script["tier_ranges"]
-		if typeof(band) != TYPE_DICTIONARY or not band.has("promote") or not band.has("demote"):
-			push_error("[demo-input] tier_ranges must be {\"promote\": <wu>, \"demote\": <wu>}.")
+		var band: Dictionary = parse_tier_band(script["tier_ranges"])
+		if band.has("error"):
+			push_error("[demo-input] %s" % band["error"])
 			get_tree().quit(2)
 			return
-		_promote_range = float(band["promote"])
-		_demote_range = float(band["demote"])
-		if _promote_range <= 0.0 or _demote_range <= _promote_range:
-			push_error("[demo-input] tier_ranges needs 0 < promote < demote (the hysteresis gap).")
-			get_tree().quit(2)
-			return
+		_promote_range = band["promote"]
+		_demote_range = band["demote"]
 	# The optional per-demo map block (field size, terrain patches, spawn lines).
 	# Strict like steps/scenario: map geometry decides WHAT battlefield the demo
 	# simulates, so a malformed block must fail the recording loudly rather than

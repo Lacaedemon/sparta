@@ -142,3 +142,44 @@ func test_time_scale_fire_updates_engine_time_scale() -> void:
 	# Restore to prevent test bleed
 	Engine.time_scale = original
 
+
+# --- tier_ranges parsing -----------------------------------------------------------------
+
+func test_a_well_formed_tier_band_parses_to_its_two_distances() -> void:
+	var band: Dictionary = RecorderScript.parse_tier_band({"promote": 6.0, "demote": 95.0})
+	assert_false(band.has("error"), "a well-formed band parses")
+	assert_almost_eq(band["promote"], 6.0, 0.0001, "promote carries through")
+	assert_almost_eq(band["demote"], 95.0, 0.0001, "demote carries through")
+
+
+func test_a_malformed_tier_band_is_rejected() -> void:
+	for bad in [42, [], {}, {"promote": 6.0}, {"demote": 95.0}]:
+		assert_true(RecorderScript.parse_tier_band(bad).has("error"),
+			"a band that is not a dict with both keys is rejected: %s" % [bad])
+
+
+func test_a_tier_band_out_of_order_or_non_positive_is_rejected() -> void:
+	for bad in [{"promote": 95.0, "demote": 6.0}, {"promote": 6.0, "demote": 6.0},
+			{"promote": 0.0, "demote": 95.0}, {"promote": -5.0, "demote": 95.0}]:
+		assert_true(RecorderScript.parse_tier_band(bad).has("error"),
+			"0 < promote < demote is enforced: %s" % [bad])
+
+
+func test_a_non_finite_tier_band_is_rejected() -> void:
+	# Every comparison against NaN is false, so NaN passes `promote <= 0.0` AND
+	# `demote <= promote` -- without an explicit finiteness check it would reach Battle as a
+	# trigger distance no formation can satisfy, freezing the tier silently. INF is the same
+	# hazard one step less obvious: it satisfies the ordering rule outright.
+	assert_true(RecorderScript.parse_tier_band({"promote": NAN, "demote": 95.0}).has("error"),
+		"a NaN promote is rejected, not silently accepted")
+	assert_true(RecorderScript.parse_tier_band({"promote": 6.0, "demote": NAN}).has("error"),
+		"a NaN demote is rejected too")
+	assert_true(RecorderScript.parse_tier_band({"promote": 6.0, "demote": INF}).has("error"),
+		"an infinite demote is rejected, though it passes the ordering rule")
+	assert_true(RecorderScript.parse_tier_band({"promote": INF, "demote": INF}).has("error"),
+		"and so is an all-infinite band")
+	# The negative control for the reasoning above: confirm NaN really does slip the ordering
+	# rule, so this test guards a live hazard rather than a hypothetical one.
+	assert_false(NAN <= 0.0, "NaN does not compare as non-positive")
+	assert_false(95.0 <= NAN, "NaN does not compare as out-of-order")
+
