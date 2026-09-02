@@ -1,10 +1,11 @@
 extends GutTest
 ## Campaign map substrate: the province polygon overlay (point-in-polygon lookup,
-## adjacency, centroids) and the per-campaign lat-long projection. Both are pure
+## adjacency, anchor points) and the per-campaign lat-long projection. Both are pure
 ## RefCounteds, so these run headless against small hand-made maps.
 
 const CampaignGeography = preload("res://scripts/campaign/CampaignGeography.gd")
 const CampaignProjection = preload("res://scripts/campaign/CampaignProjection.gd")
+const CampaignLoader = preload("res://scripts/campaign/CampaignLoader.gd")
 
 # Two unit squares side by side, plus a detached third: province 0 spans x 0-100,
 # province 1 spans x 100-200, province 2 sits far to the south.
@@ -89,12 +90,14 @@ func test_neighbours_returns_a_copy() -> void:
 	assert_eq(geo.neighbours(0), [1], "mutating the result does not corrupt the overlay")
 
 
-func test_centroid_is_the_polygon_centre() -> void:
+func test_centre_is_the_loader_polygon_anchor() -> void:
 	var geo := _geo()
-	var centre: Vector2 = geo.centroid(0)
+	var centre: Vector2 = geo.centre(0)
 	assert_almost_eq(centre.x, SQUARE_SIDE / 2.0, 0.001, "centred in x")
 	assert_almost_eq(centre.y, SQUARE_SIDE / 2.0, 0.001, "centred in y")
-	assert_eq(geo.centroid(99), Vector2.ZERO, "an unknown province has no centre")
+	assert_eq(centre, CampaignLoader.polygon_centre(geo.polygon(0)),
+			"one formula, shared with the loader's own label anchor")
+	assert_eq(geo.centre(99), Vector2.ZERO, "an unknown province has no centre")
 
 
 func test_polygon_reads_back_the_authored_shape() -> void:

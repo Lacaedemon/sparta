@@ -94,6 +94,8 @@ func _build_state() -> void:
 ## Build the map-position machinery around the loaded map: the province overlay, the
 ## campaign's projection, and a fresh clock. Each reads its parameters from the map
 ## data where it supplies them, so a campaign can set its own ground and day length.
+## CampaignLoader validates and carries those keys through, so a degenerate day length
+## or ground scale is rejected at load rather than arriving here.
 func _build_substrate() -> void:
 	_geo = CampaignGeographyRef.new(_map)
 	var origin := CampaignProjectionRef.origin_of(_map)
@@ -112,7 +114,12 @@ func _process(delta: float) -> void:
 	if _clock == null or _state == null:
 		return
 	if _state.winner() != CampaignStateRef.NO_WINNER:
-		_clock.set_paused(true)
+		# A decided campaign stops the world. Push the stop once, on the transition, so
+		# the readout greys out and says "(paused)" instead of standing at the last date
+		# it happened to be pushed while time is in fact stopped.
+		if not _clock.is_paused():
+			_clock.set_paused(true)
+			_refresh_clock()
 		return
 	if _clock.advance(delta) > 0:
 		_refresh_clock()
@@ -224,7 +231,7 @@ func _march_label(from_id: int, to_id: int) -> String:
 		return ""
 	if not _geo.has_province(from_id) or not _geo.has_province(to_id):
 		return ""
-	var metres: float = _projection.distance_m(_geo.centroid(from_id), _geo.centroid(to_id))
+	var metres: float = _projection.distance_m(_geo.centre(from_id), _geo.centre(to_id))
 	return DistanceLegendRef.label_text(metres)
 
 
@@ -280,9 +287,11 @@ func _resume_from_battle() -> bool:
 		return false
 	_state.restore(CampaignBattle.snapshot)
 	# Resume the frozen clock where the battle interrupted it, still paused, so the
-	# player picks the world back up rather than losing time to the scene swap.
+	# player picks the world back up rather than losing time to the scene swap. An
+	# absolute restore, not an advance: the clock is freshly built here today, and
+	# adding to one that had already run would silently double the campaign date.
 	if _clock != null:
-		_clock.step(CampaignBattle.campaign_tick)
+		_clock.set_tick(CampaignBattle.campaign_tick)
 	_selected = -1
 	return true
 

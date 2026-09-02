@@ -5,6 +5,8 @@ extends GutTest
 
 const CampaignLoader = preload("res://scripts/campaign/CampaignLoader.gd")
 const Campaigns = preload("res://scripts/campaign/Campaigns.gd")
+const CampaignCalendar = preload("res://scripts/campaign/CampaignCalendar.gd")
+const CampaignProjection = preload("res://scripts/campaign/CampaignProjection.gd")
 
 
 func _valid_raw() -> Dictionary:
@@ -244,3 +246,54 @@ func test_loads_four_kingdoms_file() -> void:
 func test_load_missing_file_returns_empty() -> void:
 	assert_true(CampaignLoader.load_map("res://data/campaigns/does_not_exist.json").is_empty(),
 			"a missing file loads as empty (caller falls back)")
+# --- campaign clock and ground scale --------------------------------------
+
+func test_time_and_scale_default_when_the_map_is_silent() -> void:
+	var m := CampaignLoader.parse_map(_valid_raw())
+	assert_eq(m["ticks_per_day"], CampaignCalendar.DEFAULT_TICKS_PER_DAY,
+			"a map that declares no day length gets the calendar's own")
+	assert_eq(m["metres_per_unit"], CampaignProjection.DEFAULT_METRES_PER_UNIT,
+			"and the projection's default ground scale")
+	assert_eq(m["origin"],
+			[CampaignProjection.DEFAULT_ORIGIN_LAT, CampaignProjection.DEFAULT_ORIGIN_LON],
+			"and its default origin")
+
+
+func test_carries_a_declared_day_length_scale_and_origin() -> void:
+	var raw := _valid_raw()
+	raw["ticks_per_day"] = 48
+	raw["metres_per_unit"] = 250.0
+	raw["origin"] = [40.0, -15.0]
+	var m := CampaignLoader.parse_map(raw)
+	assert_eq(m["ticks_per_day"], 48, "a campaign can halve its tick granularity")
+	assert_eq(m["metres_per_unit"], 250.0, "and set its own ground scale")
+	assert_eq(CampaignProjection.origin_of(m), Vector2(40.0, -15.0),
+			"and sit on its own ground, read back through the projection")
+
+
+func test_rejects_a_non_positive_day_length() -> void:
+	# Silent otherwise: CampaignCalendar answers day one forever at a zero day length,
+	# so the whole campaign would read "Day 1, 00:00" with nothing to see it.
+	var raw := _valid_raw()
+	raw["ticks_per_day"] = 0
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a zero-length day -> rejected")
+	raw["ticks_per_day"] = -24
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a negative one too")
+
+
+func test_rejects_a_non_positive_ground_scale() -> void:
+	var raw := _valid_raw()
+	raw["metres_per_unit"] = 0.0
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a zero ground scale -> rejected")
+
+
+func test_rejects_a_malformed_or_out_of_range_origin() -> void:
+	var raw := _valid_raw()
+	raw["origin"] = [46.5]
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a one-element origin -> rejected")
+	raw["origin"] = "central Gaul"
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a non-pair origin -> rejected")
+	raw["origin"] = [46.5, 240.0]
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a longitude off the globe -> rejected")
+	raw["origin"] = [120.0, 2.5]
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a latitude off the globe -> rejected")

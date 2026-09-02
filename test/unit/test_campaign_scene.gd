@@ -249,12 +249,16 @@ func test_process_advances_the_clock_only_while_running() -> void:
 func test_process_stops_the_clock_when_the_campaign_is_won() -> void:
 	var s = await _scene()
 	var map := s.get_node("CampaignMap")
+	var hud := s.get_node("CampaignHUD")
 	map._on_pause_pressed()
 	# Hand every province to Rome, which is the victory condition.
 	for id in map._state.provinces:
 		map._state.provinces[id]["owner"] = 0
 	map._process(1.0)
 	assert_true(map._clock.is_paused(), "time stops for a decided campaign")
+	assert_string_contains(hud._clock_label.text, "paused",
+			"and the readout says so rather than standing at a stale running date")
+	assert_eq(hud._pause_button.text, "Resume", "the button follows the stopped clock")
 
 
 func test_move_announces_its_ground_distance() -> void:

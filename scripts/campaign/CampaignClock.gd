@@ -93,8 +93,8 @@ func advance(seconds: float) -> int:
 	return fired
 
 
-## Advance by whole ticks directly, bypassing real time: the replay and test path,
-## and how a fought battle charges its own elapsed duration back to the campaign.
-func step(ticks: int) -> void:
-	if ticks > 0:
-		_tick += ticks
+## Put the counter at an absolute tick, bypassing real time: the replay and test path,
+## and how a campaign picks its frozen clock back up after a battle. Absolute rather
+## than relative, so a restore cannot double the date by adding to a clock already run.
+func set_tick(tick: int) -> void:
+	_tick = maxi(tick, 0)

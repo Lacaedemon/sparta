@@ -103,12 +103,14 @@ func test_identical_delta_sequences_reach_identical_ticks() -> void:
 	assert_eq(first.tick(), second.tick(), "the same real-time sequence replays identically")
 
 
-func test_step_advances_whole_ticks_while_paused() -> void:
+func test_set_tick_restores_an_absolute_counter() -> void:
 	var clock := CampaignClock.new()
-	clock.step(30)
-	assert_eq(clock.tick(), 30, "a battle charges its duration straight to the counter")
-	clock.step(-5)
-	assert_eq(clock.tick(), 30, "a negative charge is ignored")
+	clock.set_tick(30)
+	assert_eq(clock.tick(), 30, "a resumed campaign lands on the tick it froze at")
+	clock.set_tick(12)
+	assert_eq(clock.tick(), 12, "restoring is absolute, not an advance")
+	clock.set_tick(-5)
+	assert_eq(clock.tick(), 0, "a negative tick clamps to the start of the campaign")
 
 
 func test_day_counter_rolls_over() -> void:
@@ -137,5 +139,9 @@ func test_calendar_label_reads_as_a_date() -> void:
 
 
 func test_calendar_guards_a_degenerate_day_length() -> void:
+	# Defence in depth, not a supported configuration: CampaignLoader rejects a
+	# non-positive "ticks_per_day" outright (see test_campaign_loader.gd), so a loaded
+	# campaign never reaches here with one. These guards only keep a hand-built call
+	# from dividing by zero.
 	assert_eq(CampaignCalendar.days_elapsed(10, 0), 0, "no division by a zero-length day")
 	assert_eq(CampaignCalendar.hour(10, 0), 0, "no division by a zero-length day")

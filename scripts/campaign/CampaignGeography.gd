@@ -12,10 +12,13 @@ extends RefCounted
 ## is a plain RefCounted with no scene dependencies -- unit-testable headlessly like
 ## CampaignState.
 
+const CampaignLoaderRef = preload("res://scripts/campaign/CampaignLoader.gd")
+
 const NO_PROVINCE := -1
 
 var _polygons: Dictionary = {}    # id -> PackedVector2Array
 var _adjacency: Dictionary = {}   # id -> Array of neighbouring ids
+var _centres: Dictionary = {}     # id -> Vector2, the loader's own polygon anchor
 var _order: Array[int] = []       # ids in map order, so every lookup is deterministic
 
 
@@ -29,6 +32,9 @@ func _init(map: Dictionary = {}) -> void:
 			poly.append(Vector2(float(vertex[0]), float(vertex[1])))
 		_polygons[id] = poly
 		_adjacency[id] = Array(province.get("adj", []))
+		# One formula, computed once: the loader already anchors each province's label
+		# at this point, so a march measures between the points the map is labelled at.
+		_centres[id] = CampaignLoaderRef.polygon_centre(poly)
 		_order.append(id)
 
 
@@ -65,13 +71,9 @@ func province_at(point: Vector2) -> int:
 	return NO_PROVINCE
 
 
-## Polygon centroid: the default map position for anything placed "in" a province
-## before it carries a position of its own, and the point marches measure between.
-func centroid(id: int) -> Vector2:
-	var poly: PackedVector2Array = _polygons.get(id, PackedVector2Array())
-	if poly.is_empty():
-		return Vector2.ZERO
-	var sum := Vector2.ZERO
-	for vertex in poly:
-		sum += vertex
-	return sum / float(poly.size())
+## A province's map anchor: the default position for anything placed "in" it before it
+## carries a position of its own, and the point marches measure between. This is
+## CampaignLoader.polygon_centre -- the average of the polygon's vertices, not its area
+## centroid -- so a concave province's anchor can fall outside its own outline.
+func centre(id: int) -> Vector2:
+	return _centres.get(id, Vector2.ZERO)
