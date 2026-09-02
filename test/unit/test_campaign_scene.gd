@@ -296,3 +296,40 @@ func test_clock_freezes_across_a_tactical_battle() -> void:
 	var resumed := returned.get_node("CampaignMap")
 	assert_eq(resumed._clock.tick(), launched_at, "the campaign resumes where it stopped")
 	assert_true(resumed._clock.is_paused(), "and hands the world back to the player")
+func test_space_reaches_the_clock_through_unhandled_input() -> void:
+	# The routing the scene actually uses, as opposed to calling _on_clock_key
+	# directly: a key event has to reach the clock before the player-turn gate, so
+	# pausing to look around works on any faction's turn.
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	var press := InputEventKey.new()
+	press.keycode = KEY_SPACE
+	press.pressed = true
+	map._unhandled_input(press)
+	assert_false(map._clock.is_paused(), "space resumed time through the input path")
+
+
+func test_a_half_built_scene_never_crashes_the_clock_or_the_map() -> void:
+	# Every accessor guards against the substrate not being there yet -- the scene
+	# builds its state before the sibling HUD exists, and a map that failed to load
+	# leaves the overlay empty. Drive each guard rather than trusting it by reading.
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	map._geo = null
+	map._projection = null
+	assert_eq(map._province_at(Vector2(10, 10)), -1, "no overlay resolves no province")
+	assert_eq(map._march_label(0, 5), "", "and measures no march")
+	map._clock = null
+	assert_false(map._on_clock_key(KEY_SPACE), "a clockless map has no time controls")
+	map._refresh_clock()
+	map._process(1.0)
+	assert_null(map._clock, "and neither call resurrected one")
+
+
+func test_hud_clock_readout_is_inert_before_it_is_built() -> void:
+	# CampaignMap._ready pushes to the HUD before the HUD's own _ready has made its
+	# labels, so update_clock has to no-op rather than fault on a null label.
+	var hud = preload("res://scripts/campaign/CampaignHUD.gd").new()
+	autofree(hud)
+	hud.update_clock("Day 1, 00:00", true, 1.0)
+	assert_null(hud._clock_label, "nothing to push to, and nothing crashed")
