@@ -301,10 +301,14 @@ each silently de-aligns or drops a new one if it is not extended in the same cha
   `demote()` clears most per-soldier arrays -- position, velocity, steering, hp,
   prone, stamina, loadout ids, facing, file/rank, and square-slot pairing -- but
   leaves two untouched: `_sim_soldier_broken` and `_sim_soldier_row_slot`.
-  `promote()` rebuilds the cleared arrays from the unit's aggregate state using an
-  RNG seeded by `TierTransition.promotion_seed(uid, tick, battle_seed)`, whose own
-  comment states it is never the shared `Replay.rng` stream, and it does not touch
-  `_sim_soldier_broken` or `_sim_soldier_row_slot` either.
+  `promote()` synchronously rebuilds position, velocity, steering, hp, prone,
+  stamina, loadout ids, shield hold angle, and facing from aggregate state,
+  using an RNG seeded by `TierTransition.promotion_seed(uid, tick, battle_seed)`
+  (whose comment states it is never the shared `Replay.rng` stream).
+  It leaves `_sim_soldier_file`, `_sim_soldier_rank`, and `_sim_soldier_square_slot`
+  empty until `Unit._ensure_file_assignment` and the square-slot pairing lazily
+  rebuild them on the next size-mismatch check.
+  Like `demote()`, it does not touch `_sim_soldier_broken` or `_sim_soldier_row_slot`.
   A drawn body stat therefore cannot simply persist across a far-tier round trip: it is
   discarded on demotion and has to be reconstructed on promotion from that local seed,
   not from the spawn-time stream.
