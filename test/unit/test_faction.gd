@@ -171,3 +171,11 @@ func test_a_formation_caption_is_never_rewritten() -> void:
 	assert_eq(Faction.get_formation_display_name(
 			Faction.Type.ROME, UnitScript.FORMATION_NORMAL, "1.2 m x 0.9 m"),
 			"1.2 m x 0.9 m (acies)")
+
+
+func test_a_name_with_no_separator_before_its_parenthesis_is_left_whole() -> void:
+	# The gloss scan needs a " (" separator to know where the plain part ends. Without one
+	# there is nothing to strip, so the whole name is kept and the term is appended after it.
+	assert_eq(Faction.get_form_up_display_name(
+			Faction.Type.ROME, 4, "Checkerboard(quincunx)"),
+			"Checkerboard(quincunx) (quincunx)")
