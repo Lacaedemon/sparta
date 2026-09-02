@@ -786,7 +786,7 @@ A saga layer existing.
   Hiding in woods as an active choice is a mechanic on top of this model, not part of it.
 
 - **Multiplayer information security.**
-  [#290](https://github.com/Lacaedemon/sparta/issues/290) is titled "add mutliplayer battles and campaigns" with the body "(multi-computer, not hotseat)".
+  [#290](https://github.com/Lacaedemon/sparta/issues/290) is titled "add mutliplayer [sic] battles and campaigns" with the body "(multi-computer, not hotseat)".
   It names no network architecture and has no design yet.
   *If* it lands as lockstep -- every peer simulating the same battle from the same seed and the same inputs, which is the shape this game's replay recorder already implies -- then both players hold full state locally, fog is a rendering convention on each peer rather than a security boundary, and a modified client can see through it.
   A server-authoritative design would instead make fog a filter on what each peer is sent, which is a different and larger piece of work.
