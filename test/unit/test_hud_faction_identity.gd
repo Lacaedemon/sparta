@@ -174,12 +174,14 @@ func test_the_checkerboard_item_never_doubles_the_quincunx() -> void:
 	assert_eq(popup.get_item_text(idx), "Checkerboard (quincunx)")
 
 
-func test_a_non_roman_faction_still_gets_its_own_checkerboard_name() -> void:
+func test_a_non_roman_faction_reads_its_own_checkerboard_name_alone() -> void:
+	# Rome's "quincunx" is the plain label's own gloss, so a Carthaginian menu must REPLACE
+	# it rather than read "Checkerboard (quincunx) (shatranj)" -- Rome's word on every menu.
 	var hud := _hud()
 	hud.set_team_factions([FactionScript.Type.CARTHAGE])
 	var popup: PopupMenu = hud._menu_button.get_popup()
 	var idx: int = popup.get_item_index(HUDScript.MENU_FORMUP_CHECKERBOARD)
-	assert_string_contains(popup.get_item_text(idx), "(shatranj)")
+	assert_eq(popup.get_item_text(idx), "Checkerboard (shatranj)")
 
 
 func test_the_form_up_menu_stays_plain_without_a_faction() -> void:
@@ -202,3 +204,22 @@ func test_the_info_panel_names_the_sides_faction_and_doctrine() -> void:
 				"Faction: %s" % FactionScript.get_faction_name(f_id))
 		assert_string_contains(hud._info.text,
 				"Doctrine: %s" % FactionScript.get_strategy_name(f_id))
+
+
+func test_the_identity_lines_sit_below_the_live_state_block() -> void:
+	# The info panel clamps to the space above the per-unit settings and scrolls past it, so
+	# line ORDER decides what a player can read without scrolling. Formation/Width/Order
+	# change every few seconds; Faction/Doctrine never change once the battle starts, so they
+	# must stay BELOW the live-state block rather than pushing it under the fold.
+	var hud := _hud()
+	var u := _unit()
+	hud.set_team_factions([FactionScript.Type.SPARTA])
+	hud.show_unit(u, 1)
+	var text: String = hud._info.text
+	assert_gt(text.find("Faction: "), text.find("Order: "),
+			"the Faction line comes after the Order line, not before Commander")
+	assert_gt(text.find("Doctrine: "), text.find("Faction: "),
+			"Doctrine follows Faction")
+	for live_line in ["Commander: ", "Soldiers: ", "Morale: ", "Formation: ", "Width: "]:
+		assert_lt(text.find(live_line), text.find("Faction: "),
+				"%s stays above the identity block" % live_line)

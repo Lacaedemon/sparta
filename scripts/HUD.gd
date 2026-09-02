@@ -917,15 +917,6 @@ func show_unit(u, group_count: int) -> void:
 	# abreast and stretching the panel to the widest packed row.
 	var lines: Array = ["%s%s" % [u.unit_name, extra]]
 	lines.append("Type: %s" % kind)
-	# The side's faction identity and its named historical doctrine, present only when this
-	# battle was told one -- absent entirely otherwise, matching the "Cohesion"/"Training"
-	# lines below that only appear when they apply. Faction.get_strategy_name is a display
-	# label for the side's doctrine, not a behavioral switch; Battle.ai_doctrine is what
-	# actually drives the enemy AI.
-	var faction_id: int = faction_for_team(u.team)
-	if faction_id != FactionRef.NONE:
-		lines.append("Faction: %s" % FactionRef.get_faction_name(faction_id))
-		lines.append("Doctrine: %s" % FactionRef.get_strategy_name(faction_id))
 	lines.append("Commander: %s" % OfficerRank.title_for(u))
 	lines.append("Soldiers: %d / %d" % [u.soldiers, u.max_soldiers])
 	lines.append("Morale: %d (%s)" % [int(u.morale), u.morale_ladder_name()])
@@ -939,6 +930,18 @@ func show_unit(u, group_count: int) -> void:
 	lines.append("Formation: %s" % formation_caption(u, u.formation_mode))
 	lines.append("Width: %s" % UnitFormation.files_label_for_unit(u, UnitFormation.frontage(u)))
 	lines.append("Order: %s" % u.order_summary())
+	# The side's faction identity and its named historical doctrine, present only when this
+	# battle was told one -- absent entirely otherwise, matching the "Cohesion"/"Training"
+	# lines above that only appear when they apply. Faction.get_strategy_name is a display
+	# label for the side's doctrine, not a behavioral switch; Battle.ai_doctrine is what
+	# actually drives the enemy AI. Below the live-state block deliberately: the panel clamps
+	# to the space above the per-unit settings and scrolls past it, so the lines a player
+	# reads every few seconds (Formation/Width/Order) stay above the fold, and the two that
+	# never change once the battle starts are the ones that fall below it on a short window.
+	var faction_id: int = faction_for_team(u.team)
+	if faction_id != FactionRef.NONE:
+		lines.append("Faction: %s" % FactionRef.get_faction_name(faction_id))
+		lines.append("Doctrine: %s" % FactionRef.get_strategy_name(faction_id))
 	# Battle AI phase 4 (docs/battle-ai-design.md): a delegated unit's period-flavored
 	# subcommander rank, resolved from the player's own doctrine profile at delegation time
 	# (Unit.subcommander_rank_title). Absent entirely for a non-delegated unit, matching the
