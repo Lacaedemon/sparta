@@ -402,16 +402,16 @@ units at once" entry) for the drag mechanics --- echelon reuses the exact
 same box-select-then-drag gesture every other split mode does, just with a
 staggered depth instead of one flat line.
 
-Unlike checkerboard and tray formation, echelon assigns **no line at all**,
-leaving each unit's existing line tag alone. The stagger itself is a
-**one-shot layout**: a unit dragged into an echelon doesn't remember which
-flank it led from, so a later reform or reshape doesn't preserve it. And
-nothing currently
-models the tactical risk a real refused flank carries either --- the
-trailing units aren't rendered any more exposed to being turned than a
-straight line would be, so the payoff (concentrating force where you choose)
-isn't yet balanced by the historical downside (a flank that isn't in the
-fight yet is a flank an enemy could exploit before it arrives).
+Unlike checkerboard and tray formation, echelon assigns **no line at
+all**, leaving each unit's existing line tag alone. The stagger itself
+is a **one-shot layout**: a unit dragged into an echelon doesn't
+remember which flank it led from, so a later reform or reshape doesn't
+preserve it. And nothing currently models the tactical risk a real
+refused flank carries either --- the trailing units aren't rendered
+any more exposed to being turned than a straight line would be, so the
+payoff (concentrating force where you choose) isn't yet balanced by
+the historical downside (a flank that isn't in the fight yet is a
+flank an enemy could exploit before it arrives).
 
 ## Stamina
 
