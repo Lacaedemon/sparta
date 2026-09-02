@@ -22,10 +22,10 @@ hundred men in a phalanx are two hundred copies of one man.
 
 That is wrong on the history and wrong on the feel.
 A line of hoplites was not two hundred identical bodies;
-it was a distribution, and the
-tails of that distribution are where the interesting behaviour lives -- the big man who
-does not go down when he is shoved, the small man who does, the fast man who arrives at
-the enemy line first and dies alone.
+it was a distribution,
+and the tails of that distribution are where the interesting behaviour lives -- the big
+man who does not go down when he is shoved, the small man who does, the fast man who
+arrives at the enemy line first and dies alone.
 The project already models mass in real kilograms end to end (see
 `docs/soldier-loadout-design.md`), which means the machinery to make a heavier man
 genuinely harder to knock over is already in place and simply has nothing varying to
@@ -86,7 +86,8 @@ factor, never off the man swinging it.
 `GaitLimits.SUPERPHYSICAL_SPEED_FRAC = 1.15` caps a body's integrated velocity at that
 multiple of its unit's sprint pace.
 `Unit.superphysical_speed_frac` is an exported per-unit override defaulting to it, and
-`tools/demo/DemoDefects.gd` reads the same constant (its line 84) and computes
+`tools/demo/DemoDefects.gd` re-exports the same constant as
+`DemoDefects.SUPERPHYSICAL_SPEED_FRAC`, computing
 `cap = sprint * SUPERPHYSICAL_SPEED_FRAC` for the `superphysical_speed` demo-defect
 check, so the engine and the audit metric agree by construction.
 
@@ -121,8 +122,8 @@ Three tiers, and they are not equally solid.
 Saying so plainly matters more than picking tidy figures, because the tiers fail
 differently and a later implementer needs to know which numbers to re-derive.
 
-**Every figure below must be re-verified against the cited source before it is written
-into code.**
+**Every figure below must be re-verified against the cited source
+before it is written into code.**
 They are recorded here as the shape of the answer and the place to look, not as
 already-checked constants.
 
@@ -213,9 +214,9 @@ the document should say so where a player might otherwise read a false precision
   45-56).
   Note that the sim's current `walk_speed` of 2.25 m/s already sits above the Vegetian
   full step, so the existing gait ladder is faster than the historical one;
-  a speed
-  phase should decide whether to keep that or rescale it, and that decision belongs to
-  a separate issue rather than riding along inside a variation slice.
+  a speed phase should decide whether to keep that or rescale it,
+  and that decision belongs to a separate issue rather than riding along inside a
+  variation slice.
 
 ### Creatures
 
@@ -233,17 +234,19 @@ War elephants split by species: the Asian elephant and the now-extinct North Afr
 forest elephant, the latter markedly smaller, which is the whole point of Polybius'
 account of Raphia, where Ptolemy's African elephants would not face Antiochus' Indian
 ones (Polybius, *Histories* 5.84).
-A per-species mass distribution on `Mount` is the natural home, since `Mount.mass_kg`
-already flows into contact mass through
+A per-species mass distribution on `Mount` is the natural home,
+since `Mount.mass_kg` already flows into contact mass through
 `SoldierCombat.relative_mass_from_kg(mount.mass_kg)`.
 
 ## Proposed mechanism
 
 ### Storage
 
-Four new per-soldier arrays on `Unit`, index-aligned with `_sim_soldier_pos` and
-compacted with it, seeded in `SoldierBodies.seed` and extended by the same tail-resize
-path the existing arrays use:
+Four new per-soldier arrays on `Unit`, index-aligned with `_sim_soldier_pos`, seeded in
+`SoldierBodies.seed`, extended by the same tail-resize path the existing arrays use, and
+compacted in `SoldierMelee.reap()` (`scripts/SoldierMelee.gd`), which hand-writes a
+guarded `remove_at(i)` for every parallel per-soldier array as each casualty is spliced
+out:
 
 - `_sim_soldier_height` -- `PackedFloat32Array`, world units.
 
@@ -253,19 +256,35 @@ path the existing arrays use:
 
 - `_sim_soldier_speed` -- `PackedFloat32Array`, dimensionless factor centred on 1.0.
 
+`SoldierMelee.reap()` is the single most bug-prone integration site in this feature.
+It walks the dead high-to-low and hand-writes a `remove_at(i)` per array:
+`_sim_soldier_pos`, `_sim_body_vel`, and `_sim_soldier_hp` unconditionally, then
+`_sim_steer`, `_sim_prone`, `_sim_soldier_stamina`, `_sim_soldier_weapon_id`,
+`_sim_soldier_shield_id`, `_sim_soldier_shield_hold_angle`, `_sim_soldier_file`, and
+`_sim_soldier_broken`, each behind its own size guard.
+The three arrays carrying permutation semantics (`_sim_soldier_rank`,
+`_sim_soldier_square_slot`, `_sim_soldier_row_slot`) go through
+`UnitFormation.drop_rank_assignment` and `UnitFormation.drop_slot_assignment` instead,
+because dropping an index there also has to renumber the survivors' assignments.
+A new array omitted from that walk de-aligns from `_sim_soldier_pos` on the first melee
+death, with no error and no crash;
+every surviving soldier's body stats shift by one index for the remainder of the battle.
+The four new arrays are plain per-soldier values with no permutation to preserve, so
+each takes the simple `remove_at(i)` form, added in the same change that introduces the
+array.
+
 That is sixteen bytes per soldier on top of the existing per-soldier footprint.
 If that proves too much at the target soldier counts, the fallback is to quantise each
 factor into a `PackedByteArray` -- a value in [0, 255] mapped onto a fixed range -- for
 four bytes total, at the cost of a dequantise in the read path.
 Do not take the fallback pre-emptively;
-measure first, per the repo's habit of not
-optimising ahead of a number.
+measure first,
+per the repo's habit of not optimising ahead of a number.
 
 The two derived factors (`strength`, `speed`) are stored rather than recomputed because
 the read sites are hot loops;
-the two physical quantities (`height`, `mass_kg`) are
-stored because they are what the HUD reports and what a save or replay would have to
-round-trip.
+the two physical quantities (`height`, `mass_kg`) are stored because they are what the
+HUD reports and what a save or replay would have to round-trip.
 
 ### The draw
 
@@ -275,7 +294,8 @@ preloads of its own, holding:
 
 - The distribution parameters as named constants with defaults, per the repo's
   caller-configurable-parameters convention: a mean stature, a stature standard
-  deviation, a build-factor mean and standard deviation, a strength coefficient of
+  deviation, a build-factor mean and standard deviation, the per-unit-type mass means
+  (defaulting to today's `SoldierCombat.profile_for` figures), a strength coefficient of
   variation, a speed coefficient of variation, and a truncation width in standard
   deviations.
 
@@ -284,17 +304,27 @@ preloads of its own, holding:
   so the pair stays jointly plausible.
 
 - A per-culture parameter table, if and when a phase needs one;
-  the first phase uses a
-  single global distribution, per the scoping comment's suggested narrower slice.
+  the first phase uses a single global distribution shape,
+  per the scoping comment's suggested narrower slice.
 
 Defaults, all overridable and all subject to the re-verification note above: stature
 mean 1.68 m and standard deviation 0.065 m, truncated at plus or minus three standard
 deviations so no soldier is impossible;
-mass derived from stature and a build factor
-centred to reproduce the current 80 kg heavy-foot baseline at the mean, so the existing
-balance point is preserved exactly;
-strength and speed factors centred on 1.0 with
-coefficients of variation around 0.15 and 0.05 respectively.
+mass derived from stature and a build factor whose mean is keyed on the unit's own
+existing body mass, so the existing balance point is preserved exactly;
+strength and speed factors centred on 1.0 with coefficients of variation around 0.15 and
+0.05 respectively.
+
+That mass mean is per-unit-type from phase 1, not deferred to the per-culture phase.
+`SoldierCombat.profile_for` already sets four distinct body masses -- 75 kg cavalry,
+80 kg anti-cavalry, 70 kg ranged, and 80 kg for other foot -- so a single global 80 kg
+mean would silently reweight two of the four classes even at zero variance, moving an
+archer's relative contact mass from 0.875 to 1.0 and a rider's from 0.9375 to 1.0
+against `SoldierCombat.CONTACT_MASS_BASELINE_KG`.
+The global part of the phase 1 distribution is therefore its *shape* -- the stature
+spread and the build-factor spread -- while its mass mean reads today's per-type figure.
+Phase 6's per-culture and per-mount tables are a different axis and do not substitute for
+this.
 
 Speed gets the much tighter spread deliberately -- both because running speed varies
 less across a population than strength does, and because of the
@@ -307,8 +337,8 @@ This is the part with the least room for improvisation.
 
 `scripts/Replay.gd` holds exactly one seeded stream, `Replay.rng`, whose seed is set
 once per battle by `start_recording()` or `start_playback()`;
-the file states plainly
-that nothing else may call `randomize()` or set `.seed`, or replays silently desync.
+the file states plainly that nothing else may call `randomize()` or set `.seed` on that
+stream, or replays silently desync.
 `Replay.forced_seed` defaults to -1 and, when non-negative, is used verbatim as that
 battle's seed and then consumed back to -1, which is how the scripted-input demo
 recorder (`tools/demo/DemoInputRecorder.gd`) makes a live recording reproducible.
@@ -339,11 +369,19 @@ stream.
 That is attractive because it is order-independent and immune to the shifting-stream
 problem above, and it is how the existing uid-keyed separation fan-out already stays
 deterministic.
-It is rejected for the first phase only because it introduces a second source of
-randomness alongside `Replay.rng`, which the replay contract currently forbids in one
-sentence;
-if the shifting-stream fragility bites in practice, revisit it as a deliberate
-amendment to that contract rather than a quiet exception.
+It would not violate the replay contract.
+That contract forbids calling `randomize()` or setting `.seed` on `Replay.rng`
+elsewhere, and a pure hash of three already-deterministic inputs does neither and
+introduces no randomness at all.
+
+It is rejected for the first phase on simplicity grounds instead.
+One stream is one thing to reason about, one thing the spawn fingerprint has to cover,
+and one place a later reader has to look to answer "where did this number come from";
+a second derivation path is a convention worth not multiplying until something forces
+the issue.
+If the shifting-stream fragility does bite in practice, adopt the hash deliberately and
+record it in `Replay.gd` beside the existing contract, so the second source of
+determinism is documented rather than quietly introduced.
 
 ### What it changes
 
@@ -357,8 +395,8 @@ amendment to that contract rather than a quiet exception.
 
 - **Melee outcome.**
   `SoldierCombat.wound` takes a `lethality_a`;
-  a strength factor multiplies it, so a
-  stronger man wounds harder with the same weapon.
+  a strength factor multiplies it,
+  so a stronger man wounds harder with the same weapon.
   Whether strength should also enter `land_chance` (which currently takes `skill` from
   `training`) is an open question below -- strength and skill are different things and
   conflating them would be a modelling error, not a shortcut.
@@ -387,8 +425,11 @@ amendment to that contract rather than a quiet exception.
   a phase that trips it has to re-record, not suppress it.
 
 - **The existing balance point.**
-  The mean of every distribution is chosen to reproduce today's uniform value, so a
-  battle at zero variance is bit-identical to today's.
+  The mean of every distribution is chosen to reproduce today's uniform value *for that
+  unit type*, which is why the mass mean is keyed on `SoldierCombat.profile_for` from
+  phase 1 rather than on one global figure.
+  A battle at zero variance is then bit-identical to today's for every unit class,
+  ranged and cavalry included.
   That is testable and should be a test.
 
 - **Patch coverage.**
@@ -415,8 +456,9 @@ the fingerprint coverage.
 Nothing reads the arrays yet.
 
 - **Parameters:** stature mean and standard deviation, build-factor mean and standard
-  deviation, strength and speed coefficients of variation, truncation width, and a
-  master `variation_enabled` flag defaulting to **false**.
+  deviation, the per-unit-type mass means (defaulting to today's
+  `SoldierCombat.profile_for` figures), strength and speed coefficients of variation,
+  truncation width, and a master `variation_enabled` flag defaulting to **false**.
 
 - **Defaults:** as listed under "The draw" above, with `variation_enabled = false` so
   the phase is a genuine no-op until a later phase turns it on.
@@ -424,8 +466,10 @@ Nothing reads the arrays yet.
 - **Tests:** the same seed produces the same roster across two runs;
   a different seed produces a different one;
   every drawn value falls inside the truncation bounds;
-  the arrays stay index-aligned across a casualty compaction and a tail resize;
-  with `variation_enabled = false` every soldier gets exactly today's values.
+  the arrays stay index-aligned with `_sim_soldier_pos` across a `SoldierMelee.reap()`
+  casualty compaction and a tail resize;
+  with `variation_enabled = false` every soldier gets exactly today's values for his own
+  unit class, ranged and cavalry included.
 
 - **Demo:** skip, with an honest reason -- nothing is visible.
 
@@ -460,10 +504,10 @@ Route the per-soldier mass into the knockback and prone chain.
 
 - **Tests:** a heavier soldier receives a smaller translational impulse from an
   identical blow, and a lighter one a larger;
-  `prone_chance` moves monotonically with
-  mass;
-  the population mean impulse over a large roster matches today's uniform-mass
-  result within tolerance, which is the balance-preservation check.
+  `prone_chance` moves monotonically with mass;
+  the population mean impulse over a large roster matches today's uniform-mass result
+  within tolerance, checked per unit class rather than pooled, which is the
+  balance-preservation check.
 
 - **Demo:** a cavalry charge into a formed foot line, where the varied knockback is the
   visible result.
@@ -509,8 +553,9 @@ change, so the engine and the audit metric stay in agreement.
 
 ### Phase 6 -- per-culture tables, and creatures
 
-Replace the single global distribution with a per-culture parameter table for men, and
-add per-species and per-breed mass distributions for mounts.
+Replace the single global distribution shape with a per-culture parameter table for men,
+on top of the per-unit-type mass means already established in phase 1, and add
+per-species and per-breed mass distributions for mounts.
 This is where the historical research actually pays out, and it is deliberately last
 because everything above works with one distribution.
 
@@ -522,8 +567,7 @@ because everything above works with one distribution.
 
 - **Tests:** a unit tagged with a culture draws from that culture's parameters;
   an untagged unit falls back to the global default;
-  the mount distribution reproduces the
-  existing scalar `mass_kg` at its mean.
+  the mount distribution reproduces the existing scalar `mass_kg` at its mean.
 
 - **Demo:** two visibly different cultures' units side by side.
 
@@ -535,8 +579,9 @@ because everything above works with one distribution.
    weaker man's guard) but it is a modelling decision, not an implementation detail.
 
 2. **Should the draw come from `Replay.rng` or from a uid-keyed hash?**
-   The stream is simpler and matches the existing contract;
-   the hash is immune to stream-order shifts.
+   The stream keeps determinism in one place;
+   the hash is immune to stream-order shifts and, being a pure function of
+   already-deterministic inputs, breaks nothing in the replay contract either.
    The plan takes the stream and names the alternative, but the fragility is real and a
    first implementer may find it decisive.
 
