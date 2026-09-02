@@ -2173,12 +2173,13 @@ no mid-press pivot --- then turns about and marches on once clear of the fight.
 ## Facing a skirmisher screen
 
 Some enemy generals open the battle by pushing their light troops out in front of the heavy
-line rather than keeping them in it. Their archers walk out to a contest line about eight
-metres ahead of the blocks, hold there in the skirmish stance, and shoot at whatever comes
-into reach; the heavy line stands and lets them, and will not break formation to rescue
-them. Once your line closes to within about six metres of the screen, the same subcommander
-pulls it back --- the archers break off, turn about, and fall back on a diagonal aimed at a
-gap **between** two of their own blocks rather than straight back through one
+line rather than keeping them in it. Their archers move out to a contest line about eight
+metres ahead of that line --- one ranged reach, so their fire covers the ground immediately
+in front of it --- hold there in the skirmish stance, and shoot at whatever comes into
+range. Their own heavy blocks will not break formation to rescue them. Once your line
+closes to within about six metres of the screen, the same subcommander pulls it back --- the
+archers break off the exchange, turn about, and fall back on a diagonal aimed at a gap
+**between** two of their own blocks rather than straight back through one
 (@fig-skirmisher-screen).
 
 Whether an army does this is a property of its general's doctrine, so you will meet it from
