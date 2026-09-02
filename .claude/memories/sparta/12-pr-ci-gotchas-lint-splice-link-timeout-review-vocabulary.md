@@ -170,6 +170,15 @@ status checks (#1432), so under `mwc` the agent is the only gate.
   review arrived whose verdict was never read.
   Any of those three states sends you to the hand read below.
 
+- **Do:** read the inline review comments and the unresolved review threads
+  on every merge decision, whatever the exit status:
+  `gh api repos/<owner>/<repo>/pulls/<N>/comments --paginate` plus the GraphQL
+  `reviewThreads` list.
+  The instrument's only PR fetch is `gh pr view --json ...,reviews,comments`,
+  which never carries inline findings, and this repo's `prompt-addendum` and
+  the auto-requested Copilot reviewer both put line-specific findings there,
+  so a clean exit 0 is silent about that surface by construction.
+
 - **Do:** when the instrument cannot run, or reports any of those three
   states, read every surface by hand and paginate each: `gh api repos/<owner>/<repo>/pulls/<N>/reviews --paginate`
   (formal reviews), `gh api repos/<owner>/<repo>/pulls/<N>/comments --paginate`
