@@ -2,7 +2,12 @@ class_name PrebattleScreen
 extends PanelContainer
 ## Unit selection prebattle setup screen for custom battle (non-campaign) modes.
 
-signal start_battle_requested(team_0_roster: Array, team_1_roster: Array)
+## Each team's roster plus the Faction.Type it was drawn from -- the faction rides along so the
+## battle can show that side's historical formation/form-up/doctrine names, which the roster
+## names alone can't recover (Faction.ROSTER_UNIT_TYPES is many-to-one, and a hand-edited
+## roster may mix nothing recognizable at all).
+signal start_battle_requested(team_0_roster: Array, team_1_roster: Array,
+		team_0_faction_id: int, team_1_faction_id: int)
 
 const FactionRef = preload("res://scripts/Faction.gd")
 
@@ -128,7 +133,7 @@ func remove_team_1_unit(idx: int) -> void:
 
 func _populate_faction_option(opt: OptionButton) -> void:
 	opt.clear()
-	for f_id in [FactionRef.Type.SPARTA, FactionRef.Type.ROME, FactionRef.Type.CARTHAGE, FactionRef.Type.MACEDON]:
+	for f_id in FactionRef.ALL_TYPES:
 		opt.add_item(FactionRef.get_faction_name(f_id), f_id)
 
 
@@ -204,4 +209,5 @@ func _rebuild_rosters_ui() -> void:
 
 
 func _on_start_pressed() -> void:
-	start_battle_requested.emit(team_0_roster.duplicate(), team_1_roster.duplicate())
+	start_battle_requested.emit(team_0_roster.duplicate(), team_1_roster.duplicate(),
+			team_0_faction, team_1_faction)

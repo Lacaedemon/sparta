@@ -397,6 +397,17 @@ var all_teams_control: bool = false
 # normal default-loadout spawn, byte-for-byte. See _spawn_scenario and demos/README.md.
 var scenario: Array = []
 
+# Which Faction.Type each side fights under this battle, indexed by team number. Purely an
+# IDENTITY: nothing in the simulation reads it, and the historical formation/form-up/doctrine
+# names it unlocks are display text the HUD renders (see HUD.set_team_factions). Set from
+# CustomMatchup's pending choice in _ready when a prebattle matchup armed one AND this is
+# still its declared Faction.NONE pair, and settable BEFORE the node enters the tree (like
+# drill_mode/scenario above) so a demo/test can stage a specific side -- a value staged that
+# way wins over the prebattle choice. Faction.NONE for both by default, which every Faction
+# display helper renders as the plain name -- so a battle reached by any other path reads
+# exactly as it did before.
+var team_factions: Array[int] = [FactionRef.NONE, FactionRef.NONE]
+
 # Simulation-tier trigger distances for THIS battle, in world units (FormationTier's own
 # hysteresis pair). Settable BEFORE the node enters the tree (like drill_mode/scenario
 # above), because the defaults sit far outside every combat reach -- a formation always
@@ -611,7 +622,13 @@ func _ready() -> void:
 		_spawn_scenario(scenario)
 	elif CustomMatchup.pending():
 		# A custom battle configured via PrebattleScreen replaces the default two-line
-		# spawn with the player's own chosen rosters, same as a demo scenario does.
+		# spawn with the player's own chosen rosters, same as a demo scenario does. The
+		# screen's faction choices ride along so the HUD can name each side's historical
+		# formations -- but only when nothing has already staged an identity, so a
+		# demo/test that set team_factions itself before entering the tree keeps its own
+		# value rather than having the prebattle choice stamped over it.
+		if _team_factions_are_default():
+			team_factions = [CustomMatchup.pending_faction_0, CustomMatchup.pending_faction_1]
 		_spawn_scenario(_custom_matchup_scenario(CustomMatchup.pending_team_0, CustomMatchup.pending_team_1))
 	else:
 		# Player army (team 0) deploys along the top, facing down.
@@ -623,6 +640,13 @@ func _ready() -> void:
 		# fidelity from the first tick while no longer starting at spitting distance.
 		if not drill_mode:
 			_spawn_line(1, Vector2.UP, float(spawn_line_ys[1]), dfn_count)
+
+	# Hand the sides' faction identities to the HUD so its formation button, formation menu,
+	# form-up menu, and doctrine readout can carry the historical names. Done here (not in
+	# HUD._ready) because the choice arrives with the battle, not with the UI; the HUD is an
+	# @onready child, so its own _ready has already built the widgets this restamps.
+	if _hud != null:
+		_hud.set_team_factions(team_factions)
 
 	# Now that every unit has deployed, stamp (RECORD) or verify (PLAYBACK) the spawn-layout
 	# fingerprint, so a replay can fail loudly if a later build's spawn table no longer matches
@@ -1187,6 +1211,17 @@ func _loadout_for_type(loadout: Array, type_name: String) -> Dictionary:
 		if str(d["name"]) == type_name:
 			return d
 	return {}
+
+
+## True while no caller has staged a faction identity -- i.e. `team_factions` still holds the
+## Faction.NONE pair it is declared with. A prebattle matchup's own faction choice is only
+## stamped over an untouched default, so a demo/test that assigned team_factions before the
+## node entered the tree keeps whatever it staged.
+func _team_factions_are_default() -> bool:
+	for team_faction in team_factions:
+		if int(team_faction) != FactionRef.NONE:
+			return false
+	return true
 
 
 ## Builds a `scenario` spec array (see _spawn_scenario) for a custom battle configured via

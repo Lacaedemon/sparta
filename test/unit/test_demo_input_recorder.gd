@@ -183,3 +183,53 @@ func test_a_non_finite_tier_band_is_rejected() -> void:
 	assert_false(NAN <= 0.0, "NaN does not compare as non-positive")
 	assert_false(95.0 <= NAN, "NaN does not compare as out-of-order")
 
+
+# --- factions parsing --------------------------------------------------------------------
+
+func test_an_empty_factions_list_is_not_an_error() -> void:
+	# Omitting the field (or writing an empty list) means "no faction", which is what every
+	# script written before this field says -- neither drill nor a normal battle require it.
+	for is_drill in [false, true]:
+		var result: Dictionary = RecorderScript.parse_factions([], is_drill)
+		assert_false(result.has("error"), "an empty list is accepted, drill=%s" % is_drill)
+		assert_eq(result["factions"], [] as Array[int])
+
+
+func test_two_names_parse_for_a_normal_battle() -> void:
+	var result: Dictionary = RecorderScript.parse_factions(["Sparta", "Rome"], false)
+	assert_false(result.has("error"), "two names name both teams of a normal battle")
+	assert_eq(result["factions"], [Faction.Type.SPARTA, Faction.Type.ROME] as Array[int])
+
+
+func test_one_name_parses_for_a_drill() -> void:
+	# Team 1 never spawns in a drill (Battle.drill_mode), so it has no faction to name.
+	var result: Dictionary = RecorderScript.parse_factions(["Sparta"], true)
+	assert_false(result.has("error"), "one name names the only team that spawns in a drill")
+	assert_eq(result["factions"], [Faction.Type.SPARTA] as Array[int])
+
+
+func test_one_name_is_rejected_for_a_normal_battle() -> void:
+	# The bug this guards: a 1-entry list on a non-drill battle used to be accepted, silently
+	# leaving team 1 with no faction while the script looked like it named both sides.
+	var result: Dictionary = RecorderScript.parse_factions(["Sparta"], false)
+	assert_true(result.has("error"),
+			"a single name is not enough to name both teams of a normal battle")
+
+
+func test_two_names_are_rejected_for_a_drill() -> void:
+	# A drill only spawns team 0, so naming a second team is a script/scenario mismatch worth
+	# failing loudly on, the same as any other malformed factions list.
+	var result: Dictionary = RecorderScript.parse_factions(["Sparta", "Rome"], true)
+	assert_true(result.has("error"), "a drill has only one team to name")
+
+
+func test_an_unrecognized_faction_name_is_rejected() -> void:
+	var result: Dictionary = RecorderScript.parse_factions(["Sparta", "Atlantis"], false)
+	assert_true(result.has("error"), "a name no faction claims is rejected")
+
+
+func test_a_non_array_factions_value_is_rejected() -> void:
+	for bad in [42, "Sparta", {}]:
+		assert_true(RecorderScript.parse_factions(bad, false).has("error"),
+				"factions must be an array: %s" % [bad])
+

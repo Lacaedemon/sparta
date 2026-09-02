@@ -752,6 +752,23 @@ static func hud_formation_name(sim_formation: String, file_pitch_wu: float = -1.
 	return interval + _FORMATION_LABEL_SUFFIX[sim_formation]
 
 
+## `caption` with a trailing faction historical-name parenthetical removed:
+## "0.45 m locked (synaspismos)" -> "0.45 m locked". Once a battle side has a faction, the HUD
+## appends that side's historical name for the mode (Faction.get_formation_display_name), so a
+## raw string compare against the sim rebuild would report every faction battle as a HUD
+## mismatch. Stripping it keeps this metric on the interval-and-stance caption, which is the
+## part that carries sim state -- the historical name is keyed on the very formation mode the
+## comparison already covers, and no rebuilt caption ever contains a parenthesis of its own
+## (DistanceLegend.interval_pair_label emits digits, "x", and a unit only).
+static func strip_historical_name(caption: String) -> String:
+	if not caption.ends_with(")"):
+		return caption
+	var open: int = caption.rfind(" (")
+	if open <= 0:
+		return caption
+	return caption.substr(0, open)
+
+
 ## Check consistency between the player-visible HUD readout and sim state across all snapshots.
 ## Emits verdicts for formation display and selection display whenever hud data is present.
 ## Mismatches must sustain across MIN_SUSTAIN consecutive samples to fail, accommodating
@@ -809,7 +826,8 @@ static func check_hud_consistency(snapshots: Array) -> Array:
 		# or whose HUD caption is blank while an expected label exists, is a
 		# mismatch -- do not skip and reset the run.
 		var sim_formation: String = str(matching_unit.get("formation", ""))
-		var hud_formation: String = str(hud.get("formation_text", "")).strip_edges()
+		var hud_formation: String = strip_historical_name(
+				str(hud.get("formation_text", "")).strip_edges())
 		if not matching_unit.is_empty():
 			var pitch: float = float(matching_unit.get("file_pitch", -1.0))
 			var rank: float = float(matching_unit.get("rank_pitch", -1.0))

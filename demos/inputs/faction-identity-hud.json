@@ -1,0 +1,92 @@
+{
+  "_comment": "Faction identity in the HUD. Two Spartan spear blocks face two Roman ones, each pair already standing in a different stance, with all-teams control so the clip can select a regiment from EACH side. The clip is deliberately still -- nobody moves, nobody fights, and no formation is re-formed mid-clip -- because the whole change is display text: what moves is the control-bar formation button, the info panel's Formation line, and its new Faction / Doctrine lines. Both sides stand in the SAME two stances -- normal order and shield wall -- so selecting the four blocks in turn reads pyknosis, phalanx, acies, scuta undique: one pair of stances named twice over, once in each side's own language. Formation ints are the FORMATION_* consts on scripts/Unit.gd (NORMAL 0, SHIELD_WALL 4).",
+  "seed": "88213",
+  "factions": [
+    "Sparta",
+    "Rome"
+  ],
+  "all_teams_control": true,
+  "show_soldier_ids": false,
+  "camera": [
+    {
+      "tick": 0,
+      "x": 760.0,
+      "y": 470.0,
+      "zoom": 0.85
+    }
+  ],
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 560.0,
+      "y": 260.0,
+      "formation": 0
+    },
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 940.0,
+      "y": 260.0,
+      "formation": 4
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 560.0,
+      "y": 700.0,
+      "formation": 0
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 940.0,
+      "y": 700.0,
+      "formation": 4
+    }
+  ],
+  "steps": [
+    {
+      "tick": 12,
+      "click": [
+        560,
+        260
+      ]
+    },
+    {
+      "tick": 90,
+      "click": [
+        940,
+        260
+      ]
+    },
+    {
+      "tick": 170,
+      "click": [
+        560,
+        700
+      ]
+    },
+    {
+      "tick": 250,
+      "click": [
+        940,
+        700
+      ]
+    }
+  ],
+  "state": [
+    16,
+    50,
+    80,
+    94,
+    130,
+    160,
+    174,
+    210,
+    240,
+    254,
+    290,
+    320
+  ]
+}
