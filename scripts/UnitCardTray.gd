@@ -245,8 +245,8 @@ func apply_grid(grid: Array) -> void:
 			for c_idx in range(mini(cols, src_row.size())):
 				row[c_idx] = src_row[c_idx]
 		_grid.append(row)
-	# Side effect beyond the grid replacement: sync each occupant'''s persistent
-	# line_index (Unit.gd) to its new tray row, so a unit'''s line membership survives
+	# Side effect beyond the grid replacement: sync each occupant's persistent
+	# line_index (Unit.gd) to its new tray row, so a unit's line membership survives
 	# a tray reassignment (drag between rows, undo/redo) the same way it survives a
 	# checkerboard/tray-grid form-up (SelectionManager._tray_grid_slices/_checkerboard_slices).
 	for r_idx in range(_grid.size()):

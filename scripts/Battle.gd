@@ -1913,7 +1913,7 @@ static func nudge_offset(facing: Vector2, dir: int) -> Vector2:
 ##
 ## `line_index`: the persistent line-membership index (Unit.line_index) to record on each
 ## unit as part of this deploy -- 0 (the default) is the front line, matching the historical
-## behaviour for a caller that doesn'''t track lines at all.
+## behaviour for a caller that doesn't track lines at all.
 func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		order_mode: int = OrderMode.NORMAL, knockback_indefinite: bool = false,
 		form_up_group: int = -1, line_index: int = 0) -> void:
