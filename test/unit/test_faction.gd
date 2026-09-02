@@ -348,14 +348,17 @@ func test_type_from_name_returns_none_for_an_unclaimed_name() -> void:
 
 func test_another_factions_gloss_is_replaced_rather_than_doubled() -> void:
 	# HUD.gd's form-up menu label and SelectionManager.FORM_UP_DIST_NAMES both spell the
-	# checkerboard "Checkerboard (quincunx)" -- and quincunx is ROME's own name for the mode,
-	# so every other side must read its own term INSTEAD of Rome's, not after it.
-	assert_eq(Faction.get_form_up_display_name(
-			Faction.Type.ROME, 4, "Checkerboard (quincunx)"), "Checkerboard (quincunx)")
-	assert_eq(Faction.get_form_up_display_name(
-			Faction.Type.CARTHAGE, 4, "Checkerboard (quincunx)"), "Checkerboard (epallax)")
-	assert_eq(Faction.get_form_up_display_name(
-			Faction.Type.SPARTA, 4, "Checkerboard (quincunx)"), "Checkerboard (epallax)")
+	# checkerboard with ROME's own name for the mode, so every other side must read its own
+	# term INSTEAD of Rome's, not after it. The behaviour under test is that replacement, not
+	# any particular lexeme, so both the label and each expectation come from the live table.
+	var checkerboard := 4
+	var rome_term: String = Faction.HISTORICAL_FORM_UP[Faction.Type.ROME][checkerboard]
+	var label := "Checkerboard (%s)" % rome_term
+	for faction in [Faction.Type.ROME, Faction.Type.CARTHAGE, Faction.Type.SPARTA]:
+		var own_term: String = Faction.HISTORICAL_FORM_UP[faction][checkerboard]
+		assert_eq(Faction.get_form_up_display_name(faction, checkerboard, label),
+				"Checkerboard (%s)" % own_term,
+				"each side reads its own checkerboard term in place of Rome's")
 
 
 func test_a_parenthetical_no_faction_claims_survives() -> void:

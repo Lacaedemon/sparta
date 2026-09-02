@@ -147,11 +147,15 @@ func test_the_form_up_menu_names_the_player_factions_own_manoeuvres() -> void:
 	var hud := _hud()
 	hud.set_team_factions([FactionScript.Type.SPARTA, FactionScript.Type.ROME])
 	var popup: PopupMenu = hud._menu_button.get_popup()
+	# What is under test is the ROUTING -- team 0's own table row reaches both items -- so the
+	# expected parenthetical comes from the live table rather than a pinned lexeme.
+	var sparta_echelon_right: String = FactionScript.HISTORICAL_FORM_UP[FactionScript.Type.SPARTA][
+			SelectionManagerScript.FormUpDist.ECHELON_RIGHT]
 	var echelon_right: int = popup.get_item_index(HUDScript.MENU_FORMUP_ECHELON_RIGHT)
-	assert_string_contains(popup.get_item_text(echelon_right), "(dexion keras)",
+	assert_string_contains(popup.get_item_text(echelon_right), "(%s)" % sparta_echelon_right,
 			"the default-picker item reads in the PLAYER's language, not the enemy's")
 	var cycle_right: int = popup.get_item_index(HUDScript.MENU_FORMUP_CYCLE_ECHELON_RIGHT)
-	assert_string_contains(popup.get_item_text(cycle_right), "(dexion keras)",
+	assert_string_contains(popup.get_item_text(cycle_right), "(%s)" % sparta_echelon_right,
 			"the Y-key cycle checkbox for the same mode shares that label")
 
 
@@ -165,23 +169,27 @@ func test_the_form_up_menu_leaves_unnamed_modes_plain() -> void:
 
 
 func test_the_checkerboard_item_never_doubles_the_quincunx() -> void:
-	# The plain label already spells "Checkerboard (quincunx)", which is itself Rome's own
-	# name for it -- appending the table's entry again would read "(quincunx) (quincunx)".
+	# The plain label already carries Rome's own name for the mode, so appending the table's
+	# entry again would read that term twice. The item must stay the plain label verbatim.
 	var hud := _hud()
 	hud.set_team_factions([FactionScript.Type.ROME])
 	var popup: PopupMenu = hud._menu_button.get_popup()
 	var idx: int = popup.get_item_index(HUDScript.MENU_FORMUP_CHECKERBOARD)
-	assert_eq(popup.get_item_text(idx), "Checkerboard (quincunx)")
+	assert_eq(popup.get_item_text(idx), str(SelectionManagerScript.FORM_UP_DIST_NAMES[
+			SelectionManagerScript.FormUpDist.CHECKERBOARD]))
 
 
 func test_a_non_roman_faction_reads_its_own_checkerboard_name_alone() -> void:
-	# Rome's "quincunx" is the plain label's own gloss, so a Carthaginian menu must REPLACE
-	# it rather than read "Checkerboard (quincunx) (epallax)" -- Rome's word on every menu.
+	# Rome's checkerboard term is the plain label's own gloss, so a Carthaginian menu must
+	# REPLACE it rather than read both terms -- Rome's word would otherwise ride every menu.
+	# The behaviour is the replacement, so the expected term comes from the live table.
 	var hud := _hud()
 	hud.set_team_factions([FactionScript.Type.CARTHAGE])
 	var popup: PopupMenu = hud._menu_button.get_popup()
 	var idx: int = popup.get_item_index(HUDScript.MENU_FORMUP_CHECKERBOARD)
-	assert_eq(popup.get_item_text(idx), "Checkerboard (epallax)")
+	var carthage_checkerboard: String = FactionScript.HISTORICAL_FORM_UP[
+			FactionScript.Type.CARTHAGE][SelectionManagerScript.FormUpDist.CHECKERBOARD]
+	assert_eq(popup.get_item_text(idx), "Checkerboard (%s)" % carthage_checkerboard)
 
 
 func test_the_form_up_menu_stays_plain_without_a_faction() -> void:
