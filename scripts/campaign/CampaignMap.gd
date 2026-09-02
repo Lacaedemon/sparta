@@ -12,6 +12,11 @@ const CampaignStateRef = preload("res://scripts/campaign/CampaignState.gd")
 const CampaignLoader = preload("res://scripts/campaign/CampaignLoader.gd")
 const Campaigns = preload("res://scripts/campaign/Campaigns.gd")
 const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
+const CampaignClockRef = preload("res://scripts/campaign/CampaignClock.gd")
+const CampaignCalendarRef = preload("res://scripts/campaign/CampaignCalendar.gd")
+const CampaignGeographyRef = preload("res://scripts/campaign/CampaignGeography.gd")
+const CampaignProjectionRef = preload("res://scripts/campaign/CampaignProjection.gd")
+const DistanceLegendRef = preload("res://scripts/DistanceLegend.gd")
 
 const PLAYER_FACTION := 0
 const BATTLE_SCENE := "res://scenes/Battle.tscn"
@@ -21,6 +26,15 @@ const BATTLE_SCENE := "res://scenes/Battle.tscn"
 var _map: Dictionary
 var _state
 var _selected: int = -1   # province id the player has selected, or -1
+# Campaign time: a pausable fixed-tick clock (see CampaignClock). It starts paused so
+# a freshly opened campaign waits for the player, and freezes for the duration of a
+# tactical battle -- the scene swap carries its tick through CampaignBattle.
+var _clock
+var _ticks_per_day: int = CampaignCalendarRef.DEFAULT_TICKS_PER_DAY
+# Continuous substrate: the province polygon overlay and the campaign's own
+# projection, so a map position resolves to a province and a march reads in metres.
+var _geo
+var _projection
 # When false (default), a player attack on a defended enemy province is fought out
 # in the tactical battle; when true it's auto-resolved on the map ("quick
 # resolve"). AI attacks always auto-resolve regardless.
@@ -34,6 +48,8 @@ func _ready() -> void:
 		_hud.menu_pressed.connect(_to_menu)
 		_hud.diplomacy_toggled.connect(_on_diplomacy_toggled)
 		_hud.auto_resolve_toggled.connect(_on_auto_resolve_toggled)
+		_hud.pause_pressed.connect(_on_pause_pressed)
+		_hud.speed_pressed.connect(_on_speed_pressed)
 	# Build the state synchronously so _draw always has a valid map, but defer the
 	# first HUD push: this node's _ready runs before its sibling HUD's, so the HUD's
 	# labels don't exist yet here.
@@ -72,18 +88,87 @@ func _build_state() -> void:
 		push_error("Campaign: default map '%s' is also unreadable." % Campaigns.DEFAULT_PATH)
 	_state = CampaignStateRef.new(_map)
 	_selected = -1
+	_build_substrate()
+
+
+## Build the map-position machinery around the loaded map: the province overlay, the
+## campaign's projection, and a fresh clock. Each reads its parameters from the map
+## data where it supplies them, so a campaign can set its own ground and day length.
+func _build_substrate() -> void:
+	_geo = CampaignGeographyRef.new(_map)
+	var origin := CampaignProjectionRef.origin_of(_map)
+	_projection = CampaignProjectionRef.new(
+			origin.x, origin.y, CampaignProjectionRef.metres_per_unit_of(_map))
+	_ticks_per_day = int(_map.get("ticks_per_day", CampaignCalendarRef.DEFAULT_TICKS_PER_DAY))
+	_clock = CampaignClockRef.new()
 
 
 # --- input ----------------------------------------------------------------
 
+## Campaign time runs here and nowhere else: the clock converts real seconds into
+## whole ticks, and only the tick count reaches anything downstream. Rendering and
+## the HUD read the tick; the simulation never reads the wall clock.
+func _process(delta: float) -> void:
+	if _clock == null or _state == null:
+		return
+	if _state.winner() != CampaignStateRef.NO_WINNER:
+		_clock.set_paused(true)
+		return
+	if _clock.advance(delta) > 0:
+		_refresh_clock()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if _state == null or _state.winner() != CampaignStateRef.NO_WINNER:
 		return
+	# Time controls stay live whoever is to act: pausing to look around is never
+	# gated on it being your move.
+	if event is InputEventKey and event.pressed and not event.echo:
+		if _on_clock_key(event.keycode):
+			return
 	if _state.current_faction != PLAYER_FACTION:
 		return
 	if event is InputEventMouseButton and event.pressed \
 			and event.button_index == MOUSE_BUTTON_LEFT:
 		_on_click(get_global_mouse_position())
+
+
+## Keyboard time controls: space pauses/resumes, the number row picks a speed off the
+## clock's ladder. Returns true when the key was a time control.
+func _on_clock_key(keycode: int) -> bool:
+	if _clock == null:
+		return false
+	if keycode == KEY_SPACE:
+		_clock.toggle_pause()
+	elif keycode >= KEY_1 and keycode < KEY_1 + _clock.speeds.size():
+		_clock.set_speed_index(keycode - KEY_1)
+		_clock.set_paused(false)
+	else:
+		return false
+	_refresh_clock()
+	return true
+
+
+func _on_pause_pressed() -> void:
+	if _clock != null:
+		_clock.toggle_pause()
+		_refresh_clock()
+
+
+func _on_speed_pressed() -> void:
+	if _clock != null:
+		_clock.cycle_speed()
+		_clock.set_paused(false)
+		_refresh_clock()
+
+
+func _refresh_clock() -> void:
+	if _hud == null or _clock == null:
+		return
+	_hud.update_clock(
+			CampaignCalendarRef.label(_clock.tick(), _ticks_per_day),
+			_clock.is_paused(),
+			_clock.speed())
 
 
 func _on_click(pos: Vector2) -> void:
@@ -122,11 +207,25 @@ func _on_click(pos: Vector2) -> void:
 	queue_redraw()
 
 
+## Which province a map position falls in -- a derived point-in-polygon fact rather
+## than a stored slot, which is what lets positions become continuous underneath the
+## political overlay. -1 when the click missed every province.
 func _province_at(pos: Vector2) -> int:
-	for p in _map.get("provinces", []):
-		if Geometry2D.is_point_in_polygon(pos, p["polygon"]):
-			return int(p["id"])
-	return -1
+	if _geo == null:
+		return CampaignGeographyRef.NO_PROVINCE
+	return _geo.province_at(pos)
+
+
+## Ground distance between two provinces' centres, as a player-facing metric label
+## ("135 km"): the projection turns plane units into metres, DistanceLegend renders
+## them, so a campaign distance reads in the same units a battle one does.
+func _march_label(from_id: int, to_id: int) -> String:
+	if _geo == null or _projection == null:
+		return ""
+	if not _geo.has_province(from_id) or not _geo.has_province(to_id):
+		return ""
+	var metres: float = _projection.distance_m(_geo.centroid(from_id), _geo.centroid(to_id))
+	return DistanceLegendRef.label_text(metres)
 
 
 # --- tactical battle hand-off (M3) ----------------------------------
@@ -158,6 +257,9 @@ func _capture_clash(from_id: int, to_id: int) -> void:
 	CampaignBattle.active = true
 	CampaignBattle.result = {}
 	CampaignBattle.snapshot = _state.snapshot()
+	# Campaign time freezes for the whole world while the battle is fought, so the
+	# tick has to survive the scene swap alongside the state it belongs to.
+	CampaignBattle.campaign_tick = _clock.tick() if _clock != null else 0
 	CampaignBattle.pending = {
 		"from": from_id,
 		"to": to_id,
@@ -177,6 +279,10 @@ func _resume_from_battle() -> bool:
 	if not CampaignBattle.active or CampaignBattle.result.is_empty():
 		return false
 	_state.restore(CampaignBattle.snapshot)
+	# Resume the frozen clock where the battle interrupted it, still paused, so the
+	# player picks the world back up rather than losing time to the scene swap.
+	if _clock != null:
+		_clock.step(CampaignBattle.campaign_tick)
 	_selected = -1
 	return true
 
@@ -302,6 +408,7 @@ func _refresh_hud() -> void:
 				% [p["name"], int(p["army"])])
 	else:
 		_hud.update_selection("Click one of your armies (blue), then an adjacent province.")
+	_refresh_clock()
 
 
 func _standings() -> String:
@@ -330,6 +437,11 @@ func _announce(result: Dictionary) -> void:
 				% [to_name, _faction_name(int(result["defender_owner"])), int(result["survivors"])]
 	else:
 		text = "Assault on %s repulsed; the attacking army is lost." % to_name
+	# How far the army actually marched, so the map's distances are legible as ground
+	# rather than as pixels -- the substrate's first player-visible consequence.
+	var march := _march_label(int(result.get("from", -1)), int(result["to"]))
+	if march != "":
+		text += " (%s march)" % march
 	_hud.flash(text)
 
 

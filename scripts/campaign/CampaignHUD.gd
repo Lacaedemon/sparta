@@ -14,8 +14,15 @@ signal diplomacy_toggled(faction_id: int)
 ## Emitted when the player flips the battle-resolution mode: true = auto-resolve
 ## clashes on the map ("quick resolve"), false = fight them out in the tactical battle.
 signal auto_resolve_toggled(on: bool)
+## Emitted when the player pauses or resumes campaign time.
+signal pause_pressed
+## Emitted when the player steps the campaign clock to the next speed.
+signal speed_pressed
 
 var _turn_label: Label
+var _clock_label: Label
+var _pause_button: Button
+var _speed_button: Button
 var _standings_label: Label
 var _selection_label: Label
 var _flash_label: Label
@@ -41,6 +48,32 @@ func _ready() -> void:
 	_standings_label.add_theme_font_size_override("font_size", 15)
 	_standings_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
 	add_child(_standings_label)
+
+	# Campaign clock (top-centre): the date the world is at, plus its own controls, so
+	# time reads as a first-class part of the campaign rather than a status footnote.
+	_clock_label = Label.new()
+	_clock_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_clock_label.position = Vector2(-120, 12)
+	_clock_label.custom_minimum_size = Vector2(240, 0)
+	_clock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_clock_label.add_theme_font_size_override("font_size", 18)
+	add_child(_clock_label)
+
+	_pause_button = Button.new()
+	_pause_button.text = "Resume"
+	_pause_button.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_pause_button.position = Vector2(-96, 40)
+	_pause_button.custom_minimum_size = Vector2(88, 28)
+	_pause_button.pressed.connect(func(): pause_pressed.emit())
+	add_child(_pause_button)
+
+	_speed_button = Button.new()
+	_speed_button.text = "Speed 1x"
+	_speed_button.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_speed_button.position = Vector2(8, 40)
+	_speed_button.custom_minimum_size = Vector2(88, 28)
+	_speed_button.pressed.connect(func(): speed_pressed.emit())
+	add_child(_speed_button)
 
 	# Battle-resolution toggle (top-left, under standings): off = fight clashes out in
 	# the tactical battle; on = auto-resolve them on the map for a quick game.
@@ -141,6 +174,19 @@ func update_turn(turn: int, faction_name: String, color: Color, ruler: String = 
 		label_text += " (%s)" % ruler
 	_turn_label.text = label_text
 	_turn_label.add_theme_color_override("font_color", color)
+
+
+## Push the campaign clock readout: the date, whether time is running, and the speed
+## it runs at. Paused shows the date greyed with a "(paused)" tag so a stopped clock
+## is never mistaken for a stalled game.
+func update_clock(date_text: String, paused: bool, speed: float) -> void:
+	if _clock_label == null:
+		return
+	_clock_label.text = "%s%s" % [date_text, "  (paused)" if paused else ""]
+	_clock_label.add_theme_color_override(
+			"font_color", Color(1, 1, 1, 0.6) if paused else Color(1, 1, 1, 1))
+	_pause_button.text = "Resume" if paused else "Pause"
+	_speed_button.text = "Speed %sx" % String.num(speed, 0)
 
 
 func update_standings(text: String) -> void:

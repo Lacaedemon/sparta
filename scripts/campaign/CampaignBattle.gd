@@ -37,6 +37,11 @@ static var result: Dictionary = {}
 # the rest of the campaign (other provinces, turn, diplomacy) survives the scene swap.
 static var snapshot: Dictionary = {}
 
+# Campaign clock tick at the moment the battle launched. Campaign time freezes for
+# the whole world while a battle is fought, so the tick rides across the scene swap
+# with the snapshot and the campaign picks up exactly where it stopped.
+static var campaign_tick: int = 0
+
 
 ## Number of battle units to deploy for a campaign army of `strength` (>= 1, capped).
 static func units_for(strength: int) -> int:
@@ -59,3 +64,4 @@ static func clear() -> void:
 	pending = {}
 	result = {}
 	snapshot = {}
+	campaign_tick = 0
