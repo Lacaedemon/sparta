@@ -17,8 +17,15 @@ They exist to answer go/no-go questions about the rendering stack, and nothing e
 
 ```sh
 # Projection shell, Compatibility (the CI floor). Left mouse prints the picked
-# ground point; middle-drag orbits; WASD/arrows pan; wheel zooms.
+# ground point; middle-drag orbits; arrow keys pan; wheel zooms; R recentres.
+# No frame cap: this one runs until you close the window.
 godot --rendering-driver opengl3 --path . res://spikes/3d/ProjectionShell.tscn
+
+# The same shell, bounded, exactly as measured below. SPARTA_SPIKE_PICK_FRAME
+# fires one synthetic centre-screen pick so a non-interactive run still
+# exercises the ray-to-ground path.
+SPARTA_SPIKE_PICK_FRAME=120 godot --rendering-driver opengl3 --path . \
+  res://spikes/3d/ProjectionShell.tscn --quit-after 3000
 
 # Crowd benchmark, Compatibility and Forward+.
 SPARTA_SPIKE_INSTANCES=2000 godot --rendering-driver opengl3 --path . res://spikes/3d/CrowdBench.tscn
@@ -43,15 +50,21 @@ Two caveats that make these a **floor rather than a headline**.
 
 - The machine was shared with other Godot processes during the run (`tools/check.sh` warned about 8 live Godot processes minutes earlier), so contention is baked into both figures, and the single bad worst-frame on Compatibility is more likely scheduling noise than a rendering cliff.
 
-The projection shell was run for 900 idle frames on Compatibility and logged a live census each time the drawn population changed:
+The projection shell was run for 3000 frames on Compatibility, logging a census line whenever the drawn population changed (97 lines in all, elided here):
 
 ```
+[shell] camera focus 40.0, 30.0 m (battlefield centre)
 [shell] units=10 soldier-instances=1020
+[shell] pick 40.0, 30.0 m -> 800.0, 600.0 wu
+[shell] units=10 soldier-instances=1010
 ...
-[shell] units=10 soldier-instances=833
+[shell] units=8 soldier-instances=459
 ```
 
-The falling instance count is the point: the hidden 2D battle really ticked, soldiers really died, and the 3D view tracked it without anything writing back into the sim.
+The falling instance count is the point: the hidden 2D battle really ticked, soldiers really died, two units were destroyed outright, and the 3D view tracked all of it without anything writing back into the sim.
+The `pick` line is the ray-plane path returning the battlefield centre, (800, 600) wu, which is where the camera is pointed -- so the picking maths ran rather than merely being written.
+An earlier draft of this file reported a drop to 833 over 900 frames.
+That does not reproduce: at 900 frames the census holds flat at 1020, because the armies have not closed yet.
 
 ## What this proves
 
@@ -59,9 +72,13 @@ The falling instance count is the point: the hidden 2D battle really ticked, sol
 
 - **One `MultiMeshInstance3D` per unit is a viable shape** for the render consumer, and it maps one-to-one onto today's `MultiMeshInstance2D` flock renderer.
 
-- **The wu-to-metre conversion belongs at the render boundary and costs nothing.** `WorldScale.M_PER_WU` is applied once per soldier per frame in the shell; the sim never sees metres.
+- **The wu-to-metre conversion sits cleanly at the render boundary.** `WorldScale.M_PER_WU` is applied once per soldier per frame in the shell, and the sim never sees metres.
+
+  Its cost was not measured, so no performance claim is made for it here -- see the next section.
 
 - **Analytic ray-plane picking is enough while the world is flat.** `Camera3D.project_ray_origin` / `project_ray_normal` plus one division gives the ground point, with no colliders and no physics query.
+
+  The `[shell] pick` line in the run above is that code path executing, not a restatement of the source.
 
 - **A 2k static-mesh crowd is not close to the budget ceiling on either renderer**, on hardware weaker than the stated reference machine, with the worst possible update pattern (every transform rewritten every frame).
 
@@ -73,11 +90,17 @@ The following were in scope for 3D-0 and are **not** answered here.
 
 - **State-dump parity.** The shell was never run against `DemoState` output, so the phase's bit-identical-dump criterion is untested. Nothing in the shell writes to the sim, which is an argument that parity should hold, not evidence that it does.
 
+- **The cost of the boundary conversion.** Nothing timed it.
+
+  `CrowdBench` performs no wu-to-metre conversion at all, and the shell run above reports a population census rather than a frame time, so "cheap" is an expectation here and not a measurement.
+
 - **Reference-hardware numbers**, per the caveat above.
 
 - **Recording under xvfb plus `opengl3`.** No clip was captured, on this machine or in CI.
 
 - **Input routed back into the sim.** The shell prints the picked ground point and stops there; it never calls `set_cursor_override()`, so no selection, order, or formation drag was exercised through the 3D path.
+
+  The measured pick was fired from the self-test frame, which calls the same `_pick_at()` the left-click handler calls, so the ray maths is covered but the `InputEventMouseButton` plumbing above it is not.
 
 - **Anything past a flat plane.** No terrain, no heightfield sampling, no LOD, no facing (instances are drawn with an identity basis), no selection chrome, no banners, no HUD.
 

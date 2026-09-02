@@ -16,9 +16,13 @@ extends Node3D
 const SimScene := preload("res://scenes/Battle.tscn")
 const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 
-## Ground plane extent, in metres. Sized generously rather than read from
-## Battle.field, so the spike does not depend on that member's shape.
+## Ground plane extent, in metres. Sized generously rather than scaled to the
+## battlefield, so the plane still reads as ground when the camera pans off it.
 @export var ground_extent_m: float = 400.0
+## Frame on which to fire a synthetic centre-screen pick, so a non-interactive run
+## still exercises the ray-to-ground path. Zero disables it; the environment
+## variable SPARTA_SPIKE_PICK_FRAME overrides it.
+@export var self_test_pick_frame: int = 0
 ## Soldier proxy box, in metres: roughly a man's footprint and height.
 @export var soldier_size_m: Vector3 = Vector3(0.5, 1.8, 0.5)
 
@@ -29,6 +33,7 @@ const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 var _views: Dictionary = {}
 var _last_units: int = -1
 var _last_bodies: int = -1
+var _frames: int = 0
 
 
 func _ready() -> void:
@@ -43,6 +48,27 @@ func _ready() -> void:
 	var ground := MeshInstance3D.new()
 	ground.mesh = plane
 	add_child(ground)
+	_centre_camera_on_field(sim)
+	var override: String = OS.get_environment("SPARTA_SPIKE_PICK_FRAME")
+	if override.is_valid_int():
+		self_test_pick_frame = int(override)
+
+
+## Point the camera at the middle of the battle rather than the world origin.
+## Battle publishes its rect as a plain `field` member in world units; the spike
+## converts it once, here, and falls back to the origin if that member is absent.
+func _centre_camera_on_field(sim: Node) -> void:
+	var rect: Variant = sim.get("field")
+	if not (rect is Rect2):
+		return
+	var centre_wu: Vector2 = (rect as Rect2).get_center()
+	var centre_m := Vector3(
+		centre_wu.x * WorldScaleRef.M_PER_WU,
+		0.0,
+		centre_wu.y * WorldScaleRef.M_PER_WU,
+	)
+	_camera.call("set_home_focus", centre_m)
+	print("[shell] camera focus %.1f, %.1f m (battlefield centre)" % [centre_m.x, centre_m.z])
 
 
 func _process(_delta: float) -> void:
@@ -57,6 +83,9 @@ func _process(_delta: float) -> void:
 			(_views[id] as Node).queue_free()
 			_views.erase(id)
 	_log_census(seen.size())
+	_frames += 1
+	if self_test_pick_frame > 0 and _frames == self_test_pick_frame:
+		_pick_at(get_viewport().get_visible_rect().size * 0.5)
 
 
 ## One line whenever the drawn population changes, so a headless or short run leaves
@@ -126,7 +155,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	var mb := event as InputEventMouseButton
 	if not mb.pressed or mb.button_index != MOUSE_BUTTON_LEFT:
 		return
-	var hit: Variant = _camera.call("ground_point", mb.position, 0.0)
+	_pick_at(mb.position)
+
+
+## The pick path itself, shared by the left-click handler and the self-test frame
+## so a non-interactive run exercises exactly the code a click would.
+func _pick_at(screen_pos: Vector2) -> void:
+	var hit: Variant = _camera.call("ground_point", screen_pos, 0.0)
 	if hit == null:
 		print("[shell] pick missed the ground plane")
 		return

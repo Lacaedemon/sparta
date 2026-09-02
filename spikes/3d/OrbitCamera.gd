@@ -7,9 +7,15 @@ extends Camera3D
 ## only -- it deliberately does NOT reproduce CameraController.gd's edge pan, bounds,
 ## smoothing, or replay presentation track.
 ##
-## Controls: middle-drag orbits, wheel zooms, WASD/arrows pan, R resets to north.
+## Controls: middle-drag orbits, wheel zooms, arrow keys pan, R resets yaw and focus.
+## The pan reads the built-in ui_left/ui_right/ui_up/ui_down actions, and this project
+## defines no [input] section, so Godot's defaults apply: arrow keys and gamepad, no
+## WASD. The shipped camera binds WASD by raw keycode instead (CameraController.gd);
+## the spike deliberately does not, so those keys move nothing here.
 
-## Point the camera orbits, in metres. Panning moves this.
+## Point the camera orbits, in metres. Panning moves this. The projection shell
+## overwrites it with the battlefield centre before the first frame, so the spike
+## does not open on an empty corner of the ground plane.
 @export var focus_m: Vector3 = Vector3.ZERO
 ## Distance from the focus, in metres.
 @export var distance_m: float = 60.0
@@ -32,9 +38,19 @@ extends Camera3D
 @export var pan_reference_distance_m: float = 60.0
 
 var _orbiting: bool = false
+var _home_focus_m: Vector3 = Vector3.ZERO
 
 
 func _ready() -> void:
+	_home_focus_m = focus_m
+	_apply()
+
+
+## Recentre the camera on a new home point, in metres, and make R return to it.
+## The shell calls this once the sim scene has published its battlefield rect.
+func set_home_focus(new_focus_m: Vector3) -> void:
+	_home_focus_m = new_focus_m
+	focus_m = new_focus_m
 	_apply()
 
 
@@ -57,20 +73,26 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and (event as InputEventKey).pressed:
 		if (event as InputEventKey).keycode == KEY_R:
 			yaw_rad = 0.0
+			focus_m = _home_focus_m
 			_apply()
 
 
 func _process(delta: float) -> void:
 	var move := Vector2.ZERO
+	# get_axis(negative, positive): the positive action is named second, so these
+	# read +1 for right and +1 for up the screen, matching CameraController.gd.
 	move.x = Input.get_axis("ui_left", "ui_right")
-	move.y = Input.get_axis("ui_up", "ui_down")
+	move.y = Input.get_axis("ui_down", "ui_up")
 	if move == Vector2.ZERO:
 		return
 	var scale_factor: float = distance_m / maxf(pan_reference_distance_m, 0.001)
 	var step: float = pan_speed_m_per_s * scale_factor * delta
 	# Pan in the camera's own ground plane, so the keys stay intuitive after an orbit.
+	# These are the camera basis vectors flattened onto the ground: look_at() builds
+	# basis.x as up.cross(-forward), which points along -cos(yaw) rather than +cos(yaw),
+	# so screen-right is the negation of the naive right-hand guess.
 	var forward := Vector3(sin(yaw_rad), 0.0, cos(yaw_rad))
-	var right := Vector3(cos(yaw_rad), 0.0, -sin(yaw_rad))
+	var right := Vector3(-cos(yaw_rad), 0.0, sin(yaw_rad))
 	focus_m += (right * move.x + forward * move.y) * step
 	_apply()
 
