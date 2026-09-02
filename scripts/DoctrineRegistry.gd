@@ -25,6 +25,11 @@ class_name DoctrineRegistry
 ##                              below this, reserves fold into the active groups. A high
 ##                              threshold commits at the first sign of trouble; a low one holds
 ##                              reserves until the line is close to breaking.
+##   skirmisher_screen          optional: whether this doctrine pushes its light troops out
+##                              ahead of the heavy line during the approach and recalls them
+##                              through its intervals as the enemy closes (SkirmisherScreen).
+##                              Absent means no screen, so every doctrine without the key
+##                              keeps the behaviour it had before the directive existed.
 ##   pursue_routers             whether UnitLeader's fallback targeting chases down a routing
 ##                              enemy (true) or leaves it be, holding the line instead (false).
 ##   subcommander_rank          phase 4 (docs/battle-ai-design.md): the period/faction rank
@@ -110,6 +115,8 @@ static func parse_doctrine(raw: Dictionary) -> Dictionary:
 	}
 	if raw.has("defend_ratio_threshold"):
 		out["defend_ratio_threshold"] = float(raw["defend_ratio_threshold"])
+	if raw.has("skirmisher_screen"):
+		out["skirmisher_screen"] = bool(raw["skirmisher_screen"])
 	return out
 
 

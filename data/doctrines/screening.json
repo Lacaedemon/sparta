@@ -1,0 +1,11 @@
+{
+  "name": "Screening",
+  "plans": ["advance_line", "defend"],
+  "envelop_ratio_threshold": 2.0,
+  "defend_ratio_threshold": 0.6,
+  "reserve_fraction": 0.0,
+  "reserve_commit_morale_threshold": 60.0,
+  "pursue_routers": false,
+  "subcommander_rank": "Hegemon",
+  "skirmisher_screen": true
+}

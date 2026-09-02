@@ -29,6 +29,8 @@ class_name Subcommander
 ##   {"type": DIRECTIVE_SUPPORT, "ward_uid": int}       -- guard this fighting ally.
 ##   {"type": DIRECTIVE_HOLD_LINE, "x": float, "y": float}    -- hold near this point on the line.
 ##   {"type": DIRECTIVE_COVER_FLANK, "x": float, "y": float}  -- reposition to cover this point.
+## SkirmisherScreen adds two more of the same shape (see that class): DIRECTIVE_SCREEN,
+## "contest the ground ahead of the line", and DIRECTIVE_WITHDRAW, "fall back through it".
 ##
 ## Priority when more than one behaviour could claim the same unit this tick: mutual
 ## support first, flank coverage second, line integrity / defend-hold last. Support and flank
@@ -75,10 +77,14 @@ const POINT_EPSILON := 12.0
 ## non-routing units (Battle._team_units(team) -- the caller's group-assignment choice, see
 ## the class doc); `all_units` is every living node in the "units" group, the same
 ## omniscient perception source UnitLeader.decide reads; `plan` is the current army plan
-## (defaults to General.PLAN_ADVANCE_LINE). Returns {uid: directive} covering only units that
-## should receive a directive this tick -- a uid absent from the result gets none (UnitLeader
-## falls back to its own ordinary chase-nearest-enemy behaviour).
-static func decide_group(group: Array, all_units: Array, plan: String = General.PLAN_ADVANCE_LINE) -> Dictionary:
+## (defaults to General.PLAN_ADVANCE_LINE). `screen` is the general's own doctrine-driven
+## skirmisher-screen flag (General.decide_army's "skirmisher_screen" output), off by default
+## so a doctrine that does not ask for a screen keeps the exact prior behaviour. Returns
+## {uid: directive} covering only units that should receive a directive this tick -- a uid
+## absent from the result gets none (UnitLeader falls back to its own ordinary
+## chase-nearest-enemy behaviour).
+static func decide_group(group: Array, all_units: Array, plan: String = General.PLAN_ADVANCE_LINE,
+		screen: bool = false) -> Dictionary:
 	var living: Array = _living(group)
 	if living.size() < 2:
 		return {}
@@ -86,6 +92,12 @@ static func decide_group(group: Array, all_units: Array, plan: String = General.
 	_mutual_support_directives(living, directives)
 	var axis: Vector2 = _advance_axis(living, all_units)
 	_flank_coverage_directives(living, all_units, axis, directives)
+	# Between flank coverage and line integrity, deliberately: a screen is standing
+	# discipline rather than a reaction to an immediate threat, so it yields to both of
+	# those -- but it has to claim its light troops BEFORE line integrity would haul them
+	# back to the line they are under orders to stand ahead of.
+	if screen:
+		SkirmisherScreen.directives(living, all_units, axis, directives)
 	if plan == General.PLAN_DEFEND:
 		_defend_hold_directives(living, directives)
 	elif axis != Vector2.ZERO:

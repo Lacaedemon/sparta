@@ -84,6 +84,23 @@ static func decide(u: Unit, all_units: Array, directive: Dictionary = {},
 	if _should_form_square(u, all_units):
 		return _formation_cmd(u, Unit.FORMATION_SQUARE)
 
+	# A unit mid-RELIEF is left alone by every branch below, and by the screen recall just
+	# after it -- see the fallback's own comment for why a fresh order would clobber the
+	# RELIEF order and its friendly_target link. Hoisted above the recall so both read it.
+	var already_relieving: bool = u.current_order != null \
+		and u.current_order.type == Order.Type.RELIEF
+
+	# A recalled screen (SkirmisherScreen.DIRECTIVE_WITHDRAW) is the ONE directive that
+	# outranks the not-FIGHTING gate on the fallback below. Every other directive is
+	# group-level intent that must never pull a unit out of its own fight; this one exists
+	# precisely to end a firefight -- light troops break off and pass back through the line
+	# before the heavy blocks arrive, which is the whole maneuver. It still sits below the
+	# unit's own flank-threat and square reactions above: a screen already caught in melee
+	# from the flank turns to meet it rather than presenting its back.
+	if not already_relieving \
+			and String(directive.get("type", "")) == SkirmisherScreen.DIRECTIVE_WITHDRAW:
+		return _move_directive_cmd(u, directive)
+
 	if u.state == Unit.State.FIGHTING and u.morale < RELIEF_MORALE_THRESHOLD:
 		var reliever: Unit = _relief_candidate(u, all_units)
 		if reliever != null:
@@ -99,8 +116,6 @@ static func decide(u: Unit, all_units: Array, directive: Dictionary = {},
 	# yet), and a fresh order here would silently clobber the RELIEF order and
 	# its friendly_target link. Mirrors the same exclusion in _relief_candidate,
 	# which stops OTHER units from calling this one away.
-	var already_relieving: bool = u.current_order != null \
-		and u.current_order.type == Order.Type.RELIEF
 	if u.state != Unit.State.FIGHTING and not already_relieving:
 		# A directive is strictly lower-priority than a unit's own live pursuit of a real
 		# threat, same as flank-threat/square/relief above: a unit already chasing a
@@ -237,8 +252,30 @@ static func _directive_cmd(u: Unit, directive: Dictionary) -> Dictionary:
 			return _support_directive_cmd(u, directive)
 		Subcommander.DIRECTIVE_HOLD_LINE, Subcommander.DIRECTIVE_COVER_FLANK:
 			return _move_directive_cmd(u, directive)
+		# DIRECTIVE_WITHDRAW has no arm here on purpose: decide()'s own screen-recall
+		# branch above catches it before the fallback can ever reach this dispatch.
+		SkirmisherScreen.DIRECTIVE_SCREEN:
+			return _screen_directive_cmd(u, directive)
 		_:
 			return {}
+
+
+## A SCREEN directive: march out to the contest line in the SKIRMISH stance, so the light
+## troops kite and loose volleys once they arrive instead of closing to melee. Returns {}
+## for a unit already on station (within the directive's own `station` radius of the point),
+## which is what leaves an arrived screener free to fight its own firefight -- Subcommander
+## still holds the uid, so line integrity does not haul it back to the line meanwhile.
+static func _screen_directive_cmd(u: Unit, directive: Dictionary) -> Dictionary:
+	var point := Vector2(float(directive.get("x", u.position.x)),
+			float(directive.get("y", u.position.y)))
+	var station: float = float(directive.get("station", SkirmisherScreen.SCREEN_STATION_RADIUS))
+	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+	if u.position.distance_squared_to(point) <= station * station:
+		return {}
+	var cmd: Dictionary = _move_directive_cmd(u, directive)
+	if not cmd.is_empty():
+		cmd["mode"] = BattleRef.OrderMode.SKIRMISH
+	return cmd
 
 
 ## A SUPPORT directive: guard the named ward, same shape the friendly-target SUPPORT branch
