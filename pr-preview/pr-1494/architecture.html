@@ -51,9 +51,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-63ef86667c664f1a8ce28e0ca6d17af4.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/bootstrap/bootstrap-dark-2058be2536942cc72f0d054e849053c8.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="site_libs/bootstrap/bootstrap-63ef86667c664f1a8ce28e0ca6d17af4.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-0d18f0dfac312b9a8eb238ea32915223.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-f5209645f978859cdd860952f647b33b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-0d18f0dfac312b9a8eb238ea32915223.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -583,7 +583,8 @@ Table&nbsp;1: Each script and its responsibility.
 <li><strong>Close tier</strong> — full per-soldier simulation, exactly the individual-body collision/combat model described above. Used for formations currently in or near active combat.</li>
 <li><strong>Far tier</strong> — an aggregate record (living count, morale, position, facing) evolved by statistical rules instead of per-soldier physics, for formations far from any fight (reserves, a second echelon). A far tier formation costs the same regardless of how many soldiers it represents, so a handful of aggregate reserve corps can stand in for tens of thousands of soldiers without the per-soldier cost.</li>
 </ul>
-<p>A formation crosses tiers automatically as it nears or leaves combat — promoting to close tier as an enemy closes to strike range, demoting back to far tier once it disengages and falls back. See <a href="https://github.com/Lacaedemon/sparta/blob/main/docs/large-scale-simulation-design.md"><code>docs/large-scale-simulation-design.md</code></a> for the full design and the phased build-out.</p>
+<p>A formation crosses tiers automatically as it nears or leaves combat — promoting to close tier as an enemy closes to strike range, demoting back to far tier once it disengages and falls back.</p>
+<p>Where a far tier formation <em>is</em> within reach of an enemy — running down a broken one, which the tier triggers deliberately ignore, or in a scenario that deliberately tightens the promote/demote band — its attrition resolves through the same casualty, morale, and rout machinery the close tier uses, at aggregate cost: it takes losses, its morale erodes, and it breaks and flees like any other regiment, instead of standing locked until it promotes. See <a href="https://github.com/Lacaedemon/sparta/blob/main/docs/large-scale-simulation-design.md"><code>docs/large-scale-simulation-design.md</code></a> for the full design and the phased build-out.</p>
 <div id="fig-cannae-scale" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-cannae-scale-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
