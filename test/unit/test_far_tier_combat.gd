@@ -78,8 +78,10 @@ func _volley_pair(count: int = 120) -> Array:
 	return [attacker, defender]
 
 
-## Every live formation, defenders included once they break out of "units" into "routers" --
-## the same array Battle._tick_far_tier_combat hands FarTierCombat.tick_all.
+## Every live formation, defenders included once they break out of "units" into "routers".
+## DELIBERATELY WIDER than what Battle._tick_far_tier_combat passes, which is the "units"
+## group alone: routers are filtered out by can_fight either way, so handing them in proves
+## the filter rather than relying on the caller to have excluded them.
 func _combatants() -> Array:
 	var all: Array = get_tree().get_nodes_in_group("units")
 	all.append_array(get_tree().get_nodes_in_group("routers"))
@@ -400,7 +402,7 @@ func test_a_non_positive_cadence_yields_no_rate_rather_than_an_infinite_one() ->
 func test_apply_attrition_books_nothing_against_an_emptied_formation() -> void:
 	var pair := _frontal_pair()
 	pair[1].soldiers = 0
-	assert_eq(FarTierCombat.apply_attrition(pair[1], pair[0], 100.0, 1.0), 0,
+	assert_eq(FarTierAttrition.apply(pair[1], pair[0], 100.0, 1.0), 0,
 		"a formation with no men left absorbs no further casualties")
 
 
