@@ -146,6 +146,11 @@ not fail", and "does not attest that the reviewer APPROVED".
 Measured on #1471 at head `0c8a63aa`: the posted review carried
 `"verdict": "NOT_CLEAN"` while every `review / *` check run reported
 `success`.
+Those are the check-run names exactly as `gh pr checks` printed them on
+2026-09-02: the caller job in `.github/workflows/claude-code-review.yml` is
+named `review` and delegates to the reusable workflow, so the prefix is that
+job's name and moves with it, not the workflow's display name (`Claude Code
+Review`).
 The job's conclusion tracks whether a verdict was produced and posted, not
 what it said, and the converse holds too: a red `claude-review` can sit on top
 of a genuine verdict (see "A red `claude-review` can sit on top of a GENUINE,
