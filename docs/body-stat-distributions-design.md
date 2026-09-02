@@ -142,11 +142,13 @@ already-checked constants.
 
 Stature is the one body stat ancient skeletal remains speak to well.
 Long-bone length regresses onto living stature by the standard method of Trotter and
-Gleser (Trotter, M. and Gleser, G. C., "Estimation of stature from long bones of
-American Whites and Negroes", *American Journal of Physical Anthropology* 10 (1952),
-463-514), and the European Holocene series compiled by Ruff and colleagues gives
-period-by-period means for exactly the populations of interest (Ruff, C. B., Holt,
-B. M., Niskanen, M., et al., "Stature and body mass estimation from skeletal remains in
+Gleser (Trotter, M. and Gleser, G.
+C., "Estimation of stature from long bones of American Whites and Negroes",
+*American Journal of Physical Anthropology* 10 (1952), 463-514), and the European
+Holocene series compiled by Ruff and colleagues gives period-by-period means for
+exactly the populations of interest (Ruff, C.
+B., Holt, B.
+M., Niskanen, M., et al., "Stature and body mass estimation from skeletal remains in
 the European Holocene", *American Journal of Physical Anthropology* 148 (2012),
 601-617).
 
@@ -199,10 +201,15 @@ the document should say so where a player might otherwise read a false precision
 
 - **Strength.**
   Grip strength is the best-normed proxy with published means and standard deviations by
-  age and sex (Dodds, R. M., Syddall, H. E., Cooper, R., et al., "Grip strength across
-  the life course: normative data from twelve British studies", *PLoS ONE* 9 (2014),
-  e113637; and Massy-Westropp, N. M., Gill, T. K., Taylor, A. W., et al., "Hand grip
-  strength: age and gender stratified normative data in a healthy population", *BMC
+  age and sex (Dodds, R.
+  M., Syddall, H.
+  E., Cooper, R., et al., "Grip strength across the life course: normative data from
+  twelve British studies", *PLoS ONE* 9 (2014), e113637;
+  and Massy-Westropp, N.
+  M., Gill, T.
+  K., Taylor, A.
+  W., et al., "Hand grip strength: age and gender stratified normative data in a
+  healthy population", *BMC
   Research Notes* 4 (2011), 127).
   Peak young-adult male values in those series sit in the high 40s of kilograms-force
   with a coefficient of variation around 0.15 to 0.20.
@@ -216,12 +223,14 @@ the document should say so where a player might otherwise read a false precision
 - **Speed.**
   The ancient sources give **march rates**, not sprint speeds.
   Vegetius records the Roman military step as twenty Roman miles in five summer hours,
-  and the full step as twenty-four (Vegetius, *Epitoma rei militaris* 1.9); at the
-  conventional 1478 m Roman mile that is about 1.6 m/s and about 2.0 m/s respectively.
+  and the full step as twenty-four (Vegetius, *Epitoma rei militaris* 1.9);
+  at the conventional 1478 m Roman mile that is about 1.6 m/s and about 2.0 m/s
+  respectively.
   Modern load-carriage physiology gives sustained loaded marching speeds in the same
-  neighbourhood, around 1.2 to 1.4 m/s, and quantifies how load slows a man (Knapik,
-  J. J., Reynolds, K. L., and Harman, E., "Soldier load carriage: historical,
-  physiological, biomechanical, and medical aspects", *Military Medicine* 169 (2004),
+  neighbourhood, around 1.2 to 1.4 m/s, and quantifies how load slows a man (Knapik, J.
+  J., Reynolds, K.
+  L., and Harman, E., "Soldier load carriage: historical, physiological, biomechanical,
+  and medical aspects", *Military Medicine* 169 (2004),
   45-56).
   Note that the sim's current `walk_speed` of 2.25 m/s already sits above the Vegetian
   full step, so the existing gait ladder is faster than the historical one;
@@ -291,16 +300,16 @@ each silently de-aligns or drops a new one if it is not extended in the same cha
 - **Far-tier demotion and promotion** (`scripts/TierTransition.gd`).
   `demote()` clears every per-soldier array outright, and `promote()` rebuilds them from
   the unit's aggregate state using an RNG seeded by
-  `TierTransition.promotion_seed(uid, tick, battle_seed)`, whose own comment states it is
-  never the shared `Replay.rng` stream.
+  `TierTransition.promotion_seed(uid, tick, battle_seed)`, whose own comment states it
+  is never the shared `Replay.rng` stream.
   A drawn body stat therefore cannot simply persist across a far-tier round trip: it is
   discarded on demotion and has to be reconstructed on promotion from that local seed,
   not from the spawn-time stream.
   This is the site that forces the uid-hash question below.
 
 - **Unit serialization** (`Unit.to_dict()` / `Unit.from_dict()` in `scripts/Unit.gd`).
-  Each array is named explicitly in both directions, so a new one that is not added there
-  is lost across any snapshot round trip.
+  Each array is named explicitly in both directions, so a new one that is not added
+  there is lost across any snapshot round trip.
 
 - **`Battle.SIM_SOLDIER_ARRAY_KEYS`** (`scripts/Battle.gd`).
   This constant lists the snapshot keys the rearguard-detachment split truncates to the
@@ -360,8 +369,8 @@ archer's relative contact mass from 0.875 to 1.0 and a rider's from 0.9375 to 1.
 against `SoldierCombat.CONTACT_MASS_BASELINE_KG`.
 The global part of the phase 1 distribution is therefore its *shape* -- the stature
 spread and the build-factor spread -- while its mass mean reads today's per-type figure.
-Phase 6's per-culture and per-mount tables are a different axis and do not substitute for
-this.
+Phase 6's per-culture and per-mount tables are a different axis and do not
+substitute for this.
 
 Speed gets the much tighter spread deliberately -- both because running speed varies
 less across a population than strength does, and because of the
@@ -402,11 +411,11 @@ Two consequences follow, and both are acceptance criteria rather than notes:
 
 - **The draw is unconditional, and `variation_enabled` does not gate it.**
   The flag controls only what is *stored*: with it false the drawn values are discarded
-  and each array is filled with that soldier's unit-type baseline, so the stream advances
-  by the same four values per soldier either way.
-  A flag that skipped the draw would make the stream depend on a tuning parameter, which
-  would move the desync from one known phase to whichever later phase flips the flag, and
-  again on any future rebalance.
+  and each array is filled with that soldier's unit-type baseline, so the stream
+  advances by the same four values per soldier either way.
+  A flag that skipped the draw would make the stream depend on a tuning parameter,
+  which would move the desync from one known phase to whichever later phase flips
+  the flag, and again on any future rebalance.
   The cost of drawing-and-discarding is four `randf` calls per soldier, once, at spawn.
 
 - **Phase 1 is the single re-record point, and it is not optional.**
@@ -433,9 +442,9 @@ It would also not be a new convention.
 it returns `hash([uid, tick, battle_seed])` and seeds a local RNG that the code comment
 describes as never the shared `Replay.rng` stream (`scripts/TierTransition.gd`).
 Adopting a hash for body stats would follow that precedent rather than establish one.
-(The stable left/right lane tie-break keyed on `uid` in `scripts/Unit.gd` is a different
-thing and is not evidence either way: it derives a deterministic *choice* from a uid, not
-a pseudo-random per-entity value.)
+(The stable left/right lane tie-break keyed on `uid` in `scripts/Unit.gd` is a
+different thing and is not evidence either way: it derives a deterministic *choice*
+from a uid, not a pseudo-random per-entity value.)
 
 It is deferred rather than rejected, on two grounds.
 One stream is one thing to reason about, one thing the spawn fingerprint has to cover,
@@ -505,14 +514,14 @@ the derivation is documented rather than quietly introduced.
   Bit-identity is a claim about the values the arrays hold, not about the RNG stream.
 
 - **The new-file line cap.**
-  `tools/check.sh`'s `file_length` check caps files *added* under `scripts/` by a diff at
-  `SPARTA_CHECK_MAX_NEW_FILE_LINES` lines, defaulting to 100.
-  The proposed `scripts/BodyStats.gd` is a new file under `scripts/`, so it is subject to
-  that cap from its first commit: the constants, `draw()`, and the doc comments have to
-  fit inside it.
-  A later per-culture parameter table is what most plausibly pushes past the cap, so plan
-  for it to live in a data file or a sibling leaf script rather than growing `BodyStats.gd`
-  past the budget.
+  `tools/check.sh`'s `file_length` check caps files *added* under `scripts/` by a
+  diff at `SPARTA_CHECK_MAX_NEW_FILE_LINES` lines, defaulting to 100.
+  The proposed `scripts/BodyStats.gd` is a new file under `scripts/`, so it is
+  subject to that cap from its first commit: the constants, `draw()`, and the doc
+  comments have to fit inside it.
+  A later per-culture parameter table is what most plausibly pushes past the cap,
+  so plan for it to live in a data file or a sibling leaf script rather than
+  growing `BodyStats.gd` past the budget.
 
 - **Patch coverage.**
   Per the repo's pre-push rule, a diff touching `scripts/` runs `patch_coverage`
@@ -543,16 +552,17 @@ Nothing reads the arrays yet.
   truncation width, and a master `variation_enabled` flag defaulting to **false**.
 
 - **Defaults:** as listed under "The draw" above, with `variation_enabled = false`, so
-  every stored value equals today's unit-type value until a later phase turns the flag on.
-  The phase is inert in *gameplay* terms and is deliberately not inert in *stream* terms:
-  the draw happens regardless, which is why the re-record lands here.
+  every stored value equals today's unit-type value until a later phase turns the
+  flag on.
+  The phase is inert in *gameplay* terms and is deliberately not inert in *stream*
+  terms: the draw happens regardless, which is why the re-record lands here.
 
 - **Tests:** the same seed produces the same roster across two runs;
   a different seed produces a different one;
   every drawn value falls inside the truncation bounds;
   the arrays stay index-aligned with `_sim_soldier_pos` across a `SoldierMelee.reap()`
-  casualty compaction, a tail resize, a `TierTransition` demote-promote round trip, and a
-  `Unit.to_dict()`/`from_dict()` round trip;
+  casualty compaction, a tail resize, a `TierTransition` demote-promote round trip,
+  and a `Unit.to_dict()`/`from_dict()` round trip;
   with `variation_enabled = false` every soldier gets exactly today's values for his own
   unit class, ranged and cavalry included;
   the number of values the spawn path draws per soldier does not depend on
@@ -701,9 +711,9 @@ because everything above works with one distribution.
    changes an old battle's men.
    The fingerprint mismatch would catch it;
    whether catching it is enough is a decision.
-   The tree narrows this more than it first appears: `TierTransition.demote()` already
-   discards every per-soldier array, so "survive" is not available across a far-tier round
-   trip whatever the save path does, and `promote()` has to reconstruct the stats from its
-   own local seed.
+   The tree narrows this more than it first appears: `TierTransition.demote()`
+   already discards every per-soldier array, so "survive" is not available across
+   a far-tier round trip whatever the save path does, and `promote()` has to
+   reconstruct the stats from its own local seed.
    So the live question is whether that reconstruction reproduces the same men, which is
    what the uid-hash alternative above would buy.
