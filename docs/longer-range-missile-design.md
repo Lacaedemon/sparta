@@ -164,7 +164,7 @@ And, as [`docs/far-tier-pursuit-contagion-design.md`](far-tier-pursuit-contagion
 
 ### The far tier stops being an out-of-contact optimisation
 
-Setting aside the routing pursuit that the live far-tier combat wiring already resolves, a formation only ever enters the far tier out of contact, and once there it cannot take a casualty until it promotes.
+Today a formation only ever enters the far tier out of contact, and while it stays there it is never shot at, though the live far-tier wiring still books the casualties of a pursuit that catches a router.
 That holds because the longest reach in the game, 160 wu, is well inside `PROMOTE_RANGE` at 400 wu:
 anything close enough to shoot at you is close enough to have promoted you first.
 
