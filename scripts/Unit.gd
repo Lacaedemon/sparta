@@ -3096,9 +3096,9 @@ var _adjacent_engaged_cache_frame: int = -1
 ## Distinct enemy Unit instances currently within melee contact range of this regiment --
 ## i.e. close enough for genuine simultaneous engagement, not merely detected at long range.
 ## "Contact range" is melee reach plus both bodies' collision radii
-## (maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS), the same rule the
-## other contact checks in this file use, rather than inventing a second distance rule for
-## what "adjacent" means.
+## (maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS), the symmetric form of
+## the reach-plus-radii rule the other contact checks in this file use, rather than inventing
+## a second distance rule for what "adjacent" means.
 ##
 ## Queried from _separation_candidates(), the same broad-phase population _separate() itself
 ## scans (living units and routers, filtered here to a different, non-DEAD, enemy team). Used
