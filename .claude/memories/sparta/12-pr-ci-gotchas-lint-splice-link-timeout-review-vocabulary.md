@@ -157,10 +157,15 @@ status checks (#1432), so under `mwc` the agent is the only gate.
   status three ways: 0 means nothing blocking was found, 1 means not clean or
   a crash (a traceback with no finding bullets), anything else means it did
   not answer.
-  Exit 0 is not approval on its own: the one printed line that still matters
-  is `verdict scan:`, and `latest = NONE` there means no review at all (a
-  quota-skip notice is enough to occupy that slot), so fall back to the hand
-  read below.
+  Exit 0 is not approval on its own: read the `verdict scan:` line and the
+  `Notes:` block the script prints beside it.
+  `latest = NONE` on the scan line means no readable verdict-bearing review
+  was found, and a quota-skip notice still counts as an examined review item
+  without supplying a verdict, so a comment being present is not a verdict
+  being present.
+  A `NOTE:` saying a review has a format the classifier cannot read means a
+  review arrived whose verdict was never read.
+  Either state sends you to the hand read below.
 
 - **Do:** when the instrument cannot run, read every surface by hand and
   paginate each: `gh api repos/<owner>/<repo>/pulls/<N>/reviews --paginate`
@@ -168,7 +173,9 @@ status checks (#1432), so under `mwc` the agent is the only gate.
   (inline findings, where this repo's `prompt-addendum` tells the reviewer to
   put line-specific findings), and
   `gh api repos/<owner>/<repo>/issues/<N>/comments --paginate` selecting the
-  LAST body that starts with `**Claude finished` (the verdict comment).
+  LAST body that starts with `**Claude finished` (the verdict comment), whose
+  trailing `Reviewed commit:` line must name the PR's current head, because a
+  mismatch means the head is unreviewed.
 
 - **Don't:** read a green `review / claude-review` or `review / require-review`
   check as approval, and don't read an unpaginated `issues/<N>/comments` call

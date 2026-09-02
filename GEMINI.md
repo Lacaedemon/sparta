@@ -110,7 +110,7 @@ Gemini/Antigravity automated pull-request review is **off** for this repo: `.gem
 Our lab's work rules encoded throughout `ai-config` apply unconditionally to all AI models and agents (Gemini, Claude Code, Codex, Copilot, etc.) across all repositories and sessions:
 
 1. **Main session acts as orchestrator**: Delegate heavy research, multi-file searches, complex sub-tasks, or parallel branch operations to subagents (`invoke_subagent`) or background tasks (`run_command`), keeping main context clean and focused on high-level direction, triage, and review.
-2. **Proactive corrective actions & PR workflow**: Whenever a gap, missing PR, or workflow instruction is identified:
+2. **Proactive corrective actions & PR workflow**: Whenever a gap, missing PR, or workflow instruction is identified, or when a capability/memory instruction is given:
    - **Act immediately without asking**: Never wait for a user prompt or ask "Should I do X?" when the requirement is clear -- branch, commit, open the PR, request review from `d-morrison`, and drive to clean in the exact same response turn.
    - **Auto-merge under `mwc`**: If `mwc` is active for the session, once CI passes AND the code review comment payload is verified **Clean / Approved** (never merge over "Needs more work" even if the check-run job status passed), execute the merge and post-merge wrap-up immediately without stopping.
 3. **Mandatory Timers for Async Work**: Whenever waiting on in-flight CI runs, background tasks, or subagents before completing a task or merge, **ALWAYS** schedule a timer (`schedule`) or proceed to other active work. Never end a turn waiting on asynchronous execution without a scheduled wakeup handle.
