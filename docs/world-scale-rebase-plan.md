@@ -82,6 +82,6 @@ Because coordinate magnitudes will divide by 20.0:
    `.github/workflows/website-demo-diff.yml` dumps a per-tick sim-state transcript for every catalogued clip on each PR and posts the comparison against the PR's merge-base with its base branch;
    it reads sim state, never a drawn frame, and its own header rules render-layer regressions (chrome, LOD, draw order) out of scope.
    For this migration it is the check the tracking issue asks for on the simulation side:
-   a correct rebase changes every world-unit field by the same factor and leaves the metric fields untouched, and any transcript that diverges otherwise names the scenario that broke.
+   a correct rebase scales every world-unit length and speed field (positions, pitches, speeds) by the same factor, leaves the metric mirrors and the unitless fields (facings, turn rates) untouched, and any transcript that diverges otherwise names the scenario that broke.
    Step 3 is that comparison run by hand for one scenario while iterating;
    the workflow's full-catalog run is the acceptance gate for the sim, and step 1's frame capture is what covers the chrome the workflow cannot see.
