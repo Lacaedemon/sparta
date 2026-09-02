@@ -7,10 +7,14 @@ extends RefCounted
 ## twin, so FarTierCombat reads a real regiment without building a shadow record each tick.
 ##
 ## The model is UnitCombat.strike/shoot's regiment formula with the seeded damage roll
-## replaced by its mean of 1.0, so this file draws no RNG. Deliberately omitted, matching
-## FarTierRules: fatigue, cohesion, and the order-mode modifiers (all read at their fresh
-## defaults), plus UnitCombat.charge_multiplier and pin_down_defense_factor -- per-CONTACT,
-## per-SWING quantities with no meaning for a continuous rate, so out of scope for phase 0.
+## replaced by its mean of 1.0, so this file draws no RNG. Also dropped, for phase-0 parity
+## with FarTierRules: fatigue, cohesion, and the order-mode modifiers. The RECORD lacks those
+## fields; the live Unit here CARRIES them -- fatigue accrues the whole time a unit is
+## FIGHTING, cohesion sits below 1.0 after a merge -- so dropping them is a real divergence,
+## not a read at fresh defaults. Fatigue and cohesion only ever cut output, so a fatigued or
+## freshly-merged far-tier attacker hits HARDER than its close-tier twin; the order-mode
+## modifiers cut both ways. UnitCombat.charge_multiplier and pin_down_defense_factor are
+## dropped on their own grounds: per-CONTACT, per-SWING quantities with no meaning for a rate.
 
 
 ## Remaining-strength ratio in [0, 1] -- the Lanchester-style thinning term, and the
@@ -22,8 +26,7 @@ static func strength_ratio(u: Unit) -> float:
 
 
 ## Centroid distance at which the two regiments are in melee contact: the attacker's reach
-## plus both radii, the figure Unit._think computes. Unit.RADIUS is a shared const, so this
-## equals FarTierRules' attack_range + RADIUS * 2.
+## plus both radii, the figure Unit._think computes and FarTierRules' attack_range + RADIUS*2.
 static func melee_contact_distance(attacker: Unit, defender: Unit) -> float:
 	return attacker.attack_range + Unit.RADIUS + defender.RADIUS
 
@@ -31,8 +34,7 @@ static func melee_contact_distance(attacker: Unit, defender: Unit) -> float:
 ## Whether this exchange resolves as a volley rather than as melee. Mirrors Unit._think,
 ## whose ranged branch is gated on `not in_contact`: once melee contact closes, an archer
 ## regiment falls through to the melee branch and UnitCombat.strike. FarTierRules has no such
-## rule, so this deliberately diverges from the reference model for a ranged attacker in
-## contact.
+## rule, so this deliberately diverges from it for a ranged attacker in contact.
 static func resolves_as_ranged(attacker: Unit, defender: Unit) -> bool:
 	if not attacker.is_ranged:
 		return false
@@ -42,9 +44,8 @@ static func resolves_as_ranged(attacker: Unit, defender: Unit) -> bool:
 
 
 ## Strike cadence in seconds: Unit.RANGED_INTERVAL for a volley, else the equipped weapon's
-## melee interval (Unit.melee_attack_interval, itself falling back to Unit.ATTACK_INTERVAL).
-## Reading the unit's own cadence is MORE faithful than FarTierRules can be -- no weapon
-## rides on the record.
+## melee interval (Unit.melee_attack_interval, itself falling back to Unit.ATTACK_INTERVAL --
+## MORE faithful than FarTierRules can be, since no weapon rides on the record).
 static func attack_interval(attacker: Unit, defender: Unit) -> float:
 	if resolves_as_ranged(attacker, defender):
 		return Unit.RANGED_INTERVAL
@@ -67,9 +68,8 @@ static func in_striking_range(attacker: Unit, defender: Unit) -> bool:
 
 ## Expected casualties from ONE strike at the mean damage roll: max(1, effective attack -
 ## defense), then the defender's stance blunting. A volley mirrors UnitCombat.shoot instead:
-## no melee-stance offence penalty, Unit.RANGED_DAMAGE_FACTOR applied, and
-## missile_defense_factor rather than melee_defense_factor. Flanking and thinning scale the
-## RATE rather than the strike, so they live in casualty_rate.
+## no melee-stance offence penalty, Unit.RANGED_DAMAGE_FACTOR applied, missile_defense_factor
+## rather than melee_defense_factor. Flanking and thinning scale the RATE, so they live below.
 static func strike_expectation(attacker: Unit, defender: Unit) -> float:
 	if resolves_as_ranged(attacker, defender):
 		var eff_ranged: float = float(attacker.attack) * attacker.formation_attack_factor()
