@@ -33,7 +33,8 @@ class_name Subcommander
 ## "contest the ground ahead of the line", and DIRECTIVE_WITHDRAW, "fall back through it".
 ##
 ## Priority when more than one behaviour could claim the same unit this tick: mutual
-## support first, flank coverage second, line integrity / defend-hold last. Support and flank
+## support first, flank coverage second, the skirmisher screen (where the doctrine asks for
+## one) third, line integrity / defend-hold last. Support and flank
 ## coverage are reactions to an immediate threat (an ally already fighting, an enemy already
 ## closing on an open flank); line integrity and defensive line holding are standing discipline
 ## with no urgency behind them. A unit already claimed by a higher-priority directive this tick
