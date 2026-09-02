@@ -475,6 +475,7 @@ the only door); determinism on replay is preserved with fog active.
 - **#414** -- fog of war; phase 5 integrates it through the perception
   interface, with the AI honoring it by requirement.
   Its design now lives in [`docs/fog-of-war-design.md`](fog-of-war-design.md), which settles the friendly-knowledge rule this document leaves open above: same-team units are always visible to their own side.
+
 - **#290** -- lockstep multiplayer; the determinism rules keep that door open.
 - **#516** (`docs/orders-queue-design.md`) -- the actuation layer this whole
   design speaks through; its two invariants are inherited here.

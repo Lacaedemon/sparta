@@ -87,11 +87,13 @@ Verified against the tree at the time of writing.
 
 ### What the player can see
 
-- Every `Unit` is a scene-tree `Node2D` that renders unconditionally; there is no per-team draw filter anywhere in `scripts/`.
+- Every `Unit` is a scene-tree `Node2D` that renders unconditionally.
+  There is no per-team draw filter anywhere in `scripts/`.
 
 - `scripts/SelectionManager.gd` is mouse control for team 0, or for every team under `Battle.all_teams_control` (the debug mode in `scripts/AllTeamsControl.gd`).
   Left click selects a friendly unit by its block or its raised flag, box-drag selects several, right click issues a move or an attack on the enemy unit clicked.
-  Its `_unit_at` hit test resolves any unit's body or flag; nothing consults visibility, so an enemy unit anywhere on the field is right-clickable as an attack target.
+  Its `_unit_at` hit test resolves any unit's body or flag.
+  Nothing consults visibility, so an enemy unit anywhere on the field is right-clickable as an attack target.
 
 - `scripts/CameraController.gd` is a free RTS camera: WASD and arrow-key pan, screen-edge pan, wheel zoom between `zoom_min` 0.45 and `zoom_max` 2.2, with `bounds` clamped to the battlefield rect Battle publishes.
   It is unconstrained within the field, which is the standard RTS arrangement and stays correct under fog.
@@ -101,9 +103,11 @@ Verified against the tree at the time of writing.
 
 - `Battle.FIELD` is `Rect2(0, 0, 1600, 1200)`, which at `WorldScale.WU_PER_M` = 20.0 is an 80 m by 60 m field (`docs/world-scale-rebase-plan.md` states the same figure).
   The default spawn lines (`Battle.SPAWN_LINE_YS`) are y = 300 and y = 880, so the two armies start 580 wu = 29 m apart.
-  This is the single most important constraint on the whole design; see "The scale problem" below.
+  This is the single most important constraint on the whole design.
+  See "The scale problem" below.
 
-- `Battle.ROUT_MARGIN` is `maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)` = 190 wu, and `field_with_margin = field.grow(ROUT_MARGIN)` (`scripts/Battle.gd:41-42`, recomputed for the live map at `:517`) is what every spawned unit receives as `Unit.retreat_bounds` (`:1074`); a router that leaves it is removed from play by `Unit._escape()`.
+- `Battle.ROUT_MARGIN` is `maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)` = 190 wu, and `field_with_margin = field.grow(ROUT_MARGIN)` (`scripts/Battle.gd:41-42`, recomputed for the live map at `:531`) is what every spawned unit receives as `Unit.retreat_bounds` (`:1088`).
+  A router that leaves it is removed from play by `Unit._escape()`.
   The comment above it states an invariant this design has to honour: the margin is sized to "the game's maximum visual range", with `DETECTION_RANGE` standing in for "a fog-of-war vision range, which this game doesn't have yet", "so a fleeing unit stays a plausible target for as long as it's still visible, rather than vanishing early".
   A real sight range longer than 190 wu breaks that invariant, so the parameter section below has to say what happens to the margin.
 
@@ -112,15 +116,19 @@ Verified against the tree at the time of writing.
 - The chain-of-command AI is implemented through phase 4: `scripts/UnitLeader.gd`, `scripts/Subcommander.gd`, `scripts/General.gd`, `scripts/DoctrineRegistry.gd`, and `scripts/PlayerDelegation.gd`, dispatched from `Battle._run_enemy_ai()` and `Battle._run_player_delegated_ai()` on the `ai_period` cadence (default 60 ticks, once per second at `Replay.PHYSICS_TPS` 60).
 
 - Every one of those files documents its perception source as the omniscient placeholder.
-  `UnitLeader.gd`'s class doc says "perception is the omniscient placeholder the design doc describes -- every living unit is visible; phase 5 swaps this for a fogged view", and `General.gd`'s says it reads "the same omniscient perception every other command level reads".
+  `UnitLeader.gd`'s class doc says "perception is the omniscient placeholder the design doc describes -- every living unit is visible;
+  phase 5 swaps this for a fogged view".
+  `General.gd`'s class doc says it reads "the same omniscient perception every other command level reads".
 
 - There is **no `CommanderView` class in the tree**.
-  The interface `docs/battle-ai-design.md` sketches was never built as a type; the commanders take the units array their caller passes and read it directly.
+  The interface `docs/battle-ai-design.md` sketches was never built as a type.
+  The commanders take the units array their caller passes and read it directly.
   Introducing the type is therefore part of this work rather than a pre-existing seam to swap behind, and it is the largest single piece of unplanned work this design surfaces.
 
 - `Unit.DETECTION_RANGE` is `9.5 * WorldScaleRef.WU_PER_M` (190 wu = 9.5 m), exposed per unit as the caller-configurable `Unit.detection_range`.
   It is a **target-acquisition** radius consumed by `UnitTargeting.nearest_enemy` and `UnitTargeting.nearest_routing_enemy`, not a sight radius: it governs which enemy a unit auto-engages, and at 9.5 m it is barely longer than `Unit.RANGED_RANGE` (`8.0 * WorldScaleRef.WU_PER_M` = 160 wu = 8 m).
-  Sight is a separate quantity needing its own field; conflating the two would silently change combat.
+  Sight is a separate quantity needing its own field.
+  Conflating the two would silently change combat.
 
 ### The terrain model
 
@@ -134,7 +142,7 @@ Verified against the tree at the time of writing.
 - `scripts/PathField.gd` already carries the occlusion primitive this design needs.
   Its own class doc describes two layers of obstacle geometry, of which the first is exact: "The EXACT terrain rects decide what is actually blocked: every sightline test (the straight-line fast path, string-pulling visibility, `is_blocked`) runs against the drawn rects themselves, grown by the caller's own `clearance`".
   The segment test itself is the private `PathField._segment_blocked(from, to, clearance)`, and it already has a public wrapper: `PathField.is_leg_blocked(from, to, clearance := 0.0)` (`scripts/PathField.gd:184-185`) forwards to it verbatim, so a visibility caller passing `clearance` 0.0 needs no new entry point and no rename.
-  Its only caller today is `Unit.funnel_lane_offset`'s same-team congestion gate (`scripts/Unit.gd:3508`), and its doc comment frames it as a cheap "is this unit actually about to detour" test, which is the same question a sightline asks.
+  Its only caller today is `Unit.funnel_lane_offset`'s same-team congestion gate (`scripts/Unit.gd:3516`), and its doc comment frames it as a cheap "is this unit actually about to detour" test, which is the same question a sightline asks.
 
 - Terrain is **flat**: a `"block"` patch is an impassable rect, not a height.
   There is no heightfield and no elevation anywhere in the sim, so elevation-driven vision (seeing over a wall, being seen from a ridge) has nothing to read and is out of scope until one exists.
@@ -150,12 +158,14 @@ Verified against the tree at the time of writing.
 - `Replay.rng` is the one seeded stream, seeded once per battle and never reseeded elsewhere.
 
 - `scripts/ReplaySnapshotCache.gd` plus `Battle.capture_snapshot`, `restore_snapshot`, and `seek_to_tick` let a playback rewind resume from a cached mid-battle state instead of resimulating from tick 0.
-  This matters here because explored-terrain state is **cumulative**, so unlike instantaneous visibility it cannot be recomputed from the state at one tick; see "Determinism and replay" below.
+  This matters here because explored-terrain state is **cumulative**, so unlike instantaneous visibility it cannot be recomputed from the state at one tick.
+  See "Determinism and replay" below.
 
 ### Campaign and saga
 
 - `scripts/campaign/CampaignState.gd` is the M2 campaign: provinces with an owner and an integer army strength, per-pair war and peace stances, one move per army per turn, auto-resolved or battle-resolved attacks.
-  Every province's owner and army are readable by everyone; there is no visibility concept.
+  Every province's owner and army are readable by everyone.
+  There is no visibility concept.
 
 - `scripts/campaign/CampaignHUD.gd`'s `_overlay` is the victory and defeat overlay, not a fog layer.
   The only `visible` writes in the campaign scripts are that overlay's.
@@ -173,14 +183,18 @@ battlefield several times over and fog would be permanently empty.
 
 Three positions are available, and this design takes the third.
 
-1. **Fog scaled to the current field.** Pick a sight radius that is a fraction of the field (say 20 m on an 80 m map) and accept that it is not a physical claim about eyesight.
+1. **Fog scaled to the current field.**
+   Pick a sight radius that is a fraction of the field (say 20 m on an 80 m map) and accept that it is not a physical claim about eyesight.
    Cheap, works today, and is the only option that produces visible fog before the world-scale rebase.
 
-2. **Wait for the rebase.** `docs/world-scale-rebase-plan.md` (#891) rebases the sim to 1 wu = 1 m, which buys float precision but does not by itself enlarge the field.
+2. **Wait for the rebase.**
+   `docs/world-scale-rebase-plan.md` (#891) rebases the sim to 1 wu = 1 m, which buys float precision but does not by itself enlarge the field.
    Waiting therefore does not actually solve this, and blocks #588 indefinitely.
 
-3. **Make the sight radius a first-class map-scale parameter, defaulted to a fraction of the field.** Sight range is authored per unit type as a multiple of a per-battle `sight_scale` rather than as an absolute metre figure, with `sight_scale` defaulting to a fraction of the shorter field dimension.
-   On today's 80 m by 60 m field that yields a short, visibly meaningful radius; on a future 800 m field the same data yields a proportionally longer one without re-authoring every unit.
+3. **Make the sight radius a first-class map-scale parameter, defaulted to a fraction of the field.**
+   Sight range is authored per unit type as a multiple of a per-battle `sight_scale` rather than as an absolute metre figure, with `sight_scale` defaulting to a fraction of the shorter field dimension.
+   On today's 80 m by 60 m field that yields a short, visibly meaningful radius.
+   On a future 800 m field the same data yields a proportionally longer one without re-authoring every unit.
    The doc is then honest about what the number is -- a **gameplay legibility parameter**, not a claim about eyesight -- which is exactly the distinction `docs/units-convention.md` draws for deliberately unit-tuned knobs.
 
 This is worth stating before the mechanism because it decides the shape of the
@@ -226,9 +240,11 @@ claim rather than an aspiration.
 For an observing unit `u` and a candidate target `t`, `t` is perceived when
 both of these hold.
 
-1. **Line of sight.** The segment from `u.position` to `t.position` is not blocked by an occluding terrain patch, evaluated against the exact drawn rects via the existing public `PathField.is_leg_blocked(from, to, 0.0)` (`scripts/PathField.gd:184-185`).
+1. **Line of sight.**
+   The segment from `u.position` to `t.position` is not blocked by an occluding terrain patch, evaluated against the exact drawn rects via the existing public `PathField.is_leg_blocked(from, to, 0.0)` (`scripts/PathField.gd:184-185`).
 
-2. **Range, attenuated by screening.** `u.position.distance_squared_to(t.position) <= effective_sq`, where `effective_sq` is `pow(u.sight_range * pow(SIGHT_SCREEN_FACTOR, n_screens), 2.0)` and `n_screens` is the number of distinct screening patches that same segment crosses.
+2. **Range, attenuated by screening.**
+   `u.position.distance_squared_to(t.position) <= effective_sq`, where `effective_sq` is `pow(u.sight_range * pow(SIGHT_SCREEN_FACTOR, n_screens), 2.0)` and `n_screens` is the number of distinct screening patches that same segment crosses.
 
 The two conditions compose rather than stacking independently: the range test
 is against the *attenuated* range, never the full one.
@@ -321,7 +337,7 @@ Range and line of sight are both evaluated between `u.position` and
 wholly invisible, with no partial state.
 That is a material approximation at this scale rather than a free
 simplification: `Unit.FORMATION_SPACING` is `0.45 * WU_PER_M` = 9 wu
-(`scripts/Unit.gd:7145`) and `NORMAL_SPACING_SCALE` is 2.0 (`:588`), so a
+(`scripts/Unit.gd:7153`) and `NORMAL_SPACING_SCALE` is 2.0 (`:596`), so a
 normally-spaced line's file pitch is 18 wu and a modest frontage is a large
 fraction of the 300 wu foot sight radius proposed below.
 Two consequences follow, and both are accepted here.
@@ -352,7 +368,7 @@ sight multiplier (`SIGHT_MOUNTED` 1.4, so 420 wu on the default field).
 That makes it a per-battle instance value rather than a `const`, since
 `sight_scale` is itself per-battle; `field_with_margin` is then recomputed in
 the one place it is already recomputed for a non-default map
-(`scripts/Battle.gd:517`), so nothing else in the *spawn path* changes.
+(`scripts/Battle.gd:531`), so nothing else in the *spawn path* changes.
 Two things outside the spawn path do change, and phase 1 owns both.
 
 The member has to be renamed `rout_margin`.
@@ -375,7 +391,7 @@ assert: the margin they compare against is now a function of the battle's own
 Reading the margin off the battle instance keeps both assertions honest under
 the new definition.
 The visible costs are a wider margin strip drawn under the field
-(`scripts/Battle.gd:674`) and a longer flight before escape, both of which are
+(`scripts/Battle.gd:688`) and a longer flight before escape, both of which are
 the intended behaviour rather than a regression.
 The alternative -- keep the margin at 190 wu and accept the pop-out -- is
 rejected here rather than left unstated, because a unit vanishing inside your
@@ -443,11 +459,15 @@ the second is a refinement of it.
 
 Three layers, drawn above the battlefield and below the HUD.
 
-1. **Unexplored.** Opaque fill in a darkened `Battle.FIELD_COLOR`, hiding ground art and terrain patches entirely.
+1. **Unexplored.**
+   Opaque fill in a darkened `Battle.FIELD_COLOR`, hiding ground art and terrain patches entirely.
 
-2. **Explored but not currently visible.** The ground and terrain render normally, dimmed by a constant alpha; remembered enemy units render as ghost markers -- the unit's block outline and standard at the last-known position and facing, at reduced alpha, fading further as the contact passes `contact_stale_ticks`.
+2. **Explored but not currently visible.**
+   The ground and terrain render normally, dimmed by a constant alpha.
+   Remembered enemy units render as ghost markers -- the unit's block outline and standard at the last-known position and facing, at reduced alpha, fading further as the contact passes `contact_stale_ticks`.
 
-3. **Visible.** Normal rendering, exactly as today.
+3. **Visible.**
+   Normal rendering, exactly as today.
 
 Proposed implementation: a `FogOverlay` `Node2D` (proposed path
 `scripts/FogOverlay.gd`) at a z-index above the battlefield, drawing a coarse
@@ -496,12 +516,15 @@ access is a cheap regression test, and one belongs in the suite.
 
 ### What each level sees
 
-- **Own command.** Always fully known, fog or no fog.
+- **Own command.**
+  Always fully known, fog or no fog.
   This is `own_units()`, and it is exempt by the requirement above.
 
-- **Enemy.** Only what the commander's scope perceives, plus remembered contacts through `last_known`.
+- **Enemy.**
+  Only what the commander's scope perceives, plus remembered contacts through `last_known`.
 
-- **Reports.** A subordinate's sighting reaches its superior through `reports()`, which is how a general learns of a flanking force it cannot itself see.
+- **Reports.**
+  A subordinate's sighting reaches its superior through `reports()`, which is how a general learns of a flanking force it cannot itself see.
   Report latency is a natural knob and is deliberately left at zero in the first pass, matching `docs/battle-ai-design.md`'s own "chain latency" open question, which defaults to no extra latency beyond the existing per-unit `order_response_delay`.
 
 ### Difficulty never comes from perception
@@ -526,7 +549,7 @@ recorded**: no per-tick visible set, no explored grid, and no contact table
 ever reaches the file.
 The replay *header* does change shape in one place, and this note should not
 claim otherwise: `Replay.map` records "the battle's MAP block
-(`BattleMap.serialize`'s shape)" (`scripts/Replay.gd:143`), so once phase 1
+(`BattleMap.serialize`'s shape)" (`scripts/Replay.gd:149`), so once phase 1
 adds a `sight` axis to terrain patches, a map carrying a non-default `sight`
 writes a key older builds never wrote.
 The version policy for that key is the additive one the map block itself
@@ -551,11 +574,14 @@ Explored terrain and the last-known contact table are **not** functions of the
 current tick -- they are accumulations over every tick since the battle began.
 Two consequences follow.
 
-- **Recomputing from tick 0 is correct but not free.** A playback that starts at tick 0 and runs forward accumulates them correctly with no extra machinery.
+- **Recomputing from tick 0 is correct but not free.**
+  A playback that starts at tick 0 and runs forward accumulates them correctly with no extra machinery.
 
-- **A snapshot rewind is where this breaks.** `Battle.capture_snapshot` and `restore_snapshot` (`scripts/ReplaySnapshotCache.gd`) resume from a cached mid-battle moment, and a resumed state with an empty explored grid would show a player a fog that has forgotten ground the battle already covered.
+- **A snapshot rewind is where this breaks.**
+  `Battle.capture_snapshot` and `restore_snapshot` (`scripts/ReplaySnapshotCache.gd`) resume from a cached mid-battle moment, and a resumed state with an empty explored grid would show a player a fog that has forgotten ground the battle already covered.
   So the explored grid and the contact table must be captured in the snapshot alongside the rest of the derived state.
-  The explored grid at the proposed 40 by 30 cells is one bit per cell, so the cost is negligible; the contact table is bounded by the unit count.
+  The explored grid at the proposed 40 by 30 cells is one bit per cell, so the cost is negligible.
+  The contact table is bounded by the unit count.
 
 ### Rendering must not feed back into the simulation
 
@@ -652,7 +678,8 @@ ghost marker is an attack on the last-known position, which may find nothing
 there.
 A `Settings` toggle to disable fog, for demos and debugging, defaulting to on.
 
-**Dependencies.** Phase 1.
+**Dependencies.**
+Phase 1.
 
 **Parameters.**
 Unexplored fill alpha, explored dim alpha, ghost marker alpha, and the fade
@@ -680,7 +707,8 @@ fogged one.
 Team-wide fogged view first; commander-scoped narrowing plus report propagation
 second.
 
-**Dependencies.** Phase 1; phase 2 only for the demo.
+**Dependencies.**
+Phase 1; phase 2 only for the demo.
 
 **Acceptance tests.**
 This phase closes #588, so its acceptance criteria are that issue's: an AI
@@ -733,57 +761,75 @@ When it lands, the question is what a dynasty remembers across interwar
 periods -- a knowledge-decay model over a much longer clock than either of the
 models above, and one that should be designed then rather than guessed now.
 
-**Dependencies.** A saga layer existing.
+**Dependencies.**
+A saga layer existing.
 
 ## Non-goals
 
-- **Per-soldier sensing.** Fog is a command-level information model.
-  Soldier melee resolution is unchanged and unfogged; that layer is `docs/individual-collision-design.md` and #547's territory.
+- **Per-soldier sensing.**
+  Fog is a command-level information model.
+  Soldier melee resolution is unchanged and unfogged.
+  That layer is `docs/individual-collision-design.md` and #547's territory.
 
-- **Vision cones.** A unit sees a full disc in the first battle phase.
+- **Vision cones.**
+  A unit sees a full disc in the first battle phase.
   Facing-limited vision is a natural later phase and changes no interface.
 
-- **Elevation.** There is no heightfield in the sim, so there is nothing to read.
+- **Elevation.**
+  There is no heightfield in the sim, so there is nothing to read.
 
-- **Weather, dust, and night.** Same reason; each is a multiplier on `sight_scale` once the sim grows the state to drive it.
+- **Weather, dust, and night.**
+  Same reason.
+  Each is a multiplier on `sight_scale` once the sim grows the state to drive it.
 
-- **Stealth and ambush as unit abilities.** Hiding in woods as an active choice is a mechanic on top of this model, not part of it.
+- **Stealth and ambush as unit abilities.**
+  Hiding in woods as an active choice is a mechanic on top of this model, not part of it.
 
-- **Multiplayer information security.** [#290](https://github.com/Lacaedemon/sparta/issues/290) is titled "add mutliplayer battles and campaigns" with the body "(multi-computer, not hotseat)"; it names no network architecture and has no design yet.
+- **Multiplayer information security.**
+  [#290](https://github.com/Lacaedemon/sparta/issues/290) is titled "add mutliplayer battles and campaigns" with the body "(multi-computer, not hotseat)".
+  It names no network architecture and has no design yet.
   *If* it lands as lockstep -- every peer simulating the same battle from the same seed and the same inputs, which is the shape this game's replay recorder already implies -- then both players hold full state locally, fog is a rendering convention on each peer rather than a security boundary, and a modified client can see through it.
   A server-authoritative design would instead make fog a filter on what each peer is sent, which is a different and larger piece of work.
   Either way it is out of scope until #290 has a design.
 
 ## Open questions
 
-- **Does the player see ghost markers for enemy contacts a subordinate saw?** Under team-wide visibility, yes automatically.
+- **Does the player see ghost markers for enemy contacts a subordinate saw?**
+  Under team-wide visibility, yes automatically.
   Under commander-scoped narrowing (phase 3's second half) the player is the general and would see only reported contacts, which is more historical and considerably more confusing.
   Lean: team-wide for the player, commander-scoped for AI subordinates, and say so in the UI.
 
-- **Should `sight_scale` really key off field size?** It couples two parameters a map author might want independent.
+- **Should `sight_scale` really key off field size?**
+  It couples two parameters a map author might want independent.
   The alternative is an absolute default in metres that every non-default map has to re-tune.
   Lean: keep the derivation and allow an absolute override.
 
-- **What happens to an order issued against a ghost that turns out to be wrong?** An attack order on a last-known position the enemy has left becomes a move to that position.
+- **What happens to an order issued against a ghost that turns out to be wrong?**
+  An attack order on a last-known position the enemy has left becomes a move to that position.
   That is the historically right answer and may read as a bug to a player.
   Needs a UI affordance; deferred to phase 2.
 
-- **Does a routing unit still observe?** Modelled as a penalty (`SIGHT_ROUTING_PENALTY`) rather than blindness, on the reasoning that a fleeing man still has eyes.
+- **Does a routing unit still observe?**
+  Modelled as a penalty (`SIGHT_ROUTING_PENALTY`) rather than blindness, on the reasoning that a fleeing man still has eyes.
   Untested; a phase-1 tuning question.
 
-- **Is 0.25 of the field the right `sight_scale` fraction?** Purely empirical.
+- **Is 0.25 of the field the right `sight_scale` fraction?**
+  Purely empirical.
   It should be tuned against the phase-2 demo and settled before phase 3, since AI behaviour will be sensitive to it.
 
-- **Should visibility model a unit's extent rather than its center?** Phase 1 treats a unit as a point for both the range and the line-of-sight test, so visibility is all-or-nothing.
+- **Should visibility model a unit's extent rather than its center?**
+  Phase 1 treats a unit as a point for both the range and the line-of-sight test, so visibility is all-or-nothing.
   At a file pitch of 18 wu against a 300 wu sight radius that is visible in play: a line half out from behind the `hill` patch is entirely hidden, and one marginally outside range is entirely hidden while part of it stands inside.
   Lean: keep the point test through phase 2, and revisit extent or partial visibility only if the ghost-marker UI turns out to need a partial state anyway.
 
-- **Does fog change combat balance?** It should not, since targeting stays unfogged, but a screening skirmisher line becomes far more valuable and cavalry's longer sight becomes a real advantage.
+- **Does fog change combat balance?**
+  It should not, since targeting stays unfogged, but a screening skirmisher line becomes far more valuable and cavalry's longer sight becomes a real advantage.
   That is intended, and worth measuring rather than assuming.
 
 ## Relationship to existing issues
 
-- **#414** -- this doc is its design deliverable; the phases above should be filed as sub-issues.
+- **#414** -- this doc is its design deliverable.
+  The phases above should be filed as sub-issues.
 
 - **[#588](https://github.com/Lacaedemon/sparta/issues/588)** -- battle-AI phase 5, blocked on this.
   Phase 3 above closes it.
@@ -794,7 +840,8 @@ models above, and one that should be designed then rather than guessed now.
 - **#516 and `docs/orders-queue-design.md`** -- the actuation layer.
   Fog restricts which orders the player can express; it does not add order types.
 
-- **#582 and `docs/campaign-layer-design.md`** -- phase 4 lands on top of whatever campaign substrate that design settles on; province-level fog survives a hex substrate as cell-level fog.
+- **#582 and `docs/campaign-layer-design.md`** -- phase 4 lands on top of whatever campaign substrate that design settles on.
+  Province-level fog survives a hex substrate as cell-level fog.
 
 - **#126 and #428** -- the saga layer, phase 5's prerequisite.
 
