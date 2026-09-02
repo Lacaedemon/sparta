@@ -200,9 +200,10 @@ static func _joined_display_name(plain_name: String, historical_name: String) ->
 
 
 ## The faction's named historical doctrine/strategy, or "Standard Doctrine" for a faction
-## FACTION_STRATEGIES doesn't list. No AI strategy code reads this yet -- it's the display
-## label for whatever doctrine a future battle-AI faction profile picks, not itself a
-## behavioral switch.
+## FACTION_STRATEGIES doesn't list. Shown on the HUD info panel's own Doctrine line for a
+## side that has a faction; no AI strategy code reads it, so it is the display label for
+## whatever doctrine a future battle-AI faction profile picks, not itself a behavioral
+## switch (Battle.ai_doctrine is what actually drives the enemy General).
 static func get_strategy_name(faction_id: int) -> String:
 	return FACTION_STRATEGIES.get(faction_id, "Standard Doctrine")
 

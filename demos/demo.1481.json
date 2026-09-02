@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/faction-identity-hud.json",
+  "caption": "Faction identity reaches the HUD (#1481). Two Spartan spear blocks face two Roman ones; selecting each in turn shows the control-bar formation button, the info panel's Formation line, and its new Faction / Doctrine lines reading in that unit's OWN language -- pyknosis and phalanx for Sparta, acies and agmen quadratum for the same two stances on the Roman side. Nothing moves and nobody fights: the readout is the only thing that changes.",
+  "fixed_fps": 30,
+  "max_frames": 330,
+  "fps": 20,
+  "width": 640
+}

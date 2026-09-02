@@ -1401,6 +1401,48 @@ Custom Battle Setup: picking Sparta vs. Rome, with each side's roster shown
 alongside its own faction dropdown.
 :::
 
+### Your faction names its own formations
+
+The faction you pick follows the army onto the field. Select any regiment and
+the control bar's **Formation** button, its drop-up menu, and the info panel's
+**Formation** line all name the stance the way that side's own army did ---
+so the identical shoulder-to-shoulder line reads *pyknosis* under a Spartan
+banner and *acies* under a Roman one, and the hollow anti-cavalry square reads
+*plinthion* or *agmen quadratum*. The **Form-up** section of the ☰ Menu does the
+same for the multi-unit drag-line splits your own army uses: the checkerboard is
+a *quincunx* to Rome, an *epallax* to Sparta, a *shatranj* to Carthage.
+
+The info panel also gains two lines naming the side outright: **Faction** and
+**Doctrine**, the latter that army's own named way of fighting --- Sparta's
+*Phalanx Shock Push (othismos)*, Rome's *Manipular Line Rotation (acies
+triplex)*, Carthage's *Double Envelopment (Cannae)*, Macedon's *Hammer and Anvil
+(sarissa and hetairoi)*. The doctrine line is the side's identity, not a
+behaviour switch: it does not change how the enemy AI fights.
+
+Every caption follows the *selected* regiment's own side, so under
+[All-Teams Control](#all-teams-control) you can select across the line and watch
+the same stance change language. Only the metric interval and stance carry
+meaning for the fight --- the historical name beside it is flavor, and a battle
+started from anywhere but Custom Battle simply shows the plain caption.
+
+::: {#fig-faction-formation-sparta .demo}
+
+![](media/faction-identity-hud-sparta.png){width="700px"}
+
+A Spartan spear block at normal order: the control bar and the info panel both
+read *0.9 m (pyknosis)*, above a **Faction** of Sparta (Laconian) and a
+**Doctrine** of Phalanx Shock Push (othismos).
+:::
+
+::: {#fig-faction-formation-rome .demo}
+
+![](media/faction-identity-hud-rome.png){width="700px"}
+
+The same battle, a Roman maniple selected instead: its square reads
+*0.45 m Square (agmen quadratum)*, under Rome (Latin / Roman) and the Manipular
+Line Rotation (acies triplex) doctrine.
+:::
+
 ## Campaign Map
 
 Sparta includes a turn-based campaign layer on top of its tactical battles.
