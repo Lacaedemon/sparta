@@ -107,20 +107,32 @@ const EXPECTED_FORMATION_KEYS: Array = [
 ]
 const EXPECTED_FORM_UP_KEYS: Array = [4, 5, 6]
 
+## Stand-in for an absent entry, so a .get() miss fails its assertion with a readable
+## "(missing)" on the left rather than aborting the test the way indexing a gone key does.
+const MISSING := "(missing)"
+
 
 func test_every_faction_row_carries_exactly_the_expected_keys() -> void:
 	# get_formation_display_name()/get_form_up_display_name() fall back to the bare plain name
 	# for a mode a faction's row doesn't list, so a dropped key degrades silently into "no
 	# historical name for this faction" rather than erroring. Pin the shape instead.
 	for faction_id in ALL_FACTIONS:
-		var formations: Dictionary = Faction.HISTORICAL_FORMATIONS[faction_id]
+		# Assert the row exists before indexing it. Indexing a missing key aborts the test with
+		# an engine error, which reports a removed faction row as a broken test rather than as
+		# the failing assertion it is; .get() with an empty default keeps the size check below
+		# as the thing that fails, and it names the faction.
+		assert_true(Faction.HISTORICAL_FORMATIONS.has(faction_id),
+				"HISTORICAL_FORMATIONS carries a row for faction %d" % faction_id)
+		var formations: Dictionary = Faction.HISTORICAL_FORMATIONS.get(faction_id, {})
 		assert_eq(formations.keys().size(), EXPECTED_FORMATION_KEYS.size(),
 				"faction %d lists exactly the expected formation modes" % faction_id)
 		for mode in EXPECTED_FORMATION_KEYS:
 			assert_true(formations.has(mode),
 					"faction %d names formation mode %d" % [faction_id, mode])
 
-		var form_up: Dictionary = Faction.HISTORICAL_FORM_UP[faction_id]
+		assert_true(Faction.HISTORICAL_FORM_UP.has(faction_id),
+				"HISTORICAL_FORM_UP carries a row for faction %d" % faction_id)
+		var form_up: Dictionary = Faction.HISTORICAL_FORM_UP.get(faction_id, {})
 		assert_eq(form_up.keys().size(), EXPECTED_FORM_UP_KEYS.size(),
 				"faction %d lists exactly the expected form-up modes" % faction_id)
 		for dist in EXPECTED_FORM_UP_KEYS:
@@ -134,8 +146,11 @@ func test_no_historical_name_is_blank() -> void:
 	var tables: Array = [Faction.HISTORICAL_FORMATIONS, Faction.HISTORICAL_FORM_UP]
 	for table in tables:
 		for faction_id in table:
-			for mode in table[faction_id]:
-				var label: String = str(table[faction_id][mode])
+			# faction_id came out of this table, so the row is present by construction -- no
+			# has() guard needed here, unlike the tests that index a row by a named faction.
+			var row: Dictionary = table[faction_id]
+			for mode in row:
+				var label: String = str(row[mode])
 				assert_false(label.strip_edges().is_empty(),
 						"faction %d mode %d has a non-blank historical name" % [faction_id, mode])
 
@@ -155,12 +170,17 @@ func test_a_factions_own_labels_are_all_distinct() -> void:
 	var tables: Array = [Faction.HISTORICAL_FORMATIONS, Faction.HISTORICAL_FORM_UP]
 	for table in tables:
 		for faction_id in table:
+			# Row present by construction, as above.
+			var row: Dictionary = table[faction_id]
 			var seen: Dictionary = {}
-			for mode in table[faction_id]:
-				var label: String = str(table[faction_id][mode])
+			for mode in row:
+				var label: String = str(row[mode])
+				# Double quotes around the label: a single-quoted %s is ambiguous for a label that
+				# contains an apostrophe, and one of them does (ep' aspida). Single-quoted GDScript
+				# string so the double quotes need no escaping.
 				assert_false(seen.has(label),
-						"faction %d reuses the label '%s' for mode %d and mode %s"
-								% [faction_id, label, mode, str(seen.get(label, ""))])
+						'faction %d reuses the label "%s" for mode %d and mode %d'
+								% [faction_id, label, mode, int(seen.get(label, -1))])
 				seen[label] = mode
 
 
@@ -176,8 +196,11 @@ func test_macedon_echelon_directions_have_distinct_labels() -> void:
 
 func test_sparta_echelon_labels_name_the_wing_not_the_helmet_crest() -> void:
 	# keras is an army's wing; lophos, which stood here before, is a crest or ridge.
-	assert_eq(Faction.HISTORICAL_FORM_UP[Faction.Type.SPARTA][5], "dexion keras")
-	assert_eq(Faction.HISTORICAL_FORM_UP[Faction.Type.SPARTA][6], "euonymon keras")
+	assert_true(Faction.HISTORICAL_FORM_UP.has(Faction.Type.SPARTA),
+			"HISTORICAL_FORM_UP carries a Sparta row")
+	var sparta: Dictionary = Faction.HISTORICAL_FORM_UP.get(Faction.Type.SPARTA, {})
+	assert_eq(sparta.get(5, MISSING), "dexion keras")
+	assert_eq(sparta.get(6, MISSING), "euonymon keras")
 
 
 func test_carthage_names_are_punic_or_greek_not_arabic() -> void:
@@ -186,19 +209,23 @@ func test_carthage_names_are_punic_or_greek_not_arabic() -> void:
 	# bearing on the usage of a Carthaginian army, which ended with the city in 146 BC. All
 	# seven are pinned, so reverting any one of them is a test failure rather than a silent
 	# regression.
-	var carthage: Dictionary = Faction.HISTORICAL_FORMATIONS[Faction.Type.CARTHAGE]
-	assert_eq(carthage[UnitScript.FORMATION_NORMAL], "mahanet")
-	assert_eq(carthage[UnitScript.FORMATION_TIGHT], "synaspismos")
-	assert_eq(carthage[UnitScript.FORMATION_LOOSE], "araios")
-	assert_eq(carthage[UnitScript.FORMATION_SQUARE], "plaision")
-	assert_eq(carthage[UnitScript.FORMATION_SCHILTRON], "kyklos")
-	assert_eq(carthage[UnitScript.FORMATION_SHIELD_WALL], "magen")
-	assert_eq(carthage[UnitScript.FORMATION_TESTUDO], "gag")
+	assert_true(Faction.HISTORICAL_FORMATIONS.has(Faction.Type.CARTHAGE),
+			"HISTORICAL_FORMATIONS carries a Carthage row")
+	var carthage: Dictionary = Faction.HISTORICAL_FORMATIONS.get(Faction.Type.CARTHAGE, {})
+	assert_eq(carthage.get(UnitScript.FORMATION_NORMAL, MISSING), "mahanet")
+	assert_eq(carthage.get(UnitScript.FORMATION_TIGHT, MISSING), "synaspismos")
+	assert_eq(carthage.get(UnitScript.FORMATION_LOOSE, MISSING), "araios")
+	assert_eq(carthage.get(UnitScript.FORMATION_SQUARE, MISSING), "plaision")
+	assert_eq(carthage.get(UnitScript.FORMATION_SCHILTRON, MISSING), "kyklos")
+	assert_eq(carthage.get(UnitScript.FORMATION_SHIELD_WALL, MISSING), "magen")
+	assert_eq(carthage.get(UnitScript.FORMATION_TESTUDO, MISSING), "gag")
 
-	var form_up: Dictionary = Faction.HISTORICAL_FORM_UP[Faction.Type.CARTHAGE]
-	assert_eq(form_up[4], "epallax")
-	assert_eq(form_up[5], "dexion keras")
-	assert_eq(form_up[6], "euonymon keras")
+	assert_true(Faction.HISTORICAL_FORM_UP.has(Faction.Type.CARTHAGE),
+			"HISTORICAL_FORM_UP carries a Carthage row")
+	var form_up: Dictionary = Faction.HISTORICAL_FORM_UP.get(Faction.Type.CARTHAGE, {})
+	assert_eq(form_up.get(4, MISSING), "epallax")
+	assert_eq(form_up.get(5, MISSING), "dexion keras")
+	assert_eq(form_up.get(6, MISSING), "euonymon keras")
 
 
 ## The label strings HISTORICAL_FORMATIONS repeats across faction rows, and the number of rows
