@@ -676,9 +676,10 @@ static func new_file_double(direction: int) -> Order:
 		push_error("Order.new_file_double: direction must be nonzero (0 has no relative " +
 				"widen/narrow meaning); defaulting to an explicatio. Use new_frontage for " +
 				"an absolute file count.")
+		direction = 1
 	var o := Order.new()
 	o.type = Type.FRONTAGE
-	o.dir = 1 if direction == 0 else signi(direction)
+	o.dir = signi(direction)
 	return o
 
 

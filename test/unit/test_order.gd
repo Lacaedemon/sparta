@@ -199,8 +199,8 @@ func test_new_file_double_rejects_zero_direction_and_defaults_to_explicatio() ->
 	var step := Order.new_file_double(0)
 	assert_push_error("direction must be nonzero")
 	assert_eq(step.type, Order.Type.FRONTAGE)
-	assert_ne(step.dir, 0, "dir must never be 0 -- that is the ABSOLUTE branch's marker")
-	assert_eq(step.dir, 1, "coerced to an explicatio rather than left broken")
+	assert_eq(step.dir, 1,
+			"coerced to an explicatio rather than left at 0 -- that is the ABSOLUTE branch's marker")
 	assert_eq(step.frontage, -1, "still unresolved -- arming still resolves it, same as any relative step")
 
 
