@@ -70,7 +70,12 @@ var forced_seed: int = -1
 #               "reform_toggle"?: int (same shape, for reform_before_move),
 #               "file_major_reform_mode_toggle"?: int (a Unit.ReformMode ordinal to write,
 #                   omitted when -1 = Battle.REFORM_MODE_TOGGLE_LEAVE -- can't reuse 0 the
-#                   way the two toggles above do, since 0 is a legitimate ReformMode value) }.
+#                   way the two toggles above do, since 0 is a legitimate ReformMode value),
+#               "line"?: int (the persistent line-membership index Unit.line_index a
+#                   checkerboard / tray-grid form-up assigns -- 0 for the front line, 1+ for a
+#                   reserve line; omitted when -1 = Battle.LINE_INDEX_UNCHANGED, which is also
+#                   how a missing key reads, so a plain drag and every pre-line replay leave
+#                   each unit's existing line_index alone) }.
 var _orders: Array = []
 var _play_index: int = 0
 
@@ -275,6 +280,11 @@ func start_playback(path: String) -> bool:
 			entry["reform_toggle"] = int(o["reform_toggle"])
 		if o.has("file_major_reform_mode_toggle"):
 			entry["file_major_reform_mode_toggle"] = int(o["file_major_reform_mode_toggle"])
+		# Absent in a pre-line replay (and in every plain form-up), which then reads back as
+		# Battle.LINE_INDEX_UNCHANGED in _apply_order_cmd -- each unit keeps the line_index it
+		# already has, exactly as those replays behaved before this field existed.
+		if o.has("line"):
+			entry["line"] = int(o["line"])
 		_orders.append(entry)
 	_play_index = 0
 	# Load the optional presentation (camera) track. Absent in pre-camera replays,
@@ -348,7 +358,8 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		order_mode: int = 0, formation: int = 0, frontage: int = 0, face: float = INF,
 		group_attack: int = 0, anchor_offset: float = 0.0,
 		form_up_group: int = -1, walk_advance_toggle: int = 0, reform_toggle: int = 0,
-		file_major_reform_mode_toggle: int = -1) -> void:
+		file_major_reform_mode_toggle: int = -1,
+		line_index: int = -1) -> void:
 	if mode != Mode.RECORD:
 		return
 	var entry := {
@@ -392,6 +403,14 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	# a spare sentinel). Omitted for every other order kind so old replays stay valid.
 	if file_major_reform_mode_toggle != -1:
 		entry["file_major_reform_mode_toggle"] = file_major_reform_mode_toggle
+	# -1 = Battle.LINE_INDEX_UNCHANGED (the default -- leave each ordered unit's persistent
+	# Unit.line_index alone; can't reuse 0 the way the two toggles above do, since 0 is a
+	# legitimate line index -- the front line -- not a spare sentinel). A checkerboard or
+	# tray-grid form-up assigns a real (>= 0) index, which has to ride the replay stream or a
+	# recorded acies triplex deploy plays back with every unit's line membership dropped.
+	# Omitted for a plain drag and every other order kind so old replays stay valid.
+	if line_index != -1:
+		entry["line"] = line_index
 	_orders.append(entry)
 
 
