@@ -120,6 +120,6 @@ Our lab's work rules encoded throughout `ai-config` apply unconditionally to all
 
 Whenever a gap, missing PR, or workflow requirement is identified, or when a capability/memory instruction is given:
 1. **Act immediately**: Never wait for a user follow-up prompt to take corrective action. Branch, commit, open the PR, request review from `d-morrison`, and drive to clean in the exact same response.
-2. **Auto-merge under `mwc`**: If `mwc` is active for the session, once CI passes AND review comment payload is confirmed **Clean / Approved**, execute the merge and post-merge wrap-up immediately without stopping.
+2. **Auto-merge under `mwc`**: If `mwc` is active for the session, once CI passes AND the code review comment payload is verified **Clean / Approved** (never merge over "Needs more work" even if the check-run job status passed), execute the merge and post-merge wrap-up immediately without stopping.
 
 

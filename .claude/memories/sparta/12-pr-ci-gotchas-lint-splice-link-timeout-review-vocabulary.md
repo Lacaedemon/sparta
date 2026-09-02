@@ -70,6 +70,23 @@ reverted #1452/#1453 manifests, rejected.
 - **Don't:** point `demos/demo.<slug>.json` at an `input` recording whose
   caption claims a mechanic the PR has not actually implemented.
 
+- **Do:** name the explanation field `"reason"`, not `"skip_reason"`.
+  `demo-video.yml` parses `.reason // .caption // <generic fallback>`, so a
+  misnamed field is silently ignored and the posted note shows the caption
+  instead, or the generic placeholder when there is no caption.
+
+## Design docs cite only paths that exist
+
+A plausible-looking path -- a test file named after the class it would test,
+or a glob over a demo-input prefix -- reads as real, and is the commonest way
+a phantom path gets published in a design doc.
+
+- **Do:** run `git ls-files <path>` (or the glob) and cite only what it
+  returns, before publishing a design doc.
+
+- **Don't:** name a test script or input manifest a design doc "will use"
+  unless it is already tracked, or the doc marks it as proposed.
+
 ## Pre-push guard verdict vocabulary is exact-match; brief reviewers with the literal phrasing
 
 The pre-push guard (`no-push-without-self-review.py`, from ai-config) parses a
@@ -118,6 +135,43 @@ message) when the account's usage limit is hit mid-session.
 
 - **Don't:** read a quota-skip notice as a clean verdict, or as something that
   resolves itself without a re-dispatch once quota is back.
+
+## A green review check is not an approval: read the verdict payload on every surface before merging under `mwc`
+
+`review / claude-review` and `review / require-review` both conclude `success`
+when a reviewer ran and posted a verdict, whatever that verdict said.
+The reusable `Morrison-Lab/gha` `claude-code-review.yml@v2` workflow says so in
+its own comments: a green result attests that "a reviewer RAN and the job did
+not fail", and "does not attest that the reviewer APPROVED".
+Measured on #1471 at head `0c8a63aa`: the posted review carried
+`"verdict": "NOT_CLEAN"` while every `review / *` check run reported
+`success`.
+The job's conclusion tracks whether a verdict was produced and posted, not
+what it said, and the converse holds too: a red `claude-review` can sit on top
+of a genuine verdict (see "A red `claude-review` can sit on top of a GENUINE,
+complete verdict" in part file 07).
+Nothing server-side catches this either: the `main` ruleset has no required
+status checks (#1432), so under `mwc` the agent is the only gate.
+
+- **Do:** run `check-pr-fully-clean.py` (the section above) and branch on its
+  exit status three ways: 0 clean, 1 not clean, anything else means it did not
+  answer.
+
+- **Do:** when the instrument cannot run, read every surface by hand and
+  paginate each: `gh api repos/<owner>/<repo>/pulls/<N>/reviews --paginate`
+  (formal reviews), `gh api repos/<owner>/<repo>/pulls/<N>/comments --paginate`
+  (inline findings, where this repo's `prompt-addendum` tells the reviewer to
+  put line-specific findings), and
+  `gh api repos/<owner>/<repo>/issues/<N>/comments --paginate` selecting the
+  LAST body that starts with `**Claude finished` (the verdict comment).
+
+- **Don't:** read a green `review / claude-review` or `review / require-review`
+  check as approval, and don't read an unpaginated `issues/<N>/comments` call
+  as the verdict: that endpoint is oldest-first, 30 per page, and never
+  carries inline findings.
+
+- **Don't:** rely on a branch ruleset or a forge hook to refuse the merge for
+  you.
 
 Links/provenance: measured 2026-09-01 on `Lacaedemon/sparta` CI (workflow runs
 observed on PRs in the #1452/#1453/#1459/#1462 range).
