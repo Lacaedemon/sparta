@@ -154,18 +154,21 @@ Nothing server-side catches this either: the `main` ruleset has no required
 status checks (#1432), so under `mwc` the agent is the only gate.
 
 - **Do:** run `check-pr-fully-clean.py` (the section above) and read its exit
-  status three ways: 0 means nothing blocking was found, 1 means not clean or
-  a crash (a traceback with no finding bullets), anything else means it did
-  not answer.
+  status three ways: 0 means nothing blocking was found, 1 means not clean,
+  or no review found at all (the output says `No automated review comments or
+  reviews found`), or a crash (a traceback with no finding bullets), and
+  anything else means it did not answer.
   Exit 0 is not approval on its own: read the `verdict scan:` line and the
   `Notes:` block the script prints beside it.
   `latest = NONE` on the scan line means no readable verdict-bearing review
-  was found, and a quota-skip notice still counts as an examined review item
-  without supplying a verdict, so a comment being present is not a verdict
-  being present.
+  was found.
+  A quota-skip notice is excluded before the scan even starts, so a PR whose
+  only bot comment is that notice takes the no-review exit 1 above rather
+  than exiting 0, and that exit 1 is a missing review, not a not-clean
+  verdict.
   A `NOTE:` saying a review has a format the classifier cannot read means a
   review arrived whose verdict was never read.
-  Either state sends you to the hand read below.
+  Any of those three states sends you to the hand read below.
 
 - **Do:** when the instrument cannot run, read every surface by hand and
   paginate each: `gh api repos/<owner>/<repo>/pulls/<N>/reviews --paginate`
