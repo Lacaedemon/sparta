@@ -1406,9 +1406,9 @@ alongside its own faction dropdown.
 The faction you pick follows the army onto the field. Select any regiment and
 the control bar's **Formation** button, its drop-up menu, and the info panel's
 **Formation** line all name the stance the way that side's own army did ---
-so the identical shoulder-to-shoulder line reads *pyknosis* under a Spartan
-banner and *acies* under a Roman one, and the hollow anti-cavalry square reads
-*plinthion* or *agmen quadratum*. The **Form-up** section of the ☰ Menu does the
+so the same normal-order line reads *pyknosis* under a Spartan banner and
+*acies* under a Roman one, and the hollow anti-cavalry square reads *plinthion*
+or *agmen quadratum*. The **Form-up** section of the ☰ Menu does the
 same for the multi-unit drag-line splits your own army uses: the checkerboard is
 a *quincunx* to Rome, an *epallax* to Sparta, a *shatranj* to Carthage.
 
