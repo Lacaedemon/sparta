@@ -223,3 +223,13 @@ func test_the_identity_lines_sit_below_the_live_state_block() -> void:
 	for live_line in ["Commander: ", "Soldiers: ", "Morale: ", "Formation: ", "Width: "]:
 		assert_lt(text.find(live_line), text.find("Faction: "),
 				"%s stays above the identity block" % live_line)
+
+
+func test_set_team_factions_before_the_menu_exists_is_safe() -> void:
+	# Battle hands the factions over in its own _ready. A HUD that was never added to a tree
+	# (a test harness, a headless tool scene) has no Menu popup yet, so the label restamp must
+	# no-op rather than crash -- the identities are still recorded for whenever it is built.
+	var h = HUDScript.new()
+	autofree(h)
+	h.set_team_factions([FactionScript.Type.MACEDON])
+	assert_eq(h.faction_for_team(0), FactionScript.Type.MACEDON)
