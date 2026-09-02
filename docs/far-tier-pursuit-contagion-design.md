@@ -87,7 +87,8 @@ This design keeps the tier boundary exactly where `docs/large-scale-simulation-d
 
 - **`ROUT_SHOCK_RADIUS` (7 m) was tuned for close-order soldier spacing, not for the distance between far-tier formation centroids.**
   A far-tier formation's `position` is a whole regiment's centroid;
-  two far-tier formations that are tactically adjacent (e.g. a battle line's neighbouring regiments) may sit well outside 7 m of each other even though a close-tier observer would call them "next to each other." Whether contagion at far-tier scale needs its own, larger radius constant (and what governs it -- formation frontage?
+  two far-tier formations that are tactically adjacent (e.g. a battle line's neighbouring regiments) may sit well outside 7 m of each other even though a close-tier observer would call them "next to each other."
+  Whether contagion at far-tier scale needs its own, larger radius constant (and what governs it -- formation frontage?
   `DEMOTE_RANGE`-scaled?) is a balance question Phase 2 should measure against a real multi-formation scenario before picking a number, not guess up front.
 - **Whether a far-tier formation should ever fight *another* far-tier formation, or only ever fight while promotion is imminent.**
   `PROMOTE_RANGE` (400) already sits close to combat range by design (the design doc's own "correctness floor" argument), so two far-tier formations may rarely stay far-tier while in mutual `attack_range`/`RANGED_RANGE`.
