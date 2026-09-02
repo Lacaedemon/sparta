@@ -2172,23 +2172,27 @@ no mid-press pivot --- then turns about and marches on once clear of the fight.
 
 ## Facing a skirmisher screen
 
-Some enemy generals open the battle by pushing their light troops out in front of the heavy
-line rather than keeping them in it. Their archers move out to a contest line about eight
+**Not in play yet.** Screening is a property of a general's doctrine profile, and nothing in
+the game selects a profile yet --- every battle runs the aggressive doctrine, which does not
+screen. The behaviour below is built, tested, and shown in the clip; what it is waiting on is
+a scenario or campaign that can hand a general a different profile. It is described here so
+the tactics are on the page when that lands.
+
+A screening general opens the battle by pushing its light troops out in front of the heavy
+line rather than keeping them in it. The archers move out to a contest line about eight
 metres ahead of that line --- one ranged reach, so their fire covers the ground immediately
 in front of it --- hold there in the skirmish stance, and shoot at whatever comes into
-range. Their own heavy blocks will not break formation to rescue them. Once your line
+range. Their own heavy blocks do not break formation to rescue them. Once the opposing line
 closes to within about six metres of the screen, the same subcommander pulls it back --- the
 archers break off the exchange, turn about, and fall back on a diagonal aimed at a gap
 **between** two of their own blocks rather than straight back through one
 (@fig-skirmisher-screen).
 
-Whether an army does this is a property of its general's doctrine, so you will meet it from
-some opponents and not others. Two things follow for you. Chasing the screen with your own
-heavy line pulls that line forward out of dressing and hands the enemy blocks a ragged
-target, so it is usually better to walk up steadily and let the screen retire. And the
-moment the screen turns is the moment it is most exposed: cavalry sent wide, or a unit
-already on that flank, can catch it in the open before it reaches the interval, because its
-own line will not come out to save it.
+Two things will follow for you. Chasing the screen with your own heavy line pulls that line
+forward out of dressing and hands the enemy blocks a ragged target, so it is usually better
+to walk up steadily and let the screen retire. And the moment the screen turns is the moment
+it is most exposed: cavalry sent wide, or a unit already on that flank, can catch it in the
+open before it reaches the interval, because its own line will not come out to save it.
 
 ::: {#fig-skirmisher-screen .demo}
 
