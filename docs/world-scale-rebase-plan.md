@@ -77,3 +77,9 @@ Because coordinate magnitudes will divide by 20.0:
 
 3. **Transcript State Equivalence**:
    Verify that position vectors in `dump-state.sh` outputs match exactly (scaled 1:20) with previous runs.
+
+4. **The website demo-diff workflow as the natural verifier**:
+   `.github/workflows/website-demo-diff.yml` already re-records every catalogued clip on each PR and posts per-tick state-transcript comparisons against `main`, which is the check the tracking issue names for this migration.
+   A correct rebase shows every clip byte-changed (the transcripts carry the new units) yet visually identical, and its frame diffs catch any chrome that missed the rescale.
+   Steps 1 and 3 are the same comparison run by hand for a single scenario while iterating locally, not a parallel mechanism;
+   the workflow's full-catalog run is the acceptance gate.
