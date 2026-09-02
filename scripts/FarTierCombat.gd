@@ -32,13 +32,25 @@ static func can_be_struck(target: Unit) -> bool:
 	return target.state != Unit.State.DEAD and target.soldiers > 0
 
 
-## The formation this one resolves against this tick, or null when none is in reach. Reuses
-## the ordinary targeting path (UnitTargeting.current_target: an explicitly ordered
+## The formation this one resolves against this tick, or null when it is not fighting one.
+## Reuses the ordinary targeting path (UnitTargeting.current_target: an explicitly ordered
 ## target_enemy, else auto-acquisition inside the unit's own detection_range), so the far
 ## tier adds no second targeting concept and winner pursuit arrives through UnitLeader's
 ## existing retargeting, unchanged.
+##
+## Gated on the unit already being in State.FIGHTING, which is what inherits the close tier's
+## own two gates rather than reimplementing either. Unit._think enters FIGHTING only when its
+## disengage rule allows -- in contact AND (an explicit target, or no move order, or CHASE,
+## or MARCH_TO_CONTACT) -- so a plain move order past a broken enemy marches by instead of
+## grinding it down, exactly as at close tier. is_maneuver_turning() then withholds attrition
+## while the men are mid-arc, mirroring _face_for_action holding the strike until the front
+## is brought to bear. Since Battle resolves this before the units act, both read LAST tick's
+## state, so attrition starts one tick after contact -- cheaper than the close tier's own
+## attack cooldown, and the same direction.
 static func engaged_target(u: Unit) -> Unit:
 	if not can_fight(u) or not u.is_inside_tree():
+		return null
+	if u.state != Unit.State.FIGHTING or u.is_maneuver_turning():
 		return null
 	var target: Unit = UnitTargeting.current_target(u)
 	if not can_be_struck(target) or not FarTierRates.in_striking_range(u, target):
@@ -84,9 +96,12 @@ static func tick_all(units: Array, delta: float) -> int:
 		var target: Unit = engaged_target(u)
 		if target == null:
 			continue
-		plans.append({"attacker": u, "defender": target,
-			"rate": FarTierRates.casualty_rate(u, target),
-			"flank": UnitCombat.flank_multiplier(target, u)})
+		# One flank reading, used by both the casualty rate and the morale bookkeeping.
+		# Computing it twice would let the two drift apart silently, since
+		# UnitCombat.REAR_MORALE_EXTRA is 0.0 today and hides the morale half entirely.
+		var flank: float = UnitCombat.flank_multiplier(target, u)
+		plans.append({"attacker": u, "defender": target, "flank": flank,
+			"rate": FarTierRates.casualty_rate(u, target, -1.0, flank)})
 	var booked: int = 0
 	for plan in plans:
 		var attacker: Unit = plan["attacker"]

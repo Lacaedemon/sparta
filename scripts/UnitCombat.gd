@@ -112,7 +112,13 @@ static func strike(u: Unit, enemy: Unit) -> void:
 	# function of tier state -- the far tier is RNG-free by design. Unit._think still runs
 	# its ordinary fighting branch for a far-tier unit (state, facing, the press into
 	# contact); only the casualties move.
+	#
+	# The charge is still SPENT on this contact, exactly as both paths below do. The far
+	# tier's own model carries no charge term, so an unspent _approach_velocity would sit on
+	# the unit until it promoted and then land an undeserved momentum bonus on its first
+	# close-tier strike.
 	if u.tier == FormationTier.FAR:
+		u._approach_velocity = Vector2.ZERO
 		return
 	# Phase 4b: when both regiments have a soldier layer, resolve melee per soldier
 	# (the model's opposed roll + wound against per-soldier health) instead of the

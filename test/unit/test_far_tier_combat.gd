@@ -41,7 +41,10 @@ func after_each() -> void:
 # --- helpers ----------------------------------------------------------------------------
 
 ## A bare far-tier regiment in the tree: joined to "units" by _ready(), with no per-soldier
-## layer, exactly as TierTransition.demote leaves one.
+## layer, exactly as TierTransition.demote leaves one. It starts in State.FIGHTING because
+## FarTierCombat.engaged_target gates on that state -- the way it inherits Unit._think's
+## disengage rule and its mid-turn facing hold rather than reimplementing either. In a live
+## battle _think sets it; these tests never run _think, so they set it here.
 func _far_unit(team: int, pos: Vector2, facing: Vector2, count: int = 120) -> Unit:
 	var u: Unit = Unit.new()
 	u.max_soldiers = count
@@ -50,6 +53,7 @@ func _far_unit(team: int, pos: Vector2, facing: Vector2, count: int = 120) -> Un
 	u.position = pos
 	u.facing = facing
 	u.tier = FormationTier.FAR
+	u.state = Unit.State.FIGHTING
 	return u
 
 
@@ -59,6 +63,18 @@ func _frontal_pair(count: int = 120) -> Array:
 	var defender: Unit = _far_unit(0, Vector2.ZERO, Vector2.DOWN, count)
 	var gap: float = defender.attack_range + Unit.RADIUS * 2.0 - 1.0
 	var attacker: Unit = _far_unit(1, Vector2(0.0, gap), Vector2.UP, count)
+	return [attacker, defender]
+
+
+## The same pair, but with the attacker pulled back beyond melee contact and inside
+## Unit.RANGED_RANGE -- where a ranged attacker actually resolves as a volley, and so where
+## FarTierRules' unconditional ranged branch is the right thing to compare against.
+func _volley_pair(count: int = 120) -> Array:
+	var defender: Unit = _far_unit(0, Vector2.ZERO, Vector2.DOWN, count)
+	var contact: float = defender.attack_range + Unit.RADIUS * 2.0
+	var gap: float = (contact + Unit.RANGED_RANGE) * 0.5
+	var attacker: Unit = _far_unit(1, Vector2(0.0, gap), Vector2.UP, count)
+	attacker.is_ranged = true
 	return [attacker, defender]
 
 
@@ -79,7 +95,7 @@ func _tick_seconds() -> float:
 ## per-second rates directly would fail on cadence rather than on the formula under test.
 func _per_strike(attacker: Unit, defender: Unit) -> float:
 	return FarTierRates.casualty_rate(attacker, defender) \
-			* FarTierRates.attack_interval(attacker)
+			* FarTierRates.attack_interval(attacker, defender)
 
 
 func _rules_per_strike(attacker: Unit, defender: Unit) -> float:
@@ -100,16 +116,30 @@ func test_strike_expectation_matches_the_record_model_frontally() -> void:
 
 
 func test_rate_matches_the_record_model_across_stances_and_angles() -> void:
-	# Each case perturbs one input the formula reads: the defender's stance (missile and
-	# melee blunting, the all-around square), the attack angle (flank multiplier), the
-	# attacker's remaining strength (the thinning term), and the ranged/melee split.
+	# Each case perturbs one input the formula reads. The DEFENDER's stance drives the
+	# missile/melee blunting and the all-around square; its facing drives the flank
+	# multiplier; the ATTACKER's own stance drives formation_attack_factor (both square
+	# variants) and formation_melee_attack_factor (testudo), which a defender-only sweep
+	# would leave entirely unpinned; and the thinned attacker exercises the Lanchester term.
 	var cases: Array = [
-		{"name": "frontal melee", "facing": Vector2.DOWN, "mode": Unit.FORMATION_NORMAL},
-		{"name": "flanked melee", "facing": Vector2.RIGHT, "mode": Unit.FORMATION_NORMAL},
-		{"name": "rear melee", "facing": Vector2.UP, "mode": Unit.FORMATION_NORMAL},
-		{"name": "shield wall", "facing": Vector2.DOWN, "mode": Unit.FORMATION_SHIELD_WALL},
-		{"name": "orbis", "facing": Vector2.RIGHT, "mode": Unit.FORMATION_SQUARE},
-		{"name": "testudo", "facing": Vector2.DOWN, "mode": Unit.FORMATION_TESTUDO},
+		{"name": "frontal melee", "facing": Vector2.DOWN, "mode": Unit.FORMATION_NORMAL,
+			"attacker_mode": Unit.FORMATION_NORMAL},
+		{"name": "flanked melee", "facing": Vector2.RIGHT, "mode": Unit.FORMATION_NORMAL,
+			"attacker_mode": Unit.FORMATION_NORMAL},
+		{"name": "rear melee", "facing": Vector2.UP, "mode": Unit.FORMATION_NORMAL,
+			"attacker_mode": Unit.FORMATION_NORMAL},
+		{"name": "shield wall", "facing": Vector2.DOWN, "mode": Unit.FORMATION_SHIELD_WALL,
+			"attacker_mode": Unit.FORMATION_NORMAL},
+		{"name": "orbis", "facing": Vector2.RIGHT, "mode": Unit.FORMATION_SQUARE,
+			"attacker_mode": Unit.FORMATION_NORMAL},
+		{"name": "testudo", "facing": Vector2.DOWN, "mode": Unit.FORMATION_TESTUDO,
+			"attacker_mode": Unit.FORMATION_NORMAL},
+		{"name": "testudo attacker", "facing": Vector2.DOWN, "mode": Unit.FORMATION_NORMAL,
+			"attacker_mode": Unit.FORMATION_TESTUDO},
+		{"name": "schiltron attacker", "facing": Vector2.DOWN, "mode": Unit.FORMATION_NORMAL,
+			"attacker_mode": Unit.FORMATION_SCHILTRON},
+		{"name": "orbis attacker", "facing": Vector2.RIGHT, "mode": Unit.FORMATION_TIGHT,
+			"attacker_mode": Unit.FORMATION_SQUARE},
 	]
 	for case in cases:
 		var pair := _frontal_pair()
@@ -117,17 +147,34 @@ func test_rate_matches_the_record_model_across_stances_and_angles() -> void:
 		var defender: Unit = pair[1]
 		defender.facing = case["facing"]
 		defender.formation_mode = case["mode"]
+		attacker.formation_mode = case["attacker_mode"]
 		attacker.soldiers = 70   # thinned: exercises the Lanchester term
 		assert_almost_eq(_per_strike(attacker, defender),
 			_rules_per_strike(attacker, defender), TOL,
 			"live and reference rates agree: %s" % case["name"])
 
 
+func test_the_attacker_stance_cases_actually_move_the_rate() -> void:
+	# The negative control for the sweep above: if formation_attack_factor and
+	# formation_melee_attack_factor did nothing, every attacker-stance case would agree with
+	# the plain one and the parity assertions would pass having tested nothing.
+	var plain := _frontal_pair()
+	var base: float = _per_strike(plain[0], plain[1])
+	for mode in [Unit.FORMATION_TESTUDO, Unit.FORMATION_SCHILTRON, Unit.FORMATION_SQUARE]:
+		var pair := _frontal_pair()
+		pair[0].formation_mode = mode
+		assert_lt(_per_strike(pair[0], pair[1]), base,
+			"an attacker in a hunkered stance hits softer than one in line")
+
+
 func test_ranged_rate_matches_the_record_model_and_skips_the_thinning_term() -> void:
-	var pair := _frontal_pair()
+	# Beyond melee contact, where a volley is what actually resolves -- see
+	# resolves_as_ranged, and the in-contact case below.
+	var pair := _volley_pair()
 	var attacker: Unit = pair[0]
 	var defender: Unit = pair[1]
-	attacker.is_ranged = true
+	assert_true(FarTierRates.resolves_as_ranged(attacker, defender),
+		"the pair is staged where the exchange really is a volley")
 	attacker.soldiers = 12   # a gutted archer regiment still volleys at full weight
 	assert_almost_eq(_per_strike(attacker, defender),
 		_rules_per_strike(attacker, defender), TOL,
@@ -139,16 +186,58 @@ func test_ranged_rate_matches_the_record_model_and_skips_the_thinning_term() -> 
 		"ranged output does not scale with the shooter's remaining strength")
 
 
-func test_ranged_reach_is_ranged_range_and_melee_reach_is_contact() -> void:
-	var pair := _frontal_pair()
+func test_a_ranged_attacker_in_melee_contact_resolves_as_melee() -> void:
+	# Unit._think gates its ranged branch on `not in_contact`, so an archer regiment whose
+	# enemy has closed falls through to the melee branch and UnitCombat.strike. The far tier
+	# mirrors that; FarTierRules, whose records carry no such rule, deliberately does not.
+	var pair := _frontal_pair()   # staged AT melee contact
 	var attacker: Unit = pair[0]
 	var defender: Unit = pair[1]
-	assert_almost_eq(FarTierRates.striking_reach(attacker, defender),
-		attacker.attack_range + Unit.RADIUS * 2.0, TOL,
-		"melee reach is the regiment contact distance")
 	attacker.is_ranged = true
-	assert_almost_eq(FarTierRates.striking_reach(attacker, defender), Unit.RANGED_RANGE, TOL,
-		"a ranged formation reaches RANGED_RANGE")
+	assert_false(FarTierRates.resolves_as_ranged(attacker, defender),
+		"an archer regiment in melee contact is fighting, not shooting")
+	assert_almost_eq(FarTierRates.striking_reach(attacker, defender),
+		FarTierRates.melee_contact_distance(attacker, defender), TOL,
+		"so it reaches melee contact, not RANGED_RANGE")
+	assert_almost_eq(FarTierRates.attack_interval(attacker, defender),
+		attacker.melee_attack_interval(), TOL,
+		"and strikes on its melee cadence, not RANGED_INTERVAL")
+	# The blunting swaps with the branch: a TESTUDO defender's all-round missile cover stops
+	# applying, and its (absent) melee cover does not replace it.
+	defender.formation_mode = Unit.FORMATION_TESTUDO
+	var melee_only: Unit = _far_unit(1, attacker.position, attacker.facing)
+	assert_almost_eq(FarTierRates.strike_expectation(attacker, defender),
+		FarTierRates.strike_expectation(melee_only, defender), TOL,
+		"in contact, a ranged regiment's expectation is the melee one")
+	# Backing it off past contact flips every one of those back.
+	attacker.position = Vector2(0.0, Unit.RANGED_RANGE - 1.0)
+	assert_true(FarTierRates.resolves_as_ranged(attacker, defender),
+		"and out of contact it is a volley again")
+	assert_almost_eq(FarTierRates.attack_interval(attacker, defender),
+		Unit.RANGED_INTERVAL, TOL, "on the volley cadence")
+
+
+func test_the_precomputed_flank_multiplier_matches_the_derived_one() -> void:
+	# FarTierCombat computes the flank reading once and passes it into both the rate and the
+	# morale bookkeeping. This pins the override against the value casualty_rate derives for
+	# itself, so the two cannot drift -- REAR_MORALE_EXTRA being 0.0 hides the morale half.
+	for facing in [Vector2.DOWN, Vector2.RIGHT, Vector2.UP]:
+		var pair := _frontal_pair()
+		pair[1].facing = facing
+		var flank: float = UnitCombat.flank_multiplier(pair[1], pair[0])
+		assert_almost_eq(FarTierRates.casualty_rate(pair[0], pair[1], -1.0, flank),
+			FarTierRates.casualty_rate(pair[0], pair[1]), TOL,
+			"passing the precomputed flank multiplier matches deriving it")
+
+
+func test_ranged_reach_is_ranged_range_and_melee_reach_is_contact() -> void:
+	var pair := _frontal_pair()
+	assert_almost_eq(FarTierRates.striking_reach(pair[0], pair[1]),
+		pair[0].attack_range + Unit.RADIUS * 2.0, TOL,
+		"melee reach is the regiment contact distance")
+	var volley := _volley_pair()
+	assert_almost_eq(FarTierRates.striking_reach(volley[0], volley[1]), Unit.RANGED_RANGE, TOL,
+		"a ranged formation out of contact reaches RANGED_RANGE")
 
 
 # --- the resolution step on bare units ---------------------------------------------------
@@ -242,6 +331,52 @@ func test_a_close_tier_formation_is_not_touched_by_the_far_tier_pass() -> void:
 	assert_eq(attacker.soldiers, attacker.max_soldiers, "on both sides")
 
 
+# --- the close tier's own disengage and facing gates, inherited ----------------------------
+
+func test_a_formation_under_a_plain_move_order_does_not_grind_down_a_router() -> void:
+	# Unit._think's melee branch is gated on `in_contact and (target_enemy != null or not
+	# has_move_target or chasing or MARCH_TO_CONTACT)`, so a plain move order past a broken
+	# enemy is a DISENGAGE: the close tier marches by without striking. The far tier inherits
+	# that by refusing to book attrition unless _think already put the unit in FIGHTING.
+	var router: Unit = _far_unit(0, Vector2.ZERO, Vector2.DOWN, 40)
+	router.state = Unit.State.ROUTING
+	router.remove_from_group("units")
+	router.add_to_group("routers")
+	var gap: float = router.attack_range + Unit.RADIUS * 2.0 - 1.0
+	var marcher: Unit = _far_unit(1, Vector2(0.0, gap), Vector2.UP)
+	marcher.state = Unit.State.MOVING   # marching past, not fighting
+	marcher.has_move_target = true
+	marcher.target_enemy = null
+	for _i in range(120):
+		FarTierCombat.tick_all(_combatants(), _tick_seconds())
+	assert_eq(router.soldiers, router.max_soldiers,
+		"a disengaging formation marches past the router instead of running it down")
+	assert_null(FarTierCombat.engaged_target(marcher),
+		"and has no engaged target while it is not fighting")
+	# The same formation, now actually fighting, does run it down -- the negative control
+	# that separates the gate from a staging mistake.
+	marcher.state = Unit.State.FIGHTING
+	for _i in range(120):
+		FarTierCombat.tick_all(_combatants(), _tick_seconds())
+	assert_lt(router.soldiers, router.max_soldiers,
+		"once it commits to the fight, the same formation does run the router down")
+
+
+func test_no_attrition_while_the_men_are_mid_turn() -> void:
+	# _face_for_action withholds the close tier's strike until the front is brought to bear;
+	# is_maneuver_turning() is the state that survives the tick for the far tier to read.
+	var pair := _frontal_pair()
+	var attacker: Unit = pair[0]
+	var defender: Unit = pair[1]
+	attacker._engage_turn_target = Vector2(0.0, -1.0)
+	assert_true(attacker.is_maneuver_turning(), "the attacker is mid-arc")
+	assert_null(FarTierCombat.engaged_target(attacker),
+		"a formation still turning onto its target books nothing")
+	attacker._engage_turn_target = Vector2.ZERO
+	assert_not_null(FarTierCombat.engaged_target(attacker),
+		"and resumes the moment the front is brought to bear")
+
+
 # --- guards and degenerate inputs ---------------------------------------------------------
 
 func test_a_null_formation_neither_fights_nor_is_struck() -> void:
@@ -304,6 +439,25 @@ func test_unit_combat_strike_declines_for_a_far_tier_attacker() -> void:
 	UnitCombat.strike(attacker, defender)
 	assert_lt(defender.soldiers, defender.max_soldiers,
 		"a close-tier attacker's strike still resolves normally")
+
+
+func test_a_far_tier_strike_still_spends_the_charge() -> void:
+	# Both paths inside strike() zero _approach_velocity so the momentum bonus lands on the
+	# contact-making blow only. The far-tier early return has to do the same: its own model
+	# carries no charge term, so an unspent velocity would sit on the unit and then cash an
+	# undeserved bonus on its first close-tier strike after promotion.
+	var pair := _frontal_pair()
+	var attacker: Unit = pair[0]
+	var defender: Unit = pair[1]
+	attacker.is_cavalry = true
+	attacker._approach_velocity = Vector2(0.0, -Unit.CHARGE_REFERENCE_SPEED)
+	assert_gt(UnitCombat.charge_multiplier(attacker, defender), 1.0,
+		"the staged approach really would have carried a charge bonus")
+	UnitCombat.strike(attacker, defender)
+	assert_eq(attacker._approach_velocity, Vector2.ZERO,
+		"the far-tier early return spends the charge rather than banking it")
+	assert_almost_eq(UnitCombat.charge_multiplier(attacker, defender), 1.0, TOL,
+		"so a later close-tier strike gets no leftover momentum bonus")
 
 
 func test_unit_combat_shoot_declines_for_a_far_tier_attacker() -> void:
@@ -392,6 +546,32 @@ func test_a_live_battle_resolves_far_tier_combat_through_the_battle_tick() -> vo
 		"and broke, through Unit._rout(), once its morale was spent")
 	assert_gt(caps["rout_tick"], caps["first_casualty_tick"] - 1,
 		"the rout followed the casualties rather than preceding them")
+
+
+func test_the_casualty_carry_survives_a_real_snapshot_round_trip() -> void:
+	# The carry is mutable sim state, so a PLAYBACK rewind that dropped it would resume a
+	# mid-fight formation from zero and diverge. Unit.to_snapshot_dict/apply_snapshot_dict's
+	# field-level contract is covered in test_unit_snapshot.gd; this is the proof that a REAL
+	# Battle.restore_snapshot -- which respawns the units from scratch -- carries it.
+	var battle: Node2D = _spawn_duel()
+	var weak: Unit = _duel_unit(1)
+	assert_not_null(weak, "the scenario spawned the team-1 formation")
+	if weak == null:
+		battle.free()
+		return
+	var uid: int = weak.uid
+	while battle.current_tick() < 260 and weak._far_tier_casualty_carry <= 0.0:
+		await get_tree().physics_frame
+	var carry: float = weak._far_tier_casualty_carry
+	assert_gt(carry, 0.0, "the fight left a sub-soldier fraction standing to preserve")
+	var snap: Dictionary = battle.capture_snapshot()
+	battle.restore_snapshot(snap)
+	var restored: Unit = battle.unit_by_uid(uid) as Unit
+	assert_not_null(restored, "the formation came back from the snapshot")
+	if restored != null:
+		assert_almost_eq(restored._far_tier_casualty_carry, carry, TOL,
+			"the carry survives, so a mid-fight rewind resumes from the same fraction")
+	battle.free()
 
 
 func test_the_far_tier_fight_is_deterministic_under_a_forced_seed() -> void:
