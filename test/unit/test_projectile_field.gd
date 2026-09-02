@@ -275,7 +275,7 @@ func test_a_regiment_with_no_lodged_arrows_reports_none() -> void:
 
 # Far enough out that the whole block sees the arrow arrive on essentially one bearing, so
 # the outcome is the arc's and not the block's width.
-const SHOT_STANDOFF: float = 1500.0
+const SHOT_STANDOFF: float = 1500.0   # tuned in wu
 
 # Off the shielded shoulder and off the bare one. Inside [-50, +70] on one side and outside
 # it on the other, but outside a hold-angle-free [-60, +60] on BOTH -- so the two differ only
