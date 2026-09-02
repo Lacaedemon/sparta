@@ -78,7 +78,7 @@ reverted #1452/#1453 manifests, rejected.
 ## Design docs cite only paths that exist
 
 A plausible-looking path -- a test file named after the class it would test,
-or a glob over a demo-input prefix -- reads as real, and is the commonest way
+or a glob over a demo-input prefix -- reads as real, and is a common way
 a phantom path gets published in a design doc.
 
 - **Do:** run `git ls-files <path>` (or the glob) and cite only what it
@@ -153,9 +153,14 @@ complete verdict" in part file 07).
 Nothing server-side catches this either: the `main` ruleset has no required
 status checks (#1432), so under `mwc` the agent is the only gate.
 
-- **Do:** run `check-pr-fully-clean.py` (the section above) and branch on its
-  exit status three ways: 0 clean, 1 not clean, anything else means it did not
-  answer.
+- **Do:** run `check-pr-fully-clean.py` (the section above) and read its exit
+  status three ways: 0 means nothing blocking was found, 1 means not clean or
+  a crash (a traceback with no finding bullets), anything else means it did
+  not answer.
+  Exit 0 is not approval on its own: the one printed line that still matters
+  is `verdict scan:`, and `latest = NONE` there means no review at all (a
+  quota-skip notice is enough to occupy that slot), so fall back to the hand
+  read below.
 
 - **Do:** when the instrument cannot run, read every surface by hand and
   paginate each: `gh api repos/<owner>/<repo>/pulls/<N>/reviews --paginate`

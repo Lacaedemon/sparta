@@ -115,11 +115,3 @@ Our lab's work rules encoded throughout `ai-config` apply unconditionally to all
    - **Auto-merge under `mwc`**: If `mwc` is active for the session, once CI passes AND the code review comment payload is verified **Clean / Approved** (never merge over "Needs more work" even if the check-run job status passed), execute the merge and post-merge wrap-up immediately without stopping.
 3. **Mandatory Timers for Async Work**: Whenever waiting on in-flight CI runs, background tasks, or subagents before completing a task or merge, **ALWAYS** schedule a timer (`schedule`) or proceed to other active work. Never end a turn waiting on asynchronous execution without a scheduled wakeup handle.
 4. **Memory & Skill PR Discipline**: Every addition or update to memories, instructions, or skills (including `cai`, `memorize`, and `push-memory`) **MUST** be delivered via a branch + PR with requested reviewer (`d-morrison`) and driven to clean. Never edit configuration or memory files directly on `main` or disk without a PR.
-
-## Proactive corrective actions & PR workflow
-
-Whenever a gap, missing PR, or workflow requirement is identified, or when a capability/memory instruction is given:
-1. **Act immediately**: Never wait for a user follow-up prompt to take corrective action. Branch, commit, open the PR, request review from `d-morrison`, and drive to clean in the exact same response.
-2. **Auto-merge under `mwc`**: If `mwc` is active for the session, once CI passes AND the code review comment payload is verified **Clean / Approved** (never merge over "Needs more work" even if the check-run job status passed), execute the merge and post-merge wrap-up immediately without stopping.
-
-
