@@ -400,10 +400,12 @@ var scenario: Array = []
 # Which Faction.Type each side fights under this battle, indexed by team number. Purely an
 # IDENTITY: nothing in the simulation reads it, and the historical formation/form-up/doctrine
 # names it unlocks are display text the HUD renders (see HUD.set_team_factions). Set from
-# CustomMatchup's pending choice in _ready when a prebattle matchup armed one, and settable
-# BEFORE the node enters the tree (like drill_mode/scenario above) so a demo/test can stage a
-# specific side. Faction.NONE for both by default, which every Faction display helper renders
-# as the plain name -- so a battle reached by any other path reads exactly as it did before.
+# CustomMatchup's pending choice in _ready when a prebattle matchup armed one AND this is
+# still its declared Faction.NONE pair, and settable BEFORE the node enters the tree (like
+# drill_mode/scenario above) so a demo/test can stage a specific side -- a value staged that
+# way wins over the prebattle choice. Faction.NONE for both by default, which every Faction
+# display helper renders as the plain name -- so a battle reached by any other path reads
+# exactly as it did before.
 var team_factions: Array[int] = [FactionRef.NONE, FactionRef.NONE]
 
 # Derived replay state-snapshot cache: lets a PLAYBACK rewind resume from a
@@ -608,9 +610,11 @@ func _ready() -> void:
 		# A custom battle configured via PrebattleScreen replaces the default two-line
 		# spawn with the player's own chosen rosters, same as a demo scenario does. The
 		# screen's faction choices ride along so the HUD can name each side's historical
-		# formations; a demo/test that set team_factions itself keeps its own value, since
-		# only a real prebattle hand-off ever arms CustomMatchup.
-		team_factions = [CustomMatchup.pending_faction_0, CustomMatchup.pending_faction_1]
+		# formations -- but only when nothing has already staged an identity, so a
+		# demo/test that set team_factions itself before entering the tree keeps its own
+		# value rather than having the prebattle choice stamped over it.
+		if _team_factions_are_default():
+			team_factions = [CustomMatchup.pending_faction_0, CustomMatchup.pending_faction_1]
 		_spawn_scenario(_custom_matchup_scenario(CustomMatchup.pending_team_0, CustomMatchup.pending_team_1))
 	else:
 		# Player army (team 0) deploys along the top, facing down.
@@ -1193,6 +1197,17 @@ func _loadout_for_type(loadout: Array, type_name: String) -> Dictionary:
 		if str(d["name"]) == type_name:
 			return d
 	return {}
+
+
+## True while no caller has staged a faction identity -- i.e. `team_factions` still holds the
+## Faction.NONE pair it is declared with. A prebattle matchup's own faction choice is only
+## stamped over an untouched default, so a demo/test that assigned team_factions before the
+## node entered the tree keeps whatever it staged.
+func _team_factions_are_default() -> bool:
+	for team_faction in team_factions:
+		if int(team_faction) != FactionRef.NONE:
+			return false
+	return true
 
 
 ## Builds a `scenario` spec array (see _spawn_scenario) for a custom battle configured via

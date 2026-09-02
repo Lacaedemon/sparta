@@ -226,3 +226,25 @@ func test_a_battle_with_no_pending_matchup_keeps_both_sides_factionless() -> voi
 	var hud: Node = battle.get_node("HUD")
 	assert_eq(hud.faction_for_team(0), FactionScript.NONE,
 			"a standalone battle reads exactly as it did before factions existed")
+
+
+func test_a_staged_faction_survives_a_pending_matchup() -> void:
+	# A demo/test stages team_factions before the battle enters the tree, so the value it
+	# staged is the one the HUD must render -- the prebattle screen's own choice only fills
+	# in the untouched Faction.NONE default, and never stamps over a deliberate stage.
+	CustomMatchupScript.pending_team_0 = ["Spartan Hoplites"]
+	CustomMatchupScript.pending_team_1 = ["Hastati"]
+	CustomMatchupScript.pending_faction_0 = FactionScript.Type.SPARTA
+	CustomMatchupScript.pending_faction_1 = FactionScript.Type.ROME
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	# Battle.team_factions is Array[int], so the staged pair has to be typed to assign.
+	var staged: Array[int] = [FactionScript.Type.CARTHAGE, FactionScript.Type.MACEDON]
+	battle.team_factions = staged
+	add_child_autofree(battle)
+	await get_tree().physics_frame
+
+	assert_eq(battle.team_factions, staged,
+			"the staged pair wins over the prebattle choice")
+	var hud: Node = battle.get_node("HUD")
+	assert_eq(hud.faction_for_team(0), FactionScript.Type.CARTHAGE)
+	assert_eq(hud.faction_for_team(1), FactionScript.Type.MACEDON)
