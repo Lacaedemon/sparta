@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Order.new_file_double(0) hardens a constructor contract on an unreachable path -- the sole caller, Unit.quarter_turn_explicatio, passes a literal 1; Battle.enqueue_file_double never routes through this factory (it resolves files itself and emits an absolute frontage command). So there is no battle scenario where the old vs. new behavior differs visibly. The fix is exercised by a GUT unit test (test/unit/test_order.gd) asserting the push_error and the coerced direction directly on the constructed Order."
+}

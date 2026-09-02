@@ -190,6 +190,20 @@ func test_new_file_double_is_a_relative_unresolved_frontage_step() -> void:
 	assert_eq(narrow.dir, -1, "any negative direction normalizes to a duplicatio (-1)")
 
 
+func test_new_file_double_rejects_zero_direction_and_defaults_to_explicatio() -> void:
+	# direction == 0 has no widen/narrow meaning for this RELATIVE-only factory. Left
+	# unguarded, dir would stay 0 and Unit._apply_file_double_step would read the step as
+	# ABSOLUTE, applying `frontage`'s still-unresolved -1 default (clamped to a single file
+	# by set_frontage) instead of resolving a live width. The fix must both warn AND still
+	# produce a well-formed step, so assert both halves rather than only the push_error.
+	var step := Order.new_file_double(0)
+	assert_push_error("direction must be nonzero")
+	assert_eq(step.type, Order.Type.FRONTAGE)
+	assert_eq(step.dir, 1,
+			"coerced to an explicatio rather than left at 0 -- that is the ABSOLUTE branch's marker")
+	assert_eq(step.frontage, -1, "still unresolved -- arming still resolves it, same as any relative step")
+
+
 func test_new_combo_links_every_step_back_to_the_composite() -> void:
 	var turn := Order.new_quarter_turn(1)
 	var widen := Order.new_file_double(1)

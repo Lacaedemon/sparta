@@ -665,7 +665,18 @@ static func new_frontage(files: int, anchor_offset: float = 0.0) -> Order:
 ## from the unit's live width -- in the frame of its CURRENT facing -- only when the step
 ## arms (Unit._arm_combo_step), since a step queued behind an in-place turn can't know
 ## its starting width at issue time. `frontage` stays -1 (unresolved) until then.
+## `direction == 0` has no widen/narrow meaning -- this factory only ever builds a RELATIVE
+## step, so `dir` must land nonzero or `_apply_file_double_step` reads it as an ABSOLUTE
+## step and applies the still-unresolved `frontage` default. Rejected with a push_error and
+## coerced to an explicatio (+1) rather than left at 0, so a caller that slips through this
+## contract violation still gets a well-formed step instead of a corrupted one. Callers
+## wanting an absolute file count belong on `new_frontage` instead.
 static func new_file_double(direction: int) -> Order:
+	if direction == 0:
+		push_error("Order.new_file_double: direction must be nonzero (0 has no relative " +
+				"widen/narrow meaning); defaulting to an explicatio. Use new_frontage for " +
+				"an absolute file count.")
+		direction = 1
 	var o := Order.new()
 	o.type = Type.FRONTAGE
 	o.dir = signi(direction)
