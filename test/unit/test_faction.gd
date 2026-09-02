@@ -199,3 +199,55 @@ func test_carthage_names_are_punic_or_greek_not_arabic() -> void:
 	assert_eq(form_up[4], "epallax")
 	assert_eq(form_up[5], "dexion keras")
 	assert_eq(form_up[6], "euonymon keras")
+
+
+## The label strings HISTORICAL_FORMATIONS repeats across faction rows, and the number of rows
+## each stands in. The doc block above that table states this same set in prose, so the two
+## have to move together; this constant pins the derived side of that pair.
+const EXPECTED_CROSS_FACTION_SHARED_LABELS := {
+	"synaspismos": 3,
+	"kyklos": 3,
+	"plinthion": 2,
+	"phalanx": 2,
+	"chelone": 2,
+	"araios": 2,
+}
+
+
+## Sorted "label=count" rows. Compared as a string rather than by Dictionary equality so the
+## assertion means the same thing on any engine version and a mismatch prints both sides.
+func _shared_label_summary(counts: Dictionary) -> String:
+	var keys: Array = counts.keys()
+	keys.sort()
+	var rows := PackedStringArray()
+	for k in keys:
+		rows.append("%s=%d" % [str(k), int(counts[k])])
+	return ", ".join(rows)
+
+
+func test_cross_faction_shared_labels_match_the_doc_block() -> void:
+	# Derive, at runtime, every label HISTORICAL_FORMATIONS uses in more than one faction row,
+	# with the number of rows it stands in. Counted per ROW rather than per entry: a label
+	# repeated inside a single faction is a different defect, and
+	# test_a_factions_own_labels_are_all_distinct already forbids that one.
+	var row_counts: Dictionary = {}
+	for faction_id in Faction.HISTORICAL_FORMATIONS:
+		var row: Dictionary = Faction.HISTORICAL_FORMATIONS[faction_id]
+		var counted_in_this_row: Dictionary = {}
+		for mode in row:
+			var label: String = str(row[mode])
+			if counted_in_this_row.has(label):
+				continue
+			counted_in_this_row[label] = true
+			row_counts[label] = int(row_counts.get(label, 0)) + 1
+
+	var shared: Dictionary = {}
+	for label in row_counts:
+		if int(row_counts[label]) > 1:
+			shared[label] = row_counts[label]
+
+	assert_eq(_shared_label_summary(shared),
+			_shared_label_summary(EXPECTED_CROSS_FACTION_SHARED_LABELS),
+			"Cross-faction shared labels changed. The doc block above HISTORICAL_FORMATIONS in "
+					+ "scripts/Faction.gd names this set in prose, with a row count per string "
+					+ "-- update that paragraph to match, then update this expectation.")
