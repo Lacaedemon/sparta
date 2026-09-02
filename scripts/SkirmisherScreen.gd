@@ -16,9 +16,8 @@ const DIRECTIVE_SCREEN := "screen"
 ## Break off and fall back through this interval in the heavy line.
 const DIRECTIVE_WITHDRAW := "screen_withdraw"
 
-## How far ahead of the heavy line's own median depth the contest line sits. One ranged reach
-## (Unit.RANGED_RANGE, 8 m), so the screen's own fire covers the ground immediately in front
-## of the line: a band a few metres out, not a hundred-metre missile duel.
+## How far ahead of the heavy line's median depth the contest line sits: one ranged reach
+## (Unit.RANGED_RANGE, 8 m), a band a few metres out rather than a hundred-metre duel.
 const SCREEN_LEAD_DISTANCE := 8.0 * WorldScaleRef.WU_PER_M
 
 ## How close a living enemy may come to a screening unit before it breaks off and withdraws.
