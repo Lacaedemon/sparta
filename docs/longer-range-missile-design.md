@@ -62,14 +62,14 @@ Per [`docs/units-convention.md`](units-convention.md) any constant derived from 
 | Javelin, thrown on the run | 20-30 | 400-600 | 1-2 shafts carried |
 | Pilum | 15-20 | 300-400 | 2 shafts carried |
 | Self bow | 100-150 | 2000-3000 | 6-12 per minute |
-| Sling | 150-180 | 3000-3600 | 4-8 per minute |
+| Sling | 180-200 | 3600-4000 | 4-8 per minute |
 | Composite bow | 150-200 | 3000-4000 | 6-12 per minute |
 | Bolt-shooter | 300-400 | 6000-8000 | 2-4 per minute |
 | Stone-thrower | around 370 | around 7400 | under 1 per minute |
 
 The scale problem is visible directly in that column.
-`Battle.FIELD` is 1600 x 1200 wu, 80 x 60 m (`scripts/Battle.gd`), so a sling at 3600 wu outranges the default battlefield along its long axis twice over, and a bolt-shooter outranges it four times over.
-Even the deployment design's *Historical* preset, a 4000-wu (200 m) line gap in a 4620-wu (231 m) field, is a battlefield on which slings and composite bows can reach the enemy line from the moment of deployment and artillery can reach past it.
+`Battle.FIELD` is 1600 x 1200 wu, 80 x 60 m (`scripts/Battle.gd`), so a sling at 3600 wu outranges the default battlefield along its long axis twice over, and a bolt-shooter outranges it between three and five times over.
+Even the deployment design's *Historical* preset, a 4000-wu (200 m) line gap in a 4620-wu (231 m) field, is a battlefield on which artillery reaches the enemy line from the moment of deployment and shoots well past it, while a sling or composite bow reaches that line only at the very top of its band.
 A longer-range missile model is therefore not a retune of one constant;
 it changes what the opening of a battle is.
 
@@ -99,7 +99,7 @@ Four other values are defined in terms of that constant or pinned against it, an
 ### The firing path
 
 `Unit._think` sets `_under_fire` by scanning every node in the `units` group for an alive, non-routing enemy unit with `is_ranged` inside `RANGED_RANGE`, once per unit per tick (`scripts/Unit.gd`);
-the flag drives the AUTO pace ladder's jog escalation and nothing else.
+the flag drives the AUTO pace ladder's jog escalation, a morale erosion term, and the gate that blocks resting recovery while it is set (`scripts/UnitMorale.gd`).
 
 The fire branch itself requires `is_ranged`, no melee contact, and `dist_sq <= RANGED_RANGE * RANGED_RANGE`, plus a target-or-not-disengaging disjunction.
 It sets `State.FIGHTING`, turns the unit to face with `_face_for_action` before loosing, then starts a `RANGED_INTERVAL` cooldown and calls `UnitCombat.shoot`.
@@ -200,17 +200,26 @@ without them there is no battlefield on which a 180 m weapon differs from a 20 m
 
 ### Morale under fire without reply
 
-Today `_under_fire` affects pace and nothing else, and morale erodes only through casualties, via `UnitCombat.register_casualties`.
-A unit shot at all day by a weapon it cannot answer loses morale in the game exactly in proportion to the men it loses, with no additional cost for the helplessness.
+A suppression term already exists.
+`UnitMorale` subtracts `UNDER_FIRE_MORALE_EROSION_PER_SEC * delta`, 1.5 morale per second, for as long as `u._under_fire` is set, and the same flag gates the resting-recovery branch immediately below it (`scripts/UnitMorale.gd`).
+So the game does charge something for being shot at, over and above the casualties.
 
-The historical picture is the opposite:
+What it does not do is distinguish a unit that can shoot back from one that cannot, and the term has no floor.
+Rout fires at `morale <= 0.0` (`scripts/UnitMorale.gd`), so roughly 67 s of continuous fire routs a full-morale unit that has taken no casualties at all.
+At the 8 m range the game has today that is close to unreachable, because a unit inside 8 m is in contact within a second or two.
+At 180 m it is the ordinary outcome of standing still, which is the hazard this design has to close before the ranges grow.
+
+The historical picture is of a cost that shapes a formation rather than destroys it:
 Xenophon's whole account of the retreat is of a heavy column that could not close with light troops and had to acquire missile arms of its own to make the harassment stop (*Anabasis* 3.3.7-18).
-The mechanism this design proposes is a suppression term, not a second casualty channel:
-a unit that is `_under_fire` and cannot return fire, because it is not `is_ranged` or its own missile range does not reach the shooter, erodes morale at a slow rate for as long as that holds, floored so it can shake a formation without breaking it on its own.
+The column was harried and slowed across the whole retreat, not broken by the harassment.
 
-It has to be bounded carefully.
+The proposal is therefore two edits to the existing term rather than a new mechanism.
+Gate it on an inability to reply, so a unit that is `is_ranged` and whose own missile range reaches the shooter stops paying it.
+And give it a floor, a morale value below which incoming fire alone stops eroding, so suppression can shake a formation without breaking it unaided.
 Suppression that can rout a unit unaided would let a single archer regiment beat a phalanx by standing still, which no source supports and which the existing rout-contagion machinery would then amplify across the line.
-The floor is the parameter that prevents it, and Phase 3's acceptance test is exactly that a suppressed unit does not break without casualties.
+
+The floor is a fix to present-day behaviour, not only a guard on behaviour this design would add:
+Phase 3's floor test fails against `main` today rather than describing something new.
 
 ### Ammunition
 
@@ -220,7 +229,7 @@ At 180 m with a suppression term it is not, because "stand off and shoot until t
 
 Ammunition is what prices it, and it is also what makes the historical light-troop pattern legible:
 skirmishers shot their bundle off, withdrew through the intervals, and were done for the phase.
-A javelineer's limit is already historical rather than invented, since a legionary carried two pila (Goldsworthy 1996).
+A thrown-shaft limit is already historical rather than invented, since a legionary carried two pila (Goldsworthy 1996).
 
 ## Proposed mechanism
 
@@ -229,7 +238,9 @@ Per this repo's caller-configurable convention, every value named here enters th
 
 ### A missile profile in the loadout registry
 
-`scripts/LoadoutRegistry.gd` already interns weapon, shield, armor, and mount records on disjoint id ranges, and converts authored metric lengths once at type-construction time through `WorldScale.m_to_wu`, which that function's own doc comment describes as its purpose.
+`scripts/LoadoutRegistry.gd` already interns weapon, shield, armor, and mount records on disjoint id ranges, and the record types it constructs convert authored metric lengths once at construction time:
+`Weapon.make` sets `reach_wu` from `reach_m` through `WorldScaleRef.m_to_wu` (`scripts/Weapon.gd`), which is the only call site of that helper anywhere in `scripts/`.
+The registry file itself holds no `WorldScale` reference, so the proposed profile's conversion belongs in its record type's `make` rather than in the registry.
 A missile profile is the same shape, on its own id range.
 
 Proposed fields, with defaults chosen so that an unset profile reproduces today's numbers exactly:
@@ -297,25 +308,27 @@ Demo: a skip manifest, since a design note films nothing.
 ### Phase 2 (per-type missile profiles, close-tier ranges only)
 
 Add the missile profile to `scripts/LoadoutRegistry.gd`, the `Unit.missile_range` instance field, and the read-site rewrites, including the three de-weldings above.
-Ranges stay inside `FormationTier.PROMOTE_RANGE` (400 wu, 20 m) in this phase, so nothing depends on far-tier combat:
-the javelin and pilum rows of the table are in scope, and the bow and sling rows are authored but not yet assigned to a roster unit.
+Ranges stay strictly inside `FormationTier.PROMOTE_RANGE` (400 wu, 20 m) in this phase, so nothing depends on far-tier combat;
+promotion tests `< PROMOTE_RANGE` (`scripts/FormationTier.gd`), so 400 wu itself is already outside the bound.
+Only the pilum row fits, authored at the bottom of its band (15 m, 300 wu).
+The javelin's 400-600 wu band starts at that bound and so waits for the far-tier work, and the bow and sling rows are authored but not yet assigned to a roster unit.
 
 Acceptance tests: a unit with no profile reproduces today's `RANGED_RANGE`, `RANGED_INTERVAL`, and `RANGED_DAMAGE_FACTOR` exactly;
 an existing replay plays back bit-identically;
 a pilum unit fires at its own range and not at the global one;
 `RALLY_CONTACT_RADIUS` and `Battle.ROUT_MARGIN` no longer move when a unit's missile range changes.
 
-Demo: a javelin skirmisher opening on a heavy line at a distance a bow unit cannot match, verified against the standard demo defect checklist.
+Demo: a pilum-armed unit loosing at its own 300-wu range while an unprofiled unit beside it holds for the global 160-wu one, verified against the standard demo defect checklist.
 
 ### Phase 3 (suppression morale and ammunition)
 
-Add the suppression term keyed off `_under_fire` plus an inability to reply, and the ammunition counter with the profile's `ammo` field.
+Gate the existing `_under_fire` morale erosion on an inability to reply, add the floor it currently lacks, and add the ammunition counter with the profile's `ammo` field.
 
-Proposed parameters and defaults: a suppression rate in morale per second, defaulting low enough that a minute under fire is a shake rather than a break;
-a suppression floor as a morale value below which suppression alone stops eroding;
+Proposed parameters and defaults: the suppression rate in morale per second, with today's `UNDER_FIRE_MORALE_EROSION_PER_SEC` (1.5) becoming the configurable default;
+a suppression floor as a morale value below which incoming fire alone stops eroding, which the term has no equivalent of today;
 `ammo` unlimited by default so unprofiled units are unchanged.
 
-Acceptance tests: a unit under fire with no reply loses morale and does not rout without casualties, at the default floor;
+Acceptance tests: a unit under fire with no reply erodes morale and halts at the default floor instead of routing, which is a regression test against present-day `main` rather than a new capability;
 a unit that can reply is not suppressed;
 a unit with finite ammunition stops firing when empty and stops suppressing the enemy at the same moment.
 
