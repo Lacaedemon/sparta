@@ -148,10 +148,10 @@ func test_the_form_up_menu_names_the_player_factions_own_manoeuvres() -> void:
 	hud.set_team_factions([FactionScript.Type.SPARTA, FactionScript.Type.ROME])
 	var popup: PopupMenu = hud._menu_button.get_popup()
 	var echelon_right: int = popup.get_item_index(HUDScript.MENU_FORMUP_ECHELON_RIGHT)
-	assert_string_contains(popup.get_item_text(echelon_right), "(lophos dexios)",
+	assert_string_contains(popup.get_item_text(echelon_right), "(dexion keras)",
 			"the default-picker item reads in the PLAYER's language, not the enemy's")
 	var cycle_right: int = popup.get_item_index(HUDScript.MENU_FORMUP_CYCLE_ECHELON_RIGHT)
-	assert_string_contains(popup.get_item_text(cycle_right), "(lophos dexios)",
+	assert_string_contains(popup.get_item_text(cycle_right), "(dexion keras)",
 			"the Y-key cycle checkbox for the same mode shares that label")
 
 
@@ -176,12 +176,12 @@ func test_the_checkerboard_item_never_doubles_the_quincunx() -> void:
 
 func test_a_non_roman_faction_reads_its_own_checkerboard_name_alone() -> void:
 	# Rome's "quincunx" is the plain label's own gloss, so a Carthaginian menu must REPLACE
-	# it rather than read "Checkerboard (quincunx) (shatranj)" -- Rome's word on every menu.
+	# it rather than read "Checkerboard (quincunx) (epallax)" -- Rome's word on every menu.
 	var hud := _hud()
 	hud.set_team_factions([FactionScript.Type.CARTHAGE])
 	var popup: PopupMenu = hud._menu_button.get_popup()
 	var idx: int = popup.get_item_index(HUDScript.MENU_FORMUP_CHECKERBOARD)
-	assert_eq(popup.get_item_text(idx), "Checkerboard (shatranj)")
+	assert_eq(popup.get_item_text(idx), "Checkerboard (epallax)")
 
 
 func test_the_form_up_menu_stays_plain_without_a_faction() -> void:

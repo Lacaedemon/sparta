@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/replay-line-index-checkerboard-1484.json",
+  "caption": "Replays now persist a form-up's line index (#1484). Six Infantry cohorts spawn in a ragged clump facing south, are box-selected, and a single left-to-right checkerboard drag turns them about and deploys them north into a quincunx -- three cohorts on the front line, three offset behind it. That gesture is where Unit.line_index is stamped, and Replay.record_order used to drop it, so a saved recording of exactly this deploy replayed with every unit's front/reserve assignment silently reset. The order now carries the line index into the replay stream (omitted when unchanged, so old replays still load). The line index has no on-screen representation yet -- nothing reads is_front_line()/is_reserve_line() until the flank-vulnerability and withdrawal mechanics land -- so what the clip shows is the live deploy whose assignments the fix preserves, recorded through the changed recording call site; the persistence itself is verified by test/unit/test_replay.gd's round-trip and back-compat cases.",
+  "fixed_fps": 30,
+  "max_frames": 460,
+  "fps": 20,
+  "width": 640
+}
