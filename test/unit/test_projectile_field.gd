@@ -264,3 +264,81 @@ func test_a_regiment_with_no_lodged_arrows_reports_none() -> void:
 	assert_eq(field.lodged_arrows(999), 0, "an unknown regiment has caught nothing")
 	assert_eq(field.lodged_weight_kg(999), 0.0, "and carries no weight")
 	assert_eq(field.shield_sag(s[3]), 0.0, "a fresh wall has lost no cover")
+
+
+# --- the arc reads each man's OWN heading and hold angle ----------------------
+# Every test above shoots a uniformly-faced block from dead ahead or dead astern, where each
+# man's facing equals his regiment's and the scutum's forward hold pose changes no outcome.
+# These pin both per-soldier lookups, and the asymmetry the hold pose puts into the arc: a
+# scutum's 120 degrees held at +10 covers [-50, +70] in the man's own frame, so a shot off
+# his shielded shoulder is covered while its mirror off the bare one is not.
+
+# Far enough out that the whole block sees the arrow arrive on essentially one bearing, so
+# the outcome is the arc's and not the block's width.
+const SHOT_STANDOFF: float = 1500.0   # tuned in wu
+
+# Off the shielded shoulder and off the bare one. Inside [-50, +70] on one side and outside
+# it on the other, but outside a hold-angle-free [-60, +60] on BOTH -- so the two differ only
+# if the hold angle is actually read.
+const SHIELDED_SHOULDER_DEG: float = 62.0
+const BARE_SHOULDER_DEG: float = -62.0
+
+
+## A volley arriving `bearing_deg` off `target_facing` -- sign as ProjectilePhysics.
+## incoming_angle reports it, so positive is the target's right. Returns the same
+## [field, battle, shooter, target] shape as _shot_from_the_north.
+func _shot_on_bearing(target_facing: Vector2, bearing_deg: float) -> Array:
+	var target := _unit(2, 1, 24, Vector2.ZERO, target_facing, false)
+	var origin: Vector2 = target_facing.rotated(deg_to_rad(bearing_deg)) * SHOT_STANDOFF
+	var shooter := _unit(1, 0, 10, origin, Vector2.DOWN, true)
+	var fb: Array = _field_and_battle(shooter, target)
+	return [fb[0], fb[1], shooter, target]
+
+
+func test_a_shot_off_the_shielded_shoulder_is_still_inside_the_arc() -> void:
+	# Measured on the block this helper builds: every man sees the arrow between 60.7 and
+	# 63.8 degrees, so the whole regiment is inside the scutum's +70 edge and outside the
+	# +60 edge it would have if the hold pose were ignored.
+	var s: Array = _shot_on_bearing(Vector2.UP, SHIELDED_SHOULDER_DEG)
+	var field: ProjectileField = s[0]
+	field.shield_block_scale = 10.0   # every covered arrow is stopped, so the gate is the test
+	field.launch(s[2].position, s[3].position, s[2].uid, s[3].uid, 8, 1.0, true)
+	field.step(30.0, s[1])
+	assert_eq(s[3].soldiers, 24, "the forward hold swings the scutum's arc onto that shoulder")
+
+
+func test_the_mirror_shot_off_the_bare_shoulder_pierces() -> void:
+	# The same bearing on the other side: 60.7 to 63.8 degrees past the arc's -50 edge, because
+	# the hold pose that widened one shoulder narrowed the other by the same 10 degrees.
+	var s: Array = _shot_on_bearing(Vector2.UP, BARE_SHOULDER_DEG)
+	var field: ProjectileField = s[0]
+	field.shield_block_scale = 10.0   # identical shields, identical angle -- only the side differs
+	field.launch(s[2].position, s[3].position, s[2].uid, s[3].uid, 8, 1.0, true)
+	field.step(30.0, s[1])
+	assert_eq(s[3].soldiers, 16, "off the bare shoulder the same angle is outside the arc")
+
+
+func test_the_arc_reads_each_mans_own_heading_not_his_regiments() -> void:
+	# The regiment's heading still points at the archers, but every body has turned away. The
+	# gate must follow the bodies: a wall is only as covered as the men actually standing in it.
+	var s: Array = _shot_from_the_north(Vector2.UP)
+	var target: Unit = s[3]
+	target._sim_soldier_facing.fill(Vector2.DOWN)
+	var field: ProjectileField = s[0]
+	field.shield_block_scale = 10.0
+	field.launch(s[2].position, target.position, s[2].uid, target.uid, 8, 1.0, true)
+	field.step(10.0, s[1])
+	assert_eq(target.soldiers, 16, "reading unit.facing instead would have covered them all")
+
+
+func test_the_arc_reads_each_mans_own_hold_angle_not_the_shield_types_rest_pose() -> void:
+	# Same shot, same facings; only the per-soldier hold angles move, swinging every shield
+	# round behind its owner. The scutum's own rest pose (+10 degrees) would have covered it.
+	var s: Array = _shot_from_the_north(Vector2.UP)
+	var target: Unit = s[3]
+	target._sim_soldier_shield_hold_angle.fill(PI)
+	var field: ProjectileField = s[0]
+	field.shield_block_scale = 10.0
+	field.launch(s[2].position, target.position, s[2].uid, target.uid, 8, 1.0, true)
+	field.step(10.0, s[1])
+	assert_eq(target.soldiers, 16, "a shield held behind you covers nothing in front of you")
