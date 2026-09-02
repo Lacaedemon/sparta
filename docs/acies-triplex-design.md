@@ -143,12 +143,17 @@ standard-bearer soldier the unit forms up relative to) is tracked in
 
 ## Deferred (tracked in [#819](https://github.com/Lacaedemon/sparta/issues/819))
 
-- **Persistent line-membership state.** `General.gd`'s reserve-commit logic
-  (#586/PR #794) is an army-composition decision -- which units join the fight
-  at all -- not a spatial "this unit belongs to line 2, standing in reserve
-  behind a gap" concept. Nothing currently models line membership as
-  persistent formation state; a checkerboard form-up today is a one-shot
-  layout, not a standing arrangement a unit remembers.
+- **Persistent line-membership state.** *Landed.* `General.gd`'s
+  reserve-commit logic (#586/PR #794) is an army-composition decision -- which
+  units join the fight at all -- not a spatial "this unit belongs to line 2,
+  standing in reserve behind a gap" concept. That spatial concept now exists
+  as `Unit.line_index`: a checkerboard or tray-grid form-up tags each slice,
+  the deploy order carries the tag, and the recorded order carries it into the
+  replay stream so a saved deployment replays with the same line assignments.
+  Nothing reads the tag yet -- the flank-vulnerability and withdrawal
+  mechanics below are what will. A unit-card-tray row move writes
+  `line_index` directly rather than through an order, so it is still outside
+  the replay stream.
 - **Cavalry-flank-vulnerability tradeoff.** The historical system's chief
   weakness (thin cavalry can't cover the flanks of a gapped multi-line
   formation) isn't modeled -- a checkerboard-formed army isn't currently more

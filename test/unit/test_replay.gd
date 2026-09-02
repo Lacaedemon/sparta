@@ -3,6 +3,8 @@ extends GutTest
 ## stepping, save/load round-trip, and back-compat with replays that have no track.
 
 const ReplayScript = preload("res://scripts/Replay.gd")
+const BattleScript = preload("res://scripts/Battle.gd")
+const UnitScript = preload("res://scripts/Unit.gd")
 
 
 ## A fresh, isolated Replay instance so tests never touch the live autoload's state.
@@ -10,6 +12,23 @@ func _fresh() -> Node:
 	var r: Node = ReplayScript.new()
 	add_child_autofree(r)
 	return r
+
+
+## A Unit registered under `uid`, and a bare Battle that knows about it -- the same
+## script-only fixture test_battle.gd uses to exercise _apply_order_cmd without standing up
+## a full battle scene (the dispatch reads only _by_uid and the static formation helpers).
+## reform_before_move is defaulted off so a bare order marches immediately, matching that
+## suite's convention.
+func _battle_with_unit(uid: int, pos: Vector2) -> Array:
+	var u: Unit = UnitScript.new()
+	add_child_autofree(u)
+	u.uid = uid
+	u.position = pos
+	u.reform_before_move = false
+	var b = BattleScript.new()
+	autofree(b)
+	b._by_uid[uid] = u
+	return [b, u]
 
 
 func test_record_camera_dedups_static_frames() -> void:
@@ -328,3 +347,32 @@ func test_a_replay_recorded_before_the_line_index_field_still_loads() -> void:
 	assert_eq(due.size(), 1, "the order itself round-trips unchanged")
 	assert_false(due[0].has("line"),
 			"no line key is invented on load -- the order reads as LINE_INDEX_UNCHANGED")
+
+
+func test_a_loaded_replays_line_index_reaches_the_unit_through_apply_order_cmd() -> void:
+	# End to end along the path Battle actually takes on playback: record a checkerboard
+	# slice deploying a unit to a reserve line, save it, load it, pull the order back with
+	# orders_for_tick, and hand that order to Battle._apply_order_cmd -- which is exactly
+	# what Battle._physics_process does for every recorded order. The unit has to come out
+	# on the RECORDED line: drop the "line" key anywhere between record_order and the load
+	# and _apply_order_cmd reads LINE_INDEX_UNCHANGED instead, silently leaving the unit on
+	# whatever line it already had (0, the front line, for a freshly spawned one).
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [7], Vector2(200, 300), -1, 0, 0, 4, 0.5, 0, 0.0, -1, 0, 0, -1, 2)
+	var path: String = r.save("Test", 5)
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 1, "the form-up order is due at its recorded tick")
+
+	var fixture: Array = _battle_with_unit(7, Vector2.ZERO)
+	var b = fixture[0]
+	var u: Unit = fixture[1]
+	assert_eq(u.line_index, 0, "a freshly spawned unit starts on the front line")
+
+	b._apply_order_cmd(due[0])
+	assert_eq(u.line_index, 2,
+			"the recorded line index survives save/load and is written onto the unit by " +
+			"the same _apply_order_cmd call playback makes -- not only by a live order")

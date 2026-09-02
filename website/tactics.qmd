@@ -325,11 +325,13 @@ units at once" entry) for the drag mechanics.
 
 A unit dragged into a checkerboard arrangement **remembers which line it
 landed on**, the way it remembers its stance or formation mode: the front row
-is Line 1, the offset row behind it is Line 2, and that tag survives a unit
-card tray row move as well as a saved replay's playback. Nothing reads the tag
-yet, though, so the layout still behaves as a one-shot arrangement in play ---
-and nothing yet models the historical system's chief weakness either: a
-gapped, multi-line formation trades
+is Line 1 and the offset row behind it is Line 2. The deploy order carries
+that assignment, so a saved replay reproduces it on playback. Moving the
+unit's card to another tray row afterwards re-tags it with the new row --
+live only, since a card move isn't an order and so isn't recorded in the
+replay. Nothing reads the tag yet, though, so the layout still behaves as a
+one-shot arrangement in play --- and nothing yet models the historical
+system's chief weakness either: a gapped, multi-line formation trades
 frontage flexibility for flank exposure, so a checkerboard-formed army isn't
 currently more vulnerable to flanking than a solid line. See
 `docs/acies-triplex-design.md` in the project repository for the full design
@@ -353,8 +355,12 @@ one-line filled tray still only reorders (then splits by whatever Form-up
 mode is live). See [How to play: Deploy from the unit card tray](how-to-play.qmd#deploy-from-the-unit-card-tray)
 for the gesture.
 
-Like checkerboard and echelon, this is a **one-shot layout**, not a standing
-formation -- a unit deployed from the tray does not remember its cell.
+A tray deploy carries the same line tag a checkerboard one does: each unit
+remembers the **row** it was placed from (the top row is Line 1), recorded on
+the deploy order so a replay reproduces it. The **column** is not carried, so
+a unit doesn't remember its exact cell -- and, as with checkerboard, nothing
+reads the tag yet, so the arrangement itself is still one-shot in play.
+Echelon assigns no line at all, leaving each unit's existing tag alone.
 
 ::: {#fig-tray-formation-tactics .demo}
 
