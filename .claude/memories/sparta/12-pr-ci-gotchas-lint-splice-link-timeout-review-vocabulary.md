@@ -20,11 +20,14 @@ adjacent items with no blank line between them.
 
 - **Do:** make a Markdown list loose (a blank line between items) whenever an
   item's text wraps onto a continuation line before the next item starts.
+
 - **Do:** read the reusable `Morrison-Lab/gha` workflow at the pinned `@v2`
   ref for the exact input names (`fail-on-item-splices`, `base-ref`) before
   citing them; the caller file in this repo sets only `base-ref` and `fail`.
+
 - **Don't:** treat the ~255 whole-repo markdownlint findings as something this
   PR must fix -- they are pre-existing and pass on `main` too.
+
 - **Don't:** assume a tight (no-blank-line) list is safe just because it
   renders fine locally -- the splice checker is the blocking gate, not visual
   inspection.
@@ -42,8 +45,10 @@ listed in `lychee.toml`'s `exclude` array.
 
 - **Do:** add a slow-but-legitimate host to `lychee.toml`'s `exclude` array
   when it times out, keeping the citation in the prose.
+
 - **Don't:** drop or reword a citation just to dodge a lychee timeout -- the
   fix belongs in `lychee.toml`, not in the prose.
+
 - **Don't:** read a non-zero lychee exit as proof of a broken link without
   checking whether the failure was a timeout.
 
@@ -61,6 +66,7 @@ reverted #1452/#1453 manifests, rejected.
 
 - **Do:** use `"skip": true` with a reason like "design-doc-only PR; mechanic
   not yet implemented" for a PR that adds no battlefield-visible behavior.
+
 - **Don't:** point `demos/demo.<slug>.json` at an `input` recording whose
   caption claims a mechanic the PR has not actually implemented.
 
@@ -87,10 +93,12 @@ clean.
 
 - **Do:** brief any local/self-dispatched reviewer with the two exact heading
   phrases above, verbatim, plus the `Reviewed-Commit: <sha>` line.
+
 - **Do:** never run a `git push` in the same message/turn as dispatching a
   reviewer -- the guard reads whatever verdict already exists, and a
   just-dispatched review has no result yet, so the push races an empty
   answer.
+
 - **Don't:** phrase a self-review's conclusion as "Verdict: Clean" or any
   other wording -- the guard's parser only recognizes the two headings above.
 
@@ -107,6 +115,7 @@ message) when the account's usage limit is hit mid-session.
 - **Do:** after a quota reset, sweep every PR that was pushed to during the
   outage window and re-dispatch its review explicitly:
   `gh workflow run claude-code-review.yml -f pr_number=N`.
+
 - **Don't:** read a quota-skip notice as a clean verdict, or as something that
   resolves itself without a re-dispatch once quota is back.
 
