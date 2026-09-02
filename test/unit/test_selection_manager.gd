@@ -1998,6 +1998,38 @@ func test_tray_grid_deploy_puts_line_1_on_the_front_and_later_lines_behind() -> 
 			"a single-column stack keeps the same lateral centre")
 
 
+## Regression: _tray_grid_slices used to tag "line" with an index relative to the
+## SELECTION's own bounding box (via _tray_occupied_bbox's min_row-relative loop), not the
+## tray's absolute row -- so selecting a subset of tray rows that doesn't start at row 0
+## silently retagged units to the wrong line (a tray-row-1 "reserve" unit came back tagged
+## line 0, i.e. front line). Select only rows 1 and 2 of a 3-row tray and confirm the
+## slices still carry their absolute tray rows.
+func test_tray_grid_deploy_keeps_absolute_line_index_when_selection_skips_row_0() -> void:
+	var top := _unit()
+	top.max_soldiers = 80
+	top.soldiers = 80
+	var mid := _unit()
+	mid.max_soldiers = 80
+	mid.soldiers = 80
+	var bottom := _unit()
+	bottom.max_soldiers = 80
+	bottom.soldiers = 80
+	var packed: Array = _sm_with_tray_grid([[top], [mid], [bottom]])
+	var sm = packed[0]
+	# Only select tray rows 1 and 2 -- row 0 (top) is left out of the drag.
+	sm._select(mid)
+	sm._select(bottom)
+	var slices: Array = sm._deploy_slices([mid, bottom], Vector2(0, 0), Vector2(400, 0), EQUAL_DEPTH)
+	assert_eq(slices.size(), 2)
+	var by_unit: Dictionary = {}
+	for s in slices:
+		by_unit[s["unit"]] = s
+	assert_eq(int(by_unit[mid]["line"]), 1,
+			"tray row 1 (mid) keeps absolute line 1, not 0-relative-to-selection")
+	assert_eq(int(by_unit[bottom]["line"]), 2,
+			"tray row 2 (bottom) keeps absolute line 2, not 1-relative-to-selection")
+
+
 func test_tray_grid_empty_cell_becomes_a_lateral_gap() -> void:
 	var left_u := _unit()
 	left_u.max_soldiers = 80

@@ -974,7 +974,7 @@ func _tray_grid_slices(units: Array, a: Vector2, b: Vector2) -> Array:
 					"unit": occupant,
 					"center": center,
 					"files": int(files_of[occupant.get_instance_id()]),
-					"line": r,
+					"line": min_r + r,
 				})
 			cursor += col_width + MULTI_FORM_UP_GAP
 	return out

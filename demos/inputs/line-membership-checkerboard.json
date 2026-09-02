@@ -1,5 +1,5 @@
 {
-  "_comment": "Persistent line membership (#819 Phase 1, the slice docs/acies-triplex-design.md calls phase 2): four player Spearmen units spawn already spaced out just above the drag line, get box-selected, then a right-to-left checkerboard drag (form_up_dist=4, CHECKERBOARD) splits them into a front line and an offset rear line. That interaction is exactly where Unit.line_index gets stamped -- SelectionManager._checkerboard_slices tags each slice's line, Battle.enqueue_form_up carries it through, and Battle._apply_order_cmd writes it onto the unit (scripts/Battle.gd, scripts/SelectionManager.gd, scripts/Unit.gd). The persistent line state itself has no render path yet (Phase 1 of #819 is bookkeeping only -- the flank-vulnerability and century-withdrawal mechanics that will read it are still to come), so this clip shows the visible half of the interaction (the checkerboard deploy) and the line-index bookkeeping it exercises is verified separately by test/unit/test_acies_triplex_line_membership.gd, test_battle.gd's line-index cases, and test_unit_card_tray.gd's line-index cases -- not by anything in this recording. drill:true (no team 1) since this is a pure maneuver demo. Static wide camera covering the whole spawn-to-settle span, no easing.",
+  "_comment": "Persistent line membership (#819 Phase 1: persistent line membership state, the first of the deferred items docs/acies-triplex-design.md tracks under #819): four player Spearmen units spawn already spaced out just above the drag line, get box-selected, then a right-to-left checkerboard drag (form_up_dist=4, CHECKERBOARD) splits them into a front line and an offset rear line. That interaction is exactly where Unit.line_index gets stamped -- SelectionManager._checkerboard_slices tags each slice's line, Battle.enqueue_form_up carries it through, and Battle._apply_order_cmd writes it onto the unit (scripts/Battle.gd, scripts/SelectionManager.gd, scripts/Unit.gd). The persistent line state itself has no render path yet (this slice of #819 is bookkeeping only -- the flank-vulnerability and century-withdrawal mechanics that will read it are still to come), so this clip shows the visible half of the interaction (the checkerboard deploy) and the line-index bookkeeping it exercises is verified separately by test/unit/test_acies_triplex_line_membership.gd, test_battle.gd's line-index cases, and test_unit_card_tray.gd's line-index cases -- not by anything in this recording. drill:true (no team 1) since this is a pure maneuver demo. Static wide camera covering the whole spawn-to-settle span, no easing.",
   "seed": "819117",
   "drill": true,
   "form_up_dist": 4,
@@ -19,13 +19,17 @@
   ],
   "state": [10, 40, 120, 240, 360, 480, 600, 750, 900, 1000, 1100],
   "defect_exemptions": {
-    "shape_residual": {
-      "uids": [0, 1, 2, 3],
-      "reason": "Four 100-man Spearmen units execute a simultaneous multi-unit checkerboard form-up into two offset lines, transiently distorting during the crossing and line decomposition before settling."
-    },
     "path_crossing": {
       "uids": [0, 1, 2, 3],
       "reason": "Soldier paths transiently intersect while the multi-unit line splits into front/rear checkerboard positions before forming up."
+    },
+    "blob": {
+      "uids": [0, 1, 2, 3],
+      "reason": "Each unit reforms in place from its spawn line into its checkerboard front/rear slot; mid-reform, bodies converging on their new grid slots transiently compress well inside the resting spacing before settling. Same reform transition already exempted from path_crossing above."
+    },
+    "overlap": {
+      "uids": [0, 1, 2, 3],
+      "reason": "Same in-place reform as the blob exemption above: bodies pass very close to each other mid-transition while converging on their new checkerboard slots, before settling back to resting spacing."
     }
   }
 }
