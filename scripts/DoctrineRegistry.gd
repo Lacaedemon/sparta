@@ -14,7 +14,12 @@ class_name DoctrineRegistry
 ##                              the team's own living-unit count is at least this multiple of
 ##                              the enemy's; otherwise "advance_line" (or the base plan).
 ##                              A low threshold picks envelop readily (aggressive); a high
-##                              one needs a lopsided advantage first (cautious).
+##                              one needs a lopsided advantage first (cautious). REQUIRED of
+##                              every profile, including one whose `plans` omits "envelop" --
+##                              select_plan never reads it there, so the value is inert rather
+##                              than a claim that the doctrine envelops (screening.json is the
+##                              shipped example). Omitting it fails the whole profile to {},
+##                              which silently reverts that army to the built-in defaults.
 ##   defend_ratio_threshold     optional: General.select_plan picks "defend" (if known) when
 ##                              the team's active unit ratio drops at or below this threshold
 ##                              (e.g. falling back to defense when outnumbered).
