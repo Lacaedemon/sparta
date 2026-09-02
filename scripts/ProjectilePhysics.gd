@@ -17,6 +17,11 @@ class_name ProjectilePhysics
 const ANGLE_FLAT: float = 20.0 * PI / 180.0
 const ANGLE_ARCED: float = 55.0 * PI / 180.0
 
+# Below this squared length a direction vector is treated as carrying no direction at all
+# (a soldier whose facing was never set, or an arrow that landed on top of its own launch
+# point). Named rather than inlined so every guard that needs it agrees on the threshold.
+const DEGENERATE_LENGTH_SQ: float = 1e-6
+
 
 ## Launch speed and flight time to carry a projectile a level-ground horizontal distance
 ## `dist` at launch angle `angle` (radians above horizontal) under `gravity`, from the range
@@ -52,3 +57,55 @@ static func peak_height(speed: float, angle: float, gravity: float) -> float:
 ## `f` = t / flight_time; clamped so a sampler slightly past landing stays at the target.
 static func ground_at(from: Vector2, to: Vector2, f: float) -> Vector2:
 	return from.lerp(to, clampf(f, 0.0, 1.0))
+
+
+## The three ways a landing arrow can meet a shield. PIERCE is the only outcome that
+## wounds: the arrow drives through, or there was no shield in its way to begin with.
+## DEFLECT glances off the face and is spent. LODGE sticks fast in the shield -- the man
+## behind it is unhurt, but the arrow now hangs its own weight on his arm, which is why a
+## caller tracks lodged arrows separately from deflected ones.
+enum Impact {PIERCE, DEFLECT, LODGE}
+
+
+## The angle an arrow arrives at, expressed in the struck soldier's OWN frame (radians,
+## signed, wrapped to [-PI, PI]): 0 is dead ahead, +/-PI is dead astern. `facing` is the
+## direction the soldier faces; `incoming_from` points from the soldier toward where the
+## arrow came from -- the same "attack_from_dir" convention SoldierCombat.facing_gate uses.
+## The result is directly comparable against a Shield's hold angle, which is expressed in
+## that same frame. A degenerate (zero-length) facing or direction reads as dead ahead, so
+## an undefined facing is fully met rather than handed a free back-shot -- matching the
+## defensive choice facing_gate makes on the same input.
+static func incoming_angle(facing: Vector2, incoming_from: Vector2) -> float:
+	if facing.length_squared() < DEGENERATE_LENGTH_SQ:
+		return 0.0
+	if incoming_from.length_squared() < DEGENERATE_LENGTH_SQ:
+		return 0.0
+	return facing.angle_to(incoming_from)
+
+
+## The chance a shield that IS covering the incoming line stops the arrow at all (deflected
+## or lodged, before the split between the two). `block_value` is the shield type's own
+## defensive weight from the loadout registry; `scale` converts that weight into a stop
+## probability; `sag` is cover already lost to arrows hanging in the shield. Clamped to
+## [0, 1], so an unshielded soldier (block_value 0) stops nothing and no scale pushes a
+## shield past certainty.
+static func shield_block_chance(block_value: float, scale: float, sag: float) -> float:
+	return clampf(block_value * scale - sag, 0.0, 1.0)
+
+
+## Which outcome a landing arrow gets, from one uniform `roll` in [0, 1). An arrow arriving
+## outside the shield's arc (`covered` false) always pierces -- there is nothing in its way,
+## whatever the shield would have been worth had it faced the other way. Inside the arc,
+## `block` of the rolls stop it, and `lodge_share` of THOSE stick rather than glancing off.
+## Pure: the caller draws the roll from the one seeded stream, so the outcome is a
+## deterministic function of that roll and the same seed replays the same volley.
+static func resolve_impact(covered: bool, block: float, lodge_share: float, roll: float) -> Impact:
+	if not covered:
+		return Impact.PIERCE
+	var stop: float = clampf(block, 0.0, 1.0)
+	var deflect: float = stop * (1.0 - clampf(lodge_share, 0.0, 1.0))
+	if roll < deflect:
+		return Impact.DEFLECT
+	if roll < stop:
+		return Impact.LODGE
+	return Impact.PIERCE

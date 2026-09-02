@@ -210,6 +210,10 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 					casualties, flank, _volley_is_arced(u, target))
 		else:
 			# No projectile field (headless unit tests): resolve immediately at the shooter.
+			# This path has no flight and no per-arrow shield test -- it is the whole volley
+			# landing at once, as before projectiles existed. A live battle always has a
+			# field, so the shield gate is never skipped in play; only a fieldless unit test
+			# sees the older, blunter resolution.
 			SoldierMelee.apply_ranged_casualties(target, u.position, u, casualties, flank)
 	else:
 		take_casualties(target, raw, u)
