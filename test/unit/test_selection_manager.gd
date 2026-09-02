@@ -2086,6 +2086,38 @@ func test_tray_grid_deploy_puts_line_1_on_the_front_and_later_lines_behind() -> 
 			"a single-column stack keeps the same lateral centre")
 
 
+## Regression: _tray_grid_slices used to tag "line" with an index relative to the
+## SELECTION's own bounding box (via _tray_occupied_bbox's min_row-relative loop), not the
+## tray's absolute row -- so selecting a subset of tray rows that doesn't start at row 0
+## silently retagged units to the wrong line (a tray-row-1 "reserve" unit came back tagged
+## line 0, i.e. front line). Select only rows 1 and 2 of a 3-row tray and confirm the
+## slices still carry their absolute tray rows.
+func test_tray_grid_deploy_keeps_absolute_line_index_when_selection_skips_row_0() -> void:
+	var top := _unit()
+	top.max_soldiers = 80
+	top.soldiers = 80
+	var mid := _unit()
+	mid.max_soldiers = 80
+	mid.soldiers = 80
+	var bottom := _unit()
+	bottom.max_soldiers = 80
+	bottom.soldiers = 80
+	var packed: Array = _sm_with_tray_grid([[top], [mid], [bottom]])
+	var sm = packed[0]
+	# Only select tray rows 1 and 2 -- row 0 (top) is left out of the drag.
+	sm._select(mid)
+	sm._select(bottom)
+	var slices: Array = sm._deploy_slices([mid, bottom], Vector2(0, 0), Vector2(400, 0), EQUAL_DEPTH)
+	assert_eq(slices.size(), 2)
+	var by_unit: Dictionary = {}
+	for s in slices:
+		by_unit[s["unit"]] = s
+	assert_eq(int(by_unit[mid]["line"]), 1,
+			"tray row 1 (mid) keeps absolute line 1, not 0-relative-to-selection")
+	assert_eq(int(by_unit[bottom]["line"]), 2,
+			"tray row 2 (bottom) keeps absolute line 2, not 1-relative-to-selection")
+
+
 func test_tray_grid_empty_cell_becomes_a_lateral_gap() -> void:
 	var left_u := _unit()
 	left_u.max_soldiers = 80
@@ -2372,6 +2404,49 @@ func test_single_unit_form_up_is_not_tagged_with_a_group_parent() -> void:
 	sm._issue_form_up(Vector2(400, 500), Vector2(540, 500))
 	assert_not_null(u.current_order)
 	assert_null(u.current_order.parent, "a single-unit form-up is never grouped")
+
+
+func test_plain_form_up_preserves_reserve_line_assigned_by_an_earlier_checkerboard() -> void:
+	# Regression test: _line_slices/_echelon_slices
+	# never tag a "line" key, so _issue_form_up's slice.get("line", 0) fallback used to pass a
+	# hard 0 into enqueue_form_up, and Battle._apply_order_cmd stamped every ordered unit's
+	# line_index back to 0 -- silently wiping the reserve-line status a checkerboard deploy had
+	# just assigned. LINE_INDEX_UNCHANGED fixes it: a plain form-up now leaves line_index alone.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var units: Array = []
+	for i in range(4):
+		var u := _unit()
+		u.uid = 40 + i
+		u.max_soldiers = 100
+		u.position = Vector2(100 + i * 200, 500)
+		b._by_uid[u.uid] = u
+		sm._select(u)
+		units.append(u)
+
+	# 1. Checkerboard form-up: alternates the ordered selection into front line 0 (1st, 3rd)
+	#    and rear line 1 (2nd, 4th) -- see _checkerboard_slices.
+	sm._form_up_dist = CHECKERBOARD
+	sm._issue_form_up(Vector2(0, 500), Vector2(1000, 500))
+	assert_eq(units[0].line_index, 0, "1st selected unit lands on the checkerboard front line")
+	assert_eq(units[1].line_index, 1, "2nd selected unit lands on the checkerboard rear line")
+	assert_eq(units[2].line_index, 0, "3rd selected unit lands on the checkerboard front line")
+	assert_eq(units[3].line_index, 1, "4th selected unit lands on the checkerboard rear line")
+
+	# 2. A subsequent PLAIN (EQUAL_WIDTH) form-up over the same four units carries no line
+	#    assignment of its own -- it must leave each unit's existing line_index untouched.
+	sm._form_up_dist = EQUAL_WIDTH
+	sm._issue_form_up(Vector2(0, 700), Vector2(1000, 700))
+	assert_eq(units[0].line_index, 0, "a plain form-up leaves an already-front-line unit alone")
+	assert_eq(units[1].line_index, 1,
+		"a plain form-up over all four units must not demote the reserve unit back to the " +
+		"front line")
+	assert_eq(units[2].line_index, 0, "a plain form-up leaves an already-front-line unit alone")
+	assert_eq(units[3].line_index, 1,
+		"a plain form-up over all four units must not demote the reserve unit back to the " +
+		"front line")
 
 
 # --- form-up distribution mode (cycle + settings) -------

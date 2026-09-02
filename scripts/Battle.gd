@@ -134,6 +134,15 @@ enum UnitSettingToggle { LEAVE = 0, ON = 1, OFF = 2 }
 # (FILE_MAJOR) here, not a spare sentinel slot -- so this toggle uses -1 for "leave it alone"
 # and the raw Unit.ReformMode ordinal (0/1/2) to set that mode.
 const REFORM_MODE_TOGGLE_LEAVE := -1
+# Sentinel for enqueue_form_up's line_index parameter (and a form-up cmd's "line" field):
+# leaves each ordered unit's persistent Unit.line_index untouched. A plain (non-checkerboard,
+# non-tray-grid) form-up slice carries no line assignment of its own -- writing 0 unconditionally
+# would silently demote a reserve-line unit back to the front line on every ordinary drag, which
+# is exactly the bug this sentinel exists to prevent. Mirrors REFORM_MODE_TOGGLE_LEAVE's shape:
+# -1 can't collide with a real line index (line_index is always >= 0), so it's a safe "unchanged"
+# marker. A cmd missing the "line" key entirely (an older replay, or a non-form-up order) is the
+# same "unchanged" case -- see _apply_order_cmd's read below.
+const LINE_INDEX_UNCHANGED := -1
 # How far a single arrow-key nudge shifts the unit (world units). 30 wu is ~1.5 m
 # (WORLD_UNITS_PER_METER = 20) — a few soldier-widths, and under the side-step
 # distance ceiling (UnitManeuver.SIDESTEP_MAX_DISTANCE) so a lateral nudge always
@@ -1939,9 +1948,16 @@ static func nudge_offset(facing: Vector2, dir: int) -> Vector2:
 ## resulting order's `parent` at the same FORM_UP group node -- see `_form_up_groups`
 ## above. -1 (the default) means this deploy isn't part of a group -- a single-unit
 ## form-up drag, unaffected by any of this and identical to before this field existed.
+##
+## `line_index`: the persistent line-membership index (Unit.line_index) to record on each
+## unit as part of this deploy -- LINE_INDEX_UNCHANGED (-1, the default) leaves each unit's
+## existing line_index alone, so a plain drag that doesn't track lines can't silently demote
+## a reserve-line unit back to the front line. Pass a real (>= 0) index -- 0 for the front
+## line, 1+ for a reserve line -- only when the caller actually means to (re)assign one, e.g.
+## the checkerboard/tray-grid deploy slices.
 func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		order_mode: int = OrderMode.NORMAL, knockback_indefinite: bool = false,
-		form_up_group: int = -1) -> void:
+		form_up_group: int = -1, line_index: int = LINE_INDEX_UNCHANGED) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -1953,6 +1969,7 @@ func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		"frontage": frontage,
 		"face": face,
 		"knockback_indefinite": knockback_indefinite,
+		"line": line_index,
 	}
 	if form_up_group >= 0:
 		cmd["form_up_group"] = form_up_group
@@ -2385,6 +2402,13 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 		# duty; a SUPPORT order re-sets it in the friendly-target branch below.
 		if not append:
 			u.order_mode = mode
+			# A cmd missing "line" entirely (an older replay, or a non-form-up order) and one
+			# carrying the explicit LINE_INDEX_UNCHANGED sentinel (a form-up drag that doesn't
+			# assign lines) are the same "leave it alone" case -- see enqueue_form_up's doc
+			# comment and LINE_INDEX_UNCHANGED's own comment above.
+			var cmd_line: int = int(cmd.get("line", LINE_INDEX_UNCHANGED))
+			if cmd_line != LINE_INDEX_UNCHANGED:
+				u.line_index = cmd_line
 			# Same per-order push-distance parameter as the stance-only branch above,
 			# carried on an ordinary move/attack order too (arming KNOCKBACK_FOCUS then
 			# issuing a move/attack is the normal way to use it).

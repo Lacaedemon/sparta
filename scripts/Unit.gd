@@ -232,6 +232,12 @@ var current_order: Order = null
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
 # The smart-order behaviours read this; NORMAL is current behaviour.
 var order_mode: int = 0
+## Persistent line-membership index in an army formation, tracking which line a unit
+## belongs to across form-up commands and tray reassignment (0 = front line, 1+ = reserve
+## line -- see is_front_line()/is_reserve_line() below, which treat any index > 0 as reserve).
+## A form-up drag that doesn't assign lines (a plain, non-checkerboard, non-tray-grid deploy)
+## leaves this field untouched rather than resetting it to 0 -- see Battle.LINE_INDEX_UNCHANGED.
+var line_index: int = 0
 # Whether this unit auto-advances onto a merely-detected, out-of-weapon-range enemy while
 # it has no order -- the reactive close-the-distance fallback at the bottom of _think's
 # enemy branch. True by default, so a bare unit (most tests) keeps the historical
@@ -5845,6 +5851,16 @@ func is_engaged() -> bool:
 ## an AI subcommander group. A function of player_group_id only -- see its own doc comment.
 func is_delegated() -> bool:
 	return player_group_id != UNDELEGATED
+
+
+## Whether this unit is assigned to the front line (line_index == 0).
+func is_front_line() -> bool:
+	return line_index == 0
+
+
+## Whether this unit is assigned to a reserve/rear line (line_index > 0).
+func is_reserve_line() -> bool:
+	return line_index > 0
 
 
 ## How braced (set to receive) this regiment's soldiers are, in [0, 1], graded per
