@@ -5409,18 +5409,18 @@
           "frontage": 15,
           "in_enemy_contact": false,
           "maneuver": "IDLE",
-          "morale": 96.1,
+          "morale": 96.9,
           "name": "Infantry 2",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             760.0,
-            516.83
+            518.0
           ],
           "position_m": [
             38.0,
-            25.842
+            25.9
           ],
           "queue_tail": [],
           "rank_pitch": 18.0,
@@ -5432,10 +5432,10 @@
             ],
             "broken_count": 0,
             "centroid": [
-              760.76,
-              517.13
+              760.3,
+              518.0
             ],
-            "count": 118,
+            "count": 119,
             "prone_count": 0
           },
           "soldier_summary_m": {
@@ -5444,11 +5444,11 @@
               6.3
             ],
             "centroid_m": [
-              38.038,
-              25.856
+              38.015,
+              25.9
             ]
           },
-          "soldiers": 118,
+          "soldiers": 119,
           "state": "IDLE",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -5892,18 +5892,18 @@
           "frontage": 15,
           "in_enemy_contact": false,
           "maneuver": "IDLE",
-          "morale": 93.4,
+          "morale": 95.6,
           "name": "Infantry 2",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             760.0,
-            510.24
+            514.05
           ],
           "position_m": [
             38.0,
-            25.512
+            25.702
           ],
           "queue_tail": [],
           "rank_pitch": 18.0,
@@ -5915,10 +5915,10 @@
             ],
             "broken_count": 0,
             "centroid": [
-              762.19,
-              512.29
+              760.92,
+              514.75
             ],
-            "count": 115,
+            "count": 118,
             "prone_count": 0
           },
           "soldier_summary_m": {
@@ -5927,11 +5927,11 @@
               6.3
             ],
             "centroid_m": [
-              38.11,
-              25.615
+              38.046,
+              25.737
             ]
           },
-          "soldiers": 115,
+          "soldiers": 118,
           "state": "IDLE",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -6375,18 +6375,18 @@
           "frontage": 15,
           "in_enemy_contact": false,
           "maneuver": "IDLE",
-          "morale": 92.9,
+          "morale": 95.1,
           "name": "Infantry 2",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             760.0,
-            510.22
+            513.47
           ],
           "position_m": [
             38.0,
-            25.511
+            25.673
           ],
           "queue_tail": [],
           "rank_pitch": 18.0,
@@ -6398,10 +6398,10 @@
             ],
             "broken_count": 0,
             "centroid": [
-              762.19,
-              512.65
+              760.92,
+              514.54
             ],
-            "count": 115,
+            "count": 118,
             "prone_count": 0
           },
           "soldier_summary_m": {
@@ -6410,11 +6410,11 @@
               6.3
             ],
             "centroid_m": [
-              38.11,
-              25.632
+              38.046,
+              25.727
             ]
           },
-          "soldiers": 115,
+          "soldiers": 118,
           "state": "IDLE",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -6710,7 +6710,7 @@
           "frontage": 9,
           "in_enemy_contact": false,
           "maneuver": "MARCHING",
-          "morale": 95.5,
+          "morale": 95.4,
           "name": "Archers 1",
           "order_guard": "ENGAGED_FRACTION_ABOVE",
           "order_mode": "Normal",
@@ -6858,18 +6858,18 @@
           "frontage": 15,
           "in_enemy_contact": false,
           "maneuver": "IDLE",
-          "morale": 91.8,
+          "morale": 94.1,
           "name": "Infantry 2",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             760.0,
-            510.22
+            513.47
           ],
           "position_m": [
             38.0,
-            25.511
+            25.673
           ],
           "queue_tail": [],
           "rank_pitch": 18.0,
@@ -6881,10 +6881,10 @@
             ],
             "broken_count": 0,
             "centroid": [
-              762.19,
-              512.65
+              760.92,
+              514.54
             ],
-            "count": 115,
+            "count": 118,
             "prone_count": 0
           },
           "soldier_summary_m": {
@@ -6893,11 +6893,11 @@
               6.3
             ],
             "centroid_m": [
-              38.11,
-              25.632
+              38.046,
+              25.727
             ]
           },
-          "soldiers": 115,
+          "soldiers": 118,
           "state": "IDLE",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -7193,7 +7193,7 @@
           "frontage": 9,
           "in_enemy_contact": false,
           "maneuver": "MARCHING",
-          "morale": 96.3,
+          "morale": 95.9,
           "name": "Archers 1",
           "order_guard": "ENGAGED_FRACTION_ABOVE",
           "order_mode": "Normal",
@@ -7212,7 +7212,7 @@
           "soldier_summary": {
             "bbox": [
               318.31,
-              242.49
+              242.5
             ],
             "broken_count": 0,
             "centroid": [
@@ -7341,18 +7341,18 @@
           "frontage": 15,
           "in_enemy_contact": false,
           "maneuver": "IDLE",
-          "morale": 90.8,
+          "morale": 92.9,
           "name": "Infantry 2",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             760.0,
-            510.22
+            513.47
           ],
           "position_m": [
             38.0,
-            25.511
+            25.673
           ],
           "queue_tail": [],
           "rank_pitch": 18.0,
@@ -7364,10 +7364,10 @@
             ],
             "broken_count": 0,
             "centroid": [
-              762.19,
-              512.65
+              760.92,
+              514.54
             ],
-            "count": 115,
+            "count": 118,
             "prone_count": 0
           },
           "soldier_summary_m": {
@@ -7376,11 +7376,11 @@
               6.3
             ],
             "centroid_m": [
-              38.11,
-              25.632
+              38.046,
+              25.727
             ]
           },
-          "soldiers": 115,
+          "soldiers": 118,
           "state": "IDLE",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -7676,30 +7676,30 @@
           "frontage": 9,
           "in_enemy_contact": false,
           "maneuver": "MARCHING",
-          "morale": 98.3,
+          "morale": 97.9,
           "name": "Archers 1",
           "order_guard": "ENGAGED_FRACTION_ABOVE",
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            658.63,
+            658.62,
             640.13
           ],
           "position_m": [
             32.931,
-            32.006
+            32.007
           ],
           "queue_tail": [],
           "rank_pitch": 36.0,
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              320.7,
-              239.41
+              320.71,
+              239.42
             ],
             "broken_count": 0,
             "centroid": [
-              658.48,
+              658.47,
               640.51
             ],
             "count": 45,
@@ -7708,7 +7708,7 @@
           "soldier_summary_m": {
             "bbox_m": [
               16.035,
-              11.97
+              11.971
             ],
             "centroid_m": [
               32.924,
@@ -7824,18 +7824,18 @@
           "frontage": 15,
           "in_enemy_contact": false,
           "maneuver": "IDLE",
-          "morale": 92.8,
+          "morale": 94.9,
           "name": "Infantry 2",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
             760.0,
-            510.22
+            513.47
           ],
           "position_m": [
             38.0,
-            25.511
+            25.673
           ],
           "queue_tail": [],
           "rank_pitch": 18.0,
@@ -7847,10 +7847,10 @@
             ],
             "broken_count": 0,
             "centroid": [
-              762.19,
-              512.65
+              760.92,
+              514.54
             ],
-            "count": 115,
+            "count": 118,
             "prone_count": 0
           },
           "soldier_summary_m": {
@@ -7859,11 +7859,11 @@
               6.3
             ],
             "centroid_m": [
-              38.11,
-              25.632
+              38.046,
+              25.727
             ]
           },
-          "soldiers": 115,
+          "soldiers": 118,
           "state": "IDLE",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -8159,14 +8159,14 @@
           "frontage": 9,
           "in_enemy_contact": false,
           "maneuver": "MARCHING",
-          "morale": 100.0,
+          "morale": 99.9,
           "name": "Archers 1",
           "order_guard": "ENGAGED_FRACTION_ABOVE",
           "order_mode": "Normal",
           "order_phase": "MARCH",
           "position": [
-            646.67,
-            670.58
+            646.66,
+            670.59
           ],
           "position_m": [
             32.333,
@@ -8177,12 +8177,12 @@
           "rank_relief": true,
           "soldier_summary": {
             "bbox": [
-              320.7,
-              239.29
+              320.71,
+              239.31
             ],
             "broken_count": 0,
             "centroid": [
-              646.52,
+              646.51,
               670.96
             ],
             "count": 45,
