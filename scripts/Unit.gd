@@ -6907,13 +6907,16 @@ func _rout() -> void:
 	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit
 	add_to_group("routers")
-	# Routing is contagious: shake nearby friends.
-	for u in get_tree().get_nodes_in_group("units"):
-		var friend: Unit = u as Unit
-		if friend != null and friend.team == team:
-			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-			if position.distance_squared_to(friend.position) < ROUT_SHOCK_RADIUS * ROUT_SHOCK_RADIUS:
-				friend.morale -= 12.0
+	# Routing is contagious: shake nearby friends. Guarded like the shockwave spawn below --
+	# tick_morale() can drive a unit to _rout() from outside the scene tree (a bare Unit in
+	# a unit test, or any other caller that never added it), and get_tree() is null there.
+	if is_inside_tree():
+		for u in get_tree().get_nodes_in_group("units"):
+			var friend: Unit = u as Unit
+			if friend != null and friend.team == team:
+				# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+				if position.distance_squared_to(friend.position) < ROUT_SHOCK_RADIUS * ROUT_SHOCK_RADIUS:
+					friend.morale -= 12.0
 	# Cosmetic morale-shock ripple marking the area allies were shaken. Spawned on
 	# the deterministic sim tick but animated/faded on render time, in no sim group, so
 	# it has no simulation/replay/determinism impact. Guarded like the volley trail.
