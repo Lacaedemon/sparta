@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Order.new_file_double(0) hardens a constructor contract on an unreachable path -- no current caller passes direction == 0 (quarter_turn_explicatio and the standalone file-double order both always pass a literal +-1), so there is no battle scenario where the old vs. new behavior differs visibly. The fix is exercised by a GUT unit test (test/unit/test_order.gd) asserting the push_error and the coerced direction directly on the constructed Order."
+}
