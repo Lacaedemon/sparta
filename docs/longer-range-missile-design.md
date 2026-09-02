@@ -50,7 +50,7 @@ Sources: Xenophon, *Anabasis* 3.3.7-18;
 Vegetius, *Epitoma rei militaris* 2.23;
 Josephus, *Bellum Judaicum* 3.7;
 Manfred Korfmann, "The Sling as a Weapon", *Scientific American* 229 (1973);
-E W Marsden, *Greek and Roman Artillery: Historical Development* (Oxford, 1969);
+Eric William Marsden, *Greek and Roman Artillery: Historical Development* (Oxford, 1969);
 Adrian Goldsworthy, *The Roman Army at War 100 BC - AD 200* (Oxford, 1996).
 
 ### The figures in world units
@@ -164,7 +164,7 @@ And, as [`docs/far-tier-pursuit-contagion-design.md`](far-tier-pursuit-contagion
 
 ### The far tier stops being an out-of-contact optimisation
 
-Today a formation only ever enters the far tier already out of contact, and once there it cannot take a casualty until it promotes.
+Setting aside the routing pursuit that the live far-tier combat wiring already resolves, a formation only ever enters the far tier out of contact, and once there it cannot take a casualty until it promotes.
 That holds because the longest reach in the game, 160 wu, is well inside `PROMOTE_RANGE` at 400 wu:
 anything close enough to shoot at you is close enough to have promoted you first.
 
