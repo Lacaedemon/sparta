@@ -131,13 +131,43 @@ func test_type_from_name_returns_none_for_an_unclaimed_name() -> void:
 	assert_eq(Faction.type_from_name("Spar"), Faction.NONE)
 
 
-func test_a_historical_name_the_plain_name_already_carries_is_not_repeated() -> void:
+func test_another_factions_gloss_is_replaced_rather_than_doubled() -> void:
 	# HUD.gd's form-up menu label and SelectionManager.FORM_UP_DIST_NAMES both spell the
-	# checkerboard "Checkerboard (quincunx)" -- which IS Rome's own name for it, so a naive
-	# append would render "Checkerboard (quincunx) (quincunx)" for Rome alone.
+	# checkerboard "Checkerboard (quincunx)" -- and quincunx is ROME's own name for the mode,
+	# so every other side must read its own term INSTEAD of Rome's, not after it.
 	assert_eq(Faction.get_form_up_display_name(
 			Faction.Type.ROME, 4, "Checkerboard (quincunx)"), "Checkerboard (quincunx)")
-	# Every other faction still gets its own name appended to that same plain label.
 	assert_eq(Faction.get_form_up_display_name(
-			Faction.Type.CARTHAGE, 4, "Checkerboard (quincunx)"),
-			"Checkerboard (quincunx) (shatranj)")
+			Faction.Type.CARTHAGE, 4, "Checkerboard (quincunx)"), "Checkerboard (shatranj)")
+	assert_eq(Faction.get_form_up_display_name(
+			Faction.Type.SPARTA, 4, "Checkerboard (quincunx)"), "Checkerboard (epallax)")
+
+
+func test_a_parenthetical_no_faction_claims_survives() -> void:
+	# "(right leads)" is a disambiguator, not a historical gloss: no faction's echelon entry
+	# spells it, so it must stay. Dropping it would leave Macedon's two echelon modes both
+	# reading "Echelon (loxe phalanx)", with nothing left to tell right from left.
+	assert_eq(Faction.get_form_up_display_name(
+			Faction.Type.MACEDON, 5, "Echelon (right leads)"),
+			"Echelon (right leads) (loxe phalanx)")
+	assert_eq(Faction.get_form_up_display_name(
+			Faction.Type.MACEDON, 6, "Echelon (left leads)"),
+			"Echelon (left leads) (loxe phalanx)")
+
+
+func test_a_gloss_is_only_stripped_when_it_names_the_same_mode() -> void:
+	# "phalanx" is Sparta's SHIELD_WALL name, so the tables do claim the term -- but not for
+	# the checkerboard, so a plain label ending in it is left alone rather than rewritten.
+	assert_eq(Faction.get_form_up_display_name(
+			Faction.Type.SPARTA, 4, "Wedge (phalanx)"), "Wedge (phalanx) (epallax)")
+
+
+func test_a_formation_caption_is_never_rewritten() -> void:
+	# Formation captions carry no parenthetical of their own (interval, "x", unit, stance
+	# word), so the gloss rule can never eat part of one -- pin the shapes the HUD passes in.
+	assert_eq(Faction.get_formation_display_name(
+			Faction.Type.SPARTA, UnitScript.FORMATION_TIGHT, "0.45 m locked"),
+			"0.45 m locked (synaspismos)")
+	assert_eq(Faction.get_formation_display_name(
+			Faction.Type.ROME, UnitScript.FORMATION_NORMAL, "1.2 m x 0.9 m"),
+			"1.2 m x 0.9 m (acies)")
