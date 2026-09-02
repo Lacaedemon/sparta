@@ -228,18 +228,10 @@ var selected: bool = false
 # ATTACK/RELIEF/SUPPORT orders by reading them.
 var orders: Array[Order] = []
 var current_order: Order = null
-# Stance and leash properties (StanceTable)
-var held_position: Vector2 = Vector2.ZERO
-var leash_radius: float = 0.0
 # Order stance, set by Battle._apply_order_cmd from the order's mode.
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
 # The smart-order behaviours read this; NORMAL is current behaviour.
-var order_mode: int = 0:
-	set(val):
-		order_mode = val
-		leash_radius = StanceTable.default_leash(val)
-		if held_position == Vector2.ZERO and val != 0:
-			held_position = position
+var order_mode: int = 0
 ## Persistent line-membership index in an army formation, tracking which line a unit
 ## belongs to across form-up commands and tray reassignment (0 = front line, 1+ = reserve
 ## line -- see is_front_line()/is_reserve_line() below, which treat any index > 0 as reserve).
