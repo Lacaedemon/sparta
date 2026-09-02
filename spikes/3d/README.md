@@ -117,7 +117,8 @@ The following were in scope for 3D-0 and are **not** answered here.
   No clip was captured, on this machine or in CI.
 
 - **Input routed back into the sim.**
-  The shell prints the picked ground point and stops there; it never calls `set_cursor_override()`, so no selection, order, or formation drag was exercised through the 3D path.
+  The shell prints the picked ground point and stops there.
+  It never calls `set_cursor_override()`, so no selection, order, or formation drag was exercised through the 3D path.
 
   The measured pick was fired from the self-test frame, which calls the same `_pick_at()` the left-click handler calls, so the ray maths is covered but the `InputEventMouseButton` plumbing above it is not.
 
