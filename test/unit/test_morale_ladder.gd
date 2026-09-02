@@ -71,8 +71,7 @@ func test_morale_ladder_name_method_and_snapshot():
 func test_ambient_morale_loss_triggers_rout():
 	# Distinct from the register_casualties() rout path (see test_unit.gd): this exercises
 	# UnitMorale.tick_morale()'s own ambient-erosion trigger, added alongside
-	# Unit._rout_clearance() to fix routing-mob pathfinding clearance (website demo catalog
-	# defect sweep, #1441).
+	# Unit._rout_clearance() to fix routing-mob pathfinding clearance.
 	var unit: Unit = UnitRef.new()
 	autofree(unit)
 	unit.team = 0
