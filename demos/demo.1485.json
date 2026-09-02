@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/far-tier-contact-1485.json",
+  "caption": "Far-tier formations can now fight. Both regiments here are demoted to the aggregate (far) tier and stay there through contact: previously they would have marched into each other and stood locked, unable to take a casualty, lose morale, or rout until promotion handed them back to close-tier combat. Battle's tick now resolves far-tier attrition through the same UnitCombat.register_casualties / Unit._rout() path the close tier uses, so the enemy infantry thins under the spearmen, its morale runs out, and it breaks and flees.",
+  "fixed_fps": 30,
+  "max_frames": 200,
+  "fps": 12,
+  "width": 640
+}

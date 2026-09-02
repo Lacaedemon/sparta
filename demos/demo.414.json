@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation-only PR: docs/fog-of-war-design.md is a design note for fog of war (issue #414). No scripts/, scenes/, or assets/ change, so a recorded battle would look identical to today's and could only show unrelated gameplay. The design's own phase plan schedules the clips: phase 1 is headless and also skips, phase 2 records the fog overlay and ghost markers, and phase 3 records the AI reacting to a flank march only once a screening unit sights it."
+}

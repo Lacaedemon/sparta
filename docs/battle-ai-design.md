@@ -249,6 +249,7 @@ Two boundaries the sketch bakes in:
   *enemy* (and, once #414 defines it, possibly distant friendlies outside
   the command). The exact friendly-knowledge rule is #414's call; the
   interface just has to route whatever #414 decides.
+  #414's design ([`docs/fog-of-war-design.md`](fog-of-war-design.md)) answers it: same-team units are always visible.
 - **Suggestions ride the same interface.** What a subordinate reported is
   part of what a commander "knows", so it lives in the view too -- which
   means a fogged general can know about a flanking force *because a unit
@@ -473,6 +474,8 @@ the only door); determinism on replay is preserved with fog active.
 - **#135 / #502** -- player delegation and period rank names, phase 4.
 - **#414** -- fog of war; phase 5 integrates it through the perception
   interface, with the AI honoring it by requirement.
+  Its design now lives in [`docs/fog-of-war-design.md`](fog-of-war-design.md), which settles the friendly-knowledge rule this document leaves open above: same-team units are always visible to their own side.
+
 - **#290** -- lockstep multiplayer; the determinism rules keep that door open.
 - **#516** (`docs/orders-queue-design.md`) -- the actuation layer this whole
   design speaks through; its two invariants are inherited here.
