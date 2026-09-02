@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Design-doc-only PR: far-tier winner pursuit and rout contagion (#621) are scoped here but not implemented -- the doc's central finding is that FarTierRules.tick_pair is never wired into live Battle.gd combat at all, so no recorded battle can show the behaviour being scoped."
+}
