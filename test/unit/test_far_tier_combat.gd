@@ -360,6 +360,9 @@ func test_the_far_tier_fight_is_deterministic_under_a_forced_seed() -> void:
 	# Without this the loop above would vacuously pass on two empty captures -- the
 	# negative control a same-shape comparison always needs.
 	assert_gt(compared, 100, "the two runs overlapped on enough ticks to be a real check")
+	# The second negative control: two dead sims agree perfectly too, so assert the fight
+	# actually happened before reading the agreement as evidence of determinism.
+	assert_gt(first["rout_tick"], 0, "the runs being compared actually fought and broke")
 	assert_eq(first["rout_tick"], second["rout_tick"], "and breaks on the same tick")
 	assert_eq(first["first_casualty_tick"], second["first_casualty_tick"],
 		"and takes its first casualty on the same tick")
