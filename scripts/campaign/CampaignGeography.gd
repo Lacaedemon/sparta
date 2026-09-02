@@ -18,7 +18,7 @@ const NO_PROVINCE := -1
 
 var _polygons: Dictionary = {}    # id -> PackedVector2Array
 var _adjacency: Dictionary = {}   # id -> Array of neighbouring ids
-var _centres: Dictionary = {}     # id -> Vector2, the loader's own polygon anchor
+var _centres: Dictionary = {}     # id -> Vector2, from the shared centre formula
 var _order: Array[int] = []       # ids in map order, so every lookup is deterministic
 
 
@@ -32,8 +32,9 @@ func _init(map: Dictionary = {}) -> void:
 			poly.append(Vector2(float(vertex[0]), float(vertex[1])))
 		_polygons[id] = poly
 		_adjacency[id] = Array(province.get("adj", []))
-		# One formula, computed once: the loader already anchors each province's label
-		# at this point, so a march measures between the points the map is labelled at.
+		# One formula, shared with the loader rather than repeated here, and computed
+		# once per province: the same vertex average the loader takes a province's label
+		# point from when the map does not author one.
 		_centres[id] = CampaignLoaderRef.polygon_centre(poly)
 		_order.append(id)
 
