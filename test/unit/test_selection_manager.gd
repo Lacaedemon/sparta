@@ -501,6 +501,10 @@ func test_key_label_uses_glyphs_for_brackets_and_escape() -> void:
 	assert_eq(sm._key_label(_key_event(KEY_ESCAPE)), "Esc", "escape shows as Esc")
 	assert_eq(sm._key_label(_key_event(KEY_T)), "T", "a letter shows as itself")
 	assert_eq(sm._key_label(_key_event(KEY_1, true)), "Ctrl+1", "a chorded digit shows the modifier")
+	assert_eq(sm._key_label(_key_event(KEY_E, false, true)), "Shift+E",
+		"a Shift chord shows its modifier too (the turn-and-double combo vs the plain quarter-turn)")
+	assert_eq(sm._key_label(_key_event(KEY_V, true, true)), "Ctrl+Shift+V",
+		"a double chord lists both modifiers, Ctrl first")
 
 
 func test_take_keys_this_tick_drains_the_buffer() -> void:
@@ -1346,6 +1350,36 @@ func test_dispatch_key_ctrl_shift_v_issues_laconian_countermarch() -> void:
 	assert_eq(u.countermarch_variant(), Unit.CountermarchVariant.LACONIAN)
 
 
+func test_dispatch_key_shift_q_issues_turn_explicatio_left() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _seeded_unit(0)
+	u.uid = 42
+	b._by_uid[42] = u
+	sm._select(u)
+	assert_true(sm._dispatch_key(_key_event(KEY_Q, false, true)), "Shift+Q is a handled hotkey")
+	assert_eq(u.current_order.type, Order.Type.COMBO, "the turn -> explicatio combo armed")
+	assert_true(u.active_leaf().turn_target.is_equal_approx(Vector2.DOWN.rotated(-PI * 0.5)),
+			"Shift+Q turns left, same side as the plain Q drill")
+
+
+func test_dispatch_key_shift_e_issues_turn_explicatio_right() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _seeded_unit(0)
+	u.uid = 43
+	b._by_uid[43] = u
+	sm._select(u)
+	assert_true(sm._dispatch_key(_key_event(KEY_E, false, true)), "Shift+E is a handled hotkey")
+	assert_eq(u.current_order.type, Order.Type.COMBO, "the turn -> explicatio combo armed")
+	assert_true(u.active_leaf().turn_target.is_equal_approx(Vector2.DOWN.rotated(PI * 0.5)),
+			"Shift+E turns right, same side as the plain E drill")
+
+
 func test_issue_quarter_turn_only_turns_own_team_units() -> void:
 	var sm := _sm()
 	var friend := _seeded_unit(0)
@@ -1356,6 +1390,60 @@ func test_issue_quarter_turn_only_turns_own_team_units() -> void:
 			"the own-team unit received the quarter-turn drill")
 	assert_null(enemy.current_order,
 			"an enemy unit in the selection is skipped outside all-teams control")
+
+
+## Unlike conversio/quarter-turn (visual-only, unrecorded), the turn -> explicatio combo
+## goes through the recorded Battle.enqueue_turn_explicatio path -- see
+## _issue_turn_explicatio's own doc -- so this needs a real Battle double registering both
+## units by uid, the same setup the countermarch tests above use.
+func test_issue_turn_explicatio_only_turns_own_team_units() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var friend := _seeded_unit(0)
+	friend.uid = 37
+	b._by_uid[37] = friend
+	var enemy := _seeded_unit(1)
+	enemy.uid = 38
+	b._by_uid[38] = enemy
+	sm._selected = [friend, enemy]
+	sm._issue_turn_explicatio(1)
+	assert_eq(friend.current_order.type, Order.Type.COMBO,
+			"the own-team unit received the turn -> explicatio combo")
+	assert_null(enemy.current_order,
+			"an enemy unit in the selection is skipped outside all-teams control")
+
+
+func test_issue_turn_explicatio_noops_during_playback() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _seeded_unit(0)
+	u.uid = 39
+	b._by_uid[39] = u
+	sm._selected = [u]
+	var prev_mode = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	sm._issue_turn_explicatio(1)
+	Replay.mode = prev_mode
+	assert_null(u.current_order, "no combo issued during playback")
+	assert_true(b._pending_orders.is_empty(), "no command queued during playback")
+
+
+func test_issue_turn_explicatio_noops_with_no_own_team_units_selected() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var enemy := _seeded_unit(1)
+	enemy.uid = 41
+	b._by_uid[41] = enemy
+	sm._selected = [enemy]
+	sm._issue_turn_explicatio(1)
+	assert_null(enemy.current_order, "an all-enemy selection issues nothing")
+	assert_true(b._pending_orders.is_empty(), "no command queued for an empty own-team uid list")
 
 
 func test_issue_form_up_routes_a_recorded_order() -> void:

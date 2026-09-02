@@ -200,6 +200,30 @@ future command builds on top of `enqueue_macro`.
 > were removed rather than kept for a hypothetical future "cancel as one unit"
 > case; a future need can re-add the same mechanism if it materializes.
 
+> **Built, as a tree composite rather than a flat tag: `Order.Type.COMBO` /
+> `Unit.begin_combo(steps)`.**
+> The combo the removed tag was named for arrived as the nested form the
+> superseding design already used for the rear move: a `COMBO` order whose
+> `children` are the drill steps in execution order, walked by the same tree
+> cursor.
+> What a combo adds is a single arming routine per step kind
+> (`Unit._arm_combo_step`, over the closed `Unit.COMBO_STEP_TYPES` set: the two
+> in-place turns and a file-double), which the cascade calls as each step is
+> promoted -- so a step reads the unit's state at the moment it starts, never at
+> issue time.
+> That is what lets a step depend on the one before it: the file-double step
+> (`Order.new_file_double`, a FRONTAGE order with `dir` set) resolves its width in
+> the frame of whatever facing the turn left, transposing a quarter-turned grid
+> first (`Unit._apply_file_double_step`).
+> An instantaneous step is spent on arming, so the cascade continues through it;
+> cancelling the combo is `set_current_order()`/`clear_orders()` on the whole
+> composite, exactly as for any other current order, which is the "cancel as one
+> unit" case the flat tag existed for.
+> The first concrete combo is the quarter-turn -> explicatio
+> (`Unit.quarter_turn_explicatio`, `Battle.ORDER_TURN_EXPLICATIO`, Shift+Q / Shift+E);
+> the transcript reports it as `current_order: COMBO` with `order_phase` naming the
+> active step's own type.
+
 ### 3. No deep order-tree / behavior-tree
 
 Avoid by default. It is more machinery than the domain needs, harder to serialize
