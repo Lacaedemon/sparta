@@ -25,7 +25,7 @@ Reading `Battle.gd`'s tick and the two systems this issue touches turns up a fac
 It is the latter.
 Grep confirms `tick_pair` has exactly one caller in the whole tree: `test/unit/test_far_tier_rules.gd`.
 
-What *is* live, wired through `Battle._tick_tier_transitions` (`scripts/Battle.gd:2799`) and `TierTransition` (`scripts/TierTransition.gd`):
+What *is* live, wired through `Battle._tick_tier_transitions` (`scripts/Battle.gd:2823`) and `TierTransition` (`scripts/TierTransition.gd`):
 
 - **Promotion and demotion** run every tick, per formation, off the distance-hysteresis predicates in `FormationTier` (`PROMOTE_RANGE = 400`, `DEMOTE_RANGE = 600`).
 - **Demotion only drops the per-soldier arrays.**
@@ -53,6 +53,7 @@ The close tier's own analogous behaviours are not pair-scoped, and neither syste
   `Unit._rout()` (`scripts/Unit.gd:6883`) iterates `get_tree().get_nodes_in_group("units")` -- every live formation on the field, not just the one it was fighting -- and drops morale by 12 on every teammate within `ROUT_SHOCK_RADIUS` (7 m).
   Nothing there reads `tier`.
   A far-tier formation that breaks already rings this shockwave against its far-tier and close-tier neighbours alike, the day it can break at all.
+
 - **Winner pursuit already exists as an AI decision, tier-agnostic, today.**
   `UnitLeader.decide` (`scripts/UnitLeader.gd`), driven by the general's `pursue_routers` doctrine flag (`docs/battle-ai-design.md` phase 3), already retargets *any* unit -- via `UnitTargeting.nearest_enemy_to(..., pursue_routers)`, which has no tier check either -- onto a fresh enemy the instant its current target is gone or breaks.
   `UnitLeader.decide` runs over every AI-controlled unit regardless of tier (`Battle._run_enemy_ai` iterates `_team_units(1)`, not filtered by tier), so a far-tier formation already receives a fresh attack order onto a neighbour the moment its old target routs -- it just currently has nothing to *execute* that order's combat with once it arrives, per the gap above.
@@ -70,6 +71,7 @@ Instead:
 1. **A far-tier formation still has a `target_enemy`, set by the existing AI/order path.**
    Reuse it unchanged;
    no new targeting concept.
+
 2. **A new per-tick step, `FarTierCombat.tick(u: Unit, delta: float)`, called from `Battle.gd` for every live `tier == FormationTier.FAR` unit with a fightable `target_enemy` in range**, computes the expected casualties for this tick using `FarTierRules`'s existing formulas (`strike_expectation`, `casualty_rate`, `in_striking_range`, `flank_multiplier`, the stance factors) evaluated directly against the two `Unit`s' own fields (`attack`, `defense`, `attack_range`, `formation_mode`, `is_ranged`, `position`, `facing`) -- no `FarTierFormation` object constructed.
 3. **Casualties apply through `UnitCombat.register_casualties`**, the same entry point close-tier combat already uses -- so morale erosion, the crumble boost, `_die()`, and `_rout()` (with its existing contagion shockwave) are the *one* implementation, exercised by both tiers, rather than two formulas that can drift.
    `register_casualties`'s own doc comment already anticipates a "formula-path hit on a unit with no soldier layer" for its cosmetic-marker fallback, which reads as this exact caller having been anticipated, never finished.
@@ -78,6 +80,7 @@ Instead:
 5. **Movement while fighting** (`face_toward` when in range, `advance` otherwise) is redundant with what `_think`/`_move_to` already does once a formation has a live `target_enemy`;
    confirm rather than reimplement, and only add a far-tier-specific branch where a real gap turns up (e.g. a far-tier attack order today may resolve as "walk into contact and stop," which is correct -- promotion then takes over -- so `FarTierCombat.tick` should apply attrition to formations that *never* promote, i.e. that stay far-tier because they're outside `PROMOTE_RANGE` of every enemy despite being in `attack_range`/`RANGED_RANGE` of one specific target, which can happen for a long-reach ranged formation given `PROMOTE_RANGE` (400) versus `RANGED_RANGE`;
    check the actual constant relationship before assuming this case is empty).
+
 6. **`FarTierRules`'s pair-scoped API (`tick_pair`, `tick_rout`, `enter_rout`, `rally`, `shatter`, and `FarTierFormation.routing`/`rout_timer`) becomes dead weight once step 3 lands**, since `Unit._rout()`/`_process_rout()` already do that job, generically, for every tier.
    Phase 4 of the plan decides its fate explicitly rather than leaving an unused parallel model in the tree.
 
@@ -90,9 +93,11 @@ This design keeps the tier boundary exactly where `docs/large-scale-simulation-d
   two far-tier formations that are tactically adjacent (e.g. a battle line's neighbouring regiments) may sit well outside 7 m of each other even though a close-tier observer would call them "next to each other."
   Whether contagion at far-tier scale needs its own, larger radius constant (and what governs it -- formation frontage?
   `DEMOTE_RANGE`-scaled?) is a balance question Phase 2 should measure against a real multi-formation scenario before picking a number, not guess up front.
+
 - **Whether a far-tier formation should ever fight *another* far-tier formation, or only ever fight while promotion is imminent.**
   `PROMOTE_RANGE` (400) already sits close to combat range by design (the design doc's own "correctness floor" argument), so two far-tier formations may rarely stay far-tier while in mutual `attack_range`/`RANGED_RANGE`.
   If that case turns out to be empty in practice (worth checking against the benchmark scenarios before building for it), `FarTierCombat.tick` degenerates to "a far-tier formation vs. its one close-tier target," which is materially simpler than the general case and worth confirming before Phase 0 is scoped in detail.
+
 - **Whether `FarTierRules`'s formulas should be read directly by `FarTierCombat.tick`, or whether `FarTierRules` itself should be refactored to take `Unit` parameters instead of `FarTierFormation` ones**, eliminating the now-parallel record type rather than leaving it as an alternate call surface.
   Leaning toward the latter (one set of formulas, one caller shape), but that is a Phase 0 implementation decision, not a design-doc one.
 
@@ -117,6 +122,7 @@ This design keeps the tier boundary exactly where `docs/large-scale-simulation-d
    an A/B lockstep-hash case exercising a far-tier fight;
    a scripted-input demo showing a far-tier reserve pursuing into a neighbour after its first opponent breaks, with the contagion shockwave visible;
    `website/tactics.qmd` updated if this is player-visible (a far-tier formation visibly fighting, rather than freezing, is).
+
 6. **Phase 4 -- `FarTierRules` cleanup.**
    Once Phase 0 routes attrition and rout through `Unit`'s own systems, decide explicitly whether `FarTierFormation.routing`/`rout_timer` and `FarTierRules.tick_pair`/`tick_rout`/`enter_rout`/`rally`/`shatter` are dead code to remove (their job now done by `Unit._rout()`/`_process_rout()`), or whether they remain as a deliberately-isolated unit-testable reference model worth keeping for its own sake (e.g. as a fast analytical approximation for AI planning, distinct from the live per-tick resolution).
    Either answer should be recorded here, not left implicit.
