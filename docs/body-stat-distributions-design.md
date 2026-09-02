@@ -43,7 +43,7 @@ Verified against `scripts/Unit.gd`, `scripts/UnitCombat.gd`, `scripts/SoldierCom
 ### Per-soldier arrays that exist
 
 `Unit` keeps per-soldier state as parallel `Packed*Array`s, index-aligned with
-`_sim_soldier_pos` and compacted together when men die:
+`_sim_soldier_pos` and, with one exception noted below, compacted together when men die:
 
 - `_sim_soldier_pos`, `_sim_body_vel`, `_sim_steer`, `_sim_soldier_facing` --
   `PackedVector2Array`, parent-local (not world-space; see the array's own doc comment
@@ -57,6 +57,17 @@ Verified against `scripts/Unit.gd`, `scripts/UnitCombat.gd`, `scripts/SoldierCom
   `PackedInt32Array`.
 
 - `_sim_soldier_broken` -- `PackedByteArray`.
+
+One exception matters for the contract a new array has to join.
+`_sim_soldier_facing` is index-aligned like the rest but is *not* compacted in
+`SoldierMelee.reap()`, which never touches it;
+it is instead re-derived on the next tick by the size-mismatch resize in
+`SoldierBodies.step` (`scripts/SoldierBodies.gd`), which either reseeds the tail at the
+unit heading during an owned maneuver or refills the whole array from
+`Unit.soldier_world_facings`.
+That works because facing is recomputable from formation state.
+A drawn body stat is not recomputable, so it cannot take the facing route and must join
+the reap walk explicitly.
 
 None of these is a *body* stat.
 Health and stamina are pools, not physique;
@@ -273,6 +284,32 @@ The four new arrays are plain per-soldier values with no permutation to preserve
 each takes the simple `remove_at(i)` form, added in the same change that introduces the
 array.
 
+`reap()` is the most bug-prone site but not the only one.
+Three further places in the tree enumerate every parallel per-soldier array by hand, and
+each silently de-aligns or drops a new one if it is not extended in the same change:
+
+- **Far-tier demotion and promotion** (`scripts/TierTransition.gd`).
+  `demote()` clears every per-soldier array outright, and `promote()` rebuilds them from
+  the unit's aggregate state using an RNG seeded by
+  `TierTransition.promotion_seed(uid, tick, battle_seed)`, whose own comment states it is
+  never the shared `Replay.rng` stream.
+  A drawn body stat therefore cannot simply persist across a far-tier round trip: it is
+  discarded on demotion and has to be reconstructed on promotion from that local seed,
+  not from the spawn-time stream.
+  This is the site that forces the uid-hash question below.
+
+- **Unit serialization** (`Unit.to_dict()` / `Unit.from_dict()` in `scripts/Unit.gd`).
+  Each array is named explicitly in both directions, so a new one that is not added there
+  is lost across any snapshot round trip.
+
+- **`Battle.SIM_SOLDIER_ARRAY_KEYS`** (`scripts/Battle.gd`).
+  This constant lists the snapshot keys the rearguard-detachment split truncates to the
+  detachment's own headcount;
+  an omitted array leaves the detachment holding the parent's full-length copy.
+
+An acceptance test for phase 1 should exercise a demote-promote round trip and a
+`to_dict()`/`from_dict()` round trip, not only a `reap()` compaction.
+
 That is sixteen bytes per soldier on top of the existing per-soldier footprint.
 If that proves too much at the target soldier counts, the fallback is to quantise each
 factor into a `PackedByteArray` -- a value in [0, 255] mapped onto a fixed range -- for
@@ -363,25 +400,56 @@ Two consequences follow, and both are acceptance criteria rather than notes:
   Reinforcement or any path that grows a unit's soldier arrays after the initial seed
   must draw from the same stream at that moment, not from a fresh generator.
 
+- **The draw is unconditional, and `variation_enabled` does not gate it.**
+  The flag controls only what is *stored*: with it false the drawn values are discarded
+  and each array is filled with that soldier's unit-type baseline, so the stream advances
+  by the same four values per soldier either way.
+  A flag that skipped the draw would make the stream depend on a tuning parameter, which
+  would move the desync from one known phase to whichever later phase flips the flag, and
+  again on any future rebalance.
+  The cost of drawing-and-discarding is four `randf` calls per soldier, once, at spawn.
+
+- **Phase 1 is the single re-record point, and it is not optional.**
+  Because the draw is unconditional, phase 1 advances `Replay.rng` by four values per
+  soldier before any combat roll, so every recorded replay under `demos/` and every
+  scripted-input demo diverges from its recording at that phase.
+  The `Replay.spawn_fingerprint` mismatch is the intended loud signal.
+  Phase 1 therefore ships a re-record sweep of every `demos/` replay and every
+  `demos/inputs/` scenario in the same PR, and no later phase re-records again, because
+  no later phase changes how many values the spawn path consumes.
+
 An alternative worth considering and rejecting explicitly: deriving each soldier's stats
 from a hash of `(unit uid, soldier index, battle seed)` rather than from the shared
 stream.
 That is attractive because it is order-independent and immune to the shifting-stream
-problem above, and it is how the existing uid-keyed separation fan-out already stays
-deterministic.
+problem above.
 It would not violate the replay contract.
 That contract forbids calling `randomize()` or setting `.seed` on `Replay.rng`
 elsewhere, and a pure hash of three already-deterministic inputs does neither and
 introduces no randomness at all.
 
-It is rejected for the first phase on simplicity grounds instead.
+It would also not be a new convention.
+`TierTransition.promotion_seed(uid, tick, battle_seed)` is exactly this idiom already:
+it returns `hash([uid, tick, battle_seed])` and seeds a local RNG that the code comment
+describes as never the shared `Replay.rng` stream (`scripts/TierTransition.gd`).
+Adopting a hash for body stats would follow that precedent rather than establish one.
+(The stable left/right lane tie-break keyed on `uid` in `scripts/Unit.gd` is a different
+thing and is not evidence either way: it derives a deterministic *choice* from a uid, not
+a pseudo-random per-entity value.)
+
+It is deferred rather than rejected, on two grounds.
 One stream is one thing to reason about, one thing the spawn fingerprint has to cover,
-and one place a later reader has to look to answer "where did this number come from";
-a second derivation path is a convention worth not multiplying until something forces
-the issue.
-If the shifting-stream fragility does bite in practice, adopt the hash deliberately and
-record it in `Replay.gd` beside the existing contract, so the second source of
-determinism is documented rather than quietly introduced.
+and one place a later reader has to look to answer "where did this number come from".
+And the shared-stream draw is what makes the phase 1 re-record below a single, bounded
+event rather than a recurring one.
+
+The promotion path is the thing most likely to force the hash.
+Promotion has to reconstruct per-soldier stats without touching `Replay.rng`, and a hash
+of `(uid, soldier index, battle seed)` reconstructs them exactly, where a local
+Gaussian draw would not reproduce the men the unit had before it was demoted.
+If phase 1's promotion reconstruction proves unsatisfying, adopt the hash deliberately
+for body stats as a whole and record it in `Replay.gd` beside the existing contract, so
+the derivation is documented rather than quietly introduced.
 
 ### What it changes
 
@@ -428,9 +496,23 @@ determinism is documented rather than quietly introduced.
   The mean of every distribution is chosen to reproduce today's uniform value *for that
   unit type*, which is why the mass mean is keyed on `SoldierCombat.profile_for` from
   phase 1 rather than on one global figure.
-  A battle at zero variance is then bit-identical to today's for every unit class,
-  ranged and cavalry included.
+  With `variation_enabled = false` every soldier therefore holds exactly today's value
+  for his own unit class, ranged and cavalry included, so no gameplay quantity changes.
   That is testable and should be a test.
+  It is *not* bit-identical to a pre-phase-1 recording, because the unconditional draw
+  advances the shared stream;
+  see the re-record acceptance criterion above.
+  Bit-identity is a claim about the values the arrays hold, not about the RNG stream.
+
+- **The new-file line cap.**
+  `tools/check.sh`'s `file_length` check caps files *added* under `scripts/` by a diff at
+  `SPARTA_CHECK_MAX_NEW_FILE_LINES` lines, defaulting to 100.
+  The proposed `scripts/BodyStats.gd` is a new file under `scripts/`, so it is subject to
+  that cap from its first commit: the constants, `draw()`, and the doc comments have to
+  fit inside it.
+  A later per-culture parameter table is what most plausibly pushes past the cap, so plan
+  for it to live in a data file or a sibling leaf script rather than growing `BodyStats.gd`
+  past the budget.
 
 - **Patch coverage.**
   Per the repo's pre-push rule, a diff touching `scripts/` runs `patch_coverage`
@@ -460,16 +542,25 @@ Nothing reads the arrays yet.
   `SoldierCombat.profile_for` figures), strength and speed coefficients of variation,
   truncation width, and a master `variation_enabled` flag defaulting to **false**.
 
-- **Defaults:** as listed under "The draw" above, with `variation_enabled = false` so
-  the phase is a genuine no-op until a later phase turns it on.
+- **Defaults:** as listed under "The draw" above, with `variation_enabled = false`, so
+  every stored value equals today's unit-type value until a later phase turns the flag on.
+  The phase is inert in *gameplay* terms and is deliberately not inert in *stream* terms:
+  the draw happens regardless, which is why the re-record lands here.
 
 - **Tests:** the same seed produces the same roster across two runs;
   a different seed produces a different one;
   every drawn value falls inside the truncation bounds;
   the arrays stay index-aligned with `_sim_soldier_pos` across a `SoldierMelee.reap()`
-  casualty compaction and a tail resize;
+  casualty compaction, a tail resize, a `TierTransition` demote-promote round trip, and a
+  `Unit.to_dict()`/`from_dict()` round trip;
   with `variation_enabled = false` every soldier gets exactly today's values for his own
-  unit class, ranged and cavalry included.
+  unit class, ranged and cavalry included;
+  the number of values the spawn path draws per soldier does not depend on
+  `variation_enabled`.
+
+- **Re-record:** every replay under `demos/` and every scenario under `demos/inputs/` is
+  re-recorded in this PR, and the resulting demo clips are re-verified against the
+  standard defect checklist.
 
 - **Demo:** skip, with an honest reason -- nothing is visible.
 
@@ -610,3 +701,9 @@ because everything above works with one distribution.
    changes an old battle's men.
    The fingerprint mismatch would catch it;
    whether catching it is enough is a decision.
+   The tree narrows this more than it first appears: `TierTransition.demote()` already
+   discards every per-soldier array, so "survive" is not available across a far-tier round
+   trip whatever the save path does, and `promote()` has to reconstruct the stats from its
+   own local seed.
+   So the live question is whether that reconstruction reproduces the same men, which is
+   what the uid-hash alternative above would buy.
