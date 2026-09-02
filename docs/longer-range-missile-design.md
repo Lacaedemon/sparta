@@ -12,7 +12,8 @@ Re-check every name against the tree before wiring.
 
 ### Ranges
 
-Ancient missile weapons reached far enough that a battlefield 80 m across, which is what the game gives them today, is a rounding error against any of them.
+The longer-ranged ancient missile weapons -- the sling, both bows, and torsion artillery -- reached far enough that a battlefield 80 m across, which is what the game gives them today, is a rounding error against them.
+The hand-thrown shafts are the exception and the reason the field size has never bitten: a javelin at 20-30 m and a pilum at 15-20 m both fit comfortably inside it.
 
 - **Sling**:
   Xenophon has Rhodian slingers using lead shot outrange both the Persian slingers, who threw large stones, and the Persian archers, so that the Greeks could keep the Persian light troops off the column (*Anabasis* 3.3.16-18).
@@ -25,7 +26,7 @@ Ancient missile weapons reached far enough that a battlefield 80 m across, which
 
 - **Composite bow**:
   The Persian, Scythian, and later Roman *sagittarii* composite bow reached further than the self bow for the same draw length, on the order of 150-200 m effective and further still for harassing fire at extreme elevation.
-  Xenophon's account of the retreat turns on exactly this range advantage: the Persian bows and slings outreached the Greek hoplites entirely until Xenophon raised his own Rhodian slingers and mounted archers (*Anabasis* 3.3.7-18).
+  Xenophon's account of the retreat turns on exactly this range advantage: the Persian bows and slings outreached the Greek hoplites entirely until Xenophon raised his own Rhodian slingers and a small body of horse (*Anabasis* 3.3.16-20).
 
 - **Javelin and pilum**:
   A hand-thrown shaft is an order of magnitude shorter-ranged than a bow or sling.
@@ -142,7 +143,8 @@ A sling shot that peaks 64 m up and hangs for eleven seconds is not a sling shot
 Two causes compound.
 `ANGLE_ARCED` at 55 degrees is above the 45-degree maximum-range angle, so at long range it spends energy on height that a real shooter spends on distance.
 And `GRAVITY = 90` was chosen to make an 8 m arc readable;
-the same choice at 180 m halves the launch speed a real projectile needs and doubles the hang time.
+the same choice leaves a 180 m shot needing roughly two-thirds the launch speed a real projectile does and hanging about half again as long.
+Both factors are the same square root read in opposite directions: at a fixed range launch speed scales as the square root of gravity, so `sqrt(90 / 196.2)` is 0.68, and flight time as its reciprocal, so `sqrt(196.2 / 90)` is 1.48.
 
 ### The far tier
 
@@ -190,6 +192,14 @@ Phase 2 below is therefore bounded to ranges that stay inside the close tier.
 
 The deployment design's three presets are a 580-wu (29 m) *Close* gap, a 1200-wu (60 m) *Far-tier opening*, and a 4000-wu (200 m) *Historical* gap.
 Read against the range table above, those presets acquire a meaning they do not have today.
+
+One convention has to be fixed first, because the two families of figure are not measured the same way.
+The game gates firing on the distance between unit *centres*: `scripts/Unit.gd` compares `position.distance_squared_to(enemy.position)` against `RANGED_RANGE * RANGED_RANGE`.
+The deployment design's gaps are between line anchors, and it records that its 580-wu *Close* gap is "about 20 m front to front at today's block depths" ([`docs/deployment-distance-design.md`](deployment-distance-design.md)), roughly 400 wu.
+Every preset reading below is centre to centre, matching the code, so the gaps are read at their full 580, 1200, and 4000 wu.
+The historical range figures, by contrast, are front-to-front throwing and shooting distances, so an authored `range_m` consumed as a centre-to-centre bound has to be *lengthened* by half of each block's depth -- on the order of 180 wu at today's depths -- rather than taken from the table unchanged.
+That correction is left to Phase 2, which is where a profile first gets authored;
+it moves the effective reach in the direction of the longer numbers, so it does not disturb the comparisons in this section.
 
 At the *Close* preset the bows, the sling, and both artillery pieces reach the enemy line outright at deployment, the javelin reaches only at the top of its band, and the pilum does not reach at all, so for most of the table the missile phase is instantaneous and there is nothing to manoeuvre for.
 At the *Far-tier opening* preset a bow or sling reaches across the gap and a javelin does not, so the light troops must be pushed forward to be used at all.
@@ -307,15 +317,19 @@ Demo: a skip manifest, since a design note films nothing.
 
 ### Phase 2 (per-type missile profiles, close-tier ranges only)
 
-Add the missile profile to `scripts/LoadoutRegistry.gd`, the `Unit.missile_range` instance field, and the read-site rewrites, including the three de-weldings above.
+Add the missile profile to `scripts/LoadoutRegistry.gd`, the `Unit.missile_range` instance field, and the read-site rewrites, including the three de-weldings above *and* the fourth decision on target acquisition.
 Ranges stay strictly inside `FormationTier.PROMOTE_RANGE` (400 wu, 20 m) in this phase, so nothing depends on far-tier combat;
 promotion tests `< PROMOTE_RANGE` (`scripts/FormationTier.gd`), so 400 wu itself is already outside the bound.
 Only the pilum row fits, authored at the bottom of its band (15 m, 300 wu).
+That range is past the 190-wu `DETECTION_RANGE` default, and `scripts/Unit.gd`'s own comment records the invariant that the missile range stays below detection so an auto-acquired target is always in detection too.
+So the acquisition decision is in scope for this phase and not deferrable: the profile must also raise the unit's `detection_range` to at least its missile range.
+The per-unit `detection_range` field already exists and is settable before the node enters the tree (`scripts/Unit.gd`), so this is an assignment rather than new machinery.
 The javelin's 400-600 wu band starts at that bound and so waits for the far-tier work, and the bow and sling rows are authored but not yet assigned to a roster unit.
 
 Acceptance tests: a unit with no profile reproduces today's `RANGED_RANGE`, `RANGED_INTERVAL`, and `RANGED_DAMAGE_FACTOR` exactly;
 an existing replay plays back bit-identically;
 a pilum unit fires at its own range and not at the global one;
+a pilum unit auto-acquires a target at that 300-wu range, past the 190-wu detection default, and a unit with no profile keeps the 190-wu default;
 `RALLY_CONTACT_RADIUS` and `Battle.ROUT_MARGIN` no longer move when a unit's missile range changes.
 
 Demo: a pilum-armed unit loosing at its own 300-wu range while an unprofiled unit beside it holds for the global 160-wu one, verified against the standard demo defect checklist.
