@@ -55,7 +55,7 @@ Adrian Goldsworthy, *The Roman Army at War 100 BC - AD 200* (Oxford, 1996).
 
 ### The figures in world units
 
-World scale is 20 world units per metre (`WorldScale.WU_PER_M`, verified in `scripts/WorldScale.gd`), so a metric figure converts by multiplying by 20.
+World scale is 20 world units per metre (`WorldScaleRef.WU_PER_M`, the script-local preload alias of `scripts/WorldScale.gd`), so a metric figure converts by multiplying by 20.
 Per [`docs/units-convention.md`](units-convention.md) any constant derived from these would be authored as `<metres> * WorldScaleRef.WU_PER_M` rather than as a bare world-unit literal.
 
 | Weapon | Effective range (m) | Range (wu) | Reconstructed rate |
