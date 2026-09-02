@@ -15,16 +15,22 @@ const FactionScript = preload("res://scripts/Faction.gd")
 # default line.
 var _saved_team_0: Array[String] = []
 var _saved_team_1: Array[String] = []
+var _saved_faction_0: int = FactionScript.NONE
+var _saved_faction_1: int = FactionScript.NONE
 
 
 func before_each() -> void:
 	_saved_team_0 = CustomMatchupScript.pending_team_0
 	_saved_team_1 = CustomMatchupScript.pending_team_1
+	_saved_faction_0 = CustomMatchupScript.pending_faction_0
+	_saved_faction_1 = CustomMatchupScript.pending_faction_1
 
 
 func after_each() -> void:
 	CustomMatchupScript.pending_team_0 = _saved_team_0
 	CustomMatchupScript.pending_team_1 = _saved_team_1
+	CustomMatchupScript.pending_faction_0 = _saved_faction_0
+	CustomMatchupScript.pending_faction_1 = _saved_faction_1
 
 
 # --- CustomMatchup.pending() / clear() ---------------------------------------
@@ -46,6 +52,24 @@ func test_clear_empties_both_rosters() -> void:
 	CustomMatchupScript.clear()
 	assert_true(CustomMatchupScript.pending_team_0.is_empty())
 	assert_true(CustomMatchupScript.pending_team_1.is_empty())
+	assert_false(CustomMatchupScript.pending())
+
+
+func test_clear_forgets_both_factions_too() -> void:
+	# A leftover faction would retitle a later standalone battle's HUD captions in a language
+	# nobody picked, so clear() has to reach the factions as well as the rosters.
+	CustomMatchupScript.pending_faction_0 = FactionScript.Type.SPARTA
+	CustomMatchupScript.pending_faction_1 = FactionScript.Type.ROME
+	CustomMatchupScript.clear()
+	assert_eq(CustomMatchupScript.pending_faction_0, FactionScript.NONE)
+	assert_eq(CustomMatchupScript.pending_faction_1, FactionScript.NONE)
+
+
+func test_a_faction_alone_is_not_a_pending_matchup() -> void:
+	# pending() stays keyed on the rosters: a faction with no units behind it is not a battle,
+	# and reading it as one would replace the default line spawn with an empty scenario.
+	CustomMatchupScript.clear()
+	CustomMatchupScript.pending_faction_0 = FactionScript.Type.MACEDON
 	assert_false(CustomMatchupScript.pending())
 
 
@@ -171,3 +195,34 @@ func test_battle_spawns_a_pending_custom_matchup_instead_of_the_default_line() -
 
 	assert_eq(team_0_types, ["Cavalry"], "team 0 spawns exactly the configured Hippeis Cavalry, as Cavalry")
 	assert_eq(team_1_types, ["Archers"], "team 1 spawns exactly the configured Balearic Slingers, as Archers")
+
+
+func test_battle_carries_the_pending_factions_through_to_the_hud() -> void:
+	# The whole hand-off in one shot: the prebattle screen's faction choice survives the scene
+	# swap (CustomMatchup), lands on the battle (Battle.team_factions), and reaches the HUD --
+	# which is what makes a Spartan regiment's formation read "pyknosis" rather than a bare
+	# interval. HUD.faction_for_team is the readout the captions themselves go through.
+	CustomMatchupScript.pending_team_0 = ["Spartan Hoplites"]
+	CustomMatchupScript.pending_team_1 = ["Hastati"]
+	CustomMatchupScript.pending_faction_0 = FactionScript.Type.SPARTA
+	CustomMatchupScript.pending_faction_1 = FactionScript.Type.ROME
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	add_child_autofree(battle)
+	await get_tree().physics_frame
+
+	assert_eq(battle.team_factions, [FactionScript.Type.SPARTA, FactionScript.Type.ROME])
+	var hud: Node = battle.get_node("HUD")
+	assert_eq(hud.faction_for_team(0), FactionScript.Type.SPARTA)
+	assert_eq(hud.faction_for_team(1), FactionScript.Type.ROME)
+
+
+func test_a_battle_with_no_pending_matchup_keeps_both_sides_factionless() -> void:
+	CustomMatchupScript.clear()
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	add_child_autofree(battle)
+	await get_tree().physics_frame
+
+	assert_eq(battle.team_factions, [FactionScript.NONE, FactionScript.NONE])
+	var hud: Node = battle.get_node("HUD")
+	assert_eq(hud.faction_for_team(0), FactionScript.NONE,
+			"a standalone battle reads exactly as it did before factions existed")

@@ -86,3 +86,58 @@ func test_get_form_up_display_name_falls_back_to_plain_name_for_an_unlisted_mode
 
 func test_get_strategy_name_falls_back_to_standard_doctrine_for_an_unknown_faction() -> void:
 	assert_eq(Faction.get_strategy_name(-1), "Standard Doctrine")
+
+
+func test_none_is_outside_the_type_enums_own_value_range() -> void:
+	# NONE marks a side with no faction; a battle carries it for both teams unless a
+	# prebattle choice named one, so it must never collide with a real Type value.
+	assert_false(Faction.ALL_TYPES.has(Faction.NONE))
+	for f_id in Faction.ALL_TYPES:
+		assert_ne(f_id, Faction.NONE)
+
+
+func test_none_renders_the_plain_name_through_every_display_helper() -> void:
+	assert_eq(Faction.get_formation_display_name(
+			Faction.NONE, UnitScript.FORMATION_NORMAL, "0.45 m"), "0.45 m")
+	assert_eq(Faction.get_form_up_display_name(Faction.NONE, 4, "Checkerboard"), "Checkerboard")
+	assert_eq(Faction.get_strategy_name(Faction.NONE), "Standard Doctrine")
+
+
+func test_all_types_covers_every_named_faction() -> void:
+	assert_eq(Faction.ALL_TYPES.size(), Faction.FACTION_NAMES.size(),
+			"ALL_TYPES enumerates exactly the factions FACTION_NAMES names")
+	for f_id in Faction.ALL_TYPES:
+		assert_true(Faction.FACTION_NAMES.has(f_id))
+
+
+func test_type_from_name_accepts_the_full_and_the_bare_display_name() -> void:
+	for f_id in Faction.ALL_TYPES:
+		var full: String = Faction.get_faction_name(f_id)
+		assert_eq(Faction.type_from_name(full), f_id, "the full name resolves")
+		assert_eq(Faction.type_from_name(full.split(" (")[0]), f_id, "the bare name resolves")
+
+
+func test_type_from_name_is_case_and_whitespace_insensitive() -> void:
+	assert_eq(Faction.type_from_name("  sPaRtA  "), Faction.Type.SPARTA)
+	assert_eq(Faction.type_from_name("ROME (LATIN / ROMAN)"), Faction.Type.ROME)
+
+
+func test_type_from_name_returns_none_for_an_unclaimed_name() -> void:
+	assert_eq(Faction.type_from_name("Atlantis"), Faction.NONE)
+	assert_eq(Faction.type_from_name(""), Faction.NONE)
+	assert_eq(Faction.type_from_name("   "), Faction.NONE)
+	# A prefix that isn't the whole bare name is NOT a match -- a data file naming "Spar"
+	# is a typo, and resolving it silently would record a clip claiming a faction nobody wrote.
+	assert_eq(Faction.type_from_name("Spar"), Faction.NONE)
+
+
+func test_a_historical_name_the_plain_name_already_carries_is_not_repeated() -> void:
+	# HUD.gd's form-up menu label and SelectionManager.FORM_UP_DIST_NAMES both spell the
+	# checkerboard "Checkerboard (quincunx)" -- which IS Rome's own name for it, so a naive
+	# append would render "Checkerboard (quincunx) (quincunx)" for Rome alone.
+	assert_eq(Faction.get_form_up_display_name(
+			Faction.Type.ROME, 4, "Checkerboard (quincunx)"), "Checkerboard (quincunx)")
+	# Every other faction still gets its own name appended to that same plain label.
+	assert_eq(Faction.get_form_up_display_name(
+			Faction.Type.CARTHAGE, 4, "Checkerboard (quincunx)"),
+			"Checkerboard (quincunx) (shatranj)")

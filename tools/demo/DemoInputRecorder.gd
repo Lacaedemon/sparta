@@ -34,6 +34,12 @@ var _all_teams_control: bool = false
 # from the input script's optional "doctrine" field (a DoctrineRegistry id). Empty string ==
 # "don't override" -- Battle keeps its own default (see Battle.ai_doctrine's own doc comment).
 var _doctrine: String = ""
+# Which Faction.Type each team fights under, from the input script's optional "factions"
+# field (per-team names, e.g. ["Sparta", "Rome"]) -- display identity only, so the historical
+# formation/form-up/doctrine names reach the HUD in a recording the same way a prebattle
+# choice delivers them in a real battle. Empty == leave Battle.team_factions at its own
+# no-faction default, so every existing script records byte-for-byte as before.
+var _team_factions: Array[int] = []
 # Parsed per-demo map overrides (BattleMap.parse's shape) from the input script's
 # optional "map" field. Empty == run on the default map.
 var _map: Dictionary = {}
@@ -121,6 +127,7 @@ func _ready() -> void:
 	_scenario = script.get("scenario", [])
 	_doctrine = str(script.get("doctrine", ""))
 	_all_teams_control = bool(script.get("all_teams_control", false))
+	_team_factions = _parse_factions(script.get("factions", []))
 	# The optional per-demo map block (field size, terrain patches, spawn lines).
 	# Strict like steps/scenario: map geometry decides WHAT battlefield the demo
 	# simulates, so a malformed block must fail the recording loudly rather than
@@ -198,6 +205,8 @@ func _start_battle() -> void:
 		_battle.spawn_line_ys = _map["spawn_lines"]
 	if _doctrine != "":
 		_battle.ai_doctrine = _doctrine   # likewise: overrides Battle's own default doctrine
+	if not _team_factions.is_empty():
+		_battle.team_factions = _team_factions   # likewise: Battle._ready hands these to the HUD
 	add_child(_battle)
 	# Battle._ready spawns synchronously during add_child, so every unit is on the field now.
 	# Print the layout's fingerprint (so a new script can be stamped by copying it) and, when the
@@ -600,6 +609,29 @@ func _at(tick: int, ev: Dictionary) -> void:
 
 
 # --- helpers ---------------------------------------------------------------
+
+## Resolve an input script's "factions" list (per-team faction names, e.g. ["Sparta", "Rome"])
+## into Battle.team_factions' Faction.Type ids. Strict, like `steps`/`scenario` and unlike
+## `camera`/`frames`: a name no faction claims would silently record a clip whose captions
+## show the plain names while the script claims a faction, and a plausible-looking wrong clip
+## is worse than a red job. A missing/empty list is not an error -- it just means "no faction",
+## which is what every script written before this field says.
+func _parse_factions(raw) -> Array[int]:
+	var out: Array[int] = []
+	if not (raw is Array):
+		push_error("[demo-input] 'factions' must be an array of faction names, got %s." % typeof(raw))
+		get_tree().quit(2)
+		return out
+	for entry in raw:
+		var f_id: int = Faction.type_from_name(str(entry))
+		if f_id == Faction.NONE:
+			push_error("[demo-input] unknown faction '%s'; expected one of %s." %
+					[entry, Faction.ALL_TYPES.map(func(f): return Faction.get_faction_name(f))])
+			get_tree().quit(2)
+			return out
+		out.append(f_id)
+	return out
+
 
 func _vec(a) -> Vector2:
 	return Vector2(float(a[0]), float(a[1]))

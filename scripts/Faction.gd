@@ -166,15 +166,14 @@ static func get_subunit_override(roster_name: String) -> Dictionary:
 
 ## "<plain name> (<historical name>)" for a faction/formation pair HISTORICAL_FORMATIONS
 ## covers, or the bare plain name otherwise -- e.g. a faction with no entry, or a formation
-## mode a faction's entry doesn't list. No caller resolves a battle side's Faction.Type today
-## (Battle.gd only reads FACTION_ROSTERS' flavor names at prebattle time -- see
-## Faction.get_unit_type()'s doc comment); wiring HUD.gd's formation label/menu through this
-## once a side's faction is tracked at runtime is tracked separately.
+## mode a faction's entry doesn't list. HUD.gd resolves the shown unit's side through
+## HUD.faction_for_team() and routes its formation button, formation menu, and info-panel
+## Formation line through here; see NONE below for the "no faction configured" id.
 static func get_formation_display_name(faction_id: int, formation_mode: int, plain_name: String) -> String:
 	if HISTORICAL_FORMATIONS.has(faction_id):
 		var dict: Dictionary = HISTORICAL_FORMATIONS[faction_id]
 		if dict.has(formation_mode):
-			return "%s (%s)" % [plain_name, dict[formation_mode]]
+			return _joined_display_name(plain_name, str(dict[formation_mode]))
 	return plain_name
 
 
@@ -185,8 +184,19 @@ static func get_form_up_display_name(faction_id: int, form_up_dist: int, plain_n
 	if HISTORICAL_FORM_UP.has(faction_id):
 		var dict: Dictionary = HISTORICAL_FORM_UP[faction_id]
 		if dict.has(form_up_dist):
-			return "%s (%s)" % [plain_name, dict[form_up_dist]]
+			return _joined_display_name(plain_name, str(dict[form_up_dist]))
 	return plain_name
+
+
+## "<plain name> (<historical name>)", except when the plain name ALREADY carries that
+## historical name -- HUD.gd's own form-up menu labels and SelectionManager.FORM_UP_DIST_NAMES
+## both spell the checkerboard "Checkerboard (quincunx)", so a naive append would render
+## "Checkerboard (quincunx) (quincunx)" for Rome while every other faction reads correctly.
+## Matched case-insensitively, since the caller's plain name is prose and the table's is not.
+static func _joined_display_name(plain_name: String, historical_name: String) -> String:
+	if plain_name.to_lower().contains(historical_name.to_lower()):
+		return plain_name
+	return "%s (%s)" % [plain_name, historical_name]
 
 
 ## The faction's named historical doctrine/strategy, or "Standard Doctrine" for a faction
@@ -195,3 +205,32 @@ static func get_form_up_display_name(faction_id: int, form_up_dist: int, plain_n
 ## behavioral switch.
 static func get_strategy_name(faction_id: int) -> String:
 	return FACTION_STRATEGIES.get(faction_id, "Standard Doctrine")
+
+
+## Sentinel for "this side fights under no faction identity" -- what Battle.team_factions
+## carries for a side no prebattle/custom-matchup choice named, and an id every display helper
+## above already falls back on to return the bare plain name. Deliberately outside Type's own
+## value range (its members start at 0), so "no faction" can never collide with a real one.
+const NONE := -1
+
+## Every Type member, in the order the prebattle picker offers them. Callers that need to walk
+## the playable factions (the picker, a name lookup, a test sweep) read this rather than
+## repeating the four members inline, so adding a fifth reaches all of them at once.
+const ALL_TYPES := [Type.SPARTA, Type.ROME, Type.CARTHAGE, Type.MACEDON]
+
+
+## The Type whose FACTION_NAMES entry matches `faction_name`, case-insensitively, accepting
+## either the full display name ("Sparta (Laconian)") or its bare leading name ("Sparta").
+## NONE for anything no faction claims, the empty string included. Lets a data file -- a demo
+## input script, a scenario -- name a side's faction in readable text instead of hard-coding
+## the enum's integer values, which is the copied-value-list drift demos/README.md warns
+## about for the FORMATION_* consts.
+static func type_from_name(faction_name: String) -> int:
+	var needle: String = faction_name.strip_edges().to_lower()
+	if needle == "":
+		return NONE
+	for f_id in ALL_TYPES:
+		var full: String = str(FACTION_NAMES[f_id]).to_lower()
+		if needle == full or needle == full.split(" (")[0]:
+			return f_id
+	return NONE
