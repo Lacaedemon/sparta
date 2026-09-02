@@ -1,0 +1,922 @@
+{
+  "ticks": [
+    {
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 8,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 20,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            760.0,
+            480.0
+          ],
+          "position_m": [
+            38.0,
+            24.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 14,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 25.9,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            760.0,
+            600.0
+          ],
+          "position_m": [
+            38.0,
+            30.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldiers": 28,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 28 / 28\nMorale: 24 (wavering)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 14 files\nOrder: Attacking Spearmen 1\nHP per man: 0 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 1,
+        "stance_text": "Normal"
+      },
+      "tick": 60,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 2.0,
+          "current_speed_mps": 0.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 20,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            760.0,
+            480.12
+          ],
+          "position_m": [
+            38.0,
+            24.006
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldiers": 60,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 14,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 24.9,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            760.0,
+            600.0
+          ],
+          "position_m": [
+            38.0,
+            30.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldiers": 28,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 28 / 28\nMorale: 24 (wavering)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 14 files\nOrder: Attacking Spearmen 1\nHP per man: 0 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 1,
+        "stance_text": "Normal"
+      },
+      "tick": 100,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 15.3,
+          "current_speed_mps": 0.767,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 20,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            760.0,
+            486.01
+          ],
+          "position_m": [
+            38.0,
+            24.3
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldiers": 60,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 8.0,
+          "current_speed_mps": 0.4,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 14,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 24.2,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            760.0,
+            598.87
+          ],
+          "position_m": [
+            38.0,
+            29.943
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldiers": 28,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 28 / 28\nMorale: 23 (wavering)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 14 files\nOrder: Attacking Spearmen 1\nHP per man: 0 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 1,
+        "stance_text": "Normal"
+      },
+      "tick": 140,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 20,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            760.0,
+            499.62
+          ],
+          "position_m": [
+            38.0,
+            24.981
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldiers": 60,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 28.0,
+          "current_speed_mps": 1.4,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 14,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 23.5,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            760.0,
+            586.7
+          ],
+          "position_m": [
+            38.0,
+            29.335
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldiers": 28,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 25 / 28\nMorale: 13 (wavering)\nCombat: Losing Decisively\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 14 files\nOrder: Attacking Spearmen 1\nHP per man: 0 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 1,
+        "stance_text": "Normal"
+      },
+      "tick": 170,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 20,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            760.0,
+            515.64
+          ],
+          "position_m": [
+            38.0,
+            25.782
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldiers": 60,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 39.5,
+          "current_speed_mps": 1.975,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 14,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 13.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            760.0,
+            568.07
+          ],
+          "position_m": [
+            38.0,
+            28.403
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldiers": 25,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 20 / 28\nMorale: -3 (routing)\nCombat: Losing Decisively\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 14 files\nOrder: Routing!\nHP per man: 0 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 1,
+        "stance_text": "Normal"
+      },
+      "tick": 200,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 20,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 98.7,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            760.0,
+            532.38
+          ],
+          "position_m": [
+            38.0,
+            26.619
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldiers": 59,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 39.5,
+          "current_speed_mps": 1.975,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 14,
+          "in_enemy_contact": true,
+          "maneuver": "IDLE",
+          "morale": -3.6,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            760.0,
+            556.73
+          ],
+          "position_m": [
+            38.0,
+            27.837
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldiers": 20,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 12 / 28\nMorale: -22 (routing)\nCombat: Losing Decisively\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 14 files\nOrder: Routing!\nHP per man: 0 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 1,
+        "stance_text": "Normal"
+      },
+      "tick": 230,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 20,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 99.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            760.0,
+            549.18
+          ],
+          "position_m": [
+            38.0,
+            27.459
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldiers": 59,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 39.5,
+          "current_speed_mps": 1.975,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 14,
+          "in_enemy_contact": true,
+          "maneuver": "IDLE",
+          "morale": -22.1,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            760.0,
+            608.73
+          ],
+          "position_m": [
+            38.0,
+            30.437
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldiers": 12,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 6 / 28\nMorale: -49 (routing)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 14 files\nOrder: Routing!\nHP per man: 0 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 1,
+        "stance_text": "Normal"
+      },
+      "tick": 260,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 20,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 99.5,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            760.0,
+            564.23
+          ],
+          "position_m": [
+            38.0,
+            28.212
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldiers": 59,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 39.5,
+          "current_speed_mps": 1.975,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 14,
+          "in_enemy_contact": true,
+          "maneuver": "IDLE",
+          "morale": -49.5,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            760.0,
+            660.73
+          ],
+          "position_m": [
+            38.0,
+            33.037
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldiers": 6,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 6 / 28\nMorale: -34 (routing)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 14 files\nOrder: Routing!\nHP per man: 0 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 1,
+        "stance_text": "Normal"
+      },
+      "tick": 300,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 20,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            760.0,
+            578.9
+          ],
+          "position_m": [
+            38.0,
+            28.945
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldiers": 59,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 39.5,
+          "current_speed_mps": 1.975,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 14,
+          "in_enemy_contact": true,
+          "maneuver": "IDLE",
+          "morale": -35.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            760.0,
+            730.07
+          ],
+          "position_m": [
+            38.0,
+            36.503
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldiers": 6,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Gladius"
+        }
+      ]
+    }
+  ]
+}
