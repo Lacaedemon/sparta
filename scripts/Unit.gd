@@ -304,6 +304,14 @@ var engage_reshape_mode: int = EngageReshapeMode.KEEP_NEW_FRONTING
 # the formation grid instead. Battle evaluates the distance triggers each tick and performs
 # the transitions (Battle._tick_tier_transitions -> TierTransition).
 var tier: int = FormationTier.CLOSE
+# Fractional casualties accumulated by the far tier's continuous attrition rate
+# (FarTierCombat.apply_attrition), carried between ticks until a whole soldier falls.
+# Sub-soldier BOOKKEEPING, not per-soldier state: one scalar per regiment, no array, so it
+# survives a demotion the way every other aggregate field does. Lives on the DEFENDER, so
+# several far-tier attackers pressing one formation accumulate into the same carry instead
+# of each rounding its own fraction away. The close tier has no counterpart -- its strikes
+# land as whole rounded casualties on their own cadence.
+var _far_tier_casualty_carry: float = 0.0
 # Player-set frontage (number of files / columns); 0 means "auto", deriving the
 # stable wider-than-deep grid from max_soldiers (UnitFormation.frontage). The
 # player can widen or narrow the line via SelectionManager (keyboard + drag); the

@@ -397,6 +397,15 @@ var all_teams_control: bool = false
 # normal default-loadout spawn, byte-for-byte. See _spawn_scenario and demos/README.md.
 var scenario: Array = []
 
+# Simulation-tier trigger distances for THIS battle, in world units (FormationTier's own
+# hysteresis pair). Settable BEFORE the node enters the tree (like drill_mode/scenario
+# above), because the defaults sit far outside every combat reach -- a formation always
+# promotes back to the close tier before anything can strike it, so a scenario that wants
+# to SHOW live far-tier combat (FarTierCombat) has to tighten the band. A normal battle
+# leaves both at FormationTier's tuned defaults, byte-for-byte.
+var promote_range: float = FormationTier.PROMOTE_RANGE
+var demote_range: float = FormationTier.DEMOTE_RANGE
+
 # Derived replay state-snapshot cache: lets a PLAYBACK rewind resume from a
 # cached mid-battle moment instead of resimulating from tick 0 -- see
 # ReplaySnapshotCache.gd and capture_snapshot/restore_snapshot/seek_to_tick below. Density
@@ -1427,7 +1436,7 @@ func seek_to_tick(target_tick: int) -> void:
 	restore_snapshot(snap)
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	# Runs before the Units' own _physics_process (parent precedes children in
 	# tree order), so orders and AI for this tick are applied before units act.
 	if _ended:
@@ -1513,6 +1522,10 @@ func _physics_process(_delta: float) -> void:
 	# distance triggers and promote/demote BEFORE the units act this tick, so both runs
 	# of a replay cross the tier boundary on the same tick from the same positions.
 	_tick_tier_transitions()
+
+	# Far-tier combat resolution, immediately after the transitions that decide who is at
+	# which tier this tick. Close-tier formations still fight in their own _think.
+	_tick_far_tier_combat(delta)
 
 	# Enemy AI is part of the deterministic sim (not player input): re-run it on
 	# the same cadence during playback so it reaches the same decisions. Skipped entirely
@@ -2839,10 +2852,28 @@ func _tick_tier_transitions() -> void:
 		if nearest_dist_sq == INF:
 			continue   # no enemy in play: hold the current tier (the victory check ends the battle)
 		if u.tier == FormationTier.FAR:
-			if FormationTier.should_promote(u.position, nearest_pos):
+			if FormationTier.should_promote(u.position, nearest_pos, promote_range):
 				TierTransition.promote(u, _tick, Replay.seed_value)
-		elif TierTransition.can_demote(u) and FormationTier.should_demote(u.position, nearest_pos):
+		elif TierTransition.can_demote(u) \
+				and FormationTier.should_demote(u.position, nearest_pos, demote_range):
 			TierTransition.demote(u)
+
+
+## Resolve one tick of far-tier combat (docs/far-tier-pursuit-contagion-design.md, phase 0).
+## Runs immediately after the tier pass, so every formation is already at the tier this
+## tick's positions call for before any casualty is booked, and BEFORE the units' own
+## _physics_process, so a formation that breaks here spends the same tick fleeing through
+## the ordinary Unit._process_rout path. Close-tier formations are untouched: they resolve
+## their own strikes in Unit._think as before (UnitCombat.strike/shoot return early for a
+## far-tier attacker, so a fight is never billed by both paths).
+##
+## Routers are included in the scan on the DEFENDING side only -- FarTierCombat.can_fight
+## excludes a routing attacker, while can_be_struck admits a routing defender, matching the
+## close tier's own "fleeing does not grant immunity" rule.
+func _tick_far_tier_combat(delta: float) -> void:
+	var targets: Array = get_tree().get_nodes_in_group("units")
+	targets.append_array(get_tree().get_nodes_in_group("routers"))
+	FarTierCombat.tick_all(targets, delta)
 
 
 ## Battle AI phases 1-3 (docs/battle-ai-design.md): every AI-controlled (team 1) unit gets
