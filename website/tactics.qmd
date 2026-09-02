@@ -1948,12 +1948,13 @@ the bow.
 ## Turn your shields toward the archers
 
 Arrows are resolved **one man at a time** when they land, and each one is tested
-against the shield the man it reaches is actually holding. A shield covers an arc
-in front of its bearer --- a body shield like the scutum covers a wide front, a
-cavalry round shield much less, and archers carry no shield at all. An arrow that
-arrives **inside** that arc is usually stopped: it either glances off, or sticks
-fast in the shield face. An arrow that arrives from outside the arc has nothing in
-its way and kills.
+against the shield the man it reaches is actually holding.
+A shield covers an arc in front of its bearer --- a body shield like the scutum
+covers a wide front, a cavalry round shield much less, and archers carry no
+shield at all.
+An arrow that arrives **inside** that arc is usually stopped: it either glances
+off, or sticks fast in the shield face.
+An arrow that arrives from outside the arc has nothing in its way and kills.
 
 So which way a regiment is **standing** now decides how much a volley costs it,
 before any stance bonus enters:
@@ -1965,23 +1966,23 @@ before any stance bonus enters:
   multiplier stacks on top of that, so an enfilading volley is far worse than the
   sum of its parts.
 - **Shields do not help everyone equally.** Cavalry carry a smaller shield and stop
-  a good deal less; your own archers carry none, so they are as exposed facing the
-  enemy as they are running from them --- keep them out of the beaten zone rather
-  than trying to turn them into it.
+  a good deal less, and your own archers carry none, so they are as exposed facing
+  the enemy as they are running from them --- keep them out of the beaten zone
+  rather than trying to turn them into it.
 
-Arrows that stick in a shield stay there, and their weight tells. A regiment that
-has stood under archery long enough is dragging a growing load of spent shafts,
-and its cover degrades as it does --- capped, so a bombardment never strips a
-shield bare, but a wall that has absorbed a long exchange no longer blocks the way
-it did at the first volley. It takes a sustained pounding to matter, so this is a
-reason to rotate a battered regiment out or close the distance, not a reason to
-fear the opening exchange.
+Arrows that stick in a shield stay there, and their weight tells.
+A regiment that has stood under archery long enough is dragging a growing load of
+spent shafts, and its cover degrades as it does --- capped, so a bombardment never
+strips a shield bare, but a wall that has absorbed a long exchange no longer blocks
+the way it did at the first volley.
+It takes a sustained pounding to matter, so this is a reason to rotate a battered
+regiment out or close the distance, not a reason to fear the opening exchange.
 
 This is separate from the stance bonuses in
 [Formation stances](#formation-stances): shield wall and testudo change how much
 damage a volley does in the first place, while the arc above decides, arrow by
-arrow, whether an individual man's shield was in the way at all. The two stack, so
-a testudo whose men are also facing the archers gets both.
+arrow, whether an individual man's shield was in the way at all.
+The two stack, so a testudo whose men are also facing the archers gets both.
 
 ::: {#fig-shield-arc-block .demo}
 
@@ -1995,10 +1996,11 @@ a testudo whose men are also facing the archers gets both.
 ```
 
 Shield arc under archery: two identical 60-man Infantry blocks, each under fire
-from its own Archers regiment due north. The left block faces the arrows and its
-shields cover them; the right block is turned east and its flank is bare. Watch the
-two soldier counts diverge --- the facing block ends the clip at 53 of 60 with
-morale 75, the turned one at 25 of 60 with morale 32.
+from its own Archers regiment due north.
+The left block faces the arrows and its shields cover them, while the right block
+is turned east and its flank is bare.
+Watch the two soldier counts diverge --- the facing block ends the clip at 53 of
+60 with morale 75, the turned one at 25 of 60 with morale 32.
 :::
 
 ## Group attack distribution

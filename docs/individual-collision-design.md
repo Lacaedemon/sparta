@@ -12,16 +12,18 @@ prone, depth bracing, and stamina are wired (#201 slices A-D); friendly soldier 
 is soldier-level (phase 5 slice 1).
 
 **Still regiment-level (the remaining authority work):** ranged casualty *count*
-(`UnitCombat.shoot` still derives one volley size from regiment scalars and one RNG roll --
-one roll for the whole volley, not one per shooter). Delivery is no longer regiment-level:
-a live battle flies that count as a projectile and lands it arrow by arrow, so
-`ProjectileField._land_on_soldiers` picks the nearest living soldiers to the volley origin
-(`SoldierMelee.ranged_victims`) and gates each arrow on the shield THAT man is holding --
-its coverage arc and its block chance -- so a kill is no longer guaranteed. Only a
-fieldless unit test still resolves the whole volley at once through
-`SoldierMelee.apply_ranged_casualties`, where each kill is guaranteed. Per-soldier armour
-in the ranged contest, and full per-shooter/per-target resolution, stay tracked in
-#1186 / #435. Also still regiment-level: morale (a regiment scalar,
+(`UnitCombat.shoot` still derives one volley size from regiment scalars and one RNG
+roll -- one roll for the whole volley, not one per shooter).
+Delivery is no longer regiment-level: a live battle flies that count as a projectile
+and lands it arrow by arrow, so `ProjectileField._land_on_soldiers` picks the nearest
+living soldiers to the volley origin (`SoldierMelee.ranged_victims`) and gates each
+arrow on the shield THAT man is holding -- its coverage arc and its block chance -- so
+a kill is no longer guaranteed.
+Only a fieldless unit test still resolves the whole volley at once through
+`SoldierMelee.apply_ranged_casualties`, where each kill is guaranteed.
+Per-soldier armour in the ranged contest, and full per-shooter/per-target resolution,
+stay tracked in #1186 / #435.
+Also still regiment-level: morale (a regiment scalar,
 not derived from soldier state), and **enemy** soldier-vs-soldier collision + retiring the
 regiment circle -- the last is deferred to **#201** (stopping a charge needs momentum/mass;
 see the phase-5 note below and #296). #201's momentum physics landed (#749), but a live
