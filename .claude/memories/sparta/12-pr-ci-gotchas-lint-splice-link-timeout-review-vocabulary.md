@@ -70,6 +70,23 @@ reverted #1452/#1453 manifests, rejected.
 - **Don't:** point `demos/demo.<slug>.json` at an `input` recording whose
   caption claims a mechanic the PR has not actually implemented.
 
+- **Do:** name the explanation field `"reason"`, not `"skip_reason"`.
+  `demo-video.yml` parses `.reason // .caption // <generic fallback>`, so a
+  misnamed field is silently ignored and the posted note shows the caption
+  instead, or the generic placeholder when there is no caption.
+
+## Design docs cite only paths that exist
+
+A plausible-looking path -- a test file named after the class it would test,
+or a glob over a demo-input prefix -- reads as real, and is a common way
+a phantom path gets published in a design doc.
+
+- **Do:** run `git ls-files <path>` (or the glob) and cite only what it
+  returns, before publishing a design doc.
+
+- **Don't:** name a test script or input manifest a design doc "will use"
+  unless it is already tracked, or the doc marks it as proposed.
+
 ## Pre-push guard verdict vocabulary is exact-match; brief reviewers with the literal phrasing
 
 The pre-push guard (`no-push-without-self-review.py`, from ai-config) parses a
@@ -118,6 +135,78 @@ message) when the account's usage limit is hit mid-session.
 
 - **Don't:** read a quota-skip notice as a clean verdict, or as something that
   resolves itself without a re-dispatch once quota is back.
+
+## A green review check is not an approval: read the verdict payload on every surface before merging under `mwc`
+
+`review / claude-review` and `review / require-review` both conclude `success`
+when a reviewer ran and posted a verdict, whatever that verdict said.
+The reusable `Morrison-Lab/gha` `claude-code-review.yml@v2` workflow says so in
+its own comments: a green result attests that "a reviewer RAN and the job did
+not fail", and "does not attest that the reviewer APPROVED".
+Measured on #1471 at head `0c8a63aa`: the posted review carried
+`"verdict": "NOT_CLEAN"` while every `review / *` check run reported
+`success`.
+Those are the check-run names exactly as `gh pr checks` printed them on
+2026-09-02: the caller job in `.github/workflows/claude-code-review.yml` is
+named `review` and delegates to the reusable workflow, so the prefix is that
+job's name and moves with it, not the workflow's display name (`Claude Code
+Review`).
+The job's conclusion tracks whether a verdict was produced and posted, not
+what it said, and the converse holds too: a red `claude-review` can sit on top
+of a genuine verdict (see "A red `claude-review` can sit on top of a GENUINE,
+complete verdict" in part file 07).
+Nothing server-side catches this either: the `main` ruleset has no required
+status checks (#1432), so under `mwc` the agent is the only gate.
+
+- **Do:** run `check-pr-fully-clean.py` (the section above) and read its exit
+  status three ways: 0 means nothing blocking was found, 1 means not clean,
+  or no review found at all (the output says `No automated review comments or
+  reviews found`), or a crash (a traceback with no finding bullets), and
+  anything else means it did not answer.
+  Exit 0 is not approval on its own: the exit status is only the first gate,
+  and the `verdict scan:` line and the `Notes:` block the script prints
+  beside it are required structured context.
+  That does not contradict the section above, whose "not its printed prose"
+  rule targets grepping the report for a verdict phrase rather than reading
+  those two fixed lines.
+  `latest = NONE` on the scan line means no readable verdict-bearing review
+  was found.
+  A quota-skip notice is excluded before the scan even starts, so a PR whose
+  only bot comment is that notice takes the no-review exit 1 above rather
+  than exiting 0, and that exit 1 is a missing review, not a not-clean
+  verdict.
+  A `NOTE:` saying a review has a format the classifier cannot read means a
+  review arrived whose verdict was never read.
+  A `latest = NONE` scan line, the no-review exit 1, or a `NOTE:` about an
+  unreadable review each send you to the hand read below.
+
+- **Do:** read the inline review comments and the unresolved review threads
+  on every merge decision, whatever the exit status:
+  `gh api repos/<owner>/<repo>/pulls/<N>/comments --paginate` plus the GraphQL
+  `reviewThreads` list.
+  The instrument's only PR fetch is `gh pr view --json ...,reviews,comments`,
+  which never carries inline findings, and this repo's `prompt-addendum` and
+  the auto-requested Copilot reviewer both put line-specific findings there,
+  so a clean exit 0 is silent about that surface by construction.
+
+- **Do:** when the instrument cannot run, or reports `latest = NONE`, the
+  no-review exit 1, or an unreadable-review `NOTE:`, read every surface by
+  hand and paginate each: `gh api repos/<owner>/<repo>/pulls/<N>/reviews --paginate`
+  (formal reviews), `gh api repos/<owner>/<repo>/pulls/<N>/comments --paginate`
+  (inline findings, where this repo's `prompt-addendum` tells the reviewer to
+  put line-specific findings), and
+  `gh api repos/<owner>/<repo>/issues/<N>/comments --paginate` selecting the
+  LAST body that starts with `**Claude finished` (the verdict comment), whose
+  trailing `Reviewed commit:` line must name the PR's current head, because a
+  mismatch means the head is unreviewed.
+
+- **Don't:** read a green `review / claude-review` or `review / require-review`
+  check as approval, and don't read an unpaginated `issues/<N>/comments` call
+  as the verdict: that endpoint is oldest-first, 30 per page, and never
+  carries inline findings.
+
+- **Don't:** rely on a branch ruleset or a forge hook to refuse the merge for
+  you.
 
 Links/provenance: measured 2026-09-01 on `Lacaedemon/sparta` CI (workflow runs
 observed on PRs in the #1452/#1453/#1459/#1462 range).
