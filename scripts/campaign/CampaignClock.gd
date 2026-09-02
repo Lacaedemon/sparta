@@ -9,16 +9,15 @@ extends RefCounted
 ## but the tick count. Pause gates that counter and nothing else -- while paused the
 ## player still inspects the map and queues orders, the pause-to-plan loop of the
 ## genre. Speed scales ticks per real second and never changes what a tick means, so
-## the same orders at 1x and at 8x produce the same campaign history.
-##
-## Tick-to-calendar conversion lives in CampaignCalendar; this script owns only the
-## counter, the pause flag and the speed ladder.
+## the same orders at 1x and at 8x produce the same campaign history. Tick-to-calendar
+## conversion lives in CampaignCalendar; this script owns only the counter, the pause
+## flag and the speed ladder.
 
 ## Speed multipliers the speed control offers, slowest first. Pausing is a separate
 ## flag rather than a speed of zero, so the chosen speed survives a pause/resume pair.
 const DEFAULT_SPEEDS: Array[float] = [1.0, 2.0, 4.0, 8.0]
-## Ticks fired per real second at 1x. At the default calendar (24 ticks to the day)
-## a campaign day takes 12 real seconds at 1x and 1.5 at 8x.
+## Ticks fired per real second at 1x. At 24 ticks to the day (CampaignCalendar's
+## default) a campaign day takes 12 real seconds at 1x and 1.5 at 8x.
 const DEFAULT_TICKS_PER_SECOND := 2.0
 
 var speeds: Array[float]
