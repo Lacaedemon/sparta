@@ -1,10 +1,10 @@
 class_name ProjectileField
 ## In-flight projectiles (#435), held as plain-data parallel arrays — no nodes — and ticked
 ## once per physics frame by Battle after the soldier passes settle. A ranged volley enqueues
-## a projectile carrying its already-rolled casualty count (UnitCombat.shoot); the projectile
-## flies a real ProjectilePhysics height arc, and when it lands (elapsed >= flight_time) it
-## delivers those casualties to the target via the per-soldier path, using the launch point as
-## the near-side selection origin (the men the arrows reach first).
+## a projectile carrying its already-rolled arrow count (UnitCombat.shoot); the projectile
+## flies a real ProjectilePhysics height arc, and when it lands (elapsed >= flight_time) those
+## arrows fall on individual men, chosen from the launch point outward (the men the arrows
+## reach first) and each resolved against the shield he is holding.
 ##
 ## Determinism (replays depend on it): projectiles are appended in launch order and resolved
 ## in that order, on the fixed physics delta, and the shield roll below draws from the one
@@ -217,6 +217,12 @@ func lodged_weight_kg(uid: int) -> float:
 ## weight PER SHIELD (spread over the living men, so a big regiment isn't punished for its
 ## size) converted to lost cover and capped. A shield hung with arrows drags off the line of
 ## the next volley, which is what makes a lodged arrow worth more than a deflected one.
+##
+## The pool is regiment-wide rather than per man, so a casualty does not carry his own
+## shield's arrows out of it -- a shrinking regiment's remaining shields inherit the whole
+## load. That is the crude half of the model, and it errs toward punishing a battered unit,
+## which is the direction a bombardment should push anyway. Per-soldier lodging wants a
+## per-soldier array that survives the casualty compaction, and is not this slice's work.
 func shield_sag(unit) -> float:
 	var per_shield: float = lodged_weight_kg(unit.uid) / float(maxi(1, unit.soldiers))
 	return clampf(per_shield * shield_sag_per_kg, 0.0, shield_max_sag)
