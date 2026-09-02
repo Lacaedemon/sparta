@@ -16,7 +16,8 @@ extends Node3D
 const SimScene := preload("res://scenes/Battle.tscn")
 const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 
-## Ground plane extent, in metres. Sized generously rather than scaled to the
+## Ground plane full width and depth (PlaneMesh.size, not a half-extent), in metres.
+## Sized generously rather than scaled to the
 ## battlefield, so the plane still reads as ground when the camera pans off it.
 @export var ground_extent_m: float = 400.0
 ## Frame on which to fire a synthetic centre-screen pick, so a non-interactive run

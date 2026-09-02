@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Throwaway 3D-0 spike work under spikes/3d/ only. It adds no scene, script, or asset the shipped 2D battle loads, so the demo recorder (which drives scenes/Battle.tscn) would record a clip identical to main's and attribute it to this PR. The spike's own evidence is the frame-rate table and the live sim census in spikes/3d/README.md."
+  "reason": "Throwaway 3D-0 spike work under spikes/3d/, plus this manifest. It adds no scene, script, or asset the shipped 2D battle loads, so the demo recorder (which drives scenes/Battle.tscn) would record a clip identical to main's and attribute it to this PR. The spike's own evidence is the frame-rate table and the live sim census in spikes/3d/README.md."
 }
