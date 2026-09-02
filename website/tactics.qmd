@@ -2170,6 +2170,41 @@ A fighting regiment ordered to a destination behind it backs out facing-held fir
 no mid-press pivot --- then turns about and marches on once clear of the fight.
 :::
 
+## Facing a skirmisher screen
+
+Some enemy generals open the battle by pushing their light troops out in front of the heavy
+line rather than keeping them in it. Their archers walk out to a contest line about eight
+metres ahead of the blocks, hold there in the skirmish stance, and shoot at whatever comes
+into reach; the heavy line stands and lets them, and will not break formation to rescue
+them. Once your line closes to within about six metres of the screen, the same subcommander
+pulls it back --- the archers break off, turn about, and fall back on a diagonal aimed at a
+gap **between** two of their own blocks rather than straight back through one
+(@fig-skirmisher-screen).
+
+Whether an army does this is a property of its general's doctrine, so you will meet it from
+some opponents and not others. Two things follow for you. Chasing the screen with your own
+heavy line pulls that line forward out of dressing and hands the enemy blocks a ragged
+target, so it is usually better to walk up steadily and let the screen retire. And the
+moment the screen turns is the moment it is most exposed: cavalry sent wide, or a unit
+already on that flank, can catch it in the open before it reaches the interval, because its
+own line will not come out to save it.
+
+::: {#fig-skirmisher-screen .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/skirmisher_screen.jpg">
+  <source src="media/skirmisher_screen.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+An enemy archer unit walks out ahead of its own heavy line, holds the ground between the
+armies as the player line advances, then breaks off and falls back toward the interval
+between two blocks while the line behind it holds its ground.
+:::
+
 ---
 
 *Source: [`README.md`](https://github.com/Lacaedemon/sparta/blob/main/README.md) ·

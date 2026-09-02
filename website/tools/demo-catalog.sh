@@ -106,6 +106,7 @@ DEMOS=(
   "knockback_torque_coupling|demos/inputs/demo-knockback-torque-coupling.json|30|240|640|input"
   "spearmen_weapon_switch|demos/inputs/demo-spearmen-weapon-switch.json|30|240|640|input"
   "flanking_maneuver|demos/inputs/flanking-maneuver.json|30|300|640|input"
+  "skirmisher_screen|demos/inputs/skirmisher-screen.json|30|480|720|input"
 )
 
 

@@ -89,15 +89,20 @@ static func decide_group(group: Array, all_units: Array, plan: String = General.
 	if living.size() < 2:
 		return {}
 	var directives: Dictionary = {}
-	_mutual_support_directives(living, directives)
 	var axis: Vector2 = _advance_axis(living, all_units)
-	_flank_coverage_directives(living, all_units, axis, directives)
-	# Between flank coverage and line integrity, deliberately: a screen is standing
-	# discipline rather than a reaction to an immediate threat, so it yields to both of
-	# those -- but it has to claim its light troops BEFORE line integrity would haul them
-	# back to the line they are under orders to stand ahead of.
+	# Computed before mutual support so the screen's own members are known to it, but merged
+	# in AFTER it, so an ally already in a real fight still outranks a screening unit's
+	# standing orders. The one thing the screen does outrank is being treated as a ward: a
+	# heavy block that broke line to rescue its skirmishers would undo the whole maneuver,
+	# whose point is that the light troops fight alone and then fall back.
+	var screened: Dictionary = {}
 	if screen:
-		SkirmisherScreen.directives(living, all_units, axis, directives)
+		SkirmisherScreen.directives(living, all_units, axis, screened)
+	_mutual_support_directives(living, directives, screened)
+	for uid in screened:
+		if not directives.has(uid):
+			directives[uid] = screened[uid]
+	_flank_coverage_directives(living, all_units, axis, directives)
 	if plan == General.PLAN_DEFEND:
 		_defend_hold_directives(living, directives)
 	elif axis != Vector2.ZERO:
@@ -154,11 +159,14 @@ static func _advance_axis(group: Array, all_units: Array) -> Vector2:
 ## An engaged (FIGHTING) unit's nearest idle ally gets a SUPPORT directive naming it as the
 ## ward -- the subcommander's own version of the design doc's "mutual support" behaviour.
 ## Runs first (highest priority): an ally already in a fight is the sharpest need a group
-## has this tick.
-static func _mutual_support_directives(group: Array, directives: Dictionary) -> void:
+## has this tick. `exclude_wards` is a uid set of units that must NOT be rescued this tick
+## (SkirmisherScreen's own screening units, whose firefight out in front of the line is
+## exactly the fight the line is supposed to leave them to).
+static func _mutual_support_directives(group: Array, directives: Dictionary,
+		exclude_wards: Dictionary = {}) -> void:
 	for node in group:
 		var u := node as Unit
-		if u == null or u.state != Unit.State.FIGHTING:
+		if u == null or u.state != Unit.State.FIGHTING or exclude_wards.has(u.uid):
 			continue
 		var ally: Unit = _nearest_available(u.position, u, group, directives, SUPPORT_CALL_RANGE)
 		if ally != null:

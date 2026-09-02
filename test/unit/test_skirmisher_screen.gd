@@ -363,3 +363,50 @@ func test_a_withdraw_directive_recalls_a_screener_that_is_already_fighting() -> 
 	assert_almost_eq(float(cmd["y"]), 860.0, 0.01)
 	assert_false(cmd.has("mode"),
 		"withdrawing in the default stance, so the march is not held up by kiting")
+
+
+# --- how the screen composes with the subcommander's other behaviours --------------
+
+func test_the_line_does_not_break_to_rescue_a_skirmishing_screen() -> void:
+	# The screen's whole point is that the light troops fight out in front alone. A heavy
+	# block sent to guard them would walk the line off its ground to do it.
+	var a := _unit(1, Vector2(500, LINE_Y))
+	var b := _unit(2, Vector2(700, LINE_Y))
+	var light := _archers(3, Vector2(600, 460))
+	light.state = Unit.State.FIGHTING          # skirmishing at the contest line
+	var enemy := _unit(4, Vector2(600, 400), 0)
+
+	var directives: Dictionary = Subcommander.decide_group(
+		[a, b, light], [a, b, light, enemy], General.PLAN_ADVANCE_LINE, true)
+
+	assert_false(directives.has(a.uid), "the heavy blocks hold their ground")
+	assert_false(directives.has(b.uid))
+
+
+func test_an_ally_in_a_real_fight_still_outranks_the_screen() -> void:
+	# The exclusion above is one-way: a screener is not a ward, but it is still the nearest
+	# available body when one of its own heavy blocks is in trouble.
+	var a := _unit(1, Vector2(500, LINE_Y))
+	a.state = Unit.State.FIGHTING
+	a.facing = Vector2.UP
+	var b := _unit(2, Vector2(700, LINE_Y))
+	var light := _archers(3, Vector2(520, LINE_Y - 40))
+	var enemy := _unit(4, Vector2(500, 100), 0)
+
+	var directives: Dictionary = Subcommander.decide_group(
+		[a, b, light], [a, b, light, enemy], General.PLAN_ADVANCE_LINE, true)
+
+	assert_eq(directives[light.uid]["type"], Subcommander.DIRECTIVE_SUPPORT,
+		"mutual support claims the nearest available ally, screen orders or not")
+
+
+func test_the_screen_is_off_unless_the_general_asks_for_it() -> void:
+	var a := _unit(1, Vector2(500, LINE_Y))
+	var b := _unit(2, Vector2(700, LINE_Y))
+	var light := _archers(3, Vector2(600, 780))
+	var enemy := _unit(4, Vector2(600, 100), 0)
+
+	var directives: Dictionary = Subcommander.decide_group([a, b, light], [a, b, light, enemy])
+
+	assert_false(directives.has(light.uid),
+		"a doctrine without the flag keeps the behaviour it had before the screen existed")

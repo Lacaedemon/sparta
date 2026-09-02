@@ -154,9 +154,13 @@ A setup preset decides how far apart the armies start, fast-forward decides how 
 
 - **Skirmisher screening is a battle-AI directive, not a new mechanic.**
   The SKIRMISH stance, the loose formation ranged units start in, and the ranged reach already exist;
-  what is missing is a subcommander directive (`docs/battle-ai-design.md`) that sends ranged units forward under SKIRMISH during the approach and recalls them through the line before contact.
+  what was missing is a subcommander directive (`docs/battle-ai-design.md`) that sends ranged units forward under SKIRMISH during the approach and recalls them through the line before contact.
   At a ranged reach of `Unit.RANGED_RANGE` (160 wu, 8 m) the screen is a band a few metres ahead of the line, not a hundred-metre missile duel;
   a longer-range missile model is outside this design.
+  Shipped as `scripts/SkirmisherScreen.gd` and `scripts/ScreenIntervals.gd` ([#1467](https://github.com/Lacaedemon/sparta/issues/1467)):
+  the contest line sits one ranged reach ahead of the heavy line's median depth, the recall fires at 6 m (just outside `Unit.SKIRMISH_KITE_DISTANCE`, so it supersedes the kite reflex rather than competing with it),
+  and the withdrawal aims at the nearest lateral gap between two heavy blocks rather than at the unit's own file.
+  It is opt-in per doctrine (`skirmisher_screen` in `data/doctrines/*.json`; `screening.json` is the shipped profile that asks for one), so every doctrine without the key keeps the behaviour it had before.
 
 ### 3. Pre-battle deployment presets
 
@@ -202,7 +206,7 @@ A setup preset decides how far apart the armies start, fast-forward decides how 
 
 Deferred, each tracked in its own issue:
 the per-gait stamina flow and the far-tier gait that a jog approach needs ([#1466](https://github.com/Lacaedemon/sparta/issues/1466));
-the skirmisher-screen subcommander directive ([#1467](https://github.com/Lacaedemon/sparta/issues/1467));
+the skirmisher-screen subcommander directive ([#1467](https://github.com/Lacaedemon/sparta/issues/1467), since shipped -- see the "Skirmisher screening" bullet above);
 a charge-distance retune once sprinting costs stamina ([#1468](https://github.com/Lacaedemon/sparta/issues/1468));
 per-clash deployment distances for campaign battles ([#1469](https://github.com/Lacaedemon/sparta/issues/1469));
 and any longer-range missile model ([#1470](https://github.com/Lacaedemon/sparta/issues/1470)).
@@ -226,4 +230,6 @@ and any longer-range missile model ([#1470](https://github.com/Lacaedemon/sparta
    cover the three presets with a spawn-layout test.
 
 5. **Phase 5 (AI approach pacing, deferred)**:
-   Once the combat model's per-gait stamina and a far-tier gait exist, revisit a jog approach and the charge distance, and add the skirmisher-screen directive to the battle AI (`scripts/Subcommander.gd`, `scripts/UnitLeader.gd`).
+   Once the combat model's per-gait stamina and a far-tier gait exist, revisit a jog approach and the charge distance.
+   The skirmisher-screen half of this phase turned out not to depend on either, and shipped ahead of the rest ([#1467](https://github.com/Lacaedemon/sparta/issues/1467)):
+   `scripts/SkirmisherScreen.gd` and `scripts/ScreenIntervals.gd`, threaded through `scripts/Subcommander.gd` and `scripts/UnitLeader.gd` on a doctrine flag.

@@ -16,9 +16,10 @@ const DIRECTIVE_SCREEN := "screen"
 ## Break off and fall back through this interval in the heavy line.
 const DIRECTIVE_WITHDRAW := "screen_withdraw"
 
-## How far ahead of the heavy line's own median depth the contest line sits -- well inside
-## the 29 m default line gap, so the screen holds the ground between the lines.
-const SCREEN_LEAD_DISTANCE := 12.0 * WorldScaleRef.WU_PER_M
+## How far ahead of the heavy line's own median depth the contest line sits. One ranged reach
+## (Unit.RANGED_RANGE, 8 m), so the screen's own fire covers the ground immediately in front
+## of the line: a band a few metres out, not a hundred-metre missile duel.
+const SCREEN_LEAD_DISTANCE := 8.0 * WorldScaleRef.WU_PER_M
 
 ## How close a living enemy may come to a screening unit before it breaks off and withdraws.
 ## Six metres sits just outside Unit.SKIRMISH_KITE_DISTANCE (5 m), so the recall supersedes
@@ -60,13 +61,13 @@ static func directives(group: Array, all_units: Array, axis: Vector2, out: Dicti
 			continue
 		var lateral: float = u.position.dot(perp)
 		if _enemy_within(u, all_units, trigger):
-			# Reconstructed from the (axis, perp) orthonormal basis like Subcommander's own
-			# hold-line point: the line's depth minus the rally offset, at the nearest gap
-			# between blocks instead of the unit's own lateral -- which is what puts the
-			# path through an interval rather than through a block.
+			# Reconstructed from the (axis, perp) basis like Subcommander's hold-line point:
+			# the line's depth minus the rally offset, at the nearest gap between blocks
+			# instead of the unit's own lateral -- which is what puts the path through one.
 			var back: Vector2 = axis * (depth - rally) \
 				+ perp * ScreenIntervals.nearest(gaps, lateral)
-			out[u.uid] = {"type": DIRECTIVE_WITHDRAW, "x": back.x, "y": back.y}
+			out[u.uid] = {"type": DIRECTIVE_WITHDRAW, "x": back.x, "y": back.y,
+					"station": station}
 			continue
 		var post: Vector2 = axis * (depth + lead) + perp * lateral
 		out[u.uid] = {"type": DIRECTIVE_SCREEN, "x": post.x, "y": post.y, "station": station}

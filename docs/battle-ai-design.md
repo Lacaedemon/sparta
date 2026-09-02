@@ -127,6 +127,13 @@ Keeps its group fighting as a group:
   to support (the queue already has `Order.Type.SUPPORT` for the actuation).
 - **Flank coverage** -- a group flank left open by casualties or maneuver gets
   refused or covered by a repositioned unit.
+- **Skirmisher screen** -- where the general's doctrine asks for one
+  (`skirmisher_screen` in the doctrine profile), the group's light troops are
+  pushed out ahead of the heavy line to contest the ground between the armies
+  and recalled through the line's own intervals as the enemy closes. Off by
+  default, so a doctrine without the key behaves exactly as before. See
+  `scripts/SkirmisherScreen.gd` and the "Skirmisher screening" section of
+  [`deployment-distance-design.md`](deployment-distance-design.md).
 
 The subcommander interprets the general's plan for its group and translates
 it into per-unit directives; it also aggregates its unit leaders' reports and

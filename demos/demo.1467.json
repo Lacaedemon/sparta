@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/skirmisher-screen.json",
+  "caption": "Skirmisher-screen subcommander directive (#1467). Team 1's general runs the new 'screening' doctrine, so its subcommander pushes the archer unit out from behind the middle block to a contest line one ranged reach (8 m) ahead of the heavy line, in the SKIRMISH stance -- watch it hold there and trade fire as the player line walks up. Once the player line closes inside the withdraw trigger (6 m), the same subcommander recalls it: the archers about-face and fall back on a diagonal, aimed at the INTERVAL between the left and middle blocks rather than straight back through the middle one, while the heavy line holds its ground instead of breaking to rescue them.",
+  "fixed_fps": 30,
+  "max_frames": 480,
+  "fps": 12,
+  "width": 640
+}

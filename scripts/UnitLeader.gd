@@ -99,7 +99,7 @@ static func decide(u: Unit, all_units: Array, directive: Dictionary = {},
 	# from the flank turns to meet it rather than presenting its back.
 	if not already_relieving \
 			and String(directive.get("type", "")) == SkirmisherScreen.DIRECTIVE_WITHDRAW:
-		return _move_directive_cmd(u, directive)
+		return _move_directive_cmd(u, directive, _station_of(directive))
 
 	if u.state == Unit.State.FIGHTING and u.morale < RELIEF_MORALE_THRESHOLD:
 		var reliever: Unit = _relief_candidate(u, all_units)
@@ -268,14 +268,18 @@ static func _directive_cmd(u: Unit, directive: Dictionary) -> Dictionary:
 static func _screen_directive_cmd(u: Unit, directive: Dictionary) -> Dictionary:
 	var point := Vector2(float(directive.get("x", u.position.x)),
 			float(directive.get("y", u.position.y)))
-	var station: float = float(directive.get("station", SkirmisherScreen.SCREEN_STATION_RADIUS))
+	var station: float = _station_of(directive)
 	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 	if u.position.distance_squared_to(point) <= station * station:
 		return {}
-	var cmd: Dictionary = _move_directive_cmd(u, directive)
-	if not cmd.is_empty():
-		cmd["mode"] = BattleRef.OrderMode.SKIRMISH
-	return cmd
+	return _move_directive_cmd(u, directive, station, BattleRef.OrderMode.SKIRMISH)
+
+
+## The station radius a screen directive carries, or the default when it carries none --
+## the re-issue tolerance both the advance and the recall are measured against. See
+## _move_directive_cmd's own note on why a drifting point needs a wide one.
+static func _station_of(directive: Dictionary) -> float:
+	return float(directive.get("station", SkirmisherScreen.SCREEN_STATION_RADIUS))
 
 
 ## A SUPPORT directive: guard the named ward, same shape the friendly-target SUPPORT branch
@@ -294,26 +298,37 @@ static func _support_directive_cmd(u: Unit, directive: Dictionary) -> Dictionary
 	}
 
 
-## A HOLD_LINE or COVER_FLANK directive: both just move the unit to a directed point and
-## stop chasing -- the only difference between them is which Subcommander behaviour picked
-## the point, so they share one apply path. Idempotent within Subcommander.POINT_EPSILON of
-## the directed point (whether already arrived, or already marching there with no live
-## target_enemy) so a directive re-issued every AI tick doesn't restart the march.
-static func _move_directive_cmd(u: Unit, directive: Dictionary) -> Dictionary:
+## A HOLD_LINE, COVER_FLANK or screen-recall directive: all of them just move the unit to a
+## directed point and stop chasing, so they share one apply path. Idempotent within
+## `tolerance` of the directed point (whether already arrived, or already marching there with
+## no live target_enemy) so a directive re-issued every AI tick doesn't restart the march.
+##
+## `tolerance` defaults to Subcommander.POINT_EPSILON, the tight radius a hold-line point
+## wants because it is computed from a line standing still. A screen's own points are
+## measured from a line that is ADVANCING, so they drift several world units every AI tick:
+## at the tight radius every tick would issue a fresh order, and a unit that restarts its
+## order-response delay once a second never reaches marching pace at all. Those callers pass
+## the directive's own station radius instead. `mode` is stamped on the order when >= 0 (a
+## Battle.OrderMode), leaving the default NORMAL stance when it is not.
+static func _move_directive_cmd(u: Unit, directive: Dictionary,
+		tolerance: float = Subcommander.POINT_EPSILON, mode: int = -1) -> Dictionary:
 	var point := Vector2(float(directive.get("x", u.position.x)), float(directive.get("y", u.position.y)))
 	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-	var eps_sq: float = Subcommander.POINT_EPSILON * Subcommander.POINT_EPSILON
+	var eps_sq: float = tolerance * tolerance
 	var already_going_there: bool = u.target_enemy == null and (
 		(u.has_move_target and u.move_target.distance_squared_to(point) < eps_sq)
 		or (not u.has_move_target and u.position.distance_squared_to(point) < eps_sq))
 	if already_going_there:
 		return {}
-	return {
+	var cmd: Dictionary = {
 		"units": [u.uid],
 		"x": point.x,
 		"y": point.y,
 		"target": -1,
 	}
+	if mode >= 0:
+		cmd["mode"] = mode
+	return cmd
 
 
 ## A FORMATION-only order-command -- same shape enqueue_formation builds.
