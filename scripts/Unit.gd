@@ -3101,10 +3101,10 @@ var _adjacent_engaged_cache_frame: int = -1
 
 ## Distinct enemy Unit instances currently within melee contact range of this regiment --
 ## i.e. close enough for genuine simultaneous engagement, not merely detected at long range.
-## "Contact range" reuses _separate()'s own "engaged enemy lines close until front ranks
-## meet" floor (this unit's _front_depth() plus the candidate's own), rather than inventing a
-## second distance rule for what "adjacent" means -- the two places agree on when two blocks
-## are physically pressed together.
+## "Contact range" is melee reach plus both bodies' collision radii
+## (maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS), the symmetric form of
+## the reach-plus-radii rule the other contact checks in this file use, rather than inventing
+## a second distance rule for what "adjacent" means.
 ##
 ## Queried from _separation_candidates(), the same broad-phase population _separate() itself
 ## scans (living units and routers, filtered here to a different, non-DEAD, enemy team). Used
@@ -3125,7 +3125,7 @@ func _adjacent_engaged_enemy_units() -> Array[Unit]:
 			continue
 		if other.team == team:
 			continue
-		var contact: float = _front_depth() + other._front_depth()
+		var contact: float = maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS
 		if position.distance_squared_to(other.position) <= contact * contact:
 			out.append(other)
 	_adjacent_engaged_cache = out
@@ -6923,13 +6923,16 @@ func _rout() -> void:
 	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit
 	add_to_group("routers")
-	# Routing is contagious: shake nearby friends.
-	for u in get_tree().get_nodes_in_group("units"):
-		var friend: Unit = u as Unit
-		if friend != null and friend.team == team:
-			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-			if position.distance_squared_to(friend.position) < ROUT_SHOCK_RADIUS * ROUT_SHOCK_RADIUS:
-				friend.morale -= 12.0
+	# Routing is contagious: shake nearby friends. Guarded like the shockwave spawn below --
+	# tick_morale() can drive a unit to _rout() from outside the scene tree (a bare Unit in
+	# a unit test, or any other caller that never added it), and get_tree() is null there.
+	if is_inside_tree():
+		for u in get_tree().get_nodes_in_group("units"):
+			var friend: Unit = u as Unit
+			if friend != null and friend.team == team:
+				# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+				if position.distance_squared_to(friend.position) < ROUT_SHOCK_RADIUS * ROUT_SHOCK_RADIUS:
+					friend.morale -= 12.0
 	# Cosmetic morale-shock ripple marking the area allies were shaken. Spawned on
 	# the deterministic sim tick but animated/faded on render time, in no sim group, so
 	# it has no simulation/replay/determinism impact. Guarded like the volley trail.
@@ -6958,7 +6961,7 @@ func _process_rout(delta: float) -> void:
 	# can never reach regardless of terrain -- silently defeating this whole detour.
 	var step: Vector2 = position + flee * 1000.0
 	if PathField.active != null:
-		step = PathField.active.next_step_fleeing(position, flee, terrain_clearance())
+		step = PathField.active.next_step_fleeing(position, flee, _rout_clearance())
 
 	# next_step() returns an absolute world-space point, not a direction -- subtract
 	# position first (as _move_to() does) before normalizing.
@@ -7084,11 +7087,18 @@ func _is_escape_path_blocked(flee_direction: Vector2) -> bool:
 	# isn't asking for a route to an inherently unreachable off-map point.
 	for angle in angles_to_check:
 		var direction: Vector2 = Vector2.from_angle(angle)
-		if PathField.active.has_escape_route(position, direction, terrain_clearance()):
+		if PathField.active.has_escape_route(position, direction, _rout_clearance()):
 			return false
 
 	# All directions blocked: unit is trapped.
 	return true
+
+
+## Clearance margin for a routing unit. A routing mob does not hold a rigid formation
+## grid, so its clearance needs only to keep the loose cluster of bodies off obstacles
+## rather than clearing a full formed pivot radius.
+func _rout_clearance() -> float:
+	return soldier_body_radius() + RADIUS
 
 
 ## Unit is trapped by terrain with no viable escape path: stop routing and stand ground

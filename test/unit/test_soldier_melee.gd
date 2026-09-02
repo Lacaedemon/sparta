@@ -119,6 +119,8 @@ func test_testudo_attacker_inflicts_fewer_wounds_via_soldier_path() -> void:
 	var a_norm := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var d_norm := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
 	var normal_wounds: float = _wounds_over(a_norm, d_norm, 10)
+	a_norm.free()
+	d_norm.free()
 
 	Replay.rng.seed = SEED
 	var a_test := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
@@ -140,6 +142,8 @@ func test_shield_wall_defender_takes_fewer_frontal_wounds_via_soldier_path() -> 
 	var a_norm := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var d_norm := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)   # faces UP -> toward the attacker
 	var normal_wounds: float = _wounds_over(a_norm, d_norm, 10)
+	a_norm.free()
+	d_norm.free()
 
 	Replay.rng.seed = SEED
 	var a_wall := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
@@ -163,6 +167,8 @@ func test_square_attacker_inflicts_fewer_wounds_via_soldier_path() -> void:
 	var a_norm := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var d_norm := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
 	var normal_wounds: float = _wounds_over(a_norm, d_norm, 10)
+	a_norm.free()
+	d_norm.free()
 
 	Replay.rng.seed = SEED
 	var a_square := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
@@ -189,6 +195,8 @@ func test_broken_defender_loses_the_shield_wall_frontal_defense_bonus() -> void:
 	var a_norm := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var d_norm := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
 	var normal_wounds: float = _wounds_over(a_norm, d_norm, 10)
+	a_norm.free()
+	d_norm.free()
 
 	Replay.rng.seed = SEED
 	var a_wall := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
@@ -209,6 +217,8 @@ func test_broken_attacker_loses_the_testudo_melee_penalty() -> void:
 	var a_norm := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var d_norm := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
 	var normal_wounds: float = _wounds_over(a_norm, d_norm, 10)
+	a_norm.free()
+	d_norm.free()
 
 	Replay.rng.seed = SEED
 	var a_test := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
@@ -234,6 +244,8 @@ func test_broken_flag_has_no_effect_on_square_attack_factor() -> void:
 	a_square.set_formation(Unit.FORMATION_SQUARE)
 	var d_square := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
 	var square_wounds: float = _wounds_over(a_square, d_square, 10)
+	a_square.free()
+	d_square.free()
 
 	Replay.rng.seed = SEED
 	var a_square_broken := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
@@ -255,6 +267,8 @@ func test_schiltron_attacker_inflicts_fewer_wounds_than_orbis_via_soldier_path()
 	a_orbis.set_formation(Unit.FORMATION_SQUARE)
 	var d_orbis := _unit(2, 1, 1, Vector2(0, 10), Vector2.UP, false)
 	var orbis_wounds: float = _wounds_over(a_orbis, d_orbis, 10)
+	a_orbis.free()
+	d_orbis.free()
 
 	Replay.rng.seed = SEED
 	var a_schiltron := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)

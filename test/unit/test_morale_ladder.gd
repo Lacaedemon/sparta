@@ -67,3 +67,36 @@ func test_morale_ladder_name_method_and_snapshot():
 
 	var snapshot: Dictionary = unit.to_snapshot_dict()
 	assert_eq(snapshot.get("morale_ladder"), "shaken")
+
+func test_ambient_morale_loss_triggers_rout():
+	# Distinct from the register_casualties() rout path (see test_unit.gd): this exercises
+	# UnitMorale.tick_morale()'s own ambient-erosion trigger, added alongside
+	# Unit._rout_clearance() to fix routing-mob pathfinding clearance.
+	var unit: Unit = UnitRef.new()
+	autofree(unit)
+	unit.team = 0
+	unit.state = Unit.State.IDLE
+	unit.morale = 0.0
+	unit._under_fire = true   # blocks the resting-recovery branch so morale stays at 0
+
+	UnitMorale.tick_morale(unit, 1.0)
+
+	assert_eq(unit.state, Unit.State.ROUTING, "zero ambient morale routs the unit")
+
+func test_ambient_morale_loss_rout_does_not_crash_outside_scene_tree():
+	# _rout()'s "shake nearby friends" loop used to call get_tree() unconditionally, which
+	# is null for a Unit outside the scene tree -- exactly the shape of a bare Unit built
+	# by a unit test. tick_morale() is what gave this path a way to fire from outside the
+	# tree, since it previously only routed via register_casualties() (called during real
+	# combat resolution, always in-tree). A fresh Unit (never added to a tree) at 0 morale
+	# must rout without raising.
+	var unit: Unit = UnitRef.new()
+	autofree(unit)
+	assert_false(unit.is_inside_tree(), "sanity: this Unit was never added to a tree")
+	unit.team = 0
+	unit.morale = 0.0
+	unit._under_fire = true
+
+	UnitMorale.tick_morale(unit, 1.0)
+
+	assert_eq(unit.state, Unit.State.ROUTING, "ambient rout still fires outside the tree")
