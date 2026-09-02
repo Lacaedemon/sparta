@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Design-doc-only PR: the deployment-distance presets, the fast-forward control, and the paced AI advance are specified but not implemented, so no recorded battle can show them."
+}

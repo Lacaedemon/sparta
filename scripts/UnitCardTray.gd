@@ -245,6 +245,15 @@ func apply_grid(grid: Array) -> void:
 			for c_idx in range(mini(cols, src_row.size())):
 				row[c_idx] = src_row[c_idx]
 		_grid.append(row)
+	# Side effect beyond the grid replacement: sync each occupant's persistent
+	# line_index (Unit.gd) to its new tray row, so a unit's line membership survives
+	# a tray reassignment (drag between rows, undo/redo) the same way it survives a
+	# checkerboard/tray-grid form-up (SelectionManager._tray_grid_slices/_checkerboard_slices).
+	for r_idx in range(_grid.size()):
+		for c_idx in range(_grid[r_idx].size()):
+			var u: UnitRef = _grid[r_idx][c_idx] as UnitRef
+			if u != null and is_instance_valid(u):
+				u.line_index = r_idx
 	_rebuild_ui()
 
 
@@ -281,6 +290,10 @@ func move_unit(from_r: int, from_c: int, to_r: int, to_c: int) -> void:
 	var tmp = _grid[to_r][to_c]
 	_grid[to_r][to_c] = _grid[from_r][from_c]
 	_grid[from_r][from_c] = tmp
+	if _grid[to_r][to_c] is UnitRef and is_instance_valid(_grid[to_r][to_c]):
+		_grid[to_r][to_c].line_index = to_r
+	if _grid[from_r][from_c] is UnitRef and is_instance_valid(_grid[from_r][from_c]):
+		_grid[from_r][from_c].line_index = from_r
 	_rebuild_ui()
 
 

@@ -55,6 +55,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Line width | <kbd>[</kbd> narrower · <kbd>]</kbd> wider, or **drag a flank grip** |
 | File-doubling | <kbd>B</kbd> explicatio (broader + shallower) · <kbd>N</kbd> duplicatio (narrower + deeper) · <kbd>Shift+B</kbd> / <kbd>Ctrl+B</kbd> anchored explicatio (right / left flank held fixed) |
 | Drill turn in place | <kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right |
+| Turn and unfold (combo) | <kbd>Shift+Q</kbd> quarter-turn left then explicatio · <kbd>Shift+E</kbd> quarter-turn right then explicatio (the frontage doubles across the NEW facing) |
 | Countermarch (exelismos) | <kbd>Shift+V</kbd> Choral/Persian (same ground) · <kbd>Ctrl+V</kbd> Macedonian (advance) · <kbd>Ctrl+Shift+V</kbd> Laconian (withdraw) |
 | Wheel (hinge on a flank) | <kbd>Z</kbd> wheel left · <kbd>C</kbd> wheel right (swings 90° about the standing flank file) |
 | Nudge (small step, holds facing) | <kbd>←</kbd> side-step left · <kbd>→</kbd> side-step right · <kbd>↑</kbd> forward-step · <kbd>↓</kbd> back-step (a few metres each) |
@@ -416,6 +417,35 @@ simply face the new way, so the block now presents its **short edge** as its fro
 (its frontage and depth swap relative to the facing, without anyone moving). Like the
 conversio, it is a standing facing change. Use it to throw a fresh face toward a flank, or
 as the first step of marching off to the side in good order.
+
+**Turn and unfold (<kbd>Shift+Q</kbd> / <kbd>Shift+E</kbd>).** The first chained drill:
+one press runs a quarter-turn and then an explicatio, back to back, as a single order.
+Press <kbd>Shift+Q</kbd> to turn the selected unit a quarter-turn left, or
+<kbd>Shift+E</kbd> to turn it right, exactly as the plain key does --- and the instant the
+turn completes, the block doubles the frontage it *now* presents: the rear half of each
+file steps out sideways across the new facing, so the depth halves and the line broadens.
+The explicatio is measured against the direction the men face after the turn, not the
+grid they started in --- which is what makes the pair one drill rather than two unrelated
+keypresses (pressing <kbd>Q</kbd> and then <kbd>B</kbd> by hand doubles the grid's old
+files, which after the turn run along the block's depth). The historical use is deploying
+from column: a regiment marching by files quarter-turns to bring its long side to the
+front, then unfolds into line. The panel reads "Quarter-turning (step 1 of 2)" while the
+turn runs. Like every drill, it only answers a unit standing idle.
+
+::: {#fig-turn-explicatio-combo .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/turn_explicatio_combo.jpg">
+  <source src="media/turn_explicatio_combo.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Turn and unfold (Shift+Q): a column 5 files wide and 8 deep quarter-turns left in
+place, then unfolds into a 16-wide, 3-deep line across its new facing.
+:::
 
 **Wheel on a flank (circumductio, <kbd>Z</kbd> / <kbd>C</kbd>).** Press <kbd>Z</kbd> to
 wheel the selected unit left, or <kbd>C</kbd> to wheel it right. One end of the line ---

@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Design-doc-only change (docs/world-scale-rebase-plan.md); no scene, script, or asset behavior is modified, so there is nothing a recorded battle could show."
+}

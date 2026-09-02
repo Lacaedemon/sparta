@@ -134,6 +134,15 @@ enum UnitSettingToggle { LEAVE = 0, ON = 1, OFF = 2 }
 # (FILE_MAJOR) here, not a spare sentinel slot -- so this toggle uses -1 for "leave it alone"
 # and the raw Unit.ReformMode ordinal (0/1/2) to set that mode.
 const REFORM_MODE_TOGGLE_LEAVE := -1
+# Sentinel for enqueue_form_up's line_index parameter (and a form-up cmd's "line" field):
+# leaves each ordered unit's persistent Unit.line_index untouched. A plain (non-checkerboard,
+# non-tray-grid) form-up slice carries no line assignment of its own -- writing 0 unconditionally
+# would silently demote a reserve-line unit back to the front line on every ordinary drag, which
+# is exactly the bug this sentinel exists to prevent. Mirrors REFORM_MODE_TOGGLE_LEAVE's shape:
+# -1 can't collide with a real line index (line_index is always >= 0), so it's a safe "unchanged"
+# marker. A cmd missing the "line" key entirely (an older replay, or a non-form-up order) is the
+# same "unchanged" case -- see _apply_order_cmd's read below.
+const LINE_INDEX_UNCHANGED := -1
 # How far a single arrow-key nudge shifts the unit (world units). 30 wu is ~1.5 m
 # (WORLD_UNITS_PER_METER = 20) — a few soldier-widths, and under the side-step
 # distance ceiling (UnitManeuver.SIDESTEP_MAX_DISTANCE) so a lateral nudge always
@@ -167,6 +176,16 @@ const ORDER_CANCEL_ONLY := -13
 # weapon switch carries no order_mode of its own, and "mode" is always recorded -- so the
 # replay format is unchanged. Handled like the stance-only order.
 const ORDER_SWITCH_WEAPON := -14
+# Sentinel for the quarter-turn -> explicatio combo (docs/orders-queue-design.md, "Macro
+# expansion"): each unit quarter-turns in place to the side carried in the "x" field (-1
+# left / +1 right, as the Q/E drill) and, the instant the turn completes, doubles the
+# frontage it now presents (an explicatio measured against the NEW facing). Unit.
+# quarter_turn_explicatio() builds and installs its own COMBO composite when the unit
+# stands idle, and no-ops otherwise -- the same refusal contract Unit.wheel()/
+# countermarch() have. UNLIKE the visual-only quarter-turn drill, the explicatio reshapes
+# the block, which the sim reads, so the combo IS recorded and replayed like a file-double
+# (see ORDER_FRONTAGE_ONLY / ORDER_COUNTERMARCH).
+const ORDER_TURN_EXPLICATIO := -15
 
 ## Order modes: the "stance" an order applies to its units. NORMAL is the
 ## standard move/attack behaviour. Stances are chosen by the player's armed
@@ -1839,6 +1858,25 @@ func enqueue_countermarch(uids: Array, variant: int) -> void:
 	_apply_order_live(cmd)
 
 
+## Quarter-turn -> explicatio combo: each selected unit quarter-turns in place to `dir`'s
+## side (-1 left / +1 right, the Q/E drill's own convention, riding in the "x" field) and
+## then doubles the frontage it presents after the turn. Recorded so replays reproduce
+## the reshape -- see ORDER_TURN_EXPLICATIO. Unit.quarter_turn_explicatio() derives the
+## whole chain from each unit's own live state, so no per-unit geometry is computed here.
+func enqueue_turn_explicatio(uids: Array, dir: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK or dir == 0:
+		return
+	var cmd := {
+		"units": uids,
+		"x": float(dir),
+		"y": 0.0,
+		"target": ORDER_TURN_EXPLICATIO,
+		"mode": OrderMode.NORMAL,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_live(cmd)
+
+
 ## Disengage and step back: each selected friendly unit currently in melee
 ## breaks contact and steps back a short, fixed distance, holding facing. Unlike
 ## enqueue_wheel/enqueue_countermarch, no per-unit geometry needs computing here --
@@ -1910,9 +1948,16 @@ static func nudge_offset(facing: Vector2, dir: int) -> Vector2:
 ## resulting order's `parent` at the same FORM_UP group node -- see `_form_up_groups`
 ## above. -1 (the default) means this deploy isn't part of a group -- a single-unit
 ## form-up drag, unaffected by any of this and identical to before this field existed.
+##
+## `line_index`: the persistent line-membership index (Unit.line_index) to record on each
+## unit as part of this deploy -- LINE_INDEX_UNCHANGED (-1, the default) leaves each unit's
+## existing line_index alone, so a plain drag that doesn't track lines can't silently demote
+## a reserve-line unit back to the front line. Pass a real (>= 0) index -- 0 for the front
+## line, 1+ for a reserve line -- only when the caller actually means to (re)assign one, e.g.
+## the checkerboard/tray-grid deploy slices.
 func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		order_mode: int = OrderMode.NORMAL, knockback_indefinite: bool = false,
-		form_up_group: int = -1) -> void:
+		form_up_group: int = -1, line_index: int = LINE_INDEX_UNCHANGED) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -1924,6 +1969,7 @@ func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		"frontage": frontage,
 		"face": face,
 		"knockback_indefinite": knockback_indefinite,
+		"line": line_index,
 	}
 	if form_up_group >= 0:
 		cmd["form_up_group"] = form_up_group
@@ -2216,6 +2262,17 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 			if u != null:
 				u.countermarch(variant)
 		return
+	# Quarter-turn -> explicatio combo: the turn side rides in "x". Unit.
+	# quarter_turn_explicatio() builds its own COMBO composite (the turn, then the relative
+	# file-double resolved once the turn completes) when idle, and no-ops otherwise -- see
+	# ORDER_TURN_EXPLICATIO.
+	if target_uid == ORDER_TURN_EXPLICATIO:
+		var turn_dir: int = int(round(float(cmd["x"])))
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u != null:
+				u.quarter_turn_explicatio(turn_dir)
+		return
 	# Disengage and step back: each unit peels off its current fight and steps back a
 	# short distance, holding facing. Unit.disengage() creates its own order and no-ops
 	# unless the unit is actually FIGHTING right now -- see ORDER_DISENGAGE.
@@ -2345,6 +2402,13 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 		# duty; a SUPPORT order re-sets it in the friendly-target branch below.
 		if not append:
 			u.order_mode = mode
+			# A cmd missing "line" entirely (an older replay, or a non-form-up order) and one
+			# carrying the explicit LINE_INDEX_UNCHANGED sentinel (a form-up drag that doesn't
+			# assign lines) are the same "leave it alone" case -- see enqueue_form_up's doc
+			# comment and LINE_INDEX_UNCHANGED's own comment above.
+			var cmd_line: int = int(cmd.get("line", LINE_INDEX_UNCHANGED))
+			if cmd_line != LINE_INDEX_UNCHANGED:
+				u.line_index = cmd_line
 			# Same per-order push-distance parameter as the stance-only branch above,
 			# carried on an ordinary move/attack order too (arming KNOCKBACK_FOCUS then
 			# issuing a move/attack is the normal way to use it).

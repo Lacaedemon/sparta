@@ -67,8 +67,15 @@ enum Type {
 	SWITCH_WEAPON, ## Standalone weapon switch (docs/soldier-loadout-design.md phase 4):
 	              ## re-equips the regiment to another LoadoutRegistry weapon type, rewriting
 	              ## the per-soldier weapon ids so combat resolves through the new type at
-	              ## once. Instantaneous, like FORMATION/FRONTAGE/STANCE. Appended last so
-	              ## recorded transcripts keep every other type's value stable.
+	              ## once. Instantaneous, like FORMATION/FRONTAGE/STANCE. Appended after the
+	              ## phase-5 types so recorded transcripts keep every other type's value stable.
+	COMBO,        ## A chain of drill primitives run one after another as ONE order
+	              ## (docs/orders-queue-design.md, "Macro expansion"): never a leaf -- `children`
+	              ## holds the atomic steps (an in-place turn, a file-double, ...) and
+	              ## Unit._arm_combo_step arms each one as the tree cursor reaches it, so a step
+	              ## reads the unit's state at the moment it starts, not at issue time. Built by
+	              ## Unit.begin_combo; the quarter-turn -> explicatio combo is the first. Appended
+	              ## last so recorded transcripts keep every other type's value stable.
 }
 
 ## An order's internal choreography, for the phased case that already exists: a move into a
@@ -153,6 +160,7 @@ const TYPE_NAMES := {
 	Type.STANCE: "STANCE",
 	Type.FORM_UP: "FORM_UP",
 	Type.SWITCH_WEAPON: "SWITCH_WEAPON",
+	Type.COMBO: "COMBO",
 }
 
 const PHASE_NAMES := {
@@ -241,6 +249,12 @@ func effective_phase_name() -> String:
 	if children.is_empty():
 		return phase_name(phase)
 	var leaf: Order = active_leaf()
+	if type == Type.COMBO:
+		# A combo's steps carry no positional meaning -- the by-position TURN/RETURN_TURN
+		# guess below is the rear-move/lateral-pivot composites' own convention -- so the
+		# transcript reports the STEP itself (its type name): "COMBO" / "QUARTER_TURN" reads
+		# as "a combo, currently on its quarter-turn step".
+		return type_name(leaf.type)
 	if leaf.phase == Phase.REFORM:
 		return phase_name(Phase.REFORM)
 	if leaf.type == Type.MOVE:
@@ -262,6 +276,10 @@ var frontage: int = -1
 ## explicatio/duplicatio holds one flank fixed with; 0.0 is the plain centred resize.
 var frontage_anchor_offset: float = 0.0
 ## WHEEL/NUDGE/QUARTER_TURN direction (Battle.NudgeDir for NUDGE; +-1 otherwise); 0 when unused.
+## On a FRONTAGE order a non-zero value instead marks a RELATIVE file-double step (+1 explicatio,
+## -1 duplicatio -- see new_file_double) resolved from the unit's live width when the step arms,
+## for a combo step whose starting width isn't known at issue time; 0 keeps `frontage` as the
+## absolute file count Battle's ORDER_FRONTAGE_ONLY command carries.
 var dir: int = 0
 ## The order_mode (Battle.OrderMode) the issuing command carried, for MOVE/ATTACK/SUPPORT.
 var order_mode: int = 0
@@ -639,6 +657,35 @@ static func new_frontage(files: int, anchor_offset: float = 0.0) -> Order:
 	o.type = Type.FRONTAGE
 	o.frontage = files
 	o.frontage_anchor_offset = anchor_offset
+	return o
+
+
+## A RELATIVE file-double as a combo step (see `dir`): `direction` > 0 is an explicatio
+## (double the frontage, halve the depth), < 0 a duplicatio (the reverse), each resolved
+## from the unit's live width -- in the frame of its CURRENT facing -- only when the step
+## arms (Unit._arm_combo_step), since a step queued behind an in-place turn can't know
+## its starting width at issue time. `frontage` stays -1 (unresolved) until then.
+static func new_file_double(direction: int) -> Order:
+	var o := Order.new()
+	o.type = Type.FRONTAGE
+	o.dir = signi(direction)
+	return o
+
+
+## A COMBO composite over `steps`, in execution order: each step becomes a child with its
+## `parent` pointing back here, exactly as Unit.begin_pivot links a composite's own
+## children. Nothing is armed here -- Unit.begin_combo installs the order and arms the
+## first step, and the tree cascade (Unit._advance_order_tree) arms each later one as the
+## cursor reaches it.
+static func new_combo(steps: Array[Order]) -> Order:
+	var o := Order.new()
+	o.type = Type.COMBO
+	var kids: Array[Order] = []
+	for step in steps:
+		step.parent = o
+		kids.append(step)
+	o.children = kids
+	o._active_child = 0
 	return o
 
 

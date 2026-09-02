@@ -547,6 +547,18 @@ the maneuver in contact, and give it room before the enemy arrives. A natural rh
 duplicatio to march a column through a chokepoint, then explicatio to deploy back into line on
 the far side.
 
+**Deploy from column with one press: turn and unfold.** <kbd>Shift+Q</kbd> /
+<kbd>Shift+E</kbd> chain a quarter-turn and an explicatio into a single drill order. A
+column marching by files quarter-turns to bring its long side to the front, and the instant
+the turn completes the block doubles the frontage it *now* presents --- the explicatio is
+measured against the new facing, so a 5-wide, 8-deep column turned left becomes a 16-wide,
+3-deep line facing the flank it turned toward. Reach for it when a threat appears off the
+side of a column on the march: one order both faces it and puts the whole regiment on a
+broad front, without the two-keypress gap in which a half-turned column is at its most
+awkward. Pressing <kbd>Q</kbd> and then <kbd>B</kbd> by hand is not the same drill --- the
+plain explicatio doubles the grid's old files, which after a quarter-turn run along the
+block's depth.
+
 **Everyone shifts to the file nearest him.** Changing the width renumbers every file, so
 in principle each man could end up anywhere in the new grid. He doesn't: the block keeps its
 left-to-right order through the reshape, so a man on the right flank takes a file on the

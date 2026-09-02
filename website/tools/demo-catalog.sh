@@ -28,6 +28,7 @@ DEMOS=(
   "file_doubling|demos/inputs/file-doubling.json|30|300|640|input"
   "frontage_slot_pairing|demos/inputs/frontage-change-slot-pairing.json|30|170|640|input"
   "file_doubling_asymmetric|demos/inputs/file-doubling-asymmetric.json|30|150|640|input"
+  "turn_explicatio_combo|demos/inputs/turn-explicatio-combo.json|30|250|640|input"
   "cycle_charge|demos/inputs/cycle-charge.json|30|650|640|input"
   "cycle_charge_flee|demos/inputs/cycle-charge-flee.json|30|520|640|input"
   "rout_rally|demos/inputs/rout-rally-recover.json|30|2500|640|input"

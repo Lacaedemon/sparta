@@ -9,6 +9,8 @@ accept = [200, 201, 202, 203, 204, 206, 301, 302, 303, 307, 308, 429]
 timeout = 20
 
 exclude = [
+  # LacusCurtius answers slowly enough that the link checker times out; the pages are stable.
+  "https://penelope.uchicago.edu/",
   # Bundled-default placeholders / local-only URLs.
   "https://github.com/YOUR-USERNAME/.*",
   "https://YOUR-USERNAME.github.io/.*",
@@ -34,6 +36,10 @@ exclude = [
   # loads in a browser — same false-positive pattern as divideetimperamod.com
   # above. Skip it rather than reddening unrelated PRs on an upstream flake.
   "^https://freesound\\.org",
+  # play0ad.com (linked from docs/asset-sources.md, docs/related-games.md)
+  # intermittently times out under lychee's 20s budget even though the site
+  # loads in a browser.
+  "^https://play0ad\\.com",
   # opengameart.org (linked from ASSETS.md, assets/sfx/CREDITS.md,
   # assets/sfx/README.md, docs/asset-sources.md, website/assets.qmd) rejects
   # lychee's automated requests with HTTP 502 Bad Gateway, even though the

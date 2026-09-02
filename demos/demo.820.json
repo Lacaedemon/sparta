@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Design-doc-only PR: the standard-bearer mechanic (formation anchor, casualty succession, visual standard) is specified but not implemented, so no recorded battle can show it."
+}
