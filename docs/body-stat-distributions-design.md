@@ -298,16 +298,20 @@ Three further places in the tree enumerate every parallel per-soldier array by h
 each silently de-aligns or drops a new one if it is not extended in the same change:
 
 - **Far-tier demotion and promotion** (`scripts/TierTransition.gd`).
-  `demote()` clears every per-soldier array outright, and `promote()` rebuilds them from
-  the unit's aggregate state using an RNG seeded by
-  `TierTransition.promotion_seed(uid, tick, battle_seed)`, whose own comment states it
-  is never the shared `Replay.rng` stream.
+  `demote()` clears most per-soldier arrays -- position, velocity, steering, hp,
+  prone, stamina, loadout ids, facing, file/rank, and square-slot pairing -- but
+  leaves two untouched: `_sim_soldier_broken` and `_sim_soldier_row_slot`.
+  `promote()` rebuilds the cleared arrays from the unit's aggregate state using an
+  RNG seeded by `TierTransition.promotion_seed(uid, tick, battle_seed)`, whose own
+  comment states it is never the shared `Replay.rng` stream, and it does not touch
+  `_sim_soldier_broken` or `_sim_soldier_row_slot` either.
   A drawn body stat therefore cannot simply persist across a far-tier round trip: it is
   discarded on demotion and has to be reconstructed on promotion from that local seed,
   not from the spawn-time stream.
   This is the site that forces the uid-hash question below.
 
-- **Unit serialization** (`Unit.to_dict()` / `Unit.from_dict()` in `scripts/Unit.gd`).
+- **Unit serialization** (`Unit.to_snapshot_dict()` / `Unit.apply_snapshot_dict()` in
+  `scripts/Unit.gd`).
   Each array is named explicitly in both directions, so a new one that is not added
   there is lost across any snapshot round trip.
 
@@ -317,7 +321,8 @@ each silently de-aligns or drops a new one if it is not extended in the same cha
   an omitted array leaves the detachment holding the parent's full-length copy.
 
 An acceptance test for phase 1 should exercise a demote-promote round trip and a
-`to_dict()`/`from_dict()` round trip, not only a `reap()` compaction.
+`to_snapshot_dict()`/`apply_snapshot_dict()` round trip, not only a `reap()`
+compaction.
 
 That is sixteen bytes per soldier on top of the existing per-soldier footprint.
 If that proves too much at the target soldier counts, the fallback is to quantise each
@@ -397,7 +402,7 @@ The stream is shared with combat, so any change to how many values the spawn pat
 consumes shifts every later draw in the battle, and a spawn-order change silently
 invalidates every recorded replay and every demo scenario.
 
-Two consequences follow, and both are acceptance criteria rather than notes:
+Four consequences follow, and all are acceptance criteria rather than notes:
 
 - **The spawn fingerprint has to cover the draw.**
   `Replay.spawn_fingerprint` and `Replay.last_load_spawn_mismatch` already exist to
@@ -427,7 +432,7 @@ Two consequences follow, and both are acceptance criteria rather than notes:
   `demos/inputs/` scenario in the same PR, and no later phase re-records again, because
   no later phase changes how many values the spawn path consumes.
 
-An alternative worth considering and rejecting explicitly: deriving each soldier's stats
+An alternative worth considering and deferring explicitly: deriving each soldier's stats
 from a hash of `(unit uid, soldier index, battle seed)` rather than from the shared
 stream.
 That is attractive because it is order-independent and immune to the shifting-stream
@@ -562,7 +567,8 @@ Nothing reads the arrays yet.
   every drawn value falls inside the truncation bounds;
   the arrays stay index-aligned with `_sim_soldier_pos` across a `SoldierMelee.reap()`
   casualty compaction, a tail resize, a `TierTransition` demote-promote round trip,
-  and a `Unit.to_dict()`/`from_dict()` round trip;
+  and a `Unit.to_snapshot_dict()`/`apply_snapshot_dict()`
+  round trip;
   with `variation_enabled = false` every soldier gets exactly today's values for his own
   unit class, ranged and cavalry included;
   the number of values the spawn path draws per soldier does not depend on
@@ -712,7 +718,8 @@ because everything above works with one distribution.
    The fingerprint mismatch would catch it;
    whether catching it is enough is a decision.
    The tree narrows this more than it first appears: `TierTransition.demote()`
-   already discards every per-soldier array, so "survive" is not available across
+   already discards nearly every per-soldier array (all but `_sim_soldier_broken`
+   and `_sim_soldier_row_slot`), so "survive" is not available across
    a far-tier round trip whatever the save path does, and `promote()` has to
    reconstruct the stats from its own local seed.
    So the live question is whether that reconstruction reproduces the same men, which is
