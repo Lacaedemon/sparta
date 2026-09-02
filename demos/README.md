@@ -160,21 +160,25 @@ script under `demos/inputs/`:
   hand instead of only team 0 against the AI. Unlike `drill`, both armies still spawn -- set
   before the battle spawns, like `drill`/`scenario`/`doctrine` above. See
   `scripts/AllTeamsControl.gd` and `demos/inputs/all-teams-control.json`.
-- `factions` (optional) -- the faction each team fights under, one name per team in team
-  order: `"factions": ["Sparta", "Rome"]`. Names, not enum ints, and matched
-  case-insensitively against `Faction.FACTION_NAMES` in either its full form
-  (`"Rome (Latin / Roman)"`) or its bare leading name (`"Rome"`); an unrecognized name fails
-  the recording loudly, like a malformed `steps`/`scenario`. This is **display identity
-  only** -- nothing in the simulation reads it. What it changes is the HUD: the control-bar
-  formation button, its drop-up menu, the info panel's Formation line, the Menu's form-up
-  items, and the panel's own Faction / Doctrine lines all pick up that side's historical
-  names (`Faction.HISTORICAL_FORMATIONS` / `HISTORICAL_FORM_UP` / `FACTION_STRATEGIES`), so
-  a Spartan block reads `0.9 m (pyknosis)` where a Roman one reads `0.9 m (acies)`. Each
-  caption follows the SHOWN unit's own team, so a clip using `all_teams_control` can select
-  from both sides and see each named in its own language. Omit for no faction, which is what
-  every script written before this field says -- and which renders exactly the plain captions
-  it always did. Set before the battle spawns, like `drill`/`scenario`/`doctrine` above;
+
+- `factions` (optional) -- the faction each team fights under, one name per team in team order:
+  `"factions": ["Sparta", "Rome"]`.
+  Names, not enum ints, and matched case-insensitively against `Faction.FACTION_NAMES`
+  in either its full form (`"Rome (Latin / Roman)"`) or its bare leading name (`"Rome"`).
+  An unrecognized name fails the recording loudly, like a malformed `steps`/`scenario`.
+  This is **display identity only** -- nothing in the simulation reads it.
+  What it changes is the HUD: the control-bar formation button, its drop-up menu,
+  the info panel's Formation line, the Menu's form-up items, and the panel's own
+  Faction / Doctrine lines all pick up that side's historical names
+  (`Faction.HISTORICAL_FORMATIONS` / `HISTORICAL_FORM_UP` / `FACTION_STRATEGIES`).
+  So a Spartan block reads `0.9 m (pyknosis)` where a Roman one reads `0.9 m (acies)`.
+  Each caption follows the SHOWN unit's own team, so a clip using `all_teams_control`
+  can select from both sides and see each named in its own language.
+  Omit for no faction, which is what every script written before this field says,
+  and which renders exactly the plain captions it always did.
+  Set before the battle spawns, like `drill`/`scenario`/`doctrine` above.
   `demos/inputs/faction-identity-hud.json` is the worked example.
+
 - `show_soldier_ids` (optional bool, **default `true`**) -- session-only: enables the
   per-soldier-ID HUD overlay for the recording without touching a developer's saved
   settings. On by default so scripted-input recordings show this debugging/verification
