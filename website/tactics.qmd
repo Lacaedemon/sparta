@@ -1995,8 +1995,8 @@ a testudo whose men are also facing the archers is the hardest target in the gam
 Shield arc under archery: two identical 60-man Infantry blocks, each under fire
 from its own Archers regiment due north. The left block faces the arrows and its
 shields cover them; the right block is turned east and its flank is bare. Watch the
-two soldier counts diverge --- the facing block ends the clip at 53 of 60, the
-turned one at 25.
+two soldier counts diverge --- the facing block ends the clip at 53 of 60 with
+morale 75, the turned one at 25 of 60 with morale 32.
 :::
 
 ## Group attack distribution
