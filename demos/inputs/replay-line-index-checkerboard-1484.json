@@ -1,0 +1,33 @@
+{
+  "_comment": "Replay persistence of a checkerboard form-up's line index (issue 1484). Six understrength Infantry cohorts spawn in a ragged, alternating two-height clump in the lower-left of the field, get box-selected, and are then formed up with a LEFT-TO-RIGHT checkerboard drag well above them, so the whole force advances north into a quincunx: three cohorts on the front line and three offset behind them. That gesture is the one that stamps Unit.line_index (SelectionManager._checkerboard_slices tags each slice's line, Battle.enqueue_form_up carries it on the order, Battle._apply_order_cmd writes it onto the unit), and the drain that records the order into the replay stream is exactly what this issue fixes -- Replay.record_order now carries the line index, so a saved recording of THIS deploy replays with the same front/reserve split instead of silently dropping it. The line index still has no render path of its own (nothing reads is_front_line()/is_reserve_line() yet -- the flank-vulnerability and withdrawal mechanics that will are a later phase), so the persistence itself is verified by test/unit/test_replay.gd's round-trip and back-compat cases, not by anything visible in this clip; what the clip shows is the live deploy whose line assignments the fix preserves, recorded through the real recording call site. Deliberately not a copy of the issue-819 clip: different unit type (Infantry, not Spearmen), six units instead of four, a staggered rather than evenly-spaced spawn, a south-to-north advance instead of north-to-south, its own seed, and its own camera framing. drill:true (no team 1) since this is a pure maneuver demo. Static camera wide enough to hold both the ragged start and the settled quincunx.",
+  "seed": "1484023",
+  "drill": true,
+  "form_up_dist": 4,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 360, "y": 720, "count": 60},
+    {"team": 0, "type": "Infantry", "x": 500, "y": 800, "count": 60},
+    {"team": 0, "type": "Infantry", "x": 640, "y": 720, "count": 60},
+    {"team": 0, "type": "Infantry", "x": 780, "y": 800, "count": 60},
+    {"team": 0, "type": "Infantry", "x": 920, "y": 720, "count": 60},
+    {"team": 0, "type": "Infantry", "x": 1060, "y": 800, "count": 60}
+  ],
+  "camera": [
+    {"tick": 0, "x": 710.0, "y": 640.0, "zoom": 0.8},
+    {"tick": 1000, "x": 710.0, "y": 640.0, "zoom": 0.8}
+  ],
+  "steps": [
+    {"tick": 6, "box": {"from": [280, 640], "to": [1140, 880]}},
+    {"tick": 24, "rmb_drag": {"from": [330, 600], "to": [1090, 600]}}
+  ],
+  "state": [12, 60, 100, 140, 200, 280, 360, 440, 540, 640, 740, 840, 940],
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [0, 1, 2, 3, 4, 5],
+      "reason": "The units spawn facing south and the checkerboard order turns them about to face north, so each block rotates its ranks in place before it marches. Mid-rotation, bodies converging on their new slots pass well inside the resting pitch: measured min nearest-neighbour distance dips to 0.78-3.8 wu over ticks 100-360 and is back above 14 wu by tick 440. Re-running the scan over ticks 500-940 alone (the march and the settle) passes all 44 verdicts, with min nearest-neighbour distance 11.4-16.5 wu, so this is the about-face transient and not a resting-state defect."
+    },
+    "shape_residual": {
+      "uids": [0, 1, 2, 3, 4, 5],
+      "reason": "Same in-place about-face as the overlap exemption above: while a block is rotating its ranks, the post-fit residual against the ordered grid is necessarily large because the men are in transit between slots. Over ticks 500-940 the residual is 0.4-1.4 wu against a 13.5 wu threshold and misslotted is 0.0 for every unit, so the settled quincunx is a clean grid."
+    }
+  }
+}

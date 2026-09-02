@@ -257,3 +257,74 @@ func test_delegating_to_group_0_round_trips_distinctly_from_an_omitted_frontage(
 		+ "revoke (group_id Unit.UNDELEGATED = -1 encodes to frontage 0, which IS omitted, and "
 		+ "correctly decodes right back to UNDELEGATED on an absent key)")
 	assert_eq(int(due[0]["frontage"]) - 1, 0, "decodes back to group 0, not UNDELEGATED (-1)")
+
+
+func test_save_load_round_trips_a_checkerboard_form_ups_line_index() -> void:
+	# A checkerboard (acies triplex) deploy assigns each slice a persistent line index
+	# (Unit.line_index, carried on the order as "line" -- see Battle.enqueue_form_up). That
+	# assignment has to survive save/load like every other order field: without it a REPLAYED
+	# recording of the same deploy reaches Battle._apply_order_cmd with no "line" key at all,
+	# which reads as LINE_INDEX_UNCHANGED, so every unit keeps whatever line it already had
+	# and the recorded front/reserve split silently vanishes -- a live-vs-replay divergence,
+	# since the live session assigned the lines the instant the drag was released.
+	var r := _fresh()
+	r.start_recording()
+	# Two slices of one checkerboard drag (shared form-up group 2): front line, then reserve.
+	r.record_order(5, [11], Vector2(10, 20), -1, 0, 0, 4, 0.5, 0, 0.0, 2, 0, 0, -1, 0)
+	r.record_order(5, [12], Vector2(30, 60), -1, 0, 0, 4, 0.5, 0, 0.0, 2, 0, 0, -1, 1)
+	var path: String = r.save("Test", 5)
+	assert_ne(path, "", "the recording saves")
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 2, "both checkerboard slices round-trip")
+	assert_eq(int(due[0].get("line", -1)), 0,
+			"the front-line slice's line index round-trips through save/load, not just live")
+	assert_eq(int(due[1].get("line", -1)), 1,
+			"the reserve slice reads back on line 1, not demoted to the front line")
+
+
+func test_a_plain_form_up_omits_the_line_index_on_round_trip() -> void:
+	# An ordinary drag-to-form-up assigns no line of its own, so it records the
+	# LINE_INDEX_UNCHANGED sentinel (-1) and the key is omitted on save -- matching the
+	# in-memory record_order behaviour for every other optional field, and keeping a replayed
+	# plain drag from demoting a reserve-line unit back to the front line.
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [0], Vector2.ZERO, -1, 0, 0, 4, 0.5)   # a plain form-up, no line
+	var path: String = r.save("Test", 5)
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 1)
+	assert_false(due[0].has("line"),
+			"a plain form-up carries no line key at all, like a pre-line-index replay")
+
+
+func test_a_replay_recorded_before_the_line_index_field_still_loads() -> void:
+	# Back-compat: a replay saved before this field existed has no "line" key on any order.
+	# It must still load and play, with no key invented on the way in -- _apply_order_cmd's
+	# missing-key read is the same "leave it alone" case as the explicit sentinel, so those
+	# replays behave exactly as they did before.
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [11], Vector2(10, 20), -1, 0, 0, 4, 0.5, 0, 0.0, 2, 0, 0, -1, 1)
+	var path: String = r.save("Test", 5)
+	var f := FileAccess.open(path, FileAccess.READ)
+	var data: Dictionary = JSON.parse_string(f.get_as_text())
+	f.close()
+	for o in data["orders"]:
+		o.erase("line")   # simulate a replay file saved before the field existed
+	f = FileAccess.open(path, FileAccess.WRITE)
+	f.store_string(JSON.stringify(data))
+	f.close()
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path),
+			"a replay with no line key on any order still loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 1, "the order itself round-trips unchanged")
+	assert_false(due[0].has("line"),
+			"no line key is invented on load -- the order reads as LINE_INDEX_UNCHANGED")

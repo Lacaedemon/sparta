@@ -323,10 +323,13 @@ lays your selection out as two staggered rows instead of one straight line.
 See [How to play: Controls](how-to-play.qmd#controls) (the "Deploy several
 units at once" entry) for the drag mechanics.
 
-This is a **one-shot layout**, not a standing formation --- a unit dragged
-into a checkerboard arrangement doesn't remember "I'm line 2" the way it
-remembers its stance or formation mode. Nothing yet models the historical
-system's chief weakness either: a gapped, multi-line formation trades
+A unit dragged into a checkerboard arrangement **remembers which line it
+landed on**, the way it remembers its stance or formation mode: the front row
+is Line 1, the offset row behind it is Line 2, and that tag survives a unit
+card tray row move as well as a saved replay's playback. Nothing reads the tag
+yet, though, so the layout still behaves as a one-shot arrangement in play ---
+and nothing yet models the historical system's chief weakness either: a
+gapped, multi-line formation trades
 frontage flexibility for flank exposure, so a checkerboard-formed army isn't
 currently more vulnerable to flanking than a solid line. See
 `docs/acies-triplex-design.md` in the project repository for the full design

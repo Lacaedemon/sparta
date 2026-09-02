@@ -1485,7 +1485,8 @@ func _physics_process(_delta: float) -> void:
 					int(o.get("form_up_group", -1)),
 					int(o.get("walk_advance_toggle", UnitSettingToggle.LEAVE)),
 					int(o.get("reform_toggle", UnitSettingToggle.LEAVE)),
-					int(o.get("file_major_reform_mode_toggle", REFORM_MODE_TOGGLE_LEAVE)))
+					int(o.get("file_major_reform_mode_toggle", REFORM_MODE_TOGGLE_LEAVE)),
+					int(o.get("line", LINE_INDEX_UNCHANGED)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply
