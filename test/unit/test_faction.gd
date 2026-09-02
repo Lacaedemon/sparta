@@ -181,14 +181,19 @@ func test_sparta_echelon_labels_name_the_wing_not_the_helmet_crest() -> void:
 
 
 func test_carthage_names_are_punic_or_greek_not_arabic() -> void:
-	# Punic where the Phoenician-Punic lexicon has a word (mahanet, magen, gag), Greek where
-	# it has none. The Classical Arabic set this row once carried postdates Punic by about a
-	# millennium; pin the replacements so a revert is a test failure, not a silent regression.
+	# Punic where the Phoenician-Punic lexicon has a word (mahanet, magen, gag), Greek where it
+	# has none. The Classical Arabic set this row once carried is a different language with no
+	# bearing on the usage of a Carthaginian army, which ended with the city in 146 BC. All
+	# seven are pinned, so reverting any one of them is a test failure rather than a silent
+	# regression.
 	var carthage: Dictionary = Faction.HISTORICAL_FORMATIONS[Faction.Type.CARTHAGE]
 	assert_eq(carthage[UnitScript.FORMATION_NORMAL], "mahanet")
+	assert_eq(carthage[UnitScript.FORMATION_TIGHT], "synaspismos")
+	assert_eq(carthage[UnitScript.FORMATION_LOOSE], "araios")
+	assert_eq(carthage[UnitScript.FORMATION_SQUARE], "plaision")
+	assert_eq(carthage[UnitScript.FORMATION_SCHILTRON], "kyklos")
 	assert_eq(carthage[UnitScript.FORMATION_SHIELD_WALL], "magen")
 	assert_eq(carthage[UnitScript.FORMATION_TESTUDO], "gag")
-	assert_eq(carthage[UnitScript.FORMATION_SQUARE], "plaision")
 
 	var form_up: Dictionary = Faction.HISTORICAL_FORM_UP[Faction.Type.CARTHAGE]
 	assert_eq(form_up[4], "epallax")

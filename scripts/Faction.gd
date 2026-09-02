@@ -74,26 +74,31 @@ const ROSTER_SUBUNIT_OVERRIDES := {
 ## The four languages are not equally documented, so the table follows an explicit sourcing
 ## rule rather than a uniform one:
 ##
-##   * Latin (Rome) and Greek (Sparta, Macedon) tactical vocabulary is attested directly, in
-##     Caesar and Livy and in the Greek tacticians -- Asclepiodotus, Tactica 4, "The Intervals
-##     between the Soldiers", gives the three densities the LOOSE/NORMAL/TIGHT keys stand for
-##     (four cubits a man, then two, then one with shields locked).
+##   * Greek (Sparta, Macedon) tactical vocabulary is attested in the Greek tacticians --
+##     Asclepiodotus, Tactica 4, "The Intervals between the Soldiers", gives the three
+##     densities the LOOSE/NORMAL/TIGHT keys stand for (four cubits a man, then two, then one
+##     with shields locked).
 ##   * Punic (Carthage) tactical vocabulary is NOT attested. No Carthaginian drill manual
 ##     survives, and the Phoenician-Punic lexicon records no formation names at all. So
 ##     Carthage's row mixes two kinds of entry, marked per line below:
 ##       (Pu) an attested Phoenician or Punic noun, transparently vocalized from its
-##            consonantal spelling, naming the object the formation is shaped like -- which is
-##            how the Latin and Greek rows are built too (orbis, testudo, plinthion, chelone).
+##            consonantal spelling, standing in for the shape the mode makes. The tactical
+##            sense is this game's gloss on the noun, never something the source says.
 ##       (Gr) the Greek term, because Greek is the language Carthaginian armies were actually
 ##            described in: Polybius is the primary narrative source for their deployments.
 ##
-## Nothing here is coined. Where Greek has exactly one word for a concept, two factions carry
-## the same string (synaspismos, kyklos, araios) rather than one of them getting an invented
-## synonym. Punic entries cite Krahmalkov, Phoenician-Punic Dictionary (Studia Phoenicia XV,
-## Leuven 2000) by headword, together with the inscription that attests the word.
+## What the citations cover, and what they do not. The Carthage row, and the Sparta and
+## Macedon form-up entries changed alongside it, carry a source per line, and none of those is
+## coined. Rome's row is inherited unchanged and is NOT re-verified here: densata acies, rara
+## acies and scuta undique are descriptive Latin for the modes they label, and no classical
+## attestation is claimed for them. Punic entries cite Krahmalkov, Phoenician-Punic Dictionary
+## (Studia Phoenicia XV, Leuven 2000) by headword, with the inscription attesting the word.
+## Where Greek has exactly one word for a concept, two factions carry the same string
+## (synaspismos, kyklos, araios) rather than one of them getting an invented synonym.
 ##
-## An earlier revision of this table gave Carthage Classical Arabic words. Arabic postdates
-## Punic by roughly a millennium and is not evidence for it, so none of them survive here.
+## An earlier revision of this table gave Carthage Classical Arabic words. The Carthaginian
+## army ended with the city in 146 BC, and Classical Arabic is a different language with no
+## bearing on Punic military usage, so none of those words survive here.
 const HISTORICAL_FORMATIONS := {
 	Type.ROME: {
 		UnitRef.FORMATION_NORMAL: "acies",
@@ -127,8 +132,10 @@ const HISTORICAL_FORMATIONS := {
 		UnitRef.FORMATION_SQUARE: "plaision",
 		# (Gr) troops formed in a ring -- LSJ s.v. kyklos.
 		UnitRef.FORMATION_SCHILTRON: "kyklos",
-		# (Pu) mgn, "shield" -- Krahmalkov s.v. MGN II; Phoenician KAI 26 A I 6/8 mgn 'l mgn,
-		# "shield upon shield", which is a shield wall in the source's own words.
+		# (Pu) mgn, "shield" -- Krahmalkov s.v. MGN II; Phoenician KAI 26 A I 6/8 mgn 'l mgn.
+		# What Punic attests is the noun for a shield, and nothing beyond it: that phrase is a
+		# formulaic boast of augmented resources ("horse to horse, shield to shield, army to
+		# army"), not a formation. The shield-wall sense of the label is this game's gloss.
 		UnitRef.FORMATION_SHIELD_WALL: "magen",
 		# (Pu) gg, "roof" -- Krahmalkov s.v. GG; Punic IFPCO p. 109 hgg 'l 'mdm, "the roof
 		# resting on columns". A testudo is a roof of shields, as chelone and testudo are
@@ -150,10 +157,13 @@ const HISTORICAL_FORMATIONS := {
 ## Settings.FORM_UP_DIST_CHECKERBOARD/ECHELON_RIGHT/ECHELON_LEFT (4-6). Same sourcing rule as
 ## HISTORICAL_FORMATIONS above, and the same three keys for every faction.
 ##
-## No ancient language has a single word for an echeloned form-up, so the two echelon entries
-## name the DIRECTION instead, and each faction names it in its own idiom. The two must stay
-## distinct: a caller shows these to tell the player which of the two modes is active, so one
-## label serving both directions is the same defect as an empty entry.
+## No ancient language has a single word for an echeloned form-up, so each faction's two
+## echelon entries carry the LEADING SIDE, in whichever of two shapes suits its own idiom:
+## either the wing that leads on its own (Sparta's and Carthage's dexion / euonymon keras), or
+## the faction's term for the oblique order plus the side it leads with (Rome's acies obliqua
+## dextra / sinistra, Macedon's loxe phalanx epi doru / ep' aspida). Either shape is fine; what
+## is not is the two entries coming out the same. A caller shows these to tell the player which
+## of the two modes is active, so one label serving both directions is as useless as a blank.
 const HISTORICAL_FORM_UP := {
 	Type.ROME: {
 		4: "quincunx",
