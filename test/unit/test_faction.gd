@@ -52,7 +52,7 @@ func test_faction_formation_display_names() -> void:
 
 	var carthage_name := Faction.get_formation_display_name(
 			Faction.Type.CARTHAGE, UnitScript.FORMATION_SHIELD_WALL, "Shield Wall")
-	assert_eq(carthage_name, "Shield Wall (surs)")
+	assert_eq(carthage_name, "Shield Wall (magen)")
 
 	var macedon_name := Faction.get_formation_display_name(
 			Faction.Type.MACEDON, UnitScript.FORMATION_NORMAL, "Normal formation")
@@ -86,3 +86,111 @@ func test_get_form_up_display_name_falls_back_to_plain_name_for_an_unlisted_mode
 
 func test_get_strategy_name_falls_back_to_standard_doctrine_for_an_unknown_faction() -> void:
 	assert_eq(Faction.get_strategy_name(-1), "Standard Doctrine")
+
+
+const ALL_FACTIONS: Array = [
+	Faction.Type.SPARTA, Faction.Type.ROME, Faction.Type.CARTHAGE, Faction.Type.MACEDON,
+]
+
+## The formation modes every faction's HISTORICAL_FORMATIONS row must cover, and the form-up
+## distributions (Settings.FORM_UP_DIST_CHECKERBOARD/ECHELON_RIGHT/ECHELON_LEFT) every
+## HISTORICAL_FORM_UP row must cover. Pinned here rather than read back off the table so a
+## row that silently loses a key fails instead of shrinking the expectation with it.
+const EXPECTED_FORMATION_KEYS: Array = [
+	UnitScript.FORMATION_NORMAL,
+	UnitScript.FORMATION_TIGHT,
+	UnitScript.FORMATION_LOOSE,
+	UnitScript.FORMATION_SQUARE,
+	UnitScript.FORMATION_SCHILTRON,
+	UnitScript.FORMATION_SHIELD_WALL,
+	UnitScript.FORMATION_TESTUDO,
+]
+const EXPECTED_FORM_UP_KEYS: Array = [4, 5, 6]
+
+
+func test_every_faction_row_carries_exactly_the_expected_keys() -> void:
+	# get_formation_display_name()/get_form_up_display_name() fall back to the bare plain name
+	# for a mode a faction's row doesn't list, so a dropped key degrades silently into "no
+	# historical name for this faction" rather than erroring. Pin the shape instead.
+	for faction_id in ALL_FACTIONS:
+		var formations: Dictionary = Faction.HISTORICAL_FORMATIONS[faction_id]
+		assert_eq(formations.keys().size(), EXPECTED_FORMATION_KEYS.size(),
+				"faction %d lists exactly the expected formation modes" % faction_id)
+		for mode in EXPECTED_FORMATION_KEYS:
+			assert_true(formations.has(mode),
+					"faction %d names formation mode %d" % [faction_id, mode])
+
+		var form_up: Dictionary = Faction.HISTORICAL_FORM_UP[faction_id]
+		assert_eq(form_up.keys().size(), EXPECTED_FORM_UP_KEYS.size(),
+				"faction %d lists exactly the expected form-up modes" % faction_id)
+		for dist in EXPECTED_FORM_UP_KEYS:
+			assert_true(form_up.has(dist),
+					"faction %d names form-up distribution %d" % [faction_id, dist])
+
+
+func test_no_historical_name_is_blank() -> void:
+	# An empty (or whitespace-only) entry renders as "Tight formation ()", which reads as a
+	# bug rather than as a missing translation -- catch it here instead of on screen.
+	var tables: Array = [Faction.HISTORICAL_FORMATIONS, Faction.HISTORICAL_FORM_UP]
+	for table in tables:
+		for faction_id in table:
+			for mode in table[faction_id]:
+				var label: String = str(table[faction_id][mode])
+				assert_false(label.strip_edges().is_empty(),
+						"faction %d mode %d has a non-blank historical name" % [faction_id, mode])
+
+	for faction_id in ALL_FACTIONS:
+		assert_false(Faction.get_strategy_name(faction_id).strip_edges().is_empty(),
+				"faction %d has a non-blank strategy name" % faction_id)
+		assert_false(Faction.get_faction_name(faction_id).strip_edges().is_empty(),
+				"faction %d has a non-blank display name" % faction_id)
+
+
+func test_a_factions_own_labels_are_all_distinct() -> void:
+	# Within one faction, every mode must be tellable from every other: these strings exist to
+	# say WHICH mode is active, so a label serving two modes is as useless as a blank one.
+	# Macedon carried one string for both echelon directions before this check existed.
+	# Across factions the strings may repeat -- Greek has one word for locked shields, and
+	# Sparta, Carthage and Macedon all use it.
+	var tables: Array = [Faction.HISTORICAL_FORMATIONS, Faction.HISTORICAL_FORM_UP]
+	for table in tables:
+		for faction_id in table:
+			var seen: Dictionary = {}
+			for mode in table[faction_id]:
+				var label: String = str(table[faction_id][mode])
+				assert_false(seen.has(label),
+						"faction %d reuses the label '%s' for mode %d and mode %s"
+								% [faction_id, label, mode, str(seen.get(label, ""))])
+				seen[label] = mode
+
+
+func test_macedon_echelon_directions_have_distinct_labels() -> void:
+	# The oblique phalanx refuses one wing; which wing is the whole content of the mode, so
+	# each direction names it with the phalanx's own drill word for that side.
+	var right := Faction.get_form_up_display_name(Faction.Type.MACEDON, 5, "Echelon right")
+	var left := Faction.get_form_up_display_name(Faction.Type.MACEDON, 6, "Echelon left")
+	assert_eq(right, "Echelon right (loxe phalanx epi doru)")
+	assert_eq(left, "Echelon left (loxe phalanx ep' aspida)")
+	assert_ne(right, left)
+
+
+func test_sparta_echelon_labels_name_the_wing_not_the_helmet_crest() -> void:
+	# keras is an army's wing; lophos, which stood here before, is a crest or ridge.
+	assert_eq(Faction.HISTORICAL_FORM_UP[Faction.Type.SPARTA][5], "dexion keras")
+	assert_eq(Faction.HISTORICAL_FORM_UP[Faction.Type.SPARTA][6], "euonymon keras")
+
+
+func test_carthage_names_are_punic_or_greek_not_arabic() -> void:
+	# Punic where the Phoenician-Punic lexicon has a word (mahanet, magen, gag), Greek where
+	# it has none. The Classical Arabic set this row once carried postdates Punic by about a
+	# millennium; pin the replacements so a revert is a test failure, not a silent regression.
+	var carthage: Dictionary = Faction.HISTORICAL_FORMATIONS[Faction.Type.CARTHAGE]
+	assert_eq(carthage[UnitScript.FORMATION_NORMAL], "mahanet")
+	assert_eq(carthage[UnitScript.FORMATION_SHIELD_WALL], "magen")
+	assert_eq(carthage[UnitScript.FORMATION_TESTUDO], "gag")
+	assert_eq(carthage[UnitScript.FORMATION_SQUARE], "plaision")
+
+	var form_up: Dictionary = Faction.HISTORICAL_FORM_UP[Faction.Type.CARTHAGE]
+	assert_eq(form_up[4], "epallax")
+	assert_eq(form_up[5], "dexion keras")
+	assert_eq(form_up[6], "euonymon keras")
