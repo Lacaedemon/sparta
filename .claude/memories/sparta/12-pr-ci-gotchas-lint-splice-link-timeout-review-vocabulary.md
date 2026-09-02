@@ -163,8 +163,12 @@ status checks (#1432), so under `mwc` the agent is the only gate.
   or no review found at all (the output says `No automated review comments or
   reviews found`), or a crash (a traceback with no finding bullets), and
   anything else means it did not answer.
-  Exit 0 is not approval on its own: read the `verdict scan:` line and the
-  `Notes:` block the script prints beside it.
+  Exit 0 is not approval on its own: the exit status is only the first gate,
+  and the `verdict scan:` line and the `Notes:` block the script prints
+  beside it are required structured context.
+  That does not contradict the section above, whose "not its printed prose"
+  rule targets grepping the report for a verdict phrase rather than reading
+  those two fixed lines.
   `latest = NONE` on the scan line means no readable verdict-bearing review
   was found.
   A quota-skip notice is excluded before the scan even starts, so a PR whose
