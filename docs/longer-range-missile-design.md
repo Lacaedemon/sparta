@@ -156,7 +156,7 @@ Both factors are the same square root read in opposite directions: at a fixed ra
 
 Two facts about that tier bound everything below, and both have changed since this design was first drafted.
 `FarTierCombat.tick_all` (`scripts/FarTierCombat.gd`), driven every tick by `Battle._tick_far_tier_combat`, now resolves far-tier attrition in real gameplay through `FarTierRates`, and `UnitCombat.shoot`/`strike` early-return for a far-tier attacker so the same exchange is not billed twice.
-And, as [`docs/far-tier-pursuit-contagion-design.md`](far-tier-pursuit-contagion-design.md) records, `FarTierRules.tick_pair` is what has exactly one caller left in the whole tree, and it is a unit test: that was the Phase 0 gap ([#1485](https://github.com/Lacaedemon/sparta/issues/1485), now closed), and live far-tier combat resolves through `FarTierRates`/`FarTierCombat` instead of `FarTierRules`.
+And, as [`docs/far-tier-pursuit-contagion-design.md`](far-tier-pursuit-contagion-design.md) records, `FarTierRules.tick_pair` no longer has a caller outside `test/unit/test_far_tier_rules.gd`: that was the Phase 0 gap ([#1485](https://github.com/Lacaedemon/sparta/issues/1485), now closed), and live far-tier combat resolves through `FarTierRates`/`FarTierCombat` instead of `FarTierRules`.
 
 `FormationTier.PROMOTE_RANGE` is 400.0 wu and `DEMOTE_RANGE` is 600.0 wu (`scripts/FormationTier.gd`), both benchmark-tuned rather than authored.
 
