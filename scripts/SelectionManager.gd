@@ -725,7 +725,8 @@ func _issue_form_up(a: Vector2, b: Vector2, by_selection_order: bool = false) ->
 		_next_form_up_group_id += 1
 	for slice in slices:
 		_battle.enqueue_form_up([slice["unit"].uid], slice["center"], face, slice["files"],
-				_armed_mode, _armed_knockback_indefinite, group_id, int(slice.get("line", 0)))
+				_armed_mode, _armed_knockback_indefinite, group_id,
+				int(slice.get("line", BattleRef.LINE_INDEX_UNCHANGED)))
 	Sfx.play(&"order")
 
 

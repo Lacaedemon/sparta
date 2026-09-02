@@ -235,6 +235,8 @@ var order_mode: int = 0
 ## Persistent line-membership index in an army formation, tracking which line a unit
 ## belongs to across form-up commands and tray reassignment (0 = front line, 1+ = reserve
 ## line -- see is_front_line()/is_reserve_line() below, which treat any index > 0 as reserve).
+## A form-up drag that doesn't assign lines (a plain, non-checkerboard, non-tray-grid deploy)
+## leaves this field untouched rather than resetting it to 0 -- see Battle.LINE_INDEX_UNCHANGED.
 var line_index: int = 0
 # Whether this unit auto-advances onto a merely-detected, out-of-weapon-range enemy while
 # it has no order -- the reactive close-the-distance fallback at the bottom of _think's

@@ -451,6 +451,17 @@ func test_apply_order_cmd_leaves_the_line_unset_when_absent() -> void:
 		"a command with no 'line' key is backward compatible and leaves the unit's line alone")
 
 
+func test_apply_order_cmd_leaves_the_line_unset_when_unchanged_sentinel() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.line_index = 1   # a prior line assignment
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1,
+			"line": BattleScript.LINE_INDEX_UNCHANGED})
+	assert_eq(u.line_index, 1,
+		"the explicit LINE_INDEX_UNCHANGED sentinel leaves the unit's line alone, same as an " +
+		"absent 'line' key")
+
+
 func test_enqueue_form_up_carries_the_line_index() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	var b := _battle([u])
@@ -459,12 +470,12 @@ func test_enqueue_form_up_carries_the_line_index() -> void:
 		"the requested line index is recorded on the pending form-up command")
 
 
-func test_enqueue_form_up_defaults_the_line_index_to_front() -> void:
+func test_enqueue_form_up_defaults_the_line_index_to_unchanged() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	var b := _battle([u])
 	b.enqueue_form_up([1], Vector2(50, 0), 0.0, 4)   # no line_index argument
-	assert_eq(int(b._pending_orders[-1]["line"]), 0,
-		"a caller that doesn't track lines defaults to the front line")
+	assert_eq(int(b._pending_orders[-1]["line"]), BattleScript.LINE_INDEX_UNCHANGED,
+		"a caller that doesn't track lines defaults to leaving the unit's line unchanged")
 
 
 func test_append_preserves_the_existing_stance() -> void:
