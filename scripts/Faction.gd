@@ -95,10 +95,15 @@ const ROSTER_SUBUNIT_OVERRIDES := {
 ## attestation is claimed for them. Punic entries cite Krahmalkov, Phoenician-Punic Dictionary
 ## (Studia Phoenicia XV, Leuven 2000) by headword, with the inscription attesting the word.
 ## Where Greek has exactly one word for a concept, more than one faction carries the same
-## string rather than one of them getting an invented synonym. Six strings repeat, and this
-## is all of them: synaspismos and kyklos stand in three rows each (Sparta, Carthage,
-## Macedon); plinthion, phalanx and chelone in two (Sparta, Macedon); and araios in two
-## (Sparta, Carthage). Rome's row shares nothing with any other.
+## string rather than one of them getting an invented synonym. Six strings repeat in this
+## table, and this is all of them: synaspismos and kyklos stand in three rows each (Sparta,
+## Carthage, Macedon); plinthion, phalanx and chelone in two (Sparta, Macedon); and araios in
+## two (Sparta, Carthage). Rome's row shares nothing with any other row here.
+##
+## HISTORICAL_FORM_UP below repeats three strings of its own, under the same rule and counted
+## separately: epallax in three rows (Sparta, Carthage, Macedon), and dexion keras and
+## euonymon keras in two each (Sparta, Carthage). Nothing else in that table is shared --
+## Rome's three and Macedon's two echelon labels are unique to their rows.
 ##
 ## An earlier revision of this table gave Carthage Classical Arabic words. The Carthaginian
 ## army ended with the city in 146 BC, and Classical Arabic is a different language with no
