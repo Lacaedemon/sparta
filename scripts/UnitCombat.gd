@@ -210,7 +210,7 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 		var volley_size: int = max(1, int(round(float(raw) * flank)))
 		if ProjectileField.active != null:
 			# Fly the volley: the arrows deliver when they LAND, after their real flight time,
-			# at the launch point -- so ranged fire now has travel time and lands where it was
+			# at the target position captured at launch -- so ranged fire now has travel time and lands where it was
 			# aimed. `volley_size` is the arrow count here, not the death toll: the field gates
 			# each arrow on the shield arc of the man it reaches, so a front turned toward the
 			# archers loses far fewer men than an exposed flank does.
