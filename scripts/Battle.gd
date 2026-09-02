@@ -2913,7 +2913,9 @@ func _tick_far_tier_combat(units: Array, delta: float) -> void:
 ## exploitation flag. Subcommander.decide_group runs once PER GROUP (phase 2 ran it once for
 ## the whole team); the general's own reserve-hold directives (General.reserve_directives) are
 ## folded in alongside them, so a held-back reserve unit gets a directive too, just not a
-## subcommander's. pursue_routers threads down to every UnitLeader.decide call. The general
+## subcommander's. pursue_routers threads down to every UnitLeader.decide call, and the
+## doctrine's skirmisher-screen flag threads down to every Subcommander.decide_group call
+## (SkirmisherScreen; off for a doctrine that does not ask for one). The general
 ## reads team 1's whole ROSTER (_team_roster, fightable + routing), not the narrower
 ## _team_units, so a unit that temporarily routs doesn't shrink the reserve-fraction
 ## denominator (see _team_roster's own doc comment) -- but only _team_units actually receives
@@ -2929,8 +2931,9 @@ func _run_enemy_ai() -> void:
 	var plan: String = String(decision.get("plan", General.PLAN_ADVANCE_LINE))
 	var directives: Dictionary = General.reserve_directives(
 		decision["reserve_units"], decision.get("active_units", []), all_units)
+	var screen: bool = bool(decision.get("skirmisher_screen", false))
 	for group in decision["groups"]:
-		var group_directives: Dictionary = Subcommander.decide_group(group, all_units, plan)
+		var group_directives: Dictionary = Subcommander.decide_group(group, all_units, plan, screen)
 		for uid in group_directives:
 			directives[uid] = group_directives[uid]
 	var pursue_routers: bool = bool(decision.get("pursue_routers", true))

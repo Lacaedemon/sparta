@@ -29,15 +29,33 @@ class_name Subcommander
 ##   {"type": DIRECTIVE_SUPPORT, "ward_uid": int}       -- guard this fighting ally.
 ##   {"type": DIRECTIVE_HOLD_LINE, "x": float, "y": float}    -- hold near this point on the line.
 ##   {"type": DIRECTIVE_COVER_FLANK, "x": float, "y": float}  -- reposition to cover this point.
+## SkirmisherScreen adds two more of the same shape (see that class): DIRECTIVE_SCREEN,
+## "contest the ground ahead of the line", and DIRECTIVE_WITHDRAW, "fall back through it".
 ##
 ## Priority when more than one behaviour could claim the same unit this tick: mutual
-## support first, flank coverage second, line integrity / defend-hold last. Support and flank
+## support first, flank coverage second, the skirmisher screen (where the doctrine asks for
+## one) third, line integrity / defend-hold last. Support and flank
 ## coverage are reactions to an immediate threat (an ally already fighting, an enemy already
 ## closing on an open flank); line integrity and defensive line holding are standing discipline
 ## with no urgency behind them. A unit already claimed by a higher-priority directive this tick
 ## is never reassigned by a lower one (see the `directives.has(uid)` guards throughout). This
 ## mirrors UnitLeader's own documented priority order (flank threat > square > relief > fallback):
 ## react to the sharpest need first.
+##
+## The screen sits at that third rank asymmetrically, and the two behaviours above it are
+## handed the screen's own uids for DIFFERENT reasons -- so the asymmetry is not the same in
+## both. A screening unit always loses its own screen directive to either of them. What each
+## may still do with a screener differs:
+##   - Mutual support never treats a screener as the WARD: its firefight out in front is the
+##     fight the heavy line is supposed to leave it to, and a block breaking line to rescue
+##     its own skirmishers would undo the maneuver. But a screener remains an ordinary
+##     candidate for the RESCUING ally -- it is still the nearest available body when a heavy
+##     block behind it is genuinely in trouble, and mutual support will draft it.
+##   - Flank coverage is the mirror: a screener is never the COVERER sent out to extend the
+##     line, since that pulls it off station. It may still be the exposed flank unit that
+##     coverage reacts to -- a screening unit standing at the group's own lateral extreme
+##     gets its flank covered by some other ally, rather than the coverage being skipped
+##     because the screen claimed it first.
 
 const DIRECTIVE_SUPPORT := "support"
 const DIRECTIVE_HOLD_LINE := "hold_line"
@@ -75,17 +93,37 @@ const POINT_EPSILON := 12.0
 ## non-routing units (Battle._team_units(team) -- the caller's group-assignment choice, see
 ## the class doc); `all_units` is every living node in the "units" group, the same
 ## omniscient perception source UnitLeader.decide reads; `plan` is the current army plan
-## (defaults to General.PLAN_ADVANCE_LINE). Returns {uid: directive} covering only units that
-## should receive a directive this tick -- a uid absent from the result gets none (UnitLeader
-## falls back to its own ordinary chase-nearest-enemy behaviour).
-static func decide_group(group: Array, all_units: Array, plan: String = General.PLAN_ADVANCE_LINE) -> Dictionary:
+## (defaults to General.PLAN_ADVANCE_LINE). `screen` is the general's own doctrine-driven
+## skirmisher-screen flag (General.decide_army's "skirmisher_screen" output), off by default
+## so a doctrine that does not ask for a screen keeps the exact prior behaviour. Returns
+## {uid: directive} covering only units that should receive a directive this tick -- a uid
+## absent from the result gets none (UnitLeader falls back to its own ordinary
+## chase-nearest-enemy behaviour).
+static func decide_group(group: Array, all_units: Array, plan: String = General.PLAN_ADVANCE_LINE,
+		screen: bool = false) -> Dictionary:
 	var living: Array = _living(group)
 	if living.size() < 2:
 		return {}
 	var directives: Dictionary = {}
-	_mutual_support_directives(living, directives)
 	var axis: Vector2 = _advance_axis(living, all_units)
-	_flank_coverage_directives(living, all_units, axis, directives)
+	# Computed before mutual support so the screen's own members are known to both of the
+	# behaviours that outrank it, but merged in AFTER them, so an ally already in a real
+	# fight and an enemy already rounding an open flank both still outrank a screening
+	# unit's standing orders. What the screen is protected from is narrower, and differs per
+	# behaviour (see the class doc): mutual support skips screeners when picking a WARD, and
+	# flank coverage skips them when picking a COVERER. A heavy block breaking line to rescue
+	# its skirmishers, or a skirmisher pulled off station to extend the line, would each undo
+	# the whole maneuver -- whose point is that the light troops fight alone out in front and
+	# then fall back through the line. Neither exclusion stops mutual support from drafting a
+	# screener as the ally that rescues a genuinely fighting block.
+	var screened: Dictionary = {}
+	if screen:
+		SkirmisherScreen.directives(living, all_units, axis, screened)
+	_mutual_support_directives(living, directives, screened)
+	_flank_coverage_directives(living, all_units, axis, directives, screened)
+	for uid in screened:
+		if not directives.has(uid):
+			directives[uid] = screened[uid]
 	if plan == General.PLAN_DEFEND:
 		_defend_hold_directives(living, directives)
 	elif axis != Vector2.ZERO:
@@ -142,11 +180,16 @@ static func _advance_axis(group: Array, all_units: Array) -> Vector2:
 ## An engaged (FIGHTING) unit's nearest idle ally gets a SUPPORT directive naming it as the
 ## ward -- the subcommander's own version of the design doc's "mutual support" behaviour.
 ## Runs first (highest priority): an ally already in a fight is the sharpest need a group
-## has this tick.
-static func _mutual_support_directives(group: Array, directives: Dictionary) -> void:
+## has this tick. `exclude_wards` is a uid set of units that must NOT be rescued this tick
+## (SkirmisherScreen's own screening units, whose firefight out in front of the line is
+## exactly the fight the line is supposed to leave them to). It gates the WARD only: an
+## excluded unit is still offered as the rescuing ally, since a screener is a body the group
+## can spare far more readily than the block it would be going to save.
+static func _mutual_support_directives(group: Array, directives: Dictionary,
+		exclude_wards: Dictionary = {}) -> void:
 	for node in group:
 		var u := node as Unit
-		if u == null or u.state != Unit.State.FIGHTING:
+		if u == null or u.state != Unit.State.FIGHTING or exclude_wards.has(u.uid):
 			continue
 		var ally: Unit = _nearest_available(u.position, u, group, directives, SUPPORT_CALL_RANGE)
 		if ally != null:
@@ -179,15 +222,19 @@ static func _is_available(u: Unit, self_unit: Unit, directives: Dictionary) -> b
 
 
 ## Nearest unit in `group` (besides `self_unit`) that passes _is_available, within
-## `max_range` of `target_pos`. Null when nothing qualifies.
+## `max_range` of `target_pos`. Null when nothing qualifies. `exclude` is a uid set that is
+## never offered however available it looks -- SkirmisherScreen's own screening units, which
+## are out in front doing the job the screen exists for. Only flank coverage passes one;
+## mutual support deliberately leaves it empty, so a screener can still answer a rescue call.
 static func _nearest_available(target_pos: Vector2, self_unit: Unit, group: Array,
-		directives: Dictionary, max_range: float) -> Unit:
+		directives: Dictionary, max_range: float, exclude: Dictionary = {}) -> Unit:
 	var best: Unit = null
 	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 	var best_d_sq: float = max_range * max_range
 	for node in group:
 		var u := node as Unit
-		if not _is_available(u, self_unit, directives):
+		# _is_available null-checks first, so the exclude lookup only ever sees a real unit.
+		if not _is_available(u, self_unit, directives) or exclude.has(u.uid):
 			continue
 		var d_sq: float = target_pos.distance_squared_to(u.position)
 		if d_sq < best_d_sq:
@@ -242,11 +289,13 @@ static func _median(sorted_values: Array[float]) -> float:
 ## The group's two flanks -- the units with the least and greatest lateral (perpendicular
 ## to `axis`) projection from the group's own centroid -- each get checked for an
 ## outflanking enemy and, if found, an available ally is sent to cover the gap. Runs second
-## (after mutual support, before line integrity): an open flank with an enemy already
-## bearing down on it is more urgent than ordinary line discipline, but less urgent than an
-## ally already mid-fight.
+## (after mutual support, before the skirmisher screen and line integrity): an open flank
+## with an enemy already bearing down on it is more urgent than ordinary line discipline,
+## but less urgent than an ally already mid-fight. `exclude` is a uid set that may not be
+## drafted as the coverer -- the screen's own units, which the merge in decide_group has not
+## written into `directives` yet precisely so a screening flank still gets covered.
 static func _flank_coverage_directives(group: Array, all_units: Array, axis: Vector2,
-		directives: Dictionary) -> void:
+		directives: Dictionary, exclude: Dictionary = {}) -> void:
 	if axis == Vector2.ZERO or group.size() < 2:
 		return
 	var perp := Vector2(-axis.y, axis.x)
@@ -267,22 +316,23 @@ static func _flank_coverage_directives(group: Array, all_units: Array, axis: Vec
 		if lat > right_lat:
 			right_lat = lat
 			right_flank = u
-	_cover_one_flank(left_flank, -perp, group, all_units, team, directives)
+	_cover_one_flank(left_flank, -perp, group, all_units, team, directives, exclude)
 	if right_flank != left_flank:
-		_cover_one_flank(right_flank, perp, group, all_units, team, directives)
+		_cover_one_flank(right_flank, perp, group, all_units, team, directives, exclude)
 
 
 ## Checks one flank unit for an outflanking enemy (living, within FLANK_ENEMY_RANGE, not yet
 ## in melee contact, sitting further out in `outward` than the flank unit itself) and, if
-## found, sends the nearest available (non-flank) ally to a point FLANK_COVER_OFFSET further
-## out than the flank unit -- extending the line past the exposed edge.
+## found, sends the nearest available (non-flank, non-`exclude`) ally to a point
+## FLANK_COVER_OFFSET further out than the flank unit -- extending the line past the exposed
+## edge.
 static func _cover_one_flank(flank: Unit, outward: Vector2, group: Array, all_units: Array,
-		team: int, directives: Dictionary) -> void:
+		team: int, directives: Dictionary, exclude: Dictionary = {}) -> void:
 	if flank == null or flank.state == Unit.State.FIGHTING or directives.has(flank.uid):
 		return
 	if not _flank_is_outflanked(flank, outward, all_units, team):
 		return
-	var covering: Unit = _nearest_available(flank.position, flank, group, directives, INF)
+	var covering: Unit = _nearest_available(flank.position, flank, group, directives, INF, exclude)
 	if covering == null:
 		return
 	var cover_point: Vector2 = flank.position + outward * FLANK_COVER_OFFSET
