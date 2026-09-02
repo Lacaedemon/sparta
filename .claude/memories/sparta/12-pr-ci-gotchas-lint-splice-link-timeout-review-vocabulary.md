@@ -170,8 +170,8 @@ status checks (#1432), so under `mwc` the agent is the only gate.
   review arrived whose verdict was never read.
   Any of those three states sends you to the hand read below.
 
-- **Do:** when the instrument cannot run, read every surface by hand and
-  paginate each: `gh api repos/<owner>/<repo>/pulls/<N>/reviews --paginate`
+- **Do:** when the instrument cannot run, or reports any of those three
+  states, read every surface by hand and paginate each: `gh api repos/<owner>/<repo>/pulls/<N>/reviews --paginate`
   (formal reviews), `gh api repos/<owner>/<repo>/pulls/<N>/comments --paginate`
   (inline findings, where this repo's `prompt-addendum` tells the reviewer to
   put line-specific findings), and
