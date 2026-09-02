@@ -668,7 +668,7 @@ func _at(tick: int, ev: Dictionary) -> void:
 ## than a red job. A missing/empty list is not an error -- it just means "no faction", which is
 ## what every script written before this field says.
 ##
-## docs/README.md documents this as "one name per team", so a non-empty list must name every
+## demos/README.md documents this as "one name per team", so a non-empty list must name every
 ## team that will actually spawn: exactly two entries for a normal two-army battle, or one entry
 ## when `is_drill` (Battle.drill_mode -- team 1 never spawns, so it has no faction to name). A
 ## one-entry list on a non-drill battle would otherwise silently leave team 1 with no faction
