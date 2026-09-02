@@ -191,9 +191,9 @@ Phase 2 below is therefore bounded to ranges that stay inside the close tier.
 The deployment design's three presets are a 580-wu (29 m) *Close* gap, a 1200-wu (60 m) *Far-tier opening*, and a 4000-wu (200 m) *Historical* gap.
 Read against the range table above, those presets acquire a meaning they do not have today.
 
-At the *Close* preset every missile type in the table except the pilum can already reach the enemy line at deployment, so the missile phase is instantaneous and there is nothing to manoeuvre for.
+At the *Close* preset the bows, the sling, and both artillery pieces reach the enemy line outright at deployment, the javelin reaches only at the top of its band, and the pilum does not reach at all, so for most of the table the missile phase is instantaneous and there is nothing to manoeuvre for.
 At the *Far-tier opening* preset a bow or sling reaches across the gap and a javelin does not, so the light troops must be pushed forward to be used at all.
-At the *Historical* preset nothing but artillery reaches, and the whole of the approach march is conducted under fire that begins partway across it, which is what the skirmisher-screening passage in the sibling design is describing.
+At the *Historical* preset only artillery reaches outright, a sling or composite bow reaches only at the very top of its band, and nothing else reaches at all, so the approach march opens under artillery fire and comes under everything else only partway across it, which is what the skirmisher-screening passage in the sibling design is describing.
 
 That is the argument for building the missile model after the presets rather than before:
 without them there is no battlefield on which a 180 m weapon differs from a 20 m one.
