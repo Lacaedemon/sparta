@@ -78,11 +78,14 @@ static func strike_expectation(attacker: Unit, defender: Unit) -> float:
 ## because UnitCombat.shoot draws volley damage from the flat attack stat with no
 ## soldier-count scaling -- a gutted archer regiment volleys as hard as a full one, and the
 ## far tier must match that to stay a faithful mirror.
-static func casualty_rate(attacker: Unit, defender: Unit) -> float:
-	var interval: float = attack_interval(attacker)
-	if interval <= 0.0:
+##
+## `interval` overrides the attacker's own cadence; negative (the default) derives it from
+## the attacker. A non-positive cadence yields no attrition rather than an infinite one.
+static func casualty_rate(attacker: Unit, defender: Unit, interval: float = -1.0) -> float:
+	var cadence: float = attack_interval(attacker) if interval < 0.0 else interval
+	if cadence <= 0.0:
 		return 0.0
 	var thinning: float = 1.0 if attacker.is_ranged else strength_ratio(attacker)
 	return strike_expectation(attacker, defender) \
 			* UnitCombat.flank_multiplier(defender, attacker) \
-			* thinning / interval
+			* thinning / cadence

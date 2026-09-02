@@ -242,6 +242,55 @@ func test_a_close_tier_formation_is_not_touched_by_the_far_tier_pass() -> void:
 	assert_eq(attacker.soldiers, attacker.max_soldiers, "on both sides")
 
 
+# --- guards and degenerate inputs ---------------------------------------------------------
+
+func test_a_null_formation_neither_fights_nor_is_struck() -> void:
+	assert_false(FarTierCombat.can_fight(null), "a null formation cannot deal attrition")
+	assert_false(FarTierCombat.can_be_struck(null), "and cannot absorb any")
+
+
+func test_strength_ratio_is_zero_for_a_formation_with_no_roster() -> void:
+	var u: Unit = _far_unit(0, Vector2.ZERO, Vector2.DOWN)
+	u.max_soldiers = 0
+	assert_almost_eq(FarTierRates.strength_ratio(u), 0.0, TOL,
+		"a formation with no roster presents no fighting frontage")
+
+
+func test_a_non_positive_cadence_yields_no_rate_rather_than_an_infinite_one() -> void:
+	var pair := _frontal_pair()
+	assert_almost_eq(FarTierRates.casualty_rate(pair[0], pair[1], 0.0), 0.0, TOL,
+		"a zero strike cadence yields no attrition instead of dividing by zero")
+
+
+func test_apply_attrition_books_nothing_against_an_emptied_formation() -> void:
+	var pair := _frontal_pair()
+	pair[1].soldiers = 0
+	assert_eq(FarTierCombat.apply_attrition(pair[1], pair[0], 100.0, 1.0), 0,
+		"a formation with no men left absorbs no further casualties")
+
+
+func test_tick_all_skips_an_entry_that_is_not_a_formation() -> void:
+	var stray := Node2D.new()
+	add_child_autofree(stray)
+	assert_eq(FarTierCombat.tick_all([stray], _tick_seconds()), 0,
+		"a non-formation entry is skipped rather than crashing the pass")
+
+
+func test_a_defender_wiped_by_an_earlier_plan_is_skipped_by_the_later_one() -> void:
+	# Two attackers, one man between them: the plans are built together against the pre-tick
+	# state, so the second one's defender is already gone by the time it applies.
+	var defender: Unit = _far_unit(0, Vector2.ZERO, Vector2.DOWN, 1)
+	var front: Unit = _far_unit(1, Vector2(0.0, 40.0), Vector2.UP)
+	var rear: Unit = _far_unit(1, Vector2(0.0, -40.0), Vector2.DOWN)
+	# Pre-load the carry so the first attacker completes a whole casualty this very tick --
+	# which is this defender's last man.
+	defender._far_tier_casualty_carry = 0.999
+	FarTierCombat.tick_all(_combatants(), _tick_seconds())
+	assert_eq(defender.state, Unit.State.DEAD, "the first attacker wiped the defender out")
+	assert_gt(front.soldiers, 0, "and the attackers came through it")
+	assert_gt(rear.soldiers, 0, "including the one whose plan found nothing left to hit")
+
+
 # --- the double-billing guard ------------------------------------------------------------
 
 func test_unit_combat_strike_declines_for_a_far_tier_attacker() -> void:
