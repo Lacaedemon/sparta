@@ -79,7 +79,7 @@ Instead:
    confirm rather than reimplement, and only add a far-tier-specific branch where a real gap turns up (e.g. a far-tier attack order today may resolve as "walk into contact and stop," which is correct -- promotion then takes over -- so `FarTierCombat.tick` should apply attrition to formations that *never* promote, i.e. that stay far-tier because they're outside `PROMOTE_RANGE` of every enemy despite being in `attack_range`/`RANGED_RANGE` of one specific target, which can happen for a long-reach ranged formation given `PROMOTE_RANGE` (400) versus `RANGED_RANGE`;
    check the actual constant relationship before assuming this case is empty).
 6. **`FarTierRules`'s pair-scoped API (`tick_pair`, `tick_rout`, `enter_rout`, `rally`, `shatter`, and `FarTierFormation.routing`/`rout_timer`) becomes dead weight once step 3 lands**, since `Unit._rout()`/`_process_rout()` already do that job, generically, for every tier.
-   Phase 4 below decides its fate explicitly rather than leaving an unused parallel model in the tree.
+   Phase 4 of the plan decides its fate explicitly rather than leaving an unused parallel model in the tree.
 
 This design keeps the tier boundary exactly where `docs/large-scale-simulation-design.md` already draws it (aggregate fields are a *view* of the same `Unit`, not a separate object) and turns "orchestrate pursuit and contagion across many far-tier formations" into "let far-tier formations use the multi-formation systems the close tier already has" -- which is a much smaller, much safer change than a new orchestration layer would have been.
 
