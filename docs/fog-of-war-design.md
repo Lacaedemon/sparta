@@ -228,7 +228,7 @@ both of these hold.
 
 1. **Range.** `u.position.distance_squared_to(t.position) <= u.sight_range * u.sight_range`, using squared distance for the same reason `UnitTargeting.nearest_routing_enemy` already does.
 
-2. **Line of sight.** The segment from `u.position` to `t.position` is not blocked by an occluding terrain patch, evaluated against the exact drawn rects via the promoted `PathField.segment_blocked(from, to, 0.0)`, and attenuated by any screening patches the segment crosses (below).
+2. **Line of sight.** The segment from `u.position` to `t.position` is not blocked by an occluding terrain patch, evaluated against the exact drawn rects via the existing public `PathField.is_leg_blocked(from, to, 0.0)` (`scripts/PathField.gd:184-185`), and attenuated by any screening patches the segment crosses (below).
 
 Both operands are `Node2D.position` and therefore parent-local, which is the
 same convention the soldier body arrays and `UnitCombat.flank_multiplier`
