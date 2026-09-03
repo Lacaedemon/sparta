@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Non-visual refactor: moves the Sfx synthesiser into an instrumentable helper; no gameplay or presentation change."
+}
