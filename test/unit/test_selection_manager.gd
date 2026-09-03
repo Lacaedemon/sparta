@@ -528,6 +528,8 @@ func test_dispatch_key_routes_resize_and_reports_handled() -> void:
 	sm._select(u)
 	assert_true(sm._dispatch_key(_key_event(KEY_BRACKETRIGHT)), "] is a handled hotkey")
 	assert_eq(UnitFormation.frontage(u), start + 1, "and widens the selected unit")
+	assert_true(sm._dispatch_key(_key_event(KEY_BRACKETLEFT)), "[ is a handled hotkey")
+	assert_eq(UnitFormation.frontage(u), start, "and narrows the selected unit back")
 	assert_false(sm._dispatch_key(_key_event(KEY_P)), "an unbound key is not handled")
 
 

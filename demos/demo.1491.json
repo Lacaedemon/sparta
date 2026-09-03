@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Coverage-tooling and comment-formatting change with no gameplay effect: rewords unbalanced trailing comments in scripts and adds patch_coverage validation in check.sh."
+}

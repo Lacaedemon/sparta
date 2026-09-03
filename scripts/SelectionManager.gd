@@ -453,10 +453,10 @@ func _dispatch_key(event: InputEventKey) -> bool:
 		_toggle_testudo()
 		return true
 	elif event.keycode == KEY_BRACKETRIGHT:
-		_resize_frontage(1)    # ] widens the line by one file
+		_resize_frontage(1)    # right bracket widens the line by one file
 		return true
 	elif event.keycode == KEY_BRACKETLEFT:
-		_resize_frontage(-1)   # [ narrows the line by one file
+		_resize_frontage(-1)   # left bracket narrows the line by one file
 		return true
 	elif event.keycode == KEY_B:
 		# Plain B is the centred (symmetric) explicatio; Shift+B / Ctrl+B hold the

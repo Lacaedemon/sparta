@@ -323,7 +323,7 @@ static func prone_chance(impulse_j: float, defender_mass: float, brace_d: float 
 #   C_i = BRACE_CAPACITY * (br_i + sum_{k>=1} ZETA^k * br_{i+k})
 # A knockback below C_i is absorbed (the charge breaks on the braced depth); only the surplus
 # moves the front man. The depth-brace sum also raises his prone threshold.
-const ZETA: float = 0.5             # per-rank support-transmission efficiency (0..1]
+const ZETA: float = 0.5             # per-rank support-transmission efficiency (0 < ZETA <= 1)
 const BRACE_CAPACITY: float = 50.0  # J_cap: shield/body-friction baseline (Infantry)
 
 # Bracing capacity varies by TYPE, not just posture: a spear/pike square braces via a

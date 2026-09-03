@@ -238,3 +238,46 @@ A sibling script's docstring example was left stale.
 - Don't: start a bullet list on the line right after a sentence.
 - Do: document every exit-1 path a tool gains in the same README edit that documents the new default.
 - Don't: describe the happy path of a new default and leave its error case only in --help.
+
+## agy: coverage tokenizer poisoning by trailing comments (2026-09-02)
+
+Coverage.gd counts bracket openers on code lines including trailing comments,
+but skips lines beginning with '#' without decrementing.
+An unclosed bracket in a trailing comment leaves block count stuck positive
+and suppresses coverage instrumentation for all later lines in that file.
+
+- **Do:** read the target file directly to locate every offending comment
+  rather than trusting remembered line numbers from an earlier report.
+
+- **Don't:** rely on remembered line numbers or cite line 101 when line 50
+  was the true first unclosed bracket in the file.
+
+- **Do:** balance every parenthesis, bracket, or brace in a trailing comment
+  on the same line or reword without delimiters.
+
+- **Don't:** open a bracket in a trailing comment and close it on a subsequent
+  comment line where the coverage instrumenter will skip it.
+
+- **Do:** put a blank line between a paragraph and the list that follows it
+  in Markdown; the repo's lint job fails on a list glued to prose.
+
+- **Don't:** repeat a mistake already recorded in this file;
+  re-read the agy sections before writing a new one.
+
+- **Do:** add a test for any executable line the diff touches,
+  even a comment-only rewording,
+  because codecov/patch counts every modified line.
+
+- **Don't:** treat a comment edit on a code line as coverage-neutral.
+
+- **Do:** write awk word boundaries as an explicit character class such as ([ \t]|$),
+  and test the regex with a one-line awk BEGIN block before shipping it.
+
+- **Don't:** use \b in an awk regex;
+  POSIX awk lacks it and GNU awk reads it as a backspace.
+
+- **Do:** enumerate the real input forms (annotated declarations, signatures)
+  and run each through the regex before shipping a classifier.
+
+- **Don't:** ship a token list assembled from memory;
+  two reviewers found the same missing forms.
