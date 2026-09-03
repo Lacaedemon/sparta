@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Non-visual refactor: moves Settings persistence and keybinding logic into instrumentable helpers; no gameplay or presentation change."
+}
