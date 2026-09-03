@@ -222,3 +222,29 @@ one clause per line, which the splice-by-marker consumers read unchanged.
 
 - **Do:** break a list item at its semicolon or comma before it reaches 80 visible characters.
 - **Don't:** treat numbered rules as exempt from the semantic-line-break check.
+
+## 2026-09-03 agy: two nits on the Replay track extraction
+
+Adversarial review of the Replay helper extraction found two nits.
+First, a doc comment opened a parenthesis on one line
+and closed it on the next line.
+Ledger rule 3 applied to trailing comments on executable lines,
+but every comment line must close any bracket it opens.
+Second, deserializing loops in start_playback()
+appended through forwarding properties
+instead of appending to the helper's own track array directly.
+Forwarding properties exist only for test assertions that snapshot state,
+so internal replay deserialization must populate helper storage directly.
+
+- **Do:** close every bracket opened on a comment line on that same line,
+  applying ledger rule 3 to doc comments and not just trailing comments.
+
+- **Don't:** allow an open bracket on a comment line to close on a later line,
+  even though comment-only lines are skipped by the tokenizer.
+
+- **Do:** append deserialized entries directly to the helper's own track array
+  (_camera.track.append, _pointer.track.append, _keys.track.append),
+  keeping forwarding properties exclusively for tests that snapshot them.
+
+- **Don't:** append to helper state through forwarding properties
+  in playback loading loops.

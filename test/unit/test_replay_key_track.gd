@@ -1,7 +1,7 @@
 extends GutTest
 ## Unit tests for ReplayKeyTrack: recording with empty-label drop,
-## for_tick windowing at boundary (includes age <= window, excludes age > window,
-## breaks at future ticks), and reset.
+## for_tick windowing at boundary (includes age <= window, excludes age > window),
+## breaks at future ticks, and reset.
 
 const ReplayKeyTrackScript = preload("res://scripts/ReplayKeyTrack.gd")
 

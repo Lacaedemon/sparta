@@ -306,7 +306,7 @@ func start_playback(path: String) -> bool:
 	# which then play with the default static camera.
 	_camera.reset()
 	for c in data.get("camera", []):
-		_camera_track.append({
+		_camera.track.append({
 			"tick": int(c.get("tick", 0)),
 			"x": float(c.get("x", 0.0)),
 			"y": float(c.get("y", 0.0)),
@@ -330,7 +330,7 @@ func start_playback(path: String) -> bool:
 		if entry["drag"]:
 			entry["sx"] = float(p.get("sx", entry["x"]))
 			entry["sy"] = float(p.get("sy", entry["y"]))
-		_pointer_track.append(entry)
+		_pointer.track.append(entry)
 	# Load the optional keystroke track. Absent in replays recorded before it existed,
 	# which then play with no key chips.
 	_keys.reset()
@@ -338,7 +338,7 @@ func start_playback(path: String) -> bool:
 		var labels: Array = []
 		for s in k.get("labels", []):
 			labels.append(str(s))
-		_key_track.append({"tick": int(k.get("tick", 0)), "labels": labels})
+		_keys.track.append({"tick": int(k.get("tick", 0)), "labels": labels})
 	# Load the optional time-scale track. Absent in replays recorded before it existed,
 	# or when no slow-motion change was ever made -- both then play at a constant 1.0,
 	# exactly the pre-existing behaviour.
