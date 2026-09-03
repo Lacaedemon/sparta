@@ -66,7 +66,9 @@ func test_make_wav_clamps_out_of_range_samples() -> void:
 	var samples := PackedFloat32Array([2.0, -2.0])
 	var wav: AudioStreamWAV = synth.make_wav(samples)
 	assert_eq(wav.data.decode_s16(0), 32767, "an over-range positive sample clamps to the s16 max")
-	assert_eq(wav.data.decode_s16(2), -32768, "an under-range negative sample clamps to the s16 min")
+	# clampf(-2.0, -1.0, 1.0) * 32767.0 is -32767.0, so the floor is -32767, not the
+	# s16 minimum of -32768.
+	assert_eq(wav.data.decode_s16(2), -32767, "an under-range negative sample clamps to -1.0 * 32767")
 
 
 func test_unknown_waveform_kind_falls_back_to_sine() -> void:
