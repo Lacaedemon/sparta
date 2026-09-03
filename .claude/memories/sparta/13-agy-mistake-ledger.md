@@ -16,7 +16,8 @@ Violating one costs a fix round.
    never trust a remembered line number.
 2. Markdown: a blank line before and after every list; one clause per line.
 3. Code comments: every bracket opened in a trailing comment closes on the same line,
-   because the coverage tool skips comment-only lines and a stuck open bracket suppresses instrumentation for the rest of the file.
+   because the coverage tool skips comment-only lines
+   and a stuck open bracket suppresses instrumentation for the rest of the file.
 4. No digits that look like issue numbers in code comments or comment examples;
    use 42 or 99.
 5. Any regex or classifier: enumerate the real input forms first (annotated declarations,
@@ -44,7 +45,8 @@ Violating one costs a fix round.
    the self-tests above) and paste their output.
 14. Re-read this ledger before writing a new rule;
    do not add a rule that is already here.
-15. Resolve a relative path argument against the caller's cwd (prefix it with $PWD) before handing it to git -C <project root>;
+15. Resolve a relative path argument against the caller's cwd (prefix it with $PWD)
+   before handing it to git -C <project root>;
    a raw caller-relative path resolves against the project root there.
 16. Match keyword pairs in a classifier with a [ \t]+ separator rather than a literal single space,
    tolerating tabs and multiple whitespace between words.
