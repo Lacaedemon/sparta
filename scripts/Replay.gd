@@ -31,6 +31,9 @@ const ReplayTimeScaleTrackRef = preload("res://scripts/ReplayTimeScaleTrack.gd")
 const ReplayStorageRef = preload("res://scripts/ReplayStorage.gd")
 const ReplayCodecRef = preload("res://scripts/ReplayCodec.gd")
 const ReplayDecoderRef = preload("res://scripts/ReplayDecoder.gd")
+const ReplayOrdersRef = preload("res://scripts/ReplayOrders.gd")
+const ReplayOrderEntryRef = preload("res://scripts/ReplayOrderEntry.gd")
+
 
 enum Mode { IDLE, RECORD, PLAYBACK }
 
@@ -84,8 +87,13 @@ var forced_seed: int = -1
 #                   reserve line; omitted when -1 = Battle.LINE_INDEX_UNCHANGED, which is also
 #                   how a missing key reads, so a plain drag and every pre-line replay leave
 #                   each unit's existing line_index alone) }.
-var _orders: Array = []
-var _play_index: int = 0
+var _order_stream := ReplayOrdersRef.new()
+var _orders: Array:
+	get: return _order_stream.orders
+	set(v): _order_stream.orders = v
+var _play_index: int:
+	get: return _order_stream.play_index
+	set(v): _order_stream.play_index = v
 
 # Presentation track (cosmetic): camera keyframes captured during live play so a
 # replay reproduces what the player *saw* (zoom/pan), not just the sim. Each entry:
@@ -216,14 +224,13 @@ func start_recording() -> void:
 		picker.randomize()
 		seed_value = picker.seed
 	rng.seed = seed_value
-	_orders.clear()
+	_order_stream.reset()
 	_camera.reset()
 	_pointer.reset()
 	_keys.reset()
 	_time_scale.reset()
 	drive_camera = false
 	show_demo_orders = false
-	_play_index = 0
 	map = {}
 	# Cleared for the fresh recording; Battle republishes it after spawning (like `map`).
 	spawn_fingerprint = ""
@@ -272,8 +279,8 @@ func start_playback(path: String) -> bool:
 	# last_load_spawn_mismatch on a divergence -- cleared here so a re-load re-checks cleanly.
 	loaded_spawn_fingerprint = str(decoded.get("spawn_fingerprint", ""))
 	last_load_spawn_mismatch = ""
-	_orders = decoded.get("orders", [])
-	_play_index = 0
+	_order_stream.orders = decoded.get("orders", [])
+	_order_stream.play_index = 0
 	# Load the optional presentation (camera) track. Absent in pre-camera replays,
 	# which then play with the default static camera.
 	_camera.reset()
@@ -318,62 +325,17 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		line_index: int = -1) -> void:
 	if mode != Mode.RECORD:
 		return
-	var entry := {
-		"tick": tick,
-		"units": uids.duplicate(),
-		"x": pos.x,
-		"y": pos.y,
-		"target": target_uid,
-		"mode": order_mode,   # 0 = OrderMode.NORMAL
-	}
-	if formation != 0:
-		entry["formation"] = formation
-	if frontage != 0:
-		entry["frontage"] = frontage
-	# An asymmetric (anchored) explicatio/duplicatio's flank-fixing shift; 0.0 is the plain
-	# centred resize every other frontage change already uses, so it's omitted for those
-	# (old replays -- and every non-anchored resize in a new one -- stay exactly as compact).
-	if anchor_offset != 0.0:
-		entry["anchor_offset"] = anchor_offset
-	# A drag-to-form-up order carries a deploy facing (radians); INF means "none"
-	# (a plain move), so any real angle -- including 0 -- is recorded.
-	if not is_inf(face):
-		entry["face"] = face
-	# 0 = GroupAttackMode.FOCUSED (the default); omit it so old replays stay valid.
-	if group_attack != 0:
-		entry["group_attack"] = group_attack
-	# -1 = not part of a multi-unit form-up group (a single-unit form-up, or any other
-	# order kind); omit it so old replays -- and every non-grouped order in a new one --
-	# stay exactly as compact.
-	if form_up_group >= 0:
-		entry["form_up_group"] = form_up_group
-	# 0 = Battle.UnitSettingToggle.LEAVE (the default -- no write); a Battle.
-	# ORDER_UNIT_SETTINGS_ONLY order's walk_advance/reform_before_move toggle, omitted for
-	# every other order kind so old replays stay valid.
-	if walk_advance_toggle != 0:
-		entry["walk_advance_toggle"] = walk_advance_toggle
-	if reform_toggle != 0:
-		entry["reform_toggle"] = reform_toggle
-	# -1 = Battle.REFORM_MODE_TOGGLE_LEAVE (the default -- no write; can't reuse 0 the way the
-	# two toggles above do, since 0 is a legitimate Unit.ReformMode value -- FILE_MAJOR -- not
-	# a spare sentinel). Omitted for every other order kind so old replays stay valid.
-	if file_major_reform_mode_toggle != -1:
-		entry["file_major_reform_mode_toggle"] = file_major_reform_mode_toggle
-	# -1 = Battle.LINE_INDEX_UNCHANGED (the default -- leave each ordered unit's persistent
-	# Unit.line_index alone; can't reuse 0 the way the two toggles above do, since 0 is a
-	# legitimate line index -- the front line -- not a spare sentinel). A checkerboard or
-	# tray-grid form-up assigns a real (>= 0) index, and a unit-settings order from a tray row
-	# move carries it too, which has to ride the replay stream or a recorded acies triplex deploy
-	# plays back with every unit's line membership dropped.
-	# Omitted for a plain drag and every other order kind so old replays stay valid.
-	if line_index != -1:
-		entry["line"] = line_index
-	_orders.append(entry)
+	_order_stream.append(ReplayOrderEntryRef.build(tick, uids, pos, target_uid,
+			order_mode, formation, frontage, face,
+			group_attack, anchor_offset,
+			form_up_group, walk_advance_toggle, reform_toggle,
+			file_major_reform_mode_toggle,
+			line_index))
 
 
-## PLAYBACK: reposition the order-read cursor and the time-scale read cursor
-## (via ReplayTimeScaleTrack.rewind_cursor_to_tick) so the next
-## orders_for_tick(tick)/time_scale_for_tick(tick) call returns exactly
+## PLAYBACK: reposition the order-read cursor (via ReplayOrders.rewind_cursor_to_tick)
+## and the time-scale read cursor (via ReplayTimeScaleTrack.rewind_cursor_to_tick)
+## so the next orders_for_tick(tick)/time_scale_for_tick(tick) call returns exactly
 ## what's due at `tick` onward -- neither replaying entries already consumed
 ## before a rewind nor skipping ones a fast-forward jumped past. Used when a
 ## derived state-snapshot restore (Battle.restore_snapshot) jumps the battle to a
@@ -384,9 +346,7 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 func rewind_cursor_to_tick(tick: int) -> void:
 	if mode != Mode.PLAYBACK:
 		return
-	_play_index = 0
-	while _play_index < _orders.size() and int(_orders[_play_index]["tick"]) < tick:
-		_play_index += 1
+	_order_stream.rewind_cursor_to_tick(tick)
 	_time_scale.rewind_cursor_to_tick(tick)
 
 
@@ -395,14 +355,7 @@ func rewind_cursor_to_tick(tick: int) -> void:
 func orders_for_tick(tick: int) -> Array:
 	if mode != Mode.PLAYBACK:
 		return []
-	var due: Array = []
-	while _play_index < _orders.size() and int(_orders[_play_index]["tick"]) == tick:
-		due.append(_orders[_play_index])
-		_play_index += 1
-	# Skip any (shouldn't happen) orders whose tick we've already passed.
-	while _play_index < _orders.size() and int(_orders[_play_index]["tick"]) < tick:
-		_play_index += 1
-	return due
+	return _order_stream.orders_for_tick(tick)
 
 
 ## RECORD: capture the camera at `tick`. No-op otherwise. A sample equal to the last
@@ -478,14 +431,7 @@ func pointer_cursor_for_tick(tick: int) -> Vector2:
 func pulses_for_tick(tick: int, window: int) -> Array:
 	if mode != Mode.PLAYBACK:
 		return []
-	var out: Array = []
-	for o in _orders:
-		var ot: int = int(o["tick"])
-		if ot > tick:
-			break
-		if tick - ot <= window:
-			out.append({"x": float(o["x"]), "y": float(o["y"]), "age": tick - ot})
-	return out
+	return _order_stream.pulses_for_tick(tick, window)
 
 
 ## RECORD: capture the gameplay-hotkey labels pressed at `tick`. No-op otherwise or when
@@ -534,17 +480,7 @@ func time_scale_for_tick(tick: int) -> float:
 func form_ups_for_tick(tick: int, window: int) -> Array:
 	if mode != Mode.PLAYBACK:
 		return []
-	var out: Array = []
-	for o in _orders:
-		var ot: int = int(o["tick"])
-		if ot > tick:
-			break
-		if o.has("face") and tick - ot <= window:
-			var uids: Array = o.get("units", [])
-			out.append({"x": float(o["x"]), "y": float(o["y"]), "face": float(o["face"]),
-					"frontage": int(o.get("frontage", 1)), "age": tick - ot,
-					"uid": int(uids[0]) if not uids.is_empty() else -1})
-	return out
+	return _order_stream.form_ups_for_tick(tick, window)
 
 
 ## Persist the recorded battle. Returns the file path, or "" if nothing/failed.
