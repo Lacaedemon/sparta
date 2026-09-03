@@ -380,6 +380,26 @@ func test_save_load_round_trips_a_checkerboard_form_ups_line_index() -> void:
 			"the reserve slice reads back on line 1, not demoted to the front line")
 
 
+func test_save_load_round_trips_unit_settings_line_index() -> void:
+	# Serialization check: verifies ORDER_UNIT_SETTINGS_ONLY round-trips the "line"
+	# payload key through Replay save/load.
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [1], Vector2.ZERO, BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+			0, 0, 0, INF, 0, 0.0, -1, 0, 0, -1, 2)
+	var path: String = r.save("Test", 5)
+	assert_ne(path, "", "the recording saves")
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 1, "the unit-settings order round-trips")
+	assert_eq(int(due[0].get("target", 0)), BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+			"target is ORDER_UNIT_SETTINGS_ONLY")
+	assert_eq(int(due[0].get("line", -1)), 2,
+			"the line index round-trips through save/load")
+
+
 func test_a_plain_form_up_omits_the_line_index_on_round_trip() -> void:
 	# An ordinary drag-to-form-up assigns no line of its own, so it records the
 	# LINE_INDEX_UNCHANGED sentinel (-1) and the key is omitted on save -- matching the

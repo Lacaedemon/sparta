@@ -831,6 +831,39 @@ func test_enqueue_unit_settings_writes_file_major_reform_mode_toggle() -> void:
 		"the toggle itself rides the queued command")
 
 
+func test_enqueue_unit_settings_writes_line_index() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.line_index = 0
+	var b := _battle([u])
+	b.enqueue_unit_settings([1], BattleScript.UnitSettingToggle.LEAVE,
+			BattleScript.UnitSettingToggle.LEAVE,
+			BattleScript.REFORM_MODE_TOGGLE_LEAVE, 2)
+	assert_eq(u.line_index, 2, "applied live immediately")
+	var cmd: Dictionary = b._pending_orders[-1]
+	assert_eq(int(cmd["target"]), BattleScript.ORDER_UNIT_SETTINGS_ONLY,
+			"queued for recording")
+	assert_eq(int(cmd["line"]), 2, "the line index rides the queued command")
+
+
+func test_enqueue_unit_settings_with_all_leave_arguments_enqueues_nothing() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_unit_settings([1], BattleScript.UnitSettingToggle.LEAVE,
+			BattleScript.UnitSettingToggle.LEAVE,
+			BattleScript.REFORM_MODE_TOGGLE_LEAVE)
+	assert_true(b._pending_orders.is_empty(), "all-leave arguments enqueue nothing")
+
+
+func test_enqueue_unit_settings_with_empty_uids_enqueues_nothing() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_unit_settings([], BattleScript.UnitSettingToggle.LEAVE,
+			BattleScript.UnitSettingToggle.LEAVE,
+			BattleScript.REFORM_MODE_TOGGLE_LEAVE, 1)
+	assert_true(b._pending_orders.is_empty(),
+			"an empty uids list with a real line_index enqueues nothing")
+
+
 func test_enqueue_unit_settings_is_disabled_during_playback() -> void:
 	# Live-play-only, like every other order-issuing enqueue_* function: a replay's
 	# recorded commands drive playback, so a synthesized toggle during Watch Replay must

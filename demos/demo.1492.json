@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Unit-card-tray row moves now issue a recorded unit-settings order so a replay reproduces the line change; nothing renders Unit.line_index yet, so a recorded clip would show no visible difference. Verified by the new GUT round-trip tests instead."
+}

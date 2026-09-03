@@ -1506,6 +1506,7 @@ func _build_unit_card_tray() -> void:
 	_unit_card_tray.offset_top = -14.0
 	_unit_card_tray.offset_bottom = -14.0
 	_unit_card_tray.set_selection_manager(_sel_mgr)
+	_unit_card_tray.set_battle(get_parent() as BattleRef)
 	_unit_card_tray.group_changed.connect(_on_unit_card_tray_group_changed)
 	add_child(_unit_card_tray)
 	_sync_unit_card_tray_visibility()
