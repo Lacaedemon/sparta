@@ -14,42 +14,58 @@ Violating one costs a fix round.
 
 1. Re-read the target file at every line you cite;
    never trust a remembered line number.
+
 2. Markdown: a blank line before and after every list; one clause per line.
+
 3. Code comments: every bracket opened in a trailing comment closes on the same line,
    because the coverage tool skips comment-only lines
    and a stuck open bracket suppresses instrumentation for the rest of the file.
+
 4. No digits that look like issue numbers in code comments or comment examples;
    use 42 or 99.
+
 5. Any regex or classifier: enumerate the real input forms first (annotated declarations,
    signatures, indented statements),
    print a one-line self-test (an awk BEGIN block, python -c) in your summary,
    and never use \b in awk (POSIX lacks it;
    GNU awk reads it as a backspace).
+
 6. A test must fail without the production change;
    check by reasoning about what the pre-patch code already did.
+
 7. Test every call path you changed, not only the first one.
+
 8. Any edited executable line, even a comment-only rewording,
    needs a test that exercises it,
    because codecov/patch counts every modified line.
+
 9. When a default, path, or payload key changes,
    grep for every sibling docstring, README sentence,
    and comment that names the old one,
    including the error path of the new default.
+
 10. Keep a doc comment's wording typed: an integer field is not a flag;
    a payload-key comment names every producer.
+
 11. Mirror the sibling functions' guards (empty input,
    playback mode) when extending an enqueue_* method.
+
 12. Keep a new file under 100 lines (file_length gate) and .gd added lines under 100 chars.
+
 13. Before returning, run the checks you can (tools/check.sh chars;
    bash -n;
    the self-tests above) and paste their output.
+
 14. Re-read this ledger before writing a new rule;
    do not add a rule that is already here.
+
 15. Resolve a relative path argument against the caller's cwd (prefix it with $PWD)
    before handing it to git -C <project root>;
    a raw caller-relative path resolves against the project root there.
+
 16. Match keyword pairs in a classifier with a [ \t]+ separator rather than a literal single space,
    tolerating tabs and multiple whitespace between words.
+
 17. Describe a value constraint in a comment using the constant's exact identifier (e.g. ZETA,
    not zeta), keeping casing identical to the declaration.
 
