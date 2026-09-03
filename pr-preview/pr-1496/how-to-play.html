@@ -449,7 +449,10 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#the-battle-loop" id="toc-the-battle-loop" class="nav-link" data-scroll-target="#the-battle-loop">The battle loop</a></li>
   <li><a href="#parade-ground" id="toc-parade-ground" class="nav-link" data-scroll-target="#parade-ground">Parade Ground</a></li>
   <li><a href="#all-teams-control" id="toc-all-teams-control" class="nav-link" data-scroll-target="#all-teams-control">All-Teams Control</a></li>
-  <li><a href="#custom-battle" id="toc-custom-battle" class="nav-link" data-scroll-target="#custom-battle">Custom Battle</a></li>
+  <li><a href="#custom-battle" id="toc-custom-battle" class="nav-link" data-scroll-target="#custom-battle">Custom Battle</a>
+  <ul class="collapse">
+  <li><a href="#your-faction-names-its-own-formations" id="toc-your-faction-names-its-own-formations" class="nav-link" data-scroll-target="#your-faction-names-its-own-formations">Your faction names its own formations</a></li>
+  </ul></li>
   <li><a href="#campaign-map" id="toc-campaign-map" class="nav-link" data-scroll-target="#campaign-map">Campaign Map</a></li>
   <li><a href="#recording-replays" id="toc-recording-replays" class="nav-link" data-scroll-target="#recording-replays">Recording &amp; replays</a></li>
   </ul>
@@ -477,7 +480,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Last updated: 2026-09-02</p>
+      <p class="date">Last updated: 2026-09-03</p>
     </div>
   </div>
   
@@ -1441,6 +1444,33 @@ Figure&nbsp;45: Custom Battle Setup: picking Sparta vs.&nbsp;Rome, with each sid
 </figcaption>
 </figure>
 </div>
+<section id="your-faction-names-its-own-formations" class="level3">
+<h3 class="anchored" data-anchor-id="your-faction-names-its-own-formations">Your faction names its own formations</h3>
+<p>The faction you pick follows the army onto the field. Select any regiment and the control bar’s <strong>Formation</strong> button, its drop-up menu, and the info panel’s <strong>Formation</strong> line all name the stance the way that side’s own army did — so the same normal-order line reads <em>pyknosis</em> under a Spartan banner and <em>acies</em> under a Roman one, and the hollow anti-cavalry square reads <em>plinthion</em> or <em>agmen quadratum</em>. The <strong>Form-up</strong> section of the ☰ Menu does the same for the multi-unit drag-line splits your own army uses, and your side’s own word <em>replaces</em> the generic gloss rather than sitting beside it. The checkerboard item, whose plain label already carries Rome’s own name for the split, therefore reads that name unchanged under Rome and swaps in each other side’s own term under the others — never both at once. A split no faction has a name for keeps its plain label, as does every item in a battle fought under no faction at all. The words themselves live in <code>HISTORICAL_FORMATIONS</code>, <code>HISTORICAL_FORM_UP</code>, and <code>FACTION_STRATEGIES</code> in <code>scripts/Faction.gd</code>, which is where to read the current term for any given side and mode.</p>
+<p>The info panel also gains two lines naming the side outright: <strong>Faction</strong> and <strong>Doctrine</strong>, the latter that army’s own named way of fighting — Sparta’s <em>Phalanx Shock Push (othismos)</em>, Rome’s <em>Manipular Line Rotation (acies triplex)</em>, Carthage’s <em>Double Envelopment (Cannae)</em>, Macedon’s <em>Hammer and Anvil (sarissa and hetairoi)</em>. The doctrine line is the side’s identity, not a behaviour switch: it does not change how the enemy AI fights.</p>
+<p>Both lines sit <em>below</em> the live-state block — <strong>Formation</strong>, <strong>Width</strong>, <strong>Order</strong> — because neither changes once the battle starts. On a short window the panel scrolls, so the lines you read while giving orders stay above the fold and the identity pair is what falls below it.</p>
+<p>Every caption follows the <em>selected</em> regiment’s own side, so under <a href="#all-teams-control">All-Teams Control</a> you can select across the line and watch the same stance change language. Only the metric interval and stance carry meaning for the fight — the historical name beside it is flavor, and a battle started from anywhere but Custom Battle simply shows the plain caption.</p>
+<div id="fig-faction-formation-sparta" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-faction-formation-sparta-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="media/faction-identity-hud-sparta.png" class="img-fluid figure-img" width="700">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-faction-formation-sparta-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;46: A Spartan spear block at normal order: the control bar and the info panel both read <em>0.9 m (pyknosis)</em>, and the identity pair sits below the live-state block — <strong>Faction</strong> Sparta (Laconian), with <strong>Doctrine</strong> Phalanx Shock Push (othismos) on the line under it, at the panel’s scroll fold in this 720p frame.
+</figcaption>
+</figure>
+</div>
+<div id="fig-faction-formation-rome" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-faction-formation-rome-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="media/faction-identity-hud-rome.png" class="img-fluid figure-img" width="700">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-faction-formation-rome-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;47: The same battle, a Roman maniple selected instead. Its shield wall reads <em>0.34 m Shield Wall (scuta undique)</em>; the Spartan army in the same clip stands a shield wall of its own, and that one reads <em>phalanx</em> — one stance, two names. <strong>Faction</strong> reads Rome (Latin / Roman), with the Manipular Line Rotation (acies triplex) doctrine on the line below it.
+</figcaption>
+</figure>
+</div>
+</section>
 </section>
 <section id="campaign-map" class="level2">
 <h2 class="anchored" data-anchor-id="campaign-map">Campaign Map</h2>
