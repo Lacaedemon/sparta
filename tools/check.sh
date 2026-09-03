@@ -43,8 +43,9 @@
 #             total, like codecov/patch's own `target: auto`; override with
 #             SPARTA_CHECK_PATCH_COVERAGE_TARGET). Also checks that files with
 #             added executable lines have coverage records: warns on known
-#             excluded autoloads and fails if an uninstrumented file has added
-#             lines (guarding against coverage instrumenter poisoning).
+#             excluded autoloads and fails if an uninstrumented file has
+#             added executable lines (guarding against coverage
+#             instrumenter poisoning).
 #             Regenerates coverage/lcov.info fresh (runs `coverage` as a
 #             dependency), so it's slow -- not in the default set. Run it before
 #             pushing a scripts/ change rather than discovering a codecov/patch
@@ -674,8 +675,9 @@ check_uninstrumented_patch_lines() {
                 if (line_content ~ /^[ \t]*$/) continue
                 if (line_content ~ /^[ \t]*#/) continue
                 if (line_content ~ /^[ \t]*pass([ \t]+#.*|[ \t]*)$/) continue
-                # Skip annotations (@\w), declarations, and function signatures (const, enum, signal, class_name, extends, static var, static func, var, func, class).
-                if (line_content ~ /^(@[A-Za-z_]|(const|enum|signal|class_name|extends|static var|static func|var|func|class)([ \t]|$))/) continue
+                # Skip annotations (@\w), declarations, and function signatures to count added
+                # executable lines (const, enum, signal, class_name, extends, static, var, func).
+                if (line_content ~ /^(@[A-Za-z_]|(const|enum|signal|class_name|extends|static[ \t]+var|static[ \t]+func|var|func|class)([ \t]|$))/) continue
                 exec_count++
               }
             }
