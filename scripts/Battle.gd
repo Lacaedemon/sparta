@@ -114,8 +114,9 @@ enum RankRelief { LEAVE = 0, ON = 1, OFF = 2 }
 # AND facing), which the sim reads, so it IS recorded and replayed like a move (see ORDER_WHEEL).
 const ORDER_COUNTERMARCH := -8
 # Sentinel for a unit-settings-only order (no movement, no target): writes the durable
-# per-unit walk_advance, reform_before_move, file_major_reform_mode, and/or line_index
-# flags, leaving all movement/formation/stance state untouched. Mirrors ORDER_STANCE_ONLY's
+# per-unit walk_advance, reform_before_move, file_major_reform_mode toggles and/or
+# line_index integer (>= 0 or LINE_INDEX_UNCHANGED), leaving all movement/formation/stance
+# state untouched. Mirrors ORDER_STANCE_ONLY's
 # shape, but for the settings the player toggles per-unit from the info panel
 # (SelectionManager.set_selected_walk_advance/set_selected_reform_before_move/
 # cycle_selected_file_major_reform_mode) or assigns via tray row moves rather than the
@@ -2050,6 +2051,8 @@ func enqueue_unit_settings(uids: Array, walk_advance_toggle: int = UnitSettingTo
 		file_major_reform_mode_toggle: int = REFORM_MODE_TOGGLE_LEAVE,
 		line_index: int = LINE_INDEX_UNCHANGED) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if uids.is_empty():
 		return
 	if walk_advance_toggle == UnitSettingToggle.LEAVE and reform_toggle == UnitSettingToggle.LEAVE \
 			and file_major_reform_mode_toggle == REFORM_MODE_TOGGLE_LEAVE \

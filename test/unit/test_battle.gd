@@ -854,6 +854,16 @@ func test_enqueue_unit_settings_with_all_leave_arguments_enqueues_nothing() -> v
 	assert_true(b._pending_orders.is_empty(), "all-leave arguments enqueue nothing")
 
 
+func test_enqueue_unit_settings_with_empty_uids_enqueues_nothing() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_unit_settings([], BattleScript.UnitSettingToggle.LEAVE,
+			BattleScript.UnitSettingToggle.LEAVE,
+			BattleScript.REFORM_MODE_TOGGLE_LEAVE, 1)
+	assert_true(b._pending_orders.is_empty(),
+			"an empty uids list with a real line_index enqueues nothing")
+
+
 func test_enqueue_unit_settings_is_disabled_during_playback() -> void:
 	# Live-play-only, like every other order-issuing enqueue_* function: a replay's
 	# recorded commands drive playback, so a synthesized toggle during Watch Replay must

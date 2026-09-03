@@ -219,4 +219,6 @@ observed on PRs in the #1452/#1453/#1459/#1462 range).
 - **Don't:** assume testing one caller covers others that batch or structure inputs differently.
 - **Do:** keep every comment describing an order payload key in sync when new producers arise.
 - **Don't:** leave payload key comments listing only historical order sources when new ones carry it.
+- **Do:** mirror the sibling functions' empty-input guard when extending an enqueue_* method.
+- **Don't:** describe an integer field as a flag in a doc comment.
 
