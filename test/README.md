@@ -75,6 +75,9 @@ Two known limitations, both inherent to the instrumenter:
   `Sfx`'s procedural synthesiser lives in `scripts/SfxSynth.gd`,
   a plain `RefCounted` script, so it IS instrumented;
   `Sfx.gd` itself stays excluded as an autoload.
+  Settings' persistence and keybinding logic now lives in
+  `scripts/SettingsStorage.gd` and `scripts/SettingsKeybindings.gd`,
+  which are instrumented.
   `Replay`'s camera, pointer, and key tracks live in
   `scripts/ReplayCameraTrack.gd`, `scripts/ReplayPointerTrack.gd`,
   and `scripts/ReplayKeyTrack.gd`, plain `RefCounted` helpers,
