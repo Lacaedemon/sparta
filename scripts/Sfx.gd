@@ -86,9 +86,9 @@ func _build_sounds() -> void:
 	# placeholder set sounds the same every run (playback pitch jitter below is
 	# randomised separately, via this node's own _rng).
 	var synthesiser := SfxSynthRef.new(1)
-	for name in NAMES:
-		var asset := _load_asset(name)
-		_streams[name] = asset if asset != null else synthesiser.synth(name)
+	for event_name in NAMES:
+		var asset := _load_asset(event_name)
+		_streams[event_name] = asset if asset != null else synthesiser.synth(event_name)
 
 
 ## Prefer a real audio file under assets/sfx/ if present (the drop-in upgrade

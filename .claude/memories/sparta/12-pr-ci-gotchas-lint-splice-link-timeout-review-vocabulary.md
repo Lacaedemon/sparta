@@ -264,7 +264,9 @@ which GDScript 4 rejects because the call returns `Variant`.
 
 - **Do:** name a `for` loop variable something other than `name`
    in any Node-derived script (GutTest included),
-   since `name` is an inherited Node property.
+   since `name` is an inherited Node property;
+   grep the production script too for `for name in`,
+   not only its tests, when the script extends Node.
 
 - **Don't:** write `for name in ...` in a Node-derived script;
    it silently shadows `Node.name` instead of erroring.
