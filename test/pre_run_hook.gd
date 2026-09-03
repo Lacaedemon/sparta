@@ -16,6 +16,8 @@ const EXCLUDE_PATHS := [
 	# before this hook runs, so reloading their scripts to instrument them is
 	# unreliable and the tool cannot capture their _ready() coverage anyway.
 	# Exclude them so the run stays stable; see test/README.md.
+	# Each autoload is now a thin wrapper and its logic lives in the instrumented
+	# scripts/Settings*.gd, Replay*.gd and SfxSynth.gd helpers.
 	"res://scripts/Settings.gd",
 	"res://scripts/Replay.gd",
 	"res://scripts/Sfx.gd",

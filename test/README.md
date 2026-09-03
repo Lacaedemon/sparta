@@ -72,20 +72,18 @@ Two known limitations, both inherent to the instrumenter:
 - **Autoloads are excluded.** `Settings`, `Replay`, and `Sfx` are already
   instantiated before the pre-run hook fires, so reloading their scripts to
   instrument them is unreliable; `pre_run_hook.gd` skips them.
-  `Sfx`'s procedural synthesiser lives in `scripts/SfxSynth.gd`,
-  a plain `RefCounted` script, so it IS instrumented;
-  `Sfx.gd` itself stays excluded as an autoload.
-  Settings' persistence and keybinding logic now lives in
-  `scripts/SettingsStorage.gd` and `scripts/SettingsKeybindings.gd`,
-  which are instrumented.
-  `Replay`'s camera, pointer, and key tracks live in
-  `scripts/ReplayCameraTrack.gd`, `scripts/ReplayPointerTrack.gd`,
-  and `scripts/ReplayKeyTrack.gd`, plain `RefCounted` helpers,
-  so they are instrumented too.
-  `Replay`'s time-scale track, storage, and codec live in
-  `scripts/ReplayTimeScaleTrack.gd`, `scripts/ReplayStorage.gd`,
-  `scripts/ReplayCodec.gd`, and `scripts/ReplayDecoder.gd`,
-  so they are instrumented as well.
+  Each autoload is a thin wrapper whose logic lives in instrumented helpers
+  (Sfx: `scripts/SfxSynth.gd`;
+  Settings: `scripts/SettingsStorage.gd` and `scripts/SettingsKeybindings.gd`;
+  Replay: `scripts/ReplayOrders.gd`,
+  `scripts/ReplayOrderEntry.gd`,
+  `scripts/ReplayCameraTrack.gd`,
+  `scripts/ReplayPointerTrack.gd`,
+  `scripts/ReplayKeyTrack.gd`,
+  `scripts/ReplayTimeScaleTrack.gd`,
+  `scripts/ReplayStorage.gd`,
+  `scripts/ReplayCodec.gd`,
+  and `scripts/ReplayDecoder.gd`).
 
 - Instrumentation reloads each script with injected line counters, so the
   coverage run is a little slower than the plain `test` job -- another reason it

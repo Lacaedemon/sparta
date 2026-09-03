@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Non-visual refactor: moves Replay's orders stream into instrumentable helpers and finishes the autoload decoupling; no gameplay or presentation change."
+}
