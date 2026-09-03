@@ -50,7 +50,9 @@ Violating one costs a fix round.
 11. Mirror the sibling functions' guards (empty input,
    playback mode) when extending an enqueue_* method.
 
-12. Keep a new file under 100 lines (file_length gate) and .gd added lines under 100 chars.
+12. Keep a NEW scripts/*.gd file under 100 lines (the file_length gate applies only to
+   files the diff adds); there is no line-length gate for .gd files,
+   so wrap only where the surrounding code does.
 
 13. Before returning, run the checks you can (tools/check.sh chars;
    bash -n;
