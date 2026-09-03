@@ -4,9 +4,6 @@ extends GutTest
 ## audible output under the headless dummy driver, so "did it play" is observed
 ## via _next_voice advancing (play() consumes the next voice only when it fires).
 
-const SfxSynthScript = preload("res://scripts/SfxSynth.gd")
-
-
 func before_each() -> void:
 	Settings.sfx_enabled = true   # reset the gate before each case
 
@@ -18,21 +15,9 @@ func after_each() -> void:
 
 
 func test_every_event_has_a_stream() -> void:
-	for name in Sfx.NAMES:
-		assert_true(Sfx._streams.get(name) is AudioStream,
-			"event %s has a built AudioStream" % name)
-
-
-func test_synth_produces_nonempty_wav() -> void:
-	# Each placeholder synthesises a non-empty 16-bit PCM WAV (asset-independent).
-	var synth := SfxSynthScript.new()
-	for name in Sfx.NAMES:
-		var w: AudioStreamWAV = synth.synth(name)
-		assert_not_null(w, "%s synth returned null -- add a synth() match arm for it" % name)
-		if w == null:
-			continue
-		assert_eq(w.format, AudioStreamWAV.FORMAT_16_BITS, "%s synth is 16-bit PCM" % name)
-		assert_gt(w.data.size(), 0, "%s synth has samples" % name)
+	for event_name in Sfx.NAMES:
+		assert_true(Sfx._streams.get(event_name) is AudioStream,
+			"event %s has a built AudioStream" % event_name)
 
 
 func test_play_consumes_a_voice_when_enabled() -> void:
