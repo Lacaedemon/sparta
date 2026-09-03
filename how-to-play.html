@@ -51,9 +51,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-0d18f0dfac312b9a8eb238ea32915223.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/bootstrap/bootstrap-dark-f5209645f978859cdd860952f647b33b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="site_libs/bootstrap/bootstrap-0d18f0dfac312b9a8eb238ea32915223.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-63ef86667c664f1a8ce28e0ca6d17af4.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-2058be2536942cc72f0d054e849053c8.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-63ef86667c664f1a8ce28e0ca6d17af4.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -1481,12 +1481,51 @@ Figure&nbsp;47: The same battle, a Roman maniple selected instead. Its shield wa
 <li>Click an adjacent province to move, or attack an enemy one if you are at war.</li>
 <li>Press <strong>End Turn</strong> when you are done. Each AI faction takes its turn automatically.</li>
 </ol>
+<p><strong>The campaign clock.</strong> The top-centre readout is the campaign date — “Day 1, 00:00” when a scenario opens. It starts <strong>paused</strong>, and stays paused until you start it, so nothing moves while you read the map.</p>
+<div id="tbl-campaign-clock" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-campaign-clock-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2: The campaign clock’s controls. Time pauses on its own when a campaign is won.
+</figcaption>
+<div aria-describedby="tbl-campaign-clock-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Control</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Resume</strong> / <strong>Pause</strong> button, or <kbd>Space</kbd></td>
+<td>Starts and stops campaign time. A paused date greys out and reads “(paused)”</td>
+</tr>
+<tr class="even">
+<td><strong>Speed</strong> button</td>
+<td>Steps to the next speed: 1x, 2x, 4x, 8x, then back to 1x, and resumes if time was paused</td>
+</tr>
+<tr class="odd">
+<td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></td>
+<td>Picks that speed directly, and resumes if time was paused</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<p>Speed changes how fast the days pass, never what happens in them, so the same moves play out identically at 1x and at 8x. Time freezes for the whole world while a tactical battle is fought and picks up where it left off when you return.</p>
+<p>Turn order still decides who moves: the clock is the timeline the campaign layer’s later phases hang march times, supply, and truce expiry on, so for now it counts the days your war has run rather than pacing it.</p>
+<p><strong>Distances.</strong> Each campaign map carries a ground scale — so many metres to the map unit — rather than being measured in bare pixels, so a completed move reports how far the army marched — “Reinforced Cisalpina. (311.3 km march)” — in the same metric units the battlefield’s scale bar uses.</p>
 <p><strong>Diplomacy:</strong> the right-hand panel lists every surviving rival. Click <strong>Declare War</strong> or <strong>Sue for Peace</strong> to change your stance. Suing for peace sets a truce that prevents re-declaring war for a few turns.</p>
 <p><strong>Rulers and AI personality:</strong> each faction is led by a named ruler whose <em>trait</em> shapes its diplomacy. The turn banner at top-left names the current faction’s ruler in parentheses (for example, Rome’s banner reads “Rome (Julius Caesar)”).</p>
 <div id="tbl-ruler-traits" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-ruler-traits-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;2: Ruler traits and the strength ratios at which each declares war or sues for peace.
+Table&nbsp;3: Ruler traits and the strength ratios at which each declares war or sues for peace.
 </figcaption>
 <div aria-describedby="tbl-ruler-traits-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table">
