@@ -211,73 +211,14 @@ status checks (#1432), so under `mwc` the agent is the only gate.
 Links/provenance: measured 2026-09-01 on `Lacaedemon/sparta` CI (workflow runs
 observed on PRs in the #1452/#1453/#1459/#1462 range).
 
-## agy: tautological replay test and unwired apply_grid coverage (2026-09-02)
+## check-new-line-breaks flags a long line with a mid-line semicolon, numbered lists included
 
-- **Do:** write tests that fail without the production change by reasoning about pre-patch code.
-- **Don't:** add tests that already pass against unchanged code due to existing payload handling.
-- **Do:** test every changed call path when changing a shared helper or dispatch method.
-- **Don't:** assume testing one caller covers others that batch or structure inputs differently.
-- **Do:** keep every comment describing an order payload key in sync when new producers arise.
-- **Don't:** leave payload key comments listing only historical order sources when new ones carry it.
-- **Do:** mirror the sibling functions' empty-input guard when extending an enqueue_* method.
-- **Don't:** describe an integer field as a flag in a doc comment.
+`check / check-new-line-breaks` runs with `clause-breaks: true` and `clause-min-length: 80`:
+any ADDED line whose visible length (markup stripped) is 80 characters or more and that carries a semicolon before its end fails the job,
+and a numbered-list item counts like prose.
+Measured 2026-09-02 on the agy ledger (nine rules failed in one push).
+The fix is a continuation line indented three spaces under the item,
+one clause per line, which the splice-by-marker consumers read unchanged.
 
-## agy: relative output paths and issue-number-shaped examples (2026-09-02)
-
-The overwrite guard resolved relative paths against the project root rather than the caller's cwd.
-Example branch names in the usage comment used real issue numbers.
-A sibling script's docstring example was left stale.
-
-- Do: prefix relative path arguments with $PWD before checking them against git ls-files.
-- Don't: test raw relative paths with git -C $PROJECT_ROOT ls-files when invoked outside the project root.
-- Do: use generic sample numbers like 42 or 99 in comment examples.
-- Don't: write digits matching real repository issue numbers in code comments.
-- Do: update example invocations in sibling script docstrings when modifying output path conventions.
-- Don't: leave legacy output file paths in sibling docstrings after changing tool output naming.
-- Do: put a blank line between a paragraph and the list that follows it in Markdown, because the repo's lint job fails on a list item glued to prose.
-- Don't: start a bullet list on the line right after a sentence.
-- Do: document every exit-1 path a tool gains in the same README edit that documents the new default.
-- Don't: describe the happy path of a new default and leave its error case only in --help.
-
-## agy: coverage tokenizer poisoning by trailing comments (2026-09-02)
-
-Coverage.gd counts bracket openers on code lines including trailing comments,
-but skips lines beginning with '#' without decrementing.
-An unclosed bracket in a trailing comment leaves block count stuck positive
-and suppresses coverage instrumentation for all later lines in that file.
-
-- **Do:** read the target file directly to locate every offending comment
-  rather than trusting remembered line numbers from an earlier report.
-
-- **Don't:** rely on remembered line numbers or cite line 101 when line 50
-  was the true first unclosed bracket in the file.
-
-- **Do:** balance every parenthesis, bracket, or brace in a trailing comment
-  on the same line or reword without delimiters.
-
-- **Don't:** open a bracket in a trailing comment and close it on a subsequent
-  comment line where the coverage instrumenter will skip it.
-
-- **Do:** put a blank line between a paragraph and the list that follows it
-  in Markdown; the repo's lint job fails on a list glued to prose.
-
-- **Don't:** repeat a mistake already recorded in this file;
-  re-read the agy sections before writing a new one.
-
-- **Do:** add a test for any executable line the diff touches,
-  even a comment-only rewording,
-  because codecov/patch counts every modified line.
-
-- **Don't:** treat a comment edit on a code line as coverage-neutral.
-
-- **Do:** write awk word boundaries as an explicit character class such as ([ \t]|$),
-  and test the regex with a one-line awk BEGIN block before shipping it.
-
-- **Don't:** use \b in an awk regex;
-  POSIX awk lacks it and GNU awk reads it as a backspace.
-
-- **Do:** enumerate the real input forms (annotated declarations, signatures)
-  and run each through the regex before shipping a classifier.
-
-- **Don't:** ship a token list assembled from memory;
-  two reviewers found the same missing forms.
+- **Do:** break a list item at its semicolon or comma before it reaches 80 visible characters.
+- **Don't:** treat numbered rules as exempt from the semantic-line-break check.

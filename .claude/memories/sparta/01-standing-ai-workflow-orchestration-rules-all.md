@@ -11,6 +11,12 @@ Our lab's work rules encoded throughout `ai-config` apply unconditionally to all
 3. **Mandatory Timers for Async Work**: Whenever waiting on in-flight CI runs, background tasks, or subagents before completing a task or merge, **ALWAYS** schedule a timer (`schedule`) or proceed to other active work. Never end a turn waiting on asynchronous execution without a scheduled wakeup handle.
 4. **Memory & Skill PR Discipline**: Every addition or update to memories, instructions, or skills (including `cai`, `memorize`, and `push-memory`) **MUST** be delivered via a branch + PR with requested reviewer (`d-morrison`) and driven to clean. Never edit configuration or memory files directly on `main` or disk without a PR.
 
+## agy dispatches carry the mistake ledger
+
+Every brief sent to the `agy` CLI starts with the block between the marker lines in `13-agy-mistake-ledger.md`.
+When a checker or reviewer finds a defect in agy's output, the same agent is re-dispatched with the finding and appends the new rule to that ledger on the PR branch.
+The orchestrator names each such mistake in the recap and merges the ledger additions on `main`, so no learning stays on one branch.
+
 ## Standing design philosophy: bottom-up physics, no top-down gimmicks
 
 Sparta's combat/movement sim is built **bottom-up from individual-level physics**
