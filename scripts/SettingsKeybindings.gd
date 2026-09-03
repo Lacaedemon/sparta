@@ -25,7 +25,7 @@ const DEFAULT_ORDER_BINDINGS := {
 	# Same letter-key exhaustion as above; comma/semicolon/period/apostrophe are
 	# already taken, so chase takes the next punctuation-row key over.
 	"chase": KEY_BACKSLASH,
-	# Comma/semicolon/period/apostrophe/backslash/minus are all taken; minus is the next
+	# Comma/semicolon/period/apostrophe/backslash are all taken; minus is the next
 	# unclaimed punctuation-row key.
 	"wedge_charge": KEY_MINUS,
 	# Comma/semicolon/period/apostrophe/backslash/minus are all taken; equals is the next

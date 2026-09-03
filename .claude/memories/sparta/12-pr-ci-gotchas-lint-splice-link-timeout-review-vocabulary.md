@@ -281,3 +281,11 @@ and reassigned every property instead.
   since the caller assigns into a typed property.
 
 - **Don't:** return a raw cfg value of the wrong type from a loader.
+
+- **Do:** after a "verbatim" move,
+  diff the moved block against its source
+  and paste the empty diff.
+
+- **Don't:** report a move as verbatim from memory,
+  since an extra word slipped in here
+  and survived a later rewording pass.
