@@ -128,6 +128,14 @@ Keeps its group fighting as a group:
 - **Flank coverage** -- a group flank left open by casualties or maneuver gets
   refused or covered by a repositioned unit.
 
+- **Skirmisher screen** -- where the general's doctrine asks for one
+  (`skirmisher_screen` in the doctrine profile), the group's light troops are
+  pushed out ahead of the heavy line to contest the ground between the armies
+  and recalled through the line's own intervals as the enemy closes.
+  Off by default, so a doctrine without the key behaves exactly as before.
+  See `scripts/SkirmisherScreen.gd` and the "Skirmisher screening" section of
+  [`deployment-distance-design.md`](deployment-distance-design.md).
+
 The subcommander interprets the general's plan for its group and translates
 it into per-unit directives; it also aggregates its unit leaders' reports and
 passes what matters upward (contact on the left, cavalry sighted, two units
@@ -249,6 +257,7 @@ Two boundaries the sketch bakes in:
   *enemy* (and, once #414 defines it, possibly distant friendlies outside
   the command). The exact friendly-knowledge rule is #414's call; the
   interface just has to route whatever #414 decides.
+  #414's design ([`docs/fog-of-war-design.md`](fog-of-war-design.md)) answers it: same-team units are always visible.
 - **Suggestions ride the same interface.** What a subordinate reported is
   part of what a commander "knows", so it lives in the view too -- which
   means a fogged general can know about a flanking force *because a unit
@@ -473,6 +482,8 @@ the only door); determinism on replay is preserved with fog active.
 - **#135 / #502** -- player delegation and period rank names, phase 4.
 - **#414** -- fog of war; phase 5 integrates it through the perception
   interface, with the AI honoring it by requirement.
+  Its design now lives in [`docs/fog-of-war-design.md`](fog-of-war-design.md), which settles the friendly-knowledge rule this document leaves open above: same-team units are always visible to their own side.
+
 - **#290** -- lockstep multiplayer; the determinism rules keep that door open.
 - **#516** (`docs/orders-queue-design.md`) -- the actuation layer this whole
   design speaks through; its two invariants are inherited here.

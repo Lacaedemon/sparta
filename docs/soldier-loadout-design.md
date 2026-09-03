@@ -246,10 +246,13 @@ turned out to be more machinery than the data needs).
   shield); every composition equals the pre-split per-type weight bit-for-bit
   (`test/unit/test_loadout_combat_equivalence.gd`). The defence math stays the
   continuous dot-product facing gate (`SoldierCombat.facing_gate()` +
-  `land_chance()`), not a discrete arc check -- the
-  `Shield.covers(attack_angle, hold_angle)` sketch above remains illustrative
-  shape data nothing reads for gameplay yet; the wound formula is unchanged
-  behaviorally throughout.
+  `land_chance()`), not a discrete arc check.
+  `Shield.covers(attack_angle, hold_angle)` is no longer only a sketch, though
+  -- the projectile landing path (`ProjectileField._land_on_soldiers`) tests
+  every arrow that reaches a man against it, so the arc gates ranged fire while
+  melee keeps the continuous gate.
+  The wound formula is unchanged behaviorally throughout.
+
 - **Rendering** (implemented, phase 3) -- the soldier's `MultiMesh` draw pose
   reads `weapon_id` (`Unit._foot_kind()`, which mesh/sprite) and each type's
   `default_hold_angle` (`Unit.weapon_rest_angle()`/`shield_rest_angle()`,
@@ -314,8 +317,12 @@ Each phase: scope, dependencies, done-check, behavior-change label.
   soldier; a targeted test asserts the array stays index-aligned with
   `_sim_soldier_pos` through spawn, reverse, and formation changes (mirroring
   the existing `_sim_soldier_hp.reverse()` pattern in `Unit.gd`).
-- **Behavior change:** **none to combat outcomes** -- this phase only makes the
-  data available; nothing reads it for gameplay yet (rendering is phase 3).
+
+- **Behavior change, at the time this phase landed:** **none to combat
+  outcomes** -- the phase only made the data available.
+  It is read for gameplay now: `ProjectileField._shield_covers` takes each
+  man's own hold angle from this array when testing a landing arrow against
+  his shield's arc.
 
 ### Phase 3 -- rendering reads weapon/shield type + hold state (implemented, #538)
 - **Scope, as implemented:**

@@ -63,7 +63,8 @@ const PLAN_DO_NOTHING := "do_nothing"
 ## itself be assigned to a group. `all_units` is every living node in the "units" group, the
 ## same omniscient perception source every other command level reads; `doctrine` is the parsed
 ## profile (DoctrineRegistry.doctrine(id)). Returns:
-##   {"plan": String, "groups": Array[Array], "active_units": Array, "reserve_units": Array, "pursue_routers": bool}
+##   {"plan": String, "groups": Array[Array], "active_units": Array, "reserve_units": Array,
+##    "pursue_routers": bool, "skirmisher_screen": bool}
 ## `groups` is an array of unit arrays, one per Subcommander group (Subcommander itself decides
 ## what to do with each -- including silently dropping a ROUTING member, since its own
 ## `_living()` filter excludes one exactly like this file's `_roster()` does not); `reserve_units`
@@ -73,7 +74,7 @@ const PLAN_DO_NOTHING := "do_nothing"
 static func decide_army(team_units: Array, all_units: Array, doctrine: Dictionary) -> Dictionary:
 	if doctrine.is_empty():
 		return {"plan": PLAN_ADVANCE_LINE, "groups": [team_units], "reserve_units": [],
-				"pursue_routers": true}
+				"pursue_routers": true, "skirmisher_screen": false}
 
 	var roster: Array = _roster(team_units)
 	var reserve_fraction: float = float(doctrine.get("reserve_fraction", 0.0))
@@ -104,6 +105,11 @@ static func decide_army(team_units: Array, all_units: Array, doctrine: Dictionar
 		"active_units": active,
 		"reserve_units": reserve_units,
 		"pursue_routers": bool(doctrine.get("pursue_routers", true)),
+		# The doctrine's skirmisher-screen flag, threaded down to Subcommander.decide_group
+		# exactly as pursue_routers is threaded down to UnitLeader.decide: whether to push
+		# the light troops out ahead of the line during the approach (SkirmisherScreen).
+		# Absent from a doctrine that does not ask for one, so it defaults off.
+		"skirmisher_screen": bool(doctrine.get("skirmisher_screen", false)),
 	}
 
 

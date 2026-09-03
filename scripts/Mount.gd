@@ -21,7 +21,7 @@ extends Resource
 # derived from this real kilogram value, never hand-maintained alongside it.
 @export var mass_kg: float
 # The mount's own top pace in metres/second. Provisional shape data, like
-# Shield.arc_deg: nothing reads it for gameplay yet — the loadout table's
+# Armor.weight_kg: nothing reads it for gameplay yet -- the loadout table's
 # hand-authored cavalry gait speeds remain the source of truth for movement
 # (see Battle._default_loadout's own comment on the toned-down gallop).
 @export var top_speed_mps: float

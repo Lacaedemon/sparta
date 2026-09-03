@@ -14,7 +14,12 @@ class_name DoctrineRegistry
 ##                              the team's own living-unit count is at least this multiple of
 ##                              the enemy's; otherwise "advance_line" (or the base plan).
 ##                              A low threshold picks envelop readily (aggressive); a high
-##                              one needs a lopsided advantage first (cautious).
+##                              one needs a lopsided advantage first (cautious). REQUIRED of
+##                              every profile, including one whose `plans` omits "envelop" --
+##                              select_plan never reads it there, so the value is inert rather
+##                              than a claim that the doctrine envelops (screening.json is the
+##                              shipped example). Omitting it fails the whole profile to {},
+##                              which silently reverts that army to the built-in defaults.
 ##   defend_ratio_threshold     optional: General.select_plan picks "defend" (if known) when
 ##                              the team's active unit ratio drops at or below this threshold
 ##                              (e.g. falling back to defense when outnumbered).
@@ -25,6 +30,11 @@ class_name DoctrineRegistry
 ##                              below this, reserves fold into the active groups. A high
 ##                              threshold commits at the first sign of trouble; a low one holds
 ##                              reserves until the line is close to breaking.
+##   skirmisher_screen          optional: whether this doctrine pushes its light troops out
+##                              ahead of the heavy line during the approach and recalls them
+##                              through its intervals as the enemy closes (SkirmisherScreen).
+##                              Absent means no screen, so every doctrine without the key
+##                              keeps the behaviour it had before the directive existed.
 ##   pursue_routers             whether UnitLeader's fallback targeting chases down a routing
 ##                              enemy (true) or leaves it be, holding the line instead (false).
 ##   subcommander_rank          phase 4 (docs/battle-ai-design.md): the period/faction rank
@@ -110,6 +120,8 @@ static func parse_doctrine(raw: Dictionary) -> Dictionary:
 	}
 	if raw.has("defend_ratio_threshold"):
 		out["defend_ratio_threshold"] = float(raw["defend_ratio_threshold"])
+	if raw.has("skirmisher_screen"):
+		out["skirmisher_screen"] = bool(raw["skirmisher_screen"])
 	return out
 
 

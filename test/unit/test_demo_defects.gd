@@ -802,6 +802,63 @@ func test_hud_formation_name_rebuilds_cavalry_anisotropic_label() -> void:
 			"omitted pitch skips rather than loading Unit.FORMATION_SPACING")
 
 
+func test_strip_historical_name_drops_a_factions_own_formation_name() -> void:
+	assert_eq(DemoDefects.strip_historical_name("0.45 m locked (synaspismos)"), "0.45 m locked")
+	assert_eq(DemoDefects.strip_historical_name("1 x 3 m (agmen quadratum)"), "1 x 3 m")
+
+
+func test_strip_historical_name_leaves_a_plain_caption_alone() -> void:
+	# Every caption the rebuild produces is digits, "x", and a unit -- no parentheses -- so
+	# stripping must be a no-op on all of them.
+	for caption in ["0.45 m", "0.45 m locked", "1 x 3 m", "0.45 m Square", "4 x 12 m Testudo", ""]:
+		assert_eq(DemoDefects.strip_historical_name(caption), caption)
+
+
+func test_hud_consistency_ignores_a_factions_historical_name() -> void:
+	# A faction battle appends its own name to the HUD's formation caption; the sim dump and
+	# the pitch rebuild stay plain, so the check has to compare the interval/stance part.
+	var snaps: Array = [
+		{
+			"tick": 10,
+			"units": [{"uid": 1, "formation": "NORMAL", "file_pitch": 9.0, "rank_pitch": 9.0}],
+			"hud": {
+				"shown_unit_uid": 1,
+				"formation_text": "0.45 m (pyknosis)",
+				"ctrl_bar_visible": true,
+			},
+		},
+		{
+			"tick": 20,
+			"units": [{"uid": 1, "formation": "TIGHT", "file_pitch": 9.0, "rank_pitch": 9.0}],
+			"hud": {
+				"shown_unit_uid": 1,
+				"formation_text": "0.45 m locked (synaspismos)",
+				"ctrl_bar_visible": true,
+			},
+		},
+	]
+	var verdicts: Array = DemoDefects.check_hud_consistency(snaps)
+	assert_true(bool(verdicts[0]["pass"]), "formation consistency passes with historical names")
+
+
+func test_hud_consistency_still_catches_a_real_mismatch_under_a_historical_name() -> void:
+	# The strip must not become a blanket pass: a caption whose INTERVAL disagrees with the
+	# sim is still a mismatch, historical name or not.
+	var snaps: Array = []
+	for tick in [10, 20, 30, 40]:
+		snaps.append({
+			"tick": tick,
+			"units": [{"uid": 1, "formation": "TIGHT", "file_pitch": 9.0, "rank_pitch": 9.0}],
+			"hud": {
+				"shown_unit_uid": 1,
+				"formation_text": "0.45 m (pyknosis)",   # NORMAL's caption while sim says TIGHT
+				"ctrl_bar_visible": true,
+			},
+		})
+	var verdicts: Array = DemoDefects.check_hud_consistency(snaps)
+	assert_false(bool(verdicts[0]["pass"]), "a sustained interval/stance mismatch still fails")
+
+
 func test_hud_consistency_passes_dumped_formation_label() -> void:
 	var snaps: Array = [
 		{

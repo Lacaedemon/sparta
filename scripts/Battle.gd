@@ -397,6 +397,31 @@ var all_teams_control: bool = false
 # normal default-loadout spawn, byte-for-byte. See _spawn_scenario and demos/README.md.
 var scenario: Array = []
 
+# Which Faction.Type each side fights under this battle, indexed by team number. Purely an
+# IDENTITY: nothing in the simulation reads it, and the historical formation/form-up/doctrine
+# names it unlocks are display text the HUD renders (see HUD.set_team_factions). Set from
+# CustomMatchup's pending choice in _ready when a prebattle matchup armed one AND this is
+# still its declared Faction.NONE pair, and settable BEFORE the node enters the tree (like
+# drill_mode/scenario above) so a demo/test can stage a specific side -- a value staged that
+# way wins over the prebattle choice. Faction.NONE for both by default, which every Faction
+# display helper renders as the plain name -- so a battle reached by any other path reads
+# exactly as it did before.
+var team_factions: Array[int] = [FactionRef.NONE, FactionRef.NONE]
+
+# Simulation-tier trigger distances for THIS battle, in world units (FormationTier's own
+# hysteresis pair). Settable BEFORE the node enters the tree (like drill_mode/scenario
+# above), because the defaults sit far outside every combat reach -- a formation always
+# promotes back to the close tier before anything can strike it, so a scenario that wants
+# to SHOW live far-tier combat (FarTierCombat) has to tighten the band. A normal battle
+# leaves both at FormationTier's tuned defaults, byte-for-byte.
+var promote_range: float = FormationTier.PROMOTE_RANGE
+var demote_range: float = FormationTier.DEMOTE_RANGE
+# Far-tier formations counted by this tick's tier pass, so _tick_far_tier_combat can skip
+# its whole scan when there are none -- the case for every tick of an ordinary battle at the
+# shipped band. Recomputed each tick rather than maintained incrementally: the tier pass
+# already visits every unit, so counting there is free and cannot drift out of sync.
+var _far_tier_count: int = 0
+
 # Derived replay state-snapshot cache: lets a PLAYBACK rewind resume from a
 # cached mid-battle moment instead of resimulating from tick 0 -- see
 # ReplaySnapshotCache.gd and capture_snapshot/restore_snapshot/seek_to_tick below. Density
@@ -597,7 +622,13 @@ func _ready() -> void:
 		_spawn_scenario(scenario)
 	elif CustomMatchup.pending():
 		# A custom battle configured via PrebattleScreen replaces the default two-line
-		# spawn with the player's own chosen rosters, same as a demo scenario does.
+		# spawn with the player's own chosen rosters, same as a demo scenario does. The
+		# screen's faction choices ride along so the HUD can name each side's historical
+		# formations -- but only when nothing has already staged an identity, so a
+		# demo/test that set team_factions itself before entering the tree keeps its own
+		# value rather than having the prebattle choice stamped over it.
+		if _team_factions_are_default():
+			team_factions = [CustomMatchup.pending_faction_0, CustomMatchup.pending_faction_1]
 		_spawn_scenario(_custom_matchup_scenario(CustomMatchup.pending_team_0, CustomMatchup.pending_team_1))
 	else:
 		# Player army (team 0) deploys along the top, facing down.
@@ -609,6 +640,13 @@ func _ready() -> void:
 		# fidelity from the first tick while no longer starting at spitting distance.
 		if not drill_mode:
 			_spawn_line(1, Vector2.UP, float(spawn_line_ys[1]), dfn_count)
+
+	# Hand the sides' faction identities to the HUD so its formation button, formation menu,
+	# form-up menu, and doctrine readout can carry the historical names. Done here (not in
+	# HUD._ready) because the choice arrives with the battle, not with the UI; the HUD is an
+	# @onready child, so its own _ready has already built the widgets this restamps.
+	if _hud != null:
+		_hud.set_team_factions(team_factions)
 
 	# Now that every unit has deployed, stamp (RECORD) or verify (PLAYBACK) the spawn-layout
 	# fingerprint, so a replay can fail loudly if a later build's spawn table no longer matches
@@ -1175,6 +1213,17 @@ func _loadout_for_type(loadout: Array, type_name: String) -> Dictionary:
 	return {}
 
 
+## True while no caller has staged a faction identity -- i.e. `team_factions` still holds the
+## Faction.NONE pair it is declared with. A prebattle matchup's own faction choice is only
+## stamped over an untouched default, so a demo/test that assigned team_factions before the
+## node entered the tree keeps whatever it staged.
+func _team_factions_are_default() -> bool:
+	for team_faction in team_factions:
+		if int(team_faction) != FactionRef.NONE:
+			return false
+	return true
+
+
 ## Builds a `scenario` spec array (see _spawn_scenario) for a custom battle configured via
 ## PrebattleScreen: each team's roster (a list of Faction.FACTION_ROSTERS historical names,
 ## e.g. "Spartan Hoplites") resolves through Faction.get_unit_type() to its real spawnable
@@ -1427,7 +1476,7 @@ func seek_to_tick(target_tick: int) -> void:
 	restore_snapshot(snap)
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	# Runs before the Units' own _physics_process (parent precedes children in
 	# tree order), so orders and AI for this tick are applied before units act.
 	if _ended:
@@ -1485,7 +1534,8 @@ func _physics_process(_delta: float) -> void:
 					int(o.get("form_up_group", -1)),
 					int(o.get("walk_advance_toggle", UnitSettingToggle.LEAVE)),
 					int(o.get("reform_toggle", UnitSettingToggle.LEAVE)),
-					int(o.get("file_major_reform_mode_toggle", REFORM_MODE_TOGGLE_LEAVE)))
+					int(o.get("file_major_reform_mode_toggle", REFORM_MODE_TOGGLE_LEAVE)),
+					int(o.get("line", LINE_INDEX_UNCHANGED)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply
@@ -1512,7 +1562,12 @@ func _physics_process(_delta: float) -> void:
 	# Simulation-tier transitions are part of the deterministic sim too: evaluate the
 	# distance triggers and promote/demote BEFORE the units act this tick, so both runs
 	# of a replay cross the tier boundary on the same tick from the same positions.
-	_tick_tier_transitions()
+	var live_units: Array = _tick_tier_transitions()
+
+	# Far-tier combat resolution, immediately after the transitions that decide who is at
+	# which tier this tick, reusing the unit array that pass already fetched. Close-tier
+	# formations still fight in their own _think.
+	_tick_far_tier_combat(live_units, delta)
 
 	# Enemy AI is part of the deterministic sim (not player input): re-run it on
 	# the same cadence during playback so it reaches the same decisions. Skipped entirely
@@ -1583,9 +1638,9 @@ func _on_soldier_tick() -> void:
 	SoldierEnemyContact.accumulate(units, -frame - 1)
 	UnitRef.step_all_sim_soldiers(units, delta)
 	UnitRef.couple_all_sim_soldiers(units, delta)
-	# Advance in-flight volleys and land any that arrived this tick (delivers their casualties
-	# in launch order, no RNG -- see ProjectileField). After the bodies settle so a landing
-	# reads current positions.
+	# Advance in-flight volleys and land any that arrived this tick (resolved in launch order,
+	# one seeded shield roll per arrow -- see ProjectileField). After the bodies settle so a
+	# landing reads current positions.
 	if ProjectileField.active != null:
 		ProjectileField.active.step(delta, self)
 
@@ -2820,8 +2875,9 @@ func unit_by_uid(uid: int) -> UnitRef:
 ## and it keeps its own tier until it rallies back into "units". Runs every tick over the
 ## live units in tree order — a pure function of already-serialized positions, so both
 ## runs of a replay transition the same units on the same ticks.
-func _tick_tier_transitions() -> void:
+func _tick_tier_transitions() -> Array:
 	var all_units: Array = get_tree().get_nodes_in_group("units")
+	_far_tier_count = 0
 	for node in all_units:
 		var u = node as UnitRef
 		if u == null or u.state == UnitRef.State.DEAD:
@@ -2837,12 +2893,45 @@ func _tick_tier_transitions() -> void:
 				nearest_dist_sq = d_sq
 				nearest_pos = e.position
 		if nearest_dist_sq == INF:
-			continue   # no enemy in play: hold the current tier (the victory check ends the battle)
+			# No enemy in play: hold the current tier (the victory check ends the battle).
+			# Still counted, since it keeps whatever tier it is already on.
+			if u.tier == FormationTier.FAR:
+				_far_tier_count += 1
+			continue
 		if u.tier == FormationTier.FAR:
-			if FormationTier.should_promote(u.position, nearest_pos):
+			if FormationTier.should_promote(u.position, nearest_pos, promote_range):
 				TierTransition.promote(u, _tick, Replay.seed_value)
-		elif TierTransition.can_demote(u) and FormationTier.should_demote(u.position, nearest_pos):
+		elif TierTransition.can_demote(u) \
+				and FormationTier.should_demote(u.position, nearest_pos, demote_range):
 			TierTransition.demote(u)
+		# Counted AFTER the transition, so the tally is this tick's tiers, not last tick's.
+		if u.tier == FormationTier.FAR:
+			_far_tier_count += 1
+	return all_units
+
+
+## Resolve one tick of far-tier combat (docs/far-tier-pursuit-contagion-design.md, phase 0).
+## Runs immediately after the tier pass, so every formation is already at the tier this
+## tick's positions call for before any casualty is booked, and BEFORE the units' own
+## _physics_process, so a formation that breaks here spends the same tick fleeing through
+## the ordinary Unit._process_rout path. Close-tier formations are untouched: they resolve
+## their own strikes in Unit._think as before (UnitCombat.strike/shoot return early for a
+## far-tier attacker, so a fight is never billed by both paths).
+##
+## `units` is the "units" group alone, as the tier pass fetched it -- routers excluded. That
+## costs nothing: a routing formation deals no attrition until it rallies
+## (FarTierCombat.can_fight), so it could never be an attacker here anyway. It can still be a
+## DEFENDER -- the target comes from UnitTargeting, which includes routing enemies -- so a
+## far-tier formation still runs a broken one down, matching the close tier's own "fleeing
+## does not grant immunity" rule.
+##
+## Takes the array `_tick_tier_transitions` already fetched rather than re-querying the group
+## a second time in the same tick, and returns immediately when that pass counted no far-tier
+## formation -- which is every tick of an all-close-tier battle, so those pay one int compare.
+func _tick_far_tier_combat(units: Array, delta: float) -> void:
+	if _far_tier_count == 0:
+		return
+	FarTierCombat.tick_all(units, delta)
 
 
 ## Battle AI phases 1-3 (docs/battle-ai-design.md): every AI-controlled (team 1) unit gets
@@ -2859,7 +2948,9 @@ func _tick_tier_transitions() -> void:
 ## exploitation flag. Subcommander.decide_group runs once PER GROUP (phase 2 ran it once for
 ## the whole team); the general's own reserve-hold directives (General.reserve_directives) are
 ## folded in alongside them, so a held-back reserve unit gets a directive too, just not a
-## subcommander's. pursue_routers threads down to every UnitLeader.decide call. The general
+## subcommander's. pursue_routers threads down to every UnitLeader.decide call, and the
+## doctrine's skirmisher-screen flag threads down to every Subcommander.decide_group call
+## (SkirmisherScreen; off for a doctrine that does not ask for one). The general
 ## reads team 1's whole ROSTER (_team_roster, fightable + routing), not the narrower
 ## _team_units, so a unit that temporarily routs doesn't shrink the reserve-fraction
 ## denominator (see _team_roster's own doc comment) -- but only _team_units actually receives
@@ -2875,8 +2966,9 @@ func _run_enemy_ai() -> void:
 	var plan: String = String(decision.get("plan", General.PLAN_ADVANCE_LINE))
 	var directives: Dictionary = General.reserve_directives(
 		decision["reserve_units"], decision.get("active_units", []), all_units)
+	var screen: bool = bool(decision.get("skirmisher_screen", false))
 	for group in decision["groups"]:
-		var group_directives: Dictionary = Subcommander.decide_group(group, all_units, plan)
+		var group_directives: Dictionary = Subcommander.decide_group(group, all_units, plan, screen)
 		for uid in group_directives:
 			directives[uid] = group_directives[uid]
 	var pursue_routers: bool = bool(decision.get("pursue_routers", true))

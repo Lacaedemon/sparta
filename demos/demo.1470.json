@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Design document only (docs/longer-range-missile-design.md). No scripts/, scenes/, or assets/ change, so a recorded battle would show the game exactly as it is on main; the per-phase demos are specified inside the document and ship with the phases that implement them."
+}

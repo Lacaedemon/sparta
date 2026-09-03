@@ -409,15 +409,27 @@ static func _living_soldier_indices(unit: Unit) -> PackedInt32Array:
 static func apply_ranged_casualties(target: Unit, origin: Vector2, killer: Unit, casualties: int, morale_flank: float) -> void:
 	if casualties <= 0 or target._sim_soldier_hp.is_empty():
 		return
+	for idx in ranged_victims(target, origin, casualties):
+		target._sim_soldier_hp[idx] = 0.0
+	reap(target, killer, morale_flank)
+
+
+## The men a volley from `origin` reaches first: up to `count` living soldier indices of
+## `target`, nearest the launch point, tie-broken by index so the order is total and
+## deterministic. Shared by the whole-volley path above and the per-arrow projectile path
+## (ProjectileField), which tests each of these men's own shield before deciding whether he
+## actually falls -- so both paths pick the same exposed rank and only the shield gate
+## differs. Reads positions and index only; no RNG.
+static func ranged_victims(target: Unit, origin: Vector2, count: int) -> Array[int]:
 	var living: Array[int] = []
+	if count <= 0:
+		return living
 	for i in range(target._sim_soldier_hp.size()):
 		if target._sim_soldier_hp[i] > 0.0:
 			living.append(i)
 	living.sort_custom(SoldierMelee._nearest_to.bind(origin, target))
-	var kills: int = mini(casualties, living.size())
-	for k in range(kills):
-		target._sim_soldier_hp[living[k]] = 0.0
-	reap(target, killer, morale_flank)
+	living.resize(mini(count, living.size()))
+	return living
 
 
 ## Strict-weak ordering for apply_ranged_casualties: nearer the origin first, ties broken

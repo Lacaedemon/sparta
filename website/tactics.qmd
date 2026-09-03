@@ -323,9 +323,14 @@ lays your selection out as two staggered rows instead of one straight line.
 See [How to play: Controls](how-to-play.qmd#controls) (the "Deploy several
 units at once" entry) for the drag mechanics.
 
-This is a **one-shot layout**, not a standing formation --- a unit dragged
-into a checkerboard arrangement doesn't remember "I'm line 2" the way it
-remembers its stance or formation mode. Nothing yet models the historical
+A unit dragged into a checkerboard arrangement **remembers which line it
+landed on**, the way it remembers its stance or formation mode: the front row
+is Line 1 and the offset row behind it is Line 2. The deploy order carries
+that assignment, so a saved replay reproduces it on playback. Moving the
+unit's card to another tray row afterwards re-tags it with the new row --
+live only, since a card move isn't an order and so isn't recorded in the
+replay. Nothing reads the tag yet, though, so the layout still behaves as a
+one-shot arrangement in play --- and nothing yet models the historical
 system's chief weakness either: a gapped, multi-line formation trades
 frontage flexibility for flank exposure, so a checkerboard-formed army isn't
 currently more vulnerable to flanking than a solid line. See
@@ -350,8 +355,11 @@ one-line filled tray still only reorders (then splits by whatever Form-up
 mode is live). See [How to play: Deploy from the unit card tray](how-to-play.qmd#deploy-from-the-unit-card-tray)
 for the gesture.
 
-Like checkerboard and echelon, this is a **one-shot layout**, not a standing
-formation -- a unit deployed from the tray does not remember its cell.
+A tray deploy carries the same line tag a checkerboard one does: each unit
+remembers the **row** it was placed from (the top row is Line 1), recorded on
+the deploy order so a replay reproduces it. The **column** is not carried, so
+a unit doesn't remember its exact cell -- and, as with checkerboard, nothing
+reads the tag yet, so the arrangement itself is still one-shot in play.
 
 ::: {#fig-tray-formation-tactics .demo}
 
@@ -394,14 +402,16 @@ units at once" entry) for the drag mechanics --- echelon reuses the exact
 same box-select-then-drag gesture every other split mode does, just with a
 staggered depth instead of one flat line.
 
-Like checkerboard, this is a **one-shot layout, not a standing formation**: a
-unit dragged into an echelon doesn't remember which flank it led from, so a
-later reform or reshape doesn't preserve the stagger. And nothing currently
-models the tactical risk a real refused flank carries either --- the
-trailing units aren't rendered any more exposed to being turned than a
-straight line would be, so the payoff (concentrating force where you choose)
-isn't yet balanced by the historical downside (a flank that isn't in the
-fight yet is a flank an enemy could exploit before it arrives).
+Unlike checkerboard and tray formation, echelon assigns **no line at
+all**, leaving each unit's existing line tag alone. The stagger itself
+is a **one-shot layout**: a unit dragged into an echelon doesn't
+remember which flank it led from, so a later reform or reshape doesn't
+preserve it. And nothing currently models the tactical risk a real
+refused flank carries either --- the trailing units aren't rendered
+any more exposed to being turned than a straight line would be, so the
+payoff (concentrating force where you choose) isn't yet balanced by
+the historical downside (a flank that isn't in the fight yet is a
+flank an enemy could exploit before it arrives).
 
 ## Stamina
 
@@ -1945,6 +1955,64 @@ a moment later**, so a fast unit can partly outrun a shot loosed at long range, 
 casualties arrive on the beat the arrows come down rather than the instant they leave
 the bow.
 
+## Turn your shields toward the archers
+
+Arrows are resolved **one man at a time** when they land, and each one is tested
+against the shield the man it reaches is actually holding.
+A shield covers an arc in front of its bearer --- a body shield like the scutum
+covers a wide front, a cavalry round shield much less, and archers carry no
+shield at all.
+An arrow that arrives **inside** that arc is usually stopped: it either glances
+off, or sticks fast in the shield face.
+An arrow that arrives from outside the arc has nothing in its way and kills.
+
+So which way a regiment is **standing** now decides how much a volley costs it,
+before any stance bonus enters:
+
+- **Face the archers.** A regiment turned toward the incoming fire puts its shields
+  between its men and the arrows, and most of the volley is wasted on wood.
+- **Never let archery reach a turned flank or an exposed back.** The shields point
+  the wrong way, so the volley lands nearly in full --- and the flank casualty
+  multiplier stacks on top of that, so an enfilading volley is far worse than the
+  sum of its parts.
+- **Shields do not help everyone equally.** Cavalry carry a smaller shield and stop
+  a good deal less, and your own archers carry none, so they are as exposed facing
+  the enemy as they are running from them --- keep them out of the beaten zone
+  rather than trying to turn them into it.
+
+Arrows that stick in a shield stay there, and their weight tells.
+A regiment that has stood under archery long enough is dragging a growing load of
+spent shafts, and its cover degrades as it does --- capped, so a bombardment never
+strips a shield bare, but a wall that has absorbed a long exchange no longer blocks
+the way it did at the first volley.
+It takes a sustained pounding to matter, so this is a reason to rotate a battered
+regiment out or close the distance, not a reason to fear the opening exchange.
+
+This is separate from the stance bonuses in
+[Formation stances](#formation-stances): shield wall and testudo change how much
+damage a volley does in the first place, while the arc above decides, arrow by
+arrow, whether an individual man's shield was in the way at all.
+The two stack, so a testudo whose men are also facing the archers gets both.
+
+::: {#fig-shield-arc-block .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/shield_arc_block.jpg">
+  <source src="media/shield_arc_block.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Shield arc under archery: two identical 60-man Infantry blocks, each under fire
+from its own Archers regiment due north.
+The left block faces the arrows and its shields cover them, while the right block
+is turned east and its flank is bare.
+Watch the two soldier counts diverge --- the facing block ends the clip at 53 of
+60 with morale 75, the turned one at 25 of 60 with morale 32.
+:::
+
 ## Group attack distribution
 
 When you have several units selected and right-click a target, press <kbd>X</kbd> to
@@ -2168,6 +2236,46 @@ and any move ordered at the run, still break off the old way --- pace over poise
 
 A fighting regiment ordered to a destination behind it backs out facing-held first ---
 no mid-press pivot --- then turns about and marches on once clear of the fight.
+:::
+
+## Facing a skirmisher screen
+
+**Not in play yet.** Screening is a property of a general's doctrine profile, and nothing in
+the game selects a profile yet --- every battle runs the aggressive doctrine, which does not
+screen. The behaviour below is built, tested, and shown in the clip; what it is waiting on is
+a scenario or campaign that can hand a general a different profile. It is described here so
+the tactics are on the page when that lands.
+
+A screening general opens the battle by pushing its light troops out in front of the heavy
+line rather than keeping them in it. The archers move out to a contest line about eight
+metres ahead of that line --- one ranged reach, so their fire covers the ground immediately
+in front of it --- hold there in the skirmish stance, and shoot at whatever comes into
+range. Their own heavy blocks do not break formation to rescue them. Once the opposing line
+closes to within about six metres of the screen, the same subcommander pulls it back --- the
+archers break off the exchange, turn about, and fall back on a diagonal aimed at a gap
+**between** two of their own blocks rather than straight back through one
+(@fig-skirmisher-screen).
+
+Two things will follow for you. Chasing the screen with your own heavy line pulls that line
+forward out of dressing and hands the enemy blocks a ragged target, so it is usually better
+to walk up steadily and let the screen retire. And the moment the screen turns is the moment
+it is most exposed: cavalry sent wide, or a unit already on that flank, can catch it in the
+open before it reaches the interval, because its own line will not come out to save it.
+
+::: {#fig-skirmisher-screen .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/skirmisher_screen.jpg">
+  <source src="media/skirmisher_screen.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+An enemy archer unit walks out ahead of its own heavy line, holds the ground between the
+armies as the player line advances, then breaks off and falls back toward the interval
+between two blocks while the line behind it holds its ground.
 :::
 
 ---

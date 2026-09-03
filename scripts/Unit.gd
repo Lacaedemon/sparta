@@ -304,6 +304,14 @@ var engage_reshape_mode: int = EngageReshapeMode.KEEP_NEW_FRONTING
 # the formation grid instead. Battle evaluates the distance triggers each tick and performs
 # the transitions (Battle._tick_tier_transitions -> TierTransition).
 var tier: int = FormationTier.CLOSE
+# Fractional casualties accumulated by the far tier's continuous attrition rate
+# (FarTierAttrition.apply), carried between ticks until a whole soldier falls.
+# Sub-soldier BOOKKEEPING, not per-soldier state: one scalar per regiment, no array, so it
+# survives a demotion the way every other aggregate field does. Lives on the DEFENDER, so
+# several far-tier attackers pressing one formation accumulate into the same carry instead
+# of each rounding its own fraction away. The close tier has no counterpart -- its strikes
+# land as whole rounded casualties on their own cadence.
+var _far_tier_casualty_carry: float = 0.0
 # Player-set frontage (number of files / columns); 0 means "auto", deriving the
 # stable wider-than-deep grid from max_soldiers (UnitFormation.frontage). The
 # player can widen or narrow the line via SelectionManager (keyboard + drag); the
@@ -7834,6 +7842,7 @@ func to_snapshot_dict() -> Dictionary:
 		"under_fire": _under_fire, "in_enemy_contact": _in_enemy_contact,
 		"attack_cd": _attack_cd, "pin_down_exposure_cd": _pin_down_exposure_cd,
 		"rout_timer": _rout_timer, "shattered": _shattered,
+		"far_tier_casualty_carry": _far_tier_casualty_carry,
 		"order_response_timer": _order_response_timer,
 		"engaged_linger": _engaged_linger, "brace_settled_time": _brace_settled_time,
 		"moved_last_frame": _moved_last_frame,
@@ -7966,6 +7975,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_pin_down_exposure_cd = float(d["pin_down_exposure_cd"])
 	_rout_timer = float(d["rout_timer"])
 	_shattered = bool(d["shattered"])
+	_far_tier_casualty_carry = float(d.get("far_tier_casualty_carry", 0.0))
 	_order_response_timer = float(d["order_response_timer"])
 	_engaged_linger = float(d["engaged_linger"])
 	_brace_settled_time = float(d["brace_settled_time"])

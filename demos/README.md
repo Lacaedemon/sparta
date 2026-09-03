@@ -154,12 +154,53 @@ script under `demos/inputs/`:
   `DoctrineRegistry` id, e.g. `"aggressive"` or `"cautious"` -- see `data/doctrines/*.json`
   and `docs/battle-ai-design.md`'s phase-3 section). Set before the battle spawns, like
   `drill`/`scenario` above. Omit to use `Battle.ai_doctrine`'s own default.
+
+- `tier_ranges` (optional) -- **override the simulation-tier trigger distances** for this
+  demo: `{"promote": <wu>, "demote": <wu>}`, in world units, replacing
+  `FormationTier.PROMOTE_RANGE` / `DEMOTE_RANGE` on the spawned battle
+  (`Battle.promote_range` / `demote_range`).
+  Needed by any demo *about* far-tier behaviour:
+  the shipped promote range (400 wu) sits far outside every combat reach (melee contact is
+  ~62 wu, `RANGED_RANGE` 160 wu), so at the default a formation always promotes back to the
+  close tier before anything can strike it, and a clip captioned as a far-tier fight would
+  actually be a close-tier one.
+  Applied before the battle spawns, like `drill`/`scenario` above.
+  Strict like `scenario`/`map` (it decides which tier the demo simulates, so a
+  malformed block fails the recording loudly): the block must carry both keys, with
+  `0 < promote < demote` so the hysteresis gap survives.
+  `demos/inputs/far-tier-contact-1485.json` is the worked example.
+
 - `all_teams_control` (optional bool, default `false`) -- debug/testing mode: the player
   commands every team's units directly (`SelectionManager`'s team checks are relaxed) and
   team 1's AI never runs, so a script can select and order BOTH sides of a real clash by
   hand instead of only team 0 against the AI. Unlike `drill`, both armies still spawn -- set
   before the battle spawns, like `drill`/`scenario`/`doctrine` above. See
   `scripts/AllTeamsControl.gd` and `demos/inputs/all-teams-control.json`.
+
+- `factions` (optional) -- the faction each team fights under, one name per team in team order:
+  `"factions": ["Sparta", "Rome"]`.
+  Names, not enum ints, and matched case-insensitively against `Faction.FACTION_NAMES`
+  in either its full form (`"Rome (Latin / Roman)"`) or its bare leading name (`"Rome"`).
+  Strict on length as well as spelling: a non-empty list must name every team that will
+  actually spawn -- exactly two entries for a normal battle, or exactly one when `drill` is
+  set (team 1 never spawns in a drill, so it has no faction to name).
+  A one-entry list on a
+  non-drill battle would otherwise silently leave team 1 with no faction.
+  An unrecognized name, or a list of the wrong length, fails the recording loudly,
+  like a malformed `steps`/`scenario`.
+  This is **display identity only** -- nothing in the simulation reads it.
+  What it changes is the HUD: the control-bar formation button, its drop-up menu,
+  the info panel's Formation line, the Menu's form-up items, and the panel's own
+  Faction / Doctrine lines all pick up that side's historical names
+  (`Faction.HISTORICAL_FORMATIONS` / `HISTORICAL_FORM_UP` / `FACTION_STRATEGIES`).
+  So a Spartan block reads `0.9 m (pyknosis)` where a Roman one reads `0.9 m (acies)`.
+  Each caption follows the SHOWN unit's own team, so a clip using `all_teams_control`
+  can select from both sides and see each named in its own language.
+  Omit for no faction, which is what every script written before this field says,
+  and which renders exactly the plain captions it always did.
+  Set before the battle spawns, like `drill`/`scenario`/`doctrine` above.
+  `demos/inputs/faction-identity-hud.json` is the worked example.
+
 - `show_soldier_ids` (optional bool, **default `true`**) -- session-only: enables the
   per-soldier-ID HUD overlay for the recording without touching a developer's saved
   settings. On by default so scripted-input recordings show this debugging/verification

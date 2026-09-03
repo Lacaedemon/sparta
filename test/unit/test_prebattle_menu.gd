@@ -6,6 +6,7 @@ extends GutTest
 
 const PrebattleMenuScript = preload("res://scripts/PrebattleMenu.gd")
 const CustomMatchup = preload("res://scripts/CustomMatchup.gd")
+const FactionScript = preload("res://scripts/Faction.gd")
 
 
 func after_each() -> void:
@@ -47,6 +48,43 @@ func test_arm_custom_matchup_sets_pending_rosters_from_the_signal_payload() -> v
 	assert_eq(CustomMatchup.pending_team_0, ["Spartan Hoplites", "Skiritai"])
 	assert_eq(CustomMatchup.pending_team_1, ["Hastati"])
 	assert_true(CustomMatchup.pending())
+
+
+func test_arm_custom_matchup_sets_pending_factions_too() -> void:
+	var menu := _menu()
+	menu._arm_custom_matchup(["Spartan Hoplites"], ["Hastati"],
+			FactionScript.Type.SPARTA, FactionScript.Type.ROME)
+	assert_eq(CustomMatchup.pending_faction_0, FactionScript.Type.SPARTA)
+	assert_eq(CustomMatchup.pending_faction_1, FactionScript.Type.ROME)
+
+
+func test_arm_custom_matchup_defaults_the_factions_to_none() -> void:
+	# A caller that names only the rosters arms a matchup whose HUD keeps the plain names,
+	# rather than inheriting whichever faction a previous battle happened to leave behind.
+	CustomMatchup.pending_faction_0 = FactionScript.Type.MACEDON
+	var menu := _menu()
+	menu._arm_custom_matchup(["Spartan Hoplites"], ["Hastati"])
+	assert_eq(CustomMatchup.pending_faction_0, FactionScript.NONE)
+	assert_eq(CustomMatchup.pending_faction_1, FactionScript.NONE)
+
+
+func test_the_screens_start_signal_carries_the_chosen_factions() -> void:
+	# The screen owns the faction pickers, so its own start signal is what delivers them --
+	# the menu never reads the screen's fields directly. Captured through a local listener
+	# rather than through the menu's own handler, which would change_scene_to_file for real.
+	var screen := PrebattleScreen.new()
+	add_child_autofree(screen)
+	screen.team_0_faction = FactionScript.Type.CARTHAGE
+	screen.team_1_faction = FactionScript.Type.MACEDON
+	screen.team_0_roster = ["Sacred Band"]
+	screen.team_1_roster = ["Hypaspists"]
+	# Appended into, not reassigned: a GDScript lambda captures a local by value, so an
+	# assignment inside it would never reach this scope.
+	var seen: Array = []
+	screen.start_battle_requested.connect(
+			func(_t0: Array, _t1: Array, f0: int, f1: int) -> void: seen.append_array([f0, f1]))
+	screen._on_start_pressed()
+	assert_eq(seen, [FactionScript.Type.CARTHAGE, FactionScript.Type.MACEDON])
 
 
 func test_back_button_is_present() -> void:

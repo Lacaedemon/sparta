@@ -15,12 +15,12 @@ extends Resource
 # profile_for reads it through the unit's armor id, so combat outcomes are
 # unchanged for the default roster.
 @export var protection: float
-# Panoply weight in kilograms. Provisional shape data, like Shield.arc_deg:
-# nothing reads it for gameplay yet. The loadout table's gait speeds already
-# encode panoply weight by hand (heavier kit costs proportionally more at a
-# run than at a walk — see Battle._default_loadout's own comment); once a
-# future pass derives those speeds instead of authoring them, this is the
-# number it starts from.
+# Panoply weight in kilograms. Provisional shape data: nothing reads it for
+# gameplay yet. The loadout table's gait speeds already encode panoply
+# weight by hand (heavier kit costs proportionally more at a run than at a
+# walk -- see Battle._default_loadout's own comment); once a future pass
+# derives those speeds instead of authoring them, this is the number it
+# starts from.
 @export var weight_kg: float
 
 

@@ -34,6 +34,19 @@ var _all_teams_control: bool = false
 # from the input script's optional "doctrine" field (a DoctrineRegistry id). Empty string ==
 # "don't override" -- Battle keeps its own default (see Battle.ai_doctrine's own doc comment).
 var _doctrine: String = ""
+# Which Faction.Type each team fights under, from the input script's optional "factions"
+# field (per-team names, e.g. ["Sparta", "Rome"]) -- display identity only, so the historical
+# formation/form-up/doctrine names reach the HUD in a recording the same way a prebattle
+# choice delivers them in a real battle. Empty == leave Battle.team_factions at its own
+# no-faction default, so every existing script records byte-for-byte as before.
+var _team_factions: Array[int] = []
+# Simulation-tier trigger distances (world units) from the input script's optional
+# "tier_ranges": {"promote": <wu>, "demote": <wu>} block. -1.0 == "don't override", so
+# Battle keeps FormationTier's tuned defaults. A demo about live FAR-tier behaviour needs
+# these: the defaults sit far outside every combat reach, so a formation always promotes
+# back to the close tier before anything can strike it -- see Battle.promote_range.
+var _promote_range: float = -1.0
+var _demote_range: float = -1.0
 # Parsed per-demo map overrides (BattleMap.parse's shape) from the input script's
 # optional "map" field. Empty == run on the default map.
 var _map: Dictionary = {}
@@ -67,6 +80,26 @@ var _state_full: bool = false          # also dump the raw per-soldier arrays (d
 var _state_dumped: Dictionary = {}     # tick -> true, so each snapshot is written at most once
 var _hash_stream: FileAccess = null    # per-tick state-hash stream (armed with the state dump)
 var _hash_last_tick: int = -1          # last tick hashed, so a frozen tick writes one line only
+
+
+## Parse an input script's "tier_ranges" block into {"promote": float, "demote": float}, or
+## {"error": String} describing the first problem. Shaped like BattleMap.parse so the caller
+## reports and quits the same way for both, and pure so it is unit-testable without a tree.
+##
+## Finiteness is checked BEFORE the ordering rule, because every comparison against NaN is
+## false: a NaN promote would pass `promote <= 0.0` and `demote <= promote` alike and reach
+## Battle as a trigger distance no formation can ever satisfy -- a silently tier-frozen
+## recording rather than a loud failure. INF slips through the ordering rule just as quietly.
+static func parse_tier_band(band) -> Dictionary:
+	if typeof(band) != TYPE_DICTIONARY or not band.has("promote") or not band.has("demote"):
+		return {"error": "tier_ranges must be {\"promote\": <wu>, \"demote\": <wu>}."}
+	var promote: float = float(band["promote"])
+	var demote: float = float(band["demote"])
+	if not is_finite(promote) or not is_finite(demote):
+		return {"error": "tier_ranges promote/demote must be finite numbers."}
+	if promote <= 0.0 or demote <= promote:
+		return {"error": "tier_ranges needs 0 < promote < demote (the hysteresis gap)."}
+	return {"promote": promote, "demote": demote}
 
 
 func _ready() -> void:
@@ -121,6 +154,23 @@ func _ready() -> void:
 	_scenario = script.get("scenario", [])
 	_doctrine = str(script.get("doctrine", ""))
 	_all_teams_control = bool(script.get("all_teams_control", false))
+	var factions_result: Dictionary = parse_factions(script.get("factions", []), _drill)
+	if factions_result.has("error"):
+		push_error("[demo-input] %s" % factions_result["error"])
+		get_tree().quit(2)
+		return
+	_team_factions = factions_result["factions"]
+	# Tier band, strict like scenario/map: it decides WHICH SIMULATION TIER the demo's
+	# formations run at, so a malformed block must fail loudly rather than silently record a
+	# close-tier fight in a clip captioned as a far-tier one.
+	if script.has("tier_ranges"):
+		var band: Dictionary = parse_tier_band(script["tier_ranges"])
+		if band.has("error"):
+			push_error("[demo-input] %s" % band["error"])
+			get_tree().quit(2)
+			return
+		_promote_range = band["promote"]
+		_demote_range = band["demote"]
 	# The optional per-demo map block (field size, terrain patches, spawn lines).
 	# Strict like steps/scenario: map geometry decides WHAT battlefield the demo
 	# simulates, so a malformed block must fail the recording loudly rather than
@@ -198,6 +248,12 @@ func _start_battle() -> void:
 		_battle.spawn_line_ys = _map["spawn_lines"]
 	if _doctrine != "":
 		_battle.ai_doctrine = _doctrine   # likewise: overrides Battle's own default doctrine
+	if not _team_factions.is_empty():
+		_battle.team_factions = _team_factions   # likewise: Battle._ready hands these to the HUD
+	if _promote_range > 0.0:
+		# Likewise before add_child: Battle's first tier pass runs on the first tick.
+		_battle.promote_range = _promote_range
+		_battle.demote_range = _demote_range
 	add_child(_battle)
 	# Battle._ready spawns synchronously during add_child, so every unit is on the field now.
 	# Print the layout's fingerprint (so a new script can be stamped by copying it) and, when the
@@ -600,6 +656,42 @@ func _at(tick: int, ev: Dictionary) -> void:
 
 
 # --- helpers ---------------------------------------------------------------
+
+## Resolve an input script's "factions" list (per-team faction names, e.g. ["Sparta", "Rome"])
+## into {"factions": Array[int]} of Battle.team_factions' Faction.Type ids, or {"error": String}
+## describing the first problem. Shaped like parse_tier_band above so the caller reports and
+## quits the same way, and pure so it is unit-testable without a tree.
+##
+## Strict, like `steps`/`scenario` and unlike `camera`/`frames`: a name no faction claims, or a
+## list that doesn't name every team, would silently record a clip whose captions show the
+## plain names while the script claims a faction, and a plausible-looking wrong clip is worse
+## than a red job. A missing/empty list is not an error -- it just means "no faction", which is
+## what every script written before this field says.
+##
+## demos/README.md documents this as "one name per team", so a non-empty list must name every
+## team that will actually spawn: exactly two entries for a normal two-army battle, or one entry
+## when `is_drill` (Battle.drill_mode -- team 1 never spawns, so it has no faction to name). A
+## one-entry list on a non-drill battle would otherwise silently leave team 1 with no faction
+## while looking like it named both sides.
+static func parse_factions(raw, is_drill: bool) -> Dictionary:
+	if not (raw is Array):
+		return {"error": "'factions' must be an array of faction names, got %s." % typeof(raw)}
+	if raw.is_empty():
+		return {"factions": [] as Array[int]}
+	var expected: int = 1 if is_drill else 2
+	if raw.size() != expected:
+		return {"error": ("'factions' must name exactly %d team(s) for %s, got %d entries. " +
+				"One name per team; team 1 has no faction to name in drill mode.") %
+				[expected, "a drill" if is_drill else "a normal battle", raw.size()]}
+	var out: Array[int] = []
+	for entry in raw:
+		var f_id: int = Faction.type_from_name(str(entry))
+		if f_id == Faction.NONE:
+			return {"error": "unknown faction '%s'; expected one of %s." %
+					[entry, Faction.ALL_TYPES.map(func(f): return Faction.get_faction_name(f))]}
+		out.append(f_id)
+	return {"factions": out}
+
 
 func _vec(a) -> Vector2:
 	return Vector2(float(a[0]), float(a[1]))

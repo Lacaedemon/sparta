@@ -72,6 +72,7 @@ func _sample_unit() -> Unit:
 	u._pin_down_exposure_cd = 0.1
 	u._rout_timer = 3.0
 	u._shattered = true
+	u._far_tier_casualty_carry = 0.42   # the far tier's sub-soldier attrition carry
 	u._order_response_timer = 0.4
 	u._engaged_linger = 0.35
 	u._brace_settled_time = 0.6
@@ -155,6 +156,9 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(restored._formation_angle, original._formation_angle)
 	assert_eq(restored._shattered, original._shattered)
 	assert_eq(restored._rout_timer, original._rout_timer)
+	assert_eq(restored._far_tier_casualty_carry, original._far_tier_casualty_carry,
+		"the far tier's sub-soldier casualty carry survives a restore -- a mid-fight rewind"
+		+ " must resume from the same fraction, not from zero")
 	assert_eq(restored._engaged_linger, original._engaged_linger,
 		"the engaged afterglow window survives a restore -- is_engaged() must not flip")
 	assert_eq(restored._brace_settled_time, original._brace_settled_time,

@@ -10,6 +10,7 @@ extends CanvasLayer
 const BattleRef = preload("res://scripts/Battle.gd")
 const BuildInfoRef = preload("res://scripts/BuildInfo.gd")
 const CampaignBattleRef = preload("res://scripts/campaign/CampaignBattle.gd")
+const FactionRef = preload("res://scripts/Faction.gd")
 const SelectionManagerRef = preload("res://scripts/SelectionManager.gd")
 const UnitRef = preload("res://scripts/Unit.gd")
 
@@ -205,6 +206,16 @@ const _REFORM_MODE_NAMES := {
 	UnitRef.ReformMode.AUTO: "Auto",
 }
 
+# Which Faction.Type each team fights under, indexed by team number -- handed over by
+# Battle._ready (Battle.team_factions). Empty, or a team with no entry, means Faction.NONE:
+# every caption keeps the plain name, which is what a HUD built standalone (a test, a replay
+# with no prebattle choice behind it) sees. Display only; nothing here changes the simulation.
+var team_factions: Array = []
+# Whose doctrine the GLOBAL captions speak for -- the Menu's form-up section and, by default,
+# any readout not tied to one selected unit. Team 0 is the player's army in every battle mode
+# today; a caller staging something else (a spectated replay of the other side) can repoint it.
+var player_team: int = 0
+
 var _ctrl_bar: PanelContainer
 var _ctrl_formation_btn: MenuButton
 var _ctrl_stance_btn: MenuButton
@@ -380,6 +391,10 @@ func _ready() -> void:
 	# has no enemy to win against) — also handy as a plain "give up" from any other battle.
 	popup.add_item("Quit to Main Menu", MENU_QUIT_TO_MENU)
 	_sync_setting_toggles()
+	# Re-stamp the form-up labels now that the popup exists, in case set_team_factions()
+	# was already called before _ready() ran (Battle hands factions over in its own _ready,
+	# and node ready order isn't guaranteed). A no-op when team_factions is still empty.
+	_refresh_form_up_menu_labels()
 	popup.id_pressed.connect(_on_menu_id)
 	# Keep the check items in sync if a setting changes elsewhere. Use a named
 	# method (not a lambda) so the connection is tied to this node's lifetime and
@@ -916,9 +931,21 @@ func show_unit(u, group_count: int) -> void:
 		lines.append("Cohesion: %d%%" % mini(roundi(u.cohesion * 100.0), 99))
 	if u.training > 0.0:
 		lines.append("Training: %d%%" % clampi(roundi(u.training * 100.0), 1, 100))
-	lines.append("Formation: %s" % u.formation_summary())
+	lines.append("Formation: %s" % formation_caption(u, u.formation_mode))
 	lines.append("Width: %s" % UnitFormation.files_label_for_unit(u, UnitFormation.frontage(u)))
 	lines.append("Order: %s" % u.order_summary())
+	# The side's faction identity and its named historical doctrine, present only when this
+	# battle was told one -- absent entirely otherwise, matching the "Cohesion"/"Training"
+	# lines above that only appear when they apply. Faction.get_strategy_name is a display
+	# label for the side's doctrine, not a behavioral switch; Battle.ai_doctrine is what
+	# actually drives the enemy AI. Below the live-state block deliberately: the panel clamps
+	# to the space above the per-unit settings and scrolls past it, so the lines a player
+	# reads every few seconds (Formation/Width/Order) stay above the fold, and the two that
+	# never change once the battle starts are the ones that fall below it on a short window.
+	var faction_id: int = faction_for_team(u.team)
+	if faction_id != FactionRef.NONE:
+		lines.append("Faction: %s" % FactionRef.get_faction_name(faction_id))
+		lines.append("Doctrine: %s" % FactionRef.get_strategy_name(faction_id))
 	# Battle AI phase 4 (docs/battle-ai-design.md): a delegated unit's period-flavored
 	# subcommander rank, resolved from the player's own doctrine profile at delegation time
 	# (Unit.subcommander_rank_title). Absent entirely for a non-delegated unit, matching the
@@ -1574,10 +1601,57 @@ func _ctrl_bar_refresh_stance_popup() -> void:
 		popup.set_item_text(popup.get_item_index(item_id), _stance_item_text(entry))
 
 
+## Adopt the battle's per-team faction identities (Battle.team_factions) and restamp every
+## caption they change. Only the form-up menu is restamped eagerly: the formation button and
+## its menu are per-unit, and both are rebuilt from scratch by show_unit/_ctrl_bar_update_formation
+## the next time a unit is selected -- which is always after this call, since Battle hands the
+## factions over in its own _ready, before any input can select anything. If this runs before
+## the HUD's own _ready() has built the menu popup, _refresh_form_up_menu_labels() is a no-op
+## here; _ready() re-applies the stored team_factions once the popup exists.
+func set_team_factions(factions: Array) -> void:
+	team_factions = factions.duplicate()
+	_refresh_form_up_menu_labels()
+
+
+## The Faction.Type `team` fights under, or Faction.NONE when this HUD was never told (a
+## standalone HUD, a battle reached outside the prebattle path) or the team has no entry.
+func faction_for_team(team: int) -> int:
+	if team < 0 or team >= team_factions.size():
+		return FactionRef.NONE
+	return int(team_factions[team])
+
+
+## The formation caption for `unit` in `mode`: the live interval/stance label, carrying that
+## side's historical name when its faction has one for that mode ("0.45 m locked (synaspismos)")
+## and the bare label otherwise. The single place the HUD's three formation surfaces -- the
+## control-bar button, its drop-up menu, and the info panel's Formation line -- agree on how a
+## formation is named, so a faction can never reach one of them and miss the others.
+func formation_caption(unit, mode: int) -> String:
+	return FactionRef.get_formation_display_name(
+			faction_for_team(unit.team), mode, unit.formation_label_for_mode(mode))
+
+
+## Restamp the Menu's form-up item labels with the PLAYER faction's historical names -- both
+## sections (the default radio list and the Y-key cycle checklist) share one label per mode,
+## as _FORMUP_ENTRIES intends. Unlike the formation captions this is not per-unit: the form-up
+## distribution is a global setting the player picks for their own army, so it reads from
+## player_team rather than from whatever happens to be selected.
+func _refresh_form_up_menu_labels() -> void:
+	if _menu_button == null:
+		return
+	var popup := _menu_button.get_popup()
+	var f_id: int = faction_for_team(player_team)
+	for entry in _FORMUP_ENTRIES:
+		var label: String = FactionRef.get_form_up_display_name(
+				f_id, entry["mode"], str(entry["label"]))
+		popup.set_item_text(popup.get_item_index(entry["default_id"]), label)
+		popup.set_item_text(popup.get_item_index(entry["cycle_id"]), label)
+
+
 func _ctrl_bar_update_formation(unit) -> void:
 	if _ctrl_formation_btn == null or unit == null or not is_instance_valid(unit):
 		return
-	_ctrl_formation_btn.text = unit.formation_summary() + " ▾"
+	_ctrl_formation_btn.text = formation_caption(unit, unit.formation_mode) + " ▾"
 	_refresh_formation_menu_labels(unit)
 
 
@@ -1687,7 +1761,7 @@ func _refresh_formation_menu_labels(unit) -> void:
 	for mode: int in _FORMATION_MENU_ORDER:
 		var idx: int = popup.get_item_index(mode)
 		if idx >= 0:
-			popup.set_item_text(idx, unit.formation_label_for_mode(mode))
+			popup.set_item_text(idx, formation_caption(unit, mode))
 
 
 func _build_ctrl_stance_menu() -> Control:
@@ -1726,8 +1800,12 @@ func _on_formation_popup_id(id: int) -> void:
 		if not live.is_empty():
 			_ctrl_bar_update_formation(live[0])
 			return
-	_ctrl_formation_btn.text = UnitRef.formation_interval_label(
-			id, UnitRef.FORMATION_SPACING * UnitRef.spacing_scale_for_mode(id)) + " ▾"
+	# No live unit to read a pitch (or a team) off, so fall back to the infantry default
+	# interval under the PLAYER's faction -- the same side the ctrl bar commands.
+	_ctrl_formation_btn.text = FactionRef.get_formation_display_name(
+			faction_for_team(player_team), id,
+			UnitRef.formation_interval_label(
+					id, UnitRef.FORMATION_SPACING * UnitRef.spacing_scale_for_mode(id))) + " ▾"
 
 
 func _on_stance_popup_id(id: int) -> void:

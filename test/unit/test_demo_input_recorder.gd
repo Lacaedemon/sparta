@@ -142,3 +142,94 @@ func test_time_scale_fire_updates_engine_time_scale() -> void:
 	# Restore to prevent test bleed
 	Engine.time_scale = original
 
+
+# --- tier_ranges parsing -----------------------------------------------------------------
+
+func test_a_well_formed_tier_band_parses_to_its_two_distances() -> void:
+	var band: Dictionary = RecorderScript.parse_tier_band({"promote": 6.0, "demote": 95.0})
+	assert_false(band.has("error"), "a well-formed band parses")
+	assert_almost_eq(band["promote"], 6.0, 0.0001, "promote carries through")
+	assert_almost_eq(band["demote"], 95.0, 0.0001, "demote carries through")
+
+
+func test_a_malformed_tier_band_is_rejected() -> void:
+	for bad in [42, [], {}, {"promote": 6.0}, {"demote": 95.0}]:
+		assert_true(RecorderScript.parse_tier_band(bad).has("error"),
+			"a band that is not a dict with both keys is rejected: %s" % [bad])
+
+
+func test_a_tier_band_out_of_order_or_non_positive_is_rejected() -> void:
+	for bad in [{"promote": 95.0, "demote": 6.0}, {"promote": 6.0, "demote": 6.0},
+			{"promote": 0.0, "demote": 95.0}, {"promote": -5.0, "demote": 95.0}]:
+		assert_true(RecorderScript.parse_tier_band(bad).has("error"),
+			"0 < promote < demote is enforced: %s" % [bad])
+
+
+func test_a_non_finite_tier_band_is_rejected() -> void:
+	# Every comparison against NaN is false, so NaN passes `promote <= 0.0` AND
+	# `demote <= promote` -- without an explicit finiteness check it would reach Battle as a
+	# trigger distance no formation can satisfy, freezing the tier silently. INF is the same
+	# hazard one step less obvious: it satisfies the ordering rule outright.
+	assert_true(RecorderScript.parse_tier_band({"promote": NAN, "demote": 95.0}).has("error"),
+		"a NaN promote is rejected, not silently accepted")
+	assert_true(RecorderScript.parse_tier_band({"promote": 6.0, "demote": NAN}).has("error"),
+		"a NaN demote is rejected too")
+	assert_true(RecorderScript.parse_tier_band({"promote": 6.0, "demote": INF}).has("error"),
+		"an infinite demote is rejected, though it passes the ordering rule")
+	assert_true(RecorderScript.parse_tier_band({"promote": INF, "demote": INF}).has("error"),
+		"and so is an all-infinite band")
+	# The negative control for the reasoning above: confirm NaN really does slip the ordering
+	# rule, so this test guards a live hazard rather than a hypothetical one.
+	assert_false(NAN <= 0.0, "NaN does not compare as non-positive")
+	assert_false(95.0 <= NAN, "NaN does not compare as out-of-order")
+
+
+# --- factions parsing --------------------------------------------------------------------
+
+func test_an_empty_factions_list_is_not_an_error() -> void:
+	# Omitting the field (or writing an empty list) means "no faction", which is what every
+	# script written before this field says -- neither drill nor a normal battle require it.
+	for is_drill in [false, true]:
+		var result: Dictionary = RecorderScript.parse_factions([], is_drill)
+		assert_false(result.has("error"), "an empty list is accepted, drill=%s" % is_drill)
+		assert_eq(result["factions"], [] as Array[int])
+
+
+func test_two_names_parse_for_a_normal_battle() -> void:
+	var result: Dictionary = RecorderScript.parse_factions(["Sparta", "Rome"], false)
+	assert_false(result.has("error"), "two names name both teams of a normal battle")
+	assert_eq(result["factions"], [Faction.Type.SPARTA, Faction.Type.ROME] as Array[int])
+
+
+func test_one_name_parses_for_a_drill() -> void:
+	# Team 1 never spawns in a drill (Battle.drill_mode), so it has no faction to name.
+	var result: Dictionary = RecorderScript.parse_factions(["Sparta"], true)
+	assert_false(result.has("error"), "one name names the only team that spawns in a drill")
+	assert_eq(result["factions"], [Faction.Type.SPARTA] as Array[int])
+
+
+func test_one_name_is_rejected_for_a_normal_battle() -> void:
+	# The bug this guards: a 1-entry list on a non-drill battle used to be accepted, silently
+	# leaving team 1 with no faction while the script looked like it named both sides.
+	var result: Dictionary = RecorderScript.parse_factions(["Sparta"], false)
+	assert_true(result.has("error"),
+			"a single name is not enough to name both teams of a normal battle")
+
+
+func test_two_names_are_rejected_for_a_drill() -> void:
+	# A drill only spawns team 0, so naming a second team is a script/scenario mismatch worth
+	# failing loudly on, the same as any other malformed factions list.
+	var result: Dictionary = RecorderScript.parse_factions(["Sparta", "Rome"], true)
+	assert_true(result.has("error"), "a drill has only one team to name")
+
+
+func test_an_unrecognized_faction_name_is_rejected() -> void:
+	var result: Dictionary = RecorderScript.parse_factions(["Sparta", "Atlantis"], false)
+	assert_true(result.has("error"), "a name no faction claims is rejected")
+
+
+func test_a_non_array_factions_value_is_rejected() -> void:
+	for bad in [42, "Sparta", {}]:
+		assert_true(RecorderScript.parse_factions(bad, false).has("error"),
+				"factions must be an array: %s" % [bad])
+
