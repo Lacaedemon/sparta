@@ -340,20 +340,21 @@ static func _cover_one_flank(flank: Unit, outward: Vector2, group: Array, all_un
 
 
 static func _flank_is_outflanked(flank: Unit, outward: Vector2, all_units: Array, team: int) -> bool:
+	var flank_enemy_range_sq: float = FLANK_ENEMY_RANGE * FLANK_ENEMY_RANGE
 	for node in all_units:
 		var e := node as Unit
 		if e == null or e.team == team or e.state == Unit.State.DEAD \
 				or e.state == Unit.State.ROUTING:
 			continue
 		var to_e: Vector2 = e.position - flank.position
-		var d: float = to_e.length()
-		if d > FLANK_ENEMY_RANGE:
+		var dist_sq: float = to_e.length_squared()
+		if dist_sq > flank_enemy_range_sq:
 			continue
 		# Already at melee-contact distance: the flank unit's own UnitLeader flank-threat
 		# reaction already owns this case (see UnitLeader._flank_threat) -- the
 		# subcommander only reacts to a flank an enemy hasn't closed on yet.
 		var contact: float = flank.attack_range + Unit.RADIUS + e.RADIUS
-		if d <= contact:
+		if dist_sq <= contact * contact:
 			continue
 		if to_e.dot(outward) > 0.0:
 			return true
