@@ -225,18 +225,22 @@ one clause per line, which the splice-by-marker consumers read unchanged.
 
 ## 2026-09-02 agy: Godot check-only fails on addon classes like GutTest
 
-Running Godot `--check-only --script` does not initialize project addons or plugins,
-so scripts referencing addon classes such as `GutTest` fail with parse errors.
+Running Godot `--check-only --script`
+does not initialize project addons or plugins,
+so scripts referencing addon classes such as `GutTest`
+fail with parse errors.
 The check works for standalone RefCounted or Node scripts under `scripts/`.
 
 - **Do:** run Godot `--check-only` against standalone scripts,
   relying on the test runner for files that extend addon classes.
 
-- **Don't:** expect `--check-only` to resolve addon-provided class names like `GutTest`.
+- **Don't:** expect `--check-only` to resolve
+  addon-provided class names like `GutTest`.
 
 ## 2026-09-03 agy: three misses on the Settings extraction
 
-SettingsStorage.gd duplicated FORM_UP_DIST_MAX and FPS_CORNER_MAX from Settings.gd
+SettingsStorage.gd duplicated FORM_UP_DIST_MAX
+and FPS_CORNER_MAX from Settings.gd
 and clamped values on load,
 although the Settings property setters already own that clamping;
 the fix passes the one bound the loader needs as an argument.
@@ -247,7 +251,8 @@ load_from_path returned the defaults on a missing file,
 so the caller could not keep the original early return
 and reassigned every property instead.
 
-- **Do:** pass a bound into a storage helper as an argument from the owning class,
+- **Do:** pass a bound into a storage helper
+  as an argument from the owning class,
   keeping the constant canonical to its owner.
 
 - **Don't:** duplicate a constant or clamp a value in a storage helper
@@ -264,8 +269,15 @@ and reassigned every property instead.
 - **Don't:** return a populated defaults dictionary
   that hides the missing-file case from the caller.
 
-- **Do:** reference a production bound from a test through the script that owns it
+- **Do:** reference a production bound from a test
+  through the script that owns it
   (preload and read the const).
 
 - **Don't:** copy a production constant into a test file,
   or mix a named bound with its literal value in one file.
+
+- **Do:** when a loader replaces an "if value is Array" guard,
+  keep the non-Array branch falling back to the default,
+  since the caller assigns into a typed property.
+
+- **Don't:** return a raw cfg value of the wrong type from a loader.

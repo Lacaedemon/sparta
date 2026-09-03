@@ -78,8 +78,17 @@ func test_form_up_dist_cycle_sanitises_invalid_entries() -> void:
 	cfg.set_value("gameplay", "form_up_dist_cycle", [0, 99, -1, 1, "corrupt"])
 	cfg.save(TEST_PATH)
 
-	var loaded: Dictionary = SettingsStorage.load_from_path(TEST_PATH, _sample_defaults(), SettingsScript.FORM_UP_DIST_MAX)
+	var defaults: Dictionary = _sample_defaults()
+	var loaded: Dictionary = SettingsStorage.load_from_path(TEST_PATH, defaults, SettingsScript.FORM_UP_DIST_MAX)
 	assert_eq(loaded["form_up_dist_cycle"], [0, 1], "invalid distribution modes are filtered on load")
+
+	cfg.set_value("gameplay", "form_up_dist_cycle", "corrupt")
+	cfg.save(TEST_PATH)
+
+	var loaded_corrupt: Dictionary = SettingsStorage.load_from_path(TEST_PATH, defaults, SettingsScript.FORM_UP_DIST_MAX)
+	assert_eq(loaded_corrupt["form_up_dist_cycle"], defaults["form_up_dist_cycle"], "corrupt non-array form_up_dist_cycle restores default cycle")
+	loaded_corrupt["form_up_dist_cycle"].append(99)
+	assert_ne(loaded_corrupt["form_up_dist_cycle"], defaults["form_up_dist_cycle"], "restored cycle is a duplicate, not caller array")
 
 
 func test_out_of_range_form_up_dist_default_returned_unclamped() -> void:

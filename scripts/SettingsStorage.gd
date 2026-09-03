@@ -43,6 +43,12 @@ static func load_from_path(path: String, defaults: Dictionary, form_up_dist_max:
 		out["form_up_dist_cycle"] = (raw_cycle as Array).filter(
 			func(v: Variant) -> bool: return v is int and v >= 0 and v <= form_up_dist_max
 		)
+	else:
+		var default_cycle: Variant = defaults.get("form_up_dist_cycle", [])
+		if default_cycle is Array:
+			out["form_up_dist_cycle"] = (default_cycle as Array).duplicate()
+		else:
+			out["form_up_dist_cycle"] = []
 	var base_bindings: Dictionary = defaults.get("order_bindings", SettingsKeybindingsRef.DEFAULT_ORDER_BINDINGS)
 	var bindings: Dictionary = {}
 	for slug in SettingsKeybindingsRef.DEFAULT_ORDER_BINDINGS:

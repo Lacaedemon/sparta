@@ -17,10 +17,10 @@ const DEFAULT_ORDER_BINDINGS := {
 	"pin_down": KEY_PERIOD,
 	# all_out_attack's original default (KEY_PERIOD) now collides with pin_down
 	# above (added independently by another PR), so it falls back to the next
-	# free punctuation key. KEY_SLASH is already claimed (Shift+/ opens the
-	# shortcuts dialog, HUD._is_shortcuts_keypress) and KEY_BRACKETLEFT/
-	# KEY_BRACKETRIGHT are already claimed for frontage resize
-	# (SelectionManager.gd), so apostrophe is the next unclaimed punctuation key.
+	# free punctuation key. KEY_SLASH is claimed for the shortcuts dialog
+	# (Shift+/, see HUD._is_shortcuts_keypress); KEY_BRACKETLEFT and
+	# KEY_BRACKETRIGHT are claimed for frontage resize (SelectionManager.gd),
+	# so apostrophe is the next unclaimed punctuation key.
 	"all_out_attack": KEY_APOSTROPHE,
 	# Same letter-key exhaustion as above; comma/semicolon/period/apostrophe are
 	# already taken, so chase takes the next punctuation-row key over.
@@ -34,19 +34,19 @@ const DEFAULT_ORDER_BINDINGS := {
 	"knockback_focus": KEY_EQUAL,
 	# Every letter key and the whole punctuation row to the right of the home keys
 	# (comma/semicolon/period/apostrophe/backslash/minus/equals) is already claimed by
-	# an earlier order mode above. Backtick (the key left of "1", unshifted grave
-	# accent) is the next unclaimed key on the keyboard.
+	# an earlier order mode above. Backtick (unshifted grave accent left of "1")
+	# is the next unclaimed key on the keyboard.
 	"give_ground": KEY_QUOTELEFT,
 	# KEY_P collides with HUD._is_pause_keypress()'s pause toggle; KEY_SLASH is the next unclaimed key.
 	"push": KEY_SLASH,
 	# Every letter key, digit (control groups), and punctuation-row key is now claimed by an
-	# earlier order mode, a fixed camera/UI hotkey, or a maneuver drill (see
-	# SelectionManager.gd/HUD.gd's own key maps) -- there is no free key left on the main
-	# keyboard rows. Function keys are otherwise unused in this project (F1 and F5 are the
-	# two exceptions -- HUD._is_tray_toggle_keypress and HUD._is_slowmo_keypress -- see
-	# their own comments on why F-keys are the fallback once every other key is spoken
-	# for), so F2 is both free and, like F1 and F5, immune to Godot's built-in UI action
-	# bindings.
+	# earlier order mode, a fixed camera/UI hotkey, or a maneuver drill.
+	# See SelectionManager.gd and HUD.gd's own key maps; there is no free key left on
+	# the main keyboard rows. Function keys are otherwise unused in this project.
+	# F1 and F5 are the two exceptions -- HUD._is_tray_toggle_keypress and
+	# HUD._is_slowmo_keypress -- see their own comments on why F-keys are the
+	# fallback once every other key is spoken for. F2 is both free and, like F1
+	# and F5, immune to Godot's built-in UI action bindings.
 	"multiple_engage": KEY_F2,
 	# F1/F2 are already claimed (tray toggle, multiple_engage above); F3 is the next free
 	# function key.
