@@ -354,6 +354,7 @@ static func _flank_is_outflanked(flank: Unit, outward: Vector2, all_units: Array
 		# reaction already owns this case (see UnitLeader._flank_threat) -- the
 		# subcommander only reacts to a flank an enemy hasn't closed on yet.
 		var contact: float = flank.attack_range + Unit.RADIUS + e.RADIUS
+		# OPTIMIZATION: Use length_squared for cheaper distance checks
 		if dist_sq <= contact * contact:
 			continue
 		if to_e.dot(outward) > 0.0:
