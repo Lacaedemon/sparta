@@ -1,7 +1,7 @@
 # agy mistake ledger
 
 The standing rules for every `agy` (Antigravity CLI, Gemini) dispatch in this repo.
-Each rule is a mistake agy made on a real PR, stated as the action that avoids it.
+Each rule is a mistake agy made on a real PR, or a repo gate one of its fix rounds tripped, stated as the action that avoids it.
 The orchestrator prepends the block between the two marker lines (`STANDING RULES` and `END OF STANDING RULES`, each alone on its line) verbatim to every agy brief,
 so a learning from one PR reaches the next dispatch on any other branch.
 Each agy fix round appends its own new rule here on the PR branch, and the orchestrator merges the additions on `main`.
@@ -9,7 +9,7 @@ The cross-repo rule behind this file is `shared/workflow/improve-your-subagents.
 
 STANDING RULES
 
-Each rule below is a past mistake.
+Each rule below is a past mistake, or a repo gate that a past fix round tripped.
 Violating one costs a fix round.
 
 1. Re-read the target file at every line you cite;
