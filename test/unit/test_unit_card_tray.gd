@@ -168,6 +168,36 @@ func test_move_unit_syncs_line_index_for_both_units_on_a_swap() -> void:
 	assert_eq(u1.line_index, 1, "the unit swapped out to row 1 picks up that row's line")
 
 
+class _StubBattle:
+	var calls: Array = []
+	func enqueue_unit_settings(uids: Array, _w: int, _r: int, _f: int, line_index: int) -> void:
+		calls.append({"uids": uids.duplicate(), "line_index": line_index})
+
+
+func test_move_unit_routes_line_assignment_through_battle_when_wired() -> void:
+	var tray := _tray()
+	var stub := _StubBattle.new()
+	tray.set_battle(stub)
+	var u := _named_unit("Hastati 1")
+	u.uid = 42
+	u.line_index = 0
+	tray.sync_units([u])
+	tray.add_row()
+	# Moving a unit within the same row records no line call.
+	tray.move_unit(0, 0, 0, 1)
+	assert_eq(stub.calls.size(), 0, "moving within row 0 records no line call")
+	# Moving a unit across rows routes through the battle order queue.
+	tray.move_unit(0, 1, 1, 1)
+	assert_eq(stub.calls.size(), 1, "exactly one call recorded across rows")
+	assert_eq(stub.calls[0]["uids"], [42], "carries the moved unit's uid")
+	assert_eq(stub.calls[0]["line_index"], 1, "carries the target row")
+	assert_eq(u.line_index, 0, "line_index was not written directly by the tray")
+	# Moving within the new row once updated records no line call.
+	u.line_index = 1
+	tray.move_unit(1, 1, 1, 0)
+	assert_eq(stub.calls.size(), 1, "moving within row 1 records no line call")
+
+
 func test_move_unit_ignores_a_stale_endpoint() -> void:
 	var tray := _tray()
 	var u := _named_unit("Cavalry 1")
@@ -426,6 +456,28 @@ func test_apply_grid_syncs_each_occupants_line_index_to_its_row() -> void:
 	tray.apply_grid([[u1, null], [null, u2]])
 	assert_eq(u1.line_index, 0, "row-0 occupant is line 0")
 	assert_eq(u2.line_index, 1, "row-1 occupant picks up its row as its line")
+
+
+func test_apply_grid_batches_line_assignments_per_row_when_wired() -> void:
+	var tray := _tray()
+	var stub := _StubBattle.new()
+	tray.set_battle(stub)
+	var u1 := _named_unit("Hastati 1")
+	var u2 := _named_unit("Hastati 2")
+	var u3 := _named_unit("Triarii 1")
+	u1.uid = 101
+	u2.uid = 102
+	u3.uid = 103
+	u1.line_index = 1
+	u2.line_index = 1
+	u3.line_index = 1
+	tray.apply_grid([[u1, u2], [u3, null]])
+	assert_eq(stub.calls.size(), 1, "exactly one call batched for row 0")
+	assert_eq(stub.calls[0]["uids"], [u1.uid, u2.uid], "row 0 batches u1 and u2")
+	assert_eq(stub.calls[0]["line_index"], 0, "target row is 0")
+	assert_eq(u1.line_index, 1, "line_index not written directly when wired")
+	assert_eq(u2.line_index, 1, "line_index not written directly when wired")
+	assert_eq(u3.line_index, 1, "u3 already at row 1 remains untouched")
 
 
 func test_apply_uid_grid_resolves_uids_and_treats_missing_as_empty() -> void:

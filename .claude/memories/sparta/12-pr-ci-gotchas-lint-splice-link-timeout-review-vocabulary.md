@@ -211,6 +211,17 @@ status checks (#1432), so under `mwc` the agent is the only gate.
 Links/provenance: measured 2026-09-01 on `Lacaedemon/sparta` CI (workflow runs
 observed on PRs in the #1452/#1453/#1459/#1462 range).
 
+## agy: tautological replay test and unwired apply_grid coverage (2026-09-02)
+
+- **Do:** write tests that fail without the production change by reasoning about pre-patch code.
+- **Don't:** add tests that already pass against unchanged code due to existing payload handling.
+- **Do:** test every changed call path when changing a shared helper or dispatch method.
+- **Don't:** assume testing one caller covers others that batch or structure inputs differently.
+- **Do:** keep every comment describing an order payload key in sync when new producers arise.
+- **Don't:** leave payload key comments listing only historical order sources when new ones carry it.
+- **Do:** mirror the sibling functions' empty-input guard when extending an enqueue_* method.
+- **Don't:** describe an integer field as a flag in a doc comment.
+
 ## agy: coverage tokenizer poisoning by trailing comments (2026-09-02)
 
 Coverage.gd counts bracket openers on code lines including trailing comments,

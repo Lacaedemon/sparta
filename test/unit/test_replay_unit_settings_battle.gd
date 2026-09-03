@@ -177,3 +177,52 @@ func test_a_mid_battle_file_major_reform_mode_toggle_replays_identically() -> vo
 
 	assert_eq(ru.file_major_reform_mode, live_file_major_mode,
 		"the mid-battle toggle reproduces identically on replay, not just the spawn default")
+
+
+func test_a_mid_battle_line_index_assignment_replays_identically() -> void:
+	# Infantry defaults line_index to 0 (front line), so assigning line 2 mid-battle is
+	# a real, provable state change -- not just the spawn default holding.
+	var scenario := [
+		{"team": 0, "type": "Infantry", "x": SPAWN.x, "y": SPAWN.y, "count": 20, "facing": [0, 1]},
+	]
+
+	Replay.forced_seed = 54321
+	var live: Node = _spawn(scenario)
+	var u: Unit = _lone_unit()
+	assert_not_null(u, "the scenario spawned the lone unit")
+	if u == null:
+		return
+	assert_eq(u.line_index, 0, "sanity: Infantry defaults line_index to 0")
+
+	for _k in range(10):
+		await get_tree().physics_frame
+	live.enqueue_unit_settings([u.uid], BattleScript.UnitSettingToggle.LEAVE,
+			BattleScript.UnitSettingToggle.LEAVE,
+			BattleScript.REFORM_MODE_TOGGLE_LEAVE, 2)
+	assert_eq(u.line_index, 2, "the line assignment applies live immediately")
+	await get_tree().physics_frame
+
+	for _k in range(10):
+		await get_tree().physics_frame
+	var live_final_tick: int = live.current_tick()
+	var live_line_index: int = u.line_index
+
+	var path: String = Replay.save("Test", live_final_tick)
+	assert_ne(path, "", "the recording saves")
+	live.free()
+	await get_tree().physics_frame
+
+	assert_true(Replay.start_playback(path), "the saved replay loads")
+	var replayed: Node = _spawn(scenario)
+	var ru: Unit = _lone_unit()
+	assert_not_null(ru, "the replayed scenario spawns the same lone unit")
+	if ru == null:
+		return
+	assert_eq(ru.line_index, 0, "sanity: the replayed unit starts at the same spawn default")
+
+	while replayed.current_tick() < live_final_tick:
+		await get_tree().physics_frame
+
+	assert_eq(ru.line_index, live_line_index,
+		"the mid-battle line assignment reproduces identically on replay, not just the spawn default")
+
