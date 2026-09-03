@@ -210,3 +210,15 @@ status checks (#1432), so under `mwc` the agent is the only gate.
 
 Links/provenance: measured 2026-09-01 on `Lacaedemon/sparta` CI (workflow runs
 observed on PRs in the #1452/#1453/#1459/#1462 range).
+
+## check-new-line-breaks flags a long line with a mid-line semicolon, numbered lists included
+
+`check / check-new-line-breaks` runs with `clause-breaks: true` and `clause-min-length: 80`:
+any ADDED line over 80 characters that carries a semicolon before its end fails the job,
+and a numbered-list item counts like prose.
+Measured 2026-09-02 on the agy ledger (nine rules failed in one push).
+The fix is a continuation line indented three spaces under the item,
+one clause per line, which the splice-by-marker consumers read unchanged.
+
+- **Do:** break a list item at its semicolon or comma before it passes 80 characters.
+- **Don't:** treat numbered rules as exempt from the semantic-line-break check.
