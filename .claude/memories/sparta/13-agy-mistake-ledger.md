@@ -72,6 +72,12 @@ Violating one costs a fix round.
 17. Describe a value constraint in a comment using the constant's exact identifier (e.g. ZETA,
    not zeta), keeping casing identical to the declaration.
 
+18. Markdown: a list whose items wrap onto continuation lines must be loose
+   (a blank line between items),
+   because the blocking lint step is the list-item splice check,
+   which fails when an item follows a wrapped item with no blank line;
+   a tight list is fine only when every item is a single line.
+
 END OF STANDING RULES
 
 ## Provenance
