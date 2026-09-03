@@ -48,6 +48,9 @@ once in your tree.
 It writes `demos/shots/ops-per-tick-<issue-or-pr>.png`,
 deriving the slug from the branch name
 so concurrent perf PRs do not clobber each other's committed evidence.
+When no slug can be derived (detached HEAD, the main branch, or a branch name with no digits),
+the script exits 1 and asks for an explicit `[out.png]` argument.
+CI or a worktree checked out at a commit should pass `[out.png]` explicitly.
 If the graph file is already tracked by git,
 the tool refuses to overwrite it
 unless `SPARTA_PERF_OVERWRITE=1` is set.

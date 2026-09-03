@@ -225,3 +225,5 @@ A sibling script's docstring example was left stale.
 - Don't: leave legacy output file paths in sibling docstrings after changing tool output naming.
 - Do: put a blank line between a paragraph and the list that follows it in Markdown, because the repo's lint job fails on a list item glued to prose.
 - Don't: start a bullet list on the line right after a sentence.
+- Do: document every exit-1 path a tool gains in the same README edit that documents the new default.
+- Don't: describe the happy path of a new default and leave its error case only in --help.
