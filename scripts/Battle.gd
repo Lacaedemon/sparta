@@ -114,16 +114,17 @@ enum RankRelief { LEAVE = 0, ON = 1, OFF = 2 }
 # AND facing), which the sim reads, so it IS recorded and replayed like a move (see ORDER_WHEEL).
 const ORDER_COUNTERMARCH := -8
 # Sentinel for a unit-settings-only order (no movement, no target): writes the durable
-# per-unit walk_advance, reform_before_move, and/or file_major_reform_mode flags, leaving all
-# movement/formation/stance state untouched. Mirrors ORDER_STANCE_ONLY's shape, but for the
-# settings the player toggles per-unit from the info panel (SelectionManager.
-# set_selected_walk_advance/set_selected_reform_before_move/
-# cycle_selected_file_major_reform_mode) rather than the order-mode stance -- see
-# enqueue_unit_settings. walk_advance/reform_before_move each ride their own tri-state
-# UnitSettingToggle field ("walk_advance_toggle"/"reform_toggle"), so a mixed selection's
-# untouched setting isn't silently forced to one value; file_major_reform_mode rides its own
-# "file_major_reform_mode_toggle" field (see REFORM_MODE_TOGGLE_LEAVE below) since it's a
-# 3-value mode, not a plain on/off.
+# per-unit walk_advance, reform_before_move, file_major_reform_mode, and/or line_index
+# flags, leaving all movement/formation/stance state untouched. Mirrors ORDER_STANCE_ONLY's
+# shape, but for the settings the player toggles per-unit from the info panel
+# (SelectionManager.set_selected_walk_advance/set_selected_reform_before_move/
+# cycle_selected_file_major_reform_mode) or assigns via tray row moves rather than the
+# order-mode stance -- see enqueue_unit_settings. walk_advance/reform_before_move each
+# ride their own tri-state UnitSettingToggle field ("walk_advance_toggle"/"reform_toggle"),
+# so a mixed selection's untouched setting isn't silently forced to one value;
+# file_major_reform_mode rides its own "file_major_reform_mode_toggle" field (see
+# REFORM_MODE_TOGGLE_LEAVE below) since it's a 3-value mode, not a plain on/off; line_index
+# rides "line" (>= 0 to assign, -1 = LINE_INDEX_UNCHANGED).
 const ORDER_UNIT_SETTINGS_ONLY := -9
 # Tri-state toggle values for a unit-settings order's "walk_advance_toggle"/"reform_toggle"
 # fields, mirroring RankRelief's LEAVE/ON/OFF shape above.
@@ -2032,24 +2033,27 @@ func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 	_apply_order_live(cmd)
 
 
-## Set the durable per-unit walk_advance, reform_before_move, and/or file_major_reform_mode
-## fields on a set of units in place -- no movement, no target (mirrors enqueue_stance's
+## Set the durable per-unit walk_advance, reform_before_move, file_major_reform_mode, and/or
+## line_index fields on a set of units in place -- no movement, no target (mirrors enqueue_stance's
 ## shape). walk_advance_toggle/reform_toggle are each a UnitSettingToggle (LEAVE keeps each
 ## unit's current value; ON/OFF write it); file_major_reform_mode_toggle is
 ## REFORM_MODE_TOGGLE_LEAVE (-1, keeps each unit's current mode) or a Unit.ReformMode ordinal
 ## (0/1/2) to write -- a plain on/off doesn't fit a 3-value mode, see REFORM_MODE_TOGGLE_LEAVE's
-## own doc comment. So a mixed selection's untouched setting is never forced to one value.
-## Recorded so replays stay exact: unlike the old order-baked "walk_advance"/"reform" cmd
-## fields this replaces, these are genuine persistent unit state a mid-battle toggle can
-## change, so the toggle itself -- not just its downstream effect -- has to ride the replay
+## own doc comment; line_index is LINE_INDEX_UNCHANGED (-1, keeps each unit's current line) or
+## a row index (>= 0) to assign. So a mixed selection's untouched setting is never forced to
+## one value. Recorded so replays stay exact: unlike the old order-baked "walk_advance"/"reform"
+## cmd fields this replaces, these are genuine persistent unit state a mid-battle change can
+## affect, so the setting itself -- not just its downstream effect -- has to ride the replay
 ## stream, the same way enqueue_stance's rank-relief toggle already does.
 func enqueue_unit_settings(uids: Array, walk_advance_toggle: int = UnitSettingToggle.LEAVE,
 		reform_toggle: int = UnitSettingToggle.LEAVE,
-		file_major_reform_mode_toggle: int = REFORM_MODE_TOGGLE_LEAVE) -> void:
+		file_major_reform_mode_toggle: int = REFORM_MODE_TOGGLE_LEAVE,
+		line_index: int = LINE_INDEX_UNCHANGED) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	if walk_advance_toggle == UnitSettingToggle.LEAVE and reform_toggle == UnitSettingToggle.LEAVE \
-			and file_major_reform_mode_toggle == REFORM_MODE_TOGGLE_LEAVE:
+			and file_major_reform_mode_toggle == REFORM_MODE_TOGGLE_LEAVE \
+			and line_index == LINE_INDEX_UNCHANGED:
 		return
 	var cmd := {
 		"units": uids,
@@ -2060,6 +2064,7 @@ func enqueue_unit_settings(uids: Array, walk_advance_toggle: int = UnitSettingTo
 		"walk_advance_toggle": walk_advance_toggle,
 		"reform_toggle": reform_toggle,
 		"file_major_reform_mode_toggle": file_major_reform_mode_toggle,
+		"line": line_index,
 	}
 	_pending_orders.append(cmd)
 	_apply_order_live(cmd)
@@ -2243,16 +2248,17 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 			if u.current_order == null:
 				u.set_current_order(Order.new_switch_weapon(weapon_id))
 		return
-	# Unit-settings-only: write the durable walk_advance, reform_before_move, and/or
-	# file_major_reform_mode fields on each unit, leaving all movement/formation/stance state
-	# untouched. Same instantaneous-write shape as the stance branch above, minus any
-	# queue/order-tree interaction -- these are plain unit fields, not something a replay
-	# transcript needs to show as an order.
+	# Unit-settings-only: write durable per-unit settings (walk_advance, reform_before_move,
+	# file_major_reform_mode, and/or line_index) on each unit, leaving all movement/formation/
+	# stance state untouched. Same instantaneous-write shape as the stance branch above, minus
+	# any queue/order-tree interaction -- these are unit fields and settings recorded and
+	# replayed without an order-tree entry.
 	if target_uid == ORDER_UNIT_SETTINGS_ONLY:
 		var walk_toggle: int = int(cmd.get("walk_advance_toggle", UnitSettingToggle.LEAVE))
 		var reform_toggle: int = int(cmd.get("reform_toggle", UnitSettingToggle.LEAVE))
 		var file_major_mode_toggle: int = \
 				int(cmd.get("file_major_reform_mode_toggle", REFORM_MODE_TOGGLE_LEAVE))
+		var cmd_line: int = int(cmd.get("line", LINE_INDEX_UNCHANGED))
 		for uid in cmd["units"]:
 			var u: Unit = _unit_by_uid(int(uid))
 			if u == null:
@@ -2267,6 +2273,8 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				u.reform_before_move = false
 			if file_major_mode_toggle != REFORM_MODE_TOGGLE_LEAVE:
 				u.file_major_reform_mode = file_major_mode_toggle
+			if cmd_line != LINE_INDEX_UNCHANGED:
+				u.line_index = cmd_line
 		return
 	# Arrow-key nudge: each unit steps a small fixed distance to its own side/rear,
 	# holding facing (ordered_facing set), leaving stance and formation untouched. A

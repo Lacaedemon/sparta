@@ -13,6 +13,7 @@ extends PanelContainer
 signal group_changed(n: int)
 
 const UnitRef = preload("res://scripts/Unit.gd")
+const BattleRef = preload("res://scripts/Battle.gd")
 const DEFAULT_COLUMNS := 4
 const _EMPTY_CELL_SIZE := Vector2(90.0, 40.0)
 const MAX_GROUP := 9
@@ -29,6 +30,7 @@ var _rem_col_btn: Button
 var _row_placement_check: CheckBox
 var _group_selector: SpinBox
 var _sel_mgr = null
+var _battle = null
 
 
 func _ready() -> void:
@@ -109,6 +111,29 @@ func _ready() -> void:
 
 func set_selection_manager(sm) -> void:
 	_sel_mgr = sm
+
+
+func set_battle(b) -> void:
+	_battle = b
+
+
+func _assign_line(units: Array, row: int) -> void:
+	if _battle != null and is_instance_valid(_battle):
+		var uids: Array = []
+		for u in units:
+			if u is UnitRef and is_instance_valid(u) and u.state != UnitRef.State.DEAD \
+					and u.line_index != row:
+				uids.append(u.uid)
+		if not uids.is_empty():
+			_battle.enqueue_unit_settings(uids, BattleRef.UnitSettingToggle.LEAVE,
+					BattleRef.UnitSettingToggle.LEAVE,
+					BattleRef.REFORM_MODE_TOGGLE_LEAVE, row)
+	else:
+		# Fallback direct write for a tray with no battle wired (e.g. standalone
+		# unit tests). This fallback is deliberate and is not used in gameplay.
+		for u in units:
+			if u is UnitRef and is_instance_valid(u) and u.state != UnitRef.State.DEAD:
+				u.line_index = row
 
 
 ## The grid's current column count -- every row shares it. Falls back to DEFAULT_COLUMNS
@@ -250,10 +275,12 @@ func apply_grid(grid: Array) -> void:
 	# a tray reassignment (drag between rows, undo/redo) the same way it survives a
 	# checkerboard/tray-grid form-up (SelectionManager._tray_grid_slices/_checkerboard_slices).
 	for r_idx in range(_grid.size()):
+		var occupants: Array = []
 		for c_idx in range(_grid[r_idx].size()):
 			var u: UnitRef = _grid[r_idx][c_idx] as UnitRef
 			if u != null and is_instance_valid(u):
-				u.line_index = r_idx
+				occupants.append(u)
+		_assign_line(occupants, r_idx)
 	_rebuild_ui()
 
 
@@ -290,10 +317,8 @@ func move_unit(from_r: int, from_c: int, to_r: int, to_c: int) -> void:
 	var tmp = _grid[to_r][to_c]
 	_grid[to_r][to_c] = _grid[from_r][from_c]
 	_grid[from_r][from_c] = tmp
-	if _grid[to_r][to_c] is UnitRef and is_instance_valid(_grid[to_r][to_c]):
-		_grid[to_r][to_c].line_index = to_r
-	if _grid[from_r][from_c] is UnitRef and is_instance_valid(_grid[from_r][from_c]):
-		_grid[from_r][from_c].line_index = from_r
+	_assign_line([_grid[to_r][to_c]], to_r)
+	_assign_line([_grid[from_r][from_c]], from_r)
 	_rebuild_ui()
 
 

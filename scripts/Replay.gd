@@ -72,7 +72,8 @@ var forced_seed: int = -1
 #                   omitted when -1 = Battle.REFORM_MODE_TOGGLE_LEAVE -- can't reuse 0 the
 #                   way the two toggles above do, since 0 is a legitimate ReformMode value),
 #               "line"?: int (the persistent line-membership index Unit.line_index a
-#                   checkerboard / tray-grid form-up assigns -- 0 for the front line, 1+ for a
+#                   checkerboard / tray-grid form-up assigns or a unit-settings order
+#                   from a tray row move carries -- 0 for the front line, 1+ for a
 #                   reserve line; omitted when -1 = Battle.LINE_INDEX_UNCHANGED, which is also
 #                   how a missing key reads, so a plain drag and every pre-line replay leave
 #                   each unit's existing line_index alone) }.
@@ -406,8 +407,9 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	# -1 = Battle.LINE_INDEX_UNCHANGED (the default -- leave each ordered unit's persistent
 	# Unit.line_index alone; can't reuse 0 the way the two toggles above do, since 0 is a
 	# legitimate line index -- the front line -- not a spare sentinel). A checkerboard or
-	# tray-grid form-up assigns a real (>= 0) index, which has to ride the replay stream or a
-	# recorded acies triplex deploy plays back with every unit's line membership dropped.
+	# tray-grid form-up assigns a real (>= 0) index, and a unit-settings order from a tray row
+	# move carries it too, which has to ride the replay stream or a recorded acies triplex deploy
+	# plays back with every unit's line membership dropped.
 	# Omitted for a plain drag and every other order kind so old replays stay valid.
 	if line_index != -1:
 		entry["line"] = line_index
