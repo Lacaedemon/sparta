@@ -27,15 +27,19 @@ const BuildInfoRef = preload("res://scripts/BuildInfo.gd")
 const ReplayCameraTrackRef = preload("res://scripts/ReplayCameraTrack.gd")
 const ReplayPointerTrackRef = preload("res://scripts/ReplayPointerTrack.gd")
 const ReplayKeyTrackRef = preload("res://scripts/ReplayKeyTrack.gd")
+const ReplayTimeScaleTrackRef = preload("res://scripts/ReplayTimeScaleTrack.gd")
+const ReplayStorageRef = preload("res://scripts/ReplayStorage.gd")
+const ReplayCodecRef = preload("res://scripts/ReplayCodec.gd")
+const ReplayDecoderRef = preload("res://scripts/ReplayDecoder.gd")
 
 enum Mode { IDLE, RECORD, PLAYBACK }
 
-const DIR := "user://replays"
-const FORMAT_VERSION := 1
+const DIR := ReplayStorageRef.DIR
+const FORMAT_VERSION := ReplayCodecRef.FORMAT_VERSION
 # The per-order "mode" field (smart orders) is additive and back-compatible:
 # old replays omit it and load with mode 0 (OrderMode.NORMAL = current behaviour),
 # so no version bump is needed and existing v1 replays still play.
-const PHYSICS_TPS := 60
+const PHYSICS_TPS := ReplayCodecRef.PHYSICS_TPS
 
 # IDLE before a battle is set up; RECORD while capturing a live battle;
 # PLAYBACK while re-running a saved one.
@@ -139,8 +143,13 @@ var _key_track: Array:
 # values are not recorded (see record_time_scale_change). Additive and back-compatible:
 # replays without this track apply no time_scale changes during playback, exactly as before
 # this field existed.
-var _time_scale_track: Array = []
-var _time_scale_index: int = 0
+var _time_scale := ReplayTimeScaleTrackRef.new()
+var _time_scale_track: Array:
+	get: return _time_scale.track
+	set(v): _time_scale.track = v
+var _time_scale_index: int:
+	get: return _time_scale.index
+	set(v): _time_scale.index = v
 
 # Cursor moves smaller than this (world px) don't add a keyframe — drops sub-pixel jitter
 # while keeping deliberate motion. Larger than the camera track's exact dedup because the
@@ -211,8 +220,7 @@ func start_recording() -> void:
 	_camera.reset()
 	_pointer.reset()
 	_keys.reset()
-	_time_scale_track.clear()
-	_time_scale_index = 0
+	_time_scale.reset()
 	drive_camera = false
 	show_demo_orders = false
 	_play_index = 0
@@ -231,7 +239,7 @@ func start_recording() -> void:
 ## will see `mode == PLAYBACK` and re-run from the loaded seed instead of
 ## starting a new recording.
 func start_playback(path: String) -> bool:
-	var data := _read_file(path)
+	var data := ReplayStorageRef.read_file(path)
 	if data.is_empty():
 		return false
 	if int(data.get("version", 0)) != FORMAT_VERSION:
@@ -243,9 +251,10 @@ func start_playback(path: String) -> bool:
 	if int(data.get("physics_tps", 0)) != PHYSICS_TPS:
 		push_warning("Replay physics tick rate mismatch in %s; skipping." % path)
 		return false
+	var decoded := ReplayDecoderRef.decode(data)
 	# A commit mismatch doesn't necessarily desync (most commits touch nothing replay-
 	# affecting), so this is a warning, not a reject -- see last_load_sha_mismatch's doc.
-	var recorded_sha: String = str(data.get("commit_sha", ""))
+	var recorded_sha: String = str(decoded.get("commit_sha", ""))
 	last_load_sha_mismatch = "" if recorded_sha == "" or recorded_sha == BuildInfoRef.COMMIT_SHA \
 			else recorded_sha
 	if last_load_sha_mismatch != "":
@@ -254,99 +263,35 @@ func start_playback(path: String) -> bool:
 
 	# Seed is stored as a string: JSON numbers are float64 and would lose
 	# precision on a full 64-bit seed, silently desyncing the replay.
-	seed_value = int(str(data.get("seed", "0")))
+	seed_value = int(decoded.get("seed", 0))
 	rng.seed = seed_value
-	# The optional map block (absent in pre-map and default-map replays, which
-	# then rebuild the default battlefield). Applied by Battle._ready().
-	map = data.get("map", {})
+	# The optional map block; absent in pre-map and default-map replays, which
+	# then rebuild the default battlefield. Applied by Battle._ready().
+	map = decoded.get("map", {})
 	# The optional spawn-layout stamp (absent in pre-stamp replays, which skip the check).
 	# Battle._ready compares it against the freshly-spawned layout and sets
 	# last_load_spawn_mismatch on a divergence -- cleared here so a re-load re-checks cleanly.
-	loaded_spawn_fingerprint = str(data.get("spawn_fingerprint", ""))
+	loaded_spawn_fingerprint = str(decoded.get("spawn_fingerprint", ""))
 	last_load_spawn_mismatch = ""
-	_orders.clear()
-	for o in data.get("orders", []):
-		var uids: Array = []
-		for u in o.get("units", []):
-			uids.append(int(u))
-		var entry := {
-			"tick": int(o.get("tick", 0)),
-			"units": uids,
-			"x": float(o.get("x", 0.0)),
-			"y": float(o.get("y", 0.0)),
-			"target": int(o.get("target", -1)),
-			"mode": int(o.get("mode", 0)),   # 0 = OrderMode.NORMAL
-		}
-		if o.has("formation"):
-			entry["formation"] = int(o["formation"])
-		if o.has("frontage"):
-			entry["frontage"] = int(o["frontage"])
-		if o.has("anchor_offset"):
-			entry["anchor_offset"] = float(o["anchor_offset"])
-		if o.has("face"):
-			entry["face"] = float(o["face"])
-		if o.has("group_attack"):
-			entry["group_attack"] = int(o["group_attack"])
-		if o.has("form_up_group"):
-			entry["form_up_group"] = int(o["form_up_group"])
-		if o.has("walk_advance_toggle"):
-			entry["walk_advance_toggle"] = int(o["walk_advance_toggle"])
-		if o.has("reform_toggle"):
-			entry["reform_toggle"] = int(o["reform_toggle"])
-		if o.has("file_major_reform_mode_toggle"):
-			entry["file_major_reform_mode_toggle"] = int(o["file_major_reform_mode_toggle"])
-		# Absent in a pre-line replay (and in every plain form-up), which then reads back as
-		# Battle.LINE_INDEX_UNCHANGED in _apply_order_cmd -- each unit keeps the line_index it
-		# already has, exactly as those replays behaved before this field existed.
-		if o.has("line"):
-			entry["line"] = int(o["line"])
-		_orders.append(entry)
+	_orders = decoded.get("orders", [])
 	_play_index = 0
 	# Load the optional presentation (camera) track. Absent in pre-camera replays,
 	# which then play with the default static camera.
 	_camera.reset()
-	for c in data.get("camera", []):
-		_camera.track.append({
-			"tick": int(c.get("tick", 0)),
-			"x": float(c.get("x", 0.0)),
-			"y": float(c.get("y", 0.0)),
-			"zoom": float(c.get("zoom", 1.0)),
-		})
+	_camera.track = decoded.get("camera", [])
 	# Load the optional pointer (cursor/selection/drag-box) track. Absent in replays
 	# recorded before this track existed, which then play with no cursor overlay.
 	_pointer.reset()
-	for p in data.get("pointer", []):
-		var sel: Array = []
-		for u in p.get("sel", []):
-			sel.append(int(u))
-		var entry := {
-			"tick": int(p.get("tick", 0)),
-			"x": float(p.get("x", 0.0)),
-			"y": float(p.get("y", 0.0)),
-			"drag": bool(p.get("drag", false)),
-			"sel": sel,
-			"mode": int(p.get("mode", 0)),
-		}
-		if entry["drag"]:
-			entry["sx"] = float(p.get("sx", entry["x"]))
-			entry["sy"] = float(p.get("sy", entry["y"]))
-		_pointer.track.append(entry)
+	_pointer.track = decoded.get("pointer", [])
 	# Load the optional keystroke track. Absent in replays recorded before it existed,
 	# which then play with no key chips.
 	_keys.reset()
-	for k in data.get("keys", []):
-		var labels: Array = []
-		for s in k.get("labels", []):
-			labels.append(str(s))
-		_keys.track.append({"tick": int(k.get("tick", 0)), "labels": labels})
+	_keys.track = decoded.get("keys", [])
 	# Load the optional time-scale track. Absent in replays recorded before it existed,
 	# or when no slow-motion change was ever made -- both then play at a constant 1.0,
 	# exactly the pre-existing behaviour.
-	_time_scale_track.clear()
-	_time_scale_index = 0
-	for t in data.get("time_scale", []):
-		_time_scale_track.append(
-				{"tick": int(t.get("tick", 0)), "value": float(t.get("value", 1.0))})
+	_time_scale.reset()
+	_time_scale.track = decoded.get("time_scale", [])
 	loaded_path = path
 	mode = Mode.PLAYBACK
 	return true
@@ -362,8 +307,7 @@ func reset() -> void:
 
 ## The folder replays are saved to (created if needed). For a file picker.
 func replays_dir() -> String:
-	_ensure_dir()
-	return DIR
+	return ReplayStorageRef.replays_dir()
 
 
 ## RECORD: append an order at the current tick. No-op otherwise.
@@ -442,10 +386,7 @@ func rewind_cursor_to_tick(tick: int) -> void:
 	_play_index = 0
 	while _play_index < _orders.size() and int(_orders[_play_index]["tick"]) < tick:
 		_play_index += 1
-	_time_scale_index = 0
-	while _time_scale_index < _time_scale_track.size() \
-			and int(_time_scale_track[_time_scale_index]["tick"]) < tick:
-		_time_scale_index += 1
+	_time_scale.rewind_cursor_to_tick(tick)
 
 
 ## PLAYBACK: return all orders scheduled for `tick` (in record order), advancing
@@ -571,12 +512,7 @@ func keys_for_tick(tick: int, window: int) -> Array:
 func record_time_scale_change(tick: int, value: float) -> void:
 	if mode != Mode.RECORD:
 		return
-	var current := 1.0
-	if not _time_scale_track.is_empty():
-		current = float(_time_scale_track[-1]["value"])
-	if is_equal_approx(value, current):
-		return
-	_time_scale_track.append({"tick": tick, "value": value})
+	_time_scale.record_time_scale_change(tick, value)
 
 
 ## PLAYBACK: the new Engine.time_scale to apply at `tick`, or -1.0 if the track has no entry
@@ -586,12 +522,7 @@ func record_time_scale_change(tick: int, value: float) -> void:
 func time_scale_for_tick(tick: int) -> float:
 	if mode != Mode.PLAYBACK:
 		return -1.0
-	var out := -1.0
-	while _time_scale_index < _time_scale_track.size() \
-			and int(_time_scale_track[_time_scale_index]["tick"]) == tick:
-		out = float(_time_scale_track[_time_scale_index]["value"])
-		_time_scale_index += 1
-	return out
+	return _time_scale.for_tick(tick)
 
 
 ## PLAYBACK: form-up (drag-deploy) orders issued within `window` ticks before `tick`,
@@ -619,62 +550,27 @@ func form_ups_for_tick(tick: int, window: int) -> Array:
 func save(result: String, duration_ticks: int) -> String:
 	if mode != Mode.RECORD:
 		return ""
-	if not _ensure_dir():
+	if not ReplayStorageRef.ensure_dir():
 		return ""
-	# ISO 8601-style with the 'T' kept (no space) and colons swapped for '-', so
-	# the filename is conventional and shell-friendly. A counter suffix keeps it
-	# unique even when two battles end in the same second.
-	var stamp := Time.get_datetime_string_from_system(false, false).replace(":", "-")
-	var path := "%s/battle_%s_%02d.json" % [DIR, stamp, _save_counter]
+	var path := ReplayStorageRef.timestamped_path(_save_counter)
 	_save_counter += 1
-	var payload := {
-		"version": FORMAT_VERSION,
-		"seed": str(seed_value),   # string to preserve full 64-bit precision
-		"physics_tps": PHYSICS_TPS,
-		"created": Time.get_unix_time_from_system(),
+	var state := {
+		"seed": seed_value,
 		"result": result,
 		"duration_ticks": duration_ticks,
 		"commit_sha": BuildInfoRef.COMMIT_SHA,
 		"orders": _orders,
+		"map": map,
+		"spawn_fingerprint": spawn_fingerprint,
+		"git_dirty_status": BuildInfoRef.git_dirty_status(),
+		"camera": _camera_track,
+		"pointer": _pointer_track,
+		"keys": _key_track,
+		"time_scale": _time_scale_track,
 	}
-	# A non-default map rides in the header so playback reconstructs the same
-	# battlefield; absent for default-map battles (see the `map` field's doc).
-	if not map.is_empty():
-		payload["map"] = map
-	# Stamp the spawn-layout fingerprint so playback can fail loudly if a later build's
-	# spawn table no longer matches the layout these orders were recorded against (the
-	# silent spawn-drift failure mode). Absent when Battle never published one (a battle
-	# that spawned no units, or a caller that didn't set it) -- the load check then skips.
-	if spawn_fingerprint != "":
-		payload["spawn_fingerprint"] = spawn_fingerprint
-	# Only emit a dirty-worktree note when the live checkout actually has uncommitted
-	# changes worth flagging -- a dev-only best-effort signal (BuildInfo.git_dirty_status(),
-	# see its own doc comment), omitted on an exported build or a clean tree so the common
-	# case stays byte-for-byte simple.
-	var dirty := BuildInfoRef.git_dirty_status()
-	if not dirty.is_empty():
-		payload["git_dirty_status"] = dirty
-	# Only emit the presentation track when one was captured, so pre-camera-style
-	# recordings (and tooling that never moves the camera) stay byte-for-byte simple.
-	if not _camera_track.is_empty():
-		payload["camera"] = _camera_track
-	# Likewise emit the pointer track only when one was captured, so recordings without
-	# mouse activity (and pre-pointer-track tooling) stay simple.
-	if not _pointer_track.is_empty():
-		payload["pointer"] = _pointer_track
-	# Likewise emit the keystroke track only when keys were pressed.
-	if not _key_track.is_empty():
-		payload["keys"] = _key_track
-	# Likewise emit the time-scale track only when a slow-motion change was made -- this
-	# one feeds the simulation on load (see the field's own doc), unlike the three above.
-	if not _time_scale_track.is_empty():
-		payload["time_scale"] = _time_scale_track
-	var f := FileAccess.open(path, FileAccess.WRITE)
-	if f == null:
-		push_warning("Could not write replay to %s" % path)
+	var payload := ReplayCodecRef.encode(state)
+	if not ReplayStorageRef.write_text(path, JSON.stringify(payload, "  ")):
 		return ""
-	f.store_string(JSON.stringify(payload, "  "))
-	f.close()
 	last_saved_path = path
 	return path
 
@@ -682,18 +578,8 @@ func save(result: String, duration_ticks: int) -> String:
 # --- internals -------------------------------------------------------------
 
 func _read_file(path: String) -> Dictionary:
-	if not FileAccess.file_exists(path):
-		return {}
-	var f := FileAccess.open(path, FileAccess.READ)
-	if f == null:
-		return {}
-	var text := f.get_as_text()
-	f.close()
-	var parsed = JSON.parse_string(text)
-	return parsed if parsed is Dictionary else {}
+	return ReplayStorageRef.read_file(path)
 
 
 func _ensure_dir() -> bool:
-	if DirAccess.dir_exists_absolute(DIR):
-		return true
-	return DirAccess.make_dir_recursive_absolute(DIR) == OK
+	return ReplayStorageRef.ensure_dir()
