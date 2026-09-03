@@ -37,7 +37,14 @@ and the battle presentation:
 
 - **Campaign layer** --- [phase 1 through phase 7](https://github.com/Lacaedemon/sparta/issues?q=is%3Aissue+is%3Aopen+%22Campaign+phase%22+in%3Atitle)
   build out map/time, army composition, battle-resolution modes, real-geography
-  ingestion, logistics, sagas, and dynasty in sequence.
+  ingestion, logistics, sagas, and dynasty in sequence. Phase 1's foundation has
+  begun landing: the campaign map now carries a pausable clock with speed controls
+  and a day counter (see [How to Play](how-to-play.qmd#campaign-map)), and each
+  campaign declares how much ground a map unit covers, so a completed march reports
+  how far the army walked in kilometres. The projection that phase 4's
+  real-geography ingestion will author against ships alongside it. Continuous army
+  movement on that substrate, and retiring turn order in favour of the clock, are
+  the rest of the phase.
 - **Battle AI** --- subcommanders, the general's doctrine/reserves layer, and
   player delegation to AI subcommanders (phases 2--4) have shipped; see
   [Tactics](tactics.qmd#enemy-coordination) for what's live.

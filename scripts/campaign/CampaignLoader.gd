@@ -19,9 +19,16 @@ extends RefCounted
 ##        "one_way": <bool>}     # optional, default false; declares this province's
 ##                               # one-way exits intentional, suppressing the asymmetry warning
 ##     ],
-##     "peace": [[factionA, factionB], ...]    # optional; pairs that start at peace.
+##     "peace": [[factionA, factionB], ...],   # optional; pairs that start at peace.
 ##                                              # A 3rd element sets an initial truce in
 ##                                              # turns: [factionA, factionB, truceTurns].
+##     "ticks_per_day": 24,                    # optional; campaign clock ticks in one
+##                                              # campaign day. Positive integer.
+##     "metres_per_unit": 800.0,               # optional; ground metres one map-plane
+##                                              # unit spans. Positive.
+##     "origin": [lat, lon]                    # optional; the geographic position the
+##                                              # plane's (0, 0) sits at -- its NORTH-WEST
+##                                              # corner, since x grows east and y south.
 ##   }
 ##
 ## parse_map() is pure (takes already-parsed JSON) so it's unit-tested without files;
@@ -29,7 +36,14 @@ extends RefCounted
 ## is recoverable (the caller falls back to the default map), so both push_warning()
 ## with a clear message and return {} (empty = failure) rather than a hard error.
 
+const CampaignCalendarRef = preload("res://scripts/campaign/CampaignCalendar.gd")
+const CampaignProjectionRef = preload("res://scripts/campaign/CampaignProjection.gd")
+
 const DEFAULT_FACTION_COLOR := Color(0.7, 0.7, 0.7)
+## Latitude/longitude bounds an "origin" must fall inside, so a swapped or
+## mistyped pair is caught here rather than projecting somewhere impossible.
+const MAX_LATITUDE := 90.0
+const MAX_LONGITUDE := 180.0
 
 
 ## Read and parse a campaign map from `path` (res://...). Returns {} on any error.
@@ -109,7 +123,7 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 				return {}
 			adj_seen[neighbor] = true
 			adj.append(neighbor)
-		var label: Vector2 = _centroid(poly)
+		var label: Vector2 = polygon_centre(poly)
 		if p.has("label"):
 			var lbl = _parse_point(p["label"])
 			if lbl != null:
@@ -216,6 +230,20 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 				push_warning(("Campaign map: ruler trait '%s' is not one of "
 						+ "normal/aggressive/defensive; it will default to normal") % t)
 
+	# Optional clock and ground-scale parameters. Same validate-and-reject discipline as
+	# the keys above, because both fail silently downstream rather than loudly: a
+	# non-positive day length pins the date at day one for the whole campaign, and a
+	# non-positive scale clamps every march label to millimetres of ground.
+	var ticks_per_day: Variant = _parse_ticks_per_day(raw)
+	if ticks_per_day == null:
+		return {}
+	var metres_per_unit: Variant = _parse_metres_per_unit(raw)
+	if metres_per_unit == null:
+		return {}
+	var origin: Variant = _parse_origin(raw)
+	if origin == null:
+		return {}
+
 	return {
 		"name": str(raw.get("name", "Campaign")),
 		"blurb": str(raw.get("blurb", "")),
@@ -224,7 +252,54 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 		"provinces": provinces,
 		"peace": peace,
 		"rulers": raw_rulers,
+		"ticks_per_day": int(ticks_per_day),
+		"metres_per_unit": float(metres_per_unit),
+		"origin": origin,
 	}
+
+
+## Campaign clock ticks in one campaign day, or null when the map declares a
+## non-positive one (which CampaignCalendar can only answer by returning day one
+## forever). Defaults to CampaignCalendar's own day length.
+static func _parse_ticks_per_day(raw: Dictionary) -> Variant:
+	if not raw.has("ticks_per_day"):
+		return CampaignCalendarRef.DEFAULT_TICKS_PER_DAY
+	var ticks := int(raw["ticks_per_day"])
+	if ticks <= 0:
+		push_warning("Campaign map: 'ticks_per_day' must be a positive integer, got %s"
+				% str(raw["ticks_per_day"]))
+		return null
+	return ticks
+
+
+## Ground metres one map-plane unit spans, or null when the map declares a
+## non-positive scale (which CampaignProjection can only clamp, silently).
+static func _parse_metres_per_unit(raw: Dictionary) -> Variant:
+	if not raw.has("metres_per_unit"):
+		return CampaignProjectionRef.DEFAULT_METRES_PER_UNIT
+	var scale := float(raw["metres_per_unit"])
+	if scale <= 0.0:
+		push_warning("Campaign map: 'metres_per_unit' must be a positive number, got %s"
+				% str(raw["metres_per_unit"]))
+		return null
+	return scale
+
+
+## The campaign's projection origin as [lat, lon], or null when the map declares a
+## malformed or out-of-range one. Defaults to CampaignProjection's own origin.
+static func _parse_origin(raw: Dictionary) -> Variant:
+	if not raw.has("origin"):
+		return [CampaignProjectionRef.DEFAULT_ORIGIN_LAT, CampaignProjectionRef.DEFAULT_ORIGIN_LON]
+	var point = _parse_point(raw["origin"])
+	if point == null:
+		push_warning("Campaign map: 'origin' must be a [latitude, longitude] pair, got %s"
+				% str(raw["origin"]))
+		return null
+	if absf(point.x) > MAX_LATITUDE or absf(point.y) > MAX_LONGITUDE:
+		push_warning("Campaign map: 'origin' [%f, %f] is outside +/-%d latitude, +/-%d longitude"
+				% [point.x, point.y, int(MAX_LATITUDE), int(MAX_LONGITUDE)])
+		return null
+	return [point.x, point.y]
 
 
 static func _to_polygon(points: Variant) -> PackedVector2Array:
@@ -248,7 +323,12 @@ static func _parse_point(pt: Variant) -> Variant:
 	return null
 
 
-static func _centroid(poly: PackedVector2Array) -> Vector2:
+## Average of a polygon's vertices -- a province's default map anchor, used for its
+## label point here and for the point marches measure between (CampaignGeography).
+## Deliberately not the area centroid: it is cheap, it is what the label wants, and
+## for a concave province it can fall outside the polygon, so anything that must be
+## INSIDE a province needs its own point rather than this one.
+static func polygon_centre(poly: PackedVector2Array) -> Vector2:
 	var sum := Vector2.ZERO
 	for v in poly:
 		sum += v
