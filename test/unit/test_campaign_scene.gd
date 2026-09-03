@@ -296,6 +296,8 @@ func test_clock_freezes_across_a_tactical_battle() -> void:
 	var resumed := returned.get_node("CampaignMap")
 	assert_eq(resumed._clock.tick(), launched_at, "the campaign resumes where it stopped")
 	assert_true(resumed._clock.is_paused(), "and hands the world back to the player")
+
+
 func test_space_reaches_the_clock_through_unhandled_input() -> void:
 	# The routing the scene actually uses, as opposed to calling _on_clock_key
 	# directly: a key event has to reach the clock before the player-turn gate, so
