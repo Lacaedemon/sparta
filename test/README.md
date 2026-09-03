@@ -84,7 +84,7 @@ Two known limitations, both inherent to the instrumenter:
   so they are instrumented too.
   `Replay`'s time-scale track, storage, and codec live in
   `scripts/ReplayTimeScaleTrack.gd`, `scripts/ReplayStorage.gd`,
-  and `scripts/ReplayCodec.gd`,
+  `scripts/ReplayCodec.gd`, and `scripts/ReplayDecoder.gd`,
   so they are instrumented as well.
 
 - Instrumentation reloads each script with injected line counters, so the

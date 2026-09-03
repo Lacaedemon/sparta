@@ -441,3 +441,11 @@ instead of splitting into separate helper files or functions.
 
 - **Don't:** compress multiple statements or wide dictionaries onto one line
   solely to satisfy a line-count limit.
+
+- **Do:** when moving code,
+  move every comment that explained it
+  and re-read every comment left behind that pointed at it.
+
+- **Don't:** leave a "see below" or a rationale comment orphaned
+  on the caller's side
+  after the code it described moved into a helper.

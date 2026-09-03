@@ -84,6 +84,8 @@ static func decode(data: Dictionary) -> Dictionary:
 	return {
 		"version": int(data.get("version", 0)),
 		"physics_tps": int(data.get("physics_tps", 0)),
+		# Seed is stored as a string: JSON numbers are float64 and would lose
+		# precision on a full 64-bit seed, silently desyncing the replay.
 		"seed": int(str(data.get("seed", "0"))),
 		"commit_sha": str(data.get("commit_sha", "")),
 		"map": data.get("map", {}),

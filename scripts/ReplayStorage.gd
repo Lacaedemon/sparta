@@ -16,6 +16,9 @@ static func ensure_dir() -> bool:
 
 
 static func timestamped_path(counter: int) -> String:
+	# ISO 8601-style with the 'T' kept (no space) and colons swapped for '-', so
+	# the filename is conventional and shell-friendly. A counter suffix keeps it
+	# unique even when two battles end in the same second.
 	var stamp := Time.get_datetime_string_from_system(false, false).replace(":", "-")
 	return "%s/battle_%s_%02d.json" % [DIR, stamp, counter]
 

@@ -261,9 +261,8 @@ func start_playback(path: String) -> bool:
 		push_warning("Replay %s was recorded on commit %s; this build is %s." %
 				[path, recorded_sha, BuildInfoRef.COMMIT_SHA])
 
-	# Seed is stored as a string: JSON numbers are float64 and would lose
-	# precision on a full 64-bit seed, silently desyncing the replay.
-	seed_value = int(decoded.get("seed", 0))
+	# ReplayDecoder already parsed the string form into an integer.
+	seed_value = decoded.get("seed", 0)
 	rng.seed = seed_value
 	# The optional map block; absent in pre-map and default-map replays, which
 	# then rebuild the default battlefield. Applied by Battle._ready().
@@ -372,14 +371,16 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	_orders.append(entry)
 
 
-## PLAYBACK: reposition the order-read cursor (and the time-scale read cursor -- see
-## below) so the next orders_for_tick(tick)/time_scale_for_tick(tick) call returns exactly
-## what's due at `tick` onward -- neither replaying entries already consumed before a
-## rewind nor skipping ones a fast-forward jumped past. Used when a derived state-snapshot
-## restore (Battle.restore_snapshot) jumps the battle to a tick other than the one the
-## cursors naturally advanced to. Both tracks are tick-sorted (record-time append order and
-## start_playback's load order preserve it), so a linear scan from the front always lands
-## correctly. No-op outside playback.
+## PLAYBACK: reposition the order-read cursor (and the time-scale read cursor
+## via ReplayTimeScaleTrack.rewind_cursor_to_tick) so the next
+## orders_for_tick(tick)/time_scale_for_tick(tick) call returns exactly
+## what's due at `tick` onward -- neither replaying entries already consumed
+## before a rewind nor skipping ones a fast-forward jumped past. Used when a
+## derived state-snapshot restore (Battle.restore_snapshot) jumps the battle to a
+## tick other than the one the cursors naturally advanced to. Both tracks are
+## tick-sorted (record-time append order and start_playback's load order
+## preserve it), so a linear scan from the front always lands correctly.
+## No-op outside playback.
 func rewind_cursor_to_tick(tick: int) -> void:
 	if mode != Mode.PLAYBACK:
 		return
