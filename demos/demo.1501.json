@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Tooling-only change to tools/perf/ops-before-after.sh (per-PR default graph path and a tracked-file overwrite guard); no battle behaviour changed, so there is nothing a recorded clip could show."
+}
