@@ -6,12 +6,12 @@ extends GutTest
 const ReplayKeyTrackScript = preload("res://scripts/ReplayKeyTrack.gd")
 
 
-func _fresh() -> RefCounted:
+func _fresh() -> ReplayKeyTrackScript:
 	return ReplayKeyTrackScript.new()
 
 
 func test_record_keys_drops_empty_labels() -> void:
-	var kt: RefCounted = _fresh()
+	var kt := _fresh()
 	kt.record_keys(0, ["]"])
 	kt.record_keys(1, [])
 	kt.record_keys(2, ["[", "T"])
@@ -26,12 +26,12 @@ func test_record_keys_drops_empty_labels() -> void:
 
 
 func test_for_tick_empty_track() -> void:
-	var kt: RefCounted = _fresh()
+	var kt := _fresh()
 	assert_eq(kt.for_tick(10, 5), [], "empty track returns empty array")
 
 
 func test_for_tick_window_boundaries() -> void:
-	var kt: RefCounted = _fresh()
+	var kt := _fresh()
 	kt.record_keys(10, ["A"])
 	kt.record_keys(20, ["B"])
 	kt.record_keys(30, ["C"])
@@ -59,7 +59,7 @@ func test_for_tick_window_boundaries() -> void:
 
 
 func test_reset_clears_track() -> void:
-	var kt: RefCounted = _fresh()
+	var kt := _fresh()
 	kt.record_keys(10, ["A"])
 	assert_eq(kt.track.size(), 1)
 	kt.reset()

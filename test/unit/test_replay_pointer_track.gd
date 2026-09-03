@@ -6,18 +6,18 @@ extends GutTest
 const ReplayPointerTrackScript = preload("res://scripts/ReplayPointerTrack.gd")
 
 
-func _fresh() -> RefCounted:
+func _fresh() -> ReplayPointerTrackScript:
 	return ReplayPointerTrackScript.new()
 
 
 func test_has_track_false_when_empty() -> void:
-	var ptr: RefCounted = _fresh()
+	var ptr := _fresh()
 	assert_false(ptr.has_track(), "fresh pointer track is empty")
 	assert_eq(ptr.track.size(), 0)
 
 
 func test_record_pointer_dedups_within_eps() -> void:
-	var ptr: RefCounted = _fresh()
+	var ptr := _fresh()
 	ptr.record_pointer(0, Vector2(100.0, 100.0), false, Vector2.ZERO, [], 0)
 	ptr.record_pointer(1, Vector2(100.0, 100.0), false, Vector2.ZERO, [], 0)
 	ptr.record_pointer(2, Vector2(101.0, 100.0), false, Vector2.ZERO, [], 0)
@@ -28,7 +28,7 @@ func test_record_pointer_dedups_within_eps() -> void:
 
 
 func test_record_pointer_drag_start_and_stance_and_selection() -> void:
-	var ptr: RefCounted = _fresh()
+	var ptr := _fresh()
 	ptr.record_pointer(0, Vector2(50.0, 50.0), false, Vector2.ZERO, [], 0)
 	ptr.record_pointer(1, Vector2(50.0, 50.0), false, Vector2.ZERO, [1], 0)
 	ptr.record_pointer(2, Vector2(50.0, 50.0), false, Vector2.ZERO, [1], 2)
@@ -46,13 +46,13 @@ func test_record_pointer_drag_start_and_stance_and_selection() -> void:
 
 
 func test_for_tick_empty_when_no_track() -> void:
-	var ptr: RefCounted = _fresh()
+	var ptr := _fresh()
 	assert_eq(ptr.for_tick(0), {})
 	assert_eq(ptr.for_tick(42), {})
 
 
 func test_for_tick_holds_and_rewinds() -> void:
-	var ptr: RefCounted = _fresh()
+	var ptr := _fresh()
 	ptr.track = [
 		{"tick": 0, "x": 0.0, "y": 0.0, "drag": false, "sel": [], "mode": 0},
 		{"tick": 10, "x": 100.0, "y": 50.0, "drag": false, "sel": [3], "mode": 2},
@@ -77,14 +77,14 @@ func test_for_tick_holds_and_rewinds() -> void:
 
 
 func test_cursor_for_tick_empty_returns_zero() -> void:
-	var ptr: RefCounted = _fresh()
+	var ptr := _fresh()
 	var pos: Vector2 = ptr.cursor_for_tick(0)
 	assert_almost_eq(pos.x, 0.0, 0.0001)
 	assert_almost_eq(pos.y, 0.0, 0.0001)
 
 
 func test_cursor_for_tick_interpolates_between_keyframes() -> void:
-	var ptr: RefCounted = _fresh()
+	var ptr := _fresh()
 	ptr.track = [
 		{"tick": 0, "x": 0.0, "y": 0.0, "drag": false, "sel": [], "mode": 0},
 		{"tick": 10, "x": 100.0, "y": 200.0, "drag": false, "sel": [], "mode": 0},
@@ -111,7 +111,7 @@ func test_cursor_for_tick_interpolates_between_keyframes() -> void:
 
 
 func test_cursor_for_tick_rewinds_on_step_back() -> void:
-	var ptr: RefCounted = _fresh()
+	var ptr := _fresh()
 	ptr.track = [
 		{"tick": 0, "x": 0.0, "y": 0.0, "drag": false, "sel": [], "mode": 0},
 		{"tick": 10, "x": 100.0, "y": 200.0, "drag": false, "sel": [], "mode": 0},
@@ -124,7 +124,7 @@ func test_cursor_for_tick_rewinds_on_step_back() -> void:
 
 # The span-guard in cursor_for_tick is unreachable for a sorted track and exists only as a defensive check, so the observable contract is "the later of two same-tick keyframes wins".
 func test_cursor_for_tick_duplicate_tick_resolves_to_the_later_keyframe() -> void:
-	var ptr: RefCounted = _fresh()
+	var ptr := _fresh()
 	ptr.track = [
 		{"tick": 5, "x": 40.0, "y": 60.0, "drag": false, "sel": [], "mode": 0},
 		{"tick": 5, "x": 80.0, "y": 120.0, "drag": false, "sel": [], "mode": 1},
@@ -135,7 +135,7 @@ func test_cursor_for_tick_duplicate_tick_resolves_to_the_later_keyframe() -> voi
 
 
 func test_reset_clears_track_and_index() -> void:
-	var ptr: RefCounted = _fresh()
+	var ptr := _fresh()
 	ptr.record_pointer(0, Vector2(10.0, 20.0), false, Vector2.ZERO, [], 0)
 	ptr.record_pointer(10, Vector2(40.0, 50.0), false, Vector2.ZERO, [], 0)
 	var _cur: Vector2 = ptr.cursor_for_tick(10)

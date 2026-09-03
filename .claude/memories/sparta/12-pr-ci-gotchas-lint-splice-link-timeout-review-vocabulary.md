@@ -256,3 +256,10 @@ so internal replay deserialization must populate helper storage directly.
 - **Don't:** write an expectation for a branch you assumed runs
   (a defensive guard)
   without first checking the cursor or index logic actually reaches it.
+
+- **Do:** type a test's helper factory and locals
+  against the preloaded script const
+  so member access is checked.
+
+- **Don't:** annotate a helper instance as RefCounted
+  and then call its members dynamically.

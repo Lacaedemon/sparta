@@ -5,18 +5,18 @@ extends GutTest
 const ReplayCameraTrackScript = preload("res://scripts/ReplayCameraTrack.gd")
 
 
-func _fresh() -> RefCounted:
+func _fresh() -> ReplayCameraTrackScript:
 	return ReplayCameraTrackScript.new()
 
 
 func test_has_track_false_when_empty() -> void:
-	var cam: RefCounted = _fresh()
+	var cam := _fresh()
 	assert_false(cam.has_track(), "a fresh track reports empty")
 	assert_eq(cam.track.size(), 0, "track array is empty")
 
 
 func test_record_camera_dedups_consecutive_identical_frames() -> void:
-	var cam: RefCounted = _fresh()
+	var cam := _fresh()
 	cam.record_camera(0, Vector2(100.0, 200.0), 1.0)
 	cam.record_camera(1, Vector2(100.0, 200.0), 1.0)
 	cam.record_camera(2, Vector2(100.0, 200.0), 1.5)
@@ -32,13 +32,13 @@ func test_record_camera_dedups_consecutive_identical_frames() -> void:
 
 
 func test_for_tick_empty_when_no_track() -> void:
-	var cam: RefCounted = _fresh()
+	var cam := _fresh()
 	assert_eq(cam.for_tick(0), {}, "empty track returns empty dict")
 	assert_eq(cam.for_tick(42), {}, "empty track returns empty dict for any tick")
 
 
 func test_for_tick_holds_last_keyframe() -> void:
-	var cam: RefCounted = _fresh()
+	var cam := _fresh()
 	cam.record_camera(10, Vector2(10.0, 20.0), 1.0)
 	cam.record_camera(20, Vector2(50.0, 60.0), 2.0)
 
@@ -62,7 +62,7 @@ func test_for_tick_holds_last_keyframe() -> void:
 
 
 func test_for_tick_rewinds_on_step_back() -> void:
-	var cam: RefCounted = _fresh()
+	var cam := _fresh()
 	cam.record_camera(10, Vector2(10.0, 20.0), 1.0)
 	cam.record_camera(20, Vector2(50.0, 60.0), 2.0)
 
@@ -75,7 +75,7 @@ func test_for_tick_rewinds_on_step_back() -> void:
 
 
 func test_reset_clears_track_and_index() -> void:
-	var cam: RefCounted = _fresh()
+	var cam := _fresh()
 	cam.record_camera(5, Vector2(10.0, 20.0), 1.0)
 	cam.record_camera(15, Vector2(30.0, 40.0), 2.0)
 	var _active: Dictionary = cam.for_tick(15)
