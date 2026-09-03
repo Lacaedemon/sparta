@@ -702,7 +702,7 @@ check_uninstrumented_patch_lines() {
     file="$(printf '%s' "$item" | cut -d: -f2)"
     count="$(printf '%s' "$item" | cut -d: -f3)"
     if [ "$tag" = "WARN" ]; then
-      warn "$file is a thin autoload wrapper; logic lives in instrumented helpers, so added lines belong in a helper."
+      warn "WARNING: $file has $count added executable line(s) but no instrumented lines in coverage report: it is a thin autoload wrapper whose logic lives in instrumented helpers, so added executable lines belong in a helper."
     else
       err "ERROR: $file has $count added executable line(s) but no instrumented lines in coverage report."
       err "The coverage tool produced no instrumented lines for a file that has executable added lines"
