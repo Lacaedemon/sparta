@@ -222,3 +222,18 @@ one clause per line, which the splice-by-marker consumers read unchanged.
 
 - **Do:** break a list item at its semicolon or comma before it reaches 80 visible characters.
 - **Don't:** treat numbered rules as exempt from the semantic-line-break check.
+
+## 2026-09-02 subagent (Sonnet): three misses on the SfxSynth extraction
+
+Extracting `Sfx.gd`'s synthesiser into `scripts/SfxSynth.gd` left an existing sibling test still calling the removed `Sfx._synth`.
+A new `_init(seed: int = 1)` parameter shadowed GDScript's built-in `seed()` global.
+Two new test locals used `:=` on a call against an untyped local, which GDScript 4 rejects because the call returns `Variant`.
+
+- **Do:** grep every directory a moved symbol could be referenced from (`test/`, `scripts/`, `tools/`), not only the file being edited, before calling a rename or extraction complete.
+- **Don't:** trust that a new file's own tests cover a symbol's old call sites elsewhere in the suite.
+
+- **Do:** name a constructor or function parameter something that cannot collide with a GDScript builtin (`rng_seed`, not `seed`).
+- **Don't:** assume a parameter name is safe just because it reads naturally for its purpose; check it against GDScript's builtin globals (`seed`, `hash`, `randi`, `name`, and similar).
+
+- **Do:** give an explicit type annotation (`var x: T = ...`) whenever the right-hand side is a method call on an untyped (`var x = ...`) local.
+- **Don't:** use `:=` type inference on a call through an untyped local; GDScript 4 cannot infer past `Variant` and raises a compile error.
