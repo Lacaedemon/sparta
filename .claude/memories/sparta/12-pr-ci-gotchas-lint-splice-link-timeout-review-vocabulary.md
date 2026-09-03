@@ -235,12 +235,14 @@ which GDScript 4 rejects because the call returns `Variant`.
 - **Do:** grep every directory a moved symbol could be referenced from
    (`test/`, `scripts/`, `tools/`), not only the file being edited,
    before calling a rename or extraction complete.
+
 - **Don't:** trust that a new file's own tests cover a symbol's
    old call sites elsewhere in the suite.
 
 - **Do:** name a constructor or function parameter something
    that cannot collide with a GDScript builtin
    (`rng_seed`, not `seed`).
+
 - **Don't:** assume a parameter name is safe just because it reads
    naturally for its purpose;
    check it against GDScript's builtin globals
@@ -249,17 +251,27 @@ which GDScript 4 rejects because the call returns `Variant`.
 - **Do:** give an explicit type annotation (`var x: T = ...`)
    whenever the right-hand side is a method call on an untyped
    (`var x = ...`) local.
+
 - **Don't:** use `:=` type inference on a call through an
    untyped local;
    GDScript 4 cannot infer past `Variant` and raises a compile error.
 
 - **Do:** re-read a memory file's own formatting rule near its top
    before appending a new section to it.
+
 - **Don't:** append a new section in a style that violates a rule
    the same file states a few sections above it.
 
 - **Do:** name a `for` loop variable something other than `name`
    in any Node-derived script (GutTest included),
    since `name` is an inherited Node property.
+
 - **Don't:** write `for name in ...` in a Node-derived script;
    it silently shadows `Node.name` instead of erroring.
+
+- **Do:** read the memory file's first section on the splice check
+   and make any wrapped list loose,
+   with a blank line between every item.
+
+- **Don't:** put a wrapped list item directly under another item,
+   even inside a Do/Don't pair.
