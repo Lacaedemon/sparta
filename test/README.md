@@ -82,6 +82,10 @@ Two known limitations, both inherent to the instrumenter:
   `scripts/ReplayCameraTrack.gd`, `scripts/ReplayPointerTrack.gd`,
   and `scripts/ReplayKeyTrack.gd`, plain `RefCounted` helpers,
   so they are instrumented too.
+  `Replay`'s time-scale track, storage, and codec live in
+  `scripts/ReplayTimeScaleTrack.gd`, `scripts/ReplayStorage.gd`,
+  `scripts/ReplayCodec.gd`, and `scripts/ReplayDecoder.gd`,
+  so they are instrumented as well.
 
 - Instrumentation reloads each script with injected line counters, so the
   coverage run is a little slower than the plain `test` job -- another reason it

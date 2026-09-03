@@ -385,3 +385,82 @@ so internal replay deserialization must populate helper storage directly.
 
 - **Don't:** annotate a helper instance as RefCounted
   and then call its members dynamically.
+
+## 2026-09-03 agy: PowerShell call operator required for quoted executable paths
+
+Running a quoted executable path directly in PowerShell fails with a parse error
+because PowerShell parses the leading quoted path as a string expression.
+Prefixing the command with the ampersand call operator
+or invoking through a bash subshell resolves the executable.
+
+- **Do:** invoke a quoted Windows executable path
+  using the ampersand call operator (`& "path" --args`)
+  or through `bash -c` in PowerShell.
+
+- **Don't:** run a quoted binary path directly in PowerShell without `&`,
+  which treats the path as a string literal
+  and fails on subsequent arguments.
+
+## 2026-09-03 agy: four misses on the Replay codec extraction
+
+Extracting ReplayCodec introduced four defects across codec and track helpers.
+First, encode() wrapped the created timestamp in an int() cast,
+converting a float timestamp to an integer.
+Second, ReplayTimeScaleTrack carried three unused helper and alias methods,
+which counted against patch coverage and duplicated the API.
+Third, moved decoder code dropped original explanatory comments
+for the order mode and line fields.
+Fourth, the decoder compressed statements and dictionary literals
+onto single lines to fit the new-file length cap
+instead of splitting into separate helper files or functions.
+
+- **Do:** preserve the exact type of serialized values when extracting code,
+  avoiding spurious casts on moved values
+  (see "2026-09-03 agy: three misses on the Settings extraction").
+
+- **Don't:** cast a floating-point timestamp to int during serialization,
+  which silently changes the payload data type in stored JSON.
+
+- **Do:** expose only the methods callers actually invoke
+  on a new instrumented helper class,
+  and verify call sites across production and test code.
+
+- **Don't:** add unused methods or alias wrappers to new instrumented files,
+  which count against patch coverage and duplicate the interface.
+
+- **Do:** carry forward existing explanatory comments when moving logic,
+  ensuring any opened bracket closes on the same comment line
+  (see "2026-09-03 agy: two nits on the Replay track extraction").
+
+- **Don't:** drop explanatory domain comments during extraction passes
+  or leave brackets unclosed on comment lines.
+
+- **Do:** split distinct responsibilities into separate files or helpers
+  when logic approaches the new-file line cap,
+  retaining the standard one-statement-per-line style.
+
+- **Don't:** compress multiple statements or wide dictionaries onto one line
+  solely to satisfy a line-count limit.
+
+- **Do:** when moving code,
+  move every comment that explained it
+  and re-read every comment left behind that pointed at it.
+
+- **Don't:** leave a "see below" or a rationale comment orphaned
+  on the caller's side
+  after the code it described moved into a helper.
+
+- **Do:** after rewrapping any comment,
+  run the awk bracket control above on the file before finishing.
+
+- **Don't:** trust that a rewrap kept brackets on one line,
+  since re-flowing text is exactly
+  what moves a closing bracket to the next line.
+
+- **Do:** after moving a function into a helper,
+  grep for every caller of the old wrapper
+  and delete the wrapper when the count is zero.
+
+- **Don't:** leave a one-line delegating wrapper behind "for compatibility"
+  without a caller,
+  since it is dead, uncovered surface.
