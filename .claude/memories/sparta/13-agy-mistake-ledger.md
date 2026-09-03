@@ -26,7 +26,7 @@ Violating one costs a fix round.
 
 5. Any regex or classifier: enumerate the real input forms first (annotated declarations,
    signatures, indented statements),
-   print a one-line self-test (an awk BEGIN block, python -c) in your summary,
+   print a one-line self-test (an `awk 'BEGIN{...}'` block, `python -c`) in your summary,
    and never use \b in awk (POSIX lacks it;
    GNU awk reads it as a backspace).
 
@@ -59,8 +59,8 @@ Violating one costs a fix round.
 14. Re-read this ledger before writing a new rule;
    do not add a rule that is already here.
 
-15. Resolve a relative path argument against the caller's cwd (prefix it with $PWD)
-   before handing it to git -C <project root>;
+15. Resolve a relative path argument against the caller's cwd (prefix it with `$PWD`)
+   before handing it to `git -C <project root>`;
    a raw caller-relative path resolves against the project root there.
 
 16. Match keyword pairs in a classifier with a [ \t]+ separator rather than a literal single space,
