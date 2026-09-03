@@ -15,7 +15,7 @@
 #               falling back to origin/main, then main).
 #   [out.png]   Where to write the graph (default: demos/shots/ops-per-tick-<slug>.png,
 #               where <slug> is the first run of digits in the branch name, e.g.
-#               fix/1501-perf -> 1501, bolt-1485 -> 1485). If the branch name contains
+#               feat/42-perf -> 42, bolt-99 -> 99). If the branch name contains
 #               no digits, or HEAD is detached / the branch is main, exit 1 and pass an
 #               explicit [out.png] argument (e.g. demos/shots/ops-per-tick-<issue>.png).
 #
@@ -78,6 +78,9 @@ refuse_tracked_overwrite() {
   local target="$1"
   if [ "${SPARTA_PERF_OVERWRITE:-0}" = "1" ]; then
     return 0
+  fi
+  if [[ "$target" != /* && ! "$target" =~ ^[A-Za-z]: ]]; then
+    target="$PWD/$target"
   fi
   if git -C "$PROJECT_ROOT" ls-files --error-unmatch "$target" >/dev/null 2>&1; then
     echo "ERROR: output file '$target' is already tracked by git." >&2

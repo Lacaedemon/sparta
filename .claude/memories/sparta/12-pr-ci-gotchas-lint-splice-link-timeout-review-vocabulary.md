@@ -210,3 +210,15 @@ status checks (#1432), so under `mwc` the agent is the only gate.
 
 Links/provenance: measured 2026-09-01 on `Lacaedemon/sparta` CI (workflow runs
 observed on PRs in the #1452/#1453/#1459/#1462 range).
+
+## agy: relative output paths and issue-number-shaped examples (2026-09-02)
+
+The overwrite guard resolved relative paths against the project root rather than the caller's cwd.
+Example branch names in the usage comment used real issue numbers.
+A sibling script's docstring example was left stale.
+- Do: prefix relative path arguments with $PWD before checking them against git ls-files.
+- Don't: test raw relative paths with git -C $PROJECT_ROOT ls-files when invoked outside the project root.
+- Do: use generic sample numbers like 42 or 99 in comment examples.
+- Don't: write digits matching real repository issue numbers in code comments.
+- Do: update example invocations in sibling script docstrings when modifying output path conventions.
+- Don't: leave legacy output file paths in sibling docstrings after changing tool output naming.
