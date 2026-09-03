@@ -456,3 +456,11 @@ instead of splitting into separate helper files or functions.
 - **Don't:** trust that a rewrap kept brackets on one line,
   since re-flowing text is exactly
   what moves a closing bracket to the next line.
+
+- **Do:** after moving a function into a helper,
+  grep for every caller of the old wrapper
+  and delete the wrapper when the count is zero.
+
+- **Don't:** leave a one-line delegating wrapper behind "for compatibility"
+  without a caller,
+  since it is dead, uncovered surface.

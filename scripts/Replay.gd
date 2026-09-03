@@ -574,13 +574,3 @@ func save(result: String, duration_ticks: int) -> String:
 		return ""
 	last_saved_path = path
 	return path
-
-
-# --- internals -------------------------------------------------------------
-
-func _read_file(path: String) -> Dictionary:
-	return ReplayStorageRef.read_file(path)
-
-
-func _ensure_dir() -> bool:
-	return ReplayStorageRef.ensure_dir()
