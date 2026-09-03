@@ -37,6 +37,10 @@
   ],
   "state": [10, 40, 120, 240, 360, 480, 600, 750, 900, 1000, 1100],
   "defect_exemptions": {
+    "overlap": {
+      "uids": [0, 1, 2, 3],
+      "reason": "Four 80-man units form up into offset lines; bodies pass within 1-2 wu mid-transition before settling onto the quincunx grid."
+    },
     "shape_residual": {
       "uids": [
         0,

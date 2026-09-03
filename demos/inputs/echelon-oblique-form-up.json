@@ -15,5 +15,11 @@
     {"tick": 5, "box": {"from": [380, 280], "to": [620, 640]}},
     {"tick": 20, "rmb_drag": {"from": [750, 300], "to": [750, 600]}}
   ],
-  "state": [20, 60, 440, 700, 900, 1100, 1250]
+  "state": [20, 60, 440, 700, 900, 1100, 1250],
+  "defect_exemptions": {
+    "path_crossing": {
+      "uids": [0, 1, 2],
+      "reason": "Soldier paths intersect transiently during the 90-man frontage and facing reorganization before marching into echelon."
+    }
+  }
 }

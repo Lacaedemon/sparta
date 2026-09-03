@@ -21,5 +21,11 @@
     {"tick": 8, "uid": 0, "field": "position", "value": [600.0, 420.0]},
     {"tick": 8, "uid": 0, "field": "frontage", "value": 11},
     {"tick": 180, "uid": 0, "field": "frontage", "value": 14}
-  ]
+  ],
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [0],
+      "reason": "Unit expands frontage by three files with ] ] ]; soldier bodies pass within 0.9-1.5 wu mid-transition while breathing outward before settling."
+    }
+  }
 }

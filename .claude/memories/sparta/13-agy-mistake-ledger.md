@@ -78,6 +78,15 @@ Violating one costs a fix round.
    which fails when an item follows a wrapped item with no blank line;
    a tight list is fine only when every item is a single line.
 
+19. When a report or finding is keyed to a commit,
+   run `git log <commit>..HEAD -- <paths>` for the paths involved
+   before recommending work,
+   and label each item already-landed, unverified, or open.
+
+20. In a headless --print run nobody answers,
+   so never end by asking for approval of a plan;
+   execute and write the deliverable.
+
 END OF STANDING RULES
 
 ## Provenance

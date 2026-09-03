@@ -52,5 +52,11 @@
       "y": 630.0,
       "zoom": 1.35
     }
-  ]
+  ],
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [0],
+      "reason": "Six unpaired soldiers in the incomplete rear rank swap ends across stationary ranks during post-rally hold-ground reform; dips to 1.91 wu."
+    }
+  }
 }

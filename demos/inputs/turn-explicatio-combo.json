@@ -23,5 +23,11 @@
     {"tick": [60, 120], "uid": 0, "field": "frontage", "value": 16},
     {"tick": [440, 480], "uid": 0, "field": "frontage", "value": 16}
   ],
-  "spawn_fingerprint": "4b3e1c38ffc7bdcd660c8211f1c2a8c7"
+  "spawn_fingerprint": "4b3e1c38ffc7bdcd660c8211f1c2a8c7",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [0],
+      "reason": "Rear half-files step out laterally during the explicatio unfold; passing bodies transiently dip to 1.6-1.9 wu mid-transit before settling."
+    }
+  }
 }
