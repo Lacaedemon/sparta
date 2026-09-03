@@ -247,3 +247,9 @@ and suppresses coverage instrumentation for all later lines in that file.
 
 - **Don't:** use \b in an awk regex;
   POSIX awk lacks it and GNU awk reads it as a backspace.
+
+- **Do:** enumerate the real input forms (annotated declarations, signatures)
+  and run each through the regex before shipping a classifier.
+
+- **Don't:** ship a token list assembled from memory;
+  two reviewers found the same missing forms.

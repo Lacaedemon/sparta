@@ -674,9 +674,8 @@ check_uninstrumented_patch_lines() {
                 if (line_content ~ /^[ \t]*$/) continue
                 if (line_content ~ /^[ \t]*#/) continue
                 if (line_content ~ /^[ \t]*pass([ \t]+#.*|[ \t]*)$/) continue
-                # Classification is a heuristic approximating what Coverage.gd
-                # instruments (function bodies only).
-                if (line_content ~ /^(const|enum|signal|class_name|extends|static var|var|@)([ \t]|$)/) continue
+                # Skip annotations (@\w), declarations, and function signatures (const, enum, signal, class_name, extends, static var, static func, var, func, class).
+                if (line_content ~ /^(@[A-Za-z_]|(const|enum|signal|class_name|extends|static var|static func|var|func|class)([ \t]|$))/) continue
                 exec_count++
               }
             }
