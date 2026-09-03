@@ -3,6 +3,8 @@ extends Node
 ## Persists to user://settings.cfg so choices survive between runs.
 
 const SAVE_PATH := "user://settings.cfg"
+const SettingsKeybindingsRef = preload("res://scripts/SettingsKeybindings.gd")
+const SettingsStorageRef = preload("res://scripts/SettingsStorage.gd")
 
 signal changed
 
@@ -228,62 +230,7 @@ var fps_corner: int = FPS_CORNER_TOP_LEFT:
 # Order-mode selector hotkeys: stable slug -> physical keycode. Slugs (and the
 # menu order) are owned by Battle.ORDER_MODE_HOTKEYS; these are the factory defaults.
 # Physical keycodes keep the bindings layout-independent (like the camera/pause keys).
-const DEFAULT_ORDER_BINDINGS := {
-	"hold": KEY_H,
-	"attack_flank": KEY_F,
-	"attack_rear": KEY_R,
-	"skirmish": KEY_K,
-	"support": KEY_G,
-	"cycle_charge": KEY_J,
-	# KEY_W collides with the fixed WASD camera-pan keys (CameraController.gd) --
-	# every other unused letter key is already claimed by a fixed formation/UI
-	# hotkey (see SelectionManager.gd/HUD.gd), so this and roll_the_line's
-	# binding fall back to the punctuation row instead.
-	"sweep_routers": KEY_COMMA,
-	"roll_the_line": KEY_SEMICOLON,
-	"pin_down": KEY_PERIOD,
-	# all_out_attack's original default (KEY_PERIOD) now collides with pin_down
-	# above (added independently by another PR), so it falls back to the next
-	# free punctuation key. KEY_SLASH is already claimed (Shift+/ opens the
-	# shortcuts dialog, HUD._is_shortcuts_keypress) and KEY_BRACKETLEFT/
-	# KEY_BRACKETRIGHT are already claimed for frontage resize
-	# (SelectionManager.gd), so apostrophe is the next unclaimed punctuation key.
-	"all_out_attack": KEY_APOSTROPHE,
-	# Same letter-key exhaustion as above; comma/semicolon/period/apostrophe are
-	# already taken, so chase takes the next punctuation-row key over.
-	"chase": KEY_BACKSLASH,
-	# Comma/semicolon/period/apostrophe/backslash are all taken; minus is the next
-	# unclaimed punctuation-row key.
-	"wedge_charge": KEY_MINUS,
-	# Comma/semicolon/period/apostrophe/backslash/minus are all taken; equals is the next
-	# unclaimed punctuation-row key. Shift+this key arms/issues the "indefinite" push
-	# variant instead of the default "just clear the line" push (SelectionManager.gd).
-	"knockback_focus": KEY_EQUAL,
-	# Every letter key and the whole punctuation row to the right of the home keys
-	# (comma/semicolon/period/apostrophe/backslash/minus/equals) is already claimed by
-	# an earlier order mode above. Backtick (the key left of "1", unshifted grave
-	# accent) is the next unclaimed key on the keyboard.
-	"give_ground": KEY_QUOTELEFT,
-	# KEY_P collides with HUD._is_pause_keypress()'s pause toggle; KEY_SLASH is the next unclaimed key.
-	"push": KEY_SLASH,
-	# Every letter key, digit (control groups), and punctuation-row key is now claimed by an
-	# earlier order mode, a fixed camera/UI hotkey, or a maneuver drill (see
-	# SelectionManager.gd/HUD.gd's own key maps) -- there is no free key left on the main
-	# keyboard rows. Function keys are otherwise unused in this project (F1 and F5 are the
-	# two exceptions -- HUD._is_tray_toggle_keypress and HUD._is_slowmo_keypress -- see
-	# their own comments on why F-keys are the fallback once every other key is spoken
-	# for), so F2 is both free and, like F1 and F5, immune to Godot's built-in UI action
-	# bindings.
-	"multiple_engage": KEY_F2,
-	# F1/F2 are already claimed (tray toggle, multiple_engage above); F3 is the next free
-	# function key.
-	"march_to_contact": KEY_F3,
-	# F1/F2/F3 are already claimed (tray toggle, multiple_engage, march_to_contact above);
-	# F4 is the next free function key.
-	"brace": KEY_F4,
-	# F1..F5 are claimed (F5 is slowmo); F6 is the next free function key.
-	"flanking_maneuver": KEY_F6,
-}
+const DEFAULT_ORDER_BINDINGS = SettingsKeybindingsRef.DEFAULT_ORDER_BINDINGS
 
 # Active bindings: a copy of the defaults overlaid with any persisted overrides.
 # Mutated only via set_order_binding() / reset_order_bindings() so saves + the
@@ -374,24 +321,20 @@ func set_tray_row_order_placement_session(value: bool) -> void:
 
 ## The physical keycode currently bound to a mode slug (or its default / KEY_NONE).
 func order_binding(slug: String) -> int:
-	return int(order_bindings.get(slug, DEFAULT_ORDER_BINDINGS.get(slug, KEY_NONE)))
+	return SettingsKeybindingsRef.get_binding(order_bindings, slug)
 
 
 ## The mode slug currently bound to a physical keycode, or "" if none. Used by the
 ## selector (keycode -> mode) and by the rebind UI to detect conflicts.
 func slug_for_keycode(keycode: int) -> String:
-	for slug in order_bindings:
-		if int(order_bindings[slug]) == keycode:
-			return slug
-	return ""
+	return SettingsKeybindingsRef.slug_for_keycode(order_bindings, keycode)
 
 
 ## Rebind a single order mode. No-ops on an unknown slug or an unchanged value.
 ## Callers (the rebind dialog) are responsible for conflict checks first.
 func set_order_binding(slug: String, keycode: int) -> void:
-	if not DEFAULT_ORDER_BINDINGS.has(slug) or int(order_bindings.get(slug, -1)) == keycode:
+	if not SettingsKeybindingsRef.set_binding(order_bindings, slug, keycode):
 		return
-	order_bindings[slug] = keycode
 	if not _loading:
 		_save()
 		changed.emit()
@@ -401,61 +344,56 @@ func set_order_binding(slug: String, keycode: int) -> void:
 func reset_order_bindings() -> void:
 	if order_bindings == DEFAULT_ORDER_BINDINGS:
 		return
-	order_bindings = DEFAULT_ORDER_BINDINGS.duplicate()
+	order_bindings = SettingsKeybindingsRef.reset_bindings()
 	if not _loading:
 		_save()
 		changed.emit()
 
 
+func _to_storage_dict() -> Dictionary:
+	return {
+		"edge_scroll": edge_scroll,
+		"sfx_enabled": sfx_enabled,
+		"form_up_dist_default": form_up_dist_default,
+		"form_up_dist_cycle": form_up_dist_cycle,
+		"tray_row_order_placement": tray_row_order_placement,
+		"show_distance_legend": show_distance_legend,
+		"show_order_distance": show_order_distance,
+		"show_unit_speed": show_unit_speed,
+		"show_soldier_ids": show_soldier_ids,
+		"show_engaged_highlight": show_engaged_highlight,
+		"show_position_anchor": show_position_anchor,
+		"show_fps": show_fps,
+		"show_performance_graph": show_performance_graph,
+		"show_unit_card_tray": show_unit_card_tray,
+		"fps_corner": fps_corner,
+		"order_bindings": order_bindings,
+	}
+
+
 func _load(path: String = SAVE_PATH) -> void:
-	var cfg := ConfigFile.new()
-	if cfg.load(path) != OK:
+	var loaded: Dictionary = SettingsStorageRef.load_from_path(path, _to_storage_dict(), FORM_UP_DIST_MAX)
+	if loaded.is_empty():
 		return
 	_loading = true
-	edge_scroll = cfg.get_value("camera", "edge_scroll", edge_scroll)
-	sfx_enabled = cfg.get_value("audio", "sfx_enabled", sfx_enabled)
-	form_up_dist_default = int(cfg.get_value("gameplay", "form_up_dist_default", form_up_dist_default))
-	var raw_cycle = cfg.get_value("gameplay", "form_up_dist_cycle", form_up_dist_cycle)
-	if raw_cycle is Array:
-		form_up_dist_cycle = raw_cycle.filter(func(v) -> bool: return v is int and v >= 0 and v <= FORM_UP_DIST_MAX)
-	show_distance_legend = bool(cfg.get_value("camera", "show_distance_legend", show_distance_legend))
-	show_order_distance = bool(cfg.get_value("camera", "show_order_distance", show_order_distance))
-	show_unit_speed = bool(cfg.get_value("camera", "show_unit_speed", show_unit_speed))
-	show_soldier_ids = bool(cfg.get_value("camera", "show_soldier_ids", show_soldier_ids))
-	show_engaged_highlight = bool(cfg.get_value("camera", "show_engaged_highlight", show_engaged_highlight))
-	show_position_anchor = bool(cfg.get_value("camera", "show_position_anchor", show_position_anchor))
-	show_fps = bool(cfg.get_value("camera", "show_fps", show_fps))
-	show_performance_graph = bool(cfg.get_value("camera", "show_performance_graph", show_performance_graph))
-	show_unit_card_tray = bool(cfg.get_value("camera", "show_unit_card_tray", show_unit_card_tray))
-	tray_row_order_placement = bool(cfg.get_value("gameplay", "tray_row_order_placement", tray_row_order_placement))
-	fps_corner = int(cfg.get_value("camera", "fps_corner", fps_corner))
-	for slug in DEFAULT_ORDER_BINDINGS:
-		var val: int = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
-		if slug == "push" and val == KEY_P:
-			val = KEY_SLASH
-		order_bindings[slug] = val
+	edge_scroll = loaded.get("edge_scroll", edge_scroll)
+	sfx_enabled = loaded.get("sfx_enabled", sfx_enabled)
+	form_up_dist_default = loaded.get("form_up_dist_default", form_up_dist_default)
+	form_up_dist_cycle = loaded.get("form_up_dist_cycle", form_up_dist_cycle)
+	tray_row_order_placement = loaded.get("tray_row_order_placement", tray_row_order_placement)
+	show_distance_legend = loaded.get("show_distance_legend", show_distance_legend)
+	show_order_distance = loaded.get("show_order_distance", show_order_distance)
+	show_unit_speed = loaded.get("show_unit_speed", show_unit_speed)
+	show_soldier_ids = loaded.get("show_soldier_ids", show_soldier_ids)
+	show_engaged_highlight = loaded.get("show_engaged_highlight", show_engaged_highlight)
+	show_position_anchor = loaded.get("show_position_anchor", show_position_anchor)
+	show_fps = loaded.get("show_fps", show_fps)
+	show_performance_graph = loaded.get("show_performance_graph", show_performance_graph)
+	show_unit_card_tray = loaded.get("show_unit_card_tray", show_unit_card_tray)
+	fps_corner = loaded.get("fps_corner", fps_corner)
+	order_bindings = loaded.get("order_bindings", order_bindings)
 	_loading = false
 
 
 func _save(path: String = SAVE_PATH) -> void:
-	# Load the existing file first so other settings/sections aren't clobbered.
-	var cfg := ConfigFile.new()
-	cfg.load(path)
-	cfg.set_value("camera", "edge_scroll", edge_scroll)
-	cfg.set_value("audio", "sfx_enabled", sfx_enabled)
-	cfg.set_value("gameplay", "form_up_dist_default", form_up_dist_default)
-	cfg.set_value("gameplay", "form_up_dist_cycle", form_up_dist_cycle)
-	cfg.set_value("gameplay", "tray_row_order_placement", tray_row_order_placement)
-	cfg.set_value("camera", "show_distance_legend", show_distance_legend)
-	cfg.set_value("camera", "show_order_distance", show_order_distance)
-	cfg.set_value("camera", "show_unit_speed", show_unit_speed)
-	cfg.set_value("camera", "show_soldier_ids", show_soldier_ids)
-	cfg.set_value("camera", "show_engaged_highlight", show_engaged_highlight)
-	cfg.set_value("camera", "show_position_anchor", show_position_anchor)
-	cfg.set_value("camera", "show_fps", show_fps)
-	cfg.set_value("camera", "show_performance_graph", show_performance_graph)
-	cfg.set_value("camera", "show_unit_card_tray", show_unit_card_tray)
-	cfg.set_value("camera", "fps_corner", fps_corner)
-	for slug in order_bindings:
-		cfg.set_value("keybindings", slug, int(order_bindings[slug]))
-	cfg.save(path)
+	SettingsStorageRef.save_to_path(path, _to_storage_dict())
