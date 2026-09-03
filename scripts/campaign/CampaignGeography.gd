@@ -52,8 +52,8 @@ func polygon(id: int) -> PackedVector2Array:
 	return _polygons.get(id, PackedVector2Array())
 
 
-## Ids sharing a border with `id` -- the political adjacency the diplomacy and
-## recruitment rules speak, kept while movement moves to continuous paths.
+## Returns the ids reachable from `id` per the map's adjacency list, which may be
+## directed; symmetry is not implied.
 func neighbours(id: int) -> Array:
 	return Array(_adjacency.get(id, [])).duplicate()
 

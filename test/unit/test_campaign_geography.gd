@@ -155,3 +155,14 @@ func test_projection_falls_back_to_defaults() -> void:
 			"a map that declares no origin gets the default one")
 	assert_eq(CampaignProjection.metres_per_unit_of({}),
 			CampaignProjection.DEFAULT_METRES_PER_UNIT, "and the default scale")
+
+
+func test_projection_falls_back_on_non_array_origin() -> void:
+	var string_origin := {"origin": "not_an_array"}
+	assert_eq(CampaignProjection.origin_of(string_origin),
+			Vector2(CampaignProjection.DEFAULT_ORIGIN_LAT, CampaignProjection.DEFAULT_ORIGIN_LON),
+			"a non-Array origin falls back to default origin")
+	var short_origin := {"origin": [42.0]}
+	assert_eq(CampaignProjection.origin_of(short_origin),
+			Vector2(CampaignProjection.DEFAULT_ORIGIN_LAT, CampaignProjection.DEFAULT_ORIGIN_LON),
+			"an origin with fewer than two coordinates falls back to default origin")

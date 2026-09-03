@@ -90,7 +90,8 @@ What exists today, exactly. Every symbol below is in the code on `main`.
   per-campaign clock and ground-scale keys `ticks_per_day` (positive
   integer, default 24), `metres_per_unit` (positive, default 800.0) and
   `origin` (`[latitude, longitude]` of the plane's (0, 0), which is the
-  map's north-west corner). `CampaignLoader` validates all three and
+  map's north-west corner).
+  `CampaignLoader` validates all three and
   rejects the map on a bad one, because each fails silently downstream.
 
 ### The time model today

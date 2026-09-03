@@ -16,9 +16,9 @@ extends RefCounted
 ## Speed multipliers the speed control offers, slowest first. Pausing is a separate
 ## flag rather than a speed of zero, so the chosen speed survives a pause/resume pair.
 const DEFAULT_SPEEDS: Array[float] = [1.0, 2.0, 4.0, 8.0]
-## Ticks fired per real second at 1x. At 24 ticks to the day (CampaignCalendar's
-## default) a campaign day takes 12 real seconds at 1x and 1.5 at 8x.
+## Ticks per real second at 1x; a day spans ticks_per_day / ticks_per_second real seconds (12 s at the 24-tick default).
 const DEFAULT_TICKS_PER_SECOND := 2.0
+const MIN_TICKS_PER_SECOND := 0.001  # floor so the advance rate stays strictly positive
 
 var speeds: Array[float]
 var ticks_per_second: float
@@ -33,8 +33,8 @@ func _init(
 	p_speeds: Array[float] = DEFAULT_SPEEDS,
 	p_ticks_per_second: float = DEFAULT_TICKS_PER_SECOND
 ) -> void:
-	speeds = p_speeds.duplicate()
-	ticks_per_second = p_ticks_per_second
+	speeds = DEFAULT_SPEEDS.duplicate() if p_speeds.is_empty() else p_speeds.duplicate()
+	ticks_per_second = maxf(p_ticks_per_second, MIN_TICKS_PER_SECOND)
 
 
 func tick() -> int:

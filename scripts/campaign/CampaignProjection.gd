@@ -51,10 +51,13 @@ func _init(
 ## "origin" key (CampaignLoader validates it and carries it through) so each campaign
 ## can sit on its own ground. Falls back for a map dict built without the loader.
 static func origin_of(map: Dictionary) -> Vector2:
-	var origin: Array = map.get("origin", [])
-	if origin.size() < 2:
+	if not map.has("origin"):
 		return Vector2(DEFAULT_ORIGIN_LAT, DEFAULT_ORIGIN_LON)
-	return Vector2(float(origin[0]), float(origin[1]))
+	var raw: Variant = map.get("origin")
+	if not (raw is Array) or (raw as Array).size() < 2:
+		push_warning("CampaignProjection.origin_of: 'origin' must be an Array of at least 2 coordinates")
+		return Vector2(DEFAULT_ORIGIN_LAT, DEFAULT_ORIGIN_LON)
+	return Vector2(float(raw[0]), float(raw[1]))
 
 
 ## Metres of ground per plane unit for this campaign, from the map data's optional

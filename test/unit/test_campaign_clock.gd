@@ -145,3 +145,22 @@ func test_calendar_guards_a_degenerate_day_length() -> void:
 	# from dividing by zero.
 	assert_eq(CampaignCalendar.days_elapsed(10, 0), 0, "no division by a zero-length day")
 	assert_eq(CampaignCalendar.hour(10, 0), 0, "no division by a zero-length day")
+
+
+func test_empty_speeds_ladder_falls_back_to_defaults() -> void:
+	var empty_speeds: Array[float] = []
+	var clock := CampaignClock.new(empty_speeds)
+	assert_eq(clock.speeds, CampaignClock.DEFAULT_SPEEDS,
+			"empty ladder falls back to DEFAULT_SPEEDS")
+	assert_eq(clock.speed(), 1.0, "initial speed is the first default rung")
+	clock.cycle_speed()
+	assert_eq(clock.speed_index(), 1, "cycle_speed works without modulo-by-zero")
+
+
+func test_non_positive_ticks_per_second_clamps_to_minimum() -> void:
+	var zero_clock := CampaignClock.new(CampaignClock.DEFAULT_SPEEDS, 0.0)
+	assert_eq(zero_clock.ticks_per_second, CampaignClock.MIN_TICKS_PER_SECOND,
+			"zero ticks_per_second clamps to MIN_TICKS_PER_SECOND")
+	var negative_clock := CampaignClock.new(CampaignClock.DEFAULT_SPEEDS, -5.0)
+	assert_eq(negative_clock.ticks_per_second, CampaignClock.MIN_TICKS_PER_SECOND,
+			"negative ticks_per_second clamps to MIN_TICKS_PER_SECOND")
