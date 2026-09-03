@@ -6,7 +6,7 @@ Input is one or two per-tick work series recorded by tools/benchmark/BenchmarkRu
 table on stdout.
 
     tools/perf/plot-ops-per-tick.py --before before.json --after after.json \
-        --out demos/shots/ops-per-tick.png
+        --out demos/shots/ops-per-tick-<issue-or-pr>.png
 
 Counts are deterministic for a given scenario and seed, so the two lines are directly
 comparable -- unlike the wall-clock series recorded alongside them, which carries the CI

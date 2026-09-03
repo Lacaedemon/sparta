@@ -222,3 +222,19 @@ observed on PRs in the #1452/#1453/#1459/#1462 range).
 - **Do:** mirror the sibling functions' empty-input guard when extending an enqueue_* method.
 - **Don't:** describe an integer field as a flag in a doc comment.
 
+## agy: relative output paths and issue-number-shaped examples (2026-09-02)
+
+The overwrite guard resolved relative paths against the project root rather than the caller's cwd.
+Example branch names in the usage comment used real issue numbers.
+A sibling script's docstring example was left stale.
+
+- Do: prefix relative path arguments with $PWD before checking them against git ls-files.
+- Don't: test raw relative paths with git -C $PROJECT_ROOT ls-files when invoked outside the project root.
+- Do: use generic sample numbers like 42 or 99 in comment examples.
+- Don't: write digits matching real repository issue numbers in code comments.
+- Do: update example invocations in sibling script docstrings when modifying output path conventions.
+- Don't: leave legacy output file paths in sibling docstrings after changing tool output naming.
+- Do: put a blank line between a paragraph and the list that follows it in Markdown, because the repo's lint job fails on a list item glued to prose.
+- Don't: start a bullet list on the line right after a sentence.
+- Do: document every exit-1 path a tool gains in the same README edit that documents the new default.
+- Don't: describe the happy path of a new default and leave its error case only in --help.
