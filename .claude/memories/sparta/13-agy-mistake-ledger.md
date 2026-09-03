@@ -15,7 +15,8 @@ Violating one costs a fix round.
 1. Re-read the target file at every line you cite;
    never trust a remembered line number.
 
-2. Markdown: a blank line before and after every list; one clause per line.
+2. Markdown: a blank line before and after every list;
+   one clause per line.
 
 3. Code comments: every bracket opened in a trailing comment closes on the same line,
    because the coverage tool skips comment-only lines
@@ -76,4 +77,5 @@ END OF STANDING RULES
 ## Provenance
 
 Rules 1 to 11 and 14 to 17 come from the agy fix rounds on the perf-graph path, replay tray-row, and coverage-instrumentation PRs of 2026-09-02, whose per-PR learning sections were folded here.
-Rules 12 and 13 restate repo gates (file_length, line length, tools/check.sh) that those rounds also tripped.
+Rule 12 restates the file_length gate that one of those rounds tripped,
+and rule 13 is the check-before-returning step those rounds skipped.
