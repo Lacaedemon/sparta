@@ -122,15 +122,16 @@ func test_cursor_for_tick_rewinds_on_step_back() -> void:
 	assert_almost_eq(rew.y, 100.0, 0.001)
 
 
-func test_cursor_for_tick_span_zero_returns_cur_pos() -> void:
+# The span-guard in cursor_for_tick is unreachable for a sorted track and exists only as a defensive check, so the observable contract is "the later of two same-tick keyframes wins".
+func test_cursor_for_tick_duplicate_tick_resolves_to_the_later_keyframe() -> void:
 	var ptr: RefCounted = _fresh()
 	ptr.track = [
 		{"tick": 5, "x": 40.0, "y": 60.0, "drag": false, "sel": [], "mode": 0},
 		{"tick": 5, "x": 80.0, "y": 120.0, "drag": false, "sel": [], "mode": 1},
 	]
 	var pos: Vector2 = ptr.cursor_for_tick(5)
-	assert_almost_eq(pos.x, 40.0, 0.0001)
-	assert_almost_eq(pos.y, 60.0, 0.0001)
+	assert_almost_eq(pos.x, 80.0, 0.0001)
+	assert_almost_eq(pos.y, 120.0, 0.0001)
 
 
 func test_reset_clears_track_and_index() -> void:

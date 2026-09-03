@@ -248,3 +248,11 @@ so internal replay deserialization must populate helper storage directly.
 
 - **Don't:** append to helper state through forwarding properties
   in playback loading loops.
+
+- **Do:** derive a test's expected value
+  by tracing the production code path for the exact input,
+  and prefer inputs that make a branch observable.
+
+- **Don't:** write an expectation for a branch you assumed runs
+  (a defensive guard)
+  without first checking the cursor or index logic actually reaches it.
