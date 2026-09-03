@@ -15,20 +15,9 @@ func after_each() -> void:
 
 
 func test_every_event_has_a_stream() -> void:
-	for name in Sfx.NAMES:
-		assert_true(Sfx._streams.get(name) is AudioStream,
-			"event %s has a built AudioStream" % name)
-
-
-func test_synth_produces_nonempty_wav() -> void:
-	# Each placeholder synthesises a non-empty 16-bit PCM WAV (asset-independent).
-	for name in Sfx.NAMES:
-		var w: AudioStreamWAV = Sfx._synth(name)
-		assert_not_null(w, "%s synth returned null — add a _synth arm for it" % name)
-		if w == null:
-			continue
-		assert_eq(w.format, AudioStreamWAV.FORMAT_16_BITS, "%s synth is 16-bit PCM" % name)
-		assert_gt(w.data.size(), 0, "%s synth has samples" % name)
+	for event_name in Sfx.NAMES:
+		assert_true(Sfx._streams.get(event_name) is AudioStream,
+			"event %s has a built AudioStream" % event_name)
 
 
 func test_play_consumes_a_voice_when_enabled() -> void:

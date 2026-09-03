@@ -70,13 +70,15 @@ gate stays in `godot-ci.yml`.
 Two known limitations, both inherent to the instrumenter:
 
 - **Autoloads are excluded.** `Settings`, `Replay`, and `Sfx` are already
-  instantiated before the pre-run hook fires,
-  so reloading their scripts to instrument them is unreliable;
-  `pre_run_hook.gd` skips them.
+  instantiated before the pre-run hook fires, so reloading their scripts to
+  instrument them is unreliable; `pre_run_hook.gd` skips them.
+  `Sfx`'s procedural synthesiser lives in `scripts/SfxSynth.gd`,
+  a plain `RefCounted` script, so it IS instrumented;
+  `Sfx.gd` itself stays excluded as an autoload.
   Settings' persistence and keybinding logic now lives in
   `scripts/SettingsStorage.gd` and `scripts/SettingsKeybindings.gd`,
   which are instrumented.
 
-- Instrumentation reloads each script with injected line counters,
-  so the coverage run is a little slower than the plain `test` job --
-  another reason it runs separately.
+- Instrumentation reloads each script with injected line counters, so the
+  coverage run is a little slower than the plain `test` job -- another reason it
+  runs separately.
