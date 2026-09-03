@@ -47,8 +47,8 @@ enum Type {
 	NUDGE,      ## A short fixed-distance drill step (side-step, back-step, or forward-step),
 	            ## holding facing.
 	FORMATION,  ## Change formation_mode (tight/loose/square/shield-wall/testudo). Instantaneous.
-	FRONTAGE,   ## Resize frontage to an absolute file count (manual resize or a file-double/
-	            ## file-halve maneuver -- same execution, different caller-derived target width).
+	FRONTAGE,   ## Resize frontage to an absolute file count -- manual resize or a file-double/
+	            ## file-halve maneuver -- same execution, different caller-derived target width.
 	            ## Instantaneous.
 	ABOUT_FACE,   ## Standalone conversio drill (V key): every soldier reverses 180° in place.
 	              ## Created by Unit.conversio(), not recorded. Appended after the phase-1 types
@@ -93,13 +93,13 @@ enum Phase {
 	REFORM,      ## Re-forming the ranks square to the new heading between the about-face and
 	             ## the march (move-to-rear issued with reform-before-move on). Appended after
 	             ## MARCH so recorded transcripts keep their phase values stable.
-	RETURN_TURN, ## Turning back to the pre-pivot facing after the march arrives (a lateral
-	             ## pivot's closing phase -- see Unit.begin_pivot / pivot_return_angle). The
+	RETURN_TURN, ## Turning back to the pre-pivot facing after the march arrives -- a lateral
+	             ## pivot's closing phase (see Unit.begin_pivot / pivot_return_angle). The
 	             ## grid was never reformed during the march, so nothing but facing needs to
 	             ## move here. Appended after REFORM so recorded transcripts keep their phase
 	             ## values stable.
-	WHEEL,       ## The flank-pivot phase of an about-face + wheel + march composite (see
-	             ## Unit.begin_about_face_with_wheel) -- a WHEEL-typed leaf sitting BETWEEN
+	WHEEL,       ## The flank-pivot phase of an about-face + wheel + march composite --
+	             ## see Unit.begin_about_face_with_wheel -- a WHEEL-typed leaf sitting BETWEEN
 	             ## the opening about-face and the march, so it needs its own label rather
 	             ## than falling into effective_phase_name()'s by-position TURN/RETURN_TURN
 	             ## guess. Appended after RETURN_TURN so recorded transcripts keep their

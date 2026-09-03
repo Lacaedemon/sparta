@@ -158,6 +158,12 @@ verdict). It can still report `SKIP`, when there's no resolvable diff base.
 Whether Codecov's own `codecov/patch` status check is configured to block a
 merge on GitHub is a repo/branch-protection setting this local tool has no
 visibility into.
+The check also validates that files with added executable lines
+have coverage records:
+it warns on known uninstrumented autoloads
+(`scripts/Settings.gd`, `scripts/Replay.gd`, `scripts/Sfx.gd`)
+and fails if an unexpected file has zero instrumented lines
+(guarding against coverage tokenizer poisoning from unbalanced trailing comments).
 
 If a diff comes up short, the fix is either genuine new test coverage for the
 newly-added lines, or -- when a specific line is structurally hard to cover (a

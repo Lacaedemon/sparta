@@ -41,11 +41,14 @@
 #             of THIS diff's added scripts/*.gd lines are covered. Fails when
 #             that fraction is below the effective target (auto: the project-wide
 #             total, like codecov/patch's own `target: auto`; override with
-#             SPARTA_CHECK_PATCH_COVERAGE_TARGET). Regenerates
-#             coverage/lcov.info fresh (runs `coverage` as a dependency), so it's
-#             slow — not in the default set. Run it before pushing a scripts/
-#             change rather than discovering a codecov/patch failure after a
-#             ~15-20 min CI round trip.
+#             SPARTA_CHECK_PATCH_COVERAGE_TARGET). Also checks that files with
+#             added executable lines have coverage records: warns on known
+#             excluded autoloads and fails if an uninstrumented file has added
+#             lines (guarding against coverage instrumenter poisoning).
+#             Regenerates coverage/lcov.info fresh (runs `coverage` as a
+#             dependency), so it's slow -- not in the default set. Run it before
+#             pushing a scripts/ change rather than discovering a codecov/patch
+#             failure after a ~15-20 min CI round trip.
 #   lint      GDScript style lint via gdtoolkit's gdlint, if it's installed (pip install
 #             gdtoolkit). Config in .gdlintrc, tuned to this repo's actual conventions --
 #             see that file's own header for the full rationale. Runs over every tracked
@@ -617,6 +620,102 @@ resolve_patch_coverage_base() {
   return 1
 }
 
+# check_uninstrumented_patch_lines -- verify that files with added executable
+# lines have coverage records in lcov.info. Warns for known uninstrumented
+# autoload singletons (test/pre_run_hook.gd EXCLUDE_PATHS), and fails for any
+# other file whose executable lines produced 0 instrumented lines (detecting
+# coverage tokenizer poisoning from unbalanced comments).
+check_uninstrumented_patch_lines() {
+  local added="$1"
+  local lcov="$2"
+
+  # Autoload singletons excluded by test/pre_run_hook.gd cannot be instrumented
+  # at runtime in Godot 4 without engine instability. Read the exclusion list
+  # directly from test/pre_run_hook.gd when available; fall back to the known list.
+  local hook="$PROJECT_ROOT/test/pre_run_hook.gd"
+  local excluded_list=""
+  if [ -f "$hook" ]; then
+    excluded_list="$(sed -n 's/^[[:space:]]*"res:\/\/\(scripts\/[^"]*\.gd\)".*/\1/p' "$hook" | tr '\n' ' ')"
+  fi
+  if [ -z "$excluded_list" ]; then
+    # Fallback duplicated from test/pre_run_hook.gd EXCLUDE_PATHS:
+    excluded_list="scripts/Settings.gd scripts/Replay.gd scripts/Sfx.gd "
+  fi
+
+  local results
+  results="$(awk -v root="$PROJECT_ROOT" -v added="$added" -v excluded="$excluded_list" '
+      BEGIN {
+        split(excluded, exc, " ")
+        for (e in exc) is_excluded[exc[e]] = 1
+
+        n = split(added, rows, "\n")
+        for (i = 1; i <= n; i++) {
+          if (rows[i] == "") continue
+          split(rows[i], parts, ":")
+          f = parts[1]
+          ln = parts[2] + 0
+          added_files[f] = 1
+          is_added[f, ln] = 1
+        }
+      }
+      /^SF:/ { cur_file = substr($0, 4); next }
+      /^DA:/ { if (cur_file != "") da_count[cur_file]++; next }
+      /^LF:/ { if (cur_file != "") lf_count[cur_file] = substr($0, 4) + 0; next }
+      END {
+        for (f in added_files) {
+          # Check if file has NO DA: records (either no SF: record or LF:0)
+          if ((da_count[f] + 0) == 0 && (lf_count[f] + 0) == 0) {
+            filepath = root "/" f
+            exec_count = 0
+            ln = 0
+            while ((getline line_content < filepath) > 0) {
+              ln++
+              if ((f, ln) in is_added) {
+                if (line_content ~ /^[ \t]*$/) continue
+                if (line_content ~ /^[ \t]*#/) continue
+                if (line_content ~ /^[ \t]*pass([ \t]+#.*|[ \t]*)$/) continue
+                # Classification is a heuristic approximating what Coverage.gd
+                # instruments (function bodies only).
+                if (line_content ~ /^(const|enum|signal|class_name|extends|static var|var|@)([ \t]|$)/) continue
+                exec_count++
+              }
+            }
+            close(filepath)
+            if (exec_count > 0) {
+              tag = (f in is_excluded) ? "WARN" : "FAIL"
+              print tag ":" f ":" exec_count
+            }
+          }
+        }
+      }
+    ' "$lcov")"
+
+  if [ -z "$results" ]; then
+    return 0
+  fi
+
+  local item tag file count failed=0
+  for item in $results; do
+    [ -n "$item" ] || continue
+    tag="$(printf '%s' "$item" | cut -d: -f1)"
+    file="$(printf '%s' "$item" | cut -d: -f2)"
+    count="$(printf '%s' "$item" | cut -d: -f3)"
+    if [ "$tag" = "WARN" ]; then
+      warn "WARNING: $file has $count added executable line(s) but no instrumented lines in coverage report (known uninstrumented autoload)."
+    else
+      err "ERROR: $file has $count added executable line(s) but no instrumented lines in coverage report."
+      err "The coverage tool produced no instrumented lines for a file that has executable added lines"
+      err "(likely a trailing comment with an unbalanced bracket poisoning the instrumenter)."
+      failed=1
+    fi
+  done
+
+  if [ "$failed" -ne 0 ]; then
+    return 1
+  fi
+  return 0
+}
+
 check_patch_coverage() {
   # Codecov's codecov/patch check, computed locally: what fraction of the lines
   # THIS diff adds under scripts/ (recursively -- campaign/ and any other
@@ -768,6 +867,10 @@ check_patch_coverage() {
         }
       }
     ' "$lcov")"
+
+  if ! check_uninstrumented_patch_lines "$added_lines" "$lcov"; then
+    return 1
+  fi
 
   if printf '%s' "$report" | grep -q '^NO_COVERABLE_LINES$'; then
     info "This diff's added lines are all outside what Godot's coverage tool instruments"
