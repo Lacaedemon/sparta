@@ -13,8 +13,11 @@
 #
 #   [base-ref]  Commit-ish to treat as "before" (default: the merge-base with origin/main,
 #               falling back to origin/main, then main).
-#   [out.png]   Where to write the graph (default: demos/shots/ops-per-tick.png, which is
-#               where a PR-description image is committed).
+#   [out.png]   Where to write the graph (default: demos/shots/ops-per-tick-<slug>.png,
+#               where <slug> is the first run of digits in the branch name, e.g.
+#               fix/1501-perf -> 1501, bolt-1485 -> 1485). If the branch name contains
+#               no digits, or HEAD is detached / the branch is main, exit 1 and pass an
+#               explicit [out.png] argument (e.g. demos/shots/ops-per-tick-<issue>.png).
 #
 # Environment:
 #   GODOT_BIN                      Godot 4.7 binary (default: godot).
@@ -24,6 +27,8 @@
 #   SPARTA_PERF_BUCKET             Work bucket to graph (default: total).
 #   SPARTA_PERF_KEEP               Set to 1 to keep the recorded series JSONs and the base
 #                                   worktree instead of cleaning them up.
+#   SPARTA_PERF_OVERWRITE          Set to 1 to allow overwriting a graph file already
+#                                   tracked by git (untracked files may be overwritten freely).
 #   SPARTA_BENCHMARK_WARMUP_TICKS  Forwarded to both runs (default: the runner's own 120).
 #   SPARTA_BENCHMARK_TICKS         Forwarded to both runs (default: the runner's own 600).
 set -euo pipefail
@@ -39,7 +44,6 @@ fi
 SCENARIO="${SPARTA_PERF_SCENARIO:-benchmarks/scenarios/large-battle.json}"
 SCALE="${SPARTA_PERF_SCALE:-1}"
 BUCKET="${SPARTA_PERF_BUCKET:-total}"
-OUT_PNG="${2:-$PROJECT_ROOT/demos/shots/ops-per-tick.png}"
 
 resolve_base() {
   if [ -n "${1:-}" ]; then
@@ -50,6 +54,44 @@ resolve_base() {
   git -C "$PROJECT_ROOT" rev-parse --verify main 2>/dev/null && return 0
   return 1
 }
+
+default_out_png() {
+  local branch slug re
+  branch="$(git -C "$PROJECT_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  if [ -z "$branch" ] || [ "$branch" = "HEAD" ] || [ "$branch" = "main" ]; then
+    echo "ERROR: cannot derive output filename on detached HEAD or main branch." >&2
+    echo "       Pass an explicit [out.png] argument, e.g. demos/shots/ops-per-tick-<issue>.png." >&2
+    return 1
+  fi
+  re='([0-9]+)'
+  if [[ "$branch" =~ $re ]]; then
+    slug="${BASH_REMATCH[1]}"
+    echo "$PROJECT_ROOT/demos/shots/ops-per-tick-${slug}.png"
+    return 0
+  fi
+  echo "ERROR: branch '$branch' contains no digits to derive a graph filename from." >&2
+  echo "       Pass an explicit [out.png] argument, e.g. demos/shots/ops-per-tick-<issue>.png." >&2
+  return 1
+}
+
+refuse_tracked_overwrite() {
+  local target="$1"
+  if [ "${SPARTA_PERF_OVERWRITE:-0}" = "1" ]; then
+    return 0
+  fi
+  if git -C "$PROJECT_ROOT" ls-files --error-unmatch "$target" >/dev/null 2>&1; then
+    echo "ERROR: output file '$target' is already tracked by git." >&2
+    echo "       Set SPARTA_PERF_OVERWRITE=1 to overwrite a tracked graph." >&2
+    exit 1
+  fi
+}
+
+if [ -n "${2:-}" ]; then
+  OUT_PNG="$2"
+elif ! OUT_PNG="$(default_out_png)"; then
+  exit 1
+fi
+refuse_tracked_overwrite "$OUT_PNG"
 
 BASE_SHA="$(resolve_base "${1:-}" || true)"
 if [ -z "$BASE_SHA" ]; then

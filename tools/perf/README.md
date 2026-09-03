@@ -44,15 +44,24 @@ GODOT_BIN=/path/to/godot tools/perf/ops-before-after.sh
 ```
 
 It runs the benchmark twice -- once in a throwaway worktree at the merge-base with `origin/main`,
-once in your tree -- writes `demos/shots/ops-per-tick.png`, and prints a markdown table of the
-per-bucket means and their change, ready to paste into the PR body. The two runs are sequential
-on purpose: two Godot processes on one machine corrupt each other's `user://settings.cfg` and
-import cache (see `.claude/memories/sparta.md`).
+once in your tree.
+It writes `demos/shots/ops-per-tick-<issue-or-pr>.png`,
+deriving the slug from the branch name
+so concurrent perf PRs do not clobber each other's committed evidence.
+If the graph file is already tracked by git,
+the tool refuses to overwrite it
+unless `SPARTA_PERF_OVERWRITE=1` is set.
+It prints a markdown table of the per-bucket means and their change,
+ready to paste into the PR body.
+The two runs are sequential on purpose:
+two Godot processes on one machine corrupt each other's `user://settings.cfg` and import cache
+(see `.claude/memories/sparta.md`).
 
 Useful knobs: `SPARTA_PERF_BUCKET` to graph one bucket instead of the total,
 `SPARTA_PERF_SCENARIO` / `SPARTA_PERF_SCALE` to change the workload on both sides,
-`SPARTA_BENCHMARK_TICKS` to shorten a run while iterating, and `SPARTA_PERF_KEEP=1` to keep the
-recorded series so you can re-plot other buckets without re-recording.
+`SPARTA_BENCHMARK_TICKS` to shorten a run while iterating,
+`SPARTA_PERF_KEEP=1` to keep the recorded series so you can re-plot other buckets without re-recording,
+and `SPARTA_PERF_OVERWRITE=1` to overwrite a graph file already tracked by git.
 
 To record a single side by hand -- or to re-plot from series you already have:
 
@@ -61,7 +70,7 @@ SPARTA_BENCHMARK_SERIES=/tmp/after.json SPARTA_BENCHMARK_LABEL=after \
   tools/benchmark/run-benchmark.sh
 
 tools/perf/plot-ops-per-tick.py --before /tmp/before.json --after /tmp/after.json \
-  --bucket grid_candidate --out demos/shots/ops-per-tick.png
+  --bucket grid_candidate --out demos/shots/ops-per-tick-<issue-or-pr>.png
 ```
 
 `plot-ops-per-tick.py` and its `tinyplot.py` renderer are pure Python standard library -- no
