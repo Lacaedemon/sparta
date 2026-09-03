@@ -24,6 +24,9 @@ extends Node
 ##     platform*; bit-exact cross-platform replay is out of scope.
 
 const BuildInfoRef = preload("res://scripts/BuildInfo.gd")
+const ReplayCameraTrackRef = preload("res://scripts/ReplayCameraTrack.gd")
+const ReplayPointerTrackRef = preload("res://scripts/ReplayPointerTrack.gd")
+const ReplayKeyTrackRef = preload("res://scripts/ReplayKeyTrack.gd")
 
 enum Mode { IDLE, RECORD, PLAYBACK }
 
@@ -88,8 +91,13 @@ var _play_index: int = 0
 # playback. Additive and back-compatible: replays without a camera track play with
 # the default static camera, exactly as before (no version bump, like the per-order
 # "mode" field above).
-var _camera_track: Array = []
-var _camera_index: int = 0
+var _camera := ReplayCameraTrackRef.new()
+var _camera_track: Array:
+	get: return _camera.track
+	set(v): _camera.track = v
+var _camera_index: int:
+	get: return _camera.index
+	set(v): _camera.index = v
 
 # Pointer track (cosmetic): the player's live mouse cursor, selection and multi-select
 # drag-box captured during live play, so a demo replay reproduces what the player *did*
@@ -101,8 +109,13 @@ var _camera_index: int = 0
 # (cursor within POINTER_EPS, same drag/selection/mode) so a still pointer costs one
 # keyframe. Never feeds the sim. Additive and back-compatible: replays without a pointer
 # track play with no cursor overlay, exactly as before (no version bump).
-var _pointer_track: Array = []
-var _pointer_index: int = 0
+var _pointer := ReplayPointerTrackRef.new()
+var _pointer_track: Array:
+	get: return _pointer.track
+	set(v): _pointer.track = v
+var _pointer_index: int:
+	get: return _pointer.index
+	set(v): _pointer.index = v
 
 # Keystroke track (cosmetic): the gameplay hotkeys the player pressed each tick, so a demo
 # replay can flash the keys on screen (the keyboard counterpart to the pointer overlay).
@@ -110,7 +123,10 @@ var _pointer_index: int = 0
 # on ticks where a recognised hotkey fired. Never feeds the sim. Additive and
 # back-compatible: replays without a keys track simply show no key chips (no version bump,
 # like the camera/pointer tracks).
-var _key_track: Array = []
+var _keys := ReplayKeyTrackRef.new()
+var _key_track: Array:
+	get: return _keys.track
+	set(v): _keys.track = v
 
 # Time-scale track: feeds the simulation directly, unlike every cosmetic track above.
 # Every Engine.time_scale change made during a live recording (the slow-motion hotkey),
@@ -129,7 +145,7 @@ var _time_scale_index: int = 0
 # Cursor moves smaller than this (world px) don't add a keyframe — drops sub-pixel jitter
 # while keeping deliberate motion. Larger than the camera track's exact dedup because the
 # cursor is a continuous signal, not the camera's occasional pan.
-const POINTER_EPS := 1.5
+const POINTER_EPS := ReplayPointerTrackRef.POINTER_EPS
 
 # Whether playback should drive the camera from the presentation track. Off by default,
 # so in-app "Watch Replay" keeps free pan/zoom for inspection; the demo recorder
@@ -192,11 +208,9 @@ func start_recording() -> void:
 		seed_value = picker.seed
 	rng.seed = seed_value
 	_orders.clear()
-	_camera_track.clear()
-	_camera_index = 0
-	_pointer_track.clear()
-	_pointer_index = 0
-	_key_track.clear()
+	_camera.reset()
+	_pointer.reset()
+	_keys.reset()
 	_time_scale_track.clear()
 	_time_scale_index = 0
 	drive_camera = false
@@ -290,8 +304,7 @@ func start_playback(path: String) -> bool:
 	_play_index = 0
 	# Load the optional presentation (camera) track. Absent in pre-camera replays,
 	# which then play with the default static camera.
-	_camera_track.clear()
-	_camera_index = 0
+	_camera.reset()
 	for c in data.get("camera", []):
 		_camera_track.append({
 			"tick": int(c.get("tick", 0)),
@@ -301,8 +314,7 @@ func start_playback(path: String) -> bool:
 		})
 	# Load the optional pointer (cursor/selection/drag-box) track. Absent in replays
 	# recorded before this track existed, which then play with no cursor overlay.
-	_pointer_track.clear()
-	_pointer_index = 0
+	_pointer.reset()
 	for p in data.get("pointer", []):
 		var sel: Array = []
 		for u in p.get("sel", []):
@@ -321,7 +333,7 @@ func start_playback(path: String) -> bool:
 		_pointer_track.append(entry)
 	# Load the optional keystroke track. Absent in replays recorded before it existed,
 	# which then play with no key chips.
-	_key_track.clear()
+	_keys.reset()
 	for k in data.get("keys", []):
 		var labels: Array = []
 		for s in k.get("labels", []):
@@ -457,18 +469,13 @@ func orders_for_tick(tick: int) -> Array:
 func record_camera(tick: int, pos: Vector2, zoom: float) -> void:
 	if mode != Mode.RECORD:
 		return
-	if not _camera_track.is_empty():
-		var last: Dictionary = _camera_track[_camera_track.size() - 1]
-		if is_equal_approx(last["x"], pos.x) and is_equal_approx(last["y"], pos.y) \
-				and is_equal_approx(last["zoom"], zoom):
-			return
-	_camera_track.append({"tick": tick, "x": pos.x, "y": pos.y, "zoom": zoom})
+	_camera.record_camera(tick, pos, zoom)
 
 
 ## Whether a presentation (camera) track is loaded — true only for replays recorded
 ## with one. Callers use it to decide whether to drive the camera from the track.
 func has_camera_track() -> bool:
-	return not _camera_track.is_empty()
+	return _camera.has_track()
 
 
 ## PLAYBACK: the camera state to apply at `tick` — the latest keyframe at or before it
@@ -477,15 +484,9 @@ func has_camera_track() -> bool:
 ## Advances an internal cursor, so call it with non-decreasing ticks (as the tick loop
 ## does); it also tolerates a step back to an earlier tick.
 func camera_for_tick(tick: int) -> Dictionary:
-	if mode != Mode.PLAYBACK or _camera_track.is_empty():
+	if mode != Mode.PLAYBACK:
 		return {}
-	# A replay that steps backward (e.g. a restarted playback) rewinds the cursor.
-	if _camera_index > 0 and int(_camera_track[_camera_index]["tick"]) > tick:
-		_camera_index = 0
-	while _camera_index + 1 < _camera_track.size() \
-			and int(_camera_track[_camera_index + 1]["tick"]) <= tick:
-		_camera_index += 1
-	return _camera_track[_camera_index]
+	return _camera.for_tick(tick)
 
 
 ## RECORD: capture the pointer (cursor world pos, drag-box, selection, armed mode) at
@@ -497,47 +498,12 @@ func record_pointer(tick: int, cursor: Vector2, dragging: bool, drag_start: Vect
 	# `mode` here is the Replay member (RECORD/PLAYBACK); the stance is `armed_mode`.
 	if mode != Mode.RECORD:
 		return
-	if not _pointer_track.is_empty():
-		var last: Dictionary = _pointer_track[_pointer_track.size() - 1]
-		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-		var still: bool = bool(last["drag"]) == dragging \
-				and int(last["mode"]) == armed_mode \
-				and last["sel"] == selection \
-				and Vector2(last["x"], last["y"]).distance_squared_to(cursor) <= POINTER_EPS * POINTER_EPS
-		if still and dragging:
-			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-			still = Vector2(last.get("sx", 0.0), last.get("sy", 0.0)).distance_squared_to(drag_start) <= POINTER_EPS * POINTER_EPS
-		if still:
-			return
-	var entry := {
-		"tick": tick,
-		"x": cursor.x,
-		"y": cursor.y,
-		"drag": dragging,
-		"sel": selection.duplicate(),
-		"mode": armed_mode,
-	}
-	if dragging:
-		entry["sx"] = drag_start.x
-		entry["sy"] = drag_start.y
-	_pointer_track.append(entry)
+	_pointer.record_pointer(tick, cursor, dragging, drag_start, selection, armed_mode)
 
 
 ## Whether a pointer track is loaded — true only for replays recorded with one.
 func has_pointer_track() -> bool:
-	return not _pointer_track.is_empty()
-
-
-## Advance _pointer_index to the latest keyframe at or before `tick`, rewinding if the
-## caller stepped back to an earlier tick. Shared by pointer_for_tick and
-## pointer_cursor_for_tick so they always agree on the current keyframe. Assumes a
-## non-empty track (callers check) and non-decreasing ticks in the common case.
-func _advance_pointer_index(tick: int) -> void:
-	if _pointer_index > 0 and int(_pointer_track[_pointer_index]["tick"]) > tick:
-		_pointer_index = 0
-	while _pointer_index + 1 < _pointer_track.size() \
-			and int(_pointer_track[_pointer_index + 1]["tick"]) <= tick:
-		_pointer_index += 1
+	return _pointer.has_track()
 
 
 ## PLAYBACK: the pointer state to apply at `tick` — the latest keyframe at or before it
@@ -545,10 +511,9 @@ func _advance_pointer_index(tick: int) -> void:
 ## Returns {} when not in playback or no track is loaded. Advances an internal cursor, so
 ## call with non-decreasing ticks; tolerates a step back to an earlier tick.
 func pointer_for_tick(tick: int) -> Dictionary:
-	if mode != Mode.PLAYBACK or _pointer_track.is_empty():
+	if mode != Mode.PLAYBACK:
 		return {}
-	_advance_pointer_index(tick)
-	return _pointer_track[_pointer_index]
+	return _pointer.for_tick(tick)
 
 
 ## PLAYBACK: the cursor position at `tick`, linearly interpolated between the surrounding
@@ -558,19 +523,9 @@ func pointer_for_tick(tick: int) -> Dictionary:
 ## outside the track's range. Returns ZERO when not in playback or no track is loaded
 ## (callers gate on has_pointer_track). Walks the same _pointer_index as pointer_for_tick.
 func pointer_cursor_for_tick(tick: int) -> Vector2:
-	if mode != Mode.PLAYBACK or _pointer_track.is_empty():
+	if mode != Mode.PLAYBACK:
 		return Vector2.ZERO
-	_advance_pointer_index(tick)
-	var cur: Dictionary = _pointer_track[_pointer_index]
-	var cur_pos := Vector2(cur["x"], cur["y"])
-	if _pointer_index + 1 >= _pointer_track.size():
-		return cur_pos
-	var nxt: Dictionary = _pointer_track[_pointer_index + 1]
-	var span: float = float(int(nxt["tick"]) - int(cur["tick"]))
-	if span <= 0.0:
-		return cur_pos
-	var f: float = clampf(float(tick - int(cur["tick"])) / span, 0.0, 1.0)
-	return cur_pos.lerp(Vector2(nxt["x"], nxt["y"]), f)
+	return _pointer.cursor_for_tick(tick)
 
 
 ## PLAYBACK: positions of orders issued within `window` ticks before `tick`, each with its
@@ -594,9 +549,9 @@ func pulses_for_tick(tick: int, window: int) -> Array:
 ## RECORD: capture the gameplay-hotkey labels pressed at `tick`. No-op otherwise or when
 ## nothing was pressed. Cosmetic — never read by the simulation.
 func record_keys(tick: int, labels: Array) -> void:
-	if mode != Mode.RECORD or labels.is_empty():
+	if mode != Mode.RECORD:
 		return
-	_key_track.append({"tick": tick, "labels": labels.duplicate()})
+	_keys.record_keys(tick, labels)
 
 
 ## PLAYBACK: hotkey labels pressed within `window` ticks before `tick`, each with its age in
@@ -605,15 +560,7 @@ func record_keys(tick: int, labels: Array) -> void:
 func keys_for_tick(tick: int, window: int) -> Array:
 	if mode != Mode.PLAYBACK:
 		return []
-	var out: Array = []
-	for k in _key_track:
-		var kt: int = int(k["tick"])
-		if kt > tick:
-			break
-		if tick - kt <= window:
-			for label in k["labels"]:
-				out.append({"label": str(label), "age": tick - kt})
-	return out
+	return _keys.for_tick(tick, window)
 
 
 ## RECORD: append a time_scale change at `tick`. No-op outside RECORD, and when `value`

@@ -72,6 +72,11 @@ Two known limitations, both inherent to the instrumenter:
 - **Autoloads are excluded.** `Settings`, `Replay`, and `Sfx` are already
   instantiated before the pre-run hook fires, so reloading their scripts to
   instrument them is unreliable; `pre_run_hook.gd` skips them.
+  Their decoupled presentation helpers (`scripts/ReplayCameraTrack.gd`,
+  `scripts/ReplayPointerTrack.gd`,
+  and `scripts/ReplayKeyTrack.gd`)
+  are plain `RefCounted` helpers and are instrumented.
+
 - Instrumentation reloads each script with injected line counters, so the
   coverage run is a little slower than the plain `test` job -- another reason it
   runs separately.
