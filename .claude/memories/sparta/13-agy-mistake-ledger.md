@@ -8,6 +8,7 @@ Each agy fix round appends its own new rule here on the PR branch, and the orche
 The cross-repo rule behind this file is `shared/workflow/improve-your-subagents.md` in ai-config.
 
 STANDING RULES FOR THIS DISPATCH (each is a past mistake; violating one costs a fix round):
+
 1. Re-read the target file at every line you cite; never trust a remembered line number.
 2. Markdown: a blank line before and after every list; one clause per line.
 3. Code comments: every bracket opened in a trailing comment closes on the same line, because the coverage tool skips comment-only lines and a stuck open bracket suppresses instrumentation for the rest of the file.
@@ -22,8 +23,11 @@ STANDING RULES FOR THIS DISPATCH (each is a past mistake; violating one costs a 
 12. Keep a new file under 100 lines (file_length gate) and .gd added lines under 100 chars.
 13. Before returning, run the checks you can (tools/check.sh chars; bash -n; the self-tests above) and paste their output.
 14. Re-read this ledger before writing a new rule; do not add a rule that is already here.
+15. Resolve a relative path argument against the caller's cwd (prefix it with $PWD) before handing it to git -C <project root>; a raw caller-relative path resolves against the project root there.
+
 END OF STANDING RULES.
 
 ## Provenance
 
-Rules 1 to 14 come from the agy fix rounds on the perf-graph path, replay tray-row, and coverage-instrumentation PRs of 2026-09-02, whose per-PR learning sections were folded here.
+Rules 1 to 11 and 14 to 15 come from the agy fix rounds on the perf-graph path, replay tray-row, and coverage-instrumentation PRs of 2026-09-02, whose per-PR learning sections were folded here.
+Rules 12 and 13 restate repo gates (file_length, line length, tools/check.sh) that those rounds also tripped.
