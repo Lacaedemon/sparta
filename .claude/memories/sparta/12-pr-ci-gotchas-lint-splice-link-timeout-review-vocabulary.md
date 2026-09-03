@@ -344,3 +344,44 @@ and reassigned every property instead.
 - **Don't:** report a move as verbatim from memory,
   since an extra word slipped in here
   and survived a later rewording pass.
+
+## 2026-09-03 agy: two nits on the Replay track extraction
+
+Adversarial review of the Replay helper extraction found two nits.
+First, a doc comment opened a parenthesis on one line
+and closed it on the next line.
+Ledger rule 3 applied to trailing comments on executable lines,
+but every comment line must close any bracket it opens.
+Second, deserializing loops in start_playback()
+appended through forwarding properties
+instead of appending to the helper's own track array directly.
+Forwarding properties exist only for test assertions that snapshot state,
+so internal replay deserialization must populate helper storage directly.
+
+- **Do:** close every bracket opened on a comment line on that same line,
+  applying ledger rule 3 to doc comments and not just trailing comments.
+
+- **Don't:** allow an open bracket on a comment line to close on a later line,
+  even though comment-only lines are skipped by the tokenizer.
+
+- **Do:** append deserialized entries directly to the helper's own track array
+  (_camera.track.append, _pointer.track.append, _keys.track.append),
+  keeping forwarding properties exclusively for tests that snapshot them.
+
+- **Don't:** append to helper state through forwarding properties
+  in playback loading loops.
+
+- **Do:** derive a test's expected value
+  by tracing the production code path for the exact input,
+  and prefer inputs that make a branch observable.
+
+- **Don't:** write an expectation for a branch you assumed runs
+  (a defensive guard)
+  without first checking the cursor or index logic actually reaches it.
+
+- **Do:** type a test's helper factory and locals
+  against the preloaded script const
+  so member access is checked.
+
+- **Don't:** annotate a helper instance as RefCounted
+  and then call its members dynamically.

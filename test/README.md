@@ -78,6 +78,10 @@ Two known limitations, both inherent to the instrumenter:
   Settings' persistence and keybinding logic now lives in
   `scripts/SettingsStorage.gd` and `scripts/SettingsKeybindings.gd`,
   which are instrumented.
+  `Replay`'s camera, pointer, and key tracks live in
+  `scripts/ReplayCameraTrack.gd`, `scripts/ReplayPointerTrack.gd`,
+  and `scripts/ReplayKeyTrack.gd`, plain `RefCounted` helpers,
+  so they are instrumented too.
 
 - Instrumentation reloads each script with injected line counters, so the
   coverage run is a little slower than the plain `test` job -- another reason it

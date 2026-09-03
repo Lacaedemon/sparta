@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Non-visual refactor: moves Replay's camera, pointer, and key tracks into instrumentable helpers; no gameplay or presentation change."
+}
