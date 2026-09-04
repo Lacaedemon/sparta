@@ -485,3 +485,56 @@ and asserts parity against DemoState in the GUT test suite where autoloads exist
   when the file documents an import boundary;
   duplicate with a parity test instead.
 
+## 2026-09-04 agy: a semicolon on an 80-char added README line
+
+A newly added bullet line in demos/README.md reached 82 visible characters
+and carried a mid-line semicolon,
+failing the diff-scoped check-new-line-breaks CI check.
+The edit also introduced a contradiction
+with an existing sentence in the factions bullet,
+which claimed team 1 never spawns in a drill,
+overlooking that a scenario enemy still deploys in drill mode.
+In round 3, extending the `drill` bullet with continuation lines
+tripped CI's blocking list-item splice check against `- `doctrine``,
+because the check is diff-scoped and the pre-existing tight join failed;
+the rule was already ledger rule 18 and was in the brief.
+
+- **Do:** break an added prose line after a semicolon or colon,
+  or start a new sentence with a full stop,
+  before the line reaches 80 visible characters.
+
+- **Don't:** leave a mid-line semicolon or colon
+  on an added prose line of 80 or more visible characters.
+
+- **Do:** after adding a mechanism claim to a doc,
+  grep the same file for the mechanism's keyword
+  and reconcile every sentence that states the opposite.
+
+- **Don't:** assume surrounding bullets agree
+  with a newly added mechanism claim
+  without grepping the file to verify consistency.
+
+- **Do:** verify a claim about what a value "defaults to"
+  by reading the lookup function
+  and the default declaration before writing it.
+
+- **Don't:** write "keeps the default X"
+  without naming what the default is
+  and where it is read.
+
+- **Do:** after extending a list item with wrapped continuation lines,
+  insert a blank line before the next `- ` item
+  because the splice check is diff-scoped
+  and your added lines make the pre-existing tight join fail
+  (the rule was already ledger rule 18 and was in the brief).
+
+- **Don't:** treat the surrounding tight list
+  as licence to leave the join tight.
+
+- **Do:** when reconciling a contradicted sentence,
+  re-read the WHOLE bullet or comment block and every clause in it,
+  since the contradiction usually appears in more than one clause.
+
+- **Don't:** amend only the clause a finding quoted.
+
+

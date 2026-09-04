@@ -81,6 +81,10 @@ Violating one costs a fix round.
    because the blocking lint step is the list-item splice check,
    which fails when an item follows a wrapped item with no blank line;
    a tight list is fine only when every item is a single line.
+   When extending an existing item with continuation lines,
+   insert a blank line before the next item
+   even if the surrounding list is tight,
+   because the diff-scoped check flags the newly wrapped join.
 
 19. When a report or finding is keyed to a commit,
    run `git log <commit>..HEAD -- <paths>` for the paths involved
@@ -102,6 +106,14 @@ Violating one costs a fix round.
    "same as", "keep in sync") across scripts/ and tools/, not only for call sites;
    grep for the formula's EXPRESSION text (e.g. `attack_range + RADIUS`) as well,
    and prefer replacing copies with one helper.
+
+24. Never leave a mid-line semicolon or colon on an added line
+   of 80 or more visible characters;
+   break after the punctuation or end with a full stop.
+
+25. After adding a mechanism claim to a doc,
+   grep the file for the mechanism keyword
+   and reconcile every existing sentence that states the opposite.
 
 END OF STANDING RULES
 
