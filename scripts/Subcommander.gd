@@ -340,8 +340,9 @@ static func _cover_one_flank(flank: Unit, outward: Vector2, group: Array, all_un
 
 
 static func _flank_is_outflanked(flank: Unit, outward: Vector2, all_units: Array, team: int) -> bool:
-	# Precalculated squared range for the initial reject.
+	# Precalculated squared range and skip threshold for the initial reject.
 	var flank_enemy_range_sq: float = FLANK_ENEMY_RANGE * FLANK_ENEMY_RANGE
+	var flank_enemy_range_skip_sq: float = flank_enemy_range_sq * SoldierEnemyContact.SQRT_SKIP_BAND
 	for node in all_units:
 		var e := node as Unit
 		if e == null or e.team == team or e.state == Unit.State.DEAD \
@@ -351,7 +352,7 @@ static func _flank_is_outflanked(flank: Unit, outward: Vector2, all_units: Array
 		# Squared reject skips the square root for distant enemies;
 		# in-band survivors take the exact tests so rounding never flips a verdict.
 		var dist_sq: float = to_e.length_squared()
-		if dist_sq > flank_enemy_range_sq * SoldierEnemyContact.SQRT_SKIP_BAND:
+		if dist_sq > flank_enemy_range_skip_sq:
 			continue
 		var d: float = to_e.length()
 		if d > FLANK_ENEMY_RANGE:
