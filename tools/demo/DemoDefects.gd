@@ -82,7 +82,8 @@ const WHIPSAW_MIN_SWING_DEG := 10.0
 ## ceiling can never drift apart.
 ## Positions in transcripts round to DemoState's coordinate precision, which can add up to
 ## speed_quantization_margin(dt) worst-case measurement error to a soldier moving at the cap;
-## the check admits that rounding allowance before judging speed super-physical.
+## the check admits that rounding allowance before judging speed super-physical, and the
+## reported threshold includes it.
 const GaitLimitsRef = preload("res://scripts/GaitLimits.gd")
 const SUPERPHYSICAL_SPEED_FRAC := GaitLimitsRef.SUPERPHYSICAL_SPEED_FRAC
 ## Must match DemoState.POSITION_DECIMAL_PLACES; cannot preload DemoState here because it pulls Unit.gd and Settings autoload into bare godot -s.
@@ -476,6 +477,7 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	var over_run := 0
 	var worst_speed := 0.0
 	var worst_run := 0
+	var worst_margin := 0.0
 	for i in range(1, n):
 		if s["counts"][i] != s["counts"][i - 1]:
 			over_run = 0   # casualty compaction: indexes no longer align across the gap
@@ -484,10 +486,11 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 		var v: float = max_soldier_speed(s["pos"][i - 1], s["pos"][i], dt)
 		worst_speed = maxf(worst_speed, v)
 		var margin: float = speed_quantization_margin(dt)
+		worst_margin = maxf(worst_margin, margin)
 		over_run = over_run + 1 if v > cap + margin else 0
 		worst_run = maxi(worst_run, over_run)
 	out.append({"uid": uid, "metric": "superphysical_speed", "pass": worst_run < MIN_SUSTAIN,
-			"worst": worst_speed, "threshold": cap})
+			"worst": worst_speed, "threshold": cap + worst_margin})
 
 	# Crossing routes: soldiers swapping sides on the way to wherever they are going.
 	# Deliberately NOT routed through _sustained_verdict. That helper forgives a series

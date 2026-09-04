@@ -415,8 +415,12 @@ func test_superphysical_speed_rounding_margin_boundary() -> void:
 		_snapshot(30, [[0.0, 3.0 * v_pass * dt_sec], [10.0, 3.0 * v_pass * dt_sec]], slots),
 	]
 	var res_pass: Dictionary = DemoDefects.analyze(snaps_pass)
-	assert_true(bool(_verdict(res_pass, "superphysical_speed")["pass"]),
+	var verdict_pass: Dictionary = _verdict(res_pass, "superphysical_speed")
+	assert_true(bool(verdict_pass["pass"]),
 			"speed at cap plus half margin passes rounding allowance")
+	var reported_pass_threshold: float = float(verdict_pass["threshold"])
+	assert_gt(reported_pass_threshold, cap,
+			"reported threshold is greater than cap when a margin applied")
 	var v_fail: float = cap + 2.0 * margin
 	var snaps_fail: Array = [
 		_snapshot(0, [[0.0, 0.0], [10.0, 0.0]], slots),
@@ -425,8 +429,12 @@ func test_superphysical_speed_rounding_margin_boundary() -> void:
 		_snapshot(30, [[0.0, 3.0 * v_fail * dt_sec], [10.0, 3.0 * v_fail * dt_sec]], slots),
 	]
 	var res_fail: Dictionary = DemoDefects.analyze(snaps_fail)
-	assert_false(bool(_verdict(res_fail, "superphysical_speed")["pass"]),
+	var verdict_fail: Dictionary = _verdict(res_fail, "superphysical_speed")
+	assert_false(bool(verdict_fail["pass"]),
 			"speed at cap plus 2x margin fails superphysical check")
+	var reported_fail_threshold: float = float(verdict_fail["threshold"])
+	assert_gt(reported_fail_threshold, cap,
+			"reported threshold in failing verdict is also greater than cap when a margin applied")
 
 
 func test_whipsaw_verdict_fails_an_oscillating_march() -> void:
