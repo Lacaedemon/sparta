@@ -134,11 +134,10 @@ func test_max_soldier_speed_reads_displacement_over_ticks() -> void:
 
 
 func test_speed_quantization_margin_for_dt10_and_dt60() -> void:
-	var expected_dt10: float = (0.01 * sqrt(2.0)) / (10.0 / 60.0)
-	var expected_dt60: float = (0.01 * sqrt(2.0)) / (60.0 / 60.0)
-	var defects_cls: Variant = DemoDefects
-	var m10: float = defects_cls.speed_quantization_margin(10) if defects_cls.has_method("speed_quantization_margin") else -1.0
-	var m60: float = defects_cls.speed_quantization_margin(60) if defects_cls.has_method("speed_quantization_margin") else -1.0
+	var expected_dt10: float = (DemoDefects.POSITION_QUANTUM * sqrt(2.0)) / (10.0 / 60.0)
+	var expected_dt60: float = (DemoDefects.POSITION_QUANTUM * sqrt(2.0)) / (60.0 / 60.0)
+	var m10: float = DemoDefects.speed_quantization_margin(10)
+	var m60: float = DemoDefects.speed_quantization_margin(60)
 	assert_almost_eq(m10, expected_dt10, 0.0001,
 			"margin at dt 10 accounts for two rounded endpoints over 10 ticks")
 	assert_almost_eq(m60, expected_dt60, 0.0001,
@@ -405,8 +404,7 @@ func test_superphysical_speed_rounding_margin_boundary() -> void:
 	var cap: float = sprint * GaitLimits.SUPERPHYSICAL_SPEED_FRAC
 	var dt_ticks := 10
 	var dt_sec: float = float(dt_ticks) / 60.0
-	var defects_cls: Variant = DemoDefects
-	var margin: float = defects_cls.speed_quantization_margin(dt_ticks) if defects_cls.has_method("speed_quantization_margin") else (0.01 * sqrt(2.0)) / dt_sec
+	var margin: float = DemoDefects.speed_quantization_margin(dt_ticks)
 	var v_pass: float = cap + 0.5 * margin
 	var snaps_pass: Array = [
 		_snapshot(0, [[0.0, 0.0], [10.0, 0.0]], slots),
