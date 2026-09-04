@@ -194,10 +194,11 @@ script under `demos/inputs/`:
   `"factions": ["Sparta", "Rome"]`.
   Names, not enum ints, and matched case-insensitively against `Faction.FACTION_NAMES`
   in either its full form (`"Rome (Latin / Roman)"`) or its bare leading name (`"Rome"`).
-  Strict on length as well as spelling: a non-empty list must name every team that will
-  actually spawn -- exactly two entries for a normal battle, or exactly one when `drill` is
-  set (the default team-1 line never spawns in a drill,
-  so `factions` takes one entry,
+  Strict on length as well as spelling:
+  a non-empty list tags default-line spawns --
+  both teams in a normal battle (exactly two entries),
+  or team 0 only when `drill` is set
+  (the default team-1 line never spawns in a drill,
   and a scenario-staged team-1 enemy in a drill
   cannot be named through `factions`
   and fights with no faction (HUD lookups return none)).

@@ -531,3 +531,10 @@ the rule was already ledger rule 18 and was in the brief.
 - **Don't:** treat the surrounding tight list
   as licence to leave the join tight.
 
+- **Do:** when reconciling a contradicted sentence,
+  re-read the WHOLE bullet or comment block and every clause in it,
+  since the contradiction usually appears in more than one clause.
+
+- **Don't:** amend only the clause a finding quoted.
+
+
