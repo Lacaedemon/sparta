@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Tooling-only change to the offline DemoDefects analyzer (position-rounding allowance on superphysical_speed and a two-sample post-contact settle buffer); no simulation or visual change a recorded battle could show."
+}

@@ -464,3 +464,24 @@ instead of splitting into separate helper files or functions.
 - **Don't:** leave a one-line delegating wrapper behind "for compatibility"
   without a caller,
   since it is dead, uncovered surface.
+
+## 2026-09-03 agy: preloading DemoState into DemoDefects broke bare godot -s
+
+DemoDefects was given a preload of DemoState to read its coordinate precision constant,
+violating the import boundary documented in lines 8-9 of DemoDefects.gd.
+The header explicitly states that DemoDefects must not reference Unit or anything needing Settings,
+because analyze_transcript.gd loads DemoDefects under bare `godot -s` without autoload singletons.
+Preloading DemoState transitively loaded UnitFormation and Unit.gd,
+triggering `Identifier not found: Settings` compile errors on every analyzer run.
+The contract was missed because the brief directed attention to lines 75-120,
+and the file's header comments were not read before adding the import.
+The fix defines the coordinate precision constant directly in DemoDefects
+and asserts parity against DemoState in the GUT test suite where autoloads exist.
+
+- **Do:** read a file's header contract
+  before adding an import to it.
+
+- **Don't:** reach for a cross-file constant
+  when the file documents an import boundary;
+  duplicate with a parity test instead.
+

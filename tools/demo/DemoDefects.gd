@@ -85,9 +85,10 @@ const WHIPSAW_MIN_SWING_DEG := 10.0
 ## the check admits that rounding allowance before judging speed super-physical.
 const GaitLimitsRef = preload("res://scripts/GaitLimits.gd")
 const SUPERPHYSICAL_SPEED_FRAC := GaitLimitsRef.SUPERPHYSICAL_SPEED_FRAC
-const DemoStateRef = preload("res://tools/demo/DemoState.gd")
+## Must match DemoState.POSITION_DECIMAL_PLACES; cannot preload DemoState here because it pulls Unit.gd and Settings autoload into bare godot -s.
+const POSITION_DECIMAL_PLACES := 2
 ## Dump position quantum (wu) derived from DemoState's coordinate rounding.
-const POSITION_QUANTUM: float = pow(10.0, -float(DemoStateRef.POSITION_DECIMAL_PLACES))
+const POSITION_QUANTUM: float = pow(10.0, -float(POSITION_DECIMAL_PLACES))
 ## Samples after the last contact sample that stay exempt from grid-shape judgments,
 ## allowing a disengaging unit time to re-form.
 const CONTACT_SETTLE_SAMPLES := 2

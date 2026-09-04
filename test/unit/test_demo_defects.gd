@@ -137,13 +137,17 @@ func test_speed_quantization_margin_for_dt10_and_dt60() -> void:
 	var expected_dt10: float = (0.01 * sqrt(2.0)) / (10.0 / 60.0)
 	var expected_dt60: float = (0.01 * sqrt(2.0)) / (60.0 / 60.0)
 	var defects_cls: Variant = DemoDefects
-	var m10 = defects_cls.speed_quantization_margin(10) if defects_cls.has_method("speed_quantization_margin") else null
-	var m60 = defects_cls.speed_quantization_margin(60) if defects_cls.has_method("speed_quantization_margin") else null
-	assert_not_null(m10, "speed_quantization_margin helper exists")
-	assert_almost_eq(float(m10) if m10 != null else -1.0, expected_dt10, 0.0001,
+	var m10: float = defects_cls.speed_quantization_margin(10) if defects_cls.has_method("speed_quantization_margin") else -1.0
+	var m60: float = defects_cls.speed_quantization_margin(60) if defects_cls.has_method("speed_quantization_margin") else -1.0
+	assert_almost_eq(m10, expected_dt10, 0.0001,
 			"margin at dt 10 accounts for two rounded endpoints over 10 ticks")
-	assert_almost_eq(float(m60) if m60 != null else -1.0, expected_dt60, 0.0001,
+	assert_almost_eq(m60, expected_dt60, 0.0001,
 			"margin at dt 60 accounts for two rounded endpoints over 60 ticks")
+
+
+func test_demo_defects_position_decimal_places_matches_demo_state() -> void:
+	assert_eq(DemoDefects.POSITION_DECIMAL_PLACES, DemoState.POSITION_DECIMAL_PLACES,
+			"DemoDefects position precision matches DemoState dump precision")
 
 
 # --- whole-transcript verdicts -----------------------------------------------------
