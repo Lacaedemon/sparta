@@ -340,7 +340,6 @@ static func _cover_one_flank(flank: Unit, outward: Vector2, group: Array, all_un
 
 
 static func _flank_is_outflanked(flank: Unit, outward: Vector2, all_units: Array, team: int) -> bool:
-	# OPTIMIZATION: precalculate loop invariant squares
 	var flank_enemy_range_sq: float = FLANK_ENEMY_RANGE * FLANK_ENEMY_RANGE
 	for node in all_units:
 		var e := node as Unit
