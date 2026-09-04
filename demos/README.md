@@ -162,6 +162,7 @@ script under `demos/inputs/`:
   so no later tick can be sampled or pinned with `expect`
   (`demos/inputs/idle-speed-friction.json` and
   `demos/inputs/run-down-a-router.json` are the worked examples).
+
 - `doctrine` (optional string) -- override team 1's battle-AI doctrine profile (a
   `DoctrineRegistry` id, e.g. `"aggressive"` or `"cautious"` -- see `data/doctrines/*.json`
   and `docs/battle-ai-design.md`'s phase-3 section). Set before the battle spawns, like

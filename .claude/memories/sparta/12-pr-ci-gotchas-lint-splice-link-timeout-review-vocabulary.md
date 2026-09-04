@@ -494,6 +494,10 @@ The edit also introduced a contradiction
 with an existing sentence in the factions bullet,
 which claimed team 1 never spawns in a drill,
 overlooking that a scenario enemy still deploys in drill mode.
+In round 3, extending the `drill` bullet with continuation lines
+tripped CI's blocking list-item splice check against `- `doctrine``,
+because the check is diff-scoped and the pre-existing tight join failed;
+the rule was already ledger rule 18 and was in the brief.
 
 - **Do:** break an added prose line after a semicolon or colon,
   or start a new sentence with a full stop,
@@ -517,3 +521,13 @@ overlooking that a scenario enemy still deploys in drill mode.
 - **Don't:** write "keeps the default X"
   without naming what the default is
   and where it is read.
+
+- **Do:** after extending a list item with wrapped continuation lines,
+  insert a blank line before the next `- ` item
+  because the splice check is diff-scoped
+  and your added lines make the pre-existing tight join fail
+  (the rule was already ledger rule 18 and was in the brief).
+
+- **Don't:** treat the surrounding tight list
+  as licence to leave the join tight.
+

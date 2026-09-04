@@ -81,6 +81,10 @@ Violating one costs a fix round.
    because the blocking lint step is the list-item splice check,
    which fails when an item follows a wrapped item with no blank line;
    a tight list is fine only when every item is a single line.
+   When extending an existing item with continuation lines,
+   insert a blank line before the next item
+   even if the surrounding list is tight,
+   because the diff-scoped check flags the newly wrapped join.
 
 19. When a report or finding is keyed to a commit,
    run `git log <commit>..HEAD -- <paths>` for the paths involved
