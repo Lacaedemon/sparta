@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/subcommander-flank-cover.json",
+  "caption": "When an outflanking enemy approaches the defensive line, Subcommander._flank_is_outflanked triggers and dispatches the nearest available ally to cover the exposed flank.",
+  "fixed_fps": 30,
+  "max_frames": 510,
+  "fps": 20,
+  "width": 640
+}
