@@ -140,15 +140,19 @@ static func sort_records_by_uid(records: Array) -> Array:
 	return records
 
 
+## Number of decimal places when dumping spatial coordinates (positions, slots, facings).
+const POSITION_DECIMAL_PLACES := 2
+
+
 ## Round a float to `places` decimals for compact, readable JSON — raw sim floats carry a long
 ## fractional tail that adds noise without helping a reviewer assert on a value.
-static func round_to(value: float, places: int = 2) -> float:
+static func round_to(value: float, places: int = POSITION_DECIMAL_PLACES) -> float:
 	var factor: float = pow(10.0, places)
 	return round(value * factor) / factor
 
 
 ## A rounded [x, y] pair for a Vector2, for JSON. Keeps positions/facings readable.
-static func vec2_pair(v: Vector2, places: int = 2) -> Array:
+static func vec2_pair(v: Vector2, places: int = POSITION_DECIMAL_PLACES) -> Array:
 	return [round_to(v.x, places), round_to(v.y, places)]
 
 

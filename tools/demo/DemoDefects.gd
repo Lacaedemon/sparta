@@ -80,8 +80,17 @@ const WHIPSAW_MIN_SWING_DEG := 10.0
 ## script SoldierBodies.step()'s own engine-side clamp reads too -- rather than a second
 ## hand-kept copy of the fraction, so the metric's threshold and the engine's physical
 ## ceiling can never drift apart.
+## Positions in transcripts round to DemoState's coordinate precision, which can add up to
+## speed_quantization_margin(dt) worst-case measurement error to a soldier moving at the cap;
+## the check admits that rounding allowance before judging speed super-physical.
 const GaitLimitsRef = preload("res://scripts/GaitLimits.gd")
 const SUPERPHYSICAL_SPEED_FRAC := GaitLimitsRef.SUPERPHYSICAL_SPEED_FRAC
+const DemoStateRef = preload("res://tools/demo/DemoState.gd")
+## Dump position quantum (wu) derived from DemoState's coordinate rounding.
+const POSITION_QUANTUM: float = pow(10.0, -float(DemoStateRef.POSITION_DECIMAL_PLACES))
+## Samples after the last contact sample that stay exempt from grid-shape judgments,
+## allowing a disengaging unit time to re-form.
+const CONTACT_SETTLE_SAMPLES := 2
 ## More than this fraction of a unit's soldiers standing closer to some OTHER soldier's
 ## slot than their own (measured against the FIT-ALIGNED grid, so legitimate turn lag --
 ## a rigid offset the Kabsch fit removes -- cannot fire it), sustained pre-contact, is a
@@ -237,6 +246,18 @@ static func max_soldier_speed(prev: Array, cur: Array, dt_ticks: int, tps: float
 	return best
 
 
+## Worst-case speed error (wu/s) introduced by two rounded position endpoints sampled
+## `dt_ticks` physics ticks apart. Each coordinate rounds to POSITION_QUANTUM, so each
+## endpoint can drift by up to half a quantum in x and y (worst-case Euclidean error
+## sqrt(2) * 0.5 * quantum). Two endpoints drifting in opposite directions introduce up
+## to sqrt(2) * quantum displacement error over dt.
+static func speed_quantization_margin(dt_ticks: int, tps: float = 60.0) -> float:
+	if dt_ticks <= 0:
+		return 0.0
+	var dt: float = float(dt_ticks) / tps
+	return (POSITION_QUANTUM * sqrt(2.0)) / dt
+
+
 ## Do two open segments properly cross? Orientation (cross-product sign) test on both
 ## pairs. Collinear and endpoint-touching cases are not crossings worth reporting, and
 ## exact zeros are measure-zero in float body data anyway.
@@ -372,7 +393,9 @@ static func analyze(snapshots: Array) -> Dictionary:
 ##   a block charging into or peeling out of contact legitimately compresses
 ##   in the sampled moments just before contact flips, and judging one side
 ##   of the flip while exempting the other made verdicts a lottery on where
-##   the sample landed relative to first contact;
+##   the sample landed relative to first contact; the post-contact buffer extends
+##   to CONTACT_SETTLE_SAMPLES because a unit disengaging between two bouts needs
+##   more than one sampled second to re-form;
 ## - the soldier count dropped since the previous sample: casualties compact
 ##   the arrays and the survivors converge on re-dealt slots, a legitimate
 ##   transient the superphysical check already skips for the same reason;
@@ -396,7 +419,12 @@ static func judged_mask(s: Dictionary) -> Array:
 	for i in range(n):
 		var ok: bool = not contact[i] and not s["routing"][i] \
 				and int(s["counts"][i]) >= 2
-		if ok and i > 0 and (contact[i - 1] or int(s["counts"][i]) < int(s["counts"][i - 1]) or reshaped[i] or reshaped[i - 1]):
+		var post_contact := false
+		for k in range(1, CONTACT_SETTLE_SAMPLES + 1):
+			if i - k >= 0 and contact[i - k]:
+				post_contact = true
+				break
+		if ok and (post_contact or (i > 0 and (int(s["counts"][i]) < int(s["counts"][i - 1]) or reshaped[i] or reshaped[i - 1]))):
 			ok = false
 		if ok and i + 1 < n and contact[i + 1]:
 			ok = false
@@ -454,7 +482,8 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 		var dt: int = int(s["ticks"][i]) - int(s["ticks"][i - 1])
 		var v: float = max_soldier_speed(s["pos"][i - 1], s["pos"][i], dt)
 		worst_speed = maxf(worst_speed, v)
-		over_run = over_run + 1 if v > cap else 0
+		var margin: float = speed_quantization_margin(dt)
+		over_run = over_run + 1 if v > cap + margin else 0
 		worst_run = maxi(worst_run, over_run)
 	out.append({"uid": uid, "metric": "superphysical_speed", "pass": worst_run < MIN_SUSTAIN,
 			"worst": worst_speed, "threshold": cap})

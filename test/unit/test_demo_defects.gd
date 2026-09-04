@@ -133,6 +133,19 @@ func test_max_soldier_speed_reads_displacement_over_ticks() -> void:
 			"speed is the fastest soldier's displacement over elapsed sim time")
 
 
+func test_speed_quantization_margin_for_dt10_and_dt60() -> void:
+	var expected_dt10: float = (0.01 * sqrt(2.0)) / (10.0 / 60.0)
+	var expected_dt60: float = (0.01 * sqrt(2.0)) / (60.0 / 60.0)
+	var defects_cls: Variant = DemoDefects
+	var m10 = defects_cls.speed_quantization_margin(10) if defects_cls.has_method("speed_quantization_margin") else null
+	var m60 = defects_cls.speed_quantization_margin(60) if defects_cls.has_method("speed_quantization_margin") else null
+	assert_not_null(m10, "speed_quantization_margin helper exists")
+	assert_almost_eq(float(m10) if m10 != null else -1.0, expected_dt10, 0.0001,
+			"margin at dt 10 accounts for two rounded endpoints over 10 ticks")
+	assert_almost_eq(float(m60) if m60 != null else -1.0, expected_dt60, 0.0001,
+			"margin at dt 60 accounts for two rounded endpoints over 60 ticks")
+
+
 # --- whole-transcript verdicts -----------------------------------------------------
 
 func test_clean_march_passes_every_verdict() -> void:
@@ -272,6 +285,21 @@ func test_the_transition_window_straddles_a_contact_flip_too() -> void:
 			"compression in the sample bordering the end of contact is the transition")
 
 
+func test_judged_mask_masks_two_samples_after_contact_and_judges_third() -> void:
+	var s: Dictionary = {
+		"ticks": [0, 60, 120, 180, 240, 300],
+		"engaged": [false, false, true, false, false, false],
+		"in_enemy_contact": [false, false, false, false, false, false],
+		"routing": [false, false, false, false, false, false],
+		"counts": [24, 24, 24, 24, 24, 24],
+	}
+	var mask: Array = DemoDefects.judged_mask(s)
+	assert_false(mask[2], "contact sample is masked")
+	assert_false(mask[3], "first post-contact sample is masked")
+	assert_false(mask[4], "second post-contact sample is masked")
+	assert_true(mask[5], "third post-contact sample is judged")
+
+
 func test_the_sample_after_a_casualty_compaction_is_exempt() -> void:
 	# Casualties compact the body arrays and survivors converge on re-dealt slots:
 	# the first sample after a count drop is a legitimate transient. The compression
@@ -365,6 +393,36 @@ func test_teleporting_soldier_fails_superphysical_only_when_sustained() -> void:
 		_snapshot(60, far2.duplicate(), far2)]
 	assert_false(bool(_verdict(DemoDefects.analyze(sustained), "superphysical_speed")["pass"]),
 			"soldiers holding 3x sprint across samples are super-physical")
+
+
+func test_superphysical_speed_rounding_margin_boundary() -> void:
+	var slots: Array = [[0.0, 0.0], [10.0, 0.0]]
+	var sprint := 126.0
+	var cap: float = sprint * GaitLimits.SUPERPHYSICAL_SPEED_FRAC
+	var dt_ticks := 10
+	var dt_sec: float = float(dt_ticks) / 60.0
+	var defects_cls: Variant = DemoDefects
+	var margin: float = defects_cls.speed_quantization_margin(dt_ticks) if defects_cls.has_method("speed_quantization_margin") else (0.01 * sqrt(2.0)) / dt_sec
+	var v_pass: float = cap + 0.5 * margin
+	var snaps_pass: Array = [
+		_snapshot(0, [[0.0, 0.0], [10.0, 0.0]], slots),
+		_snapshot(10, [[0.0, v_pass * dt_sec], [10.0, v_pass * dt_sec]], slots),
+		_snapshot(20, [[0.0, 2.0 * v_pass * dt_sec], [10.0, 2.0 * v_pass * dt_sec]], slots),
+		_snapshot(30, [[0.0, 3.0 * v_pass * dt_sec], [10.0, 3.0 * v_pass * dt_sec]], slots),
+	]
+	var res_pass: Dictionary = DemoDefects.analyze(snaps_pass)
+	assert_true(bool(_verdict(res_pass, "superphysical_speed")["pass"]),
+			"speed at cap plus half margin passes rounding allowance")
+	var v_fail: float = cap + 2.0 * margin
+	var snaps_fail: Array = [
+		_snapshot(0, [[0.0, 0.0], [10.0, 0.0]], slots),
+		_snapshot(10, [[0.0, v_fail * dt_sec], [10.0, v_fail * dt_sec]], slots),
+		_snapshot(20, [[0.0, 2.0 * v_fail * dt_sec], [10.0, 2.0 * v_fail * dt_sec]], slots),
+		_snapshot(30, [[0.0, 3.0 * v_fail * dt_sec], [10.0, 3.0 * v_fail * dt_sec]], slots),
+	]
+	var res_fail: Dictionary = DemoDefects.analyze(snaps_fail)
+	assert_false(bool(_verdict(res_fail, "superphysical_speed")["pass"]),
+			"speed at cap plus 2x margin fails superphysical check")
 
 
 func test_whipsaw_verdict_fails_an_oscillating_march() -> void:
