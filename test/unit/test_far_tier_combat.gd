@@ -364,8 +364,9 @@ func test_a_formation_under_a_plain_move_order_does_not_grind_down_a_router() ->
 	router.state = Unit.State.ROUTING
 	router.remove_from_group("units")
 	router.add_to_group("routers")
-	var gap: float = router.attack_range + router.RADIUS - 1.0
-	var marcher: Unit = _far_unit(1, Vector2(0.0, gap), Vector2.UP)
+	var marcher: Unit = _far_unit(1, Vector2.ZERO, Vector2.UP)
+	var gap: float = FarTierRates.melee_contact_distance(marcher, router) - 1.0
+	marcher.position = Vector2(0.0, gap)
 	marcher.state = Unit.State.MOVING   # marching past, not fighting
 	marcher.has_move_target = true
 	marcher.target_enemy = null

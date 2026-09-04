@@ -1,5 +1,5 @@
 {
-  "_comment": "Pursuit demo: cavalry running down a routing infantry squad. A small cavalry troop pursues a brittle infantry squad that breaks on contact and flees. While closing the gap across the field, the cavalry stays in MOVING rather than locking into FIGHTING at standoff, running at full speed until inside physical weapon reach where it finishes the squad.",
+  "_comment": "Pursuit demo: cavalry running down a routing infantry squad. A small cavalry troop pursues a brittle infantry squad that breaks on contact and flees. While closing the gap across the field, the cavalry stays in MOVING rather than locking into FIGHTING at standoff, running at full speed until inside physical weapon reach where it finishes the squad. The script keeps drill true on purpose: the enemy squad comes from the scenario list, and drill keeps the battle running after its last man falls so the sampled window can show the cavalry dropping to IDLE (without it the battle ends at the kill and the recording stops there, as idle-speed-friction.json relies on too).",
   "seed": "771521",
   "show_unit_speed": true,
   "drill": true,
