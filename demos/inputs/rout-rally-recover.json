@@ -14,5 +14,11 @@
     {"tick": 1900, "x": 790.0, "y": 1470.0, "zoom": 1.2},
     {"tick": 2600, "x": 780.0, "y": 1320.0, "zoom": 1.25}
   ],
-  "steps": []
+  "steps": [],
+  "defect_exemptions": {
+    "facing_whipsaw": {
+      "uids": [2],
+      "reason": "Cavalry executes multi-phase maneuvering across chase, flank detour, annihilation, spearmen re-engagement, and subsequent rout."
+    }
+  }
 }

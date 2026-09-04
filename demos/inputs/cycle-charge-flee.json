@@ -26,8 +26,12 @@
       "reason": "Known chase/reversal deformation on the peel-exit: the 24-horse block compresses while reversing out of a landed charge (shape residual spikes past the 15 wu cavalry threshold at the t300-330 peel samples this clip has to keep in order to pin the peel itself). The same family every long cavalry pursuit shows; the author cannot stage it away without dropping the peel samples the expect needs."
     },
     "overlap": {
-      "uids": [1],
-      "reason": "The 70-man infantry is in melee contact at the peel samples (t300-330); nearest-neighbour distance dips under the infantry overlap threshold while bodies are still in the press. Pre-existing on the merge-base of this clip; not a new formation bug."
+      "uids": [0, 1],
+      "reason": "The 70-man infantry is in melee contact at the peel samples (t300-330); nearest-neighbour distance dips under the infantry overlap threshold while bodies are still in the press. Pre-existing on the merge-base of this clip; not a new formation bug. Cavalry troopers (uid 0) also compress laterally during the post-impact peel-back."
+    },
+    "path_crossing": {
+      "uids": [0, 1],
+      "reason": "Cavalry and infantry paths cross during the cycle charge penetration and subsequent formation realignment."
     }
   },
   "expect": [

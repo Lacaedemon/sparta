@@ -32,7 +32,10 @@ Violating one costs a fix round.
    GNU awk reads it as a backspace).
 
 6. A test must fail without the production change;
-   check by reasoning about what the pre-patch code already did.
+   check by reasoning about what the pre-patch code already did;
+   a boundary parameter value can zero out the very effect the test guards,
+   so pick a value well inside the effect and run the test against
+   the pre-change file (`git show HEAD:<path>`) as the negative control.
 
 7. Test every call path you changed, not only the first one.
 
@@ -86,6 +89,10 @@ Violating one costs a fix round.
 20. In a headless --print run nobody answers,
    so never end by asking for approval of a plan;
    execute and write the deliverable.
+
+21. When extending an existing exemption, comment, or docstring,
+   keep the earlier author's specific text and append;
+   never replace a cited mechanism with a generic summary.
 
 END OF STANDING RULES
 

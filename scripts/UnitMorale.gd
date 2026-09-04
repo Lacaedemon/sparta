@@ -193,6 +193,13 @@ static func tick_morale(u: Unit, delta: float) -> void:
 		var fire_erosion := UNDER_FIRE_MORALE_EROSION_PER_SEC * delta
 		u.morale = maxf(0.0, u.morale - fire_erosion)
 
+	# Ambient rout trigger: a unit whose morale reached zero this tick has broken
+	# and recovery must not rescue it.
+	if u.morale <= 0.0 and u.state != Unit.State.ROUTING and u.state != Unit.State.DEAD:
+		u._rout()
+		Sfx.play(&"rout")
+		return
+
 	# Resting recovery / rank-cycle in-fight recovery:
 	if u.state != Unit.State.FIGHTING and u.morale < 100.0 and local_force_ratio >= 1.0 and not u._under_fire:
 		u.morale = minf(100.0, u.morale + Unit.MORALE_RECOVER_PER_SEC * delta)
@@ -206,6 +213,3 @@ static func tick_morale(u: Unit, delta: float) -> void:
 					* delta
 			u.morale = minf(100.0, u.morale + recovery)
 
-	if u.morale <= 0.0 and u.state != Unit.State.ROUTING and u.state != Unit.State.DEAD:
-		u._rout()
-		Sfx.play(&"rout")

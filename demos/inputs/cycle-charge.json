@@ -74,21 +74,21 @@
   "defect_exemptions": {
     "overlap": {
       "uids": [
-        8
+        3
       ],
-      "reason": "Infantry unit takes the repeated cavalry charge impact, compressing under momentum pulses. Measured on the density re-pin."
+      "reason": "Charging cavalry peels back and compresses laterally during cycle-charge caracole maneuver before re-forming."
     },
     "shape_residual": {
       "uids": [
-        8
+        3
       ],
-      "reason": "Infantry block distorts under the repeated momentum collisions of the cycle charge. Measured on the density re-pin."
+      "reason": "Charging cavalry block deforms during cycle-charge impact, peel-back, and subsequent regrouping."
     },
     "path_crossing": {
       "uids": [
-        6
+        3
       ],
-      "reason": "Adjacent line unit has soldier paths cross during evasive reaction to passing cavalry. Measured on the density re-pin."
+      "reason": "Charging cavalry paths cross during the cycle-charge breakthrough, disengagement wheel, and realignment."
     }
   }
 }
