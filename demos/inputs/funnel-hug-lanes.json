@@ -172,6 +172,12 @@
         0
       ],
       "reason": "Soldier paths temporarily cross during the 120-man formed wheel onto the detour corridor before stabilizing on the straight march. Measured on the density re-pin."
+    },
+    "shape_residual": {
+      "uids": [
+        0
+      ],
+      "reason": "The 120-man wide line distorts significantly while wheeling along its designated corridor lane around the hill contour before settling on the exit march."
     }
   }
 }

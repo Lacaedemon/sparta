@@ -32,7 +32,11 @@ Violating one costs a fix round.
    GNU awk reads it as a backspace).
 
 6. A test must fail without the production change;
-   check by reasoning about what the pre-patch code already did.
+   check by reasoning about what the pre-patch code already did;
+   a boundary parameter value can zero out the very effect the test guards,
+   so pick a value well inside the effect
+   and run the test against the pre-change file
+   (`git show origin/<default-branch>:<path>`) as the negative control.
 
 7. Test every call path you changed, not only the first one.
 
@@ -78,6 +82,19 @@ Violating one costs a fix round.
    which fails when an item follows a wrapped item with no blank line;
    a tight list is fine only when every item is a single line.
 
+19. When a report or finding is keyed to a commit,
+   run `git log <commit>..HEAD -- <paths>` for the paths involved
+   before recommending work,
+   and label each item already-landed, unverified, or open.
+
+20. In a headless --print run nobody answers,
+   so never end by asking for approval of a plan;
+   execute and write the deliverable.
+
+21. When extending an existing exemption, comment, or docstring,
+   keep the earlier author's specific text and append;
+   never replace a cited mechanism with a generic summary.
+
 END OF STANDING RULES
 
 ## Provenance
@@ -85,3 +102,4 @@ END OF STANDING RULES
 Rules 1 to 11 and 14 to 17 come from the agy fix rounds on the perf-graph path, replay tray-row, and coverage-instrumentation PRs of 2026-09-02, whose per-PR learning sections were folded here.
 Rule 12 restates the file_length gate that one of those rounds tripped,
 and rule 13 is the check-before-returning step those rounds skipped.
+Rule 6 was corrected on 2026-09-03 to name origin/<default-branch> over HEAD.

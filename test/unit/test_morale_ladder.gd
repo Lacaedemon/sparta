@@ -100,3 +100,58 @@ func test_ambient_morale_loss_rout_does_not_crash_outside_scene_tree():
 	UnitMorale.tick_morale(unit, 1.0)
 
 	assert_eq(unit.state, Unit.State.ROUTING, "ambient rout still fires outside the tree")
+
+func test_ambient_morale_loss_with_rank_relief_triggers_rout():
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	add_child_autofree(battle)
+	SpatialHash.reset()
+	var units_node: Node = battle.get_node("Units")
+	for child: Node in units_node.get_children():
+		units_node.remove_child(child)
+		child.free()
+
+	var friendly: Unit = UnitRef.new()
+	friendly.team = 0
+	friendly.position = Vector2(100, 100)
+	friendly.max_soldiers = 100
+	units_node.add_child(friendly)
+	friendly.soldiers = 100
+	friendly.morale = 0.0
+	friendly.state = Unit.State.FIGHTING
+	friendly.is_ranged = false
+	friendly.rank_relief = true
+	friendly.training = 1.0
+	autofree(friendly)
+
+	var enemy: Unit = UnitRef.new()
+	enemy.team = 1
+	enemy.position = Vector2(120, 100)
+	enemy.max_soldiers = 200
+	units_node.add_child(enemy)
+	enemy.soldiers = 200
+	enemy.morale = 80.0
+	autofree(enemy)
+
+	SpatialHash.rebuild(get_tree(), Engine.get_physics_frames())
+
+	UnitMorale.tick_morale(friendly, 1.0)
+
+	assert_eq(friendly.state, Unit.State.ROUTING, "zero-morale fighting unit with rank relief routs")
+
+func test_morale_recovery_while_fighting_continues_when_not_broken():
+	var unit: Unit = UnitRef.new()
+	autofree(unit)
+	unit.team = 0
+	unit.max_soldiers = 100
+	unit.soldiers = 100
+	unit.morale = 0.5
+	unit.state = Unit.State.FIGHTING
+	unit.is_ranged = false
+	unit.rank_relief = true
+	unit.training = 1.0
+
+	UnitMorale.tick_morale(unit, 1.0)
+
+	assert_eq(unit.state, Unit.State.FIGHTING, "fighting unit with positive morale remains fighting")
+	assert_gt(unit.morale, 0.5, "fighting unit with positive morale recovers morale via rank cycling")
+
