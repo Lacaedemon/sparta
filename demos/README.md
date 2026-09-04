@@ -150,6 +150,13 @@ script under `demos/inputs/`:
   cross-checking a caption against the state transcript then has to account for combat state
   that's irrelevant to the actual change). Only omit `drill` (or set it `false`) when the demo
   genuinely needs a live opponent.
+  A clip that must keep sampling AFTER one side is wiped (wipe, then idle/coast) keeps
+  `"drill": true` even though it stages an enemy from the `scenario` list. The reason:
+  drill only suppresses `Battle`'s own team-1 default-line spawn and the battle-end
+  (victory) check, so a `scenario` enemy still deploys and fights; without drill the
+  battle ends at the last kill and `DemoInputRecorder` stops recording there, so no later
+  tick can be sampled or pinned with `expect` (`demos/inputs/idle-speed-friction.json` and
+  `demos/inputs/run-down-a-router.json` are the worked examples).
 - `doctrine` (optional string) -- override team 1's battle-AI doctrine profile (a
   `DoctrineRegistry` id, e.g. `"aggressive"` or `"cautious"` -- see `data/doctrines/*.json`
   and `docs/battle-ai-design.md`'s phase-3 section). Set before the battle spawns, like
