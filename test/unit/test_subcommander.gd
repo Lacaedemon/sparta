@@ -221,7 +221,22 @@ func test_flank_coverage_ignores_an_enemy_already_at_melee_contact() -> void:
 	assert_true(directives.is_empty(), "already in contact: the unit's own reaction handles it")
 
 
+func test_flank_is_outflanked_at_exact_range_boundary() -> void:
+	var flank := _unit(1, Vector2(600, 700))
+	var outward := Vector2(-1.0, 0.0)
+	# An enemy at exactly FLANK_ENEMY_RANGE along the outward axis is in range
+	# because the reject threshold is strictly greater than (d > FLANK_ENEMY_RANGE).
+	var enemy_exact := _unit(2, flank.position + outward * SubcommanderScript.FLANK_ENEMY_RANGE, 0)
+	assert_true(SubcommanderScript._flank_is_outflanked(flank, outward, [enemy_exact], 1),
+		"enemy at exact FLANK_ENEMY_RANGE is considered in range")
+	# An enemy just beyond FLANK_ENEMY_RANGE is rejected.
+	var enemy_outside := _unit(3, flank.position + outward * (SubcommanderScript.FLANK_ENEMY_RANGE + 0.1), 0)
+	assert_false(SubcommanderScript._flank_is_outflanked(flank, outward, [enemy_outside], 1),
+		"enemy just beyond FLANK_ENEMY_RANGE is rejected")
+
+
 # --- priority ordering: support > flank coverage > line integrity ------------------
+
 
 func test_support_takes_priority_over_a_hold_line_directive_on_the_same_unit() -> void:
 	# `a` is simultaneously (1) the nearest idle ally to a fighting unit, so it qualifies
