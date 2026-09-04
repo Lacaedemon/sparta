@@ -2716,9 +2716,8 @@ func test_shattered_unit_never_recovers_morale() -> void:
 
 func test_cavalry_with_routing_target_outside_weapon_reach_moves_not_fights() -> void:
 	# When a target is routing, contact is gated on physical weapon reach
-	# (attack_range + enemy.RADIUS), not the standing melee footprint. At 45 wu,
-	# the router is outside reach (26 + 18 = 44 wu), so the pursuer transitions to
-	# MOVING to close the gap at full speed.
+	# (attack_range + enemy.RADIUS), not the standing melee footprint. Outside reach,
+	# the pursuer transitions to MOVING to close the gap at full speed.
 	var cav := _make_unit()
 	cav.team = 0
 	cav.is_cavalry = true
@@ -2726,13 +2725,14 @@ func test_cavalry_with_routing_target_outside_weapon_reach_moves_not_fights() ->
 	cav.position = Vector2.ZERO
 	var router := _make_unit()
 	router.team = 1
-	router.position = Vector2(45, 0)
+	var out_of_reach_dist: float = cav.attack_range + router.RADIUS + 5.0
+	router.position = Vector2(out_of_reach_dist, 0.0)
 	router._rout()
 	cav.target_enemy = router
 	cav.state = Unit.State.FIGHTING
 	cav._think(0.05)
 	assert_ne(cav.state, Unit.State.FIGHTING,
-			"cavalry with a routing target 45 wu away does not remain in FIGHTING")
+			"cavalry with a routing target outside weapon reach does not remain in FIGHTING")
 	assert_eq(cav.state, Unit.State.MOVING,
 			"cavalry transitions to MOVING to close the gap on the routing enemy")
 
@@ -2746,7 +2746,8 @@ func test_cavalry_with_routing_target_inside_weapon_reach_stays_fighting() -> vo
 	cav.position = Vector2.ZERO
 	var router := _make_unit()
 	router.team = 1
-	router.position = Vector2(25, 0)
+	var in_reach_dist: float = cav.attack_range + router.RADIUS - 5.0
+	router.position = Vector2(in_reach_dist, 0.0)
 	router._rout()
 	cav.target_enemy = router
 	cav.state = Unit.State.FIGHTING

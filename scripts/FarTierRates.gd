@@ -27,7 +27,11 @@ static func strength_ratio(u: Unit) -> float:
 
 ## Centroid distance at which the two regiments are in melee contact: the attacker's reach
 ## plus both radii, the figure Unit._think computes and FarTierRules' attack_range + RADIUS*2.
+## When the defender is routing, contact distance contracts to attack_range + defender.RADIUS
+## so far-tier and close-tier agree on melee reach against a fleeing target.
 static func melee_contact_distance(attacker: Unit, defender: Unit) -> float:
+	if defender.state == Unit.State.ROUTING:
+		return attacker.attack_range + defender.RADIUS
 	return attacker.attack_range + Unit.RADIUS + defender.RADIUS
 
 

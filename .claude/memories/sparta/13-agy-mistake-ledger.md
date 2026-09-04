@@ -98,6 +98,9 @@ Violating one costs a fix round.
 22. A new parameter takes the narrowest type that serves the one call site
    (a bool flag, not a Variant that is inferred three ways).
 
+23. When a formula is changed, grep for its NAME and its DOC PHRASE ("mirrors",
+   "same as", "keep in sync") across scripts/ and tools/, not only for call sites.
+
 END OF STANDING RULES
 
 ## Provenance

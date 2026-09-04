@@ -242,6 +242,24 @@ func test_ranged_reach_is_ranged_range_and_melee_reach_is_contact() -> void:
 		"a ranged formation out of contact reaches RANGED_RANGE")
 
 
+func test_melee_contact_distance_contracts_against_routing_defender() -> void:
+	# Mirrors Unit._think: when the defender is ROUTING, contact distance contracts
+	# to attack_range + defender.RADIUS (omitting the attacker's RADIUS) so the pursuer
+	# only considers itself in melee contact when actual weapon reach connects.
+	var pair := _frontal_pair()
+	var attacker: Unit = pair[0]
+	var defender: Unit = pair[1]
+	var standing_contact: float = FarTierRates.melee_contact_distance(attacker, defender)
+	assert_almost_eq(standing_contact, attacker.attack_range + Unit.RADIUS + defender.RADIUS, TOL,
+		"standing defender contact includes both radii")
+	defender.state = Unit.State.ROUTING
+	var routing_contact: float = FarTierRates.melee_contact_distance(attacker, defender)
+	assert_almost_eq(routing_contact, attacker.attack_range + defender.RADIUS, TOL,
+		"routing defender contact contracts to weapon reach plus defender radius")
+	assert_almost_eq(FarTierRates.striking_reach(attacker, defender), routing_contact, TOL,
+		"striking reach mirrors the contracted contact distance")
+
+
 # --- the resolution step on bare units ---------------------------------------------------
 
 func test_a_far_tier_pair_in_contact_accrues_casualties_over_ticks() -> void:
@@ -311,6 +329,8 @@ func test_a_routing_formation_deals_no_attrition_but_can_still_be_run_down() -> 
 	defender.state = Unit.State.ROUTING
 	defender.remove_from_group("units")
 	defender.add_to_group("routers")
+	# Staged within the contracted routing contact distance (attack_range + defender.RADIUS).
+	attacker.position = Vector2(0.0, FarTierRates.melee_contact_distance(attacker, defender) - 1.0)
 	var attacker_before: int = attacker.soldiers
 	for _i in range(120):
 		FarTierCombat.tick_all(_combatants(), _tick_seconds())
@@ -344,7 +364,7 @@ func test_a_formation_under_a_plain_move_order_does_not_grind_down_a_router() ->
 	router.state = Unit.State.ROUTING
 	router.remove_from_group("units")
 	router.add_to_group("routers")
-	var gap: float = router.attack_range + Unit.RADIUS * 2.0 - 1.0
+	var gap: float = router.attack_range + router.RADIUS - 1.0
 	var marcher: Unit = _far_unit(1, Vector2(0.0, gap), Vector2.UP)
 	marcher.state = Unit.State.MOVING   # marching past, not fighting
 	marcher.has_move_target = true
