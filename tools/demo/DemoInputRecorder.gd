@@ -670,9 +670,10 @@ func _at(tick: int, ev: Dictionary) -> void:
 ##
 ## demos/README.md documents this as "one name per team", so a non-empty list must name every
 ## team that will actually spawn: exactly two entries for a normal two-army battle, or one entry
-## when `is_drill` (Battle.drill_mode -- team 1 never spawns, so it has no faction to name). A
-## one-entry list on a non-drill battle would otherwise silently leave team 1 with no faction
-## while looking like it named both sides.
+## when `is_drill` (Battle.drill_mode) -- the default team-1 line never spawns in a drill, so it
+## has no faction to name, and a scenario-staged team-1 unit cannot be named. A one-entry list
+## on a non-drill battle would otherwise silently leave team 1 with no faction while looking
+## like it named both sides.
 static func parse_factions(raw, is_drill: bool) -> Dictionary:
 	if not (raw is Array):
 		return {"error": "'factions' must be an array of faction names, got %s." % typeof(raw)}

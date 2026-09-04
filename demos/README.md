@@ -150,12 +150,17 @@ script under `demos/inputs/`:
   cross-checking a caption against the state transcript then has to account for combat state
   that's irrelevant to the actual change). Only omit `drill` (or set it `false`) when the demo
   genuinely needs a live opponent.
-  A clip that must keep sampling AFTER one side is wiped (wipe, then idle/coast) keeps
-  `"drill": true` even though it stages an enemy from the `scenario` list. The reason:
-  drill only suppresses `Battle`'s own team-1 default-line spawn and the battle-end
-  (victory) check, so a `scenario` enemy still deploys and fights; without drill the
-  battle ends at the last kill and `DemoInputRecorder` stops recording there, so no later
-  tick can be sampled or pinned with `expect` (`demos/inputs/idle-speed-friction.json` and
+  A clip that must keep sampling AFTER one side is wiped
+  (wipe, then idle/coast) keeps `"drill": true`
+  even though it stages an enemy from the `scenario` list.
+  The reason:
+  drill only suppresses `Battle`'s own team-1 default-line spawn
+  and the battle-end (victory) check,
+  so a `scenario` enemy still deploys and fights;
+  without drill the battle ends at the last kill
+  and `DemoInputRecorder` stops recording there,
+  so no later tick can be sampled or pinned with `expect`
+  (`demos/inputs/idle-speed-friction.json` and
   `demos/inputs/run-down-a-router.json` are the worked examples).
 - `doctrine` (optional string) -- override team 1's battle-AI doctrine profile (a
   `DoctrineRegistry` id, e.g. `"aggressive"` or `"cautious"` -- see `data/doctrines/*.json`
@@ -190,7 +195,11 @@ script under `demos/inputs/`:
   in either its full form (`"Rome (Latin / Roman)"`) or its bare leading name (`"Rome"`).
   Strict on length as well as spelling: a non-empty list must name every team that will
   actually spawn -- exactly two entries for a normal battle, or exactly one when `drill` is
-  set (team 1 never spawns in a drill, so it has no faction to name).
+  set (the default team-1 line never spawns in a drill,
+  so `factions` takes one entry,
+  and a scenario-staged team-1 enemy in a drill
+  cannot be named through `factions`
+  and fights with no faction (HUD lookups return none)).
   A one-entry list on a
   non-drill battle would otherwise silently leave team 1 with no faction.
   An unrecognized name, or a list of the wrong length, fails the recording loudly,

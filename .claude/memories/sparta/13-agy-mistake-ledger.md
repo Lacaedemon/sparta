@@ -103,6 +103,14 @@ Violating one costs a fix round.
    grep for the formula's EXPRESSION text (e.g. `attack_range + RADIUS`) as well,
    and prefer replacing copies with one helper.
 
+24. Never leave a mid-line semicolon or colon on an added line
+   of 80 or more visible characters;
+   break after the punctuation or end with a full stop.
+
+25. After adding a mechanism claim to a doc,
+   grep the file for the mechanism keyword
+   and reconcile every existing sentence that states the opposite.
+
 END OF STANDING RULES
 
 ## Provenance
