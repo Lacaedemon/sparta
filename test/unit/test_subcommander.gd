@@ -233,6 +233,14 @@ func test_flank_is_outflanked_at_exact_range_boundary() -> void:
 	var enemy_outside := _unit(3, flank.position + outward * (SubcommanderScript.FLANK_ENEMY_RANGE + 0.1), 0)
 	assert_false(SubcommanderScript._flank_is_outflanked(flank, outward, [enemy_outside], 1),
 		"enemy just beyond FLANK_ENEMY_RANGE is rejected")
+	# An enemy inside the skip band beyond FLANK_ENEMY_RANGE survives the squared reject;
+	# without the exact check it would falsely evaluate to outflanked=true.
+	var in_band_dist: float = SubcommanderScript.FLANK_ENEMY_RANGE * (
+		1.0 + 0.4 * (sqrt(SoldierEnemyContact.SQRT_SKIP_BAND) - 1.0)
+	)
+	var enemy_in_band := _unit(4, flank.position + outward * in_band_dist, 0)
+	assert_false(SubcommanderScript._flank_is_outflanked(flank, outward, [enemy_in_band], 1),
+		"enemy inside skip band beyond FLANK_ENEMY_RANGE is rejected by exact check")
 
 
 # --- priority ordering: support > flank coverage > line integrity ------------------

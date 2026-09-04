@@ -2266,6 +2266,15 @@ func test_separate_at_exact_min_dist_boundary_gets_no_push() -> void:
 	b.position = Vector2(min_dist, 0.0)
 	a._separate(1.0 / 60.0)
 	assert_eq(a.position, Vector2.ZERO, "a pair at exactly min_dist gets no push")
+	# A pair inside the skip band beyond min_dist survives the squared reject; without
+	# the exact check it would receive a negative pull of (min_dist - d) * share.
+	var in_band_dist: float = min_dist * (
+		1.0 + 0.4 * (sqrt(SoldierEnemyContact.SQRT_SKIP_BAND) - 1.0)
+	)
+	b.position = Vector2(in_band_dist, 0.0)
+	a._separate(1.0 / 60.0)
+	assert_eq(a.position, Vector2.ZERO,
+		"a pair inside the skip band beyond min_dist gets no push")
 
 
 func test_idle_friendly_does_not_push_the_mover_either() -> void:
