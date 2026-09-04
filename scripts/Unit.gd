@@ -3097,12 +3097,14 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 ## at body contact instead of trading blows at arm's length.
 ## When pressing a fleeing target (pressing_router is true), press at routing_melee_press_fraction
 ## (default 1.0) rather than the standing melee fraction so the pursuer keeps pace with the fleeing body.
+## Advances are clamped to the remaining distance so a full-speed routing press never steps past the target point in one tick and oscillates.
 func _press_into(point: Vector2, delta: float, pressing_router: bool = false) -> void:
 	var to: Vector2 = point - position
 	if to.length_squared() < 1.0:
 		return
 	var frac: float = routing_melee_press_fraction if pressing_router else melee_press_fraction
-	position += to.normalized() * move_speed * frac * delta
+	var step: float = minf(move_speed * frac * delta, to.length())
+	position += to.normalized() * step
 	# Same field-edge stop as _move_to: a non-routing unit doesn't follow a routing
 	# enemy into the retreat margin, even while pressing a lean into melee contact.
 	position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)

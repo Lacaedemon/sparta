@@ -2798,6 +2798,23 @@ func test_press_into_non_routing_target_advances_at_melee_press_fraction() -> vo
 			"press_into against a non-routing target advances at move_speed * MELEE_PRESS_FRACTION * delta")
 
 
+func test_press_into_routing_target_clamps_advance_to_destination() -> void:
+	# A routing press from 3 wu away with a delta that would step 10 wu
+	# lands exactly on the point instead of overshooting.
+	# The pre-change code did not clamp the advance to the remaining distance,
+	# stepping the full 10 wu and leaving position 7 wu past the point.
+	var u: Unit = _make_unit()
+	u.move_speed = 100.0
+	u.position = Vector2.ZERO
+	var target_point: Vector2 = Vector2(3.0, 0.0)
+	var delta: float = 0.1
+	u._press_into(target_point, delta, true)
+	assert_almost_eq(u.position.x, target_point.x, 0.001,
+			"routing press clamps x to the target point without overshoot")
+	assert_almost_eq(u.position.y, target_point.y, 0.001,
+			"routing press clamps y to the target point without overshoot")
+
+
 # --- individual-soldier formation layout (Stage A) ---------------
 
 func test_formation_slots_one_per_soldier() -> void:
