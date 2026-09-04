@@ -1110,6 +1110,7 @@ const SEPARATION_RADIUS_MAX: float = 1.4 * WorldScaleRef.WU_PER_M
 # (a corrupted min_dist from a bug elsewhere). Measured real gameplay (a full-sprint
 # cavalry-vs-spear-line hard block) sits far below this, at ~100-200 wu/s.
 const SEPARATION_SPEED_CAP: float = 6000.0   # tuned in wu
+
 # Cavalry charge: a physics-based bonus, not a one-shot token. The damage
 # multiplier scales with the rider's IMPACT VELOCITY at the moment of contact — the
 # component of its approach velocity aimed straight at the target — so both closing
@@ -3934,14 +3935,12 @@ func _separate(delta: float) -> void:
 				var dissolve := minf(_combat_intermixing, other._combat_intermixing)
 				min_dist *= (1.0 - dissolve)
 		var offset: Vector2 = position - other.position
-		# Squared reject skips the square root for clearly separated pairs;
-		# in-band survivors take the exact test so rounding never flips a push.
+		# OPTIMIZATION: Use length_squared for cheaper distance checks
 		if offset.length_squared() >= min_dist * min_dist * SoldierEnemyContact.SQRT_SKIP_BAND:
 			continue
 		var d: float = offset.length()
 		if d >= min_dist:
 			continue
-
 		# Share of the correction this unit takes: 0.5 soft (the pair splits it),
 		# but a spear line holds firm against enemy cavalry — 0 for the spearman,
 		# 1 for the horse — so cavalry can't ride through a screen (hard block).
