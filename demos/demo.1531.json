@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/run-down-a-router.json",
+  "caption": "Pursuing cavalry run down a routing infantry squad: the pursuer remains in MOVING rather than locking into FIGHTING at standoff while closing the gap, maintaining speed until weapon reach to finish the rout.",
+  "fixed_fps": 30,
+  "max_frames": 450,
+  "fps": 20,
+  "width": 640
+}

@@ -95,6 +95,9 @@ Violating one costs a fix round.
    keep the earlier author's specific text and append;
    never replace a cited mechanism with a generic summary.
 
+22. A new parameter takes the narrowest type that serves the one call site
+   (a bool flag, not a Variant that is inferred three ways).
+
 END OF STANDING RULES
 
 ## Provenance

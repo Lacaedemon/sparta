@@ -1,0 +1,100 @@
+{
+  "_comment": "Pursuit demo: cavalry running down a routing infantry squad. A small cavalry troop pursues a brittle infantry squad that breaks on contact and flees. While closing the gap across the field, the cavalry stays in MOVING rather than locking into FIGHTING at standoff, running at full speed until inside physical weapon reach where it finishes the squad.",
+  "seed": "771521",
+  "show_unit_speed": true,
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Cavalry",
+      "x": 620,
+      "y": 340,
+      "count": 4
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 620,
+      "y": 480,
+      "count": 1,
+      "morale": 10.0
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 620.0,
+      "y": 420.0,
+      "zoom": 1.2
+    },
+    {
+      "tick": 400,
+      "x": 620.0,
+      "y": 580.0,
+      "zoom": 1.2
+    },
+    {
+      "tick": 800,
+      "x": 620.0,
+      "y": 740.0,
+      "zoom": 1.2
+    }
+  ],
+  "steps": [
+    {
+      "tick": 4,
+      "hold_space": true
+    },
+    {
+      "tick": 10,
+      "click": [
+        620,
+        340
+      ]
+    },
+    {
+      "tick": 16,
+      "rmb_click": [
+        620,
+        480
+      ]
+    }
+  ],
+  "state": [
+    60,
+    120,
+    180,
+    240,
+    300,
+    360,
+    420,
+    480,
+    540,
+    600,
+    660,
+    720,
+    780,
+    840,
+    900
+  ],
+  "expect": [
+    {
+      "tick": [
+        60,
+        120
+      ],
+      "uid": 0,
+      "field": "state",
+      "value": "MOVING"
+    },
+    {
+      "tick": [
+        720,
+        900
+      ],
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    }
+  ]
+}

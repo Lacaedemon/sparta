@@ -2712,6 +2712,72 @@ func test_shattered_unit_never_recovers_morale() -> void:
 	assert_almost_eq(u.morale, morale_at_shatter, 0.001, "a shattered unit's morale never rises")
 
 
+# --- router pursuit and contact ----------------------------------
+
+func test_cavalry_with_routing_target_outside_weapon_reach_moves_not_fights() -> void:
+	# When a target is routing, contact is gated on physical weapon reach
+	# (attack_range + enemy.RADIUS), not the standing melee footprint. At 45 wu,
+	# the router is outside reach (26 + 18 = 44 wu), so the pursuer transitions to
+	# MOVING to close the gap at full speed.
+	var cav := _make_unit()
+	cav.team = 0
+	cav.is_cavalry = true
+	cav.move_speed = 170.0
+	cav.position = Vector2.ZERO
+	var router := _make_unit()
+	router.team = 1
+	router.position = Vector2(45, 0)
+	router._rout()
+	cav.target_enemy = router
+	cav.state = Unit.State.FIGHTING
+	cav._think(0.05)
+	assert_ne(cav.state, Unit.State.FIGHTING,
+			"cavalry with a routing target 45 wu away does not remain in FIGHTING")
+	assert_eq(cav.state, Unit.State.MOVING,
+			"cavalry transitions to MOVING to close the gap on the routing enemy")
+
+
+func test_cavalry_with_routing_target_inside_weapon_reach_stays_fighting() -> void:
+	# Inside physical weapon reach, contact holds and the pursuer remains FIGHTING.
+	var cav := _make_unit()
+	cav.team = 0
+	cav.is_cavalry = true
+	cav.move_speed = 170.0
+	cav.position = Vector2.ZERO
+	var router := _make_unit()
+	router.team = 1
+	router.position = Vector2(25, 0)
+	router._rout()
+	cav.target_enemy = router
+	cav.state = Unit.State.FIGHTING
+	cav._think(0.05)
+	assert_eq(cav.state, Unit.State.FIGHTING,
+			"cavalry with a routing target inside weapon reach stays in FIGHTING")
+
+
+func test_press_into_routing_target_advances_at_full_speed() -> void:
+	# Pursuing a routing target presses at full move_speed rather than the
+	# reduced standing-melee fraction so it keeps pace with a fleeing foe.
+	var u := _make_unit()
+	u.move_speed = 100.0
+	u.position = Vector2.ZERO
+	u._press_into(Vector2(50, 0), 0.1, true)
+	var expected_dist: float = 100.0 * 0.1
+	assert_almost_eq(u.position.x, expected_dist, 0.001,
+			"press_into against a routing target advances at move_speed * delta")
+
+
+func test_press_into_non_routing_target_advances_at_melee_press_fraction() -> void:
+	# Non-routing targets keep the standing-melee press fraction.
+	var u := _make_unit()
+	u.move_speed = 100.0
+	u.position = Vector2.ZERO
+	u._press_into(Vector2(50, 0), 0.1, false)
+	var expected_dist: float = 100.0 * Unit.MELEE_PRESS_FRACTION * 0.1
+	assert_almost_eq(u.position.x, expected_dist, 0.001,
+			"press_into against a non-routing target advances at move_speed * MELEE_PRESS_FRACTION * delta")
+
+
 # --- individual-soldier formation layout (Stage A) ---------------
 
 func test_formation_slots_one_per_soldier() -> void:
