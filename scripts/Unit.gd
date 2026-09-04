@@ -3103,8 +3103,9 @@ func _press_into(point: Vector2, delta: float, pressing_router: bool = false) ->
 	if to.length_squared() < 1.0:
 		return
 	var frac: float = routing_melee_press_fraction if pressing_router else melee_press_fraction
-	var step: float = minf(move_speed * frac * delta, to.length())
-	position += to.normalized() * step
+	var dist: float = to.length()
+	var step: float = minf(move_speed * frac * delta, dist)
+	position += to / dist * step
 	# Same field-edge stop as _move_to: a non-routing unit doesn't follow a routing
 	# enemy into the retreat margin, even while pressing a lean into melee contact.
 	position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
