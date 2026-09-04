@@ -402,6 +402,25 @@ func test_attack_flank_tie_break_picks_the_perp_side() -> void:
 		"an on-axis flank attack breaks the tie to the enemy's perp side")
 
 
+func test_attack_approach_point_contracts_against_routing_enemy() -> void:
+	# Against a routing target, melee contact distance contracts to attack_range + enemy.RADIUS
+	# (omitting the pursuer's radius), so the approach point sits at weapon reach rather than
+	# the standing melee standoff.
+	var u := _make_unit()
+	u.order_mode = Unit.ORDER_ATTACK_REAR
+	var enemy := _make_unit()
+	enemy.facing = Vector2.DOWN
+	enemy.position = Vector2.ZERO
+	enemy.state = Unit.State.ROUTING
+	var standing_contact: float = u.attack_range + Unit.RADIUS + enemy.RADIUS
+	var routing_contact: float = u.attack_range + enemy.RADIUS
+	var approach: Vector2 = UnitTargeting.attack_approach_point(u, enemy)
+	assert_ne(approach, Vector2(0, -standing_contact),
+		"routing target approach point does not use the standing contact standoff")
+	assert_eq(approach, Vector2(0, -routing_contact),
+		"rear approach against a routing target contracts to weapon reach (omitting attacker RADIUS)")
+
+
 # --- _flank_multiplier -----------------------------------------------------
 
 func test_frontal_hit_is_1x() -> void:
@@ -2731,6 +2750,90 @@ func test_shattered_unit_never_recovers_morale() -> void:
 		u._process_rout(0.016)
 	assert_eq(u.state, Unit.State.ROUTING, "still fleeing, well inside the default unbounded retreat_bounds")
 	assert_almost_eq(u.morale, morale_at_shatter, 0.001, "a shattered unit's morale never rises")
+
+
+# --- router pursuit and contact ----------------------------------
+
+func test_cavalry_with_routing_target_outside_weapon_reach_moves_not_fights() -> void:
+	# When a target is routing, contact is gated on physical weapon reach
+	# (attack_range + enemy.RADIUS), not the standing melee footprint. Outside reach,
+	# the pursuer transitions to MOVING to close the gap at full speed.
+	var cav := _make_unit()
+	cav.team = 0
+	cav.is_cavalry = true
+	cav.move_speed = 170.0
+	cav.position = Vector2.ZERO
+	var router := _make_unit()
+	router.team = 1
+	var out_of_reach_dist: float = cav.attack_range + router.RADIUS + 5.0
+	router.position = Vector2(out_of_reach_dist, 0.0)
+	router._rout()
+	cav.target_enemy = router
+	cav.state = Unit.State.FIGHTING
+	cav._think(0.05)
+	assert_ne(cav.state, Unit.State.FIGHTING,
+			"cavalry with a routing target outside weapon reach does not remain in FIGHTING")
+	assert_eq(cav.state, Unit.State.MOVING,
+			"cavalry transitions to MOVING to close the gap on the routing enemy")
+
+
+func test_cavalry_with_routing_target_inside_weapon_reach_stays_fighting() -> void:
+	# Inside physical weapon reach, contact holds and the pursuer remains FIGHTING.
+	var cav := _make_unit()
+	cav.team = 0
+	cav.is_cavalry = true
+	cav.move_speed = 170.0
+	cav.position = Vector2.ZERO
+	var router := _make_unit()
+	router.team = 1
+	var in_reach_dist: float = cav.attack_range + router.RADIUS - 5.0
+	router.position = Vector2(in_reach_dist, 0.0)
+	router._rout()
+	cav.target_enemy = router
+	cav.state = Unit.State.FIGHTING
+	cav._think(0.05)
+	assert_eq(cav.state, Unit.State.FIGHTING,
+			"cavalry with a routing target inside weapon reach stays in FIGHTING")
+
+
+func test_press_into_routing_target_advances_at_full_speed() -> void:
+	# Pursuing a routing target presses at full move_speed rather than the
+	# reduced standing-melee fraction so it keeps pace with a fleeing foe.
+	var u := _make_unit()
+	u.move_speed = 100.0
+	u.position = Vector2.ZERO
+	u._press_into(Vector2(50, 0), 0.1, true)
+	var expected_dist: float = 100.0 * 0.1
+	assert_almost_eq(u.position.x, expected_dist, 0.001,
+			"press_into against a routing target advances at move_speed * delta")
+
+
+func test_press_into_non_routing_target_advances_at_melee_press_fraction() -> void:
+	# Non-routing targets keep the standing-melee press fraction.
+	var u := _make_unit()
+	u.move_speed = 100.0
+	u.position = Vector2.ZERO
+	u._press_into(Vector2(50, 0), 0.1, false)
+	var expected_dist: float = 100.0 * Unit.MELEE_PRESS_FRACTION * 0.1
+	assert_almost_eq(u.position.x, expected_dist, 0.001,
+			"press_into against a non-routing target advances at move_speed * MELEE_PRESS_FRACTION * delta")
+
+
+func test_press_into_routing_target_clamps_advance_to_destination() -> void:
+	# A routing press from 3 wu away with a delta that would step 10 wu
+	# lands exactly on the point instead of overshooting.
+	# The pre-change code did not clamp the advance to the remaining distance,
+	# stepping the full 10 wu and leaving position 7 wu past the point.
+	var u: Unit = _make_unit()
+	u.move_speed = 100.0
+	u.position = Vector2.ZERO
+	var target_point: Vector2 = Vector2(3.0, 0.0)
+	var delta: float = 0.1
+	u._press_into(target_point, delta, true)
+	assert_almost_eq(u.position.x, target_point.x, 0.001,
+			"routing press clamps x to the target point without overshoot")
+	assert_almost_eq(u.position.y, target_point.y, 0.001,
+			"routing press clamps y to the target point without overshoot")
 
 
 # --- individual-soldier formation layout (Stage A) ---------------

@@ -741,6 +741,14 @@ const WHEEL_TURN_RATE: float = PI * 0.5
 const MOVING_WHEEL_TURN_RATE: float = PI
 
 const MELEE_PRESS_FRACTION: float = 0.6
+# Press fraction when pursuing a routing target: a pursuer that has reached
+# physical contact with a fleeing enemy must press at full speed to keep pace
+# rather than falling out of weapon reach.
+const ROUTING_MELEE_PRESS_FRACTION: float = 1.0
+# Live melee press fractions -- caller-configurable parameters defaulting to
+# MELEE_PRESS_FRACTION and ROUTING_MELEE_PRESS_FRACTION above.
+var melee_press_fraction: float = MELEE_PRESS_FRACTION
+var routing_melee_press_fraction: float = ROUTING_MELEE_PRESS_FRACTION
 # Skirmish: a kiting ranged unit backs off when a threat closes inside this
 # distance, instead of standing to fire. Above melee contact (~62) and below
 # RANGED_RANGE (160) so there's room to fire before being caught.
@@ -2342,7 +2350,13 @@ func _think(delta: float) -> void:
 		enemy = UnitTargeting.current_target(self)
 	if enemy != null:
 		var dist_sq: float = position.distance_squared_to(enemy.position)
-		var contact_dist: float = attack_range + RADIUS + enemy.RADIUS
+		# Melee contact distance: for two standing lines facing each other, the
+		# engagement footprint spans weapon reach plus both formation radii. Against a
+		# fleeing target (ROUTING), the pursuer must reach weapon reach against the
+		# nearest fleeing bodies (attack_range + enemy.RADIUS) so soldiers can actually
+		# strike; outside that reach, the pursuer falls through to the chase branch to
+		# keep sprinting at full pace.
+		var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, enemy)
 		var in_contact: bool = dist_sq <= contact_dist * contact_dist
 		# Chase: relentless pursuit. Everywhere else in this branch gates fighting/closing
 		# on "target_enemy != null or not has_move_target" (an explicit attack order, or no
@@ -2485,7 +2499,7 @@ func _think(delta: float) -> void:
 			# press waits until the turn fully finishes.
 			if _engage_turn_target == Vector2.ZERO and not is_ranged \
 					and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
-				_press_into(enemy.position, delta)
+				_press_into(enemy.position, delta, enemy.state == State.ROUTING)
 			return
 		elif target_enemy != null or (chasing and not in_contact):
 			# Explicit attack order (or a CHASE unit's auto-acquired quarry), not yet in
@@ -3080,11 +3094,17 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 ## and the cavalry's one-shot impact velocity must survive the cooldown wait. The
 ## separation / engaged-enemy front-rank floor counters the press, so the line settles
 ## at body contact instead of trading blows at arm's length.
-func _press_into(point: Vector2, delta: float) -> void:
+## When pressing a fleeing target (pressing_router is true), press at routing_melee_press_fraction
+## (default 1.0) rather than the standing melee fraction so the pursuer keeps pace with the fleeing body.
+## Advances are clamped to the remaining distance so a full-speed routing press never steps past the target point in one tick and oscillates.
+func _press_into(point: Vector2, delta: float, pressing_router: bool = false) -> void:
 	var to: Vector2 = point - position
 	if to.length_squared() < 1.0:
 		return
-	position += to.normalized() * move_speed * MELEE_PRESS_FRACTION * delta
+	var frac: float = routing_melee_press_fraction if pressing_router else melee_press_fraction
+	var dist: float = to.length()
+	var step: float = minf(move_speed * frac * delta, dist)
+	position += to / dist * step
 	# Same field-edge stop as _move_to: a non-routing unit doesn't follow a routing
 	# enemy into the retreat margin, even while pressing a lean into melee contact.
 	position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)

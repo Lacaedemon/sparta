@@ -95,6 +95,14 @@ Violating one costs a fix round.
    keep the earlier author's specific text and append;
    never replace a cited mechanism with a generic summary.
 
+22. A new parameter takes the narrowest type that serves the one call site
+   (a bool flag, not a Variant that is inferred three ways).
+
+23. When a formula is changed, grep for its NAME and its DOC PHRASE ("mirrors",
+   "same as", "keep in sync") across scripts/ and tools/, not only for call sites;
+   grep for the formula's EXPRESSION text (e.g. `attack_range + RADIUS`) as well,
+   and prefer replacing copies with one helper.
+
 END OF STANDING RULES
 
 ## Provenance
