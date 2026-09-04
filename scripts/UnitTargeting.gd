@@ -115,6 +115,17 @@ static func support_valid(u: Unit) -> bool:
 		and w.state != Unit.State.ROUTING
 
 
+## Centroid distance at which two units are in melee contact: the attacker's reach
+## plus both formation radii. Against a fleeing target (ROUTING), contact contracts
+## to attack_range + enemy.RADIUS (omitting the pursuer's radius) so the pursuer
+## closes to actual weapon reach before considering itself in contact or setting
+## its flank/rear approach point.
+static func melee_contact_distance(attacker_range: float, attacker_radius: float, enemy: Unit) -> float:
+	if enemy.state == Unit.State.ROUTING:
+		return attacker_range + enemy.RADIUS
+	return attacker_range + attacker_radius + enemy.RADIUS
+
+
 ## Approach point for a flank/rear attack: a spot at melee-contact distance on the
 ## enemy's flank or rear, relative to its facing, so closing on it brings this unit
 ## alongside/behind the target and its strike lands with the flank/rear bonus.
@@ -122,7 +133,7 @@ static func support_valid(u: Unit) -> bool:
 ## deterministic. Flank picks whichever side this unit is already nearer, so it doesn't
 ## wrap around unnecessarily.
 static func attack_approach_point(u: Unit, enemy: Unit) -> Vector2:
-	var contact: float = u.attack_range + Unit.RADIUS + enemy.RADIUS
+	var contact: float = melee_contact_distance(u.attack_range, Unit.RADIUS, enemy)
 	if u.order_mode == Unit.ORDER_ATTACK_REAR:
 		return enemy.position - enemy.facing * contact
 	var perp := Vector2(-enemy.facing.y, enemy.facing.x)

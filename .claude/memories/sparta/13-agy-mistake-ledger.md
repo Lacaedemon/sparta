@@ -99,7 +99,9 @@ Violating one costs a fix round.
    (a bool flag, not a Variant that is inferred three ways).
 
 23. When a formula is changed, grep for its NAME and its DOC PHRASE ("mirrors",
-   "same as", "keep in sync") across scripts/ and tools/, not only for call sites.
+   "same as", "keep in sync") across scripts/ and tools/, not only for call sites;
+   grep for the formula's EXPRESSION text (e.g. `attack_range + RADIUS`) as well,
+   and prefer replacing copies with one helper.
 
 END OF STANDING RULES
 

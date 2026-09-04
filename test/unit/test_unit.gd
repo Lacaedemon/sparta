@@ -402,6 +402,25 @@ func test_attack_flank_tie_break_picks_the_perp_side() -> void:
 		"an on-axis flank attack breaks the tie to the enemy's perp side")
 
 
+func test_attack_approach_point_contracts_against_routing_enemy() -> void:
+	# Against a routing target, melee contact distance contracts to attack_range + enemy.RADIUS
+	# (omitting the pursuer's radius), so the approach point sits at weapon reach rather than
+	# the standing melee standoff.
+	var u := _make_unit()
+	u.order_mode = Unit.ORDER_ATTACK_REAR
+	var enemy := _make_unit()
+	enemy.facing = Vector2.DOWN
+	enemy.position = Vector2.ZERO
+	enemy.state = Unit.State.ROUTING
+	var standing_contact: float = u.attack_range + Unit.RADIUS + enemy.RADIUS
+	var routing_contact: float = u.attack_range + enemy.RADIUS
+	var approach: Vector2 = UnitTargeting.attack_approach_point(u, enemy)
+	assert_ne(approach, Vector2(0, -standing_contact),
+		"routing target approach point does not use the standing contact standoff")
+	assert_eq(approach, Vector2(0, -routing_contact),
+		"rear approach against a routing target contracts to weapon reach (omitting attacker RADIUS)")
+
+
 # --- _flank_multiplier -----------------------------------------------------
 
 func test_frontal_hit_is_1x() -> void:

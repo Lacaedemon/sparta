@@ -2357,7 +2357,7 @@ func _think(delta: float) -> void:
 		# nearest fleeing bodies (attack_range + enemy.RADIUS) so soldiers can actually
 		# strike; outside that reach, the pursuer falls through to the chase branch to
 		# keep sprinting at full pace.
-		var contact_dist: float = (attack_range + enemy.RADIUS) if enemy.state == State.ROUTING else (attack_range + RADIUS + enemy.RADIUS)
+		var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, enemy)
 		var in_contact: bool = dist_sq <= contact_dist * contact_dist
 		# Chase: relentless pursuit. Everywhere else in this branch gates fighting/closing
 		# on "target_enemy != null or not has_move_target" (an explicit attack order, or no
