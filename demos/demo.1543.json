@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "CI-only change: the website demo diff comment now quotes the analyzer's worst/threshold numbers for candidate regressions and uploads the changed clips' transcripts as a run artifact; no battle can show it."
+}

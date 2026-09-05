@@ -35,6 +35,16 @@
 #                          for the calibration column; without it that column reads
 #                          "unknown" and nothing else changes.
 #
+# Environment:
+#   DEMO_DEFECT_JSON_DIR   Where each side's raw analyzer JSON is kept (see
+#                          tools/lib/demo-defect-metrics.sh). Unset, the script uses a
+#                          temp dir it removes on exit; the workflow points it at a path
+#                          it then uploads as a run artifact, so a PR author can quote
+#                          CI's own numbers in a defect_exemptions reason instead of
+#                          re-dumping locally.
+#   GITHUB_RUN_ID          When set (GitHub Actions), the fragment ends with a pointer to
+#                          the run artifact carrying the transcripts and analyzer JSON.
+#
 # A side whose transcripts lack the FULL-dump fields (a merge-base predating them)
 # reports "n/a" rather than failing -- absence of data is not a defect, and the
 # comparison self-resolves once both sides carry the schema. Exit code is always 0:
@@ -57,6 +67,15 @@ if [ ! -s "$CHANGED_LIST" ]; then
   echo "No changed clips; no defect delta to compute."
   exit 0
 fi
+
+# A caller that wants the analyzer JSON kept (the workflow uploads it) sets the dir; left
+# unset, it is a temp dir this script owns and removes on exit, created only once there is
+# work to do.
+if [ -z "${DEMO_DEFECT_JSON_DIR:-}" ]; then
+  DEMO_DEFECT_JSON_DIR="$(mktemp -d)"
+  trap 'rm -rf "$DEMO_DEFECT_JSON_DIR"' EXIT
+fi
+export DEMO_DEFECT_JSON_DIR
 
 # The catalog maps clip names to their source scripts, whose declared `expect` assertions and
 # `defect_exemptions` (input-type rows only) join the scan on both sides.
@@ -136,6 +155,62 @@ new_metrics() {
   comm -13 <(metric_set "$1") <(metric_set "$2") || true
 }
 
+# One verdict field (worst or threshold) for a metric/uid pair, read from the JSON the
+# shared helper kept for that transcript dir; empty when the file or verdict is missing.
+verdict_field() {
+  local dir="$1" metric="$2" uid="$3" field="$4" f
+  f="$DEMO_DEFECT_JSON_DIR/$(basename "$(dirname "$dir")")--$(basename "$dir").json"
+  [ -f "$f" ] || return 0
+  jq -r --arg m "$metric" --argjson u "$uid" --arg k "$field" \
+    '[.verdicts[] | select(.metric == $m and .uid == $u)] | first | .[$k] // empty' "$f" \
+    2>/dev/null || true
+}
+
+# Trim an analyzer float for the table: 4 significant digits is enough to quote in an
+# exemption reason and short enough to keep the row readable.
+short_num() {
+  printf '%s' "$1" | awk '{ if ($1 == int($1)) printf "%d", $1; else printf "%.4g", $1 }'
+}
+
+# True when the argument is a plain decimal number (optionally signed, with a fraction or
+# an exponent). An `expect:` verdict's worst/threshold can be a string or a boolean, and awk
+# would silently coerce either to 0, so the annotation below is reserved for real numbers.
+is_number() {
+  case "$1" in
+    ''|*[!0-9.eE+-]*) return 1 ;;
+  esac
+  printf '%s' "$1" | grep -Eq '^[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?$'
+}
+
+# "overlap (uid8: 4.494 vs 5 threshold; merge-base 7.928)" for one new PR-side metric, so the row
+# carries the numbers an exemption reason has to quote. Falls back to the bare
+# "metric (uidN)" when the JSON is unavailable, for an `expect:` assertion (whose values
+# are the scripted field's own, not a physics measurement), or when either value is not
+# a number.
+annotate_metric() {
+  local entry="$1" base_dir="$2" pr_dir="$3" metric uid worst thr base_worst out
+  # The entry is the helper's own "metric (uidN)" shape; anything else is left as is.
+  if [[ ! "$entry" =~ ^([^[:space:]]+)\ \(uid([0-9]+)\)$ ]]; then
+    printf '%s' "$entry"
+    return 0
+  fi
+  metric="${BASH_REMATCH[1]}"
+  uid="${BASH_REMATCH[2]}"
+  case "$metric" in expect:*) printf '%s' "$entry"; return 0 ;; esac
+  worst="$(verdict_field "$pr_dir" "$metric" "$uid" worst)"
+  thr="$(verdict_field "$pr_dir" "$metric" "$uid" threshold)"
+  if ! is_number "$worst" || ! is_number "$thr"; then
+    printf '%s' "$entry"
+    return 0
+  fi
+  out="$metric (uid$uid: $(short_num "$worst") vs $(short_num "$thr") threshold"
+  base_worst="$(verdict_field "$base_dir" "$metric" "$uid" worst)"
+  if is_number "$base_worst"; then
+    out="$out; merge-base $(short_num "$base_worst")"
+  fi
+  printf '%s)' "$out"
+}
+
 ROWS=""
 REGRESSION_COUNT=0
 while IFS= read -r name; do
@@ -152,7 +227,12 @@ while IFS= read -r name; do
   elif [ "$pr_fail" != "clean" ]; then
     new_in_pr="$(new_metrics "$base_fail" "$pr_fail")"
     if [ -n "$new_in_pr" ]; then
-      verdict="**candidate regression**: $(printf '%s' "$new_in_pr" | tr '\n' ' ')"
+      annotated=""
+      while IFS= read -r entry; do
+        [ -n "$entry" ] || continue
+        annotated="$annotated$(annotate_metric "$entry" "$BASELINE_DIR/$name" "$PR_DIR/$name"), "
+      done <<<"$new_in_pr"
+      verdict="**candidate regression**: ${annotated%, }"
       REGRESSION_COUNT=$((REGRESSION_COUNT + 1))
     else
       verdict="pre-existing defects only"
@@ -173,6 +253,9 @@ fi
   printf '| Demo | Diverges | Merge-base failing | PR failing | Delta |\n|---|---|---|---|---|\n%s' "$ROWS"
   if [ "$REGRESSION_COUNT" -gt 0 ]; then
     printf '\n**%d candidate regression clip(s)** -- review those rows first, weighting each by its Diverges column.\n' "$REGRESSION_COUNT"
+  fi
+  if [ -n "${GITHUB_RUN_ID:-}" ]; then
+    printf '\n<sub>A candidate row quotes the PR side'\''s worst value against the metric'\''s threshold (a floor for overlap and blob, a ceiling for shape residual, misslotted and the rest, in the analyzer'\''s own direction per metric), then the merge-base'\''s value, so an exemption reason can cite CI'\''s own numbers. The changed clips'\'' transcripts on both sides and every analyzer JSON are attached to this run as the artifact `website-demo-diff-%s`.</sub>\n' "$GITHUB_RUN_ID"
   fi
 } >> "$OUT_MD"
 
