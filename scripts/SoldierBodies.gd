@@ -303,7 +303,9 @@ static func step(unit: Unit, delta: float) -> void:
 	var body_radius: float = unit.soldier_body_radius()
 	var two_bodies: float = body_radius * 2.0
 	var turning: bool = unit.is_maneuver_turning()
-	var proximity_mult: float = corridor_proximity_mult(unit)
+	# The per-body loop below skips _corridor_to_slot entirely during a maneuver turn, so
+	# the band (and the pivot-radius work behind it) is only derived when a body will use it.
+	var proximity_mult: float = CORRIDOR_PROXIMITY_MULT if turning else corridor_proximity_mult(unit)
 	# Precompute true file-column front and rear neighbors in O(n) for lane follower speed damping
 	# (exempting maneuver turns, stationary/reform-holding units, and square/schiltron formations):
 	var file_front_neighbor: PackedInt32Array = PackedInt32Array()

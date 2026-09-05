@@ -439,15 +439,20 @@ func test_deep_cavalry_formed_turn_maintains_cohesion() -> void:
 		var fit: Dictionary = DemoDefects.kabsch_fit(slots, pos)
 		if fit["residual_rms"] > worst_residual:
 			worst_residual = fit["residual_rms"]
+		# Each pair once, on squared distances; one sqrt per body at the end.
+		var best_d_sq: PackedFloat32Array = PackedFloat32Array()
+		best_d_sq.resize(n)
+		best_d_sq.fill(INF)
 		for i in range(n):
 			var p_i: Vector2 = pos[i]
-			var best_d: float = INF
-			for j in range(n):
-				if i == j:
-					continue
-				var d: float = p_i.distance_to(pos[j])
-				if d < best_d:
-					best_d = d
+			for j in range(i + 1, n):
+				var d_sq: float = p_i.distance_squared_to(pos[j])
+				if d_sq < best_d_sq[i]:
+					best_d_sq[i] = d_sq
+				if d_sq < best_d_sq[j]:
+					best_d_sq[j] = d_sq
+		for i in range(n):
+			var best_d: float = sqrt(best_d_sq[i])
 			if best_d < worst_min_nnd:
 				worst_min_nnd = best_d
 
