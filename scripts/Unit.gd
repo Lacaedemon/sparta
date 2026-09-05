@@ -332,6 +332,19 @@ var frontage_anchor_offset: float = 0.0
 # -1 means "never" (Engine.get_physics_frames() starts at 0, so 0 alone isn't a safe sentinel).
 var _last_reshape_tick: int = -1
 var _last_reshape_widened: bool = false
+# Physics-frame deadline through which SoldierBodies._separate_same_unit keeps running its
+# full same-unit standoff scan for this unit while NOT fighting (a FIGHTING unit always runs
+# it, regardless of this deadline -- see that function's own doc comment). A body's target
+# slot moves with the unit during an ordinary march, so it is never within ARRIVE_EPS of it
+# and the pass's own is_settled gate could never fire; without this window the pass would
+# pay a fresh spatial-hash scan every tick for every marching unit even though marching
+# bodies already sit safely apart at min_pitch spacing. set_formation, set_frontage (which
+# _apply_file_double_step also funnels through), and reform_ranks each arm this deadline via
+# _arm_standoff_settle_window() the moment they actually re-slot the block -- the one event
+# that can cross files close enough to trigger the standoff. -1 means "never armed": before
+# any re-slot has happened, Engine.get_physics_frames() (>= 0) already exceeds it, so the
+# pass is skipped by default rather than by a special-cased sentinel check.
+var _standoff_settle_until_tick: int = -1
 # "Close the ranks": whether the auto (non-override) frontage is currently
 # stepped down a notch to reform the casualty-thinned survivors into a deeper, denser
 # block instead of holding the full-strength line's width. A single cached bool, not a
@@ -1353,7 +1366,18 @@ func _physics_process(delta: float) -> void:
 	tick_engaged(delta)
 	tick_brace_settle(delta)
 	UnitRelief.update(self)
+	var was_ranks_closed: bool = _ranks_closed
+	var pre_flip_files: int = UnitFormation.frontage(self)
 	_ranks_closed = UnitFormation.should_close_ranks(_ranks_closed, soldiers, max_soldiers)
+	# should_close_ranks() flips the AUTO frontage UnitFormation.frontage() returns (when no
+	# player frontage_override is set) without ever routing through set_frontage() -- so this
+	# is its own re-slot site, arming the standoff watch the same way a manual frontage change
+	# does the instant the flag actually flips (a steady _ranks_closed reading every other
+	# tick must not re-arm and keep the window open forever). Read the file count BEFORE the
+	# flip via the same UnitFormation.frontage() every other caller trusts, rather than
+	# re-deriving it branch by branch (subunit/cavalry/plain each compute it differently).
+	if _ranks_closed != was_ranks_closed and frontage_override == 0:
+		_arm_standoff_settle_window(_reshape_timeout(pre_flip_files))
 
 	# A stationary, non-fighting unit's momentum bleeds off under the same friction as an
 	# orderly arrival (arrival_brake_rate(), the rate _move_to's own braking branch uses) —
@@ -3645,6 +3669,10 @@ func set_formation(mode: int) -> void:
 		# on an arbitrary labelling. -1 forces the next query to pair fresh.
 		_square_slot_files = -1
 		_apply_moving_reshape_penalty()
+		# The stance's own pitch/footprint is about to change, so every body still has to
+		# cross from its old spacing to the new one -- arm the standoff watch the same as any
+		# other re-slot, sized off the current (pre-change) file count's own reform bound.
+		_arm_standoff_settle_window(_reform_timeout())
 	formation_mode = mode
 	var base := _base_separation_radius
 	# The close-order stances all build on TIGHT's locked-shield collision footprint.
@@ -3734,6 +3762,10 @@ func set_frontage(files: int, anchor_offset: float = 0.0) -> void:
 		_last_reshape_tick = Engine.get_physics_frames()
 		_last_reshape_widened = frontage_override > old_files
 		_apply_moving_reshape_penalty()
+		# File-doubling is the lateral-file-crossing case the standoff pass exists for --
+		# arm the watch using the reshape-specific bound (old shape's diagonal plus the
+		# new one's), captured before the frontage actually changes underneath it.
+		_arm_standoff_settle_window(_reshape_timeout(old_files))
 
 
 ## Multiplier applied to incoming ranged damage. Shielded stances raise shields to
@@ -5244,6 +5276,11 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 		return false
 	if is_about_face_fold and soldiers % files == 0:
 		return false
+	# Past this point the reform genuinely re-slots the block (an about-face's depth
+	# reflection, or a quarter-turn's re-square) -- exactly the file-crossing traversal the
+	# standoff pass exists to police, including the hasty variant's deferred call once the
+	# march that carried it arrives (Unit._physics_process's _reform_on_arrival hand-off).
+	_arm_standoff_settle_window(_reform_timeout())
 	_formation_angle = 0.0
 	_formation_mirror_x = is_about_face_fold
 	# The mirror reflects the grid in depth, which negates every man's slot depth while
@@ -5416,6 +5453,18 @@ func _reshape_timeout(old_files: int) -> float:
 				float(maxi(0, old_ranks - 1)) * rank_pitch_wu()).length()
 	var slowest: float = maxf(1.0, jog_speed * back_speed_fraction)
 	return (old_crossing + new_crossing) / slowest * 2.0 + 1.0
+
+
+## Arm (or extend) _standoff_settle_until_tick so SoldierBodies._separate_same_unit keeps
+## running for `timeout_sec` more seconds -- called by every re-slot site (set_formation,
+## set_frontage, reform_ranks) at the moment it actually moves bodies to new slots. Only
+## ever moves the deadline forward: a second re-slot landing before the first one's window
+## lapses (e.g. a frontage change during an in-progress reform) extends the watch instead of
+## shortening it. Ceil'd up to whole ticks so a fractional-second timeout never rounds down
+## to zero and skips the very tick it was armed for.
+func _arm_standoff_settle_window(timeout_sec: float) -> void:
+	var ticks: int = int(ceil(timeout_sec * float(Engine.physics_ticks_per_second)))
+	_standoff_settle_until_tick = maxi(_standoff_settle_until_tick, Engine.get_physics_frames() + ticks)
 
 
 ## Advance an in-place turn one tick: rotate `facing` toward `target` at the drill rate and
@@ -7855,6 +7904,7 @@ func to_snapshot_dict() -> Dictionary:
 		"frontage_anchor_offset": frontage_anchor_offset,
 		"last_reshape_tick": _last_reshape_tick,
 		"last_reshape_widened": _last_reshape_widened,
+		"standoff_settle_until_tick": _standoff_settle_until_tick,
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
 		"formation_mirror_x": _formation_mirror_x,
 		"deploy_facing": deploy_facing, "ordered_facing": ordered_facing,
@@ -7984,6 +8034,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	frontage_anchor_offset = float(d["frontage_anchor_offset"])
 	_last_reshape_tick = int(d["last_reshape_tick"])
 	_last_reshape_widened = bool(d["last_reshape_widened"])
+	_standoff_settle_until_tick = int(d.get("standoff_settle_until_tick", -1))
 	_ranks_closed = bool(d["ranks_closed"])
 	_formation_angle = float(d["formation_angle"])
 	_formation_mirror_x = bool(d["formation_mirror_x"])

@@ -568,11 +568,14 @@ static func _cap_body_speed_vec(vel: Vector2, facing: Vector2, jog_speed: float,
 
 ## Applies in-transit same-unit standoff separation for crowding bodies within a regiment.
 ## Repels living, non-broken, unengaged pairs closer than min_sep with symmetric velocity
-## along the pair axis. A FIGHTING regiment still runs this pass: the per-body is_engaged
+## along the pair axis. A FIGHTING regiment always runs this pass: the per-body is_engaged
 ## skip below (scoped to the front body_tier_soldier_indices() ranks) already excludes the
 ## bodies actually in contact, so the unengaged rear bulk of a fighting regiment still gets
 ## policed for crowding -- e.g. post-impact stacking behind a routing enemy the front rank
-## cannot reach.
+## cannot reach. Every other state only runs it inside unit._standoff_settle_until_tick's
+## window, armed by the re-slot events (set_formation, set_frontage, reform_ranks) whose
+## file-crossing this pass actually exists to police -- see the gate right below the
+## deliberate-pass-through check for why an ordinary march never needs the full scan.
 static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2Array, is_engaged: PackedByteArray, delta: float) -> PackedVector2Array:
 	if unit.state == Unit.State.ROUTING or n < 2 or delta <= 0.0:
 		return PackedVector2Array()
@@ -598,6 +601,21 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 			or unit._reform_holding() \
 			or (unit._formation_mirror_x and not unit._reform_bodies_settled())
 	if deliberate_pass_through:
+		return PackedVector2Array()
+
+	# An ordinary march never brings the settled gate below into play: target_slots moves
+	# with the unit every tick, so a marching body is never within ARRIVE_EPS of it and
+	# any_unsettled stays true forever -- paying the spatial-hash bucketing and neighbor scan
+	# below on every tick for every marching unit buys nothing, since bodies marching in
+	# formation already sit at min_pitch spacing, safely outside min_sep. Confine the pass to
+	# the windows that actually matter: while a re-slot could still be crossing files
+	# (unit._standoff_settle_until_tick, armed by set_formation/set_frontage/reform_ranks the
+	# moment they re-slot the block -- see that field's own doc comment), or while FIGHTING,
+	# whose unengaged rear ranks can go on stacking behind a front rank pinned against a
+	# routing enemy for as long as the fight lasts and so are never covered by a settle
+	# window at all.
+	if unit.state != Unit.State.FIGHTING \
+			and Engine.get_physics_frames() > unit._standoff_settle_until_tick:
 		return PackedVector2Array()
 
 	var body_radius: float = unit.soldier_body_radius()
@@ -633,7 +651,7 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 
 	var cell_size: float = min_sep
 	var inv_cell_size: float = 1.0 / cell_size
-	var cells: Dictionary[Vector2i, Array] = {}
+	var cells: Dictionary[Vector2i, PackedInt32Array] = {}
 
 	for i in range(n):
 		if i < unit._sim_soldier_hp.size() and unit._sim_soldier_hp[i] <= 0.0:
@@ -646,7 +664,7 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 		var p: Vector2 = unit._sim_soldier_pos[i]
 		var ck := Vector2i(int(floor(p.x * inv_cell_size)), int(floor(p.y * inv_cell_size)))
 		if not cells.has(ck):
-			cells[ck] = []
+			cells[ck] = PackedInt32Array()
 		cells[ck].append(i)
 
 	# _reform_holding() already returned above via deliberate_pass_through, so only the IDLE
@@ -678,8 +696,8 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 				var nkey := Vector2i(ck.x + dx, ck.y + dy)
 				if not cells.has(nkey):
 					continue
-				var arr: Array = cells[nkey]
-				for j in arr:
+				var arr: PackedInt32Array = cells[nkey]
+				for j: int in arr:
 					if j <= i:
 						continue
 					if settled_i and is_settled[j] == 1:

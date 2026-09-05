@@ -476,7 +476,10 @@ func test_same_unit_standoff_never_exceeds_superphysical_threshold_in_one_tick()
 	u.frontage_override = 1
 	u.position = Vector2(0.0, 50.0)
 	SoldierBodies.seed(u)
-	# Two bodies placed 0.05 wu apart:
+	# Two bodies placed 0.05 wu apart -- the kind of crowding a re-slot leaves behind, so
+	# arm the settle watch directly (as set_frontage() would have) rather than going
+	# through the setter and disturbing the frontage_override this test fixes above:
+	u._standoff_settle_until_tick = Engine.get_physics_frames() + 60
 	var d_start: float = 0.05
 	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
 	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
@@ -491,6 +494,46 @@ func test_same_unit_standoff_never_exceeds_superphysical_threshold_in_one_tick()
 		"body 0 velocity must stay within jog_speed cap (%.2f wu/s) for an IDLE unit" % cap)
 	assert_lte(u._sim_body_vel[1].length(), cap + 0.01,
 		"body 1 velocity must stay within jog_speed cap (%.2f wu/s) for an IDLE unit" % cap)
+
+
+func test_same_unit_standoff_skips_the_pass_outside_an_armed_settle_window() -> void:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	# Same crowded pair as the sibling one-tick test above, but with NO settle window armed
+	# and a non-FIGHTING state -- the shape an ordinary marching unit is in on every tick
+	# that isn't a re-slot. The window defaults to -1 ("never armed"), which is already
+	# behind any real physics-frame count, so the pass must skip without ever separating
+	# these two crowded bodies.
+	assert_eq(u._standoff_settle_until_tick, -1,
+		"sanity: a fresh unit's settle window starts unarmed")
+	var d_start: float = 0.05
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	SoldierBodies.step(u, 1.0 / 60.0)
+	var d_after: float = (u._sim_soldier_pos[0] - u._sim_soldier_pos[1]).length()
+	assert_almost_eq(d_after, d_start, 0.01,
+		"an unarmed, non-fighting unit must not run the standoff pass even when crowded")
+
+
+func test_same_unit_standoff_runs_after_set_frontage_arms_the_settle_window() -> void:
+	var u := _make_unit(42, 2)
+	u.position = Vector2(0.0, 50.0)
+	# set_frontage() is one of the pass's own re-slot sites: calling it (a real frontage
+	# change, matching the file-doubling maneuver's own call path) must arm the settle
+	# window itself, with no test-only backdoor into the private field.
+	u.set_frontage(1)
+	SoldierBodies.seed(u)
+	assert_gt(u._standoff_settle_until_tick, Engine.get_physics_frames() - 1,
+		"sanity: set_frontage() must arm the settle window for at least this tick")
+	var d_start: float = 0.05
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	SoldierBodies.step(u, 1.0 / 60.0)
+	var d_after: float = (u._sim_soldier_pos[0] - u._sim_soldier_pos[1]).length()
+	assert_gt(d_after, d_start + 0.1,
+		"a unit inside set_frontage()'s own armed settle window must still separate crowded bodies")
 
 
 func test_same_unit_standoff_does_not_disturb_settled_testudo_formation() -> void:
@@ -550,6 +593,9 @@ func test_same_unit_standoff_skips_front_pair_during_engaged_linger() -> void:
 	# still read the front rank as engaged for ENGAGED_LINGER seconds afterward, even
 	# though state itself is no longer FIGHTING.
 	u._engaged_linger = Unit.ENGAGED_LINGER
+	# The rear pair below is placed crowded exactly the way a re-slot leaves bodies -- arm
+	# the settle watch directly, the same as the sibling one-tick test above.
+	u._standoff_settle_until_tick = Engine.get_physics_frames() + 60
 	var d_start: float = 0.05
 	u._sim_soldier_pos[0] = Vector2(0.0, 10.0)
 	u._sim_soldier_pos[1] = Vector2(d_start, 10.0)
@@ -577,6 +623,9 @@ func test_same_unit_standoff_returns_early_when_min_sep_is_at_the_floor() -> voi
 	# spatial hash or computing a push.
 	u.file_pitch = 0.001
 	u.rank_pitch = 0.001
+	# Arm the settle watch so this call reaches the min-sep-floor check below rather than
+	# returning early via the unarmed-window gate before ever computing min_sep.
+	u._standoff_settle_until_tick = Engine.get_physics_frames() + 60
 	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
 	u._sim_soldier_pos[1] = Vector2(0.0, 0.0)
 	var target_slots: PackedVector2Array = PackedVector2Array()
@@ -709,6 +758,9 @@ func test_same_unit_standoff_skips_a_dead_body() -> void:
 	# be pushed (it is skipped from the settled scan, the spatial-hash population, and the
 	# pairwise loop alike -- see the three "hp <= 0.0" continues in _separate_same_unit).
 	u._sim_soldier_hp[0] = 0.0
+	# Placed crowded exactly as a re-slot leaves bodies -- arm the settle watch directly,
+	# the same as the one-tick tests above, so the pass actually runs this tick.
+	u._standoff_settle_until_tick = Engine.get_physics_frames() + 60
 	var d_start: float = 0.05
 	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
 	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
@@ -736,6 +788,9 @@ func test_same_unit_standoff_skips_a_broken_body() -> void:
 	# individual carries no formation discipline left to police, so it must not be pushed
 	# (or push anyone else) by the same-unit standoff.
 	u._sim_soldier_broken[0] = 1
+	# Same reasoning as the dead-body sibling test above: arm the settle watch directly so
+	# the pass actually runs on this crowded-but-otherwise-marching unit.
+	u._standoff_settle_until_tick = Engine.get_physics_frames() + 60
 	var d_start: float = 0.05
 	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
 	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
