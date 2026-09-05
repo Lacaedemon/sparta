@@ -37,10 +37,11 @@
 #
 # Environment:
 #   DEMO_DEFECT_JSON_DIR   Where each side's raw analyzer JSON is kept (see
-#                          tools/lib/demo-defect-metrics.sh). Defaults to a fresh temp
-#                          dir; the workflow points it at a path it then uploads as a run
-#                          artifact, so a PR author can quote CI's own numbers in a
-#                          defect_exemptions reason instead of re-dumping locally.
+#                          tools/lib/demo-defect-metrics.sh). Unset, the script uses a
+#                          temp dir it removes on exit; the workflow points it at a path
+#                          it then uploads as a run artifact, so a PR author can quote
+#                          CI's own numbers in a defect_exemptions reason instead of
+#                          re-dumping locally.
 #   GITHUB_RUN_ID          When set (GitHub Actions), the fragment ends with a pointer to
 #                          the run artifact carrying the transcripts and analyzer JSON.
 #
@@ -61,14 +62,20 @@ GODOT_BIN="${GODOT_BIN:-godot}"
 
 command -v jq >/dev/null 2>&1 || { echo "error: jq not found on PATH" >&2; exit 1; }
 
-DEMO_DEFECT_JSON_DIR="${DEMO_DEFECT_JSON_DIR:-$(mktemp -d)}"
-export DEMO_DEFECT_JSON_DIR
-
 : > "$OUT_MD"
 if [ ! -s "$CHANGED_LIST" ]; then
   echo "No changed clips; no defect delta to compute."
   exit 0
 fi
+
+# A caller that wants the analyzer JSON kept (the workflow uploads it) sets the dir; left
+# unset, it is a temp dir this script owns and removes on exit, created only once there is
+# work to do.
+if [ -z "${DEMO_DEFECT_JSON_DIR:-}" ]; then
+  DEMO_DEFECT_JSON_DIR="$(mktemp -d)"
+  trap 'rm -rf "$DEMO_DEFECT_JSON_DIR"' EXIT
+fi
+export DEMO_DEFECT_JSON_DIR
 
 # The catalog maps clip names to their source scripts, whose declared `expect` assertions and
 # `defect_exemptions` (input-type rows only) join the scan on both sides.
