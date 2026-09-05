@@ -658,9 +658,10 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 	# Use the wider MARCHING_CORRIDOR_PROXIMITY_MULT radius while the unit is actively
 	# marching (own_slot is a moving point, not a fixed reform target) -- see that const's
 	# own doc comment for why a moving target needs a wider direct-arrival band than a
-	# stationary reform does. During a formed march turn (marching and unit.is_turning()),
-	# retaining MARCHING_CORRIDOR_PROXIMITY_MULT ensures lagging bodies closing their slot
-	# arc walk direct rather than being diverted into perimeter corridor detours.
+	# stationary reform does. Applied during a formed march turn too (marching while
+	# unit.is_turning()), not just straight marching: retaining the wider band there keeps
+	# a lagging body closing its slot's swinging arc walking direct instead of being
+	# diverted into a perimeter corridor detour it would otherwise never catch up from.
 	var marching: bool = unit._approach_velocity.length_squared() > 0.0001
 	var straight_march: bool = marching and not unit.is_turning()
 	var proximity_mult: float = MARCHING_CORRIDOR_PROXIMITY_MULT if marching else CORRIDOR_PROXIMITY_MULT

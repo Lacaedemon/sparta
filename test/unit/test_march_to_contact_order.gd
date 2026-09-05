@@ -21,11 +21,22 @@ func _make_unit(max_soldiers: int = 120) -> Unit:
 	add_child_autofree(u)
 	u.facing = Vector2.DOWN
 	u.position = Vector2.ZERO
-	# Pin Tight: the 30 wu foe offset and 60-tick resume budget were authored against
-	# close-order contact. Default Normal's 2x block makes the post-fight heading
-	# change a longer wheel, so position.x never leaves 0 inside that budget.
+	# Pin Tight: the 30 wu foe offset was authored against close-order contact.
+	# The post-fight resume tick budget derives from the formed pivot rate.
 	u.set_formation(Unit.FORMATION_TIGHT)
 	return u
+
+
+## Ticks to wait for a resumed march's own formed centre-pivot (Unit._move_to's
+## pivot_as_formation) to turn `u` fully onto `u.move_target`'s bearing, plus 0.5 s slack for
+## the accel ramp and displacement along the resumed heading. Derived from the same
+## formed_turn_tracking_frac-derated rate the production code actually uses, rather than a
+## fixed tick count, so the budget tracks that derate instead of guessing a literal.
+func _resume_turn_ticks(u: Unit) -> int:
+	var turn_rate: float = (u.jog_speed * u.formed_turn_tracking_frac) / u._pivot_radius()
+	var dest_heading: float = (u.move_target - u.position).angle()
+	var turn_angle: float = absf(angle_difference(u.facing.angle(), dest_heading))
+	return ceili((turn_angle / turn_rate + 0.5) * 60.0)
 
 
 # --- Registration: enum mirror, name, hotkey slug, HUD stance entry ---------
@@ -159,9 +170,9 @@ func test_march_to_contact_resumes_the_queued_move_once_the_enemy_is_defeated() 
 
 	# No living enemy is left to fight, so the queued move resumes on its own -- no
 	# separate "resume" mechanism is needed, since has_move_target was never cleared.
-	# Several ticks (bounded acceleration ramps up from a standing stop, same as any
-	# other march) rather than asserting after a single 1/60s tick.
-	for i in range(60):
+	# The resume budget derives from the formed pivot rate (governed by
+	# formed_turn_tracking_frac) plus time to accelerate and displace along the resumed heading.
+	for i in range(_resume_turn_ticks(u)):
 		u._think(1.0 / 60.0)
 	assert_true(u.has_move_target, "the move order is still live")
 	assert_lt(u.position.x, before.x,
@@ -193,7 +204,7 @@ func test_march_to_contact_lets_a_disengaging_foe_go_rather_than_chasing_it() ->
 	# The foe disengages: still alive, still detected, but no longer in contact/range.
 	enemy.position = Vector2(100, 0)
 
-	for i in range(60):
+	for i in range(_resume_turn_ticks(u)):
 		u._think(1.0 / 60.0)
 	assert_true(u.has_move_target, "the move order is still live")
 	assert_lt(u.position.x, before.x,
