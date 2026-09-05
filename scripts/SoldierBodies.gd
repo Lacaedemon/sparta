@@ -69,6 +69,14 @@ const CORRIDOR_LANE_STAGGER_FRAC: float = 0.25
 const LANE_FOLLOWER_DIST_MULT: float = 0.9
 const LANE_FOLLOWER_LATERAL_MULT: float = 1.5
 
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+
+# In-transit same-unit standoff ratio against tightest pitch or two-body diameter:
+const STANDOFF_MIN_SEP_FRAC: float = 0.9
+# In-transit same-unit standoff maximum separation velocity along pair axis:
+const STANDOFF_MAX_SPEED: float = 2.0 * WorldScaleRef.WU_PER_M
+
+
 
 ## Seed a unit's bodies onto its current formation slots, at rest (zero velocity) and
 ## at full per-type health.
@@ -339,6 +347,8 @@ static func step(unit: Unit, delta: float) -> void:
 					file_front_neighbor[j] = j - files
 				if j + files < n:
 					file_rear_neighbor[j] = j + files
+	# In-transit same-unit standoff velocities for crowding same-unit bodies:
+	var sep_vels: PackedVector2Array = _separate_same_unit(unit, n, target_slots, delta)
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
@@ -463,6 +473,13 @@ static func step(unit: Unit, delta: float) -> void:
 								step_vel -= v_dir * excess
 								new_vel -= v_dir * excess
 								my_speed = other_fwd_speed
+		# In-transit same-unit standoff velocity applied along pair axis:
+		if not sep_vels.is_empty():
+			var sep: Vector2 = sep_vels[i]
+			if sep != Vector2.ZERO:
+				step_vel += sep
+				new_vel += sep
+
 		# Cap individual soldier speed to this unit's own jog pace while the unit is
 		# stationary: during the reform hold phase AND whenever a formation reshape
 		# (frontage change, centre pivot) plays out on an idle unit. A marching unit is
@@ -534,6 +551,101 @@ static func _cap_body_speed_vec(vel: Vector2, facing: Vector2, jog_speed: float,
 	if along.length_squared() > back_cap * back_cap:
 		along = along.normalized() * back_cap
 	return (along + side).limit_length(jog_speed)
+
+
+## Applies in-transit same-unit standoff separation for crowding bodies within a regiment.
+## Repels living, non-broken pairs closer than min_sep with symmetric velocity along the pair axis.
+static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2Array, delta: float) -> PackedVector2Array:
+	if unit.state == Unit.State.ROUTING or n < 2 or delta <= 0.0:
+		return PackedVector2Array()
+
+	var body_radius: float = unit.soldier_body_radius()
+	var two_bodies: float = body_radius * 2.0
+	var file_pitch: float = unit.file_pitch_wu()
+	var rank_pitch: float = unit.rank_pitch_wu()
+	var min_pitch: float = minf(file_pitch, rank_pitch) if rank_pitch > 0.0 else file_pitch
+	var min_sep: float = STANDOFF_MIN_SEP_FRAC * minf(two_bodies, min_pitch)
+	if min_sep <= 0.01:
+		return PackedVector2Array()
+
+	var cell_size: float = min_sep
+	var inv_cell_size: float = 1.0 / cell_size
+	var cells: Dictionary = {}
+
+	var is_settled: PackedByteArray = PackedByteArray()
+	is_settled.resize(n)
+	var arrive_eps_sq: float = ARRIVE_EPS * ARRIVE_EPS
+
+	for i in range(n):
+		if i < unit._sim_soldier_hp.size() and unit._sim_soldier_hp[i] <= 0.0:
+			continue
+		if unit._sim_soldier_broken.size() > i and unit._sim_soldier_broken[i] != 0:
+			continue
+		if i < target_slots.size() and (unit._sim_soldier_pos[i] - target_slots[i]).length_squared() <= arrive_eps_sq:
+			is_settled[i] = 1
+
+		var p: Vector2 = unit._sim_soldier_pos[i]
+		var ck := Vector2i(int(floor(p.x * inv_cell_size)), int(floor(p.y * inv_cell_size)))
+		if not cells.has(ck):
+			cells[ck] = []
+		(cells[ck] as Array).append(i)
+
+	var speed_cap: float = unit.jog_speed if (unit._reform_holding() or unit.state == Unit.State.IDLE) \
+			else unit.move_speed * unit.superphysical_speed_frac
+	var max_sep_speed: float = minf(STANDOFF_MAX_SPEED, speed_cap)
+
+	var sep_vel := PackedVector2Array()
+	sep_vel.resize(n)
+	sep_vel.fill(Vector2.ZERO)
+	var min_sep_sq: float = min_sep * min_sep
+	var inv_min_sep: float = 1.0 / min_sep
+
+	for i in range(n):
+		if i < unit._sim_soldier_hp.size() and unit._sim_soldier_hp[i] <= 0.0:
+			continue
+		if unit._sim_soldier_broken.size() > i and unit._sim_soldier_broken[i] != 0:
+			continue
+
+		var p_i: Vector2 = unit._sim_soldier_pos[i]
+		var ck := Vector2i(int(floor(p_i.x * inv_cell_size)), int(floor(p_i.y * inv_cell_size)))
+		var settled_i: bool = is_settled[i] == 1
+
+		for dx in range(-1, 2):
+			for dy in range(-1, 2):
+				var neighbor_bucket: Variant = cells.get(Vector2i(ck.x + dx, ck.y + dy))
+				if neighbor_bucket == null:
+					continue
+				var arr: Array = neighbor_bucket as Array
+				for j in arr:
+					if j <= i:
+						continue
+					if settled_i and is_settled[j] == 1:
+						continue
+					var offset: Vector2 = p_i - unit._sim_soldier_pos[j]
+					var d_sq: float = offset.length_squared()
+					if d_sq >= min_sep_sq:
+						continue
+					var d: float = sqrt(d_sq)
+					var overlap: float = (min_sep - d) * inv_min_sep
+					var axis: Vector2
+					if d > 0.001:
+						axis = offset / d
+					else:
+						var lo: int = mini(i, j)
+						var angle: float = float(posmod(lo, 99)) / 99.0 * TAU
+						var sgn: float = 1.0 if i > j else -1.0
+						axis = Vector2.RIGHT.rotated(angle) * sgn
+					var push: Vector2 = axis * (max_sep_speed * overlap)
+					sep_vel[i] += push
+					sep_vel[j] -= push
+
+	# Bound per-soldier accumulated standoff velocity to the speed cap:
+	var max_sep_sq: float = max_sep_speed * max_sep_speed
+	for i in range(n):
+		if sep_vel[i].length_squared() > max_sep_sq:
+			sep_vel[i] = sep_vel[i].limit_length(max_sep_speed)
+
+	return sep_vel
 
 
 ## Slide the regiment center toward its soldiers' centroid, at a bounded velocity (phase 5).

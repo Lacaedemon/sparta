@@ -485,3 +485,45 @@ and asserts parity against DemoState in the GUT test suite where autoloads exist
   when the file documents an import boundary;
   duplicate with a parity test instead.
 
+## 2026-09-04 agy: headless timeout, unapplied test target, and duplicated const comment
+
+Three misses across the lateral file crossing PR round 1.
+First, a headless run timed out at 35 minutes inside GUT
+with the report never updated past "Initial setup".
+Second, the lateral crossing test computed a `target_slots` array and discarded it,
+so SoldierBodies.step kept walking soldier 0 to its own slot
+and the arrival assertion failed by construction.
+Third, the added `LANE_CORRIDOR_OFFSET_FRAC` constant carried its comment twice
+(both as a line above and as a trailing comment)
+and was followed by redundant blank lines.
+
+- **Do:** write the deliverable report in the first five minutes of a run
+  and update it after every task.
+
+- **Don't:** leave a deliverable report unwritten while executing test commands,
+  which causes a timeout to lose intermediate progress.
+
+- **Do:** a test that drives a body must set the target the code under test reads,
+  and a first run that fails on the arrival assert is the signal that the target was never applied.
+
+- **Don't:** assume a test failure reflects the production code under test
+  without verifying that the test fixture actually applied the target to the unit.
+
+- **Do:** keep a single descriptive comment on a new constant,
+  preserving standard separation between declarations.
+
+- **Don't:** duplicate a comment above and beside a constant declaration
+  or leave redundant blank lines trailing the declaration.
+
+## 2026-09-04 agy: a branch the clip never takes
+
+A routing branch added to fix an issue was never taken by any soldier in the demo clip
+because the whole formation re-centered and every soldier moved.
+The overlap came from co-moving same-unit bodies lacking mutual standoff,
+not from crossing standing formation ranks.
+
+- **Do:** instrument or count how many bodies take a new branch in the PR's own demo dump
+  before claiming it fixes the clip.
+
+- **Don't:** ship a routing branch
+  whose only evidence is a synthetic unit test.

@@ -103,6 +103,22 @@ Violating one costs a fix round.
    grep for the formula's EXPRESSION text (e.g. `attack_range + RADIUS`) as well,
    and prefer replacing copies with one helper.
 
+24. Never leave a mid-line semicolon or colon on an added line
+   of 80 or more visible characters;
+   break after the punctuation or end with a full stop.
+
+25. After adding a mechanism claim to a doc,
+   grep the file for the mechanism keyword
+   and reconcile every existing sentence that states the opposite.
+
+26. Write the progress report in the first five minutes of a run
+   and update it after every task,
+   so a timeout never leaves the progress invisible.
+
+28. Before claiming a new branch fixes a clip,
+   count how many bodies take that branch in the clip's dump;
+   zero means the fix is elsewhere.
+
 END OF STANDING RULES
 
 ## Provenance

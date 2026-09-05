@@ -411,3 +411,74 @@ func test_lane_follower_exempts_squared_formation() -> void:
 	# In square, neighbor math is bypassed so bodies follow standard steering without file-lane speed clamp:
 	assert_gt(u._sim_body_vel[rear_idx].y, 20.0,
 		"squared formation must bypass file-lane speed follower clamp")
+
+
+func test_same_unit_standoff_separates_mid_transit_bodies_within_speed_cap() -> void:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	# Two same-unit bodies placed 0.5 wu apart laterally:
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(0.5, 0.0)
+	var body_radius: float = u.soldier_body_radius()
+	var two_bodies: float = body_radius * 2.0
+	var min_sep: float = 0.9 * minf(two_bodies, minf(u.file_pitch_wu(), u.rank_pitch_wu()))
+	var cap: float = u.move_speed * u.superphysical_speed_frac
+	var separated: bool = false
+	for tick in range(60):
+		SoldierBodies.step(u, 1.0 / 60.0)
+		var d: float = (u._sim_soldier_pos[0] - u._sim_soldier_pos[1]).length()
+		assert_lte(u._sim_body_vel[0].length(), cap + 0.01,
+			"body 0 speed must stay below speed cap")
+		assert_lte(u._sim_body_vel[1].length(), cap + 0.01,
+			"body 1 speed must stay below speed cap")
+		if d >= min_sep:
+			separated = true
+			break
+	assert_true(separated,
+		"two mid-transit bodies placed 0.5 wu apart must separate to >= min_sep (%.2f wu)" % min_sep)
+
+
+func test_same_unit_standoff_does_not_disturb_settled_tight_formation() -> void:
+	var u := _make_unit(42, 16)
+	u.formation_mode = Unit.FORMATION_TIGHT
+	u.seed_sim_soldiers()
+	var initial_positions: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	var sb_constants: Dictionary = (SoldierBodies as GDScript).get_script_constant_map()
+	assert_true(sb_constants.has("STANDOFF_MIN_SEP_FRAC"),
+		"STANDOFF_MIN_SEP_FRAC constant must be present on SoldierBodies")
+	var frac: float = float(sb_constants.get("STANDOFF_MIN_SEP_FRAC", 0.0))
+	assert_gt(frac, 0.0, "STANDOFF_MIN_SEP_FRAC must be positive")
+	var max_disp: float = 0.0
+	for tick in range(60):
+		SoldierBodies.step(u, 1.0 / 60.0)
+		for i in range(u.soldiers):
+			var disp: float = (u._sim_soldier_pos[i] - initial_positions[i]).length()
+			if disp > max_disp:
+				max_disp = disp
+	assert_lt(max_disp, 0.01,
+		"settled TIGHT formation at rest must not be disturbed by standoff (max disp %.4f wu)" % max_disp)
+
+
+func test_same_unit_standoff_never_exceeds_superphysical_threshold_in_one_tick() -> void:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	# Two bodies placed 0.05 wu apart:
+	var d_start: float = 0.05
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	SoldierBodies.step(u, 1.0 / 60.0)
+	var d_after: float = (u._sim_soldier_pos[0] - u._sim_soldier_pos[1]).length()
+	# Separation must push them apart in this tick:
+	assert_gt(d_after, d_start + 0.1,
+		"standoff must actively separate crowded bodies in one tick")
+	# Speed in this tick must never exceed the superphysical threshold (~64 wu/s):
+	var superphysical_threshold: float = 64.0
+	assert_lt(u._sim_body_vel[0].length(), superphysical_threshold,
+		"body 0 velocity must stay below superphysical threshold")
+	assert_lt(u._sim_body_vel[1].length(), superphysical_threshold,
+		"body 1 velocity must stay below superphysical threshold")
+

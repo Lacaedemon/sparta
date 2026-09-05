@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/density-contraction-standoff.json",
+  "caption": "converging bodies stop at standoff during a density contraction and a frontage change",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}
