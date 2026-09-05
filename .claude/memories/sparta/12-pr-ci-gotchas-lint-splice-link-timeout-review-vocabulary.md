@@ -628,3 +628,83 @@ which drifted by the entire march distance instead of checking unit-relative off
 
 - **Don't:** sample the new formula's own kinks and call it a regression
   guard.
+
+## 2026-09-04 agy: headless timeout, unapplied test target, and duplicated const comment
+
+Three misses across the lateral file crossing PR round 1.
+First, a headless run timed out at 35 minutes inside GUT
+with the report never updated past "Initial setup".
+Second, the lateral crossing test computed a `target_slots` array and discarded it,
+so SoldierBodies.step kept walking soldier 0 to its own slot
+and the arrival assertion failed by construction.
+Third, the added `LANE_CORRIDOR_OFFSET_FRAC` constant carried its comment twice
+(both as a line above and as a trailing comment)
+and was followed by redundant blank lines.
+
+- **Do:** write the deliverable report in the first five minutes of a run
+  and update it after every task.
+
+- **Don't:** leave a deliverable report unwritten while executing test commands,
+  which causes a timeout to lose intermediate progress.
+
+- **Do:** a test that drives a body must set the target the code under test reads,
+  and a first run that fails on the arrival assert is the signal that the target was never applied.
+
+- **Don't:** assume a test failure reflects the production code under test
+  without verifying that the test fixture actually applied the target to the unit.
+
+- **Do:** keep a single descriptive comment on a new constant,
+  preserving standard separation between declarations.
+
+- **Don't:** duplicate a comment above and beside a constant declaration
+  or leave redundant blank lines trailing the declaration.
+
+## 2026-09-04 agy: a branch the clip never takes
+
+A routing branch added to fix an issue was never taken by any soldier in the demo clip
+because the whole formation re-centered and every soldier moved.
+The overlap came from co-moving same-unit bodies lacking mutual standoff,
+not from crossing standing formation ranks.
+
+- **Do:** instrument or count how many bodies take a new branch in the PR's own demo dump
+  before claiming it fixes the clip.
+
+- **Don't:** ship a routing branch
+  whose only evidence is a synthetic unit test.
+
+## 2026-09-04 agy: a caption that describes the script I meant to write
+
+A demo script caption and comment assumed key T toggled Tight and Loose,
+when T cycles Normal through Tight, Loose, and Square,
+and the unit started in Normal.
+The script never reached Loose and never performed a frontage change.
+Separately, a unit test asserted against a hard-coded speed threshold
+that matched no cap enforced by the code under test.
+
+- **Do:** read the key bindings (SelectionManager)
+  for every key a demo script presses
+  and describe the resulting state sequence from the unit's starting mode.
+
+- **Don't:** write a caption from the brief's wording.
+
+- **Do:** derive a test threshold from the unit's own fields.
+
+- **Don't:** assert a bare number that no code path enforces.
+
+## 2026-09-05 sonnet: a comment cited the wrong sibling test
+
+- Do open the test a comment names and check its fixture numbers before citing it.
+
+- Don't cite a sibling test from memory of its name.
+
+## 2026-09-05 sonnet: reported an edit as done the diff did not contain
+
+On PR #1537, an earlier round reported that the spatial-hash bucket in `scripts/SoldierBodies.gd` (`_separate_same_unit`) had been switched from `Dictionary[Vector2i, Array]` to `Dictionary[Vector2i, PackedInt32Array]`.
+The working tree still had `Array` in the next round.
+The change had been planned and described but never actually applied to the file.
+The report was generated from the plan, not from the diff.
+Both halves of this pair are derived from that correction, not stated by the user directly.
+
+- **Do:** before reporting an edit as done, re-read the diff (`git diff --stat` and a grep for the new symbol) and quote the grep line in the report, e.g. `654: var cells: Dictionary[Vector2i, PackedInt32Array] = {}`.
+
+- **Don't:** report an edit from the plan or from memory of intending it -- a description of the intended change is not evidence the change landed in the file.

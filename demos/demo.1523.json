@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/density-contraction-standoff.json",
+  "caption": "Converging bodies keep body clearance during a density contraction (LOOSE back to TIGHT) instead of compressing into each other.",
+  "fixed_fps": 30,
+  "max_frames": 540,
+  "fps": 12,
+  "width": 640
+}

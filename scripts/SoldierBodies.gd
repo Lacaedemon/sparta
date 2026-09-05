@@ -19,6 +19,8 @@ class_name SoldierBodies
 ## Deterministic and order-free across soldiers, no RNG -- replay-safe like the rest of the
 ## soldier layer.
 
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+
 # Floor on the arrival acceleration (world units/s^2). A body accelerates toward its slot
 # at max(unit.accel, this) and decelerates to arrive at rest, so a body shoved off formation
 # returns under a real force ramp rather than snapping. The floor keeps reform brisk even
@@ -73,6 +75,15 @@ const CORRIDOR_LANE_STAGGER_FRAC: float = 0.25
 # Distance and lateral clearances for intra-file lane follower speed damping:
 const LANE_FOLLOWER_DIST_MULT: float = 0.9
 const LANE_FOLLOWER_LATERAL_MULT: float = 1.5
+
+# In-transit same-unit standoff ratio against tightest pitch or two-body diameter:
+const STANDOFF_MIN_SEP_FRAC: float = 0.9
+# In-transit same-unit standoff maximum separation velocity along pair axis:
+const STANDOFF_MAX_SPEED: float = 2.0 * WorldScaleRef.WU_PER_M
+# Floor below which same-unit standoff separation is disabled (tuned in wu):
+const STANDOFF_MIN_SEP_FLOOR: float = 0.01
+# Deterministic spread of directions for exactly coincident bodies:
+const STANDOFF_TIE_BREAK_DIRS: int = 99
 
 
 ## Seed a unit's bodies onto its current formation slots, at rest (zero velocity) and
@@ -348,6 +359,8 @@ static func step(unit: Unit, delta: float) -> void:
 					file_front_neighbor[j] = j - files
 				if j + files < n:
 					file_rear_neighbor[j] = j + files
+	# In-transit same-unit standoff velocities for crowding same-unit bodies:
+	var sep_vels: PackedVector2Array = _separate_same_unit(unit, n, target_slots, is_engaged, delta)
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
@@ -472,6 +485,23 @@ static func step(unit: Unit, delta: float) -> void:
 								step_vel -= v_dir * excess
 								new_vel -= v_dir * excess
 								my_speed = other_fwd_speed
+		# In-transit same-unit standoff velocity applied along pair axis: applied to step_vel
+		# (this tick's actual displacement) only, deliberately NOT folded into new_vel (the
+		# velocity persisted into next tick's friction/move_toward baseline). Sep_vels is
+		# recomputed fresh every tick from current positions, so a pair that is still too
+		# close keeps getting pushed apart every tick regardless; folding it into new_vel as
+		# well would instead carry the push forward as stored momentum for move_toward to
+		# decay back out of at body_accel's bounded rate even after the pair has separated,
+		# which overshoots each body past its own slot and turns the settle into a multi-tick
+		# oscillation -- measured: doing so breaks
+		# test_infantry_respreads_after_melee_exit.gd's 90-tick settle-streak requirement
+		# outright, even though it changes nothing test_soldier_bodies.gd's own standoff
+		# tests check for.
+		if not sep_vels.is_empty():
+			var sep: Vector2 = sep_vels[i]
+			if sep != Vector2.ZERO:
+				step_vel += sep
+
 		# Cap individual soldier speed to this unit's own jog pace while the unit is
 		# stationary: during the reform hold phase AND whenever a formation reshape
 		# (frontage change, centre pivot) plays out on an idle unit. A marching unit is
@@ -543,6 +573,170 @@ static func _cap_body_speed_vec(vel: Vector2, facing: Vector2, jog_speed: float,
 	if along.length_squared() > back_cap * back_cap:
 		along = along.normalized() * back_cap
 	return (along + side).limit_length(jog_speed)
+
+
+## Applies in-transit same-unit standoff separation for crowding bodies within a regiment.
+## Repels living, non-broken, unengaged pairs closer than min_sep with symmetric velocity
+## along the pair axis. A FIGHTING regiment always runs this pass: the per-body is_engaged
+## skip below (scoped to the front body_tier_soldier_indices() ranks) already excludes the
+## bodies actually in contact, so the unengaged rear bulk of a fighting regiment still gets
+## policed for crowding -- e.g. post-impact stacking behind a routing enemy the front rank
+## cannot reach. Every other state only runs it inside unit._standoff_settle_until_tick's
+## window, armed by the re-slot events (set_formation, set_frontage, reform_ranks) whose
+## file-crossing this pass actually exists to police -- see the gate right below the
+## deliberate-pass-through check for why an ordinary march never needs the full scan.
+static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2Array, is_engaged: PackedByteArray, delta: float) -> PackedVector2Array:
+	if unit.state == Unit.State.ROUTING or n < 2 or delta <= 0.0:
+		return PackedVector2Array()
+
+	# Same-unit standoff is gated off whenever soldiers deliberately pass through each other
+	# along file lanes: an in-place maneuver turn/wheel (rigid rotation, no crossing to
+	# resolve), a REFORM leaf hold, or a still-in-flight mirror reform (an about-face fold
+	# whose bodies have not yet reached their re-squared slots -- the reflection genuinely
+	# crosses files through the block).
+	#
+	# The bare _formation_mirror_x flag is NOT the right test: it stays armed until the next
+	# fresh order, long after any traversal finished -- including a hold_ground reform, which
+	# re-squares with every man already on his post-reflection slot. Qualifying it with
+	# "bodies have not yet settled onto their slots" (_reform_bodies_settled()) scopes the
+	# gate to the genuine in-flight crossing and drops out once arrival catches up.
+	#
+	# Deliberately does NOT gate a frontage reshape (DUPLICATIO/EXPLICATIO file-doubling):
+	# a reshape's lateral file crossing is exactly the crowding this pass exists to police.
+	# Gating it off let bodies pass fully through each other with zero clearance instead
+	# (measured: worst-case nnd collapsed from ~2.2 wu to ~0.13 wu on demos/inputs/
+	# file-doubling.json), worse than the near-miss standoff was meant to fix.
+	var deliberate_pass_through: bool = unit.is_maneuver_turning() \
+			or unit._reform_holding() \
+			or (unit._formation_mirror_x and not unit._reform_bodies_settled())
+	if deliberate_pass_through:
+		return PackedVector2Array()
+
+	# An ordinary march never brings the settled gate below into play: target_slots moves
+	# with the unit every tick, so a marching body is never within ARRIVE_EPS of it and
+	# any_unsettled stays true forever -- paying the spatial-hash bucketing and neighbor scan
+	# below on every tick for every marching unit buys nothing, since bodies marching in
+	# formation already sit at min_pitch spacing, safely outside min_sep. Confine the pass to
+	# the windows that actually matter: while a re-slot could still be crossing files
+	# (unit._standoff_settle_until_tick, armed by set_formation/set_frontage/reform_ranks the
+	# moment they re-slot the block -- see that field's own doc comment), or while FIGHTING,
+	# whose unengaged rear ranks can go on stacking behind a front rank pinned against a
+	# routing enemy for as long as the fight lasts and so are never covered by a settle
+	# window at all.
+	if unit.state != Unit.State.FIGHTING \
+			and Engine.get_physics_frames() > unit._standoff_settle_until_tick:
+		return PackedVector2Array()
+
+	var body_radius: float = unit.soldier_body_radius()
+	var two_bodies: float = body_radius * 2.0
+	var file_pitch: float = unit.file_pitch_wu()
+	var rank_pitch: float = unit.rank_pitch_wu()
+	var min_pitch: float = minf(file_pitch, rank_pitch) if rank_pitch > 0.0 else file_pitch
+	var min_sep: float = STANDOFF_MIN_SEP_FRAC * minf(two_bodies, min_pitch)
+	if min_sep <= STANDOFF_MIN_SEP_FLOOR:
+		return PackedVector2Array()
+
+	# Engaged bodies are skipped so in-transit standoff never fights SoldierEnemyContact knockback during a press.
+	var is_settled: PackedByteArray = PackedByteArray()
+	is_settled.resize(n)
+	var arrive_eps_sq: float = ARRIVE_EPS * ARRIVE_EPS
+	var any_unsettled: bool = false
+
+	for i in range(n):
+		if i < unit._sim_soldier_hp.size() and unit._sim_soldier_hp[i] <= 0.0:
+			continue
+		if unit._sim_soldier_broken.size() > i and unit._sim_soldier_broken[i] != 0:
+			continue
+		if not is_engaged.is_empty() and is_engaged[i] == 1:
+			continue
+		if i < target_slots.size() and (unit._sim_soldier_pos[i] - target_slots[i]).length_squared() <= arrive_eps_sq:
+			is_settled[i] = 1
+		else:
+			any_unsettled = true
+
+	# When all active bodies sit on their slots, no in-transit pairs exist to separate:
+	if not any_unsettled:
+		return PackedVector2Array()
+
+	var cell_size: float = min_sep
+	var inv_cell_size: float = 1.0 / cell_size
+	var cells: Dictionary[Vector2i, PackedInt32Array] = {}
+
+	for i in range(n):
+		if i < unit._sim_soldier_hp.size() and unit._sim_soldier_hp[i] <= 0.0:
+			continue
+		if unit._sim_soldier_broken.size() > i and unit._sim_soldier_broken[i] != 0:
+			continue
+		if not is_engaged.is_empty() and is_engaged[i] == 1:
+			continue
+
+		var p: Vector2 = unit._sim_soldier_pos[i]
+		var ck := Vector2i(int(floor(p.x * inv_cell_size)), int(floor(p.y * inv_cell_size)))
+		if not cells.has(ck):
+			cells[ck] = PackedInt32Array()
+		cells[ck].append(i)
+
+	# _reform_holding() already returned above via deliberate_pass_through, so only the IDLE
+	# case can take the jog cap here; a moving unit gets the superphysical march cap instead.
+	var speed_cap: float = unit.jog_speed if unit.state == Unit.State.IDLE \
+			else unit.move_speed * unit.superphysical_speed_frac
+	var max_sep_speed: float = minf(STANDOFF_MAX_SPEED, speed_cap)
+
+	var sep_vel := PackedVector2Array()
+	sep_vel.resize(n)
+	sep_vel.fill(Vector2.ZERO)
+	var min_sep_sq: float = min_sep * min_sep
+	var inv_min_sep: float = 1.0 / min_sep
+
+	for i in range(n):
+		if i < unit._sim_soldier_hp.size() and unit._sim_soldier_hp[i] <= 0.0:
+			continue
+		if unit._sim_soldier_broken.size() > i and unit._sim_soldier_broken[i] != 0:
+			continue
+		if not is_engaged.is_empty() and is_engaged[i] == 1:
+			continue
+
+		var p_i: Vector2 = unit._sim_soldier_pos[i]
+		var ck := Vector2i(int(floor(p_i.x * inv_cell_size)), int(floor(p_i.y * inv_cell_size)))
+		var settled_i: bool = is_settled[i] == 1
+
+		for dx in range(-1, 2):
+			for dy in range(-1, 2):
+				var nkey := Vector2i(ck.x + dx, ck.y + dy)
+				if not cells.has(nkey):
+					continue
+				var arr: PackedInt32Array = cells[nkey]
+				for j: int in arr:
+					if j <= i:
+						continue
+					if settled_i and is_settled[j] == 1:
+						continue
+					var offset: Vector2 = p_i - unit._sim_soldier_pos[j]
+					var d_sq: float = offset.length_squared()
+					if d_sq >= min_sep_sq:
+						continue
+					var d: float = sqrt(d_sq)
+					var overlap: float = (min_sep - d) * inv_min_sep
+					var axis: Vector2
+					if d > MIN_DIST:
+						axis = offset / d
+					else:
+						var lo: int = mini(i, j)
+						var angle: float = float(posmod(lo, STANDOFF_TIE_BREAK_DIRS)) / float(STANDOFF_TIE_BREAK_DIRS) * TAU
+						# j > i always here (the pair loop above skips j <= i), so the
+						# direction is fixed; push/reaction below stays equal-and-opposite.
+						axis = -Vector2.RIGHT.rotated(angle)
+					var push: Vector2 = axis * (max_sep_speed * overlap)
+					sep_vel[i] += push
+					sep_vel[j] -= push
+
+	# Bound per-soldier accumulated standoff velocity to the speed cap:
+	var max_sep_sq: float = max_sep_speed * max_sep_speed
+	for i in range(n):
+		if sep_vel[i].length_squared() > max_sep_sq:
+			sep_vel[i] = sep_vel[i].limit_length(max_sep_speed)
+
+	return sep_vel
 
 
 ## Slide the regiment center toward its soldiers' centroid, at a bounded velocity (phase 5).
