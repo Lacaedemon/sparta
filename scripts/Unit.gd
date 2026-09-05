@@ -2243,7 +2243,12 @@ func _think(delta: float) -> void:
 						# TURN_RATE sweeps a wide block's flank slots several times
 						# faster than any body can run -- the men scramble after
 						# their slots and the block compresses into a blob before
-						# the march has even begun.
+						# the march has even begun. The marching pivot additionally
+						# derates by formed_turn_tracking_frac because march velocity
+						# compounds with slot rotation. The stationary hold has no
+						# forward march compounding the corner slot's speed, so leaving
+						# it un-derated at raw jog_speed footspeed preserves prompt
+						# pre-march alignment.
 						_rotate_facing_toward(reform_dir, delta,
 								UnitManeuver.wheel_gait_rate(TURN_RATE, jog_speed, _pivot_radius()))
 					else:

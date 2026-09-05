@@ -318,12 +318,13 @@ func test_deep_cavalry_formed_pivot_rate_bounded_for_tracking() -> void:
 	u._move_to(u.position + Vector2(1000, 0), delta, true)
 	var facing_step: float = absf(angle_difference(start_facing.angle(), u.facing.angle()))
 	var measured_rate: float = facing_step / delta
-	var max_expected_rate: float = 0.6 * 70.0 / 505.9644
+	var max_expected_rate: float = u.formed_turn_tracking_frac * u.jog_speed / u._pivot_radius()
 	assert_lte(measured_rate, max_expected_rate + 0.001,
 		"pivot rate must be bounded by formed_turn_tracking_frac (<= 0.083 rad/s)")
 
 
 func test_deep_cavalry_formed_turn_maintains_cohesion() -> void:
+	# Cohesion thresholds guard against regression (min NND >= 10 wu, residual <= 20 wu).
 	var u := _make_cavalry_80(Vector2(807.6, 580.8))
 	u.facing = Vector2(-0.03, -1.0).normalized()
 	var target := Vector2(573.7, 446.5)
@@ -357,8 +358,9 @@ func test_deep_cavalry_formed_turn_maintains_cohesion() -> void:
 			if best_d < worst_min_nnd:
 				worst_min_nnd = best_d
 
-
+	# 10 wu floor is twice the 5 wu cavalry overlap floor (pre-change clip measured 3.5 wu).
 	assert_gte(worst_min_nnd, 10.0,
 		"minimum nearest-neighbour distance must stay >= 10.0 wu through the turn")
+	# 20 wu tightens against pre-change residual 25.5 wu (clip 56 wu) with margin under analyzer 30 wu floor.
 	assert_lte(worst_residual, 20.0,
 		"shape residual RMS must stay <= 20.0 wu through the turn")

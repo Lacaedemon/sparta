@@ -551,3 +551,8 @@ the rule was already ledger rule 18 and was in the brief.
 
 - **Don't:** defer report updates to a final summary step
   or leave tasks marked in progress across a session.
+
+- **Do:** derive every test bound from the fixture's own fields
+  and give each threshold a one-line rationale.
+
+- **Don't:** paste computed numbers into an assert.
