@@ -646,7 +646,7 @@ func test_same_unit_standoff_skips_unsettled_mirror_reform() -> void:
 	# well away from their formation slots keeps _reform_bodies_settled() reading false, the
 	# unsettled state a fresh mirror fold leaves behind -- and placing the PAIR genuinely
 	# crowded (closer than min_sep, the same 0.05 wu spacing
-	# test_same_unit_standoff_separates_mid_transit_bodies_within_speed_cap above proves the
+	# test_same_unit_standoff_never_exceeds_superphysical_threshold_in_one_tick above proves the
 	# pass reacts to) is what makes this test discriminate: without the gate, the standoff
 	# would push them apart exactly as that test demonstrates.
 	u._formation_mirror_x = true

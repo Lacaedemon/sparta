@@ -662,3 +662,9 @@ that matched no cap enforced by the code under test.
 - **Do:** derive a test threshold from the unit's own fields.
 
 - **Don't:** assert a bare number that no code path enforces.
+
+## 2026-09-05 sonnet: a comment cited the wrong sibling test
+
+- Do open the test a comment names and check its fixture numbers before citing it.
+
+- Don't cite a sibling test from memory of its name.
