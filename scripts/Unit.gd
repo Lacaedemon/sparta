@@ -714,9 +714,11 @@ const TURN_RATE_TAPER_FLOOR: float = 0.4
 # the drill/wheel ceilings above.
 const TURN_ACCEL_BUDGET_FRACTION: float = 0.5
 # Ratio bounding the corner slot's tangential rotational speed during a formed march turn
-# as a fraction of jog_speed (via UnitManeuver.wheel_gait_rate). The corner slot must move
-# slower than the body arrival cap (jog_speed) so a body has positive velocity headroom
-# to overcome inertia, close its lag, and maintain formation dressing.
+# as a fraction of jog_speed (via UnitManeuver.wheel_gait_rate). A deep block's corner slot
+# moves slower than the body arrival cap (jog_speed) so a body has positive velocity
+# headroom to overcome inertia, close its lag, and maintain formation dressing; a shallow
+# block, whose bodies never lag far, keeps the full cap (_formed_turn_gait_frac returns
+# 1.0 there by design, so the headroom is reserved only where the depth ratio needs it).
 const FORMED_TURN_TRACKING_FRAC: float = 0.6
 # Live formed turn tracking fraction -- caller-configurable parameter defaulting to
 # FORMED_TURN_TRACKING_FRAC above. This is the value a formation reaches once its DEPTH
