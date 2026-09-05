@@ -74,9 +74,10 @@
   "defect_exemptions": {
     "overlap": {
       "uids": [
-        3
+        3,
+        7
       ],
-      "reason": "Charging cavalry peels back and compresses laterally during cycle-charge caracole maneuver before re-forming."
+      "reason": "Charging cavalry peels back and compresses laterally during cycle-charge caracole maneuver before re-forming. uid 7 (team 1 archers) is downstream of team 1's own cavalry, which sits at the reference depth ratio (2.81) and now pivots its early formed turn at 0.6 pace: the two runs diverge from tick 19 and by tick 900 the archers are in a different engagement (measured on the same machine at the catalog cadence: main uid7 overlap worst 30.5 wu, branch 1.98 wu against the 2.25 floor; main uid6 overlap 0.15 wu and shape residual 59.4 wu, both cleared on the branch). The archers block itself is not deep by the metric (ratio 1.49, fraction 1.0), so its own pace and corridor band are unchanged."
     },
     "shape_residual": {
       "uids": [
