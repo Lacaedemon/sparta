@@ -673,7 +673,8 @@ that matched no cap enforced by the code under test.
 
 On PR #1537, an earlier round reported that the spatial-hash bucket in `scripts/SoldierBodies.gd` (`_separate_same_unit`) had been switched from `Dictionary[Vector2i, Array]` to `Dictionary[Vector2i, PackedInt32Array]`.
 The working tree still had `Array` in the next round.
-The change had been planned and described but never actually applied to the file; the report was generated from the plan, not from the diff.
+The change had been planned and described but never actually applied to the file.
+The report was generated from the plan, not from the diff.
 Both halves of this pair are derived from that correction, not stated by the user directly.
 
 - **Do:** before reporting an edit as done, re-read the diff (`git diff --stat` and a grep for the new symbol) and quote the grep line in the report, e.g. `654: var cells: Dictionary[Vector2i, PackedInt32Array] = {}`.
