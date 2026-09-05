@@ -1336,6 +1336,10 @@ func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
 
+	# Before the rout branch below returns, so a routing tick records ROUTING as the
+	# previous-tick reading and the rally that _process_rout performs is seen on the next
+	# ordinary tick.
+	_arm_standoff_on_leaving_fight_or_rout()
 	if state == State.ROUTING:
 		_process_rout(delta)
 		if state != State.DEAD:   # timer expired: rallied (IDLE) or shattered (DEAD -> freed)
@@ -1344,7 +1348,6 @@ func _physics_process(delta: float) -> void:
 
 	_attack_cd = max(0.0, _attack_cd - delta)
 	_pin_down_exposure_cd = max(0.0, _pin_down_exposure_cd - delta)
-	_arm_standoff_on_leaving_fight_or_rout()
 	if is_rearguard_detachment:
 		_rearguard_lifetime_timer = max(0.0, _rearguard_lifetime_timer - delta)
 		if _rearguard_lifetime_timer <= 0.0 and soldiers > 0:
@@ -5471,8 +5474,8 @@ func _reshape_timeout(old_files: int) -> float:
 ## Notice a unit that was FIGHTING or ROUTING on its previous tick and no longer is, and
 ## arm the standoff watch for it: the melee press packs the block below pitch and a rout
 ## scatters it, so the bodies' walk back onto their slots crosses files exactly as a
-## re-slot does. Runs every non-dead, non-routing tick from _physics_process, so a unit
-## that rallies sees the transition on its first ordinary tick after the rout.
+## re-slot does. Runs on every live tick from _physics_process, ahead of the rout branch,
+## so a routing tick records ROUTING and the rally is seen on the next tick.
 func _arm_standoff_on_leaving_fight_or_rout() -> void:
 	var prev: int = _standoff_prev_state
 	_standoff_prev_state = state
@@ -7932,6 +7935,7 @@ func to_snapshot_dict() -> Dictionary:
 		"last_reshape_tick": _last_reshape_tick,
 		"last_reshape_widened": _last_reshape_widened,
 		"standoff_settle_until_tick": _standoff_settle_until_tick,
+		"standoff_prev_state": _standoff_prev_state,
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
 		"formation_mirror_x": _formation_mirror_x,
 		"deploy_facing": deploy_facing, "ordered_facing": ordered_facing,
@@ -8062,6 +8066,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_last_reshape_tick = int(d["last_reshape_tick"])
 	_last_reshape_widened = bool(d["last_reshape_widened"])
 	_standoff_settle_until_tick = int(d.get("standoff_settle_until_tick", -1))
+	_standoff_prev_state = int(d.get("standoff_prev_state", state))
 	_ranks_closed = bool(d["ranks_closed"])
 	_formation_angle = float(d["formation_angle"])
 	_formation_mirror_x = bool(d["formation_mirror_x"])

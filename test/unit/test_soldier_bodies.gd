@@ -561,7 +561,8 @@ func test_leaving_a_fight_arms_the_standoff_settle_window() -> void:
 	u._arm_standoff_on_leaving_fight_or_rout()
 	assert_gt(u._standoff_settle_until_tick, Engine.get_physics_frames(),
 		"leaving FIGHTING arms the settle window for the re-spread that follows")
-	# A rally arms it the same way: the bodies were scattered by the flight.
+	# A rally arms it the same way: the bodies were scattered by the flight. The helper runs
+	# ahead of _physics_process's rout branch, so a routing tick really does record ROUTING.
 	var v := _make_unit(43, 8)
 	SoldierBodies.seed(v)
 	v.state = Unit.State.ROUTING
