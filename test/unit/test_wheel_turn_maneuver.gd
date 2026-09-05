@@ -216,6 +216,96 @@ func test_wheel_turn_reforms_on_arrival() -> void:
 	assert_almost_eq(wrapf(u._formation_angle, -PI, PI), 0.0, 0.01,
 		"the grid re-squares to the new heading on arrival, same as a plain rear move's " +
 		"own un-checked default")
+	# Post-turn arrival reform holds ground: mirror is armed and short files step forward
+	assert_true(u._formation_mirror_x, "the depth-only mirror is armed for hold-ground reform")
+
+
+## Regression test: after _finish_wheel + arrival, the zero-displacement property holds
+## for full-depth files, short files step one pitch, and _reform_on_arrival is false afterwards.
+func test_wheel_turn_arrival_holds_ground_and_clears_reform_on_arrival() -> void:
+	var u: Unit = UnitScript.new()
+	u.max_soldiers = 40
+	add_child_autofree(u)
+	u.position = Vector2.ZERO
+	u.facing = FACING_DOWN
+	u.frontage_override = 3
+	u.seed_sim_soldiers()
+
+	assert_true(u._effective_file_major_reform(),
+		"precondition: file-major reform is effective")
+	# Destination straight along the post-wheel heading (140 degrees off facing DOWN)
+	var dest: Vector2 = FACING_DOWN.rotated(deg_to_rad(140.0)) * 100.0
+	var o := _arm_wheel_turn(u, dest)
+
+	# Step until the wheel phase finishes and the march begins
+	var marching := _step_until(u, func(): return u.has_move_target and not u.is_wheeling(), 600)
+	assert_true(marching, "wheel finished and march started")
+	assert_true(u._reform_on_arrival, "_reform_on_arrival is armed after wheel")
+
+	# Straightens the post-wheel march so the relative-offset measurement has a constant heading, and is scaffolding for the march leg rather than the reform under test.
+	u.move_target = u.position + u.facing * 100.0
+	u.active_leaf().target_pos = u.move_target
+
+	# Capture unit-relative offsets just before arrival reform triggers
+	var pre_arrival_pos: Vector2 = u.position
+	var pre_arrival_slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var pre_offsets: Array[Vector2] = []
+	for s in pre_arrival_slots:
+		pre_offsets.append(s - pre_arrival_pos)
+
+	# Step until arrival at destination
+	var arrived := _step_until(u, func(): return u.current_order == null, 1200)
+	assert_true(arrived, "composite completed and arrived at destination")
+	assert_false(u._reform_on_arrival, "_reform_on_arrival is false after arrival reform")
+	assert_almost_eq(wrapf(u._formation_angle, -PI, PI), 0.0, 0.01,
+		"formation angle re-squared to heading")
+
+	# Compute displacement across the arrival reform using unit-relative offsets
+	var post_arrival_pos: Vector2 = u.position
+	var post_arrival_slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var post_offsets: Array[Vector2] = []
+	for s in post_arrival_slots:
+		post_offsets.append(s - post_arrival_pos)
+
+	var pitch: float = u.rank_pitch_wu()
+	var step_vec: Vector2 = u.facing * pitch
+	var file_ids: PackedInt32Array = u._sim_soldier_file
+
+	# Count soldiers per file and pick the full-depth file with 14 soldiers
+	var file_counts: Dictionary = {}
+	for fid in file_ids:
+		file_counts[fid] = file_counts.get(fid, 0) + 1
+
+	var full_depth_file: int = -1
+	for fid in file_counts:
+		if file_counts[fid] == 14:
+			full_depth_file = fid
+			break
+	assert_ne(full_depth_file, -1, "found a full-depth file with 14 soldiers")
+
+	var still_count: int = 0
+	var stepped_count: int = 0
+
+	for i in range(u.soldiers):
+		var file_id: int = file_ids[i]
+		var pre_rel: Vector2 = pre_offsets[i]
+		var post_rel: Vector2 = post_offsets[i]
+		if file_id == full_depth_file:
+			still_count += 1
+			assert_almost_eq(post_rel.x, pre_rel.x, 0.05,
+				"soldier %d in full-depth file has zero relative x displacement" % i)
+			assert_almost_eq(post_rel.y, pre_rel.y, 0.05,
+				"soldier %d in full-depth file has zero relative y displacement" % i)
+		else:
+			stepped_count += 1
+			var expected_rel: Vector2 = pre_rel + step_vec
+			assert_almost_eq(post_rel.x, expected_rel.x, 0.05,
+				"soldier %d in short file matches expected stepped relative x" % i)
+			assert_almost_eq(post_rel.y, expected_rel.y, 0.05,
+				"soldier %d in short file matches expected stepped relative y" % i)
+
+	assert_eq(still_count, 14, "14 full-depth file soldiers hold ground")
+	assert_eq(stepped_count, 26, "26 short-file soldiers step one pitch forward")
 
 
 # --- Battle-level integration ------------------------------------------------

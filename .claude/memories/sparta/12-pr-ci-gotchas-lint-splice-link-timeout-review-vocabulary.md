@@ -485,6 +485,122 @@ and asserts parity against DemoState in the GUT test suite where autoloads exist
   when the file documents an import boundary;
   duplicate with a parity test instead.
 
+## 2026-09-04 agy: a semicolon on an 80-char added README line
+
+A newly added bullet line in demos/README.md reached 82 visible characters
+and carried a mid-line semicolon,
+failing the diff-scoped check-new-line-breaks CI check.
+The edit also introduced a contradiction
+with an existing sentence in the factions bullet,
+which claimed team 1 never spawns in a drill,
+overlooking that a scenario enemy still deploys in drill mode.
+In round 3, extending the `drill` bullet with continuation lines
+tripped CI's blocking list-item splice check against `- `doctrine``,
+because the check is diff-scoped and the pre-existing tight join failed;
+the rule was already ledger rule 18 and was in the brief.
+
+- **Do:** break an added prose line after a semicolon or colon,
+  or start a new sentence with a full stop,
+  before the line reaches 80 visible characters.
+
+- **Don't:** leave a mid-line semicolon or colon
+  on an added prose line of 80 or more visible characters.
+
+- **Do:** after adding a mechanism claim to a doc,
+  grep the same file for the mechanism's keyword
+  and reconcile every sentence that states the opposite.
+
+- **Don't:** assume surrounding bullets agree
+  with a newly added mechanism claim
+  without grepping the file to verify consistency.
+
+- **Do:** verify a claim about what a value "defaults to"
+  by reading the lookup function
+  and the default declaration before writing it.
+
+- **Don't:** write "keeps the default X"
+  without naming what the default is
+  and where it is read.
+
+- **Do:** after extending a list item with wrapped continuation lines,
+  insert a blank line before the next `- ` item
+  because the splice check is diff-scoped
+  and your added lines make the pre-existing tight join fail
+  (the rule was already ledger rule 18 and was in the brief).
+
+- **Don't:** treat the surrounding tight list
+  as licence to leave the join tight.
+
+- **Do:** when reconciling a contradicted sentence,
+  re-read the WHOLE bullet or comment block and every clause in it,
+  since the contradiction usually appears in more than one clause.
+
+- **Don't:** amend only the clause a finding quoted.
+
+## 2026-09-04 agy: report timing and unit-relative slot displacement
+
+A headless run timed out at thirty minutes with no report file written
+because the full test suite was started inside a run with a fixed timeout
+and the deliverable report was deferred until the end.
+In addition, slot displacement assertions across a march compared world coordinates,
+which drifted by the entire march distance instead of checking unit-relative offsets.
+
+- **Do:** write the deliverable report file within the first minutes
+  and overwrite it after each task.
+
+- **Don't:** defer writing the report file until the end of a session.
+
+- **Do:** run only the test files targeted by the brief
+  rather than starting the full suite inside a run with a fixed timeout.
+
+- **Don't:** start the full test suite unless the brief explicitly asks.
+
+- **Do:** compare unit-relative offsets (`slot - u.position`)
+  when asserting slot displacement across a march.
+
+- **Don't:** compare world coordinates across a march,
+  which shifts slot positions by the march distance.
+
+- **Do:** run the awk control above over every added prose line
+  before reporting a doc edit done.
+
+- **Don't:** rely on having written the rule
+  as evidence of having followed it.
+
+- **Do:** scan added .gd and demo lines for non-ASCII bytes and issue numbers yourself
+  before reporting.
+
+- **Don't:** type a degree sign or an issue number into a comment.
+
+- **Do:** note that tools/check.sh chars/units/comments diff-scope COMMITTED changes,
+  so on an uncommitted worktree their PASS says nothing.
+
+- **Don't:** paste a "No new code lines" PASS as evidence for uncommitted edits.
+
+## 2026-09-04 agy: a shared completion handler serves more than one order
+
+- **Do:** before changing an argument at a call site,
+  grep for every order/path that reaches that site (here begin_pivot callers)
+  and decide per path.
+
+- **Don't:** assume the site serves only the order named in the issue.
+
+- **Do:** grep the test tree for the old expectation text (e.g. "_in_rear_row")
+  after flipping a behaviour.
+
+- **Don't:** update only the test file the brief named.
+
+- **Do:** check which layout branch a described behaviour belongs to
+  and scope the sentence to it.
+
+- **Don't:** describe one branch's mechanism as the behaviour.
+
+- **Do:** grep for every call of the function whose default you are relying on,
+  not only the site the issue named
+  (here reform_ranks had three callers and two were fixed).
+
+- **Don't:** stop at the first two sites.
+
 ## 2026-09-04 agy: headless timeout, unapplied test target, and duplicated const comment
 
 Three misses across the lateral file crossing PR round 1.

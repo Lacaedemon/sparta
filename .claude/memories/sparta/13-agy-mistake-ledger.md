@@ -81,6 +81,10 @@ Violating one costs a fix round.
    because the blocking lint step is the list-item splice check,
    which fails when an item follows a wrapped item with no blank line;
    a tight list is fine only when every item is a single line.
+   When extending an existing item with continuation lines,
+   insert a blank line before the next item
+   even if the surrounding list is tight,
+   because the diff-scoped check flags the newly wrapped join.
 
 19. When a report or finding is keyed to a commit,
    run `git log <commit>..HEAD -- <paths>` for the paths involved
@@ -111,9 +115,8 @@ Violating one costs a fix round.
    grep the file for the mechanism keyword
    and reconcile every existing sentence that states the opposite.
 
-26. Write the progress report in the first five minutes of a run
-   and update it after every task,
-   so a timeout never leaves the progress invisible.
+26. Write the report file within the first five minutes and overwrite it as you go;
+   a run that times out with no report has delivered nothing.
 
 27. tools/check.sh chars, units and comments diff-scope committed lines;
    on uncommitted edits run the byte scan and the issue-number grep by hand.
