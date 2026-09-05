@@ -1338,6 +1338,32 @@ func test_formed_turn_tracking_frac_is_clamped_to_a_safe_positive_range() -> voi
 		"the default 0.6 tracking fraction is already in range, so the clamp is a no-op")
 
 
+func test_formed_turn_gait_frac_guards_a_zero_pivot_radius() -> void:
+	# _formed_turn_gait_frac's own `if pr <= 0.0 or band <= 0.0: return 1.0` guard exists
+	# because the ramp below it divides by depth_ratio (pr / band), and pr / band itself
+	# divides by band -- a zero (or negative) pivot radius or band would otherwise produce a
+	# 0/0 division (depth_ratio) or a free_depth_ratio/0 division (both undefined/inf in
+	# GDScript's float division, propagating a NaN or inf pivot rate into
+	# UnitManeuver.wheel_gait_rate and stalling or corrupting every formed turn for a
+	# single-soldier unit). A bare 1-soldier fixture does NOT reach files=1/ranks=1 on its
+	# own: formation_files derives from FORMATION_ASPECT (1.7), so
+	# ceil(sqrt(1 * 1.7)) = 2 files even at max_soldiers=1, leaving a positive pivot arm.
+	# frontage_override pins files=1 directly (clamped to [1, max_soldiers], checked before
+	# the FORMATION_ASPECT auto-width in formation_files -- see UnitFormation.frontage's own
+	# doc comment), and ranks_for(1, 1) is 1, so _pivot_radius()'s own
+	# Vector2(maxi(0, files-1) x file_pitch_wu(), maxi(0, ranks-1) x rank_pitch_wu())
+	# .length() x 0.5 collapses to Vector2.ZERO.length(), i.e. exactly 0.0 -- the guard's
+	# pr <= 0.0 branch, not band <= 0.0 (this fixture's own band is still positive).
+	var u := _make_unit(1)
+	u.frontage_override = 1
+	assert_almost_eq(u._pivot_radius(), 0.0, 0.0001,
+		"a 1-soldier, 1-file, 1-rank unit has no arm to pivot about")
+	assert_almost_eq(u._formed_turn_gait_frac(), 1.0, 0.0001,
+		"the zero-pivot-radius guard returns 1.0 rather than dividing by zero")
+	assert_false(u.is_deep_for_formed_turn(),
+		"a guarded frac of 1.0 is never derated, so this unit is never deep for a formed turn")
+
+
 ## Depth ratio (u._pivot_radius() / (u.file_pitch_wu() x MARCHING_CORRIDOR_PROXIMITY_MULT))
 ## grows monotonically with u.rank_pitch alone (holding file_pitch, soldier count, and
 ## formation shape fixed), so this inverts that one-parameter relationship: the rank_pitch

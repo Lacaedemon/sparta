@@ -59,8 +59,12 @@ const CORRIDOR_PROXIMITY_MULT: float = 1.5
 # land. See _corridor_to_slot's own doc comment for the failure this was measured against.
 # A stationary reform (drill/frontage-fold, _approach_velocity zero) keeps the plain,
 # narrower radius, so a genuine casualty-thinned or frontage-fold reform still corridors
-# around its own formation's interior exactly as before. Formed march turns keep this
-# wider band while marching, preventing turn lag from diverting outer files into corridors.
+# around its own formation's interior exactly as before. A formed march turn keeps this
+# wider band while marching ONLY when the turning block is deep/wide enough that
+# Unit._formed_turn_gait_frac has actually derated its corner-slot pace below full
+# jog_speed (Unit.is_deep_for_formed_turn) -- see _corridor_to_slot's own doc comment for
+# why an ordinary shallow block's turn instead keeps the plain, narrower radius exactly as
+# it did before this widening existed.
 const MARCHING_CORRIDOR_PROXIMITY_MULT: float = 4.5
 # Lateral clearance beyond outer formed file for perimeter corridor routing.
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
@@ -658,13 +662,27 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 	# Use the wider MARCHING_CORRIDOR_PROXIMITY_MULT radius while the unit is actively
 	# marching (own_slot is a moving point, not a fixed reform target) -- see that const's
 	# own doc comment for why a moving target needs a wider direct-arrival band than a
-	# stationary reform does. Applied during a formed march turn too (marching while
-	# unit.is_turning()), not just straight marching: retaining the wider band there keeps
-	# a lagging body closing its slot's swinging arc walking direct instead of being
-	# diverted into a perimeter corridor detour it would otherwise never catch up from.
+	# stationary reform does. Also applied during a formed march turn (marching while
+	# unit.is_turning()), but ONLY when the turning block is deep/wide enough for its
+	# corner-slot pace to actually be derated (Unit.is_deep_for_formed_turn) -- that is
+	# exactly the case where a lagging body's own arrival speed is slower relative to its
+	# slot's swinging arc and needs this wider band to keep walking direct instead of being
+	# diverted into a perimeter corridor detour it would otherwise never catch up from. An
+	# ordinary shallow formation's turn (is_deep_for_formed_turn false, corner slot still at
+	# full jog_speed pace) keeps the plain, narrower CORRIDOR_PROXIMITY_MULT radius through
+	# its turn exactly as it did before this widening existed: a shallow block never lags
+	# far enough behind its own slot's arc to need the wider band, and coasting/rally/rout
+	# marches at low approach speed are exactly this shallow, unwidened case (confirmed via
+	# state-dump: without this depth gate the wider band alone regressed coast_to_stop's
+	# settle timing and rout_rally's overlap/shape_residual readings on ordinary,
+	# non-deep formations, while the parade_ground/showcase slowdown -- the intended cost
+	# of derating an actually deep block -- persisted either way).
 	var marching: bool = unit._approach_velocity.length_squared() > 0.0001
 	var straight_march: bool = marching and not unit.is_turning()
-	var proximity_mult: float = MARCHING_CORRIDOR_PROXIMITY_MULT if marching else CORRIDOR_PROXIMITY_MULT
+	var deep_turning_march: bool = marching and unit.is_turning() and unit.is_deep_for_formed_turn()
+	var proximity_mult: float = (
+			MARCHING_CORRIDOR_PROXIMITY_MULT if (straight_march or deep_turning_march)
+			else CORRIDOR_PROXIMITY_MULT)
 	if diff.length_squared() <= (spacing * proximity_mult) * (spacing * proximity_mult):
 		return diff
 	var ang: float = unit.soldier_block_world_angle()

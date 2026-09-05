@@ -3534,6 +3534,21 @@ func _formed_turn_gait_frac() -> float:
 	return clampf(free_depth_ratio / depth_ratio, safe_tracking_frac, 1.0)
 
 
+## True once this block's own depth ratio has crossed FORMED_TURN_FREE_DEPTH_RATIO and
+## _formed_turn_gait_frac has started derating its corner-slot pace below full jog_speed
+## (i.e. strictly under 1.0) -- the single predicate for "is this block deep/wide enough
+## for a formed turn to need the wheel-tracking headroom", shared by both consumers of that
+## headroom: this Unit's own pivot-rate derate above, and
+## SoldierBodies._corridor_to_slot's decision to keep its wider MARCHING_CORRIDOR_PROXIMITY_MULT
+## band through a turn (not just a straight march) for a block that needs it. Centralized
+## here, rather than each site re-deriving its own depth-ratio threshold, so the two stay
+## exactly in lockstep: a shallow block never pays the corridor-widening cost the derate
+## didn't itself impose on it, and a deep block always gets the same wider band its slower
+## corner-slot pace needs to keep a lagging body from being diverted into a perimeter detour.
+func is_deep_for_formed_turn() -> bool:
+	return _formed_turn_gait_frac() < 1.0
+
+
 ## Open ground this regiment needs between its centre and impassable terrain: the
 ## corner man's half-diagonal plus his body radius, so a route the centre follows
 ## keeps every soldier off the drawn rect. Passed to every PathField query —
