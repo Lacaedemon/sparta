@@ -620,3 +620,11 @@ which drifted by the entire march distance instead of checking unit-relative off
   and give each threshold a one-line rationale.
 
 - **Don't:** paste computed numbers into an assert.
+
+## 2026-09-05 sonnet: a regression test must sample the point where the bug lived
+
+- **Do:** evaluate the guarded property at the exact boundary the finding
+  named, on both sides.
+
+- **Don't:** sample the new formula's own kinks and call it a regression
+  guard.

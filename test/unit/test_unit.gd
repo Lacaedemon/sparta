@@ -1363,7 +1363,10 @@ func test_formed_turn_gait_frac_is_continuous_and_monotone_across_the_free_ratio
 	# continuous, monotone clampf(...) expression instead, so nudging a fixture's own
 	# depth ratio across BOTH kink points -- its own free ratio
 	# (FORMED_TURN_FREE_DEPTH_RATIO, where the ramp starts) and
-	# FORMED_TURN_DEPTH_RATIO_REF (where it flattens) -- must never jump.
+	# FORMED_TURN_DEPTH_RATIO_REF (where it flattens) -- must never jump. The ref-ratio
+	# pair below brackets the exact point the old two-branch code snapped at: sampling
+	# only around the free ratio (as this test did before) lets that snap slip through
+	# unnoticed, since the buggy branch boundary sits at ref_ratio, not free_ratio.
 	#
 	# Same shape as _make_deep_cavalry_unit, but varies ONLY rank_pitch to sweep the depth
 	# ratio -- file_pitch (and so file_pitch_wu(), the marching band) stays fixed, so the
@@ -1379,8 +1382,10 @@ func test_formed_turn_gait_frac_is_continuous_and_monotone_across_the_free_ratio
 	var eps: float = 0.001
 	var free_ratio: float = Unit.FORMED_TURN_FREE_DEPTH_RATIO
 	var ref_ratio: float = Unit.FORMED_TURN_DEPTH_RATIO_REF
+	var tracking_frac: float = u.formed_turn_tracking_frac
 	var target_ratios: Array[float] = [
-		free_ratio - eps, free_ratio + eps, (free_ratio + ref_ratio) * 0.5, ref_ratio + 1.0,
+		free_ratio - eps, free_ratio + eps, (free_ratio + ref_ratio) * 0.5,
+		ref_ratio - eps, ref_ratio + eps, ref_ratio + 1.0,
 	]
 	var fracs: Array[float] = []
 	for target_ratio in target_ratios:
@@ -1390,6 +1395,15 @@ func test_formed_turn_gait_frac_is_continuous_and_monotone_across_the_free_ratio
 	assert_almost_eq(fracs[0], fracs[1], 0.01,
 		"frac just below and just above the free ratio must not jump (%.4f vs %.4f)"
 			% [fracs[0], fracs[1]])
+	assert_almost_eq(fracs[3], fracs[4], 0.01,
+		"frac just below and just above the reference ratio must not jump (%.4f vs %.4f)"
+			% [fracs[3], fracs[4]])
+	assert_almost_eq(fracs[3], tracking_frac, 0.01,
+		"frac just below the reference ratio must already sit at the clamped tracking " +
+			"fraction, not the old branch's full pace (%.4f vs %.4f)" % [fracs[3], tracking_frac])
+	assert_almost_eq(fracs[4], tracking_frac, 0.01,
+		"frac just above the reference ratio must sit at the clamped tracking fraction " +
+			"(%.4f vs %.4f)" % [fracs[4], tracking_frac])
 	for i in range(fracs.size() - 1):
 		assert_gte(fracs[i], fracs[i + 1] - 0.0001,
 			("frac must be monotone non-increasing as depth ratio grows " +
