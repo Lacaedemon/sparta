@@ -567,36 +567,33 @@ static func _cap_body_speed_vec(vel: Vector2, facing: Vector2, jog_speed: float,
 
 
 ## Applies in-transit same-unit standoff separation for crowding bodies within a regiment.
-## Repels living, non-broken pairs closer than min_sep with symmetric velocity along the pair axis.
+## Repels living, non-broken, unengaged pairs closer than min_sep with symmetric velocity
+## along the pair axis. A FIGHTING regiment still runs this pass: the per-body is_engaged
+## skip below (scoped to the front body_tier_soldier_indices() ranks) already excludes the
+## bodies actually in contact, so the unengaged rear bulk of a fighting regiment still gets
+## policed for crowding -- e.g. post-impact stacking behind a routing enemy the front rank
+## cannot reach.
 static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2Array, is_engaged: PackedByteArray, delta: float) -> PackedVector2Array:
-	if unit.state == Unit.State.ROUTING or unit.state == Unit.State.FIGHTING or n < 2 or delta <= 0.0:
+	if unit.state == Unit.State.ROUTING or n < 2 or delta <= 0.0:
 		return PackedVector2Array()
 
-	# Same-unit standoff must be gated off whenever soldiers deliberately pass through each
-	# other along file lanes: an in-place maneuver turn/wheel (rigid rotation, no crossing to
-	# resolve), a REFORM leaf hold (the drilled countermarch/rear-move's parked re-square), or
-	# a still-in-flight mirror reform (_formation_mirror_x armed by an about-face fold whose
-	# bodies have not yet reached their re-squared slots -- reform_ranks()'s own doc: the
-	# reflection genuinely crosses files through the block).
+	# Same-unit standoff is gated off whenever soldiers deliberately pass through each other
+	# along file lanes: an in-place maneuver turn/wheel (rigid rotation, no crossing to
+	# resolve), a REFORM leaf hold, or a still-in-flight mirror reform (an about-face fold
+	# whose bodies have not yet reached their re-squared slots -- the reflection genuinely
+	# crosses files through the block).
 	#
-	# _formation_mirror_x alone is NOT the right test: it is a standing bookkeeping flag that
-	# stays armed until the unit's next fresh order (Unit.set_current_order), long after any
-	# actual traversal finished -- including a hold_ground reform (Unit._rally()), which
-	# re-squares WITHOUT marching anyone through the block at all (every man is already on
-	# his post-reflection slot by construction). Gating on the bare flag would silently
-	# disable this very standoff for a just-rallied, still-crowded regiment -- exactly the
-	# density-contraction case this pass exists for. Qualifying it with "and bodies have not
-	# yet settled onto their (mirror-aware) slots" (_reform_bodies_settled()) keeps the gate
-	# scoped to the genuine in-flight crossing and drops out the instant arrival catches up,
-	# whether that arrival is a REFORM hold's own settle or a hasty rear-move's on-arrival
-	# reform (which never gets its own REFORM leaf/timer at all).
+	# The bare _formation_mirror_x flag is NOT the right test: it stays armed until the next
+	# fresh order, long after any traversal finished -- including a hold_ground reform, which
+	# re-squares with every man already on his post-reflection slot. Qualifying it with
+	# "bodies have not yet settled onto their slots" (_reform_bodies_settled()) scopes the
+	# gate to the genuine in-flight crossing and drops out once arrival catches up.
 	#
 	# Deliberately does NOT gate a frontage reshape (DUPLICATIO/EXPLICATIO file-doubling):
-	# unlike the about-face mirror, a reshape's lateral file crossing is exactly the scenario
-	# this whole pass exists to police (the PR's own "lateral file crossing lane" defect) --
-	# gating it off let bodies pass fully through each other with zero clearance instead
+	# a reshape's lateral file crossing is exactly the crowding this pass exists to police.
+	# Gating it off let bodies pass fully through each other with zero clearance instead
 	# (measured: worst-case nnd collapsed from ~2.2 wu to ~0.13 wu on demos/inputs/
-	# file-doubling.json), which is worse than the near-miss it was meant to fix.
+	# file-doubling.json), worse than the near-miss standoff was meant to fix.
 	var deliberate_pass_through: bool = unit.is_maneuver_turning() \
 			or unit._reform_holding() \
 			or (unit._formation_mirror_x and not unit._reform_bodies_settled())

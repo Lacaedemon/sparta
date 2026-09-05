@@ -510,20 +510,89 @@ func test_same_unit_standoff_does_not_disturb_settled_testudo_formation() -> voi
 
 
 func test_same_unit_standoff_skips_engaged_bodies() -> void:
-	var u := _make_unit(42, 2)
-	u.frontage_override = 1
+	var u := _make_unit(42, 4)
+	u.frontage_override = 2
 	u.position = Vector2(0.0, 50.0)
 	u.state = Unit.State.FIGHTING
 	SoldierBodies.seed(u)
-	# Two engaged bodies placed 0.05 wu apart:
+	# Two files, two ranks: the front rank (indices 0, 1) sits further along the unit's
+	# facing (larger y -- facing is DOWN) than the rear rank (indices 2, 3), so
+	# body_tier_soldier_indices() -- one rank deep here, since body diameter == rank pitch
+	# -- selects exactly the front pair as engaged. Both pairs start crowded by the same
+	# d_start, so the only thing that can tell them apart is the per-body engaged skip:
 	var d_start: float = 0.05
-	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
-	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	u._sim_soldier_pos[0] = Vector2(0.0, 10.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 10.0)
+	u._sim_soldier_pos[2] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[3] = Vector2(d_start, 0.0)
 	SoldierBodies.step(u, 1.0 / 60.0)
-	# In the absence of standoff, the lateral separation (delta X) is not pushed apart:
-	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
-	assert_almost_eq(dx_after, d_start, 0.01,
-		"engaged bodies must not be pushed apart laterally by same-unit standoff")
+	# The engaged front pair must NOT be pushed apart laterally -- SoldierEnemyContact
+	# knockback owns their separation while they are in contact:
+	var dx_front_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
+	assert_almost_eq(dx_front_after, d_start, 0.01,
+		"the engaged front pair must not be pushed apart laterally by same-unit standoff")
+	# The unengaged rear pair, in the SAME fighting regiment, must still separate in the
+	# same tick: this is what proves the skip is scoped to the engaged bodies rather than
+	# disabling the whole pass while the unit fights (a fighting regiment can still stack
+	# crowded bodies behind its front rank, e.g. after routing an enemy it can't reach).
+	var dx_rear_after: float = absf(u._sim_soldier_pos[3].x - u._sim_soldier_pos[2].x)
+	assert_gt(dx_rear_after, d_start + 0.1,
+		"the unengaged rear pair in a fighting regiment must still be separated")
+
+
+func test_same_unit_standoff_skips_front_pair_during_engaged_linger() -> void:
+	var u := _make_unit(42, 4)
+	u.frontage_override = 2
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	# Arm the engaged-linger latch directly, as tick_engaged() would right after a
+	# regiment stops FIGHTING: is_engaged() (and so body_tier_soldier_indices()) must
+	# still read the front rank as engaged for ENGAGED_LINGER seconds afterward, even
+	# though state itself is no longer FIGHTING.
+	u._engaged_linger = Unit.ENGAGED_LINGER
+	var d_start: float = 0.05
+	u._sim_soldier_pos[0] = Vector2(0.0, 10.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 10.0)
+	u._sim_soldier_pos[2] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[3] = Vector2(d_start, 0.0)
+	SoldierBodies.step(u, 1.0 / 60.0)
+	var dx_front_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
+	assert_almost_eq(dx_front_after, d_start, 0.01,
+		"a lingering-engaged front pair must not be pushed apart right after FIGHTING ends")
+	var dx_rear_after: float = absf(u._sim_soldier_pos[3].x - u._sim_soldier_pos[2].x)
+	assert_gt(dx_rear_after, d_start + 0.1,
+		"the unengaged rear pair must still separate while the front pair is lingering-engaged")
+
+
+func test_same_unit_standoff_returns_early_when_min_sep_is_at_the_floor() -> void:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	# Two fully coincident bodies -- as crowded as bodies can get, so any non-degenerate
+	# call to _separate_same_unit would push them apart. Shrink the formation pitch until
+	# STANDOFF_MIN_SEP_FRAC * min(two_bodies, min_pitch) drops at/below
+	# STANDOFF_MIN_SEP_FLOOR: at that floor a separation smaller than the floor isn't
+	# worth resolving, so the pass must return an empty array before ever building the
+	# spatial hash or computing a push.
+	u.file_pitch = 0.001
+	u.rank_pitch = 0.001
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(0.0, 0.0)
+	var target_slots: PackedVector2Array = PackedVector2Array()
+	target_slots.resize(2)
+	target_slots[0] = Vector2(0.0, 1000.0)
+	target_slots[1] = Vector2(0.0, 1000.0)
+	var is_engaged := PackedByteArray()
+	is_engaged.resize(2)
+	var sep_vel: PackedVector2Array = SoldierBodies._separate_same_unit(
+		u, 2, target_slots, is_engaged, 1.0 / 60.0)
+	# If the STANDOFF_MIN_SEP_FLOOR check were removed, min_sep would still be a small
+	# positive number, and these two coincident (d == 0) bodies would still be closer than
+	# it -- the pairwise loop would compute a real push via its tie-break axis rather than
+	# an empty result, so this assertion fails without the early return.
+	assert_true(sep_vel.is_empty(),
+		"the pass must return early once min_sep drops to/below STANDOFF_MIN_SEP_FLOOR")
 
 
 func test_same_unit_standoff_skips_while_maneuver_turning() -> void:
@@ -624,4 +693,55 @@ func test_same_unit_standoff_resumes_once_mirror_reform_settles() -> void:
 	var d_after: float = (u._sim_soldier_pos[1] - u._sim_soldier_pos[0]).length()
 	assert_gt(d_after, d_start + 0.01,
 		"standoff must still separate crowded bodies once the mirror reform has settled")
+
+
+func test_same_unit_standoff_skips_a_dead_body() -> void:
+	var u := _make_unit(42, 3)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	# Three crowded bodies, one of them already dead: the dead body must neither push nor
+	# be pushed (it is skipped from the settled scan, the spatial-hash population, and the
+	# pairwise loop alike -- see the three "hp <= 0.0" continues in _separate_same_unit).
+	u._sim_soldier_hp[0] = 0.0
+	var d_start: float = 0.05
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	u._sim_soldier_pos[2] = Vector2(0.0, d_start)
+	SoldierBodies.step(u, 1.0 / 60.0)
+	# The standoff push between bodies 0 and 1 acts along the shared X axis they were
+	# placed on; the unit's own arrival term (unaffected by hp) separately eases body 0
+	# toward its slot along Y regardless of standoff, so check the X axis specifically
+	# rather than the full position, which would also catch that unrelated Y drift.
+	assert_almost_eq(u._sim_soldier_pos[0].x, 0.0, 0.001,
+		"a dead body must not be pushed laterally by the standoff")
+	# The live pair (1, 2) is still crowded and must still separate normally, proving the
+	# dead body's exclusion did not also silently disable the pass for everyone else:
+	var live_d_after: float = (u._sim_soldier_pos[1] - u._sim_soldier_pos[2]).length()
+	assert_gt(live_d_after, d_start,
+		"the two live crowded bodies must still be pushed apart")
+
+
+func test_same_unit_standoff_skips_a_broken_body() -> void:
+	var u := _make_unit(42, 3)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	# Same shape as the dead-body case above, for the sibling "broken" exclusion: a routed
+	# individual carries no formation discipline left to police, so it must not be pushed
+	# (or push anyone else) by the same-unit standoff.
+	u._sim_soldier_broken[0] = 1
+	var d_start: float = 0.05
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	u._sim_soldier_pos[2] = Vector2(0.0, d_start)
+	SoldierBodies.step(u, 1.0 / 60.0)
+	# See the sibling dead-body test above for why this checks X specifically rather than
+	# the full position (arrival still eases the body toward its slot along Y regardless
+	# of the broken flag).
+	assert_almost_eq(u._sim_soldier_pos[0].x, 0.0, 0.001,
+		"a broken body must not be pushed laterally by the standoff")
+	var live_d_after: float = (u._sim_soldier_pos[1] - u._sim_soldier_pos[2]).length()
+	assert_gt(live_d_after, d_start,
+		"the two unbroken crowded bodies must still be pushed apart")
 
