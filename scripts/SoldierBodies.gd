@@ -19,6 +19,8 @@ class_name SoldierBodies
 ## Deterministic and order-free across soldiers, no RNG -- replay-safe like the rest of the
 ## soldier layer.
 
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+
 # Floor on the arrival acceleration (world units/s^2). A body accelerates toward its slot
 # at max(unit.accel, this) and decelerates to arrive at rest, so a body shoved off formation
 # returns under a real force ramp rather than snapping. The floor keeps reform brisk even
@@ -69,13 +71,14 @@ const CORRIDOR_LANE_STAGGER_FRAC: float = 0.25
 const LANE_FOLLOWER_DIST_MULT: float = 0.9
 const LANE_FOLLOWER_LATERAL_MULT: float = 1.5
 
-const WorldScaleRef = preload("res://scripts/WorldScale.gd")
-
 # In-transit same-unit standoff ratio against tightest pitch or two-body diameter:
 const STANDOFF_MIN_SEP_FRAC: float = 0.9
 # In-transit same-unit standoff maximum separation velocity along pair axis:
 const STANDOFF_MAX_SPEED: float = 2.0 * WorldScaleRef.WU_PER_M
-
+# Floor below which same-unit standoff separation is disabled (tuned in wu):
+const STANDOFF_MIN_SEP_FLOOR: float = 0.01
+# Deterministic spread of directions for exactly coincident bodies:
+const STANDOFF_TIE_BREAK_DIRS: int = 99
 
 
 ## Seed a unit's bodies onto its current formation slots, at rest (zero velocity) and
@@ -348,7 +351,7 @@ static func step(unit: Unit, delta: float) -> void:
 				if j + files < n:
 					file_rear_neighbor[j] = j + files
 	# In-transit same-unit standoff velocities for crowding same-unit bodies:
-	var sep_vels: PackedVector2Array = _separate_same_unit(unit, n, target_slots, delta)
+	var sep_vels: PackedVector2Array = _separate_same_unit(unit, n, target_slots, is_engaged, delta)
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
@@ -555,7 +558,7 @@ static func _cap_body_speed_vec(vel: Vector2, facing: Vector2, jog_speed: float,
 
 ## Applies in-transit same-unit standoff separation for crowding bodies within a regiment.
 ## Repels living, non-broken pairs closer than min_sep with symmetric velocity along the pair axis.
-static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2Array, delta: float) -> PackedVector2Array:
+static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2Array, is_engaged: PackedByteArray, delta: float) -> PackedVector2Array:
 	if unit.state == Unit.State.ROUTING or n < 2 or delta <= 0.0:
 		return PackedVector2Array()
 
@@ -565,30 +568,48 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	var rank_pitch: float = unit.rank_pitch_wu()
 	var min_pitch: float = minf(file_pitch, rank_pitch) if rank_pitch > 0.0 else file_pitch
 	var min_sep: float = STANDOFF_MIN_SEP_FRAC * minf(two_bodies, min_pitch)
-	if min_sep <= 0.01:
+	if min_sep <= STANDOFF_MIN_SEP_FLOOR:
 		return PackedVector2Array()
 
-	var cell_size: float = min_sep
-	var inv_cell_size: float = 1.0 / cell_size
-	var cells: Dictionary = {}
-
+	# Engaged bodies are skipped so in-transit standoff never fights SoldierEnemyContact knockback during a press.
 	var is_settled: PackedByteArray = PackedByteArray()
 	is_settled.resize(n)
 	var arrive_eps_sq: float = ARRIVE_EPS * ARRIVE_EPS
+	var any_unsettled: bool = false
 
 	for i in range(n):
 		if i < unit._sim_soldier_hp.size() and unit._sim_soldier_hp[i] <= 0.0:
 			continue
 		if unit._sim_soldier_broken.size() > i and unit._sim_soldier_broken[i] != 0:
 			continue
+		if not is_engaged.is_empty() and is_engaged[i] == 1:
+			continue
 		if i < target_slots.size() and (unit._sim_soldier_pos[i] - target_slots[i]).length_squared() <= arrive_eps_sq:
 			is_settled[i] = 1
+		else:
+			any_unsettled = true
+
+	# When all active bodies sit on their slots, no in-transit pairs exist to separate:
+	if not any_unsettled:
+		return PackedVector2Array()
+
+	var cell_size: float = min_sep
+	var inv_cell_size: float = 1.0 / cell_size
+	var cells: Dictionary[Vector2i, Array] = {}
+
+	for i in range(n):
+		if i < unit._sim_soldier_hp.size() and unit._sim_soldier_hp[i] <= 0.0:
+			continue
+		if unit._sim_soldier_broken.size() > i and unit._sim_soldier_broken[i] != 0:
+			continue
+		if not is_engaged.is_empty() and is_engaged[i] == 1:
+			continue
 
 		var p: Vector2 = unit._sim_soldier_pos[i]
 		var ck := Vector2i(int(floor(p.x * inv_cell_size)), int(floor(p.y * inv_cell_size)))
 		if not cells.has(ck):
 			cells[ck] = []
-		(cells[ck] as Array).append(i)
+		cells[ck].append(i)
 
 	var speed_cap: float = unit.jog_speed if (unit._reform_holding() or unit.state == Unit.State.IDLE) \
 			else unit.move_speed * unit.superphysical_speed_frac
@@ -605,6 +626,8 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 			continue
 		if unit._sim_soldier_broken.size() > i and unit._sim_soldier_broken[i] != 0:
 			continue
+		if not is_engaged.is_empty() and is_engaged[i] == 1:
+			continue
 
 		var p_i: Vector2 = unit._sim_soldier_pos[i]
 		var ck := Vector2i(int(floor(p_i.x * inv_cell_size)), int(floor(p_i.y * inv_cell_size)))
@@ -612,10 +635,10 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 
 		for dx in range(-1, 2):
 			for dy in range(-1, 2):
-				var neighbor_bucket: Variant = cells.get(Vector2i(ck.x + dx, ck.y + dy))
-				if neighbor_bucket == null:
+				var nkey := Vector2i(ck.x + dx, ck.y + dy)
+				if not cells.has(nkey):
 					continue
-				var arr: Array = neighbor_bucket as Array
+				var arr: Array = cells[nkey]
 				for j in arr:
 					if j <= i:
 						continue
@@ -628,11 +651,11 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 					var d: float = sqrt(d_sq)
 					var overlap: float = (min_sep - d) * inv_min_sep
 					var axis: Vector2
-					if d > 0.001:
+					if d > MIN_DIST:
 						axis = offset / d
 					else:
 						var lo: int = mini(i, j)
-						var angle: float = float(posmod(lo, 99)) / 99.0 * TAU
+						var angle: float = float(posmod(lo, STANDOFF_TIE_BREAK_DIRS)) / float(STANDOFF_TIE_BREAK_DIRS) * TAU
 						var sgn: float = 1.0 if i > j else -1.0
 						axis = Vector2.RIGHT.rotated(angle) * sgn
 					var push: Vector2 = axis * (max_sep_speed * overlap)

@@ -115,7 +115,14 @@ Violating one costs a fix round.
    and update it after every task,
    so a timeout never leaves the progress invisible.
 
-28. Before claiming a new branch fixes a clip,
+27. tools/check.sh chars, units and comments diff-scope committed lines;
+   on uncommitted edits run the byte scan and the issue-number grep by hand.
+
+28. Before changing a call site's argument,
+   list every path that reaches it and decide per path;
+   a shared completion handler serves every order that ends there.
+
+29. Before claiming a new branch fixes a clip,
    count how many bodies take that branch in the clip's dump;
    zero means the fix is elsewhere.
 

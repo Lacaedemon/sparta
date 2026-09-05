@@ -475,10 +475,43 @@ func test_same_unit_standoff_never_exceeds_superphysical_threshold_in_one_tick()
 	# Separation must push them apart in this tick:
 	assert_gt(d_after, d_start + 0.1,
 		"standoff must actively separate crowded bodies in one tick")
-	# Speed in this tick must never exceed the superphysical threshold (~64 wu/s):
-	var superphysical_threshold: float = 64.0
-	assert_lt(u._sim_body_vel[0].length(), superphysical_threshold,
-		"body 0 velocity must stay below superphysical threshold")
-	assert_lt(u._sim_body_vel[1].length(), superphysical_threshold,
-		"body 1 velocity must stay below superphysical threshold")
+	# Speed in this tick must stay within the unit's jog_speed cap for an IDLE unit:
+	var cap: float = u.jog_speed
+	assert_lte(u._sim_body_vel[0].length(), cap + 0.01,
+		"body 0 velocity must stay within jog_speed cap (%.2f wu/s) for an IDLE unit" % cap)
+	assert_lte(u._sim_body_vel[1].length(), cap + 0.01,
+		"body 1 velocity must stay within jog_speed cap (%.2f wu/s) for an IDLE unit" % cap)
+
+
+func test_same_unit_standoff_does_not_disturb_settled_testudo_formation() -> void:
+	var u := _make_unit(42, 16)
+	u.formation_mode = Unit.FORMATION_TESTUDO
+	u.seed_sim_soldiers()
+	var initial_positions: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	var max_disp: float = 0.0
+	for tick in range(60):
+		SoldierBodies.step(u, 1.0 / 60.0)
+		for i in range(u.soldiers):
+			var disp: float = (u._sim_soldier_pos[i] - initial_positions[i]).length()
+			if disp > max_disp:
+				max_disp = disp
+	assert_lt(max_disp, 0.01,
+		"settled TESTUDO formation at rest must not be disturbed by standoff (max disp %.4f wu)" % max_disp)
+
+
+func test_same_unit_standoff_skips_engaged_bodies() -> void:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	u.state = Unit.State.FIGHTING
+	SoldierBodies.seed(u)
+	# Two engaged bodies placed 0.05 wu apart:
+	var d_start: float = 0.05
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	SoldierBodies.step(u, 1.0 / 60.0)
+	# In the absence of standoff, the lateral separation (delta X) is not pushed apart:
+	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
+	assert_almost_eq(dx_after, d_start, 0.01,
+		"engaged bodies must not be pushed apart laterally by same-unit standoff")
 

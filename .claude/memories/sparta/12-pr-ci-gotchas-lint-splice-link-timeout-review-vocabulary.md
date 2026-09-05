@@ -527,3 +527,22 @@ not from crossing standing formation ranks.
 
 - **Don't:** ship a routing branch
   whose only evidence is a synthetic unit test.
+
+## 2026-09-04 agy: a caption that describes the script I meant to write
+
+A demo script caption and comment assumed key T toggled Tight and Loose,
+when T cycles Normal through Tight, Loose, and Square,
+and the unit started in Normal.
+The script never reached Loose and never performed a frontage change.
+Separately, a unit test asserted against a hard-coded speed threshold
+that matched no cap enforced by the code under test.
+
+- **Do:** read the key bindings (SelectionManager)
+  for every key a demo script presses
+  and describe the resulting state sequence from the unit's starting mode.
+
+- **Don't:** write a caption from the brief's wording.
+
+- **Do:** derive a test threshold from the unit's own fields.
+
+- **Don't:** assert a bare number that no code path enforces.

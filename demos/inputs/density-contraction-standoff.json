@@ -1,11 +1,11 @@
 {
-  "_comment": "Density contraction standoff: a 60-man Spearmen regiment shifts from Tight to Loose, then contracts from Loose back to Tight under Shift+T. Converging bodies maintain in-transit mutual standoff clearance.",
+  "_comment": "Density contraction standoff where an Infantry regiment expands from Normal to Tight to Loose under T, contracts from Loose back to Tight under Shift+T, and widens frontage under BracketRight. Converging bodies maintain in-transit mutual standoff clearance.",
   "seed": "42981",
   "drill": true,
   "scenario": [
     {
       "team": 0,
-      "type": "Spearmen",
+      "type": "Infantry",
       "x": 520,
       "y": 340,
       "facing": [0, 1]
@@ -25,22 +25,22 @@
       "click": [520, 340]
     },
     {
-      "tick": 40,
+      "tick": 30,
       "key": "T"
     },
     {
-      "tick": 120,
+      "tick": 70,
+      "key": "T"
+    },
+    {
+      "tick": 140,
       "key": "T",
       "shift": true
+    },
+    {
+      "tick": 200,
+      "key": "BracketRight"
     }
   ],
-  "state": [10, 40, 90, 120, 150, 180, 210, 240, 270, 300],
-  "defect_exemptions": {
-    "shape_residual": {
-      "uids": [
-        0
-      ],
-      "reason": "The clip films a formation density contraction; in-transit samples fire the grid shape residual metric while bodies are actively reforming across the changing grid pitch."
-    }
-  }
+  "state": [10, 30, 70, 100, 140, 170, 200, 230, 270, 300]
 }
