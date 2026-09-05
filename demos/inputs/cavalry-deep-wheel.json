@@ -1,0 +1,17 @@
+{
+  "_comment": "Deep cavalry formed turn demo: a single 80-mount Cavalry unit staged alone in drill mode at (800, 700) facing north [0, -1]. Given an orderly move order to (350, 500) demanding a ~66-degree formed turn. Under formed_turn_tracking_frac pacing and wide corridor proximity retention, the block maintains column dressing and safe nearest-neighbour spacing throughout the turn and settle.",
+  "seed": "98765",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 800, "y": 700, "count": 80, "facing": [0, -1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 575.0, "y": 600.0, "zoom": 0.5}
+  ],
+  "steps": [
+    {"tick": 12, "click": [800, 700]},
+    {"tick": 24, "rmb_click": [350, 500]}
+  ],
+  "frames": [0, 60, 180, 300, 420, 540, 660, 780, 900, 1020],
+  "state": [0, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900, 960, 1020]
+}

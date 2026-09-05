@@ -1249,7 +1249,7 @@ func test_pivot_rate_is_paced_by_the_corner_man() -> void:
 	var u := _make_unit()
 	u.position = Vector2.ZERO
 	u.facing = Vector2.RIGHT
-	var expected_rate: float = u.jog_speed / u._pivot_radius()
+	var expected_rate: float = (u.jog_speed * u.formed_turn_tracking_frac) / u._pivot_radius()
 	assert_lt(expected_rate, Unit.TURN_RATE,
 		"the fixture block is wide enough that the corner-man bound governs")
 	u._move_to(Vector2(0, 100000), 0.1, true)
@@ -1278,7 +1278,7 @@ func test_formed_pivot_turning_cap_does_not_bind_at_or_below_jog_pace() -> void:
 	var pre_existing_cap: float = UnitManeuver.wheel_gait_rate(
 			Unit.TURN_RATE * lerpf(1.0, Unit.TURN_RATE_TAPER_FLOOR,
 					clampf(u._current_speed / u.move_speed, 0.0, 1.0)),
-			u.jog_speed, u._pivot_radius())
+			u.jog_speed * u.formed_turn_tracking_frac, u._pivot_radius())
 	u._move_to(Vector2(0, 100000), 0.1, true)
 	assert_almost_eq(u.facing.angle(), pre_existing_cap * 0.1, 0.0001,
 		"at walk pace the pre-existing footspeed/taper caps alone govern -- the new " +
@@ -1594,7 +1594,7 @@ func test_orderly_move_reaches_its_heading_over_time() -> void:
 	var u := _make_unit()
 	u.position = Vector2.ZERO
 	u.facing = Vector2.RIGHT
-	for _i in range(40):
+	for _i in range(80):
 		u._move_to(Vector2(0, 100000), 0.1, true)   # far target so the heading stays ~down
 	assert_almost_eq(u.facing.y, 1.0, 0.02, "the centre pivot converges on the travel heading")
 
@@ -1724,7 +1724,7 @@ func test_orderly_about_face_marches_to_a_rear_destination() -> void:
 	u.facing = Vector2.RIGHT
 	u.move_target = Vector2(-300, 0)
 	u.has_move_target = true
-	for _i in range(80):
+	for _i in range(120):
 		u._think(0.1)
 	assert_lt(u.position.x, -100.0, "the unit marches to the rear destination")
 	assert_lt(u.facing.x, 0.0, "...and faces it (about-faced), rather than reversing into it")

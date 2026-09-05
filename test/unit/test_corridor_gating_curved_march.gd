@@ -1,8 +1,7 @@
 extends GutTest
 ## Verifies that _corridor_to_slot uses the wider MARCHING_CORRIDOR_PROXIMITY_MULT
-## only during straight-line marching (including held-facing retreats and lateral side-steps),
-## and falls back to standard CORRIDOR_PROXIMITY_MULT when the unit is turning, wheeling,
-## or curving around terrain.
+## during active marching (including turning marches, held-facing retreats, and lateral side-steps),
+## and falls back to standard CORRIDOR_PROXIMITY_MULT when stationary or on extreme lag.
 
 var _unit: Unit = null
 
@@ -68,8 +67,8 @@ func test_held_facing_lateral_sidestep_uses_wide_proximity() -> void:
 	assert_almost_eq(target_vec.y, expected_direct.y, 1e-3, "lateral sidestep allows direct arrival (y)")
 
 
-func test_turning_march_falls_back_to_perimeter_corridor() -> void:
-	# Curved march / active rotation
+func test_turning_march_uses_wide_proximity_for_direct_arrival() -> void:
+	# Curved march / active rotation: retains wide marching corridor proximity
 	_unit.facing = Vector2.DOWN
 	_unit._approach_velocity = Vector2(100, 100)
 	_unit.state = Unit.State.MOVING
@@ -79,15 +78,33 @@ func test_turning_march_falls_back_to_perimeter_corridor() -> void:
 
 	var spacing: float = _unit.file_pitch_wu()
 	var slot_pos: Vector2 = _unit._sim_soldier_pos[0]
-	# Place soldier at distance 3.0 * spacing across ranks and files
+	# Place soldier at distance 2.83 * spacing (between 1.5 and 4.5) across ranks and files
 	var soldier_pos: Vector2 = slot_pos + Vector2(spacing * 2.0, spacing * 2.0)
 	_unit._sim_soldier_pos[0] = soldier_pos
 
 	var target_vec: Vector2 = SoldierBodies._corridor_to_slot(_unit, 0, slot_pos, _unit.soldiers)
+	var expected_direct: Vector2 = slot_pos - soldier_pos
+	assert_almost_eq(target_vec.x, expected_direct.x, 1e-3, "curved march allows direct arrival within wide threshold (x)")
+	assert_almost_eq(target_vec.y, expected_direct.y, 1e-3, "curved march allows direct arrival within wide threshold (y)")
+
+
+func test_turning_march_extreme_lag_falls_back_to_perimeter_corridor() -> void:
+	# Curved march with lag exceeding the wide threshold (hypot = 4.95 * spacing > 4.5)
+	_unit.facing = Vector2.DOWN
+	_unit._approach_velocity = Vector2(100, 100)
+	_unit.state = Unit.State.MOVING
+	_unit._rotate_facing_toward(Vector2.RIGHT, 0.016, 2.0)
+	assert_true(_unit.is_turning(), "unit reports is_turning while rotating facing")
+
+	var spacing: float = _unit.file_pitch_wu()
+	var slot_pos: Vector2 = _unit._sim_soldier_pos[0]
+	var soldier_pos: Vector2 = slot_pos + Vector2(spacing * 3.5, spacing * 3.5)
+	_unit._sim_soldier_pos[0] = soldier_pos
+
+	var target_vec: Vector2 = SoldierBodies._corridor_to_slot(_unit, 0, slot_pos, _unit.soldiers)
 	var direct_vec: Vector2 = slot_pos - soldier_pos
-	# When falling back to standard corridor, target vector must NOT equal direct vector
 	var diff_len_sq: float = (target_vec - direct_vec).length_squared()
-	assert_gt(diff_len_sq, 1.0, "curved march routes through perimeter corridor instead of cutting across files")
+	assert_gt(diff_len_sq, 1.0, "curved march routes through perimeter corridor when exceeding wide threshold")
 
 
 func test_stationary_unit_uses_standard_proximity() -> void:

@@ -537,4 +537,17 @@ the rule was already ledger rule 18 and was in the brief.
 
 - **Don't:** amend only the clause a finding quoted.
 
+## 2026-09-04 agy: edits parked in .patched files are edits nobody made
 
+- **Do:** apply an edit to the target file
+  the moment it is decided
+  and verify with git diff.
+
+- **Don't:** stage edits in sidecar copies
+  for a later step that a timeout can cancel.
+
+- **Do:** write the report file before starting each task to mark it started,
+  and update it immediately after completion with its numbers.
+
+- **Don't:** defer report updates to a final summary step
+  or leave tasks marked in progress across a session.

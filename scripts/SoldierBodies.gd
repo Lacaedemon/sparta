@@ -59,7 +59,8 @@ const CORRIDOR_PROXIMITY_MULT: float = 1.5
 # land. See _corridor_to_slot's own doc comment for the failure this was measured against.
 # A stationary reform (drill/frontage-fold, _approach_velocity zero) keeps the plain,
 # narrower radius, so a genuine casualty-thinned or frontage-fold reform still corridors
-# around its own formation's interior exactly as before.
+# around its own formation's interior exactly as before. Formed march turns keep this
+# wider band while marching, preventing turn lag from diverting outer files into corridors.
 const MARCHING_CORRIDOR_PROXIMITY_MULT: float = 4.5
 # Lateral clearance beyond outer formed file for perimeter corridor routing.
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
@@ -657,10 +658,12 @@ static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> 
 	# Use the wider MARCHING_CORRIDOR_PROXIMITY_MULT radius while the unit is actively
 	# marching (own_slot is a moving point, not a fixed reform target) -- see that const's
 	# own doc comment for why a moving target needs a wider direct-arrival band than a
-	# stationary reform does.
+	# stationary reform does. During a formed march turn (marching and unit.is_turning()),
+	# retaining MARCHING_CORRIDOR_PROXIMITY_MULT ensures lagging bodies closing their slot
+	# arc walk direct rather than being diverted into perimeter corridor detours.
 	var marching: bool = unit._approach_velocity.length_squared() > 0.0001
 	var straight_march: bool = marching and not unit.is_turning()
-	var proximity_mult: float = MARCHING_CORRIDOR_PROXIMITY_MULT if straight_march else CORRIDOR_PROXIMITY_MULT
+	var proximity_mult: float = MARCHING_CORRIDOR_PROXIMITY_MULT if marching else CORRIDOR_PROXIMITY_MULT
 	if diff.length_squared() <= (spacing * proximity_mult) * (spacing * proximity_mult):
 		return diff
 	var ang: float = unit.soldier_block_world_angle()

@@ -713,6 +713,14 @@ const TURN_RATE_TAPER_FLOOR: float = 0.4
 # a long cavalry pursuit); much lower makes the pivot itself look sluggish relative to
 # the drill/wheel ceilings above.
 const TURN_ACCEL_BUDGET_FRACTION: float = 0.5
+# Ratio bounding the corner slot's tangential rotational speed during a formed march turn
+# as a fraction of jog_speed (via UnitManeuver.wheel_gait_rate). The corner slot must move
+# slower than the body arrival cap (jog_speed) so a body has positive velocity headroom
+# to overcome inertia, close its lag, and maintain formation dressing.
+const FORMED_TURN_TRACKING_FRAC: float = 0.6
+# Live formed turn tracking fraction -- caller-configurable parameter defaulting to
+# FORMED_TURN_TRACKING_FRAC above.
+var formed_turn_tracking_frac: float = FORMED_TURN_TRACKING_FRAC
 # Conversio (drill about-face): every soldier turns in place to reverse, so unit.facing
 # rotates toward the opposite heading at this rate (rad/s), taking ~0.5 s for a full 180°.
 # This is NOT a pivot of the block — neither a centre pivot (move orders) nor a flank wheel
@@ -2989,8 +2997,11 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# wheel derives (UnitManeuver.wheel_gait_rate). Uncapped, TURN_RATE sweeps a wide
 		# block's corner slots several times faster than any body can run, so the men
 		# scramble after their slots instead of turning in good order and the block reads
-		# as a blob until they catch up. The corner man paces the whole pivot at up to a jog.
-		pivot_rate = UnitManeuver.wheel_gait_rate(pivot_rate, jog_speed, _pivot_radius())
+		# as a blob until they catch up. Derating the corner slot's tangential pace below
+		# the jog arrival cap (via formed_turn_tracking_frac) reserves headroom for lagging
+		# bodies to close their distance to moving slots and hold formation dressing.
+		pivot_rate = UnitManeuver.wheel_gait_rate(
+				pivot_rate, jog_speed * formed_turn_tracking_frac, _pivot_radius())
 		# wheel_gait_rate alone only bounds the corner man's TANGENTIAL footspeed -- a
 		# purely geometric limit that says nothing about whether a body actually
 		# CRUISING at speed could physically achieve that turn. Redirecting a body's own
