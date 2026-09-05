@@ -431,6 +431,10 @@ func test_deep_cavalry_formed_turn_maintains_cohesion() -> void:
 	for _tick in range(180):
 		u._physics_process(delta)
 		SoldierBodies.step(u, delta)
+		# Battle runs the coupling pass right after the body step, sliding `position` toward
+		# the bodies' centroid; without it the slot grid never follows the bodies and the
+		# residual measured here would not be the one a battle or a state transcript reads.
+		SoldierBodies.couple(u, delta)
 		# kabsch_fit is typed to accept plain Arrays; soldier_world_slots and
 		# _sim_soldier_pos return PackedVector2Array, so convert once and reuse the
 		# converted Arrays for the nearest-neighbour loop below too.
