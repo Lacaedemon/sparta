@@ -3534,7 +3534,8 @@ func _formed_turn_gait_frac() -> float:
 	return clampf(free_depth_ratio / depth_ratio, safe_tracking_frac, 1.0)
 
 
-## True once this block's own depth ratio has crossed FORMED_TURN_FREE_DEPTH_RATIO and
+## True once this block's own depth ratio has crossed its free depth ratio (the default
+## FORMED_TURN_FREE_DEPTH_RATIO, scaled by any caller-set formed_turn_tracking_frac) and
 ## _formed_turn_gait_frac has started derating its corner-slot pace below full jog_speed
 ## (i.e. strictly under 1.0) -- the single predicate for "is this block deep/wide enough
 ## for a formed turn to need the wheel-tracking headroom", shared by both consumers of that

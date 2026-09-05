@@ -239,7 +239,7 @@ func test_corridor_to_slot_monotonic_scaling_routes_direct() -> void:
 	var p_local: Vector2 = Vector2(t_local.x * 1.5, t_local.y * 1.5)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers)
+	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers, SoldierBodies.corridor_proximity_mult(u))
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -265,7 +265,7 @@ func test_corridor_to_slot_tight_to_loose_extreme_ratio_routes_direct() -> void:
 	var p_local: Vector2 = Vector2(t_local.x * 0.25, t_local.y * 0.25)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers)
+	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers, SoldierBodies.corridor_proximity_mult(u))
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -291,7 +291,7 @@ func test_corridor_to_slot_loose_to_tight_extreme_ratio_routes_direct() -> void:
 	var p_local: Vector2 = Vector2(t_local.x * 4.0, t_local.y * 4.0)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers)
+	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers, SoldierBodies.corridor_proximity_mult(u))
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -317,7 +317,7 @@ func test_corridor_to_slot_loose_to_testudo_extreme_ratio_routes_direct() -> voi
 	var p_local: Vector2 = Vector2(t_local.x * 0.15, t_local.y * 0.15)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers)
+	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers, SoldierBodies.corridor_proximity_mult(u))
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -343,7 +343,7 @@ func test_corridor_to_slot_testudo_to_loose_extreme_ratio_routes_direct() -> voi
 	var p_local: Vector2 = Vector2(t_local.x * (4.0 / 0.6), t_local.y * (4.0 / 0.6))
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers)
+	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers, SoldierBodies.corridor_proximity_mult(u))
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
