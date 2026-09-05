@@ -196,7 +196,9 @@ jobs:
             done
           done < /tmp/website-demo-diff.md.changed
           cp -r /tmp/defect-json /tmp/artifact/
-          cp /tmp/website-demo-diff.md /tmp/hash-verdict.tsv /tmp/artifact/ 2>/dev/null || true
+          # Both files are written unconditionally by the earlier steps, so a missing one
+          # is a real failure worth surfacing rather than swallowing.
+          cp /tmp/website-demo-diff.md /tmp/hash-verdict.tsv /tmp/artifact/
 
       - name: Upload transcripts and analyzer JSON
         # The comment's candidate rows carry the numbers; this carries the evidence behind

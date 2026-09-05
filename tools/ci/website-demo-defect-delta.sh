@@ -165,24 +165,37 @@ short_num() {
   printf '%s' "$1" | awk '{ if ($1 == int($1)) printf "%d", $1; else printf "%.4g", $1 }'
 }
 
+# True when the argument is a plain decimal number (optionally signed, with a fraction or
+# an exponent). An `expect:` verdict's worst/threshold can be a string or a boolean, and awk
+# would silently coerce either to 0, so the annotation below is reserved for real numbers.
+is_number() {
+  case "$1" in
+    ''|*[!0-9.eE+-]*) return 1 ;;
+  esac
+  printf '%s' "$1" | grep -Eq '^[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?$'
+}
+
 # "overlap (uid8: 4.494 vs 5 floor; main 7.928)" for one new PR-side metric, so the row
 # carries the numbers an exemption reason has to quote. Falls back to the bare
-# "metric (uidN)" when the JSON is unavailable.
+# "metric (uidN)" when the JSON is unavailable, for an `expect:` assertion (whose values
+# are the scripted field's own, not a physics measurement), or when either value is not
+# a number.
 annotate_metric() {
   local entry="$1" base_dir="$2" pr_dir="$3" metric uid worst thr base_worst out
   metric="${entry%% (*}"
   uid="${entry##*(uid}"
   uid="${uid%)}"
   case "$uid" in ''|*[!0-9]*) printf '%s' "$entry"; return 0 ;; esac
+  case "$metric" in expect:*) printf '%s' "$entry"; return 0 ;; esac
   worst="$(verdict_field "$pr_dir" "$metric" "$uid" worst)"
   thr="$(verdict_field "$pr_dir" "$metric" "$uid" threshold)"
-  if [ -z "$worst" ] || [ -z "$thr" ]; then
+  if ! is_number "$worst" || ! is_number "$thr"; then
     printf '%s' "$entry"
     return 0
   fi
   out="$metric (uid$uid: $(short_num "$worst") vs $(short_num "$thr") floor"
   base_worst="$(verdict_field "$base_dir" "$metric" "$uid" worst)"
-  if [ -n "$base_worst" ]; then
+  if is_number "$base_worst"; then
     out="$out; main $(short_num "$base_worst")"
   fi
   printf '%s)' "$out"
