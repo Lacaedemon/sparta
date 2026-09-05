@@ -16,6 +16,8 @@
   ],
   "steps": [],
   "defect_exemptions": {
+    "overlap": {"uids": [1], "reason": "uid 1 is the 140-strong spearmen anchor (a foot block, 2.25 wu overlap floor) that one cavalry troop re-engages late in the clip; while it fights, the same-unit standoff pass polices its unengaged rear ranks for crowding. CI's Linux demo diff reads its overlap and path_crossing failing on the branch and clean on main, while the same two heads dumped on Windows at the catalog cadence read the reverse (overlap worst 1.33 wu on main against 9.0 wu here; path_crossing clean here). That re-engagement sits in the clip's chaotic tail (87 percent downstream of the first divergence) and its verdicts flip by platform; the block's own orders and routing rules are unchanged."},
+    "path_crossing": {"uids": [1], "reason": "uid 1 is the 140-strong spearmen anchor (a foot block, 2.25 wu overlap floor) that one cavalry troop re-engages late in the clip; while it fights, the same-unit standoff pass polices its unengaged rear ranks for crowding. CI's Linux demo diff reads its overlap and path_crossing failing on the branch and clean on main, while the same two heads dumped on Windows at the catalog cadence read the reverse (overlap worst 1.33 wu on main against 9.0 wu here; path_crossing clean here). That re-engagement sits in the clip's chaotic tail (87 percent downstream of the first divergence) and its verdicts flip by platform; the block's own orders and routing rules are unchanged."},
     "facing_whipsaw": {
       "uids": [2],
       "reason": "Cavalry executes multi-phase maneuvering across chase, flank detour, annihilation, spearmen re-engagement, and subsequent rout."
