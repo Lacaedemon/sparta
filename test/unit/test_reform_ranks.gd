@@ -187,7 +187,7 @@ func test_rear_move_with_reform_holds_the_march_until_the_ranks_re_form() -> voi
 		_tick(u)
 	assert_true(u.has_move_target, "the parked march commits after the reform")
 	assert_eq(u.move_target, dest, "to the parked rear destination")
-	assert_gt(held_ticks, 5, "an actual hold happened (the countermarch takes real time)")
+	assert_gt(held_ticks, 5, "an actual hold happened (the reform takes real time)")
 	assert_true(u._reform_bodies_settled(), "the march waited for the ranks, not a timer")
 	assert_eq(_front_row_count(u), 8,
 		"a FULL rank fronts the new heading at step-off (files = 8), not the 4-man partial")

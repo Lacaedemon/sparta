@@ -547,7 +547,7 @@ func test_order_summary_reports_a_rear_move_reform_phase_as_reforming() -> void:
 	var u := _make_unit()
 	_stage_reform_hold(u, Vector2(0, -200), Unit.REFORM_DURATION)
 	assert_eq(u.order_summary(), "Re-forming",
-		"a rear move's reform phase reads as the counter-march it is running")
+		"a rear move's reform phase reads as the reform it is running")
 
 
 func test_order_summary_routing_overrides_any_queued_order() -> void:

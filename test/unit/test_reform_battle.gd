@@ -135,7 +135,7 @@ func test_drilled_rear_move_refills_the_front_rank_before_marching() -> void:
 		"every soldier held its own position through the turn (worst drift %.3f px)" % worst_hold)
 	assert_true(u.facing.is_equal_approx(Vector2.UP), "the unit ended facing its destination")
 
-	# Phase 2 -- the reform: the march holds while the countermarch brings a full rank onto
+	# Phase 2 -- the reform: the march holds while the reform brings a full rank onto
 	# the new front, then commits. The timer is the unit's own depth/pace-derived timeout.
 	assert_false(u.has_move_target, "no march at turn end: the reform phase holds it")
 	assert_gt(u.active_leaf().reform_timer, 0.0, "the reform hold armed on conversio completion")

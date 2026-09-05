@@ -589,3 +589,8 @@ which drifted by the entire march distance instead of checking unit-relative off
   after flipping a behaviour.
 
 - **Don't:** update only the test file the brief named.
+
+- **Do:** check which layout branch a described behaviour belongs to
+  and scope the sentence to it.
+
+- **Don't:** describe one branch's mechanism as the behaviour.
