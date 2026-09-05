@@ -30,10 +30,11 @@ func _make_unit(max_soldiers: int = 120) -> Unit:
 ## Ticks to wait for a resumed march's own formed centre-pivot (Unit._move_to's
 ## pivot_as_formation) to turn `u` fully onto `u.move_target`'s bearing, plus 0.5 s slack for
 ## the accel ramp and displacement along the resumed heading. Derived from the same
-## formed_turn_tracking_frac-derated rate the production code actually uses, rather than a
-## fixed tick count, so the budget tracks that derate instead of guessing a literal.
+## depth-scoped rate the production code actually uses (Unit._formed_turn_gait_frac),
+## rather than a fixed tick count, so the budget tracks that derate instead of guessing a
+## literal.
 func _resume_turn_ticks(u: Unit) -> int:
-	var turn_rate: float = (u.jog_speed * u.formed_turn_tracking_frac) / u._pivot_radius()
+	var turn_rate: float = (u.jog_speed * u._formed_turn_gait_frac()) / u._pivot_radius()
 	var dest_heading: float = (u.move_target - u.position).angle()
 	var turn_angle: float = absf(angle_difference(u.facing.angle(), dest_heading))
 	return ceili((turn_angle / turn_rate + 0.5) * 60.0)

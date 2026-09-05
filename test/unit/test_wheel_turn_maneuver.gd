@@ -431,8 +431,11 @@ func test_deep_cavalry_formed_turn_maintains_cohesion() -> void:
 	for _tick in range(180):
 		u._physics_process(delta)
 		SoldierBodies.step(u, delta)
-		var pos: PackedVector2Array = u._sim_soldier_pos
-		var slots: PackedVector2Array = u.soldier_world_slots(n)
+		# kabsch_fit is typed to accept plain Arrays; soldier_world_slots and
+		# _sim_soldier_pos return PackedVector2Array, so convert once and reuse the
+		# converted Arrays for the nearest-neighbour loop below too.
+		var pos: Array = Array(u._sim_soldier_pos)
+		var slots: Array = Array(u.soldier_world_slots(n))
 		var fit: Dictionary = DemoDefects.kabsch_fit(slots, pos)
 		if fit["residual_rms"] > worst_residual:
 			worst_residual = fit["residual_rms"]

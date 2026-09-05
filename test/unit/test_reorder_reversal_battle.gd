@@ -70,11 +70,11 @@ func test_reversing_move_order_keeps_the_block_formed() -> void:
 
 	# Ticks for the eastward march to reach cruising pace: the spawn facing (Vector2.DOWN) is a
 	# quarter turn off the eastward heading, and the formed march pivots onto it gradually
-	# (Unit._move_to's pivot_as_formation) at the same derated corner-slot rate
-	# formed_turn_tracking_frac governs -- accel to walk_speed itself is untouched by the derate
-	# and lands well inside this window, so the turn alone sizes the budget. 0.5 s of slack
-	# covers the taper as the pivot rate eases in near full alignment.
-	var turn_rate: float = (cav.jog_speed * cav.formed_turn_tracking_frac) / cav._pivot_radius()
+	# (Unit._move_to's pivot_as_formation) at the same depth-scoped corner-slot rate
+	# Unit._formed_turn_gait_frac governs -- accel to walk_speed itself is untouched by the
+	# derate and lands well inside this window, so the turn alone sizes the budget. 0.5 s of
+	# slack covers the taper as the pivot rate eases in near full alignment.
+	var turn_rate: float = (cav.jog_speed * cav._formed_turn_gait_frac()) / cav._pivot_radius()
 	var cruise_turn_angle: float = absf(Vector2.DOWN.angle_to(Vector2.RIGHT))
 	var cruise_budget: int = ceili((cruise_turn_angle / turn_rate + 0.5) * 60.0)
 
