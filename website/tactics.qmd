@@ -1460,6 +1460,10 @@ a unit told to reverse at the moment of impact will spend its pivot facing the
 wrong way. Note that a **chasing or charging** unit turns instantly instead, so an
 attack order never pays the pivot tax on the *approach*; the orderly centre pivot is
 reserved for your own move orders, where keeping the ranks dressed is worth the beat.
+Only a block that is much deeper than its own file spacing pays a noticeable
+pacing cost during this pivot.
+The ramp is continuous, so an ordinary line keeps near-full jog pace through the
+turn and a stock cavalry block pays the most.
 
 **Re-facing to fight** has a cost of its own. When a unit engages an enemy that is
 roughly a quarter-turn or more off its current front --- attacked in the flank, or

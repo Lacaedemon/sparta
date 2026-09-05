@@ -18,6 +18,30 @@ func _make_unit(max_soldiers: int = 120) -> Unit:
 	return u
 
 
+## An 80-mount Cavalry-shaped fixture whose depth ratio lands EXACTLY on
+## FORMED_TURN_DEPTH_RATIO_REF (see that const's own doc comment for the derivation --
+## this is the same reference case, pivot radius 505.9644 wu over a 180 wu marching
+## band). At exactly the reference ratio, _formed_turn_gait_frac() reduces to a plain
+## clampf(formed_turn_tracking_frac, FLOOR, 1.0) with no extra scaling, which is what
+## isolates the clamp behaviour itself for testing rather than the depth-ratio taper.
+## Same shape as test_wheel_turn_maneuver.gd's own _make_cavalry_80 fixture (both an
+## 80-mount Cavalry block with file_pitch 20.0 / rank_pitch 60.0), kept separate rather
+## than shared because this repo's convention is one file's own fixtures per test file,
+## not a helper shared across test files.
+func _make_deep_cavalry_unit() -> Unit:
+	var u: Unit = Unit.new()
+	u.is_cavalry = true
+	u.max_soldiers = 80
+	add_child_autofree(u)
+	u.file_pitch = 20.0
+	u.rank_pitch = 60.0
+	u.jog_speed = 70.0
+	u.accel = 40.0
+	u.facing = Vector2.DOWN
+	u.position = Vector2.ZERO
+	return u
+
+
 func _attacker_at(p: Vector2) -> Unit:
 	var a: Unit = Unit.new()
 	add_child_autofree(a)
@@ -1244,17 +1268,172 @@ func test_pivot_rate_is_paced_by_the_corner_man() -> void:
 	# is bounded by what the corner man (the farthest slot, at the footprint's
 	# half-diagonal) can actually run -- UnitManeuver.wheel_gait_rate with the pivot
 	# radius as the arm, the same outer-file pacing the flank wheel uses. For a real
-	# 120-man block that bound sits well under the stationary TURN_RATE, so the first
-	# tick's turn lands at exactly jog_speed / _pivot_radius() -- not at TURN_RATE.
-	var u := _make_unit()
+	# 60-man block that bound sits well under the stationary TURN_RATE, so the first
+	# tick's turn lands at exactly jog_speed x _formed_turn_gait_frac() / _pivot_radius()
+	# -- not at TURN_RATE. A 60-soldier block's depth ratio (~1.24) sits well below
+	# FORMED_TURN_FREE_DEPTH_RATIO (~1.69 -- see that const's own doc comment), so
+	# _formed_turn_gait_frac() returns exactly 1.0 here: this is also a regression guard
+	# that an ordinary formed pivot keeps its full, un-derated corner-man pace. A default
+	# 120-soldier block would NOT do this any more -- its own depth ratio (~1.74) sits just
+	# past the free zone, so the continuous ramp now shaves a small (~3%) derate off it too;
+	# see FORMED_TURN_FREE_DEPTH_RATIO's own doc comment for that worked number.
+	var u := _make_unit(60)
 	u.position = Vector2.ZERO
 	u.facing = Vector2.RIGHT
-	var expected_rate: float = u.jog_speed / u._pivot_radius()
+	assert_almost_eq(u._formed_turn_gait_frac(), 1.0, 0.0001,
+		"a 60-soldier block's depth ratio stays under FORMED_TURN_FREE_DEPTH_RATIO")
+	var expected_rate: float = (u.jog_speed * u._formed_turn_gait_frac()) / u._pivot_radius()
 	assert_lt(expected_rate, Unit.TURN_RATE,
 		"the fixture block is wide enough that the corner-man bound governs")
 	u._move_to(Vector2(0, 100000), 0.1, true)
 	assert_almost_eq(u.facing.angle(), expected_rate * 0.1, 0.0001,
 		"the first tick's pivot step is the corner-man-paced rate, not raw TURN_RATE")
+
+
+func test_formed_turn_tracking_frac_is_clamped_to_a_safe_positive_range() -> void:
+	# formed_turn_tracking_frac is caller-configurable, and _formed_turn_gait_frac
+	# multiplies it straight into what _move_to feeds UnitManeuver.wheel_gait_rate's own
+	# gait_speed argument. A caller-supplied 0.0 (or negative) would demand a zero or
+	# negative pivot rate -- stalling a formed turn outright -- without the clamp inside
+	# _formed_turn_gait_frac; the clamp floors it at FORMED_TURN_TRACKING_FRAC_FLOOR
+	# instead, so the turn stays real and slow rather than stalling. Uses the same
+	# deep-cavalry fixture as _formed_turn_gait_frac's own depth-ratio calibration (see
+	# _make_deep_cavalry_unit's doc comment): at exactly FORMED_TURN_DEPTH_RATIO_REF the
+	# ramp's own numerator/denominator cancel to exactly formed_turn_tracking_frac (see
+	# _formed_turn_gait_frac's own doc comment), so this isolates the clamp itself rather
+	# than the depth-ratio taper -- a shallow (default 120-soldier) fixture at the default
+	# tracking fraction would return 1.0 (well clear of its own free depth ratio) and never
+	# exercise the clamp at all.
+	var stalled := _make_deep_cavalry_unit()
+	stalled.facing = Vector2.RIGHT
+	stalled.formed_turn_tracking_frac = 0.0
+	var floored_rate: float = UnitManeuver.wheel_gait_rate(
+			Unit.TURN_RATE, stalled.jog_speed * Unit.FORMED_TURN_TRACKING_FRAC_FLOOR,
+			stalled._pivot_radius())
+	assert_gt(floored_rate, 0.0,
+		"the floored tracking fraction must still produce a positive pivot rate")
+	stalled._move_to(Vector2(0, 100000), 0.1, true)
+	assert_almost_eq(stalled.facing.angle(), floored_rate * 0.1, 0.0001,
+		"a zero formed_turn_tracking_frac is clamped to the floor, not left at zero " +
+			"(which would stall the turn: facing.angle() would stay at 0.0)")
+	assert_gt(stalled.facing.angle(), 0.0,
+		"the unclamped zero would have produced no turn at all this tick")
+
+	var over_range := _make_deep_cavalry_unit()
+	over_range.facing = Vector2.RIGHT
+	over_range.formed_turn_tracking_frac = 5.0
+	var capped_rate: float = UnitManeuver.wheel_gait_rate(
+			Unit.TURN_RATE, over_range.jog_speed * 1.0, over_range._pivot_radius())
+	over_range._move_to(Vector2(0, 100000), 0.1, true)
+	assert_almost_eq(over_range.facing.angle(), capped_rate * 0.1, 0.0001,
+		"a formed_turn_tracking_frac above 1.0 is clamped to 1.0, not left uncapped " +
+			"(which would let the corner slot outrun the jog arrival cap)")
+
+	var default_unit := _make_deep_cavalry_unit()
+	default_unit.facing = Vector2.RIGHT
+	var default_rate: float = (default_unit.jog_speed * Unit.FORMED_TURN_TRACKING_FRAC) \
+			/ default_unit._pivot_radius()
+	default_unit._move_to(Vector2(0, 100000), 0.1, true)
+	assert_almost_eq(default_unit.facing.angle(), default_rate * 0.1, 0.0001,
+		"the default 0.6 tracking fraction is already in range, so the clamp is a no-op")
+
+
+func test_formed_turn_gait_frac_guards_a_zero_pivot_radius() -> void:
+	# _formed_turn_gait_frac's own `if pr <= 0.0 or band <= 0.0: return 1.0` guard exists
+	# because the ramp below it divides by depth_ratio (pr / band), and pr / band itself
+	# divides by band -- a zero (or negative) pivot radius or band would otherwise produce a
+	# 0/0 division (depth_ratio) or a free_depth_ratio/0 division (both undefined/inf in
+	# GDScript's float division, propagating a NaN or inf pivot rate into
+	# UnitManeuver.wheel_gait_rate and stalling or corrupting every formed turn for a
+	# single-soldier unit). A bare 1-soldier fixture does NOT reach files=1/ranks=1 on its
+	# own: formation_files derives from FORMATION_ASPECT (1.7), so
+	# ceil(sqrt(1 * 1.7)) = 2 files even at max_soldiers=1, leaving a positive pivot arm.
+	# frontage_override pins files=1 directly (clamped to [1, max_soldiers], checked before
+	# the FORMATION_ASPECT auto-width in formation_files -- see UnitFormation.frontage's own
+	# doc comment), and ranks_for(1, 1) is 1, so _pivot_radius()'s own
+	# Vector2(maxi(0, files-1) x file_pitch_wu(), maxi(0, ranks-1) x rank_pitch_wu())
+	# .length() x 0.5 collapses to Vector2.ZERO.length(), i.e. exactly 0.0 -- the guard's
+	# pr <= 0.0 branch, not band <= 0.0 (this fixture's own band is still positive).
+	var u := _make_unit(1)
+	u.frontage_override = 1
+	assert_almost_eq(u._pivot_radius(), 0.0, 0.0001,
+		"a 1-soldier, 1-file, 1-rank unit has no arm to pivot about")
+	assert_almost_eq(u._formed_turn_gait_frac(), 1.0, 0.0001,
+		"the zero-pivot-radius guard returns 1.0 rather than dividing by zero")
+	assert_false(u.is_deep_for_formed_turn(),
+		"a guarded frac of 1.0 is never derated, so this unit is never deep for a formed turn")
+
+
+## Depth ratio (u._pivot_radius() / (u.file_pitch_wu() x MARCHING_CORRIDOR_PROXIMITY_MULT))
+## grows monotonically with u.rank_pitch alone (holding file_pitch, soldier count, and
+## formation shape fixed), so this inverts that one-parameter relationship: the rank_pitch
+## (base, pre spacing_scale) that makes `u`'s own depth ratio land on `target_ratio` exactly.
+## Derives the inversion from _pivot_radius's own Vector2(...).length() formula rather than
+## hardcoding a fixture-specific number, so it stays correct if that formula ever changes.
+func _rank_pitch_for_depth_ratio(u: Unit, target_ratio: float) -> float:
+	var files: int = u.formation_files(u.soldiers)
+	var ranks: int = UnitFormation.ranks_for(u.soldiers, files)
+	var file_arm: float = float(files - 1) * u.file_pitch_wu()
+	var wide_band: float = u.file_pitch_wu() * SoldierBodies.MARCHING_CORRIDOR_PROXIMITY_MULT
+	var target_pivot_radius: float = target_ratio * wide_band
+	var rank_arm_sq: float = pow(2.0 * target_pivot_radius, 2) - pow(file_arm, 2)
+	var rank_pitch_wu: float = sqrt(maxf(0.0, rank_arm_sq)) / float(ranks - 1)
+	return rank_pitch_wu / u.spacing_scale
+
+
+func test_formed_turn_gait_frac_is_continuous_and_monotone_across_the_free_ratio() -> void:
+	# Regression guard for a claude-code-review finding: a two-branch form (full pace
+	# at-or-below FORMED_TURN_DEPTH_RATIO_REF, else a scaled-down derate) snaps
+	# discontinuously right at the reference ratio -- a mid-battle jump whenever
+	# casualties change a block's own files/ranks. _formed_turn_gait_frac is a single
+	# continuous, monotone clampf(...) expression instead, so nudging a fixture's own
+	# depth ratio across BOTH kink points -- its own free ratio
+	# (FORMED_TURN_FREE_DEPTH_RATIO, where the ramp starts) and
+	# FORMED_TURN_DEPTH_RATIO_REF (where it flattens) -- must never jump. The ref-ratio
+	# pair below brackets the exact point the old two-branch code snapped at: sampling
+	# only around the free ratio (as this test did before) lets that snap slip through
+	# unnoticed, since the buggy branch boundary sits at ref_ratio, not free_ratio.
+	#
+	# Same shape as _make_deep_cavalry_unit, but varies ONLY rank_pitch to sweep the depth
+	# ratio -- file_pitch (and so file_pitch_wu(), the marching band) stays fixed, so the
+	# sweep is a clean one-parameter family rather than an entangled change to both axes.
+	var u := Unit.new()
+	u.is_cavalry = true
+	u.max_soldiers = 80
+	add_child_autofree(u)
+	u.file_pitch = 20.0
+	u.facing = Vector2.DOWN
+	u.position = Vector2.ZERO
+
+	var eps: float = 0.001
+	var free_ratio: float = Unit.FORMED_TURN_FREE_DEPTH_RATIO
+	var ref_ratio: float = Unit.FORMED_TURN_DEPTH_RATIO_REF
+	var tracking_frac: float = u.formed_turn_tracking_frac
+	var target_ratios: Array[float] = [
+		free_ratio - eps, free_ratio + eps, (free_ratio + ref_ratio) * 0.5,
+		ref_ratio - eps, ref_ratio + eps, ref_ratio + 1.0,
+	]
+	var fracs: Array[float] = []
+	for target_ratio in target_ratios:
+		u.rank_pitch = _rank_pitch_for_depth_ratio(u, target_ratio)
+		fracs.append(u._formed_turn_gait_frac())
+
+	assert_almost_eq(fracs[0], fracs[1], 0.01,
+		"frac just below and just above the free ratio must not jump (%.4f vs %.4f)"
+			% [fracs[0], fracs[1]])
+	assert_almost_eq(fracs[3], fracs[4], 0.01,
+		"frac just below and just above the reference ratio must not jump (%.4f vs %.4f)"
+			% [fracs[3], fracs[4]])
+	assert_almost_eq(fracs[3], tracking_frac, 0.01,
+		"frac just below the reference ratio must already sit at the clamped tracking " +
+			"fraction, not the old branch's full pace (%.4f vs %.4f)" % [fracs[3], tracking_frac])
+	assert_almost_eq(fracs[4], tracking_frac, 0.01,
+		"frac just above the reference ratio must sit at the clamped tracking fraction " +
+			"(%.4f vs %.4f)" % [fracs[4], tracking_frac])
+	for i in range(fracs.size() - 1):
+		assert_gte(fracs[i], fracs[i + 1] - 0.0001,
+			("frac must be monotone non-increasing as depth ratio grows " +
+				"(index %d: %.4f then %.4f)") % [i, fracs[i], fracs[i + 1]])
 
 
 func test_formed_pivot_turning_cap_does_not_bind_at_or_below_jog_pace() -> void:
@@ -1278,7 +1457,7 @@ func test_formed_pivot_turning_cap_does_not_bind_at_or_below_jog_pace() -> void:
 	var pre_existing_cap: float = UnitManeuver.wheel_gait_rate(
 			Unit.TURN_RATE * lerpf(1.0, Unit.TURN_RATE_TAPER_FLOOR,
 					clampf(u._current_speed / u.move_speed, 0.0, 1.0)),
-			u.jog_speed, u._pivot_radius())
+			u.jog_speed * u._formed_turn_gait_frac(), u._pivot_radius())
 	u._move_to(Vector2(0, 100000), 0.1, true)
 	assert_almost_eq(u.facing.angle(), pre_existing_cap * 0.1, 0.0001,
 		"at walk pace the pre-existing footspeed/taper caps alone govern -- the new " +
@@ -1594,7 +1773,7 @@ func test_orderly_move_reaches_its_heading_over_time() -> void:
 	var u := _make_unit()
 	u.position = Vector2.ZERO
 	u.facing = Vector2.RIGHT
-	for _i in range(40):
+	for _i in range(80):
 		u._move_to(Vector2(0, 100000), 0.1, true)   # far target so the heading stays ~down
 	assert_almost_eq(u.facing.y, 1.0, 0.02, "the centre pivot converges on the travel heading")
 
@@ -1724,7 +1903,7 @@ func test_orderly_about_face_marches_to_a_rear_destination() -> void:
 	u.facing = Vector2.RIGHT
 	u.move_target = Vector2(-300, 0)
 	u.has_move_target = true
-	for _i in range(80):
+	for _i in range(120):
 		u._think(0.1)
 	assert_lt(u.position.x, -100.0, "the unit marches to the rear destination")
 	assert_lt(u.facing.x, 0.0, "...and faces it (about-faced), rather than reversing into it")

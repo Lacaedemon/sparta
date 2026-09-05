@@ -61,7 +61,12 @@ const CORRIDOR_PROXIMITY_MULT: float = 1.5
 # land. See _corridor_to_slot's own doc comment for the failure this was measured against.
 # A stationary reform (drill/frontage-fold, _approach_velocity zero) keeps the plain,
 # narrower radius, so a genuine casualty-thinned or frontage-fold reform still corridors
-# around its own formation's interior exactly as before.
+# around its own formation's interior exactly as before. A formed march turn keeps this
+# wider band while marching ONLY when the turning block is deep/wide enough that
+# Unit._formed_turn_gait_frac has actually derated its corner-slot pace below full
+# jog_speed (Unit.is_deep_for_formed_turn) -- see corridor_proximity_mult's doc comment for
+# why an ordinary shallow block's turn instead keeps the plain, narrower radius exactly as
+# it did before this widening existed.
 const MARCHING_CORRIDOR_PROXIMITY_MULT: float = 4.5
 # Lateral clearance beyond outer formed file for perimeter corridor routing.
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
@@ -309,6 +314,10 @@ static func step(unit: Unit, delta: float) -> void:
 	var body_radius: float = unit.soldier_body_radius()
 	var two_bodies: float = body_radius * 2.0
 	var turning: bool = unit.is_maneuver_turning()
+	# The per-body loop below skips _corridor_to_slot entirely during a maneuver turn, so
+	# the band (and the pivot-radius work behind it) is only derived when a body will use it.
+	var proximity_mult: float = CORRIDOR_PROXIMITY_MULT if turning else corridor_proximity_mult(unit)
+	var straight_march: bool = false if turning else is_straight_march(unit)
 	# Precompute true file-column front and rear neighbors in O(n) for lane follower speed damping
 	# (exempting maneuver turns, stationary/reform-holding units, and square/schiltron formations):
 	var file_front_neighbor: PackedInt32Array = PackedInt32Array()
@@ -378,7 +387,7 @@ static func step(unit: Unit, delta: float) -> void:
 		# unit turning its front onto a new enemy) -- see Unit.is_maneuver_turning.
 		var own_slot: Vector2 = target_slots[i]
 		var to_slot: Vector2 = Vector2.ZERO if turning \
-				else _corridor_to_slot(unit, i, own_slot, n)
+				else _corridor_to_slot(unit, i, own_slot, n, proximity_mult, straight_march)
 		# Arrival: approach the slot at a speed that decelerates to 0 by the time the body
 		# reaches it (v = sqrt(2 a d)), capped at the unit's jog pace, then move the body's
 		# velocity toward that desired velocity at the bounded acceleration. No spring, so no
@@ -839,22 +848,51 @@ static func couple(unit: Unit, delta: float) -> void:
 	unit.position += follow_step
 
 
+## Direct-arrival band multiplier for _corridor_to_slot, in units of the file pitch. Depends
+## only on unit-level state, so step() computes it once per unit-step and hands it to every
+## body's _corridor_to_slot call rather than re-deriving it per soldier (the same hoisting
+## mass, body_radius and turning get above the per-soldier loop). The wider
+## MARCHING_CORRIDOR_PROXIMITY_MULT applies while the unit is actively marching (own_slot is
+## a moving point, not a fixed reform target -- see that const's own doc comment) on a
+## straight march, and on a formed march turn ONLY when the turning block is deep enough
+## for its corner-slot pace to be derated (Unit.is_deep_for_formed_turn): that is the case
+## where a lagging body's arrival is slow relative to its slot's swinging arc and needs the
+## wider band to keep walking direct instead of being diverted into a perimeter corridor
+## detour it would never catch up from. A shallow block's turn keeps the plain
+## CORRIDOR_PROXIMITY_MULT band exactly as it did before the widening existed, because it
+## never lags far enough behind its own slot's arc to need more. Depth, not approach speed,
+## is the deciding quantity: a slow deep block still gets the wide band. Measured on the
+## website demo clips coast_to_stop and rout_rally (shallow cavalry troops): widening every
+## turning march moved their settle timing and overlap/shape_residual readings, while the
+## parade_ground and showcase slowdown, the intended cost of derating a deep block, is the
+## same with or without this depth gate.
+static func corridor_proximity_mult(unit: Unit) -> float:
+	if is_marching(unit) and (not unit.is_turning() or unit.is_deep_for_formed_turn()):
+		return MARCHING_CORRIDOR_PROXIMITY_MULT
+	return CORRIDOR_PROXIMITY_MULT
+
+
+## Whether the unit is actively marching this tick (its approach velocity is non-zero), a
+## unit-level reading step() takes once rather than per body.
+static func is_marching(unit: Unit) -> bool:
+	return unit._approach_velocity.length_squared() > 0.0001
+
+
+## A straight (non-turning) march: the only case _corridor_to_slot's radial-scaling branch
+## applies to. Unit-level, so step() reads it once and hands it to every body.
+static func is_straight_march(unit: Unit) -> bool:
+	return is_marching(unit) and not unit.is_turning()
+
+
 ## Computes the immediate arrival target vector for soldier `i` towards `own_slot`, routing
 ## along the formation's perimeter corridors (flank corridor and rear corridor) when crossing
 ## between different files and ranks to avoid cutting directly through standing formation ranks.
-static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int) -> Vector2:
+static func _corridor_to_slot(unit: Unit, i: int, own_slot: Vector2, n: int, proximity_mult: float, straight_march: bool) -> Vector2:
 	var pos: Vector2 = unit._sim_soldier_pos[i]
 	var diff: Vector2 = own_slot - pos
 	if unit.state == Unit.State.ROUTING or (unit._sim_soldier_broken.size() > i and unit._sim_soldier_broken[i] != 0):
 		return diff
 	var spacing: float = unit.file_pitch_wu()
-	# Use the wider MARCHING_CORRIDOR_PROXIMITY_MULT radius while the unit is actively
-	# marching (own_slot is a moving point, not a fixed reform target) -- see that const's
-	# own doc comment for why a moving target needs a wider direct-arrival band than a
-	# stationary reform does.
-	var marching: bool = unit._approach_velocity.length_squared() > 0.0001
-	var straight_march: bool = marching and not unit.is_turning()
-	var proximity_mult: float = MARCHING_CORRIDOR_PROXIMITY_MULT if straight_march else CORRIDOR_PROXIMITY_MULT
 	if diff.length_squared() <= (spacing * proximity_mult) * (spacing * proximity_mult):
 		return diff
 	var ang: float = unit.soldier_block_world_angle()

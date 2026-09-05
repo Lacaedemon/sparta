@@ -14,6 +14,7 @@ extends GutTest
 const Maneuver = preload("res://scripts/UnitManeuver.gd")
 const BattleScript = preload("res://scripts/Battle.gd")
 const UnitScript = preload("res://scripts/Unit.gd")
+const DemoDefects = preload("res://tools/demo/DemoDefects.gd")
 
 const FACING_RIGHT := Vector2.RIGHT
 const FACING_DOWN := Vector2.DOWN
@@ -377,3 +378,91 @@ func test_fighting_unit_does_not_arm_a_wheel_turn() -> void:
 	b._apply_order_cmd({"units": [1], "x": dest.x, "y": dest.y, "target": -1})
 	assert_false(u.is_order_turning(), "a fighting unit can't turn in place -- plain march instead")
 	assert_true(u.has_move_target, "and marches immediately instead")
+
+
+func _make_cavalry_80(pos: Vector2 = Vector2.ZERO) -> Unit:
+	var u: Unit = UnitScript.new()
+	u.is_cavalry = true
+	u.max_soldiers = 80
+	u.soldiers = 80
+	u.position = pos
+	u.facing = Vector2.UP
+	u.file_pitch = 20.0
+	u.rank_pitch = 60.0
+	u.walk_speed = 34.0
+	u.jog_speed = 70.0
+	u.move_speed = 170.0
+	u.accel = 40.0
+	u.decel = 40.0
+	add_child_autofree(u)
+	u.seed_sim_soldiers()
+	return u
+
+
+func test_deep_cavalry_formed_pivot_rate_bounded_for_tracking() -> void:
+	var u := _make_cavalry_80(Vector2(800, 800))
+	assert_almost_eq(u._pivot_radius(), 505.9644, 0.01,
+		"80-mount cavalry block has 505.96 wu pivot radius")
+	var start_facing: Vector2 = u.facing
+	var delta: float = 0.016
+	u._move_to(u.position + Vector2(1000, 0), delta, true)
+	var facing_step: float = absf(angle_difference(start_facing.angle(), u.facing.angle()))
+	var measured_rate: float = facing_step / delta
+	var max_expected_rate: float = u.formed_turn_tracking_frac * u.jog_speed / u._pivot_radius()
+	assert_lte(measured_rate, max_expected_rate + 0.001,
+		"pivot rate must be bounded by formed_turn_tracking_frac (<= 0.083 rad/s)")
+
+
+func test_deep_cavalry_formed_turn_maintains_cohesion() -> void:
+	# Cohesion thresholds guard against regression (min NND >= 10 wu, residual <= 20 wu).
+	var u := _make_cavalry_80(Vector2(807.6, 580.8))
+	u.facing = Vector2(-0.03, -1.0).normalized()
+	var target := Vector2(573.7, 446.5)
+	u.move_target = target
+	u.has_move_target = true
+	u._current_speed = 34.0
+	u._approach_velocity = u.facing * 34.0
+	u.state = UnitScript.State.MOVING
+
+	var delta: float = 0.016
+	var worst_residual: float = 0.0
+	var worst_min_nnd: float = INF
+	var n: int = u.soldiers
+	for _tick in range(180):
+		u._physics_process(delta)
+		SoldierBodies.step(u, delta)
+		# Battle runs the coupling pass right after the body step, sliding `position` toward
+		# the bodies' centroid; without it the slot grid never follows the bodies and the
+		# residual measured here would not be the one a battle or a state transcript reads.
+		SoldierBodies.couple(u, delta)
+		# kabsch_fit is typed to accept plain Arrays; soldier_world_slots and
+		# _sim_soldier_pos return PackedVector2Array, so convert once and reuse the
+		# converted Arrays for the nearest-neighbour loop below too.
+		var pos: Array = Array(u._sim_soldier_pos)
+		var slots: Array = Array(u.soldier_world_slots(n))
+		var fit: Dictionary = DemoDefects.kabsch_fit(slots, pos)
+		if fit["residual_rms"] > worst_residual:
+			worst_residual = fit["residual_rms"]
+		# Each pair once, on squared distances; one sqrt per body at the end.
+		var best_d_sq: PackedFloat32Array = PackedFloat32Array()
+		best_d_sq.resize(n)
+		best_d_sq.fill(INF)
+		for i in range(n):
+			var p_i: Vector2 = pos[i]
+			for j in range(i + 1, n):
+				var d_sq: float = p_i.distance_squared_to(pos[j])
+				if d_sq < best_d_sq[i]:
+					best_d_sq[i] = d_sq
+				if d_sq < best_d_sq[j]:
+					best_d_sq[j] = d_sq
+		for i in range(n):
+			var best_d: float = sqrt(best_d_sq[i])
+			if best_d < worst_min_nnd:
+				worst_min_nnd = best_d
+
+	# 10 wu floor is twice the 5 wu cavalry overlap floor (pre-change clip measured 3.5 wu).
+	assert_gte(worst_min_nnd, 10.0,
+		"minimum nearest-neighbour distance must stay >= 10.0 wu through the turn")
+	# 20 wu tightens against pre-change residual 25.5 wu (clip 56 wu) with margin under analyzer 30 wu floor.
+	assert_lte(worst_residual, 20.0,
+		"shape residual RMS must stay <= 20.0 wu through the turn")

@@ -601,6 +601,34 @@ which drifted by the entire march distance instead of checking unit-relative off
 
 - **Don't:** stop at the first two sites.
 
+## 2026-09-04 agy: edits parked in .patched files are edits nobody made
+
+- **Do:** apply an edit to the target file
+  the moment it is decided
+  and verify with git diff.
+
+- **Don't:** stage edits in sidecar copies
+  for a later step that a timeout can cancel.
+
+- **Do:** write the report file before starting each task to mark it started,
+  and update it immediately after completion with its numbers.
+
+- **Don't:** defer report updates to a final summary step
+  or leave tasks marked in progress across a session.
+
+- **Do:** derive every test bound from the fixture's own fields
+  and give each threshold a one-line rationale.
+
+- **Don't:** paste computed numbers into an assert.
+
+## 2026-09-05 sonnet: a regression test must sample the point where the bug lived
+
+- **Do:** evaluate the guarded property at the exact boundary the finding
+  named, on both sides.
+
+- **Don't:** sample the new formula's own kinks and call it a regression
+  guard.
+
 ## 2026-09-04 agy: headless timeout, unapplied test target, and duplicated const comment
 
 Three misses across the lateral file crossing PR round 1.
