@@ -80,9 +80,10 @@
     },
     "shape_residual": {
       "uids": [
-        3
+        3,
+        5
       ],
-      "reason": "Charging cavalry block deforms during cycle-charge impact, peel-back, and subsequent regrouping."
+      "reason": "Charging cavalry block deforms during cycle-charge impact, peel-back, and subsequent regrouping. Uid5 (enemy Infantry, the charge target) is additionally policed post-melee by SoldierBodies._separate_same_unit's new arm-on-leaving-FIGHTING trigger (Unit._arm_standoff_on_leaving_fight_or_rout): it leaves FIGHTING around tick 1020-1080 with soldiers collapsed to near-zero separation (pre-fix nnd_min as low as 0.07wu at tick 1260), and the standoff pass spends the settle window separating them (post-fix nnd_min 4.2-4.7wu, clean of the overlap defect the pre-fix tree fails instead). The separation is gradual (capped at STANDOFF_MAX_SPEED), so the shape-fit residual stays elevated 1-2 samples longer than the pre-fix tree's single-sample spike (measured worst=21.9 at tick 1200, sustaining through tick 1260 vs the pre-fix tree's non-sustained worst=21.8 at the same tick) before it resumes decaying (19.8 by the clip's final tick)."
     },
     "path_crossing": {
       "uids": [

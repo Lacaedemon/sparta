@@ -125,6 +125,10 @@ Violating one costs a fix round.
    list every path that reaches it and decide per path;
    a shared completion handler serves every order that ends there.
 
+29. Before claiming a new branch fixes a clip,
+   count how many bodies take that branch in the clip's dump;
+   zero means the fix is elsewhere.
+
 END OF STANDING RULES
 
 ## Provenance
