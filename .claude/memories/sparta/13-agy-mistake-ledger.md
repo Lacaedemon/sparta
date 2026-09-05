@@ -115,6 +115,16 @@ Violating one costs a fix round.
    grep the file for the mechanism keyword
    and reconcile every existing sentence that states the opposite.
 
+26. Write the report file within the first five minutes and overwrite it as you go;
+   a run that times out with no report has delivered nothing.
+
+27. tools/check.sh chars, units and comments diff-scope committed lines;
+   on uncommitted edits run the byte scan and the issue-number grep by hand.
+
+28. Before changing a call site's argument,
+   list every path that reaches it and decide per path;
+   a shared completion handler serves every order that ends there.
+
 END OF STANDING RULES
 
 ## Provenance
