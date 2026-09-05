@@ -35,6 +35,15 @@
 #                          for the calibration column; without it that column reads
 #                          "unknown" and nothing else changes.
 #
+# Environment:
+#   DEMO_DEFECT_JSON_DIR   Where each side's raw analyzer JSON is kept (see
+#                          tools/lib/demo-defect-metrics.sh). Defaults to a fresh temp
+#                          dir; the workflow points it at a path it then uploads as a run
+#                          artifact, so a PR author can quote CI's own numbers in a
+#                          defect_exemptions reason instead of re-dumping locally.
+#   GITHUB_RUN_ID          When set (GitHub Actions), the fragment ends with a pointer to
+#                          the run artifact carrying the transcripts and analyzer JSON.
+#
 # A side whose transcripts lack the FULL-dump fields (a merge-base predating them)
 # reports "n/a" rather than failing -- absence of data is not a defect, and the
 # comparison self-resolves once both sides carry the schema. Exit code is always 0:
@@ -51,6 +60,9 @@ HASH_VERDICT="${6:-}"
 GODOT_BIN="${GODOT_BIN:-godot}"
 
 command -v jq >/dev/null 2>&1 || { echo "error: jq not found on PATH" >&2; exit 1; }
+
+DEMO_DEFECT_JSON_DIR="${DEMO_DEFECT_JSON_DIR:-$(mktemp -d)}"
+export DEMO_DEFECT_JSON_DIR
 
 : > "$OUT_MD"
 if [ ! -s "$CHANGED_LIST" ]; then
@@ -136,6 +148,46 @@ new_metrics() {
   comm -13 <(metric_set "$1") <(metric_set "$2") || true
 }
 
+# One verdict field (worst or threshold) for a metric/uid pair, read from the JSON the
+# shared helper kept for that transcript dir; empty when the file or verdict is missing.
+verdict_field() {
+  local dir="$1" metric="$2" uid="$3" field="$4" f
+  f="$DEMO_DEFECT_JSON_DIR/$(basename "$(dirname "$dir")")--$(basename "$dir").json"
+  [ -f "$f" ] || return 0
+  jq -r --arg m "$metric" --argjson u "$uid" --arg k "$field" \
+    '[.verdicts[] | select(.metric == $m and .uid == $u)] | first | .[$k] // empty' "$f" \
+    2>/dev/null || true
+}
+
+# Trim an analyzer float for the table: 4 significant digits is enough to quote in an
+# exemption reason and short enough to keep the row readable.
+short_num() {
+  printf '%s' "$1" | awk '{ if ($1 == int($1)) printf "%d", $1; else printf "%.4g", $1 }'
+}
+
+# "overlap (uid8: 4.494 vs 5 floor; main 7.928)" for one new PR-side metric, so the row
+# carries the numbers an exemption reason has to quote. Falls back to the bare
+# "metric (uidN)" when the JSON is unavailable.
+annotate_metric() {
+  local entry="$1" base_dir="$2" pr_dir="$3" metric uid worst thr base_worst out
+  metric="${entry%% (*}"
+  uid="${entry##*(uid}"
+  uid="${uid%)}"
+  case "$uid" in ''|*[!0-9]*) printf '%s' "$entry"; return 0 ;; esac
+  worst="$(verdict_field "$pr_dir" "$metric" "$uid" worst)"
+  thr="$(verdict_field "$pr_dir" "$metric" "$uid" threshold)"
+  if [ -z "$worst" ] || [ -z "$thr" ]; then
+    printf '%s' "$entry"
+    return 0
+  fi
+  out="$metric (uid$uid: $(short_num "$worst") vs $(short_num "$thr") floor"
+  base_worst="$(verdict_field "$base_dir" "$metric" "$uid" worst)"
+  if [ -n "$base_worst" ]; then
+    out="$out; main $(short_num "$base_worst")"
+  fi
+  printf '%s)' "$out"
+}
+
 ROWS=""
 REGRESSION_COUNT=0
 while IFS= read -r name; do
@@ -152,7 +204,12 @@ while IFS= read -r name; do
   elif [ "$pr_fail" != "clean" ]; then
     new_in_pr="$(new_metrics "$base_fail" "$pr_fail")"
     if [ -n "$new_in_pr" ]; then
-      verdict="**candidate regression**: $(printf '%s' "$new_in_pr" | tr '\n' ' ')"
+      annotated=""
+      while IFS= read -r entry; do
+        [ -n "$entry" ] || continue
+        annotated="$annotated$(annotate_metric "$entry" "$BASELINE_DIR/$name" "$PR_DIR/$name"), "
+      done <<<"$new_in_pr"
+      verdict="**candidate regression**: ${annotated%, }"
       REGRESSION_COUNT=$((REGRESSION_COUNT + 1))
     else
       verdict="pre-existing defects only"
@@ -173,6 +230,9 @@ fi
   printf '| Demo | Diverges | Merge-base failing | PR failing | Delta |\n|---|---|---|---|---|\n%s' "$ROWS"
   if [ "$REGRESSION_COUNT" -gt 0 ]; then
     printf '\n**%d candidate regression clip(s)** -- review those rows first, weighting each by its Diverges column.\n' "$REGRESSION_COUNT"
+  fi
+  if [ -n "${GITHUB_RUN_ID:-}" ]; then
+    printf '\n<sub>A candidate row quotes the PR side'\''s worst value against its floor, then the merge-base'\''s value, so an exemption reason can cite CI'\''s own numbers. The changed clips'\'' transcripts on both sides and every analyzer JSON are attached to this run as the artifact `website-demo-diff-%s`.</sub>\n' "$GITHUB_RUN_ID"
   fi
 } >> "$OUT_MD"
 

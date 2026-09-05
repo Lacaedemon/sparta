@@ -14,7 +14,12 @@
 # copies of that rule would drift, and the drift would read as a passing scan.
 #
 # Environment:
-#   GODOT_BIN   Godot 4.7 binary (default: godot).
+#   GODOT_BIN              Godot 4.7 binary (default: godot).
+#   DEMO_DEFECT_JSON_DIR   When set, every analyzer run's raw JSON line is also kept
+#                          as <dir>/<transcript-parent>--<clip>.json (the parent
+#                          directory names the side, e.g. transcripts-pr--cycle_charge),
+#                          so a caller can read the per-verdict worst/threshold numbers
+#                          the compact status below drops, or attach them as an artifact.
 #
 # Requires `jq` on PATH; callers check for it and degrade themselves.
 
@@ -66,6 +71,11 @@ demo_defect_verdict() {
   # Godot prints its own banner before the JSON line, so keep only the JSON.
   raw="$(grep -m1 '^{' "$tmp" || true)"
   rm -f "$tmp"
+  if [ -n "${DEMO_DEFECT_JSON_DIR:-}" ] && [ -n "$raw" ]; then
+    mkdir -p "$DEMO_DEFECT_JSON_DIR"
+    printf '%s\n' "$raw" \
+      > "$DEMO_DEFECT_JSON_DIR/$(basename "$(dirname "$dir")")--$(basename "$dir").json"
+  fi
 
   if [ -z "$raw" ]; then
     printf '%s\t%s' "$rc" "n/a"
