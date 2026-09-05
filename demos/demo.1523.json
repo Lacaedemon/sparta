@@ -1,8 +1,8 @@
 {
   "input": "demos/inputs/density-contraction-standoff.json",
-  "caption": "converging bodies maintain standoff during a density contraction from Loose to Tight and a frontage widen",
+  "caption": "Converging bodies keep body clearance during a density contraction (LOOSE back to TIGHT) instead of compressing into each other.",
   "fixed_fps": 30,
-  "max_frames": 300,
+  "max_frames": 540,
   "fps": 12,
   "width": 640
 }
