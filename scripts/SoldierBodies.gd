@@ -476,12 +476,22 @@ static func step(unit: Unit, delta: float) -> void:
 								step_vel -= v_dir * excess
 								new_vel -= v_dir * excess
 								my_speed = other_fwd_speed
-		# In-transit same-unit standoff velocity applied along pair axis:
+		# In-transit same-unit standoff velocity applied along pair axis: applied to step_vel
+		# (this tick's actual displacement) only, deliberately NOT folded into new_vel (the
+		# velocity persisted into next tick's friction/move_toward baseline). Sep_vels is
+		# recomputed fresh every tick from current positions, so a pair that is still too
+		# close keeps getting pushed apart every tick regardless; folding it into new_vel as
+		# well would instead carry the push forward as stored momentum for move_toward to
+		# decay back out of at body_accel's bounded rate even after the pair has separated,
+		# which overshoots each body past its own slot and turns the settle into a multi-tick
+		# oscillation -- measured: doing so breaks
+		# test_infantry_respreads_after_melee_exit.gd's 90-tick settle-streak requirement
+		# outright, even though it changes nothing test_soldier_bodies.gd's own standoff
+		# tests check for.
 		if not sep_vels.is_empty():
 			var sep: Vector2 = sep_vels[i]
 			if sep != Vector2.ZERO:
 				step_vel += sep
-				new_vel += sep
 
 		# Cap individual soldier speed to this unit's own jog pace while the unit is
 		# stationary: during the reform hold phase AND whenever a formation reshape
@@ -559,7 +569,38 @@ static func _cap_body_speed_vec(vel: Vector2, facing: Vector2, jog_speed: float,
 ## Applies in-transit same-unit standoff separation for crowding bodies within a regiment.
 ## Repels living, non-broken pairs closer than min_sep with symmetric velocity along the pair axis.
 static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2Array, is_engaged: PackedByteArray, delta: float) -> PackedVector2Array:
-	if unit.state == Unit.State.ROUTING or n < 2 or delta <= 0.0:
+	if unit.state == Unit.State.ROUTING or unit.state == Unit.State.FIGHTING or n < 2 or delta <= 0.0:
+		return PackedVector2Array()
+
+	# Same-unit standoff must be gated off whenever soldiers deliberately pass through each
+	# other along file lanes: an in-place maneuver turn/wheel (rigid rotation, no crossing to
+	# resolve), a REFORM leaf hold (the drilled countermarch/rear-move's parked re-square), or
+	# a still-in-flight mirror reform (_formation_mirror_x armed by an about-face fold whose
+	# bodies have not yet reached their re-squared slots -- reform_ranks()'s own doc: the
+	# reflection genuinely crosses files through the block).
+	#
+	# _formation_mirror_x alone is NOT the right test: it is a standing bookkeeping flag that
+	# stays armed until the unit's next fresh order (Unit.set_current_order), long after any
+	# actual traversal finished -- including a hold_ground reform (Unit._rally()), which
+	# re-squares WITHOUT marching anyone through the block at all (every man is already on
+	# his post-reflection slot by construction). Gating on the bare flag would silently
+	# disable this very standoff for a just-rallied, still-crowded regiment -- exactly the
+	# density-contraction case this pass exists for. Qualifying it with "and bodies have not
+	# yet settled onto their (mirror-aware) slots" (_reform_bodies_settled()) keeps the gate
+	# scoped to the genuine in-flight crossing and drops out the instant arrival catches up,
+	# whether that arrival is a REFORM hold's own settle or a hasty rear-move's on-arrival
+	# reform (which never gets its own REFORM leaf/timer at all).
+	#
+	# Deliberately does NOT gate a frontage reshape (DUPLICATIO/EXPLICATIO file-doubling):
+	# unlike the about-face mirror, a reshape's lateral file crossing is exactly the scenario
+	# this whole pass exists to police (the PR's own "lateral file crossing lane" defect) --
+	# gating it off let bodies pass fully through each other with zero clearance instead
+	# (measured: worst-case nnd collapsed from ~2.2 wu to ~0.13 wu on demos/inputs/
+	# file-doubling.json), which is worse than the near-miss it was meant to fix.
+	var deliberate_pass_through: bool = unit.is_maneuver_turning() \
+			or unit._reform_holding() \
+			or (unit._formation_mirror_x and not unit._reform_bodies_settled())
+	if deliberate_pass_through:
 		return PackedVector2Array()
 
 	var body_radius: float = unit.soldier_body_radius()

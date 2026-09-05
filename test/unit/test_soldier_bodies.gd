@@ -426,7 +426,17 @@ func test_same_unit_standoff_separates_mid_transit_bodies_within_speed_cap() -> 
 	var min_sep: float = 0.9 * minf(two_bodies, minf(u.file_pitch_wu(), u.rank_pitch_wu()))
 	var cap: float = u.move_speed * u.superphysical_speed_frac
 	var separated: bool = false
-	for tick in range(60):
+	# Both bodies sit on the SAME single file (frontage_override = 1), so their shared
+	# target column pulls them laterally toward each other at the same time the standoff
+	# pushes them apart -- and since both bodies start 50 wu short of their own slot (see
+	# the seed position above), that convergent arrival pull only grows stronger as their
+	# own approach speed ramps up. The standoff push is deliberately NOT folded into the
+	# bodies' persisted velocity (see SoldierBodies.step's own comment on step_vel vs
+	# new_vel), so it has to win this tug-of-war fresh every tick rather than off
+	# accumulated momentum -- measured, it first crosses min_sep at tick 103. 180 ticks (3s)
+	# gives real margin over that without masking a genuine regression (a broken standoff
+	# never reaches min_sep at all, regardless of budget).
+	for tick in range(180):
 		SoldierBodies.step(u, 1.0 / 60.0)
 		var d: float = (u._sim_soldier_pos[0] - u._sim_soldier_pos[1]).length()
 		assert_lte(u._sim_body_vel[0].length(), cap + 0.01,
@@ -514,4 +524,104 @@ func test_same_unit_standoff_skips_engaged_bodies() -> void:
 	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
 	assert_almost_eq(dx_after, d_start, 0.01,
 		"engaged bodies must not be pushed apart laterally by same-unit standoff")
+
+
+func test_same_unit_standoff_skips_while_maneuver_turning() -> void:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	# An in-place maneuver turn (e.g. a combat engage re-face) rotates bodies rigidly --
+	# there is no crossing to resolve, so the standoff must not fight it. _engage_turn_target
+	# is the cheapest of is_maneuver_turning()'s three underlying conditions to arm directly,
+	# with no Order/current_order scaffolding needed.
+	u._engage_turn_target = Vector2.RIGHT
+	assert_true(u.is_maneuver_turning(), "sanity: the unit reads as maneuver-turning")
+	var d_start: float = 0.05
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	SoldierBodies.step(u, 1.0 / 60.0)
+	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
+	assert_almost_eq(dx_after, d_start, 0.01,
+		"crowded bodies must not be pushed apart by standoff while maneuver-turning")
+
+
+func test_same_unit_standoff_skips_during_reform_hold() -> void:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	# A REFORM leaf hold (the drilled countermarch/rear-move's parked re-square) parks the
+	# march while the ranks re-square -- _reform_holding() reads this straight off the
+	# active leaf's own reform_timer, so arming it needs no composite order, just a single
+	# leaf with a positive timer.
+	u.current_order = Order.new_move(u.position)
+	u.current_order.reform_timer = 1.0
+	assert_true(u._reform_holding(), "sanity: the unit reads as reform-holding")
+	var d_start: float = 0.05
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	SoldierBodies.step(u, 1.0 / 60.0)
+	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
+	assert_almost_eq(dx_after, d_start, 0.01,
+		"crowded bodies must not be pushed apart by standoff during a REFORM leaf hold")
+
+
+func test_same_unit_standoff_skips_unsettled_mirror_reform() -> void:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	# A still-in-flight mirror reform (an about-face fold whose bodies have not yet reached
+	# their re-squared slots) is a genuine file-lane crossing in progress -- displace both
+	# bodies off their slots so _reform_bodies_settled() reads false, matching the unsettled
+	# state a fresh mirror fold leaves behind.
+	u._formation_mirror_x = true
+	u._sim_soldier_pos[0] += Vector2(50.0, 0.0)
+	u._sim_soldier_pos[1] += Vector2(50.0, 0.0)
+	assert_false(u._reform_bodies_settled(), "sanity: the displaced bodies read as unsettled")
+	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	# The two bodies are still close to each other (both displaced by the same offset), so
+	# without the gate the standoff would react to their mutual crowding:
+	SoldierBodies.step(u, 1.0 / 60.0)
+	var lateral_shift: float = absf(
+		(u._sim_soldier_pos[0] - before[0]).x - (u._sim_soldier_pos[1] - before[1]).x)
+	assert_almost_eq(lateral_shift, 0.0, 0.01,
+		"crowded bodies must not be pushed apart by standoff during an unsettled mirror reform")
+
+
+func test_same_unit_standoff_resumes_once_mirror_reform_settles() -> void:
+	# TESTUDO packs bodies closer than min_sep by design (see
+	# test_same_unit_standoff_does_not_disturb_settled_testudo_formation above), which is
+	# what lets a small, sub-ARRIVE_EPS-scale offset below still land two neighbours' RAW
+	# distance under min_sep -- a normal-pitch formation's slots sit too far apart for that.
+	var u := _make_unit(42, 16)
+	u.formation_mode = Unit.FORMATION_TESTUDO
+	# The mirror flag is a standing bookkeeping bit that outlives the reform itself (see
+	# _separate_same_unit's own doc) -- once the bodies are actually settled onto their
+	# (mirror-aware) slots, the gate must drop out even though the flag is still armed, so a
+	# just-rallied, still-crowded regiment still gets decompressed. Set BEFORE seeding, so
+	# the freshly-seeded positions land on the mirror-aware grid rather than the unmirrored
+	# one -- soldier_world_slots() (which both seed_sim_soldiers() and
+	# _reform_bodies_settled() read) changes what every index's slot IS once the flag is
+	# armed, not just the two indices this test goes on to displace.
+	u._formation_mirror_x = true
+	u.seed_sim_soldiers()
+	# Displace one neighbouring pair laterally, toward each other, by a distance BETWEEN the
+	# standoff's own tight per-body arrival epsilon (ARRIVE_EPS, 0.05 wu) and the REFORM
+	# leaf's own loose settle epsilon (REFORM_SETTLE_EPS, 1.0 wu): _reform_bodies_settled()
+	# -- the gate's own settle check -- reads the whole unit as settled, while the standoff's
+	# own is_settled (which uses the tighter ARRIVE_EPS) still reads both of THESE two as
+	# unsettled, so the "and" both-settled skip does not itself account for the push staying
+	# off -- isolating the mirror gate itself.
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	u._sim_soldier_pos[0] = slots[0] + Vector2(0.4, 0.0)
+	u._sim_soldier_pos[1] = slots[1] + Vector2(-0.4, 0.0)
+	assert_true(u._reform_bodies_settled(),
+		"sanity: a 0.4 wu offset settles under REFORM_SETTLE_EPS")
+	var d_start: float = (u._sim_soldier_pos[1] - u._sim_soldier_pos[0]).length()
+	SoldierBodies.step(u, 1.0 / 60.0)
+	var d_after: float = (u._sim_soldier_pos[1] - u._sim_soldier_pos[0]).length()
+	assert_gt(d_after, d_start + 0.01,
+		"standoff must still separate crowded bodies once the mirror reform has settled")
 
