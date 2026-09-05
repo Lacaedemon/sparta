@@ -6847,7 +6847,8 @@ func start_order_response() -> void:
 	# bodies keep their flank; a quarter-turn fold still drops cleanly to 0.
 	# Also drop any in-flight engage re-face turn: the order supersedes it and the reform
 	# squares the block.
-	reform_ranks()
+	# Hold ground for an ordinary response unless the pending order is a countermarch.
+	reform_ranks(current_order == null or current_order.countermarch_variant < 0)
 	_engage_turn_target = Vector2.ZERO
 	_engage_turn_enemy = null
 

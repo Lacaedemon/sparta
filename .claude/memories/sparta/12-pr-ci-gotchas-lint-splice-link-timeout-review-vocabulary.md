@@ -594,3 +594,10 @@ which drifted by the entire march distance instead of checking unit-relative off
   and scope the sentence to it.
 
 - **Don't:** describe one branch's mechanism as the behaviour.
+
+- **Do:** grep for every call of the function whose default you are relying on,
+  not only the site the issue named
+  (here reform_ranks had three callers and two were fixed).
+
+- **Don't:** stop at the first two sites.
+

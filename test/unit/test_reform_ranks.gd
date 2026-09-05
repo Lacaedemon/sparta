@@ -952,3 +952,41 @@ func test_rear_move_partial_rank_holds_ground_and_steps_short_files() -> void:
 
 	assert_eq(still_count, 14, "full-depth file holds all 14 soldiers still")
 	assert_eq(stepped_count, 26, "short files step exactly 26 soldiers forward")
+
+
+## An about-face-folded partial-rank unit that gets re-ordered must hold ground
+## rather than countermarching through the block.
+func test_reorder_about_face_folded_partial_unit_holds_ground() -> void:
+	var u := _make_partial_unit()
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+	var before_slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+
+	# Identify the 4 partial-rank bodies standing in the front row of the flipped grid
+	var front_bodies: Array[int] = []
+	for i in range(u.soldiers):
+		if _in_front_row(u, i):
+			front_bodies.push_back(i)
+	assert_eq(front_bodies.size(), 4, "precondition: 4 partial-rank bodies lead the flipped grid")
+
+	# Re-order the unit: start_order_response re-squares the ranks
+	var order := Order.new_move(Vector2(0, -200))
+	u.set_current_order(order)
+	u.start_order_response()
+
+	# Assert slot displacement for the partial-rank bodies: with hold ground they do not traverse
+	var after_slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for idx in front_bodies:
+		assert_almost_eq(before_slots[idx].distance_to(after_slots[idx]), 0.0, 0.001,
+			"partial-rank body %d slot holds ground" % idx)
+
+	# Tick through the response delay so bodies track their reform slots
+	var response_ticks: int = int(ceil(u.order_response_delay / TICK)) + 5
+	for _i in range(response_ticks):
+		_tick(u)
+
+	# Assert the partial-rank bodies held ground and remained in the front row
+	for idx in front_bodies:
+		assert_true(_in_front_row(u, idx),
+			"partial-rank body %d holds ground and remains in the front row" % idx)
+
