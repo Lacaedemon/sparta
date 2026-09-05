@@ -576,3 +576,16 @@ which drifted by the entire march distance instead of checking unit-relative off
   so on an uncommitted worktree their PASS says nothing.
 
 - **Don't:** paste a "No new code lines" PASS as evidence for uncommitted edits.
+
+## 2026-09-04 agy: a shared completion handler serves more than one order
+
+- **Do:** before changing an argument at a call site,
+  grep for every order/path that reaches that site (here begin_pivot callers)
+  and decide per path.
+
+- **Don't:** assume the site serves only the order named in the issue.
+
+- **Do:** grep the test tree for the old expectation text (e.g. "_in_rear_row")
+  after flipping a behaviour.
+
+- **Don't:** update only the test file the brief named.

@@ -7,7 +7,7 @@ extends GutTest
 ##   - the pure facing-flip still holds every body at its own position (the identity-holding
 ##     invariant -- no regression to the true-conversio fix),
 ##   - the drilled order (reform:true) re-forms a FULL rank onto the new front before the
-##     march steps off, with the old partial rank returned to the rear,
+##     march steps off, holding ground so the partial rank remains at the new front,
 ##   - the hasty order (reform:false) marches at once with the flipped grid and re-forms on
 ##     arrival instead.
 ## The isolated-unit sequencing lives in test_reform_ranks.gd; this is the full-scene proof
@@ -61,6 +61,15 @@ func _front_row_count(u: Unit) -> int:
 		if best - d < Unit.FORMATION_SPACING * 0.5:
 			count += 1
 	return count
+
+
+## True when body `index` stands in the unit's FRONT row.
+func _in_front_row(u: Unit, index: int) -> bool:
+	var best: float = -INF
+	for p in u._sim_soldier_pos:
+		best = maxf(best, (p - u.position).dot(u.facing))
+	var d: float = (u._sim_soldier_pos[index] - u.position).dot(u.facing)
+	return best - d < Unit.FORMATION_SPACING * 0.5
 
 
 ## True when body `index` stands in the unit's REAR row.
@@ -165,9 +174,11 @@ func test_drilled_rear_move_refills_the_front_rank_before_marching() -> void:
 	assert_true(u._reform_bodies_settled(), "the march waited for the ranks, not the timeout")
 	assert_eq(_front_row_count(u), files,
 		"a FULL rank fronts the new heading at step-off, not the 4-man partial")
+	# Under hold-ground reform, bodies in full-depth files hold their ground
+	# and the short rear rank stays leading at the new front.
 	for i in range(PARTIAL_FIRST_INDEX, SPEARMEN_COUNT):
-		assert_true(_in_rear_row(u, i),
-			"partial-rank body %d ends at the new REAR, no longer leading" % i)
+		assert_true(_in_front_row(u, i),
+			"partial-rank body %d holds ground and remains at the new FRONT" % i)
 
 	# And the march is real: the unit closes on the destination (and the order transcript,
 	# one bookkeeping tick behind the commit, has advanced REFORM -> MARCH).
@@ -307,5 +318,7 @@ func test_hasty_rear_move_marches_with_the_flipped_grid_and_reforms_on_arrival()
 			break
 	assert_true(u._reform_bodies_settled(), "the bodies re-formed at the destination")
 	assert_eq(_front_row_count(u), files, "a FULL rank fronts the heading at the destination")
+	# Under hold-ground reform on arrival, bodies in full-depth files hold their ground
+	# and the short rear rank stays leading at the new front.
 	for i in range(PARTIAL_FIRST_INDEX, SPEARMEN_COUNT):
-		assert_true(_in_rear_row(u, i), "partial-rank body %d is back at the rear" % i)
+		assert_true(_in_front_row(u, i), "partial-rank body %d holds ground and remains at the front" % i)

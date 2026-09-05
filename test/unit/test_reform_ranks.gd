@@ -918,6 +918,17 @@ func test_rear_move_partial_rank_holds_ground_and_steps_short_files() -> void:
 	var pitch: float = u.rank_pitch_wu()
 	var step_vector: Vector2 = u.facing * pitch
 	var file_ids: PackedInt32Array = u._sim_soldier_file
+	var file_counts: Dictionary = {}
+	for fid in file_ids:
+		file_counts[fid] = file_counts.get(fid, 0) + 1
+
+	var full_depth_file: int = -1
+	for fid in file_counts:
+		if file_counts[fid] == 14:
+			full_depth_file = fid
+			break
+	assert_ne(full_depth_file, -1, "found a full-depth file with 14 soldiers")
+
 	var still_count: int = 0
 	var stepped_count: int = 0
 
@@ -925,7 +936,7 @@ func test_rear_move_partial_rank_holds_ground_and_steps_short_files() -> void:
 		var file_id: int = file_ids[i]
 		var initial: Vector2 = initial_slots[i]
 		var current: Vector2 = after_slots[i]
-		if file_id == 1:
+		if file_id == full_depth_file:
 			still_count += 1
 			assert_almost_eq(current.x, initial.x, 0.01,
 				"soldier %d in full-depth file has zero x displacement" % i)
@@ -939,5 +950,5 @@ func test_rear_move_partial_rank_holds_ground_and_steps_short_files() -> void:
 			assert_almost_eq(current.y, expected.y, 0.01,
 				"soldier %d in short file matches expected stepped y" % i)
 
-	assert_eq(still_count, 14, "full-depth file 1 holds all 14 soldiers still")
-	assert_eq(stepped_count, 26, "short files 0 and 2 step exactly 26 soldiers forward")
+	assert_eq(still_count, 14, "full-depth file holds all 14 soldiers still")
+	assert_eq(stepped_count, 26, "short files step exactly 26 soldiers forward")

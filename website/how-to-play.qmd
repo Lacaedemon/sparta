@@ -343,10 +343,12 @@ with it off, the unit marches at once --- short rank leading --- and reforms on 
 </video>
 ```
 
-Move to the rear: ordered to a point behind it, the regiment about-faces in place
-(each soldier reversing 180&deg;), reforms so a full rank fronts the new heading ---
-the under-strength rank counter-marching back to the rear --- and then marches off
-facing the destination.
+Move to the rear:
+ordered to a point behind it, the regiment about-faces in place
+(each soldier reversing 180&deg;),
+reforms so a full rank fronts the new heading ---
+holding ground while short files step forward to square the front ---
+and then marches off facing the destination.
 :::
 
 **Move to the rear, oblique (about-face, flank pivot, then march).** When that

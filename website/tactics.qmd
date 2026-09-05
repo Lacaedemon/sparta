@@ -1411,8 +1411,8 @@ time before contact, not at the moment of impact.
 
 Per-type backward-walk speed: a Spearmen and an Archers regiment, forced to the
 same formation density and given the same rear-move order at the same tick.
-The lighter-kitted Archers settle their countermarch and step off first; the
-heavier-kitted Spearmen are still holding position when the clip ends.
+The lighter-kitted Archers settle their reform and step off first;
+the heavier-kitted Spearmen are still holding position when the clip ends.
 :::
 
 The **about-face (conversio)** and **quarter-turn** are not reshapes, so this

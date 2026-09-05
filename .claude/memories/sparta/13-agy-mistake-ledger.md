@@ -121,6 +121,10 @@ Violating one costs a fix round.
 27. tools/check.sh chars, units and comments diff-scope committed lines;
    on uncommitted edits run the byte scan and the issue-number grep by hand.
 
+28. Before changing a call site's argument,
+   list every path that reaches it and decide per path;
+   a shared completion handler serves every order that ends there.
+
 END OF STANDING RULES
 
 ## Provenance

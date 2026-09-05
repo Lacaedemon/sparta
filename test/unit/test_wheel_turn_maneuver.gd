@@ -242,7 +242,7 @@ func test_wheel_turn_arrival_holds_ground_and_clears_reform_on_arrival() -> void
 	assert_true(marching, "wheel finished and march started")
 	assert_true(u._reform_on_arrival, "_reform_on_arrival is armed after wheel")
 
-	# Retarget march straight along post-wheel facing so heading stays constant
+	# Straightens the post-wheel march so the relative-offset measurement has a constant heading, and is scaffolding for the march leg rather than the reform under test.
 	u.move_target = u.position + u.facing * 100.0
 	u.active_leaf().target_pos = u.move_target
 

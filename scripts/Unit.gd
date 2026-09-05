@@ -5167,7 +5167,9 @@ func _finish_order_turn() -> void:
 		next_leaf.turn_target = (current_order.target_pos - position).normalized()
 		_advance_order_tree(leaf)
 		return
-	if current_order.reform and reform_ranks(true):
+	# Hold ground for an ordinary order, while a countermarch drill keeps the full traversal.
+	var hold_ground: bool = current_order.countermarch_variant < 0
+	if current_order.reform and reform_ranks(hold_ground):
 		# Splice a REFORM leaf in right after the turn (still at index 0 -- this handoff runs
 		# the instant it completes) and ahead of the march already at index 1, then advance the
 		# cursor onto it the same way any other completed leaf hands off to its next sibling.
@@ -5201,14 +5203,14 @@ func _finish_order_turn() -> void:
 ## are untouched, exactly as under a frontage reshape's own slot pairing.
 ##
 ## `hold_ground` re-squares to the SAME footprint without that traversal, for a caller that
-## needs the fold dropped rather than the drill performed -- a post-turn re-square (an about-face
-## or about-face+wheel) or a rally, where nothing ordered a countermarch and the fold is only
-## bookkeeping the turn/flight left behind. Under the file-major layout the depth reflection is
-## then cancelled per file by reversing each file's own rank order, so the men in a full-depth file
-## stand on the ground they already hold and only the SHORT files -- the ones the partial rear
-## rank never reached -- step forward one rank pitch to close the line. The resulting grid is
-## identical either way; only which man holds which slot differs, so this buys the same shape for
-## a step instead of a march through the block.
+## needs the fold dropped rather than the drill performed -- a post-turn re-square
+## (an about-face or about-face+wheel) or a rally, where nothing ordered a countermarch and
+## the fold is only bookkeeping the turn/flight left behind. Under the file-major layout the
+## depth reflection is then cancelled per file by reversing each file's own rank order, so the
+## men in a full-depth file stand on the ground they already hold and only the SHORT files --
+## the ones the partial rear rank never reached -- step forward one rank pitch to close the line.
+## The resulting grid is identical either way; only which man holds which slot differs, so this
+## buys the same shape for a step instead of a march through the block.
 ## Default false: a deliberate countermarch drill keeps the full traversal.
 ##
 ## No-ops (returns false) when there is nothing to bring forward: the grid is already square
