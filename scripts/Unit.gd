@@ -1376,7 +1376,9 @@ func _physics_process(delta: float) -> void:
 	# tick must not re-arm and keep the window open forever). Read the file count BEFORE the
 	# flip via the same UnitFormation.frontage() every other caller trusts, rather than
 	# re-deriving it branch by branch (subunit/cavalry/plain each compute it differently).
-	if _ranks_closed != was_ranks_closed and frontage_override == 0:
+	# A squared block's live grid comes from UnitFormation.square_files() instead, so the
+	# flip re-slots nothing there and arms nothing.
+	if _ranks_closed != was_ranks_closed and frontage_override == 0 and not in_square():
 		_arm_standoff_settle_window(_reshape_timeout(pre_flip_files))
 
 	# A stationary, non-fighting unit's momentum bleeds off under the same friction as an
@@ -5276,11 +5278,14 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 		return false
 	if is_about_face_fold and soldiers % files == 0:
 		return false
-	# Past this point the reform genuinely re-slots the block (an about-face's depth
-	# reflection, or a quarter-turn's re-square) -- exactly the file-crossing traversal the
-	# standoff pass exists to police, including the hasty variant's deferred call once the
-	# march that carried it arrives (Unit._physics_process's _reform_on_arrival hand-off).
-	_arm_standoff_settle_window(_reform_timeout())
+	# Past this point the reform re-slots the block (an about-face's depth reflection, or a
+	# quarter-turn's re-square) -- the file-crossing traversal the standoff pass exists to
+	# police, including the hasty variant's deferred call once the march that carried it
+	# arrives (Unit._physics_process's _reform_on_arrival hand-off). The one exception is
+	# the hold-ground about-face below, which cancels the reflection on the assignment
+	# arrays so no body marches anywhere: nothing crosses a file, so no watch is armed.
+	if not (hold_ground and is_about_face_fold):
+		_arm_standoff_settle_window(_reform_timeout())
 	_formation_angle = 0.0
 	_formation_mirror_x = is_about_face_fold
 	# The mirror reflects the grid in depth, which negates every man's slot depth while

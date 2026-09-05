@@ -418,6 +418,12 @@ func test_same_unit_standoff_separates_mid_transit_bodies_within_speed_cap() -> 
 	u.frontage_override = 1
 	u.position = Vector2(0.0, 50.0)
 	SoldierBodies.seed(u)
+	# The crowding below is the kind a re-slot leaves behind, so arm the settle watch
+	# directly (as set_frontage() would have) rather than going through the setter and
+	# disturbing the frontage_override fixed above. Without an armed window the pass skips
+	# and the two bodies would still drift apart along their own file (their slots sit a
+	# rank pitch apart), which would let this test pass without the standoff running at all.
+	u._standoff_settle_until_tick = Engine.get_physics_frames() + 200
 	# Two same-unit bodies placed 0.5 wu apart laterally:
 	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
 	u._sim_soldier_pos[1] = Vector2(0.5, 0.0)
@@ -730,6 +736,10 @@ func test_same_unit_standoff_resumes_once_mirror_reform_settles() -> void:
 	# armed, not just the two indices this test goes on to displace.
 	u._formation_mirror_x = true
 	u.seed_sim_soldiers()
+	# A just-rallied regiment is inside its reform's settle watch -- arm it directly, the
+	# same as the one-tick tests above, so the resumed pass (not the arrival pull back to
+	# each body's own slot, which would also widen the pair) is what this asserts on.
+	u._standoff_settle_until_tick = Engine.get_physics_frames() + 60
 	# Displace one neighbouring pair laterally, toward each other, by a distance BETWEEN the
 	# standoff's own tight per-body arrival epsilon (ARRIVE_EPS, 0.05 wu) and the REFORM
 	# leaf's own loose settle epsilon (REFORM_SETTLE_EPS, 1.0 wu): _reform_bodies_settled()
