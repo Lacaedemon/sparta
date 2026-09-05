@@ -82,9 +82,10 @@
     "overlap": {
       "uids": [
         0,
-        1
+        1,
+        4
       ],
-      "reason": "The gesture orders all five regiments to one ground point, so blocks interpenetrate at the rally point by design of the demonstration; the wider 2x/4x pitches deepen the pileup (uid0 and uid1 min neighbour dips at the destination). Measured on the density re-pin."
+      "reason": "The gesture orders all five regiments to one ground point, so blocks interpenetrate at the rally point by design of the demonstration; the wider 2x/4x pitches deepen the pileup (uid0 and uid1 min neighbour dips at the destination). Measured on the density re-pin. Uid4 (the far Cavalry block, 80 mounts, depth ratio 2.810913 -- exactly the reference case this fix's formed_turn_tracking_frac constant was calibrated against) is additionally derated to 0.6x corner-slot pace for its own formed turn onto the rally point: main turns the block quickly (facing x-component 0.66->0.91 between tick 360 and 540, nnd_min dipping only to 6.765wu at tick 660, clearing the 5.0wu floor) while this branch's slower, more gradual turn (facing x-component still only 0.42 at tick 360, not reaching a comparable peak until ~tick 780-840) holds the block in its tighter mid-turn geometry for longer, compressing nnd_min to 4.32wu at tick 900. In-transit compression from the intended slower pivot, not a standing formation defect; measured on both worktrees at the catalog cadence."
     },
     "shape_residual": {
       "uids": [
