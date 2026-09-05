@@ -345,6 +345,13 @@ var _last_reshape_widened: bool = false
 # any re-slot has happened, Engine.get_physics_frames() (>= 0) already exceeds it, so the
 # pass is skipped by default rather than by a special-cased sentinel check.
 var _standoff_settle_until_tick: int = -1
+# The state this unit was in on its previous physics tick, read only to notice a unit
+# LEAVING a fight or a rout: both leave the bodies wherever the press or the flight put
+# them, and the walk back to pitch spacing is the same file-crossing traversal a re-slot
+# is, so each arms the standoff watch like one. Tracked as a previous-tick reading rather
+# than at every assignment site because state changes on many paths (an enemy dying or
+# routing, a rally timer, an order retiring), and a one-tick lag costs nothing here.
+var _standoff_prev_state: int = State.IDLE
 # "Close the ranks": whether the auto (non-override) frontage is currently
 # stepped down a notch to reform the casualty-thinned survivors into a deeper, denser
 # block instead of holding the full-strength line's width. A single cached bool, not a
@@ -1337,6 +1344,7 @@ func _physics_process(delta: float) -> void:
 
 	_attack_cd = max(0.0, _attack_cd - delta)
 	_pin_down_exposure_cd = max(0.0, _pin_down_exposure_cd - delta)
+	_arm_standoff_on_leaving_fight_or_rout()
 	if is_rearguard_detachment:
 		_rearguard_lifetime_timer = max(0.0, _rearguard_lifetime_timer - delta)
 		if _rearguard_lifetime_timer <= 0.0 and soldiers > 0:
@@ -5458,6 +5466,20 @@ func _reshape_timeout(old_files: int) -> float:
 				float(maxi(0, old_ranks - 1)) * rank_pitch_wu()).length()
 	var slowest: float = maxf(1.0, jog_speed * back_speed_fraction)
 	return (old_crossing + new_crossing) / slowest * 2.0 + 1.0
+
+
+## Notice a unit that was FIGHTING or ROUTING on its previous tick and no longer is, and
+## arm the standoff watch for it: the melee press packs the block below pitch and a rout
+## scatters it, so the bodies' walk back onto their slots crosses files exactly as a
+## re-slot does. Runs every non-dead, non-routing tick from _physics_process, so a unit
+## that rallies sees the transition on its first ordinary tick after the rout.
+func _arm_standoff_on_leaving_fight_or_rout() -> void:
+	var prev: int = _standoff_prev_state
+	_standoff_prev_state = state
+	if state == prev:
+		return
+	if prev == State.FIGHTING or prev == State.ROUTING:
+		_arm_standoff_settle_window(_reform_timeout())
 
 
 ## Arm (or extend) _standoff_settle_until_tick so SoldierBodies._separate_same_unit keeps

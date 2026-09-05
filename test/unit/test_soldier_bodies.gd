@@ -542,6 +542,36 @@ func test_same_unit_standoff_runs_after_set_frontage_arms_the_settle_window() ->
 		"a unit inside set_frontage()'s own armed settle window must still separate crowded bodies")
 
 
+func test_leaving_a_fight_arms_the_standoff_settle_window() -> void:
+	var u := _make_unit(42, 8)
+	SoldierBodies.seed(u)
+	assert_eq(u._standoff_settle_until_tick, -1,
+		"sanity: a fresh unit's settle window starts unarmed")
+	# Two ordinary ticks while FIGHTING record that state as the previous-tick reading
+	# without arming anything (a fight in progress is covered by the always-run branch,
+	# not by a window); the melee press packs the block below pitch meanwhile.
+	u.state = Unit.State.FIGHTING
+	u._arm_standoff_on_leaving_fight_or_rout()
+	u._arm_standoff_on_leaving_fight_or_rout()
+	assert_eq(u._standoff_settle_until_tick, -1,
+		"a fight in progress must not arm a window of its own")
+	# The enemy dies or routs and the unit drops back to IDLE: its first non-fighting tick
+	# must arm the watch, since the packed block now has to walk back out to pitch spacing.
+	u.state = Unit.State.IDLE
+	u._arm_standoff_on_leaving_fight_or_rout()
+	assert_gt(u._standoff_settle_until_tick, Engine.get_physics_frames(),
+		"leaving FIGHTING arms the settle window for the re-spread that follows")
+	# A rally arms it the same way: the bodies were scattered by the flight.
+	var v := _make_unit(43, 8)
+	SoldierBodies.seed(v)
+	v.state = Unit.State.ROUTING
+	v._arm_standoff_on_leaving_fight_or_rout()
+	v.state = Unit.State.IDLE
+	v._arm_standoff_on_leaving_fight_or_rout()
+	assert_gt(v._standoff_settle_until_tick, Engine.get_physics_frames(),
+		"rallying out of ROUTING arms the settle window")
+
+
 func test_same_unit_standoff_does_not_disturb_settled_testudo_formation() -> void:
 	var u := _make_unit(42, 16)
 	u.formation_mode = Unit.FORMATION_TESTUDO
