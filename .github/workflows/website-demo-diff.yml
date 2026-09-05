@@ -166,7 +166,8 @@ jobs:
         # to develop over and so how much weight the row deserves.
         # DEMO_DEFECT_JSON_DIR keeps every analyzer run's raw JSON (both sides, every
         # changed clip) at a fixed path so the artifact step below can attach it; the
-        # candidate rows quote the PR side's worst value against its floor from the same
+        # candidate rows quote the PR side's worst value against the metric's threshold
+        # (a floor or a ceiling, per metric) and the merge-base's value from the same
         # files, so an exemption reason can cite CI's own numbers.
         env:
           DEMO_DEFECT_JSON_DIR: /tmp/defect-json

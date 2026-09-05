@@ -182,7 +182,7 @@ is_number() {
   printf '%s' "$1" | grep -Eq '^[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?$'
 }
 
-# "overlap (uid8: 4.494 vs 5 floor; main 7.928)" for one new PR-side metric, so the row
+# "overlap (uid8: 4.494 vs 5 threshold; merge-base 7.928)" for one new PR-side metric, so the row
 # carries the numbers an exemption reason has to quote. Falls back to the bare
 # "metric (uidN)" when the JSON is unavailable, for an `expect:` assertion (whose values
 # are the scripted field's own, not a physics measurement), or when either value is not
@@ -203,10 +203,10 @@ annotate_metric() {
     printf '%s' "$entry"
     return 0
   fi
-  out="$metric (uid$uid: $(short_num "$worst") vs $(short_num "$thr") floor"
+  out="$metric (uid$uid: $(short_num "$worst") vs $(short_num "$thr") threshold"
   base_worst="$(verdict_field "$base_dir" "$metric" "$uid" worst)"
   if is_number "$base_worst"; then
-    out="$out; main $(short_num "$base_worst")"
+    out="$out; merge-base $(short_num "$base_worst")"
   fi
   printf '%s)' "$out"
 }
@@ -255,7 +255,7 @@ fi
     printf '\n**%d candidate regression clip(s)** -- review those rows first, weighting each by its Diverges column.\n' "$REGRESSION_COUNT"
   fi
   if [ -n "${GITHUB_RUN_ID:-}" ]; then
-    printf '\n<sub>A candidate row quotes the PR side'\''s worst value against its floor, then the merge-base'\''s value, so an exemption reason can cite CI'\''s own numbers. The changed clips'\'' transcripts on both sides and every analyzer JSON are attached to this run as the artifact `website-demo-diff-%s`.</sub>\n' "$GITHUB_RUN_ID"
+    printf '\n<sub>A candidate row quotes the PR side'\''s worst value against the metric'\''s threshold (a floor for overlap and blob, a ceiling for shape residual, misslotted and the rest, in the analyzer'\''s own direction per metric), then the merge-base'\''s value, so an exemption reason can cite CI'\''s own numbers. The changed clips'\'' transcripts on both sides and every analyzer JSON are attached to this run as the artifact `website-demo-diff-%s`.</sub>\n' "$GITHUB_RUN_ID"
   fi
 } >> "$OUT_MD"
 
