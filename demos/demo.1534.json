@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation-only change: the drill and factions entries in demos/README.md and the matching parse_factions doc comment. Nothing in a recorded battle changes."
+}
