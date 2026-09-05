@@ -733,19 +733,31 @@ var formed_turn_tracking_frac: float = FORMED_TURN_TRACKING_FRAC
 # slow, real pivot instead of a stalled one.
 const FORMED_TURN_TRACKING_FRAC_FLOOR: float = 0.05
 # Depth ratio (a formation's pivot radius, in units of its own marching corridor band --
-# see _formed_turn_gait_frac) at which the corner-slot derate reaches formed_turn_tracking_frac.
-# Calibrated against this fix's own reference case, an 80-mount Cavalry block: pivot radius
-# 505.9644 wu (pinned by test_deep_cavalry_formed_pivot_rate_bounded_for_tracking) over a
-# marching band of file_pitch_wu() 40 wu x SoldierBodies.MARCHING_CORRIDOR_PROXIMITY_MULT
-# 4.5 = 180 wu, giving 505.9644 / 180 = 2.810913. Below this depth ratio a formation's own
-# footprint spans too few marching-bands for a lagging body to ever need diverting into a
-# perimeter corridor (or blobbing) before it catches its moving slot, so no derate is needed
-# there -- a plain Infantry line (depth ratio ~0.85-1.74 across a 30-120 soldier count) and a
-# LOOSE Archers block (~1.49) both stay at frac 1.0, and only a genuinely deep/wide block
-# like the issue's cavalry, or a tightly-packed 140-strong Spearmen block (~1.89), pays any
-# of this fix's pacing cost -- and that Spearmen cost is a mild ~11% (frac ~0.89), not the
-# flat 66.7% a single global constant applied to every formed pivot regardless of size.
+# see _formed_turn_gait_frac) at which the corner-slot derate reaches EXACTLY
+# formed_turn_tracking_frac. Calibrated against this fix's own reference case, an 80-mount
+# Cavalry block: pivot radius 505.9644 wu (pinned by
+# test_deep_cavalry_formed_pivot_rate_bounded_for_tracking) over a marching band of
+# file_pitch_wu() 40 wu x SoldierBodies.MARCHING_CORRIDOR_PROXIMITY_MULT 4.5 = 180 wu,
+# giving 505.9644 / 180 = 2.810913.
 const FORMED_TURN_DEPTH_RATIO_REF: float = 2.810913
+# Depth ratio BELOW which no derate applies at all (_formed_turn_gait_frac returns 1.0):
+# formed_turn_tracking_frac x FORMED_TURN_DEPTH_RATIO_REF above -- the depth ratio at which
+# the continuous ramp below would still read frac 1.0 -- so at the default tracking
+# fraction, 0.6 x 2.810913 = 1.686548. Below this ratio a formation's own footprint spans
+# too few marching-bands for a lagging body to ever need diverting into a perimeter
+# corridor (or blobbing) before it catches its moving slot, so no derate is needed there.
+# Between here and FORMED_TURN_DEPTH_RATIO_REF the ramp is continuous and monotone
+# (inversely in the depth ratio), reaching formed_turn_tracking_frac exactly at the
+# reference ratio and staying there for any deeper block still -- a plain Infantry line
+# (depth ratio ~0.85-1.74 across a 30-120 soldier count) stays at frac 1.0 through most of
+# that range, dipping only to ~0.97 at its own top end (120 soldiers, ratio ~1.74, just
+# past this free zone); a LOOSE Archers block (~1.49) stays at frac 1.0 throughout. Only a
+# genuinely deep/wide block like the issue's cavalry, or a tightly-packed 140-strong
+# Spearmen block (~1.89), pays a real pacing cost -- that Spearmen cost is a mild ~11%
+# (frac ~0.89), not the flat 66.7% a single global constant applied to every formed pivot
+# regardless of size, and not the discontinuous snap a two-branch (<=REF full pace, >REF
+# derated) form would produce right at the reference ratio itself.
+const FORMED_TURN_FREE_DEPTH_RATIO: float = FORMED_TURN_TRACKING_FRAC * FORMED_TURN_DEPTH_RATIO_REF
 # Conversio (drill about-face): every soldier turns in place to reverse, so unit.facing
 # rotates toward the opposite heading at this rate (rad/s), taking ~0.5 s for a full 180°.
 # This is NOT a pivot of the block — neither a centre pivot (move orders) nor a flank wheel
@@ -3487,32 +3499,39 @@ func _pivot_radius() -> float:
 
 
 ## Depth-scoped corner-slot tracking fraction for a formed march turn (see
-## FORMED_TURN_TRACKING_FRAC / FORMED_TURN_DEPTH_RATIO_REF's own doc comments for the
-## calibration and the mechanism this derates against). Expresses the block's pivot
-## radius as a DEPTH RATIO -- how many marching-corridor bands (file_pitch_wu() x
-## SoldierBodies.MARCHING_CORRIDOR_PROXIMITY_MULT) wide the block's own footprint is --
-## rather than reading pivot_radius as an absolute world-unit distance, since a raw wu
-## comparison can't tell a Cavalry block's wide per-mount spacing from a tightly-packed
-## Spearmen block's depth: the same absolute radius means a very different "how many
-## bodies deep" for each. Below FORMED_TURN_DEPTH_RATIO_REF, a lagging body can always
-## close its distance to a swinging slot within the corridor's own direct-arrival band
-## before ever needing to divert around the formation's perimeter, so the pivot runs at
-## full jog_speed pace; past it, the derate ramps down (inversely in the depth ratio)
-## toward formed_turn_tracking_frac at the reference ratio itself, and further for an
-## even deeper block -- reserving exactly the catch-up headroom a block that size needs,
-## instead of taxing every formed pivot by the same flat amount regardless of size.
+## FORMED_TURN_TRACKING_FRAC / FORMED_TURN_DEPTH_RATIO_REF / FORMED_TURN_FREE_DEPTH_RATIO's
+## own doc comments for the calibration and the mechanism this derates against). Expresses
+## the block's pivot radius as a DEPTH RATIO -- how many marching-corridor bands
+## (file_pitch_wu() x SoldierBodies.MARCHING_CORRIDOR_PROXIMITY_MULT) wide the block's own
+## footprint is -- rather than reading pivot_radius as an absolute world-unit distance,
+## since a raw wu comparison can't tell a Cavalry block's wide per-mount spacing from a
+## tightly-packed Spearmen block's depth: the same absolute radius means a very different
+## "how many bodies deep" for each.
+##
+## A CONTINUOUS, MONOTONE (non-increasing) ramp in 1 / depth_ratio -- not a two-branch
+## full-pace-then-derated form, which would snap discontinuously right at the reference
+## ratio (a mid-battle jump whenever casualties change a block's files/ranks). Below the
+## caller's own free depth ratio (formed_turn_tracking_frac x FORMED_TURN_DEPTH_RATIO_REF)
+## a lagging body can always close its distance to a swinging slot within the corridor's
+## own direct-arrival band before ever needing to divert around the formation's perimeter,
+## so the pivot runs at full jog_speed pace; the ramp then reaches formed_turn_tracking_frac
+## exactly at FORMED_TURN_DEPTH_RATIO_REF and stays there for any deeper block still --
+## reserving exactly the catch-up headroom a block that size needs, instead of taxing every
+## formed pivot by the same flat amount regardless of size. The free ratio scales with the
+## caller's own (clamped) formed_turn_tracking_frac rather than the FORMED_TURN_TRACKING_FRAC
+## default, so a caller-configured tracking fraction still lands exactly on itself at the
+## reference ratio -- see FORMED_TURN_TRACKING_FRAC_FLOOR's own doc comment for why that
+## clamp exists.
 func _formed_turn_gait_frac() -> float:
 	var pr: float = _pivot_radius()
 	var band: float = file_pitch_wu() * SoldierBodies.MARCHING_CORRIDOR_PROXIMITY_MULT
 	if pr <= 0.0 or band <= 0.0:
 		return 1.0
 	var depth_ratio: float = pr / band
-	if depth_ratio <= FORMED_TURN_DEPTH_RATIO_REF:
-		return 1.0
 	var safe_tracking_frac: float = clampf(
 			formed_turn_tracking_frac, FORMED_TURN_TRACKING_FRAC_FLOOR, 1.0)
-	return clampf(safe_tracking_frac * FORMED_TURN_DEPTH_RATIO_REF / depth_ratio,
-			FORMED_TURN_TRACKING_FRAC_FLOOR, 1.0)
+	var free_depth_ratio: float = safe_tracking_frac * FORMED_TURN_DEPTH_RATIO_REF
+	return clampf(free_depth_ratio / depth_ratio, safe_tracking_frac, 1.0)
 
 
 ## Open ground this regiment needs between its centre and impassable terrain: the
