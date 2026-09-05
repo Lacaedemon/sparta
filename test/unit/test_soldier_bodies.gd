@@ -429,7 +429,7 @@ func test_same_unit_standoff_separates_mid_transit_bodies_within_speed_cap() -> 
 	u._sim_soldier_pos[1] = Vector2(0.5, 0.0)
 	var body_radius: float = u.soldier_body_radius()
 	var two_bodies: float = body_radius * 2.0
-	var min_sep: float = 0.9 * minf(two_bodies, minf(u.file_pitch_wu(), u.rank_pitch_wu()))
+	var min_sep: float = SoldierBodies.STANDOFF_MIN_SEP_FRAC * minf(two_bodies, minf(u.file_pitch_wu(), u.rank_pitch_wu()))
 	var cap: float = u.move_speed * u.superphysical_speed_frac
 	var separated: bool = false
 	# Both bodies sit on the SAME single file (frontage_override = 1), so their shared
@@ -460,8 +460,11 @@ func test_same_unit_standoff_does_not_disturb_settled_tight_formation() -> void:
 	var u := _make_unit(42, 16)
 	u.formation_mode = Unit.FORMATION_TIGHT
 	u.seed_sim_soldiers()
+	# Arm the settle window so the pass's "all bodies settled" early return is the one
+	# actually exercised here, rather than the pass never running at all.
+	u._standoff_settle_until_tick = Engine.get_physics_frames() + 60
 	var initial_positions: PackedVector2Array = u._sim_soldier_pos.duplicate()
-	var sb_constants: Dictionary = (SoldierBodies as GDScript).get_script_constant_map()
+	var sb_constants: Dictionary = (load("res://scripts/SoldierBodies.gd") as Script).get_script_constant_map()
 	assert_true(sb_constants.has("STANDOFF_MIN_SEP_FRAC"),
 		"STANDOFF_MIN_SEP_FRAC constant must be present on SoldierBodies")
 	var frac: float = float(sb_constants.get("STANDOFF_MIN_SEP_FRAC", 0.0))
@@ -518,8 +521,11 @@ func test_same_unit_standoff_skips_the_pass_outside_an_armed_settle_window() -> 
 	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
 	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
 	SoldierBodies.step(u, 1.0 / 60.0)
-	var d_after: float = (u._sim_soldier_pos[0] - u._sim_soldier_pos[1]).length()
-	assert_almost_eq(d_after, d_start, 0.01,
+	# Lateral (x) separation, not full 2D distance: both bodies also drift toward their
+	# rank slots on arrival, and that motion alone could satisfy a distance-only check
+	# even if the standoff pass wrongly ran.
+	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
+	assert_almost_eq(dx_after, d_start, 0.01,
 		"an unarmed, non-fighting unit must not run the standoff pass even when crowded")
 
 
@@ -537,8 +543,11 @@ func test_same_unit_standoff_runs_after_set_frontage_arms_the_settle_window() ->
 	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
 	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
 	SoldierBodies.step(u, 1.0 / 60.0)
-	var d_after: float = (u._sim_soldier_pos[0] - u._sim_soldier_pos[1]).length()
-	assert_gt(d_after, d_start + 0.1,
+	# Lateral (x) separation, not full 2D distance: both bodies also drift toward their
+	# rank slots on arrival, and that motion alone could satisfy a distance-only check
+	# even if the standoff pass never ran.
+	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
+	assert_gt(dx_after, d_start + 0.1,
 		"a unit inside set_frontage()'s own armed settle window must still separate crowded bodies")
 
 
@@ -577,6 +586,9 @@ func test_same_unit_standoff_does_not_disturb_settled_testudo_formation() -> voi
 	var u := _make_unit(42, 16)
 	u.formation_mode = Unit.FORMATION_TESTUDO
 	u.seed_sim_soldiers()
+	# Arm the settle window so the pass's "all bodies settled" early return is the one
+	# actually exercised here, rather than the pass never running at all.
+	u._standoff_settle_until_tick = Engine.get_physics_frames() + 60
 	var initial_positions: PackedVector2Array = u._sim_soldier_pos.duplicate()
 	var max_disp: float = 0.0
 	for tick in range(60):
@@ -741,7 +753,7 @@ func test_same_unit_standoff_skips_unsettled_mirror_reform() -> void:
 	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
 	var body_radius: float = u.soldier_body_radius()
 	var two_bodies: float = body_radius * 2.0
-	var min_sep: float = 0.9 * minf(two_bodies, minf(u.file_pitch_wu(), u.rank_pitch_wu()))
+	var min_sep: float = SoldierBodies.STANDOFF_MIN_SEP_FRAC * minf(two_bodies, minf(u.file_pitch_wu(), u.rank_pitch_wu()))
 	assert_lt(d_start, min_sep, "sanity: the pair starts genuinely crowded, inside min_sep")
 	assert_false(u._reform_bodies_settled(), "sanity: the displaced bodies read as unsettled")
 	SoldierBodies.step(u, 1.0 / 60.0)

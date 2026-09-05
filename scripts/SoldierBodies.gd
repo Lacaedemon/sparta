@@ -714,8 +714,9 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 					else:
 						var lo: int = mini(i, j)
 						var angle: float = float(posmod(lo, STANDOFF_TIE_BREAK_DIRS)) / float(STANDOFF_TIE_BREAK_DIRS) * TAU
-						var sgn: float = 1.0 if i > j else -1.0
-						axis = Vector2.RIGHT.rotated(angle) * sgn
+						# j > i always here (the pair loop above skips j <= i), so the
+						# direction is fixed; push/reaction below stays equal-and-opposite.
+						axis = -Vector2.RIGHT.rotated(angle)
 					var push: Vector2 = axis * (max_sep_speed * overlap)
 					sep_vel[i] += push
 					sep_vel[j] -= push
