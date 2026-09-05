@@ -182,10 +182,13 @@ is_number() {
 # a number.
 annotate_metric() {
   local entry="$1" base_dir="$2" pr_dir="$3" metric uid worst thr base_worst out
-  metric="${entry%% (*}"
-  uid="${entry##*(uid}"
-  uid="${uid%)}"
-  case "$uid" in ''|*[!0-9]*) printf '%s' "$entry"; return 0 ;; esac
+  # The entry is the helper's own "metric (uidN)" shape; anything else is left as is.
+  if [[ ! "$entry" =~ ^([^[:space:]]+)\ \(uid([0-9]+)\)$ ]]; then
+    printf '%s' "$entry"
+    return 0
+  fi
+  metric="${BASH_REMATCH[1]}"
+  uid="${BASH_REMATCH[2]}"
   case "$metric" in expect:*) printf '%s' "$entry"; return 0 ;; esac
   worst="$(verdict_field "$pr_dir" "$metric" "$uid" worst)"
   thr="$(verdict_field "$pr_dir" "$metric" "$uid" threshold)"
