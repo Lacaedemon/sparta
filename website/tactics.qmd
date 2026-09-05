@@ -62,7 +62,7 @@ fightable --- for as long as it's plausibly still in view.
   A unit rallying in **square** (orbis or schiltron) keeps its own assignment of men
   to cells and re-squares on that,
   so a broken square recovers without marching itself inside out.
-  Whichever it is, unlike an ordered
+  Whichever it is, as with an ordered
   about-face, the men don't counter-march through the block to do it, so a rallied
   unit is back in fighting shape almost at once rather than spending seconds
   shuffling through itself.
@@ -1362,8 +1362,8 @@ frontage --- soldiers advance in file, the way a column on the road does, not
 shoulder to shoulder. From the outside the block's world silhouette doesn't
 visibly rotate at all while it travels --- only the individual soldiers' own
 facing, and the direction they're headed, change. Because nothing ever
-reforms, a lateral pivot has no countermarch cost the way a move to the rear's
-reform does --- a depleted unit executes it exactly as fast as a fresh one.
+reforms, a lateral pivot has no reform delay the way a move to the rear's
+reform can --- a depleted unit executes it exactly as fast as a fresh one.
 
 ::: {#fig-lateral-pivot-flank-march .demo}
 
@@ -1421,22 +1421,23 @@ position for the whole turn --- nobody steps forward or backward at all, only
 facing changes. Their duration depends solely on the drill turn rate, not the
 backward-speed cap.
 
-The **reform after an about-face** is where the penalty comes back. Flipping a
+The **reform after an about-face** dresses the line before or after the march.
+Flipping a
 unit that has taken losses puts its short, under-strength rank --- previously the
-safe rear rank --- at the new front, so a rear move reforms after the turn: the
-men counter-march through the block onto ranks squared to the new heading,
-bringing a full rank forward and sending the short rank back. Some of those men
-are stepping backward relative to their facing, so a deep, depleted block takes a
-couple of seconds to dress. With **Reform before move** on, that time is spent
-before the unit steps off --- order the retreat with a margin. With it off, the
-unit marches at once and reforms on arrival, buying speed at the price of leading
-the whole march with its thinnest rank.
+safe rear rank --- at the new front,
+so a rear move reforms after the turn:
+under file-major reform, the men in full-depth files hold their ground while the short
+files step forward one rank pitch to square the front, avoiding a countermarch through the block.
+With **Reform before move** on, that brief step is taken before the unit steps off;
+with it off, the unit marches at once and reforms on arrival, buying speed at the
+price of leading the whole march with its thinnest rank.
 
-This same file-countermarch mechanism is also available as its own standalone
+This full file-countermarch mechanism is available as its own standalone
 drill --- see [How to play: Controls](how-to-play.qmd#controls) for the
 Countermarch (exelismos) hotkeys.
-A rear-move order reforms *incidentally*, as a side effect of turning to march
-somewhere; the standalone drill runs it *deliberately*, always bringing a full
+A rear-move order reforms by holding ground;
+the standalone drill runs the full countermarch *deliberately*,
+always bringing a full
 rank forward, and offers a choice of where the whole regiment ends up
 afterward: the same ground (Choral/Persian), advanced (Macedonian), or
 withdrawn (Laconian).
