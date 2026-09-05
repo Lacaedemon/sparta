@@ -39,6 +39,15 @@ func _front_row_count(u: Unit) -> int:
 	return count
 
 
+## True when body index stands in the unit's FRONT row.
+func _in_front_row(u: Unit, index: int) -> bool:
+	var best: float = -INF
+	for p in u._sim_soldier_pos:
+		best = maxf(best, (p - u.position).dot(u.facing))
+	var d: float = (u._sim_soldier_pos[index] - u.position).dot(u.facing)
+	return best - d < Unit.FORMATION_SPACING * 0.5
+
+
 ## One sim tick of the isolated unit: the full unit layer plus the soldier-body arrival, the
 ## same two layers Battle drives each physics tick. Mirrors test_reform_ranks.gd's helper.
 func _tick(u: Unit) -> void:
@@ -161,6 +170,22 @@ func test_choral_countermarch_reverses_facing_reforms_and_stays_put() -> void:
 	assert_lt(u.position.distance_to(start_pos), 1.0,
 		"Choral/Persian: the block reverses on the very ground it already stood on")
 	assert_eq(_front_row_count(u), 8, "the reform still brings a full rank to the new front")
+
+
+## Per-soldier identity check.
+## A countermarch drill traverses files through each other, so the original
+## front rank (indices 0..7) ends at the new front row, not the partial rank.
+func test_countermarch_traversal_places_original_front_rank_at_new_front() -> void:
+	var u := _make_partial_unit()
+	u.countermarch(Unit.CountermarchVariant.CHORAL)
+	_run_to_completion(u)
+	assert_null(u.current_order, "the countermarch composite completed")
+	for i in range(8):
+		assert_true(_in_front_row(u, i),
+			"soldier %d from original front rank ends in the new front row" % i)
+	for i in range(56, 60):
+		assert_false(_in_front_row(u, i),
+			"partial-rank soldier %d from original rear does not end in the new front row" % i)
 
 
 func test_countermarch_reports_order_summary_with_the_variant_name() -> void:
