@@ -37,6 +37,7 @@ func test_speed_constants_hold_their_exact_world_unit_values() -> void:
 	assert_eq(SoldierCombatScript.KNOCKBACK_SPEED_MAX, 60.0)
 	assert_eq(SoldierCombatScript.KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP, 200.0)
 	assert_eq(SoldierCombatScript.KINETIC_FRICTION_VELOCITY_REFERENCE, 50.0)
+	assert_eq(SoldierBodies.STANDOFF_MAX_SPEED, 40.0)
 
 
 func test_charge_reference_speed_copies_never_diverge() -> void:

@@ -649,7 +649,9 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 			cells[ck] = []
 		cells[ck].append(i)
 
-	var speed_cap: float = unit.jog_speed if (unit._reform_holding() or unit.state == Unit.State.IDLE) \
+	# _reform_holding() already returned above via deliberate_pass_through, so only the IDLE
+	# case can take the jog cap here; a moving unit gets the superphysical march cap instead.
+	var speed_cap: float = unit.jog_speed if unit.state == Unit.State.IDLE \
 			else unit.move_speed * unit.superphysical_speed_frac
 	var max_sep_speed: float = minf(STANDOFF_MAX_SPEED, speed_cap)
 

@@ -19,6 +19,10 @@
     "facing_whipsaw": {
       "uids": [2],
       "reason": "Cavalry executes multi-phase maneuvering across chase, flank detour, annihilation, spearmen re-engagement, and subsequent rout."
+    },
+    "shape_residual": {
+      "uids": [2],
+      "reason": "The same-unit standoff pass (SoldierBodies._separate_same_unit) now polices this cavalry troop's unengaged bodies for crowding during its chase/annihilation phases too, and caps the correction at STANDOFF_MAX_SPEED -- so a crowding event that used to resolve in a single tick now resolves gradually over 2+ ticks. That stretches an already-transient shape-fit residual spike (measured worst=97.1 on the pre-fix tree, a single non-sustained sample) into one that sustains across MIN_SUSTAIN=2 consecutive samples at a LOWER peak (measured worst=74.3), during the same multi-phase maneuvering the facing_whipsaw exemption above already covers."
     }
   }
 }

@@ -642,20 +642,25 @@ func test_same_unit_standoff_skips_unsettled_mirror_reform() -> void:
 	u.position = Vector2(0.0, 50.0)
 	SoldierBodies.seed(u)
 	# A still-in-flight mirror reform (an about-face fold whose bodies have not yet reached
-	# their re-squared slots) is a genuine file-lane crossing in progress -- displace both
-	# bodies off their slots so _reform_bodies_settled() reads false, matching the unsettled
-	# state a fresh mirror fold leaves behind.
+	# their re-squared slots) is a genuine file-lane crossing in progress. Placing both bodies
+	# well away from their formation slots keeps _reform_bodies_settled() reading false, the
+	# unsettled state a fresh mirror fold leaves behind -- and placing the PAIR genuinely
+	# crowded (closer than min_sep, the same 0.05 wu spacing
+	# test_same_unit_standoff_separates_mid_transit_bodies_within_speed_cap above proves the
+	# pass reacts to) is what makes this test discriminate: without the gate, the standoff
+	# would push them apart exactly as that test demonstrates.
 	u._formation_mirror_x = true
-	u._sim_soldier_pos[0] += Vector2(50.0, 0.0)
-	u._sim_soldier_pos[1] += Vector2(50.0, 0.0)
+	var d_start: float = 0.05
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	var body_radius: float = u.soldier_body_radius()
+	var two_bodies: float = body_radius * 2.0
+	var min_sep: float = 0.9 * minf(two_bodies, minf(u.file_pitch_wu(), u.rank_pitch_wu()))
+	assert_lt(d_start, min_sep, "sanity: the pair starts genuinely crowded, inside min_sep")
 	assert_false(u._reform_bodies_settled(), "sanity: the displaced bodies read as unsettled")
-	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
-	# The two bodies are still close to each other (both displaced by the same offset), so
-	# without the gate the standoff would react to their mutual crowding:
 	SoldierBodies.step(u, 1.0 / 60.0)
-	var lateral_shift: float = absf(
-		(u._sim_soldier_pos[0] - before[0]).x - (u._sim_soldier_pos[1] - before[1]).x)
-	assert_almost_eq(lateral_shift, 0.0, 0.01,
+	var d_after: float = (u._sim_soldier_pos[1] - u._sim_soldier_pos[0]).length()
+	assert_almost_eq(d_after, d_start, 0.01,
 		"crowded bodies must not be pushed apart by standoff during an unsettled mirror reform")
 
 
