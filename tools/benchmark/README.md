@@ -12,10 +12,12 @@ runner." Two complementary pieces cover the gap:
 
 1. **This directory** -- a benchmark you run **locally, by hand, on the actual reference
    hardware** to check the real 60fps target. This is the ground-truth check.
-2. **`.github/workflows/benchmark.yml`** -- a CI-only **relative regression check** against a
-   CI-runner-specific baseline (`baseline.json`). It catches "did this PR make things slower,"
-   not "is this PR fast enough" -- see that file's own comments for what it does and doesn't
-   guarantee.
+2. **`.github/workflows/benchmark.yml`** -- a CI-only **relative regression check**. Its
+   primary comparison is a PR's head against its own merge-base, both measured in the same
+   run, so the check can't drift stale between refreshes; the committed CI-runner baseline
+   (`baseline.json`) is kept only as a secondary, informational comparison. It catches "did
+   this PR make things slower," not "is this PR fast enough" -- see that file's own comments
+   for what it does and doesn't guarantee.
 
 ## What's here
 
@@ -31,8 +33,9 @@ runner." Two complementary pieces cover the gap:
   battle instance), so it's verified by actually running the benchmark (below).
 - `run-benchmark.sh` -- wrapper, mirrors `tools/demo/dump-state.sh`'s shape (`GODOT_BIN` env var,
   headless invocation, human-readable summary printed at the end).
-- `baseline.json` -- the CI-runner baseline `benchmark.yml` compares against. **Not** the
-  reference-PC target -- see its header comment.
+- `baseline.json` -- the CI-runner baseline `benchmark.yml` compares against as a secondary,
+  informational check (its primary check is against the PR's own merge-base, measured in the
+  same run). **Not** the reference-PC target -- see its header comment.
 - `../../benchmarks/scenarios/large-battle.json` -- the reference scenario (see below for why it
   lives outside `demos/`).
 
