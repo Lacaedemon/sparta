@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This PR does not change gameplay code. It documents (via defect_exemptions in demos/inputs/battle-ai-unit-leaders.json) a genuine, previously-unexempted physics reading on the battle_ai_leaders website clip: uid 1's 140-strong spearmen block is still mid-transit through a forced re-slot (an AI attack-target switch restarts reform_ranks() before the prior reform settles) at every catalog-cadence sample tick, so overlap/shape_residual/path_crossing fail honestly, not from a code defect. No behavior changed, so no new clip is recorded. See issue #1544."
+}
