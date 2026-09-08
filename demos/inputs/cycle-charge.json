@@ -1,6 +1,31 @@
 {
   "_comment": "Cycle-charge stance demo (seed 12345): box-select the player's two cavalry regiments (right of the line, ~x 1027 and 1356, y 300), press J to arm the Cycle charge stance, then right-click the enemy Infantry regiment at (291,880). The horse charges in, lands its momentum hit, then peels back to a standoff and charges AGAIN -- the caracole loop -- instead of grinding in melee once the charge bonus is spent. The HUD flashes 'Cycle charge' when J is pressed and the order cursor turns violet.",
   "seed": "12345",
+  "state": [
+    8,
+    60,
+    120,
+    180,
+    240,
+    300,
+    360,
+    420,
+    480,
+    540,
+    600,
+    660,
+    720,
+    780,
+    840,
+    900,
+    960,
+    1020,
+    1080,
+    1140,
+    1200,
+    1260,
+    1300
+  ],
   "camera": [
     {
       "tick": 0,

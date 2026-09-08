@@ -1,4 +1,6 @@
 {
   "input": "demos/inputs/cycle-charge.json",
-  "caption": "cycle_charge unchanged in play: team 1's own cavalry (uid 8) never reaches melee and is re-rotated by the AI's target switches at ticks ~600 and ~1200, so its block never finishes re-squaring; that reading is now a declared exemption with measured numbers and uid 5's stale exemption is gone, so CI's defect scan prints its own verdicts for the clip."
+  "caption": "cycle_charge unchanged in play: team 1's own cavalry (uid 8) never reaches melee and is re-rotated by the AI's target switches at ticks ~600 and ~1200, so its block never finishes re-squaring; that reading is now a declared exemption with measured numbers and uid 5's stale exemption is gone, so CI's defect scan prints its own verdicts for the clip.",
+  "fixed_fps": 30,
+  "max_frames": 650
 }
