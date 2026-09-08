@@ -545,6 +545,26 @@ state-transcript comment; a failing verdict fails the job **after** the GIF and 
 publish, so the artifacts you need to debug are always there. Run it pre-push with
 `tools/check.sh demo_defects` -- it scans exactly the input scripts your diff adds or edits.
 
+### Sidecar declarations for a replay clip (`<name>.defects.json`)
+
+`expect` and `defect_exemptions` above are read from the clip's own input script, which a
+`type=replay` catalog row doesn't have -- its `SOURCE` is a played-and-saved replay file
+(the `replay` field, documented above), not a scripted-input file, so there is nowhere
+to put either declaration. A replay clip that legitimately needs one (a maneuver that
+trips a metric on purpose, a platform-dependent reading that needs pinning) carries a
+**sidecar file** instead: same directory as the replay, same basename, `.defects.json`
+in place of `.json` -- `demos/showcase.json` pairs with `demos/showcase.defects.json`.
+
+The sidecar holds exactly the two keys documented above, with the identical schema; it is
+otherwise structurally unrelated to a replay file and `DemoRunner` never reads it. The
+shared shell helper (`tools/lib/demo-defect-metrics.sh`'s `demo_clip_script_source()`)
+hands it to the analyzer via `--script` for a replay row only when the file exists in the
+tree, so a replay clip without one behaves exactly as before -- no `expect` or
+`defect_exemptions` is applied, and both are optional even once the file exists.
+`demos/showcase.defects.json` ships with both keys empty as a starter; add an
+exemption only once you have a measured worst/threshold reading to quote in its
+`reason`.
+
 ### Per-tick hash stream (`hash_stream.jsonl`)
 
 Every armed dump run also streams a per-tick, two-tier hash of the sim state into the

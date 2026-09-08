@@ -25,16 +25,30 @@
 
 # demo_clip_script_source <clip-name> <tree>
 #
-# Absolute path to the clip's own scripted-input file for the catalog row named
-# <clip-name>, or empty for a replay-type row (which has no input script, and so
-# declares neither `expect` assertions nor `defect_exemptions`). The caller must have
+# Absolute path to the file the analyzer should read `expect`/`defect_exemptions` from
+# for the catalog row named <clip-name>, or empty when it has none. The caller must have
 # sourced the tree's own website/tools/demo-catalog.sh first, so DEMOS is in scope.
+#
+# type=input rows carry their own scripted-input file, which already declares both keys
+# (see demos/README.md). type=replay rows have no input script, but MAY carry a sidecar
+# file at the replay's own path with its .json extension replaced by .defects.json (e.g.
+# demos/showcase.json -> demos/showcase.defects.json); when that sidecar exists in the
+# tree, it is returned the same way, since the analyzer reads only the two declaration
+# keys from whatever `--script` points at and does not care whether the file is also a
+# playable replay. A replay row with no such sidecar returns empty, as before.
 demo_clip_script_source() {
-  local want="$1" tree="$2" spec NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE
+  local want="$1" tree="$2" spec NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE sidecar
   for spec in "${DEMOS[@]}"; do
     IFS='|' read -r NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE <<<"$spec"
-    if [ "$NAME" = "$want" ] && [ "${TYPE:-replay}" = "input" ]; then
-      printf '%s' "$tree/$SOURCE"
+    if [ "$NAME" = "$want" ]; then
+      if [ "${TYPE:-replay}" = "input" ]; then
+        printf '%s' "$tree/$SOURCE"
+        return 0
+      fi
+      sidecar="$tree/${SOURCE%.json}.defects.json"
+      if [ -f "$sidecar" ]; then
+        printf '%s' "$sidecar"
+      fi
       return 0
     fi
   done
