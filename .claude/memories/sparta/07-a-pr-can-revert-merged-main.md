@@ -615,8 +615,7 @@ BOT_PR=1529                      # the bot's PR number
 NEW_BRANCH=fix/1529-rehomed      # the agent-owned branch that replaces it
 git fetch origin "pull/$BOT_PR/head:$NEW_BRANCH"
 git push -u origin "$NEW_BRANCH"
-printf "Replaces #%s (google-labs-jules[bot]); the review threads stay on that PR.
-" "$BOT_PR" > body.md
+echo "Replaces #$BOT_PR (google-labs-jules[bot]); the review threads stay on that PR." > body.md
 gh pr create -R Lacaedemon/sparta --head "$NEW_BRANCH" --base main \
   --title "<same title as the bot PR>" \
   --body-file body.md   # say it replaces #$BOT_PR and that the review threads stay on that PR
