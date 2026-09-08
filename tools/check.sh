@@ -100,6 +100,11 @@
 #                900 / 1800 / 2700). Generous hang-detectors, not perf gates: a
 #                run that hits one was never going to finish, and killing it
 #                stops an orphaned Godot process from piling up on the machine.
+#   SPARTA_DUMP_STATE_TIMEOUT
+#                Hard timeout in seconds (default 300) for the demo_defects check's
+#                replay-sidecar state dump. Same variable tools/demo/dump-state.sh and
+#                website/tools/dump-demo-states.sh already read for the identical
+#                purpose, reused here rather than adding a fourth timeout name.
 #   SPARTA_GODOT_PREFLIGHT_LIMIT
 #                Warn when more than this many Godot processes are already
 #                running before the checks start (default 5) — the early signal
@@ -137,9 +142,15 @@ GUT_VERSION="${GUT_VERSION:-v9.7.0}"
 VALIDATE_TIMEOUT="${SPARTA_CHECK_VALIDATE_TIMEOUT:-900}"
 TEST_TIMEOUT="${SPARTA_CHECK_TEST_TIMEOUT:-1800}"
 COVERAGE_TIMEOUT="${SPARTA_CHECK_COVERAGE_TIMEOUT:-2700}"
+# Same variable/default tools/demo/dump-state.sh and website/tools/dump-demo-states.sh
+# use for their own headless dump runs; reused here for demo_defects' replay-sidecar
+# dump so all three stay in sync under one override.
+DUMP_TIMEOUT="${SPARTA_DUMP_STATE_TIMEOUT:-300}"
 
 # shellcheck source=lib/run-bounded.sh
 . "$SCRIPT_DIR/lib/run-bounded.sh"
+# shellcheck source=lib/demo-defect-metrics.sh
+. "$SCRIPT_DIR/lib/demo-defect-metrics.sh"
 
 DEFAULT_CHECKS=(validate test chars comments units file_length shell_tests)
 ALL_CHECKS=(validate test chars comments units file_length shell_tests coverage patch_coverage lint links demo_defects)
@@ -1461,14 +1472,18 @@ check_demo_defects() {
     local sidecar replay has_replay_dump=0
     if [ -f "$PROJECT_ROOT/tools/demo/DemoStateSink.gd" ]; then
       has_replay_dump=1
+      # DemoRunner.gd references the DemoStateSink class_name global, which only an
+      # --import pass registers on a cold checkout -- the same reason
+      # tools/demo/dump-state.sh and website/tools/dump-demo-states.sh both import
+      # before driving a scene. Do it once, up front, rather than letting a cold
+      # tree's failure get swallowed into the "State dump failed" warn below, which
+      # would silently no-op this whole pass.
+      ensure_project_imported || return 1
     fi
     while IFS= read -r sidecar; do
       [ -f "$PROJECT_ROOT/$sidecar" ] || continue   # deleted in this diff
       info "Validating $sidecar"
-      if ! jq -e 'type == "object"
-            and ((has("expect") | not) or (.expect | type == "array"))
-            and ((has("defect_exemptions") | not) or (.defect_exemptions | type == "object"))' \
-            "$PROJECT_ROOT/$sidecar" >/dev/null 2>&1; then
+      if ! demo_sidecar_shape_ok "$PROJECT_ROOT/$sidecar"; then
         err "Malformed sidecar $sidecar -- expect must be an array and defect_exemptions must be an object, both optional"
         failed=1
         continue
@@ -1486,10 +1501,17 @@ check_demo_defects() {
       [ -z "$ticks" ] && ticks="8,60,120,180,240,300"
       dir="$(mktemp -d)"
       info "Scanning $replay (via $sidecar) at ticks $ticks"
-      if ! env SPARTA_DEMO_REPLAY="res://$replay" SPARTA_DEMO_STATE="$ticks" \
-               SPARTA_DEMO_STATE_DIR="$dir" SPARTA_DEMO_STATE_FULL=1 \
-           "$GODOT_BIN" --headless --fixed-fps 60 --path "$PROJECT_ROOT" \
-             res://tools/demo/DemoRunner.tscn >/dev/null 2>&1; then
+      rc=0
+      run_bounded "$DUMP_TIMEOUT" \
+        env SPARTA_DEMO_REPLAY="res://$replay" SPARTA_DEMO_STATE="$ticks" \
+            SPARTA_DEMO_STATE_DIR="$dir" SPARTA_DEMO_STATE_FULL=1 \
+        "$GODOT_BIN" --headless --fixed-fps 60 --path "$PROJECT_ROOT" \
+          res://tools/demo/DemoRunner.tscn >/dev/null 2>&1 || rc=$?
+      if run_bounded_timed_out "$rc"; then
+        warn "State dump timed out after ${DUMP_TIMEOUT}s for $replay and was killed (no orphan left behind) -- skipping its scan."
+        continue
+      fi
+      if [ "$rc" -ne 0 ]; then
         warn "State dump failed for $replay -- skipping its scan (CI warns the same way)."
         continue
       fi

@@ -62,6 +62,21 @@ demo_clip_script_source() {
   return 0
 }
 
+# demo_sidecar_shape_ok <path>
+#
+# True when <path> is a valid demos/*.defects.json sidecar shape: a top-level JSON
+# object whose `expect` key, if present, is an array, and whose `defect_exemptions`
+# key, if present, is an object. Both keys are optional, and any other key is
+# tolerated -- the analyzer only reads these two. False on malformed JSON, a
+# non-object top level, or either key present with the wrong type.
+demo_sidecar_shape_ok() {
+  local path="$1"
+  jq -e 'type == "object"
+        and ((has("expect") | not) or (.expect | type == "array"))
+        and ((has("defect_exemptions") | not) or (.defect_exemptions | type == "object"))' \
+        "$path" >/dev/null 2>&1
+}
+
 # demo_defect_verdict <transcript-dir> <script-source-or-empty> <tree>
 #
 # Prints one line: "<analyzer-rc><TAB><status>", where <status> is
