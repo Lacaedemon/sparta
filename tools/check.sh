@@ -61,15 +61,23 @@
 #             .github/workflows/check-links.yml. Needs network; not in the
 #             default set (run it explicitly or via "all").
 #   demo_defects
-#             Deterministic defect scan of THIS diff's changed demos/inputs/*.json
-#             scripts: a FULL state dump per script run through DemoDefects (the
-#             formation defect metrics plus the script's own declared `expect`
-#             assertions -- see demos/README.md). Drives a real headless battle
-#             per changed script, so not in the default set. Mirrors the demo
+#             Deterministic defect scan of THIS diff's changed demo declaration files:
+#             a scripted-input script (demos/inputs/*.json) gets a FULL state dump run
+#             through DemoDefects (the formation defect metrics plus the script's own
+#             declared `expect` assertions), and a changed replay sidecar
+#             (demos/*.defects.json -- see demos/README.md's "Sidecar declarations"
+#             section) gets its `expect`/`defect_exemptions` shape validated, plus the
+#             same dump-and-analyze pass against its paired replay when this tree
+#             carries tools/demo/DemoStateSink.gd (otherwise the replay-sidecar
+#             analyzer pass runs in CI's sweep instead). Drives a real headless battle
+#             per changed script/replay, so not in the default set. Mirrors the demo
 #             workflow's defect-scan step.
+#   shell_tests
+#             Runs every tools/lib/tests/test-*.sh with bash and fails if any exits
+#             non-zero. No Godot needed, so it's fast and in the default set.
 #
 # Usage:
-#   tools/check.sh                 # default set: validate, test, chars, comments, units, file_length
+#   tools/check.sh                 # default set: validate, test, chars, comments, units, file_length, shell_tests
 #   tools/check.sh test chars      # only the named checks, in the given order
 #   tools/check.sh all             # every check (links included if lychee is present)
 #   tools/check.sh -l | --list     # list the available checks
@@ -92,6 +100,11 @@
 #                900 / 1800 / 2700). Generous hang-detectors, not perf gates: a
 #                run that hits one was never going to finish, and killing it
 #                stops an orphaned Godot process from piling up on the machine.
+#   SPARTA_DUMP_STATE_TIMEOUT
+#                Hard timeout in seconds (default 300) for the demo_defects check's
+#                replay-sidecar state dump. Same variable tools/demo/dump-state.sh and
+#                website/tools/dump-demo-states.sh already read for the identical
+#                purpose, reused here rather than adding a fourth timeout name.
 #   SPARTA_GODOT_PREFLIGHT_LIMIT
 #                Warn when more than this many Godot processes are already
 #                running before the checks start (default 5) — the early signal
@@ -129,12 +142,18 @@ GUT_VERSION="${GUT_VERSION:-v9.7.0}"
 VALIDATE_TIMEOUT="${SPARTA_CHECK_VALIDATE_TIMEOUT:-900}"
 TEST_TIMEOUT="${SPARTA_CHECK_TEST_TIMEOUT:-1800}"
 COVERAGE_TIMEOUT="${SPARTA_CHECK_COVERAGE_TIMEOUT:-2700}"
+# Same variable/default tools/demo/dump-state.sh and website/tools/dump-demo-states.sh
+# use for their own headless dump runs; reused here for demo_defects' replay-sidecar
+# dump so all three stay in sync under one override.
+DUMP_TIMEOUT="${SPARTA_DUMP_STATE_TIMEOUT:-300}"
 
 # shellcheck source=lib/run-bounded.sh
 . "$SCRIPT_DIR/lib/run-bounded.sh"
+# shellcheck source=lib/demo-defect-metrics.sh
+. "$SCRIPT_DIR/lib/demo-defect-metrics.sh"
 
-DEFAULT_CHECKS=(validate test chars comments units file_length)
-ALL_CHECKS=(validate test chars comments units file_length coverage patch_coverage lint links demo_defects)
+DEFAULT_CHECKS=(validate test chars comments units file_length shell_tests)
+ALL_CHECKS=(validate test chars comments units file_length shell_tests coverage patch_coverage lint links demo_defects)
 
 # --- pretty output ---------------------------------------------------------
 # Colour only when stdout is a terminal and NO_COLOR isn't set. Per the NO_COLOR
@@ -197,11 +216,12 @@ list_checks() {
   info "  comments   issue/PR-number citations in NEW GDScript comment lines (check-comment-citations.yml)"
   info "  units      units-convention lint on NEW GDScript lines (docs/units-convention.md)"
   info "  file_length  caps NEW scripts/*.gd files at 100 lines (see tools/README.md's file_length entry)"
+  info "  shell_tests  runs every tools/lib/tests/test-*.sh with bash"
   info "  coverage   instrumented GUT suite -> coverage/lcov.info (test-coverage.yml)"
   info "  patch_coverage  local codecov/patch gate for this diff's scripts/*.gd changes (fails below the effective target)"
   info "  lint       GDScript style lint via gdlint (see .gdlintrc), whole tracked *.gd tree"
   info "  links      Markdown link-check via lychee (check-links.yml)"
-  info "  demo_defects  deterministic defect scan of this diff's changed demo input scripts (demo-video.yml)"
+  info "  demo_defects  deterministic defect scan of this diff's changed demo input scripts and replay sidecars (demo-video.yml)"
   info ""
   info "Default (no args): ${DEFAULT_CHECKS[*]}"
   info "all              : ${ALL_CHECKS[*]}"
@@ -290,7 +310,7 @@ ensure_gut() {
   info "Vendoring GUT $GUT_VERSION (not committed; cloned on demand)..."
   # A private temp dir (not a fixed path) so two overlapping runs — e.g. a manual
   # run while an editor task does the same — don't clobber each other's clone.
-  local gut_tmp; gut_tmp="$(mktemp -d)"
+  local gut_tmp; gut_tmp="$(mktemp -d "${TMPDIR:-/tmp}/sparta-check.XXXXXX")"
   if ! git clone --depth 1 --branch "$GUT_VERSION" \
       https://github.com/bitwes/Gut.git "$gut_tmp" >/dev/null 2>&1; then
     err "Failed to clone GUT $GUT_VERSION."
@@ -1335,14 +1355,71 @@ check_links() {
 
 # --- driver ----------------------------------------------------------------
 
+check_shell_tests() {
+  # Self-contained unit tests for tools/lib's shell helpers: every
+  # tools/lib/tests/test-*.sh, run with bash and aggregated. No Godot, no diff-scoping
+  # -- each test file owns its own fixtures (see e.g.
+  # tools/lib/tests/test-demo-defect-metrics.sh) and asserts against them directly, so
+  # this driver only runs them and reports which ones failed.
+  local dir="$PROJECT_ROOT/tools/lib/tests"
+  local files=()
+  if [ -d "$dir" ]; then
+    # Newline-delimited, not null-delimited + `sort -z` -- `sort -z` is a GNU
+    # extension absent from the BSD sort macOS ships, and test file names never
+    # contain whitespace, so the null-safety a -print0/-z pipeline buys elsewhere
+    # in this script isn't needed here.
+    while IFS= read -r f; do
+      files+=("$f")
+    done < <(find "$dir" -maxdepth 1 -name 'test-*.sh' -print | sort)
+  fi
+  if [ ${#files[@]} -eq 0 ]; then
+    info "No shell tests in tools/lib/tests -- nothing to run."
+    set_result shell_tests skip
+    return 0
+  fi
+  local failed=0 f
+  for f in "${files[@]}"; do
+    info "Running $(basename "$f")"
+    if ! bash "$f"; then
+      err "FAILED: $f"
+      failed=1
+    fi
+  done
+  if [ "$failed" -ne 0 ]; then
+    set_result shell_tests fail
+    return 1
+  fi
+  return 0
+}
+
 check_demo_defects() {
-  # Deterministic demo defect scan: every scripted-input demo this change adds or
-  # edits gets a FULL state dump and a DemoDefects verdict pass -- the formation
-  # defect metrics plus the script's own declared expectations, exit-code gated
-  # (see tools/demo/analyze_transcript.gd). Diff-scoped like check_units, so
-  # legacy demos never fail it. Each changed script drives a real headless
-  # battle, so budget a few seconds to a minute apiece.
-  require_godot || return 1
+  # Deterministic demo defect scan, diff-scoped like check_units so legacy demos never
+  # fail it. Two independent passes over this change's demo-declaration files:
+  #
+  #   1. Every scripted-input demo (demos/inputs/*.json) this change adds or edits gets
+  #      a FULL state dump and a DemoDefects verdict pass -- the formation defect
+  #      metrics plus the script's own declared expectations, exit-code gated (see
+  #      tools/demo/analyze_transcript.gd). Each changed script drives a real headless
+  #      battle, so budget a few seconds to a minute apiece.
+  #   2. Every changed replay sidecar (demos/*.defects.json -- see demos/README.md's
+  #      "Sidecar declarations" section) gets its shape validated (`expect` absent or
+  #      an array, `defect_exemptions` absent or an object): a shape failure fails the
+  #      check exactly like a malformed input script does, since it silently disables
+  #      every metric for the clip. When this tree also carries
+  #      tools/demo/DemoStateSink.gd (the replay-side FULL-dump support), the sidecar's
+  #      paired replay (demos/<name>.json) additionally gets the same dump-and-analyze
+  #      pass as an input script. On a tree without DemoStateSink.gd, the sidecar is
+  #      shape-validated locally only; the analyzer pass for a replay sidecar runs in
+  #      CI's sweep instead.
+  #
+  # Ordering: the jq check, the base resolution, the diff scoping, and the "nothing
+  # to scan" skip all run before require_godot, and so does the sidecar shape
+  # validation itself (jq-only) -- a machine with no Godot install still gets a
+  # useful verdict on an empty diff or a malformed sidecar, and never fails this
+  # check for a missing binary it doesn't need. require_godot is only called once
+  # something in the diff actually needs a Godot run: a changed input script
+  # (always), or a changed sidecar on a tree that carries the replay-dump support
+  # (tools/demo/DemoStateSink.gd).
   if ! have jq; then
     warn "jq not found -- skipping the demo defect scan."
     set_result demo_defects skip
@@ -1355,15 +1432,59 @@ check_demo_defects() {
     set_result demo_defects skip
     return 0
   fi
-  local changed
+  local changed changed_sidecars
   changed="$(cd "$PROJECT_ROOT" && git diff --no-color --name-only "$base" HEAD -- ':(glob)demos/inputs/*.json')"
-  if [ -z "$changed" ]; then
-    info "No changed demo input scripts -- nothing to scan."
+  changed_sidecars="$(cd "$PROJECT_ROOT" && git diff --no-color --name-only "$base" HEAD -- ':(glob)demos/*.defects.json')"
+  if [ -z "$changed" ] && [ -z "$changed_sidecars" ]; then
+    info "No changed demo input scripts or replay sidecars -- nothing to scan."
     set_result demo_defects skip
     return 0
   fi
   local failed=0 script ticks dir rc
+
+  # Sidecar shape validation is jq-only, so it runs regardless of whether Godot is
+  # available or needed below.
+  local has_replay_dump=0
+  if [ -f "$PROJECT_ROOT/tools/demo/DemoStateSink.gd" ]; then
+    has_replay_dump=1
+  fi
+  local sidecar
+  if [ -n "$changed_sidecars" ]; then
+    while IFS= read -r sidecar; do
+      [ -f "$PROJECT_ROOT/$sidecar" ] || continue   # deleted in this diff
+      info "Validating $sidecar"
+      if ! demo_sidecar_shape_ok "$PROJECT_ROOT/$sidecar"; then
+        err "Malformed sidecar $sidecar -- expect must be an array and defect_exemptions must be an object, both optional"
+        failed=1
+      fi
+    done <<< "$changed_sidecars"
+  fi
+
+  # Nothing past this point runs without Godot: a changed input script always needs
+  # a dump-and-analyze pass, and a changed sidecar needs one too when this tree has
+  # the replay-dump support. A tree without that support, scanning only sidecars,
+  # is done -- it already validated every shape it can locally.
+  local needs_godot=0
+  [ -n "$changed" ] && needs_godot=1
+  if [ -n "$changed_sidecars" ] && [ "$has_replay_dump" -eq 1 ]; then
+    needs_godot=1
+  fi
+  if [ "$needs_godot" -ne 1 ]; then
+    if [ -n "$changed_sidecars" ]; then
+      info "Sidecar(s) shape-validated locally; this tree has no tools/demo/DemoStateSink.gd, so the analyzer pass for a replay sidecar runs in CI's sweep instead."
+    fi
+    if [ "$failed" -ne 0 ]; then
+      set_result demo_defects fail
+      return 1
+    fi
+    return 0
+  fi
+  require_godot || return 1
+
+  # The here-string reads one empty line when $changed is empty; the deleted-file
+  # guard below skips it harmlessly, so no separate emptiness check is needed here.
   while IFS= read -r script; do
+    [ -z "$script" ] && continue
     [ -f "$PROJECT_ROOT/$script" ] || continue   # deleted in this diff
     # The scan's tick set is the script's own: its `state` defaults plus every
     # declared expectation tick (ranges contribute both ends), matching what a
@@ -1371,7 +1492,7 @@ check_demo_defects() {
     # sampling so the scan still sees the battle develop.
     ticks="$(jq -r '((.state // []) + ([.expect // [] | .[] | .tick? // empty] | flatten)) | map(tonumber? // empty) | unique | map(tostring) | join(",")' "$PROJECT_ROOT/$script" 2>/dev/null || true)"
     [ -z "$ticks" ] && ticks="8,60,120,180,240,300"
-    dir="$(mktemp -d)"
+    dir="$(mktemp -d "${TMPDIR:-/tmp}/sparta-check.XXXXXX")"
     info "Scanning $script at ticks $ticks"
     # Same grading as the CI step: a failed dump and an unusable-input analyzer exit
     # (rc 2) WARN rather than fail -- absence of data is not a defect -- and only a
@@ -1379,6 +1500,7 @@ check_demo_defects() {
     if ! SPARTA_DEMO_STATE_FULL=1 \
          "$PROJECT_ROOT/tools/demo/dump-state.sh" "$script" "$ticks" "$dir" >/dev/null 2>&1; then
       warn "State dump failed for $script -- skipping its scan (CI warns the same way)."
+      rm -rf "$dir"
       continue
     fi
     # The script always goes in: it carries both the declared `expect` assertions
@@ -1397,7 +1519,64 @@ check_demo_defects() {
     elif [ "$rc" -ne 0 ]; then
       warn "Defect scan input unusable for $script (rc=$rc); nothing gated."
     fi
+    rm -rf "$dir"
   done <<< "$changed"
+
+  if [ -n "$changed_sidecars" ] && [ "$has_replay_dump" -eq 1 ]; then
+    local replay
+    # DemoRunner.gd references the DemoStateSink class_name global, which only an
+    # --import pass registers on a cold checkout -- the same reason
+    # tools/demo/dump-state.sh and website/tools/dump-demo-states.sh both import
+    # before driving a scene. Do it once, up front, rather than letting a cold
+    # tree's failure get swallowed into the "State dump failed" warn below, which
+    # would silently no-op this whole pass.
+    ensure_project_imported || return 1
+    while IFS= read -r sidecar; do
+      [ -f "$PROJECT_ROOT/$sidecar" ] || continue   # deleted in this diff
+      # Already shape-validated above; a sidecar that failed there is already
+      # counted in $failed and gets no further pass here.
+      demo_sidecar_shape_ok "$PROJECT_ROOT/$sidecar" || continue
+      replay="${sidecar%.defects.json}.json"
+      if [ ! -f "$PROJECT_ROOT/$replay" ]; then
+        warn "No paired replay $replay for $sidecar -- skipping its analyzer pass (CI's catalog sweep will report it instead)."
+        continue
+      fi
+      ticks="$(jq -r '((.state // []) + ([.expect // [] | .[] | .tick? // empty] | flatten)) | map(tonumber? // empty) | unique | map(tostring) | join(",")' "$PROJECT_ROOT/$sidecar" 2>/dev/null || true)"
+      [ -z "$ticks" ] && ticks="8,60,120,180,240,300"
+      dir="$(mktemp -d "${TMPDIR:-/tmp}/sparta-check.XXXXXX")"
+      info "Scanning $replay (via $sidecar) at ticks $ticks"
+      rc=0
+      run_bounded "$DUMP_TIMEOUT" \
+        env SPARTA_DEMO_REPLAY="res://$replay" SPARTA_DEMO_STATE="$ticks" \
+            SPARTA_DEMO_STATE_DIR="$dir" SPARTA_DEMO_STATE_FULL=1 \
+        "$GODOT_BIN" --headless --fixed-fps 60 --path "$PROJECT_ROOT" \
+          res://tools/demo/DemoRunner.tscn >/dev/null 2>&1 || rc=$?
+      if run_bounded_timed_out "$rc"; then
+        warn "State dump timed out after ${DUMP_TIMEOUT}s for $replay and was killed (no orphan left behind) -- skipping its scan."
+        rm -rf "$dir"
+        continue
+      fi
+      if [ "$rc" -ne 0 ]; then
+        warn "State dump failed for $replay -- skipping its scan (CI warns the same way)."
+        rm -rf "$dir"
+        continue
+      fi
+      rc=0
+      "$GODOT_BIN" --headless --path "$PROJECT_ROOT" -s tools/demo/analyze_transcript.gd -- \
+        "$dir" --script "$PROJECT_ROOT/$sidecar" || rc=$?
+      if [ "$rc" -eq 1 ]; then
+        err "Defect scan failed for $replay (sidecar $sidecar)"
+        failed=1
+      elif [ "$rc" -eq 3 ]; then
+        err "Malformed expect/defect_exemptions block in $sidecar -- nothing was scanned"
+        failed=1
+      elif [ "$rc" -ne 0 ]; then
+        warn "Defect scan input unusable for $replay (rc=$rc); nothing gated."
+      fi
+      rm -rf "$dir"
+    done <<< "$changed_sidecars"
+  fi
+
   if [ "$failed" -ne 0 ]; then
     set_result demo_defects fail
     return 1
@@ -1431,7 +1610,7 @@ main() {
       -h|--help) usage; exit 0 ;;
       -l|--list) list_checks; exit 0 ;;
       all)       checks+=("${ALL_CHECKS[@]}") ;;
-      validate|test|chars|comments|units|file_length|coverage|patch_coverage|lint|links|demo_defects) checks+=("$arg") ;;
+      validate|test|chars|comments|units|file_length|shell_tests|coverage|patch_coverage|lint|links|demo_defects) checks+=("$arg") ;;
       *) err "Unknown argument: $arg"; usage; exit 2 ;;
     esac
   done
