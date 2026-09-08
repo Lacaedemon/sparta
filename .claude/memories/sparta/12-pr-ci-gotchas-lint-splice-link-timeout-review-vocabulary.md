@@ -708,3 +708,41 @@ Both halves of this pair are derived from that correction, not stated by the use
 - **Do:** before reporting an edit as done, re-read the diff (`git diff --stat` and a grep for the new symbol) and quote the grep line in the report, e.g. `654: var cells: Dictionary[Vector2i, PackedInt32Array] = {}`.
 
 - **Don't:** report an edit from the plan or from memory of intending it -- a description of the intended change is not evidence the change landed in the file.
+
+## Re-home a Jules Bolt PR before its first fix round
+
+`google-labs-jules[bot]` re-pushes its regenerated diff onto its own PR
+branch after every review round,
+discarding whatever the review round added.
+On #1529 (2026-09-04) it did this twice in one day,
+each push deleting the demo manifest, the scripted clip, the boundary
+tests, and a reviewer-requested fix.
+#1262 recorded the same pattern on #1255 as the third incident;
+#1529 was the fifth.
+The ARDI loop cannot converge on such a branch:
+every fix round triggers a review,
+every review triggers a bot push,
+and the push discards the round's work.
+#1533 adopted re-homing as repo policy.
+
+An agent that picks up a Bolt PR re-homes it before the first fix round,
+cutting a branch from the bot's head and opening a replacement PR:
+
+```bash
+git fetch origin pull/<N>/head:<new-branch>
+git push -u origin <new-branch>
+gh pr create -R Lacaedemon/sparta --head <new-branch> --base main \
+  --title "<title>" \
+  --body "Replaces #<N> (google-labs-jules[bot]); carries its review history."
+gh pr close <N> -R Lacaedemon/sparta \
+  --comment "Re-homed to #<new-pr-number> -- google-labs-jules[bot] re-pushes over review rounds on its own branch (see #1533)."
+```
+
+- **Do:** cut a branch from the bot PR's head,
+  open a replacement PR crediting the bot PR in its body,
+  close the bot's PR with a comment pointing at the replacement,
+  and only then start ARDI.
+
+- **Don't:** push a fix commit to a branch owned by
+  `google-labs-jules[bot]` --
+  the bot's next re-push discards it.
