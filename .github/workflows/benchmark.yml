@@ -17,7 +17,7 @@
 # never to wherever this PR actually branched from. Comparing the merged tree (this PR's
 # head, applied on top of the CURRENT base) against that same current base tip isolates this
 # PR's own diff -- a true merge-base comparison would instead mix in the base branch's own
-# perf drift since the PR branched, which isn't this PR's doing. This can't drift stale the
+# perf drift since the PR branched, which isn't this PR's doing. This can't go stale the
 # way a committed baseline file can -- there's nothing to refresh, since both sides are
 # always freshly measured together on the same runner. The committed
 # tools/benchmark/baseline.json is kept only as a SECONDARY, informational comparison, for
@@ -163,7 +163,10 @@ jobs:
         timeout-minutes: 10
         working-directory: /tmp/base-tip
         run: |
-          set -o pipefail
+          # -e also fails the step on a non-zero exit from godot itself (a missing binary
+          # or a crash), on top of the log grep that catches the script errors Godot
+          # does not reliably exit non-zero on.
+          set -euo pipefail
           godot --headless --import --verbose 2>&1 | tee import.log
           if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
             echo "::error::Godot reported script/resource errors during base-tip import"

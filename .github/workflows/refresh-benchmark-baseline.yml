@@ -1,5 +1,5 @@
 # Periodically refresh tools/benchmark/baseline.json against the CI runners' current
-# (variable) speed, so benchmark.yml's relative regression check doesn't drift stale and
+# (variable) speed, so benchmark.yml's relative regression check doesn't go stale and
 # start flagging every PR as a false regression once enough commits land between manual
 # refreshes.
 #
@@ -114,7 +114,7 @@ jobs:
               "different, variable-speed hardware; see tools/benchmark/README.md. This "
               "baseline is a SECONDARY, informational comparison only -- benchmark.yml's "
               "primary check is the PR's head against the base branch's own tip, both measured in "
-              "the same run, which cannot drift stale the way this file can. Established "
+              "the same run, which cannot go stale the way this file can. Established "
               "as the MEAN of two consecutive, functionally-identical 'Refresh benchmark "
               f"baseline' workflow runs at {run_url} (mean {means[0]:.3f}ms/p95 {p95s[0]:.3f}ms/"
               f"max {maxs[0]:.3f}ms and mean {means[1]:.3f}ms/p95 {p95s[1]:.3f}ms/max "

@@ -16,7 +16,7 @@ runner." Two complementary pieces cover the gap:
 2. **`.github/workflows/benchmark.yml`** -- a CI-only **relative regression check**.
    Its primary comparison is a PR's head against the base branch's own tip,
    both measured in the same run,
-   so the check can't drift stale between refreshes.
+   so the check can't go stale between refreshes.
    The committed CI-runner baseline (`baseline.json`) is kept only as a secondary,
    informational comparison.
    It catches "did this PR make things slower," not "is this PR fast enough" --
