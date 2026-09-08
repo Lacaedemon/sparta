@@ -14,7 +14,7 @@ runner." Two complementary pieces cover the gap:
    hardware** to check the real 60fps target. This is the ground-truth check.
 
 2. **`.github/workflows/benchmark.yml`** -- a CI-only **relative regression check**.
-   Its primary comparison is a PR's head against the base branch's own tip,
+   Its primary comparison is a PR's merged tree (the refs/pull/N/merge checkout) against the base branch's own tip,
    both measured in the same run,
    so the check can't go stale between refreshes.
    The committed CI-runner baseline (`baseline.json`) is kept only as a secondary,

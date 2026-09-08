@@ -114,7 +114,7 @@ jobs:
               "developer's PC with a discrete GPU) -- GitHub Actions runners are "
               "different, variable-speed hardware; see tools/benchmark/README.md. This "
               "baseline is a SECONDARY, informational comparison only -- benchmark.yml's "
-              "primary check is the PR's head against the base branch's own tip, both measured in "
+              "primary check is the PR's merged tree (the refs/pull/N/merge checkout) against the base branch's own tip, both measured in "
               "the same run, which cannot go stale the way this file can. Established "
               "as the MEAN of two consecutive, functionally-identical 'Refresh benchmark "
               f"baseline' workflow runs at {run_url} (mean {means[0]:.3f}ms/p95 {p95s[0]:.3f}ms/"

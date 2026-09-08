@@ -8,7 +8,8 @@
 # checks the real target on real hardware; this workflow is only the early-warning between
 # those manual runs.
 #
-# Comparison: this PR's head vs the base branch's TIP AT TRIGGER TIME, both measured in this
+# Comparison: this PR's merged tree (the refs/pull/N/merge checkout) vs the base branch's
+# TIP AT TRIGGER TIME, both measured in this
 # same run (a second git worktree, checked out to that base-tip commit, is benchmarked right
 # alongside the PR). This is deliberately NOT a merge-base (branch-point) comparison:
 # actions/checkout on a pull_request event checks out the synthetic PR merge commit
