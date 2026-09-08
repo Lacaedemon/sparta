@@ -1,4 +1,4 @@
-# Performance regression check for the sim hot path (see #549, tools/benchmark/README.md).
+# Performance regression check for the sim hot path (see tools/benchmark/README.md).
 #
 # This is a RELATIVE check -- it answers "did this PR make the reference battle measurably
 # slower," not "is the game fast enough." GitHub Actions runners are not the reference

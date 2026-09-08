@@ -1,7 +1,8 @@
 # Periodically refresh tools/benchmark/baseline.json against the CI runners' current
-# (variable) speed, so benchmark.yml's relative regression check doesn't go stale and
-# start flagging every PR as a false regression once enough commits land between manual
-# refreshes.
+# (variable) speed. benchmark.yml's pass/fail verdict comes from a same-run comparison
+# against the PR's base tip, so this file cannot make a PR read as a regression; it feeds
+# only the secondary, informational table in the benchmark comment, and the refresh keeps
+# that table meaningful as CI runner speed drifts between manual refreshes.
 #
 # Averages two consecutive runs: a single run's timing is noisy enough on a shared runner
 # that two functionally-identical runs can swing ~20% on their own, so averaging guards
