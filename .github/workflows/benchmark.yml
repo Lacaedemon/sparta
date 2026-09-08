@@ -93,7 +93,6 @@ jobs:
           fetch-depth: 2
 
       - name: Set up Godot project
-        id: setup-godot
         uses: ./.github/actions/setup-godot-project
 
       - name: Run benchmark (this PR)
