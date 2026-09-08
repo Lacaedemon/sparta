@@ -1411,7 +1411,15 @@ check_demo_defects() {
   #      pass as an input script. On a tree without DemoStateSink.gd, the sidecar is
   #      shape-validated locally only; the analyzer pass for a replay sidecar runs in
   #      CI's sweep instead.
-  require_godot || return 1
+  #
+  # Ordering: the jq check, the base resolution, the diff scoping, and the "nothing
+  # to scan" skip all run before require_godot, and so does the sidecar shape
+  # validation itself (jq-only) -- a machine with no Godot install still gets a
+  # useful verdict on an empty diff or a malformed sidecar, and never fails this
+  # check for a missing binary it doesn't need. require_godot is only called once
+  # something in the diff actually needs a Godot run: a changed input script
+  # (always), or a changed sidecar on a tree that carries the replay-dump support
+  # (tools/demo/DemoStateSink.gd).
   if ! have jq; then
     warn "jq not found -- skipping the demo defect scan."
     set_result demo_defects skip
@@ -1433,6 +1441,46 @@ check_demo_defects() {
     return 0
   fi
   local failed=0 script ticks dir rc
+
+  # Sidecar shape validation is jq-only, so it runs regardless of whether Godot is
+  # available or needed below.
+  local has_replay_dump=0
+  if [ -f "$PROJECT_ROOT/tools/demo/DemoStateSink.gd" ]; then
+    has_replay_dump=1
+  fi
+  local sidecar
+  if [ -n "$changed_sidecars" ]; then
+    while IFS= read -r sidecar; do
+      [ -f "$PROJECT_ROOT/$sidecar" ] || continue   # deleted in this diff
+      info "Validating $sidecar"
+      if ! demo_sidecar_shape_ok "$PROJECT_ROOT/$sidecar"; then
+        err "Malformed sidecar $sidecar -- expect must be an array and defect_exemptions must be an object, both optional"
+        failed=1
+      fi
+    done <<< "$changed_sidecars"
+  fi
+
+  # Nothing past this point runs without Godot: a changed input script always needs
+  # a dump-and-analyze pass, and a changed sidecar needs one too when this tree has
+  # the replay-dump support. A tree without that support, scanning only sidecars,
+  # is done -- it already validated every shape it can locally.
+  local needs_godot=0
+  [ -n "$changed" ] && needs_godot=1
+  if [ -n "$changed_sidecars" ] && [ "$has_replay_dump" -eq 1 ]; then
+    needs_godot=1
+  fi
+  if [ "$needs_godot" -ne 1 ]; then
+    if [ -n "$changed_sidecars" ]; then
+      info "Sidecar(s) shape-validated locally; this tree has no tools/demo/DemoStateSink.gd, so the analyzer pass for a replay sidecar runs in CI's sweep instead."
+    fi
+    if [ "$failed" -ne 0 ]; then
+      set_result demo_defects fail
+      return 1
+    fi
+    return 0
+  fi
+  require_godot || return 1
+
   # The here-string reads one empty line when $changed is empty; the deleted-file
   # guard below skips it harmlessly, so no separate emptiness check is needed here.
   while IFS= read -r script; do
@@ -1474,30 +1522,20 @@ check_demo_defects() {
     rm -rf "$dir"
   done <<< "$changed"
 
-  if [ -n "$changed_sidecars" ]; then
-    local sidecar replay has_replay_dump=0
-    if [ -f "$PROJECT_ROOT/tools/demo/DemoStateSink.gd" ]; then
-      has_replay_dump=1
-      # DemoRunner.gd references the DemoStateSink class_name global, which only an
-      # --import pass registers on a cold checkout -- the same reason
-      # tools/demo/dump-state.sh and website/tools/dump-demo-states.sh both import
-      # before driving a scene. Do it once, up front, rather than letting a cold
-      # tree's failure get swallowed into the "State dump failed" warn below, which
-      # would silently no-op this whole pass.
-      ensure_project_imported || return 1
-    fi
+  if [ -n "$changed_sidecars" ] && [ "$has_replay_dump" -eq 1 ]; then
+    local replay
+    # DemoRunner.gd references the DemoStateSink class_name global, which only an
+    # --import pass registers on a cold checkout -- the same reason
+    # tools/demo/dump-state.sh and website/tools/dump-demo-states.sh both import
+    # before driving a scene. Do it once, up front, rather than letting a cold
+    # tree's failure get swallowed into the "State dump failed" warn below, which
+    # would silently no-op this whole pass.
+    ensure_project_imported || return 1
     while IFS= read -r sidecar; do
       [ -f "$PROJECT_ROOT/$sidecar" ] || continue   # deleted in this diff
-      info "Validating $sidecar"
-      if ! demo_sidecar_shape_ok "$PROJECT_ROOT/$sidecar"; then
-        err "Malformed sidecar $sidecar -- expect must be an array and defect_exemptions must be an object, both optional"
-        failed=1
-        continue
-      fi
-      if [ "$has_replay_dump" -ne 1 ]; then
-        info "$sidecar: shape-validated locally; this tree has no tools/demo/DemoStateSink.gd, so the analyzer pass for a replay sidecar runs in CI's sweep instead."
-        continue
-      fi
+      # Already shape-validated above; a sidecar that failed there is already
+      # counted in $failed and gets no further pass here.
+      demo_sidecar_shape_ok "$PROJECT_ROOT/$sidecar" || continue
       replay="${sidecar%.defects.json}.json"
       if [ ! -f "$PROJECT_ROOT/$replay" ]; then
         warn "No paired replay $replay for $sidecar -- skipping its analyzer pass (CI's catalog sweep will report it instead)."
