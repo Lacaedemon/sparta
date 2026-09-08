@@ -31,7 +31,7 @@ first for project vision, roadmap, architecture, and verification steps; see
 review round, discarding whatever the round added.
 Re-home a Bolt PR to a human-owned branch before its first fix round --
 see "Re-home a Jules Bolt PR before its first fix round" in
-`.claude/memories/sparta/12-pr-ci-gotchas-lint-splice-link-timeout-review-vocabulary.md`.
+`.claude/memories/sparta/07-a-pr-can-revert-merged-main.md`.
 
 ## Cloud agent environment (Jules, Cursor Cloud, and other hosted runners)
 This repo is a single product: a **Godot 4.7 Standard** (GDScript) game with two
