@@ -310,7 +310,7 @@ ensure_gut() {
   info "Vendoring GUT $GUT_VERSION (not committed; cloned on demand)..."
   # A private temp dir (not a fixed path) so two overlapping runs — e.g. a manual
   # run while an editor task does the same — don't clobber each other's clone.
-  local gut_tmp; gut_tmp="$(mktemp -d)"
+  local gut_tmp; gut_tmp="$(mktemp -d "${TMPDIR:-/tmp}/sparta-check.XXXXXX")"
   if ! git clone --depth 1 --branch "$GUT_VERSION" \
       https://github.com/bitwes/Gut.git "$gut_tmp" >/dev/null 2>&1; then
     err "Failed to clone GUT $GUT_VERSION."
@@ -1444,7 +1444,7 @@ check_demo_defects() {
     # sampling so the scan still sees the battle develop.
     ticks="$(jq -r '((.state // []) + ([.expect // [] | .[] | .tick? // empty] | flatten)) | map(tonumber? // empty) | unique | map(tostring) | join(",")' "$PROJECT_ROOT/$script" 2>/dev/null || true)"
     [ -z "$ticks" ] && ticks="8,60,120,180,240,300"
-    dir="$(mktemp -d)"
+    dir="$(mktemp -d "${TMPDIR:-/tmp}/sparta-check.XXXXXX")"
     info "Scanning $script at ticks $ticks"
     # Same grading as the CI step: a failed dump and an unusable-input analyzer exit
     # (rc 2) WARN rather than fail -- absence of data is not a defect -- and only a
@@ -1505,7 +1505,7 @@ check_demo_defects() {
       fi
       ticks="$(jq -r '((.state // []) + ([.expect // [] | .[] | .tick? // empty] | flatten)) | map(tonumber? // empty) | unique | map(tostring) | join(",")' "$PROJECT_ROOT/$sidecar" 2>/dev/null || true)"
       [ -z "$ticks" ] && ticks="8,60,120,180,240,300"
-      dir="$(mktemp -d)"
+      dir="$(mktemp -d "${TMPDIR:-/tmp}/sparta-check.XXXXXX")"
       info "Scanning $replay (via $sidecar) at ticks $ticks"
       rc=0
       run_bounded "$DUMP_TIMEOUT" \
