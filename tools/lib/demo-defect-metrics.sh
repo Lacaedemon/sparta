@@ -45,10 +45,17 @@ demo_clip_script_source() {
         printf '%s' "$tree/$SOURCE"
         return 0
       fi
-      sidecar="$tree/${SOURCE%.json}.defects.json"
-      if [ -f "$sidecar" ]; then
-        printf '%s' "$sidecar"
-      fi
+      # ${SOURCE%.json} is a no-op on a SOURCE that does not end in .json, which would
+      # otherwise let this silently build (and possibly match) a bogus sidecar path
+      # instead of correctly reporting the row as having none. Require the suffix.
+      case "$SOURCE" in
+        *.json)
+          sidecar="$tree/${SOURCE%.json}.defects.json"
+          if [ -f "$sidecar" ]; then
+            printf '%s' "$sidecar"
+          fi
+          ;;
+      esac
       return 0
     fi
   done

@@ -1,5 +1,0 @@
-{
-  "_comment": "Sidecar for the replay clip demos/showcase.json -- declares this clip's expect/defect_exemptions for the DemoDefects analyzer. DemoRunner ignores this file; only tools/demo/analyze_transcript.gd reads it, via --script. See demos/README.md's Sidecar declarations section. No exemptions are declared yet; add one only backed by a measured worst/threshold reading.",
-  "expect": [],
-  "defect_exemptions": {}
-}

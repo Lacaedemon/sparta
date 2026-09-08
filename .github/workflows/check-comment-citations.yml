@@ -63,3 +63,9 @@ jobs:
           SPARTA_CHECK_COMMENTS_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: tools/check.sh file_length
 
+      - name: Run tools/lib shell unit tests
+        # Not diff-scoped: every tools/lib/tests/test-*.sh runs every time, the same
+        # way `lint` runs over the whole tracked *.gd tree. No Godot needed, so this
+        # job (already Godot-free) is the natural home for it.
+        run: tools/check.sh shell_tests
+

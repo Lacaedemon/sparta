@@ -561,9 +561,27 @@ shared shell helper (`tools/lib/demo-defect-metrics.sh`'s `demo_clip_script_sour
 hands it to the analyzer via `--script` for a replay row only when the file exists in the
 tree, so a replay clip without one behaves exactly as before -- no `expect` or
 `defect_exemptions` is applied, and both are optional even once the file exists.
-`demos/showcase.defects.json` ships with both keys empty as a starter; add an
-exemption only once you have a measured worst/threshold reading to quote in its
-`reason`.
+
+No sidecar ships as an empty starter for `demos/showcase.json` or any other clip: an
+empty sidecar changes no verdict but adds a new file every manifest-less PR's fallback
+scan has to read, so create one only when a clip actually has an `expect` or
+`defect_exemptions` declaration to make, quoting a measured worst/threshold reading in
+any exemption's `reason`.
+
+`tools/check.sh demo_defects` gates a changed sidecar locally the same way it gates a
+changed input script: it shape-checks the file (`expect` absent or an array,
+`defect_exemptions` absent or an object -- a shape failure fails the check, since a
+malformed declaration silently disables every metric for the clip) and, when this tree
+carries `tools/demo/DemoStateSink.gd`, also drives the paired replay through
+`DemoRunner.tscn`/`SPARTA_DEMO_REPLAY` for a FULL state dump and runs the analyzer
+against it, exactly like the input-script loop. On a tree without `DemoStateSink.gd`,
+the sidecar is shape-validated locally only; the analyzer pass for a replay sidecar
+runs in CI's sweep instead.
+
+In a per-PR delta run (`tools/ci/website-demo-defect-delta.sh`), the PR tree's sidecar
+declarations are applied to BOTH sides' transcripts -- the same "join the scan on both
+sides" rule input scripts already follow -- so a sidecar added on a PR also shapes the
+main-side verdict in that PR's diff.
 
 ### Per-tick hash stream (`hash_stream.jsonl`)
 
