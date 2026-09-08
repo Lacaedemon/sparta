@@ -139,14 +139,15 @@ jobs:
       - name: Install GUT into the base-tip tree
         # The base-tip tree's own test/*.gd files extend GutTest, so GUT must be present
         # there before its import (below) can resolve that class -- same reason the
-        # composite action vendors GUT into THIS tree above. GUT_VERSION is read back from
-        # that action's own output (its pin, whether that's an input override or its
-        # default) rather than hand-copied here, so both trees stay on one source of truth.
-        env:
-          GUT_VERSION: ${{ steps.setup-godot.outputs.gut-version }}
+        # composite action vendors GUT into THIS tree above. That action's own clone at
+        # /tmp/gut is reused rather than re-cloned (a second clone into the same path
+        # fails outright), so both trees get the identical pinned GUT checkout.
         run: |
           set -euo pipefail
-          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
+          if [ ! -d /tmp/gut/addons/gut ]; then
+            echo "::error::expected the setup-godot-project action's GUT clone at /tmp/gut"
+            exit 1
+          fi
           mkdir -p /tmp/base-tip/addons
           rm -rf /tmp/base-tip/addons/gut
           cp -r /tmp/gut/addons/gut /tmp/base-tip/addons/gut
