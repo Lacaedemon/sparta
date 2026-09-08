@@ -582,6 +582,61 @@ and #1227 -- the third where a Jules PUSH damaged content, since #1227 is the
 same bot's non-response failure mode rather than a push, and the first whose
 failure shape the existing checks miss.)
 
+See "Re-home a Jules Bolt PR before its first fix round" below -- #1529 repeated this
+failure shape twice in one day, and #1533 turned it into a standing re-homing policy
+rather than a per-PR trial-merge check.
+
+## Re-home a Jules Bolt PR before its first fix round
+
+The section above describes the mechanism: `google-labs-jules[bot]` re-pushes its
+regenerated diff onto its own PR branch after every review round, and the trial-merge
+check cannot see what that push drops because the dropped content never reached `main`.
+On #1529 (2026-09-04) the bot did this twice in one day.
+The first push, `3735a5f2` at 06:02Z, reverted `demos/demo.1529.json`,
+`demos/inputs/subcommander-flank-cover.json`, and the reviewed changes to
+`scripts/Subcommander.gd` and `scripts/Unit.gd`.
+The boundary tests (`test/unit/test_subcommander.gd`, `test/unit/test_unit.gd`) and the
+`SQRT_SKIP_BAND` fix Copilot had asked for were both added AFTER that push, in
+`c6901ece` at 06:33Z.
+The second push, `b10ac13b` at 07:35Z, reverted the manifest, the clip, both scripts, a
+`demos/shots/` PNG, and both test files.
+#1529's two pushes are the fifth and sixth `google-labs-jules[bot]` incidents in this
+file, and the fourth and fifth where a push damaged content -- after #1176, #1194,
+#1227 (non-push), and #1255 (the fourth incident, the third push-damage one).
+The ARDI loop cannot converge on such a branch: every fix round triggers a review,
+every review triggers a bot push, and the push discards the round's work.
+#1533 adopted re-homing as repo policy.
+
+An agent that picks up a Bolt PR re-homes it before the first fix round, cutting a
+branch from the bot's head and opening a replacement PR:
+
+```bash
+BOT_PR=1529                      # the bot's PR number
+NEW_BRANCH=fix/1529-rehomed      # the agent-owned branch that replaces it
+git fetch origin "pull/$BOT_PR/head:$NEW_BRANCH"
+git push -u origin "$NEW_BRANCH"
+echo "Replaces #$BOT_PR (google-labs-jules[bot]); the review threads stay on that PR." > body.md
+gh pr create -R Lacaedemon/sparta --head "$NEW_BRANCH" --base main \
+  --title "<same title as the bot PR>" \
+  --body-file body.md   # say it replaces #$BOT_PR and that the review threads stay on that PR
+NEW_PR=$(gh pr view "$NEW_BRANCH" -R Lacaedemon/sparta --json number --jq .number)
+gh pr close "$BOT_PR" -R Lacaedemon/sparta \
+  --comment "Re-homed to #$NEW_PR -- google-labs-jules[bot] re-pushes over review rounds on its own branch (see #1533)."
+```
+
+- **Do:** cut a branch from the bot PR's head,
+  open a replacement PR crediting the bot PR in its body,
+  close the bot's PR with a comment pointing at the replacement,
+  and only then start ARDI.
+
+- **Don't:** push a fix commit to a branch owned by
+  `google-labs-jules[bot]` --
+  the bot's next re-push discards it.
+
+The `gia`/`ardia` briefs that should apply this same re-homing policy live in
+`Morrison-Lab/ai-config`, not this repo; that cross-repo half of #1533 is
+tracked in Morrison-Lab/ai-config.
+
 ## A guard test's fixture goes vacuous when two DERIVED counts coincide by accident
 
 This file already documents a guard test that is vacuous only under full-suite ordering (a
