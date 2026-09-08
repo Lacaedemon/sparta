@@ -617,7 +617,7 @@ git fetch origin "pull/$BOT_PR/head:$NEW_BRANCH"
 git push -u origin "$NEW_BRANCH"
 gh pr create -R Lacaedemon/sparta --head "$NEW_BRANCH" --base main \
   --title "<same title as the bot PR>" \
-  --body "Replaces #$BOT_PR (google-labs-jules[bot]); carries its review history."
+  --body-file body.md   # say it replaces #$BOT_PR and that the review threads stay on that PR
 NEW_PR=$(gh pr view "$NEW_BRANCH" -R Lacaedemon/sparta --json number --jq .number)
 gh pr close "$BOT_PR" -R Lacaedemon/sparta \
   --comment "Re-homed to #$NEW_PR -- google-labs-jules[bot] re-pushes over review rounds on its own branch (see #1533)."
