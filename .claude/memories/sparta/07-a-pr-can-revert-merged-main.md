@@ -611,13 +611,16 @@ An agent that picks up a Bolt PR re-homes it before the first fix round, cutting
 branch from the bot's head and opening a replacement PR:
 
 ```bash
-git fetch origin pull/<N>/head:<new-branch>
-git push -u origin <new-branch>
-gh pr create -R Lacaedemon/sparta --head <new-branch> --base main \
-  --title "<title>" \
-  --body "Replaces #<N> (google-labs-jules[bot]); carries its review history."
-gh pr close <N> -R Lacaedemon/sparta \
-  --comment "Re-homed to #<new-pr-number> -- google-labs-jules[bot] re-pushes over review rounds on its own branch (see #1533)."
+BOT_PR=1529                      # the bot's PR number
+NEW_BRANCH=fix/1529-rehomed      # the agent-owned branch that replaces it
+git fetch origin "pull/$BOT_PR/head:$NEW_BRANCH"
+git push -u origin "$NEW_BRANCH"
+gh pr create -R Lacaedemon/sparta --head "$NEW_BRANCH" --base main \
+  --title "<same title as the bot PR>" \
+  --body "Replaces #$BOT_PR (google-labs-jules[bot]); carries its review history."
+NEW_PR=$(gh pr view "$NEW_BRANCH" -R Lacaedemon/sparta --json number --jq .number)
+gh pr close "$BOT_PR" -R Lacaedemon/sparta \
+  --comment "Re-homed to #$NEW_PR -- google-labs-jules[bot] re-pushes over review rounds on its own branch (see #1533)."
 ```
 
 - **Do:** cut a branch from the bot PR's head,
