@@ -12,6 +12,7 @@ runner." Two complementary pieces cover the gap:
 
 1. **This directory** -- a benchmark you run **locally, by hand, on the actual reference
    hardware** to check the real 60fps target. This is the ground-truth check.
+
 2. **`.github/workflows/benchmark.yml`** -- a CI-only **relative regression check**.
    Its primary comparison is a PR's head against the base branch's own tip,
    both measured in the same run,
@@ -29,16 +30,20 @@ runner." Two complementary pieces cover the gap:
   for a warmup window, then times N physics ticks with `Time.get_ticks_usec()` and writes a
   JSON report. Mirrors the shape of `tools/demo/DemoRunner.gd`, but measures timing instead of
   recording video.
+
 - `BenchmarkStats.gd` -- pure aggregation (mean/p95/min/max, soldier-count scaling). Unit-tested
   in `test/unit/test_benchmark_stats.gd`; the live battle-driving part of the runner isn't
   unit-testable (same reason `DemoInputRecorder.gd`'s scene-driving isn't -- it needs a real
   battle instance), so it's verified by actually running the benchmark (below).
+
 - `run-benchmark.sh` -- wrapper, mirrors `tools/demo/dump-state.sh`'s shape (`GODOT_BIN` env var,
   headless invocation, human-readable summary printed at the end).
+
 - `baseline.json` -- the CI-runner baseline `benchmark.yml` compares against as a secondary,
   informational check
   (its primary check is against the base branch's own tip, measured in the same run).
   **Not** the reference-PC target -- see its header comment.
+
 - `../../benchmarks/scenarios/large-battle.json` -- the reference scenario (see below for why it
   lives outside `demos/`).
 
