@@ -543,7 +543,8 @@ CI runs this scan on every PR demo (the demo workflow's "Demo defect scan" step,
 script's own `expect` assertions included) and appends the verdict table to the posted
 state-transcript comment; a failing verdict fails the job **after** the GIF and transcript
 publish, so the artifacts you need to debug are always there. Run it pre-push with
-`tools/check.sh demo_defects` -- it scans exactly the input scripts your diff adds or edits.
+`tools/check.sh demo_defects` -- it scans exactly the input scripts and replay sidecars
+(`demos/*.defects.json`, below) your diff adds or edits.
 
 ### Sidecar declarations for a replay clip (`<name>.defects.json`)
 
@@ -557,7 +558,8 @@ carries a **sidecar file** instead:
 same directory as the replay, same basename, `.defects.json` in place of `.json`.
 `demos/showcase.json` pairs with `demos/showcase.defects.json`.
 
-The sidecar holds exactly the two keys documented above, with the identical schema.
+The sidecar holds the two keys documented above, with the identical schema;
+the analyzer reads only those two, so a `_comment` key is tolerated and ignored.
 It is otherwise structurally unrelated to a replay file, and `DemoRunner` never reads it.
 The shared shell helper (`tools/lib/demo-defect-metrics.sh`'s `demo_clip_script_source()`)
 hands it to the analyzer via `--script` for a replay row only when the file exists in the tree,
