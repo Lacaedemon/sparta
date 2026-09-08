@@ -1,4 +1,4 @@
 {
-  "skip": true,
-  "reason": "Exemption-only change: dropped a stale shape_residual exemption on uid 5 in demos/inputs/cycle-charge.json (it now passes unexempted, 5.04wu against the 6.75wu floor) and added a new shape_residual exemption on uid 8 (team 1's own cavalry, worst 118.2wu against the 30.0wu floor -- an unfixed sustained AI-chase-retarget artifact on a deep block that never reaches melee, not a formation-code defect). No scripts/ or scenes/ changed, so the clip's own behaviour is identical to what the existing cycle-charge.json manifest already shows -- there is nothing new to record."
+  "input": "demos/inputs/cycle-charge.json",
+  "caption": "cycle_charge unchanged in play: team 1's own cavalry (uid 8) never reaches melee and is re-rotated by the AI's target switches at ticks ~600 and ~1200, so its block never finishes re-squaring; that reading is now a declared exemption with measured numbers and uid 5's stale exemption is gone, so CI's defect scan prints its own verdicts for the clip."
 }
