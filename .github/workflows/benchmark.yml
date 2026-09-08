@@ -116,6 +116,15 @@ jobs:
           if [ "$EARLY_STOP" = "true" ]; then
             echo "::warning::benchmark run ended early (see the run's own warnings above); results may be partial."
           fi
+          # A report with no samples (or a non-positive mean) cannot feed the percent-change
+          # math below without dividing by zero, so refuse it here with a named cause rather
+          # than letting the comparison step emit nan/inf into the PR comment.
+          SAMPLES_HERE=$(jq -r '.samples_collected // 0' /tmp/benchmark-current.json)
+          MEAN_HERE=$(jq -r '.stats.mean_ms // 0' /tmp/benchmark-current.json)
+          if [ "$SAMPLES_HERE" -le 0 ] || ! awk -v m="$MEAN_HERE" 'BEGIN { exit (m > 0) ? 0 : 1 }'; then
+            echo "::error::benchmark report has no usable samples (samples_collected=$SAMPLES_HERE, mean_ms=$MEAN_HERE)"
+            exit 1
+          fi
 
       - name: Resolve base tip and check out its tree
         id: base-tip
@@ -196,6 +205,15 @@ jobs:
           EARLY_STOP=$(jq -r '.early_stop' /tmp/benchmark-base.json)
           if [ "$EARLY_STOP" = "true" ]; then
             echo "::warning::base-tip benchmark run ended early (see the run's own warnings above); results may be partial."
+          fi
+          # A report with no samples (or a non-positive mean) cannot feed the percent-change
+          # math below without dividing by zero, so refuse it here with a named cause rather
+          # than letting the comparison step emit nan/inf into the PR comment.
+          SAMPLES_HERE=$(jq -r '.samples_collected // 0' /tmp/benchmark-base.json)
+          MEAN_HERE=$(jq -r '.stats.mean_ms // 0' /tmp/benchmark-base.json)
+          if [ "$SAMPLES_HERE" -le 0 ] || ! awk -v m="$MEAN_HERE" 'BEGIN { exit (m > 0) ? 0 : 1 }'; then
+            echo "::error::base-tip benchmark report has no usable samples (samples_collected=$SAMPLES_HERE, mean_ms=$MEAN_HERE)"
+            exit 1
           fi
 
       - name: Compare and build comment
