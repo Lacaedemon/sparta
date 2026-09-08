@@ -32,7 +32,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../demo-defect-metrics.sh
 . "$SCRIPT_DIR/../demo-defect-metrics.sh"
 
-TREE="$(mktemp -d)"
+# A template is required for BSD mktemp (macOS) -- unlike GNU mktemp, it
+# doesn't default to one when called as `mktemp -d` with no arguments.
+TREE="$(mktemp -d "${TMPDIR:-/tmp}/demo-defect-metrics.XXXXXX")"
 trap 'rm -rf "$TREE"' EXIT
 
 mkdir -p "$TREE/demos/inputs"

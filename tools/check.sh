@@ -1364,9 +1364,13 @@ check_shell_tests() {
   local dir="$PROJECT_ROOT/tools/lib/tests"
   local files=()
   if [ -d "$dir" ]; then
-    while IFS= read -r -d '' f; do
+    # Newline-delimited, not null-delimited + `sort -z` -- `sort -z` is a GNU
+    # extension absent from the BSD sort macOS ships, and test file names never
+    # contain whitespace, so the null-safety a -print0/-z pipeline buys elsewhere
+    # in this script isn't needed here.
+    while IFS= read -r f; do
       files+=("$f")
-    done < <(find "$dir" -maxdepth 1 -name 'test-*.sh' -print0 | sort -z)
+    done < <(find "$dir" -maxdepth 1 -name 'test-*.sh' -print | sort)
   fi
   if [ ${#files[@]} -eq 0 ]; then
     info "No shell tests in tools/lib/tests -- nothing to run."
@@ -1448,6 +1452,7 @@ check_demo_defects() {
     if ! SPARTA_DEMO_STATE_FULL=1 \
          "$PROJECT_ROOT/tools/demo/dump-state.sh" "$script" "$ticks" "$dir" >/dev/null 2>&1; then
       warn "State dump failed for $script -- skipping its scan (CI warns the same way)."
+      rm -rf "$dir"
       continue
     fi
     # The script always goes in: it carries both the declared `expect` assertions
@@ -1466,6 +1471,7 @@ check_demo_defects() {
     elif [ "$rc" -ne 0 ]; then
       warn "Defect scan input unusable for $script (rc=$rc); nothing gated."
     fi
+    rm -rf "$dir"
   done <<< "$changed"
 
   if [ -n "$changed_sidecars" ]; then
@@ -1509,10 +1515,12 @@ check_demo_defects() {
           res://tools/demo/DemoRunner.tscn >/dev/null 2>&1 || rc=$?
       if run_bounded_timed_out "$rc"; then
         warn "State dump timed out after ${DUMP_TIMEOUT}s for $replay and was killed (no orphan left behind) -- skipping its scan."
+        rm -rf "$dir"
         continue
       fi
       if [ "$rc" -ne 0 ]; then
         warn "State dump failed for $replay -- skipping its scan (CI warns the same way)."
+        rm -rf "$dir"
         continue
       fi
       rc=0
@@ -1527,6 +1535,7 @@ check_demo_defects() {
       elif [ "$rc" -ne 0 ]; then
         warn "Defect scan input unusable for $replay (rc=$rc); nothing gated."
       fi
+      rm -rf "$dir"
     done <<< "$changed_sidecars"
   fi
 
