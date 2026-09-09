@@ -164,6 +164,19 @@ var show_position_anchor: bool = false:
 			_save()
 			changed.emit()
 
+# Fog of war: hide every enemy unit outside all of your own units' sight radii and draw a
+# fading ghost marker where each was last seen (Battle._tick_fog / Perception.gd). A
+# rendering layer only -- the simulation, targeting, and replays are identical either
+# way. Default off, so every existing demo, replay, and test renders exactly as before.
+var fog_of_war: bool = false:
+	set(value):
+		if value == fog_of_war:
+			return
+		fog_of_war = value
+		if not _loading:
+			_save()
+			changed.emit()
+
 # Frame-rate counter: display Engine.get_frames_per_second() in a HUD corner. Handy for
 # spotting perf regressions. Default off -- most players don't want it as permanent clutter.
 var show_fps: bool = false:
@@ -299,6 +312,16 @@ func set_show_soldier_ids_session(value: bool) -> void:
 	_loading = was_loading
 
 
+## Set fog_of_war for this run only -- no persist to disk, no `changed` signal (same
+## _load()-guard trick as set_sfx_enabled_session above). A demo input script or a test can
+## fog its battle without rewriting a developer's saved preference.
+func set_fog_of_war_session(value: bool) -> void:
+	var was_loading := _loading
+	_loading = true
+	fog_of_war = value
+	_loading = was_loading
+
+
 ## Set show_unit_card_tray for this run only -- no persist to disk, no `changed` signal
 ## (same _load()-guard trick as set_sfx_enabled_session above). A demo input script can
 ## show the tray in its recording without rewriting a developer's saved preference.
@@ -363,6 +386,7 @@ func _to_storage_dict() -> Dictionary:
 		"show_soldier_ids": show_soldier_ids,
 		"show_engaged_highlight": show_engaged_highlight,
 		"show_position_anchor": show_position_anchor,
+		"fog_of_war": fog_of_war,
 		"show_fps": show_fps,
 		"show_performance_graph": show_performance_graph,
 		"show_unit_card_tray": show_unit_card_tray,
@@ -387,6 +411,7 @@ func _load(path: String = SAVE_PATH) -> void:
 	show_soldier_ids = loaded.get("show_soldier_ids", show_soldier_ids)
 	show_engaged_highlight = loaded.get("show_engaged_highlight", show_engaged_highlight)
 	show_position_anchor = loaded.get("show_position_anchor", show_position_anchor)
+	fog_of_war = loaded.get("fog_of_war", fog_of_war)
 	show_fps = loaded.get("show_fps", show_fps)
 	show_performance_graph = loaded.get("show_performance_graph", show_performance_graph)
 	show_unit_card_tray = loaded.get("show_unit_card_tray", show_unit_card_tray)

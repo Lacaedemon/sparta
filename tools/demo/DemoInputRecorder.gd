@@ -139,6 +139,10 @@ func _ready() -> void:
 	# `position`, the regiment's own kinematic point) visible requests it here.
 	if script.get("show_position_anchor", false):
 		Settings.set_show_position_anchor_session(true)
+	# Same session-only pattern: a demo that wants fog of war on from tick 0 (rather than
+	# toggled mid-clip with a scripted F7 keypress) requests it here.
+	if script.get("fog_of_war", false):
+		Settings.set_fog_of_war_session(true)
 	# Deterministic seed so the recorded battle is reproducible run to run.
 	Replay.forced_seed = int(str(script.get("seed", "12345")))
 	# camera/frames/state go through script_array so a non-array typo degrades that one

@@ -1,0 +1,56 @@
+{
+  "_comment": "Fog of war toggled mid-battle (seed 20414, whole field in view). Staged: the player's Cavalry (uid 1, at 500,300, mounted sight 21 m = 420 wu), an enemy Infantry block 240 wu south of it (uid 2, inside the cavalry's sight) and an enemy Archers block far away in the south-east corner (uid 3, outside every friendly disc). Tick 90: F7 switches fog on -- the far Archers vanish, the near Infantry stays, and the FOG OF WAR indicator appears under the order-mode banner. Tick 150/170: select the Cavalry and order it to the north-west corner; it sprints away while the Infantry plods after it, so the gap opens past 420 wu and the Infantry drops out of sight, leaving a red ghost outline (at the last-seen spot and facing) that fades over the next ten seconds. Tick 840: F7 switches fog off again -- both enemies reappear where they actually are, and the ghost goes. Driven live through the real HUD/SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "20414",
+  "camera": [
+    {
+      "tick": 0,
+      "x": 800.0,
+      "y": 600.0,
+      "zoom": 0.5
+    }
+  ],
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Cavalry",
+      "x": 500,
+      "y": 300
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 500,
+      "y": 540
+    },
+    {
+      "team": 1,
+      "type": "Archers",
+      "x": 1250,
+      "y": 1000
+    }
+  ],
+  "steps": [
+    {
+      "tick": 90,
+      "key": "F7"
+    },
+    {
+      "tick": 150,
+      "click": [
+        500,
+        300
+      ]
+    },
+    {
+      "tick": 170,
+      "rmb_click": [
+        140,
+        80
+      ]
+    },
+    {
+      "tick": 840,
+      "key": "F7"
+    }
+  ]
+}

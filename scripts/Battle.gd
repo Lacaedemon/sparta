@@ -12,6 +12,8 @@ const CustomMatchup = preload("res://scripts/CustomMatchup.gd")
 const FactionRef = preload("res://scripts/Faction.gd")
 const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 const BattleMapRef = preload("res://scripts/BattleMap.gd")
+const PerceptionRef = preload("res://scripts/Perception.gd")
+const FogGhostLayerRef = preload("res://scripts/FogGhostLayer.gd")
 
 ## Signals emitted for battle-significant events
 signal tide_of_battle_changed(stronger_team: int)
@@ -393,6 +395,27 @@ var drill_mode: bool = false
 # test can force it. Off = the normal team-0-vs-AI battle.
 var all_teams_control: bool = false
 
+# Fog of war (Settings.fog_of_war; Perception.gd). Per-battle sight scale every unit's
+# type multiplier applies to (Unit.sight_multiplier): a quarter of the default field's
+# short side, so a foot unit sees a quarter of the way across the field. A gameplay
+# legibility parameter, not an eyesight claim. Settable BEFORE the node enters the tree
+# (like ai_period above) -- _spawn_unit reads it when it sizes each unit's sight_range,
+# and a battle on a non-default `field` sets its own scale alongside it.
+var sight_scale: float = 0.25 * minf(FIELD.size.x, FIELD.size.y)
+# Ticks after which a remembered enemy contact counts as stale: the ghost marker has
+# fully faded by then (FogGhostLayer.stale_ticks). 10 s of sim time; settable before
+# _ready.
+var contact_stale_ticks: int = 10 * Replay.PHYSICS_TPS
+# Whose view the screen shows under fog: the player's team.
+var fog_team: int = 0
+# The fog team's last-known table (Perception.record_contacts's shape, keyed by enemy
+# uid), the enemy uids it saw on the last fog pass, whether that pass hid anything (so a
+# switch-off knows to restore every unit), and the ghost-marker layer.
+var _fog_contacts: Dictionary = {}
+var _fog_seen: Dictionary = {}
+var _fog_active: bool = false
+var _fog_ghosts: Node2D = null
+
 # Custom demo matchup (tooling): a list of unit specs the demo recorder can set from an input
 # script's "scenario" field BEFORE the node enters the tree, to stage a specific fight (a weak
 # unit that will rout, an enemy placed off a unit's flank, cavalry vs a target). Empty = the
@@ -509,6 +532,12 @@ func _ready() -> void:
 			and UnitRef.NUDGE_BACK == NudgeDir.BACK \
 			and UnitRef.NUDGE_FORWARD == NudgeDir.FORWARD,
 			"Unit nudge-direction mirror constants are out of sync with Battle.NudgeDir")
+	# Ghost markers for remembered enemy contacts under fog of war. Always present so the
+	# toggle can flip mid-battle; it draws nothing until _tick_fog hands it a contact.
+	_fog_ghosts = FogGhostLayerRef.new()
+	_fog_ghosts.name = "FogGhosts"
+	_fog_ghosts.stale_ticks = contact_stale_ticks
+	add_child(_fog_ghosts)
 
 	# Fresh per-battle snapshot cache (never reused across a scene reload -- a stale cache
 	# from a previous instance would key snapshots to freed Unit nodes). Built from
@@ -1020,6 +1049,8 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.anti_cavalry = d["anti_cav"]
 	u.is_cavalry = d["cav"]
 	u.is_ranged = d.get("ranged", false)
+	# Fog-of-war sight, from this battle's scale and the type flags just set above.
+	u.sight_range = sight_scale * u.sight_multiplier()
 	u.max_soldiers = d["soldiers"]
 	u.attack = d["atk"]
 	u.defense = d["def"]
@@ -1583,9 +1614,62 @@ func _physics_process(delta: float) -> void:
 			_run_enemy_ai()
 		_run_player_delegated_ai()
 
+	# Fog of war is a rendering pass over the finished tick, after every sim step above.
+	_tick_fog()
 	_check_victory()
 	_evaluate_battle_event_signals()
 	_tick += 1
+
+
+## Fog of war: with Settings.fog_of_war on (and not under all-teams control, where the
+## tester drives both armies and must see both), the fog team's units each perceive a
+## disc, every enemy outside all of them is hidden by CanvasItem.visible, and each enemy's
+## last sighting is kept for the ghost layer. Nothing here is read by the simulation --
+## group membership, targeting, collision, and the replay are untouched -- so a fogged and
+## an unfogged run of one seed stay byte-identical. Switching fog off restores every unit
+## and clears the markers; the contact table itself is kept, so switching back on
+## remembers what was seen before.
+func _tick_fog() -> void:
+	var on: bool = Settings.fog_of_war and not all_teams_control
+	if not on:
+		if _fog_active:
+			_fog_active = false
+			_fog_seen = {}
+			for u in _fog_units_in_play():
+				u.visible = true
+			_fog_ghosts.clear()
+		return
+	_fog_active = true
+	var units: Array = _fog_units_in_play()
+	_fog_seen = PerceptionRef.visible_enemy_uids(fog_team, units)
+	PerceptionRef.record_contacts(_fog_contacts, units, _fog_seen, _tick)
+	for u in units:
+		u.visible = u.team == fog_team or _fog_seen.has(u.uid)
+	_fog_ghosts.update(_fog_contacts, _fog_seen, _tick)
+
+
+## Every unit fog can hide or observe from: the live "units" plus the fleeing "routers"
+## (a router still renders and still, with a penalty, observes -- see
+## Perception.observer_range).
+func _fog_units_in_play() -> Array:
+	var units: Array = []
+	for group in ["units", "routers"]:
+		for node in get_tree().get_nodes_in_group(group):
+			var u := node as UnitRef
+			if u != null:
+				units.append(u)
+	return units
+
+
+## The enemy uids the fog team saw on the last fog pass (empty while fog is off).
+func fog_visible_uids() -> Dictionary:
+	return _fog_seen
+
+
+## The fog team's last-known enemy contacts (Perception.record_contacts's shape), kept
+## across toggles.
+func fog_contacts() -> Dictionary:
+	return _fog_contacts
 
 
 ## Per-tick orchestration of the parallel individual-soldier layer (connected to

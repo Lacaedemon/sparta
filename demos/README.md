@@ -233,6 +233,11 @@ script under `demos/inputs/`:
   for the recording, without touching a developer's saved settings. Off by default; set
   `"show_position_anchor": true` for a demo specifically about how `position` tracks (or
   doesn't track) the block.
+- `fog_of_war` (optional bool, default `false`) -- session-only: starts the recording with
+  fog of war on (`Settings.fog_of_war`: enemies outside every friendly unit's sight radius
+  are hidden and leave a fading ghost marker where they were last seen), without touching
+  a developer's saved settings. Leave it off and script a `{"key": "F7"}` step instead when
+  the demo is about the toggle itself.
 - `scenario` (optional) -- **stage a custom matchup** instead of the default 5v5 lines, so a
   demo can show a *specific* fight the default battle won't produce on its own (a weak unit
   that routs, an enemy placed off a unit's flank, cavalry vs a single target). A list of unit

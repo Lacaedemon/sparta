@@ -1,0 +1,292 @@
+extends GutTest
+## Fog of war: the Perception visibility query and last-known table (pure functions over
+## unit state), Unit's type-derived sight defaults, the off-by-default Settings toggle,
+## and Battle's rendering pass -- which hides unseen enemies by CanvasItem.visible, never
+## touches the simulation (a fogged and an unfogged run of one seed match unit for unit),
+## restores everything when switched off, and stays off under all-teams control.
+
+const Perception = preload("res://scripts/Perception.gd")
+const FogGhostLayer = preload("res://scripts/FogGhostLayer.gd")
+const WorldScale = preload("res://scripts/WorldScale.gd")
+
+# One foot unit's sight radius on the default battle: Unit.DEFAULT_SIGHT_SCALE x SIGHT_FOOT.
+const FOOT_SIGHT: float = 15.0 * WorldScale.WU_PER_M
+
+# A near enemy (inside foot sight of the friendly), a far one (outside every disc), and
+# the friendly observer. Coordinates are well inside the default 1600x1200 field.
+const FRIENDLY_POS := Vector2(400.0, 300.0)
+const NEAR_ENEMY_POS := Vector2(400.0, 500.0)    # 200 wu away: seen
+const FAR_ENEMY_POS := Vector2(1200.0, 900.0)    # ~1000 wu away: unseen
+
+
+func after_each() -> void:
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = -1
+	Replay.reset()
+
+
+## A bare (out-of-tree) unit with just the fields Perception reads.
+func _unit(uid: int, team: int, pos: Vector2, sight: float = FOOT_SIGHT) -> Unit:
+	var u: Unit = autofree(Unit.new())
+	u.uid = uid
+	u.team = team
+	u.position = pos
+	u.sight_range = sight
+	u.facing = Vector2.DOWN
+	u.soldiers = 100
+	return u
+
+
+# --- Perception.perceives ------------------------------------------------------------
+
+
+func test_perceives_inside_range_and_on_the_boundary_but_not_beyond() -> void:
+	var o := Vector2(100.0, 100.0)
+	assert_true(Perception.perceives(o, 50.0, o + Vector2(30.0, 0.0)), "inside the disc")
+	assert_true(Perception.perceives(o, 50.0, o + Vector2(50.0, 0.0)), "on the boundary (inclusive)")
+	assert_false(Perception.perceives(o, 50.0, o + Vector2(50.001, 0.0)), "just beyond")
+	assert_false(Perception.perceives(o, 0.0, o), "a zero sight range sees nothing, not even itself")
+
+
+# --- Perception.visible_enemy_uids ---------------------------------------------------
+
+
+func test_visible_enemy_uids_holds_only_enemies_inside_some_friendly_disc() -> void:
+	var friendly := _unit(1, 0, FRIENDLY_POS)
+	var near := _unit(2, 1, NEAR_ENEMY_POS)
+	var far := _unit(3, 1, FAR_ENEMY_POS)
+	var other_friendly := _unit(4, 0, Vector2(600.0, 300.0))
+	var seen: Dictionary = Perception.visible_enemy_uids(0, [friendly, near, far, other_friendly])
+	assert_true(seen.has(near.uid), "an enemy inside a friendly sight disc is visible")
+	assert_false(seen.has(far.uid), "an enemy outside every friendly disc is not")
+	assert_false(seen.has(other_friendly.uid), "friendlies never appear in the enemy set")
+	assert_false(seen.has(friendly.uid), "the observer itself never appears either")
+
+
+func test_visible_enemy_uids_is_per_team() -> void:
+	var friendly := _unit(1, 0, FRIENDLY_POS)
+	var near := _unit(2, 1, NEAR_ENEMY_POS)
+	var seen_by_1: Dictionary = Perception.visible_enemy_uids(1, [friendly, near])
+	assert_true(seen_by_1.has(friendly.uid), "team 1 sees the team-0 unit inside its own disc")
+	assert_false(seen_by_1.has(near.uid), "team 1's own unit is not an enemy to team 1")
+
+
+func test_routing_observer_sees_a_shorter_disc() -> void:
+	var observer := _unit(1, 0, FRIENDLY_POS)
+	# Just inside the full disc, but outside the routing-penalised one.
+	var edge := _unit(2, 1, FRIENDLY_POS + Vector2(0.0, FOOT_SIGHT * 0.9))
+	assert_true(Perception.visible_enemy_uids(0, [observer, edge]).has(edge.uid),
+		"a steady observer sees to its full range")
+	observer.state = Unit.State.ROUTING
+	assert_almost_eq(Perception.observer_range(observer), FOOT_SIGHT * Unit.SIGHT_ROUTING_PENALTY, 0.001,
+		"a routing observer's range is cut by SIGHT_ROUTING_PENALTY")
+	assert_false(Perception.visible_enemy_uids(0, [observer, edge]).has(edge.uid),
+		"and so it no longer sees the enemy near the edge of its full disc")
+
+
+# --- Perception.record_contacts ------------------------------------------------------
+
+
+func test_contact_is_written_on_a_seen_tick_and_untouched_afterwards() -> void:
+	var friendly := _unit(1, 0, FRIENDLY_POS)
+	var enemy := _unit(2, 1, NEAR_ENEMY_POS)
+	var units: Array = [friendly, enemy]
+	var contacts: Dictionary = {}
+	Perception.record_contacts(contacts, units, Perception.visible_enemy_uids(0, units), 10)
+	assert_true(contacts.has(enemy.uid), "seen this tick: an entry is written")
+	assert_eq(contacts[enemy.uid]["tick"], 10, "dated with the sighting tick")
+	assert_eq(contacts[enemy.uid]["position"], NEAR_ENEMY_POS, "at the sighted position")
+	assert_eq(contacts[enemy.uid]["strength"], 100, "with the sighted strength")
+	assert_false(contacts.has(friendly.uid), "friendlies are never recorded")
+	# The enemy walks out of sight and loses men: its entry must not change.
+	enemy.position = FAR_ENEMY_POS
+	enemy.soldiers = 40
+	Perception.record_contacts(contacts, units, Perception.visible_enemy_uids(0, units), 20)
+	assert_eq(contacts[enemy.uid]["tick"], 10, "an unseen enemy's entry keeps its old tick")
+	assert_eq(contacts[enemy.uid]["position"], NEAR_ENEMY_POS, "and its old position")
+	assert_eq(contacts[enemy.uid]["strength"], 100, "and its old strength")
+
+
+func test_contact_survives_the_unit_leaving_play() -> void:
+	var friendly := _unit(1, 0, FRIENDLY_POS)
+	var enemy := _unit(2, 1, NEAR_ENEMY_POS)
+	var contacts: Dictionary = {}
+	Perception.record_contacts(contacts, [friendly, enemy], {enemy.uid: true}, 5)
+	# The enemy dies unobserved: it is simply absent from later unit lists.
+	Perception.record_contacts(contacts, [friendly], Perception.visible_enemy_uids(0, [friendly]), 50)
+	assert_true(contacts.has(enemy.uid), "a unit that dies unobserved keeps its last-known entry")
+
+
+# --- Unit sight defaults ---------------------------------------------------------------
+
+
+func test_unit_sight_range_defaults_by_type_at_ready() -> void:
+	var foot: Unit = autofree(Unit.new())
+	var horse: Unit = autofree(Unit.new())
+	horse.is_cavalry = true
+	var bow: Unit = autofree(Unit.new())
+	bow.is_ranged = true
+	var pinned: Unit = autofree(Unit.new())
+	pinned.sight_range = 123.0   # set before _ready: an explicit value is kept
+	for u in [foot, horse, bow, pinned]:
+		add_child(u)
+	assert_almost_eq(foot.sight_range, Unit.DEFAULT_SIGHT_SCALE * Unit.SIGHT_FOOT, 0.001, "foot baseline")
+	assert_almost_eq(horse.sight_range, Unit.DEFAULT_SIGHT_SCALE * Unit.SIGHT_MOUNTED, 0.001, "mounted sees farthest")
+	assert_almost_eq(bow.sight_range, Unit.DEFAULT_SIGHT_SCALE * Unit.SIGHT_RANGED, 0.001, "ranged sees farther than foot")
+	assert_almost_eq(pinned.sight_range, 123.0, 0.001, "a caller's own sight_range survives _ready")
+	assert_gt(Unit.SIGHT_MOUNTED, Unit.SIGHT_RANGED, "mounted > ranged")
+	assert_gt(Unit.SIGHT_RANGED, Unit.SIGHT_FOOT, "ranged > foot")
+
+
+# --- Settings toggle -------------------------------------------------------------------
+
+
+func test_fog_of_war_setting_is_off_by_default_and_session_setter_is_silent() -> void:
+	assert_false(Settings.fog_of_war, "fog of war is off by default")
+	var fired: Array = []
+	var handler := func() -> void: fired.append(true)
+	Settings.changed.connect(handler)
+	Settings.set_fog_of_war_session(true)
+	assert_true(Settings.fog_of_war, "the session setter flips the value")
+	assert_eq(fired.size(), 0, "without emitting `changed` or persisting")
+	Settings.changed.disconnect(handler)
+
+
+# --- FogGhostLayer fade ----------------------------------------------------------------
+
+
+func test_ghost_alpha_fades_from_fresh_to_stale_and_clamps() -> void:
+	var layer: FogGhostLayer = autofree(FogGhostLayer.new())
+	layer.fresh_alpha = 0.6
+	layer.stale_alpha = 0.2
+	layer.stale_ticks = 100
+	assert_almost_eq(layer.alpha_for_age(0), 0.6, 0.001, "fresh on the sighting tick")
+	assert_almost_eq(layer.alpha_for_age(50), 0.4, 0.001, "halfway through the fade")
+	assert_almost_eq(layer.alpha_for_age(100), 0.2, 0.001, "stale at stale_ticks")
+	assert_almost_eq(layer.alpha_for_age(5000), 0.2, 0.001, "and clamped there, never below")
+
+
+# --- Battle rendering pass ------------------------------------------------------------
+
+
+## A battle staged with one friendly foot unit, one near enemy, and one far enemy.
+func _staged_battle(fog: bool, all_teams: bool = false) -> Node:
+	Settings.set_fog_of_war_session(fog)
+	Replay.forced_seed = 414
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.all_teams_control = all_teams
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": FRIENDLY_POS.x, "y": FRIENDLY_POS.y},
+		{"team": 1, "type": "Infantry", "x": NEAR_ENEMY_POS.x, "y": NEAR_ENEMY_POS.y},
+		{"team": 1, "type": "Infantry", "x": FAR_ENEMY_POS.x, "y": FAR_ENEMY_POS.y},
+	]
+	add_child_autofree(battle)
+	return battle
+
+
+func _units_by_team() -> Dictionary:
+	var out: Dictionary = {0: [], 1: []}
+	for node in get_tree().get_nodes_in_group("units"):
+		var u := node as Unit
+		if u != null:
+			out[u.team].append(u)
+	return out
+
+
+func _enemy_nearest(pos: Vector2) -> Unit:
+	var best: Unit = null
+	for u in _units_by_team()[1]:
+		if best == null or u.position.distance_to(pos) < best.position.distance_to(pos):
+			best = u
+	return best
+
+
+func test_fog_hides_the_far_enemy_and_shows_the_near_one_and_every_friendly() -> void:
+	var battle := _staged_battle(true)
+	for _k in range(3):
+		await get_tree().physics_frame
+	var near := _enemy_nearest(NEAR_ENEMY_POS)
+	var far := _enemy_nearest(FAR_ENEMY_POS)
+	assert_true(near.visible, "an enemy inside the friendly's sight disc renders")
+	assert_false(far.visible, "an enemy outside every friendly disc is hidden")
+	for u in _units_by_team()[0]:
+		assert_true(u.visible, "the player's own units always render")
+	assert_true(battle.fog_visible_uids().has(near.uid), "the visible set names the near enemy")
+	assert_false(battle.fog_visible_uids().has(far.uid), "and not the far one")
+	assert_true(battle.fog_contacts().has(near.uid), "the near enemy has a last-known entry")
+	assert_false(battle.fog_contacts().has(far.uid), "the never-seen far enemy has none")
+	assert_true(far.is_in_group("units"), "a hidden unit stays in the units group -- fog is rendering only")
+	assert_true(battle.get_node("HUD")._fog_label.visible, "the HUD shows the FOG OF WAR indicator")
+	# The hidden enemy's sight_range came from the battle's own scale, not the bare default.
+	assert_almost_eq(far.sight_range, battle.sight_scale * Unit.SIGHT_FOOT, 0.001,
+		"spawned units take their sight from Battle.sight_scale")
+
+
+func test_fog_off_by_default_renders_everything_and_records_nothing() -> void:
+	var battle := _staged_battle(false)
+	for _k in range(3):
+		await get_tree().physics_frame
+	for team in [0, 1]:
+		for u in _units_by_team()[team]:
+			assert_true(u.visible, "with fog off every unit renders")
+	assert_true(battle.fog_visible_uids().is_empty(), "no visible set is computed")
+	assert_true(battle.fog_contacts().is_empty(), "no contact is recorded")
+	assert_false(battle.get_node("HUD")._fog_label.visible, "and the HUD indicator stays hidden")
+
+
+func test_switching_fog_off_mid_battle_restores_every_hidden_unit() -> void:
+	var battle := _staged_battle(true)
+	for _k in range(3):
+		await get_tree().physics_frame
+	var far := _enemy_nearest(FAR_ENEMY_POS)
+	assert_false(far.visible, "hidden while fog is on")
+	Settings.set_fog_of_war_session(false)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	assert_true(far.visible, "restored on the next tick after fog switches off")
+	assert_true(battle.fog_visible_uids().is_empty(), "the visible set is cleared")
+	assert_true(battle.fog_contacts().has(_enemy_nearest(NEAR_ENEMY_POS).uid),
+		"but the contact table is kept, so switching back on remembers the sighting")
+
+
+func test_all_teams_control_disables_fog() -> void:
+	_staged_battle(true, true)
+	for _k in range(3):
+		await get_tree().physics_frame
+	assert_true(_enemy_nearest(FAR_ENEMY_POS).visible,
+		"a tester driving both armies sees both, whatever the setting says")
+
+
+## Per-unit sim state that would diverge first if fog fed back into the simulation.
+func _sim_fingerprint() -> Dictionary:
+	var out: Dictionary = {}
+	for group in ["units", "routers"]:
+		for node in get_tree().get_nodes_in_group(group):
+			var u := node as Unit
+			if u != null:
+				out[u.uid] = [u.position, u.soldiers, u.morale, u.state]
+	return out
+
+
+func test_fog_never_changes_the_simulation() -> void:
+	# The two enemies advance on the friendly under the AI, so this covers movement,
+	# contact, and combat rolls -- everything RNG- and position-driven -- over 3 s.
+	const TICKS := 180
+	var unfogged := _staged_battle(false)
+	for _k in range(TICKS):
+		await get_tree().physics_frame
+	var plain: Dictionary = _sim_fingerprint()
+	unfogged.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	Replay.reset()
+	var fogged := _staged_battle(true)
+	for _k in range(TICKS):
+		await get_tree().physics_frame
+	var foggy: Dictionary = _sim_fingerprint()
+	assert_gt(plain.size(), 0, "the unfogged run has units to compare")
+	assert_eq(foggy.keys(), plain.keys(), "the same units are in play")
+	for uid in plain:
+		assert_eq(foggy[uid], plain[uid], "unit %d matches position/strength/morale/state" % uid)
+	assert_false(fogged.fog_visible_uids().is_empty() and fogged.fog_contacts().is_empty(),
+		"the fog pass actually ran on the fogged battle (it saw or remembered something)")

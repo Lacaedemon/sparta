@@ -42,7 +42,7 @@ enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_CYCLE_ECHELON_RIGHT, MENU_FORMUP_CYCLE_ECHELON_LEFT,
 		MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
 		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_POSITION_ANCHOR, MENU_SHOW_FPS,
-		MENU_PERFORMANCE_GRAPH, MENU_UNIT_CARD_TRAY,
+		MENU_PERFORMANCE_GRAPH, MENU_UNIT_CARD_TRAY, MENU_FOG_OF_WAR,
 		MENU_FPS_CORNER_TOP_LEFT, MENU_FPS_CORNER_TOP_RIGHT, MENU_FPS_CORNER_BOTTOM_LEFT,
 		MENU_FPS_CORNER_BOTTOM_RIGHT, MENU_KEYBINDINGS, MENU_SHORTCUTS,
 		MENU_QUIT_TO_MENU }
@@ -77,6 +77,7 @@ var _paused_label: Label
 var _order_mode_label: Label
 var _flash_label: Label
 var _slowmo_label: Label
+var _fog_label: Label   # "FOG OF WAR" indicator, shown while Settings.fog_of_war is on
 # Live index into SLOWMO_PRESETS; 0 = normal speed. Transient UI state, not persisted --
 # a fresh battle (a fresh HUD instance) always starts at normal speed.
 var _slowmo_index: int = 0
@@ -320,6 +321,20 @@ func _ready() -> void:
 	_slowmo_label.visible = false
 	add_child(_slowmo_label)
 
+	# Persistent fog-of-war indicator, below the slow-motion one: fog hides units, so the
+	# player needs a standing reminder that an empty-looking field may not be empty.
+	# Shown/hidden by _sync_fog_label from Settings.changed.
+	_fog_label = Label.new()
+	_fog_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_fog_label.position = Vector2(-90, 152)
+	_fog_label.custom_minimum_size = Vector2(180, 0)
+	_fog_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_fog_label.add_theme_font_size_override("font_size", 16)
+	_fog_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.7))
+	_fog_label.text = "FOG OF WAR"
+	_fog_label.visible = false
+	add_child(_fog_label)
+
 	# Menu button (top-right) gathering the global options that used to be
 	# scattered across the HUD — restart, replay loading, and the edge-scroll
 	# toggle. Its popup is PROCESS_MODE_ALWAYS so it stays usable while the
@@ -381,6 +396,7 @@ func _ready() -> void:
 	popup.add_check_item("Show frame rate", MENU_SHOW_FPS)
 	popup.add_check_item("Performance graph overlay", MENU_PERFORMANCE_GRAPH)
 	popup.add_check_item("Unit card tray", MENU_UNIT_CARD_TRAY)
+	popup.add_check_item("Fog of war", MENU_FOG_OF_WAR)
 	popup.add_separator("Frame rate corner…")
 	for entry in _FPS_CORNER_ENTRIES:
 		popup.add_radio_check_item(entry["label"], entry["id"])
@@ -683,6 +699,8 @@ func _sync_setting_toggles() -> void:
 	popup.set_item_checked(popup.get_item_index(MENU_SHOW_FPS), Settings.show_fps)
 	popup.set_item_checked(popup.get_item_index(MENU_PERFORMANCE_GRAPH), Settings.show_performance_graph)
 	popup.set_item_checked(popup.get_item_index(MENU_UNIT_CARD_TRAY), Settings.show_unit_card_tray)
+	popup.set_item_checked(popup.get_item_index(MENU_FOG_OF_WAR), Settings.fog_of_war)
+	_sync_fog_label()
 	_tray_toggle_btn.set_pressed_no_signal(Settings.show_unit_card_tray)
 	for entry in _FPS_CORNER_ENTRIES:
 		popup.set_item_checked(popup.get_item_index(entry["id"]),
@@ -744,6 +762,9 @@ func _on_menu_id(id: int) -> void:
 			Settings.show_performance_graph = not Settings.show_performance_graph
 		MENU_UNIT_CARD_TRAY:
 			Settings.show_unit_card_tray = not Settings.show_unit_card_tray
+		MENU_FOG_OF_WAR:
+			# Settings.changed -> _sync_setting_toggles -> _sync_fog_label, like the rest.
+			Settings.fog_of_war = not Settings.fog_of_war
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
 		MENU_SHORTCUTS:
@@ -819,6 +840,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _is_slowmo_keypress(event):
 		_cycle_slowmo(event.shift_pressed)   # Shift+F5: cycle the other way (parallels Shift+Y)
 		get_viewport().set_input_as_handled()
+	elif _is_fog_toggle_keypress(event):
+		_toggle_fog()
+		get_viewport().set_input_as_handled()
 
 
 ## Shift+/ produces "?" on a standard layout; physical_keycode (the / key) keeps the
@@ -893,6 +917,30 @@ func _cycle_slowmo(reverse: bool = false) -> void:
 		Replay.record_time_scale_change(battle.current_tick(), new_scale)
 	_update_slowmo_label()
 	flash_message("Speed: %d%%" % roundi(new_scale * 100.0))
+
+
+## F7 toggles fog of war. F1-F6 are claimed (tray toggle, multiple_engage, march_to_contact,
+## brace, slow motion, flanking_maneuver -- see Settings.gd's DEFAULT_ORDER_BINDINGS notes
+## on key scarcity), so F7 is the next free function key; physical_keycode for the same
+## layout-independence as the other function-key toggles above.
+func _is_fog_toggle_keypress(event: InputEvent) -> bool:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return false
+	return event.physical_keycode == KEY_F7
+
+
+## Flip Settings.fog_of_war (persisted, like the Menu check item) and say so: fog hides
+## units, so an unannounced switch would read as units vanishing.
+func _toggle_fog() -> void:
+	Settings.fog_of_war = not Settings.fog_of_war
+	flash_message("Fog of war: %s" % ("on" if Settings.fog_of_war else "off"))
+
+
+## Show the standing "FOG OF WAR" indicator exactly while the setting is on.
+func _sync_fog_label() -> void:
+	if _fog_label == null:
+		return
+	_fog_label.visible = Settings.fog_of_war
 
 
 func _update_slowmo_label() -> void:
