@@ -101,7 +101,7 @@
       "uids": [
         8
       ],
-      "reason": "uid8 (team 1's own cavalry by scenario order: spearmen, infantry, archers, cavalry, cavalry) is a deep block (505.8wu spread, depth ratio 2.81) under a continuous AI ATTACK order whose target_enemy_uid re-selects mid-clip (uid3 through tick 540, uid4 from tick 600, uid2 from tick 1200); it never reaches melee (state MOVING, engaged false, through tick 1300) and each retarget re-rotates the block before it has re-squared, which compresses its own files at the clip's final sample: measured at the catalog cadence on this tree, nnd_min 4.49wu at tick 1300 against the 5.0wu floor (stale_exempt false). uid3 and uid7 used to share this entry; both now pass unexempted at the same cadence (uid3 worst 5.86wu, uid7 worst 2.52wu, both against the 2.25wu foot floor) and were dropped."
+      "reason": "uid8 (team 1's own cavalry by scenario order: spearmen, infantry, archers, cavalry, cavalry) is a deep block (505.8wu spread, depth ratio 2.81) under a continuous AI ATTACK order whose target_enemy_uid re-selects mid-clip (uid3 through tick 540, uid4 from tick 600, uid2 from tick 1200); it never reaches melee (state MOVING, engaged false, through tick 1300) and each retarget re-rotates the block before it has re-squared, which compresses its own files at the clip's final sample: measured at the catalog cadence on this tree, nnd_min 4.49wu at tick 1300 against the 5.0wu floor (stale_exempt false). uid3 and uid7 used to share this entry; both now pass unexempted at the same cadence (uid3, cavalry, worst 5.86wu against its 5.0wu floor; uid7, foot, worst 2.52wu against the 2.25wu floor) and were dropped."
     },
     "shape_residual": {
       "uids": [
