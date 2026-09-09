@@ -9,21 +9,19 @@ class_name ReinforceLayout
 const UnitFormationRef = preload("res://scripts/UnitFormation.gd")
 
 
-## Insert the reserve as whole files: `k = min(files, ceil(R / D))` of them (D = the host's
-## deepest file), file j landing right of host file `floor((j + 0.5) * files / k)` -- evenly
-## spread, and strictly alternating at `k == files` (host even, reserve odd). Host ranks hold;
-## the reserve is dealt by lateral order and ranked by depth (leftmost man, leftmost gap).
+## Insert the reserve as whole files at the host's own density: `k = min(files, ceil(R *
+## files / H))` of them (H = the host's headcount, so equal strength doubles exactly even
+## over a partial rear rank), file j landing right of host file `floor((j + 0.5) * files /
+## k)` -- evenly spread, and strictly alternating at `k == files` (host even, reserve odd).
+## Host ranks hold; the reserve is dealt by lateral order and ranked by depth.
 static func interleave_files(host_file_ids: PackedInt32Array, host_ranks: PackedInt32Array,
 		files: int, reserve_local: PackedVector2Array) -> Dictionary:
 	var f: int = maxi(1, files)
 	var r: int = reserve_local.size()
-	var depth: int = 1
-	for c in _file_counts(host_file_ids, f):
-		depth = maxi(depth, c)
-	var k: int = mini(f, int(ceil(float(r) / float(depth))))
 	var out := {"file_ids": PackedInt32Array(), "ranks": PackedInt32Array(), "files": f}
 	if r <= 0 or host_file_ids.is_empty():
 		return out
+	var k: int = mini(f, int(ceil(float(r * f) / float(host_file_ids.size()))))
 	var hosts := PackedInt32Array()   # h_j: the host file each inserted file follows
 	for j in range(k):
 		hosts.push_back(int(floor((float(j) + 0.5) * float(f) / float(k))))

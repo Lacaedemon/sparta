@@ -248,6 +248,12 @@ const ENGAGED_FRACTION_CANCELS_MOVE: float = 0.10
 ## sorted by proximity to the clicked target; extra units cycle through the list.
 enum GroupAttackMode { FOCUSED = 0, DISTRIBUTED = 1 }
 
+## Reinforcement insertion axis carried on an order whose target is a friendly outside the
+## selection (docs/reinforcement-insertion-design.md): NONE is every ordinary order (and the
+## omitted default in a recorded replay); FILES interjects the reserve's men as whole files,
+## doubling the host's frontage. RANKS is reserved for the depth axis, not yet wired.
+enum ReinforceAxis { NONE = 0, FILES = 1, RANKS = 2 }
+
 const GROUP_ATTACK_MODE_NAMES := {
 	GroupAttackMode.FOCUSED: "Group order: focused",
 	GroupAttackMode.DISTRIBUTED: "Group order: distributed",
@@ -1537,7 +1543,8 @@ func _physics_process(delta: float) -> void:
 					int(o.get("walk_advance_toggle", UnitSettingToggle.LEAVE)),
 					int(o.get("reform_toggle", UnitSettingToggle.LEAVE)),
 					int(o.get("file_major_reform_mode_toggle", REFORM_MODE_TOGGLE_LEAVE)),
-					int(o.get("line", LINE_INDEX_UNCHANGED)))
+					int(o.get("line", LINE_INDEX_UNCHANGED)),
+					int(o.get("reinforce", ReinforceAxis.NONE)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply
@@ -1670,7 +1677,8 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		order_mode: int = OrderMode.NORMAL,
 		group_attack: int = GroupAttackMode.FOCUSED,
 		gait: int = -1,
-		knockback_indefinite: bool = false) -> void:
+		knockback_indefinite: bool = false,
+		reinforce: int = ReinforceAxis.NONE) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -1682,6 +1690,7 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		"group_attack": group_attack,
 		"gait": gait,
 		"knockback_indefinite": knockback_indefinite,
+		"reinforce": reinforce,
 	}
 	_pending_orders.append(cmd)
 	# A waypoint append is tick-authoritative (its point is derived from positions at
@@ -2383,6 +2392,9 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 	# orders where the field is not set, so they keep the old walk/jog/sprint logic
 	# instead of being silently forced onto a fixed gait.
 	var gait: int = int(cmd.get("gait", -1))
+	# A reinforcement insertion rides a friendly-target order: the axis picks the branch
+	# below; NONE (the omitted default in older replays) is a relief or support as before.
+	var reinforce: int = int(cmd.get("reinforce", ReinforceAxis.NONE))
 	# The target uid may be an enemy (attack) or a friendly (line relief); a
 	# plain move has no target. Resolve it and dispatch per ordered unit by team.
 	var target_unit: Unit = _unit_by_uid(target_uid) if target_uid >= 0 else null
@@ -2509,6 +2521,18 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 			u.has_move_target = false
 			u.set_current_order(Order.new_attack(u.target_enemy.uid, mode))
 		elif target_unit != null and target_unit != u and target_unit.team == u.team:
+			if reinforce != ReinforceAxis.NONE:
+				# Reinforcement insertion: the reserve marches up behind the host and its men
+				# file into the host's ranks. Install the REINFORCE order first, then arm the
+				# approach on it (the order owns the pass-through link, as a relief's does).
+				# The host keeps whatever it was doing. A refused pair (UnitReinforce.
+				# refusal_reason) arms nothing, so the no-op order retires next tick.
+				var reinforce_order := Order.new_reinforce(target_unit.uid, reinforce)
+				u.set_current_order(reinforce_order)
+				UnitReinforce.begin(u, target_unit, reinforce_order)
+				# Skip the order-response delay: the approach is a held-heading march and
+				# the men only file in once the reserve stands at the rendezvous.
+				continue
 			if mode == OrderMode.SUPPORT:
 				# Support: guard the targeted friendly. Every ordered unit shadows
 				# the same ward and engages threats near it — no relief swap.

@@ -1,7 +1,8 @@
 # Design: reinforcement insertion (doubling by number)
 
-Status: **design drafted** -- the maneuver is not implemented;
-this document is the implementation plan for it, phased so each slice ships as its own reviewable PR.
+Status: **files axis implemented** (phases 2 and 3 below; `ReinforceLayout.gd`, `UnitReinforce.gd`, the `Shift+M` gesture);
+the ranks axis (phase 4) and the follow-ups are still open.
+This document is the implementation plan, phased so each slice ships as its own reviewable PR.
 Builds on [#378](https://github.com/Lacaedemon/sparta/issues/378), [#362](https://github.com/Lacaedemon/sparta/issues/362), and [#369](https://github.com/Lacaedemon/sparta/issues/369), and connects to [#377](https://github.com/Lacaedemon/sparta/issues/377), [#373](https://github.com/Lacaedemon/sparta/issues/373), [#3](https://github.com/Lacaedemon/sparta/issues/3), [#1327](https://github.com/Lacaedemon/sparta/issues/1327), [`docs/historical-reshaping-maneuvers.md`](historical-reshaping-maneuvers.md), [`docs/unit-groups-grand-tactics-design.md`](unit-groups-grand-tactics-design.md), and [`docs/orders-queue-design.md`](orders-queue-design.md).
 
 File, function, and field names below were read from `main` at commit `0bae0766` (2026-09-01);
@@ -107,12 +108,12 @@ No new length constant is needed: the approach gap and the commit tolerance are 
 Runs once, inside the physics tick, and does five things in order.
 
 1. **Interleave assignment** (`ReinforceLayout`, pure).
-   Read the host's `_sim_soldier_file` and `_sim_soldier_rank`, its file count `F = UnitFormation.frontage(host)`, and its depth `D` (the largest file capacity).
+   Read the host's `_sim_soldier_file` and `_sim_soldier_rank`, its file count `F = UnitFormation.frontage(host)`, and its headcount `H`.
    Deal the reserve's `R` bodies into the inserted files or ranks with the same `UnitFormation.deal_file_ids_by_lateral_order` and `deal_ranks_by_depth` the reshape path uses, so the leftmost reserve man takes the leftmost inserted file.
    Then remap the ids:
 
    - *Files.*
-     `k = min(F, ceil(R / D))` files are inserted.
+     `k = min(F, ceil(R * F / H))` files are inserted -- the reserve at the host's own density, so equal strength doubles the frontage exactly even when the host's rear rank is partial (a deepest-file divisor would insert one file too few there).
      Inserted file `j` (for `0 <= j < k`) goes immediately to the right of host file `h_j = floor((j + 0.5) * F / k)`, which spreads a partial reserve evenly and, at `k = F`, alternates strictly.
      Host file `f` becomes `f + |{j : h_j < f}|`, and inserted file `j` becomes `h_j + 1 + j`.
      With `k = F`, the host's men land on the even ids and the reserve on the odd ones.

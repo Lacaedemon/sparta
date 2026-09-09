@@ -20,6 +20,8 @@ static func _decode_order(o: Dictionary) -> Dictionary:
 		entry["frontage"] = int(o["frontage"])
 	if o.has("anchor_offset"):
 		entry["anchor_offset"] = float(o["anchor_offset"])
+	if o.has("reinforce"):
+		entry["reinforce"] = int(o["reinforce"])
 	if o.has("face"):
 		entry["face"] = float(o["face"])
 	if o.has("group_attack"):

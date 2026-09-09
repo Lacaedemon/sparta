@@ -224,6 +224,10 @@ var _armed_mode: int = BattleRef.OrderMode.NORMAL
 # rides along on the same enqueue_order/enqueue_stance/enqueue_form_up call that carries
 # _armed_mode, so Battle._apply_order_cmd only reads it when mode == KNOCKBACK_FOCUS.
 var _armed_knockback_indefinite: bool = false
+## One-shot reinforcement-insertion arm (Shift+M): the next right-click on a live friendly
+## outside the selection orders the selection to file into it along this Battle.ReinforceAxis.
+## NONE when idle; clears on issue and on Esc, like the stance arms.
+var _armed_reinforce: int = BattleRef.ReinforceAxis.NONE
 
 # Deterministic cursor injection. Normally null (the cursor follows the live OS mouse). A
 # demo-recording tool or a test sets a world position here so the selection/order logic and
@@ -400,6 +404,9 @@ func _dispatch_key(event: InputEventKey) -> bool:
 		return true
 	elif event.keycode == KEY_C:
 		_issue_wheel(1)    # wheel right: swing 90° about the right flank file
+		return true
+	elif event.keycode == KEY_M and event.shift_pressed:
+		_arm_reinforce(BattleRef.ReinforceAxis.FILES)   # next RMB on a friendly inserts by files
 		return true
 	elif event.keycode == KEY_M:
 		_issue_merge()   # merge the selected friendly regiments into one
@@ -628,7 +635,19 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 		# an ordinary move.
 		var friend: UnitRef = _unit_at(world_pos, _friend_team())
 		var supporting: bool = _armed_mode == BattleRef.OrderMode.SUPPORT
-		if friend != null and not _selected.has(friend) \
+		var reinforcing: bool = _armed_reinforce != BattleRef.ReinforceAxis.NONE
+		if friend != null and not _selected.has(friend) and reinforcing:
+			# Reinforcement insertion targets ANY live friendly, idle or engaged. Refuse
+			# up front (with the reason on the HUD) rather than issuing an order Battle
+			# would drop silently; the arm clears either way, like a stance arm.
+			var reason: String = _reinforce_refusal(friend)
+			if reason != "":
+				_armed_reinforce = BattleRef.ReinforceAxis.NONE
+				if _hud != null:
+					_hud.flash_message(reason)
+				return
+			target_uid = friend.uid
+		elif friend != null and not _selected.has(friend) \
 				and (supporting or friend.state == UnitRef.State.FIGHTING):
 			target_uid = friend.uid
 			relief_click = not supporting
@@ -651,9 +670,30 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 	var group_attack: int = BattleRef.GroupAttackMode.FOCUSED
 	if uids.size() > 1 and (enemy != null or relief_click):
 		group_attack = _group_attack_mode
+	var reinforce: int = _armed_reinforce if target_uid >= 0 and enemy == null \
+			else BattleRef.ReinforceAxis.NONE
+	_armed_reinforce = BattleRef.ReinforceAxis.NONE   # one-shot: consumed by this click
 	_battle.enqueue_order(uids, world_pos, target_uid, _armed_mode, group_attack, gait,
-			_armed_knockback_indefinite)
+			_armed_knockback_indefinite, reinforce)
 	Sfx.play(&"order")
+
+
+## Arm a one-shot reinforcement insertion along `axis` for the next right-click on a friendly.
+func _arm_reinforce(axis: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK or _selected.is_empty():
+		return
+	_armed_reinforce = axis
+	if _hud != null:
+		_hud.flash_message("Reinforce: right-click the friendly regiment to file into")
+
+
+## The first live selected unit's refusal reason against `host` ("" when the pair is valid),
+## the same check Battle re-runs at its apply site (UnitReinforce.refusal_reason).
+func _reinforce_refusal(host: UnitRef) -> String:
+	for unit in _selected:
+		if is_instance_valid(unit):
+			return UnitReinforce.refusal_reason(unit, host)
+	return "Nothing selected to reinforce with"
 
 
 # --- drag-to-form-up (move orders) -----------------------------------------
@@ -2284,6 +2324,8 @@ func _order_mode_for_keycode(physical_keycode: Key) -> int:
 
 
 func _set_armed_mode(mode: int) -> void:
+	if mode == BattleRef.OrderMode.NORMAL:
+		_armed_reinforce = BattleRef.ReinforceAxis.NONE   # Esc clears the insertion arm too
 	if mode == _armed_mode:
 		return
 	_armed_mode = mode

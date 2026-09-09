@@ -38,6 +38,8 @@ enum Maneuver {
 	NUDGE_FORWARD_STEP,
 	CYCLE_CHARGE,
 	COUNTERMARCH,   # Appended last so recorded/dumped transcripts keep every other value stable.
+	REINFORCING,    # A reserve's approach to the host it will file into (UnitReinforce);
+	                # appended last for the same transcript stability.
 }
 
 ## The three historical exelismos (countermarch) variants Unit.countermarch() can run --
@@ -1147,6 +1149,12 @@ const MORALE_RECOVER_PER_SEC: float = 2.0
 # (scales attack) that ramps back to full as the merged unit gels.
 const MERGE_COHESION_FLOOR: float = 0.6
 const COHESION_RECOVER_PER_SEC: float = 0.1
+# A reinforcement insertion pays the same strangers debuff as a merge (Asclepiodotus
+# condemns doubling with the enemy near); a milder same-loadout floor waits on balance data.
+const REINFORCE_COHESION_FLOOR: float = MERGE_COHESION_FLOOR
+## The cohesion a host drops to when a reserve files into it (per unit; the const above is
+## the default, so a scenario or test can vary the cost).
+var reinforce_cohesion_floor: float = REINFORCE_COHESION_FLOOR
 
 # Scrambling ranks or changing formation density/stance while moving faster than
 # walk speed breaks cadence and dress. Drops speed to walk_speed, resets charge
@@ -1424,6 +1432,9 @@ func _physics_process(delta: float) -> void:
 	tick_engaged(delta)
 	tick_brace_settle(delta)
 	UnitRelief.update(self)
+	UnitReinforce.update(self)
+	if state == State.DEAD:
+		return   # this tick's insertion committed: the reserve has just been merged away
 	var was_ranks_closed: bool = _ranks_closed
 	var pre_flip_files: int = UnitFormation.frontage(self)
 	_ranks_closed = UnitFormation.should_close_ranks(_ranks_closed, soldiers, max_soldiers)
@@ -1831,6 +1842,9 @@ func current_maneuver() -> int:
 		return Maneuver.FILE_DOUBLE_WIDEN if _last_reshape_widened else Maneuver.FILE_DOUBLE_DEEPEN
 	if current_order != null and current_order.countermarch_variant >= 0:
 		return Maneuver.COUNTERMARCH
+	if current_order != null and current_order.type == Order.Type.REINFORCE \
+			and current_order.friendly_target != null:
+		return Maneuver.REINFORCING
 	if is_order_turning():
 		return Maneuver.CONVERSIO if about_face_goal() != Vector2.ZERO else Maneuver.QUARTER_TURN
 	if is_wheeling():
@@ -1921,6 +1935,13 @@ func _update_current_order() -> void:
 				retire_current_order()
 		Order.Type.SUPPORT:
 			if support_target == null:
+				retire_current_order()
+		Order.Type.REINFORCE:
+			# The approach is the order's work: a live link keeps it (UnitReinforce.update
+			# re-aims every tick and commits at the rendezvous, which frees this unit). It
+			# retires once the link is gone -- a refused pair, or a host that left the line
+			# mid-approach -- and no march is in flight, so the reserve halts where it stands.
+			if current_order.friendly_target == null and not has_move_target:
 				retire_current_order()
 		Order.Type.FORMATION, Order.Type.FRONTAGE, Order.Type.STANCE, Order.Type.SWITCH_WEAPON:
 			# Instantaneous: applied and complete in the same tick Battle issues them, so they
@@ -4760,17 +4781,67 @@ func _ensure_file_assignment(count: int, files: int) -> void:
 ## -- so they are the right thing to pair against. Treating that window as "no data" instead
 ## silently reverted a settled square to the index-order layout on its first melee strike.
 func _slot_frame_positions(count: int) -> PackedVector2Array:
-	var out := PackedVector2Array()
 	if count <= 0 or _sim_soldier_pos.size() < count:
-		return out
+		return PackedVector2Array()
+	return to_slot_frame(_sim_soldier_pos.slice(0, count))
+
+
+## `points` (parent-local, like _sim_soldier_pos) expressed in THIS unit's slot-grid frame --
+## the transform _slot_frame_positions applies to its own bodies, exposed so another
+## regiment's men can be dealt onto this grid (a reinforcement insertion reads the reserve's
+## lateral order in the host's frame). Pure; the mirror and rotation are this unit's own.
+func to_slot_frame(points: PackedVector2Array) -> PackedVector2Array:
+	var out := PackedVector2Array()
 	var ang: float = soldier_block_world_angle()
-	out.resize(count)
-	for i in range(count):
-		var local: Vector2 = (_sim_soldier_pos[i] - position).rotated(-ang)
+	out.resize(points.size())
+	for i in range(points.size()):
+		var local: Vector2 = (points[i] - position).rotated(-ang)
 		if _formation_mirror_x:
 			local.x = -local.x
 		out[i] = local
 	return out
+
+
+## Append `other`'s per-soldier body arrays onto this unit's, index-aligned with
+## _sim_soldier_pos, for a reinforcement insertion. Both regiments' bodies live in the
+## shared parent's frame, so positions concatenate without a transform. This is
+## SoldierMelee.reap in reverse: reap removes one index from each array, this appends
+## `other`'s entries at the tail. The file/rank ids are NOT carried -- the caller installs
+## the interleaved assignment (install_file_assignment) -- and the render-only progress
+## arrays resize lazily on the next draw, as they do after a reap.
+func append_soldier_bodies(other: Unit) -> void:
+	_sim_soldier_pos.append_array(other._sim_soldier_pos)
+	_sim_body_vel.append_array(other._sim_body_vel)
+	_sim_steer.append_array(other._sim_steer)
+	_sim_soldier_hp.append_array(other._sim_soldier_hp)
+	_sim_prone.append_array(other._sim_prone)
+	_sim_soldier_stamina.append_array(other._sim_soldier_stamina)
+	_sim_soldier_broken.append_array(other._sim_soldier_broken)
+	_sim_soldier_weapon_id.append_array(other._sim_soldier_weapon_id)
+	_sim_soldier_shield_id.append_array(other._sim_soldier_shield_id)
+	_sim_soldier_shield_hold_angle.append_array(other._sim_soldier_shield_hold_angle)
+	_sim_soldier_facing.append_array(other._sim_soldier_facing)
+
+
+## Install an explicit file-major assignment -- `file_ids` and `ranks` index-aligned with the
+## bodies, over `files` files -- together with the frontage that matches it. Writing
+## _file_assignment_files alongside the ids is what stops _ensure_file_assignment from
+## re-dealing the files by lateral order on the next slot query (a frontage change is exactly
+## the event that triggers that re-deal), so an interleave survives; set_frontage cannot do
+## this, which is why an insertion needs its own setter. Stamps the reshape tick as
+## set_frontage does, so the unit reports FILE_DOUBLE_WIDEN on the commit tick.
+func install_file_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array, files: int) -> void:
+	var old_files: int = UnitFormation.frontage(self)
+	_sim_soldier_file = file_ids
+	_sim_soldier_rank = ranks
+	_file_assignment_files = files
+	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
+	frontage_anchor_offset = 0.0
+	if frontage_override != old_files:
+		_last_reshape_tick = Engine.get_physics_frames()
+		_last_reshape_widened = frontage_override > old_files
+		_apply_moving_reshape_penalty()
+		_arm_standoff_settle_window(_reshape_timeout(old_files))
 
 
 ## Rebuild the square slot pairing (_sim_soldier_square_slot) whenever it is out of sync
@@ -6692,6 +6763,10 @@ func order_summary() -> String:
 				and current_order.friendly_target != null \
 				and is_instance_valid(current_order.friendly_target):
 			return "Relieving %s" % current_order.friendly_target.unit_name
+		if current_order != null and current_order.type == Order.Type.REINFORCE \
+				and current_order.friendly_target != null \
+				and is_instance_valid(current_order.friendly_target):
+			return "Reinforcing %s" % current_order.friendly_target.unit_name
 		# A routing target still counts (it's still a live, fightable enemy --- see
 		# UnitTargeting.nearest_enemy's include_routing), so the HUD keeps reporting
 		# "Attacking" rather than falling through to "Holding position".
@@ -7074,11 +7149,26 @@ func _commit_pending_reform() -> void:
 ## combat stats weighted by strength, and start with a cohesion debuff that
 ## decays. The absorbed unit is removed. Caller guarantees same team.
 func absorb(other: Unit) -> void:
+	if not pool_strength(other, MERGE_COHESION_FLOOR):
+		return
+	set_formation(formation_mode)
+	other._merged_away()
+	queue_redraw()
+
+
+## The strength half of a merge, shared with reinforcement insertion: pool `other`'s
+## soldiers and max_soldiers into this unit, blend the combat stats weighted by strength,
+## drop cohesion to `cohesion_floor`, and widen the body. Leaves `other` in play and the
+## formation untouched -- absorb adds the spatial finish (a set_formation re-square and the
+## removal), an insertion carries the bodies across itself and must NOT re-square, which
+## would reset every shield hold angle the transfer just preserved. False when there is
+## nothing to pool (both empty), in which case nothing changes.
+func pool_strength(other: Unit, cohesion_floor: float) -> bool:
 	var a: float = float(soldiers)
 	var b: float = float(other.soldiers)
 	var total: float = a + b
 	if total <= 0.0:
-		return
+		return false
 	max_soldiers += other.max_soldiers
 	# Strength-weighted blend so the bigger regiment dominates the result.
 	attack = int(round((attack * a + other.attack * b) / total))
@@ -7086,15 +7176,13 @@ func absorb(other: Unit) -> void:
 	morale = (morale * a + other.morale * b) / total
 	fatigue = (fatigue * a + other.fatigue * b) / total
 	soldiers += other.soldiers
-	# Strangers debuff and a wider body for the combined regiment — capped so the
+	# Strangers debuff and a wider body for the combined regiment -- capped so the
 	# footprint never grows past melee reach (which would deadlock contact).
-	cohesion = MERGE_COHESION_FLOOR
+	cohesion = cohesion_floor
 	separation_radius = minf(maxf(separation_radius, other.separation_radius) + 2.0,
 		SEPARATION_RADIUS_MAX)
 	_base_separation_radius = separation_radius
-	set_formation(formation_mode)
-	other._merged_away()
-	queue_redraw()
+	return true
 
 
 ## Remove a unit that has been absorbed by a merge (not a battle death). Any relief this

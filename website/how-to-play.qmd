@@ -61,6 +61,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Nudge (small step, holds facing) | <kbd>←</kbd> side-step left · <kbd>→</kbd> side-step right · <kbd>↑</kbd> forward-step · <kbd>↓</kbd> back-step (a few metres each) |
 | Disengage and step back | <kbd>Ctrl</kbd> + <kbd>↓</kbd> on a unit currently in melee: breaks contact and steps back a short distance, holding facing |
 | Merge selected units | <kbd>M</kbd> |
+| Reinforce a friendly (doubling numbers) | <kbd>Shift</kbd> + <kbd>M</kbd> arms it, then **right-click** the friendly regiment to file into: the selection marches up behind it and its men step into the host's files, doubling the host's frontage (see [Tactics](tactics.qmd#reinforcement-insertion)). <kbd>Esc</kbd> clears the arm |
 | Control groups | <kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall. Binding a selection that's exactly the combined membership of one or more other groups (no partial overlap, no extras) nests those groups under the new one, so recalling it always reflects whatever its nested groups currently hold |
 | Delegate to AI subcommander | <kbd>Ctrl</kbd>+<kbd>Shift</kbd> + <kbd>0</kbd>-<kbd>9</kbd> hands the selection to AI subcommander group *N* (press again on the same selection to take it back); any explicit order to a delegated unit reclaims it immediately -- see [Tactics](tactics.qmd#player-delegation) |
 | Distance legend | **☰ Menu → Distance legend** toggles the map-scale bar (top-left, on by default) |

@@ -73,7 +73,7 @@ func test_reserve_lateral_order_is_preserved_across_inserted_files() -> void:
 
 
 func test_partial_reserve_inserts_one_centred_file() -> void:
-	var host := _host(8, 4)   # deepest file 2, so a 2-man reserve is one file
+	var host := _host(8, 4)   # 2 deep, so a 2-man reserve is one file at the host's density
 	var result: Dictionary = Layout.interleave_files(host["file_ids"], host["ranks"], 4,
 			_reserve_grid(2, 1))
 	assert_eq(int(result["files"]), 5, "one file inserted")
@@ -98,6 +98,16 @@ func test_surplus_reserve_caps_inserted_files_at_host_frontage() -> void:
 		deepest = maxi(deepest, ranks[i])
 	assert_eq(deepest, 3, "the inserted files run deeper than the host's")
 	_assert_no_shared_slot(result, "surplus files")
+
+
+func test_equal_strength_doubles_exactly_over_a_partial_rear_rank() -> void:
+	# 40 men over 9 files is 4 deep with a 4-man partial rank (deepest file 5): the inserted
+	# file count follows the host's density, not its deepest file, so it still doubles.
+	var host := _host(40, 9)
+	var result: Dictionary = Layout.interleave_files(host["file_ids"], host["ranks"], 9,
+			_reserve_grid(40, 9))
+	assert_eq(int(result["files"]), 18, "equal strength doubles the frontage")
+	_assert_no_shared_slot(result, "partial rear rank")
 
 
 func test_empty_reserve_or_host_is_a_no_op() -> void:
