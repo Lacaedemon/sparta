@@ -1490,7 +1490,6 @@ and add labels with
 
 (`Lacaedemon/sparta` PR #1396 / issue #1395, 2026-08-25.)
 
-
 ## A demo manifest claiming a defect verdict needs the catalog's own cadence and tick window, not just the right clip
 
 The rule above ("point `demos/demo.<N>.json` at that clip") is necessary but not sufficient for a
@@ -1508,15 +1507,18 @@ diverge even though the manifest is technically valid.
 `demos/demo.1546.json` (PR #1551) and `demos/demo.1544.json` (PR #1553) both set the manifest's
 `fixed_fps`/`max_frames` to the catalog row's own values, and both PRs' input scripts declare the
 catalog's `state` ticks explicitly (a script that already has a top-level `state` list needs no
-change; one that doesn't must add it) -- so CI records and scans exactly the window the PR's
+change;
+one that doesn't must add it) -- so CI records and scans exactly the window the PR's
 measured numbers came from.
 
 - **Do:** when a PR's claim is about a clip's defect verdicts, set `demos/demo.<slug>.json`'s
   `fixed_fps`/`max_frames` to the catalog row's own values from `website/tools/demo-catalog.sh`,
   and add the catalog's `state` ticks to the input script if it has no top-level `state` list yet.
+
 - **Don't:** assume pointing the manifest at the right replay/input file is enough -- a manifest
   recording a different cadence or a shorter/longer window than the catalog's own judges a
   different window than the one the PR's numbers were measured over.
+
 - **Don't:** ship a `skip` manifest on this kind of PR -- per the section above, `skip` withholds
   exactly the CI-side verification this claim needs.
 
@@ -1536,8 +1538,9 @@ sample and passed every other sample, so an exemption declared for it was droppe
 
 - **Do:** before declaring a `path_crossing` exemption, check whether the offending reading holds
   for two or more consecutive judged samples -- a lone spike passes on its own and needs nothing.
-- **Don't:** exempt a metric because its worst single-sample value crossed the threshold; check the
-  run length against `MIN_SUSTAIN` (2) first, the same discriminator the analyzer itself applies.
+
+- **Don't:** exempt a metric because its worst single-sample value crossed the threshold;
+  check the run length against `MIN_SUSTAIN` (2) first, the same discriminator the analyzer itself applies.
 
 ## Overlap exemption floors are per unit TYPE (cavalry vs foot), not one shared number
 
@@ -1552,5 +1555,6 @@ from a different uid's unit type, misstates the actual threshold the scan applie
 - **Do:** derive the overlap floor from the specific uid's unit type before quoting it in an
   exemption reason -- 5.0 wu for cavalry, 2.25 wu for foot, from `2 * soldier_body_radius() *
   OVERLAP_BODY_FRAC(0.25)`.
+
 - **Don't:** copy an overlap floor number from one uid's exemption reason into another uid's
   reason without checking whether the two are the same unit type.

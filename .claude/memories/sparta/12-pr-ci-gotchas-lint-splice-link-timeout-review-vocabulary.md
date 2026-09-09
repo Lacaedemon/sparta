@@ -718,7 +718,8 @@ That makes `git merge-base origin/main HEAD` always resolve to `HEAD^1` (main's 
 checkout, whatever the PR branch's real divergence point was -- the "merge-base" computation
 collapses to "the base tip" and never reflects where the branch actually forked.
 `benchmark.yml`'s first cut computed `git merge-base origin/main HEAD` for exactly this reason and
-got the base tip by accident; the rename to `HEAD^1` makes the workflow say what it measures.
+got the base tip by accident;
+the rename to `HEAD^1` makes the workflow say what it measures.
 
 Comparing the merged tree (`HEAD`) against the base tip (`HEAD^1`) isolates the PR's own diff on
 top of current `main`.
@@ -731,8 +732,10 @@ table for exactly that reason: it can be stale between refreshes, while the same
 - **Do:** on a PR-checkout job, use `HEAD^1` for the base tip and `HEAD^2` for the PR head, and
   fail fast if `HEAD` has no second parent (a non-merge-commit checkout means the checkout
   strategy changed).
+
 - **Do:** treat a same-run comparison against the base tip as the primary verdict, and a
   periodically-refreshed committed baseline as secondary/informational only.
+
 - **Don't:** call `git merge-base origin/main HEAD` on a PR-event checkout expecting the branch's
   actual fork point -- it always resolves to `HEAD^1`, the base tip, not a merge-base in the
   usual sense.
@@ -752,6 +755,7 @@ populated.
 
 - **Do:** give a second worktree its own import step (`godot --headless --import`), and reuse the
   setup action's existing `/tmp/gut` clone to vendor `addons/gut` into it.
+
 - **Don't:** assume a second worktree can run GUT tests or benchmarks off the first tree's primed
   `.godot` cache, and don't re-clone GUT into `/tmp/gut` a second time.
 
@@ -782,11 +786,14 @@ A login filter written against one endpoint's casing silently matches nothing on
 - **Do:** resolve every answered review thread with the GraphQL `resolveReviewThread` mutation
   before `gh pr merge`, even after `check-pr-fully-clean.py` exits 0 -- the exit code says nothing
   about thread-resolution state.
+
 - **Do:** when filtering Copilot's comments or reviews by login, downcase the login first
   (`ascii_downcase` in `jq`) or match both `Copilot` (inline comments endpoint) and
   `copilot-pull-request-reviewer[bot]` (reviews endpoint) rather than assuming one casing.
+
 - **Don't:** read a clean `check-pr-fully-clean.py` exit as proof `gh pr merge` will succeed on
   this repo -- the ruleset's thread-resolution requirement is a separate, unchecked gate.
+
 - **Don't:** filter Copilot's identity by a single hardcoded login string across both endpoints.
 
 ## `tools/check.sh shell_tests` runs the repo's own shell test suite, ahead of any Godot requirement
@@ -803,5 +810,6 @@ import-primed state dump plus an analyzer pass with `--script`.
 
 - **Do:** add a new `tools/lib/tests/test-*.sh` file for shell-tooling logic and expect
   `shell_tests` to pick it up automatically in both `check.sh` and the Godot-free CI job.
+
 - **Don't:** assume a shell-only tooling change needs a Godot-backed CI job to be gated at all --
   `check-comment-citations.yml` already runs `shell_tests` with no Godot import.
