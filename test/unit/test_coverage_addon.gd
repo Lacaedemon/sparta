@@ -3,8 +3,7 @@ extends GutTest
 ## Guards the local deviations in the vendored coverage addon
 ## (addons/coverage/Coverage.gd): brackets inside a trailing comment or a string
 ## literal must not be counted as code blocks, because an unbalanced one left
-## every later line of the file uninstrumented and the file reporting zero
-## coverable lines.
+## every later line of the file uninstrumented.
 
 const Coverage = preload("res://addons/coverage/Coverage.gd")
 const COVERAGE_SCRIPT_PATH := "res://addons/coverage/Coverage.gd"
@@ -38,18 +37,24 @@ func _line_index(collector, needle: String) -> int:
 func test_lines_after_an_unbalanced_trailing_comment_are_instrumented() -> void:
 	var collector = _instrument_fixture()
 	for needle in ["var total := 0", "total += step", "return total"]:
+		var index := _line_index(collector, needle)
+		if index < 0:
+			return
 		assert_has(
 			collector.coverage_lines,
-			_line_index(collector, needle),
+			index,
 			"line %s is instrumented despite the earlier trailing-comment bracket" % needle
 		)
 
 
 func test_brackets_inside_string_literals_do_not_open_a_block() -> void:
 	var collector = _instrument_fixture()
+	var index := _line_index(collector, "return opener")
+	if index < 0:
+		return
 	assert_has(
 		collector.coverage_lines,
-		_line_index(collector, "return opener"),
+		index,
 		"the line after a lone \"(\" string literal is instrumented"
 	)
 

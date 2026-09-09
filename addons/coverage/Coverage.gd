@@ -106,10 +106,10 @@ class ScriptCoverageCollector:
 	# 3: also print original script code
 	# Local deviation from upstream (jamie-pate/godot-code-coverage@9c8d4a9):
 	# set to 0 so instrumenting the tree doesn't dump every script's source into
-	# CI logs. The other local deviations are _strip_trailing_comment and
-	# _erase_string_literals below (and the call that feeds them) and a dropped
-	# converter TODO comment in _list_scripts_recursive; the rest of the
-	# vendored addon is unmodified.
+	# CI logs. Cumulative local deviations from that pin, across this file's
+	# history: this constant, _strip_trailing_comment and _erase_string_literals
+	# below (and the call that feeds them), and a dropped converter TODO comment
+	# in _list_scripts_recursive. The rest of the vendored addon is unmodified.
 	const DEBUG_SCRIPT_COVERAGE := 0
 	const DEBUG_SCRIPT_COVERAGE_DEPTH := false
 	const ERR_MAP := {
@@ -197,7 +197,9 @@ class ScriptCoverageCollector:
 	# Local deviation from upstream. Ported verbatim from upstream main's
 	# BlockCounter (jamie-pate/godot-code-coverage@91a839a): blanks the body of
 	# every string literal on the line so a bracket inside a string is not
-	# counted as opening or closing a code block.
+	# counted as opening or closing a code block. Known gap kept from upstream:
+	# an escaped backslash right before the closing quote re-arms the escape,
+	# so the quote is blanked instead of closing the string.
 	func _erase_string_literals(line: String) -> String:
 		# Ignoring multiline strings here .. probably need to deal with them at some point
 		var dq = '"'
@@ -222,8 +224,8 @@ class ScriptCoverageCollector:
 	# counting only. A bracket in a trailing comment is not a code block, and
 	# because _interpolate_coverage skips comment-only lines before counting, a
 	# bracket opened in a trailing comment and closed on the next comment-only
-	# line left the block count above zero for the rest of the file, so no
-	# later line was instrumented and the file reported zero coverable lines.
+	# line left the block count above zero for the rest of the file, so no line
+	# after it was instrumented (a whole file, when it happened near the top).
 	# Upstream main still counts trailing comments this way.
 	func _strip_trailing_comment(line: String) -> String:
 		var erased := _erase_string_literals(line)
