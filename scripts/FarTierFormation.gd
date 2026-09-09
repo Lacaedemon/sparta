@@ -38,10 +38,32 @@ var attack: int = 0
 var defense: int = 0
 ## Melee reach, matching Unit.attack_range's default (the gladius baseline).
 var attack_range: float = 26.0
-## Sustained march pace, matching Unit.walk_speed's default. The close tier's AUTO pacing
-## walks by default and only jogs under fire or sprints on the terminal charge — bursts
-## below the far tier's resolution, so the aggregate marches at the walk.
+## Sustained march pace, matching Unit.walk_speed's default: the walk, which is what the
+## close tier's AUTO pacing holds for the whole approach. The sprint is a burst below the
+## far tier's resolution (the terminal charge lasts seconds), so the record never carries
+## it; a jog is not (a jog approach runs for the whole march), so it does -- see gait.
 var march_speed: float = 45.0
+## Jog pace, matching Unit.jog_speed's default; the pace the record moves at while gait
+## is Unit.GAIT_JOG (FarTierRules.pace_speed).
+var jog_speed: float = 67.5
+## The formation's gait: Unit.GAIT_WALK (march_speed) or Unit.GAIT_JOG (jog_speed). The
+## far tier's only two paces -- a walk approach, or a jog approach that arrives sooner and
+## pays for it in stamina (FarTierRules.tick_stamina). from_unit maps a unit's ordered
+## jog/run/sprint to the jog and everything else to the walk.
+var gait: int = Unit.GAIT_WALK
+## Aggregate stamina pool, the far tier's stand-in for the per-soldier
+## Unit._sim_soldier_stamina array: one scalar in [0, max_stamina], following the same
+## per-gait flow (rest regenerates, a walk is neutral, a jog drains) and scaling the
+## formation's strike expectation through SoldierCombat.stamina_factor exactly as each
+## close-tier soldier's own pool scales his blows. Defaults mirror the Infantry profile.
+var stamina: float = 100.0
+var max_stamina: float = 100.0
+## The per-gait stamina rates, carried from the unit's own fields (Unit.stamina_rest_regen_per_s
+## and siblings) so a demoted formation keeps paying the SAME rates it would at close tier.
+## No sprint rate: the record has no sprint gait.
+var stamina_rest_regen_per_s: float = SoldierCombat.RHO_STAMINA
+var stamina_walk_regen_per_s: float = SoldierCombat.RHO_STAMINA_WALK
+var stamina_jog_drain_per_s: float = SoldierCombat.KAPPA_JOG
 ## Whether this formation is a ranged formation (archers), matching Unit.is_ranged's default.
 ## Drives FarTierRules' rate/reach split: a ranged formation strikes at RANGED_RANGE on the
 ## RANGED_INTERVAL/RANGED_DAMAGE_FACTOR cadence and never takes return melee attrition from a
@@ -98,6 +120,13 @@ static func from_unit(u: Unit) -> FarTierFormation:
 	rec.defense = u.defense
 	rec.attack_range = u.attack_range
 	rec.march_speed = u.walk_speed
+	rec.jog_speed = u.jog_speed
+	rec.gait = gait_for_ordered(u.ordered_gait())
+	rec.stamina = u.mean_soldier_stamina()
+	rec.max_stamina = u.combat_profile()["max_stamina"]
+	rec.stamina_rest_regen_per_s = u.stamina_rest_regen_per_s
+	rec.stamina_walk_regen_per_s = u.stamina_walk_regen_per_s
+	rec.stamina_jog_drain_per_s = u.stamina_jog_drain_per_s
 	rec.is_ranged = u.is_ranged
 	rec.routing = u.state == Unit.State.ROUTING
 	if rec.routing:
@@ -106,3 +135,11 @@ static func from_unit(u: Unit) -> FarTierFormation:
 	rec.shatter_strength_frac = u.shatter_strength_frac
 	rec.rally_morale_threshold = u.rally_morale_threshold
 	return rec
+
+
+## The far-tier gait a unit's ordered gait collapses to: a jog, run, or sprint order all
+## become the jog (a run's or sprint's terminal burst is below this tier's resolution;
+## its sustained leg is a jog), and a walk or AUTO order (-1) becomes the walk, which is
+## what the AUTO ladder holds beyond the sprint window anyway.
+static func gait_for_ordered(ordered_gait: int) -> int:
+	return Unit.GAIT_JOG if ordered_gait >= Unit.GAIT_JOG else Unit.GAIT_WALK

@@ -85,6 +85,11 @@ static func can_demote(u: Unit) -> bool:
 ## steering, per-soldier melee, and the O(soldiers) memory) goes away. A pure, RNG-free
 ## reduction. Callers gate on can_demote(); demote itself just performs the drop.
 static func demote(u: Unit) -> void:
+	# The one per-soldier quantity the aggregate keeps a trace of: the pool's mean, so a
+	# far-tier march keeps paying the per-gait flow (Unit._tick_far_stamina) from where
+	# the bodies left off, and promotion re-seeds them from it. Read BEFORE the tier
+	# flips, since mean_soldier_stamina reads the aggregate once the unit is far-tier.
+	u.far_stamina = u.mean_soldier_stamina()
 	u.tier = FormationTier.FAR
 	u._sim_soldier_pos = PackedVector2Array()
 	u._sim_body_vel = PackedVector2Array()
@@ -126,7 +131,9 @@ static func promotion_seed(uid: int, tick: int, battle_seed: int) -> int:
 ## count (rear ranks absorb the recorded casualties), each body landing within
 ## SCATTER_FRACTION of its slot at rest; survivors of a formation that took losses carry
 ## a seeded wound distribution (see WOUND_SPREAD), everyone stands (no prone carry-over),
-## and stamina reads fully rested — bursts of fatigue are below the far tier's resolution.
+## and every body carries the aggregate stamina the far tier kept ticking (Unit.far_stamina;
+## full for a unit that was never demoted) -- the per-body spread is below the far tier's
+## resolution, so the reconstruction is uniform.
 static func promote(u: Unit, tick: int, battle_seed: int) -> void:
 	u.tier = FormationTier.CLOSE
 	var n: int = u.soldiers
@@ -161,7 +168,12 @@ static func promote(u: Unit, tick: int, battle_seed: int) -> void:
 	u._sim_prone.resize(n)   # 0 = standing
 	u._sim_soldier_stamina = PackedFloat32Array()
 	u._sim_soldier_stamina.resize(n)
-	u._sim_soldier_stamina.fill(profile["max_stamina"])
+	# The tier already reads CLOSE here, so read the aggregate directly rather than
+	# through mean_soldier_stamina (which would see the empty pool and report full).
+	var max_stamina: float = profile["max_stamina"]
+	u._sim_soldier_stamina.fill(clampf(u.far_stamina, 0.0, max_stamina)
+			if u.far_stamina >= 0.0 else max_stamina)
+	u.far_stamina = -1.0   # consumed; the bodies own the pool again
 	u._sim_soldier_weapon_id = PackedInt32Array()
 	u._sim_soldier_weapon_id.resize(n)
 	u._sim_soldier_weapon_id.fill(u.weapon_type_id)

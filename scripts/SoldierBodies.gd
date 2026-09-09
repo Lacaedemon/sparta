@@ -206,14 +206,17 @@ static func step(unit: Unit, delta: float) -> void:
 	if not unit._per_soldier_facing:
 		unit._sim_soldier_facing = unit.soldier_world_facings(n)
 	# A felled body rises on its own: decay its prone timer toward 0 each tick. Stamina
-	# regens during the same pass; rising from prone costs KAPPA_P on the tick it happens.
-	# The body still arrives at its slot below (it's down, not removed).
+	# follows the regiment's pace during the same pass (Unit.stamina_flow_per_s: regen at
+	# rest, neutral at a walk, a drain at a jog or sprint -- one reading per regiment per
+	# tick, since every body shares its unit's pace); rising from prone costs KAPPA_P on
+	# the tick it happens. The body still arrives at its slot below (it's down, not removed).
+	var stamina_flow: float = unit.stamina_flow_per_s() * delta
 	for p in range(n):
 		var was_prone: bool = unit._sim_prone[p] > 0.0
 		unit._sim_prone[p] = maxf(0.0, unit._sim_prone[p] - delta)
 		var just_rose: bool = was_prone and unit._sim_prone[p] == 0.0
 		unit._sim_soldier_stamina[p] = clampf(
-			unit._sim_soldier_stamina[p] + SoldierCombat.RHO_STAMINA * delta
+			unit._sim_soldier_stamina[p] + stamina_flow
 				- (SoldierCombat.KAPPA_P if just_rose else 0.0),
 			0.0, maxs)
 	# The BODY-DYNAMICS tier, not the melee-resolution one: identical geometry and gate, but

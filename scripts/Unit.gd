@@ -80,6 +80,19 @@ var uid: int = -1
 # never get a loadout.
 @export var walk_speed: float = 45.0
 @export var jog_speed: float = 67.5
+# Per-gait stamina flow (StaminaFlow; docs/combat-model.md "Posture"): what every soldier's
+# stamina does per second while the regiment rests, walks, jogs, or sprints -- the
+# posture table's stamina column, read off the live pace (stamina_band). Points per
+# SECOND of simulated time, so no metres-to-world-units conversion applies. Rest keeps
+# the flat regen the pool always had (SoldierCombat.RHO_STAMINA); a walk is neutral; a
+# jog drains slowly and a sprint fast, which is what finally prices a run: the AUTO
+# ladder's terminal charge, or a multi-click Sprint order, arrives with a tired line.
+# Independent per unit (Battle sets them from the loadout's optional
+# stamina_*_per_s keys) so a hardier type, or a test, can retune any one of them.
+@export var stamina_rest_regen_per_s: float = SoldierCombat.RHO_STAMINA
+@export var stamina_walk_regen_per_s: float = SoldierCombat.RHO_STAMINA_WALK
+@export var stamina_jog_drain_per_s: float = SoldierCombat.KAPPA_JOG
+@export var stamina_sprint_drain_per_s: float = SoldierCombat.KAPPA_SPRINT
 # Backward-walk speed factor: a soldier repositioning BACKWARD relative to his own
 # facing (a common motion during a maneuver -- conversio, quarter-turn, frontage
 # reshape -- where the rear ranks back up into new slots) is capped slower than one
@@ -180,6 +193,12 @@ var mount_type_id: int = LoadoutRegistry.MOUNT_NONE
 var soldiers: int
 var morale: float = 100.0
 var fatigue: float = 0.0   # 0 fresh .. 100 exhausted; rotated out by relief
+# The far tier's aggregate stamina: the one scalar the per-soldier pool collapses to on
+# demotion (TierTransition.demote takes the mean) and that promotion re-seeds every body
+# from, so a far-tier jog approach costs the same per-gait flow (_tick_far_stamina) a
+# close-tier one does instead of arriving rested. Negative means "never demoted", and a
+# promotion then reads full stamina, matching a unit that spawned close-tier.
+var far_stamina: float = -1.0
 var cohesion: float = 1.0   # 1.0 gelled; drops on a merge, then ramps back
 var state: int = State.IDLE
 var facing: Vector2 = Vector2.DOWN
@@ -1419,6 +1438,7 @@ func _physics_process(delta: float) -> void:
 	_separate(delta)
 
 	UnitMorale.tick_fatigue(self, delta)
+	_tick_far_stamina(delta)
 	UnitMorale.tick_cohesion(self, delta)
 	UnitMorale.tick_morale(self, delta)
 	tick_engaged(delta)
@@ -4325,8 +4345,10 @@ var _strike_easing_active: bool = false
 # Per-soldier stamina pool (slice D), index-aligned with _sim_soldier_pos: current stamina
 # in [0, max_stamina] where max_stamina is the per-type value from combat_profile(). Drained
 # by every strike thrown (KAPPA_A), by every blow met (KAPPA_D*phi*(1+c)), and by rising from
-# prone (KAPPA_P); restored at RHO_STAMINA per second in SoldierBodies.step. Low stamina
-# reduces both offence and active defence through SoldierCombat.stamina_factor (g(sigma)).
+# prone (KAPPA_P); and by the regiment's pace (a jog drains slowly, a sprint fast --
+# stamina_flow_per_s), which is also what restores it at rest (stamina_rest_regen_per_s
+# per second in SoldierBodies.step). Low stamina reduces both offence and active
+# defence through SoldierCombat.stamina_factor (g(sigma)).
 var _sim_soldier_stamina: PackedFloat32Array = PackedFloat32Array()
 
 # Per-soldier "broken from the shield-lock" flag (1 = broken, 0 = holding), index-aligned
@@ -6629,6 +6651,45 @@ func combat_profile() -> Dictionary:
 			armor_type_id, mount_type_id)
 
 
+## The stamina band this regiment's live pace puts its soldiers in (StaminaFlow.BAND_REST
+## or GAIT_WALK/GAIT_JOG/GAIT_SPRINT): read off _current_speed against this unit's own
+## walk/jog paces, the same continuous-speed reading bracing uses rather than a named
+## posture. ARRIVE_SPEED_EPSILON is the rest threshold, so a unit the arrival check
+## already treats as stopped is resting here too.
+func stamina_band() -> int:
+	return StaminaFlow.band_for_speed(_current_speed, walk_speed, jog_speed, ARRIVE_SPEED_EPSILON)
+
+
+## Signed stamina change per second every soldier of this regiment sees from its pace
+## alone (positive regenerates, negative drains), before melee's own per-strike costs.
+func stamina_flow_per_s() -> float:
+	return StaminaFlow.flow_per_s(stamina_band(), stamina_rest_regen_per_s,
+			stamina_walk_regen_per_s, stamina_jog_drain_per_s, stamina_sprint_drain_per_s)
+
+
+## Mean of the per-soldier stamina pool; the type's full pool when there are no bodies
+## (a far-tier unit, or one not yet seeded), so a reader never sees a spurious zero.
+func mean_soldier_stamina() -> float:
+	if tier == FormationTier.FAR:
+		return far_stamina if far_stamina >= 0.0 else combat_profile()["max_stamina"]
+	if _sim_soldier_stamina.is_empty():
+		return combat_profile()["max_stamina"]
+	var sum: float = 0.0
+	for s in _sim_soldier_stamina:
+		sum += s
+	return sum / _sim_soldier_stamina.size()
+
+
+## Apply the per-gait flow to the far tier's aggregate pool. The close tier applies the
+## same flow per body in SoldierBodies.step, which a far-tier regiment skips (it has no
+## bodies), so without this a far-tier jog approach would be free.
+func _tick_far_stamina(delta: float) -> void:
+	if tier != FormationTier.FAR or far_stamina < 0.0:
+		return
+	far_stamina = StaminaFlow.apply(far_stamina, stamina_flow_per_s(), delta,
+			combat_profile()["max_stamina"])
+
+
 ## The lethality of the weapon soldier `i` carries: the per-soldier weapon id
 ## resolved through the interned registry, so a per-soldier loadout change (a
 ## future weapon switch) changes combat immediately. Falls back to the unit's
@@ -8043,7 +8104,7 @@ func to_snapshot_dict() -> Dictionary:
 		"order_mode": order_mode, "knockback_push_indefinite": knockback_push_indefinite,
 		"formation_mode": formation_mode, "rank_relief": rank_relief,
 		"player_group_id": player_group_id, "subcommander_rank_title": subcommander_rank_title,
-		"engage_reshape_mode": engage_reshape_mode, "tier": tier,
+		"engage_reshape_mode": engage_reshape_mode, "tier": tier, "far_stamina": far_stamina,
 		"frontage_override": frontage_override,
 		"frontage_anchor_offset": frontage_anchor_offset,
 		"last_reshape_tick": _last_reshape_tick,
@@ -8175,6 +8236,9 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	subcommander_rank_title = String(d["subcommander_rank_title"])
 	engage_reshape_mode = int(d["engage_reshape_mode"])
 	tier = int(d["tier"])
+	# Absent from snapshots written before the far tier carried stamina: read as "never
+	# demoted", the same value a fresh unit starts with.
+	far_stamina = float(d.get("far_stamina", -1.0))
 	frontage_override = int(d["frontage_override"])
 	frontage_anchor_offset = float(d["frontage_anchor_offset"])
 	_last_reshape_tick = int(d["last_reshape_tick"])
