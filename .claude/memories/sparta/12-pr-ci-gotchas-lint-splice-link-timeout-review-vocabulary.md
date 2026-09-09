@@ -708,3 +708,108 @@ Both halves of this pair are derived from that correction, not stated by the use
 - **Do:** before reporting an edit as done, re-read the diff (`git diff --stat` and a grep for the new symbol) and quote the grep line in the report, e.g. `654: var cells: Dictionary[Vector2i, PackedInt32Array] = {}`.
 
 - **Don't:** report an edit from the plan or from memory of intending it -- a description of the intended change is not evidence the change landed in the file.
+
+## 2026-09-08 gia wave (#1548): PR checkout HEAD is the merge commit, not a rebase -- `git merge-base` collapses
+
+On a `pull_request` event, `actions/checkout` (and any local checkout of `refs/pull/N/merge`)
+lands on the synthetic merge commit GitHub builds for that PR, whose first parent is the base
+branch's tip at trigger time and whose second parent is the PR head.
+That makes `git merge-base origin/main HEAD` always resolve to `HEAD^1` (main's own tip) on this
+checkout, whatever the PR branch's real divergence point was -- the "merge-base" computation
+collapses to "the base tip" and never reflects where the branch actually forked.
+`benchmark.yml`'s first cut computed `git merge-base origin/main HEAD` for exactly this reason and
+got the base tip by accident;
+the rename to `HEAD^1` makes the workflow say what it measures.
+
+Comparing the merged tree (`HEAD`) against the base tip (`HEAD^1`) isolates the PR's own diff on
+top of current `main`.
+A true merge-base comparison instead folds in `main`'s own drift since the branch diverged, which
+is the wrong baseline for "did this PR regress anything" -- and per the same PR, the committed
+`tools/benchmark/baseline.json` (refreshed weekly) is kept only as a secondary, informational
+table for exactly that reason: it can be stale between refreshes, while the same-run `HEAD` vs
+`HEAD^1` comparison never drifts.
+
+- **Do:** on a PR-checkout job, use `HEAD^1` for the base tip and `HEAD^2` for the PR head, and
+  fail fast if `HEAD` has no second parent (a non-merge-commit checkout means the checkout
+  strategy changed).
+
+- **Do:** treat a same-run comparison against the base tip as the primary verdict, and a
+  periodically-refreshed committed baseline as secondary/informational only.
+
+- **Don't:** call `git merge-base origin/main HEAD` on a PR-event checkout expecting the branch's
+  actual fork point -- it always resolves to `HEAD^1`, the base tip, not a merge-base in the
+  usual sense.
+
+## 2026-09-08 gia wave (#1548): two worktrees in one CI job need separate caching, not a second clone into the same path
+
+Benchmarking the base tip (`HEAD^1`) alongside the PR's own merged tree (`HEAD`) means running the
+project twice in one job, from two separate worktrees.
+The second worktree starts with no primed `.godot` import cache, so it needs its own explicit
+`godot --headless --import` step -- it cannot reuse the first tree's cache, because Godot's import
+cache is keyed to the files under that specific working directory.
+GUT itself does not need a second clone: `.github/actions/setup-godot-project/action.yml` already
+clones GUT to `/tmp/gut` and vendors `addons/gut` from there for the first tree, and the second
+worktree's setup step should vendor `addons/gut` from that same `/tmp/gut` clone rather than
+re-cloning -- re-cloning into `/tmp/gut` a second time fails outright, since the path is already
+populated.
+
+- **Do:** give a second worktree its own import step (`godot --headless --import`), and reuse the
+  setup action's existing `/tmp/gut` clone to vendor `addons/gut` into it.
+
+- **Don't:** assume a second worktree can run GUT tests or benchmarks off the first tree's primed
+  `.godot` cache, and don't re-clone GUT into `/tmp/gut` a second time.
+
+## The `main` ruleset requires every review thread resolved -- `check-pr-fully-clean.py`'s exit code doesn't check that
+
+`gh api repos/Lacaedemon/sparta/rules/branches/main` lists a `pull_request` rule with
+`"required_review_thread_resolution": true`.
+That is a merge-time GitHub requirement, enforced server-side by `gh pr merge` (or the web UI's
+merge button), and it is a different surface from anything `check-pr-fully-clean.py` reads: the
+script's own PR fetch is `gh pr view --json ...,reviews,comments`, which never carries review
+**thread** resolution state, only review bodies and issue comments.
+So the instrument can exit 0 (nothing blocking found in the verdict text) while the merge is still
+refused, because one or more review threads -- including resolved-looking inline findings that
+were replied to but never marked resolved in the GitHub UI/API sense -- are still open.
+
+Resolving an answered thread from the CLI needs the GraphQL `resolveReviewThread` mutation (REST
+has no endpoint for it); `gh api graphql -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}' -F id=<thread node id>`
+is the shape, with thread ids read from the `reviewThreads` GraphQL query.
+
+A second gotcha on the same surface: Copilot's bot account prints under two different logins
+depending on the endpoint.
+`gh api repos/<owner>/<repo>/pulls/<N>/comments` (inline review comments -- the endpoint that
+carries `reviewThreads`) reports `user.login` as `Copilot`, capitalized, with no `[bot]` suffix.
+`gh api repos/<owner>/<repo>/pulls/<N>/reviews` (formal review objects) reports the same account
+as `copilot-pull-request-reviewer[bot]`, all-lowercase.
+A login filter written against one endpoint's casing silently matches nothing on the other.
+
+- **Do:** resolve every answered review thread with the GraphQL `resolveReviewThread` mutation
+  before `gh pr merge`, even after `check-pr-fully-clean.py` exits 0 -- the exit code says nothing
+  about thread-resolution state.
+
+- **Do:** when filtering Copilot's comments or reviews by login, downcase the login first
+  (`ascii_downcase` in `jq`) or match both `Copilot` (inline comments endpoint) and
+  `copilot-pull-request-reviewer[bot]` (reviews endpoint) rather than assuming one casing.
+
+- **Don't:** read a clean `check-pr-fully-clean.py` exit as proof `gh pr merge` will succeed on
+  this repo -- the ruleset's thread-resolution requirement is a separate, unchecked gate.
+
+- **Don't:** filter Copilot's identity by a single hardcoded login string across both endpoints.
+
+## `tools/check.sh shell_tests` runs the repo's own shell test suite, ahead of any Godot requirement
+
+`tools/lib/tests/test-*.sh` scripts are now a `shell_tests` entry in `tools/check.sh`'s
+`ALL_CHECKS`/`DEFAULT_CHECKS`, and it also runs inside the Godot-free
+`check-comment-citations.yml` job -- it needs no Godot binary, so it can gate a change to shell
+tooling (like `tools/lib/demo-defect-metrics.sh`'s path-derivation logic) even in a CI job that
+never imports the project.
+`tools/check.sh demo_defects` gates a changed `defects.json` sidecar the same way it gates a
+changed `demos/inputs/*.json` script: a shape check first (fails the check on a malformed sidecar,
+mirroring the analyzer's own rc 3), then, only when `DemoStateSink.gd` is present in the tree, an
+import-primed state dump plus an analyzer pass with `--script`.
+
+- **Do:** add a new `tools/lib/tests/test-*.sh` file for shell-tooling logic and expect
+  `shell_tests` to pick it up automatically in both `check.sh` and the Godot-free CI job.
+
+- **Don't:** assume a shell-only tooling change needs a Godot-backed CI job to be gated at all --
+  `check-comment-citations.yml` already runs `shell_tests` with no Godot import.

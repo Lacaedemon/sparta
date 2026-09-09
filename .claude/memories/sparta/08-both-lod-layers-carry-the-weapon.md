@@ -1490,3 +1490,71 @@ and add labels with
 
 (`Lacaedemon/sparta` PR #1396 / issue #1395, 2026-08-25.)
 
+## A demo manifest claiming a defect verdict needs the catalog's own cadence and tick window, not just the right clip
+
+The rule above ("point `demos/demo.<N>.json` at that clip") is necessary but not sufficient for a
+PR whose deliverable is a claim about that clip's defect verdicts (dropping a stale
+`defect_exemptions` entry, adding one with measured numbers, declaring a mechanism).
+`demo-video.yml`'s per-PR scan judges whatever tick window the recording actually produces, which
+is controlled by the input script's own `fixed_fps`/`max_frames` (for a `type=input` recording)
+and, when the script has no top-level `state` list, by nothing at all -- the recorder then free-
+runs however long the script's actions take, which need not match the window the website
+catalog's own row (`website/tools/demo-catalog.sh`) uses to grade the same clip weekly.
+A manifest that points at the right clip but records a different tick window makes CI's scan judge
+a window the PR's quoted numbers were never measured over, so the claim and the CI verdict can
+diverge even though the manifest is technically valid.
+
+`demos/demo.1546.json` (PR #1551) and `demos/demo.1544.json` (PR #1553) both set the manifest's
+`fixed_fps`/`max_frames` to the catalog row's own values, and both PRs' input scripts declare the
+catalog's `state` ticks explicitly (a script that already has a top-level `state` list needs no
+change;
+one that doesn't must add it) -- so CI records and scans exactly the window the PR's
+measured numbers came from.
+
+- **Do:** when a PR's claim is about a clip's defect verdicts, set `demos/demo.<slug>.json`'s
+  `fixed_fps`/`max_frames` to the catalog row's own values from `website/tools/demo-catalog.sh`,
+  and add the catalog's `state` ticks to the input script if it has no top-level `state` list yet.
+
+- **Don't:** assume pointing the manifest at the right replay/input file is enough -- a manifest
+  recording a different cadence or a shorter/longer window than the catalog's own judges a
+  different window than the one the PR's numbers were measured over.
+
+- **Don't:** ship a `skip` manifest on this kind of PR -- per the section above, `skip` withholds
+  exactly the CI-side verification this claim needs.
+
+## `path_crossing` fails on a SUSTAINED reading, not a lone peak -- an exemption for a single spike reads stale
+
+`DemoDefects.gd`'s `path_crossing` verdict (like every metric routed through `_sustained_verdict`,
+and `path_crossing`'s own hand-rolled run-length check) only fails when the offending reading holds
+for `MIN_SUSTAIN` (2) consecutive judged samples in a row -- a single sample above the threshold,
+surrounded by passing samples, is a transient and the metric still reports `pass: true` for that
+uid.
+A `defect_exemptions` entry written for a lone peak (rather than a run of two or more) therefore
+exempts nothing: CI's scan reports it stale, since the metric it names never actually fails.
+
+Measured on PR #1553's `battle_ai_leaders` clip: uid 1's `path_crossing` peaked at 0.479 for one
+sample and passed every other sample, so an exemption declared for it was dropped rather than kept
+-- CI's scan confirmed the metric passes on its own sustain criterion and needs no exemption.
+
+- **Do:** before declaring a `path_crossing` exemption, check whether the offending reading holds
+  for two or more consecutive judged samples -- a lone spike passes on its own and needs nothing.
+
+- **Don't:** exempt a metric because its worst single-sample value crossed the threshold;
+  check the run length against `MIN_SUSTAIN` (2) first, the same discriminator the analyzer itself applies.
+
+## Overlap exemption floors are per unit TYPE (cavalry vs foot), not one shared number
+
+`DemoDefects.gd`'s `overlap` floor is `two_bodies * OVERLAP_BODY_FRAC`, where `two_bodies` is
+`2.0 * soldier_body_radius()` and `OVERLAP_BODY_FRAC` is `0.25`.
+`soldier_body_radius()` (`scripts/Unit.gd`) returns `CAV_MARK_RADIUS` (`0.5 * WU_PER_M` = 10 wu)
+for cavalry and `MARK_RADIUS` (`0.225 * WU_PER_M` = 4.5 wu) for foot, with `WU_PER_M` = 20.
+That makes the overlap floor **5.0 wu for a cavalry uid and 2.25 wu for a foot uid** -- more than
+double -- so a `defect_exemptions` reason quoting one number for both types, or reusing a floor
+from a different uid's unit type, misstates the actual threshold the scan applies.
+
+- **Do:** derive the overlap floor from the specific uid's unit type before quoting it in an
+  exemption reason -- 5.0 wu for cavalry, 2.25 wu for foot, from `2 * soldier_body_radius() *
+  OVERLAP_BODY_FRAC(0.25)`.
+
+- **Don't:** copy an overlap floor number from one uid's exemption reason into another uid's
+  reason without checking whether the two are the same unit type.
