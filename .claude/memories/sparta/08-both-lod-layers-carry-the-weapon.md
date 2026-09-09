@@ -1290,8 +1290,25 @@ on a clip like this.
   fails locally and passes on CI, discard the local numbers wholesale.
 - **Do:** get CI to judge the clip (see the section above) when the decision turns on a
   verdict.
+- **Do:** reproduce a sweep row from the runner's published transcript
+  (`demos/README.md`, "Reproducing a sweep verdict"): the analyzer over CI's dump gives
+  CI's verdict on any platform; a local re-dump does not.
 - **Don't:** restore or retain a `defect_exemptions` block on the strength of a local
   FAIL, or delete one on the strength of a local PASS.
+
+**The drift is not a melee phenomenon, and it does not start late.** Measured
+2026-09-09 (hash streams, Linux runner versus Windows, same commit, Godot 4.7-stable
+both): all six clips compared diverge in the cheap (positions) tier at tick 21 --
+including `sidestep`, one regiment side-stepping with no enemy in reach -- and
+`general_doctrine_reserves` diverges in the full tier first (tick 60: non-position
+state moved before any position did). The readable 2-decimal dump hides it for
+hundreds of ticks (`sidestep` shows one 0.01 wu difference at tick 300); contact
+amplifies it to whole-soldier displacements (`support` 34 wu at tick 800, `showcase`
+1282 wu at tick 1300, `rout_rally` a different surviving-unit count at tick 3540).
+So "the melee-heavy clips diverge" was the visible tail of a sim-wide sub-ulp
+platform difference, not a knife-edge in reach checks. The analyzer is not part
+of it: CI's six-clip report re-judged on Windows from CI's transcripts was identical
+row for row. Tracked in #1566.
 
 This one is mechanized rather than left to prose, because prose is what failed: the
 local-vs-CI rule was on the books, was loaded in the session, and was read as governing

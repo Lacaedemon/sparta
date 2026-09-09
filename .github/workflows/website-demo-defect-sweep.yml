@@ -61,6 +61,11 @@ jobs:
     # this is CPU-bound rather than clip-duration-bound; website-demo-diff.yml budgets 18
     # minutes for each of its TWO sweeps, so one sweep plus the analyzer fits comfortably.
     timeout-minutes: 45
+    env:
+      # Empty on a scheduled run (dump and judge everything); a dispatch may narrow it.
+      # Job-wide because BOTH the dump and the sweep read it: a sweep that saw the whole
+      # catalog while the dump saw one clip would report every other row as missing.
+      SPARTA_DUMP_CLIPS: ${{ inputs.clips }}
     steps:
       - uses: actions/checkout@v4
 
@@ -84,9 +89,6 @@ jobs:
         # themselves, and the issue body says the run was partial.
         continue-on-error: true
         timeout-minutes: 25
-        env:
-          # Empty on a scheduled run (dump everything); a dispatch may narrow it.
-          SPARTA_DUMP_CLIPS: ${{ inputs.clips }}
         run: |
           GODOT_BIN=godot website/tools/dump-demo-states.sh /tmp/transcripts "$GITHUB_WORKSPACE"
 
