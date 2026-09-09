@@ -813,3 +813,22 @@ import-primed state dump plus an analyzer pass with `--script`.
 
 - **Don't:** assume a shell-only tooling change needs a Godot-backed CI job to be gated at all --
   `check-comment-citations.yml` already runs `shell_tests` with no Godot import.
+
+## A conflicting PR gets no `pull_request` run of ANY workflow -- not a skipped run, none
+
+**Symptom.** A push to a PR produces no Claude review run, and `gh run list --workflow claude-code-review.yml` shows nothing for that SHA.
+It reads as a reviewer outage, and the first instinct is to blame the reusable workflow's concurrency group or a rate limit.
+
+**Cause.** GitHub creates no `pull_request` workflow run while the PR has a merge conflict with its base ("Workflows will not run on pull_request activity if the pull request has a merge conflict").
+Godot CI, the lint checks, and the demo clip go silent on the same push, and the `ready_for_review` event is swallowed too.
+The runs come back on the push of the merge commit that resolves the conflict.
+
+**How it was settled (2026-09-09, sparta#1539).** The set of `head_sha` values with a `godot-ci.yml` run over 2026-09-04..06 was identical to the set with a `claude-code-review.yml` run, so the gap sat at GitHub's event level, not in the review workflow.
+Each run-less SHA showed conflict markers in `git merge-tree <base> <sha> <main-at-push-time>`.
+
+**What to do.** Merge `main` and resolve the conflict; the merge commit's push triggers everything.
+To review the current head without waiting: `gh workflow run claude-code-review.yml -R Lacaedemon/sparta -f pr_number=N`.
+`conflicting-pr-notice.yml` (push-triggered, since push events fire regardless of mergeability) now posts a marker comment on the PR when this happens, so the silence is no longer silent.
+
+- **Do:** when a review "never started", check the PR's `mergeable_state` first, and check whether the other `pull_request` workflows ran on that SHA.
+- **Don't:** read a missing run as a workflow bug, or dispatch reviews by hand on every push of a conflicting branch instead of resolving the conflict.
