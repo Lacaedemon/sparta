@@ -820,7 +820,7 @@ import-primed state dump plus an analyzer pass with `--script`.
 It reads as a reviewer outage, and the first instinct is to blame the reusable workflow's concurrency group or a rate limit.
 
 **Cause.** GitHub creates no `pull_request` workflow run while the PR has a merge conflict with its base ("Workflows will not run on pull_request activity if the pull request has a merge conflict").
-Godot CI, the lint checks, and the demo clip go silent on the same push, and the `ready_for_review` event is swallowed too.
+Godot CI, the lint checks, and the demo clip go silent on the same push, and the `ready_for_review` event is swallowed too (sparta#1539's own data point: #1536's ready-for-review at 2026-09-05T03:47Z, inside its conflicting window, created no run).
 The runs come back on the push of the merge commit that resolves the conflict.
 
 **How it was settled (2026-09-09, sparta#1539).** The set of `head_sha` values with a `godot-ci.yml` run over 2026-09-04..06 was identical to the set with a `claude-code-review.yml` run, so the gap sat at GitHub's event level, not in the review workflow.
