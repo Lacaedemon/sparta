@@ -42,12 +42,15 @@ Line coverage is measured with
 (its `godot4` branch), committed under [`../addons/coverage/`](../addons/coverage/)
 and pinned to commit `9c8d4a9`. Unlike GUT, the coverage addon **is** committed --
 it is small, has no releases to pin a tag against, and reviewers can see the exact
-instrumented code in the diff. The local deviations from that pin are listed
-in a comment next to `DEBUG_SCRIPT_COVERAGE` in `Coverage.gd`: that debug constant
-set to `0` (so instrumenting the tree doesn't dump every script's source into the
-logs), and a block-counting fix (`_strip_trailing_comment` and the
-`_erase_string_literals` port from upstream `main`) so a bracket inside a trailing
-comment or a string literal cannot leave the rest of a file uninstrumented.
+instrumented code in the diff.
+The local deviations from that pin are listed in a comment next to
+`DEBUG_SCRIPT_COVERAGE` in `Coverage.gd`:
+that debug constant set to `0`
+(so instrumenting the tree doesn't dump every script's source into the logs),
+and a block-counting fix
+(`_strip_trailing_comment` and the `_erase_string_literals` port from upstream `main`)
+so a bracket inside a trailing comment or a string literal
+cannot leave the rest of a file uninstrumented.
 `test/unit/test_coverage_addon.gd` guards that fix against
 `test/fixtures/coverage_trailing_comment_bracket.gd`.
 
