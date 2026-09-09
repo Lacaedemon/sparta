@@ -140,15 +140,17 @@ script under `demos/inputs/`:
   contorting a staging around the default map's fixed forest and hill -- and note a replay
   recorded on a custom map carries it in its header, so playback reconstructs the same
   battlefield (`demos/inputs/custom-map-defile.json` is the worked example).
-- `deployment_gap_m` (optional) -- **open the battle at a chosen deployment distance**: the
-  distance in metres between the two spawn lines (the default map's is 29 m). Team 0's line
-  stays put, team 1's line moves to that distance below it, and the field grows downward
-  with it so team 1 keeps its ground behind the line -- the same `Battle.deployment_gap_m`
-  a campaign clash sets from its defended province's `deployment_gap_m`, so a demo can
-  stage a per-clash deployment without a campaign. Applied after `map`, on the map's own
-  lines, so the two compose. Strict like `map`: a non-positive or non-numeric value fails
-  the recording loudly. Beyond 30 m both armies open in the far tier (see `tier_ranges`
-  below for the thresholds) and promote back as they close.
+- `deployment_gap_m` (optional) -- **open the battle at a chosen deployment distance**:
+  the distance in metres between the two spawn lines (the default map's is 29 m).
+  Team 0's line stays put,
+  team 1's line moves to that distance below it,
+  and the field grows downward with it so team 1 keeps its ground behind the line.
+  It is the same `Battle.deployment_gap_m` a campaign clash sets from its defended province's `deployment_gap_m`,
+  so a demo can stage a per-clash deployment without a campaign.
+  Applied after `map`, on the map's own lines, so the two compose.
+  Strict like `map`: a non-positive or non-numeric value fails the recording loudly.
+  Beyond 30 m both armies open in the far tier (see `tier_ranges` below for the thresholds)
+  and promote back as they close.
   (`demos/inputs/campaign-deployment-gap.json` is the worked example.)
 - `drill` (optional bool, **default it to `true` unless the demo needs an enemy**) -- solo/
   no-opponent rehearsal: only the player army (team 0) deploys and the battle never auto-ends
