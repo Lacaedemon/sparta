@@ -1,0 +1,157 @@
+{
+  "_comment": "Per-gait stamina flow demo: a lone 120-man Infantry regiment staged alone in drill mode at (800, 150) facing south [0, 1], with the stat sheet's new 'Stamina per man' readout on screen the whole clip. Selected at tick 10 and given a two-click Jog order to (800, 1050) at ticks 14/17, so it jogs a long straight leg south while its pool bleeds at the slow jog drain (KAPPA_JOG per second). At tick 540, still mid-jog, it is re-ordered with a four-click Sprint to a fresh destination (800, 1120), so the pool drains at the fast sprint rate (KAPPA_SPRINT per second) for the rest of the approach with no rest interval in between to mask the difference. The readout falls slowly through the jog leg and steeply through the sprint leg; the same two legs are pinned by the stamina_mean expectations below, taken from a dump-state.sh run. A walk would have been neutral and a halt regenerates, so the clip shows only the two paces that cost anything.",
+  "seed": "31466",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 800,
+      "y": 150,
+      "facing": [
+        0,
+        1
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 800.0,
+      "y": 450.0,
+      "zoom": 0.85
+    },
+    {
+      "tick": 960,
+      "x": 800.0,
+      "y": 850.0,
+      "zoom": 0.85
+    }
+  ],
+  "steps": [
+    {
+      "tick": 10,
+      "click": [
+        800,
+        150
+      ]
+    },
+    {
+      "tick": 14,
+      "rmb_click": [
+        800,
+        1050
+      ]
+    },
+    {
+      "tick": 17,
+      "rmb_click": [
+        800,
+        1050
+      ]
+    },
+    {
+      "tick": 540,
+      "rmb_click": [
+        800,
+        1120
+      ]
+    },
+    {
+      "tick": 543,
+      "rmb_click": [
+        800,
+        1120
+      ]
+    },
+    {
+      "tick": 546,
+      "rmb_click": [
+        800,
+        1120
+      ]
+    },
+    {
+      "tick": 549,
+      "rmb_click": [
+        800,
+        1120
+      ]
+    }
+  ],
+  "frames": [
+    0,
+    120,
+    300,
+    480,
+    600,
+    780,
+    960
+  ],
+  "state": [
+    0,
+    60,
+    120,
+    180,
+    240,
+    300,
+    360,
+    420,
+    480,
+    540,
+    600,
+    660,
+    720,
+    780,
+    840,
+    900,
+    960,
+    1020,
+    1080
+  ],
+  "expect": [
+    {
+      "tick": 0,
+      "uid": 0,
+      "field": "stamina_mean",
+      "value": 100.0
+    },
+    {
+      "tick": 180,
+      "uid": 0,
+      "field": "current_speed_mps",
+      "value": 2.5
+    },
+    {
+      "tick": 300,
+      "uid": 0,
+      "field": "stamina_mean",
+      "value": 97.3
+    },
+    {
+      "tick": 540,
+      "uid": 0,
+      "field": "stamina_mean",
+      "value": 93.3
+    },
+    {
+      "tick": 660,
+      "uid": 0,
+      "field": "current_speed_mps",
+      "value": 4.0
+    },
+    {
+      "tick": 780,
+      "uid": 0,
+      "field": "stamina_mean",
+      "value": 78.7
+    },
+    {
+      "tick": 900,
+      "uid": 0,
+      "field": "stamina_mean",
+      "value": 68.7
+    }
+  ],
+  "spawn_fingerprint": "c3d9aadb709d1e7c0d87ceafc2d2e2e3"
+}

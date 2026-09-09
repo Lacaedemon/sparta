@@ -68,10 +68,12 @@ World scale is 20 wu per metre (`WorldScale.WU_PER_M`).
   a walk until the last 10 m, then the sprint.
 
 - **Fatigue**:
-  Movement is free today.
+  Movement was free when this design was written (2026-08).
   `Unit.fatigue` builds only while a unit is in `State.FIGHTING` (`UnitMorale.tick_fatigue`) and recovers otherwise;
-  per-soldier stamina drains on strikes thrown, blows met, and rising from prone (`SoldierCombat.KAPPA_A` / `KAPPA_D` / `KAPPA_P`), never on distance covered.
-  The combat model's posture table (`docs/combat-model.md`, "posture") specifies a slow drain for jogging and a fast drain for sprinting, and its own implementation note says that table is not implemented as a state machine.
+  per-soldier stamina drained on strikes thrown, blows met, and rising from prone (`SoldierCombat.KAPPA_A` / `KAPPA_D` / `KAPPA_P`), never on distance covered.
+  The combat model's posture table (`docs/combat-model.md`, "posture") specifies a slow drain for jogging and a fast drain for sprinting, and its own implementation note said that table is not implemented as a state machine.
+  [#1466](https://github.com/Lacaedemon/sparta/issues/1466) has since landed the stamina column of that table (`StaminaFlow`: a jog drains slowly, a sprint fast, a walk is neutral, rest regenerates), so a jog or sprint approach now costs the men something;
+  the charge-distance retune that waited on it is still [#1468](https://github.com/Lacaedemon/sparta/issues/1468).
 
 - **Time**:
   `Engine.time_scale` is already the game's speed mechanism, cycled by F5 through `HUD.SLOWMO_PRESETS` (1.0, 0.5, 0.25, 0.1) and recorded into the replay's time-scale track so playback reproduces the same per-tick delta.
@@ -130,13 +132,13 @@ A setup preset decides how far apart the armies start, fast-forward decides how 
   a walk for the whole approach and a run only at the end.
   Historically that run covered the last hundred metres or less;
   in the game it covers the last 10 m (`SPRINT_START_DISTANCE`), two and a half seconds at infantry's 4 m/s sprint.
-  Stretching the charge toward the historical distance is a retune of one constant, but a 40 m sprint at 4 m/s is ten seconds of the fastest gait, and movement is free today, so that retune waits for per-gait stamina.
+  Stretching the charge toward the historical distance is a retune of one constant, but a 40 m sprint at 4 m/s is ten seconds of the fastest gait, and movement was free when this was written, so that retune waited for per-gait stamina (since landed by [#1466](https://github.com/Lacaedemon/sparta/issues/1466); the retune itself is [#1468](https://github.com/Lacaedemon/sparta/issues/1468)).
 
 - **A jog approach is gated on two things this design does not build.**
-  First, movement costs nothing, so an AI that jogged its approach would simply arrive sooner with no penalty;
-  the issue's premise that the fatigue system already prices a run does not hold on the current build, and the gate is the combat model's deferred per-gait stamina flow.
-  Second, the isolated far-tier rules carry only the walk, and the walk is the right resolution for them, so a jog approach has to reach `FarTierRules` before those rules take over live movement, or the two paths diverge.
-  Both belong to the combat model and the far-tier rules, not here.
+  First, movement cost nothing at the time, so an AI that jogged its approach would simply have arrived sooner with no penalty;
+  the issue's premise that the fatigue system already priced a run did not hold on that build, and the gate was the combat model's deferred per-gait stamina flow.
+  Second, the isolated far-tier rules carried only the walk, and the walk is the right resolution for them, so a jog approach had to reach `FarTierRules` before those rules take over live movement, or the two paths diverge.
+  Both belong to the combat model and the far-tier rules, not here, and both have since landed in [#1466](https://github.com/Lacaedemon/sparta/issues/1466) (`StaminaFlow`, and a walk-or-jog `FarTierFormation.gait` with an aggregate stamina pool); the AI approach pace itself is still a separate phase.
   Until they land, the AI keeps walking;
   spearmen would keep walking regardless, since `walk_advance` is the price of a formed stance.
 
