@@ -3,6 +3,18 @@ extends GutTest
 ## Battle rebuilding its battlefield from instance map data instead of the consts.
 ## The consts remain the DEFAULT map; these tests pin both halves of that split.
 
+const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
+
+
+# CampaignBattle is a process-wide static holder; the campaign-clash tests below set
+# it, so clear it around every test so a clash can't leak into another test's battle.
+func before_each() -> void:
+	CampaignBattle.clear()
+
+
+func after_each() -> void:
+	CampaignBattle.clear()
+
 
 # --- parse ---------------------------------------------------------------------
 
@@ -194,3 +206,88 @@ func test_default_map_publishes_no_replay_map_block() -> void:
 	add_child_autofree(battle)
 	assert_true(Replay.map.is_empty(),
 			"a default-map battle records no map block, keeping the pre-map replay shape")
+
+
+# --- deployment gap: a metre-authored line gap re-derives the map ------------------
+
+func test_with_line_gap_at_the_default_gap_reproduces_the_default_map() -> void:
+	var d_field := Rect2(0, 0, 1600, 1200)
+	var d_spawn: Array = [300.0, 880.0]
+	var out: Dictionary = BattleMap.with_line_gap(580.0, d_field, d_spawn)
+	assert_eq(out["field"], d_field, "the default gap leaves the field alone")
+	assert_eq(out["spawn_lines"], d_spawn, "and the spawn lines alone")
+
+
+func test_with_line_gap_moves_the_defender_line_and_grows_the_field() -> void:
+	var out: Dictionary = BattleMap.with_line_gap(1200.0, Rect2(0, 0, 1600, 1200), [300.0, 880.0])
+	assert_eq(out["spawn_lines"], [300.0, 1500.0], "team 0 stays; team 1 sits the gap below it")
+	assert_eq(out["field"], Rect2(0, 0, 1600, 1820),
+			"the field grows downward so team 1 keeps its 320 wu of ground behind the line")
+	var narrow: Dictionary = BattleMap.with_line_gap(400.0, Rect2(0, 0, 1600, 1200), [300.0, 880.0])
+	assert_eq(narrow["spawn_lines"], [300.0, 700.0], "a narrower gap pulls team 1 forward")
+	assert_eq(narrow["field"], Rect2(0, 0, 1600, 1020), "and shrinks the field by the same rule")
+
+
+func test_deployment_gap_m_moves_the_spawn_lines_with_the_parameter() -> void:
+	var scene := load("res://scenes/Battle.tscn") as PackedScene
+	var battle: Node = scene.instantiate()
+	battle.deployment_gap_m = 60.0
+	add_child_autofree(battle)
+	assert_eq(battle.spawn_line_ys, [300.0, 1500.0], "60 m = 1200 wu below team 0's line")
+	assert_eq(battle.field, Rect2(0, 0, 1600, 1820), "the live field grew with the gap")
+	assert_eq(battle.field_with_margin, Rect2(0, 0, 1600, 1820).grow(battle.ROUT_MARGIN),
+			"the rout margin tracks the widened field")
+	var team_0_ys: Array = []
+	var team_1_ys: Array = []
+	for node in get_tree().get_nodes_in_group("units"):
+		var u: Unit = node as Unit
+		if u == null:
+			continue
+		if u.team == 0:
+			team_0_ys.append(u.position.y)
+		else:
+			team_1_ys.append(u.position.y)
+	assert_gt(team_0_ys.size(), 0, "team 0 spawned")
+	assert_gt(team_1_ys.size(), 0, "team 1 spawned")
+	for y in team_0_ys:
+		assert_almost_eq(float(y), 300.0, 0.001, "team 0 stays on the default line")
+	for y in team_1_ys:
+		assert_almost_eq(float(y), 1500.0, 0.001, "team 1 deploys on the moved line")
+	assert_false(Replay.map.is_empty(), "the widened map is published to the recording")
+	assert_eq(BattleMap.parse(Replay.map)["spawn_lines"], [300.0, 1500.0],
+			"so a replay rebuilds the same deployment")
+
+
+func test_deployment_gap_m_unset_keeps_the_default_map() -> void:
+	var scene := load("res://scenes/Battle.tscn") as PackedScene
+	var battle: Node = scene.instantiate()
+	assert_almost_eq(battle.deployment_gap_m, -1.0, 0.001, "unset by default")
+	add_child_autofree(battle)
+	assert_eq(battle.spawn_line_ys, battle.SPAWN_LINE_YS, "the default battle is unchanged")
+	assert_eq(battle.field, battle.FIELD, "and so is its field")
+	assert_true(Replay.map.is_empty(), "and it still records no map block")
+
+
+func test_campaign_clash_deployment_gap_widens_the_battle() -> void:
+	# The clash record's deployment_gap_m (the defended province's own value) fills
+	# Battle.deployment_gap_m, so the campaign path and the direct-parameter path
+	# above produce the same geometry.
+	CampaignBattle.active = true
+	CampaignBattle.pending = {"attacker_strength": 3, "defender_strength": 3, "deployment_gap_m": 45.0}
+	var scene := load("res://scenes/Battle.tscn") as PackedScene
+	var battle: Node = scene.instantiate()
+	add_child_autofree(battle)
+	assert_almost_eq(battle.deployment_gap_m, 45.0, 0.001, "the clash's gap fills the battle's field")
+	assert_eq(battle.spawn_line_ys, [300.0, 1200.0], "45 m = 900 wu below team 0's line")
+	assert_eq(battle.field, Rect2(0, 0, 1600, 1520), "and the field grew with it")
+
+
+func test_campaign_clash_without_a_gap_keeps_the_default_lines() -> void:
+	CampaignBattle.active = true
+	CampaignBattle.pending = {"attacker_strength": 3, "defender_strength": 3}
+	var scene := load("res://scenes/Battle.tscn") as PackedScene
+	var battle: Node = scene.instantiate()
+	add_child_autofree(battle)
+	assert_eq(battle.spawn_line_ys, battle.SPAWN_LINE_YS,
+			"a clash that declares nothing opens at the default gap")
+	assert_eq(battle.field, battle.FIELD, "on the default field")

@@ -297,3 +297,27 @@ func test_rejects_a_malformed_or_out_of_range_origin() -> void:
 	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a longitude off the globe -> rejected")
 	raw["origin"] = [120.0, 2.5]
 	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a latitude off the globe -> rejected")
+
+
+func test_deployment_gap_m_is_optional_and_carried_through() -> void:
+	var raw := _valid_raw()
+	raw["provinces"][1]["deployment_gap_m"] = 60
+	var m := CampaignLoader.parse_map(raw)
+	assert_false(m.is_empty(), "a map with a per-province deployment gap loads")
+	var p0: Dictionary = m["provinces"][0]
+	var p1: Dictionary = m["provinces"][1]
+	assert_false(p0.has("deployment_gap_m"), "a province that declares nothing stays undeclared")
+	assert_eq(float(p1.get("deployment_gap_m", -1.0)), 60.0, "the declared gap carries through as metres")
+
+
+func test_rejects_a_non_positive_or_non_numeric_deployment_gap() -> void:
+	# A zero or negative gap would put the defender on or above the attacker's line, and
+	# a string would coerce surprisingly; each is rejected here rather than asserted on
+	# in the battle.
+	var raw := _valid_raw()
+	raw["provinces"][0]["deployment_gap_m"] = 0
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a zero gap -> rejected")
+	raw["provinces"][0]["deployment_gap_m"] = -29.0
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a negative gap -> rejected")
+	raw["provinces"][0]["deployment_gap_m"] = "wide"
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a non-numeric gap -> rejected")

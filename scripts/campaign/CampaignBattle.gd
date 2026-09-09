@@ -26,7 +26,11 @@ const MAX_UNITS := 12
 static var active: bool = false
 
 # Clash context the battle reads: {from, to, attacker_strength, defender_strength,
-# attacker_name, defender_name, attacker_color, defender_color, to_name}.
+# attacker_name, defender_name, attacker_color, defender_color, to_name}, plus an
+# optional deployment_gap_m: the distance in metres between the two armies' spawn
+# lines for THIS clash (the defended province's own value, when its campaign data
+# declares one). Absent means Battle's default line gap, so a campaign whose
+# provinces declare nothing fights on exactly the battlefield a standalone battle uses.
 static var pending: Dictionary = {}
 
 # Outcome the campaign applies: {attacker_won: bool, survivors: int}. Empty until

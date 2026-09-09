@@ -16,8 +16,11 @@ extends RefCounted
 ##                                            #   thresholds for that faction.
 ##     "provinces": [
 ##       {"id","name","owner","army","adj":[ids], "polygon":[[x,y],...], "label":[x,y],
-##        "one_way": <bool>}     # optional, default false; declares this province's
+##        "one_way": <bool>,     # optional, default false; declares this province's
 ##                               # one-way exits intentional, suppressing the asymmetry warning
+##        "deployment_gap_m": <m>}  # optional; metres between the two armies' spawn lines
+##                               # when a clash over this province is fought out in the
+##                               # tactical battle (absent = the battle's default gap)
 ##     ],
 ##     "peace": [[factionA, factionB], ...],   # optional; pairs that start at peace.
 ##                                              # A 3rd element sets an initial truce in
@@ -138,11 +141,24 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 				push_warning("Campaign map: province %d 'one_way' must be a boolean (true/false)" % id)
 				return {}
 			one_way = p["one_way"]
-		provinces.append({
+		var province: Dictionary = {
 			"id": id, "name": str(p["name"]), "owner": owner, "army": int(p["army"]),
 			"adj": adj, "polygon": poly, "label": label,
 			"one_way": one_way,
-		})
+		}
+		# Optional "deployment_gap_m": how far apart (metres) the two armies deploy when a
+		# clash over this province is fought out in the tactical battle -- an open plain
+		# opens wider than a defile. Absent means the battle's own default gap, and it stays
+		# absent (not defaulted) so the battle can tell "declared" from "unset". A zero or
+		# negative gap would put the defender on or above the attacker's line, so a value
+		# must be a positive number; reject it here rather than let the battle assert.
+		if p.has("deployment_gap_m"):
+			var gap = p["deployment_gap_m"]
+			if not (gap is float or gap is int) or float(gap) <= 0.0:
+				push_warning("Campaign map: province %d 'deployment_gap_m' must be a positive number of metres" % id)
+				return {}
+			province["deployment_gap_m"] = float(gap)
+		provinces.append(province)
 
 	# Adjacency must reference provinces that exist.
 	for prov in provinces:

@@ -88,6 +88,10 @@ func _init(map: Dictionary, rng_seed: int = -1) -> void:
 			"owner": int(p.get("owner", 0)),
 			"army": int(p.get("army", 0)),
 		}
+		# A province's deployment gap is static campaign data (its ground, not the war's
+		# state), so it rides along for the clash capture and needs no snapshot/restore.
+		if p.has("deployment_gap_m"):
+			provinces[id]["deployment_gap_m"] = float(p["deployment_gap_m"])
 		var adj: Array[int] = []
 		for n in p.get("adj", []):
 			adj.append(int(n))

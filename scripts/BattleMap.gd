@@ -102,5 +102,23 @@ static func differs_from_default(field: Rect2, terrain: Array, spawn_lines: Arra
 	return false
 
 
+## The map a wider (or narrower) deployment produces from a base map. Team 0's line
+## and the field origin stay where they are, team 1's line moves to `gap` world units
+## below team 0's, and the field grows (or shrinks) downward by the same amount so
+## team 1 keeps the ground it has behind its line on the base map. The base map's own
+## gap reproduces the base map exactly, so a caller passing the default gap changes
+## nothing. Returns {field: Rect2, spawn_lines: Array}. A non-positive gap would put
+## the defender on or above the attacker's line; the callers validate their data
+## before reaching here, so it is asserted rather than clamped.
+static func with_line_gap(gap: float, field: Rect2, spawn_lines: Array) -> Dictionary:
+	assert(gap > 0.0, "a deployment gap must be positive")
+	var attacker_y: float = float(spawn_lines[0])
+	var defender_y: float = attacker_y + gap
+	var ground_behind: float = field.end.y - float(spawn_lines[1])
+	var grown := Rect2(field.position,
+			Vector2(field.size.x, defender_y + ground_behind - field.position.y))
+	return {"field": grown, "spawn_lines": [attacker_y, defender_y]}
+
+
 static func _num(v) -> bool:
 	return v is float or v is int

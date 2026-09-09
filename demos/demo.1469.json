@@ -1,0 +1,6 @@
+{
+  "input": "demos/inputs/campaign-deployment-gap.json",
+  "caption": "Per-clash deployment distance: the battle opens at a 60 m line gap instead of the default 29 m (the same Battle.deployment_gap_m a campaign clash sets from its defended province's deployment_gap_m), with the field grown downward so the defenders keep their ground behind the line. Both armies start beyond the demote range as far-tier grid marks, march toward each other, promote back to individual soldiers as the gap closes inside 20 m, and clash. Team 0 is box-selected and ordered forward at tick 40.",
+  "fixed_fps": 30,
+  "max_frames": 720
+}

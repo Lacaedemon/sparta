@@ -50,6 +50,10 @@ var _demote_range: float = -1.0
 # Parsed per-demo map overrides (BattleMap.parse's shape) from the input script's
 # optional "map" field. Empty == run on the default map.
 var _map: Dictionary = {}
+# Optional deployment distance (metres between the two spawn lines) from the input
+# script's "deployment_gap_m" field, handed to Battle.deployment_gap_m. <= 0 == "don't
+# override": the battle keeps the map's own lines.
+var _deployment_gap_m: float = -1.0
 # Live SelectionManager override for the multi-unit form-up distribution mode (a
 # SelectionManager.FormUpDist value), from the input script's optional "form_up_dist"
 # field. -1 (default) means "don't override" -- SelectionManager keeps reading
@@ -181,6 +185,16 @@ func _ready() -> void:
 			push_error("[demo-input] bad map block: %s" % _map["error"])
 			get_tree().quit(2)
 			return
+	# The optional deployment distance, strict like map: it decides how far apart the
+	# armies open, so a malformed value must fail the recording loudly rather than
+	# silently record a close-deployed battle in a clip captioned as a wide one.
+	if script.has("deployment_gap_m"):
+		var raw_gap = script["deployment_gap_m"]
+		if not (raw_gap is float or raw_gap is int) or float(raw_gap) <= 0.0:
+			push_error("[demo-input] deployment_gap_m must be a positive number of metres")
+			get_tree().quit(2)
+			return
+		_deployment_gap_m = float(raw_gap)
 	_form_up_dist = int(script.get("form_up_dist", -1))
 	_tray_row_order_placement = bool(script.get("tray_row_order_placement", false))
 	_show_unit_card_tray = bool(script.get("show_unit_card_tray", false))
@@ -246,6 +260,9 @@ func _start_battle() -> void:
 		_battle.terrain = _map["terrain"]
 	if _map.has("spawn_lines"):
 		_battle.spawn_line_ys = _map["spawn_lines"]
+	if _deployment_gap_m > 0.0:
+		# Likewise before add_child: Battle._ready widens the map from it before spawning.
+		_battle.deployment_gap_m = _deployment_gap_m
 	if _doctrine != "":
 		_battle.ai_doctrine = _doctrine   # likewise: overrides Battle's own default doctrine
 	if not _team_factions.is_empty():
