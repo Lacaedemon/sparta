@@ -35,10 +35,13 @@ on:
 
 permissions: {}
 
-# One check per branch; a newer push supersedes an older one still polling, so
-# two overlapping runs cannot both post a first notice.
+# One check per branch on push, so a newer push supersedes an older one still
+# polling and two overlapping runs cannot both post a first notice. A dispatch
+# keys on its PR number instead: its github.ref is whatever ref it was run
+# against (usually main), so keying on the ref alone would let two dispatched
+# checks for different PRs cancel each other.
 concurrency:
-  group: conflicting-pr-notice-${{ github.ref }}
+  group: conflicting-pr-notice-${{ inputs.pr_number || github.ref }}
   cancel-in-progress: true
 
 jobs:
