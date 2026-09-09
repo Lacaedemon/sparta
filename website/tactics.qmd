@@ -2071,8 +2071,7 @@ Beyond 30 m both armies open in the far simulation tier (grid marks instead of b
 and promote back to individual soldiers as they close inside 20 m,
 so a wide deployment is a march before it is a fight.
 Dress the line and pick your ground before stepping off:
-a formation that arrives ragged after a long walk meets a line that had the same time to prepare,
-and a block that reaches the enemy tired from a sprint has spent its stamina before the first blow.
+a formation that arrives ragged after a long walk meets a line that had the same time to prepare.
 
 ::: {#fig-campaign-deployment-gap .demo}
 
