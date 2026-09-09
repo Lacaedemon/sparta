@@ -30,6 +30,9 @@ OUT_MD="${2:?usage: website-demo-defect-sweep.sh <transcript-dir> <out-markdown>
 TREE="${3:-$PWD}"
 GODOT_BIN="${GODOT_BIN:-godot}"
 export GODOT_BIN
+# The same narrowing the dump honours (empty = every row), so a one-clip diagnostic run
+# judges the one clip it dumped instead of reporting the rest as missing.
+ONLY_CLIPS="${SPARTA_DUMP_CLIPS:-}"
 
 command -v jq >/dev/null 2>&1 || { echo "error: jq not found on PATH" >&2; exit 1; }
 
@@ -45,6 +48,9 @@ ALL_ROWS=""
 for spec in "${DEMOS[@]}"; do
   IFS='|' read -r NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE <<<"$spec"
   TYPE="${TYPE:-replay}"
+  if ! demo_catalog_selected "$NAME" "$ONLY_CLIPS"; then
+    continue
+  fi
   TOTAL=$((TOTAL + 1))
 
   if [ ! -d "$TRANSCRIPT_DIR/$NAME" ]; then
@@ -90,7 +96,18 @@ for spec in "${DEMOS[@]}"; do
 "
 done
 
+# A verdict travels with the platform that produced its transcript: the sim is bit-exact
+# only within one build and platform, so a report that omits where its transcripts were
+# dumped cannot be compared with another machine's. dump-demo-states.sh writes the file.
+PLATFORM_LINE=""
+if [ -f "$TRANSCRIPT_DIR/platform.txt" ]; then
+  PLATFORM_LINE="$(tr '\n' ' ' < "$TRANSCRIPT_DIR/platform.txt")"
+fi
+
 {
+  if [ -n "$PLATFORM_LINE" ]; then
+    printf 'Transcripts dumped with: `%s`\n\n' "$PLATFORM_LINE"
+  fi
   printf '| bucket | clips |\n|---|---|\n'
   printf '| clean | %d |\n' "$CLEAN"
   printf '| **defect** | %d |\n' "$DEFECT"

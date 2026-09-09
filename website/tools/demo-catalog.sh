@@ -110,4 +110,20 @@ DEMOS=(
   "skirmisher_screen|demos/inputs/skirmisher-screen.json|30|480|720|input"
 )
 
-
+# demo_catalog_selected <clip-name> <selection>
+#
+# True when <selection> (a comma-separated list of clip names, e.g. the
+# SPARTA_DUMP_CLIPS environment variable) is empty or names the clip. Both catalog
+# consumers narrow their row loop through this one predicate, so a narrowed dump and
+# the sweep judging it agree on which rows exist: a clip the dump skipped is not a
+# "no transcript" finding when the sweep was narrowed the same way.
+demo_catalog_selected() {
+  local want="$1" selection="$2" name
+  local -a names
+  [ -n "$selection" ] || return 0
+  IFS=',' read -r -a names <<<"$selection"
+  for name in "${names[@]}"; do
+    [ "$name" = "$want" ] && return 0
+  done
+  return 1
+}
