@@ -77,8 +77,10 @@ if [ -z "${DEMO_DEFECT_JSON_DIR:-}" ]; then
 fi
 export DEMO_DEFECT_JSON_DIR
 
-# The catalog maps clip names to their source scripts, whose declared `expect` assertions and
-# `defect_exemptions` (input-type rows only) join the scan on both sides.
+# The catalog maps clip names to their source scripts, whose declared `expect` assertions
+# and `defect_exemptions` join the scan on both sides -- an input row's own script, or a
+# replay row's <name>.defects.json sidecar when one exists (see demos/README.md's
+# "Sidecar declarations" section).
 # shellcheck source=../../website/tools/demo-catalog.sh
 . "$PR_TREE/website/tools/demo-catalog.sh"
 

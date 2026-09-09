@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "CI-only change to how the defect analyzer receives a replay clip's declarations; no gameplay to record."
+}

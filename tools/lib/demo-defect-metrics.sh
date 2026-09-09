@@ -25,20 +25,56 @@
 
 # demo_clip_script_source <clip-name> <tree>
 #
-# Absolute path to the clip's own scripted-input file for the catalog row named
-# <clip-name>, or empty for a replay-type row (which has no input script, and so
-# declares neither `expect` assertions nor `defect_exemptions`). The caller must have
+# Absolute path to the file the analyzer should read `expect`/`defect_exemptions` from
+# for the catalog row named <clip-name>, or empty when it has none. The caller must have
 # sourced the tree's own website/tools/demo-catalog.sh first, so DEMOS is in scope.
+#
+# type=input rows carry their own scripted-input file, which already declares both keys
+# (see demos/README.md). type=replay rows have no input script, but MAY carry a sidecar
+# file at the replay's own path with its .json extension replaced by .defects.json (e.g.
+# demos/showcase.json -> demos/showcase.defects.json); when that sidecar exists in the
+# tree, it is returned the same way, since the analyzer reads only the two declaration
+# keys from whatever `--script` points at and does not care whether the file is also a
+# playable replay. A replay row with no such sidecar returns empty, as before.
 demo_clip_script_source() {
-  local want="$1" tree="$2" spec NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE
+  local want="$1" tree="$2" spec NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE sidecar
   for spec in "${DEMOS[@]}"; do
     IFS='|' read -r NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE <<<"$spec"
-    if [ "$NAME" = "$want" ] && [ "${TYPE:-replay}" = "input" ]; then
-      printf '%s' "$tree/$SOURCE"
+    if [ "$NAME" = "$want" ]; then
+      if [ "${TYPE:-replay}" = "input" ]; then
+        printf '%s' "$tree/$SOURCE"
+        return 0
+      fi
+      # ${SOURCE%.json} is a no-op on a SOURCE that does not end in .json, which would
+      # otherwise let this silently build (and possibly match) a bogus sidecar path
+      # instead of correctly reporting the row as having none. Require the suffix.
+      case "$SOURCE" in
+        *.json)
+          sidecar="$tree/${SOURCE%.json}.defects.json"
+          if [ -f "$sidecar" ]; then
+            printf '%s' "$sidecar"
+          fi
+          ;;
+      esac
       return 0
     fi
   done
   return 0
+}
+
+# demo_sidecar_shape_ok <path>
+#
+# True when <path> is a valid demos/*.defects.json sidecar shape: a top-level JSON
+# object whose `expect` key, if present, is an array, and whose `defect_exemptions`
+# key, if present, is an object. Both keys are optional, and any other key is
+# tolerated -- the analyzer only reads these two. False on malformed JSON, a
+# non-object top level, or either key present with the wrong type.
+demo_sidecar_shape_ok() {
+  local path="$1"
+  jq -e 'type == "object"
+        and ((has("expect") | not) or (.expect | type == "array"))
+        and ((has("defect_exemptions") | not) or (.defect_exemptions | type == "object"))' \
+        "$path" >/dev/null 2>&1
 }
 
 # demo_defect_verdict <transcript-dir> <script-source-or-empty> <tree>

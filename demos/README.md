@@ -543,7 +543,51 @@ CI runs this scan on every PR demo (the demo workflow's "Demo defect scan" step,
 script's own `expect` assertions included) and appends the verdict table to the posted
 state-transcript comment; a failing verdict fails the job **after** the GIF and transcript
 publish, so the artifacts you need to debug are always there. Run it pre-push with
-`tools/check.sh demo_defects` -- it scans exactly the input scripts your diff adds or edits.
+`tools/check.sh demo_defects` -- it scans exactly the input scripts and replay sidecars
+(`demos/*.defects.json`, below) your diff adds or edits.
+
+### Sidecar declarations for a replay clip (`<name>.defects.json`)
+
+`expect` and `defect_exemptions` above are read from the clip's own input script.
+A `type=replay` catalog row has no input script:
+its `SOURCE` is a played-and-saved replay file (the `replay` field, documented above),
+so there is nowhere to put either declaration.
+A replay clip that legitimately needs one
+(a maneuver that trips a metric on purpose, a platform-dependent reading that needs pinning)
+carries a **sidecar file** instead:
+same directory as the replay, same basename, `.defects.json` in place of `.json`.
+`demos/showcase.json` pairs with `demos/showcase.defects.json`.
+
+The sidecar holds the two keys documented above, with the identical schema;
+the analyzer reads only those two, so a `_comment` key is tolerated and ignored.
+It is otherwise structurally unrelated to a replay file, and `DemoRunner` never reads it.
+The shared shell helper (`tools/lib/demo-defect-metrics.sh`'s `demo_clip_script_source()`)
+hands it to the analyzer via `--script` for a replay row only when the file exists in the tree,
+so a replay clip without one behaves exactly as before:
+no `expect` or `defect_exemptions` is applied,
+and both stay optional once the file exists.
+
+No sidecar ships as an empty starter for `demos/showcase.json` or any other clip.
+An empty sidecar changes no verdict,
+but it adds a new file that every manifest-less PR's fallback scan has to read.
+Create one only when a clip actually has an `expect` or `defect_exemptions` declaration to make,
+quoting a measured worst/threshold reading in any exemption's `reason`.
+
+`tools/check.sh demo_defects` gates a changed sidecar locally the same way it gates a changed input script.
+It shape-checks the file first (`expect` absent or an array, `defect_exemptions` absent or an object).
+A shape failure fails the check,
+since a malformed declaration silently disables every metric for the clip.
+When this tree carries `tools/demo/DemoStateSink.gd`,
+it also drives the paired replay through `DemoRunner.tscn`/`SPARTA_DEMO_REPLAY` for a FULL state dump
+and runs the analyzer against it,
+exactly like the input-script loop.
+On a tree without `DemoStateSink.gd` the sidecar is shape-validated locally only,
+and the analyzer pass for a replay sidecar runs in CI's sweep instead.
+
+In a per-PR delta run (`tools/ci/website-demo-defect-delta.sh`),
+the PR tree's sidecar declarations are applied to BOTH sides' transcripts,
+the same "join the scan on both sides" rule input scripts already follow,
+so a sidecar added on a PR also shapes the main-side verdict in that PR's diff.
 
 ### Per-tick hash stream (`hash_stream.jsonl`)
 

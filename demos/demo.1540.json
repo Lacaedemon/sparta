@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "CI-only change to the benchmark workflow; no gameplay to record."
+}
