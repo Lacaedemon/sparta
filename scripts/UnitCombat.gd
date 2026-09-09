@@ -170,9 +170,11 @@ static func strike(u: Unit, enemy: Unit) -> void:
 	take_casualties(enemy, int(round(dmg)), u)
 
 
-## A ranged volley: like a melee strike without the cavalry charge, scaled by
-## RANGED_DAMAGE_FACTOR -- archers trade per-hit punch for striking from beyond melee
-## reach. Draws from the same seeded RNG stream. Damage flows through take_casualties, so
+## A ranged volley: like a melee strike without the cavalry charge, scaled by the shooter's
+## own missile_damage_factor and its range-accuracy falloff (Unit.missile_accuracy) --
+## archers trade per-hit punch for striking from beyond melee reach, and a profile that
+## loses accuracy with distance lands lighter at the edge of its reach. Draws from the same
+## seeded RNG stream. Damage flows through take_casualties, so
 ## volleys inherit the same flank/rear multiplier as melee (relative to the TARGET's
 ## facing): fire into a flank or rear deals the full bonus.
 static func shoot(u: Unit, enemy: Unit) -> void:
@@ -204,7 +206,15 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 	# frontal one: the shields blunt the arrows, but a volley into a disordered flank
 	# still finds more gaps and shakes morale harder. That layering is intentional; the
 	# all-direction cover reduces the base damage, it doesn't erase the flanking geometry.
-	var dmg: float = base * Unit.RANGED_DAMAGE_FACTOR * rng_roll * target.missile_defense_factor(u)
+	#
+	# The shooter's own damage factor and range-accuracy falloff come from its missile profile
+	# (Unit.missile_damage_factor / missile_accuracy). For an unprofiled unit both reproduce
+	# the pre-profile formula exactly: the factor IS the old constant and the falloff is a
+	# multiplication by 1.0, so an existing replay stays bit-identical. The distance is to
+	# whoever is actually hit -- an interceptor that caught the volley is closer than the aim.
+	var dist: float = u.position.distance_to(target.position)
+	var dmg: float = base * u.missile_damage_factor * u.missile_accuracy(dist) * rng_roll \
+			* target.missile_defense_factor(u)
 	Sfx.play(&"shoot")
 	# Cosmetic volley trail: arrows streak toward whoever was actually hit, so the player
 	# can see why a friendly is taking damage. Spawned on the (deterministic) sim tick but
@@ -235,7 +245,7 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 			# each arrow on the shield arc of the man it reaches, so a front turned toward the
 			# archers loses far fewer men than an exposed flank does.
 			ProjectileField.active.launch(u.position, target.position, u.uid, target.uid,
-					volley_size, flank, _volley_is_arced(u, target))
+					volley_size, flank, _volley_angle(u, target))
 		else:
 			# No projectile field (headless unit tests): resolve immediately at the shooter.
 			# This path has no flight and no per-arrow shield test -- it is the whole volley
@@ -247,11 +257,13 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 		take_casualties(target, raw, u)
 
 
-## Whether a volley arcs (a lobbed shot) or flies flat. Slice 1: always arced -- archers
-## loose a lobbing volley. The auto flat-vs-arced choice by range / line-of-sight / cover is
-## a later slice (#435), which is why this is a seam rather than an inline `true`.
-static func _volley_is_arced(_shooter: Unit, _target: Unit) -> bool:
-	return true
+## The launch angle a volley from `shooter` flies at (radians above horizontal): the
+## shooter's own profile angle -- a lob for a bow, a flat throw for a pilum -- which with the
+## field's gravity fixes how long the volley hangs in the air. Still a seam rather than an
+## inline field read: the auto flat-vs-arced choice by line of sight / cover, and the
+## range-driven angle pick the missile design proposes, are later slices that decide here.
+static func _volley_angle(shooter: Unit, _target: Unit) -> float:
+	return shooter.missile_launch_angle
 
 
 ## Return the nearest living friendly unit that lies in the straight-line flight path from

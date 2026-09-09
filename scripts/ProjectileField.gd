@@ -80,12 +80,13 @@ func count() -> int:
 ## target with a soldier layer each arrow is tested against the shield the man it reaches is
 ## holding, so only some of them pierce. It collapses to a casualty count only on the
 ## fieldless fallback path, which has no shields to test.
-## `arced` picks the lob vs the flat trajectory. A degenerate (zero-distance) solve lands on
-## the next tick so the volley still resolves.
+## `angle` is the launch angle in radians above horizontal (ProjectilePhysics.ANGLE_ARCED for
+## a lob, ANGLE_FLAT for a flat shot, or a missile profile's own); with GRAVITY it fixes the
+## flight time, so a flat throw lands sooner than a lob at the same distance. A degenerate
+## (zero-distance) solve lands on the next tick so the volley still resolves.
 func launch(from: Vector2, to: Vector2, shooter_uid: int, target_uid: int,
-		arrows: int, flank: float, arced: bool) -> void:
+		arrows: int, flank: float, angle: float) -> void:
 	var dist: float = from.distance_to(to)
-	var angle: float = ProjectilePhysics.ANGLE_ARCED if arced else ProjectilePhysics.ANGLE_FLAT
 	var sol: Dictionary = ProjectilePhysics.solve_launch(dist, GRAVITY, angle)
 	var flight: float = sol["flight_time"]
 	if flight <= 0.0:

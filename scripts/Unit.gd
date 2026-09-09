@@ -669,8 +669,8 @@ const MELEE_INTERMIX_MAX: float = 0.85
 # How hard a committed melee unit presses onto the enemy while fighting, as a fraction
 # of move speed. The separation / engaged-enemy front-rank floor counters it, so the
 # value only sets how fast the lines close to contact, not the final spacing.
-# AUTO mode walks by default (walk_speed), jogs when a ranged enemy is within
-# RANGED_RANGE (jog_speed, under fire), and sprints (move_speed) once within
+# AUTO mode walks by default (walk_speed), jogs when a ranged enemy has this unit
+# inside its missile_range (jog_speed, under fire), and sprints (move_speed) once within
 # SPRINT_START_DISTANCE of the target. WALK mode holds walk pace throughout —
 # mandatory for formed stances (shield wall, pike phalanx) that break on a jog.
 const SPRINT_START_DISTANCE: float = 200.0   # tuned in wu: gameplay pacing distance from target to start the full-speed charge
@@ -820,6 +820,9 @@ var routing_melee_press_fraction: float = ROUTING_MELEE_PRESS_FRACTION
 # distance, instead of standing to fire. Above melee contact (~62) and below
 # RANGED_RANGE (160) so there's room to fire before being caught.
 const SKIRMISH_KITE_DISTANCE: float = 100.0   # tuned in wu, between melee contact and RANGED_RANGE
+# Live kite distance -- a caller-configurable parameter defaulting to SKIRMISH_KITE_DISTANCE
+# above; equip_missile rescales it to SKIRMISH_KITE_FRACTION of the profile's range.
+var skirmish_kite_distance: float = SKIRMISH_KITE_DISTANCE
 # Disengage and step back: how far a melee-engaged unit marches on the
 # combat-legal back-step maneuver (see disengage() below). Past melee contact (~62, same
 # baseline SKIRMISH_KITE_DISTANCE is pinned against) so the common case clears the fight
@@ -1058,20 +1061,47 @@ const RALLY_MORALE_THRESHOLD: float = 35.0
 # RALLY_MORALE_THRESHOLD above, same set-before-_ready contract as rout_time.
 var rally_morale_threshold: float = RALLY_MORALE_THRESHOLD
 
-# Ranged combat. A ranged unit looses volleys at any enemy within
-# RANGED_RANGE that isn't already in melee contact — far outreaching melee's
-# ~62px contact, so archers skirmish from safety. RANGED_RANGE stays below
-# DETECTION_RANGE so an auto-acquired target is always in detection too, by default
-# (a unit whose own detection_range is shrunk below RANGED_RANGE no longer gets this
-# for free). Volleys fire on their own (slower) cadence and hit a touch softer per
-# shot than melee.
+# Ranged combat. A ranged unit looses volleys at any enemy within its missile_range
+# that isn't already in melee contact — far outreaching melee's ~62px contact, so
+# archers skirmish from safety. The DEFAULT range stays below DETECTION_RANGE so an
+# auto-acquired target is always in detection too (a unit whose own detection_range is
+# shrunk below its missile range no longer gets this for free; equip_missile raises
+# detection_range to cover a longer profile). Volleys fire on their own (slower)
+# cadence and hit a touch softer per shot than melee.
+#
+# These consts are the DEFAULTS -- the pre-profile numbers, which LoadoutRegistry's
+# MISSILE_BOW profile reproduces exactly. What a unit actually shoots with are the
+# missile_* instance fields below (docs/longer-range-missile-design.md), set from a
+# MissileProfile by equip_missile or directly by a scenario/test, the same
+# Battle.field / Battle.FIELD split the caller-configurable convention names.
 const RANGED_RANGE: float = 8.0 * WorldScaleRef.WU_PER_M
-# A router in archer reach has not broken contact: the rally check reuses the ranged
-# reach outright, so retuning RANGED_RANGE moves the rally radius with it (the identity
-# the old literal only asserted in a comment, made structural).
-const RALLY_CONTACT_RADIUS: float = RANGED_RANGE
 const RANGED_INTERVAL: float = 1.0
 const RANGED_DAMAGE_FACTOR: float = 0.7
+# Fraction of nominal volley damage delivered at maximum range (MissileProfile.accuracy_at's
+# linear falloff): 1.0 is no falloff at all, so an unprofiled unit's formula is unchanged.
+const RANGED_ACCURACY_AT_MAX: float = 1.0
+# A router in archer reach has not broken contact. Its own constant at the pre-profile
+# archer reach (8 m) rather than an alias of RANGED_RANGE: what it measures is how close an
+# enemy has to be for a rallying regiment to still count as engaged, which does not grow
+# with a longer-ranged profile -- a router need not outrun a javelin's full reach to be
+# gone, and a per-unit missile range would otherwise make the rally radius depend on which
+# enemy happened to be nearest.
+const RALLY_CONTACT_RADIUS: float = 8.0 * WorldScaleRef.WU_PER_M
+# Skirmish kite distance as a fraction of the kiting unit's own missile_range, so a
+# longer-ranged skirmisher backs off proportionally further. At the default range this is
+# exactly the long-standing 100 wu (160 * 0.625), so an unprofiled skirmisher is unchanged.
+const SKIRMISH_KITE_FRACTION: float = 0.625
+# Live missile parameters -- caller-configurable, defaulting to the consts above; set
+# BEFORE the node enters the tree (the same contract detection_range follows) or through
+# equip_missile. missile_range / skirmish_kite_distance are world units; missile_interval
+# is seconds; missile_launch_angle is radians above horizontal and, with the projectile
+# field's gravity, fixes the volley's flight time (ProjectilePhysics.solve_launch).
+var missile_type_id: int = LoadoutRegistry.MISSILE_BOW
+var missile_range: float = RANGED_RANGE
+var missile_interval: float = RANGED_INTERVAL
+var missile_damage_factor: float = RANGED_DAMAGE_FACTOR
+var missile_accuracy_at_max: float = RANGED_ACCURACY_AT_MAX
+var missile_launch_angle: float = ProjectilePhysics.ANGLE_ARCED
 
 # Fatigue builds while FIGHTING and recovers while resting; it bites into attack
 # so rotating tired regiments out via line relief is a real tactical lever.
@@ -2181,6 +2211,39 @@ func can_equip_weapon(type_id: int) -> bool:
 	return type_id == spawn_weapon_type_id or type_id == sidearm_type_id
 
 
+## Take a MissileProfile's fields as this unit's live missile parameters: range, cadence,
+## damage factor, accuracy falloff, and launch angle, copied out of the interned type once
+## (the profile is never referenced afterwards, so a shared instance is never mutated).
+## Two dependent parameters follow the range: detection_range is raised to at least the
+## missile range, since Unit._think only ever auto-acquires a target inside detection and
+## a profile that out-reaches the 190-wu default would otherwise never fire at its own
+## range (never lowered -- a scenario that widened detection keeps it); and the skirmish
+## kite distance rescales to SKIRMISH_KITE_FRACTION of the range. Returns false, changing
+## nothing, for an id the registry does not know, so a malformed loadout can't strand a
+## unit on a range nothing authored. Equipping MISSILE_BOW is an exact no-op against the
+## defaults, which is what keeps the roster's Archers bit-identical.
+func equip_missile(type_id: int) -> bool:
+	var profile: MissileProfile = LoadoutRegistry.missile(type_id)
+	if profile == null:
+		return false
+	missile_type_id = type_id
+	missile_range = profile.range_wu
+	missile_interval = profile.interval_s
+	missile_damage_factor = profile.damage_factor
+	missile_accuracy_at_max = profile.accuracy_at_max
+	missile_launch_angle = profile.launch_angle
+	detection_range = maxf(detection_range, missile_range)
+	skirmish_kite_distance = missile_range * SKIRMISH_KITE_FRACTION
+	return true
+
+
+## The fraction of nominal volley damage this unit delivers at `dist_wu` -- its own
+## range-accuracy falloff (MissileProfile.accuracy_at over the live missile fields).
+## Exactly 1.0 at every distance while missile_accuracy_at_max is at its 1.0 default.
+func missile_accuracy(dist_wu: float) -> float:
+	return MissileProfile.accuracy_at(dist_wu, missile_range, missile_accuracy_at_max)
+
+
 ## Returns false, changing nothing, for any id can_equip_weapon rejects -- a malformed
 ## order can't strand the regiment holding a type nothing resolves, and a selection-wide
 ## id can't force a regiment onto a weapon its own soldiers never carried.
@@ -2224,7 +2287,7 @@ func equip_weapon(type_id: int) -> bool:
 ## matches the unit's stance: PIN_DOWN swings on the slower PIN_DOWN_ATTACK_INTERVAL
 ## and opens its own exposure window (pin_down_defense_factor); every other stance
 ## uses the normal baseline (the caller's own melee_attack_interval() or
-## RANGED_INTERVAL). Called right before UnitCombat.strike()/shoot(), so the exposure
+## missile_interval). Called right before UnitCombat.strike()/shoot(), so the exposure
 ## window is already open for any riposte that lands later in the same tick.
 func _start_attack_cd(baseline_interval: float) -> void:
 	if order_mode == ORDER_PIN_DOWN:
@@ -2380,16 +2443,16 @@ func _think(delta: float) -> void:
 				state = State.IDLE
 			return
 
-	# Under-fire detection for AUTO pace: true when any alive enemy ranged unit is
-	# within RANGED_RANGE of this unit (i.e. could be shooting at us this frame).
+	# Under-fire detection for AUTO pace: true when any alive enemy ranged unit has this
+	# unit inside ITS OWN missile range (i.e. could be shooting at us this frame) -- the
+	# shooter's profile decides the beaten zone, not a global reach.
 	# Must run before the ORDER_SUPPORT early return so _support_tick's _move_to
 	# calls see the correct value.
-	var ranged_range_sq: float = RANGED_RANGE * RANGED_RANGE
 	_under_fire = false
 	for u in get_tree().get_nodes_in_group("units"):
 		if u is Unit and u.team != team and u.is_ranged and u.state != State.DEAD \
 				and u.state != State.ROUTING \
-				and position.distance_squared_to(u.position) <= ranged_range_sq:
+				and position.distance_squared_to(u.position) <= u.missile_range * u.missile_range:
 			_under_fire = true
 			break
 
@@ -2467,19 +2530,19 @@ func _think(delta: float) -> void:
 		# than standing to fire or being caught in melee; beyond it, it falls through
 		# to the normal ranged fire below. Gated by the same "not disengaging" rule
 		# as firing, so a plain move order still marches it off instead of kiting.
-		if is_ranged and order_mode == ORDER_SKIRMISH and dist_sq < SKIRMISH_KITE_DISTANCE * SKIRMISH_KITE_DISTANCE \
+		if is_ranged and order_mode == ORDER_SKIRMISH and dist_sq < skirmish_kite_distance * skirmish_kite_distance \
 				and (target_enemy != null or not has_move_target):
 			var away: Vector2 = position - enemy.position
 			if away.length_squared() < 0.000001:
 				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
-			_move_to(UnitTargeting.clamp_to_field(self, position + away.normalized() * SKIRMISH_KITE_DISTANCE), delta)
+			_move_to(UnitTargeting.clamp_to_field(self, position + away.normalized() * skirmish_kite_distance), delta)
 			# Only commit to the retreat if it actually moved. If the unit is cornered
 			# against the field edge (clamp snapped the target onto its position),
 			# fall through to the fire/melee branches so it still shoots instead of
 			# standing idle.
 			if _moved_last_frame:
 				return
-		# Ranged units stand and loose volleys at any enemy inside RANGED_RANGE
+		# Ranged units stand and loose volleys at any enemy inside their own missile_range
 		# that hasn't closed to melee — they skirmish at distance instead of charging.
 		# Gated by the same "not disengaging" rule as melee: a plain move order with
 		# no explicit attack target marches them off rather than rooting them to fire.
@@ -2488,7 +2551,7 @@ func _think(delta: float) -> void:
 		# to fire under a plain move order -- see ORDER_MARCH_TO_CONTACT's own doc comment
 		# for why has_move_target is deliberately left untouched (the march resumes on its
 		# own once the fight ends).
-		if is_ranged and not in_contact and dist_sq <= RANGED_RANGE * RANGED_RANGE \
+		if is_ranged and not in_contact and dist_sq <= missile_range * missile_range \
 				and (target_enemy != null or not has_move_target or chasing \
 					or order_mode == ORDER_MARCH_TO_CONTACT):
 			state = State.FIGHTING
@@ -2507,7 +2570,7 @@ func _think(delta: float) -> void:
 			# Turn to bring the line to bear before loosing; a large swing turns in place
 			# gradually, a small correction snaps. Fire is withheld until faced.
 			if _face_for_action(enemy.position, delta, enemy) and _attack_cd <= 0.0:
-				_start_attack_cd(RANGED_INTERVAL)
+				_start_attack_cd(missile_interval)
 				UnitCombat.shoot(self, enemy)
 			return
 		# Fight when in contact, UNLESS the player gave a plain move order with no
@@ -2801,10 +2864,10 @@ func _support_tick(delta: float) -> void:
 		var dist_sq: float = position.distance_squared_to(threat.position)
 		var contact_dist: float = attack_range + RADIUS + threat.RADIUS
 		var in_contact: bool = dist_sq <= contact_dist * contact_dist
-		if is_ranged and not in_contact and dist_sq <= RANGED_RANGE * RANGED_RANGE:
+		if is_ranged and not in_contact and dist_sq <= missile_range * missile_range:
 			state = State.FIGHTING
 			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
-				_attack_cd = RANGED_INTERVAL
+				_attack_cd = missile_interval
 				UnitCombat.shoot(self, threat)
 		elif in_contact:
 			state = State.FIGHTING

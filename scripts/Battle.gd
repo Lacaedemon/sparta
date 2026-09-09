@@ -31,14 +31,15 @@ const FIELD := Rect2(0, 0, 1600, 1200)
 
 # Extra room beyond the field that a ROUTING unit may flee into before it's removed from
 # play (see Unit._escape()). Fixed and known up front (not sized per unit) since it's drawn
-# once as a visible margin strip at battle start (see _draw()). Sized to the game's maximum
-# visual range — the longest ranged attack (RANGED_RANGE) and the farthest a unit can
-# currently be noticed at BY DEFAULT (DETECTION_RANGE, the closest existing stand-in for a
+# once as a visible margin strip at battle start (see _draw()). Sized to the farthest a unit
+# can be noticed at BY DEFAULT (DETECTION_RANGE, the closest existing stand-in for a
 # fog-of-war vision range, which this game doesn't have yet) — so a fleeing unit stays a
-# plausible target for as long as it's still visible, rather than vanishing early. Reads the
+# plausible target for as long as it's still visible, rather than vanishing early. Follows
+# detection alone, not the missile reach: a router does not have to outrun the longest
+# missile profile on the field to be gone, and the reach is per unit now anyway. Reads the
 # class constant, not any one unit's own (caller-configurable) detection_range field, since
 # this margin is a single battle-wide strip, not sized per unit.
-const ROUT_MARGIN: float = maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)
+const ROUT_MARGIN: float = UnitRef.DETECTION_RANGE
 var field_with_margin: Rect2 = FIELD.grow(ROUT_MARGIN)
 
 # Terrain patches; type keys into TERRAIN_COLOR. kind="block" is impassable; kind="slow" is a speed zone.
@@ -1077,6 +1078,14 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 		u.armor_type_id = d["armor"]
 	if d.has("mount"):
 		u.mount_type_id = d["mount"]
+	# Missile profile: a LoadoutRegistry missile id naming the ranged stats this unit shoots
+	# with (range, cadence, damage factor, accuracy falloff, launch angle -- Unit.equip_missile,
+	# which also widens detection to the range). A dict without the key keeps the Unit
+	# defaults, which are the bow profile's own numbers, so every roster row and bare test
+	# unit shoots exactly as it did before profiles existed. An unknown id warns and keeps
+	# those defaults rather than aborting the spawn, like an unrecognised subunit_structure.
+	if d.has("missile") and not u.equip_missile(int(d["missile"])):
+		push_warning("[battle] unknown missile profile id %s; keeping the default profile." % str(d["missile"]))
 	u.training = d.get("training", 0.0)
 	u.disciplined = d.get("disciplined", true)
 	# Per-type starting values for the player-togglable settings; a loadout entry
@@ -1150,6 +1159,8 @@ func _spawn_scenario(specs: Array) -> void:
 			d["morale"] = float(spec["morale"])
 		if spec.has("formation"):
 			d["formation"] = int(spec["formation"])
+		if spec.has("missile"):
+			d["missile"] = int(spec["missile"])
 		if spec.has("starting_state"):
 			d["starting_state"] = int(spec["starting_state"])
 		if spec.has("disciplined"):
