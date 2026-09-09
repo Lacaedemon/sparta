@@ -174,6 +174,13 @@ Tracked as issues on `Lacaedemon/sparta` with `P0`-`P3` labels (a GitHub Project
 Order reflects dependencies -- validate the foundation, then build the collision pillar, then the
 features that depend on it, then independent polish.
 
+An epic (a design doc, a multi-phase cluster like the campaign layer, a survey issue) carries its
+concrete follow-up work as GitHub **sub-issues** rather than as a plain-text checklist in its body --
+link each phase/spike/follow-up issue to its epic with the sub-issues panel (or
+`POST /repos/{owner}/{repo}/issues/{issue_number}/sub_issues`, with the epic as `{issue_number}`
+and the child's numeric id as the `sub_issue_id` body field) as soon as it's filed, so the tracker itself
+shows which issues belong to which epic instead of relying on prose that can drift.
+
 - **P0 -- Foundation (do first):**
   - #12 M1 first run & verification in Godot -- nothing below is validated until this passes.
   - #13 Spacebar active pause -- implemented in PR #2, pending live confirm.
