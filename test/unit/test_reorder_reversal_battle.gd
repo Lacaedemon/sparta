@@ -14,8 +14,6 @@ extends GutTest
 ## transition stays formed and bounded. Budgets bound on Battle.current_tick() (real
 ## sim ticks), so coverage instrumentation cannot drift them.
 
-## Ticks for the eastward march to reach cruising pace (accel ramp plus slack).
-const CRUISE_BUDGET: int = 200
 ## Ticks allowed for the whole come-about: the response/reform hold (~1 s), a
 ## corner-man-paced ~140 degree pivot (~5 s at the wide cavalry block's bound), and
 ## enough marching after it to show real westward progress.
@@ -70,10 +68,21 @@ func test_reversing_move_order_keeps_the_block_formed() -> void:
 	# the new cavalry-specific path living alongside it.
 	cav.is_cavalry = false
 
+	# Ticks for the eastward march to reach cruising pace: the spawn facing (Vector2.DOWN) is a
+	# quarter turn off the eastward heading, and the formed march pivots onto it gradually
+	# (Unit._move_to's pivot_as_formation) at the same depth-scoped corner-slot rate
+	# Unit._formed_turn_gait_frac governs -- accel to walk_speed itself is untouched by the
+	# derate and lands well inside this window, so the turn alone sizes the budget. 0.5 s of
+	# slack covers the taper as the pivot rate eases in near full alignment.
+	var turn_rate: float = (cav.jog_speed * cav._formed_turn_gait_frac()) / cav._pivot_radius()
+	var cruise_turn_angle: float = absf(Vector2.DOWN.angle_to(Vector2.RIGHT))
+	var cruise_budget: int = ceili((cruise_turn_angle / turn_rate + 0.5) * 60.0)
+
 	battle._apply_order_cmd({"units": [cav.uid], "x": 1200.0, "y": 600.0, "target": -1})
-	while battle.current_tick() < CRUISE_BUDGET:
+	while battle.current_tick() < cruise_budget:
 		await get_tree().physics_frame
 	assert_gt(cav._current_speed, cav.walk_speed * 0.9, "cruising at pace before the reversal")
+	assert_false(cav.is_turning(), "and fully onto the eastward heading before the reversal")
 
 	var order_x: float = cav.position.x
 	battle._apply_order_cmd({"units": [cav.uid], "x": 420.0, "y": 420.0, "target": -1})

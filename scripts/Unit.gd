@@ -332,6 +332,26 @@ var frontage_anchor_offset: float = 0.0
 # -1 means "never" (Engine.get_physics_frames() starts at 0, so 0 alone isn't a safe sentinel).
 var _last_reshape_tick: int = -1
 var _last_reshape_widened: bool = false
+# Physics-frame deadline through which SoldierBodies._separate_same_unit keeps running its
+# full same-unit standoff scan for this unit while NOT fighting (a FIGHTING unit always runs
+# it, regardless of this deadline -- see that function's own doc comment). A body's target
+# slot moves with the unit during an ordinary march, so it is never within ARRIVE_EPS of it
+# and the pass's own is_settled gate could never fire; without this window the pass would
+# pay a fresh spatial-hash scan every tick for every marching unit even though marching
+# bodies already sit safely apart at min_pitch spacing. set_formation, set_frontage (which
+# _apply_file_double_step also funnels through), and reform_ranks each arm this deadline via
+# _arm_standoff_settle_window() the moment they actually re-slot the block -- the one event
+# that can cross files close enough to trigger the standoff. -1 means "never armed": before
+# any re-slot has happened, Engine.get_physics_frames() (>= 0) already exceeds it, so the
+# pass is skipped by default rather than by a special-cased sentinel check.
+var _standoff_settle_until_tick: int = -1
+# The state this unit was in on its previous physics tick, read only to notice a unit
+# LEAVING a fight or a rout: both leave the bodies wherever the press or the flight put
+# them, and the walk back to pitch spacing is the same file-crossing traversal a re-slot
+# is, so each arms the standoff watch like one. Tracked as a previous-tick reading rather
+# than at every assignment site because state changes on many paths (an enemy dying or
+# routing, a rally timer, an order retiring), and a one-tick lag costs nothing here.
+var _standoff_prev_state: int = State.IDLE
 # "Close the ranks": whether the auto (non-override) frontage is currently
 # stepped down a notch to reform the casualty-thinned survivors into a deeper, denser
 # block instead of holding the full-strength line's width. A single cached bool, not a
@@ -713,6 +733,53 @@ const TURN_RATE_TAPER_FLOOR: float = 0.4
 # a long cavalry pursuit); much lower makes the pivot itself look sluggish relative to
 # the drill/wheel ceilings above.
 const TURN_ACCEL_BUDGET_FRACTION: float = 0.5
+# Ratio bounding the corner slot's tangential rotational speed during a formed march turn
+# as a fraction of jog_speed (via UnitManeuver.wheel_gait_rate). A deep block's corner slot
+# moves slower than the body arrival cap (jog_speed) so a body has positive velocity
+# headroom to overcome inertia, close its lag, and maintain formation dressing; a shallow
+# block, whose bodies never lag far, keeps the full cap (_formed_turn_gait_frac returns
+# 1.0 there by design, so the headroom is reserved only where the depth ratio needs it).
+const FORMED_TURN_TRACKING_FRAC: float = 0.6
+# Live formed turn tracking fraction -- caller-configurable parameter defaulting to
+# FORMED_TURN_TRACKING_FRAC above. This is the value a formation reaches once its DEPTH
+# RATIO hits FORMED_TURN_DEPTH_RATIO_REF (see _formed_turn_gait_frac) -- a shallower
+# formation is derated by less, not by this same flat amount.
+var formed_turn_tracking_frac: float = FORMED_TURN_TRACKING_FRAC
+# Safe range for formed_turn_tracking_frac is (0, 1]: UnitManeuver.wheel_gait_rate
+# multiplies it straight into a gait_speed passed as its own rate_cap floor, so a
+# non-positive value would demand a non-positive (or zero) pivot rate and stall a
+# formed turn outright, and a value above 1 would let the corner slot outrun the body
+# arrival cap (jog_speed) the derate exists to stay under. Clamped (both directly and via
+# _formed_turn_gait_frac's own output) with FORMED_TURN_TRACKING_FRAC_FLOOR as a small
+# positive floor rather than 0.0, so a caller-supplied 0 (or negative) still produces a
+# slow, real pivot instead of a stalled one.
+const FORMED_TURN_TRACKING_FRAC_FLOOR: float = 0.05
+# Depth ratio (a formation's pivot radius, in units of its own marching corridor band --
+# see _formed_turn_gait_frac) at which the corner-slot derate reaches EXACTLY
+# formed_turn_tracking_frac. Calibrated against this fix's own reference case, an 80-mount
+# Cavalry block: pivot radius 505.9644 wu (pinned by
+# test_deep_cavalry_formed_pivot_rate_bounded_for_tracking) over a marching band of
+# file_pitch_wu() 40 wu x SoldierBodies.MARCHING_CORRIDOR_PROXIMITY_MULT 4.5 = 180 wu,
+# giving 505.9644 / 180 = 2.810913.
+const FORMED_TURN_DEPTH_RATIO_REF: float = 2.810913
+# Depth ratio BELOW which no derate applies at all (_formed_turn_gait_frac returns 1.0):
+# formed_turn_tracking_frac x FORMED_TURN_DEPTH_RATIO_REF above -- the depth ratio at which
+# the continuous ramp below would still read frac 1.0 -- so at the default tracking
+# fraction, 0.6 x 2.810913 = 1.686548. Below this ratio a formation's own footprint spans
+# too few marching-bands for a lagging body to ever need diverting into a perimeter
+# corridor (or blobbing) before it catches its moving slot, so no derate is needed there.
+# Between here and FORMED_TURN_DEPTH_RATIO_REF the ramp is continuous and monotone
+# (inversely in the depth ratio), reaching formed_turn_tracking_frac exactly at the
+# reference ratio and staying there for any deeper block still -- a plain Infantry line
+# (depth ratio ~0.85-1.74 across a 30-120 soldier count) stays at frac 1.0 through most of
+# that range, dipping only to ~0.97 at its own top end (120 soldiers, ratio ~1.74, just
+# past this free zone); a LOOSE Archers block (~1.49) stays at frac 1.0 throughout. Only a
+# genuinely deep/wide block like the issue's cavalry, or a tightly-packed 140-strong
+# Spearmen block (~1.89), pays a real pacing cost -- that Spearmen cost is a mild ~11%
+# (frac ~0.89), not the flat 66.7% a single global constant applied to every formed pivot
+# regardless of size, and not the discontinuous snap a two-branch (<=REF full pace, >REF
+# derated) form would produce right at the reference ratio itself.
+const FORMED_TURN_FREE_DEPTH_RATIO: float = FORMED_TURN_TRACKING_FRAC * FORMED_TURN_DEPTH_RATIO_REF
 # Conversio (drill about-face): every soldier turns in place to reverse, so unit.facing
 # rotates toward the opposite heading at this rate (rad/s), taking ~0.5 s for a full 180°.
 # This is NOT a pivot of the block — neither a centre pivot (move orders) nor a flank wheel
@@ -1316,6 +1383,10 @@ func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
 
+	# Before the rout branch below returns, so a routing tick records ROUTING as the
+	# previous-tick reading and the rally that _process_rout performs is seen on the next
+	# ordinary tick.
+	_arm_standoff_on_leaving_fight_or_rout()
 	if state == State.ROUTING:
 		_process_rout(delta)
 		if state != State.DEAD:   # timer expired: rallied (IDLE) or shattered (DEAD -> freed)
@@ -1353,7 +1424,20 @@ func _physics_process(delta: float) -> void:
 	tick_engaged(delta)
 	tick_brace_settle(delta)
 	UnitRelief.update(self)
+	var was_ranks_closed: bool = _ranks_closed
+	var pre_flip_files: int = UnitFormation.frontage(self)
 	_ranks_closed = UnitFormation.should_close_ranks(_ranks_closed, soldiers, max_soldiers)
+	# should_close_ranks() flips the AUTO frontage UnitFormation.frontage() returns (when no
+	# player frontage_override is set) without ever routing through set_frontage() -- so this
+	# is its own re-slot site, arming the standoff watch the same way a manual frontage change
+	# does the instant the flag actually flips (a steady _ranks_closed reading every other
+	# tick must not re-arm and keep the window open forever). Read the file count BEFORE the
+	# flip via the same UnitFormation.frontage() every other caller trusts, rather than
+	# re-deriving it branch by branch (subunit/cavalry/plain each compute it differently).
+	# A squared block's live grid comes from UnitFormation.square_files() instead, so the
+	# flip re-slots nothing there and arms nothing.
+	if _ranks_closed != was_ranks_closed and frontage_override == 0 and not in_square():
+		_arm_standoff_settle_window(_reshape_timeout(pre_flip_files))
 
 	# A stationary, non-fighting unit's momentum bleeds off under the same friction as an
 	# orderly arrival (arrival_brake_rate(), the rate _move_to's own braking branch uses) —
@@ -2235,7 +2319,12 @@ func _think(delta: float) -> void:
 						# TURN_RATE sweeps a wide block's flank slots several times
 						# faster than any body can run -- the men scramble after
 						# their slots and the block compresses into a blob before
-						# the march has even begun.
+						# the march has even begun. The marching pivot additionally
+						# derates (see _formed_turn_gait_frac) because march velocity
+						# compounds with slot rotation. The stationary hold has no
+						# forward march compounding the corner slot's speed, so leaving
+						# it un-derated at raw jog_speed footspeed preserves prompt
+						# pre-march alignment.
 						_rotate_facing_toward(reform_dir, delta,
 								UnitManeuver.wheel_gait_rate(TURN_RATE, jog_speed, _pivot_radius()))
 					else:
@@ -2597,7 +2686,7 @@ func _think(delta: float) -> void:
 			# (the bodies ease onto the re-squared slots while it stands idle).
 			if _reform_on_arrival:
 				_reform_on_arrival = false
-				reform_ranks()
+				reform_ranks(true)
 			# A lateral pivot kept its pre-pivot footprint for the whole march (no reform);
 			# the destination-side close is a turn back to that original facing, not a
 			# reshape -- arm it as a fresh turn child via begin_pivot, appended after the
@@ -2989,8 +3078,18 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# wheel derives (UnitManeuver.wheel_gait_rate). Uncapped, TURN_RATE sweeps a wide
 		# block's corner slots several times faster than any body can run, so the men
 		# scramble after their slots instead of turning in good order and the block reads
-		# as a blob until they catch up. The corner man paces the whole pivot at up to a jog.
-		pivot_rate = UnitManeuver.wheel_gait_rate(pivot_rate, jog_speed, _pivot_radius())
+		# as a blob until they catch up. Derating the corner slot's tangential pace below
+		# the jog arrival cap reserves headroom for lagging bodies to close their distance
+		# to moving slots and hold formation dressing -- but only once the formation is deep
+		# enough to actually need that headroom (see _formed_turn_gait_frac): a shallow line
+		# never lags far enough to divert into a perimeter corridor before catching up, so it
+		# keeps its full jog pace, and only a genuinely deep/wide block pays this fix's cost.
+		# _formed_turn_gait_frac already clamps its result to (0, 1] with a small positive
+		# floor, not 0.0, so a caller-supplied formed_turn_tracking_frac outside that range
+		# still produces a slow, real pivot -- never a stalled one, and never one that lets
+		# the corner slot outrun the jog arrival cap the derate exists to stay under.
+		pivot_rate = UnitManeuver.wheel_gait_rate(
+				pivot_rate, jog_speed * _formed_turn_gait_frac(), _pivot_radius())
 		# wheel_gait_rate alone only bounds the corner man's TANGENTIAL footspeed -- a
 		# purely geometric limit that says nothing about whether a body actually
 		# CRUISING at speed could physically achieve that turn. Redirecting a body's own
@@ -3438,6 +3537,58 @@ func _pivot_radius() -> float:
 			float(maxi(0, ranks - 1)) * rank_pitch_wu()).length() * 0.5
 
 
+## Depth-scoped corner-slot tracking fraction for a formed march turn (see
+## FORMED_TURN_TRACKING_FRAC / FORMED_TURN_DEPTH_RATIO_REF / FORMED_TURN_FREE_DEPTH_RATIO's
+## own doc comments for the calibration and the mechanism this derates against). Expresses
+## the block's pivot radius as a DEPTH RATIO -- how many marching-corridor bands
+## (file_pitch_wu() x SoldierBodies.MARCHING_CORRIDOR_PROXIMITY_MULT) wide the block's own
+## footprint is -- rather than reading pivot_radius as an absolute world-unit distance,
+## since a raw wu comparison can't tell a Cavalry block's wide per-mount spacing from a
+## tightly-packed Spearmen block's depth: the same absolute radius means a very different
+## "how many bodies deep" for each.
+##
+## A CONTINUOUS, MONOTONE (non-increasing) ramp in 1 / depth_ratio -- not a two-branch
+## full-pace-then-derated form, which would snap discontinuously right at the reference
+## ratio (a mid-battle jump whenever casualties change a block's files/ranks). Below the
+## caller's own free depth ratio (formed_turn_tracking_frac x FORMED_TURN_DEPTH_RATIO_REF)
+## a lagging body can always close its distance to a swinging slot within the corridor's
+## own direct-arrival band before ever needing to divert around the formation's perimeter,
+## so the pivot runs at full jog_speed pace; the ramp then reaches formed_turn_tracking_frac
+## exactly at FORMED_TURN_DEPTH_RATIO_REF and stays there for any deeper block still --
+## reserving exactly the catch-up headroom a block that size needs, instead of taxing every
+## formed pivot by the same flat amount regardless of size. The free ratio scales with the
+## caller's own (clamped) formed_turn_tracking_frac rather than the FORMED_TURN_TRACKING_FRAC
+## default, so a caller-configured tracking fraction still lands exactly on itself at the
+## reference ratio -- see FORMED_TURN_TRACKING_FRAC_FLOOR's own doc comment for why that
+## clamp exists.
+func _formed_turn_gait_frac() -> float:
+	var pr: float = _pivot_radius()
+	var band: float = file_pitch_wu() * SoldierBodies.MARCHING_CORRIDOR_PROXIMITY_MULT
+	if pr <= 0.0 or band <= 0.0:
+		return 1.0
+	var depth_ratio: float = pr / band
+	var safe_tracking_frac: float = clampf(
+			formed_turn_tracking_frac, FORMED_TURN_TRACKING_FRAC_FLOOR, 1.0)
+	var free_depth_ratio: float = safe_tracking_frac * FORMED_TURN_DEPTH_RATIO_REF
+	return clampf(free_depth_ratio / depth_ratio, safe_tracking_frac, 1.0)
+
+
+## True once this block's own depth ratio has crossed its free depth ratio (the default
+## FORMED_TURN_FREE_DEPTH_RATIO, scaled by any caller-set formed_turn_tracking_frac) and
+## _formed_turn_gait_frac has started derating its corner-slot pace below full jog_speed
+## (i.e. strictly under 1.0) -- the single predicate for "is this block deep/wide enough
+## for a formed turn to need the wheel-tracking headroom", shared by both consumers of that
+## headroom: this Unit's own pivot-rate derate above, and
+## SoldierBodies._corridor_to_slot's decision to keep its wider MARCHING_CORRIDOR_PROXIMITY_MULT
+## band through a turn (not just a straight march) for a block that needs it. Centralized
+## here, rather than each site re-deriving its own depth-ratio threshold, so the two stay
+## exactly in lockstep: a shallow block never pays the corridor-widening cost the derate
+## didn't itself impose on it, and a deep block always gets the same wider band its slower
+## corner-slot pace needs to keep a lagging body from being diverted into a perimeter detour.
+func is_deep_for_formed_turn() -> bool:
+	return _formed_turn_gait_frac() < 1.0
+
+
 ## Open ground this regiment needs between its centre and impassable terrain: the
 ## corner man's half-diagonal plus his body radius, so a route the centre follows
 ## keeps every soldier off the drawn rect. Passed to every PathField query —
@@ -3645,6 +3796,10 @@ func set_formation(mode: int) -> void:
 		# on an arbitrary labelling. -1 forces the next query to pair fresh.
 		_square_slot_files = -1
 		_apply_moving_reshape_penalty()
+		# The stance's own pitch/footprint is about to change, so every body still has to
+		# cross from its old spacing to the new one -- arm the standoff watch the same as any
+		# other re-slot, sized off the current (pre-change) file count's own reform bound.
+		_arm_standoff_settle_window(_reform_timeout())
 	formation_mode = mode
 	var base := _base_separation_radius
 	# The close-order stances all build on TIGHT's locked-shield collision footprint.
@@ -3734,6 +3889,10 @@ func set_frontage(files: int, anchor_offset: float = 0.0) -> void:
 		_last_reshape_tick = Engine.get_physics_frames()
 		_last_reshape_widened = frontage_override > old_files
 		_apply_moving_reshape_penalty()
+		# File-doubling is the lateral-file-crossing case the standoff pass exists for --
+		# arm the watch using the reshape-specific bound (old shape's diagonal plus the
+		# new one's), captured before the frontage actually changes underneath it.
+		_arm_standoff_settle_window(_reshape_timeout(old_files))
 
 
 ## Multiplier applied to incoming ranged damage. Shielded stances raise shields to
@@ -5167,7 +5326,9 @@ func _finish_order_turn() -> void:
 		next_leaf.turn_target = (current_order.target_pos - position).normalized()
 		_advance_order_tree(leaf)
 		return
-	if current_order.reform and reform_ranks():
+	# Hold ground for an ordinary order, while a countermarch drill keeps the full traversal.
+	var hold_ground: bool = current_order.countermarch_variant < 0
+	if current_order.reform and reform_ranks(hold_ground):
 		# Splice a REFORM leaf in right after the turn (still at index 0 -- this handoff runs
 		# the instant it completes) and ahead of the march already at index 1, then advance the
 		# cursor onto it the same way any other completed leaf hands off to its next sibling.
@@ -5201,14 +5362,15 @@ func _finish_order_turn() -> void:
 ## are untouched, exactly as under a frontage reshape's own slot pairing.
 ##
 ## `hold_ground` re-squares to the SAME footprint without that traversal, for a caller that
-## needs the fold dropped rather than the drill performed -- a rally, where nothing ordered a
-## countermarch and the fold is only bookkeeping the flight left behind. Under the file-major
-## layout the depth reflection is then cancelled per file by reversing each file's own rank
-## order, so the men in a full-depth file stand on the ground they already hold and only the
-## SHORT files -- the ones the partial rear rank never reached -- step forward one rank pitch
-## to close the line. The resulting grid is identical either way; only which man holds which
-## slot differs, so this buys the same shape for a step instead of a march through the block.
-## Default false: an ordered rear-move or countermarch means the drill, and keeps it.
+## needs the fold dropped rather than the drill performed -- a post-turn re-square
+## (an about-face or about-face+wheel) or a rally, where nothing ordered a countermarch and
+## the fold is only bookkeeping the turn/flight left behind. Under the file-major layout the
+## depth reflection is then cancelled per file by reversing each file's own rank order, so the
+## men in a full-depth file stand on the ground they already hold and only the SHORT files --
+## the ones the partial rear rank never reached -- step forward one rank pitch to close the line.
+## The resulting grid is identical either way; only which man holds which slot differs, so this
+## buys the same shape for a step instead of a march through the block.
+## Default false: a deliberate countermarch drill keeps the full traversal.
 ##
 ## No-ops (returns false) when there is nothing to bring forward: the grid is already square
 ## to the heading (its front rank is full by construction), or it is flipped a half-turn but
@@ -5241,6 +5403,14 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 		return false
 	if is_about_face_fold and soldiers % files == 0:
 		return false
+	# Past this point the reform re-slots the block (an about-face's depth reflection, or a
+	# quarter-turn's re-square) -- the file-crossing traversal the standoff pass exists to
+	# police, including the hasty variant's deferred call once the march that carried it
+	# arrives (Unit._physics_process's _reform_on_arrival hand-off). The one exception is
+	# the hold-ground about-face below, which cancels the reflection on the assignment
+	# arrays so no body marches anywhere: nothing crosses a file, so no watch is armed.
+	if not (hold_ground and is_about_face_fold):
+		_arm_standoff_settle_window(_reform_timeout())
 	_formation_angle = 0.0
 	_formation_mirror_x = is_about_face_fold
 	# The mirror reflects the grid in depth, which negates every man's slot depth while
@@ -5413,6 +5583,32 @@ func _reshape_timeout(old_files: int) -> float:
 				float(maxi(0, old_ranks - 1)) * rank_pitch_wu()).length()
 	var slowest: float = maxf(1.0, jog_speed * back_speed_fraction)
 	return (old_crossing + new_crossing) / slowest * 2.0 + 1.0
+
+
+## Notice a unit that was FIGHTING or ROUTING on its previous tick and no longer is, and
+## arm the standoff watch for it: the melee press packs the block below pitch and a rout
+## scatters it, so the bodies' walk back onto their slots crosses files exactly as a
+## re-slot does. Runs on every live tick from _physics_process, ahead of the rout branch,
+## so a routing tick records ROUTING and the rally is seen on the next tick.
+func _arm_standoff_on_leaving_fight_or_rout() -> void:
+	var prev: int = _standoff_prev_state
+	_standoff_prev_state = state
+	if state == prev:
+		return
+	if prev == State.FIGHTING or prev == State.ROUTING:
+		_arm_standoff_settle_window(_reform_timeout())
+
+
+## Arm (or extend) _standoff_settle_until_tick so SoldierBodies._separate_same_unit keeps
+## running for `timeout_sec` more seconds -- called by every re-slot site (set_formation,
+## set_frontage, reform_ranks) at the moment it actually moves bodies to new slots. Only
+## ever moves the deadline forward: a second re-slot landing before the first one's window
+## lapses (e.g. a frontage change during an in-progress reform) extends the watch instead of
+## shortening it. Ceil'd up to whole ticks so a fractional-second timeout never rounds down
+## to zero and skips the very tick it was armed for.
+func _arm_standoff_settle_window(timeout_sec: float) -> void:
+	var ticks: int = int(ceil(timeout_sec * float(Engine.physics_ticks_per_second)))
+	_standoff_settle_until_tick = maxi(_standoff_settle_until_tick, Engine.get_physics_frames() + ticks)
 
 
 ## Advance an in-place turn one tick: rotate `facing` toward `target` at the drill rate and
@@ -6844,7 +7040,8 @@ func start_order_response() -> void:
 	# bodies keep their flank; a quarter-turn fold still drops cleanly to 0.
 	# Also drop any in-flight engage re-face turn: the order supersedes it and the reform
 	# squares the block.
-	reform_ranks()
+	# Hold ground for an ordinary response unless the pending order is a countermarch.
+	reform_ranks(current_order == null or current_order.countermarch_variant < 0)
 	_engage_turn_target = Vector2.ZERO
 	_engage_turn_enemy = null
 
@@ -7851,6 +8048,8 @@ func to_snapshot_dict() -> Dictionary:
 		"frontage_anchor_offset": frontage_anchor_offset,
 		"last_reshape_tick": _last_reshape_tick,
 		"last_reshape_widened": _last_reshape_widened,
+		"standoff_settle_until_tick": _standoff_settle_until_tick,
+		"standoff_prev_state": _standoff_prev_state,
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
 		"formation_mirror_x": _formation_mirror_x,
 		"deploy_facing": deploy_facing, "ordered_facing": ordered_facing,
@@ -7980,6 +8179,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	frontage_anchor_offset = float(d["frontage_anchor_offset"])
 	_last_reshape_tick = int(d["last_reshape_tick"])
 	_last_reshape_widened = bool(d["last_reshape_widened"])
+	_standoff_settle_until_tick = int(d.get("standoff_settle_until_tick", -1))
+	_standoff_prev_state = int(d.get("standoff_prev_state", state))
 	_ranks_closed = bool(d["ranks_closed"])
 	_formation_angle = float(d["formation_angle"])
 	_formation_mirror_x = bool(d["formation_mirror_x"])

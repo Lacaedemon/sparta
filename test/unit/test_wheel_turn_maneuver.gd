@@ -14,6 +14,7 @@ extends GutTest
 const Maneuver = preload("res://scripts/UnitManeuver.gd")
 const BattleScript = preload("res://scripts/Battle.gd")
 const UnitScript = preload("res://scripts/Unit.gd")
+const DemoDefects = preload("res://tools/demo/DemoDefects.gd")
 
 const FACING_RIGHT := Vector2.RIGHT
 const FACING_DOWN := Vector2.DOWN
@@ -216,6 +217,96 @@ func test_wheel_turn_reforms_on_arrival() -> void:
 	assert_almost_eq(wrapf(u._formation_angle, -PI, PI), 0.0, 0.01,
 		"the grid re-squares to the new heading on arrival, same as a plain rear move's " +
 		"own un-checked default")
+	# Post-turn arrival reform holds ground: mirror is armed and short files step forward
+	assert_true(u._formation_mirror_x, "the depth-only mirror is armed for hold-ground reform")
+
+
+## Regression test: after _finish_wheel + arrival, the zero-displacement property holds
+## for full-depth files, short files step one pitch, and _reform_on_arrival is false afterwards.
+func test_wheel_turn_arrival_holds_ground_and_clears_reform_on_arrival() -> void:
+	var u: Unit = UnitScript.new()
+	u.max_soldiers = 40
+	add_child_autofree(u)
+	u.position = Vector2.ZERO
+	u.facing = FACING_DOWN
+	u.frontage_override = 3
+	u.seed_sim_soldiers()
+
+	assert_true(u._effective_file_major_reform(),
+		"precondition: file-major reform is effective")
+	# Destination straight along the post-wheel heading (140 degrees off facing DOWN)
+	var dest: Vector2 = FACING_DOWN.rotated(deg_to_rad(140.0)) * 100.0
+	var o := _arm_wheel_turn(u, dest)
+
+	# Step until the wheel phase finishes and the march begins
+	var marching := _step_until(u, func(): return u.has_move_target and not u.is_wheeling(), 600)
+	assert_true(marching, "wheel finished and march started")
+	assert_true(u._reform_on_arrival, "_reform_on_arrival is armed after wheel")
+
+	# Straightens the post-wheel march so the relative-offset measurement has a constant heading, and is scaffolding for the march leg rather than the reform under test.
+	u.move_target = u.position + u.facing * 100.0
+	u.active_leaf().target_pos = u.move_target
+
+	# Capture unit-relative offsets just before arrival reform triggers
+	var pre_arrival_pos: Vector2 = u.position
+	var pre_arrival_slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var pre_offsets: Array[Vector2] = []
+	for s in pre_arrival_slots:
+		pre_offsets.append(s - pre_arrival_pos)
+
+	# Step until arrival at destination
+	var arrived := _step_until(u, func(): return u.current_order == null, 1200)
+	assert_true(arrived, "composite completed and arrived at destination")
+	assert_false(u._reform_on_arrival, "_reform_on_arrival is false after arrival reform")
+	assert_almost_eq(wrapf(u._formation_angle, -PI, PI), 0.0, 0.01,
+		"formation angle re-squared to heading")
+
+	# Compute displacement across the arrival reform using unit-relative offsets
+	var post_arrival_pos: Vector2 = u.position
+	var post_arrival_slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var post_offsets: Array[Vector2] = []
+	for s in post_arrival_slots:
+		post_offsets.append(s - post_arrival_pos)
+
+	var pitch: float = u.rank_pitch_wu()
+	var step_vec: Vector2 = u.facing * pitch
+	var file_ids: PackedInt32Array = u._sim_soldier_file
+
+	# Count soldiers per file and pick the full-depth file with 14 soldiers
+	var file_counts: Dictionary = {}
+	for fid in file_ids:
+		file_counts[fid] = file_counts.get(fid, 0) + 1
+
+	var full_depth_file: int = -1
+	for fid in file_counts:
+		if file_counts[fid] == 14:
+			full_depth_file = fid
+			break
+	assert_ne(full_depth_file, -1, "found a full-depth file with 14 soldiers")
+
+	var still_count: int = 0
+	var stepped_count: int = 0
+
+	for i in range(u.soldiers):
+		var file_id: int = file_ids[i]
+		var pre_rel: Vector2 = pre_offsets[i]
+		var post_rel: Vector2 = post_offsets[i]
+		if file_id == full_depth_file:
+			still_count += 1
+			assert_almost_eq(post_rel.x, pre_rel.x, 0.05,
+				"soldier %d in full-depth file has zero relative x displacement" % i)
+			assert_almost_eq(post_rel.y, pre_rel.y, 0.05,
+				"soldier %d in full-depth file has zero relative y displacement" % i)
+		else:
+			stepped_count += 1
+			var expected_rel: Vector2 = pre_rel + step_vec
+			assert_almost_eq(post_rel.x, expected_rel.x, 0.05,
+				"soldier %d in short file matches expected stepped relative x" % i)
+			assert_almost_eq(post_rel.y, expected_rel.y, 0.05,
+				"soldier %d in short file matches expected stepped relative y" % i)
+
+	assert_eq(still_count, 14, "14 full-depth file soldiers hold ground")
+	assert_eq(stepped_count, 26, "26 short-file soldiers step one pitch forward")
 
 
 # --- Battle-level integration ------------------------------------------------
@@ -287,3 +378,91 @@ func test_fighting_unit_does_not_arm_a_wheel_turn() -> void:
 	b._apply_order_cmd({"units": [1], "x": dest.x, "y": dest.y, "target": -1})
 	assert_false(u.is_order_turning(), "a fighting unit can't turn in place -- plain march instead")
 	assert_true(u.has_move_target, "and marches immediately instead")
+
+
+func _make_cavalry_80(pos: Vector2 = Vector2.ZERO) -> Unit:
+	var u: Unit = UnitScript.new()
+	u.is_cavalry = true
+	u.max_soldiers = 80
+	u.soldiers = 80
+	u.position = pos
+	u.facing = Vector2.UP
+	u.file_pitch = 20.0
+	u.rank_pitch = 60.0
+	u.walk_speed = 34.0
+	u.jog_speed = 70.0
+	u.move_speed = 170.0
+	u.accel = 40.0
+	u.decel = 40.0
+	add_child_autofree(u)
+	u.seed_sim_soldiers()
+	return u
+
+
+func test_deep_cavalry_formed_pivot_rate_bounded_for_tracking() -> void:
+	var u := _make_cavalry_80(Vector2(800, 800))
+	assert_almost_eq(u._pivot_radius(), 505.9644, 0.01,
+		"80-mount cavalry block has 505.96 wu pivot radius")
+	var start_facing: Vector2 = u.facing
+	var delta: float = 0.016
+	u._move_to(u.position + Vector2(1000, 0), delta, true)
+	var facing_step: float = absf(angle_difference(start_facing.angle(), u.facing.angle()))
+	var measured_rate: float = facing_step / delta
+	var max_expected_rate: float = u.formed_turn_tracking_frac * u.jog_speed / u._pivot_radius()
+	assert_lte(measured_rate, max_expected_rate + 0.001,
+		"pivot rate must be bounded by formed_turn_tracking_frac (<= 0.083 rad/s)")
+
+
+func test_deep_cavalry_formed_turn_maintains_cohesion() -> void:
+	# Cohesion thresholds guard against regression (min NND >= 10 wu, residual <= 20 wu).
+	var u := _make_cavalry_80(Vector2(807.6, 580.8))
+	u.facing = Vector2(-0.03, -1.0).normalized()
+	var target := Vector2(573.7, 446.5)
+	u.move_target = target
+	u.has_move_target = true
+	u._current_speed = 34.0
+	u._approach_velocity = u.facing * 34.0
+	u.state = UnitScript.State.MOVING
+
+	var delta: float = 0.016
+	var worst_residual: float = 0.0
+	var worst_min_nnd: float = INF
+	var n: int = u.soldiers
+	for _tick in range(180):
+		u._physics_process(delta)
+		SoldierBodies.step(u, delta)
+		# Battle runs the coupling pass right after the body step, sliding `position` toward
+		# the bodies' centroid; without it the slot grid never follows the bodies and the
+		# residual measured here would not be the one a battle or a state transcript reads.
+		SoldierBodies.couple(u, delta)
+		# kabsch_fit is typed to accept plain Arrays; soldier_world_slots and
+		# _sim_soldier_pos return PackedVector2Array, so convert once and reuse the
+		# converted Arrays for the nearest-neighbour loop below too.
+		var pos: Array = Array(u._sim_soldier_pos)
+		var slots: Array = Array(u.soldier_world_slots(n))
+		var fit: Dictionary = DemoDefects.kabsch_fit(slots, pos)
+		if fit["residual_rms"] > worst_residual:
+			worst_residual = fit["residual_rms"]
+		# Each pair once, on squared distances; one sqrt per body at the end.
+		var best_d_sq: PackedFloat32Array = PackedFloat32Array()
+		best_d_sq.resize(n)
+		best_d_sq.fill(INF)
+		for i in range(n):
+			var p_i: Vector2 = pos[i]
+			for j in range(i + 1, n):
+				var d_sq: float = p_i.distance_squared_to(pos[j])
+				if d_sq < best_d_sq[i]:
+					best_d_sq[i] = d_sq
+				if d_sq < best_d_sq[j]:
+					best_d_sq[j] = d_sq
+		for i in range(n):
+			var best_d: float = sqrt(best_d_sq[i])
+			if best_d < worst_min_nnd:
+				worst_min_nnd = best_d
+
+	# 10 wu floor is twice the 5 wu cavalry overlap floor (pre-change clip measured 3.5 wu).
+	assert_gte(worst_min_nnd, 10.0,
+		"minimum nearest-neighbour distance must stay >= 10.0 wu through the turn")
+	# 20 wu tightens against pre-change residual 25.5 wu (clip 56 wu) with margin under analyzer 30 wu floor.
+	assert_lte(worst_residual, 20.0,
+		"shape residual RMS must stay <= 20.0 wu through the turn")

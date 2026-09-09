@@ -1,0 +1,29 @@
+{
+  "_comment": "A 40-man Spearmen regiment at frontage 3 (14 ranks, with a partial rank of 1 man) staged alone in drill mode at (640, 520) facing south. It is ordered to rear-move north. The about-face leaves the partial rear rank at the new front; the reform re-squares the front by holding ground on the full-depth files while the short files step forward one rank pitch, eliminating countermarch traversal through the files.",
+  "seed": "64821",
+  "spawn_fingerprint": "17f662e29ec3b2b57b92b92fa20fb3da",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "count": 40,
+      "frontage": 3,
+      "x": 640,
+      "y": 520,
+      "facing": [0, 1]
+    }
+  ],
+  "camera": [
+    {"tick": 0, "x": 640.0, "y": 400.0, "zoom": 1.7}
+  ],
+  "steps": [
+    {"tick": 12, "click": [640, 520]},
+    {"tick": 24, "rmb_click": [640, 280]}
+  ],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [640, 520]}
+  ],
+  "frames": [0, 24, 60, 90, 120, 150, 180, 240, 300, 420],
+  "state": [30, 60, 90, 120, 150, 180, 240, 300, 420]
+}

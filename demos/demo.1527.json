@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/cavalry-deep-wheel.json",
+  "caption": "Deep 80-mount cavalry block executes an orderly formed turn under depth-scoped corner-slot pace derating (Unit._formed_turn_gait_frac) and wide corridor gating, maintaining formation dressing and spacing without overlap or shape distortion.",
+  "fixed_fps": 30,
+  "max_frames": 510,
+  "fps": 12,
+  "width": 640
+}

@@ -1,18 +1,36 @@
-# Performance regression check for the sim hot path (see #549, tools/benchmark/README.md).
+# Performance regression check for the sim hot path (see tools/benchmark/README.md).
 #
-# This is a RELATIVE check against a CI-runner-specific baseline (tools/benchmark/baseline.json)
-# -- it answers "did this PR make the reference battle measurably slower on THIS runner," not
-# "is the game fast enough." GitHub Actions runners are not the reference hardware named in
-# PLAN.md (the developer's PC with a discrete GPU), and absolute numbers here have
-# no defined relationship to that 60fps target -- CI runner speed varies run to run and across
-# GitHub's fleet. See tools/benchmark/README.md for the local protocol that checks the real
-# target on real hardware; this workflow is only the early-warning between those manual runs.
+# This is a RELATIVE check -- it answers "did this PR make the reference battle measurably
+# slower," not "is the game fast enough." GitHub Actions runners are not the reference
+# hardware named in PLAN.md (the developer's PC with a discrete GPU), and absolute numbers
+# here have no defined relationship to that 60fps target -- CI runner speed varies run to
+# run and across GitHub's fleet. See tools/benchmark/README.md for the local protocol that
+# checks the real target on real hardware; this workflow is only the early-warning between
+# those manual runs.
+#
+# Comparison: this PR's merged tree (the refs/pull/N/merge checkout) vs the base branch's
+# TIP AT TRIGGER TIME, both measured in this
+# same run (a second git worktree, checked out to that base-tip commit, is benchmarked right
+# alongside the PR). This is deliberately NOT a merge-base (branch-point) comparison:
+# actions/checkout on a pull_request event checks out the synthetic PR merge commit
+# (refs/pull/N/merge), whose first parent already IS the base branch's tip, so a
+# `git merge-base` against that same tip would always just resolve back to the tip itself,
+# never to wherever this PR actually branched from. Comparing the merged tree (this PR's
+# head, applied on top of the CURRENT base) against that same current base tip isolates this
+# PR's own diff -- a true merge-base comparison would instead mix in the base branch's own
+# perf drift since the PR branched, which isn't this PR's doing. This can't go stale the
+# way a committed baseline file can -- there's nothing to refresh, since both sides are
+# always freshly measured together on the same runner. The committed
+# tools/benchmark/baseline.json is kept only as a SECONDARY, informational comparison, for
+# continuity with the weekly refresh-benchmark-baseline.yml schedule; it never drives the
+# verdict below.
 #
 # Why a WARNING comment, not a hard merge block: a single CI run's timing is noisy (shared
 # runner, no guaranteed CPU affinity/frequency scaling control), so a hard fail on a threshold
 # crossing risks false-positive blocks on an unrelated PR that just landed on a slower runner.
 # A visible before/after comment lets a human judge a borderline result, while a clear
 # regression (well past the threshold) is still impossible to miss.
+
 name: Performance benchmark
 
 on:
@@ -58,14 +76,27 @@ jobs:
     # change. Mirrors demo-video.yml's identical guard for the same write+comment pattern.
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Raised from the single-tree budget: a full run now also benchmarks the base tip in a
+    # second worktree (its own GUT vendoring, import, and benchmark run), roughly doubling
+    # the fixed cost on top of the shared setup step.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Depth 2, not the default 1 -- actions/checkout on a pull_request event checks
+          # out the synthetic merge commit (refs/pull/N/merge), and resolving HEAD^1 (the
+          # base tip, used below) needs that parent's commit object actually present, not
+          # just its SHA. A depth-1 (default) checkout leaves the merge commit's parents
+          # unfetched, so `git rev-parse HEAD^1` fails outright and `git worktree add` on it
+          # would fail even if it didn't. Depth 0 (full history) isn't needed -- unlike a
+          # true merge-base walk, this never looks further back than the merge commit's
+          # immediate parents.
+          fetch-depth: 2
 
       - name: Set up Godot project
         uses: ./.github/actions/setup-godot-project
 
-      - name: Run benchmark
+      - name: Run benchmark (this PR)
         id: run
         timeout-minutes: 5
         env:
@@ -86,8 +117,107 @@ jobs:
           if [ "$EARLY_STOP" = "true" ]; then
             echo "::warning::benchmark run ended early (see the run's own warnings above); results may be partial."
           fi
+          # A report with no samples (or a non-positive mean) cannot feed the percent-change
+          # math below without dividing by zero, so refuse it here with a named cause rather
+          # than letting the comparison step emit nan/inf into the PR comment.
+          SAMPLES_HERE=$(jq -r '.samples_collected // 0' /tmp/benchmark-current.json)
+          MEAN_HERE=$(jq -r '.stats.mean_ms // 0' /tmp/benchmark-current.json)
+          if [ "$SAMPLES_HERE" -le 0 ] || ! awk -v m="$MEAN_HERE" 'BEGIN { exit (m > 0) ? 0 : 1 }'; then
+            echo "::error::benchmark report has no usable samples (samples_collected=$SAMPLES_HERE, mean_ms=$MEAN_HERE)"
+            exit 1
+          fi
 
-      - name: Compare against baseline and build comment
+      - name: Resolve base tip and check out its tree
+        id: base-tip
+        # HEAD here is the synthetic PR merge commit (refs/pull/N/merge) actions/checkout
+        # checked out above: HEAD^1 is the base branch's own tip at trigger time, HEAD^2 is
+        # the PR head. Fail fast, with a clear error, if HEAD ever turns out not to be a
+        # merge commit (e.g. this workflow gains a non-pull_request trigger later) rather
+        # than silently comparing against the wrong thing.
+        run: |
+          set -euo pipefail
+          if ! git rev-parse --verify HEAD^2 > /dev/null 2>&1; then
+            echo "::error::HEAD is not a merge commit (expected the synthetic PR merge ref refs/pull/N/merge) -- cannot resolve the base tip"
+            exit 1
+          fi
+          BASE_SHA=$(git rev-parse HEAD^1)
+          echo "Base tip: $BASE_SHA"
+          echo "$BASE_SHA" > /tmp/base-tip-sha.txt
+          git worktree add /tmp/base-tip "$BASE_SHA"
+
+      - name: Install GUT into the base-tip tree
+        # The base-tip tree's own test/*.gd files extend GutTest, so GUT must be present
+        # there before its import (below) can resolve that class -- same reason the
+        # composite action vendors GUT into THIS tree above. That action's own clone at
+        # /tmp/gut is reused rather than re-cloned (a second clone into the same path
+        # fails outright), so both trees get the identical pinned GUT checkout.
+        run: |
+          set -euo pipefail
+          if [ ! -d /tmp/gut/addons/gut ]; then
+            echo "::error::expected the setup-godot-project action's GUT clone at /tmp/gut"
+            exit 1
+          fi
+          mkdir -p /tmp/base-tip/addons
+          rm -rf /tmp/base-tip/addons/gut
+          cp -r /tmp/gut/addons/gut /tmp/base-tip/addons/gut
+
+      - name: Import base-tip project
+        # The base-tip tree has no primed .godot import cache the way the PR tree does (that
+        # cache was primed, un-timed, by the composite action's own "Import & validate
+        # project" step above). Without this step, the base-tip tree's cold import would run
+        # inside the timed "Run benchmark (base tip)" step below (run-benchmark.sh does its
+        # own best-effort import too), eating into that step's 5-minute budget and giving the
+        # two trees an unequal benchmark timeout in practice. Mirrors
+        # .github/actions/setup-godot-project's own import step, with its own generous
+        # budget so the benchmark step's 5 minutes is for the benchmark alone.
+        timeout-minutes: 10
+        working-directory: /tmp/base-tip
+        run: |
+          # -e also fails the step on a non-zero exit from godot itself (a missing binary
+          # or a crash), on top of the log grep that catches the script errors Godot
+          # does not reliably exit non-zero on.
+          set -euo pipefail
+          godot --headless --import --verbose 2>&1 | tee import.log
+          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
+            echo "::error::Godot reported script/resource errors during base-tip import"
+            exit 1
+          fi
+
+      - name: Run benchmark (base tip)
+        id: run-base-tip
+        timeout-minutes: 5
+        env:
+          # Reuses the Godot binary the setup-godot-project action installed onto PATH for
+          # this whole job -- no second install needed. run-benchmark.sh derives its own
+          # PROJECT_ROOT from the invoked script's own path, so calling the base-tip tree's
+          # copy directly (rather than the PR tree's copy) runs the benchmark against
+          # /tmp/base-tip. The project is already imported by the step above, so
+          # run-benchmark.sh's own best-effort import is a fast no-op here.
+          SPARTA_BENCHMARK_WARMUP_TICKS: ${{ env.WARMUP_TICKS }}
+          SPARTA_BENCHMARK_TICKS: ${{ env.MEASURE_TICKS }}
+          SPARTA_BENCHMARK_OUT: /tmp/benchmark-base.json
+        run: |
+          set -euo pipefail
+          /tmp/base-tip/tools/benchmark/run-benchmark.sh
+          if [ ! -s /tmp/benchmark-base.json ]; then
+            echo "::error::base-tip benchmark produced no report file"
+            exit 1
+          fi
+          EARLY_STOP=$(jq -r '.early_stop' /tmp/benchmark-base.json)
+          if [ "$EARLY_STOP" = "true" ]; then
+            echo "::warning::base-tip benchmark run ended early (see the run's own warnings above); results may be partial."
+          fi
+          # A report with no samples (or a non-positive mean) cannot feed the percent-change
+          # math below without dividing by zero, so refuse it here with a named cause rather
+          # than letting the comparison step emit nan/inf into the PR comment.
+          SAMPLES_HERE=$(jq -r '.samples_collected // 0' /tmp/benchmark-base.json)
+          MEAN_HERE=$(jq -r '.stats.mean_ms // 0' /tmp/benchmark-base.json)
+          if [ "$SAMPLES_HERE" -le 0 ] || ! awk -v m="$MEAN_HERE" 'BEGIN { exit (m > 0) ? 0 : 1 }'; then
+            echo "::error::base-tip benchmark report has no usable samples (samples_collected=$SAMPLES_HERE, mean_ms=$MEAN_HERE)"
+            exit 1
+          fi
+
+      - name: Compare and build comment
         id: compare
         env:
           GH_TOKEN: ${{ github.token }}
@@ -103,24 +233,36 @@ jobs:
           CUR_MEAN_FMT=$(awk -v v="$CUR_MEAN" 'BEGIN { printf "%.3f", v }')
           CUR_P95_FMT=$(awk -v v="$CUR_P95" 'BEGIN { printf "%.3f", v }')
 
-          VERDICT="info"
-          BASELINE_LINE="No baseline committed yet at \`tools/benchmark/baseline.json\` -- nothing to compare against. See that file's header for how to establish one."
+          # PRIMARY: this PR vs its base tip, both measured in this same run. Never goes
+          # stale between refreshes, since there's nothing to refresh -- both sides come
+          # from this run. This job only fires on pull_request (see the `on:` trigger
+          # above), so a base-tip run always exists here -- no fallback branch needed.
+          BASE_TIP_SHA_SHORT=$(cut -c1-7 /tmp/base-tip-sha.txt)
+          BT_MEAN=$(jq -r '.stats.mean_ms' /tmp/benchmark-base.json)
+          BT_P95=$(jq -r '.stats.p95_ms' /tmp/benchmark-base.json)
+          BT_MEAN_PCT=$(awk -v c="$CUR_MEAN" -v b="$BT_MEAN" 'BEGIN { printf "%.1f", (c - b) / b * 100 }')
+          BT_P95_PCT=$(awk -v c="$CUR_P95" -v b="$BT_P95" 'BEGIN { printf "%.1f", (c - b) / b * 100 }')
+          BT_REGRESSED=$(awk -v p="$BT_MEAN_PCT" -v t="$REGRESSION_THRESHOLD_PCT" 'BEGIN { print (p > t) ? "1" : "0" }')
+          BT_REGRESSED_P95=$(awk -v p="$BT_P95_PCT" -v t="$REGRESSION_THRESHOLD_PCT" 'BEGIN { print (p > t) ? "1" : "0" }')
+          VERDICT="ok"
+          if [ "$BT_REGRESSED" = "1" ] || [ "$BT_REGRESSED_P95" = "1" ]; then
+            VERDICT="regression"
+            echo "::warning::mean tick time regressed ${BT_MEAN_PCT}% (p95 ${BT_P95_PCT}%) vs this PR's base tip ($BASE_TIP_SHA_SHORT) -- see the PR comment."
+          fi
+          BASE_TIP_TABLE=$(printf '| metric | base tip (%s) | this PR | change |\n| --- | --- | --- | --- |\n| mean tick time | %.3f ms | %.3f ms | %s%% |\n| p95 tick time | %.3f ms | %.3f ms | %s%% |' \
+            "$BASE_TIP_SHA_SHORT" "$BT_MEAN" "$CUR_MEAN" "$BT_MEAN_PCT" "$BT_P95" "$CUR_P95" "$BT_P95_PCT")
+
+          # SECONDARY, informational only: the committed CI-runner baseline
+          # (tools/benchmark/baseline.json). Still refreshed weekly by
+          # refresh-benchmark-baseline.yml, but it never drives the verdict above.
+          BASELINE_TABLE="No baseline committed yet at \`tools/benchmark/baseline.json\` -- nothing to compare against. See that file's header for how to establish one."
           if [ -f tools/benchmark/baseline.json ]; then
-            VERDICT="ok"   # a baseline exists and was compared; overwritten to "regression" below if it crossed the threshold
-            BASE_MEAN=$(jq -r '.stats.mean_ms' tools/benchmark/baseline.json)
-            BASE_P95=$(jq -r '.stats.p95_ms' tools/benchmark/baseline.json)
-            # Percent change vs baseline, computed in awk (portable, no bc dependency).
-            MEAN_PCT=$(awk -v c="$CUR_MEAN" -v b="$BASE_MEAN" 'BEGIN { printf "%.1f", (c - b) / b * 100 }')
-            P95_PCT=$(awk -v c="$CUR_P95" -v b="$BASE_P95" 'BEGIN { printf "%.1f", (c - b) / b * 100 }')
-            REGRESSED=$(awk -v p="$MEAN_PCT" -v t="$REGRESSION_THRESHOLD_PCT" 'BEGIN { print (p > t) ? "1" : "0" }')
-            REGRESSED_P95=$(awk -v p="$P95_PCT" -v t="$REGRESSION_THRESHOLD_PCT" 'BEGIN { print (p > t) ? "1" : "0" }')
-            if [ "$REGRESSED" = "1" ] || [ "$REGRESSED_P95" = "1" ]; then
-              VERDICT="regression"
-              echo "::warning::mean tick time regressed ${MEAN_PCT}% (p95 ${P95_PCT}%) vs the CI baseline -- see the PR comment."
-            fi
-            BASELINE_LINE=$(printf '| mean tick time | %.3f ms | %.3f ms | %s%% |\n| p95 tick time | %.3f ms | %.3f ms | %s%% |' \
-              "$BASE_MEAN" "$CUR_MEAN" "$MEAN_PCT" "$BASE_P95" "$CUR_P95" "$P95_PCT")
-            BASELINE_LINE="| metric | baseline | this PR | change |\n| --- | --- | --- | --- |\n${BASELINE_LINE}"
+            BL_MEAN=$(jq -r '.stats.mean_ms' tools/benchmark/baseline.json)
+            BL_P95=$(jq -r '.stats.p95_ms' tools/benchmark/baseline.json)
+            BL_MEAN_PCT=$(awk -v c="$CUR_MEAN" -v b="$BL_MEAN" 'BEGIN { printf "%.1f", (c - b) / b * 100 }')
+            BL_P95_PCT=$(awk -v c="$CUR_P95" -v b="$BL_P95" 'BEGIN { printf "%.1f", (c - b) / b * 100 }')
+            BASELINE_TABLE=$(printf '| metric | committed baseline | this PR | change |\n| --- | --- | --- | --- |\n| mean tick time | %.3f ms | %.3f ms | %s%% |\n| p95 tick time | %.3f ms | %.3f ms | %s%% |' \
+              "$BL_MEAN" "$CUR_MEAN" "$BL_MEAN_PCT" "$BL_P95" "$CUR_P95" "$BL_P95_PCT")
           fi
 
           {
@@ -129,8 +271,11 @@ jobs:
             echo "cur_p95=$CUR_P95_FMT"
             echo "soldiers=$SOLDIERS"
             echo "samples=$SAMPLES"
+            echo "base_tip_table<<BASE_TIP_EOF"
+            printf '%b\n' "$BASE_TIP_TABLE"
+            echo "BASE_TIP_EOF"
             echo "baseline_table<<BASELINE_EOF"
-            printf '%b\n' "$BASELINE_LINE"
+            printf '%b\n' "$BASELINE_TABLE"
             echo "BASELINE_EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -149,18 +294,22 @@ jobs:
           SAMPLES: ${{ steps.compare.outputs.samples }}
           CUR_MEAN: ${{ steps.compare.outputs.cur_mean }}
           CUR_P95: ${{ steps.compare.outputs.cur_p95 }}
+          BASE_TIP_TABLE: ${{ steps.compare.outputs.base_tip_table }}
           BASELINE_TABLE: ${{ steps.compare.outputs.baseline_table }}
         run: |
           set -euo pipefail
           PR=${{ github.event.pull_request.number }}
           MARKER="<!-- sparta-benchmark -->"
           case "$VERDICT" in
-            regression) HEADLINE="Regressed beyond the ${REGRESSION_THRESHOLD_PCT}% threshold vs. the CI baseline (CI-runner-noisy -- a human call, not an auto-block)."; EMOJI=":warning:" ;;
-            info)       HEADLINE="No CI baseline yet to compare against."; EMOJI=":bar_chart:" ;;
-            *)          HEADLINE="Within the ${REGRESSION_THRESHOLD_PCT}% threshold vs. the CI baseline."; EMOJI=":chart_with_upwards_trend:" ;;
+            regression)
+              HEADLINE="Regressed beyond the ${REGRESSION_THRESHOLD_PCT}% threshold vs. this PR's base tip, measured in this run (CI-runner-noisy -- a human call, not an auto-block)."
+              EMOJI=":warning:" ;;
+            *)
+              HEADLINE="Within the ${REGRESSION_THRESHOLD_PCT}% threshold vs. this PR's base tip, measured in this run."
+              EMOJI=":chart_with_upwards_trend:" ;;
           esac
-          BODY=$(printf '%s\n### %s Performance benchmark\n\n%s\n\nCurrent run: **%s soldiers**, %s ticks sampled, mean **%s ms**/tick, p95 **%s ms**/tick.\n\n%s\n\n<sub>This is a CI-runner-relative check, NOT the 60fps/reference-hardware target in PLAN.md -- see tools/benchmark/README.md. Run tools/benchmark/run-benchmark.sh locally on real hardware to check that target.</sub>' \
+          BODY=$(printf '%s\n### %s Performance benchmark\n\n%s\n\nCurrent run: **%s soldiers**, %s ticks sampled, mean **%s ms**/tick, p95 **%s ms**/tick.\n\n%s\n\n<details>\n<summary>Secondary, informational: vs the committed CI baseline (tools/benchmark/baseline.json)</summary>\n\n%s\n\n</details>\n\n<sub>This is a CI-runner-relative check, NOT the 60fps/reference-hardware target in PLAN.md -- see tools/benchmark/README.md. Run tools/benchmark/run-benchmark.sh locally on real hardware to check that target.</sub>' \
             "$MARKER" "$EMOJI" "$HEADLINE" \
-            "$SOLDIERS" "$SAMPLES" "$CUR_MEAN" "$CUR_P95" "$BASELINE_TABLE")
+            "$SOLDIERS" "$SAMPLES" "$CUR_MEAN" "$CUR_P95" "$BASE_TIP_TABLE" "$BASELINE_TABLE")
           tools/ci/upsert-pr-comment.sh \
             "${{ github.repository }}" "$PR" "$MARKER" "$BODY" "benchmark comment"

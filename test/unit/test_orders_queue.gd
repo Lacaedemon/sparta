@@ -215,7 +215,7 @@ func test_phased_move_order_stays_in_turn_phase_while_the_about_face_is_still_ru
 
 func test_phased_move_order_enters_reform_when_the_about_face_hands_off_to_the_hold() -> void:
 	# Mirrors _think()'s reform-before-march handoff: a REFORM leaf is spliced in with its own
-	# timer armed and the march parked right behind it while the countermarch brings a full
+	# timer armed and the march parked right behind it while the reform brings a full
 	# rank forward.
 	var u := _make_unit()
 	var o := _stage_rear_move(u, Vector2(10, 10), true)

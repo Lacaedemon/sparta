@@ -537,6 +537,7 @@ the rule was already ledger rule 18 and was in the brief.
 
 - **Don't:** amend only the clause a finding quoted.
 
+## 2026-09-04 agy: report timing and unit-relative slot displacement
 
 
 ## Scratch line that conflicts with main (throwaway test branch)
@@ -544,3 +545,277 @@ the rule was already ledger rule 18 and was in the brief.
 This line exists only to make the branch conflict with main.
 
 Second push.
+A headless run timed out at thirty minutes with no report file written
+because the full test suite was started inside a run with a fixed timeout
+and the deliverable report was deferred until the end.
+In addition, slot displacement assertions across a march compared world coordinates,
+which drifted by the entire march distance instead of checking unit-relative offsets.
+
+- **Do:** write the deliverable report file within the first minutes
+  and overwrite it after each task.
+
+- **Don't:** defer writing the report file until the end of a session.
+
+- **Do:** run only the test files targeted by the brief
+  rather than starting the full suite inside a run with a fixed timeout.
+
+- **Don't:** start the full test suite unless the brief explicitly asks.
+
+- **Do:** compare unit-relative offsets (`slot - u.position`)
+  when asserting slot displacement across a march.
+
+- **Don't:** compare world coordinates across a march,
+  which shifts slot positions by the march distance.
+
+- **Do:** run the awk control above over every added prose line
+  before reporting a doc edit done.
+
+- **Don't:** rely on having written the rule
+  as evidence of having followed it.
+
+- **Do:** scan added .gd and demo lines for non-ASCII bytes and issue numbers yourself
+  before reporting.
+
+- **Don't:** type a degree sign or an issue number into a comment.
+
+- **Do:** note that tools/check.sh chars/units/comments diff-scope COMMITTED changes,
+  so on an uncommitted worktree their PASS says nothing.
+
+- **Don't:** paste a "No new code lines" PASS as evidence for uncommitted edits.
+
+## 2026-09-04 agy: a shared completion handler serves more than one order
+
+- **Do:** before changing an argument at a call site,
+  grep for every order/path that reaches that site (here begin_pivot callers)
+  and decide per path.
+
+- **Don't:** assume the site serves only the order named in the issue.
+
+- **Do:** grep the test tree for the old expectation text (e.g. "_in_rear_row")
+  after flipping a behaviour.
+
+- **Don't:** update only the test file the brief named.
+
+- **Do:** check which layout branch a described behaviour belongs to
+  and scope the sentence to it.
+
+- **Don't:** describe one branch's mechanism as the behaviour.
+
+- **Do:** grep for every call of the function whose default you are relying on,
+  not only the site the issue named
+  (here reform_ranks had three callers and two were fixed).
+
+- **Don't:** stop at the first two sites.
+
+## 2026-09-04 agy: edits parked in .patched files are edits nobody made
+
+- **Do:** apply an edit to the target file
+  the moment it is decided
+  and verify with git diff.
+
+- **Don't:** stage edits in sidecar copies
+  for a later step that a timeout can cancel.
+
+- **Do:** write the report file before starting each task to mark it started,
+  and update it immediately after completion with its numbers.
+
+- **Don't:** defer report updates to a final summary step
+  or leave tasks marked in progress across a session.
+
+- **Do:** derive every test bound from the fixture's own fields
+  and give each threshold a one-line rationale.
+
+- **Don't:** paste computed numbers into an assert.
+
+## 2026-09-05 sonnet: a regression test must sample the point where the bug lived
+
+- **Do:** evaluate the guarded property at the exact boundary the finding
+  named, on both sides.
+
+- **Don't:** sample the new formula's own kinks and call it a regression
+  guard.
+
+## 2026-09-04 agy: headless timeout, unapplied test target, and duplicated const comment
+
+Three misses across the lateral file crossing PR round 1.
+First, a headless run timed out at 35 minutes inside GUT
+with the report never updated past "Initial setup".
+Second, the lateral crossing test computed a `target_slots` array and discarded it,
+so SoldierBodies.step kept walking soldier 0 to its own slot
+and the arrival assertion failed by construction.
+Third, the added `LANE_CORRIDOR_OFFSET_FRAC` constant carried its comment twice
+(both as a line above and as a trailing comment)
+and was followed by redundant blank lines.
+
+- **Do:** write the deliverable report in the first five minutes of a run
+  and update it after every task.
+
+- **Don't:** leave a deliverable report unwritten while executing test commands,
+  which causes a timeout to lose intermediate progress.
+
+- **Do:** a test that drives a body must set the target the code under test reads,
+  and a first run that fails on the arrival assert is the signal that the target was never applied.
+
+- **Don't:** assume a test failure reflects the production code under test
+  without verifying that the test fixture actually applied the target to the unit.
+
+- **Do:** keep a single descriptive comment on a new constant,
+  preserving standard separation between declarations.
+
+- **Don't:** duplicate a comment above and beside a constant declaration
+  or leave redundant blank lines trailing the declaration.
+
+## 2026-09-04 agy: a branch the clip never takes
+
+A routing branch added to fix an issue was never taken by any soldier in the demo clip
+because the whole formation re-centered and every soldier moved.
+The overlap came from co-moving same-unit bodies lacking mutual standoff,
+not from crossing standing formation ranks.
+
+- **Do:** instrument or count how many bodies take a new branch in the PR's own demo dump
+  before claiming it fixes the clip.
+
+- **Don't:** ship a routing branch
+  whose only evidence is a synthetic unit test.
+
+## 2026-09-04 agy: a caption that describes the script I meant to write
+
+A demo script caption and comment assumed key T toggled Tight and Loose,
+when T cycles Normal through Tight, Loose, and Square,
+and the unit started in Normal.
+The script never reached Loose and never performed a frontage change.
+Separately, a unit test asserted against a hard-coded speed threshold
+that matched no cap enforced by the code under test.
+
+- **Do:** read the key bindings (SelectionManager)
+  for every key a demo script presses
+  and describe the resulting state sequence from the unit's starting mode.
+
+- **Don't:** write a caption from the brief's wording.
+
+- **Do:** derive a test threshold from the unit's own fields.
+
+- **Don't:** assert a bare number that no code path enforces.
+
+## 2026-09-05 sonnet: a comment cited the wrong sibling test
+
+- Do open the test a comment names and check its fixture numbers before citing it.
+
+- Don't cite a sibling test from memory of its name.
+
+## 2026-09-05 sonnet: reported an edit as done the diff did not contain
+
+On PR #1537, an earlier round reported that the spatial-hash bucket in `scripts/SoldierBodies.gd` (`_separate_same_unit`) had been switched from `Dictionary[Vector2i, Array]` to `Dictionary[Vector2i, PackedInt32Array]`.
+The working tree still had `Array` in the next round.
+The change had been planned and described but never actually applied to the file.
+The report was generated from the plan, not from the diff.
+Both halves of this pair are derived from that correction, not stated by the user directly.
+
+- **Do:** before reporting an edit as done, re-read the diff (`git diff --stat` and a grep for the new symbol) and quote the grep line in the report, e.g. `654: var cells: Dictionary[Vector2i, PackedInt32Array] = {}`.
+
+- **Don't:** report an edit from the plan or from memory of intending it -- a description of the intended change is not evidence the change landed in the file.
+
+## 2026-09-08 gia wave (#1548): PR checkout HEAD is the merge commit, not a rebase -- `git merge-base` collapses
+
+On a `pull_request` event, `actions/checkout` (and any local checkout of `refs/pull/N/merge`)
+lands on the synthetic merge commit GitHub builds for that PR, whose first parent is the base
+branch's tip at trigger time and whose second parent is the PR head.
+That makes `git merge-base origin/main HEAD` always resolve to `HEAD^1` (main's own tip) on this
+checkout, whatever the PR branch's real divergence point was -- the "merge-base" computation
+collapses to "the base tip" and never reflects where the branch actually forked.
+`benchmark.yml`'s first cut computed `git merge-base origin/main HEAD` for exactly this reason and
+got the base tip by accident;
+the rename to `HEAD^1` makes the workflow say what it measures.
+
+Comparing the merged tree (`HEAD`) against the base tip (`HEAD^1`) isolates the PR's own diff on
+top of current `main`.
+A true merge-base comparison instead folds in `main`'s own drift since the branch diverged, which
+is the wrong baseline for "did this PR regress anything" -- and per the same PR, the committed
+`tools/benchmark/baseline.json` (refreshed weekly) is kept only as a secondary, informational
+table for exactly that reason: it can be stale between refreshes, while the same-run `HEAD` vs
+`HEAD^1` comparison never drifts.
+
+- **Do:** on a PR-checkout job, use `HEAD^1` for the base tip and `HEAD^2` for the PR head, and
+  fail fast if `HEAD` has no second parent (a non-merge-commit checkout means the checkout
+  strategy changed).
+
+- **Do:** treat a same-run comparison against the base tip as the primary verdict, and a
+  periodically-refreshed committed baseline as secondary/informational only.
+
+- **Don't:** call `git merge-base origin/main HEAD` on a PR-event checkout expecting the branch's
+  actual fork point -- it always resolves to `HEAD^1`, the base tip, not a merge-base in the
+  usual sense.
+
+## 2026-09-08 gia wave (#1548): two worktrees in one CI job need separate caching, not a second clone into the same path
+
+Benchmarking the base tip (`HEAD^1`) alongside the PR's own merged tree (`HEAD`) means running the
+project twice in one job, from two separate worktrees.
+The second worktree starts with no primed `.godot` import cache, so it needs its own explicit
+`godot --headless --import` step -- it cannot reuse the first tree's cache, because Godot's import
+cache is keyed to the files under that specific working directory.
+GUT itself does not need a second clone: `.github/actions/setup-godot-project/action.yml` already
+clones GUT to `/tmp/gut` and vendors `addons/gut` from there for the first tree, and the second
+worktree's setup step should vendor `addons/gut` from that same `/tmp/gut` clone rather than
+re-cloning -- re-cloning into `/tmp/gut` a second time fails outright, since the path is already
+populated.
+
+- **Do:** give a second worktree its own import step (`godot --headless --import`), and reuse the
+  setup action's existing `/tmp/gut` clone to vendor `addons/gut` into it.
+
+- **Don't:** assume a second worktree can run GUT tests or benchmarks off the first tree's primed
+  `.godot` cache, and don't re-clone GUT into `/tmp/gut` a second time.
+
+## The `main` ruleset requires every review thread resolved -- `check-pr-fully-clean.py`'s exit code doesn't check that
+
+`gh api repos/Lacaedemon/sparta/rules/branches/main` lists a `pull_request` rule with
+`"required_review_thread_resolution": true`.
+That is a merge-time GitHub requirement, enforced server-side by `gh pr merge` (or the web UI's
+merge button), and it is a different surface from anything `check-pr-fully-clean.py` reads: the
+script's own PR fetch is `gh pr view --json ...,reviews,comments`, which never carries review
+**thread** resolution state, only review bodies and issue comments.
+So the instrument can exit 0 (nothing blocking found in the verdict text) while the merge is still
+refused, because one or more review threads -- including resolved-looking inline findings that
+were replied to but never marked resolved in the GitHub UI/API sense -- are still open.
+
+Resolving an answered thread from the CLI needs the GraphQL `resolveReviewThread` mutation (REST
+has no endpoint for it); `gh api graphql -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}' -F id=<thread node id>`
+is the shape, with thread ids read from the `reviewThreads` GraphQL query.
+
+A second gotcha on the same surface: Copilot's bot account prints under two different logins
+depending on the endpoint.
+`gh api repos/<owner>/<repo>/pulls/<N>/comments` (inline review comments -- the endpoint that
+carries `reviewThreads`) reports `user.login` as `Copilot`, capitalized, with no `[bot]` suffix.
+`gh api repos/<owner>/<repo>/pulls/<N>/reviews` (formal review objects) reports the same account
+as `copilot-pull-request-reviewer[bot]`, all-lowercase.
+A login filter written against one endpoint's casing silently matches nothing on the other.
+
+- **Do:** resolve every answered review thread with the GraphQL `resolveReviewThread` mutation
+  before `gh pr merge`, even after `check-pr-fully-clean.py` exits 0 -- the exit code says nothing
+  about thread-resolution state.
+
+- **Do:** when filtering Copilot's comments or reviews by login, downcase the login first
+  (`ascii_downcase` in `jq`) or match both `Copilot` (inline comments endpoint) and
+  `copilot-pull-request-reviewer[bot]` (reviews endpoint) rather than assuming one casing.
+
+- **Don't:** read a clean `check-pr-fully-clean.py` exit as proof `gh pr merge` will succeed on
+  this repo -- the ruleset's thread-resolution requirement is a separate, unchecked gate.
+
+- **Don't:** filter Copilot's identity by a single hardcoded login string across both endpoints.
+
+## `tools/check.sh shell_tests` runs the repo's own shell test suite, ahead of any Godot requirement
+
+`tools/lib/tests/test-*.sh` scripts are now a `shell_tests` entry in `tools/check.sh`'s
+`ALL_CHECKS`/`DEFAULT_CHECKS`, and it also runs inside the Godot-free
+`check-comment-citations.yml` job -- it needs no Godot binary, so it can gate a change to shell
+tooling (like `tools/lib/demo-defect-metrics.sh`'s path-derivation logic) even in a CI job that
+never imports the project.
+`tools/check.sh demo_defects` gates a changed `defects.json` sidecar the same way it gates a
+changed `demos/inputs/*.json` script: a shape check first (fails the check on a malformed sidecar,
+mirroring the analyzer's own rc 3), then, only when `DemoStateSink.gd` is present in the tree, an
+import-primed state dump plus an analyzer pass with `--script`.
+
+- **Do:** add a new `tools/lib/tests/test-*.sh` file for shell-tooling logic and expect
+  `shell_tests` to pick it up automatically in both `check.sh` and the Godot-free CI job.
+
+- **Don't:** assume a shell-only tooling change needs a Godot-backed CI job to be gated at all --
+  `check-comment-citations.yml` already runs `shell_tests` with no Godot import.

@@ -30,3 +30,8 @@ For example, `SoldierEnemyContact.gd` uses `1.0001` to filter candidate pairs.
 Without this, floating-point rounding mismatches between the squared check and the linear fallback can introduce butterfly effects across the simulation.
 **Action:** When implementing square root skip optimizations on distance checks in physics loops, always employ a safety factor.
 For example, use the `SQRT_SKIP_BAND` (1.0001) as a safety factor on the threshold before passing candidates to the exact check.
+
+## 2026-09-08 - Do not push again once another author has committed to the branch
+**Learning:** Jules re-pushes its regenerated diff onto its own PR branch after every review round, which discards commits another author (a human or another agent) has since pushed to that same branch -- this has happened five times (see #1262, #1529).
+**Action:** If a commit not authored by `google-labs-jules[bot]` already exists on this branch, do not push again to it.
+Stop, and let the other author's PR continue instead.

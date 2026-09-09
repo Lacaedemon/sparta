@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/about-face-partial-rank.json",
+  "caption": "Partial-rank reform after an about-face holds ground on full-depth files and steps short files forward instead of countermarching through the files.",
+  "fixed_fps": 30,
+  "max_frames": 420,
+  "fps": 12,
+  "width": 640
+}

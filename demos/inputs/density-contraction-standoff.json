@@ -1,0 +1,48 @@
+{
+  "_comment": "Density contraction standoff demo (drill mode): an Infantry regiment at (520, 340) is selected at tick 10, presses T twice (NORMAL to TIGHT at tick 30, TIGHT to LOOSE at tick 70) and Shift+T at tick 140 (LOOSE back to TIGHT). During the contraction every body converges on a re-centred slot at once; the in-transit same-unit standoff keeps converging neighbours at body clearance instead of letting them compress into each other. Sampled to tick 540 so the contracted block is settled at the last sample.",
+  "seed": "42981",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 520,
+      "y": 340,
+      "facing": [0, 1]
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 520.0,
+      "y": 340.0,
+      "zoom": 2.0
+    }
+  ],
+  "steps": [
+    {
+      "tick": 10,
+      "click": [520, 340]
+    },
+    {
+      "tick": 30,
+      "key": "T"
+    },
+    {
+      "tick": 70,
+      "key": "T"
+    },
+    {
+      "tick": 140,
+      "key": "T",
+      "shift": true
+    }
+  ],
+  "state": [10, 30, 70, 100, 140, 170, 200, 230, 270, 300, 360, 420, 480, 540],
+  "defect_exemptions": {
+    "path_crossing": {
+      "uids": [0],
+      "reason": "A density shift re-centres every slot at once, so files converge across each other by design; the same clip on the pre-fix code crosses paths just as much (0.475) while stacking bodies to 0.16 wu, and the standoff only keeps the converging bodies apart."
+    }
+  }
+}

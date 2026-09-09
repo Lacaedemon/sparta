@@ -187,13 +187,14 @@ func test_rear_move_with_reform_holds_the_march_until_the_ranks_re_form() -> voi
 		_tick(u)
 	assert_true(u.has_move_target, "the parked march commits after the reform")
 	assert_eq(u.move_target, dest, "to the parked rear destination")
-	assert_gt(held_ticks, 5, "an actual hold happened (the countermarch takes real time)")
+	assert_gt(held_ticks, 5, "an actual hold happened (the reform takes real time)")
 	assert_true(u._reform_bodies_settled(), "the march waited for the ranks, not a timer")
 	assert_eq(_front_row_count(u), 8,
 		"a FULL rank fronts the new heading at step-off (files = 8), not the 4-man partial")
+	# Under hold-ground reform, bodies in full-depth files hold their ground and the short rear rank stays leading at the new front
 	for i in range(56, 60):
-		assert_true(_in_rear_row(u, i),
-			"partial-rank body %d ends at the new REAR, no longer leading" % i)
+		assert_true(_in_front_row(u, i),
+			"partial-rank body %d holds ground and remains at the new FRONT" % i)
 
 
 func test_hasty_rear_move_marches_at_once_and_reforms_on_arrival() -> void:
@@ -228,8 +229,9 @@ func test_hasty_rear_move_marches_at_once_and_reforms_on_arrival() -> void:
 			break
 	assert_true(u._reform_bodies_settled(), "the bodies re-formed at the destination")
 	assert_eq(_front_row_count(u), 8, "a FULL rank fronts the heading at the destination")
+	# Under hold-ground reform on arrival, bodies in full-depth files hold their ground and the short rear rank stays leading at the new front
 	for i in range(56, 60):
-		assert_true(_in_rear_row(u, i), "partial-rank body %d is back at the rear" % i)
+		assert_true(_in_front_row(u, i), "partial-rank body %d holds ground and remains at the front" % i)
 
 
 func test_interrupted_about_face_drops_the_parked_reform_with_the_march() -> void:
@@ -884,3 +886,107 @@ func test_traverse_flank_arcs_offsets_unpaired_traversing_soldiers() -> void:
 		slots, positions, Vector2.ZERO, 0.0, perm, 1, 9.0)
 	assert_eq(result.size(), 2, "returns slot array of same size")
 	assert_ne(result[0].x, slots[0].x, "traversing soldier at mid-traverse receives lateral flank arc")
+
+
+## Regression test: 40-soldier block at frontage 3 (files = 3) after an about-face
+## with reform on holds ground for full-depth files and steps short files forward.
+func test_rear_move_partial_rank_holds_ground_and_steps_short_files() -> void:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 40
+	add_child_autofree(u)
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	u.frontage_override = 3
+	u.seed_sim_soldiers()
+
+	assert_true(u._effective_file_major_reform(),
+		"precondition: file-major reform is effective")
+	var initial_slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var dest := Vector2(0, -200)
+	_arm_rear_move(u, dest, true)
+
+	var turn_budget: int = int(ceil(PI / Unit.CONVERSIO_TURN_RATE / TICK)) + 10
+	for _i in range(turn_budget):
+		_tick(u)
+		if not u.is_order_turning():
+			break
+	assert_false(u.is_order_turning(), "about-face completed")
+	assert_false(u.has_move_target, "march is held while REFORM leaf is active")
+	assert_true(u._reform_holding(), "REFORM leaf is active")
+
+	var after_slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var pitch: float = u.rank_pitch_wu()
+	var step_vector: Vector2 = u.facing * pitch
+	var file_ids: PackedInt32Array = u._sim_soldier_file
+	var file_counts: Dictionary = {}
+	for fid in file_ids:
+		file_counts[fid] = file_counts.get(fid, 0) + 1
+
+	var full_depth_file: int = -1
+	for fid in file_counts:
+		if file_counts[fid] == 14:
+			full_depth_file = fid
+			break
+	assert_ne(full_depth_file, -1, "found a full-depth file with 14 soldiers")
+
+	var still_count: int = 0
+	var stepped_count: int = 0
+
+	for i in range(u.soldiers):
+		var file_id: int = file_ids[i]
+		var initial: Vector2 = initial_slots[i]
+		var current: Vector2 = after_slots[i]
+		if file_id == full_depth_file:
+			still_count += 1
+			assert_almost_eq(current.x, initial.x, 0.01,
+				"soldier %d in full-depth file has zero x displacement" % i)
+			assert_almost_eq(current.y, initial.y, 0.01,
+				"soldier %d in full-depth file has zero y displacement" % i)
+		else:
+			stepped_count += 1
+			var expected: Vector2 = initial + step_vector
+			assert_almost_eq(current.x, expected.x, 0.01,
+				"soldier %d in short file matches expected stepped x" % i)
+			assert_almost_eq(current.y, expected.y, 0.01,
+				"soldier %d in short file matches expected stepped y" % i)
+
+	assert_eq(still_count, 14, "full-depth file holds all 14 soldiers still")
+	assert_eq(stepped_count, 26, "short files step exactly 26 soldiers forward")
+
+
+## An about-face-folded partial-rank unit that gets re-ordered must hold ground
+## rather than countermarching through the block.
+func test_reorder_about_face_folded_partial_unit_holds_ground() -> void:
+	var u := _make_partial_unit()
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+	var before_slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+
+	# Identify the 4 partial-rank bodies standing in the front row of the flipped grid
+	var front_bodies: Array[int] = []
+	for i in range(u.soldiers):
+		if _in_front_row(u, i):
+			front_bodies.push_back(i)
+	assert_eq(front_bodies.size(), 4, "precondition: 4 partial-rank bodies lead the flipped grid")
+
+	# Re-order the unit: start_order_response re-squares the ranks
+	var order := Order.new_move(Vector2(0, -200))
+	u.set_current_order(order)
+	u.start_order_response()
+
+	# Assert slot displacement for the partial-rank bodies: with hold ground they do not traverse
+	var after_slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for idx in front_bodies:
+		assert_almost_eq(before_slots[idx].distance_to(after_slots[idx]), 0.0, 0.001,
+			"partial-rank body %d slot holds ground" % idx)
+
+	# Tick through the response delay so bodies track their reform slots
+	var response_ticks: int = int(ceil(u.order_response_delay / TICK)) + 5
+	for _i in range(response_ticks):
+		_tick(u)
+
+	# Assert the partial-rank bodies held ground and remained in the front row
+	for idx in front_bodies:
+		assert_true(_in_front_row(u, idx),
+			"partial-rank body %d holds ground and remains in the front row" % idx)
+

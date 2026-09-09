@@ -1,0 +1,6 @@
+{
+  "input": "demos/inputs/battle-ai-unit-leaders.json",
+  "caption": "battle_ai_leaders unchanged in play: team 1's 140-strong spearmen (uid 1) re-slot after the AI's tick ~300 target switch and are still walking onto the re-rotated grid at every catalog sample; uid 1's overlap and shape_residual readings are now declared exemptions with measured numbers (its path_crossing reading passes on the sustain criterion and needs none), so CI's defect scan prints its own verdicts for the clip.",
+  "fixed_fps": 60,
+  "max_frames": 720
+}

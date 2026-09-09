@@ -1,5 +1,5 @@
 {
-  "_comment": "Fighting withdrawal under a plain MOVE order: two even Infantry regiments spawn 200wu apart (staging borrowed from disengage-step-back.json -- the enemy AI closes and locks both in melee under its own order, contact lands ~tick 183). At tick 300, with the block fully engaged, the player right-clicks EMPTY GROUND well behind the line: a plain MOVE into the rear sector. Before this fix the engaged unit obeyed by centre-pivot-turning inside the press -- its slot grid swung across the whole block depth while phantom ramp-up speed throttled the pivot, so the melee-scattered bodies stacked (nnd_min ~0.1-0.7wu against a 2.25 threshold) chasing slots they could never settle onto. Now the disciplined block peels straight BACK holding the facing it fought in -- taking rear strikes for it, the documented cost of disengaging against an unbroken pursuer -- while every soldier tracks the slot grid it would have if still standing. The clip ends mid-withdrawal, before morale breaks; the drilled about-face that completes the move once contact clears is covered by the unit suite. State dumps verify: post-click facing holds the heading the block fought in (about (0,1), jostled a few hundredths by the melee, so the expect pins the dumped value) while the regiment backs north, and nearest-neighbour spacing never collapses.",
+  "_comment": "Fighting withdrawal under a plain MOVE order: two even Infantry regiments spawn 200wu apart (staging borrowed from disengage-step-back.json -- the enemy AI closes and locks both in melee under its own order, contact lands ~tick 183). At tick 300, with the block fully engaged, the player right-clicks EMPTY GROUND well behind the line: a plain MOVE into the rear sector. Before this fix the engaged unit obeyed by centre-pivot-turning inside the press -- its slot grid swung across the whole block depth while phantom ramp-up speed throttled the pivot, so the melee-scattered bodies stacked (nnd_min ~0.1-0.7wu against a 2.25 threshold) chasing slots they could never settle onto. Now the disciplined block peels straight BACK holding the facing it fought in -- taking rear strikes for it, the documented cost of disengaging against an unbroken pursuer -- while every soldier tracks the slot grid it would have if still standing. The clip ends mid-withdrawal, before morale breaks; the drilled about-face that completes the move once contact clears is covered by the unit suite. State dumps verify: post-click facing holds the heading the block fought in (exactly (0,1) -- the same-unit standoff pass now polices the unengaged rear ranks' crowding during the pre-order melee too, which removes the small jostle-induced lateral tilt this pin previously carried) while the regiment backs north, and nearest-neighbour spacing never collapses. The same rear-rank correction also nudges the pursuer's re-catch a bit later (~tick 433 vs ~tick 413 before this fix), still safely inside the 305-470 window this expect covers.",
   "seed": "48213",
   "scenario": [
     {
@@ -60,7 +60,7 @@
       "uid": 0,
       "field": "facing",
       "value": [
-        -0.04,
+        0.0,
         1.0
       ]
     },
