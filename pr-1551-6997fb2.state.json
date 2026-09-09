@@ -688,7 +688,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "2 x 6 m",
-        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 0.0 m/s\nAccel: -0.4 m/s²",
         "order_mode_text": "Order: Cycle charge",
         "paused": false,
         "shown_unit_uid": 3,
@@ -1372,7 +1372,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "2 x 6 m",
-        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 1.3 m/s\nAccel: +1.3 m/s²",
+        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 1.2 m/s\nAccel: +1.0 m/s²",
         "order_mode_text": "Order: Cycle charge",
         "paused": false,
         "shown_unit_uid": 3,
@@ -2648,7 +2648,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "2 x 6 m",
-        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.5 m/s\nAccel: -0.2 m/s²",
+        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.6 m/s\nAccel: -0.3 m/s²",
         "order_mode_text": "Order: Cycle charge",
         "paused": false,
         "shown_unit_uid": 3,
@@ -3286,7 +3286,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "2 x 6 m",
-        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.8 m/s\nAccel: +0.2 m/s²",
+        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.7 m/s\nAccel: +0.2 m/s²",
         "order_mode_text": "Order: Cycle charge",
         "paused": false,
         "shown_unit_uid": 3,
@@ -3924,7 +3924,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "2 x 6 m",
-        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.8 m/s\nAccel: -0.1 m/s²",
+        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.8 m/s\nAccel: +0.0 m/s²",
         "order_mode_text": "Order: Cycle charge",
         "paused": false,
         "shown_unit_uid": 3,
@@ -7844,7 +7844,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "2 x 6 m",
-        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 71 / 80\nMorale: 83 (high)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.6 m/s\nAccel: -0.7 m/s²",
+        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 71 / 80\nMorale: 83 (high)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.6 m/s\nAccel: -0.5 m/s²",
         "order_mode_text": "Order: Cycle charge",
         "paused": false,
         "shown_unit_uid": 3,
@@ -8505,7 +8505,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "2 x 6 m",
-        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 71 / 80\nMorale: 83 (high)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.1 m/s\nAccel: -0.9 m/s²",
+        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 71 / 80\nMorale: 83 (high)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.1 m/s\nAccel: -1.1 m/s²",
         "order_mode_text": "Order: Cycle charge",
         "paused": false,
         "shown_unit_uid": 3,
@@ -12471,7 +12471,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "2 x 6 m",
-        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 66 / 80\nMorale: 86 (high)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.2 m/s\nAccel: -0.4 m/s²",
+        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 66 / 80\nMorale: 86 (high)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.3 m/s\nAccel: -0.6 m/s²",
         "order_mode_text": "Order: Cycle charge",
         "paused": false,
         "shown_unit_uid": 3,
@@ -13132,7 +13132,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "2 x 6 m",
-        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 66 / 80\nMorale: 88 (high)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.1 m/s\nAccel: -0.2 m/s²",
+        "info_text": "Cavalry 4  (+1 more)\nType: Cavalry\nCommander: Decurion\nSoldiers: 66 / 80\nMorale: 88 (high)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Attacking Infantry 2\nHP per man: 140 ±0 of 140\nGait: Auto\nSpeed: 3.1 m/s\nAccel: -0.3 m/s²",
         "order_mode_text": "Order: Cycle charge",
         "paused": false,
         "shown_unit_uid": 3,
