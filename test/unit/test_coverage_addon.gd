@@ -57,5 +57,5 @@ func test_brackets_inside_string_literals_do_not_open_a_block() -> void:
 func test_strip_trailing_comment_keeps_code_and_blanks_strings() -> void:
 	var collector = _instrument_fixture()
 	assert_eq(collector._strip_trailing_comment("x = f(a)  # opens ("), "x = f(a)  ")
-	assert_eq(collector._strip_trailing_comment('x = "#(" # ('), 'x = "___" ')
+	assert_eq(collector._strip_trailing_comment('x = "#(" # ('), 'x = "__" ')
 	assert_eq(collector._strip_trailing_comment("y = [1, 2]"), "y = [1, 2]")
