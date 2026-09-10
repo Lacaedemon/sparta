@@ -14,8 +14,10 @@
     {"tick": 35, "key": "M", "shift": true},
     {"tick": 50, "rmb_click": [600, 520]}
   ],
-  "state": [20, 60, 150, 250, 350, 450],
+  "state": [8, 20, 60, 150, 250, 350, 450],
   "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [600, 520]},
+    {"tick": 8, "uid": 1, "field": "position", "value": [600, 340]},
     {"tick": [60, 150], "uid": 1, "field": "maneuver", "value": "REINFORCING"},
     {"tick": [250, 450], "uid": 0, "field": "soldiers", "value": 80},
     {"tick": [250, 450], "uid": 0, "field": "frontage", "value": 18}

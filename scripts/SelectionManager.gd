@@ -405,6 +405,9 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_C:
 		_issue_wheel(1)    # wheel right: swing 90° about the right flank file
 		return true
+	elif event.keycode == KEY_M and event.shift_pressed and event.ctrl_pressed:
+		_arm_reinforce(BattleRef.ReinforceAxis.RANKS)   # reserved: refused until the ranks axis lands
+		return true
 	elif event.keycode == KEY_M and event.shift_pressed:
 		_arm_reinforce(BattleRef.ReinforceAxis.FILES)   # next RMB on a friendly inserts by files
 		return true
@@ -681,8 +684,19 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 
 
 ## Arm a one-shot reinforcement insertion along `axis` for the next right-click on a friendly.
+## An axis the guard refuses outright (RANKS, until it is wired) flashes the guard's own
+## reason and arms nothing, so the chord neither merges nor inserts by files.
 func _arm_reinforce(axis: int) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK or _selected.is_empty():
+		return
+	var first: UnitRef = null
+	for unit in _selected:
+		if is_instance_valid(unit):
+			first = unit
+			break
+	if first != null and axis != BattleRef.ReinforceAxis.FILES:
+		if _hud != null:
+			_hud.flash_message(ReinforceGuard.refusal_reason(first, first, axis))
 		return
 	_armed_reinforce = axis
 	if _hud != null:

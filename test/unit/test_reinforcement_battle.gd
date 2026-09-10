@@ -71,10 +71,12 @@ func test_order_arms_the_approach_and_leaves_the_host_alone() -> void:
 	assert_not_null(host, "host spawned")
 	assert_not_null(reserve, "reserve spawned")
 	assert_eq(ReinforceGuard.refusal_reason(reserve, host), "", "a like-armed idle pair is allowed")
+	reserve._order_response_timer = 1.0   # a delay still counting down from a prior order
 
 	_order_reinforce(reserve, host)
 
 	assert_eq(reserve.current_order.type, Order.Type.REINFORCE, "the reserve holds a REINFORCE order")
+	assert_eq(reserve._order_response_timer, 0.0, "no response delay holds the approach")
 	assert_eq(reserve.current_order.reinforce_axis, BattleScript.ReinforceAxis.FILES, "on the files axis")
 	assert_eq(reserve.current_order.friendly_target, host, "the pass-through link names the host")
 	assert_true(reserve._separation_exempt(host), "the pair is exempt from separation")
@@ -271,6 +273,14 @@ func test_the_unwired_ranks_axis_and_far_or_touching_reserves_are_refused() -> v
 	assert_null(reserve.current_order, "a RANKS order applies nothing")
 	assert_false(reserve.has_move_target, "and starts no march")
 	assert_eq(UnitFormation.frontage(host), files_before, "the host is untouched")
+	# A malformed command (an axis with no target, or a self target) is rejected before
+	# the fresh-order reset, not applied as a plain move.
+	_battle._apply_order_cmd({
+		"units": [reserve.uid], "x": 300.0, "y": RESERVE_POS.y, "target": -1,
+		"mode": BattleScript.OrderMode.NORMAL, "reinforce": BattleScript.ReinforceAxis.FILES,
+	})
+	assert_null(reserve.current_order, "an axis with no target applies nothing")
+	assert_false(reserve.has_move_target, "and is not a move in disguise")
 	reserve._in_enemy_contact = true
 	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "",
 			"a reserve whose bodies touch an enemy is refused even when not fighting")

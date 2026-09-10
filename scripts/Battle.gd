@@ -2509,11 +2509,14 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 		# A reinforcement insertion whose pair is refused applies nothing at all -- the
 		# reserve keeps its current order, march and stance (the design's refusal
 		# contract) -- so validate before the fresh-order reset below touches anything.
-		# UnitReinforce.begin re-checks and halts defensively for anything that slips past.
-		if reinforce != ReinforceAxis.NONE and target_unit != null and target_unit != u \
-				and target_unit.team == u.team \
-				and ReinforceGuard.refusal_reason(u, target_unit, reinforce) != "":
-			continue
+		# That covers a command with no target, a self target or an enemy target as well
+		# (a malformed or hand-edited replay entry), which must not fall through to a
+		# plain move or attack. UnitReinforce.begin re-checks and halts defensively for
+		# anything that slips past.
+		if reinforce != ReinforceAxis.NONE:
+			if target_unit == null or target_unit == u or target_unit.team != u.team \
+					or ReinforceGuard.refusal_reason(u, target_unit, reinforce) != "":
+				continue
 		# A fresh order (anything but a waypoint append) discards the queued route --
 		# each branch below replaces the orders queue, and the route lives there now --
 		# and sets the unit's stance; an append continues the current march/stance.
@@ -2574,7 +2577,10 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				u.set_current_order(reinforce_order)
 				UnitReinforce.begin(u, target_unit, reinforce_order)
 				# Skip the order-response delay: the approach is a held-heading march and
-				# the men only file in once the reserve stands at the rendezvous.
+				# the men only file in once the reserve stands at the rendezvous. A delay
+				# still counting down from the previous order would freeze the march the
+				# same way, so drop it too (set_current_order leaves the timer alone).
+				u._order_response_timer = 0.0
 				continue
 			if mode == OrderMode.SUPPORT:
 				# Support: guard the targeted friendly. Every ordered unit shadows

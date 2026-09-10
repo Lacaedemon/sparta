@@ -3283,6 +3283,15 @@ func test_an_armed_click_on_open_ground_keeps_the_arm_for_the_next_friendly() ->
 			"the arm survives a click that resolved to nothing reinforceable")
 
 
+func test_ctrl_shift_m_is_reserved_for_the_ranks_axis_and_arms_nothing() -> void:
+	var s := _reinforce_setup()
+	var sm = s["sm"]
+	assert_true(sm._dispatch_key(_key_event(KEY_M, true, true)), "Ctrl+Shift+M is a handled hotkey")
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE,
+			"the reserved ranks chord arms neither files insertion nor anything else")
+	assert_true(s["battle"]._pending_orders.is_empty(), "and it does not fall through to a merge")
+
+
 func test_a_mixed_selection_is_refused_as_a_whole() -> void:
 	var s := _reinforce_setup()
 	var sm = s["sm"]
