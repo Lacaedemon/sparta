@@ -129,12 +129,15 @@ func test_a_pilum_unit_acquires_a_target_past_the_detection_default() -> void:
 ## Casualties one volley inflicts on a fresh 60-man target `dist` wu straight ahead of a
 ## shooter carrying `profile`. Reseeds the stream first so every call rolls the same
 ## volley: the distance and the profile are the only things that differ between calls.
-func _volley_kills(profile: int, dist: float) -> int:
+## Each call stages in its own column (`column` wu along x): autofreed nodes live until the
+## test ends, so a second call at the same origin would put the first call's shooter in the
+## new volley's flight path and friendly_interceptor would hand it the whole volley.
+func _volley_kills(profile: int, dist: float, column: float) -> int:
 	Replay.rng.seed = SEED
-	var target := _unit(20 + int(dist), 1, Vector2.ZERO, Vector2.UP, 60)
+	var target := _unit(20 + int(dist), 1, Vector2(column, 0.0), Vector2.UP, 60)
 	target.state = Unit.State.FIGHTING
 	target.seed_sim_soldiers()
-	var shooter := _unit(10 + int(dist), 0, Vector2(0.0, -dist), Vector2.DOWN, 10)
+	var shooter := _unit(10 + int(dist), 0, Vector2(column, -dist), Vector2.DOWN, 10)
 	shooter.is_ranged = true
 	shooter.attack = 40
 	target.defense = 0
@@ -144,9 +147,10 @@ func _volley_kills(profile: int, dist: float) -> int:
 
 
 func test_the_same_volley_lands_lighter_at_the_edge_of_a_falloff_profiles_reach() -> void:
-	var near: int = _volley_kills(LoadoutRegistry.MISSILE_PILUM, 30.0)
-	var far: int = _volley_kills(LoadoutRegistry.MISSILE_PILUM, 285.0)
+	var near: int = _volley_kills(LoadoutRegistry.MISSILE_PILUM, 30.0, 0.0)
+	var far: int = _volley_kills(LoadoutRegistry.MISSILE_PILUM, 285.0, 600.0)
 	assert_gt(near, 0, "the volley at 30 wu kills someone")
+	assert_gt(far, 0, "and the volley at 285 wu still reaches the target (not zero, not intercepted)")
 	assert_lt(far, near,
 		"the identical volley (same roll) kills fewer men at 285 of 300 wu than at 30 wu")
 
@@ -154,8 +158,8 @@ func test_the_same_volley_lands_lighter_at_the_edge_of_a_falloff_profiles_reach(
 func test_a_profile_without_falloff_lands_the_same_volley_at_any_distance() -> void:
 	# The control that proves the test above is reading the falloff and not the geometry:
 	# the bow's curve is flat, so distance alone must change nothing.
-	var near: int = _volley_kills(LoadoutRegistry.MISSILE_BOW, 30.0)
-	var far: int = _volley_kills(LoadoutRegistry.MISSILE_BOW, 150.0)
+	var near: int = _volley_kills(LoadoutRegistry.MISSILE_BOW, 30.0, 0.0)
+	var far: int = _volley_kills(LoadoutRegistry.MISSILE_BOW, 150.0, 600.0)
 	assert_gt(near, 0, "the volley kills someone")
 	assert_eq(far, near, "with no falloff the same roll kills the same count at 150 wu")
 
@@ -163,12 +167,12 @@ func test_a_profile_without_falloff_lands_the_same_volley_at_any_distance() -> v
 func test_the_shooters_own_damage_factor_scales_the_volley() -> void:
 	# Bit-for-bit the pre-profile formula for the default factor; a halved instance factor
 	# halves the volley (to within rounding), which the fieldless path exposes as kills.
-	var baseline: int = _volley_kills(LoadoutRegistry.MISSILE_BOW, 30.0)
+	var baseline: int = _volley_kills(LoadoutRegistry.MISSILE_BOW, 30.0, 0.0)
 	Replay.rng.seed = SEED
-	var target := _unit(90, 1, Vector2.ZERO, Vector2.UP, 60)
+	var target := _unit(90, 1, Vector2(600.0, 0.0), Vector2.UP, 60)   # its own column, as above
 	target.state = Unit.State.FIGHTING
 	target.seed_sim_soldiers()
-	var shooter := _unit(91, 0, Vector2(0.0, -30.0), Vector2.DOWN, 10)
+	var shooter := _unit(91, 0, Vector2(600.0, -30.0), Vector2.DOWN, 10)
 	shooter.is_ranged = true
 	shooter.attack = 40
 	target.defense = 0
