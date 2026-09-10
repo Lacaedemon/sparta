@@ -124,6 +124,14 @@ func test_a_pilum_unit_acquires_a_target_past_the_detection_default() -> void:
 		"with the pilum, the same enemy is inside detection and is acquired")
 
 
+func test_a_pilum_unit_acquires_a_target_at_exact_maximum_missile_range() -> void:
+	var shooter := _unit(3, 0, Vector2.ZERO)
+	assert_true(shooter.equip_missile(LoadoutRegistry.MISSILE_PILUM), "pilum equipped")
+	var enemy := _unit(4, 1, Vector2(0.0, shooter.missile_range), Vector2.UP)
+	assert_eq(UnitTargeting.nearest_enemy(shooter), enemy,
+		"a target sitting exactly at the profile's advertised maximum reach is acquired")
+
+
 # --- the falloff in the damage formula ----------------------------------------------
 
 ## Casualties one volley inflicts on a fresh 60-man target `dist` wu straight ahead of a

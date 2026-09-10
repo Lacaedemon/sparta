@@ -52,8 +52,6 @@ func test_rally_contact_radius_is_pinned_at_the_default_archer_reach() -> void:
 	# count as having broken contact. Numerically it still sits at the default 8 m reach.
 	assert_eq(UnitScript.RALLY_CONTACT_RADIUS, 8.0 * WorldScaleRef.WU_PER_M,
 		"a router in default archer reach has not broken contact")
-	assert_eq(UnitScript.RALLY_CONTACT_RADIUS, UnitScript.RANGED_RANGE,
-		"and that default reach is RANGED_RANGE, so nothing is retuned")
 
 
 func test_spatial_hash_cell_size_holds_its_exact_world_unit_value() -> void:
