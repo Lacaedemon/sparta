@@ -175,6 +175,11 @@ func test_guards_on_state_refuse_the_pair() -> void:
 	host.file_major_reform_mode = Unit.ReformMode.ROW_MAJOR
 	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "", "a row-major host is refused")
 	host.file_major_reform_mode = Unit.ReformMode.FILE_MAJOR
+	host.subunit_structure = Unit.SubunitStructure.FILE_GROUP
+	assert_eq(ReinforceGuard.refusal_reason(reserve, host),
+			"%s has file-group subunits and cannot interleave" % host.unit_name,
+			"a file-group host is refused")
+	host.subunit_structure = Unit.SubunitStructure.NONE
 	host.soldiers = 0
 	assert_eq(ReinforceGuard.refusal_reason(reserve, host), "%s has no soldiers to contribute" % host.unit_name,
 			"a zero-soldier host is refused")
@@ -393,6 +398,42 @@ func test_commit_waits_for_the_longitudinal_gap_and_lateral_alignment() -> void:
 	assert_true(ReinforceApproach.at_rendezvous(reserve, host), "standing at the rendezvous is")
 	UnitReinforce.update(reserve)
 	assert_eq(host.soldiers, 80, "and the men file in")
+
+
+func test_rendezvous_and_arrival_respect_frontage_anchor_offset() -> void:
+	_spawn()
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	var pitch: float = host.rank_pitch_wu()
+	reserve.facing = host.facing
+	var unanchored_target: Vector2 = \
+			ReinforceApproach.rendezvous_point(host, reserve)
+	_teleport(reserve, unanchored_target)
+	assert_true(ReinforceApproach.at_rendezvous(reserve, host), "standing at unanchored rendezvous arrives")
+
+	# Anchored frontage:
+	# the check keys on the actual block centers, not the root positions.
+	host.frontage_anchor_offset = 4.0 * pitch
+	var anchored_target: Vector2 = \
+			ReinforceApproach.rendezvous_point(host, reserve)
+	var centre_delta: Vector2 = \
+			host.block_centre_offset() - reserve.block_centre_offset()
+	assert_almost_eq(anchored_target.x - unanchored_target.x, centre_delta.x, 0.001,
+			"rendezvous shifts laterally with the host block centre")
+	_teleport(reserve, unanchored_target)   # matches host.position, but misses the offset block
+	assert_false(ReinforceApproach.at_rendezvous(reserve, host),
+			"root-aligned is not arrival when block is anchored")
+	_teleport(reserve, anchored_target)   # matches host block centre
+	assert_true(ReinforceApproach.at_rendezvous(reserve, host),
+			"block-aligned at anchored rendezvous arrives")
+	reserve.frontage_anchor_offset = 4.0 * pitch
+	var both_anchored_target: Vector2 = \
+			ReinforceApproach.rendezvous_point(host, reserve)
+	assert_almost_eq(both_anchored_target.x, unanchored_target.x, 0.001, "equal offsets cancel")
+	_teleport(reserve, both_anchored_target)
+	assert_true(ReinforceApproach.at_rendezvous(reserve, host), "equally shifted blocks align")
+
 
 
 ## Move `u` and its bodies together, as a settled block that stands somewhere else.

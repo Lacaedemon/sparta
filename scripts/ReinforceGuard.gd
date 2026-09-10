@@ -39,4 +39,7 @@ static func refusal_reason(reserve: Unit, host: Unit, axis: int = AXIS_FILES) ->
 			return "%s is too distant a body to interleave" % u.unit_name
 	if not host._effective_file_major_reform():
 		return "%s does not hold files (row-major reflow)" % host.unit_name
+	if host.subunit_structure == Unit.SubunitStructure.FILE_GROUP:
+		return "%s has file-group subunits and cannot interleave" % host.unit_name
 	return ""
+

@@ -21,7 +21,9 @@ static func interleave_files(host_file_ids: PackedInt32Array, host_ranks: Packed
 	if r <= 0 or host_file_ids.is_empty():
 		return out
 	var k: int = mini(f, int(ceil(float(r * f) / float(host_file_ids.size()))))
-	k = mini(k, max_files - f) if max_files >= f else k
+	k = mini(k, max_files - f) if max_files >= 0 else k
+	if k <= 0:
+		return out
 	var hosts := PackedInt32Array()   # h_j: the host file each inserted file follows
 	for j in range(k):
 		hosts.push_back(int(floor((float(j) + 0.5) * float(f) / float(k))))
@@ -41,7 +43,6 @@ static func interleave_files(host_file_ids: PackedInt32Array, host_ranks: Packed
 	out["ranks"] = ranks
 	out["files"] = f + k
 	return out
-
 
 ## Insert the reserve as ranks: dealt across the host's `files` by lateral order, then in a
 ## file holding m inserted men over D_f host men, host rank r becomes `r + min(r, m)` and
@@ -69,7 +70,6 @@ static func interleave_ranks(host_file_ids: PackedInt32Array, host_ranks: Packed
 	out["file_ids"] = file_ids
 	out["ranks"] = ranks
 	return out
-
 
 ## How far the host's anchor must move REARWARD for the front rank to hold its ground when the
 ## block deepens: the slot grid is centred on position, so half the added depth lands in front.

@@ -185,3 +185,13 @@ func test_interleave_files_respects_max_files_capacity() -> void:
 	var bounded: Dictionary = Layout.interleave_files(host["file_ids"], host["ranks"], 40, reserve_local, 41)
 	assert_eq(int(bounded["files"]), 41, "bounded layout caps frontage at max_files")
 	_assert_no_shared_slot(bounded, "bounded files")
+	var exact: Dictionary = \
+			Layout.interleave_files(host["file_ids"], host["ranks"], 40, reserve_local, 40)
+	assert_eq(int(exact["files"]), 40, "exact frontage cap yields host frontage")
+	assert_true((exact["file_ids"] as PackedInt32Array).is_empty(), "zero added capacity yields empty file_ids")
+	assert_true((exact["ranks"] as PackedInt32Array).is_empty(), "zero added capacity yields empty ranks")
+	var under: Dictionary = \
+			Layout.interleave_files(host["file_ids"], host["ranks"], 40, reserve_local, 39)
+	assert_eq(int(under["files"]), 40, "under-frontage cap yields host frontage")
+	assert_true((under["file_ids"] as PackedInt32Array).is_empty(), "under-frontage cap yields empty file_ids")
+

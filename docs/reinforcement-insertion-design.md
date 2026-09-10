@@ -65,8 +65,8 @@ The order is refused -- nothing is armed, and a HUD flash says why -- when:
 - the two regiments are on different teams, or either is routing or dead;
 - the reserve is itself in enemy contact (`Unit._in_enemy_contact`), since a body in a fight cannot file off to the rear;
 - the loadouts differ (`weapon_type_id` or `shield_type_id`), because `melee_attack_interval()` and `shield_rest_angle()` read those ids per unit even though `soldier_lethality()`, `soldier_shield_block()`, and `soldier_is_piercing()` already resolve them per soldier, so a mixed regiment cannot yet be represented consistently;
-- the host is squared (`in_square()`) or in the far simulation tier (`tier == FormationTier.FAR`), since neither has a file-major grid to interleave into;
-- the host reflows row-major (`_effective_file_major_reform()` false: cavalry, and undisciplined foot), for the same reason.
+- the host reflows row-major (`_effective_file_major_reform()` is false), for the same reason;
+- the host has file-group subunits (`FILE_GROUP`), until subunit-aware insertion is wired in a follow-up.
 
 **Costs.**
 The result starts at a cohesion floor and recovers at `COHESION_RECOVER_PER_SEC`, the same strangers debuff a merge pays;
@@ -269,7 +269,7 @@ The manifest `demos/demo.1555.json` points at this recording with `max_frames: 4
 
 - **File-group subunits.**
   For a `FILE_GROUP` host, `UnitFormation.frontage` derives the width from `subunit_size` unless overridden, and `_ensure_file_assignment` reforms through `subunit_reform_files`;
-  phase 3 sets the override explicitly and leaves subunit-aware insertion to a follow-up.
+  ReinforceGuard refuses `FILE_GROUP` hosts, leaving subunit-aware insertion to a follow-up.
 
 - **Mixed loadouts.**
   The per-soldier `weapon_id` and `shield_id` arrays could carry a mixed regiment, but `melee_attack_interval()`, `shield_rest_angle()`, and the type-level stats read per unit;

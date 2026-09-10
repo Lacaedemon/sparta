@@ -52,7 +52,9 @@ static func extent_along(u: Unit, dir: Vector2) -> Vector2:
 static func rendezvous_point(host: Unit, reserve: Unit) -> Vector2:
 	var dir: Vector2 = depth_axis(host)
 	var gap: float = -extent_along(host, dir).x + extent_along(reserve, dir).y + host.rank_pitch_wu()
-	return host.position - dir * gap
+	var centre_delta: Vector2 = \
+			host.block_centre_offset() - reserve.block_centre_offset()
+	return host.position + centre_delta - dir * gap
 
 
 ## True once the reserve stands at the rendezvous: its front edge behind the host's rear
@@ -67,6 +69,9 @@ static func at_rendezvous(reserve: Unit, host: Unit,
 	var host_rear: float = host.position.dot(dir) + extent_along(host, dir).x
 	var reserve_front: float = reserve.position.dot(dir) + extent_along(reserve, dir).y
 	var gap: float = host_rear - reserve_front
-	var across: float = absf((reserve.position - host.position).dot(dir.orthogonal()))
+	var host_centre: Vector2 = host.position + host.block_centre_offset()
+	var reserve_centre: Vector2 = reserve.position + reserve.block_centre_offset()
+	var across: float = absf((reserve_centre - host_centre).dot(dir.orthogonal()))
 	return gap >= -overshoot_pitches * pitch and gap <= (1.0 + slack_pitches) * pitch \
 			and across <= lateral_pitches * pitch
+
