@@ -32,11 +32,14 @@ static func deepest(values: PackedInt32Array) -> int:
 	return out
 
 
-## Signed extents of `u`'s bodies about its position along `dir`, as (rear, front) with
-## rear <= 0 <= front. Parent-local, like the bodies and `position` themselves.
+## Signed extents of `u`'s bodies about its position along `dir`, as (rear, front)
+## measuring the true min and max bounds (Vector2.ZERO when empty).
+## Parent-local, like the bodies and `position` themselves.
 static func extent_along(u: Unit, dir: Vector2) -> Vector2:
-	var lo: float = 0.0
-	var hi: float = 0.0
+	if u._sim_soldier_pos.is_empty():
+		return Vector2.ZERO
+	var lo: float = INF
+	var hi: float = -INF
 	for p in u._sim_soldier_pos:
 		var d: float = (p - u.position).dot(dir)
 		lo = minf(lo, d)

@@ -175,6 +175,14 @@ func test_guards_on_state_refuse_the_pair() -> void:
 	host.file_major_reform_mode = Unit.ReformMode.ROW_MAJOR
 	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "", "a row-major host is refused")
 	host.file_major_reform_mode = Unit.ReformMode.FILE_MAJOR
+	host.soldiers = 0
+	assert_eq(ReinforceGuard.refusal_reason(reserve, host), "%s has no soldiers to contribute" % host.unit_name,
+			"a zero-soldier host is refused")
+	host.soldiers = host._sim_soldier_pos.size()
+	reserve.soldiers = 0
+	assert_eq(ReinforceGuard.refusal_reason(reserve, host), "%s has no soldiers to contribute" % reserve.unit_name,
+			"a zero-soldier reserve is refused")
+	reserve.soldiers = reserve._sim_soldier_pos.size()
 	assert_eq(ReinforceGuard.refusal_reason(reserve, host), "", "restored, the pair is allowed again")
 
 
@@ -242,6 +250,8 @@ func test_arming_the_approach_drops_a_persistent_stance_to_normal() -> void:
 	UnitReinforce.begin(reserve, host, order)
 	assert_eq(reserve.order_mode, int(BattleScript.OrderMode.NORMAL),
 			"the held-heading approach runs under NORMAL, so no stance can pull it off the rendezvous")
+	assert_eq(reserve.order_mode, UnitReinforce.ORDER_MODE_NORMAL,
+			"mirrored by the UnitReinforce.ORDER_MODE_NORMAL constant")
 	assert_eq(order.friendly_target, host, "and the link is armed")
 
 
@@ -340,6 +350,21 @@ func test_rendezvous_geometry_reads_the_blocks_off_their_bodies_along_the_hosts_
 	assert_almost_eq((folded - host.position).normalized().y, -1.0, 0.001,
 			"so the rendezvous lies behind the folded grid, not behind the heading")
 	host._formation_angle = 0.0
+	# True min and max bounds: an anchor offset beyond the bodies does not clamp to zero.
+	host.position = HOST_POS - host.facing * 99.0
+	var offset_rear: Vector2 = ReinforceApproach.extent_along(host, host.facing)
+	assert_gt(offset_rear.x, 0.0, "an anchor behind all bodies yields a positive rear extent")
+	assert_gt(offset_rear.y, offset_rear.x, "the front edge still lies beyond the rear")
+	host.position = HOST_POS + host.facing * 99.0
+	var offset_front: Vector2 = ReinforceApproach.extent_along(host, host.facing)
+	assert_lt(offset_front.y, 0.0, "an anchor ahead of all bodies yields a negative front extent")
+	assert_gt(offset_front.y, offset_front.x, "the front edge still lies beyond the rear")
+	host.position = HOST_POS
+	var saved_host_pos: PackedVector2Array = host._sim_soldier_pos
+	host._sim_soldier_pos = PackedVector2Array()
+	assert_eq(ReinforceApproach.extent_along(host, host.facing), Vector2.ZERO,
+			"an empty body array yields zero extents")
+	host._sim_soldier_pos = saved_host_pos
 
 
 func test_commit_waits_for_the_longitudinal_gap_and_lateral_alignment() -> void:

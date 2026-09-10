@@ -22,6 +22,8 @@ static func refusal_reason(reserve: Unit, host: Unit, axis: int = AXIS_FILES) ->
 	for u in [reserve, host]:
 		if u.state == Unit.State.ROUTING or u.state == Unit.State.DEAD:
 			return "%s is not a steady body" % u.unit_name
+		if u.soldiers <= 0:
+			return "%s has no soldiers to contribute" % u.unit_name
 	# Contact is a physical fact (Unit._in_enemy_contact), not only the FIGHTING state: a
 	# reserve whose bodies still touch an enemy while disengaging cannot file off either.
 	if reserve.state == Unit.State.FIGHTING or reserve._in_enemy_contact:

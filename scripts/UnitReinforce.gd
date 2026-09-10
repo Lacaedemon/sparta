@@ -9,11 +9,13 @@ class_name UnitReinforce
 
 const ReinforceLayoutRef = preload("res://scripts/ReinforceLayout.gd")
 
+## Battle.OrderMode.NORMAL mirrored as an int, matching Unit.order_mode's decoupling.
+const ORDER_MODE_NORMAL: int = 0
+
 ## Default heading agreement the commit waits for (radians between the two facings).
 ## Calibrated from recordings.
 ## Twenty degrees tolerates march drift without stalling the commit.
 const HEADING_TOLERANCE_RAD: float = deg_to_rad(20.0)
-
 
 ## Arm the approach on `order` (the reserve's REINFORCE order, already current): link the
 ## pair, drop the reserve's stance to NORMAL (a persistent auto-targeting stance such as
@@ -26,10 +28,9 @@ static func begin(reserve: Unit, host: Unit, order: Order) -> void:
 		_halt(reserve, order)
 		return
 	order.friendly_target = host
-	reserve.order_mode = 0   # Battle.OrderMode.NORMAL, mirrored as an int as Unit does
+	reserve.order_mode = ORDER_MODE_NORMAL
 	reserve.target_enemy = null
 	_aim(reserve, host)
-
 
 ## Per-tick approach: drop the link and halt when the host is gone or the pair no longer
 ## qualifies, re-aim at a drifting host, and commit once the reserve stands at the
@@ -48,7 +49,6 @@ static func update(reserve: Unit, heading_tolerance_rad: float = HEADING_TOLERAN
 	if aligned and ReinforceApproach.at_rendezvous(reserve, host) \
 			and _bodies_aligned(reserve) and _bodies_aligned(host):
 		commit(reserve, host)
-
 
 ## The reserve's men file into the host: interleave the ids, carry the per-soldier arrays
 ## across, pool strength, install the assignment, move the anchor rearward by half of any
