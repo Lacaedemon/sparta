@@ -672,11 +672,11 @@ changing as units advance.
 The `FogOverlay` node, the three render layers, ghost markers for remembered
 contacts with a staleness fade, and hiding non-visible enemy `Unit` nodes by
 `CanvasItem.visible`.
-Selection and order targeting restricted to what the player can see or
-remember: a right click on empty fog is a move order, and a right click on a
-ghost marker is an attack on the last-known position, which may find nothing
-there.
-A `Settings` toggle to disable fog, for demos and debugging, defaulting to on.
+Selection and order targeting restricted to what the player can see:
+a right click on empty fog or on a ghost marker is a ground move order
+(an attack order requires a live visible enemy target).
+A `Settings` toggle to enable or disable fog,
+defaulting to off so every existing demo, replay, and test renders exactly as before.
 
 **Dependencies.**
 Phase 1.
@@ -805,9 +805,9 @@ A saga layer existing.
   Lean: keep the derivation and allow an absolute override.
 
 - **What happens to an order issued against a ghost that turns out to be wrong?**
-  An attack order on a last-known position the enemy has left becomes a move to that position.
-  That is the historically right answer and may read as a bug to a player.
-  Needs a UI affordance; deferred to phase 2.
+  A right click on a ghost marker falls through to a ground move to that location,
+  because attack orders require a live visible target.
+  An attack-at-last-known-position order may be considered in a future phase.
 
 - **Does a routing unit still observe?**
   Modelled as a penalty (`SIGHT_ROUTING_PENALTY`) rather than blindness, on the reasoning that a fleeing man still has eyes.

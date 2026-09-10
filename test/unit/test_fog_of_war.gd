@@ -261,12 +261,12 @@ func test_all_teams_control_disables_fog() -> void:
 
 
 ## Per-unit sim state that would diverge first if fog fed back into the simulation.
-func _sim_fingerprint() -> Dictionary:
+func _sim_fingerprint(battle: Node) -> Dictionary:
 	var out: Dictionary = {}
 	for group in ["units", "routers"]:
 		for node in get_tree().get_nodes_in_group(group):
 			var u := node as Unit
-			if u != null:
+			if u != null and battle.is_ancestor_of(u):
 				out[u.uid] = [u.position, u.soldiers, u.morale, u.state]
 	return out
 
@@ -278,7 +278,7 @@ func test_fog_never_changes_the_simulation() -> void:
 	var unfogged := _staged_battle(false)
 	for _k in range(TICKS):
 		await get_tree().physics_frame
-	var plain: Dictionary = _sim_fingerprint()
+	var plain: Dictionary = _sim_fingerprint(unfogged)
 	unfogged.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -286,7 +286,7 @@ func test_fog_never_changes_the_simulation() -> void:
 	var fogged := _staged_battle(true)
 	for _k in range(TICKS):
 		await get_tree().physics_frame
-	var foggy: Dictionary = _sim_fingerprint()
+	var foggy: Dictionary = _sim_fingerprint(fogged)
 	assert_gt(plain.size(), 0, "the unfogged run has units to compare")
 	assert_eq(foggy.keys(), plain.keys(), "the same units are in play")
 	for uid in plain:
@@ -401,4 +401,60 @@ func test_sight_scale_derives_from_final_field_or_preserves_override() -> void:
 	add_child_autofree(b2)
 	assert_almost_eq(b2.sight_scale, 450.0, 0.001,
 		"explicit caller sight_scale override is preserved")
+
+
+func test_rout_margin_derives_from_largest_sight_range() -> void:
+	var b1: Node = load("res://scenes/Battle.tscn").instantiate()
+	add_child_autofree(b1)
+	var expected_default_margin: float = b1.sight_scale * Unit.SIGHT_MOUNTED
+	assert_almost_eq(b1.rout_margin, expected_default_margin, 0.001,
+		"default rout_margin derives from mounted sight range")
+	assert_gt(b1.rout_margin, b1.ROUT_MARGIN,
+		"derived rout_margin exceeds pre-fog fixed margin")
+	assert_eq(b1.field_with_margin, b1.field.grow(b1.rout_margin),
+		"field_with_margin grows by the derived margin")
+
+	var b2: Node = load("res://scenes/Battle.tscn").instantiate()
+	b2.sight_scale = 450.0
+	add_child_autofree(b2)
+	assert_almost_eq(b2.rout_margin, 450.0 * Unit.SIGHT_MOUNTED, 0.001,
+		"rout_margin tracks caller-overridden sight_scale")
+	assert_eq(b2.field_with_margin, b2.field.grow(450.0 * Unit.SIGHT_MOUNTED),
+		"field_with_margin widens with overridden sight_scale")
+
+
+func test_ghost_layer_ghost_records_reports_only_unseen_contacts() -> void:
+	var layer: FogGhostLayer = FogGhostLayer.new()
+	add_child_autofree(layer)
+	layer.update(_ghost_contacts(10), {3: true}, 100)
+	var records: Array = layer.ghost_records()
+	assert_eq(records.size(), 2, "only contacts not in seen are reported as ghosts")
+	var uids: Array = [records[0]["uid"], records[1]["uid"]]
+	assert_true(uids.has(2), "contact 2 is reported")
+	assert_true(uids.has(4), "contact 4 is reported")
+	assert_false(uids.has(3), "currently seen contact 3 is excluded")
+
+
+func test_capture_and_restore_snapshot_round_trips_fog_tables_and_layer() -> void:
+	var battle: Node = _staged_battle(true)
+	for _k in range(3):
+		await get_tree().physics_frame
+	var far := _enemy_nearest(FAR_ENEMY_POS)
+	assert_false(far.visible, "far enemy hidden under fog before capture")
+
+	var snap: Dictionary = battle.capture_snapshot()
+	assert_true(snap.has("fog_contacts"), "snapshot records fog contacts")
+	assert_true(snap.has("fog_seen"), "snapshot records fog seen uids")
+	assert_true(snap.has("fog_active"), "snapshot records fog active flag")
+	assert_true(bool(snap["fog_active"]), "fog was active at capture")
+
+	Settings.set_fog_of_war_session(false)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	assert_true(far.visible, "switching fog off makes unit visible")
+
+	Settings.set_fog_of_war_session(true)
+	battle.restore_snapshot(snap)
+	var restored_far := _enemy_nearest(FAR_ENEMY_POS)
+	assert_false(restored_far.visible, "restoring snapshot reapplies fog visibility immediately")
 

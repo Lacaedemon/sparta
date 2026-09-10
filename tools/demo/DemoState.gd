@@ -261,6 +261,11 @@ static func build_snapshot(tree: SceneTree, tick: int, order_mode_names: Diction
 		var hud: Node = hud_nodes[0]
 		if hud != null and is_instance_valid(hud) and hud.has_method("hud_state"):
 			snap["hud"] = hud.hud_state()
+	var ghost_nodes: Array = tree.get_nodes_in_group("fog_ghosts")
+	if not ghost_nodes.is_empty():
+		var gl: Node = ghost_nodes[0]
+		if gl != null and is_instance_valid(gl) and gl.has_method("ghost_records"):
+			snap["ghosts"] = gl.ghost_records()
 	return snap
 
 
@@ -276,6 +281,7 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		"uid": u.uid,
 		"name": u.unit_name,
 		"team": u.team,
+		"visible": u.visible,
 		"position": vec2_pair(u.position),
 		# Metric mirror of position, per the units convention: dev-facing numbers read in
 		# metres like every user-facing surface already does. The wu field above stays.

@@ -3514,11 +3514,9 @@ func _rotate_facing_toward(target_dir: Vector2, delta: float, rate: float = TURN
 	facing = Vector2.from_angle(cur + step)
 
 
-## Collision footprint by unit type. Cavalry get the widest body, spearmen a bit
-## wider than infantry; all stay below attack reach so melee still presses.
-## The type multiplier on the battle's sight scale (fog of war): mounted beats ranged
-## beats foot. A pure function of the two type flags, so a caller that changes them
-## before _ready gets the matching default sight_range.
+## The type multiplier on the battle's sight scale (fog of war):
+## mounted beats ranged beats foot. A pure function of the two type flags,
+## so a caller that changes them before _ready gets the matching default sight_range.
 func sight_multiplier() -> float:
 	if is_cavalry:
 		return SIGHT_MOUNTED
@@ -3527,6 +3525,8 @@ func sight_multiplier() -> float:
 	return SIGHT_FOOT
 
 
+## Collision footprint by unit type. Cavalry get the widest body, spearmen a bit
+## wider than infantry; all stay below attack reach so melee still presses.
 func _type_separation_radius() -> float:
 	if is_cavalry:
 		return SEPARATION_RADIUS_CAVALRY

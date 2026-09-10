@@ -30,9 +30,36 @@ var _tick: int = 0
 
 
 func _ready() -> void:
+	add_to_group("fog_ghosts")
 	# Same layer as the rout shockwave: above the field and the units' own cosmetic stack,
 	# below volley trails, the selection box, and the HUD.
 	z_index = 4
+
+
+## Active ghost markers (remembered contacts not currently visible), for inspection and dumps.
+func ghost_records() -> Array:
+	var out: Array = []
+	for uid in _contacts:
+		if _seen.has(uid):
+			continue
+		var c: Dictionary = _contacts[uid]
+		out.append({
+			"uid": uid,
+			"position": [
+				roundf(c["position"].x * 100.0) / 100.0,
+				roundf(c["position"].y * 100.0) / 100.0,
+			],
+			"facing": [
+				roundf(c["facing"].x * 100.0) / 100.0,
+				roundf(c["facing"].y * 100.0) / 100.0,
+			],
+			"strength": int(c.get("strength", 0)),
+			"state": int(c.get("state", 0)),
+			"tick": int(c.get("tick", 0)),
+			"team": int(c.get("team", 1)),
+			"alpha": roundf(alpha_for_age(_tick - int(c["tick"])) * 100.0) / 100.0,
+		})
+	return out
 
 
 ## Redraw from the latest fog pass: `contacts` is the team's last-known table

@@ -41,6 +41,7 @@ const FIELD := Rect2(0, 0, 1600, 1200)
 # class constant, not any one unit's own (caller-configurable) detection_range field, since
 # this margin is a single battle-wide strip, not sized per unit.
 const ROUT_MARGIN: float = maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)
+var rout_margin: float = ROUT_MARGIN
 var field_with_margin: Rect2 = FIELD.grow(ROUT_MARGIN)
 
 # Terrain patches; type keys into TERRAIN_COLOR. kind="block" is impassable; kind="slow" is a speed zone.
@@ -409,9 +410,10 @@ var all_teams_control: bool = false
 # Fog of war (Settings.fog_of_war; Perception.gd). Per-battle sight scale every unit's
 # type multiplier applies to (Unit.sight_multiplier): a quarter of the field's short
 # side, so a foot unit sees a quarter of the way across the field. A gameplay
-# legibility parameter, not an eyesight claim. Settable BEFORE the node enters the tree
-# (<= 0 for unset, which derives the scale from the final field's short side in _ready);
-# _spawn_unit reads it when it sizes each unit's sight_range.
+# legibility parameter, not an eyesight claim. Settable BEFORE the node enters the tree.
+# Set <= 0 for unset (derives scale from DEFAULT_SIGHT_SCALE_FRACTION x short side).
+# _spawn_unit reads it when it sizes each unit's sight_range in _ready.
+const DEFAULT_SIGHT_SCALE_FRACTION: float = 0.25
 var sight_scale: float = -1.0
 # Ticks after which a remembered enemy contact counts as stale: the ghost marker has
 # fully faded by then (FogGhostLayer.stale_ticks). 10 s of sim time; settable before
@@ -602,13 +604,16 @@ func _ready() -> void:
 				terrain = parsed.get("terrain", terrain)
 				spawn_line_ys = parsed.get("spawn_lines", spawn_line_ys)
 
-	# The rout margin tracks the live field, not the default const.
-	field_with_margin = field.grow(ROUT_MARGIN)
-
 	# Sight scale derives from the final field's short side unless explicitly overridden
 	# before _ready.
 	if sight_scale <= 0.0:
-		sight_scale = 0.25 * minf(field.size.x, field.size.y)
+		sight_scale = DEFAULT_SIGHT_SCALE_FRACTION * minf(field.size.x, field.size.y)
+
+	# The rout margin tracks the live field and the largest configured sight range
+	# (mounted sight), so a routing unit never escapes while still visible inside
+	# friendly sight discs.
+	rout_margin = maxf(ROUT_MARGIN, sight_scale * UnitRef.SIGHT_MOUNTED)
+	field_with_margin = field.grow(rout_margin)
 
 	_camera.bounds = field
 	_camera.position = field.position + field.size * 0.5
@@ -1395,6 +1400,9 @@ func capture_snapshot() -> Dictionary:
 		"next_uid": _next_uid,
 		"units": units,
 		"time_scale": Engine.time_scale,
+		"fog_contacts": _fog_contacts.duplicate(true),
+		"fog_seen": _fog_seen.duplicate(true),
+		"fog_active": _fog_active,
 	}
 
 
@@ -1444,6 +1452,10 @@ func restore_snapshot(snap: Dictionary) -> void:
 	# `_tick`; a slow-motion change made before the snapshot was captured has no per-unit
 	# trace to fall back on, so the value has to come from the snapshot itself.
 	Engine.time_scale = float(snap.get("time_scale", 1.0))
+	_fog_contacts = (snap.get("fog_contacts", {}) as Dictionary).duplicate(true)
+	_fog_seen = (snap.get("fog_seen", {}) as Dictionary).duplicate(true)
+	_fog_active = bool(snap.get("fog_active", false))
+	_reapply_fog_after_restore()
 
 	# A completed replay has _ended set and the tree paused behind the end overlay
 	# (_check_victory runs during PLAYBACK too), and both _physics_process and
@@ -1454,6 +1466,25 @@ func restore_snapshot(snap: Dictionary) -> void:
 		_ended = false
 		if _hud != null:
 			_hud.hide_end()
+
+
+## Reapplies fog visibility to newly respawned units and refreshes the ghost layer
+## immediately after restoring a snapshot, preventing units from flashing visible.
+func _reapply_fog_after_restore() -> void:
+	var on: bool = Settings.fog_of_war and not all_teams_control
+	if not on:
+		_fog_active = false
+		_fog_seen = {}
+		for u in _fog_units_in_play():
+			u.visible = true
+		if _fog_ghosts != null:
+			_fog_ghosts.clear()
+		return
+	_fog_active = true
+	for u in _fog_units_in_play():
+		u.visible = u.team == fog_team or _fog_seen.has(u.uid)
+	if _fog_ghosts != null:
+		_fog_ghosts.update(_fog_contacts, _fog_seen, _tick)
 
 
 ## Builds one Unit from a captured per-unit dict, mirroring _spawn_unit's own two-phase

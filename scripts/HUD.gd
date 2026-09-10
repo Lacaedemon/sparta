@@ -407,6 +407,11 @@ func _ready() -> void:
 	# has no enemy to win against) — also handy as a plain "give up" from any other battle.
 	popup.add_item("Quit to Main Menu", MENU_QUIT_TO_MENU)
 	_sync_setting_toggles()
+	# Battle._ready applies all_teams_control from AllTeamsControl.pending AFTER child
+	# HUD._ready has run.
+	# Re-sync the fog indicator one idle frame later once the parent
+	# has finalized whether all-teams control is active.
+	_sync_fog_label.call_deferred()
 	# Re-stamp the form-up labels now that the popup exists, in case set_team_factions()
 	# was already called before _ready() ran (Battle hands factions over in its own _ready,
 	# and node ready order isn't guaranteed). A no-op when team_factions is still empty.
