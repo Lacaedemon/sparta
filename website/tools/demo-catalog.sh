@@ -111,4 +111,6 @@ DEMOS=(
   "campaign_deployment_gap|demos/inputs/campaign-deployment-gap.json|30|720|640|input"
 )
 
-
+# The SPARTA_DUMP_CLIPS narrowing helpers (demo_catalog_selected,
+# demo_catalog_check_selection) live in tools/lib/demo-catalog-selection.sh, sourced by
+# each consumer from its own tree.
