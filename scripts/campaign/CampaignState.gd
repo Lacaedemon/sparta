@@ -22,7 +22,9 @@ const NO_WINNER := -1
 # no truce so map-seeded stances and tests can opt out.
 const DEFAULT_TRUCE_TURNS := 3
 
-# province id -> {id, name, owner, army}
+# province id -> {id, name, owner, army}, plus an optional deployment_gap_m (metres
+# between the two spawn lines when a clash over the province is fought out) carried
+# verbatim from the map data when it declares one
 var provinces: Dictionary = {}
 # province id -> Array[int] of adjacent province ids
 var adjacency: Dictionary = {}
@@ -63,6 +65,8 @@ const CASUALTY_SEVERITY := 0.6
 
 
 ## Build from a map dict: {faction_names:[...], provinces:[{id,name,owner,army,adj}, ...],
+## where a province may also carry an optional deployment_gap_m (metres) that rides
+## along onto its live record;
 ## peace:[[a,b], ...]}. `peace` is optional — listed pairs start at peace, everything
 ## else at war. A fixed `rng_seed` (>= 0) makes auto-resolve deterministic for
 ## tests; -1 randomises.
