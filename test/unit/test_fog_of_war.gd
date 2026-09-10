@@ -251,11 +251,13 @@ func test_switching_fog_off_mid_battle_restores_every_hidden_unit() -> void:
 
 
 func test_all_teams_control_disables_fog() -> void:
-	_staged_battle(true, true)
+	var battle: Node = _staged_battle(true, true)
 	for _k in range(3):
 		await get_tree().physics_frame
 	assert_true(_enemy_nearest(FAR_ENEMY_POS).visible,
 		"a tester driving both armies sees both, whatever the setting says")
+	assert_false(battle.get_node("HUD")._fog_label.visible,
+		"and the HUD indicator stays hidden because fog is not active")
 
 
 ## Per-unit sim state that would diverge first if fog fed back into the simulation.
@@ -372,3 +374,31 @@ func test_is_fog_toggle_keypress_only_matches_a_real_f7_key_press() -> void:
 	var echoed := _key_event(KEY_F7)
 	echoed.echo = true
 	assert_false(hud._is_fog_toggle_keypress(echoed), "a held-key echo does not")
+
+
+func test_selection_manager_unit_at_ignores_hidden_enemy() -> void:
+	var battle: Node = _staged_battle(true)
+	for _k in range(3):
+		await get_tree().physics_frame
+	var near := _enemy_nearest(NEAR_ENEMY_POS)
+	var far := _enemy_nearest(FAR_ENEMY_POS)
+	var sm = battle.get_node("SelectionManager")
+	assert_not_null(sm._unit_at(near.global_position, 1, true),
+		"visible enemy is resolved by _unit_at")
+	assert_null(sm._unit_at(far.global_position, 1, true),
+		"hidden enemy is ignored by _unit_at")
+
+
+func test_sight_scale_derives_from_final_field_or_preserves_override() -> void:
+	var b1: Node = load("res://scenes/Battle.tscn").instantiate()
+	b1.field = Rect2(0, 0, 800, 600)
+	add_child_autofree(b1)
+	assert_almost_eq(b1.sight_scale, 0.25 * 600.0, 0.001,
+		"sight_scale derives from non-default field short side in _ready")
+
+	var b2: Node = load("res://scenes/Battle.tscn").instantiate()
+	b2.sight_scale = 450.0
+	add_child_autofree(b2)
+	assert_almost_eq(b2.sight_scale, 450.0, 0.001,
+		"explicit caller sight_scale override is preserved")
+

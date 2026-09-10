@@ -8180,7 +8180,9 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	mount_type_id = int(d["mount_type_id"])
 	order_response_delay = float(d["order_response_delay"])
 	atomic_response_delay = float(d["atomic_response_delay"])
-	sight_range = float(d["sight_range"])
+	# Defaulted rather than required: a snapshot written before this field existed still
+	# applies, falling back to the type-derived default.
+	sight_range = float(d.get("sight_range", DEFAULT_SIGHT_SCALE * sight_multiplier()))
 	training = float(d["training"])
 	disciplined = bool(d["disciplined"])
 	field_bounds = d["field_bounds"]

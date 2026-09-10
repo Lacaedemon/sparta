@@ -1857,6 +1857,9 @@ func _unit_at(world_pos: Vector2, team: int, include_routers: bool = false) -> U
 			# control-group recall guards. (A dead unit also draws no flag.)
 			if unit == null or unit.state == UnitRef.State.DEAD:
 				continue
+			# An unseen enemy hidden by fog cannot be clicked or targeted.
+			if not unit.visible:
+				continue
 			if team == TEAM_ANY_OWN:
 				if not _is_own_team(unit.team):
 					continue

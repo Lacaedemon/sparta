@@ -237,3 +237,14 @@ func test_mutating_the_original_units_arrays_after_capture_does_not_alter_the_sn
 	u._sim_soldier_pos[0] = Vector2(999, 999)
 	assert_eq((d["sim_soldier_pos"] as PackedVector2Array)[0], Vector2(1, 2),
 			"the cached snapshot's array is an independent copy")
+
+
+func test_an_older_snapshot_missing_sight_range_falls_back_to_type_derived_default() -> void:
+	var u := _sample_unit()
+	var d := u.to_snapshot_dict()
+	d.erase("sight_range")
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(d)
+	assert_eq(restored.sight_range, Unit.DEFAULT_SIGHT_SCALE * restored.sight_multiplier(),
+			"missing sight_range falls back to the type-derived default")
+

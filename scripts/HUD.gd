@@ -936,11 +936,15 @@ func _toggle_fog() -> void:
 	flash_message("Fog of war: %s" % ("on" if Settings.fog_of_war else "off"))
 
 
-## Show the standing "FOG OF WAR" indicator exactly while the setting is on.
+## Show the standing "FOG OF WAR" indicator exactly while fog is effectively active.
+## When all-teams control is on, fog is disabled in Battle._tick_fog, so the indicator
+## stays hidden.
 func _sync_fog_label() -> void:
 	if _fog_label == null:
 		return
-	_fog_label.visible = Settings.fog_of_war
+	var battle = get_parent()
+	var all_teams: bool = battle != null and battle.get("all_teams_control") == true
+	_fog_label.visible = Settings.fog_of_war and not all_teams
 
 
 func _update_slowmo_label() -> void:

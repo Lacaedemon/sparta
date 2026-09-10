@@ -250,3 +250,15 @@ func test_a_malformed_deployment_gap_is_rejected() -> void:
 	for bad in ["60", 0, -60.0, INF, NAN, [], {}]:
 		assert_true(RecorderScript.parse_deployment_gap_m(bad).has("error"),
 			"a deployment gap that is not a positive, finite number is rejected: %s" % [bad])
+
+
+func test_recorder_clears_fog_session_when_omitted_by_script() -> void:
+	Settings.set_fog_of_war_session(true)
+	assert_true(Settings.fog_of_war, "fog starts on for the test")
+	OS.set_environment("SPARTA_DEMO_INPUT", "demos/inputs/about-face.json")
+	var recorder: Node = load("res://tools/demo/DemoInputRecorder.tscn").instantiate()
+	add_child_autofree(recorder)
+	assert_false(Settings.fog_of_war, "a script omitting fog_of_war unconditionally sets it false")
+	OS.set_environment("SPARTA_DEMO_INPUT", "")
+	Settings.set_fog_of_war_session(false)
+

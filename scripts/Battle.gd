@@ -407,12 +407,12 @@ var drill_mode: bool = false
 var all_teams_control: bool = false
 
 # Fog of war (Settings.fog_of_war; Perception.gd). Per-battle sight scale every unit's
-# type multiplier applies to (Unit.sight_multiplier): a quarter of the default field's
-# short side, so a foot unit sees a quarter of the way across the field. A gameplay
+# type multiplier applies to (Unit.sight_multiplier): a quarter of the field's short
+# side, so a foot unit sees a quarter of the way across the field. A gameplay
 # legibility parameter, not an eyesight claim. Settable BEFORE the node enters the tree
-# (like ai_period above) -- _spawn_unit reads it when it sizes each unit's sight_range,
-# and a battle on a non-default `field` sets its own scale alongside it.
-var sight_scale: float = 0.25 * minf(FIELD.size.x, FIELD.size.y)
+# (<= 0 for unset, which derives the scale from the final field's short side in _ready);
+# _spawn_unit reads it when it sizes each unit's sight_range.
+var sight_scale: float = -1.0
 # Ticks after which a remembered enemy contact counts as stale: the ghost marker has
 # fully faded by then (FogGhostLayer.stale_ticks). 10 s of sim time; settable before
 # _ready.
@@ -604,6 +604,11 @@ func _ready() -> void:
 
 	# The rout margin tracks the live field, not the default const.
 	field_with_margin = field.grow(ROUT_MARGIN)
+
+	# Sight scale derives from the final field's short side unless explicitly overridden
+	# before _ready.
+	if sight_scale <= 0.0:
+		sight_scale = 0.25 * minf(field.size.x, field.size.y)
 
 	_camera.bounds = field
 	_camera.position = field.position + field.size * 0.5
@@ -1658,8 +1663,10 @@ func _physics_process(delta: float) -> void:
 ## tester drives both armies and must see both), the fog team's units each perceive a
 ## disc, every enemy outside all of them is hidden by CanvasItem.visible, and each enemy's
 ## last sighting is kept for the ghost layer. Nothing here is read by the simulation --
-## group membership, targeting, collision, and the replay are untouched -- so a fogged and
-## an unfogged run of one seed stay byte-identical. Switching fog off restores every unit
+## group membership, unit-level AI targeting, collision, and the replay are untouched --
+## so a fogged and an unfogged run of one seed stay byte-identical. Player-side order
+## targeting in SelectionManager filters on visibility so a click in empty fog cannot
+## target an unseen enemy. Switching fog off restores every unit
 ## and clears the markers; the contact table itself is kept, so switching back on
 ## remembers what was seen before.
 func _tick_fog() -> void:
