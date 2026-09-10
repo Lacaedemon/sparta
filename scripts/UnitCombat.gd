@@ -212,8 +212,10 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 	# the pre-profile formula exactly: the factor IS the old constant and the falloff is a
 	# multiplication by 1.0, so an existing replay stays bit-identical. The distance is to
 	# whoever is actually hit -- an interceptor that caught the volley is closer than the aim.
-	var dist: float = u.position.distance_to(target.position)
-	var dmg: float = base * u.missile_damage_factor * u.missile_accuracy(dist) * rng_roll \
+	var accuracy: float = 1.0
+	if u.missile_accuracy_at_max != 1.0:
+		accuracy = u.missile_accuracy(u.position.distance_to(target.position))
+	var dmg: float = base * u.missile_damage_factor * accuracy * rng_roll \
 			* target.missile_defense_factor(u)
 	Sfx.play(&"shoot")
 	# Cosmetic volley trail: arrows streak toward whoever was actually hit, so the player

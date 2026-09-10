@@ -65,6 +65,9 @@ func test_equipping_the_bow_profile_changes_nothing() -> void:
 	assert_eq(u.missile_interval, Unit.RANGED_INTERVAL, "same cadence")
 	assert_eq(u.missile_damage_factor, Unit.RANGED_DAMAGE_FACTOR, "same damage factor")
 	assert_eq(u.missile_accuracy_at_max, 1.0, "same (absent) falloff")
+	for d in [0.0, 80.0, 160.0]:
+		assert_eq(u.missile_accuracy(d), 1.0,
+			"accuracy pinned to 1.0 at %s wu" % str(d))
 	assert_eq(u.missile_launch_angle, ProjectilePhysics.ANGLE_ARCED, "same lob")
 	assert_eq(u.detection_range, Unit.DETECTION_RANGE, "detection untouched")
 	assert_almost_eq(u.skirmish_kite_distance, Unit.SKIRMISH_KITE_DISTANCE, TOL,
@@ -80,6 +83,13 @@ func test_equipping_the_pilum_takes_its_own_range_cadence_and_falloff() -> void:
 	assert_eq(u.missile_interval, p.interval_s, "its cadence")
 	assert_eq(u.missile_damage_factor, p.damage_factor, "its damage factor")
 	assert_eq(u.missile_accuracy_at_max, p.accuracy_at_max, "its falloff")
+	assert_almost_eq(u.missile_accuracy(0.0), 1.0, TOL,
+		"point-blank accuracy pinned to 1.0")
+	assert_almost_eq(u.missile_accuracy(p.range_wu * 0.5),
+		0.5 * (1.0 + p.accuracy_at_max), TOL,
+		"mid-range accuracy scales linearly")
+	assert_almost_eq(u.missile_accuracy(p.range_wu), p.accuracy_at_max, TOL,
+		"max-range accuracy reaches floor")
 	assert_eq(u.missile_launch_angle, ProjectilePhysics.ANGLE_FLAT, "thrown flat")
 	assert_almost_eq(u.skirmish_kite_distance, p.range_wu * Unit.SKIRMISH_KITE_FRACTION, TOL,
 		"a longer-ranged skirmisher kites proportionally further")
@@ -216,16 +226,20 @@ func test_firing_cadence_distinguishes_pilum_two_second_interval_from_bow_one_se
 ## Each call stages in its own column (`column` wu along x): autofreed nodes live until the
 ## test ends, so a second call at the same origin would put the first call's shooter in the
 ## new volley's flight path and friendly_interceptor would hand it the whole volley.
-func _volley_kills(profile: int, dist: float, column: float) -> int:
+func _volley_kills(profile: int, dist: float, column: float,
+		uid_offset: int = 0) -> int:
 	Replay.rng.seed = SEED
-	var target := _unit(20 + int(dist), 1, Vector2(column, 0.0), Vector2.UP, 60)
+	var target := _unit(20 + int(dist) + uid_offset, 1,
+			Vector2(column, 0.0), Vector2.UP, 60)
 	target.state = Unit.State.FIGHTING
 	target.seed_sim_soldiers()
-	var shooter := _unit(10 + int(dist), 0, Vector2(column, -dist), Vector2.DOWN, 10)
+	var shooter := _unit(10 + int(dist) + uid_offset, 0,
+			Vector2(column, -dist), Vector2.DOWN, 10)
 	shooter.is_ranged = true
 	shooter.attack = 40
 	target.defense = 0
-	assert_true(shooter.equip_missile(profile), "the profile equips")
+	if profile != 0:
+		assert_true(shooter.equip_missile(profile), "the profile equips")
 	UnitCombat.shoot(shooter, target)
 	return 60 - target.soldiers
 
@@ -246,6 +260,10 @@ func test_a_profile_without_falloff_lands_the_same_volley_at_any_distance() -> v
 	var far: int = _volley_kills(LoadoutRegistry.MISSILE_BOW, 150.0, 600.0)
 	assert_gt(near, 0, "the volley kills someone")
 	assert_eq(far, near, "with no falloff the same roll kills the same count at 150 wu")
+	var unprofiled_near: int = _volley_kills(0, 30.0, 1200.0, 500)
+	var unprofiled_far: int = _volley_kills(0, 150.0, 1800.0, 500)
+	assert_eq(unprofiled_near, near, "unprofiled unit matches bow near")
+	assert_eq(unprofiled_far, far, "unprofiled unit matches bow far")
 
 
 func test_the_shooters_own_damage_factor_scales_the_volley() -> void:
