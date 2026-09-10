@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Tracker-only change: builds GitHub sub-issue parent/child links via the sub-issues API and adds a short PLAN.md note about the convention. No gameplay, scene, script, or asset changed -- nothing for a recorded battle to show."
+}
