@@ -2569,10 +2569,10 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				# Reinforcement insertion: the reserve marches up behind the host and its men
 				# file into the host's ranks. Install the REINFORCE order first, then arm the
 				# approach on it (the order owns the pass-through link, as a relief's does).
-				# The host keeps whatever it was doing. A refused pair (ReinforceGuard.
-				# refusal_reason, which also refuses the not-yet-wired RANKS axis rather
-				# than running it as files) arms nothing and halts the reserve, so the
-				# no-op order retires next tick.
+				# The host keeps whatever it was doing. The admission guard above already
+				# skipped every refused pair (including the not-yet-wired RANKS axis), so
+				# begin's own re-check is defensive: a pair that slips past it arms nothing
+				# and is halted, and that no-op order retires next tick.
 				var reinforce_order := Order.new_reinforce(target_unit.uid, reinforce)
 				u.set_current_order(reinforce_order)
 				UnitReinforce.begin(u, target_unit, reinforce_order)

@@ -4,20 +4,13 @@ class_name UnitReinforce
 ## host's files. Static and deterministic (no RNG), so live play and replay insert alike. The
 ## reserve's REINFORCE order carries the relief pass-through link (friendly_target) so it can
 ## walk into the host's rear; the commit runs once, in the physics tick, at the rendezvous.
-## Admission lives in ReinforceGuard.refusal_reason, shared with the HUD preview.
+## Admission lives in ReinforceGuard.refusal_reason, shared with the HUD preview; the
+## rendezvous geometry (where, and whether the reserve is there yet) in ReinforceApproach.
 
 const ReinforceLayoutRef = preload("res://scripts/ReinforceLayout.gd")
 
 ## Default heading agreement the commit waits for (radians between the two facings).
 const HEADING_TOLERANCE_RAD: float = deg_to_rad(20.0)
-
-
-## Where the reserve marches to: one host rank pitch behind the host's rear edge, plus its
-## own half-depth, so the two blocks stand clear before the men file in.
-static func rendezvous_point(host: Unit, reserve: Unit) -> Vector2:
-	var gap: float = host.soldier_block_half_extents().y + reserve.soldier_block_half_extents().y \
-			+ host.rank_pitch_wu()
-	return host.position - host.facing * gap
 
 
 ## Arm the approach on `order` (the reserve's REINFORCE order, already current): link the
@@ -48,10 +41,9 @@ static func update(reserve: Unit, heading_tolerance_rad: float = HEADING_TOLERAN
 		_halt(reserve, order)
 		return
 	_aim(reserve, host)
-	var pitch: float = host.rank_pitch_wu()
-	var at_rendezvous: bool = reserve.position.distance_squared_to(reserve.move_target) <= pitch * pitch
 	var aligned: bool = absf(reserve.facing.angle_to(host.facing)) <= heading_tolerance_rad
-	if at_rendezvous and aligned and _bodies_aligned(reserve) and _bodies_aligned(host):
+	if aligned and ReinforceApproach.at_rendezvous(reserve, host) \
+			and _bodies_aligned(reserve) and _bodies_aligned(host):
 		commit(reserve, host)
 
 
@@ -73,7 +65,7 @@ static func commit(reserve: Unit, host: Unit) -> void:
 
 
 static func _aim(reserve: Unit, host: Unit) -> void:
-	reserve.move_target = rendezvous_point(host, reserve)
+	reserve.move_target = ReinforceApproach.rendezvous_point(host, reserve)
 	reserve.has_move_target = true
 	reserve.ordered_facing = host.facing
 

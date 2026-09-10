@@ -638,9 +638,12 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 		# line-relief order on an engaged friendly, or — when SUPPORT is armed
 		# — a guard order on any friendly, engaged or not. Plain ground stays
 		# an ordinary move.
-		var friend: UnitRef = _unit_at(world_pos, _friend_team())
 		var supporting: bool = _armed_mode == BattleRef.OrderMode.SUPPORT
 		var reinforcing: bool = _armed_reinforce != BattleRef.ReinforceAxis.NONE
+		# While an insertion is armed the lookup includes routers too, so a click on a
+		# routing friendly reaches the guard (which refuses it by name) instead of
+		# resolving to open ground and leaving the arm set.
+		var friend: UnitRef = _unit_at(world_pos, _friend_team(), reinforcing)
 		if friend != null and not _selected.has(friend) and reinforcing:
 			# Reinforcement insertion targets ANY live friendly, idle or engaged. Refuse
 			# up front (with the reason on the HUD) rather than issuing an order Battle

@@ -3292,6 +3292,20 @@ func test_ctrl_shift_m_is_reserved_for_the_ranks_axis_and_arms_nothing() -> void
 	assert_true(s["battle"]._pending_orders.is_empty(), "and it does not fall through to a merge")
 
 
+func test_an_armed_click_on_a_routing_friendly_is_refused_not_a_move() -> void:
+	var s := _reinforce_setup()
+	var sm = s["sm"]
+	var b = s["battle"]
+	var host: Unit = s["host"]
+	host.state = Unit.State.ROUTING
+	host.remove_from_group("units")
+	host.add_to_group("routers")
+	sm._arm_reinforce(BattleScript.ReinforceAxis.FILES)
+	sm._issue_order(host.position)
+	assert_true(b._pending_orders.is_empty(), "the routing host reaches the guard and is refused")
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE, "and the arm is consumed")
+
+
 func test_a_mixed_selection_is_refused_as_a_whole() -> void:
 	var s := _reinforce_setup()
 	var sm = s["sm"]

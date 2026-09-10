@@ -1951,8 +1951,10 @@ func _update_current_order() -> void:
 		Order.Type.REINFORCE:
 			# The approach is the order's work: a live link keeps it (UnitReinforce.update
 			# re-aims every tick and commits at the rendezvous, which frees this unit). It
-			# retires once the link is gone -- a refused pair, or a host that left the line
-			# mid-approach -- and no march is in flight, so the reserve halts where it stands.
+			# retires once the link is gone and no march is in flight -- a host that left
+			# the line or stopped qualifying mid-approach, or the defensive halt for a pair
+			# that slipped past Battle's admission guard (an ordinarily refused command
+			# installs no order at all) -- so the reserve halts where it stands.
 			if current_order.friendly_target == null and not has_move_target:
 				retire_current_order()
 		Order.Type.FORMATION, Order.Type.FRONTAGE, Order.Type.STANCE, Order.Type.SWITCH_WEAPON:

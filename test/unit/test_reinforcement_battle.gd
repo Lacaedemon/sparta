@@ -81,7 +81,7 @@ func test_order_arms_the_approach_and_leaves_the_host_alone() -> void:
 	assert_eq(reserve.current_order.friendly_target, host, "the pass-through link names the host")
 	assert_true(reserve._separation_exempt(host), "the pair is exempt from separation")
 	assert_true(reserve.has_move_target, "the reserve is marching")
-	var rendezvous: Vector2 = UnitReinforce.rendezvous_point(host, reserve)
+	var rendezvous: Vector2 = ReinforceApproach.rendezvous_point(host, reserve)
 	assert_true(rendezvous.y < host.position.y, "the rendezvous lies behind a down-facing host")
 	assert_eq(reserve.move_target, rendezvous, "aimed at the rendezvous")
 	assert_eq(reserve.ordered_facing, host.facing, "with the host's heading held")
@@ -290,6 +290,66 @@ func test_the_unwired_ranks_axis_and_far_or_touching_reserves_are_refused() -> v
 			"a far-tier reserve has no bodies to file in with and is refused")
 	reserve.tier = FormationTier.CLOSE
 	assert_eq(ReinforceGuard.refusal_reason(reserve, host), "", "restored, the pair is allowed")
+
+
+func test_rendezvous_geometry_reads_the_blocks_off_their_bodies_along_the_hosts_facing() -> void:
+	_spawn()
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	var pitch: float = host.rank_pitch_wu()
+	var ext: Vector2 = ReinforceApproach.extent_along(host, host.facing)
+	assert_lt(ext.x, 0.0, "the rear edge lies behind the position")
+	assert_gt(ext.y, 0.0, "the front edge lies ahead of it")
+	assert_almost_eq(-ext.x, host.soldier_block_half_extents().y, pitch,
+			"an unturned block's depth along its facing matches the slot frame's")
+	# Turn the heading without turning the bodies: the block's lateral half-width is now
+	# its depth along the new facing, which a local-frame .y read would miss.
+	host.facing = Vector2(1.0, 0.0)
+	var turned: Vector2 = ReinforceApproach.extent_along(host, host.facing)
+	assert_almost_eq(turned.y, host.soldier_block_half_extents().x, pitch,
+			"the extent follows the facing, not the slot frame")
+	var rendezvous: Vector2 = ReinforceApproach.rendezvous_point(host, reserve)
+	assert_almost_eq((rendezvous - host.position).normalized().x, -1.0, 0.001,
+			"the rendezvous lies straight behind the host along its facing")
+	assert_almost_eq((rendezvous - host.position).normalized().y, 0.0, 0.001,
+			"with no lateral offset")
+
+
+func test_commit_waits_for_the_longitudinal_gap_and_lateral_alignment() -> void:
+	_spawn()
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	var pitch: float = host.rank_pitch_wu()
+	_order_reinforce(reserve, host)
+	await get_tree().physics_frame
+	assert_eq(reserve.current_order.friendly_target, host, "the approach is under way")
+	reserve.facing = host.facing
+	var target: Vector2 = ReinforceApproach.rendezvous_point(host, reserve)
+
+	_teleport(reserve, target + Vector2(3.0 * pitch, 0.0))   # right depth, three pitches wide
+	assert_false(ReinforceApproach.at_rendezvous(reserve, host), "a lateral offset is not arrival")
+	UnitReinforce.update(reserve)
+	assert_eq(host.soldiers, 40, "and does not commit")
+
+	_teleport(reserve, target + host.facing * 2.0 * pitch)   # two pitches into the host
+	assert_false(ReinforceApproach.at_rendezvous(reserve, host), "an overshoot is not arrival")
+	UnitReinforce.update(reserve)
+	assert_eq(host.soldiers, 40, "and does not commit either")
+
+	_teleport(reserve, target)
+	assert_true(ReinforceApproach.at_rendezvous(reserve, host), "standing at the rendezvous is")
+	UnitReinforce.update(reserve)
+	assert_eq(host.soldiers, 80, "and the men file in")
+
+
+## Move `u` and its bodies together, as a settled block that stands somewhere else.
+func _teleport(u: Unit, to: Vector2) -> void:
+	var shift: Vector2 = to - u.position
+	u.position = to
+	for i in range(u._sim_soldier_pos.size()):
+		u._sim_soldier_pos[i] += shift
 
 
 func test_a_host_that_stops_qualifying_mid_approach_halts_the_reserve() -> void:
