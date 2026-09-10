@@ -323,10 +323,11 @@ func _ready() -> void:
 
 	# Persistent fog-of-war indicator, below the slow-motion one: fog hides units, so the
 	# player needs a standing reminder that an empty-looking field may not be empty.
+	# Placed 24 px below _slowmo_label (font size 16 plus 8 px layout gap).
 	# Shown/hidden by _sync_fog_label from Settings.changed.
 	_fog_label = Label.new()
 	_fog_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_fog_label.position = Vector2(-90, 152)
+	_fog_label.position = Vector2(-90, _slowmo_label.position.y + 24.0)
 	_fog_label.custom_minimum_size = Vector2(180, 0)
 	_fog_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_fog_label.add_theme_font_size_override("font_size", 16)

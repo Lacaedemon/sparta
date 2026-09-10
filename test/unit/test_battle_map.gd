@@ -110,7 +110,7 @@ func test_battle_defaults_run_on_the_default_map() -> void:
 func test_custom_field_sizes_the_routing_grid_camera_and_rout_margin() -> void:
 	var small := Rect2(0, 0, 640, 640)
 	var battle: Node = _spawn_battle_with(small, [], [100.0, 540.0])
-	assert_eq(battle.field_with_margin, small.grow(battle.rout_margin),
+	assert_eq(battle.field_with_margin, small.grow(battle.ROUT_MARGIN),
 			"the rout margin tracks the live field, not the default const")
 	assert_not_null(PathField.active, "a routing grid was built")
 	assert_true(PathField.active.has_path(Vector2(50, 50), Vector2(600, 600)),
@@ -175,7 +175,7 @@ func test_playback_restores_the_recorded_map_before_rebuilding_the_battlefield()
 	assert_eq(battle.field, Rect2(0, 0, 700, 900), "playback rebuilds the recorded field")
 	assert_eq((battle.terrain as Array).size(), 1, "playback rebuilds the recorded terrain")
 	assert_eq(battle.spawn_line_ys, [150.0, 750.0], "playback rebuilds the recorded spawn lines")
-	assert_eq(battle.field_with_margin, Rect2(0, 0, 700, 900).grow(battle.rout_margin),
+	assert_eq(battle.field_with_margin, Rect2(0, 0, 700, 900).grow(battle.ROUT_MARGIN),
 			"the rout margin tracks the restored field")
 	Replay.mode = old_mode
 	Replay.map = old_map
@@ -235,7 +235,7 @@ func test_deployment_gap_m_moves_the_spawn_lines_with_the_parameter() -> void:
 	add_child_autofree(battle)
 	assert_eq(battle.spawn_line_ys, [300.0, 1500.0], "60 m = 1200 wu below team 0's line")
 	assert_eq(battle.field, Rect2(0, 0, 1600, 1820), "the live field grew with the gap")
-	assert_eq(battle.field_with_margin, Rect2(0, 0, 1600, 1820).grow(battle.rout_margin),
+	assert_eq(battle.field_with_margin, Rect2(0, 0, 1600, 1820).grow(battle.ROUT_MARGIN),
 			"the rout margin tracks the widened field")
 	var team_0_ys: Array = []
 	var team_1_ys: Array = []

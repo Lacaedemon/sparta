@@ -34,12 +34,13 @@ const FIELD := Rect2(0, 0, 1600, 1200)
 # Extra room beyond the field that a ROUTING unit may flee into before it's removed from
 # play (see Unit._escape()). Fixed and known up front (not sized per unit) since it's drawn
 # once as a visible margin strip at battle start (see _draw()). Sized to the game's maximum
-# visual range — the longest ranged attack (RANGED_RANGE) and the farthest a unit can
-# currently be noticed at BY DEFAULT (DETECTION_RANGE, the closest existing stand-in for a
-# fog-of-war vision range, which this game doesn't have yet) — so a fleeing unit stays a
-# plausible target for as long as it's still visible, rather than vanishing early. Reads the
-# class constant, not any one unit's own (caller-configurable) detection_range field, since
-# this margin is a single battle-wide strip, not sized per unit.
+# baseline visual range -- the longest ranged attack (RANGED_RANGE) and the farthest a unit
+# can be noticed at by default (DETECTION_RANGE) -- so a fleeing unit stays a plausible
+# target for as long as it's still visible, rather than vanishing early. Reads the class
+# constant, not any one unit's own (caller-configurable) detection_range field, since this
+# margin is a single battle-wide strip, not sized per unit. ROUT_MARGIN serves as the pre-fog
+# floor. When fog of war is enabled, rout_margin expands to track the largest configured sight
+# range (sight_scale * SIGHT_MOUNTED) so fleeing units remain in-bounds while visible.
 const ROUT_MARGIN: float = maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)
 var rout_margin: float = ROUT_MARGIN
 var field_with_margin: Rect2 = FIELD.grow(ROUT_MARGIN)
@@ -609,10 +610,14 @@ func _ready() -> void:
 	if sight_scale <= 0.0:
 		sight_scale = DEFAULT_SIGHT_SCALE_FRACTION * minf(field.size.x, field.size.y)
 
-	# The rout margin tracks the live field and the largest configured sight range
-	# (mounted sight), so a routing unit never escapes while still visible inside
-	# friendly sight discs.
-	rout_margin = maxf(ROUT_MARGIN, sight_scale * UnitRef.SIGHT_MOUNTED)
+	# When fog of war is on, the rout margin expands to the largest configured sight range
+	# (mounted sight) so a routing unit never escapes while still inside friendly sight discs.
+	# When fog of war is off (the default), the margin stays at ROUT_MARGIN so retreat bounds
+	# match the pre-fog baseline and existing replays and demos stay identical.
+	if Settings.fog_of_war and not all_teams_control:
+		rout_margin = maxf(ROUT_MARGIN, sight_scale * UnitRef.SIGHT_MOUNTED)
+	else:
+		rout_margin = ROUT_MARGIN
 	field_with_margin = field.grow(rout_margin)
 
 	_camera.bounds = field

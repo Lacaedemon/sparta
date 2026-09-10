@@ -9,6 +9,7 @@ const Perception = preload("res://scripts/Perception.gd")
 const FogGhostLayer = preload("res://scripts/FogGhostLayer.gd")
 const WorldScale = preload("res://scripts/WorldScale.gd")
 const HUDScript = preload("res://scripts/HUD.gd")
+const BattleScript = preload("res://scripts/Battle.gd")
 
 # One foot unit's sight radius on the default battle: Unit.DEFAULT_SIGHT_SCALE x SIGHT_FOOT.
 const FOOT_SIGHT: float = 15.0 * WorldScale.WU_PER_M
@@ -18,12 +19,18 @@ const FOOT_SIGHT: float = 15.0 * WorldScale.WU_PER_M
 const FRIENDLY_POS := Vector2(400.0, 300.0)
 const NEAR_ENEMY_POS := Vector2(400.0, 500.0)    # 200 wu away: seen
 const FAR_ENEMY_POS := Vector2(1200.0, 900.0)    # ~1000 wu away: unseen
+var _staged_battles: Array[Node] = []
 
 
 func after_each() -> void:
 	Settings.set_fog_of_war_session(false)
 	Replay.forced_seed = -1
 	Replay.reset()
+	for b in _staged_battles:
+		if is_instance_valid(b):
+			b.free()
+	_staged_battles.clear()
+	await get_tree().physics_frame
 
 
 ## A bare (out-of-tree) unit with just the fields Perception reads.
@@ -181,6 +188,7 @@ func _staged_battle(fog: bool, all_teams: bool = false) -> Node:
 		{"team": 1, "type": "Infantry", "x": NEAR_ENEMY_POS.x, "y": NEAR_ENEMY_POS.y},
 		{"team": 1, "type": "Infantry", "x": FAR_ENEMY_POS.x, "y": FAR_ENEMY_POS.y},
 	]
+	_staged_battles.append(battle)
 	add_child_autofree(battle)
 	return battle
 
@@ -271,27 +279,37 @@ func _sim_fingerprint(battle: Node) -> Dictionary:
 	return out
 
 
+func _run_sim_pass(fog: bool) -> Dictionary:
+	SpatialHash.reset()
+	SoldierSpatialHash.reset()
+	SoldierEnemyProximity.reset()
+	SoldierEngagedEnemyProximity.reset()
+	get_tree().paused = true
+	var battle: Node = _staged_battle(fog)
+	await get_tree().physics_frame
+	get_tree().paused = false
+	for _k in range(180):
+		await get_tree().physics_frame
+	var fp: Dictionary = _sim_fingerprint(battle)
+	var has_seen: bool = not (battle.fog_visible_uids().is_empty() and battle.fog_contacts().is_empty())
+	battle.free()
+	await get_tree().physics_frame
+	Replay.reset()
+	return {"fingerprint": fp, "has_seen": has_seen}
+
+
 func test_fog_never_changes_the_simulation() -> void:
 	# The two enemies advance on the friendly under the AI, so this covers movement,
 	# contact, and combat rolls -- everything RNG- and position-driven -- over 3 s.
-	const TICKS := 180
-	var unfogged := _staged_battle(false)
-	for _k in range(TICKS):
-		await get_tree().physics_frame
-	var plain: Dictionary = _sim_fingerprint(unfogged)
-	unfogged.queue_free()
-	await get_tree().process_frame
-	await get_tree().process_frame
-	Replay.reset()
-	var fogged := _staged_battle(true)
-	for _k in range(TICKS):
-		await get_tree().physics_frame
-	var foggy: Dictionary = _sim_fingerprint(fogged)
+	var plain_res: Dictionary = await _run_sim_pass(false)
+	var plain: Dictionary = plain_res["fingerprint"]
+	var fog_res: Dictionary = await _run_sim_pass(true)
+	var foggy: Dictionary = fog_res["fingerprint"]
 	assert_gt(plain.size(), 0, "the unfogged run has units to compare")
 	assert_eq(foggy.keys(), plain.keys(), "the same units are in play")
 	for uid in plain:
 		assert_eq(foggy[uid], plain[uid], "unit %d matches position/strength/morale/state" % uid)
-	assert_false(fogged.fog_visible_uids().is_empty() and fogged.fog_contacts().is_empty(),
+	assert_true(fog_res["has_seen"],
 		"the fog pass actually ran on the fogged battle (it saw or remembered something)")
 
 
@@ -336,6 +354,13 @@ func test_ghost_layer_default_footprint_is_three_by_one_and_a_half_metres() -> v
 	assert_almost_eq(layer.half_size.y, 0.75 * WorldScale.WU_PER_M, 0.001, "half-depth along the facing")
 
 
+func test_ghost_layer_stale_ticks_zero_returns_stale_alpha() -> void:
+	var layer: FogGhostLayer = autofree(FogGhostLayer.new())
+	layer.stale_ticks = 0
+	assert_almost_eq(layer.alpha_for_age(10), layer.stale_alpha, 0.001,
+		"zero stale_ticks immediately returns stale_alpha")
+
+
 # --- HUD toggle (F7 and the Menu check item) ------------------------------------------
 
 
@@ -376,6 +401,13 @@ func test_is_fog_toggle_keypress_only_matches_a_real_f7_key_press() -> void:
 	assert_false(hud._is_fog_toggle_keypress(echoed), "a held-key echo does not")
 
 
+func test_hud_sync_fog_label_guards_null_label() -> void:
+	var hud: CanvasLayer = autofree(HUDScript.new())
+	hud._fog_label = null
+	hud._sync_fog_label()
+	pass_test("null _fog_label is safely guarded")
+
+
 func test_selection_manager_unit_at_ignores_hidden_enemy() -> void:
 	var battle: Node = _staged_battle(true)
 	for _k in range(3):
@@ -393,7 +425,7 @@ func test_sight_scale_derives_from_final_field_or_preserves_override() -> void:
 	var b1: Node = load("res://scenes/Battle.tscn").instantiate()
 	b1.field = Rect2(0, 0, 800, 600)
 	add_child_autofree(b1)
-	assert_almost_eq(b1.sight_scale, 0.25 * 600.0, 0.001,
+	assert_almost_eq(b1.sight_scale, BattleScript.DEFAULT_SIGHT_SCALE_FRACTION * 600.0, 0.001,
 		"sight_scale derives from non-default field short side in _ready")
 
 	var b2: Node = load("res://scenes/Battle.tscn").instantiate()
@@ -406,21 +438,33 @@ func test_sight_scale_derives_from_final_field_or_preserves_override() -> void:
 func test_rout_margin_derives_from_largest_sight_range() -> void:
 	var b1: Node = load("res://scenes/Battle.tscn").instantiate()
 	add_child_autofree(b1)
-	var expected_default_margin: float = b1.sight_scale * Unit.SIGHT_MOUNTED
-	assert_almost_eq(b1.rout_margin, expected_default_margin, 0.001,
-		"default rout_margin derives from mounted sight range")
-	assert_gt(b1.rout_margin, b1.ROUT_MARGIN,
-		"derived rout_margin exceeds pre-fog fixed margin")
-	assert_eq(b1.field_with_margin, b1.field.grow(b1.rout_margin),
-		"field_with_margin grows by the derived margin")
+	assert_almost_eq(b1.rout_margin, b1.ROUT_MARGIN, 0.001,
+		"rout_margin equals ROUT_MARGIN when fog is off")
+	assert_eq(b1.field_with_margin, b1.field.grow(b1.ROUT_MARGIN),
+		"field_with_margin matches pre-fog baseline when fog is off")
 
+	var prev_fog: bool = Settings.fog_of_war
+	Settings.set_fog_of_war_session(true)
 	var b2: Node = load("res://scenes/Battle.tscn").instantiate()
-	b2.sight_scale = 450.0
 	add_child_autofree(b2)
-	assert_almost_eq(b2.rout_margin, 450.0 * Unit.SIGHT_MOUNTED, 0.001,
-		"rout_margin tracks caller-overridden sight_scale")
-	assert_eq(b2.field_with_margin, b2.field.grow(450.0 * Unit.SIGHT_MOUNTED),
-		"field_with_margin widens with overridden sight_scale")
+	# Default field is 1600x1200: 0.25 * 1200.0 * 1.4 = 420.0 wu.
+	assert_almost_eq(b2.rout_margin, 420.0, 0.001,
+		"default rout_margin derives from mounted sight range when fog is on")
+	assert_gt(b2.rout_margin, b2.ROUT_MARGIN,
+		"derived rout_margin exceeds pre-fog fixed margin when fog is on")
+	assert_eq(b2.field_with_margin, b2.field.grow(420.0),
+		"field_with_margin grows by the derived margin when fog is on")
+
+	var b3: Node = load("res://scenes/Battle.tscn").instantiate()
+	b3.sight_scale = 450.0
+	add_child_autofree(b3)
+	# Overridden sight_scale 450.0 * 1.4 = 630.0 wu.
+	assert_almost_eq(b3.rout_margin, 630.0, 0.001,
+		"rout_margin tracks caller-overridden sight_scale when fog is on")
+	assert_eq(b3.field_with_margin, b3.field.grow(630.0),
+		"field_with_margin widens with overridden sight_scale when fog is on")
+
+	Settings.set_fog_of_war_session(prev_fog)
 
 
 func test_ghost_layer_ghost_records_reports_only_unseen_contacts() -> void:

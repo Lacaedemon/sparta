@@ -14,12 +14,10 @@ const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 # wide it was. 3 m across by 1.5 m deep by default (parse-time-folded to world units).
 const DEFAULT_HALF_SIZE: Vector2 = Vector2(1.5, 0.75) * WorldScaleRef.WU_PER_M
 var half_size: Vector2 = DEFAULT_HALF_SIZE
-# Length of the facing tick drawn forward from the outline's center, as a multiple of the
-# half-depth. Dimensionless.
+# Length of the facing tick forward from center, as a multiple of half-depth.
 var facing_tick_scale: float = 1.5
 var line_width: float = 2.0   # tuned in wu (screen legibility at the default zoom)
-# Alpha of a marker on the tick it was last seen, and the floor it fades to once the
-# sighting is `stale_ticks` old or older.
+# Alpha of a fresh marker, and the floor it fades to once stale_ticks old or older.
 var fresh_alpha: float = 0.6
 var stale_alpha: float = 0.2
 var stale_ticks: int = 600
@@ -31,8 +29,7 @@ var _tick: int = 0
 
 func _ready() -> void:
 	add_to_group("fog_ghosts")
-	# Same layer as the rout shockwave: above the field and the units' own cosmetic stack,
-	# below volley trails, the selection box, and the HUD.
+	# Above field and unit cosmetics; below volley trails, selection, and HUD.
 	z_index = 4
 
 
@@ -45,14 +42,8 @@ func ghost_records() -> Array:
 		var c: Dictionary = _contacts[uid]
 		out.append({
 			"uid": uid,
-			"position": [
-				roundf(c["position"].x * 100.0) / 100.0,
-				roundf(c["position"].y * 100.0) / 100.0,
-			],
-			"facing": [
-				roundf(c["facing"].x * 100.0) / 100.0,
-				roundf(c["facing"].y * 100.0) / 100.0,
-			],
+			"position": [roundf(c["position"].x * 100.0) / 100.0, roundf(c["position"].y * 100.0) / 100.0],
+			"facing": [roundf(c["facing"].x * 100.0) / 100.0, roundf(c["facing"].y * 100.0) / 100.0],
 			"strength": int(c.get("strength", 0)),
 			"state": int(c.get("state", 0)),
 			"tick": int(c.get("tick", 0)),
@@ -84,8 +75,7 @@ func clear() -> void:
 func alpha_for_age(age: int) -> float:
 	if stale_ticks <= 0:
 		return stale_alpha
-	var t: float = clampf(float(age) / float(stale_ticks), 0.0, 1.0)
-	return lerpf(fresh_alpha, stale_alpha, t)
+	return lerpf(fresh_alpha, stale_alpha, clampf(float(age) / float(stale_ticks), 0.0, 1.0))
 
 
 func _draw() -> void:
@@ -97,16 +87,12 @@ func _draw() -> void:
 		color.a = alpha_for_age(_tick - int(c["tick"]))
 		var pos: Vector2 = c["position"]
 		var forward: Vector2 = c["facing"]
-		if forward.length_squared() == 0.0:
-			forward = Vector2.DOWN
-		forward = forward.normalized()
+		forward = Vector2.DOWN if forward.length_squared() == 0.0 else forward.normalized()
 		var right := Vector2(-forward.y, forward.x)
 		var across: Vector2 = right * half_size.x
 		var deep: Vector2 = forward * half_size.y
 		var outline := PackedVector2Array([
-			pos + across - deep, pos + across + deep,
-			pos - across + deep, pos - across - deep,
-			pos + across - deep,
+			pos + across - deep, pos + across + deep, pos - across + deep, pos - across - deep, pos + across - deep,
 		])
 		draw_polyline(outline, color, line_width)
 		draw_line(pos, pos + forward * half_size.y * facing_tick_scale, color, line_width)

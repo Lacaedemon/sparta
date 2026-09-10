@@ -186,8 +186,7 @@ func test_shattered_router_escapes_and_reports_it() -> void:
 	unit._rout()
 	unit._shatter()
 
-	# Flight across the north edge to rout_margin is ~540 wu at flee pace.
-	var deadline: int = 1600
+	var deadline: int = 900   # flight is ~310 wu at flee pace; generous margin
 	while _battle.current_tick() < deadline and _infantry() != null:
 		await get_tree().physics_frame
 
