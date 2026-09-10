@@ -120,9 +120,11 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Publish the transcripts behind the verdicts
+        id: publish
         if: always()
-        # A verdict is a pure function of its transcript (DemoDefects is deterministic),
-        # but a transcript is NOT a pure function of the commit: the sim is bit-exact only
+        # A verdict is a pure function of its transcript plus the analyzer and the clip's
+        # declarations at the commit (DemoDefects is deterministic), but a transcript is
+        # NOT a pure function of the commit: the sim is bit-exact only
         # within one build and platform (docs/individual-collision-design.md), and the
         # melee-heavy clips have come back with different verdicts on this runner and on a
         # Windows machine at the same commit. So the runner's own dumps are the evidence:
@@ -142,7 +144,7 @@ jobs:
           overwrite: true
 
       - name: Ensure the tracking label exists
-        if: always() && steps.sweep.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.report)
+        if: always() && steps.sweep.outcome == 'success' && steps.publish.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.report)
         # `gh issue create --label` hard-fails on a label the repo does not have, and
         # upsert-issue.sh scopes its duplicate search to this same label. Creating it
         # idempotently here keeps the workflow self-contained rather than depending on
@@ -163,7 +165,9 @@ jobs:
         # outputs are empty and there is no report to thread, only a red run to read. A
         # PARTIAL dump is not that case -- the dump step has continue-on-error, so the
         # sweep still succeeds over what was dumped and the body says it was partial.
-        if: always() && steps.sweep.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.report)
+        # The upload must have succeeded too: the entry names the artifact as the evidence
+        # behind every row, so a verdict whose artifact never landed is not published.
+        if: always() && steps.sweep.outcome == 'success' && steps.publish.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.report)
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
