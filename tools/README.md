@@ -165,7 +165,8 @@ have coverage records:
 it warns on known uninstrumented autoloads
 (`scripts/Settings.gd`, `scripts/Replay.gd`, `scripts/Sfx.gd`)
 and fails if an unexpected file has zero instrumented lines
-(guarding against coverage tokenizer poisoning from unbalanced trailing comments).
+(guarding against the coverage instrumenter's block counter losing the rest of a file,
+e.g. to a bracket inside a multiline string, which it does not tokenize).
 
 If a diff comes up short, the fix is either genuine new test coverage for the
 newly-added lines, or -- when a specific line is structurally hard to cover (a
