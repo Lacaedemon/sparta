@@ -689,14 +689,11 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 func _arm_reinforce(axis: int) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK or _selected.is_empty():
 		return
-	var first: UnitRef = null
-	for unit in _selected:
-		if is_instance_valid(unit):
-			first = unit
-			break
-	if first != null and axis != BattleRef.ReinforceAxis.FILES:
+	if axis != BattleRef.ReinforceAxis.FILES:
+		# Refused whether or not a live unit is found: a selection whose units all died
+		# this tick must not arm the axis with the wrong HUD message either.
 		if _hud != null:
-			_hud.flash_message(ReinforceGuard.refusal_reason(first, first, axis))
+			_hud.flash_message(ReinforceGuard.refusal_reason(null, null, axis))
 		return
 	_armed_reinforce = axis
 	if _hud != null:
