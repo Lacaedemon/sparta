@@ -1062,7 +1062,7 @@ const RALLY_MORALE_THRESHOLD: float = 35.0
 var rally_morale_threshold: float = RALLY_MORALE_THRESHOLD
 
 # Ranged combat. A ranged unit looses volleys at any enemy within its missile_range
-# that isn't already in melee contact — far outreaching melee's ~62px contact, so
+# that isn't already in melee contact -- far outreaching melee's ~62px contact, so
 # archers skirmish from safety. The DEFAULT range stays below DETECTION_RANGE so an
 # auto-acquired target is always in detection too (a unit whose own detection_range is
 # shrunk below its missile range no longer gets this for free; equip_missile raises

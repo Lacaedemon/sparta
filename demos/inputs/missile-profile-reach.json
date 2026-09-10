@@ -1,0 +1,28 @@
+{
+  "_comment": "Per-type missile profiles (issue #1470, phase 2 of docs/longer-range-missile-design.md): a fresh, minimal three-regiment staging. Two player Archers regiments (30 men each) stand on one line at (580,300) and (740,300); the left one carries the PILUM missile profile (15 m = 300 wu reach, thrown flat, 2.0 s cadence, accuracy falling to half by maximum range) via the scenario's `missile` key, the right one keeps the default bow profile (8 m = 160 wu reach, lobbed, no falloff). One enemy Archers regiment (40 men, no shields, so every arrow that lands pierces) stands at (660,578.6), so BOTH shooters are exactly 290 wu from it: past the default 190-wu detection and 160-wu reach, inside the pilum's 300-wu reach. all_teams_control turns the enemy AI off (it stands where posted and, at 290 wu, cannot see or reach the players) and drill keeps the sim from ending. The pilum regiment acquires the enemy and looses on its own -- FIGHTING with target uid 2 from the first think ticks, first flat volley landing ~1.5 s after it faces -- while the unprofiled regiment beside it stays IDLE with nothing acquired for the whole clip. The click at tick 12 only selects the pilum regiment so the HUD names it and its soldier IDs render. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s). State is sampled every 30 ticks across the whole 480-tick clip for the standard defect checklist.",
+  "seed": "20260909",
+  "drill": true,
+  "all_teams_control": true,
+  "scenario": [
+    {"team": 0, "type": "Archers", "x": 580, "y": 300, "count": 30, "missile": 402},
+    {"team": 0, "type": "Archers", "x": 740, "y": 300, "count": 30},
+    {"team": 1, "type": "Archers", "x": 660, "y": 578.6, "count": 40}
+  ],
+  "camera": [
+    {"tick": 0, "x": 660.0, "y": 440.0, "zoom": 1.5}
+  ],
+  "steps": [
+    {"tick": 12, "click": [580, 300]}
+  ],
+  "frames": [8, 120, 240, 470],
+  "state": [8, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360, 390, 420, 450, 470],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [580, 300]},
+    {"tick": 8, "uid": 1, "field": "position", "value": [740, 300]},
+    {"tick": 8, "uid": 2, "field": "position", "value": [660, 578.6]},
+    {"tick": [30, 120], "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": [30, 120], "uid": 0, "field": "target_enemy_uid", "value": 2},
+    {"tick": 470, "uid": 1, "field": "state", "value": "IDLE"},
+    {"tick": 470, "uid": 1, "field": "target_enemy_uid", "value": null}
+  ]
+}

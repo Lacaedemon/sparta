@@ -12,7 +12,7 @@ class_name LoadoutRegistry
 ## these shared instances.
 ##
 ## Id ranges are disjoint on purpose — weapons 1-99, shields 101-199, armor
-## 201-299, mounts 301-399, missile profiles 401-499, 0 reserved invalid — so
+## 201-299, mounts 301-399, missile profiles 401-499, 0 reserved invalid -- so
 ## an id read against the wrong namespace (or a missed array fill, which
 ## PackedInt32Array defaults to 0) resolves to null instead of silently
 ## aliasing another type.

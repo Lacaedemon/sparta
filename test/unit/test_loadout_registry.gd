@@ -321,3 +321,72 @@ func test_no_shield_covers_nothing() -> void:
 	var none: Shield = LoadoutRegistry.shield(LoadoutRegistry.SHIELD_NONE)
 	assert_false(none.covers(0.0, 0.0),
 		"a zero-arc shield covers nothing, even a perfectly aligned attack")
+
+
+# --- missile profiles (docs/longer-range-missile-design.md, phase 2) ------------
+
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+const ROSTER_MISSILES: Array = [
+	LoadoutRegistry.MISSILE_BOW,
+	LoadoutRegistry.MISSILE_PILUM,
+]
+
+
+func test_every_missile_profile_resolves() -> void:
+	for type_id in ROSTER_MISSILES:
+		var m: MissileProfile = LoadoutRegistry.missile(type_id)
+		assert_not_null(m, "missile id %d resolves to a MissileProfile" % type_id)
+		if m == null:
+			continue
+		assert_eq(m.id, type_id, "the profile knows its own registry id")
+		assert_ne(m.display_name, "", "the profile has a display name")
+		assert_gt(m.range_m, 0.0, "every profile reaches somewhere")
+		assert_eq(m.range_wu, WorldScaleRef.m_to_wu(m.range_m), "converted once, bit-exact")
+		assert_gt(m.interval_s, 0.0, "every profile has a positive cadence")
+		assert_gt(m.damage_factor, 0.0, "every profile can wound")
+		assert_between(m.accuracy_at_max, 0.0, 1.0, "accuracy at max range is a fraction")
+		assert_true(m.launch_angle > 0.0 and m.launch_angle < PI * 0.5,
+			"the launch angle is one the level-ground solver accepts")
+
+
+func test_missile_ids_cover_exactly_the_roster_and_are_interned() -> void:
+	var ids: PackedInt32Array = LoadoutRegistry.missile_ids()
+	assert_eq(ids.size(), ROSTER_MISSILES.size(), "no unlisted missile profiles")
+	for type_id in ROSTER_MISSILES:
+		assert_has(Array(ids), type_id, "missile_ids() lists id %d" % type_id)
+		assert_true(is_same(LoadoutRegistry.missile(type_id), LoadoutRegistry.missile(type_id)),
+			"missile id %d returns the same shared instance on every lookup" % type_id)
+	assert_null(LoadoutRegistry.missile(0), "0 is reserved invalid")
+	assert_null(LoadoutRegistry.missile(LoadoutRegistry.WEAPON_PILUM),
+		"a melee-weapon id is a different namespace, not a missile profile")
+	assert_null(LoadoutRegistry.weapon(LoadoutRegistry.MISSILE_PILUM),
+		"and a missile id is not a melee weapon")
+
+
+func test_the_bow_profile_is_exactly_the_pre_profile_constants() -> void:
+	var bow: MissileProfile = LoadoutRegistry.missile(LoadoutRegistry.MISSILE_BOW)
+	assert_eq(bow.range_wu, Unit.RANGED_RANGE, "the same 8 m the game always shot at")
+	assert_eq(bow.interval_s, Unit.RANGED_INTERVAL, "the same cadence")
+	assert_eq(bow.damage_factor, Unit.RANGED_DAMAGE_FACTOR, "the same damage factor")
+	assert_eq(bow.accuracy_at_max, 1.0, "and no falloff, so nothing is retuned")
+	assert_eq(bow.launch_angle, ProjectilePhysics.ANGLE_ARCED, "the same lob")
+
+
+func test_every_missile_range_stays_inside_the_close_tier() -> void:
+	# Phase 2's bound: a profile that reached the far tier's promotion band would fire at a
+	# formation with no bodies to hit; promotion tests strictly below PROMOTE_RANGE.
+	for type_id in ROSTER_MISSILES:
+		var m: MissileProfile = LoadoutRegistry.missile(type_id)
+		assert_lt(m.range_wu, FormationTier.PROMOTE_RANGE,
+			"%s reaches %.0f wu, strictly inside the %.0f-wu promote range" \
+				% [m.display_name, m.range_wu, FormationTier.PROMOTE_RANGE])
+
+
+func test_the_pilum_out_reaches_the_bow_and_loses_accuracy_at_range() -> void:
+	var pilum: MissileProfile = LoadoutRegistry.missile(LoadoutRegistry.MISSILE_PILUM)
+	var bow: MissileProfile = LoadoutRegistry.missile(LoadoutRegistry.MISSILE_BOW)
+	assert_eq(pilum.range_m, 15.0, "the historical 15-20 m band, authored at its bottom")
+	assert_gt(pilum.range_wu, bow.range_wu, "a longer tier than the default reach")
+	assert_gt(pilum.range_wu, Unit.DETECTION_RANGE, "past the 190-wu detection default")
+	assert_lt(pilum.accuracy_at_max, 1.0, "and it falls off toward maximum range")
+	assert_lt(pilum.launch_angle, bow.launch_angle, "thrown flatter than a lobbed arrow")
