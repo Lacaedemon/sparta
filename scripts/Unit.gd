@@ -1838,13 +1838,17 @@ func about_face_goal() -> Vector2:
 ##    ahead of the plain about-face check below: a countermarch's opening phase IS an
 ##    Order.Type.ABOUT_FACE leaf, so about_face_goal() alone can't tell it apart from a bare
 ##    conversio or a rear-move's turn phase.
-## 3. An in-place turn (about_face_goal() != ZERO -> CONVERSIO, else QUARTER_TURN).
-## 4. A wheel mid-swing (WHEELING).
-## 5. A nudge order still translating (NUDGE_SIDESTEP/BACKSTEP/FORWARD_STEP, keyed by
+## 3. A reinforcement approach (REINFORCING) -- reported while the REINFORCE order's
+##    pass-through link is live, from the issue tick until the commit frees this unit;
+##    ahead of the turn family because the approach is a held-heading march that never
+##    arms a drill, so none of the checks below would otherwise name it.
+## 4. An in-place turn (about_face_goal() != ZERO -> CONVERSIO, else QUARTER_TURN).
+## 5. A wheel mid-swing (WHEELING).
+## 6. A nudge order still translating (NUDGE_SIDESTEP/BACKSTEP/FORWARD_STEP, keyed by
 ##    current_order.dir).
-## 6. The durable CYCLE_CHARGE stance (order_mode), independent of the above -- can layer
+## 7. The durable CYCLE_CHARGE stance (order_mode), independent of the above -- can layer
 ##    under MOVING or FIGHTING, but nothing above it applies while it's issued.
-## 7. Otherwise the baseline: FIGHTING / MARCHING / IDLE, from `state`.
+## 8. Otherwise the baseline: FIGHTING / MARCHING / IDLE, from `state`.
 func current_maneuver() -> int:
 	if _last_reshape_tick == Engine.get_physics_frames():
 		return Maneuver.FILE_DOUBLE_WIDEN if _last_reshape_widened else Maneuver.FILE_DOUBLE_DEEPEN
@@ -8158,6 +8162,7 @@ func to_snapshot_dict() -> Dictionary:
 		"last_reshape_widened": _last_reshape_widened,
 		"standoff_settle_until_tick": _standoff_settle_until_tick,
 		"anchor_hold_until_tick": _anchor_hold_until_tick,
+		"reinforce_cohesion_floor": reinforce_cohesion_floor,
 		"standoff_prev_state": _standoff_prev_state,
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
 		"formation_mirror_x": _formation_mirror_x,
@@ -8290,6 +8295,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_last_reshape_widened = bool(d["last_reshape_widened"])
 	_standoff_settle_until_tick = int(d.get("standoff_settle_until_tick", -1))
 	_anchor_hold_until_tick = int(d.get("anchor_hold_until_tick", -1))
+	reinforce_cohesion_floor = float(d.get("reinforce_cohesion_floor", REINFORCE_COHESION_FLOOR))
 	_standoff_prev_state = int(d.get("standoff_prev_state", state))
 	_ranks_closed = bool(d["ranks_closed"])
 	_formation_angle = float(d["formation_angle"])

@@ -626,6 +626,8 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 	# Set when the click resolves to a line-relief target (a friendly, not a SUPPORT
 	# ward) -- distinguishes it from a SUPPORT ward below, which always stays focused.
 	var relief_click: bool = false
+	# The reinforcement axis this click routes: set only by the armed-friendly branch below.
+	var reinforce: int = BattleRef.ReinforceAxis.NONE
 	if enemy != null:
 		target_uid = enemy.uid
 	else:
@@ -639,10 +641,13 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 		if friend != null and not _selected.has(friend) and reinforcing:
 			# Reinforcement insertion targets ANY live friendly, idle or engaged. Refuse
 			# up front (with the reason on the HUD) rather than issuing an order Battle
-			# would drop silently; the arm clears either way, like a stance arm.
-			var reason: String = _reinforce_refusal(friend)
+			# would drop silently. This click consumes the arm either way, like a stance
+			# arm; a click that resolves to anything else (open ground, an enemy, a
+			# selected friendly) leaves it armed for the next friendly, as documented.
+			var reason: String = _reinforce_refusal(friend, _armed_reinforce)
+			reinforce = _armed_reinforce
+			_armed_reinforce = BattleRef.ReinforceAxis.NONE
 			if reason != "":
-				_armed_reinforce = BattleRef.ReinforceAxis.NONE
 				if _hud != null:
 					_hud.flash_message(reason)
 				return
@@ -670,9 +675,6 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 	var group_attack: int = BattleRef.GroupAttackMode.FOCUSED
 	if uids.size() > 1 and (enemy != null or relief_click):
 		group_attack = _group_attack_mode
-	var reinforce: int = _armed_reinforce if target_uid >= 0 and enemy == null \
-			else BattleRef.ReinforceAxis.NONE
-	_armed_reinforce = BattleRef.ReinforceAxis.NONE   # one-shot: consumed by this click
 	_battle.enqueue_order(uids, world_pos, target_uid, _armed_mode, group_attack, gait,
 			_armed_knockback_indefinite, reinforce)
 	Sfx.play(&"order")
@@ -687,13 +689,20 @@ func _arm_reinforce(axis: int) -> void:
 		_hud.flash_message("Reinforce: right-click the friendly regiment to file into")
 
 
-## The first live selected unit's refusal reason against `host` ("" when the pair is valid),
-## the same check Battle re-runs at its apply site (UnitReinforce.refusal_reason).
-func _reinforce_refusal(host: UnitRef) -> String:
+## The refusal reason of the first selected unit that may not reinforce `host` along `axis`
+## ("" when every live selected unit may) -- the same per-unit check Battle re-runs at its
+## apply site (UnitReinforce.refusal_reason), applied to the whole selection so a mixed one
+## is refused up front rather than half of it marching and the rest halting at the apply site.
+func _reinforce_refusal(host: UnitRef, axis: int = BattleRef.ReinforceAxis.FILES) -> String:
+	var any_live: bool = false
 	for unit in _selected:
-		if is_instance_valid(unit):
-			return UnitReinforce.refusal_reason(unit, host)
-	return "Nothing selected to reinforce with"
+		if not is_instance_valid(unit):
+			continue
+		any_live = true
+		var reason: String = UnitReinforce.refusal_reason(unit, host, axis)
+		if reason != "":
+			return reason
+	return "" if any_live else "Nothing selected to reinforce with"
 
 
 # --- drag-to-form-up (move orders) -----------------------------------------

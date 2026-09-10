@@ -111,6 +111,21 @@ func _sample_unit() -> Unit:
 	return u
 
 
+func test_reinforce_cohesion_floor_round_trips_and_defaults_for_older_snapshots() -> void:
+	var original := _sample_unit()
+	original.reinforce_cohesion_floor = 0.8
+	var d := original.to_snapshot_dict()
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(d)
+	assert_almost_eq(restored.reinforce_cohesion_floor, 0.8, 0.001,
+		"a per-unit reinforcement cohesion floor survives a replay-seek restore")
+	d.erase("reinforce_cohesion_floor")
+	var older := Unit.new()
+	older.apply_snapshot_dict(d)
+	assert_almost_eq(older.reinforce_cohesion_floor, Unit.REINFORCE_COHESION_FLOOR, 0.001,
+		"a snapshot from before the field existed restores the default")
+
+
 func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	var original := _sample_unit()
 	var d := original.to_snapshot_dict()

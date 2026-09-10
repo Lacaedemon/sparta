@@ -3269,3 +3269,32 @@ func test_unarmed_right_click_on_an_idle_friendly_carries_no_axis() -> void:
 	assert_false(b._pending_orders.is_empty(), "a plain move still queues")
 	assert_eq(int(b._pending_orders[-1]["reinforce"]), BattleScript.ReinforceAxis.NONE,
 			"an ordinary order carries the NONE axis")
+
+
+func test_an_armed_click_on_open_ground_keeps_the_arm_for_the_next_friendly() -> void:
+	var s := _reinforce_setup()
+	var sm = s["sm"]
+	var b = s["battle"]
+	sm._arm_reinforce(BattleScript.ReinforceAxis.FILES)
+	sm._issue_order(Vector2(300, 300))   # open ground: a plain move, not the insertion
+	assert_eq(int(b._pending_orders[-1]["reinforce"]), BattleScript.ReinforceAxis.NONE,
+			"the ground move carries no axis")
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.FILES,
+			"the arm survives a click that resolved to nothing reinforceable")
+
+
+func test_a_mixed_selection_is_refused_as_a_whole() -> void:
+	var s := _reinforce_setup()
+	var sm = s["sm"]
+	var b = s["battle"]
+	var second := _unit()
+	second.uid = 13
+	second.position = Vector2(100, 200)
+	second.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR   # cannot interleave into the host
+	b._by_uid[13] = second
+	sm._selected.append(second)
+	assert_ne(sm._reinforce_refusal(s["host"]), "",
+			"one unqualified regiment refuses the whole selection up front")
+	sm._arm_reinforce(BattleScript.ReinforceAxis.FILES)
+	sm._issue_order(s["host"].position)
+	assert_true(b._pending_orders.is_empty(), "so nothing is queued for either regiment")

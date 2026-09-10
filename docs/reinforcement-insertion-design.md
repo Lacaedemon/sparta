@@ -1,7 +1,8 @@
 # Design: reinforcement insertion (doubling by number)
 
-Status: **files axis implemented** (phases 2 and 3 below; `ReinforceLayout.gd`, `UnitReinforce.gd`, the `Shift+M` gesture);
-the ranks axis (phase 4) and the follow-ups are still open.
+Status: **files axis implemented**.
+Phases 2 and 3 below shipped as `ReinforceLayout.gd`, `UnitReinforce.gd`, and the `Shift+M` gesture.
+The ranks axis (phase 4) and the follow-ups are still open.
 This document is the implementation plan, phased so each slice ships as its own reviewable PR.
 Builds on [#378](https://github.com/Lacaedemon/sparta/issues/378), [#362](https://github.com/Lacaedemon/sparta/issues/362), and [#369](https://github.com/Lacaedemon/sparta/issues/369), and connects to [#377](https://github.com/Lacaedemon/sparta/issues/377), [#373](https://github.com/Lacaedemon/sparta/issues/373), [#3](https://github.com/Lacaedemon/sparta/issues/3), [#1327](https://github.com/Lacaedemon/sparta/issues/1327), [`docs/historical-reshaping-maneuvers.md`](historical-reshaping-maneuvers.md), [`docs/unit-groups-grand-tactics-design.md`](unit-groups-grand-tactics-design.md), and [`docs/orders-queue-design.md`](orders-queue-design.md).
 

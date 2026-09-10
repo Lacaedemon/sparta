@@ -188,3 +188,68 @@ func test_a_host_that_leaves_the_line_halts_the_reserve() -> void:
 	assert_false(reserve.has_move_target, "the reserve halts where it stands")
 	await get_tree().physics_frame
 	assert_null(reserve.current_order, "and the order retires")
+
+
+func test_a_refused_order_halts_a_marching_reserve() -> void:
+	_spawn("Spearmen")   # a different loadout, so the pair is refused at the apply site
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	_battle._apply_order_cmd({
+		"units": [reserve.uid], "x": 300.0, "y": RESERVE_POS.y, "target": -1,
+		"mode": BattleScript.OrderMode.NORMAL,
+	})
+	# A plain move starts marching only after the order-response delay.
+	for _tick in range(COMMIT_BUDGET_TICKS):
+		if reserve.has_move_target:
+			break
+		await get_tree().physics_frame
+	assert_true(reserve.has_move_target, "the reserve is marching under a prior order")
+	_order_reinforce(reserve, host)
+	assert_null(reserve.current_order.friendly_target, "a refused pair arms no link")
+	assert_false(reserve.has_move_target, "and drops the stale march: the reserve halts")
+	await get_tree().physics_frame
+	assert_null(reserve.current_order, "so the no-op order retires next tick")
+
+
+func test_the_unwired_ranks_axis_and_far_or_touching_reserves_are_refused() -> void:
+	_spawn()
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	var files_before: int = UnitFormation.frontage(host)
+	assert_ne(UnitReinforce.refusal_reason(reserve, host, BattleScript.ReinforceAxis.RANKS), "",
+			"the ranks axis is refused rather than silently run as files")
+	_battle._apply_order_cmd({
+		"units": [reserve.uid], "x": host.position.x, "y": host.position.y,
+		"target": host.uid, "mode": BattleScript.OrderMode.NORMAL,
+		"reinforce": BattleScript.ReinforceAxis.RANKS,
+	})
+	assert_null(reserve.current_order.friendly_target, "a RANKS order arms nothing")
+	assert_false(reserve.has_move_target, "and starts no march")
+	assert_eq(UnitFormation.frontage(host), files_before, "the host is untouched")
+	reserve._in_enemy_contact = true
+	assert_ne(UnitReinforce.refusal_reason(reserve, host), "",
+			"a reserve whose bodies touch an enemy is refused even when not fighting")
+	reserve._in_enemy_contact = false
+	reserve.tier = FormationTier.FAR
+	assert_ne(UnitReinforce.refusal_reason(reserve, host), "",
+			"a far-tier reserve has no bodies to file in with and is refused")
+	reserve.tier = FormationTier.CLOSE
+	assert_eq(UnitReinforce.refusal_reason(reserve, host), "", "restored, the pair is allowed")
+
+
+func test_a_host_that_stops_qualifying_mid_approach_halts_the_reserve() -> void:
+	_spawn()
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	_order_reinforce(reserve, host)
+	await get_tree().physics_frame
+	assert_eq(reserve.current_order.friendly_target, host, "the approach is under way")
+	host.set_formation(Unit.FORMATION_SQUARE)   # no files left to open
+	await get_tree().physics_frame
+	assert_null(reserve.current_order.friendly_target if reserve.current_order != null else null,
+			"the live guards drop the link once the host stops qualifying")
+	assert_false(reserve.has_move_target, "and the reserve halts")
+	assert_eq(host.soldiers, 40, "nothing was interleaved into the square")
