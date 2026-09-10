@@ -108,3 +108,31 @@ func test_battle_snapshot_restore_preserves_pilum_profile() -> void:
 	assert_almost_eq(pilum.skirmish_kite_distance,
 			15.0 * WorldScaleRef.WU_PER_M * Unit.SKIRMISH_KITE_FRACTION, 0.001, "kite distance preserved")
 
+
+func test_unknown_missile_profile_in_scenario_warns_and_keeps_defaults() -> void:
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.drill_mode = true
+	_battle.all_teams_control = true
+	_battle.scenario = [
+		{"team": 0, "type": "Archers", "x": 500, "y": 300, "count": 30,
+				"missile": 99},
+	]
+	add_child(_battle)
+	await get_tree().physics_frame
+	var spawned: Unit = null
+	for u in get_tree().get_nodes_in_group("units"):
+		if u is Unit and u.team == 0:
+			spawned = u
+			break
+	assert_not_null(spawned, "unit spawned despite unknown missile profile id")
+	if spawned == null:
+		return
+	assert_eq(spawned.missile_type_id, LoadoutRegistry.MISSILE_BOW, "unit keeps the default bow profile")
+	assert_almost_eq(spawned.missile_range, Unit.RANGED_RANGE, 0.001, "keeps default range")
+	assert_almost_eq(spawned.missile_interval, Unit.RANGED_INTERVAL, 0.001, "keeps default interval")
+	assert_almost_eq(spawned.missile_damage_factor, Unit.RANGED_DAMAGE_FACTOR, 0.001, "keeps default damage factor")
+	assert_almost_eq(spawned.missile_accuracy_at_max, Unit.RANGED_ACCURACY_AT_MAX, 0.001, "keeps default accuracy")
+	assert_almost_eq(spawned.detection_range, Unit.DETECTION_RANGE, 0.001, "keeps default detection")
+	assert_almost_eq(spawned.skirmish_kite_distance, Unit.SKIRMISH_KITE_DISTANCE, 0.001, "keeps default kite distance")
+
+

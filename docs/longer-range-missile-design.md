@@ -310,7 +310,7 @@ Every read site listed in the current-state section above is then rewritten agai
 - `Battle.ROUT_MARGIN` stops following the missile range and follows `DETECTION_RANGE` alone;
   a router does not need to run past artillery range to be gone.
 
-- `SKIRMISH_KITE_DISTANCE` becomes a fraction of the kiting unit's own `missile_range`, proposed default 0.6, so a longer-ranged skirmisher kites proportionally further out.
+- `SKIRMISH_KITE_DISTANCE` becomes a fraction of the kiting unit's own `missile_range` (`SKIRMISH_KITE_FRACTION = 0.625`), so a longer-ranged skirmisher kites proportionally further out.
 
 Target acquisition needs a fourth decision.
 `DETECTION_RANGE` at 190 wu can no longer bound the missile range, so a ranged unit needs either its own larger detection radius or an acquisition path that consults the missile range directly.
@@ -319,7 +319,7 @@ This design proposes the former, since a per-unit `detection_range` already exis
 ### Range in the damage formula
 
 `UnitCombat.shoot` gains one term and keeps its RNG ordering unchanged, which matters because the seeded roll is drawn first specifically to keep the stream deterministic.
-The proposed term is a linear accuracy falloff from 1.0 at point blank to `accuracy_at_max` at the profile's range, applied alongside `missile_defense_factor`, with a default of 1.0 that leaves every existing replay bit-identical.
+Phase 2 implemented this as a linear accuracy falloff from 1.0 at point blank to `accuracy_at_max` at the profile's range, applied alongside `missile_defense_factor`, with a default of 1.0 that leaves every existing replay bit-identical.
 
 ### Trajectory selection
 
@@ -351,9 +351,11 @@ Add the missile profile to `scripts/LoadoutRegistry.gd`, the `Unit.missile_range
 Ranges stay strictly inside `FormationTier.PROMOTE_RANGE` (400 wu, 20 m) in this phase, so nothing depends on far-tier combat;
 promotion tests `< PROMOTE_RANGE` (`scripts/FormationTier.gd`), so 400 wu itself is already outside the bound.
 Only the pilum row fits, authored at the bottom of its band (15 m, 300 wu).
-That range is past the 190-wu `DETECTION_RANGE` default, and `scripts/Unit.gd`'s own comment records the invariant that the missile range stays below detection so an auto-acquired target is always in detection too.
-So the acquisition decision is in scope for this phase and not deferrable: the profile must also raise the unit's `detection_range` to at least its missile range.
-The per-unit `detection_range` field already exists and is settable before the node enters the tree (`scripts/Unit.gd`), so this is an assignment rather than new machinery.
+That range is past the 190-wu `DETECTION_RANGE` default;
+the pre-Phase-2 invariant where missile range stayed below default detection only held for the baseline 160-wu bow.
+So the acquisition decision was in scope for Phase 2.
+Equipping a profile raises the unit's `detection_range` to at least its missile range so auto-acquisition covers the profile's reach.
+The per-unit `detection_range` field already exists and is settable before the node enters the tree (`scripts/Unit.gd`), so `equip_missile` assigns it directly.
 The javelin's 400-600 wu band starts at that bound and so waits for the far-tier work, and the bow and sling rows are authored but not yet assigned to a roster unit.
 
 Acceptance tests: a unit with no profile reproduces today's `RANGED_RANGE`, `RANGED_INTERVAL`, and `RANGED_DAMAGE_FACTOR` exactly;
@@ -380,11 +382,11 @@ Demo: a skirmisher shooting a heavy unit to the suppression floor and no further
 
 ### Phase 4 (trajectory selection and long-range ballistics)
 
-Implement the angle choice, the accuracy falloff, and the height-aware interception, and measure gravity at both ends of the range band.
+Implement the angle choice and the height-aware interception (accuracy falloff was pulled forward and implemented in Phase 2), and measure gravity at both ends of the range band.
 
 Acceptance tests: `solve_launch` at each profile's maximum range produces a peak height under a stated fraction of field depth and a flight time under a stated bound;
 a volley fired over a friendly line at a lobbing angle is not intercepted, while the same shot fired flat is;
-the accuracy falloff at its 1.0 default leaves the damage formula bit-identical.
+the accuracy falloff term (implemented in Phase 2) leaves the damage formula bit-identical at its 1.0 default.
 
 Demo: a lobbed volley passing over a friendly line to land on the enemy behind it, with the state dump confirming the interception did not fire.
 

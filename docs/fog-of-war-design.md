@@ -109,7 +109,8 @@ Verified against the tree at the time of writing.
 - `Battle.ROUT_MARGIN` is `UnitRef.DETECTION_RANGE` = 190 wu (it was `maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)` until the missile reach became per unit), and `field_with_margin = field.grow(ROUT_MARGIN)` (`scripts/Battle.gd:41-42`, recomputed for the live map at `:531`) is what every spawned unit receives as `Unit.retreat_bounds` (`:1088`).
   A router that leaves it is removed from play by `Unit._escape()`.
   The comment above it states an invariant this design has to honour: the margin is sized to "the game's maximum visual range", with `DETECTION_RANGE` standing in for "a fog-of-war vision range, which this game doesn't have yet", "so a fleeing unit stays a plausible target for as long as it's still visible, rather than vanishing early".
-  A real sight range longer than 190 wu breaks that invariant, so the parameter section below has to say what happens to the margin.
+  Phase 2 equips pilum units with 300-wu detection while intentionally keeping `Battle.ROUT_MARGIN` battle-wide and fixed at 190 wu to prevent per-unit boundary drift.
+  A real sight range longer than 190 wu still breaks that invariant under fog of war, so the parameter section below specifies what happens to the margin.
 
 ### What the AI can see
 

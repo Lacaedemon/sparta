@@ -39,7 +39,8 @@ static func record_of(u) -> Dictionary:
 	# Include missile_type_id ONLY when it differs from the default profile
 	# (LoadoutRegistry.MISSILE_BOW). Omitting it for the default keeps the digest
 	# byte-identical to the pre-missile 9-field format, so every existing demo script
-	# and replay stamp stays valid without re-recording.
+	# and replay stamp stays valid without re-recording. Unlike weapon_type_id,
+	# missile_type_id is not switchable mid-battle, so it remains spawn-stable.
 	if int(u.missile_type_id) != LoadoutRegistry.MISSILE_BOW:
 		rec["missile"] = int(u.missile_type_id)
 	return rec
@@ -91,12 +92,24 @@ static func legacy_digest(records: Array) -> String:
 	return "\n".join(parts).md5_text()
 
 
+static func _all_default_missiles(records: Array) -> bool:
+	for r in records:
+		if r.has("missile") and int(r["missile"]) != LoadoutRegistry.MISSILE_BOW:
+			return false
+	return true
+
+
 ## Check if a stamp matches the layout represented by `records`, accepting either the
-## canonical digest or the legacy pre-missile digest for backward compatibility.
+## canonical digest, or the legacy pre-missile digest when every record uses the
+## default missile profile.
 static func matches(stamp: String, records: Array) -> bool:
 	if stamp == "":
 		return false
-	return stamp == digest(records) or stamp == legacy_digest(records)
+	if stamp == digest(records):
+		return true
+	if _all_default_missiles(records) and stamp == legacy_digest(records):
+		return true
+	return false
 
 
 ## The current live layout's fingerprint, or "" when no units are on the field (nothing to
@@ -109,6 +122,7 @@ static func of_tree(tree: SceneTree) -> String:
 
 
 ## The current live layout's legacy fingerprint, or "" when no units are on the field.
+## Provided primarily for test assertions and migration comparisons.
 static func legacy_of_tree(tree: SceneTree) -> String:
 	var records: Array = records_of_tree(tree)
 	if records.is_empty():
@@ -117,12 +131,12 @@ static func legacy_of_tree(tree: SceneTree) -> String:
 
 
 ## Check if a stamp matches the live layout in `tree`, accepting either the canonical
-## digest or the legacy pre-missile digest for backward compatibility.
+## digest or the legacy pre-missile digest when every unit has the default profile.
 static func matches_tree(stamp: String, tree: SceneTree) -> bool:
 	if stamp == "":
 		return false
 	var records: Array = records_of_tree(tree)
 	if records.is_empty():
 		return false
-	return stamp == digest(records) or stamp == legacy_digest(records)
+	return matches(stamp, records)
 
