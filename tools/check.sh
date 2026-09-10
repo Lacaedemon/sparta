@@ -44,8 +44,9 @@
 #             SPARTA_CHECK_PATCH_COVERAGE_TARGET). Also checks that files with
 #             added executable lines have coverage records: warns on known
 #             excluded autoloads and fails if an uninstrumented file has
-#             added executable lines (guarding against coverage
-#             instrumenter poisoning).
+#             added executable lines (guarding against the coverage
+#             instrumenter's block counter losing the rest of a file,
+#             e.g. to a bracket inside a multiline string).
 #             Regenerates coverage/lcov.info fresh (runs `coverage` as a
 #             dependency), so it's slow -- not in the default set. Run it before
 #             pushing a scripts/ change rather than discovering a codecov/patch
@@ -645,7 +646,8 @@ resolve_patch_coverage_base() {
 # lines have coverage records in lcov.info. Warns for known uninstrumented
 # autoload singletons (test/pre_run_hook.gd EXCLUDE_PATHS), and fails for any
 # other file whose executable lines produced 0 instrumented lines (detecting
-# coverage tokenizer poisoning from unbalanced comments).
+# the coverage instrumenter's block counter losing the rest of a file, e.g.
+# to a bracket inside a multiline string, which it does not tokenize).
 check_uninstrumented_patch_lines() {
   local added="$1"
   local lcov="$2"
@@ -726,7 +728,7 @@ check_uninstrumented_patch_lines() {
     else
       err "ERROR: $file has $count added executable line(s) but no instrumented lines in coverage report."
       err "The coverage tool produced no instrumented lines for a file that has executable added lines"
-      err "(likely a trailing comment with an unbalanced bracket poisoning the instrumenter)."
+      err "(likely an unbalanced bracket the instrumenter's block counter cannot see past, e.g. inside a multiline string)."
       failed=1
     fi
   done

@@ -7,6 +7,15 @@
 # path lets claude.yml re-dispatch a review after an @claude run pushes commits
 # — keep the file named claude-code-review.yml (or set claude.yml's
 # review-workflow-file to match).
+#
+# A PR that conflicts with main gets NO pull_request run of this workflow at
+# all -- not a skipped one, none -- because GitHub creates no pull_request runs
+# while a PR has a merge conflict. The same is true of every other
+# pull_request-triggered workflow here, so a review that "never started" after
+# a push is usually that, not a reviewer outage. conflicting-pr-notice.yml
+# posts a PR comment when it happens; the workflow_dispatch path below reviews
+# such a head on demand (`gh workflow run claude-code-review.yml -f
+# pr_number=N`).
 name: Claude Code Review
 
 on:

@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Coverage-tooling change with no gameplay effect: the vendored coverage addon stops counting brackets inside trailing comments and string literals when deciding which lines to instrument, plus an upstream-defect triage in the PR body."
+}
