@@ -140,6 +140,21 @@ script under `demos/inputs/`:
   contorting a staging around the default map's fixed forest and hill -- and note a replay
   recorded on a custom map carries it in its header, so playback reconstructs the same
   battlefield (`demos/inputs/custom-map-defile.json` is the worked example).
+
+- `deployment_gap_m` (optional) -- **open the battle at a chosen deployment distance**:
+  the distance in metres between the two spawn lines (the default map's is 29 m).
+  Team 0's line stays put,
+  team 1's line moves to that distance below it,
+  and the field grows downward with it so team 1 keeps its ground behind the line.
+  It is the same `Battle.deployment_gap_m` a campaign clash sets from its defended province's `deployment_gap_m`,
+  so a demo can stage a per-clash deployment without a campaign.
+  Applied after `map`, on the map's own lines, so the two compose.
+  Strict like `map`:
+  a non-numeric, non-positive, or non-finite value fails the recording loudly.
+  Beyond 30 m both armies open in the far tier (see `tier_ranges` below for the thresholds)
+  and promote back as they close.
+  (`demos/inputs/campaign-deployment-gap.json` is the worked example.)
+
 - `drill` (optional bool, **default it to `true` unless the demo needs an enemy**) -- solo/
   no-opponent rehearsal: only the player army (team 0) deploys and the battle never auto-ends
   on "no enemies", so a unit can rehearse a maneuver with no combat. Set `"drill": true` for
@@ -627,6 +642,87 @@ strict digest, a clip it calls `SAME` is genuinely unchanged and skips the expen
 `jq` field-level compare entirely, so the field analysis runs only for the clips the hash flagged
 -- each reported with its exact first divergent tick and tier. `UNKNOWN` (a tree lacking a stream,
 e.g. one predating the hashing) falls back to the full `jq` compare.
+
+### Reproducing a sweep verdict
+
+The weekly absolute sweep (`.github/workflows/website-demo-defect-sweep.yml`,
+reporting to the `demo-defect-sweep` tracking issue) judges every catalog clip on the
+Linux runner.
+A verdict is a pure function of its transcript
+plus the analyzer and the clip's `expect`/`defect_exemptions` declarations at the commit
+(`DemoDefects` is deterministic),
+but a transcript is **not** a pure function of the commit:
+the sim is bit-exact only within one build and platform
+(`docs/individual-collision-design.md`, decision 4),
+and a Windows dump of the same commit diverges from the runner's within the first second,
+contact or not.
+Measured 2026-09-09 over six clips:
+four (`sidestep`, `support`, `cycle_charge`, `showcase`) first differ in the cheap
+(positions) tier at tick 21,
+`rout_rally` in the cheap tier at tick 61,
+and `general_doctrine_reserves` in the full tier at tick 60
+(non-position state moved before any position did).
+`sidestep` is a lone regiment side-stepping with no enemy in reach;
+its gap is sub-`0.01` wu by tick 300,
+and melee then amplifies the gap to whole soldiers' positions
+(tracked in #1566).
+So a verdict row is never reproduced by re-dumping the clip on another machine.
+It is reproduced from the runner's own transcript, which every sweep run publishes,
+with the checkout at the run's commit so the analyzer and declarations match too:
+
+```sh
+# 0. Check out the commit the tracking issue's `Commit:` line names.
+#    The analyzer and the clip's declarations are inputs to the row as much as the
+#    transcript is;
+#    re-judging an old dump with newer code can legitimately differ.
+#    (The stored analyzer JSON in the artifact is the historical verdict as judged.)
+git checkout <commit>
+
+# 1. The run's artifact, kept 90 days;
+#    the tracking issue names the run and artifact.
+#    It holds transcripts/ (hash streams and full state dumps, one directory per clip,
+#    plus platform.txt), analyzer-json/ (the raw per-clip verdicts) and sweep.md.
+gh run download <run-id> -R Lacaedemon/sparta -n website-demo-defect-sweep-<run-id> -D /tmp/tx-ci
+cat /tmp/tx-ci/transcripts/platform.txt   # os=Linux, the Godot version, the tick cadence
+
+# 2. Re-judge one clip from the runner's dump.
+#    At the run's commit this reproduces the row on any platform.
+#    (Verified once: CI's six-clip report re-judged on Windows was identical.)
+#    The --script argument follows the row's catalog type, exactly as the sweep passes
+#    it (demo_clip_script_source in tools/lib/demo-defect-metrics.sh).
+#    An input row (`type=input`) takes its own scripted-input file:
+"$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- /tmp/tx-ci/transcripts/<clip> \
+    --json --script demos/inputs/<clip-script>.json
+#    A replay row has no input script.
+#    When its sidecar exists -- the catalog SOURCE with .json replaced by
+#    .defects.json, e.g. demos/support_demo.json pairs with
+#    demos/support_demo.defects.json -- pass that:
+"$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- /tmp/tx-ci/transcripts/<clip> \
+    --json --script demos/<replay-source>.defects.json
+#    and when it does not, pass no --script at all:
+"$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- /tmp/tx-ci/transcripts/<clip> \
+    --json
+
+# 3. To see how far YOUR platform's sim drifts from the runner's on that clip, dump it
+#    here and compare the hash streams (first divergent tick + tier):
+SPARTA_DUMP_CLIPS=<clip> website/tools/dump-demo-states.sh /tmp/tx-local
+"$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- /tmp/tx-ci/transcripts/<clip> \
+    --compare-hashes /tmp/tx-local/<clip>
+```
+
+`SPARTA_DUMP_CLIPS` narrows both the dump and the sweep script to the named rows
+(comma-separated), so a one-clip local reproduction costs one clip, not the catalog.
+When the clip you need is not in the latest sweep's artifact, dispatch a narrowed run
+from any branch without touching the tracking issue:
+
+```sh
+gh workflow run website-demo-defect-sweep.yml -R Lacaedemon/sparta --ref <branch> \
+    -f report=false -f clips=<clip>[,<clip>...]
+```
+
+Its artifact lands on that run under the same name.
+Decide anything that turns on a verdict from the runner's transcript, not a local one
+-- the local number is fine to report and wrong to gate on.
 
 ### State dump wrapper (`dump-state.sh`) and comparator (`compare-demos.sh`)
 

@@ -24,6 +24,14 @@
 #   GODOT_BIN                Godot 4.7 binary (default: godot).
 #   SPARTA_DUMP_STATE_TIMEOUT   Hard per-clip timeout in seconds (default 300).
 #   SPARTA_STATE_TICK_STEP   Tick sampling cadence (default 60 -- once per sim second).
+#   SPARTA_DUMP_CLIPS        Comma-separated catalog clip names to dump (default: empty,
+#                            the whole catalog). A one-clip dump is the cheap way to
+#                            reproduce a single sweep row, or to get one platform's
+#                            transcript of a clip for a cross-platform hash compare.
+#
+# Every dump also writes OUTPUT_DIR/platform.txt (OS, Godot version, tick cadence): the
+# sim is bit-exact only within one build and platform, so a transcript tree that travels
+# (a CI artifact diffed against a local dump) has to say where it came from.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,9 +41,12 @@ OUT_DIR="${1:-$PROJECT_DIR/website/state-transcripts}"
 GODOT_BIN="${GODOT_BIN:-godot}"
 DUMP_TIMEOUT="${SPARTA_DUMP_STATE_TIMEOUT:-300}"
 TICK_STEP="${SPARTA_STATE_TICK_STEP:-60}"
+ONLY_CLIPS="${SPARTA_DUMP_CLIPS:-}"
 
 # shellcheck source=../../tools/lib/run-bounded.sh
 . "$DEFAULT_ROOT/tools/lib/run-bounded.sh"
+# shellcheck source=../../tools/lib/demo-catalog-selection.sh
+. "$DEFAULT_ROOT/tools/lib/demo-catalog-selection.sh"
 # Each tree's OWN catalog decides what it dumps (falling back to this script's sibling
 # for a tree that predates the extraction). This is what makes removed clips real in
 # the diff: a clip the PR drops from the catalog still dumps on the merge-base side,
@@ -47,11 +58,23 @@ else
   # shellcheck source=demo-catalog.sh
   . "$SCRIPT_DIR/demo-catalog.sh"
 fi
+# A misspelt narrowing must fail here, not dump nothing and exit 0.
+demo_catalog_check_selection "$ONLY_CLIPS"
 
 mkdir -p "$OUT_DIR"
 
 # Import once so autoloads / class_name globals resolve in the target project.
 run_bounded "$DUMP_TIMEOUT" "$GODOT_BIN" --headless --import --path "$PROJECT_DIR" >/dev/null 2>&1 || true
+
+# Godot prints its version as the last line of --version (a console wrapper may print
+# more before it).
+GODOT_VERSION="$("$GODOT_BIN" --version 2>/dev/null | tail -n1 || true)"
+{
+  printf 'os=%s\n' "$(uname -s)"
+  printf 'godot=%s\n' "${GODOT_VERSION:-unknown}"
+  printf 'tick_step=%s\n' "$TICK_STEP"
+  printf 'clips=%s\n' "${ONLY_CLIPS:-all}"
+} > "$OUT_DIR/platform.txt"
 
 # The tick list for a clip: 8 (an early sanity sample, past spawn), then every TICK_STEP
 # ticks through the covered range, always including the final covered tick.
@@ -69,6 +92,9 @@ tick_list() {
 for spec in "${DEMOS[@]}"; do
   IFS='|' read -r NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE <<<"$spec"
   TYPE="${TYPE:-replay}"
+  if ! demo_catalog_selected "$NAME" "$ONLY_CLIPS"; then
+    continue
+  fi
   if [ ! -f "$PROJECT_DIR/$SOURCE" ]; then
     # A clip added (or renamed) by the PR won't exist in a merge-base checkout; the diff
     # script reports the missing transcript dir as a new/removed clip, so just note it.

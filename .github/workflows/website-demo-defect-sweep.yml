@@ -29,9 +29,28 @@ on:
     # runners.
     - cron: '0 7 * * 1'
   workflow_dispatch:
+    inputs:
+      report:
+        description: >-
+          Thread this run's verdicts onto the tracking issue. Turn off for a diagnostic
+          dispatch from a branch, whose transcripts are wanted as an artifact without
+          logging a non-main commit's verdicts as the catalog's weekly health.
+        type: boolean
+        default: true
+      clips:
+        description: >-
+          Comma-separated catalog clip names to dump and judge (empty = the whole
+          catalog). A one-clip dispatch is the cheap way to get this runner's transcript
+          of a clip whose verdict differs from a local run.
+        type: string
+        default: ''
 
+# A diagnostic dispatch (report=false) gets its own group: it shares the runner budget
+# but must not cancel an in-flight Monday sweep, whose report it would not replace since
+# it skips the upsert. Reporting runs (scheduled, or a dispatch with report=true) still
+# supersede each other, as before.
 concurrency:
-  group: website-demo-defect-sweep
+  group: website-demo-defect-sweep-${{ github.event_name == 'workflow_dispatch' && !inputs.report && 'diagnostic' || 'report' }}
   cancel-in-progress: true
 
 permissions:
@@ -46,10 +65,16 @@ jobs:
     # this is CPU-bound rather than clip-duration-bound; website-demo-diff.yml budgets 18
     # minutes for each of its TWO sweeps, so one sweep plus the analyzer fits comfortably.
     timeout-minutes: 45
+    env:
+      # Empty on a scheduled run (dump and judge everything); a dispatch may narrow it.
+      # Job-wide because BOTH the dump and the sweep read it: a sweep that saw the whole
+      # catalog while the dump saw one clip would report every other row as missing.
+      SPARTA_DUMP_CLIPS: ${{ inputs.clips }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Godot project
+        id: godot
         # GUT is needed because the project's test files extend GutTest, so the import must
         # resolve that class; the import itself happens inside dump-demo-states.sh, which
         # is why run-import is off here (same reason website-demo-diff.yml turns it off).
@@ -69,15 +94,22 @@ jobs:
         continue-on-error: true
         timeout-minutes: 25
         run: |
-          GODOT_BIN=godot website/tools/dump-demo-states.sh /tmp/transcripts "$GITHUB_WORKSPACE"
+          GODOT_BIN=godot website/tools/dump-demo-states.sh /tmp/sweep/transcripts "$GITHUB_WORKSPACE"
 
       - name: Run the absolute defect sweep
         id: sweep
         if: always()
+        env:
+          # Keep every analyzer run's raw JSON (the per-verdict worst/threshold numbers
+          # the compact table drops) NEXT TO the transcript tree, not inside it: the
+          # whole-tree consumers (analyze_transcript.gd --compare-hash-trees,
+          # website-demo-state-diff.sh) read every immediate subdirectory as a clip, so
+          # a directory of JSON inside the tree would surface as a bogus clip row.
+          DEMO_DEFECT_JSON_DIR: /tmp/sweep/analyzer-json
         run: |
           set -euo pipefail
           GODOT_BIN=godot tools/ci/website-demo-defect-sweep.sh \
-            /tmp/transcripts /tmp/sweep.md "$GITHUB_WORKSPACE" | tee /tmp/sweep-stdout.txt
+            /tmp/sweep/transcripts /tmp/sweep/sweep.md "$GITHUB_WORKSPACE" | tee /tmp/sweep-stdout.txt
           # SWEEP-SUMMARY<TAB>total<TAB>clean<TAB>defect<TAB>malformed<TAB>na<TAB>missing
           SUMMARY=$(grep '^SWEEP-SUMMARY' /tmp/sweep-stdout.txt | head -n1)
           {
@@ -87,8 +119,32 @@ jobs:
             echo "malformed=$(printf '%s' "$SUMMARY" | cut -f5)"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Ensure the tracking label exists
+      - name: Publish the transcripts behind the verdicts
+        id: publish
         if: always()
+        # A verdict is a pure function of its transcript plus the analyzer and the clip's
+        # declarations at the commit (DemoDefects is deterministic), but a transcript is
+        # NOT a pure function of the commit: the sim is bit-exact only
+        # within one build and platform (docs/individual-collision-design.md), and the
+        # melee-heavy clips have come back with different verdicts on this runner and on a
+        # Windows machine at the same commit. So the runner's own dumps are the evidence:
+        # re-running the analyzer over them reproduces a row anywhere, without re-dumping
+        # on a machine whose sim may not match, and their hash streams localize a
+        # cross-platform divergence to its first tick (analyze_transcript.gd
+        # --compare-hashes) instead of leaving it to be reconstructed from the verdicts.
+        # The artifact root holds transcripts/ (the tree), analyzer-json/ and sweep.md.
+        # overwrite: a re-run of a failed job keeps the run id, and a v4 artifact is
+        # immutable, so without it the retry's upload fails on the name.
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-demo-defect-sweep-${{ github.run_id }}
+          path: /tmp/sweep
+          retention-days: 90
+          if-no-files-found: warn
+          overwrite: true
+
+      - name: Ensure the tracking label exists
+        if: always() && steps.sweep.outcome == 'success' && steps.publish.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.report)
         # `gh issue create --label` hard-fails on a label the repo does not have, and
         # upsert-issue.sh scopes its duplicate search to this same label. Creating it
         # idempotently here keeps the workflow self-contained rather than depending on
@@ -103,19 +159,38 @@ jobs:
             --force
 
       - name: Upsert the tracking issue
-        if: always()
+        # A diagnostic dispatch (report=false) stops before this step: its transcripts are
+        # on the run as an artifact, and nothing from a non-main commit reaches the log.
+        # So does a failed sweep (a selection naming no catalog clip, a missing jq): its
+        # outputs are empty and there is no report to thread, only a red run to read. A
+        # PARTIAL dump is not that case -- the dump step has continue-on-error, so the
+        # sweep still succeeds over what was dumped and the body says it was partial.
+        # The upload must have succeeded too: the entry names the artifact as the evidence
+        # behind every row, so a verdict whose artifact never landed is not published.
+        if: always() && steps.sweep.outcome == 'success' && steps.publish.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.report)
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ARTIFACT: website-demo-defect-sweep-${{ github.run_id }}
+          RUNNER_OS: ${{ runner.os }}
+          GODOT_VERSION: ${{ steps.godot.outputs.godot-version }}
           SHA: ${{ github.sha }}
           TOTAL: ${{ steps.sweep.outputs.total }}
           CLEAN: ${{ steps.sweep.outputs.clean }}
           DEFECT: ${{ steps.sweep.outputs.defect }}
           MALFORMED: ${{ steps.sweep.outputs.malformed }}
           DUMP_OUTCOME: ${{ steps.dump.outcome }}
+          CLIPS: ${{ inputs.clips }}
         run: |
           set -euo pipefail
           MARKER="<!-- sparta-demo-defect-sweep -->"
+          # A narrowed dispatch that still reports must say so: its table covers the named
+          # clips only, and reads as diagnostic rather than as the catalog's weekly health.
+          if [ -n "$CLIPS" ]; then
+            SCOPE=$(printf '> [!NOTE]\n> Narrowed dispatch: only `clips=%s` were dumped and judged, on their own rather than against a diff (#1147). A diagnostic entry, not the catalog'"'"'s weekly health -- the row counts below are for this selection.' "$CLIPS")
+          else
+            SCOPE='Every row of `website/tools/demo-catalog.sh`, judged on its own rather than against a diff (#1147).'
+          fi
           # A partial dump would otherwise render as a wall of "no transcript" rows that
           # read like mass defects rather than missing data.
           NOTE=""
@@ -123,8 +198,12 @@ jobs:
             NOTE=$(printf '\n> [!WARNING]\n> The catalog dump did not complete (`%s`), so this sweep judged only the clips dumped before it stopped. Rows reading `no transcript` below are undumped, not necessarily defective.\n' "$DUMP_OUTCOME")
           fi
           TITLE="Website demo catalog: absolute defect sweep"
-          BODY=$(printf '%s\n## Absolute DemoDefects sweep of the website demo catalog\n\nEvery row of `website/tools/demo-catalog.sh`, judged on its own rather than against a diff (#1147). Commit: %s\nRun: %s\n%s\n%s\n\n<sub>Informational only -- never a merge gate. Re-run on demand via this workflow'"'"'s `workflow_dispatch`, or wait for the Monday sweep; each run threads onto this issue as a comment so the catalog'"'"'s health is diffable week to week. A `defect` row is a real DemoDefects verdict on a published clip; a `malformed` row means that clip'"'"'s own `expect`/`defect_exemptions` block is broken and NOTHING was judged for it.</sub>' \
-            "$MARKER" "$SHA" "$RUN_URL" "$NOTE" "$(cat /tmp/sweep.md)")
+          # The platform line and the artifact pointer are what make a row reproducible:
+          # the sim is bit-exact only within one build and platform, so a verdict is
+          # reproduced by re-running the analyzer over THIS run's transcripts, never by
+          # re-dumping the clip on another machine.
+          BODY=$(printf '%s\n## Absolute DemoDefects sweep of the website demo catalog\n\n%s\nCommit: %s\nRun: %s\nJudged on %s with Godot %s. The transcripts behind every row are the run'"'"'s `%s` artifact (kept 90 days) -- see "Reproducing a sweep verdict" in `demos/README.md`.\n%s\n%s\n\n<sub>Informational only -- never a merge gate. Re-run on demand via this workflow'"'"'s `workflow_dispatch`, or wait for the Monday sweep; each run threads onto this issue as a comment so the catalog'"'"'s health is diffable week to week. A `defect` row is a real DemoDefects verdict on a published clip; a `malformed` row means that clip'"'"'s own `expect`/`defect_exemptions` block is broken and NOTHING was judged for it.</sub>' \
+            "$MARKER" "$SCOPE" "$SHA" "$RUN_URL" "$RUNNER_OS" "$GODOT_VERSION" "$ARTIFACT" "$NOTE" "$(cat /tmp/sweep/sweep.md)")
           tools/ci/upsert-issue.sh \
             "${{ github.repository }}" \
             "$MARKER" \

@@ -106,7 +106,10 @@ class ScriptCoverageCollector:
 	# 3: also print original script code
 	# Local deviation from upstream (jamie-pate/godot-code-coverage@9c8d4a9):
 	# set to 0 so instrumenting the tree doesn't dump every script's source into
-	# CI logs. The rest of the vendored addon is unmodified.
+	# CI logs. Cumulative local deviations from that pin, across this file's
+	# history: this constant, _strip_trailing_comment and _erase_string_literals
+	# below (and the call that feeds them), and a dropped converter TODO comment
+	# in _list_scripts_recursive. The rest of the vendored addon is unmodified.
 	const DEBUG_SCRIPT_COVERAGE := 0
 	const DEBUG_SCRIPT_COVERAGE_DEPTH := false
 	const ERR_MAP := {
@@ -191,6 +194,44 @@ class ScriptCoverageCollector:
 			var block_count = line.count(key[0]) - line.count(key[1])
 			block_dict[key] += block_count
 
+	# Local deviation from upstream. Ported verbatim from upstream main's
+	# BlockCounter (jamie-pate/godot-code-coverage@91a839a): blanks the body of
+	# every string literal on the line so a bracket inside a string is not
+	# counted as opening or closing a code block. Known gap kept from upstream:
+	# an escaped backslash right before the closing quote re-arms the escape,
+	# so the quote is blanked instead of closing the string.
+	func _erase_string_literals(line: String) -> String:
+		# Ignoring multiline strings here .. probably need to deal with them at some point
+		var dq = '"'
+		var sq = "'"
+		var quote = ""
+		var escaped := false
+		var result = line
+		for i in len(line):
+			if quote:
+				if !escaped && line[i] == quote:
+					quote = ""
+				else:
+					result[i] = "_"
+				escaped = line[i] == "\\"
+			else:
+				if line[i] in [dq, sq]:
+					quote = line[i]
+		return result
+
+	# Local deviation from upstream. Returns the code part of a line, with
+	# string-literal bodies blanked and any trailing comment removed, for block
+	# counting only. A bracket in a trailing comment is not a code block, and
+	# because _interpolate_coverage skips comment-only lines before counting, a
+	# bracket opened in a trailing comment and closed on the next comment-only
+	# line left the block count above zero for the rest of the file, so no line
+	# after it was instrumented (a whole file, when it happened near the top).
+	# Upstream main still counts trailing comments this way.
+	func _strip_trailing_comment(line: String) -> String:
+		var erased := _erase_string_literals(line)
+		var comment_at := erased.find("#")
+		return erased if comment_at < 0 else erased.substr(0, comment_at)
+
 	func _count_block(block_dict: Dictionary) -> int:
 		var result := 0
 		for key in block_dict:
@@ -244,7 +285,8 @@ class ScriptCoverageCollector:
 			# if we are inside a block then block_count will be > 0, we can't insert instrumentation
 			var block_count := _count_block(block)
 			# update the block count ( '(', '{' and '[' characters create a block )
-			_update_block_count(block, stripped_line)
+			# Local deviation from upstream: count only the code part of the line.
+			_update_block_count(block, _strip_trailing_comment(stripped_line))
 			# if we are in a block or have a continuation from the last line
 			# don't add instrumentation
 			var skip := block_count > 0 || continuation

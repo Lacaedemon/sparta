@@ -278,6 +278,12 @@ func _capture_clash(from_id: int, to_id: int) -> void:
 		"defender_color": colors[defender] if defender < colors.size() else Color.RED,
 		"to_name": str(_state.provinces[to_id]["name"]),
 	}
+	# The defended province decides how far apart the two armies deploy, when its
+	# campaign data declares a gap; otherwise the key stays absent and the battle
+	# opens at its default line gap.
+	var defended: Dictionary = _state.provinces[to_id]
+	if defended.has("deployment_gap_m"):
+		CampaignBattle.pending["deployment_gap_m"] = float(defended["deployment_gap_m"])
 
 
 ## On load, if we're coming back from a campaign-launched battle, restore the
