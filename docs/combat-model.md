@@ -6,8 +6,8 @@ probabilistic model that resolves combat between individual soldiers; it is now 
 into **engaged melee**, which is soldier-authoritative (`SoldierMelee.resolve`). The
 per-slice `> Implemented` notes below track what has landed (the land contest, wound,
 knockback, prone, graded bracing, and stamina) and what is deferred (the full posture
-enum, the domino cascade, and enemy collision -> #201). The
-player-facing version lives at [`website/combat.qmd`](../website/combat.qmd) -- keep the
+enum, the domino cascade, and enemy collision -> #201).
+The player-facing version lives at [`website/combat.qmd`](../website/combat.qmd) -- keep the
 two in sync.
 
 The guiding principle is **emergence, not modifiers**. We do not bolt a "flanking
@@ -116,11 +116,12 @@ Two consequences fall straight out of this table and matter everywhere below:
 > knockback chain" below. The full seven-way posture table above (`at ease` / `at attention` /
 > `advancing` / `jogging` / `sprinting` / `braced` / `prone`, each with its own stamina-regen
 > rate) is **not** implemented as a discrete state machine -- bracing instead reads a
-> continuous penalty from the regiment's own `current_speed`, not a named gait. The
-> table's **stamina column** is implemented the same way (#1466, `StaminaFlow`): the
+> continuous penalty from the regiment's own `current_speed`, not a named gait.
+> The table's **stamina column** is implemented the same way (#1466, `StaminaFlow`): the
 > rest / walk / jog / sprint rates are read off `current_speed` bands, so `at ease` and
 > `at attention` share the rest rate and `braced` reads as whatever pace the line holds
-> (see "Stamina" below). `prone` is implemented separately (see "Going prone and getting
+> (see "Stamina" below).
+> `prone` is implemented separately (see "Going prone and getting
 > up" below).
 
 ## One strike: attacker $A$ on defender $D$
@@ -264,8 +265,10 @@ This impact transfers momentum from the full 525 kg warhorse mass, delivering bl
 > **Implemented (#310 slice D):** `SoldierCombat.stamina_factor` (g(σ) in
 > [COND_STAMINA_FLOOR, 1]) and per-soldier `_sim_soldier_stamina` arrays in `Unit`.
 > `SoldierBodies.seed` seeds stamina at `max_stamina`; `SoldierBodies.step` applies the
-> per-gait flow to every soldier each tick (engaged included; their net change is offset
-> by melee drain) and drains `κ_p` the tick a prone soldier rises.
+> per-gait flow to every soldier each tick
+> (engaged included;
+> their net change is offset by melee drain)
+> and drains `κ_p` the tick a prone soldier rises.
 > `SoldierMelee.resolve` multiplies `q(h) * g(σ)` into `cond_a` / `cond_d`, drains
 > `κ_a` per strike thrown, and drains `κ_d·φ·(1+c)` per blow met.
 >
@@ -273,11 +276,14 @@ This impact transfers momentum from the full 525 kg warhorse mass, delivering bl
 > regiment's live `current_speed` into a band (rest / walk / jog / sprint, boundaries
 > halfway between the unit's own paces) and applies that band's rate -- rest regenerates
 > at `RHO_STAMINA`, a walk is neutral (`RHO_STAMINA_WALK`), a jog drains at `KAPPA_JOG`,
-> a sprint at `KAPPA_SPRINT`. The four rates are per-unit fields
-> (`Unit.stamina_rest_regen_per_s` and siblings, loadout-overridable). The far tier
+> a sprint at `KAPPA_SPRINT`.
+> The four rates are per-unit fields
+> (`Unit.stamina_rest_regen_per_s` and siblings, loadout-overridable).
+> The far tier
 > carries one aggregate pool with the same flow (`FarTierFormation.stamina`,
 > `FarTierRules.tick_stamina`) and a walk-or-jog gait, and its `g(σ)` scales the
-> formation's strike expectation. Same caveat as bracing: a continuous-speed band, not
+> formation's strike expectation.
+> Same caveat as bracing: a continuous-speed band, not
 > a named posture state, so the `at attention` / `braced` rows still read as rest.
 
 Every action spends stamina; rest restores it. In one tick:
@@ -558,7 +564,8 @@ front-facing shield wall has $\mathrm{br}\to 1$ and holds.
 > per-soldier `_sim_soldier_stamina` pool. In `SoldierMelee.resolve`, `cond_a`/`cond_d`
 > are now $q(h)\,g(\sigma)$ -- the full two-factor condition. Every strike costs the
 > attacker $\kappa_a$; every met blow costs the defender $\kappa_d\,\phi\,(1+c)$ (zero
-> for prone or flanked defenders). `SoldierBodies.step` originally regened stamina at a flat
+> for prone or flanked defenders).
+> `SoldierBodies.step` originally regened stamina at a flat
 > $\rho_\sigma$ per second and charged $\kappa_p$ on the tick a soldier rose from prone.
 > Posture-dependent regen and the stamina HUD, originally deferred, are now implemented (#1466):
 > `SoldierBodies.step` applies `Unit.stamina_flow_per_s` (via `StaminaFlow`'s
