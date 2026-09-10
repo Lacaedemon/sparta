@@ -149,7 +149,8 @@ script under `demos/inputs/`:
   It is the same `Battle.deployment_gap_m` a campaign clash sets from its defended province's `deployment_gap_m`,
   so a demo can stage a per-clash deployment without a campaign.
   Applied after `map`, on the map's own lines, so the two compose.
-  Strict like `map`: a non-positive or non-numeric value fails the recording loudly.
+  Strict like `map`:
+  a non-numeric, non-positive, or non-finite value fails the recording loudly.
   Beyond 30 m both armies open in the far tier (see `tier_ranges` below for the thresholds)
   and promote back as they close.
   (`demos/inputs/campaign-deployment-gap.json` is the worked example.)

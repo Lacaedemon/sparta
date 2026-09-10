@@ -2059,7 +2059,8 @@ The standard battle opens with the two lines 29 m apart, anchor to anchor:
 close enough that every unit keeps individual-soldier fidelity from the first tick.
 A campaign clash can open wider.
 Each province in a campaign's data (`data/campaigns/*.json`) may declare a `deployment_gap_m`,
-the distance in metres between the two armies' lines when a fight over that province is fought out in the tactical battle;
+the distance in metres between the two armies' lines
+when a fight over that province is fought out in the tactical battle;
 an open plain deploys wider than a defile.
 The attacker's line and the terrain band stay where they are,
 the defender's line moves back by the difference,

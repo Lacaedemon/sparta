@@ -106,6 +106,13 @@ static func parse_tier_band(band) -> Dictionary:
 	return {"promote": promote, "demote": demote}
 
 
+## An input script's optional deployment_gap_m, validated by the same rule a campaign
+## province's is (BattleMap.parse_line_gap_m): {"gap_m": float} or {"error": String}.
+## Pure, like parse_tier_band, so the strict contract is unit-testable without a tree.
+static func parse_deployment_gap_m(raw) -> Dictionary:
+	return BattleMap.parse_line_gap_m(raw)
+
+
 func _ready() -> void:
 	# Unconditional wall-clock safety net (same as DemoRunner): whatever mode this
 	# run is in -- movie recording, frame capture, state dump -- it quits itself
@@ -189,12 +196,12 @@ func _ready() -> void:
 	# armies open, so a malformed value must fail the recording loudly rather than
 	# silently record a close-deployed battle in a clip captioned as a wide one.
 	if script.has("deployment_gap_m"):
-		var raw_gap = script["deployment_gap_m"]
-		if not (raw_gap is float or raw_gap is int) or not is_finite(float(raw_gap)) or float(raw_gap) <= 0.0:
-			push_error("[demo-input] deployment_gap_m must be a positive, finite number of metres")
+		var gap: Dictionary = parse_deployment_gap_m(script["deployment_gap_m"])
+		if gap.has("error"):
+			push_error("[demo-input] %s" % gap["error"])
 			get_tree().quit(2)
 			return
-		_deployment_gap_m = float(raw_gap)
+		_deployment_gap_m = gap["gap_m"]
 	_form_up_dist = int(script.get("form_up_dist", -1))
 	_tray_row_order_placement = bool(script.get("tray_row_order_placement", false))
 	_show_unit_card_tray = bool(script.get("show_unit_card_tray", false))

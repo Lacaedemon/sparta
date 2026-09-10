@@ -531,6 +531,11 @@ func _ready() -> void:
 	# demo/test that staged its own gap before entering the tree keeps that value.
 	if CampaignBattle.active and CampaignBattle.pending.has("deployment_gap_m") and deployment_gap_m <= 0.0:
 		deployment_gap_m = float(CampaignBattle.pending["deployment_gap_m"])
+	# A caller that sets the field directly bypasses both data-boundary parsers, and NAN is
+	# neither <= 0 nor > 0: it would silently keep the default map AND block a clash's own
+	# gap above. Fail loudly instead, as with_line_gap does for a non-finite gap.
+	assert(is_finite(deployment_gap_m),
+			"Battle.deployment_gap_m must be a finite number of metres (<= 0 for unset)")
 	# Re-derive the spawn lines and the field from the gap BEFORE the map is published to
 	# the recording below, so the replay header carries the widened map and playback
 	# rebuilds it. Playback itself skips this: the recorded map already holds the result.

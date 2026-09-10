@@ -1499,6 +1499,13 @@ unit --- rather than being measured in bare pixels, so a completed move reports 
 the army marched --- "Reinforced Cisalpina. (311.3 km march)" --- in the same metric
 units the battlefield's scale bar uses.
 
+**Deployment distance.** A province's data may declare how far apart the two armies deploy
+when a fight over it is fought out in the tactical battle.
+A clash over an open plain can open wider than the standard 29 m,
+so both armies start as far-tier marks and march before they fight.
+A province that declares nothing opens at the standard distance.
+See [Deployment distance](tactics.qmd#deployment-distance) in the tactics guide.
+
 **Diplomacy:** the right-hand panel lists every surviving rival. Click **Declare War** or
 **Sue for Peace** to change your stance. Suing for peace sets a truce that prevents
 re-declaring war for a few turns.

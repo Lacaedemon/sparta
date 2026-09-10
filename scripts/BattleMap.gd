@@ -121,5 +121,23 @@ static func with_line_gap(gap: float, field: Rect2, spawn_lines: Array) -> Dicti
 	return {"field": grown, "spawn_lines": [attacker_y, defender_y]}
 
 
+## The deployment gap a data file declares, validated: {"gap_m": float} for a positive,
+## finite number (int or float), else {"error": String} naming the first problem. Shared
+## by CampaignLoader (a province's deployment_gap_m) and DemoInputRecorder (an input
+## script's), so the two data boundaries reject exactly the same values. NAN and INF are
+## floats and each slips past a plain sign test (NAN <= 0 is false, INF > 0 is true): the
+## first would read as unset in the battle and the second would put the defender's line
+## at infinity, so finiteness is checked by name.
+static func parse_line_gap_m(raw) -> Dictionary:
+	if not _num(raw):
+		return {"error": "deployment_gap_m must be a number of metres"}
+	var gap_m: float = float(raw)
+	if not is_finite(gap_m):
+		return {"error": "deployment_gap_m must be a finite number of metres"}
+	if gap_m <= 0.0:
+		return {"error": "deployment_gap_m must be a positive number of metres"}
+	return {"gap_m": gap_m}
+
+
 static func _num(v) -> bool:
 	return v is float or v is int

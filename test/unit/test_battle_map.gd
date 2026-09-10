@@ -291,3 +291,16 @@ func test_campaign_clash_without_a_gap_keeps_the_default_lines() -> void:
 	assert_eq(battle.spawn_line_ys, battle.SPAWN_LINE_YS,
 			"a clash that declares nothing opens at the default gap")
 	assert_eq(battle.field, battle.FIELD, "on the default field")
+
+
+# --- parse_line_gap_m: the rule both data boundaries share -------------------------
+
+func test_parse_line_gap_m_accepts_a_positive_finite_number() -> void:
+	assert_almost_eq(BattleMap.parse_line_gap_m(60)["gap_m"], 60.0, 0.001, "an int carries through as metres")
+	assert_almost_eq(BattleMap.parse_line_gap_m(45.5)["gap_m"], 45.5, 0.001, "a float carries through")
+
+
+func test_parse_line_gap_m_rejects_non_numeric_non_positive_and_non_finite_values() -> void:
+	# NAN and INF are floats that pass a plain sign test, so they are listed by name.
+	for bad in ["wide", null, [], {}, 0, -29.0, INF, -INF, NAN]:
+		assert_true(BattleMap.parse_line_gap_m(bad).has("error"), "rejected: %s" % [bad])
