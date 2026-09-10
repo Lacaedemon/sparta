@@ -151,6 +151,12 @@
       "uid": 0,
       "field": "stamina_mean",
       "value": 68.7
+    },
+    {
+      "tick": 1050,
+      "uid": 0,
+      "field": "stamina_mean",
+      "value": 63.1
     }
   ],
   "spawn_fingerprint": "c3d9aadb709d1e7c0d87ceafc2d2e2e3"

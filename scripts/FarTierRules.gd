@@ -333,16 +333,25 @@ static func tick_rout(rec: FarTierFormation, enemy: FarTierFormation, delta: flo
 		shatter(rec)
 
 
+## Out-of-combat recovery for a formation STANDING out of contact: the pool rests back up
+## (the posture table's fast-regen row) and morale recovers (tick_morale_recovery). A
+## formation that moved this tick already paid its gait's flow inside advance, so it gets
+## tick_morale_recovery alone -- charging the rest band on top of the jog drain would net
+## the men a GAIN for jogging (rest regen minus jog drain), which tick_pair pins against.
+static func tick_recovery(rec: FarTierFormation, delta: float) -> void:
+	if not can_fight(rec):
+		return
+	tick_stamina(rec, false, delta)
+	tick_morale_recovery(rec, delta)
+
+
 ## Out-of-combat morale recovery — mirrors UnitMorale.tick_morale's resting branch. Gated by
 ## can_fight, so neither a broken-but-not-yet-routing formation nor an already-routing one
 ## uses this path: routing recovery follows its own curve toward ROUT_RALLY_BASELINE
 ## (tick_rout), not the ordinary resting rate up to 100.
-static func tick_recovery(rec: FarTierFormation, delta: float) -> void:
+static func tick_morale_recovery(rec: FarTierFormation, delta: float) -> void:
 	if not can_fight(rec):
 		return
-	# Stamina rests back up alongside morale: a formation standing out of contact is at
-	# ease, the posture table's fast-regen row.
-	tick_stamina(rec, false, delta)
 	if rec.morale >= 100.0:
 		return
 	rec.morale = minf(100.0, rec.morale + Unit.MORALE_RECOVER_PER_SEC * delta)
@@ -440,17 +449,23 @@ static func tick_pair(a: FarTierFormation, b: FarTierFormation, delta: float) ->
 	# A side in reach squares up and fights; one out of reach presses into contact (so a
 	# shorter-reach line closes the last stretch under a spear line's blows, as it does
 	# in the close tier). An advancing side is MOVING rather than FIGHTING, so it also
-	# recovers morale, mirroring UnitMorale.tick_morale's out-of-combat branch.
+	# recovers morale, mirroring UnitMorale.tick_morale's out-of-combat branch -- morale
+	# only, since advance already charged the gait's stamina flow for this tick. A side
+	# fighting where it stands rests its pool, as a stationary close-tier regiment's
+	# bodies do (SoldierBodies.step reads the rest band off a zero pace); the far tier
+	# books no per-strike stamina cost, so that regen is the whole of its flow in contact.
 	if a_in_reach:
 		face_toward(a, a_target)
+		tick_stamina(a, false, delta)
 	else:
 		advance(a, a_target, delta)
-		tick_recovery(a, delta)
+		tick_morale_recovery(a, delta)
 	if b_in_reach:
 		face_toward(b, b_target)
+		tick_stamina(b, false, delta)
 	else:
 		advance(b, b_target, delta)
-		tick_recovery(b, delta)
+		tick_morale_recovery(b, delta)
 	if rate_on_b > 0.0:
 		tick_attrition(b, rate_on_b, delta)
 	if rate_on_a > 0.0:

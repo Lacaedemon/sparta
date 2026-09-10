@@ -24,6 +24,14 @@ static func band_for_speed(speed: float, walk_speed: float, jog_speed: float,
 		rest_epsilon: float) -> int:
 	if speed <= rest_epsilon:
 		return BAND_REST
+	if jog_speed <= walk_speed:
+		# A jog no faster than the walk leaves the jog band no width, so the halfway
+		# boundaries below would bill every jog as a walk or a sprint and GAIT_JOG could
+		# never be charged. Loud, then explicit: up to the walk pace walks, anything
+		# faster is billed as a jog, the slower of the two drains.
+		push_error("StaminaFlow.band_for_speed: jog_speed %f is not above walk_speed %f"
+				% [jog_speed, walk_speed])
+		return Unit.GAIT_WALK if speed <= walk_speed else Unit.GAIT_JOG
 	if speed <= (walk_speed + jog_speed) * 0.5:
 		return Unit.GAIT_WALK
 	# The sprint boundary is the same half-step above the jog pace that the walk/jog

@@ -766,3 +766,33 @@ func test_far_tier_expectation_matches_the_close_tier_strike_distribution() -> v
 	var close_mean := float(killed_total) / float(strikes)
 	assert_almost_eq(close_mean, far_expectation, far_expectation * 0.15,
 		"the far-tier expectation sits within 15%% of the sampled close-tier mean")
+
+
+# --- stamina through tick_pair -------------------------------------------------------------
+
+func test_tick_pair_charges_a_jogging_approach_once_with_no_rest_regen_on_top() -> void:
+	# advance pays the gait's flow; the morale-only recovery that follows must not add the
+	# rest band as well, or a jog nets the men a GAIN (rest regen minus jog drain).
+	var a := _make_rec(Vector2.ZERO, Vector2.DOWN)
+	var b := _make_rec(Vector2(0.0, 5000.0), Vector2.UP)   # far out of reach
+	a.gait = Unit.GAIT_JOG
+	a.stamina = 50.0
+	a.morale = 50.0
+	b.stamina = 50.0
+	FarTierRules.tick_pair(a, b, 1.0)
+	assert_almost_eq(a.stamina, 50.0 - SoldierCombat.KAPPA_JOG, 0.0001,
+		"a jogging approach pays exactly the jog drain per second")
+	assert_almost_eq(b.stamina, 50.0 + SoldierCombat.RHO_STAMINA_WALK, 0.0001,
+		"a walking approach is neutral")
+	assert_almost_eq(a.morale, 50.0 + Unit.MORALE_RECOVER_PER_SEC, 0.0001,
+		"the advancing side still recovers morale")
+
+
+func test_tick_pair_rests_the_pool_of_a_side_fighting_where_it_stands() -> void:
+	var pair := _frontal_pair()
+	pair[0].stamina = 50.0
+	pair[1].stamina = 50.0
+	FarTierRules.tick_pair(pair[0], pair[1], 1.0)
+	assert_almost_eq(pair[0].stamina, 50.0 + SoldierCombat.RHO_STAMINA, 0.0001,
+		"a side in reach stands, so its pool rests like a stationary regiment's bodies")
+	assert_almost_eq(pair[1].stamina, 50.0 + SoldierCombat.RHO_STAMINA, 0.0001)

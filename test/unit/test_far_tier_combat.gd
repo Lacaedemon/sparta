@@ -619,3 +619,21 @@ func test_the_far_tier_fight_is_deterministic_under_a_forced_seed() -> void:
 	assert_eq(first["first_casualty_tick"], second["first_casualty_tick"],
 		"and takes its first casualty on the same tick")
 	assert_eq(first["end_soldiers"], second["end_soldiers"], "and ends at the same strength")
+
+
+# --- the live path reads the attacker's mean stamina like the record model ----------------
+
+func test_strike_expectation_scales_by_the_attackers_mean_stamina() -> void:
+	var pair := _frontal_pair()
+	var attacker: Unit = pair[0]
+	var defender: Unit = pair[1]
+	var fresh: float = FarTierRates.strike_expectation(attacker, defender)
+	attacker.far_stamina = attacker.combat_profile()["max_stamina"]
+	assert_almost_eq(FarTierRates.strike_expectation(attacker, defender), fresh, TOL,
+		"the unseeded sentinel reads as a full pool")
+	attacker.far_stamina = 0.0
+	var spent: float = FarTierRates.strike_expectation(attacker, defender)
+	assert_lt(spent, fresh, "a spent formation strikes for less")
+	assert_almost_eq(spent, FarTierRules.strike_expectation(FarTierFormation.from_unit(attacker),
+			FarTierFormation.from_unit(defender)), TOL,
+		"the live path applies g(sigma) exactly as the record model does")

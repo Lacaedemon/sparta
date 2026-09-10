@@ -62,6 +62,22 @@ func test_band_sprint_above_the_jog_band() -> void:
 	assert_eq(StaminaFlow.band_for_speed(90.0, 45.0, 67.5, 1.0), Unit.GAIT_SPRINT)
 
 
+func test_band_a_jog_no_faster_than_the_walk_bills_walk_then_jog_and_never_sprint() -> void:
+	# A degenerate pace order (loud via push_error) collapses the jog band, so the halfway
+	# boundaries would otherwise bill every jog as a walk or a sprint. The explicit
+	# fallback bills up to the walk pace as a walk and anything faster as a jog; the
+	# sprint band has no jog pace to sit above. Both the equal and the inverted case.
+	for jog in [45.0, 40.0]:
+		assert_eq(StaminaFlow.band_for_speed(0.5, 45.0, jog, 1.0), StaminaFlow.BAND_REST,
+			"rest is unaffected, jog_speed %s" % jog)
+		assert_eq(StaminaFlow.band_for_speed(45.0, 45.0, jog, 1.0), Unit.GAIT_WALK,
+			"at the walk pace, jog_speed %s" % jog)
+		assert_eq(StaminaFlow.band_for_speed(45.01, 45.0, jog, 1.0), Unit.GAIT_JOG,
+			"just above the walk pace, jog_speed %s" % jog)
+		assert_eq(StaminaFlow.band_for_speed(200.0, 45.0, jog, 1.0), Unit.GAIT_JOG,
+			"no sprint band without a jog pace to set it against, jog_speed %s" % jog)
+
+
 # --- StaminaFlow: rates ------------------------------------------------------------------
 
 
