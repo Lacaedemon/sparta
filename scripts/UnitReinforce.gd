@@ -34,7 +34,7 @@ static func begin(reserve: Unit, host: Unit, order: Order) -> void:
 ## Per-tick approach: drop the link and halt when the host is gone or the pair no longer
 ## qualifies, re-aim at a drifting host, and commit once the reserve stands at the
 ## rendezvous facing the host's way. If the reserve routes, the routing gate in Unit
-## bypasses this update and _begin_rout clears the order and friendly_target link.
+## bypasses this update and _rout() clears the order and friendly_target link.
 static func update(reserve: Unit, heading_tolerance_rad: float = HEADING_TOLERANCE_RAD) -> void:
 	var order: Order = reserve.current_order
 	if order == null or order.type != Order.Type.REINFORCE or order.friendly_target == null:

@@ -111,23 +111,43 @@ func test_cannot_demote_mid_maneuver_or_reform() -> void:
 func test_cannot_demote_a_host_participating_in_a_live_reinforcement() -> void:
 	var host := _make_seeded_unit(42)
 	var reserve := _make_seeded_unit(99)
-	assert_true(TierTransition.can_demote(host), "an unlinked idle host can demote")
+	var all_units := [host, reserve]
+	var targets := TierTransition.live_reinforcement_targets(all_units)
+	assert_true(TierTransition.can_demote(host, targets.has(host)), "an unlinked idle host can demote")
 	var reinforce := Order.new_reinforce(host.uid, 1)
 	reinforce.friendly_target = host
 	reserve.current_order = reinforce
-	assert_false(TierTransition.can_demote(host),
+	targets = TierTransition.live_reinforcement_targets(all_units)
+	assert_true(targets.has(host), "host is recognized as a live reinforcement target")
+	assert_false(TierTransition.can_demote(host, targets.has(host)),
 		"a host targeted by a live reinforcement reserve blocks demotion")
 	reserve.state = Unit.State.DEAD
-	assert_true(TierTransition.can_demote(host),
+	targets = TierTransition.live_reinforcement_targets(all_units)
+	assert_false(targets.has(host))
+	assert_true(TierTransition.can_demote(host, targets.has(host)),
 		"a host whose reserve has died can demote again")
 	reserve.state = Unit.State.IDLE
-	assert_false(TierTransition.can_demote(host))
+	targets = TierTransition.live_reinforcement_targets(all_units)
+	assert_true(targets.has(host))
+	assert_false(TierTransition.can_demote(host, targets.has(host)))
 	reserve.team = host.team + 1
-	assert_true(TierTransition.can_demote(host))
+	targets = TierTransition.live_reinforcement_targets(all_units)
+	assert_false(targets.has(host))
+	assert_true(TierTransition.can_demote(host, targets.has(host)))
 	reserve.team = host.team
 	reserve.current_order = null
-	assert_true(TierTransition.can_demote(host),
+	targets = TierTransition.live_reinforcement_targets(all_units)
+	assert_false(targets.has(host))
+	assert_true(TierTransition.can_demote(host, targets.has(host)),
 		"a host whose reserve order cleared can demote again")
+
+
+func test_cannot_demote_a_host_holding_position_anchor() -> void:
+	var host := _make_seeded_unit(42)
+	assert_true(TierTransition.can_demote(host), "an unheld host can demote")
+	host.hold_position_anchor(1.0)
+	assert_false(TierTransition.can_demote(host),
+		"holding position anchor blocks demotion")
 
 
 func test_can_demote_unit_not_in_tree() -> void:

@@ -1457,7 +1457,7 @@ const SIM_SOLDIER_ARRAY_KEYS: Array[String] = [
 	"sim_soldier_pos", "sim_body_vel", "sim_steer", "sim_soldier_hp",
 	"sim_soldier_weapon_id", "sim_soldier_shield_id", "sim_soldier_shield_hold_angle",
 	"sim_prone", "sim_soldier_stamina", "sim_soldier_facing", "sim_soldier_file",
-	"sim_soldier_rank", "sim_soldier_square_slot",
+	"sim_soldier_rank", "sim_soldier_square_slot", "sim_soldier_broken",
 ]
 
 
@@ -2966,6 +2966,8 @@ func unit_by_uid(uid: int) -> UnitRef:
 func _tick_tier_transitions() -> Array:
 	var all_units: Array = get_tree().get_nodes_in_group("units")
 	_far_tier_count = 0
+	var reinforce_targets: Dictionary = \
+			TierTransition.live_reinforcement_targets(all_units)
 	for node in all_units:
 		var u = node as UnitRef
 		if u == null or u.state == UnitRef.State.DEAD:
@@ -2989,7 +2991,7 @@ func _tick_tier_transitions() -> Array:
 		if u.tier == FormationTier.FAR:
 			if FormationTier.should_promote(u.position, nearest_pos, promote_range):
 				TierTransition.promote(u, _tick, Replay.seed_value)
-		elif TierTransition.can_demote(u) \
+		elif TierTransition.can_demote(u, reinforce_targets.has(u)) \
 				and FormationTier.should_demote(u.position, nearest_pos, demote_range):
 			TierTransition.demote(u)
 		# Counted AFTER the transition, so the tally is this tick's tiers, not last tick's.

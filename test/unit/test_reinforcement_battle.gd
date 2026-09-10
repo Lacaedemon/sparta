@@ -87,9 +87,11 @@ func test_order_arms_the_approach_and_leaves_the_host_alone() -> void:
 	assert_eq(reserve.ordered_facing, host.facing, "with the host's heading held")
 	assert_null(host.current_order, "the host's own order is untouched")
 	assert_eq(reserve.current_maneuver(), Unit.Maneuver.REINFORCING, "reads as REINFORCING")
-	assert_false(TierTransition.can_demote(reserve),
+	var targets := TierTransition.live_reinforcement_targets(
+			get_tree().get_nodes_in_group("units"))
+	assert_false(TierTransition.can_demote(reserve, targets.has(reserve)),
 			"the reserve keeps its close-tier bodies for the whole approach, as a reliever does")
-	assert_false(TierTransition.can_demote(host),
+	assert_false(TierTransition.can_demote(host, targets.has(host)),
 			"the host also keeps its close-tier bodies for the approach")
 	assert_true(reserve.order_summary().begins_with("Reinforcing"), "the HUD summary names the maneuver")
 
@@ -459,7 +461,6 @@ func test_host_with_distant_enemy_does_not_demote_and_commits() -> void:
 			"x": enemy_pos.x, "y": enemy_pos.y},
 	]
 	add_child(_battle)
-	await get_tree().physics_frame
 	var host: Unit = _unit_at(HOST_POS)
 	var reserve: Unit = _unit_at(RESERVE_POS)
 	assert_not_null(host, "host spawned")
@@ -482,4 +483,5 @@ func test_host_with_distant_enemy_does_not_demote_and_commits() -> void:
 			committed = true
 			break
 	assert_true(committed, "reinforcement commits even when enemies are beyond demote range")
+	assert_eq(host.tier, FormationTier.CLOSE, "host remains in close tier during newcomer arrival")
 	assert_eq(host.soldiers, 80, "host successfully doubled files with reserve")
