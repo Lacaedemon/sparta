@@ -16,12 +16,12 @@ const BAND_REST: int = -1
 
 
 ## Which stamina band a regiment moving at `speed` (world units/s) is in, given its own
-## walk and jog paces. The boundaries sit halfway between adjacent paces, so a unit
+## walk, jog, and sprint paces. The boundaries sit halfway between adjacent paces, so a unit
 ## ramping from one pace to the next flips band at the midpoint of the ramp rather than
 ## the instant it leaves the slower pace; anything at or below `rest_epsilon` is at rest.
 ## Returns BAND_REST, Unit.GAIT_WALK, Unit.GAIT_JOG, or Unit.GAIT_SPRINT.
 static func band_for_speed(speed: float, walk_speed: float, jog_speed: float,
-		rest_epsilon: float) -> int:
+		sprint_speed: float, rest_epsilon: float) -> int:
 	if speed <= rest_epsilon:
 		return BAND_REST
 	if jog_speed <= walk_speed:
@@ -34,9 +34,13 @@ static func band_for_speed(speed: float, walk_speed: float, jog_speed: float,
 		return Unit.GAIT_WALK if speed <= walk_speed else Unit.GAIT_JOG
 	if speed <= (walk_speed + jog_speed) * 0.5:
 		return Unit.GAIT_WALK
-	# The sprint boundary is the same half-step above the jog pace that the walk/jog
-	# boundary sits below it, so the jog band is symmetric about jog_speed.
-	if speed <= jog_speed + (jog_speed - walk_speed) * 0.5:
+	if sprint_speed <= jog_speed:
+		# A sprint no faster than the jog leaves the sprint band no margin over jog, so
+		# bill up to jog_speed as jog and anything above as sprint.
+		push_error("StaminaFlow.band_for_speed: sprint_speed %f is not above jog_speed %f"
+				% [sprint_speed, jog_speed])
+		return Unit.GAIT_JOG if speed <= jog_speed else Unit.GAIT_SPRINT
+	if speed <= (jog_speed + sprint_speed) * 0.5:
 		return Unit.GAIT_JOG
 	return Unit.GAIT_SPRINT
 

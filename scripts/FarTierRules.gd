@@ -32,12 +32,12 @@ extends RefCounted
 ## ranged output stays flat too, to keep mirroring it faithfully.
 
 
-## A routing formation's flee pace, relative to its (stance-capped) march speed — mirrors
-## Unit._process_rout's move_speed * 1.3 flee rate. The close tier flees at its sprint pace
-## (move_speed), which the far-tier record doesn't carry (bursts are below this tier's
-## resolution; see the walk-only march_speed field), so this scales the walk-derived
-## effective_speed instead — the same 1.3 multiplier applied to the far tier's only pace.
-const FLEE_SPEED_MULTIPLIER: float = 1.3
+## A routing formation's flee pace, relative to its (stance-capped) march speed -- mirrors
+## Unit.FLEE_SPEED_MULTIPLIER (move_speed * FLEE_SPEED_MULTIPLIER flee rate). The close tier flees
+## at its sprint pace (move_speed), which the far-tier record doesn't carry (bursts are below
+## this tier's resolution; see the walk-only march_speed field), so this scales the walk-derived
+## effective_speed instead -- the same multiplier applied to the far tier's only pace.
+const FLEE_SPEED_MULTIPLIER: float = Unit.FLEE_SPEED_MULTIPLIER
 
 
 ## Remaining-strength ratio in [0, 1]: the aggregate analog of soldiers / max_soldiers.
@@ -381,7 +381,7 @@ static func stamina_factor(rec: FarTierFormation) -> float:
 
 ## One tick of the per-gait stamina flow on the aggregate pool (StaminaFlow, the same rule
 ## SoldierBodies.step applies per body): resting regenerates, a walk is neutral, a jog
-## drains. `moving` selects the gait's band;
+## drains. `moving` derives the band from effective_speed against the record's paces;
 ## a stationary formation rests. Routing flight drains at the sprint rate when moving.
 static func tick_stamina(rec: FarTierFormation, moving: bool, delta: float) -> void:
 	var band: int
@@ -390,7 +390,8 @@ static func tick_stamina(rec: FarTierFormation, moving: bool, delta: float) -> v
 	elif rec.routing:
 		band = Unit.GAIT_SPRINT
 	else:
-		band = rec.gait
+		band = StaminaFlow.band_for_speed(effective_speed(rec), rec.march_speed,
+				rec.jog_speed, rec.sprint_speed, Unit.ARRIVE_SPEED_EPSILON)
 	var flow: float = StaminaFlow.flow_per_s(band, rec.stamina_rest_regen_per_s,
 			rec.stamina_walk_regen_per_s, rec.stamina_jog_drain_per_s, rec.stamina_sprint_drain_per_s)
 	rec.stamina = StaminaFlow.apply(rec.stamina, flow, delta, rec.max_stamina)

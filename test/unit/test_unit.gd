@@ -4799,7 +4799,7 @@ func test_routing_unit_flees_into_the_retreat_margin_unclamped() -> void:
 	for i in range(ticks):
 		u._process_rout(delta)
 	assert_eq(u.state, Unit.State.ROUTING, "still routing --- in contact, and well inside the margin")
-	var expected_y: float = 5.0 - u.move_speed * 1.3 * delta * ticks
+	var expected_y: float = 5.0 - u.flee_speed() * delta * ticks
 	assert_true(expected_y < 0.0, "sanity: this only proves the point if it actually crosses y=0")
 	assert_almost_eq(u.position.y, expected_y, 0.5, "flees past y=0 unclamped, into the margin")
 

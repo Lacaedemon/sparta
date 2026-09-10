@@ -46,6 +46,9 @@ var march_speed: float = 45.0
 ## Jog pace, matching Unit.jog_speed's default; the pace the record moves at while gait
 ## is Unit.GAIT_JOG (FarTierRules.pace_speed).
 var jog_speed: float = 67.5
+## Sprint pace, matching Unit.move_speed's default; used by FarTierRules.tick_stamina
+## to classify paces against the jog/sprint midpoint.
+var sprint_speed: float = 90.0
 ## The formation's gait: Unit.GAIT_WALK (march_speed) or Unit.GAIT_JOG (jog_speed). The
 ## far tier's only two paces -- a walk approach, or a jog approach that arrives sooner and
 ## pays for it in stamina (FarTierRules.tick_stamina). from_unit maps a unit's ordered
@@ -60,8 +63,8 @@ var stamina: float = 100.0
 var max_stamina: float = 100.0
 ## The per-gait stamina rates, carried from the unit's own fields (Unit.stamina_rest_regen_per_s
 ## and siblings) so a demoted formation keeps paying the SAME rates it would at close tier.
-## No sprint rate: the record has no sprint gait for ordered march;
-## routing flees at the sprint pace.
+## The record has no sprint gait for ordered march;
+## routing flees at the sprint pace and bills stamina_sprint_drain_per_s.
 var stamina_rest_regen_per_s: float = SoldierCombat.RHO_STAMINA
 var stamina_walk_regen_per_s: float = SoldierCombat.RHO_STAMINA_WALK
 var stamina_jog_drain_per_s: float = SoldierCombat.KAPPA_JOG
@@ -123,6 +126,7 @@ static func from_unit(u: Unit) -> FarTierFormation:
 	rec.attack_range = u.attack_range
 	rec.march_speed = u.walk_speed
 	rec.jog_speed = u.jog_speed
+	rec.sprint_speed = u.move_speed
 	rec.gait = gait_for_ordered(u.ordered_gait())
 	rec.stamina = u.mean_soldier_stamina()
 	rec.max_stamina = u.combat_profile()["max_stamina"]

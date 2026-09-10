@@ -39,27 +39,57 @@ func _step_seconds(u: Unit, seconds: float) -> void:
 
 
 func test_band_rest_at_or_below_the_rest_epsilon() -> void:
-	assert_eq(StaminaFlow.band_for_speed(0.0, 45.0, 67.5, 1.0), StaminaFlow.BAND_REST)
-	assert_eq(StaminaFlow.band_for_speed(1.0, 45.0, 67.5, 1.0), StaminaFlow.BAND_REST)
+	assert_eq(StaminaFlow.band_for_speed(0.0, 45.0, 67.5, 90.0, 1.0), StaminaFlow.BAND_REST)
+	assert_eq(StaminaFlow.band_for_speed(1.0, 45.0, 67.5, 90.0, 1.0), StaminaFlow.BAND_REST)
 
 
 func test_band_walk_from_the_epsilon_up_to_halfway_to_the_jog() -> void:
-	assert_eq(StaminaFlow.band_for_speed(1.01, 45.0, 67.5, 1.0), Unit.GAIT_WALK)
-	assert_eq(StaminaFlow.band_for_speed(45.0, 45.0, 67.5, 1.0), Unit.GAIT_WALK)
-	assert_eq(StaminaFlow.band_for_speed(56.25, 45.0, 67.5, 1.0), Unit.GAIT_WALK,
+	assert_eq(StaminaFlow.band_for_speed(1.01, 45.0, 67.5, 90.0, 1.0), Unit.GAIT_WALK)
+	assert_eq(StaminaFlow.band_for_speed(45.0, 45.0, 67.5, 90.0, 1.0), Unit.GAIT_WALK)
+	assert_eq(StaminaFlow.band_for_speed(56.25, 45.0, 67.5, 90.0, 1.0), Unit.GAIT_WALK,
 			"the walk/jog boundary (the midpoint) still reads as a walk")
 
 
 func test_band_jog_is_symmetric_about_the_jog_pace() -> void:
-	# Walk 45, jog 67.5: the jog band is (56.25, 78.75], one half-step either side.
-	assert_eq(StaminaFlow.band_for_speed(56.26, 45.0, 67.5, 1.0), Unit.GAIT_JOG)
-	assert_eq(StaminaFlow.band_for_speed(67.5, 45.0, 67.5, 1.0), Unit.GAIT_JOG)
-	assert_eq(StaminaFlow.band_for_speed(78.75, 45.0, 67.5, 1.0), Unit.GAIT_JOG)
+	# Walk 45, jog 67.5, sprint 90: the jog band is (56.25, 78.75], one half-step either side.
+	assert_eq(StaminaFlow.band_for_speed(56.26, 45.0, 67.5, 90.0, 1.0), Unit.GAIT_JOG)
+	assert_eq(StaminaFlow.band_for_speed(67.5, 45.0, 67.5, 90.0, 1.0), Unit.GAIT_JOG)
+	assert_eq(StaminaFlow.band_for_speed(78.75, 45.0, 67.5, 90.0, 1.0), Unit.GAIT_JOG)
 
 
 func test_band_sprint_above_the_jog_band() -> void:
-	assert_eq(StaminaFlow.band_for_speed(78.76, 45.0, 67.5, 1.0), Unit.GAIT_SPRINT)
-	assert_eq(StaminaFlow.band_for_speed(90.0, 45.0, 67.5, 1.0), Unit.GAIT_SPRINT)
+	assert_eq(StaminaFlow.band_for_speed(78.76, 45.0, 67.5, 90.0, 1.0), Unit.GAIT_SPRINT)
+	assert_eq(StaminaFlow.band_for_speed(90.0, 45.0, 67.5, 90.0, 1.0), Unit.GAIT_SPRINT)
+
+
+func test_band_cavalry_paces_use_jog_to_sprint_midpoint() -> void:
+	# Cavalry loadout: walk 1.7, jog 3.5, sprint 8.5 m/s. The midpoint between jog and sprint
+	# is (3.5 + 8.5) * 0.5 = 6.0 m/s. An extrapolated boundary from the walk/jog step would sit
+	# at 3.5 + (3.5 - 1.7) * 0.5 = 4.4 m/s and misclassify 5.0 m/s as sprint.
+	var walk: float = 1.7
+	var jog: float = 3.5
+	var sprint: float = 8.5
+	var eps: float = 0.05
+	assert_eq(StaminaFlow.band_for_speed(2.6, walk, jog, sprint, eps), Unit.GAIT_WALK,
+			"walk/jog midpoint is (1.7 + 3.5) / 2 = 2.6")
+	assert_eq(StaminaFlow.band_for_speed(2.61, walk, jog, sprint, eps), Unit.GAIT_JOG)
+	assert_eq(StaminaFlow.band_for_speed(5.0, walk, jog, sprint, eps), Unit.GAIT_JOG,
+			"5.0 m/s is below the 6.0 midpoint to actual sprint pace")
+	assert_eq(StaminaFlow.band_for_speed(6.0, walk, jog, sprint, eps), Unit.GAIT_JOG,
+			"the midpoint itself reads as a jog")
+	assert_eq(StaminaFlow.band_for_speed(6.01, walk, jog, sprint, eps), Unit.GAIT_SPRINT,
+			"above 6.0 m/s flips to sprint")
+
+
+func test_band_a_sprint_no_faster_than_the_jog_bills_jog_then_sprint() -> void:
+	# Degenerate pace order: sprint <= jog (push_error). Up to jog pace bills jog, above bills sprint.
+	for sprint in [67.5, 60.0]:
+		assert_eq(StaminaFlow.band_for_speed(67.5, 45.0, 67.5, sprint, 1.0), Unit.GAIT_JOG,
+				"at or below jog pace bills jog, sprint_speed %s" % sprint)
+		assert_push_error("is not above jog_speed")
+		assert_eq(StaminaFlow.band_for_speed(67.51, 45.0, 67.5, sprint, 1.0), Unit.GAIT_SPRINT,
+				"above jog pace bills sprint, sprint_speed %s" % sprint)
+		assert_push_error("is not above jog_speed")
 
 
 func test_band_a_jog_no_faster_than_the_walk_bills_walk_then_jog_and_never_sprint() -> void:
@@ -68,15 +98,15 @@ func test_band_a_jog_no_faster_than_the_walk_bills_walk_then_jog_and_never_sprin
 	# fallback bills up to the walk pace as a walk and anything faster as a jog; the
 	# sprint band has no jog pace to sit above. Both the equal and the inverted case.
 	for jog in [45.0, 40.0]:
-		assert_eq(StaminaFlow.band_for_speed(0.5, 45.0, jog, 1.0), StaminaFlow.BAND_REST,
+		assert_eq(StaminaFlow.band_for_speed(0.5, 45.0, jog, 90.0, 1.0), StaminaFlow.BAND_REST,
 			"rest is unaffected, jog_speed %s" % jog)
-		assert_eq(StaminaFlow.band_for_speed(45.0, 45.0, jog, 1.0), Unit.GAIT_WALK,
+		assert_eq(StaminaFlow.band_for_speed(45.0, 45.0, jog, 90.0, 1.0), Unit.GAIT_WALK,
 			"at the walk pace, jog_speed %s" % jog)
 		assert_push_error("is not above walk_speed")
-		assert_eq(StaminaFlow.band_for_speed(45.01, 45.0, jog, 1.0), Unit.GAIT_JOG,
+		assert_eq(StaminaFlow.band_for_speed(45.01, 45.0, jog, 90.0, 1.0), Unit.GAIT_JOG,
 			"just above the walk pace, jog_speed %s" % jog)
 		assert_push_error("is not above walk_speed")
-		assert_eq(StaminaFlow.band_for_speed(200.0, 45.0, jog, 1.0), Unit.GAIT_JOG,
+		assert_eq(StaminaFlow.band_for_speed(200.0, 45.0, jog, 90.0, 1.0), Unit.GAIT_JOG,
 			"no sprint band without a jog pace to set it against, jog_speed %s" % jog)
 		assert_push_error("is not above walk_speed")
 
@@ -351,12 +381,14 @@ func test_record_from_unit_copies_the_gait_pace_pool_and_rates() -> void:
 	u.seed_sim_soldiers()
 	u._sim_soldier_stamina.fill(70.0)
 	u.jog_speed = 60.0
+	u.move_speed = 100.0
 	u.stamina_jog_drain_per_s = 1.5
 	u.stamina_sprint_drain_per_s = 7.5
 	u.current_order = Order.new_move(Vector2(0, 500), 0, Unit.GAIT_JOG)
 	var rec := FarTierFormation.from_unit(u)
 	assert_eq(rec.gait, Unit.GAIT_JOG)
 	assert_almost_eq(rec.jog_speed, 60.0, TOL)
+	assert_almost_eq(rec.sprint_speed, 100.0, TOL)
 	assert_almost_eq(rec.stamina, 70.0, TOL)
 	assert_almost_eq(rec.max_stamina, u.combat_profile()["max_stamina"], TOL)
 	assert_almost_eq(rec.stamina_jog_drain_per_s, 1.5, TOL)
@@ -391,6 +423,30 @@ func test_advance_at_a_jog_covers_more_ground_and_drains_the_pool() -> void:
 	assert_almost_eq(walker.stamina, walker.max_stamina, TOL, "the walk is free")
 	assert_almost_eq(jogger.stamina, jogger.max_stamina - SoldierCombat.KAPPA_JOG, TOL,
 			"the jog pays its drain per second")
+
+
+func test_jog_formation_capped_by_stance_bills_walk_band() -> void:
+	# A jogged far-tier formation whose effective pace is capped below the walk/jog
+	# midpoint by stance (Shield Wall) bills at the walk rate rather than the jog drain,
+	# matching the close tier's live-speed classification.
+	var rec := _rec(Unit.GAIT_JOG)
+	rec.formation_mode = Unit.FORMATION_SHIELD_WALL
+	rec.stamina = 50.0
+	rec.stamina_walk_regen_per_s = 2.0
+	rec.stamina_jog_drain_per_s = 5.0
+	# Verify Shield Wall scales speed so effective_speed is well below the walk/jog midpoint.
+	var midpoint: float = (rec.march_speed + rec.jog_speed) * 0.5
+	assert_lt(FarTierRules.effective_speed(rec), midpoint)
+	FarTierRules.advance(rec, Vector2(1000.0, 0.0), 1.0)
+	assert_almost_eq(rec.stamina, 50.0 + 2.0, TOL,
+			"capped below the midpoint, advance bills the walk band instead of the jog drain")
+
+
+func test_unit_flee_speed_shares_flee_multiplier() -> void:
+	var u := _make_unit()
+	u.move_speed = 100.0
+	assert_almost_eq(u.flee_speed(), 100.0 * Unit.FLEE_SPEED_MULTIPLIER, TOL)
+	assert_almost_eq(FarTierRules.FLEE_SPEED_MULTIPLIER, Unit.FLEE_SPEED_MULTIPLIER, TOL)
 
 
 func test_tick_recovery_rests_the_pool_back_up() -> void:

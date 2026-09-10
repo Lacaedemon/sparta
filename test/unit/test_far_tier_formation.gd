@@ -84,12 +84,16 @@ func test_from_unit_copies_the_durable_regiment_stats() -> void:
 	u.defense = 8
 	u.attack_range = 48.0   # spear reach
 	u.walk_speed = 40.0
+	u.jog_speed = 65.0
+	u.move_speed = 85.0
 	var rec := FarTierFormation.from_unit(u)
 	assert_eq(rec.max_soldiers, 10)
 	assert_eq(rec.attack, 15)
 	assert_eq(rec.defense, 8)
 	assert_eq(rec.attack_range, 48.0)
 	assert_eq(rec.march_speed, 40.0)   # the sustained AUTO pace is the walk
+	assert_eq(rec.jog_speed, 65.0)
+	assert_eq(rec.sprint_speed, 85.0)
 	assert_eq(rec.casualty_carry, 0.0)
 
 

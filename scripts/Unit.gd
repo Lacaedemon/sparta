@@ -1025,6 +1025,9 @@ const PIN_DOWN_ATTACK_INTERVAL: float = 1.2
 const PIN_DOWN_EXPOSURE_DURATION: float = 0.3
 const PIN_DOWN_DEFENSE_FACTOR: float = 0.7
 const ROUT_TIME: float = 6.0
+## Speed multiplier on move_speed while routing: fleeing soldiers run slightly faster
+## than their normal sprint pace.
+const FLEE_SPEED_MULTIPLIER: float = 1.3
 # Live rout-timer duration -- a caller-configurable parameter (CLAUDE.md's code
 # conventions) defaulting to ROUT_TIME above. Settable BEFORE the node enters the
 # tree, the same set-before-_ready contract Battle.gd's ai_period/camera_smoothing
@@ -6657,17 +6660,23 @@ func combat_profile() -> Dictionary:
 			armor_type_id, mount_type_id)
 
 
+## Flee pace while routing (move_speed * FLEE_SPEED_MULTIPLIER), shared by the movement
+## step (_process_rout) and the stamina pace classification (stamina_band).
+func flee_speed() -> float:
+	return move_speed * FLEE_SPEED_MULTIPLIER
+
+
 ## The stamina band this regiment's live pace puts its soldiers in (StaminaFlow.BAND_REST
 ## or GAIT_WALK/GAIT_JOG/GAIT_SPRINT): read off _current_speed against this unit's own
-## walk/jog paces, the same continuous-speed reading bracing uses rather than a named
-## posture. ARRIVE_SPEED_EPSILON is the rest threshold, so a unit the arrival check
+## walk, jog, and sprint paces, the same continuous-speed reading bracing uses rather than
+## a named posture. ARRIVE_SPEED_EPSILON is the rest threshold, so a unit the arrival check
 ## already treats as stopped is resting here too.
 func stamina_band() -> int:
 	if state == State.FIGHTING:
 		return StaminaFlow.BAND_REST
 	if state == State.ROUTING or _moved_while_routing:
-		return StaminaFlow.band_for_speed(move_speed * 1.3, walk_speed, jog_speed, ARRIVE_SPEED_EPSILON)
-	return StaminaFlow.band_for_speed(_current_speed, walk_speed, jog_speed, ARRIVE_SPEED_EPSILON)
+		return StaminaFlow.band_for_speed(flee_speed(), walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
+	return StaminaFlow.band_for_speed(_current_speed, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
 
 
 ## Signed stamina change per second every soldier of this regiment sees from its pace
@@ -7269,7 +7278,7 @@ func _process_rout(delta: float) -> void:
 	var to: Vector2 = step - position
 	var dir: Vector2 = to.normalized()
 	_face_dir(dir)
-	var next: Vector2 = position + dir * (move_speed * 1.3) * delta
+	var next: Vector2 = position + dir * flee_speed() * delta
 	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
 			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
 		_escape()

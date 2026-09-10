@@ -286,21 +286,31 @@ This impact transfers momentum from the full 525 kg warhorse mass, delivering bl
 > Same caveat as bracing: a continuous-speed band, not
 > a named posture state, so the `at attention` / `braced` rows still read as rest.
 
-Every action spends stamina; rest restores it. In one tick:
+Every strike thrown, blow met, rising effort, or rapid march spends stamina;
+resting restores it,
+while walking is neutral.
+In one tick:
 
 $$\sigma_A \mathrel{-}= \kappa_a \qquad\text{(each strike thrown)},$$
 $$\sigma_D \mathrel{-}= \kappa_d\,\phi_D\,(1 + c) \qquad\text{(meeting a blow you can see; a charge costs more)},$$
 $$\sigma \mathrel{-}= \kappa_p \qquad\text{(the tick a soldier rises from prone)},$$
-$$\sigma \mathrel{+}= \rho_\sigma(\text{posture})\,\Delta t \qquad\text{(posture baseline: fast } at\ ease,\ \text{slow } at\ attention,\ \text{negative while } sprinting/\text{rising; capped at } \sigma_{\max}).$$
+$$\sigma \mathrel{+}= \rho_\sigma(\text{gait})\,\Delta t \qquad\text{(gait baseline: rest regenerates, walk is neutral, jog/sprint drain; capped at } \sigma_{\max}).$$
 
-Here $\kappa_a, \kappa_d, \kappa_p \ge 0$ are the stamina costs of a strike, of
-meeting one blow, and of rising from prone; $\rho_\sigma(\text{posture})$ is the
-posture-set regen rate; and $\Delta t$ is the tick duration. Defending is not free: a soldier under sustained assault spends $\kappa_d$ on
-**every** incoming blow it meets, so its stamina falls, $g(\sigma)$ falls, and its
-active defence $\mathcal{D}$ collapses -- after which blows land freely. This is the
-engine behind several tactics: a **surrounded** soldier meets many blows per tick,
-exhausts fast, and is then cut down; a man knocked **prone** pays $\kappa_p$ to
-stand and defends nothing while down.
+Here $\kappa_a, \kappa_d, \kappa_p \ge 0$ are the stamina costs of a strike,
+of meeting one blow, and of rising from prone;
+$\rho_\sigma(\text{gait})$ is the signed per-gait flow rate
+($\rho_\sigma > 0$ regenerating at rest, $\rho_\sigma = 0$ neutral at a walk, $\rho_\sigma < 0$ draining at a jog or sprint);
+and $\Delta t$ is the tick duration.
+Defending is not free:
+a soldier under sustained assault spends $\kappa_d$ on **every** incoming blow it meets,
+so its stamina falls,
+$g(\sigma)$ falls,
+and its active defence $\mathcal{D}$ collapses -- after which blows land freely.
+This is the engine behind several tactics:
+a **surrounded** soldier meets many blows per tick,
+exhausts fast,
+and is then cut down;
+a man knocked **prone** pays $\kappa_p$ to stand and defends nothing while down.
 
 ### 4. Knockback impulse
 
