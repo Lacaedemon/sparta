@@ -36,8 +36,8 @@ static func refusal_reason(reserve: Unit, host: Unit) -> String:
 	return ""
 
 
-## The point the reserve marches to: one host rank pitch behind the host's rear edge, its
-## own half-depth further back so the two blocks stand clear before the men file in.
+## Where the reserve marches to: one host rank pitch behind the host's rear edge, plus its
+## own half-depth, so the two blocks stand clear before the men file in.
 static func rendezvous_point(host: Unit, reserve: Unit) -> Vector2:
 	var gap: float = host.soldier_block_half_extents().y + reserve.soldier_block_half_extents().y \
 			+ host.rank_pitch_wu()
@@ -45,8 +45,8 @@ static func rendezvous_point(host: Unit, reserve: Unit) -> Vector2:
 
 
 ## Arm the approach on `order` (the reserve's REINFORCE order, already current): link the
-## pair, aim the reserve at the rendezvous with the host's heading held, and leave the host
-## to whatever it was doing. A refused pair arms nothing, so the no-op order retires.
+## pair and aim the reserve at the rendezvous with the host's heading held; the host keeps
+## whatever it was doing. A refused pair arms nothing, so the no-op order retires.
 static func begin(reserve: Unit, host: Unit, order: Order) -> void:
 	if refusal_reason(reserve, host) != "":
 		return
@@ -96,7 +96,6 @@ static func _aim(reserve: Unit, host: Unit) -> void:
 	reserve.ordered_facing = host.facing
 
 
-## Arrays concatenate cleanly only when each body layer matches its count (a regiment-path
-## casualty leaves them one tick out of step until SoldierBodies.step resizes).
+## Body layers match the count (a casualty leaves them one tick out of step until resized).
 static func _bodies_aligned(u: Unit) -> bool:
 	return u._sim_soldier_pos.size() == u.soldiers and u._sim_soldier_hp.size() == u.soldiers
