@@ -198,3 +198,29 @@ func test_rally_contact_radius_stays_at_the_pre_profile_reach() -> void:
 func test_rout_margin_follows_detection_alone() -> void:
 	assert_eq(BattleRef.ROUT_MARGIN, Unit.DETECTION_RANGE,
 		"the rout margin is the default detection range, not the longest missile reach")
+
+
+func test_equipped_pilum_volley_launches_with_flat_flight_timing_under_active_field() -> void:
+	var field := ProjectileField.new()
+	ProjectileField.active = field
+	var shooter := _unit(1, 0, Vector2(0, 0), Vector2.DOWN, 10)
+	shooter.is_ranged = true
+	shooter.attack = 40
+	assert_true(shooter.equip_missile(LoadoutRegistry.MISSILE_PILUM), "equips pilum")
+	var target := _unit(2, 1, Vector2(0, 200), Vector2.UP, 60)
+	target.state = Unit.State.FIGHTING
+	target.seed_sim_soldiers()
+	UnitCombat.shoot(shooter, target)
+	assert_eq(field.count(), 1, "the volley launched one projectile into the active field")
+	assert_almost_eq(field._angle[0], ProjectilePhysics.ANGLE_FLAT, TOL,
+			"the volley launched at the pilum's flat angle")
+	var expected_flat: float = ProjectilePhysics.solve_launch(
+			200.0, ProjectileField.GRAVITY, ProjectilePhysics.ANGLE_FLAT)["flight_time"]
+	var expected_arced: float = ProjectilePhysics.solve_launch(
+			200.0, ProjectileField.GRAVITY, ProjectilePhysics.ANGLE_ARCED)["flight_time"]
+	assert_almost_eq(field._flight[0], expected_flat, 0.001,
+			"flight time matches the flat solver timing, not the lobbed default")
+	assert_true(field._flight[0] < expected_arced,
+			"flat volley lands significantly faster than an arced lob")
+	ProjectileField.active = null
+

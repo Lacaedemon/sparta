@@ -1,6 +1,11 @@
 # Design note: A longer-range missile model
 
-Status: **Phase 2 implemented** (per-type missile profiles at close-tier ranges: `scripts/MissileProfile.gd`, the `LoadoutRegistry` missile rows, `Unit`'s `missile_*` fields, and the accuracy term in `UnitCombat.shoot`);
+Status: **Phase 2 implemented**
+(per-type missile profiles at close-tier ranges:
+`scripts/MissileProfile.gd`,
+the `LoadoutRegistry` missile rows,
+`Unit`'s `missile_*` fields,
+and the accuracy term in `UnitCombat.shoot`).
 Phases 3-5 remain proposed.
 This document is the scoping deliverable [#1470](https://github.com/Lacaedemon/sparta/issues/1470) asks for: the deployment-distance design ([`docs/deployment-distance-design.md`](deployment-distance-design.md), [#957](https://github.com/Lacaedemon/sparta/issues/957)) states plainly that "a longer-range missile model is outside this design" and defers it here.
 Builds on [`docs/far-tier-pursuit-contagion-design.md`](far-tier-pursuit-contagion-design.md) ([#621](https://github.com/Lacaedemon/sparta/issues/621)), [`docs/large-scale-simulation-design.md`](large-scale-simulation-design.md) (the two-tier model), [`docs/combat-model.md`](combat-model.md), and [`docs/units-convention.md`](units-convention.md).
@@ -75,15 +80,26 @@ Even the deployment design's *Historical* preset, a 4000-wu (200 m) line gap in 
 A longer-range missile model is therefore not a retune of one constant;
 it changes what the opening of a battle is.
 
-## Where the game stands today
+## Baseline: where the game stood before Phase 2
 
-### The one range constant, and what is welded to it
+The subsections below record the pre-Phase-2 baseline that motivated this design.
+Phase 2 implemented per-type profiles (`scripts/MissileProfile.gd`),
+registered them in `scripts/LoadoutRegistry.gd`,
+carried them on `Unit`'s `missile_*` fields,
+rescaled skirmish kite distance by `SKIRMISH_KITE_FRACTION`,
+and added the distance falloff term in `UnitCombat.shoot`.
 
-`Unit.RANGED_RANGE` is `8.0 * WorldScaleRef.WU_PER_M`, 160 wu or 8 m (`scripts/Unit.gd`).
-It is a single global `const`, not a per-type or per-unit value:
-nothing in `scripts/LoadoutRegistry.gd` carries a missile range, the registry's `reach_m` is explicitly a melee reach ("the archers' melee sidearm is short -- their bow is ranged fire, not a melee reach"), and the archer roster entry in `Battle._default_loadout` carries `LoadoutRegistry.WEAPON_SIDEARM` with `"ranged": true` beside it.
-So the bow is not a weapon type in the loadout registry at all;
-it is a boolean on the unit (`Unit.is_ranged`) plus one shared range constant.
+### The one range constant, and what was welded to it
+
+In the baseline, `Unit.RANGED_RANGE` was `8.0 * WorldScaleRef.WU_PER_M`, 160 wu or 8 m (`scripts/Unit.gd`).
+It was a single global `const`, not a per-type or per-unit value.
+Nothing in `scripts/LoadoutRegistry.gd` carried a missile range.
+The registry's `reach_m` was explicitly a melee reach
+("the archers' melee sidearm is short -- their bow is ranged fire, not a melee reach"),
+and the archer roster entry in `Battle._default_loadout` carried
+`LoadoutRegistry.WEAPON_SIDEARM` with `"ranged": true` beside it.
+So the bow was not a weapon type in the loadout registry at all;
+it was a boolean on the unit (`Unit.is_ranged`) plus one shared range constant.
 
 Four other values are defined in terms of that constant or pinned against it, and each one moves if it moves.
 
@@ -95,22 +111,29 @@ Four other values are defined in terms of that constant or pinned against it, an
 - **`Unit.DETECTION_RANGE`** is `9.5 * WorldScaleRef.WU_PER_M`, 190 wu, and `RANGED_RANGE`'s own comment records the invariant that it "stays below DETECTION_RANGE so an auto-acquired target is always in detection too".
   A missile range past 190 wu breaks that invariant by construction.
 
-- **`Unit.SKIRMISH_KITE_DISTANCE`** is 100.0 wu, documented as "tuned in wu, between melee contact and RANGED_RANGE" (`scripts/Unit.gd`).
-  It is a fixed distance, not a fraction of the shooter's reach, so it does not follow a longer range.
+- **`Unit.SKIRMISH_KITE_DISTANCE`** was 100.0 wu, documented as "tuned in wu, between melee contact and RANGED_RANGE" (`scripts/Unit.gd`).
+  It was a fixed distance, not a fraction of the shooter's reach, so it did not follow a longer range
+  (Phase 2 rescales kite distance to `SKIRMISH_KITE_FRACTION` of the unit's missile range on equip).
 
 ### The firing path
 
-`Unit._think` sets `_under_fire` by scanning every node in the `units` group for an alive, non-routing enemy unit with `is_ranged` inside `RANGED_RANGE`, once per unit per tick (`scripts/Unit.gd`);
-the flag drives the AUTO pace ladder's jog escalation, a morale erosion term, and the gate that blocks resting recovery while it is set (`scripts/UnitMorale.gd`).
+In the baseline, `Unit._think` set `_under_fire` by scanning every node in the `units` group
+for an alive, non-routing enemy unit with `is_ranged` inside `RANGED_RANGE`,
+once per unit per tick (`scripts/Unit.gd`);
+Phase 2 reads the shooter's own `missile_range`.
+The flag drives the AUTO pace ladder's jog escalation, a morale erosion term, and the gate that blocks resting recovery while it is set (`scripts/UnitMorale.gd`).
 
-The fire branch itself requires `is_ranged`, no melee contact, and `dist_sq <= RANGED_RANGE * RANGED_RANGE`, plus a target-or-not-disengaging disjunction.
-It sets `State.FIGHTING`, turns the unit to face with `_face_for_action` before loosing, then starts a `RANGED_INTERVAL` cooldown and calls `UnitCombat.shoot`.
+The baseline fire branch required `is_ranged`, no melee contact, and `dist_sq <= RANGED_RANGE * RANGED_RANGE`, plus a target-or-not-disengaging disjunction;
+Phase 2 gates on `missile_range` and `missile_interval`.
+It sets `State.FIGHTING`, turns the unit to face with `_face_for_action` before loosing, then starts a `missile_interval` cooldown (defaulting to the baseline `Unit.RANGED_INTERVAL` of 1.0 s) and calls `UnitCombat.shoot`.
 `Unit.RANGED_INTERVAL` is 1.0 s and `Unit.RANGED_DAMAGE_FACTOR` is 0.7;
-both are global constants with no per-type variation.
+both were global constants with no per-type variation before Phase 2 made them profile fields.
 
-`UnitCombat.shoot` (`scripts/UnitCombat.gd`) draws one seeded roll from `Replay.rng.randf_range(0.6, 1.4)` first so the stream stays deterministic, then picks up a `friendly_interceptor` if one blocks the line, computes `eff_attack` from the attack stat times fatigue, cohesion, formation factor, and order-mode modifier, subtracts the target's stance-scaled defense, floors the result at 1, and multiplies by `RANGED_DAMAGE_FACTOR`, the roll, and `target.missile_defense_factor(u)`.
-There is no range term anywhere in that formula:
-a volley at 1 wu and a volley at 159 wu are identically lethal.
+`UnitCombat.shoot` (`scripts/UnitCombat.gd`) draws one seeded roll from `Replay.rng.randf_range(0.6, 1.4)` first so the stream stays deterministic, then picks up a `friendly_interceptor` if one blocks the line, computes `eff_attack` from the attack stat times fatigue, cohesion, formation factor, and order-mode modifier, subtracts the target's stance-scaled defense, floors the result at 1, and multiplies by `missile_damage_factor`, the roll, and `target.missile_defense_factor(u)`.
+There was no range term anywhere in that baseline formula:
+a volley at 1 wu and a volley at 159 wu were identically lethal
+(Phase 2 scales damage by `missile_accuracy()`,
+so a falloff profile drops damage linearly with distance).
 There is no ammunition either;
 `git grep` for `ammo`, `ammunition`, `quiver`, and `arrows_left` across `scripts/` returns nothing.
 
@@ -122,7 +145,10 @@ nothing consults the projectile's height, so a lobbed volley is blocked by a fri
 
 `ProjectilePhysics` (`scripts/ProjectilePhysics.gd`) is pure ballistics: `solve_launch` inverts the level-ground range equation `R = v^2 sin(2*theta)/g`, `height_at` is the gravity parabola, `peak_height` its maximum, and `ground_at` interpolates the horizontal position linearly from launch to aim point.
 Two launch angles exist as constants, `ANGLE_FLAT` at 20 degrees and `ANGLE_ARCED` at 55 degrees, and the script's own comment says the engine will choose between them per shot once line-of-sight and cover gating land.
-Today it does not choose: `UnitCombat._volley_is_arced` returns `true` unconditionally and exists as a seam rather than an inline literal.
+In the baseline it did not choose.
+`UnitCombat._volley_is_arced` returned `true` unconditionally
+and existed as a seam rather than an inline literal;
+Phase 2 reads `shooter.missile_launch_angle` via `_volley_angle`.
 
 `ProjectileField` (`scripts/ProjectileField.gd`) holds in-flight volleys as plain-data parallel arrays with no nodes, ticked once per physics frame by `Battle`.
 Its gravity is `GRAVITY = 90.0` wu/s^2, deliberately below real gravity's 196 wu/s^2 so that "volleys arc slowly and high enough to read at battlefield ranges";

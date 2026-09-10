@@ -80,3 +80,31 @@ func test_a_pilum_unit_fires_at_its_own_range_while_an_unprofiled_one_holds() ->
 	assert_eq(pilum.target_enemy, enemy, "at the staged enemy")
 	assert_ne(bow.state, Unit.State.FIGHTING, "the unprofiled regiment beside it holds")
 	assert_null(bow.target_enemy, "with nothing acquired")
+
+
+func test_battle_snapshot_restore_preserves_pilum_profile() -> void:
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.drill_mode = true
+	_battle.all_teams_control = true
+	_battle.scenario = [
+		{"team": 0, "type": "Archers", "x": 500, "y": 300, "count": 30,
+				"missile": LoadoutRegistry.MISSILE_PILUM, "facing": [160, 241.87]},
+	]
+	add_child(_battle)
+	await get_tree().physics_frame
+	var snap: Dictionary = _battle.capture_snapshot()
+	_battle.restore_snapshot(snap)
+	var pilum: Unit = null
+	for u in get_tree().get_nodes_in_group("units"):
+		if u is Unit and u.team == 0:
+			pilum = u
+			break
+	assert_not_null(pilum, "restored pilum unit exists")
+	if pilum == null:
+		return
+	assert_eq(pilum.missile_type_id, LoadoutRegistry.MISSILE_PILUM, "pilum profile preserved after rewind")
+	assert_almost_eq(pilum.missile_range, 15.0 * WorldScaleRef.WU_PER_M, 0.001, "pilum reach preserved")
+	assert_almost_eq(pilum.detection_range, 15.0 * WorldScaleRef.WU_PER_M, 0.001, "detection range preserved")
+	assert_almost_eq(pilum.skirmish_kite_distance,
+			15.0 * WorldScaleRef.WU_PER_M * Unit.SKIRMISH_KITE_FRACTION, 0.001, "kite distance preserved")
+

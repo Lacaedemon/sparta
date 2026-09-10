@@ -1984,11 +1984,12 @@ A profile fixes five things at once:
   at the full 15 m, so the last few metres of its reach are the least worth using.
 
 So a longer reach is not a free upgrade.
-A pilum regiment at 14 m is throwing at a target it can only just reach, with
-half the effect it would have at 5 m; closing a few metres roughly doubles what
-each volley does, at the cost of being closer to whatever it is throwing at.
-The kite distance under [Skirmish](#order-stances) scales with the reach, so a
-longer-ranged skirmisher backs off further before it is caught.
+A pilum regiment at 14 m throws at a target it can only just reach,
+with about 64% of the effect it would deliver at 5 m.
+Closing that distance improves a volley by about 56%,
+at the cost of being closer to whatever it is throwing at.
+The kite distance under [Skirmish](#order-stances) scales with the reach,
+so a longer-ranged skirmisher backs off further before it is caught.
 
 ::: {#fig-missile-profile-reach .demo}
 

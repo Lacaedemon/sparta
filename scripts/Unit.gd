@@ -8090,6 +8090,17 @@ func to_snapshot_dict() -> Dictionary:
 		# contract for any parent whose weapon differs from that default.
 		"spawn_weapon_type_id": spawn_weapon_type_id, "sidearm_type_id": sidearm_type_id,
 		"armor_type_id": armor_type_id, "mount_type_id": mount_type_id,
+		# Live missile profile parameters and dependent values. Dropping these would revert
+		# a restored unit or rearguard clone to the default bow profile and reset detection
+		# and kite distances.
+		"missile_type_id": missile_type_id,
+		"missile_range": missile_range,
+		"missile_interval": missile_interval,
+		"missile_damage_factor": missile_damage_factor,
+		"missile_accuracy_at_max": missile_accuracy_at_max,
+		"missile_launch_angle": missile_launch_angle,
+		"detection_range": detection_range,
+		"skirmish_kite_distance": skirmish_kite_distance,
 		"order_response_delay": order_response_delay,
 		"atomic_response_delay": atomic_response_delay,
 		"training": training, "disciplined": disciplined,
@@ -8208,6 +8219,17 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	sidearm_type_id = int(d.get("sidearm_type_id", 0))
 	armor_type_id = int(d["armor_type_id"])
 	mount_type_id = int(d["mount_type_id"])
+	# Defaulted rather than required.
+	# A snapshot written before these fields existed still applies, falling back to
+	# the default bow profile and the baseline detection and kite distances.
+	missile_type_id = int(d.get("missile_type_id", LoadoutRegistry.MISSILE_BOW))
+	missile_range = float(d.get("missile_range", RANGED_RANGE))
+	missile_interval = float(d.get("missile_interval", RANGED_INTERVAL))
+	missile_damage_factor = float(d.get("missile_damage_factor", RANGED_DAMAGE_FACTOR))
+	missile_accuracy_at_max = float(d.get("missile_accuracy_at_max", RANGED_ACCURACY_AT_MAX))
+	missile_launch_angle = float(d.get("missile_launch_angle", ProjectilePhysics.ANGLE_ARCED))
+	detection_range = float(d.get("detection_range", DETECTION_RANGE))
+	skirmish_kite_distance = float(d.get("skirmish_kite_distance", SKIRMISH_KITE_DISTANCE))
 	order_response_delay = float(d["order_response_delay"])
 	atomic_response_delay = float(d["atomic_response_delay"])
 	training = float(d["training"])
