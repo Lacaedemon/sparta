@@ -4,47 +4,12 @@ class_name UnitReinforce
 ## host's files. Static and deterministic (no RNG), so live play and replay insert alike. The
 ## reserve's REINFORCE order carries the relief pass-through link (friendly_target) so it can
 ## walk into the host's rear; the commit runs once, in the physics tick, at the rendezvous.
+## Admission lives in ReinforceGuard.refusal_reason, shared with the HUD preview.
 
 const ReinforceLayoutRef = preload("res://scripts/ReinforceLayout.gd")
 
 ## Default heading agreement the commit waits for (radians between the two facings).
 const HEADING_TOLERANCE_RAD: float = deg_to_rad(20.0)
-
-## Battle.ReinforceAxis.FILES, mirrored as an int (as Unit mirrors Battle.OrderMode) so this
-## helper stays decoupled from Battle.gd. The only axis wired so far: RANKS is refused.
-const AXIS_FILES: int = 1
-
-
-## Why `reserve` may not reinforce `host` along `axis` right now, or "" when it may: the HUD
-## flash on a refused gesture, re-run per unit at Battle's apply site so a replay refuses
-## where live play did, and again every tick of the approach so a pair that stops qualifying
-## mid-march halts instead of committing. `axis` is a Battle.ReinforceAxis value.
-static func refusal_reason(reserve: Unit, host: Unit, axis: int = AXIS_FILES) -> String:
-	if axis != AXIS_FILES:
-		return "Insertion by ranks is not yet available"
-	if reserve == host:
-		return "A regiment cannot reinforce itself"
-	if reserve.team != host.team:
-		return "Reinforce a friendly regiment"
-	for u in [reserve, host]:
-		if u.state == Unit.State.ROUTING or u.state == Unit.State.DEAD:
-			return "%s is not a steady body" % u.unit_name
-	# Contact is a physical fact (Unit._in_enemy_contact), not only the FIGHTING state: a
-	# reserve whose bodies still touch an enemy while disengaging cannot file off either.
-	if reserve.state == Unit.State.FIGHTING or reserve._in_enemy_contact:
-		return "%s is in contact and cannot file off" % reserve.unit_name
-	if reserve.weapon_type_id != host.weapon_type_id or reserve.shield_type_id != host.shield_type_id:
-		return "Loadouts differ: only like-armed regiments interleave"
-	if host.in_square():
-		return "%s is squared and has no files to open" % host.unit_name
-	# A far-tier regiment carries no per-soldier bodies, so it has nothing to interleave
-	# into (host) and nothing to file in with (reserve): the commit could never align.
-	for u in [reserve, host]:
-		if u.tier == FormationTier.FAR:
-			return "%s is too distant a body to interleave" % u.unit_name
-	if not host._effective_file_major_reform():
-		return "%s does not hold files (row-major reflow)" % host.unit_name
-	return ""
 
 
 ## Where the reserve marches to: one host rank pitch behind the host's rear edge, plus its
@@ -61,7 +26,7 @@ static func rendezvous_point(host: Unit, reserve: Unit) -> Vector2:
 ## (a march left over from its previous order would otherwise coast on under the dangling
 ## order, which retires only once no march is in flight).
 static func begin(reserve: Unit, host: Unit, order: Order) -> void:
-	if refusal_reason(reserve, host, order.reinforce_axis) != "":
+	if ReinforceGuard.refusal_reason(reserve, host, order.reinforce_axis) != "":
 		_halt(reserve, order)
 		return
 	order.friendly_target = host
@@ -77,7 +42,7 @@ static func update(reserve: Unit, heading_tolerance_rad: float = HEADING_TOLERAN
 	if order == null or order.type != Order.Type.REINFORCE or order.friendly_target == null:
 		return
 	var host: Unit = order.friendly_target
-	if not is_instance_valid(host) or refusal_reason(reserve, host, order.reinforce_axis) != "":
+	if not is_instance_valid(host) or ReinforceGuard.refusal_reason(reserve, host, order.reinforce_axis) != "":
 		_halt(reserve, order)
 		return
 	_aim(reserve, host)

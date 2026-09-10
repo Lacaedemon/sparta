@@ -70,7 +70,7 @@ func test_order_arms_the_approach_and_leaves_the_host_alone() -> void:
 	var reserve: Unit = _unit_at(RESERVE_POS)
 	assert_not_null(host, "host spawned")
 	assert_not_null(reserve, "reserve spawned")
-	assert_eq(UnitReinforce.refusal_reason(reserve, host), "", "a like-armed idle pair is allowed")
+	assert_eq(ReinforceGuard.refusal_reason(reserve, host), "", "a like-armed idle pair is allowed")
 
 	_order_reinforce(reserve, host)
 
@@ -143,13 +143,13 @@ func test_guards_refuse_the_pair() -> void:
 	await get_tree().physics_frame
 	var host: Unit = _unit_at(HOST_POS)
 	var reserve: Unit = _unit_at(RESERVE_POS)
-	assert_ne(UnitReinforce.refusal_reason(reserve, host), "", "differing loadouts are refused")
+	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "", "differing loadouts are refused")
 	_order_reinforce(reserve, host)
 	assert_null(reserve.current_order.friendly_target, "a refused pair arms no link")
 	assert_false(reserve.has_move_target, "and no march")
 	await get_tree().physics_frame
 	assert_null(reserve.current_order, "the no-op order retires")
-	assert_ne(UnitReinforce.refusal_reason(reserve, reserve), "", "a regiment cannot reinforce itself")
+	assert_ne(ReinforceGuard.refusal_reason(reserve, reserve), "", "a regiment cannot reinforce itself")
 
 
 func test_guards_on_state_refuse_the_pair() -> void:
@@ -158,18 +158,18 @@ func test_guards_on_state_refuse_the_pair() -> void:
 	var host: Unit = _unit_at(HOST_POS)
 	var reserve: Unit = _unit_at(RESERVE_POS)
 	host.state = Unit.State.ROUTING
-	assert_ne(UnitReinforce.refusal_reason(reserve, host), "", "a routing host is refused")
+	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "", "a routing host is refused")
 	host.state = Unit.State.IDLE
 	reserve.state = Unit.State.FIGHTING
-	assert_ne(UnitReinforce.refusal_reason(reserve, host), "", "an engaged reserve is refused")
+	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "", "an engaged reserve is refused")
 	reserve.state = Unit.State.IDLE
 	host.set_formation(Unit.FORMATION_SQUARE)
-	assert_ne(UnitReinforce.refusal_reason(reserve, host), "", "a squared host is refused")
+	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "", "a squared host is refused")
 	host.set_formation(Unit.FORMATION_NORMAL)
 	host.file_major_reform_mode = Unit.ReformMode.ROW_MAJOR
-	assert_ne(UnitReinforce.refusal_reason(reserve, host), "", "a row-major host is refused")
+	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "", "a row-major host is refused")
 	host.file_major_reform_mode = Unit.ReformMode.FILE_MAJOR
-	assert_eq(UnitReinforce.refusal_reason(reserve, host), "", "restored, the pair is allowed again")
+	assert_eq(ReinforceGuard.refusal_reason(reserve, host), "", "restored, the pair is allowed again")
 
 
 func test_a_host_that_leaves_the_line_halts_the_reserve() -> void:
@@ -218,7 +218,7 @@ func test_the_unwired_ranks_axis_and_far_or_touching_reserves_are_refused() -> v
 	var host: Unit = _unit_at(HOST_POS)
 	var reserve: Unit = _unit_at(RESERVE_POS)
 	var files_before: int = UnitFormation.frontage(host)
-	assert_ne(UnitReinforce.refusal_reason(reserve, host, BattleScript.ReinforceAxis.RANKS), "",
+	assert_ne(ReinforceGuard.refusal_reason(reserve, host, BattleScript.ReinforceAxis.RANKS), "",
 			"the ranks axis is refused rather than silently run as files")
 	_battle._apply_order_cmd({
 		"units": [reserve.uid], "x": host.position.x, "y": host.position.y,
@@ -229,14 +229,14 @@ func test_the_unwired_ranks_axis_and_far_or_touching_reserves_are_refused() -> v
 	assert_false(reserve.has_move_target, "and starts no march")
 	assert_eq(UnitFormation.frontage(host), files_before, "the host is untouched")
 	reserve._in_enemy_contact = true
-	assert_ne(UnitReinforce.refusal_reason(reserve, host), "",
+	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "",
 			"a reserve whose bodies touch an enemy is refused even when not fighting")
 	reserve._in_enemy_contact = false
 	reserve.tier = FormationTier.FAR
-	assert_ne(UnitReinforce.refusal_reason(reserve, host), "",
+	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "",
 			"a far-tier reserve has no bodies to file in with and is refused")
 	reserve.tier = FormationTier.CLOSE
-	assert_eq(UnitReinforce.refusal_reason(reserve, host), "", "restored, the pair is allowed")
+	assert_eq(ReinforceGuard.refusal_reason(reserve, host), "", "restored, the pair is allowed")
 
 
 func test_a_host_that_stops_qualifying_mid_approach_halts_the_reserve() -> void:

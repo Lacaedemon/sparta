@@ -691,7 +691,7 @@ func _arm_reinforce(axis: int) -> void:
 
 ## The refusal reason of the first selected unit that may not reinforce `host` along `axis`
 ## ("" when every live selected unit may) -- the same per-unit check Battle re-runs at its
-## apply site (UnitReinforce.refusal_reason), applied to the whole selection so a mixed one
+## apply site (ReinforceGuard.refusal_reason), applied to the whole selection so a mixed one
 ## is refused up front rather than half of it marching and the rest halting at the apply site.
 func _reinforce_refusal(host: UnitRef, axis: int = BattleRef.ReinforceAxis.FILES) -> String:
 	var any_live: bool = false
@@ -699,7 +699,7 @@ func _reinforce_refusal(host: UnitRef, axis: int = BattleRef.ReinforceAxis.FILES
 		if not is_instance_valid(unit):
 			continue
 		any_live = true
-		var reason: String = UnitReinforce.refusal_reason(unit, host, axis)
+		var reason: String = ReinforceGuard.refusal_reason(unit, host, axis)
 		if reason != "":
 			return reason
 	return "" if any_live else "Nothing selected to reinforce with"
