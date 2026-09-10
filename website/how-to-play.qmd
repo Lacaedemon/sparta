@@ -139,8 +139,9 @@ all three units and a move order lands only on them.
 
 **Pace modes (AUTO by default).** Units walk on approach, jog when a ranged enemy is
 within range (under missile fire), and accelerate to full sprint speed once within
-about 200 px of the target --- so a charge arrives at full momentum without wearing
-out the troops on the march. Check **Walk advance** in the unit settings panel to
+about 200 px of the target --- preserving stamina on the approach walk and spending it
+only on the terminal charge (or when jogging under fire).
+Check **Walk advance** in the unit settings panel to
 lock the selection to walk pace throughout; this is required for formed stances like
 shield wall or pike phalanx that break if the unit breaks into a run. Each unit type
 has its own default --- spearmen start with it on, everyone else off --- and the setting

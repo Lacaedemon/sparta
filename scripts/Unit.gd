@@ -1410,6 +1410,7 @@ func _physics_process(delta: float) -> void:
 		_process_rout(delta)
 		if state != State.DEAD:   # timer expired: rallied (IDLE) or shattered (DEAD -> freed)
 			_separate(delta)   # routers still shoulder past anyone in their path
+			_tick_far_stamina(delta)
 		return
 
 	_attack_cd = max(0.0, _attack_cd - delta)
@@ -6659,6 +6660,8 @@ func combat_profile() -> Dictionary:
 func stamina_band() -> int:
 	if state == State.FIGHTING:
 		return StaminaFlow.BAND_REST
+	if state == State.ROUTING:
+		return StaminaFlow.band_for_speed(move_speed * 1.3, walk_speed, jog_speed, ARRIVE_SPEED_EPSILON)
 	return StaminaFlow.band_for_speed(_current_speed, walk_speed, jog_speed, ARRIVE_SPEED_EPSILON)
 
 
@@ -8079,6 +8082,10 @@ func to_snapshot_dict() -> Dictionary:
 		"anti_cavalry": anti_cavalry, "is_cavalry": is_cavalry, "is_ranged": is_ranged,
 		"max_soldiers": max_soldiers, "attack": attack, "defense": defense,
 		"move_speed": move_speed, "walk_speed": walk_speed, "jog_speed": jog_speed,
+		"stamina_rest_regen_per_s": stamina_rest_regen_per_s,
+		"stamina_walk_regen_per_s": stamina_walk_regen_per_s,
+		"stamina_jog_drain_per_s": stamina_jog_drain_per_s,
+		"stamina_sprint_drain_per_s": stamina_sprint_drain_per_s,
 		"back_speed_fraction": back_speed_fraction,
 		"superphysical_speed_frac": superphysical_speed_frac,
 		"accel": accel, "decel": decel,
@@ -8192,6 +8199,14 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	move_speed = float(d["move_speed"])
 	walk_speed = float(d["walk_speed"])
 	jog_speed = float(d["jog_speed"])
+	stamina_rest_regen_per_s = float(
+			d.get("stamina_rest_regen_per_s", SoldierCombat.RHO_STAMINA))
+	stamina_walk_regen_per_s = float(
+			d.get("stamina_walk_regen_per_s", SoldierCombat.RHO_STAMINA_WALK))
+	stamina_jog_drain_per_s = float(
+			d.get("stamina_jog_drain_per_s", SoldierCombat.KAPPA_JOG))
+	stamina_sprint_drain_per_s = float(
+			d.get("stamina_sprint_drain_per_s", SoldierCombat.KAPPA_SPRINT))
 	back_speed_fraction = float(d["back_speed_fraction"])
 	# Defaulted rather than required: a snapshot written before this field existed still
 	# applies, falling back to the same shared constant the @export default uses.

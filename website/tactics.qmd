@@ -436,9 +436,10 @@ but arrives with less in the tank,
 and one that sprints the whole way arrives spent ---
 its condition factor already down before the first blow lands.
 That is the trade-off behind [choosing a gait by click count](#choosing-a-gait-by-click-count)
-and behind AUTO pace's walk-then-sprint profile:
-the walk costs nothing,
-so the men reach charge distance fresh and spend the pool only on the terminal sprint.
+and behind AUTO pace's default profile:
+the unthreatened walk costs nothing,
+so the men reach charge distance fresh and spend the pool only on the terminal sprint
+(or on an earlier jog if under missile fire or pursuing).
 Read the pool off the selected unit's stat sheet
 (the **Stamina per man** line, mean and spread over the living men)
 to see how much of it a march has already cost.

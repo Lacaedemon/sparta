@@ -283,6 +283,42 @@ func test_far_stamina_round_trips_through_a_snapshot() -> void:
 	assert_almost_eq(restored.far_stamina, -1.0, TOL, "an older snapshot reads as never demoted")
 
 
+func test_configurable_stamina_rates_round_trip_through_a_snapshot() -> void:
+	var u := _make_unit(7)
+	u.stamina_rest_regen_per_s = 4.2
+	u.stamina_walk_regen_per_s = 1.5
+	u.stamina_jog_drain_per_s = 3.3
+	u.stamina_sprint_drain_per_s = 7.7
+	var d: Dictionary = u.to_snapshot_dict()
+	assert_almost_eq(float(d["stamina_rest_regen_per_s"]), 4.2, TOL)
+	assert_almost_eq(float(d["stamina_walk_regen_per_s"]), 1.5, TOL)
+	assert_almost_eq(float(d["stamina_jog_drain_per_s"]), 3.3, TOL)
+	assert_almost_eq(float(d["stamina_sprint_drain_per_s"]), 7.7, TOL)
+	d.erase("stamina_rest_regen_per_s")
+	d.erase("stamina_walk_regen_per_s")
+	d.erase("stamina_jog_drain_per_s")
+	d.erase("stamina_sprint_drain_per_s")
+	var restored := _make_unit(8)
+	restored.apply_snapshot_dict(d)
+	assert_almost_eq(restored.stamina_rest_regen_per_s, SoldierCombat.RHO_STAMINA, TOL)
+	assert_almost_eq(restored.stamina_walk_regen_per_s, SoldierCombat.RHO_STAMINA_WALK, TOL)
+	assert_almost_eq(restored.stamina_jog_drain_per_s, SoldierCombat.KAPPA_JOG, TOL)
+	assert_almost_eq(restored.stamina_sprint_drain_per_s, SoldierCombat.KAPPA_SPRINT, TOL)
+
+
+func test_far_tier_routing_updates_stamina_at_flee_pace() -> void:
+	var u := _make_unit(7)
+	u.tier = FormationTier.FAR
+	u.far_stamina = 50.0
+	u.morale = 0.0
+	u._rout_timer = 5.0
+	u.state = Unit.State.ROUTING
+	u.move_speed = 100.0
+	u._physics_process(1.0)
+	assert_almost_eq(u.far_stamina, 50.0 - SoldierCombat.KAPPA_SPRINT, 1e-2,
+			"routing drains at the sprint rate on the far tier")
+
+
 # --- Far tier: the isolated record and its rules -----------------------------------------
 
 
@@ -349,6 +385,17 @@ func test_tick_recovery_rests_the_pool_back_up() -> void:
 	rec.stamina = rec.max_stamina - 1.0
 	FarTierRules.tick_recovery(rec, 1.0)
 	assert_almost_eq(rec.stamina, rec.max_stamina, TOL, "capped at full")
+
+
+func test_tick_rout_drains_stamina_when_moving_at_jog() -> void:
+	var rec := _rec(Unit.GAIT_JOG)
+	var enemy := _rec()
+	enemy.position = Vector2(0.0, 100.0)
+	rec.stamina = 80.0
+	FarTierRules.enter_rout(rec)
+	FarTierRules.tick_rout(rec, enemy, 1.0)
+	assert_almost_eq(rec.stamina, 80.0 - SoldierCombat.KAPPA_JOG, TOL,
+			"routing movement applies the gait's stamina flow")
 
 
 func test_a_spent_formation_strikes_at_the_stamina_floor() -> void:

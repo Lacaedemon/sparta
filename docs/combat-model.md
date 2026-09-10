@@ -6,7 +6,7 @@ probabilistic model that resolves combat between individual soldiers; it is now 
 into **engaged melee**, which is soldier-authoritative (`SoldierMelee.resolve`). The
 per-slice `> Implemented` notes below track what has landed (the land contest, wound,
 knockback, prone, graded bracing, and stamina) and what is deferred (the full posture
-enum/stamina-regen system, the domino cascade, and enemy collision → #201). The
+enum, the domino cascade, and enemy collision -> #201). The
 player-facing version lives at [`website/combat.qmd`](../website/combat.qmd) -- keep the
 two in sync.
 
@@ -551,18 +551,18 @@ front-facing shield wall has $\mathrm{br}\to 1$ and holds.
 > buttress), and the sub-capacity shove is absorbed before applying velocity; `brace_depth` is
 > also passed to `prone_chance` to raise the knockdown threshold for a set phalanx.
 > **Deferred:** the rearward domino cascade ($J_{i+1} = \tau(J_i - C_i)_+$, surplus toppling
-> rear ranks) and the full posture enum/stamina-regen table (`at ease` / `advancing` /
-> `jogging` / `sprinting` distinguished as separate gaits, not just a motion-scaled penalty)
-> remain follow-up work.
+> rear ranks) and the full posture enum remain follow-up work;
+> the posture table's stamina-regen column is now implemented (#1466, `StaminaFlow`).
 
 > **Implemented (#201 slice D):** `SoldierCombat.stamina_factor` ($g(\sigma)$) and the
 > per-soldier `_sim_soldier_stamina` pool. In `SoldierMelee.resolve`, `cond_a`/`cond_d`
 > are now $q(h)\,g(\sigma)$ -- the full two-factor condition. Every strike costs the
 > attacker $\kappa_a$; every met blow costs the defender $\kappa_d\,\phi\,(1+c)$ (zero
-> for prone or flanked defenders). `SoldierBodies.step` regens stamina at $\rho_\sigma$
-> per second and charges $\kappa_p$ on the tick a soldier rises from prone. **Deferred:**
-> posture-dependent regen ($\rho_\sigma(\text{posture})$ table) to the posture slice;
-> stamina HUD to a follow-up.
+> for prone or flanked defenders). `SoldierBodies.step` originally regened stamina at a flat
+> $\rho_\sigma$ per second and charged $\kappa_p$ on the tick a soldier rose from prone.
+> Posture-dependent regen and the stamina HUD, originally deferred, are now implemented (#1466):
+> `SoldierBodies.step` applies `Unit.stamina_flow_per_s` (via `StaminaFlow`'s
+> rest, walk, jog, and sprint speed bands) and the HUD displays each soldier's pool.
 
 ## Receiving a charge
 

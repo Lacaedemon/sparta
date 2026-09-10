@@ -18,6 +18,10 @@ func _sample_unit() -> Unit:
 	u.move_speed = 200.0
 	u.walk_speed = 50.0
 	u.jog_speed = 90.0
+	u.stamina_rest_regen_per_s = 4.2
+	u.stamina_walk_regen_per_s = 1.5
+	u.stamina_jog_drain_per_s = 3.3
+	u.stamina_sprint_drain_per_s = 7.7
 	u.back_speed_fraction = 0.35
 	u.accel = 20.0
 	u.decel = 45.0
@@ -130,6 +134,10 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_almost_eq(restored.order_response_delay, original.order_response_delay, 0.001)
 	assert_almost_eq(restored.atomic_response_delay, original.atomic_response_delay, 0.001,
 		"a spawn-customized drill beat survives a replay-seek snapshot restore")
+	assert_almost_eq(restored.stamina_rest_regen_per_s, original.stamina_rest_regen_per_s, 0.001)
+	assert_almost_eq(restored.stamina_walk_regen_per_s, original.stamina_walk_regen_per_s, 0.001)
+	assert_almost_eq(restored.stamina_jog_drain_per_s, original.stamina_jog_drain_per_s, 0.001)
+	assert_almost_eq(restored.stamina_sprint_drain_per_s, original.stamina_sprint_drain_per_s, 0.001)
 	assert_eq(restored.disciplined, original.disciplined)
 	assert_eq(restored.field_bounds, original.field_bounds)
 	assert_eq(restored.retreat_bounds, original.retreat_bounds)

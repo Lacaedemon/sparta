@@ -316,9 +316,12 @@ static func tick_rout(rec: FarTierFormation, enemy: FarTierFormation, delta: flo
 	if not rec.routing:
 		return
 	var away: Vector2 = rec.position - enemy.position
+	var moved: bool = false
 	if away.length_squared() >= 0.000001:
 		rec.facing = away.normalized()
 		rec.position += rec.facing * (effective_speed(rec) * FLEE_SPEED_MULTIPLIER) * delta
+		moved = true
+	tick_stamina(rec, moved, delta)
 	if rec.morale < Unit.ROUT_RALLY_BASELINE:
 		rec.morale += (Unit.ROUT_RALLY_BASELINE - rec.morale) * Unit.ROUT_MORALE_RECOVER_RATE * delta
 	if rec.morale >= rec.rally_morale_threshold and can_rally(rec, enemy):
