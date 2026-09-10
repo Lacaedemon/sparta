@@ -1,6 +1,7 @@
 # Design note: A longer-range missile model
 
-Status: **Phase 2 implemented** (per-type missile profiles at close-tier ranges: `scripts/MissileProfile.gd`, the `LoadoutRegistry` missile rows, `Unit`'s `missile_*` fields, and the accuracy term in `UnitCombat.shoot`); Phases 3-5 remain proposed.
+Status: **Phase 2 implemented** (per-type missile profiles at close-tier ranges: `scripts/MissileProfile.gd`, the `LoadoutRegistry` missile rows, `Unit`'s `missile_*` fields, and the accuracy term in `UnitCombat.shoot`);
+Phases 3-5 remain proposed.
 This document is the scoping deliverable [#1470](https://github.com/Lacaedemon/sparta/issues/1470) asks for: the deployment-distance design ([`docs/deployment-distance-design.md`](deployment-distance-design.md), [#957](https://github.com/Lacaedemon/sparta/issues/957)) states plainly that "a longer-range missile model is outside this design" and defers it here.
 Builds on [`docs/far-tier-pursuit-contagion-design.md`](far-tier-pursuit-contagion-design.md) ([#621](https://github.com/Lacaedemon/sparta/issues/621)), [`docs/large-scale-simulation-design.md`](large-scale-simulation-design.md) (the two-tier model), [`docs/combat-model.md`](combat-model.md), and [`docs/units-convention.md`](units-convention.md).
 
@@ -244,7 +245,9 @@ A thrown-shaft limit is already historical rather than invented, since a legiona
 
 ## Proposed mechanism
 
-Everything below was **proposed** when this note was drafted; the profile, the per-unit range, the damage-formula term, and the profile-driven launch angle now exist in the tree (Phase 2), while trajectory *selection*, long-range interception, and everything from Phase 3 on remain proposed.
+Everything below was **proposed** when this note was drafted;
+the profile, the per-unit range, the damage-formula term, and the profile-driven launch angle now exist in the tree (Phase 2),
+while trajectory *selection*, long-range interception, and everything from Phase 3 on remain proposed.
 Per this repo's caller-configurable convention, every value named here enters through a data table or an instance field with today's behaviour as the default, and every metric length is authored as `<metres> * WorldScaleRef.WU_PER_M`.
 
 ### A missile profile in the loadout registry
