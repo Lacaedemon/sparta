@@ -6657,6 +6657,8 @@ func combat_profile() -> Dictionary:
 ## posture. ARRIVE_SPEED_EPSILON is the rest threshold, so a unit the arrival check
 ## already treats as stopped is resting here too.
 func stamina_band() -> int:
+	if state == State.FIGHTING:
+		return StaminaFlow.BAND_REST
 	return StaminaFlow.band_for_speed(_current_speed, walk_speed, jog_speed, ARRIVE_SPEED_EPSILON)
 
 

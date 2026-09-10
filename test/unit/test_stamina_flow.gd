@@ -127,6 +127,8 @@ func test_unit_band_reads_its_own_live_pace() -> void:
 	assert_eq(u.stamina_band(), Unit.GAIT_JOG)
 	u._current_speed = u.move_speed
 	assert_eq(u.stamina_band(), Unit.GAIT_SPRINT)
+	u.state = Unit.State.FIGHTING
+	assert_eq(u.stamina_band(), StaminaFlow.BAND_REST, "a fighting unit stands and rests")
 
 
 func test_unit_flow_uses_the_instance_rates_so_a_caller_can_retune_one() -> void:
