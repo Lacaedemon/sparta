@@ -12,6 +12,10 @@ const BattleScript = preload("res://scripts/Battle.gd")
 ## held-heading march ramps up from rest and the commit waits for the heading to settle.
 const COMMIT_BUDGET_TICKS: int = 900
 
+## Ticks to watch the host's anchor after the commit: the CI transcript of the first cut
+## showed the anchor 54 wu rearward within 20 ticks and still there 200 ticks later.
+const ANCHOR_HOLD_CHECK_TICKS: int = 120
+
 const HOST_POS := Vector2(600, 520)
 const RESERVE_POS := Vector2(600, 340)
 
@@ -124,6 +128,14 @@ func test_commit_doubles_the_host_and_interleaves_the_files() -> void:
 		seen[key] = true
 	assert_lt(host.position.distance_to(host_start), host.rank_pitch_wu(),
 			"the files axis widens about the same centre; the host does not creep")
+
+	# The newcomers walk in from the rendezvous behind the host, so for a while half the
+	# block stands well off its slots. The anchor must not read that as drift and back the
+	# whole regiment up to meet them: the front rank holds its ground through the arrival.
+	for _tick in range(ANCHOR_HOLD_CHECK_TICKS):
+		await get_tree().physics_frame
+	assert_lt(host.position.distance_to(host_start), host.rank_pitch_wu(),
+			"the anchor holds through the arrival; the front rank keeps its ground")
 
 
 func test_guards_refuse_the_pair() -> void:

@@ -150,8 +150,10 @@ Runs once, inside the physics tick, and does five things in order.
 5. **Anchor the front (ranks axis only).**
    The slot grid is centred on `position` -- `SoldierBodies.couple` relies on `mean(slots) ~ position` -- so deepening from `D` to `D'` ranks would push the front rank forward by `(D' - D) / 2` rank pitches, into the enemy on an engaged host.
    Commit instead moves `host.position` rearward along `host.facing` by that amount: a one-time relocation of the anchor rather than a standing offset, so the coupling premise holds again from the next tick and the growth lands entirely at the rear.
-   The files axis widens laterally about the same centre and needs no shift;
+   The files axis widens laterally about the same centre and needs no shift of its own;
    a flank-held widen can reuse `frontage_anchor_offset` and `UnitFormation.anchor_shift` exactly as the anchored explicatio does.
+   Both axes need the anchor **held** through the arrival, though: `SoldierBodies.couple` averages body-minus-slot drift over the whole regiment when no engaged front narrows it, and the newcomers walking in from the rendezvous read as that drift, backing the line up about three rank pitches (measured on the first files-axis recording).
+   Commit arms `Unit.hold_position_anchor(_reshape_timeout(old_files))`, and `couple` skips its whole-regiment path while the hold runs; an engaged host, which anchors on its front ranks alone, is unaffected.
 
 After commit, the host's bodies ease onto their new slots at velocity through the ordinary arrival dynamics;
 nobody teleports.

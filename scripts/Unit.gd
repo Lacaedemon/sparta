@@ -347,6 +347,14 @@ var _last_reshape_widened: bool = false
 # any re-slot has happened, Engine.get_physics_frames() (>= 0) already exceeds it, so the
 # pass is skipped by default rather than by a special-cased sentinel check.
 var _standoff_settle_until_tick: int = -1
+# Tick until which SoldierBodies.couple leaves `position` alone on its whole-regiment path
+# (a unit with no engaged front to anchor on). Armed by a reinforcement insertion: the
+# newcomers walk in from a rendezvous behind the host, so for the length of that arrival
+# half the block stands well off its slots by design, and the drift average would read
+# the approach as the regiment being out of place and back the whole line up to meet it.
+# An engaged host is unaffected -- its anchor already reads off its front ranks alone.
+# -1 means "never armed", on the same convention as _standoff_settle_until_tick above.
+var _anchor_hold_until_tick: int = -1
 # The state this unit was in on its previous physics tick, read only to notice a unit
 # LEAVING a fight or a rout: both leave the bodies wherever the press or the flight put
 # them, and the walk back to pitch spacing is the same file-crossing traversal a re-slot
@@ -5682,6 +5690,18 @@ func _arm_standoff_settle_window(timeout_sec: float) -> void:
 	_standoff_settle_until_tick = maxi(_standoff_settle_until_tick, Engine.get_physics_frames() + ticks)
 
 
+## Hold `position` against the body-centroid coupling for `timeout_sec` more seconds (see
+## _anchor_hold_until_tick). Only ever moves the deadline forward, like the standoff window.
+func hold_position_anchor(timeout_sec: float) -> void:
+	var ticks: int = int(ceil(timeout_sec * float(Engine.physics_ticks_per_second)))
+	_anchor_hold_until_tick = maxi(_anchor_hold_until_tick, Engine.get_physics_frames() + ticks)
+
+
+## True while a hold_position_anchor window is in effect.
+func position_anchor_held() -> bool:
+	return Engine.get_physics_frames() < _anchor_hold_until_tick
+
+
 ## Advance an in-place turn one tick: rotate `facing` toward `target` at the drill rate and
 ## report whether it arrived this tick (snapping exactly onto the target so the completion step
 ## runs on an exact heading — the conversio's body reverse, the quarter-turn's offset settle).
@@ -8137,6 +8157,7 @@ func to_snapshot_dict() -> Dictionary:
 		"last_reshape_tick": _last_reshape_tick,
 		"last_reshape_widened": _last_reshape_widened,
 		"standoff_settle_until_tick": _standoff_settle_until_tick,
+		"anchor_hold_until_tick": _anchor_hold_until_tick,
 		"standoff_prev_state": _standoff_prev_state,
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
 		"formation_mirror_x": _formation_mirror_x,
@@ -8268,6 +8289,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_last_reshape_tick = int(d["last_reshape_tick"])
 	_last_reshape_widened = bool(d["last_reshape_widened"])
 	_standoff_settle_until_tick = int(d.get("standoff_settle_until_tick", -1))
+	_anchor_hold_until_tick = int(d.get("anchor_hold_until_tick", -1))
 	_standoff_prev_state = int(d.get("standoff_prev_state", state))
 	_ranks_closed = bool(d["ranks_closed"])
 	_formation_angle = float(d["formation_angle"])

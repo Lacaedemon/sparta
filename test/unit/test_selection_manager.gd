@@ -3185,3 +3185,87 @@ func test_the_weapon_switch_message_excludes_dead_regiments_from_the_count() -> 
 
 	assert_eq(msg, "Drew: %s (1 of 2 regiments)" % pilum.display_name,
 			"the dead regiment is excluded from both the numerator and the denominator")
+
+
+# --- reinforcement insertion arm (Shift+M) ---------------------------
+
+## A selection manager over a bare Battle with two same-team, like-armed regiments far
+## enough apart that a click on one cannot resolve to the other.
+func _reinforce_setup() -> Dictionary:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var reserve := _unit()
+	reserve.uid = 11
+	reserve.position = Vector2(100, 100)
+	var host := _unit()
+	host.uid = 12
+	host.position = Vector2(600, 100)
+	b._by_uid[11] = reserve
+	b._by_uid[12] = host
+	sm._select(reserve)
+	return {"sm": sm, "battle": b, "reserve": reserve, "host": host}
+
+
+func test_shift_m_arms_reinforcement_by_files_and_escape_clears_it() -> void:
+	var s := _reinforce_setup()
+	var sm = s["sm"]
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE, "idle until armed")
+	assert_true(sm._dispatch_key(_key_event(KEY_M, false, true)), "Shift+M is a handled hotkey")
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.FILES, "Shift+M arms insertion by files")
+	sm._set_armed_mode(BattleScript.OrderMode.NORMAL)   # what Esc routes to
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE, "Esc clears the arm")
+
+
+func test_reinforce_arm_needs_a_selection_and_a_live_battle() -> void:
+	var sm := _sm()
+	sm._arm_reinforce(BattleScript.ReinforceAxis.FILES)
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE, "nothing selected: nothing armed")
+	assert_eq(sm._reinforce_refusal(_unit()), "Nothing selected to reinforce with",
+			"an empty selection is refused by name")
+	var s := _reinforce_setup()
+	var prev_mode: int = Replay.mode
+	Replay.mode = Replay.Mode.PLAYBACK
+	s["sm"]._arm_reinforce(BattleScript.ReinforceAxis.FILES)
+	Replay.mode = prev_mode
+	assert_eq(s["sm"]._armed_reinforce, BattleScript.ReinforceAxis.NONE,
+			"a playback cannot be steered, so the arm is refused")
+
+
+func test_armed_right_click_on_a_valid_friendly_routes_the_axis_to_battle() -> void:
+	var s := _reinforce_setup()
+	var sm = s["sm"]
+	var b = s["battle"]
+	var host: Unit = s["host"]
+	assert_eq(sm._reinforce_refusal(host), "", "a like-armed idle pair is allowed")
+	sm._arm_reinforce(BattleScript.ReinforceAxis.FILES)
+	sm._issue_order(host.position)
+	assert_false(b._pending_orders.is_empty(), "the click queues an order")
+	var cmd: Dictionary = b._pending_orders[-1]
+	assert_eq(int(cmd["target"]), host.uid, "targeting the clicked friendly")
+	assert_eq(int(cmd["reinforce"]), BattleScript.ReinforceAxis.FILES, "carrying the armed axis")
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE, "the arm is one-shot")
+
+
+func test_armed_right_click_on_a_refused_friendly_queues_nothing() -> void:
+	var s := _reinforce_setup()
+	var sm = s["sm"]
+	var b = s["battle"]
+	var host: Unit = s["host"]
+	host.weapon_type_id = LoadoutRegistry.WEAPON_SPEAR   # a different loadout
+	assert_ne(sm._reinforce_refusal(host), "", "differing loadouts are refused")
+	sm._arm_reinforce(BattleScript.ReinforceAxis.FILES)
+	sm._issue_order(host.position)
+	assert_true(b._pending_orders.is_empty(), "a refused pair issues no order at all")
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE, "and the arm still clears")
+
+
+func test_unarmed_right_click_on_an_idle_friendly_carries_no_axis() -> void:
+	var s := _reinforce_setup()
+	var sm = s["sm"]
+	var b = s["battle"]
+	sm._issue_order(Vector2(300, 300))   # open ground: a plain move
+	assert_false(b._pending_orders.is_empty(), "a plain move still queues")
+	assert_eq(int(b._pending_orders[-1]["reinforce"]), BattleScript.ReinforceAxis.NONE,
+			"an ordinary order carries the NONE axis")

@@ -1,11 +1,9 @@
 class_name UnitReinforce
 ## Reinforcement insertion (Asclepiodotus, Tactics 10.17, doubling by NUMBER): a reserve
 ## marches up behind a friendly host and its men file into the host's ranks, doubling the
-## host's files. Static and deterministic (positions and state only, no RNG), so live play
-## and replay insert identically. The approach rides the reserve's REINFORCE order:
-## Order.friendly_target arms the pass-through exemption a relief pair gets, so the reserve
-## can walk into the host's rear; the commit (ReinforceLayout) runs once, inside the physics
-## tick, when the reserve stands at the rendezvous with its heading matched.
+## host's files. Static and deterministic (no RNG), so live play and replay insert alike. The
+## reserve's REINFORCE order carries the relief pass-through link (friendly_target) so it can
+## walk into the host's rear; the commit runs once, in the physics tick, at the rendezvous.
 
 const ReinforceLayoutRef = preload("res://scripts/ReinforceLayout.gd")
 
@@ -75,8 +73,8 @@ static func update(reserve: Unit, heading_tolerance_rad: float = HEADING_TOLERAN
 
 
 ## The reserve's men file into the host: interleave the ids, carry the per-soldier arrays
-## across, pool strength, install the assignment, and remove the reserve. Everyone then eases
-## onto the new slots through the ordinary arrival dynamics; nobody teleports.
+## across, pool strength, install the assignment, hold the host's anchor for the arrival (or
+## the centroid coupling would back the line up to the newcomers), and remove the reserve.
 static func commit(reserve: Unit, host: Unit) -> void:
 	var files: int = UnitFormation.frontage(host)
 	host._ensure_file_assignment(host.soldiers, files)
@@ -85,6 +83,7 @@ static func commit(reserve: Unit, host: Unit) -> void:
 	host.append_soldier_bodies(reserve)
 	host.pool_strength(reserve, host.reinforce_cohesion_floor)
 	host.install_file_assignment(layout["file_ids"], layout["ranks"], int(layout["files"]))
+	host.hold_position_anchor(host._reshape_timeout(files))
 	reserve.current_order.friendly_target = null
 	reserve._merged_away()
 	host.queue_redraw()
