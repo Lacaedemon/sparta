@@ -99,7 +99,7 @@ static func decide(u: Unit, all_units: Array, directive: Dictionary = {},
 	# from the flank turns to meet it rather than presenting its back.
 	if not already_relieving \
 			and String(directive.get("type", "")) == SkirmisherScreen.DIRECTIVE_WITHDRAW:
-		return _move_directive_cmd(u, directive, _station_of(directive))
+		return _move_directive_cmd(u, directive, _station_of(u, directive))
 
 	if u.state == Unit.State.FIGHTING and u.morale < RELIEF_MORALE_THRESHOLD:
 		var reliever: Unit = _relief_candidate(u, all_units)
@@ -268,7 +268,7 @@ static func _directive_cmd(u: Unit, directive: Dictionary) -> Dictionary:
 static func _screen_directive_cmd(u: Unit, directive: Dictionary) -> Dictionary:
 	var point := Vector2(float(directive.get("x", u.position.x)),
 			float(directive.get("y", u.position.y)))
-	var station: float = _station_of(directive)
+	var station: float = _station_of(u, directive)
 	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 	if u.position.distance_squared_to(point) <= station * station:
 		return {}
@@ -277,9 +277,11 @@ static func _screen_directive_cmd(u: Unit, directive: Dictionary) -> Dictionary:
 
 ## The station radius a screen directive carries, or the default when it carries none --
 ## the re-issue tolerance both the advance and the recall are measured against. See
-## _move_directive_cmd's own note on why a drifting point needs a wide one.
-static func _station_of(directive: Dictionary) -> float:
-	return float(directive.get("station", SkirmisherScreen.SCREEN_STATION_RADIUS))
+## _move_directive_cmd's own note on why a drifting point needs a wide one. At least
+## the unit's live skirmish kite distance so a kite step cannot cancel its own firefight.
+static func _station_of(u: Unit, directive: Dictionary) -> float:
+	var base: float = float(directive.get("station", SkirmisherScreen.SCREEN_STATION_RADIUS))
+	return maxf(base, u.skirmish_kite_distance)
 
 
 ## A SUPPORT directive: guard the named ward, same shape the friendly-target SUPPORT branch

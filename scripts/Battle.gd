@@ -1352,10 +1352,10 @@ func _apply_starting_state(u: Unit, starting_state: int) -> void:
 ## Every live unit ("units" + "routers" -- a unit that has died and left play is in
 ## neither, so it's correctly excluded, matching how a rewind to before its death
 ## should look) plus the whole-battle bookkeeping (tick, RNG stream position, the next
-## fresh uid, and the active Engine.time_scale -- a global engine property with no
-## per-unit trace, so it has to ride in the snapshot itself rather than being derivable
-## from anything captured above) needed to resume simulating from this exact moment.
-## Opaque to callers other than restore_snapshot; never written to the canonical
+## fresh uid, in-flight projectiles in ProjectileField, and the active Engine.time_scale -- a
+## global engine property with no per-unit trace, so it has to ride in the snapshot itself rather
+## than being derivable from anything captured above) needed to resume simulating from this
+## exact moment. Opaque to callers other than restore_snapshot; never written to the canonical
 ## .replay file.
 func capture_snapshot() -> Dictionary:
 	var units: Array = []
@@ -1364,13 +1364,16 @@ func capture_snapshot() -> Dictionary:
 			var u := node as UnitRef
 			if u != null:
 				units.append(u.to_snapshot_dict())
-	return {
+	var snap: Dictionary = {
 		"tick": _tick,
 		"rng_state": Replay.rng.state,
 		"next_uid": _next_uid,
 		"units": units,
 		"time_scale": Engine.time_scale,
 	}
+	if ProjectileField.active != null:
+		snap["projectile_field"] = ProjectileField.active.to_snapshot_dict()
+	return snap
 
 
 ## Rebuilds the battle to exactly the moment `snap` was captured at: frees every current
@@ -1380,8 +1383,8 @@ func capture_snapshot() -> Dictionary:
 ## spawned" default, self-healing on the first tick exactly like an ordinary spawn already
 ## does -- see .claude/memories/sparta.md's frame-keyed-cache hazards this sidesteps.
 ## Restores the tick counter, the RNG stream position (so subsequent combat rolls draw
-## exactly where the original run would have), Replay's own order-read cursor, and the
-## active Engine.time_scale.
+## exactly where the original run would have), Replay's own order-read cursor, the
+## active Engine.time_scale, and any active projectiles in ProjectileField.
 func restore_snapshot(snap: Dictionary) -> void:
 	for group in ["units", "routers"]:
 		for node in get_tree().get_nodes_in_group(group):
@@ -1419,6 +1422,12 @@ func restore_snapshot(snap: Dictionary) -> void:
 	# `_tick`; a slow-motion change made before the snapshot was captured has no per-unit
 	# trace to fall back on, so the value has to come from the snapshot itself.
 	Engine.time_scale = float(snap.get("time_scale", 1.0))
+
+	if ProjectileField.active != null:
+		if snap.has("projectile_field"):
+			ProjectileField.active.apply_snapshot_dict(snap["projectile_field"])
+		else:
+			ProjectileField.active.clear()
 
 	# A completed replay has _ended set and the tree paused behind the end overlay
 	# (_check_victory runs during PLAYBACK too), and both _physics_process and

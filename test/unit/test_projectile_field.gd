@@ -342,3 +342,23 @@ func test_the_arc_reads_each_mans_own_hold_angle_not_the_shield_types_rest_pose(
 	field.launch(s[2].position, target.position, s[2].uid, target.uid, 8, 1.0, ProjectilePhysics.ANGLE_ARCED)
 	field.step(10.0, s[1])
 	assert_eq(target.soldiers, 16, "a shield held behind you covers nothing in front of you")
+
+
+func test_snapshot_capture_and_restore_round_trips_in_flight_state() -> void:
+	var shooter := _unit(1, 0, 10, Vector2(0, 0), Vector2.DOWN, true)
+	var target := _unit(2, 1, 20, Vector2(400, 0), Vector2.UP, false)
+	var fb: Array = _field_and_battle(shooter, target)
+	var field: ProjectileField = fb[0]
+	var battle: FakeBattle = fb[1]
+	field.launch(shooter.position, target.position, shooter.uid, target.uid, 5, 1.0, ProjectilePhysics.ANGLE_ARCED)
+	field.step(0.05, battle)
+	assert_eq(field.count(), 1, "projectile is in flight")
+	var snap: Dictionary = field.to_snapshot_dict()
+	field.clear()
+	assert_eq(field.count(), 0, "field cleared")
+	field.apply_snapshot_dict(snap)
+	assert_eq(field.count(), 1, "projectile restored from snapshot")
+	field.step(10.0, battle)
+	assert_eq(target.soldiers, 15, "restored projectile resolves casualties on landing")
+	assert_eq(field.count(), 0, "spent projectile cleared after landing")
+

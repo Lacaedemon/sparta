@@ -375,6 +375,36 @@ func test_a_screener_already_on_station_is_left_to_fight_its_own_firefight() -> 
 		"no fresh order inside the station radius, so a kite step cannot cancel the volley")
 
 
+func test_a_pilum_screener_kiting_past_default_station_radius_stays_on_station() -> void:
+	var u := _archers(1, Vector2(600, 620))
+	u.facing = Vector2.UP
+	assert_true(u.equip_missile(LoadoutRegistry.MISSILE_PILUM), "pilum equipped")
+	assert_almost_eq(u.skirmish_kite_distance, 187.5, 0.01)
+	var enemy := _unit(2, Vector2(600, 400), 0)
+	u.target_enemy = enemy
+
+	var group: Array = _heavy_line() + [u]
+	var out: Dictionary = {}
+	ScreenScript.directives(group, group + [enemy], AXIS, out)
+	assert_true(out.has(u.uid))
+	assert_almost_eq(float(out[u.uid]["station"]), 187.5, 0.01,
+		"directive carries unit's live kite distance as station radius")
+
+	var cmd: Dictionary = UnitLeaderScript.decide(u, [u, enemy], out[u.uid])
+	assert_true(cmd.is_empty(),
+		"pilum unit 160 wu out is within 187.5 wu station tolerance and gets no order")
+
+	var bow := _archers(3, Vector2(600, 620))
+	bow.facing = Vector2.UP
+	bow.target_enemy = enemy
+	var bow_directive: Dictionary = {
+		"type": ScreenScript.DIRECTIVE_SCREEN, "x": 600.0, "y": 460.0, "station": 140.0,
+	}
+	var bow_cmd: Dictionary = UnitLeaderScript.decide(bow, [bow, enemy], bow_directive)
+	assert_false(bow_cmd.is_empty(), "bow unit at 160 wu exceeds 140 wu station and is re-ordered")
+
+
+
 func test_a_withdraw_directive_recalls_a_screener_that_is_already_fighting() -> void:
 	# The one directive that outranks the FIGHTING gate: light troops break off the missile
 	# duel and pass back through the line rather than being caught by the heavy blocks.

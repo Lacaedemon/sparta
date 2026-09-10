@@ -132,6 +132,82 @@ func test_a_pilum_unit_acquires_a_target_at_exact_maximum_missile_range() -> voi
 		"a target sitting exactly at the profile's advertised maximum reach is acquired")
 
 
+func test_equidistant_candidates_preserve_first_match_tie_in_nearest_enemy() -> void:
+	var shooter := _unit(5, 0, Vector2.ZERO)
+	var first := _unit(6, 1, Vector2(100.0, 0.0), Vector2.LEFT)
+	var second := _unit(7, 1, Vector2(-100.0, 0.0), Vector2.RIGHT)
+	assert_eq(UnitTargeting.nearest_enemy(shooter), first,
+		"equidistant candidates retain first-match tie behavior")
+
+
+func test_a_pilum_unit_acquires_routing_enemy_at_exact_maximum_missile_range() -> void:
+	var shooter := _unit(8, 0, Vector2.ZERO)
+	assert_true(shooter.equip_missile(LoadoutRegistry.MISSILE_PILUM), "pilum equipped")
+	var router := _unit(9, 1, Vector2(0.0, shooter.missile_range), Vector2.UP)
+	router.state = Unit.State.ROUTING
+	router.add_to_group("routers")
+	assert_eq(UnitTargeting.nearest_routing_enemy(shooter), router,
+		"a routing enemy sitting exactly at the profile's advertised reach is acquired")
+
+
+func test_equidistant_routing_enemies_preserve_first_match_tie() -> void:
+	var shooter := _unit(10, 0, Vector2.ZERO)
+	assert_true(shooter.equip_missile(LoadoutRegistry.MISSILE_PILUM), "pilum equipped")
+	var router1 := _unit(11, 1, Vector2(150.0, 0.0), Vector2.LEFT)
+	router1.state = Unit.State.ROUTING
+	router1.add_to_group("routers")
+	var router2 := _unit(12, 1, Vector2(-150.0, 0.0), Vector2.RIGHT)
+	router2.state = Unit.State.ROUTING
+	router2.add_to_group("routers")
+	assert_eq(UnitTargeting.nearest_routing_enemy(shooter), router1,
+		"equidistant routers retain first-match tie behavior")
+
+
+func test_firing_cadence_distinguishes_pilum_two_second_interval_from_bow_one_second() -> void:
+	Replay.rng.seed = SEED
+	var target_pilum := _unit(30, 1, Vector2(0.0, 100.0), Vector2.UP, 60)
+	target_pilum.seed_sim_soldiers()
+	var shooter_pilum := _unit(31, 0, Vector2.ZERO, Vector2.DOWN, 20)
+	shooter_pilum.is_ranged = true
+	shooter_pilum.attack = 40
+	assert_true(shooter_pilum.equip_missile(LoadoutRegistry.MISSILE_PILUM), "pilum equipped")
+
+	var target_bow := _unit(32, 1, Vector2(500.0, 100.0), Vector2.UP, 60)
+	target_bow.seed_sim_soldiers()
+	var shooter_bow := _unit(33, 0, Vector2(500.0, 0.0), Vector2.DOWN, 20)
+	shooter_bow.is_ranged = true
+	shooter_bow.attack = 40
+
+	# First volley fires at t=0
+	shooter_pilum._think(0.1)
+	shooter_bow._think(0.1)
+	var pilum_after_first: int = target_pilum.soldiers
+	var bow_after_first: int = target_bow.soldiers
+	assert_lt(pilum_after_first, 60, "pilum fired first volley")
+	assert_lt(bow_after_first, 60, "bow fired first volley")
+	assert_almost_eq(shooter_pilum._attack_cd, 2.0, 0.001, "pilum cooldown is 2.0s")
+	assert_almost_eq(shooter_bow._attack_cd, 1.0, 0.001, "bow cooldown is 1.0s")
+
+	# Advance 1.1s (11 ticks of 0.1s): bow (1.0s) has cooled down and fires volley 2;
+	# pilum (2.0s) has 0.9s remaining and must not fire.
+	for _i in range(11):
+		shooter_pilum._attack_cd = max(0.0, shooter_pilum._attack_cd - 0.1)
+		shooter_bow._attack_cd = max(0.0, shooter_bow._attack_cd - 0.1)
+		shooter_pilum._think(0.1)
+		shooter_bow._think(0.1)
+
+	assert_lt(target_bow.soldiers, bow_after_first, "bow fired its second volley after 1.0s")
+	assert_eq(target_pilum.soldiers, pilum_after_first, "pilum held fire at 1.1s (cooldown still active)")
+	assert_almost_eq(shooter_pilum._attack_cd, 0.9, 0.001, "pilum cooldown still has ~0.9s left")
+
+	# Advance another 1.0s (10 ticks of 0.1s, reaching 2.1s total): pilum now fires volley 2.
+	for _i in range(10):
+		shooter_pilum._attack_cd = max(0.0, shooter_pilum._attack_cd - 0.1)
+		shooter_pilum._think(0.1)
+
+	assert_lt(target_pilum.soldiers, pilum_after_first, "pilum fired its second volley after 2.0s")
+
+
 # --- the falloff in the damage formula ----------------------------------------------
 
 ## Casualties one volley inflicts on a fresh 60-man target `dist` wu straight ahead of a
