@@ -404,6 +404,53 @@ func test_a_pilum_screener_kiting_past_default_station_radius_stays_on_station()
 	assert_false(bow_cmd.is_empty(), "bow unit at 160 wu exceeds 140 wu station and is re-ordered")
 
 
+func test_a_pilum_screener_withdraws_when_enemy_enters_kite_distance() -> void:
+	var u := _archers(1, Vector2(600, 460))
+	assert_true(u.equip_missile(LoadoutRegistry.MISSILE_PILUM), "pilum equipped")
+	assert_almost_eq(u.skirmish_kite_distance, 187.5, 0.01)
+	# Enemy position sits outside default trigger range, but inside live kite reach.
+	var enemy := _unit(2, Vector2(600, 310), 0)
+
+	var group: Array = _heavy_line() + [u]
+	var out: Dictionary = {}
+	ScreenScript.directives(group, group + [enemy], AXIS, out)
+
+	assert_true(out.has(u.uid))
+	assert_eq(out[u.uid]["type"], ScreenScript.DIRECTIVE_WITHDRAW,
+		"the recall supersedes the kite reflex when the enemy enters kite distance")
+	assert_almost_eq(float(out[u.uid]["station"]), ScreenScript.SCREEN_STATION_RADIUS, 0.01,
+		"withdrawal directive retains uninflated station tolerance")
+
+	# Sibling negative control.
+	# A standard archer whose kite reach is shorter continues screening.
+	var bow := _archers(3, Vector2(600, 460))
+	var bow_group: Array = _heavy_line() + [bow]
+	var bow_out: Dictionary = {}
+	ScreenScript.directives(bow_group, bow_group + [enemy], AXIS, bow_out)
+	assert_true(bow_out.has(bow.uid))
+	assert_eq(bow_out[bow.uid]["type"], ScreenScript.DIRECTIVE_SCREEN,
+		"archer whose kite distance is below default trigger range stays on screen directive")
+
+
+func test_a_pilum_withdrawal_does_not_halt_prematurely_outside_station_radius() -> void:
+	var u := _archers(1, Vector2(500, 700))
+	assert_true(u.equip_missile(LoadoutRegistry.MISSILE_PILUM), "pilum equipped")
+	assert_almost_eq(u.skirmish_kite_distance, 187.5, 0.01)
+	var enemy := _unit(2, Vector2(500, 200), 0)
+	# Separation sits inside live kite reach but exceeds withdrawal station radius.
+	var directive: Dictionary = {
+		"type": ScreenScript.DIRECTIVE_WITHDRAW, "x": 500.0, "y": 860.0,
+		"station": ScreenScript.SCREEN_STATION_RADIUS,
+	}
+
+	var cmd: Dictionary = UnitLeaderScript.decide(u, [u, enemy], directive)
+
+	assert_false(cmd.is_empty(),
+		"withdrawal does not treat recall as complete at kite distance")
+	assert_eq(cmd["units"], [u.uid])
+	assert_almost_eq(float(cmd["x"]), 500.0, 0.01)
+	assert_almost_eq(float(cmd["y"]), 860.0, 0.01)
+
 
 func test_a_withdraw_directive_recalls_a_screener_that_is_already_fighting() -> void:
 	# The one directive that outranks the FIGHTING gate: light troops break off the missile
