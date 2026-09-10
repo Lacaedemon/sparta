@@ -151,11 +151,12 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 		# opens wider than a defile. Absent means the battle's own default gap, and it stays
 		# absent (not defaulted) so the battle can tell "declared" from "unset". A zero or
 		# negative gap would put the defender on or above the attacker's line, so a value
-		# must be a positive number; reject it here rather than let the battle assert.
+		# must be a positive, finite number (NAN and INF are floats too, and each slips past a
+		# plain sign test); reject it here rather than let the battle assert.
 		if p.has("deployment_gap_m"):
 			var gap = p["deployment_gap_m"]
-			if not (gap is float or gap is int) or float(gap) <= 0.0:
-				push_warning("Campaign map: province %d 'deployment_gap_m' must be a positive number of metres" % id)
+			if not (gap is float or gap is int) or not is_finite(float(gap)) or float(gap) <= 0.0:
+				push_warning("Campaign map: province %d 'deployment_gap_m' must be a positive, finite number of metres" % id)
 				return {}
 			province["deployment_gap_m"] = float(gap)
 		provinces.append(province)

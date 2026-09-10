@@ -109,9 +109,10 @@ static func differs_from_default(field: Rect2, terrain: Array, spawn_lines: Arra
 ## gap reproduces the base map exactly, so a caller passing the default gap changes
 ## nothing. Returns {field: Rect2, spawn_lines: Array}. A non-positive gap would put
 ## the defender on or above the attacker's line; the callers validate their data
-## before reaching here, so it is asserted rather than clamped.
+## before reaching here, so it is asserted rather than clamped; the same goes for a
+## non-finite gap, which would put the defender nowhere.
 static func with_line_gap(gap: float, field: Rect2, spawn_lines: Array) -> Dictionary:
-	assert(gap > 0.0, "a deployment gap must be positive")
+	assert(is_finite(gap) and gap > 0.0, "a deployment gap must be a positive, finite number")
 	var attacker_y: float = float(spawn_lines[0])
 	var defender_y: float = attacker_y + gap
 	var ground_behind: float = field.end.y - float(spawn_lines[1])

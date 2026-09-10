@@ -190,8 +190,8 @@ func _ready() -> void:
 	# silently record a close-deployed battle in a clip captioned as a wide one.
 	if script.has("deployment_gap_m"):
 		var raw_gap = script["deployment_gap_m"]
-		if not (raw_gap is float or raw_gap is int) or float(raw_gap) <= 0.0:
-			push_error("[demo-input] deployment_gap_m must be a positive number of metres")
+		if not (raw_gap is float or raw_gap is int) or not is_finite(float(raw_gap)) or float(raw_gap) <= 0.0:
+			push_error("[demo-input] deployment_gap_m must be a positive, finite number of metres")
 			get_tree().quit(2)
 			return
 		_deployment_gap_m = float(raw_gap)

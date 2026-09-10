@@ -321,3 +321,16 @@ func test_rejects_a_non_positive_or_non_numeric_deployment_gap() -> void:
 	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a negative gap -> rejected")
 	raw["provinces"][0]["deployment_gap_m"] = "wide"
 	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a non-numeric gap -> rejected")
+
+
+func test_rejects_a_non_finite_deployment_gap() -> void:
+	# NAN and INF are both floats, and each passes a plain sign test (NAN <= 0 is false,
+	# INF > 0 is true): the first would read as unset in the battle and the second would
+	# put the defender's line at infinity, so the loader has to reject both by name.
+	var raw := _valid_raw()
+	raw["provinces"][0]["deployment_gap_m"] = INF
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "an infinite gap -> rejected")
+	raw["provinces"][0]["deployment_gap_m"] = NAN
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a NAN gap -> rejected")
+	raw["provinces"][0]["deployment_gap_m"] = -INF
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a negative-infinite gap -> rejected")
