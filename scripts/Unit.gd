@@ -1292,6 +1292,10 @@ var _separation_velocity: Vector2 = Vector2.ZERO
 # _cycle_charge_tick — set on the contact strike, cleared once the unit has opened
 # to CYCLE_CHARGE_STANDOFF. Meaningful only while order_mode == ORDER_CYCLE_CHARGE.
 var _cycle_recharging: bool = false
+# Transient intra-tick flag:
+# true when the unit moved at flee speed during _process_rout,
+# so stamina_band can bill the flight at sprint pace even if _rally transitioned to IDLE.
+var _moved_while_routing: bool = false
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -1401,6 +1405,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
+	_moved_while_routing = false
 
 	# Before the rout branch below returns, so a routing tick records ROUTING as the
 	# previous-tick reading and the rally that _process_rout performs is seen on the next
@@ -6660,7 +6665,7 @@ func combat_profile() -> Dictionary:
 func stamina_band() -> int:
 	if state == State.FIGHTING:
 		return StaminaFlow.BAND_REST
-	if state == State.ROUTING:
+	if state == State.ROUTING or _moved_while_routing:
 		return StaminaFlow.band_for_speed(move_speed * 1.3, walk_speed, jog_speed, ARRIVE_SPEED_EPSILON)
 	return StaminaFlow.band_for_speed(_current_speed, walk_speed, jog_speed, ARRIVE_SPEED_EPSILON)
 
@@ -7270,6 +7275,7 @@ func _process_rout(delta: float) -> void:
 		_escape()
 		return
 	position = next
+	_moved_while_routing = true
 
 	# A SHATTERED unit has lost its nerve for good: it just keeps fleeing (the movement
 	# above already ran), with no morale recovery and no rally check ever again. The only

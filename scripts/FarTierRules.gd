@@ -381,11 +381,18 @@ static func stamina_factor(rec: FarTierFormation) -> float:
 
 ## One tick of the per-gait stamina flow on the aggregate pool (StaminaFlow, the same rule
 ## SoldierBodies.step applies per body): resting regenerates, a walk is neutral, a jog
-## drains. `moving` selects the gait's band; a stationary formation rests.
+## drains. `moving` selects the gait's band;
+## a stationary formation rests. Routing flight drains at the sprint rate when moving.
 static func tick_stamina(rec: FarTierFormation, moving: bool, delta: float) -> void:
-	var band: int = rec.gait if moving else StaminaFlow.BAND_REST
+	var band: int
+	if not moving:
+		band = StaminaFlow.BAND_REST
+	elif rec.routing:
+		band = Unit.GAIT_SPRINT
+	else:
+		band = rec.gait
 	var flow: float = StaminaFlow.flow_per_s(band, rec.stamina_rest_regen_per_s,
-			rec.stamina_walk_regen_per_s, rec.stamina_jog_drain_per_s, 0.0)
+			rec.stamina_walk_regen_per_s, rec.stamina_jog_drain_per_s, rec.stamina_sprint_drain_per_s)
 	rec.stamina = StaminaFlow.apply(rec.stamina, flow, delta, rec.max_stamina)
 
 

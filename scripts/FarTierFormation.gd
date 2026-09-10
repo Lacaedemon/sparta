@@ -60,10 +60,12 @@ var stamina: float = 100.0
 var max_stamina: float = 100.0
 ## The per-gait stamina rates, carried from the unit's own fields (Unit.stamina_rest_regen_per_s
 ## and siblings) so a demoted formation keeps paying the SAME rates it would at close tier.
-## No sprint rate: the record has no sprint gait.
+## No sprint rate: the record has no sprint gait for ordered march;
+## routing flees at the sprint pace.
 var stamina_rest_regen_per_s: float = SoldierCombat.RHO_STAMINA
 var stamina_walk_regen_per_s: float = SoldierCombat.RHO_STAMINA_WALK
 var stamina_jog_drain_per_s: float = SoldierCombat.KAPPA_JOG
+var stamina_sprint_drain_per_s: float = SoldierCombat.KAPPA_SPRINT
 ## Whether this formation is a ranged formation (archers), matching Unit.is_ranged's default.
 ## Drives FarTierRules' rate/reach split: a ranged formation strikes at RANGED_RANGE on the
 ## RANGED_INTERVAL/RANGED_DAMAGE_FACTOR cadence and never takes return melee attrition from a
@@ -127,6 +129,7 @@ static func from_unit(u: Unit) -> FarTierFormation:
 	rec.stamina_rest_regen_per_s = u.stamina_rest_regen_per_s
 	rec.stamina_walk_regen_per_s = u.stamina_walk_regen_per_s
 	rec.stamina_jog_drain_per_s = u.stamina_jog_drain_per_s
+	rec.stamina_sprint_drain_per_s = u.stamina_sprint_drain_per_s
 	rec.is_ranged = u.is_ranged
 	rec.routing = u.state == Unit.State.ROUTING
 	if rec.routing:

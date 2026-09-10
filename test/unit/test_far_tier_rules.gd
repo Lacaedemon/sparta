@@ -788,11 +788,24 @@ func test_tick_pair_charges_a_jogging_approach_once_with_no_rest_regen_on_top() 
 		"the advancing side still recovers morale")
 
 
+func test_tick_pair_applies_non_zero_walk_flow_to_advancing_side() -> void:
+	var a := _make_rec(Vector2.ZERO, Vector2.DOWN)
+	var b := _make_rec(Vector2(0.0, 5000.0), Vector2.UP)   # far out of reach
+	b.stamina = 50.0
+	b.stamina_walk_regen_per_s = 2.0
+	FarTierRules.tick_pair(a, b, 1.0)
+	assert_almost_eq(b.stamina, 52.0, 0.0001,
+		"a non-zero walk regen rate is applied to the walking advancing side")
+
+
 func test_tick_pair_rests_the_pool_of_a_side_fighting_where_it_stands() -> void:
 	var pair := _frontal_pair()
 	pair[0].stamina = 50.0
 	pair[1].stamina = 50.0
+	pair[0].stamina_rest_regen_per_s = 7.0
+	pair[0].stamina_walk_regen_per_s = 3.0
+	pair[0].stamina_jog_drain_per_s = 4.0
 	FarTierRules.tick_pair(pair[0], pair[1], 1.0)
-	assert_almost_eq(pair[0].stamina, 50.0 + SoldierCombat.RHO_STAMINA, 0.0001,
+	assert_almost_eq(pair[0].stamina, 57.0, 0.0001,
 		"a side in reach stands, so its pool rests like a stationary regiment's bodies")
 	assert_almost_eq(pair[1].stamina, 50.0 + SoldierCombat.RHO_STAMINA, 0.0001)
