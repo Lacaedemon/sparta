@@ -694,7 +694,7 @@ func _ready() -> void:
 		# (orders target unit positions this build no longer produces). Surface it loudly; HUD
 		# shows the flag, and push_warning puts it in the log for a headless replay run too.
 		# Unstamped replays (loaded_spawn_fingerprint == "") skip the check, like pre-map ones.
-		if Replay.loaded_spawn_fingerprint != "" and Replay.loaded_spawn_fingerprint != live_fingerprint:
+		if Replay.loaded_spawn_fingerprint != "" and not SpawnFingerprint.matches_tree(Replay.loaded_spawn_fingerprint, get_tree()):
 			Replay.last_load_spawn_mismatch = Replay.loaded_spawn_fingerprint
 			push_warning("Replay spawn layout mismatch: recorded fingerprint %s, this build spawns %s. Orders may target the wrong units." %
 					[Replay.loaded_spawn_fingerprint, live_fingerprint])

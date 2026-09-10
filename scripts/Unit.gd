@@ -415,9 +415,10 @@ var ordered_facing: Vector2 = Vector2.ZERO
 # engaged" (the _think fallthrough at the bottom of the enemy branch skips the
 # auto-advance-on-a-near-enemy path when order_mode == ORDER_HOLD); it does NOT suppress
 # fighting or firing at whatever is already in range/contact, so "hold UNTIL in range THEN
-# fire" needs no HOLD-specific carve-out -- a ranged unit fires at anything within
-# RANGED_RANGE unconditionally (see the is_ranged branch below _think's ORDER_SUPPORT
-# early return), i.e. fire-at-will is the default rather than a mode of its own.
+# fire" needs no HOLD-specific carve-out -- a ranged unit fires at anything within its live
+# missile_range (default RANGED_RANGE) unconditionally
+# (see the is_ranged branch below _think's ORDER_SUPPORT early return),
+# i.e. fire-at-will is the default rather than a mode of its own.
 # CYCLE_CHARGE is the caracole/repeated-charge ROE; SKIRMISH is the ranged kite-at-range
 # ROE; ATTACK_FLANK/ATTACK_REAR bias the approach angle. Phase 4 is the promotion
 # referenced above: these were a "crude version" per the design doc before the guard

@@ -8,9 +8,10 @@ const UnitScript = preload("res://scripts/Unit.gd")
 
 
 func _rec(uid: int, team: int, type: String, x: int, y: int,
-		soldiers: int = 100, weapon: int = 0, shield: int = 0, mount: int = 0) -> Dictionary:
+		soldiers: int = 100, weapon: int = 0, shield: int = 0, mount: int = 0,
+		missile: int = 0) -> Dictionary:
 	return {"uid": uid, "team": team, "type": type, "weapon": weapon, "shield": shield,
-			"mount": mount, "soldiers": soldiers, "x": x, "y": y}
+			"mount": mount, "missile": missile, "soldiers": soldiers, "x": x, "y": y}
 
 
 ## A tree-registered unit with the fingerprint-relevant fields pinned, so of_tree hashes exactly
@@ -61,9 +62,37 @@ func test_a_loadout_id_change_changes_the_digest() -> void:
 			"a different weapon type id flips the digest")
 
 
+func test_a_missile_profile_change_changes_the_digest() -> void:
+	assert_ne(SpawnFingerprint.digest([_rec(0, 0, "Spearmen", 100, 300, 100, 0, 0, 0, LoadoutRegistry.MISSILE_BOW)]),
+			SpawnFingerprint.digest([_rec(0, 0, "Spearmen", 100, 300, 100, 0, 0, 0, LoadoutRegistry.MISSILE_PILUM)]),
+			"a different missile profile id flips the digest")
+
+
+func test_legacy_digest_and_matches_handle_old_stamps() -> void:
+	var rec: Dictionary = _rec(0, 0, "Spearmen", 100, 300, 100, 1, 0, 0, LoadoutRegistry.MISSILE_BOW)
+	var legacy: String = SpawnFingerprint.legacy_digest([rec])
+	var current: String = SpawnFingerprint.digest([rec])
+	assert_ne(legacy, "", "legacy digest is non-empty")
+	assert_ne(legacy, current, "legacy 9-field digest differs from 10-field digest")
+	assert_true(SpawnFingerprint.matches(legacy, [rec]),
+			"matches accepts a legacy pre-missile stamp for back-compat")
+	assert_true(SpawnFingerprint.matches(current, [rec]),
+			"matches accepts the current digest")
+	assert_false(SpawnFingerprint.matches("stale_invalid_hash", [rec]),
+			"matches rejects a mismatched stamp")
+	assert_false(SpawnFingerprint.matches("", [rec]),
+			"matches rejects an empty stamp")
+
+
 func test_of_tree_is_empty_when_no_units_are_on_the_field() -> void:
 	assert_eq(SpawnFingerprint.of_tree(get_tree()), "",
 			"no units on the field means nothing to stamp or check against")
+	assert_eq(SpawnFingerprint.legacy_of_tree(get_tree()), "",
+			"legacy of_tree is also empty when no units are on the field")
+	assert_false(SpawnFingerprint.matches_tree("abc123def456", get_tree()),
+			"matches_tree returns false when no units are on the field")
+	assert_false(SpawnFingerprint.matches_tree("", get_tree()),
+			"matches_tree returns false for an empty stamp")
 
 
 func test_of_tree_orders_units_by_uid_not_insertion_order() -> void:
@@ -76,6 +105,10 @@ func test_of_tree_orders_units_by_uid_not_insertion_order() -> void:
 		uids.append(r["uid"])
 	assert_eq(uids, [3, 7], "records come out in ascending uid order")
 	assert_ne(SpawnFingerprint.of_tree(get_tree()), "", "a populated field has a non-empty digest")
+	assert_true(SpawnFingerprint.matches_tree(SpawnFingerprint.of_tree(get_tree()), get_tree()),
+			"matches_tree accepts live digest")
+	assert_true(SpawnFingerprint.matches_tree(SpawnFingerprint.legacy_of_tree(get_tree()), get_tree()),
+			"matches_tree accepts legacy digest")
 
 
 func test_sub_world_unit_jitter_does_not_change_the_digest() -> void:

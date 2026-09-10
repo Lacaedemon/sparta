@@ -32,6 +32,7 @@ static func record_of(u) -> Dictionary:
 		"weapon": int(u.spawn_weapon_type_id),
 		"shield": int(u.shield_type_id),
 		"mount": int(u.mount_type_id),
+		"missile": int(u.missile_type_id),
 		"soldiers": int(u.max_soldiers),
 		"x": roundi(u.position.x),
 		"y": roundi(u.position.y),
@@ -55,11 +56,32 @@ static func records_of_tree(tree: SceneTree) -> Array:
 static func digest(records: Array) -> String:
 	var parts: PackedStringArray = []
 	for r in records:
+		parts.append("%d:%d:%s:%d:%d:%d:%d:%d:%d:%d" % [
+			int(r["uid"]), int(r["team"]), String(r["type"]),
+			int(r["weapon"]), int(r["shield"]), int(r["mount"]),
+			int(r.get("missile", 0)),
+			int(r["soldiers"]), int(r["x"]), int(r["y"])])
+	return "\n".join(parts).md5_text()
+
+
+## Pre-missile digest (the original 9-field format).
+## Retained so replays and demo scripts carrying an old stamp continue to match.
+static func legacy_digest(records: Array) -> String:
+	var parts: PackedStringArray = []
+	for r in records:
 		parts.append("%d:%d:%s:%d:%d:%d:%d:%d:%d" % [
 			int(r["uid"]), int(r["team"]), String(r["type"]),
 			int(r["weapon"]), int(r["shield"]), int(r["mount"]),
 			int(r["soldiers"]), int(r["x"]), int(r["y"])])
 	return "\n".join(parts).md5_text()
+
+
+## Check if a stamp matches the layout represented by `records`, accepting either the
+## canonical digest or the legacy pre-missile digest for backward compatibility.
+static func matches(stamp: String, records: Array) -> bool:
+	if stamp == "":
+		return false
+	return stamp == digest(records) or stamp == legacy_digest(records)
 
 
 ## The current live layout's fingerprint, or "" when no units are on the field (nothing to
@@ -69,3 +91,23 @@ static func of_tree(tree: SceneTree) -> String:
 	if records.is_empty():
 		return ""
 	return digest(records)
+
+
+## The current live layout's legacy fingerprint, or "" when no units are on the field.
+static func legacy_of_tree(tree: SceneTree) -> String:
+	var records: Array = records_of_tree(tree)
+	if records.is_empty():
+		return ""
+	return legacy_digest(records)
+
+
+## Check if a stamp matches the live layout in `tree`, accepting either the canonical
+## digest or the legacy pre-missile digest for backward compatibility.
+static func matches_tree(stamp: String, tree: SceneTree) -> bool:
+	if stamp == "":
+		return false
+	var records: Array = records_of_tree(tree)
+	if records.is_empty():
+		return false
+	return stamp == digest(records) or stamp == legacy_digest(records)
+

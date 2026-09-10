@@ -281,6 +281,13 @@ script under `demos/inputs/`:
     recovery at all. See `demos/inputs/morale-recovery.json` (morale `1.0`, so the
     climb back to the ~35 rally threshold is gradual and visible).
 
+  - `missile` (optional) -- missile profile integer ID from `LoadoutRegistry`.
+    Sets the unit's ranged profile.
+    Maps to `401` for `MISSILE_BOW` or `402` for `MISSILE_PILUM`.
+    An unknown ID logs a warning (`push_warning`).
+    It keeps the default bow profile (`MISSILE_BOW`) rather than aborting.
+    See `demos/inputs/missile-profile-reach.json`.
+
   Example -- stage a lone, low-morale infantry unit against a strong cavalry force so it routs
   (then rallies, if the build has that): `demos/inputs/rout-rally.json`.
 - `frames` (optional) -- a list of physics ticks to save a viewport PNG at, for visual
