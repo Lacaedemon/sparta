@@ -37,9 +37,9 @@ enum Maneuver {
 	NUDGE_BACKSTEP,
 	NUDGE_FORWARD_STEP,
 	CYCLE_CHARGE,
-	COUNTERMARCH,   # Appended last so recorded/dumped transcripts keep every other value stable.
-	REINFORCING,    # A reserve's approach to the host it will file into (UnitReinforce);
-	                # appended last for the same transcript stability.
+	COUNTERMARCH,
+	REINFORCING,    # A reserve's approach to the host it will file into (UnitReinforce).
+	                # Appended last so recorded/dumped transcripts keep every other value stable.
 }
 
 ## The three historical exelismos (countermarch) variants Unit.countermarch() can run --
@@ -4856,8 +4856,8 @@ func install_file_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array
 		old_files = UnitFormation.frontage(self)
 	_sim_soldier_file = file_ids
 	_sim_soldier_rank = ranks
-	_file_assignment_files = files
 	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
+	_file_assignment_files = frontage_override
 	if frontage_anchor_offset != 0.0:
 		var held: int = UnitFormation.Anchor.RIGHT if frontage_anchor_offset < 0.0 \
 				else UnitFormation.Anchor.LEFT

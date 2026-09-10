@@ -64,7 +64,7 @@ static func commit(reserve: Unit, host: Unit) -> void:
 			if host._sim_soldier_rank.size() == host.soldiers \
 			else ReinforceApproach.deepest(UnitFormation.file_capacities(host.soldiers, files))
 	var layout: Dictionary = \
-			ReinforceLayoutRef.interleave_files(host._sim_soldier_file, host._sim_soldier_rank, files, host.to_slot_frame(reserve._sim_soldier_pos))
+			ReinforceLayoutRef.interleave_files(host._sim_soldier_file, host._sim_soldier_rank, files, host.to_slot_frame(reserve._sim_soldier_pos), host.max_soldiers + reserve.max_soldiers)
 	var new_ranks: int = ReinforceApproach.deepest(layout["ranks"]) + 1
 	host.append_soldier_bodies(reserve)
 	host.pool_strength(reserve, host.reinforce_cohesion_floor)

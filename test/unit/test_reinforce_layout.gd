@@ -175,3 +175,13 @@ func test_rear_anchor_shift_is_half_the_added_depth() -> void:
 	assert_almost_eq(Layout.rear_anchor_shift(2, 4, 10.0), 10.0, 0.0001,
 			"two added ranks push the centre back by one pitch")
 	assert_almost_eq(Layout.rear_anchor_shift(3, 3, 10.0), 0.0, 0.0001, "no growth, no shift")
+
+
+func test_interleave_files_respects_max_files_capacity() -> void:
+	var host := _host(20, 40)
+	var reserve_local := _reserve_grid(1, 1)
+	var unbounded: Dictionary = Layout.interleave_files(host["file_ids"], host["ranks"], 40, reserve_local)
+	assert_eq(int(unbounded["files"]), 42, "unbounded layout yields 42 files for k=2")
+	var bounded: Dictionary = Layout.interleave_files(host["file_ids"], host["ranks"], 40, reserve_local, 41)
+	assert_eq(int(bounded["files"]), 41, "bounded layout caps frontage at max_files")
+	_assert_no_shared_slot(bounded, "bounded files")

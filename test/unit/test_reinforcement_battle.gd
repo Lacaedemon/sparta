@@ -510,3 +510,30 @@ func test_host_with_distant_enemy_does_not_demote_and_commits() -> void:
 	assert_true(committed, "reinforcement commits even when enemies are beyond demote range")
 	assert_eq(host.tier, FormationTier.CLOSE, "host remains in close tier during newcomer arrival")
 	assert_eq(host.soldiers, 80, "host successfully doubled files with reserve")
+
+
+func test_understrength_host_wide_frontage_override_bounds_files_and_preserves_interleave() -> void:
+	_spawn("Infantry", 20, 1)
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	host.max_soldiers = 40
+	host.frontage_override = 40
+	_order_reinforce(reserve, host)
+	var committed: bool = false
+	for _tick in range(COMMIT_BUDGET_TICKS):
+		await get_tree().physics_frame
+		if not is_instance_valid(reserve) or reserve.state == Unit.State.DEAD:
+			committed = true
+			break
+	assert_true(committed, "the single reserve soldier commits into the host")
+	assert_eq(host.soldiers, 21, "host holds combined soldiers")
+	assert_eq(host.max_soldiers, 41, "max_soldiers pooled to 41")
+	assert_eq(UnitFormation.frontage(host), 41, "frontage clamped to post-pool capacity")
+	assert_eq(host._file_assignment_files, 41, "file assignment files matches post-pool capacity")
+	# Querying formation_slots must not trigger a re-deal.
+	# _file_assignment_files matches frontage(host).
+	host.formation_slots(host.soldiers)
+	assert_eq(host._file_assignment_files, 41, "file assignment files remains 41 after slot query")
+	assert_eq(host._sim_soldier_file.size(), 21, "every soldier has a file assignment")
+
