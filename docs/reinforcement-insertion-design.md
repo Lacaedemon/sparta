@@ -153,7 +153,8 @@ Runs once, inside the physics tick, and does five things in order.
    The files axis widens laterally about the same centre and needs no shift of its own;
    a flank-held widen can reuse `frontage_anchor_offset` and `UnitFormation.anchor_shift` exactly as the anchored explicatio does.
    Both axes need the anchor **held** through the arrival, though: `SoldierBodies.couple` averages body-minus-slot drift over the whole regiment when no engaged front narrows it, and the newcomers walking in from the rendezvous read as that drift, backing the line up about three rank pitches (measured on the first files-axis recording).
-   Commit arms `Unit.hold_position_anchor(_reshape_timeout(old_files))`, and `couple` skips its whole-regiment path while the hold runs; an engaged host, which anchors on its front ranks alone, is unaffected.
+   Commit arms `Unit.hold_position_anchor(_reshape_timeout(old_files))`, and `couple` skips its whole-regiment path while the hold runs;
+   an engaged host, which anchors on its front ranks alone, is unaffected.
 
 After commit, the host's bodies ease onto their new slots at velocity through the ordinary arrival dynamics;
 nobody teleports.
