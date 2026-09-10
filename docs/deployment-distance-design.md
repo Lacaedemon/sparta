@@ -62,7 +62,7 @@ World scale is 20 wu per metre (`WorldScale.WU_PER_M`).
   `Unit._move_to`'s AUTO ladder walks by default, jogs under fire, and sprints inside `Unit.SPRINT_START_DISTANCE` (200 wu, 10 m);
   `Unit.walk_advance` (on by default for spearmen, since a formed stance breaks at a jog) pins the walk.
   A live far-tier unit keeps its regiment-level `_move_to` and the same ladder, only without soldier bodies;
-  the isolated far-tier record (`FarTierFormation`, whose rules no live battle ticks yet) originally carried only `march_speed`,
+  the isolated far-tier record (`FarTierFormation`, whose rules originally had no live battle ticks wired) originally carried only `march_speed`,
   though [#1466](https://github.com/Lacaedemon/sparta/issues/1466) has since added `jog_speed` and a walk-or-jog `gait`.
   The enemy AI (`Battle._run_enemy_ai`, once per `AI_PERIOD` of 60 ticks) runs the general's plan, `General.PLAN_ADVANCE_LINE` by default, down through `Subcommander.decide_group` to `UnitLeader.decide`, whose fallback issues an ATTACK on the nearest enemy.
   No AI directive or ATTACK carries an explicit gait, so the AI approaches on the AUTO ladder:

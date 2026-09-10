@@ -294,7 +294,10 @@ In one tick:
 $$\sigma_A \mathrel{-}= \kappa_a \qquad\text{(each strike thrown)},$$
 $$\sigma_D \mathrel{-}= \kappa_d\,\phi_D\,(1 + c) \qquad\text{(meeting a blow you can see; a charge costs more)},$$
 $$\sigma \mathrel{-}= \kappa_p \qquad\text{(the tick a soldier rises from prone)},$$
-$$\sigma \mathrel{+}= \rho_\sigma(\text{gait})\,\Delta t \qquad\text{(gait baseline: rest regenerates, walk is neutral, jog/sprint drain; capped at } \sigma_{\max}).$$
+$$\sigma \mathrel{+}= \rho_\sigma(\text{gait})\,\Delta t
+\qquad\text{(gait baseline: }
+\text{rest regenerates, walk is neutral, jog/sprint drain; }
+\text{capped at } \sigma_{\max}).$$
 
 Here $\kappa_a, \kappa_d, \kappa_p \ge 0$ are the stamina costs of a strike,
 of meeting one blow, and of rising from prone;

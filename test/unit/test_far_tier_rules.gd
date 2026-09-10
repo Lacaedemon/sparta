@@ -303,6 +303,18 @@ func test_tick_rout_flee_speed_is_the_close_tier_multiplier_on_the_march_pace() 
 		rec.march_speed * FarTierRules.FLEE_SPEED_MULTIPLIER, 0.0001)
 
 
+func test_tick_rout_coincident_positions_regenerate_stamina_at_rest() -> void:
+	var rec := _make_rec(Vector2(50.0, 50.0))
+	rec.morale = 0.0
+	rec.stamina = 50.0
+	FarTierRules.enter_rout(rec)
+	var enemy := _make_rec(Vector2(50.0, 50.0))
+	FarTierRules.tick_rout(rec, enemy, 1.0)
+	assert_eq(rec.position, Vector2(50.0, 50.0), "coincident pair cannot determine away vector and does not move")
+	assert_almost_eq(rec.stamina, 50.0 + rec.stamina_rest_regen_per_s * 1.0, 0.0001,
+		"a non-moving routing formation regenerates stamina at the rest rate")
+
+
 func test_tick_rout_morale_climbs_toward_the_rally_baseline() -> void:
 	var rec := _make_rec(Vector2.ZERO)
 	rec.morale = 0.0

@@ -29,10 +29,19 @@ func test_defaults_match_a_fresh_full_strength_formation() -> void:
 	assert_eq(rec.defense, 0)
 	assert_eq(rec.attack_range, 26.0)   # Unit.attack_range default (gladius baseline)
 	assert_eq(rec.march_speed, 45.0)    # Unit.walk_speed default
+	assert_eq(rec.jog_speed, 67.5)      # Unit.jog_speed default
+	assert_eq(rec.sprint_speed, 90.0)   # Unit.move_speed default
 	assert_eq(rec.casualty_carry, 0.0)
 	assert_false(rec.is_ranged)         # Unit.is_ranged default
 	assert_false(rec.routing)           # Unit.State.ROUTING default (fresh formations fight)
 	assert_eq(rec.rout_timer, 0.0)
+
+
+func test_pace_constants_author_in_metres() -> void:
+	var world_scale = preload("res://scripts/WorldScale.gd")
+	assert_eq(FarTierFormation.DEFAULT_MARCH_SPEED, 2.25 * world_scale.WU_PER_M)
+	assert_eq(FarTierFormation.DEFAULT_JOG_SPEED, 3.375 * world_scale.WU_PER_M)
+	assert_eq(FarTierFormation.DEFAULT_SPRINT_SPEED, 4.5 * world_scale.WU_PER_M)
 
 
 func test_fields_round_trip() -> void:

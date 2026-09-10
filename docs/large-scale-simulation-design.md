@@ -83,24 +83,35 @@ fixed-size record per formation, evolved by statistical rules instead of
 per-soldier physics:
 
 - **count** -- living soldiers (replaces the array length).
+
 - **morale** -- the existing unit-level morale scalar (`PLAN.md` pillar 2
   already keeps morale/rout at unit-level for now, per #529 -- the far tier is
   a natural extension of that existing abstraction, not a new one).
+
 - **position** and **facing** -- the formation's centroid and orientation, the
   aggregate analog of the individual-soldier centroid/bbox already exposed as
   `soldier_summary` in the state transcript (see below).
+
 - **casualties-so-far** -- running total, derived from `count` decreasing over
   time, needed to reconstruct plausible losses/HP distribution on promotion.
+
 - **formation_mode / spacing / stance** -- the existing durable "mode" fields
   from the orders-queue design (`docs/orders-queue-design.md`) carry over
   unchanged; they describe the formation, not its soldiers.
 
-A far-tier formation's morale/casualties/position evolve tick-to-tick via
+- **gait** -- the formation's active movement pace (`Unit.GAIT_WALK` or `Unit.GAIT_JOG`),
+  matching the two sustained paces the far tier carries (#1466).
+
+- **stamina** -- the aggregate stamina pool in $[0, \text{max\_stamina}]$,
+  the far tier's scalar stand-in for the per-soldier stamina array (#1466),
+  evolving under per-gait flow and scaling strike expectation via `SoldierCombat.stamina_factor`.
+
+A far-tier formation's morale, casualties, position, and stamina evolve tick-to-tick via
 coarse statistical rules (e.g. expected casualty rate as a function of
 opposing far-tier formations' aggregate strength and morale, in the spirit of
-a Lanchester-style attrition model) rather than per-soldier combat resolution.
-The exact attrition rule is implementation detail for phase 2 (below); the
-important design constraint is that it consumes and produces only the
+a Lanchester-style attrition model, and per-gait stamina flow) rather than per-soldier combat resolution.
+The exact attrition rule is implementation detail for phase 2 (below);
+the important design constraint is that it consumes and produces only the
 aggregate fields above -- no per-soldier read or write, ever.
 
 ### Promotion / demotion
@@ -146,8 +157,9 @@ on replay. The tier boundary must hold to the same bar:
 
 - **Demotion (close → far) is lossy but deterministic.** Collapsing
   individual soldiers to an aggregate record is a pure reduction over the
-  soldier arrays (count them, average position, roll up morale/casualties) --
+  soldier arrays (count them, average position, mean stamina, roll up morale/casualties) --
   no randomness, so it's trivially deterministic.
+
 - **Promotion (far → close) must reconstruct plausible per-soldier state
   without live RNG.** Spreading an aggregate `count` back into individual
   soldier positions/facings/HP needs *some* variation (soldiers shouldn't
@@ -165,7 +177,8 @@ on replay. The tier boundary must hold to the same bar:
   formation-slot placement (see #547's slot model) seeded off that hash,
   filled front-to-back up to `count`, with casualties consumed from the rear
   ranks first (matching how #547 slot ownership already models a soldier
-  falling out of the front line). No live randomness; replay-safe.
+  falling out of the front line), while each soldier's initial stamina copies the aggregate pool.
+  No live randomness; replay-safe.
 
 - **A round trip is not required to be lossless**, only deterministic. A
   formation that promotes then immediately demotes need not reconstruct its
@@ -320,7 +333,7 @@ below is filed as its own tracking issue, linked from #550 and from here.
 ### Phase 1 -- aggregate far-tier data model (representational only) -- [#556](https://github.com/Lacaedemon/sparta/issues/556)
 
 Define the far-tier formation record (`count`, `morale`, `position`,
-`facing`, `casualties`, the durable mode fields) and a placeholder
+`facing`, `casualties`, `gait`, `stamina`, the durable mode fields) and a placeholder
 promotion/demotion trigger (the simple distance threshold above, with
 provisional constant values -- not yet tuned). No visual or gameplay change:
 this phase is purely representational -- the data model exists and is

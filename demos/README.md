@@ -440,6 +440,7 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | `soldiers` | Living soldier count (drops as the unit takes casualties). |
 | `current_speed` | Current movement speed (world units/s). |
 | `current_speed_mps` | The same speed in m/s (folding in `Battle.SPEED_SCALE`, so it reads back as the loadout's declared figure). |
+| `stamina_mean` | Mean per-soldier stamina (including zero-stamina values) for close tier, or the far tier's aggregate scalar once demoted. |
 | `order_mode` | Readable order stance (`Normal`, `Hold`, `Attack flank`, …). |
 | `rank_relief` | Whether the intra-unit rank-relief mode is on (rear ranks rotate forward to relieve their own fighting line; written by a stance order). |
 | `current_order` | The head of the unit's orders queue -- readable `Order.Type` name (`MOVE`, `ATTACK`, `RELIEF`, `WHEEL`, …), or `null` when idle. |

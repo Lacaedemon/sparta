@@ -1,5 +1,14 @@
 class_name FarTierFormation
 extends RefCounted
+
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+
+## Default sustained march pace: 2.25 m/s in world units (45 wu/s), matching Unit.walk_speed's default.
+const DEFAULT_MARCH_SPEED: float = 2.25 * WorldScaleRef.WU_PER_M
+## Default jog pace: 3.375 m/s in world units (67.5 wu/s), matching Unit.jog_speed's default.
+const DEFAULT_JOG_SPEED: float = 3.375 * WorldScaleRef.WU_PER_M
+## Default sprint pace: 4.5 m/s in world units (90 wu/s), matching Unit.move_speed's default.
+const DEFAULT_SPRINT_SPEED: float = 4.5 * WorldScaleRef.WU_PER_M
 ## The aggregate far-tier formation record of the multi-resolution simulation design
 ## (docs/large-scale-simulation-design.md). A far-tier formation carries no per-soldier state
 ## at all — just this small fixed-size record, evolved by the coarse statistical rules in
@@ -42,13 +51,13 @@ var attack_range: float = 26.0
 ## close tier's AUTO pacing holds for the whole approach. The sprint is a burst below the
 ## far tier's resolution (the terminal charge lasts seconds), so the record never carries
 ## it; a jog is not (a jog approach runs for the whole march), so it does -- see gait.
-var march_speed: float = 45.0
+var march_speed: float = DEFAULT_MARCH_SPEED
 ## Jog pace, matching Unit.jog_speed's default; the pace the record moves at while gait
 ## is Unit.GAIT_JOG (FarTierRules.pace_speed).
-var jog_speed: float = 67.5
+var jog_speed: float = DEFAULT_JOG_SPEED
 ## Sprint pace, matching Unit.move_speed's default; used by FarTierRules.tick_stamina
 ## to classify paces against the jog/sprint midpoint.
-var sprint_speed: float = 90.0
+var sprint_speed: float = DEFAULT_SPRINT_SPEED
 ## The formation's gait: Unit.GAIT_WALK (march_speed) or Unit.GAIT_JOG (jog_speed). The
 ## far tier's only two paces -- a walk approach, or a jog approach that arrives sooner and
 ## pays for it in stamina (FarTierRules.tick_stamina). from_unit maps a unit's ordered
