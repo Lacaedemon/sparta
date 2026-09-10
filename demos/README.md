@@ -653,8 +653,15 @@ cat /tmp/tx-ci/platform.txt            # os=Linux, the Godot version, the tick c
 
 # 2. Re-judge one clip from the runner's dump -- this reproduces the row byte for byte
 #    on any platform (verified: CI's six-clip report re-judged on Windows was identical).
+#    The --script argument follows the row's catalog type, exactly as the sweep passes
+#    it (demo_clip_script_source in tools/lib/demo-defect-metrics.sh):
+#    - an input row (`type=input`) takes its own scripted-input file;
 "$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- /tmp/tx-ci/<clip> \
     --json --script demos/inputs/<clip-script>.json
+#    - a replay row (showcase, support, ...) has no input script: pass its
+#      demos/<clip>.defects.json sidecar when one exists, else no --script at all.
+"$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- /tmp/tx-ci/<clip> \
+    --json [--script demos/<clip>.defects.json]
 
 # 3. To see how far YOUR platform's sim drifts from the runner's on that clip, dump it
 #    here and compare the hash streams (first divergent tick + tier):

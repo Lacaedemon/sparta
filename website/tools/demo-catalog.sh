@@ -133,12 +133,13 @@ demo_catalog_selected() {
 
 # demo_catalog_check_selection <selection>
 #
-# Fails (exit 1, naming the offenders on stderr) when <selection> names a clip the
-# catalog does not have. A misspelt name would otherwise select nothing, and a dump or
-# sweep of nothing exits 0 with an empty tree -- the one outcome a diagnostic dispatch
-# cannot tell from "the clip was dumped and is clean". Call it once, before the row loop.
+# Fails (exit 1, saying why on stderr) when <selection> names a clip the catalog does
+# not have, or is non-empty yet names nothing at all ("," or whitespace). Either would
+# otherwise select nothing, and a dump or sweep of nothing exits 0 with an empty tree --
+# the one outcome a diagnostic dispatch cannot tell from "the clip was dumped and is
+# clean". Call it once, before the row loop.
 demo_catalog_check_selection() {
-  local selection="$1" name spec catalog_name unknown=""
+  local selection="$1" name spec catalog_name unknown="" named=0
   local -a names
   [ -n "$selection" ] || return 0
   IFS=',' read -r -a names <<<"$selection"
@@ -147,12 +148,17 @@ demo_catalog_check_selection() {
     name="${name%"${name##*[![:space:]]}"}"
     # A stray comma ("a,,b", "a,") yields an empty name; that is not a misspelt clip.
     [ -n "$name" ] || continue
+    named=$((named + 1))
     for spec in "${DEMOS[@]}"; do
       catalog_name="${spec%%|*}"
       [ "$catalog_name" = "$name" ] && continue 2
     done
     unknown="$unknown $name"
   done
+  if [ "$named" -eq 0 ]; then
+    echo "error: SPARTA_DUMP_CLIPS is set but names no clip (unset it to select every row)" >&2
+    return 1
+  fi
   [ -z "$unknown" ] && return 0
   echo "error: SPARTA_DUMP_CLIPS names clips not in website/tools/demo-catalog.sh:$unknown" >&2
   return 1

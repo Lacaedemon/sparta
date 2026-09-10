@@ -10,9 +10,10 @@
 #      whitespace around a name is ignored
 #
 # demo_catalog_check_selection():
-#   3b. a selection naming a clip the catalog lacks fails, naming the offender, and an
-#       all-known (or empty) selection passes -- so a misspelt SPARTA_DUMP_CLIPS cannot
-#       dump or judge nothing and exit 0
+#   3b. a selection naming a clip the catalog lacks fails, naming the offender; one that
+#       is set but names nothing ("," or whitespace) fails too; an all-known (or empty)
+#       selection passes -- so a misspelt or blank SPARTA_DUMP_CLIPS cannot dump or judge
+#       nothing and exit 0
 #
 # website-demo-defect-sweep.sh under SPARTA_DUMP_CLIPS:
 #   4. the sweep judges only the selected rows -- its SWEEP-SUMMARY total is the
@@ -75,6 +76,8 @@ checked() {
 assert_eq "empty selection passes the catalog check" ok "$(checked "")"
 assert_eq "known names pass the catalog check" ok "$(checked "charge, support")"
 assert_eq "a stray comma is not an unknown clip" ok "$(checked "charge,,support,")"
+assert_eq "a selection of only commas names nothing and fails" bad "$(checked ",")"
+assert_eq "a selection of only whitespace names nothing and fails" bad "$(checked " ")"
 assert_eq "an unknown name fails the catalog check" bad "$(checked "charge,chrage")"
 assert_eq "the check names the unknown clip" \
   "1" "$(grep -c 'not in website/tools/demo-catalog.sh: chrage$' "$CHECK_ERR" || true)"
