@@ -1,0 +1,148 @@
+# Turn GitHub's silent no-run behaviour on a conflicting PR into a visible
+# PR comment.
+#
+# GitHub creates NO `pull_request` workflow run -- not a skipped one, none at
+# all -- for a push to a PR that has a merge conflict with its base branch
+# ("Workflows will not run on pull_request activity if the pull request has a
+# merge conflict"). Every pull_request-triggered check in this repo (the Claude
+# review, Godot CI, the lint checks, the demo clip) then goes quiet together,
+# which reads as a reviewer outage. Measured 2026-09-05: four consecutive
+# pushes to one PR produced no review and no CI while the branch conflicted
+# with main on a memory file, and the runs reappeared on the merge commit that
+# resolved the conflict.
+#
+# `push` events are created regardless of the PR's mergeability, so this
+# workflow listens on push, finds the open PR for the branch, and when GitHub
+# reports the PR as conflicting, posts (or refreshes) one marker comment naming
+# the SHA that got no runs and what to do about it. Once the PR is mergeable
+# again it edits that comment to say so. A branch with no open PR, or a PR that
+# is not conflicting, gets no comment.
+#
+# The `workflow_dispatch` path runs the same check for a given PR on demand
+# (it reads the PR's current head), which is how the conflicting branch of the
+# script can be exercised without waiting for a real conflict.
+name: Conflicting PR Notice
+
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to check'
+        required: true
+        type: number
+
+permissions: {}
+
+# One check per branch on push, so a newer push supersedes an older one still
+# polling and two overlapping runs cannot both post a first notice. A dispatch
+# keys on its PR number instead: its github.ref is whatever ref it was run
+# against (usually main), so keying on the ref alone would let two dispatched
+# checks for different PRs cancel each other.
+concurrency:
+  group: conflicting-pr-notice-${{ inputs.pr_number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  notice:
+    # A branch deletion is also a push event; there is nothing to check for it.
+    if: github.event_name == 'workflow_dispatch' || github.event.deleted == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Comment when the pushed PR conflicts with its base
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- conflicting-pr-notice -->';
+            const { owner, repo } = context.repo;
+            let prs = [];
+            if (context.eventName === 'workflow_dispatch') {
+              const number = Number(context.payload.inputs.pr_number);
+              const { data } = await github.rest.pulls.get({ owner, repo, pull_number: number });
+              prs = [data];
+            } else {
+              const branch = context.ref.replace(/^refs\/heads\//, '');
+              ({ data: prs } = await github.rest.pulls.list({
+                owner, repo, state: 'open', head: `${owner}:${branch}`, per_page: 10,
+              }));
+              if (prs.length === 0) {
+                core.info(`No open PR has head ${branch}; nothing to check.`);
+                return;
+              }
+            }
+            // GitHub computes mergeability lazily: the first GET after a push
+            // usually returns mergeable: null, and a later GET returns the
+            // verdict. Poll for up to about 80 s before giving up.
+            const delaysMs = [0, 5000, 10000, 15000, 20000, 30000];
+            for (const pr of prs) {
+              let mergeable = null;
+              let mergeableState = 'unknown';
+              let head = pr.head.sha;
+              for (const ms of delaysMs) {
+                if (ms > 0) {
+                  await new Promise((resolve) => setTimeout(resolve, ms));
+                }
+                const { data } = await github.rest.pulls.get({ owner, repo, pull_number: pr.number });
+                mergeable = data.mergeable;
+                mergeableState = data.mergeable_state;
+                head = data.head.sha;
+                if (mergeable !== null) {
+                  break;
+                }
+              }
+              const short = head.slice(0, 8);
+              if (mergeable === null) {
+                // Deliberately a warning, not a failure: a red check on a push
+                // whose only problem is GitHub computing mergeability slowly
+                // would be noise on a healthy PR. The annotation is visible in
+                // the run, and the next push checks again.
+                core.warning(`PR #${pr.number}: GitHub did not report mergeability for ${short} within the polling window; no comment posted.`);
+                continue;
+              }
+              // Paginate: on a long PR thread the marker can sit past page 1,
+              // and missing it would post a duplicate notice on every push.
+              // Only this workflow's own comment counts as the notice: a
+              // human quoting the marker must not get their comment
+              // overwritten. The newest match wins if several exist.
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number: pr.number, per_page: 100,
+              });
+              const existing = comments
+                .filter((c) => c.user && c.user.login === 'github-actions[bot]' && c.body && c.body.includes(marker))
+                .pop();
+              if (mergeable === false) {
+                const body = [
+                  marker,
+                  `**No \`pull_request\` workflows ran for \`${short}\`.**`,
+                  `This PR conflicts with its base branch (\`mergeable_state: ${mergeableState}\`), and GitHub creates no \`pull_request\` workflow run at all -- not even a skipped one -- while a PR has a merge conflict.`,
+                  'The Claude review, Godot CI, the lint checks, and the demo clip are all silent for this push, and they stay silent for every further push until the conflict is resolved.',
+                  '',
+                  `Merge \`${pr.base.ref}\` into this branch and resolve the conflict; the push of that merge commit triggers all of them normally.`,
+                  `A review of the current head can be requested without waiting: \`gh workflow run claude-code-review.yml -R ${owner}/${repo} -f pr_number=${pr.number}\`.`,
+                  '',
+                  '_Posted by the `conflicting-pr-notice` workflow (an automation) --- not written by a human._',
+                ].join('\n');
+                if (existing) {
+                  await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+                  core.info(`PR #${pr.number}: refreshed the conflict notice for ${short}.`);
+                } else {
+                  await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
+                  core.info(`PR #${pr.number}: posted a conflict notice for ${short}.`);
+                }
+                continue;
+              }
+              core.info(`PR #${pr.number}: ${short} is mergeable (${mergeableState}); pull_request workflows run for it.`);
+              if (existing && !existing.body.includes('Resolved:')) {
+                const body = [
+                  marker,
+                  `Resolved: \`${short}\` no longer conflicts with \`${pr.base.ref}\`, so \`pull_request\` workflows run for this PR again.`,
+                  '',
+                  '_Posted by the `conflicting-pr-notice` workflow (an automation) --- not written by a human._',
+                ].join('\n');
+                await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+              }
+            }
