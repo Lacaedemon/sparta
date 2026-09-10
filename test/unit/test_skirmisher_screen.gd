@@ -376,11 +376,11 @@ func test_a_screener_already_on_station_is_left_to_fight_its_own_firefight() -> 
 
 
 func test_a_pilum_screener_kiting_past_default_station_radius_stays_on_station() -> void:
-	var u := _archers(1, Vector2(600, 620))
+	var u := _archers(3, Vector2(600, 700))
 	u.facing = Vector2.UP
 	assert_true(u.equip_missile(LoadoutRegistry.MISSILE_PILUM), "pilum equipped")
 	assert_almost_eq(u.skirmish_kite_distance, 187.5, 0.01)
-	var enemy := _unit(2, Vector2(600, 400), 0)
+	var enemy := _unit(4, Vector2(600, 400), 0)
 	u.target_enemy = enemy
 
 	var group: Array = _heavy_line() + [u]
@@ -394,11 +394,26 @@ func test_a_pilum_screener_kiting_past_default_station_radius_stays_on_station()
 	assert_true(cmd.is_empty(),
 		"pilum unit 160 wu out is within 187.5 wu station tolerance and gets no order")
 
-	var bow := _archers(3, Vector2(600, 620))
+	# UnitLeader widens station to the unit's live kite reach even when handed an
+	# uninflated directive (default SCREEN_STATION_RADIUS 140 wu).
+	var uninflated: Dictionary = {
+		"type": ScreenScript.DIRECTIVE_SCREEN,
+		"x": 600.0,
+		"y": 540.0,
+		"station": 140.0,
+	}
+	var uninflated_cmd: Dictionary = UnitLeaderScript.decide(u, [u, enemy], uninflated)
+	assert_true(uninflated_cmd.is_empty(),
+		"UnitLeader widens an uninflated 140 wu station to live 187.5 wu kite reach")
+
+	var bow := _archers(5, Vector2(600, 700))
 	bow.facing = Vector2.UP
 	bow.target_enemy = enemy
 	var bow_directive: Dictionary = {
-		"type": ScreenScript.DIRECTIVE_SCREEN, "x": 600.0, "y": 460.0, "station": 140.0,
+		"type": ScreenScript.DIRECTIVE_SCREEN,
+		"x": 600.0,
+		"y": 540.0,
+		"station": 140.0,
 	}
 	var bow_cmd: Dictionary = UnitLeaderScript.decide(bow, [bow, enemy], bow_directive)
 	assert_false(bow_cmd.is_empty(), "bow unit at 160 wu exceeds 140 wu station and is re-ordered")
