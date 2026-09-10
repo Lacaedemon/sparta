@@ -112,4 +112,6 @@ DEMOS=(
   "missile_profile_reach|demos/inputs/missile-profile-reach.json|30|240|720|input"
 )
 
-
+# The SPARTA_DUMP_CLIPS narrowing helpers (demo_catalog_selected,
+# demo_catalog_check_selection) live in tools/lib/demo-catalog-selection.sh, sourced by
+# each consumer from its own tree.
