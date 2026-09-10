@@ -113,17 +113,45 @@ DEMOS=(
 # demo_catalog_selected <clip-name> <selection>
 #
 # True when <selection> (a comma-separated list of clip names, e.g. the
-# SPARTA_DUMP_CLIPS environment variable) is empty or names the clip. Both catalog
-# consumers narrow their row loop through this one predicate, so a narrowed dump and
-# the sweep judging it agree on which rows exist: a clip the dump skipped is not a
-# "no transcript" finding when the sweep was narrowed the same way.
+# SPARTA_DUMP_CLIPS environment variable) is empty or names the clip. Whitespace
+# around a name is ignored, so "a, b" selects both. Both catalog consumers narrow their
+# row loop through this one predicate, so a narrowed dump and the sweep judging it agree
+# on which rows exist: a clip the dump skipped is not a "no transcript" finding when the
+# sweep was narrowed the same way.
 demo_catalog_selected() {
   local want="$1" selection="$2" name
   local -a names
   [ -n "$selection" ] || return 0
   IFS=',' read -r -a names <<<"$selection"
   for name in "${names[@]}"; do
+    name="${name#"${name%%[![:space:]]*}"}"
+    name="${name%"${name##*[![:space:]]}"}"
     [ "$name" = "$want" ] && return 0
   done
+  return 1
+}
+
+# demo_catalog_check_selection <selection>
+#
+# Fails (exit 1, naming the offenders on stderr) when <selection> names a clip the
+# catalog does not have. A misspelt name would otherwise select nothing, and a dump or
+# sweep of nothing exits 0 with an empty tree -- the one outcome a diagnostic dispatch
+# cannot tell from "the clip was dumped and is clean". Call it once, before the row loop.
+demo_catalog_check_selection() {
+  local selection="$1" name spec catalog_name unknown=""
+  local -a names
+  [ -n "$selection" ] || return 0
+  IFS=',' read -r -a names <<<"$selection"
+  for name in "${names[@]}"; do
+    name="${name#"${name%%[![:space:]]*}"}"
+    name="${name%"${name##*[![:space:]]}"}"
+    for spec in "${DEMOS[@]}"; do
+      catalog_name="${spec%%|*}"
+      [ "$catalog_name" = "$name" ] && continue 2
+    done
+    unknown="$unknown $name"
+  done
+  [ -z "$unknown" ] && return 0
+  echo "error: SPARTA_DUMP_CLIPS names clips not in website/tools/demo-catalog.sh:$unknown" >&2
   return 1
 }

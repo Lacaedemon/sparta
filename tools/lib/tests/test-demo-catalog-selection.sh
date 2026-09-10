@@ -6,7 +6,13 @@
 #   1. an empty selection selects every clip
 #   2. a one-name selection selects that clip and no other
 #   3. a comma-separated selection selects each named clip, whole-name only
-#      (a name that is merely a prefix or substring of a selected one is NOT selected)
+#      (a name that is merely a prefix or substring of a selected one is NOT selected);
+#      whitespace around a name is ignored
+#
+# demo_catalog_check_selection():
+#   3b. a selection naming a clip the catalog lacks fails, naming the offender, and an
+#       all-known (or empty) selection passes -- so a misspelt SPARTA_DUMP_CLIPS cannot
+#       dump or judge nothing and exit 0
 #
 # website-demo-defect-sweep.sh under SPARTA_DUMP_CLIPS:
 #   4. the sweep judges only the selected rows -- its SWEEP-SUMMARY total is the
@@ -59,6 +65,19 @@ assert_eq "comma list selects its last name" yes "$(selected support "charge,sup
 assert_eq "comma list excludes an unnamed clip" no "$(selected clash "charge,support")"
 assert_eq "a prefix of a selected name is not selected" no "$(selected cycle_charge "cycle_charge_flee")"
 assert_eq "a substring of a selected name is not selected" no "$(selected charge "cycle_charge")"
+assert_eq "whitespace around a name is ignored" yes "$(selected support "charge, support ")"
+
+# checked <selection> -> "ok" / "bad"; the check's stderr lands in CHECK_ERR.
+CHECK_ERR="$(mktemp "${TMPDIR:-/tmp}/demo-catalog-selection-err.XXXXXX")"
+checked() {
+  if demo_catalog_check_selection "$1" 2>"$CHECK_ERR"; then echo ok; else echo bad; fi
+}
+assert_eq "empty selection passes the catalog check" ok "$(checked "")"
+assert_eq "known names pass the catalog check" ok "$(checked "charge, support")"
+assert_eq "an unknown name fails the catalog check" bad "$(checked "charge,chrage")"
+assert_eq "the check names the unknown clip" \
+  "1" "$(grep -c 'not in website/tools/demo-catalog.sh: chrage$' "$CHECK_ERR" || true)"
+rm -f "$CHECK_ERR"
 
 if ! command -v jq >/dev/null 2>&1; then
   echo "skip: jq not on PATH; the sweep-narrowing cases need it" >&2
@@ -84,6 +103,7 @@ DEMOS=(
   "gamma|demos/inputs/gamma.json|30|100|640|input"
 )
 $(declare -f demo_catalog_selected)
+$(declare -f demo_catalog_check_selection)
 EOF
 : > "$TREE/demos/inputs/alpha.json"
 : > "$TREE/demos/inputs/beta.json"
@@ -114,13 +134,15 @@ assert_eq "narrowed sweep judges only the selected row" \
   "1 1 0 0 0 0" "$(summary_of "$TREE/one.md" beta)"
 assert_eq "narrowed report names no missing transcript" \
   "0" "$(grep -c 'no transcript\*\*' "$TREE/one.md" || true)"
+assert_eq "a sweep narrowed to an unknown clip fails instead of judging nothing" \
+  "" "$(summary_of "$TREE/none.md" delta 2>/dev/null || true)"
 
 assert_eq "report without platform.txt has no platform line" \
   "0" "$(grep -c '^Transcripts dumped with:' "$TREE/one.md" || true)"
 printf 'os=Linux\ngodot=4.7.stable.official\ntick_step=60\nclips=beta\n' > "$TX/platform.txt"
 summary_of "$TREE/stamped.md" beta >/dev/null
 assert_eq "report leads with the dump's platform line" \
-  'Transcripts dumped with: `os=Linux godot=4.7.stable.official tick_step=60 clips=beta `' \
+  'Transcripts dumped with: `os=Linux godot=4.7.stable.official tick_step=60 clips=beta`' \
   "$(head -n1 "$TREE/stamped.md")"
 
 if [ "$FAILURES" -ne 0 ]; then

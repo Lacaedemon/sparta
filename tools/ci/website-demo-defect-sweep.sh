@@ -40,6 +40,8 @@ command -v jq >/dev/null 2>&1 || { echo "error: jq not found on PATH" >&2; exit 
 . "$TREE/website/tools/demo-catalog.sh"
 # shellcheck source=../lib/demo-defect-metrics.sh
 . "$TREE/tools/lib/demo-defect-metrics.sh"
+# A misspelt narrowing must not judge an empty catalog and call it clean.
+demo_catalog_check_selection "$ONLY_CLIPS"
 
 TOTAL=0; CLEAN=0; DEFECT=0; MALFORMED=0; NA=0; MISSING=0
 PROBLEM_ROWS=""
@@ -101,7 +103,7 @@ done
 # dumped cannot be compared with another machine's. dump-demo-states.sh writes the file.
 PLATFORM_LINE=""
 if [ -f "$TRANSCRIPT_DIR/platform.txt" ]; then
-  PLATFORM_LINE="$(tr '\n' ' ' < "$TRANSCRIPT_DIR/platform.txt")"
+  PLATFORM_LINE="$(paste -sd ' ' "$TRANSCRIPT_DIR/platform.txt")"
 fi
 
 {

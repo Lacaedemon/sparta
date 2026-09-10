@@ -56,6 +56,8 @@ else
   # shellcheck source=demo-catalog.sh
   . "$SCRIPT_DIR/demo-catalog.sh"
 fi
+# A misspelt narrowing must fail here, not dump nothing and exit 0.
+demo_catalog_check_selection "$ONLY_CLIPS"
 
 mkdir -p "$OUT_DIR"
 
