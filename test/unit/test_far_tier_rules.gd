@@ -303,6 +303,18 @@ func test_tick_rout_flee_speed_is_the_close_tier_multiplier_on_the_march_pace() 
 		rec.march_speed * FarTierRules.FLEE_SPEED_MULTIPLIER, 0.0001)
 
 
+func test_tick_rout_flee_speed_scales_jog_pace_when_ordered_to_jog() -> void:
+	var rec := _make_rec(Vector2.ZERO)
+	rec.morale = 0.0
+	rec.gait = Unit.GAIT_JOG
+	FarTierRules.enter_rout(rec)
+	var enemy := _make_rec(Vector2(0.0, 100.0))
+	FarTierRules.tick_rout(rec, enemy, 1.0)
+	assert_almost_eq(rec.position.distance_to(Vector2.ZERO),
+		rec.jog_speed * FarTierRules.FLEE_SPEED_MULTIPLIER, 0.0001,
+		"a routing formation ordered to jog flees at the multiplied jog pace")
+
+
 func test_tick_rout_coincident_positions_regenerate_stamina_at_rest() -> void:
 	var rec := _make_rec(Vector2(50.0, 50.0))
 	rec.morale = 0.0

@@ -49,8 +49,9 @@ var defense: int = 0
 var attack_range: float = 26.0
 ## Sustained march pace, matching Unit.walk_speed's default: the walk, which is what the
 ## close tier's AUTO pacing holds for the whole approach. The sprint is a burst below the
-## far tier's resolution (the terminal charge lasts seconds), so the record never carries
-## it; a jog is not (a jog approach runs for the whole march), so it does -- see gait.
+## far tier's resolution (the terminal charge lasts seconds), so the record has no sprint
+## gait for ordered march. A jog is not (a jog approach runs for the whole march), so it
+## does carry jog_speed, and sprint_speed classifies paces in FarTierRules.tick_stamina.
 var march_speed: float = DEFAULT_MARCH_SPEED
 ## Jog pace, matching Unit.jog_speed's default; the pace the record moves at while gait
 ## is Unit.GAIT_JOG (FarTierRules.pace_speed).
@@ -72,8 +73,8 @@ var stamina: float = 100.0
 var max_stamina: float = 100.0
 ## The per-gait stamina rates, carried from the unit's own fields (Unit.stamina_rest_regen_per_s
 ## and siblings) so a demoted formation keeps paying the SAME rates it would at close tier.
-## The record has no sprint gait for ordered march;
-## routing flees at the sprint pace and bills stamina_sprint_drain_per_s.
+## The record has no sprint gait for ordered march.
+## Moving flight scales effective_speed by FLEE_SPEED_MULTIPLIER and bills stamina_sprint_drain_per_s.
 var stamina_rest_regen_per_s: float = SoldierCombat.RHO_STAMINA
 var stamina_walk_regen_per_s: float = SoldierCombat.RHO_STAMINA_WALK
 var stamina_jog_drain_per_s: float = SoldierCombat.KAPPA_JOG

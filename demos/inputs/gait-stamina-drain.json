@@ -144,19 +144,19 @@
       "tick": 780,
       "uid": 0,
       "field": "stamina_mean",
-      "value": 78.7
+      "value": 79.1
     },
     {
       "tick": 900,
       "uid": 0,
       "field": "stamina_mean",
-      "value": 68.7
+      "value": 69.1
     },
     {
       "tick": 1050,
       "uid": 0,
       "field": "stamina_mean",
-      "value": 63.1
+      "value": 64.0
     }
   ],
   "spawn_fingerprint": "c3d9aadb709d1e7c0d87ceafc2d2e2e3"
