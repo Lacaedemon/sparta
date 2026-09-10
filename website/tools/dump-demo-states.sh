@@ -45,6 +45,8 @@ ONLY_CLIPS="${SPARTA_DUMP_CLIPS:-}"
 
 # shellcheck source=../../tools/lib/run-bounded.sh
 . "$DEFAULT_ROOT/tools/lib/run-bounded.sh"
+# shellcheck source=../../tools/lib/demo-catalog-selection.sh
+. "$DEFAULT_ROOT/tools/lib/demo-catalog-selection.sh"
 # Each tree's OWN catalog decides what it dumps (falling back to this script's sibling
 # for a tree that predates the extraction). This is what makes removed clips real in
 # the diff: a clip the PR drops from the catalog still dumps on the merge-base side,

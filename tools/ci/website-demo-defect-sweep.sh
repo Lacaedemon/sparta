@@ -40,6 +40,9 @@ command -v jq >/dev/null 2>&1 || { echo "error: jq not found on PATH" >&2; exit 
 . "$TREE/website/tools/demo-catalog.sh"
 # shellcheck source=../lib/demo-defect-metrics.sh
 . "$TREE/tools/lib/demo-defect-metrics.sh"
+# The narrowing helpers come from THIS script's tree, not the judged tree's catalog.
+# shellcheck source=../lib/demo-catalog-selection.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/demo-catalog-selection.sh"
 # A misspelt narrowing must not judge an empty catalog and call it clean.
 demo_catalog_check_selection "$ONLY_CLIPS"
 

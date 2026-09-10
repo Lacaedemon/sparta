@@ -2,7 +2,7 @@
 # Self-contained unit test for the catalog-narrowing contract shared by
 # website/tools/dump-demo-states.sh and tools/ci/website-demo-defect-sweep.sh:
 #
-# demo_catalog_selected() (website/tools/demo-catalog.sh):
+# demo_catalog_selected() (tools/lib/demo-catalog-selection.sh):
 #   1. an empty selection selects every clip
 #   2. a one-name selection selects that clip and no other
 #   3. a comma-separated selection selects each named clip, whole-name only
@@ -39,6 +39,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 # shellcheck source=../../../website/tools/demo-catalog.sh
 . "$REPO_ROOT/website/tools/demo-catalog.sh"
+# shellcheck source=../demo-catalog-selection.sh
+. "$REPO_ROOT/tools/lib/demo-catalog-selection.sh"
 
 FAILURES=0
 
@@ -95,19 +97,19 @@ fi
 TREE="$(mktemp -d "${TMPDIR:-/tmp}/demo-catalog-selection.XXXXXX")"
 trap 'rm -rf "$TREE"' EXIT
 
-# A fake project tree: the real sweep script and metrics helper, a three-row catalog,
-# and a Godot stub whose analyzer output is one clean verdict.
+# A fake project tree: the real sweep script, metrics helper and selection helper, a
+# three-row catalog that (like a merge-base tree predating the helpers) defines only
+# DEMOS, and a Godot stub whose analyzer output is one clean verdict.
 mkdir -p "$TREE/tools/ci" "$TREE/tools/lib" "$TREE/website/tools" "$TREE/demos/inputs"
 cp "$REPO_ROOT/tools/ci/website-demo-defect-sweep.sh" "$TREE/tools/ci/"
 cp "$REPO_ROOT/tools/lib/demo-defect-metrics.sh" "$TREE/tools/lib/"
+cp "$REPO_ROOT/tools/lib/demo-catalog-selection.sh" "$TREE/tools/lib/"
 cat > "$TREE/website/tools/demo-catalog.sh" <<EOF
 DEMOS=(
   "alpha|demos/inputs/alpha.json|30|100|640|input"
   "beta|demos/inputs/beta.json|30|100|640|input"
   "gamma|demos/inputs/gamma.json|30|100|640|input"
 )
-$(declare -f demo_catalog_selected)
-$(declare -f demo_catalog_check_selection)
 EOF
 : > "$TREE/demos/inputs/alpha.json"
 : > "$TREE/demos/inputs/beta.json"

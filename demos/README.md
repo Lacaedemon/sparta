@@ -639,8 +639,9 @@ the sim is bit-exact only within one build and platform
 (`docs/individual-collision-design.md`, decision 4),
 and a Windows dump of the same commit diverges from the runner's in the cheap
 (positions) tier within the first second of every clip, contact or not
-(measured 2026-09-09: `sidestep`, a lone regiment side-stepping with no enemy in reach,
-first differs at tick 21; sub-`0.01` wu by tick 300, and melee then amplifies the gap
+(measured 2026-09-09:
+`sidestep`, a lone regiment side-stepping with no enemy in reach, first differs at tick 21;
+sub-`0.01` wu by tick 300, and melee then amplifies the gap
 to whole soldiers' positions -- tracked in #1566).
 So a verdict row is never reproduced by re-dumping the clip on another machine.
 It is reproduced from the runner's own transcript, which every sweep run publishes:
