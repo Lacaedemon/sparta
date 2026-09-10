@@ -62,6 +62,17 @@ const SPAWN_LINE_YS: Array = [300.0, 880.0]
 var field: Rect2 = FIELD
 var terrain: Array = TERRAIN
 var spawn_line_ys: Array = SPAWN_LINE_YS
+# Distance in metres between the two spawn lines, for a caller that wants the battle to
+# open wider (or narrower) than the map's own lines: _ready applies it through
+# BattleMap.with_line_gap, which keeps team 0's line where it is, moves team 1's line to
+# that distance below it, and grows the field with it so team 1 keeps its ground behind
+# the line. <= 0 (the default) keeps `spawn_line_ys`/`field` exactly as set, so every
+# existing battle, demo, and replay is unchanged. Settable BEFORE the node enters the
+# tree, like the map fields above: a campaign clash fills it from CampaignBattle.pending's
+# deployment_gap_m (the defended province's own value), the demo recorder from an input
+# script's field of the same name. Authored in metres, like the loadout's reaches and
+# gaits, and converted once at the spawn boundary in _ready.
+var deployment_gap_m: float = -1.0
 const TERRAIN_COLOR := {
 	"forest": Color(0.12, 0.28, 0.10),
 	"hill":   Color(0.55, 0.48, 0.32),
@@ -514,6 +525,28 @@ func _ready() -> void:
 	# from a previous instance would key snapshots to freed Unit nodes). Built from
 	# whatever replay_snapshot_interval_ticks/replay_snapshot_max a caller set above.
 	_snapshot_cache = ReplaySnapshotCache.new(replay_snapshot_interval_ticks, replay_snapshot_max)
+
+	# A caller that sets the field directly bypasses both data-boundary parsers. Check it
+	# BEFORE the campaign fill below: NAN is neither <= 0 nor > 0 and would silently keep
+	# the default map, and -INF is <= 0 and would read as "unset" and be replaced by a
+	# clash's own gap. Fail loudly instead, as with_line_gap does for a non-finite gap.
+	assert(is_finite(deployment_gap_m),
+			"Battle.deployment_gap_m must be a finite number of metres (<= 0 for unset)")
+	# A campaign clash may carry its own deployment distance (the defended province's
+	# deployment_gap_m). It fills the field only when a caller left it unset, so a
+	# demo/test that staged its own gap before entering the tree keeps that value.
+	if CampaignBattle.active and CampaignBattle.pending.has("deployment_gap_m") and deployment_gap_m <= 0.0:
+		deployment_gap_m = float(CampaignBattle.pending["deployment_gap_m"])
+	# Re-derive the spawn lines and the field from the gap BEFORE the map is published to
+	# the recording below, so the replay header carries the widened map and playback
+	# rebuilds it. Playback itself skips this: the recorded map already holds the result.
+	# The metres->world conversion happens once here, at the spawn boundary, like the
+	# loadout's gait speeds and weapon reaches.
+	if deployment_gap_m > 0.0 and Replay.mode != Replay.Mode.PLAYBACK:
+		var widened: Dictionary = BattleMapRef.with_line_gap(
+				deployment_gap_m * WorldScaleRef.WU_PER_M, field, spawn_line_ys)
+		field = widened["field"]
+		spawn_line_ys = widened["spawn_lines"]
 
 	# Start a fresh recording for every live battle (so any battle can be
 	# replayed for debugging). During playback the recorder is already armed by

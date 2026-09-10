@@ -109,6 +109,7 @@ DEMOS=(
   "flanking_maneuver|demos/inputs/flanking-maneuver.json|30|300|640|input"
   "shield_arc_block|demos/inputs/shield-arc-block.json|30|330|720|input"
   "skirmisher_screen|demos/inputs/skirmisher-screen.json|30|480|720|input"
+  "campaign_deployment_gap|demos/inputs/campaign-deployment-gap.json|30|720|640|input"
 )
 
 

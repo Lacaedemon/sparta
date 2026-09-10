@@ -233,3 +233,20 @@ func test_a_non_array_factions_value_is_rejected() -> void:
 		assert_true(RecorderScript.parse_factions(bad, false).has("error"),
 				"factions must be an array: %s" % [bad])
 
+
+
+# --- deployment_gap_m parsing ----------------------------------------------------------
+
+func test_a_well_formed_deployment_gap_parses_to_metres() -> void:
+	var gap: Dictionary = RecorderScript.parse_deployment_gap_m(60)
+	assert_false(gap.has("error"), "a positive number parses")
+	assert_almost_eq(gap["gap_m"], 60.0, 0.0001, "and carries through as metres")
+
+
+func test_a_malformed_deployment_gap_is_rejected() -> void:
+	# _ready quits on {"error"}, so a rejection here is the loud failure demos/README.md
+	# promises for a bad deployment_gap_m; NAN and INF are floats that pass a plain sign
+	# test, which is why they are listed by name.
+	for bad in ["60", 0, -60.0, INF, NAN, [], {}]:
+		assert_true(RecorderScript.parse_deployment_gap_m(bad).has("error"),
+			"a deployment gap that is not a positive, finite number is rejected: %s" % [bad])
