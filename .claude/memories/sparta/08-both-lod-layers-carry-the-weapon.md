@@ -1302,6 +1302,30 @@ verdict-shaped figure (`worst=`, `nnd_min`, `N/M verdicts`, `PASS uid3`) follows
 between. It only ever adds context -- a local figure is fine to report, and only wrong to
 gate a decision on, which no regex can tell apart.
 
+A sweep row is reproduced from the runner's published transcript
+(`demos/README.md`, "Reproducing a sweep verdict"):
+the analyzer over CI's dump gives CI's verdict on any platform,
+and a local re-dump does not.
+
+**The drift is not a melee phenomenon, and it does not start late.**
+Measured 2026-09-09 (hash streams, Linux runner versus Windows, same commit, Godot 4.7-stable both):
+four of the six clips compared (`sidestep`, `support`, `cycle_charge`, `showcase`)
+first diverge in the cheap (positions) tier at tick 21,
+`rout_rally` in the cheap tier at tick 61,
+and `general_doctrine_reserves` in the full tier at tick 60
+(non-position state moved before any position did).
+`sidestep` is one regiment side-stepping with no enemy in reach.
+The readable 2-decimal dump hides it for hundreds of ticks
+(`sidestep` shows one 0.01 wu difference at tick 300);
+contact amplifies it to whole-soldier displacements
+(`support` 34 wu at tick 800, `showcase` 1282 wu at tick 1300,
+`rout_rally` a different surviving-unit count at tick 3540).
+So "the melee-heavy clips diverge" was the visible tail of a sim-wide sub-ulp platform difference,
+not a knife-edge in reach checks.
+The analyzer is not part of it:
+CI's six-clip report re-judged on Windows from CI's transcripts was identical row for row.
+Tracked in #1566.
+
 ## Changing the ANALYZER? Dump once, analyze twice -- never compare two recordings
 
 A change to `tools/demo/DemoDefects.gd` changes how transcripts are *judged*, not what
