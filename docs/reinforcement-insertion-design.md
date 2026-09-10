@@ -148,7 +148,7 @@ Runs once, inside the physics tick, and does five things in order.
    Commit calls `pool_strength` with the reinforcement floor, then removes the reserve with `_merged_away()`, and does *not* call `set_formation`, which would reset every shield hold angle the transfer just carried.
    `absorb` keeps its behaviour by calling the two halves in turn.
 
-5. **Anchor the front (ranks axis only).**
+5. **Anchor the front (both axes).**
    The slot grid is centred on `position` -- `SoldierBodies.couple` relies on `mean(slots) ~ position` -- so deepening from `D` to `D'` ranks would push the front rank forward by `(D' - D) / 2` rank pitches, into the enemy on an engaged host.
    Commit instead moves `host.position` rearward along `host.facing` by that amount: a one-time relocation of the anchor rather than a standing offset, so the coupling premise holds again from the next tick and the growth lands entirely at the rear.
    The files axis widens laterally about the same centre and needs no lateral shift of its own;

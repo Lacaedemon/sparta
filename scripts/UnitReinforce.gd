@@ -10,6 +10,8 @@ class_name UnitReinforce
 const ReinforceLayoutRef = preload("res://scripts/ReinforceLayout.gd")
 
 ## Default heading agreement the commit waits for (radians between the two facings).
+## Calibrated from recordings.
+## Twenty degrees tolerates march drift without stalling the commit.
 const HEADING_TOLERANCE_RAD: float = deg_to_rad(20.0)
 
 
@@ -31,7 +33,8 @@ static func begin(reserve: Unit, host: Unit, order: Order) -> void:
 
 ## Per-tick approach: drop the link and halt when the host is gone or the pair no longer
 ## qualifies, re-aim at a drifting host, and commit once the reserve stands at the
-## rendezvous facing the host's way.
+## rendezvous facing the host's way. If the reserve routes, the routing gate in Unit
+## bypasses this update and _begin_rout clears the order and friendly_target link.
 static func update(reserve: Unit, heading_tolerance_rad: float = HEADING_TOLERANCE_RAD) -> void:
 	var order: Order = reserve.current_order
 	if order == null or order.type != Order.Type.REINFORCE or order.friendly_target == null:
@@ -60,21 +63,19 @@ static func commit(reserve: Unit, host: Unit) -> void:
 	var old_ranks: int = ReinforceApproach.deepest(host._sim_soldier_rank) + 1 \
 			if host._sim_soldier_rank.size() == host.soldiers \
 			else ReinforceApproach.deepest(UnitFormation.file_capacities(host.soldiers, files))
-	var layout: Dictionary = ReinforceLayoutRef.interleave_files(host._sim_soldier_file,
-			host._sim_soldier_rank, files, host.to_slot_frame(reserve._sim_soldier_pos))
+	var layout: Dictionary = \
+			ReinforceLayoutRef.interleave_files(host._sim_soldier_file, host._sim_soldier_rank, files, host.to_slot_frame(reserve._sim_soldier_pos))
 	var new_ranks: int = ReinforceApproach.deepest(layout["ranks"]) + 1
 	host.append_soldier_bodies(reserve)
 	host.pool_strength(reserve, host.reinforce_cohesion_floor)
 	# `files` is the pre-pool frontage: pooling can already have raised the automatic
 	# frontage to the interleaved width, and the reshape bookkeeping keys on the change.
 	host.install_file_assignment(layout["file_ids"], layout["ranks"], int(layout["files"]), files)
-	host.position -= ReinforceApproach.depth_axis(host) \
-			* ReinforceLayoutRef.rear_anchor_shift(old_ranks, new_ranks, host.rank_pitch_wu())
+	host.position -= ReinforceApproach.depth_axis(host) * ReinforceLayoutRef.rear_anchor_shift(old_ranks, new_ranks, host.rank_pitch_wu())
 	host.hold_position_anchor(host._reshape_timeout(files))
 	reserve.current_order.friendly_target = null
 	reserve._merged_away()
 	host.queue_redraw()
-
 
 static func _aim(reserve: Unit, host: Unit) -> void:
 	reserve.move_target = ReinforceApproach.rendezvous_point(host, reserve)

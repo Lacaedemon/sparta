@@ -89,6 +89,8 @@ func test_order_arms_the_approach_and_leaves_the_host_alone() -> void:
 	assert_eq(reserve.current_maneuver(), Unit.Maneuver.REINFORCING, "reads as REINFORCING")
 	assert_false(TierTransition.can_demote(reserve),
 			"the reserve keeps its close-tier bodies for the whole approach, as a reliever does")
+	assert_false(TierTransition.can_demote(host),
+			"the host also keeps its close-tier bodies for the approach")
 	assert_true(reserve.order_summary().begins_with("Reinforcing"), "the HUD summary names the maneuver")
 
 
@@ -441,3 +443,43 @@ func test_a_host_that_stops_qualifying_mid_approach_halts_the_reserve() -> void:
 			"the live guards drop the link once the host stops qualifying")
 	assert_false(reserve.has_move_target, "and the reserve halts")
 	assert_eq(host.soldiers, 40, "nothing was interleaved into the square")
+
+
+func test_host_with_distant_enemy_does_not_demote_and_commits() -> void:
+	Replay.forced_seed = 12345
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.drill_mode = true
+	var enemy_pos := Vector2(HOST_POS.x + 2500.0, HOST_POS.y)
+	_battle.scenario = [
+		{"team": 0, "type": "Infantry", "count": 40,
+			"x": HOST_POS.x, "y": HOST_POS.y},
+		{"team": 0, "type": "Infantry", "count": 40,
+			"x": RESERVE_POS.x, "y": RESERVE_POS.y},
+		{"team": 1, "type": "Infantry", "count": 40,
+			"x": enemy_pos.x, "y": enemy_pos.y},
+	]
+	add_child(_battle)
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	assert_not_null(host, "host spawned")
+	assert_not_null(reserve, "reserve spawned")
+
+	_order_reinforce(reserve, host)
+	await get_tree().physics_frame
+
+	for _i in range(10):
+		await get_tree().physics_frame
+		assert_eq(host.tier, FormationTier.CLOSE,
+			"host is protected from demotion during the live reinforcement approach")
+		assert_eq(reserve.tier, FormationTier.CLOSE,
+			"reserve is protected from demotion during the approach")
+
+	var committed: bool = false
+	for _tick in range(COMMIT_BUDGET_TICKS):
+		await get_tree().physics_frame
+		if not is_instance_valid(reserve) or reserve.state == Unit.State.DEAD:
+			committed = true
+			break
+	assert_true(committed, "reinforcement commits even when enemies are beyond demote range")
+	assert_eq(host.soldiers, 80, "host successfully doubled files with reserve")

@@ -75,10 +75,32 @@ static func can_demote(u: Unit) -> bool:
 	# pass-through geometry from approach to resolution. A reinforcement insertion
 	# likewise: its commit interleaves the reserve's bodies into the host's, so a
 	# reserve demoted mid-march (nearest enemy beyond the demote range) would have
-	# no bodies to file in with and could never commit.
+	# no bodies to file in with and could never commit. The host of a live reinforcement
+	# likewise stays close-tier:
+	# demoting it would drop its bodies, after which the guard rejects it and the
+	# approach halts.
 	if o != null and (o.type == Order.Type.RELIEF or o.type == Order.Type.REINFORCE):
 		return false
+	if _is_reinforcement_target(u):
+		return false
 	return true
+
+
+static func _is_reinforcement_target(u: Unit) -> bool:
+	if not u.is_inside_tree():
+		return false
+	var tree := u.get_tree()
+	if tree == null:
+		return false
+	for node in tree.get_nodes_in_group("units"):
+		var other := node as Unit
+		if other != null and other != u \
+				and other.team == u.team and other.state != Unit.State.DEAD:
+			var ord: Order = other.current_order
+			if ord != null and ord.type == Order.Type.REINFORCE \
+					and ord.friendly_target == u:
+				return true
+	return false
 
 
 ## Demote `u` to the far tier: drop every per-soldier array. The unit's own scalar fields

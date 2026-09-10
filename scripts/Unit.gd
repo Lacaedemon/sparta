@@ -8235,6 +8235,7 @@ func to_snapshot_dict() -> Dictionary:
 		"sim_soldier_rank": _sim_soldier_rank.duplicate(),
 		"sim_soldier_square_slot": _sim_soldier_square_slot.duplicate(),
 		"sim_soldier_row_slot": _sim_soldier_row_slot.duplicate(),
+		"sim_soldier_broken": _sim_soldier_broken.duplicate(),
 	}
 
 
@@ -8372,3 +8373,6 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 			(d["sim_soldier_square_slot"] as PackedInt32Array).duplicate()
 	_sim_soldier_row_slot = \
 			(d.get("sim_soldier_row_slot", PackedInt32Array()) as PackedInt32Array).duplicate()
+	_sim_soldier_broken = (d.get("sim_soldier_broken",
+			PackedByteArray()) as PackedByteArray).duplicate()
+

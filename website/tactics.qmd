@@ -338,7 +338,7 @@ drills (explicatio and duplicatio), which double a regiment's own frontage
 A 40-man reserve files into a 40-man host by files: select the reserve, press
 <kbd>Shift</kbd> + <kbd>M</kbd>, right-click the host. The reserve marches to a
 rendezvous just behind the host, then its files step forward into gaps the
-host's own files open by side-stepping apart, and the host goes from 9 files
+host's own files open as they spread, and the host goes from 9 files
 to 18 with its front rank holding its ground.
 :::
 
