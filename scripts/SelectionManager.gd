@@ -690,7 +690,7 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 ## An axis the guard refuses outright (RANKS, until it is wired) flashes the guard's own
 ## reason and arms nothing, so the chord neither merges nor inserts by files.
 func _arm_reinforce(axis: int) -> void:
-	if Replay.mode == Replay.Mode.PLAYBACK or _selected.is_empty():
+	if Replay.mode == Replay.Mode.PLAYBACK or not has_selection():
 		return
 	if axis != BattleRef.ReinforceAxis.FILES:
 		# Refused whether or not a live unit is found: a selection whose units all died
@@ -710,8 +710,8 @@ func _arm_reinforce(axis: int) -> void:
 func _reinforce_refusal(host: UnitRef, axis: int = BattleRef.ReinforceAxis.FILES) -> String:
 	var any_live: bool = false
 	for unit in _selected:
-		if not is_instance_valid(unit):
-			continue
+		if not is_instance_valid(unit) or unit.state == UnitRef.State.DEAD:
+			continue   # the same live predicate as _selected_uids: a dead node lingers a frame
 		any_live = true
 		var reason: String = ReinforceGuard.refusal_reason(unit, host, axis)
 		if reason != "":

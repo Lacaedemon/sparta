@@ -48,16 +48,22 @@ static func update(reserve: Unit, heading_tolerance_rad: float = HEADING_TOLERAN
 
 
 ## The reserve's men file into the host: interleave the ids, carry the per-soldier arrays
-## across, pool strength, install the assignment, hold the host's anchor for the arrival (or
-## the centroid coupling would back the line up to the newcomers), and remove the reserve.
+## across, pool strength, install the assignment, move the anchor rearward by half of any
+## depth the interleave added (the slot grid is centred on depth, so a partial or surplus
+## reserve would otherwise push the front rank forward), hold the anchor for the arrival
+## (or the centroid coupling would back the line up to the newcomers), and remove the reserve.
 static func commit(reserve: Unit, host: Unit) -> void:
 	var files: int = UnitFormation.frontage(host)
 	host._ensure_file_assignment(host.soldiers, files)
+	var old_ranks: int = _deepest(UnitFormation.file_capacities(host.soldiers, files))
 	var layout: Dictionary = ReinforceLayoutRef.interleave_files(host._sim_soldier_file,
 			host._sim_soldier_rank, files, host.to_slot_frame(reserve._sim_soldier_pos))
+	var new_ranks: int = _deepest(layout["ranks"]) + 1
 	host.append_soldier_bodies(reserve)
 	host.pool_strength(reserve, host.reinforce_cohesion_floor)
 	host.install_file_assignment(layout["file_ids"], layout["ranks"], int(layout["files"]))
+	host.position -= host.facing * ReinforceLayoutRef.rear_anchor_shift(old_ranks, new_ranks,
+			host.rank_pitch_wu())
 	host.hold_position_anchor(host._reshape_timeout(files))
 	reserve.current_order.friendly_target = null
 	reserve._merged_away()
@@ -78,6 +84,14 @@ static func _halt(reserve: Unit, order: Order) -> void:
 	reserve.has_move_target = false
 	reserve.ordered_facing = Vector2.ZERO
 	reserve.target_enemy = null
+
+
+## The largest entry of a per-file count or per-man rank array (0 when empty).
+static func _deepest(values: PackedInt32Array) -> int:
+	var out: int = 0
+	for v in values:
+		out = maxi(out, v)
+	return out
 
 
 ## Body layers match the count (a casualty leaves them one tick out of step until resized).

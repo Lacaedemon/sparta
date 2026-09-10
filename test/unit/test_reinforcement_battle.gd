@@ -33,13 +33,13 @@ func after_each() -> void:
 
 ## Two 40-man team-0 Infantry blocks facing down (+y): the host in front, the reserve
 ## behind it. No enemy -- drill_mode keeps Battle._check_victory from ending the battle.
-func _spawn(reserve_type: String = "Infantry") -> Node:
+func _spawn(reserve_type: String = "Infantry", host_count: int = 40, reserve_count: int = 40) -> Node:
 	Replay.forced_seed = 12345
 	_battle = load("res://scenes/Battle.tscn").instantiate()
 	_battle.drill_mode = true
 	_battle.scenario = [
-		{"team": 0, "type": "Infantry", "count": 40, "x": HOST_POS.x, "y": HOST_POS.y},
-		{"team": 0, "type": reserve_type, "count": 40, "x": RESERVE_POS.x, "y": RESERVE_POS.y},
+		{"team": 0, "type": "Infantry", "count": host_count, "x": HOST_POS.x, "y": HOST_POS.y},
+		{"team": 0, "type": reserve_type, "count": reserve_count, "x": RESERVE_POS.x, "y": RESERVE_POS.y},
 	]
 	add_child(_battle)
 	return _battle
@@ -87,6 +87,8 @@ func test_order_arms_the_approach_and_leaves_the_host_alone() -> void:
 	assert_eq(reserve.ordered_facing, host.facing, "with the host's heading held")
 	assert_null(host.current_order, "the host's own order is untouched")
 	assert_eq(reserve.current_maneuver(), Unit.Maneuver.REINFORCING, "reads as REINFORCING")
+	assert_false(TierTransition.can_demote(reserve),
+			"the reserve keeps its close-tier bodies for the whole approach, as a reliever does")
 	assert_true(reserve.order_summary().begins_with("Reinforcing"), "the HUD summary names the maneuver")
 
 
@@ -350,6 +352,37 @@ func _teleport(u: Unit, to: Vector2) -> void:
 	u.position = to
 	for i in range(u._sim_soldier_pos.size()):
 		u._sim_soldier_pos[i] += shift
+
+
+func test_a_surplus_reserve_deepens_the_host_and_the_anchor_steps_back_to_hold_the_front() -> void:
+	_spawn("Infantry", 20, 40)   # twice the host's strength: the inserted files run deeper
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	var files: int = UnitFormation.frontage(host)
+	var old_ranks: int = 0
+	for c in UnitFormation.file_capacities(host.soldiers, files):
+		old_ranks = maxi(old_ranks, c)
+	var host_start: Vector2 = host.position
+	_order_reinforce(reserve, host)
+	var committed: bool = false
+	for _tick in range(COMMIT_BUDGET_TICKS):
+		await get_tree().physics_frame
+		if not is_instance_valid(reserve) or reserve.state == Unit.State.DEAD:
+			committed = true
+			break
+	assert_true(committed, "the surplus reserve commits within the budget")
+	assert_eq(host.soldiers, 60, "the host holds both regiments' men")
+	var new_ranks: int = 0
+	for r in host._sim_soldier_rank:
+		new_ranks = maxi(new_ranks, r + 1)
+	assert_gt(new_ranks, old_ranks, "the interleave deepened the block (else this test proves nothing)")
+	var shift: float = ReinforceLayout.rear_anchor_shift(old_ranks, new_ranks, host.rank_pitch_wu())
+	var moved: float = (host.position - host_start).dot(host.facing)
+	assert_almost_eq(moved, -shift, 0.5,
+			"the anchor stepped back by half the added depth, so the front rank holds its ground")
+	assert_almost_eq((host.position - host_start).dot(host.facing.orthogonal()), 0.0, 0.5,
+			"and not sideways")
 
 
 func test_a_host_that_stops_qualifying_mid_approach_halts_the_reserve() -> void:

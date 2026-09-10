@@ -72,8 +72,11 @@ static func can_demote(u: Unit) -> bool:
 		return false
 	var o: Order = u.current_order
 	# A live relief keeps the reliever close-tier: the swap runs on per-soldier
-	# pass-through geometry from approach to resolution.
-	if o != null and o.type == Order.Type.RELIEF:
+	# pass-through geometry from approach to resolution. A reinforcement insertion
+	# likewise: its commit interleaves the reserve's bodies into the host's, so a
+	# reserve demoted mid-march (nearest enemy beyond the demote range) would have
+	# no bodies to file in with and could never commit.
+	if o != null and (o.type == Order.Type.RELIEF or o.type == Order.Type.REINFORCE):
 		return false
 	return true
 
