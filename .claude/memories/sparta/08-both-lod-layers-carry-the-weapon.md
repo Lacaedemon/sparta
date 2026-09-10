@@ -1309,10 +1309,12 @@ and a local re-dump does not.
 
 **The drift is not a melee phenomenon, and it does not start late.**
 Measured 2026-09-09 (hash streams, Linux runner versus Windows, same commit, Godot 4.7-stable both):
-all six clips compared diverge in the cheap (positions) tier at tick 21,
-including `sidestep`, one regiment side-stepping with no enemy in reach,
-and `general_doctrine_reserves` diverges in the full tier first
-(tick 60: non-position state moved before any position did).
+four of the six clips compared (`sidestep`, `support`, `cycle_charge`, `showcase`)
+first diverge in the cheap (positions) tier at tick 21,
+`rout_rally` in the cheap tier at tick 61,
+and `general_doctrine_reserves` in the full tier at tick 60
+(non-position state moved before any position did).
+`sidestep` is one regiment side-stepping with no enemy in reach.
 The readable 2-decimal dump hides it for hundreds of ticks
 (`sidestep` shows one 0.01 wu difference at tick 300);
 contact amplifies it to whole-soldier displacements
