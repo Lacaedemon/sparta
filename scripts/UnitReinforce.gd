@@ -21,15 +21,17 @@ static func rendezvous_point(host: Unit, reserve: Unit) -> Vector2:
 
 
 ## Arm the approach on `order` (the reserve's REINFORCE order, already current): link the
-## pair and aim the reserve at the rendezvous with the host's heading held; the host keeps
-## whatever it was doing. A refused pair arms nothing and halts the reserve where it stands
-## (a march left over from its previous order would otherwise coast on under the dangling
-## order, which retires only once no march is in flight).
+## pair, drop the reserve's stance to NORMAL (a persistent auto-targeting stance such as
+## CHASE would otherwise pull it off the rendezvous at the first nearby enemy), and aim it
+## at the rendezvous with the host's heading held; the host keeps whatever it was doing.
+## Battle refuses a bad pair before installing the order; this re-check halts the reserve
+## where it stands for anything that slips past (the dangling order retires next tick).
 static func begin(reserve: Unit, host: Unit, order: Order) -> void:
 	if ReinforceGuard.refusal_reason(reserve, host, order.reinforce_axis) != "":
 		_halt(reserve, order)
 		return
 	order.friendly_target = host
+	reserve.order_mode = 0   # Battle.OrderMode.NORMAL, mirrored as an int as Unit does
 	reserve.target_enemy = null
 	_aim(reserve, host)
 
@@ -76,12 +78,14 @@ static func _aim(reserve: Unit, host: Unit) -> void:
 	reserve.ordered_facing = host.facing
 
 
-## Drop the pass-through link and stop the reserve where it stands; with no link and no
-## march in flight, Unit._update_current_order retires the REINFORCE order next tick.
+## Drop the pass-through link and stop the reserve where it stands -- no march, no enemy
+## left over from a previous order for targeting to resume on -- so that with no link and
+## no march in flight, Unit._update_current_order retires the REINFORCE order next tick.
 static func _halt(reserve: Unit, order: Order) -> void:
 	order.friendly_target = null
 	reserve.has_move_target = false
 	reserve.ordered_facing = Vector2.ZERO
+	reserve.target_enemy = null
 
 
 ## Body layers match the count (a casualty leaves them one tick out of step until resized).

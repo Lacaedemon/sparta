@@ -145,10 +145,8 @@ func test_guards_refuse_the_pair() -> void:
 	var reserve: Unit = _unit_at(RESERVE_POS)
 	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "", "differing loadouts are refused")
 	_order_reinforce(reserve, host)
-	assert_null(reserve.current_order.friendly_target, "a refused pair arms no link")
-	assert_false(reserve.has_move_target, "and no march")
-	await get_tree().physics_frame
-	assert_null(reserve.current_order, "the no-op order retires")
+	assert_null(reserve.current_order, "a refused pair applies nothing: no order is installed")
+	assert_false(reserve.has_move_target, "and no march starts")
 	assert_ne(ReinforceGuard.refusal_reason(reserve, reserve), "", "a regiment cannot reinforce itself")
 
 
@@ -190,7 +188,7 @@ func test_a_host_that_leaves_the_line_halts_the_reserve() -> void:
 	assert_null(reserve.current_order, "and the order retires")
 
 
-func test_a_refused_order_halts_a_marching_reserve() -> void:
+func test_a_refused_order_leaves_a_marching_reserve_untouched() -> void:
 	_spawn("Spearmen")   # a different loadout, so the pair is refused at the apply site
 	await get_tree().physics_frame
 	var host: Unit = _unit_at(HOST_POS)
@@ -205,11 +203,56 @@ func test_a_refused_order_halts_a_marching_reserve() -> void:
 			break
 		await get_tree().physics_frame
 	assert_true(reserve.has_move_target, "the reserve is marching under a prior order")
+	var prior: Order = reserve.current_order
+	var prior_target: Vector2 = reserve.move_target
 	_order_reinforce(reserve, host)
-	assert_null(reserve.current_order.friendly_target, "a refused pair arms no link")
-	assert_false(reserve.has_move_target, "and drops the stale march: the reserve halts")
+	assert_eq(reserve.current_order, prior, "a refused pair applies nothing: the prior order stands")
+	assert_true(reserve.has_move_target, "and the prior march goes on")
+	assert_eq(reserve.move_target, prior_target, "to its own destination")
+
+	# The defensive re-check inside begin (for a pair that slips past Battle's guard)
+	# halts the reserve outright: no link, no march, no leftover enemy to resume on.
+	reserve.target_enemy = host   # any stale target from a previous order
+	var slipped := Order.new_reinforce(host.uid, BattleScript.ReinforceAxis.FILES)
+	reserve.set_current_order(slipped)
+	UnitReinforce.begin(reserve, host, slipped)
+	assert_null(slipped.friendly_target, "the slipped-through pair arms no link")
+	assert_false(reserve.has_move_target, "the reserve halts where it stands")
+	assert_null(reserve.target_enemy, "with no stale enemy left for targeting to resume on")
 	await get_tree().physics_frame
-	assert_null(reserve.current_order, "so the no-op order retires next tick")
+	assert_null(reserve.current_order, "and the no-op order retires next tick")
+
+
+func test_arming_the_approach_drops_a_persistent_stance_to_normal() -> void:
+	_spawn()
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	reserve.order_mode = BattleScript.OrderMode.CHASE   # an auto-targeting stance
+	var order := Order.new_reinforce(host.uid, BattleScript.ReinforceAxis.FILES)
+	reserve.set_current_order(order)
+	UnitReinforce.begin(reserve, host, order)
+	assert_eq(reserve.order_mode, int(BattleScript.OrderMode.NORMAL),
+			"the held-heading approach runs under NORMAL, so no stance can pull it off the rendezvous")
+	assert_eq(order.friendly_target, host, "and the link is armed")
+
+
+func test_install_file_assignment_keeps_a_held_flank_anchored() -> void:
+	_spawn()
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var files: int = UnitFormation.frontage(host)
+	host.formation_slots(host.soldiers)   # deal the file assignment
+	var pitch: float = host.file_pitch_wu()
+	host.frontage_anchor_offset = -2.0 * pitch   # a prior RIGHT-anchored widen holds the +X flank
+	host.install_file_assignment(host._sim_soldier_file, host._sim_soldier_rank, files + 2)
+	var expected: float = -2.0 * pitch + UnitFormation.anchor_shift(files, files + 2, pitch,
+			UnitFormation.Anchor.RIGHT)
+	assert_almost_eq(host.frontage_anchor_offset, expected, 0.001,
+			"the standing offset gains the width delta, so the held flank stays put")
+	host.frontage_anchor_offset = 0.0
+	host.install_file_assignment(host._sim_soldier_file, host._sim_soldier_rank, files + 4)
+	assert_almost_eq(host.frontage_anchor_offset, 0.0, 0.001, "a centred host stays centred")
 
 
 func test_the_unwired_ranks_axis_and_far_or_touching_reserves_are_refused() -> void:
@@ -225,7 +268,7 @@ func test_the_unwired_ranks_axis_and_far_or_touching_reserves_are_refused() -> v
 		"target": host.uid, "mode": BattleScript.OrderMode.NORMAL,
 		"reinforce": BattleScript.ReinforceAxis.RANKS,
 	})
-	assert_null(reserve.current_order.friendly_target, "a RANKS order arms nothing")
+	assert_null(reserve.current_order, "a RANKS order applies nothing")
 	assert_false(reserve.has_move_target, "and starts no march")
 	assert_eq(UnitFormation.frontage(host), files_before, "the host is untouched")
 	reserve._in_enemy_contact = true

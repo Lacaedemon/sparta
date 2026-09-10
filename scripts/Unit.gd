@@ -4841,14 +4841,21 @@ func append_soldier_bodies(other: Unit) -> void:
 ## re-dealing the files by lateral order on the next slot query (a frontage change is exactly
 ## the event that triggers that re-deal), so an interleave survives; set_frontage cannot do
 ## this, which is why an insertion needs its own setter. Stamps the reshape tick as
-## set_frontage does, so the unit reports FILE_DOUBLE_WIDEN on the commit tick.
+## set_frontage does, so the unit reports FILE_DOUBLE_WIDEN on the commit tick. A flank
+## held by a prior anchored widen stays held: the standing offset is kept and the width
+## delta is added the way enqueue_frontage accumulates it, with the held side read off the
+## offset's sign (an anchored widen only ever shifts the grid away from its held flank).
 func install_file_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array, files: int) -> void:
 	var old_files: int = UnitFormation.frontage(self)
 	_sim_soldier_file = file_ids
 	_sim_soldier_rank = ranks
 	_file_assignment_files = files
 	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
-	frontage_anchor_offset = 0.0
+	if frontage_anchor_offset != 0.0:
+		var held: int = UnitFormation.Anchor.RIGHT if frontage_anchor_offset < 0.0 \
+				else UnitFormation.Anchor.LEFT
+		frontage_anchor_offset += UnitFormation.anchor_shift(old_files, frontage_override,
+				file_pitch_wu(), held)
 	if frontage_override != old_files:
 		_last_reshape_tick = Engine.get_physics_frames()
 		_last_reshape_widened = frontage_override > old_files

@@ -2506,6 +2506,14 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 		var u: Unit = _unit_by_uid(int(uid))
 		if u == null:
 			continue
+		# A reinforcement insertion whose pair is refused applies nothing at all -- the
+		# reserve keeps its current order, march and stance (the design's refusal
+		# contract) -- so validate before the fresh-order reset below touches anything.
+		# UnitReinforce.begin re-checks and halts defensively for anything that slips past.
+		if reinforce != ReinforceAxis.NONE and target_unit != null and target_unit != u \
+				and target_unit.team == u.team \
+				and ReinforceGuard.refusal_reason(u, target_unit, reinforce) != "":
+			continue
 		# A fresh order (anything but a waypoint append) discards the queued route --
 		# each branch below replaces the orders queue, and the route lives there now --
 		# and sets the unit's stance; an append continues the current march/stance.
