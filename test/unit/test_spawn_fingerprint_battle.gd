@@ -59,7 +59,8 @@ func test_playback_of_a_stale_stamp_flags_a_mismatch() -> void:
 
 func test_playback_of_a_legacy_stamp_does_not_flag_mismatch() -> void:
 	# A replay recorded before missile profiles carried the pre-missile 9-field fingerprint.
-	# The check must match against legacy_of_tree without raising a mismatch.
+	# digest() omits the missile key for default-profile units, so of_tree produces the same
+	# value directly; matches_tree also falls back to legacy_of_tree as a second check.
 	Replay.mode = Replay.Mode.PLAYBACK
 	Replay.rng.seed = 12345
 	Replay.loaded_spawn_fingerprint = "4621b7af088f5053219fd8f50380b181"

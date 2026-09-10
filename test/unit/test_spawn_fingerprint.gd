@@ -9,9 +9,12 @@ const UnitScript = preload("res://scripts/Unit.gd")
 
 func _rec(uid: int, team: int, type: String, x: int, y: int,
 		soldiers: int = 100, weapon: int = 0, shield: int = 0, mount: int = 0,
-		missile: int = 0) -> Dictionary:
-	return {"uid": uid, "team": team, "type": type, "weapon": weapon, "shield": shield,
-			"mount": mount, "missile": missile, "soldiers": soldiers, "x": x, "y": y}
+		missile: int = LoadoutRegistry.MISSILE_BOW) -> Dictionary:
+	var rec: Dictionary = {"uid": uid, "team": team, "type": type, "weapon": weapon,
+			"shield": shield, "mount": mount, "soldiers": soldiers, "x": x, "y": y}
+	if missile != LoadoutRegistry.MISSILE_BOW:
+		rec["missile"] = missile
+	return rec
 
 
 ## A tree-registered unit with the fingerprint-relevant fields pinned, so of_tree hashes exactly
@@ -69,7 +72,8 @@ func test_a_missile_profile_change_changes_the_digest() -> void:
 
 
 func test_legacy_digest_and_matches_handle_old_stamps() -> void:
-	var rec: Dictionary = _rec(0, 0, "Spearmen", 100, 300, 100, 1, 0, 0, LoadoutRegistry.MISSILE_BOW)
+	# Use a non-default missile so digest (10-field) and legacy_digest (9-field) actually differ.
+	var rec: Dictionary = _rec(0, 0, "Spearmen", 100, 300, 100, 1, 0, 0, LoadoutRegistry.MISSILE_PILUM)
 	var legacy: String = SpawnFingerprint.legacy_digest([rec])
 	var current: String = SpawnFingerprint.digest([rec])
 	assert_ne(legacy, "", "legacy digest is non-empty")
@@ -82,6 +86,17 @@ func test_legacy_digest_and_matches_handle_old_stamps() -> void:
 			"matches rejects a mismatched stamp")
 	assert_false(SpawnFingerprint.matches("", [rec]),
 			"matches rejects an empty stamp")
+
+
+func test_default_profile_digest_matches_legacy_format() -> void:
+	# A record with the default missile profile (LoadoutRegistry.MISSILE_BOW) carries no
+	# "missile" key, so digest() uses the 9-field format -- byte-identical to the pre-missile
+	# code. Verify digest() == legacy_digest() for such records.
+	var rec: Dictionary = _rec(0, 0, "Spearmen", 100, 300, 100, 1, 0, 0)
+	assert_false(rec.has("missile"),
+			"default-profile record omits the missile key")
+	assert_eq(SpawnFingerprint.digest([rec]), SpawnFingerprint.legacy_digest([rec]),
+			"digest equals legacy_digest when every record uses the default missile profile")
 
 
 func test_of_tree_is_empty_when_no_units_are_on_the_field() -> void:
