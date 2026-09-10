@@ -2731,7 +2731,7 @@ func _attack_overlay_target_pos(tgt: UnitRef) -> Vector2:
 		var contacts: Dictionary = _battle.fog_contacts()
 		if contacts.has(tgt.uid):
 			var c: Dictionary = contacts[tgt.uid]
-			return c.get("position", tgt.global_position)
+			return _battle.to_global(c.get("position", tgt.position))
 	return Vector2(INF, INF)
 
 

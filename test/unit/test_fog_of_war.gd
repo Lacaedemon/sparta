@@ -579,3 +579,22 @@ func test_attack_overlay_respects_fog_visibility_and_shows_last_known_ghost() ->
 	var dead_pos: Vector2 = sm._attack_overlay_target_pos(near)
 	assert_false(is_finite(dead_pos.x), "dead target reports infinite overlay position")
 
+
+func test_attack_overlay_uses_world_space_at_non_zero_battle_offset() -> void:
+	var battle: Node = _staged_battle(true)
+	battle.position = Vector2(250.0, 350.0)
+	for _k in range(3):
+		await get_tree().physics_frame
+	var sm: SelectionManager
+	sm = battle.get_node("SelectionManager") as SelectionManager
+	assert_not_null(sm, "selection manager exists")
+	var near := _enemy_nearest(NEAR_ENEMY_POS)
+	assert_true(near.visible, "near enemy is visible")
+	var last_seen_global: Vector2 = near.global_position
+	assert_true(battle.fog_contacts().has(near.uid), "near enemy contact was recorded")
+	near.visible = false
+	near.global_position = Vector2(99.0, 99.0)
+	var hidden_pos: Vector2 = sm._attack_overlay_target_pos(near)
+	assert_eq(hidden_pos, last_seen_global,
+		"hidden target overlay position matches target global position at last-seen spot")
+
