@@ -30,6 +30,9 @@ OUT_MD="${2:?usage: website-demo-defect-sweep.sh <transcript-dir> <out-markdown>
 TREE="${3:-$PWD}"
 GODOT_BIN="${GODOT_BIN:-godot}"
 export GODOT_BIN
+# The same narrowing the dump honours (empty = every row), so a one-clip diagnostic run
+# judges the one clip it dumped instead of reporting the rest as missing.
+ONLY_CLIPS="${SPARTA_DUMP_CLIPS:-}"
 
 command -v jq >/dev/null 2>&1 || { echo "error: jq not found on PATH" >&2; exit 1; }
 
@@ -37,6 +40,11 @@ command -v jq >/dev/null 2>&1 || { echo "error: jq not found on PATH" >&2; exit 
 . "$TREE/website/tools/demo-catalog.sh"
 # shellcheck source=../lib/demo-defect-metrics.sh
 . "$TREE/tools/lib/demo-defect-metrics.sh"
+# The narrowing helpers come from THIS script's tree, not the judged tree's catalog.
+# shellcheck source=../lib/demo-catalog-selection.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/demo-catalog-selection.sh"
+# A misspelt narrowing must not judge an empty catalog and call it clean.
+demo_catalog_check_selection "$ONLY_CLIPS"
 
 TOTAL=0; CLEAN=0; DEFECT=0; MALFORMED=0; NA=0; MISSING=0
 PROBLEM_ROWS=""
@@ -45,6 +53,9 @@ ALL_ROWS=""
 for spec in "${DEMOS[@]}"; do
   IFS='|' read -r NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE <<<"$spec"
   TYPE="${TYPE:-replay}"
+  if ! demo_catalog_selected "$NAME" "$ONLY_CLIPS"; then
+    continue
+  fi
   TOTAL=$((TOTAL + 1))
 
   if [ ! -d "$TRANSCRIPT_DIR/$NAME" ]; then
@@ -90,7 +101,18 @@ for spec in "${DEMOS[@]}"; do
 "
 done
 
+# A verdict travels with the platform that produced its transcript: the sim is bit-exact
+# only within one build and platform, so a report that omits where its transcripts were
+# dumped cannot be compared with another machine's. dump-demo-states.sh writes the file.
+PLATFORM_LINE=""
+if [ -f "$TRANSCRIPT_DIR/platform.txt" ]; then
+  PLATFORM_LINE="$(paste -sd ' ' "$TRANSCRIPT_DIR/platform.txt")"
+fi
+
 {
+  if [ -n "$PLATFORM_LINE" ]; then
+    printf 'Transcripts dumped with: `%s`\n\n' "$PLATFORM_LINE"
+  fi
   printf '| bucket | clips |\n|---|---|\n'
   printf '| clean | %d |\n' "$CLEAN"
   printf '| **defect** | %d |\n' "$DEFECT"

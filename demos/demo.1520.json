@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "CI/tooling only: the weekly demo defect sweep now publishes its transcripts as an artifact, stamps the platform it judged on, and can be narrowed to named clips. No gameplay or rendering changed, so a recorded battle would show nothing about this change."
+}
