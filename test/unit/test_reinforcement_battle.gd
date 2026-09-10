@@ -283,6 +283,16 @@ func test_the_unwired_ranks_axis_and_far_or_touching_reserves_are_refused() -> v
 	})
 	assert_null(reserve.current_order, "an axis with no target applies nothing")
 	assert_false(reserve.has_move_target, "and is not a move in disguise")
+	# A host that is one of the command's own ordered units would be a merge for any other
+	# friendly-target order; with an axis set it is malformed and applies nothing either.
+	_battle._apply_order_cmd({
+		"units": [reserve.uid, host.uid], "x": host.position.x, "y": host.position.y,
+		"target": host.uid, "mode": BattleScript.OrderMode.NORMAL,
+		"reinforce": BattleScript.ReinforceAxis.FILES,
+	})
+	assert_eq(_battle.get_tree().get_nodes_in_group("units").size(), 2, "nothing was merged")
+	assert_eq(host.soldiers, 40, "the host is untouched")
+	assert_null(reserve.current_order, "and the reserve holds no order")
 	reserve._in_enemy_contact = true
 	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "",
 			"a reserve whose bodies touch an enemy is refused even when not fighting")
@@ -316,6 +326,16 @@ func test_rendezvous_geometry_reads_the_blocks_off_their_bodies_along_the_hosts_
 			"the rendezvous lies straight behind the host along its facing")
 	assert_almost_eq((rendezvous - host.position).normalized().y, 0.0, 0.001,
 			"with no lateral offset")
+	# A quarter-turn in place leaves the grid folded (formation angle) while the men face
+	# the new way: "behind the block" follows the grid's depth axis, not the raw heading.
+	host._formation_angle = PI * 0.5
+	var axis: Vector2 = ReinforceApproach.depth_axis(host)
+	assert_almost_eq(axis.x, 0.0, 0.001, "the depth axis is the heading rotated by the fold")
+	assert_almost_eq(axis.y, 1.0, 0.001, "(here: back to +y)")
+	var folded: Vector2 = ReinforceApproach.rendezvous_point(host, reserve)
+	assert_almost_eq((folded - host.position).normalized().y, -1.0, 0.001,
+			"so the rendezvous lies behind the folded grid, not behind the heading")
+	host._formation_angle = 0.0
 
 
 func test_commit_waits_for_the_longitudinal_gap_and_lateral_alignment() -> void:
@@ -383,6 +403,28 @@ func test_a_surplus_reserve_deepens_the_host_and_the_anchor_steps_back_to_hold_t
 			"the anchor stepped back by half the added depth, so the front rank holds its ground")
 	assert_almost_eq((host.position - host_start).dot(host.facing.orthogonal()), 0.0, 0.5,
 			"and not sideways")
+
+
+func test_a_partial_reserve_still_stamps_the_reshape() -> void:
+	_spawn("Infantry", 40, 5)   # two inserted files; pooling to 45 men can widen on its own
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	var files_before: int = UnitFormation.frontage(host)
+	var stamp_before: int = host._last_reshape_tick
+	_order_reinforce(reserve, host)
+	var committed: bool = false
+	for _tick in range(COMMIT_BUDGET_TICKS):
+		await get_tree().physics_frame
+		if not is_instance_valid(reserve) or reserve.state == Unit.State.DEAD:
+			committed = true
+			break
+	assert_true(committed, "the partial reserve commits within the budget")
+	assert_eq(host.soldiers, 45, "the host holds both regiments' men")
+	assert_gt(UnitFormation.frontage(host), files_before, "the frontage grew")
+	assert_gt(host._last_reshape_tick, stamp_before,
+			"and the widen was stamped against the pre-pool frontage, not skipped")
+	assert_true(host._last_reshape_widened, "as a widen")
 
 
 func test_a_host_that_stops_qualifying_mid_approach_halts_the_reserve() -> void:

@@ -2411,7 +2411,14 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the
 	# disambiguator). Handle it first, then fall through to attack/relief/move.
+	# A reinforcement insertion rides a friendly-target order: the axis picks the branch
+	# further down; NONE (the omitted default in older replays) is a relief or support as
+	# before. Read here, ahead of the merge branch: a reinforce command whose host is one
+	# of its own ordered units is malformed and applies nothing, never a merge.
+	var reinforce: int = int(cmd.get("reinforce", ReinforceAxis.NONE))
 	if target_uid >= 0 and _uids_contain(cmd["units"], target_uid):
+		if reinforce != ReinforceAxis.NONE:
+			return
 		_apply_merge(cmd["units"], target_uid)
 		return
 	# A move whose target is the append sentinel queues a waypoint instead of
@@ -2425,9 +2432,6 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 	# orders where the field is not set, so they keep the old walk/jog/sprint logic
 	# instead of being silently forced onto a fixed gait.
 	var gait: int = int(cmd.get("gait", -1))
-	# A reinforcement insertion rides a friendly-target order: the axis picks the branch
-	# below; NONE (the omitted default in older replays) is a relief or support as before.
-	var reinforce: int = int(cmd.get("reinforce", ReinforceAxis.NONE))
 	# The target uid may be an enemy (attack) or a friendly (line relief); a
 	# plain move has no target. Resolve it and dispatch per ordered unit by team.
 	var target_unit: Unit = _unit_by_uid(target_uid) if target_uid >= 0 else null

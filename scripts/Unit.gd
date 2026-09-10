@@ -4847,8 +4847,13 @@ func append_soldier_bodies(other: Unit) -> void:
 ## held by a prior anchored widen stays held: the standing offset is kept and the width
 ## delta is added the way enqueue_frontage accumulates it, with the held side read off the
 ## offset's sign (an anchored widen only ever shifts the grid away from its held flank).
-func install_file_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array, files: int) -> void:
-	var old_files: int = UnitFormation.frontage(self)
+## `old_files` is the frontage the change is measured against; the default reads the
+## current one, and a caller that has already pooled strength (which can move the automatic
+## frontage) passes the value it read beforehand so the reshape is still stamped.
+func install_file_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array, files: int,
+		old_files: int = -1) -> void:
+	if old_files < 0:
+		old_files = UnitFormation.frontage(self)
 	_sim_soldier_file = file_ids
 	_sim_soldier_rank = ranks
 	_file_assignment_files = files

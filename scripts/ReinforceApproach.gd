@@ -16,6 +16,22 @@ const OVERSHOOT_TOLERANCE_PITCHES: float = 0.25
 const LATERAL_TOLERANCE_PITCHES: float = 1.0
 
 
+## The host's physical front/rear axis: the slot grid's depth axis, which is the heading
+## rotated by the formation angle (soldier_block_world_angle's own formula). A quarter-turn
+## or about-face turns the men in place and leaves the grid folded, so the raw heading is
+## the wrong axis for where "behind the block" is until a fresh move re-squares it.
+static func depth_axis(host: Unit) -> Vector2:
+	return host.facing.rotated(host._formation_angle)
+
+
+## The largest entry of a per-file count or per-man rank array (0 when empty).
+static func deepest(values: PackedInt32Array) -> int:
+	var out: int = 0
+	for v in values:
+		out = maxi(out, v)
+	return out
+
+
 ## Signed extents of `u`'s bodies about its position along `dir`, as (rear, front) with
 ## rear <= 0 <= front. Parent-local, like the bodies and `position` themselves.
 static func extent_along(u: Unit, dir: Vector2) -> Vector2:
@@ -28,10 +44,10 @@ static func extent_along(u: Unit, dir: Vector2) -> Vector2:
 	return Vector2(lo, hi)
 
 
-## Where the reserve marches to: straight behind the host, with its front edge one host
-## rank pitch behind the host's rear edge, both edges measured along the host's facing.
+## Where the reserve marches to: straight behind the host's block, with its front edge one
+## host rank pitch behind the host's rear edge, both edges measured along the depth axis.
 static func rendezvous_point(host: Unit, reserve: Unit) -> Vector2:
-	var dir: Vector2 = host.facing
+	var dir: Vector2 = depth_axis(host)
 	var gap: float = -extent_along(host, dir).x + extent_along(reserve, dir).y + host.rank_pitch_wu()
 	return host.position - dir * gap
 
@@ -43,7 +59,7 @@ static func at_rendezvous(reserve: Unit, host: Unit,
 		slack_pitches: float = ARRIVAL_SLACK_PITCHES,
 		overshoot_pitches: float = OVERSHOOT_TOLERANCE_PITCHES,
 		lateral_pitches: float = LATERAL_TOLERANCE_PITCHES) -> bool:
-	var dir: Vector2 = host.facing
+	var dir: Vector2 = depth_axis(host)
 	var pitch: float = host.rank_pitch_wu()
 	var host_rear: float = host.position.dot(dir) + extent_along(host, dir).x
 	var reserve_front: float = reserve.position.dot(dir) + extent_along(reserve, dir).y
