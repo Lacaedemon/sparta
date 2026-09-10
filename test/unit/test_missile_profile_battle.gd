@@ -29,13 +29,16 @@ func test_a_pilum_unit_fires_at_its_own_range_while_an_unprofiled_one_holds() ->
 	_battle = load("res://scenes/Battle.tscn").instantiate()
 	_battle.drill_mode = true            # never auto-ends; the enemy still deploys and fights
 	_battle.all_teams_control = true     # no team-1 AI, so the enemy stands where posted
-	# Both shooters 290 wu from the enemy block (80 across, ~278.6 down); the pilum's 300-wu
-	# reach covers it, the bow's 160-wu reach and 190-wu detection do not.
+	# Both shooters 290 wu from the enemy block (160 across, ~241.9 down); the pilum's 300-wu
+	# reach covers it, the bow's 160-wu reach and 190-wu detection do not. The shooters stand
+	# 320 wu apart so their 252-wu lines never touch, and each spawns facing the enemy so no
+	# turn-to-bear precedes the first volley (the same staging as the PR's demo).
 	_battle.scenario = [
-		{"team": 0, "type": "Archers", "x": 580, "y": 300, "count": 30,
-				"missile": LoadoutRegistry.MISSILE_PILUM},
-		{"team": 0, "type": "Archers", "x": 740, "y": 300, "count": 30},
-		{"team": 1, "type": "Archers", "x": 660, "y": 578.6, "count": 40},
+		{"team": 0, "type": "Archers", "x": 500, "y": 300, "count": 30,
+				"missile": LoadoutRegistry.MISSILE_PILUM, "facing": [160, 241.87]},
+		{"team": 0, "type": "Archers", "x": 820, "y": 300, "count": 30,
+				"facing": [-160, 241.87]},
+		{"team": 1, "type": "Archers", "x": 660, "y": 541.87, "count": 40},
 	]
 	add_child(_battle)
 	await get_tree().physics_frame

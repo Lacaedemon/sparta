@@ -86,10 +86,10 @@ it is a boolean on the unit (`Unit.is_ranged`) plus one shared range constant.
 
 Four other values are defined in terms of that constant or pinned against it, and each one moves if it moves.
 
-- **`Unit.RALLY_CONTACT_RADIUS`** is declared as `RANGED_RANGE` outright (`scripts/Unit.gd`), with a comment saying the identity is deliberate: "a router in archer reach has not broken contact".
+- **`Unit.RALLY_CONTACT_RADIUS`** was declared as `RANGED_RANGE` outright (`scripts/Unit.gd`), with a comment saying the identity was deliberate: "a router in archer reach has not broken contact" (Phase 2 gave it its own 8 m constant).
   At a 3600-wu missile range that identity would say a routing unit has not broken contact anywhere on the field.
 
-- **`Battle.ROUT_MARGIN`** is `maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)` (`scripts/Battle.gd`), the margin outside the field a router runs to.
+- **`Battle.ROUT_MARGIN`** was `maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)` (`scripts/Battle.gd`), the margin outside the field a router runs to (Phase 2 made it `DETECTION_RANGE` alone).
 
 - **`Unit.DETECTION_RANGE`** is `9.5 * WorldScaleRef.WU_PER_M`, 190 wu, and `RANGED_RANGE`'s own comment records the invariant that it "stays below DETECTION_RANGE so an auto-acquired target is always in detection too".
   A missile range past 190 wu breaks that invariant by construction.

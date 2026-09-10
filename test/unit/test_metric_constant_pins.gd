@@ -10,6 +10,7 @@ extends GutTest
 
 const UnitScript = preload("res://scripts/Unit.gd")
 const SoldierCombatScript = preload("res://scripts/SoldierCombat.gd")
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 
 
 func test_unit_geometry_constants_hold_their_exact_world_unit_values() -> void:
@@ -45,9 +46,14 @@ func test_charge_reference_speed_copies_never_diverge() -> void:
 		"the two copies exist only because of the historical preload cycle; they must stay one value")
 
 
-func test_rally_contact_radius_equals_ranged_range() -> void:
+func test_rally_contact_radius_is_pinned_at_the_default_archer_reach() -> void:
+	# Its own metre-authored constant, no longer an alias of RANGED_RANGE: the missile reach is
+	# per unit now, and a router does not have to outrun the longest profile on the field to
+	# count as having broken contact. Numerically it still sits at the default 8 m reach.
+	assert_eq(UnitScript.RALLY_CONTACT_RADIUS, 8.0 * WorldScaleRef.WU_PER_M,
+		"a router in default archer reach has not broken contact")
 	assert_eq(UnitScript.RALLY_CONTACT_RADIUS, UnitScript.RANGED_RANGE,
-		"a router in archer reach has not broken contact -- the identity its comment asserts, made structural")
+		"and that default reach is RANGED_RANGE, so nothing is retuned")
 
 
 func test_spatial_hash_cell_size_holds_its_exact_world_unit_value() -> void:

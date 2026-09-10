@@ -106,7 +106,7 @@ Verified against the tree at the time of writing.
   This is the single most important constraint on the whole design.
   See "The scale problem" below.
 
-- `Battle.ROUT_MARGIN` is `maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)` = 190 wu, and `field_with_margin = field.grow(ROUT_MARGIN)` (`scripts/Battle.gd:41-42`, recomputed for the live map at `:531`) is what every spawned unit receives as `Unit.retreat_bounds` (`:1088`).
+- `Battle.ROUT_MARGIN` is `UnitRef.DETECTION_RANGE` = 190 wu (it was `maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)` until the missile reach became per unit), and `field_with_margin = field.grow(ROUT_MARGIN)` (`scripts/Battle.gd:41-42`, recomputed for the live map at `:531`) is what every spawned unit receives as `Unit.retreat_bounds` (`:1088`).
   A router that leaves it is removed from play by `Unit._escape()`.
   The comment above it states an invariant this design has to honour: the margin is sized to "the game's maximum visual range", with `DETECTION_RANGE` standing in for "a fog-of-war vision range, which this game doesn't have yet", "so a fleeing unit stays a plausible target for as long as it's still visible, rather than vanishing early".
   A real sight range longer than 190 wu breaks that invariant, so the parameter section below has to say what happens to the margin.
@@ -353,7 +353,7 @@ Extent-based or partial visibility is therefore a named later phase, listed
 under the open questions below.
 
 **The rout margin has to grow with sight range.**
-`Battle.ROUT_MARGIN` is `maxf(RANGED_RANGE, DETECTION_RANGE)` = 190 wu, and its
+`Battle.ROUT_MARGIN` is `DETECTION_RANGE` = 190 wu, and its
 comment (`scripts/Battle.gd:32-41`) sizes it to "the game's maximum visual
 range" so that "a fleeing unit stays a plausible target for as long as it's
 still visible".
