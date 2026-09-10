@@ -170,6 +170,22 @@ func test_contested_attack_launches_battle_not_auto_resolve() -> void:
 	assert_eq(int(CampaignBattle.pending["defender_strength"]), map._state.army_of(6),
 			"defender strength captured")
 	assert_false(CampaignBattle.snapshot.is_empty(), "the pre-battle state is snapshotted")
+	assert_false(CampaignBattle.pending.has("deployment_gap_m"),
+			"Helvetia declares no deployment gap, so the clash leaves the battle at its default")
+
+
+func test_capture_clash_carries_the_defended_province_deployment_gap() -> void:
+	# The defended province's ground decides how far apart the armies deploy: the
+	# Gallic War data declares a gap for Celtica (id 2), which the loader carries onto
+	# the live state and the capture copies (in metres) into the clash record.
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	assert_true(map._is_contested(0, 2), "precondition: Celtica is a defended enemy province")
+	var celtica: Dictionary = map._state.provinces[2]
+	assert_true(celtica.has("deployment_gap_m"), "the data's gap reached the live province record")
+	map._capture_clash(0, 2)
+	assert_eq(float(CampaignBattle.pending.get("deployment_gap_m", -1.0)),
+			float(celtica["deployment_gap_m"]), "the declared gap rides along in the clash record")
 
 
 func test_resume_applies_won_battle_result() -> void:

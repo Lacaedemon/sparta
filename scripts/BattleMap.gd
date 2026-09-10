@@ -102,5 +102,42 @@ static func differs_from_default(field: Rect2, terrain: Array, spawn_lines: Arra
 	return false
 
 
+## The map a wider (or narrower) deployment produces from a base map. Team 0's line
+## and the field origin stay where they are, team 1's line moves to `gap` world units
+## below team 0's, and the field grows (or shrinks) downward by the same amount so
+## team 1 keeps the ground it has behind its line on the base map. The base map's own
+## gap reproduces the base map exactly, so a caller passing the default gap changes
+## nothing. Returns {field: Rect2, spawn_lines: Array}. A non-positive gap would put
+## the defender on or above the attacker's line; the callers validate their data
+## before reaching here, so it is asserted rather than clamped; the same goes for a
+## non-finite gap, which would put the defender nowhere.
+static func with_line_gap(gap: float, field: Rect2, spawn_lines: Array) -> Dictionary:
+	assert(is_finite(gap) and gap > 0.0, "a deployment gap must be a positive, finite number")
+	var attacker_y: float = float(spawn_lines[0])
+	var defender_y: float = attacker_y + gap
+	var ground_behind: float = field.end.y - float(spawn_lines[1])
+	var grown := Rect2(field.position,
+			Vector2(field.size.x, defender_y + ground_behind - field.position.y))
+	return {"field": grown, "spawn_lines": [attacker_y, defender_y]}
+
+
+## The deployment gap a data file declares, validated: {"gap_m": float} for a positive,
+## finite number (int or float), else {"error": String} naming the first problem. Shared
+## by CampaignLoader (a province's deployment_gap_m) and DemoInputRecorder (an input
+## script's), so the two data boundaries reject exactly the same values. NAN and INF are
+## floats and each slips past a plain sign test (NAN <= 0 is false, INF > 0 is true): the
+## first would read as unset in the battle and the second would put the defender's line
+## at infinity, so finiteness is checked by name.
+static func parse_line_gap_m(raw) -> Dictionary:
+	if not _num(raw):
+		return {"error": "deployment_gap_m must be a number of metres"}
+	var gap_m: float = float(raw)
+	if not is_finite(gap_m):
+		return {"error": "deployment_gap_m must be a finite number of metres"}
+	if gap_m <= 0.0:
+		return {"error": "deployment_gap_m must be a positive number of metres"}
+	return {"gap_m": gap_m}
+
+
 static func _num(v) -> bool:
 	return v is float or v is int
