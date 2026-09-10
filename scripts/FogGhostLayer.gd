@@ -11,8 +11,9 @@ const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 # Marker footprint: half-extents of the outline (half-width across the front, half-depth
 # along the facing), turned to the last-known facing. A fixed silhouette rather than the
 # unit's real frontage -- the marker says "something was here, facing that way", not how
-# wide it was.
-var half_size: Vector2 = Vector2(1.5, 0.75) * WorldScaleRef.WU_PER_M
+# wide it was. 3 m across by 1.5 m deep by default (parse-time-folded to world units).
+const DEFAULT_HALF_SIZE: Vector2 = Vector2(1.5, 0.75) * WorldScaleRef.WU_PER_M
+var half_size: Vector2 = DEFAULT_HALF_SIZE
 # Length of the facing tick drawn forward from the outline's center, as a multiple of the
 # half-depth. Dimensionless.
 var facing_tick_scale: float = 1.5

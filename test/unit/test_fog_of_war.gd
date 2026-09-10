@@ -8,6 +8,7 @@ extends GutTest
 const Perception = preload("res://scripts/Perception.gd")
 const FogGhostLayer = preload("res://scripts/FogGhostLayer.gd")
 const WorldScale = preload("res://scripts/WorldScale.gd")
+const HUDScript = preload("res://scripts/HUD.gd")
 
 # One foot unit's sight radius on the default battle: Unit.DEFAULT_SIGHT_SCALE x SIGHT_FOOT.
 const FOOT_SIGHT: float = 15.0 * WorldScale.WU_PER_M
@@ -290,3 +291,84 @@ func test_fog_never_changes_the_simulation() -> void:
 		assert_eq(foggy[uid], plain[uid], "unit %d matches position/strength/morale/state" % uid)
 	assert_false(fogged.fog_visible_uids().is_empty() and fogged.fog_contacts().is_empty(),
 		"the fog pass actually ran on the fogged battle (it saw or remembered something)")
+
+
+# --- FogGhostLayer draw --------------------------------------------------------------
+
+
+## A last-known table with one lost contact (drawn), one that is still seen (skipped), and
+## one whose recorded facing is zero (falls back to a default facing).
+func _ghost_contacts(tick: int) -> Dictionary:
+	return {
+		2: {"position": NEAR_ENEMY_POS, "facing": Vector2.RIGHT, "strength": 100,
+			"state": Unit.State.IDLE, "tick": tick, "team": 1, "color": Color.RED},
+		3: {"position": FAR_ENEMY_POS, "facing": Vector2.DOWN, "strength": 100,
+			"state": Unit.State.IDLE, "tick": tick, "team": 1, "color": Color.RED},
+		4: {"position": Vector2(700.0, 700.0), "facing": Vector2.ZERO, "strength": 100,
+			"state": Unit.State.IDLE, "tick": tick, "team": 1, "color": Color.RED},
+	}
+
+
+## Drive the layer the way the engine does (in the tree, a redraw request, a frame) so
+## _draw actually runs under the real draw notification -- the render-only overlay
+## pattern's own coverage approach.
+func test_ghost_layer_draws_lost_contacts_without_error() -> void:
+	var layer: FogGhostLayer = FogGhostLayer.new()
+	add_child_autofree(layer)
+	layer.update(_ghost_contacts(10), {3: true}, 100)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_eq(layer._contacts.size(), 3, "the layer holds the table it was handed")
+	assert_true(layer._seen.has(3), "and the seen set that masks the visible contact")
+	assert_eq(layer._tick, 100, "and the tick that dates each entry's age")
+	layer.clear()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_true(layer._contacts.is_empty(), "clear drops every marker")
+	assert_true(layer._seen.is_empty(), "and the seen set")
+
+
+func test_ghost_layer_default_footprint_is_three_by_one_and_a_half_metres() -> void:
+	var layer: FogGhostLayer = autofree(FogGhostLayer.new())
+	assert_almost_eq(layer.half_size.x, 1.5 * WorldScale.WU_PER_M, 0.001, "half-width across the front")
+	assert_almost_eq(layer.half_size.y, 0.75 * WorldScale.WU_PER_M, 0.001, "half-depth along the facing")
+
+
+# --- HUD toggle (F7 and the Menu check item) ------------------------------------------
+
+
+func _key_event(physical_keycode: int) -> InputEventKey:
+	var event := InputEventKey.new()
+	event.physical_keycode = physical_keycode
+	event.pressed = true
+	return event
+
+
+## The persisted toggle is flipped twice, so a developer's saved preference ends where it
+## started even though each flip writes the settings file.
+func test_f7_toggles_fog_of_war_and_the_indicator_and_the_menu_item() -> void:
+	var hud: CanvasLayer = HUDScript.new()
+	add_child_autofree(hud)
+	var before: bool = Settings.fog_of_war
+	hud._unhandled_input(_key_event(KEY_F7))
+	assert_eq(Settings.fog_of_war, not before, "F7 flips the setting")
+	assert_eq(hud._fog_label.visible, not before, "and the indicator follows it")
+	var popup: PopupMenu = hud._menu_button.get_popup()
+	assert_eq(popup.is_item_checked(popup.get_item_index(HUDScript.MENU_FOG_OF_WAR)), not before,
+		"and so does the Menu check item")
+	hud._on_menu_id(HUDScript.MENU_FOG_OF_WAR)
+	assert_eq(Settings.fog_of_war, before, "the Menu item flips it back")
+	assert_eq(hud._fog_label.visible, before, "and the indicator hides again")
+
+
+func test_is_fog_toggle_keypress_only_matches_a_real_f7_key_press() -> void:
+	var hud: CanvasLayer = HUDScript.new()
+	add_child_autofree(hud)
+	assert_true(hud._is_fog_toggle_keypress(_key_event(KEY_F7)), "a plain F7 press matches")
+	assert_false(hud._is_fog_toggle_keypress(_key_event(KEY_F6)), "a different function key does not")
+	var released := _key_event(KEY_F7)
+	released.pressed = false
+	assert_false(hud._is_fog_toggle_keypress(released), "a key-release event does not")
+	var echoed := _key_event(KEY_F7)
+	echoed.echo = true
+	assert_false(hud._is_fog_toggle_keypress(echoed), "a held-key echo does not")
