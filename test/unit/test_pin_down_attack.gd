@@ -83,6 +83,23 @@ func test_pin_down_ranged_shot_arms_the_slower_cooldown() -> void:
 		"a PIN_DOWN ranged shot also arms the slower interval, not RANGED_INTERVAL")
 
 
+func test_pin_down_pilum_shot_preserves_profile_cadence() -> void:
+	var u := _make_unit()
+	u.team = 0
+	u.is_ranged = true
+	assert_true(u.equip_missile(LoadoutRegistry.MISSILE_PILUM), "pilum equipped")
+	u.order_mode = Unit.ORDER_PIN_DOWN
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	# Straight ahead of DOWN facing, inside pilum missile range.
+	enemy.position = Vector2(0, u.missile_range - 20.0)
+	u.target_enemy = enemy
+	u._think(0.1)
+	assert_almost_eq(u._attack_cd, 2.0, 0.001,
+		"pilum PIN_DOWN shot respects the 2.0 s profile cadence rather than speeding up")
+
+
 # --- defense exposure: lower defense for a short window after each swing ------
 
 func test_pin_down_strike_opens_an_exposure_window() -> void:

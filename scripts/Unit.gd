@@ -2285,14 +2285,14 @@ func equip_weapon(type_id: int) -> bool:
 
 
 ## Arm the attack cooldown for the swing about to land, picking the interval that
-## matches the unit's stance: PIN_DOWN swings on the slower PIN_DOWN_ATTACK_INTERVAL
-## and opens its own exposure window (pin_down_defense_factor); every other stance
-## uses the normal baseline (the caller's own melee_attack_interval() or
-## missile_interval). Called right before UnitCombat.strike()/shoot(), so the exposure
-## window is already open for any riposte that lands later in the same tick.
+## matches the unit's stance: PIN_DOWN swings on PIN_DOWN_ATTACK_INTERVAL, bounded
+## below by baseline_interval so a slow profile like the pilum never fires faster
+## while pinning down, and opens its own exposure window.
+## Every other stance uses the normal baseline (melee_attack_interval() or
+## missile_interval). Called right before UnitCombat.strike() or shoot().
 func _start_attack_cd(baseline_interval: float) -> void:
 	if order_mode == ORDER_PIN_DOWN:
-		_attack_cd = PIN_DOWN_ATTACK_INTERVAL
+		_attack_cd = maxf(PIN_DOWN_ATTACK_INTERVAL, baseline_interval)
 		_pin_down_exposure_cd = PIN_DOWN_EXPOSURE_DURATION
 	else:
 		_attack_cd = baseline_interval
