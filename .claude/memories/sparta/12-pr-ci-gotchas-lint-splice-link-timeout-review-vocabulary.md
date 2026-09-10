@@ -832,8 +832,10 @@ The set of `head_sha` values with a `godot-ci.yml` run over 2026-09-04..06 was i
 Each run-less SHA showed conflict markers in `git merge-tree <base> <sha> <main-at-push-time>`.
 
 **What to do.**
-Merge `main` and resolve the conflict; the merge commit's push triggers everything.
-To review the current head without waiting: `gh workflow run claude-code-review.yml -R Lacaedemon/sparta -f pr_number=N`.
+Merge `main` and resolve the conflict;
+the merge commit's push triggers everything.
+To review the current head without waiting:
+`gh workflow run claude-code-review.yml -R Lacaedemon/sparta -f pr_number=N`.
 `conflicting-pr-notice.yml` (push-triggered, since push events fire regardless of mergeability) now posts a marker comment on the PR when this happens, so the silence is no longer silent.
 
 - **Do:** when a review "never started", check the PR's `mergeable_state` first, and check whether the other `pull_request` workflows ran on that SHA.
