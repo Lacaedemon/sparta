@@ -84,7 +84,7 @@ static func strike_expectation(attacker: Unit, defender: Unit) -> float:
 	# exactly as FarTierRules.strike_expectation applies it to the record model's aggregate,
 	# so a line that jogged its approach can lose its whole margin over the defence.
 	var fatigue: float = SoldierCombat.stamina_factor(attacker.mean_soldier_stamina(),
-			attacker.combat_profile()["max_stamina"])
+			attacker.max_stamina)
 	var eff_attack: float = float(attacker.attack) * fatigue \
 			* attacker.formation_attack_factor() * attacker.formation_melee_attack_factor()
 	var base: float = maxf(1.0, eff_attack - float(defender.defense))

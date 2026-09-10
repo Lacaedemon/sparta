@@ -527,3 +527,107 @@ func test_mean_sd_counts_zero_entries() -> void:
 	assert_almost_eq(v.x, 50.0, TOL)
 	assert_almost_eq(v.y, 50.0, TOL)
 	assert_eq(UnitStats.mean_sd(PackedFloat32Array()), Vector2.ZERO)
+
+
+# --- Cached combat profile and max_stamina scalar ---------------------------------------
+
+
+func test_cached_max_stamina_stays_correct_after_loadout_change() -> void:
+	var u := _make_unit(42)
+	assert_almost_eq(u.max_stamina, 100.0, TOL, "default infantry max_stamina is 100")
+	assert_almost_eq(u.combat_profile()["max_stamina"], 100.0, TOL)
+
+	# Cavalry loadout switch
+	u.is_cavalry = true
+	assert_almost_eq(u.max_stamina, 120.0, TOL, "cavalry max_stamina is 120")
+	assert_almost_eq(u.combat_profile()["max_stamina"], 120.0, TOL)
+
+	# Ranged (archers) loadout switch
+	u.is_cavalry = false
+	u.is_ranged = true
+	assert_almost_eq(u.max_stamina, 90.0, TOL, "ranged max_stamina is 90")
+	assert_almost_eq(u.combat_profile()["max_stamina"], 90.0, TOL)
+
+	# Spearmen (anti-cavalry) loadout switch
+	u.is_ranged = false
+	u.anti_cavalry = true
+	assert_almost_eq(u.max_stamina, 100.0, TOL, "spearmen max_stamina is 100")
+	assert_almost_eq(u.combat_profile()["max_stamina"], 100.0, TOL)
+
+	# Panoply and training switch
+	u.armor_type_id = LoadoutRegistry.ARMOR_SQUAMATA
+	var squamata: Armor = LoadoutRegistry.armor(LoadoutRegistry.ARMOR_SQUAMATA)
+	assert_almost_eq(u.combat_profile()["armour"], squamata.protection, TOL)
+	u.mount_type_id = LoadoutRegistry.MOUNT_WARHORSE
+	assert_true(u.combat_profile()["mass"] > 1.0)
+	u.training = 0.75
+	assert_almost_eq(u.combat_profile()["skill"], 0.75, TOL)
+	assert_almost_eq(u.max_stamina, 100.0, TOL)
+
+	# Cache rebuild path when profile is cleared
+	u._cached_combat_profile.clear()
+	assert_true(u._cached_combat_profile.is_empty())
+	var prof: Dictionary = u.combat_profile()
+	assert_false(prof.is_empty())
+	assert_almost_eq(prof["max_stamina"], 100.0, TOL)
+
+
+func test_far_tier_hot_paths_use_cached_max_stamina() -> void:
+	var u := _make_unit(43)
+	u.tier = FormationTier.FAR
+	assert_almost_eq(u.mean_soldier_stamina(), 100.0, TOL, "unseeded far tier reads max_stamina")
+	u.is_cavalry = true
+	assert_almost_eq(u.mean_soldier_stamina(), 120.0, TOL, "unseeded cavalry far tier reads 120")
+
+	u.far_stamina = 50.0
+	assert_almost_eq(u.mean_soldier_stamina(), 50.0, TOL, "seeded far tier reads far_stamina")
+
+	# Far-tier tick while unseeded starts from max_stamina
+	var unseeded := _make_unit(44)
+	unseeded.tier = FormationTier.FAR
+	unseeded.current_order = Order.new_move(Vector2(0, 500), 0, Unit.GAIT_JOG)
+	unseeded._current_speed = unseeded.jog_speed
+	unseeded._tick_far_stamina(1.0)
+	assert_almost_eq(unseeded.far_stamina, 100.0 - SoldierCombat.KAPPA_JOG, TOL)
+
+	# Far-tier tick while seeded applies flow to existing pool
+	u.current_order = Order.new_move(Vector2(0, 500), 0, Unit.GAIT_JOG)
+	u._current_speed = u.jog_speed
+	u._tick_far_stamina(1.0)
+	assert_almost_eq(u.far_stamina, 50.0 - SoldierCombat.KAPPA_JOG, TOL)
+
+	# Close tier unseeded reads max_stamina
+	var close_u := _make_unit(45)
+	close_u.tier = FormationTier.CLOSE
+	close_u._sim_soldier_stamina.clear()
+	assert_almost_eq(close_u.mean_soldier_stamina(), 100.0, TOL)
+
+
+func test_far_tier_strike_expectation_reads_attacker_max_stamina() -> void:
+	var attacker := _make_unit(46)
+	var defender := _make_unit(47)
+	attacker.tier = FormationTier.FAR
+	defender.tier = FormationTier.FAR
+	attacker.far_stamina = 100.0
+	attacker.attack = 15
+	defender.defense = 5
+	var rate_inf: float = FarTierRates.strike_expectation(attacker, defender)
+	assert_true(rate_inf > 0.0)
+
+	attacker.is_cavalry = true
+	attacker.far_stamina = 120.0
+	var rate_cav: float = FarTierRates.strike_expectation(attacker, defender)
+	assert_true(rate_cav > 0.0)
+
+
+func test_snapshot_round_trip_preserves_cached_profile() -> void:
+	var u := _make_unit(48)
+	u.is_cavalry = true
+	u.armor_type_id = LoadoutRegistry.ARMOR_SQUAMATA
+	var snap: Dictionary = u.to_snapshot_dict()
+	var restored := _make_unit(49)
+	restored.apply_snapshot_dict(snap)
+	assert_eq(restored.is_cavalry, true)
+	assert_almost_eq(restored.max_stamina, 120.0, TOL)
+	var squamata: Armor = LoadoutRegistry.armor(LoadoutRegistry.ARMOR_SQUAMATA)
+	assert_almost_eq(restored.combat_profile()["armour"], squamata.protection, TOL)

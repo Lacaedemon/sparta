@@ -139,7 +139,7 @@ static func from_unit(u: Unit) -> FarTierFormation:
 	rec.sprint_speed = u.move_speed
 	rec.gait = gait_for_ordered(u.ordered_gait())
 	rec.stamina = u.mean_soldier_stamina()
-	rec.max_stamina = u.combat_profile()["max_stamina"]
+	rec.max_stamina = u.max_stamina
 	rec.stamina_rest_regen_per_s = u.stamina_rest_regen_per_s
 	rec.stamina_walk_regen_per_s = u.stamina_walk_regen_per_s
 	rec.stamina_jog_drain_per_s = u.stamina_jog_drain_per_s

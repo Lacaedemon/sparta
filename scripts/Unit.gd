@@ -93,6 +93,10 @@ var uid: int = -1
 @export var stamina_walk_regen_per_s: float = SoldierCombat.RHO_STAMINA_WALK
 @export var stamina_jog_drain_per_s: float = SoldierCombat.KAPPA_JOG
 @export var stamina_sprint_drain_per_s: float = SoldierCombat.KAPPA_SPRINT
+## Max stamina per soldier from this regiment's combat profile. Cached as a
+## scalar so hot far-tier movement and combat paths allocate nothing per tick.
+var max_stamina: float = 100.0
+var _cached_combat_profile: Dictionary = {}
 # Backward-walk speed factor: a soldier repositioning BACKWARD relative to his own
 # facing (a common motion during a maneuver -- conversio, quarter-turn, frontage
 # reshape -- where the rear ranks back up into new slots) is capped slower than one
@@ -156,11 +160,28 @@ var shield_type_id: int = LoadoutRegistry.SHIELD_SCUTUM
 # and contact mass through them. Defaults are the same infantry baseline as the
 # weapon/shield ids above (mail on foot), so a bare test unit's profile stays
 # bit-identical to the pre-registry infantry row.
-var armor_type_id: int = LoadoutRegistry.ARMOR_HAMATA
-var mount_type_id: int = LoadoutRegistry.MOUNT_NONE
-@export var is_cavalry: bool = false
-@export var anti_cavalry: bool = false   # spearmen: blunt cavalry charges
-@export var is_ranged: bool = false   # archers: loose volleys from a distance
+var armor_type_id: int = LoadoutRegistry.ARMOR_HAMATA:
+	set(v):
+		armor_type_id = v
+		update_combat_profile()
+var mount_type_id: int = LoadoutRegistry.MOUNT_NONE:
+	set(v):
+		mount_type_id = v
+		update_combat_profile()
+@export var is_cavalry: bool = false:
+	set(v):
+		is_cavalry = v
+		update_combat_profile()
+# Spearmen: blunt cavalry charges.
+@export var anti_cavalry: bool = false:
+	set(v):
+		anti_cavalry = v
+		update_combat_profile()
+# Archers: loose volleys from a distance.
+@export var is_ranged: bool = false:
+	set(v):
+		is_ranged = v
+		update_combat_profile()
 # Seconds before the unit starts executing a new order. Models the real-world
 # lag between a signal and the regiment actually stepping off. Default 0.5 s;
 # faster units (cavalry) can be given a lower value at spawn time.
@@ -179,6 +200,7 @@ var mount_type_id: int = LoadoutRegistry.MOUNT_NONE
 @export var training: float = 0.0:
 	set(v):
 		training = clampf(v, 0.0, 1.0)
+		update_combat_profile()
 # Whether the unit executes march orders as a formed body -- centre-pivoting gradually
 # onto its new heading before advancing (see _move_to's pivot_as_formation) -- or
 # individually, turning to face the destination immediately and walking there directly
@@ -1390,7 +1412,13 @@ var _figure_faces_left: bool = false        # which mirror is on the MultiMeshes
 # cached across all units); this node just holds the per-unit mesh handles below.
 
 
+func _init() -> void:
+	update_combat_profile()
+
+
 func _ready() -> void:
+	if _cached_combat_profile.is_empty():
+		update_combat_profile()
 	soldiers = max_soldiers
 	team_color = Color("4a7fd6") if team == 0 else Color("d65a4a")
 	separation_radius = _type_separation_radius()
@@ -6651,13 +6679,23 @@ static func couple_all_sim_soldiers(units: Array, delta: float) -> void:
 # the wound, the charge term, the facing gate, the per-type profile). Unit just
 # exposes its own profile, reading its type flags and training.
 
+## Recompute and cache the per-soldier combat profile and max_stamina scalar from
+## this regiment's type flags, training, and panoply.
+func update_combat_profile() -> void:
+	_cached_combat_profile = SoldierCombat.profile_for(
+			is_cavalry, anti_cavalry, is_ranged, training,
+			armor_type_id, mount_type_id)
+	max_stamina = _cached_combat_profile["max_stamina"]
+
+
 ## This regiment's per-soldier combat profile, from its own type flags, training,
 ## and typed panoply (armour protection and mount mass resolve through the interned
-## armor/mount ids). See SoldierCombat.profile_for / docs/combat-model.md
-## "Soldier attributes".
+## armor/mount ids). Cached so callers pay no Dictionary allocation per call.
+## See SoldierCombat.profile_for / docs/combat-model.md "Soldier attributes".
 func combat_profile() -> Dictionary:
-	return SoldierCombat.profile_for(is_cavalry, anti_cavalry, is_ranged, training,
-			armor_type_id, mount_type_id)
+	if _cached_combat_profile.is_empty():
+		update_combat_profile()
+	return _cached_combat_profile
 
 
 ## Flee pace while routing (move_speed * FLEE_SPEED_MULTIPLIER), shared by the movement
@@ -6690,9 +6728,9 @@ func stamina_flow_per_s() -> float:
 ## (a far-tier unit, or one not yet seeded), so a reader never sees a spurious zero.
 func mean_soldier_stamina() -> float:
 	if tier == FormationTier.FAR:
-		return far_stamina if far_stamina >= 0.0 else combat_profile()["max_stamina"]
+		return far_stamina if far_stamina >= 0.0 else max_stamina
 	if _sim_soldier_stamina.is_empty():
-		return combat_profile()["max_stamina"]
+		return max_stamina
 	var sum: float = 0.0
 	for s in _sim_soldier_stamina:
 		sum += s
@@ -6705,7 +6743,6 @@ func mean_soldier_stamina() -> float:
 func _tick_far_stamina(delta: float) -> void:
 	if tier != FormationTier.FAR:
 		return
-	var max_stamina: float = combat_profile()["max_stamina"]
 	var pool: float = far_stamina if far_stamina >= 0.0 else max_stamina
 	far_stamina = StaminaFlow.apply(pool, stamina_flow_per_s(), delta, max_stamina)
 
@@ -8339,3 +8376,4 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 			(d["sim_soldier_square_slot"] as PackedInt32Array).duplicate()
 	_sim_soldier_row_slot = \
 			(d.get("sim_soldier_row_slot", PackedInt32Array()) as PackedInt32Array).duplicate()
+	update_combat_profile()
