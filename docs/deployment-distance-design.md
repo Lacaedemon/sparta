@@ -188,8 +188,9 @@ A setup preset decides how far apart the armies start, fast-forward decides how 
 - **The default does not move.**
   Keeping the default at today's gap means the website demo catalog's default-spawn scenarios are not retimed and every existing replay still plays;
   the presets are opt-in.
-  Campaign clashes keep the default too;
-  a per-clash deployment distance is a campaign-design question this design defers.
+  Campaign clashes keep the default unless the defended province's campaign data declares a `deployment_gap_m` (in metres):
+  `CampaignMap._capture_clash` carries it in the clash record, and `Battle._ready` applies it through `Battle.deployment_gap_m` and `BattleMap.with_line_gap`, the field-growth rule above ([#1469](https://github.com/Lacaedemon/sparta/issues/1469)).
+  The presets can flow through the same field.
 
 ## Open questions from the tracking issue
 
@@ -215,7 +216,7 @@ Deferred, each tracked in its own issue:
 the per-gait stamina flow and the far-tier gait that a jog approach needs ([#1466](https://github.com/Lacaedemon/sparta/issues/1466));
 the skirmisher-screen subcommander directive ([#1467](https://github.com/Lacaedemon/sparta/issues/1467), since shipped -- see the "Skirmisher screening" bullet above);
 a charge-distance retune once sprinting costs stamina ([#1468](https://github.com/Lacaedemon/sparta/issues/1468));
-per-clash deployment distances for campaign battles ([#1469](https://github.com/Lacaedemon/sparta/issues/1469));
+per-clash deployment distances for campaign battles ([#1469](https://github.com/Lacaedemon/sparta/issues/1469), since shipped -- see "The default does not move" above);
 and any longer-range missile model ([#1470](https://github.com/Lacaedemon/sparta/issues/1470)).
 
 ## Implementation roadmap
@@ -233,7 +234,7 @@ and any longer-range missile model ([#1470](https://github.com/Lacaedemon/sparta
    verify the physics-delta relation above on this build, measure the `time_scale` route against the matched-tick-rate route on the far-deployment scenario, and keep whichever holds 60 fps through the opening, preferring the one that keeps the 1x trajectory.
 
 4. **Phase 4 (deployment presets)**:
-   Add the preset option to `scripts/PrebattleScreen.gd`, ferry it through `scripts/CustomMatchup.gd`, and apply it to `Battle.spawn_line_ys` and `Battle.field` with the downward field growth above;
+   Add the preset option to `scripts/PrebattleScreen.gd`, ferry it through `scripts/CustomMatchup.gd`, and apply it through `Battle.deployment_gap_m` (which already re-derives `Battle.spawn_line_ys` and `Battle.field` with the downward field growth above);
    cover the three presets with a spawn-layout test.
 
 5. **Phase 5 (AI approach pacing, deferred)**:
