@@ -589,9 +589,12 @@ func _ready() -> void:
 		# the saved replay can reconstruct the same battlefield on playback. A
 		# default-map battle records no map at all — its replay file stays exactly
 		# the pre-map shape, and old replays keep playing unchanged.
+		var custom_sight: float = -1.0
+		if sight_scale > 0.0:
+			custom_sight = sight_scale
 		if BattleMapRef.differs_from_default(field, terrain, spawn_line_ys,
-				FIELD, TERRAIN, SPAWN_LINE_YS):
-			Replay.map = BattleMapRef.serialize(field, terrain, spawn_line_ys)
+				FIELD, TERRAIN, SPAWN_LINE_YS, custom_sight):
+			Replay.map = BattleMapRef.serialize(field, terrain, spawn_line_ys, custom_sight)
 	else:
 		# Playback: restore the recorded map (empty = the default map) BEFORE any
 		# of the map consumers below run, so camera bounds, the routing grid, and
@@ -604,21 +607,13 @@ func _ready() -> void:
 				field = parsed.get("field", field)
 				terrain = parsed.get("terrain", terrain)
 				spawn_line_ys = parsed.get("spawn_lines", spawn_line_ys)
+				if parsed.has("sight_scale"):
+					sight_scale = float(parsed["sight_scale"])
 
 	# Sight scale derives from the final field's short side unless explicitly overridden
 	# before _ready.
 	if sight_scale <= 0.0:
 		sight_scale = DEFAULT_SIGHT_SCALE_FRACTION * minf(field.size.x, field.size.y)
-
-	# When fog of war is on, the rout margin expands to the largest configured sight range
-	# (mounted sight) so a routing unit never escapes while still inside friendly sight discs.
-	# When fog of war is off (the default), the margin stays at ROUT_MARGIN so retreat bounds
-	# match the pre-fog baseline and existing replays and demos stay identical.
-	if Settings.fog_of_war and not all_teams_control:
-		rout_margin = maxf(ROUT_MARGIN, sight_scale * UnitRef.SIGHT_MOUNTED)
-	else:
-		rout_margin = ROUT_MARGIN
-	field_with_margin = field.grow(rout_margin)
 
 	_camera.bounds = field
 	_camera.position = field.position + field.size * 0.5
@@ -679,6 +674,10 @@ func _ready() -> void:
 	# actually driving (the player never touches the controls during a Watch Replay).
 	if AllTeamsControl.pending and Replay.mode != Replay.Mode.PLAYBACK:
 		all_teams_control = true
+
+	# Compute the retreat margin and sync bounds to live units. Done after pending flags
+	# (AllTeamsControl) have settled so an all-teams battle does not widen the margin.
+	_sync_rout_margin()
 
 	# Drill mode is a no-opponent rehearsal; a campaign clash always has a defender. They are
 	# mutually exclusive — assert it so a future path that ends a drill battle can't silently
@@ -1484,8 +1483,10 @@ func _reapply_fog_after_restore() -> void:
 			u.visible = true
 		if _fog_ghosts != null:
 			_fog_ghosts.clear()
+		_sync_rout_margin()
 		return
 	_fog_active = true
+	_sync_rout_margin()
 	for u in _fog_units_in_play():
 		u.visible = u.team == fog_team or _fog_seen.has(u.uid)
 	if _fog_ghosts != null:
@@ -1713,15 +1714,20 @@ func _tick_fog() -> void:
 			_fog_seen = {}
 			for u in _fog_units_in_play():
 				u.visible = true
-			_fog_ghosts.clear()
+			if _fog_ghosts != null:
+				_fog_ghosts.clear()
+			_sync_rout_margin()
 		return
+	if not _fog_active:
+		_sync_rout_margin()
 	_fog_active = true
 	var units: Array = _fog_units_in_play()
 	_fog_seen = PerceptionRef.visible_enemy_uids(fog_team, units)
 	PerceptionRef.record_contacts(_fog_contacts, units, _fog_seen, _tick)
 	for u in units:
 		u.visible = u.team == fog_team or _fog_seen.has(u.uid)
-	_fog_ghosts.update(_fog_contacts, _fog_seen, _tick)
+	if _fog_ghosts != null:
+		_fog_ghosts.update(_fog_contacts, _fog_seen, _tick)
 
 
 ## Every unit fog can hide or observe from: the live "units" plus the fleeing "routers"
@@ -1746,6 +1752,26 @@ func fog_visible_uids() -> Dictionary:
 ## across toggles.
 func fog_contacts() -> Dictionary:
 	return _fog_contacts
+
+
+## Recompute rout_margin and field_with_margin from the live field and effective fog state,
+## and sync the updated bounds to all live units and routers.
+func _sync_rout_margin() -> void:
+	if Settings.fog_of_war and not all_teams_control:
+		var scale_val: float = sight_scale
+		if scale_val <= 0.0:
+			scale_val = DEFAULT_SIGHT_SCALE_FRACTION * minf(field.size.x, field.size.y)
+		rout_margin = maxf(ROUT_MARGIN, scale_val * UnitRef.SIGHT_MOUNTED)
+	else:
+		rout_margin = ROUT_MARGIN
+	field_with_margin = field.grow(rout_margin)
+	queue_redraw()
+	if is_inside_tree():
+		for group in ["units", "routers"]:
+			for node in get_tree().get_nodes_in_group(group):
+				var u := node as UnitRef
+				if u != null:
+					u.retreat_bounds = field_with_margin
 
 
 ## Per-tick orchestration of the parallel individual-soldier layer (connected to

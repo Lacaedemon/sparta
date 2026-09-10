@@ -10,6 +10,7 @@ const FogGhostLayer = preload("res://scripts/FogGhostLayer.gd")
 const WorldScale = preload("res://scripts/WorldScale.gd")
 const HUDScript = preload("res://scripts/HUD.gd")
 const BattleScript = preload("res://scripts/Battle.gd")
+const AllTeamsControl = preload("res://scripts/AllTeamsControl.gd")
 
 # One foot unit's sight radius on the default battle: Unit.DEFAULT_SIGHT_SCALE x SIGHT_FOOT.
 const FOOT_SIGHT: float = 15.0 * WorldScale.WU_PER_M
@@ -24,6 +25,7 @@ var _staged_battles: Array[Node] = []
 
 func after_each() -> void:
 	Settings.set_fog_of_war_session(false)
+	AllTeamsControl.clear()
 	Replay.forced_seed = -1
 	Replay.reset()
 	for b in _staged_battles:
@@ -501,4 +503,79 @@ func test_capture_and_restore_snapshot_round_trips_fog_tables_and_layer() -> voi
 	battle.restore_snapshot(snap)
 	var restored_far := _enemy_nearest(FAR_ENEMY_POS)
 	assert_false(restored_far.visible, "restoring snapshot reapplies fog visibility immediately")
+
+
+func test_pending_all_teams_control_preserves_default_rout_margin() -> void:
+	var prev_fog: bool = Settings.fog_of_war
+	Settings.set_fog_of_war_session(true)
+	AllTeamsControl.pending = true
+	var b: Node = load("res://scenes/Battle.tscn").instantiate()
+	add_child_autofree(b)
+	assert_almost_eq(b.rout_margin, b.ROUT_MARGIN, 0.001,
+		"rout_margin stays at ROUT_MARGIN when all_teams_control is pending")
+	assert_eq(b.field_with_margin, b.field.grow(b.ROUT_MARGIN),
+		"field_with_margin matches baseline when all_teams_control is pending")
+	var foot: Unit = b.get_tree().get_nodes_in_group("units")[0] as Unit
+	assert_eq(foot.retreat_bounds, b.field.grow(b.ROUT_MARGIN),
+		"spawned unit retreat_bounds matches baseline")
+	AllTeamsControl.pending = false
+	Settings.set_fog_of_war_session(prev_fog)
+
+
+func test_mid_battle_fog_toggle_updates_rout_margin_and_live_units() -> void:
+	var battle: Node = _staged_battle(false)
+	for _k in range(3):
+		await get_tree().physics_frame
+	assert_almost_eq(battle.rout_margin, battle.ROUT_MARGIN, 0.001,
+		"initial rout_margin is baseline when fog is off")
+	var unit: Unit = battle.get_tree().get_nodes_in_group("units")[0] as Unit
+	assert_eq(unit.retreat_bounds, battle.field.grow(battle.ROUT_MARGIN),
+		"initial unit retreat_bounds matches baseline")
+
+	Settings.set_fog_of_war_session(true)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var expected_margin: float = battle.sight_scale * Unit.SIGHT_MOUNTED
+	assert_almost_eq(battle.rout_margin, expected_margin, 0.001,
+		"rout_margin expands after mid-battle fog toggle on")
+	assert_eq(unit.retreat_bounds, battle.field.grow(expected_margin),
+		"live unit retreat_bounds expands after toggle on")
+
+	Settings.set_fog_of_war_session(false)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	assert_almost_eq(battle.rout_margin, battle.ROUT_MARGIN, 0.001,
+		"rout_margin resets to baseline after mid-battle toggle off")
+	assert_eq(unit.retreat_bounds, battle.field.grow(battle.ROUT_MARGIN),
+		"live unit retreat_bounds resets after toggle off")
+
+
+func test_attack_overlay_respects_fog_visibility_and_shows_last_known_ghost() -> void:
+	var battle: Node = _staged_battle(true)
+	for _k in range(3):
+		await get_tree().physics_frame
+	var sm: SelectionManager
+	sm = battle.get_node("SelectionManager") as SelectionManager
+	assert_not_null(sm, "selection manager exists")
+	var near := _enemy_nearest(NEAR_ENEMY_POS)
+	var far := _enemy_nearest(FAR_ENEMY_POS)
+
+	assert_true(near.visible, "near enemy is visible")
+	var near_pos: Vector2 = sm._attack_overlay_target_pos(near)
+	assert_eq(near_pos, near.global_position, "visible target reports live position")
+
+	assert_false(far.visible, "far enemy is not visible")
+	var far_pos: Vector2 = sm._attack_overlay_target_pos(far)
+	assert_false(is_finite(far_pos.x), "unseen enemy with no contact has infinite overlay position")
+
+	assert_true(battle.fog_contacts().has(near.uid), "near enemy contact was recorded")
+	var recorded_pos: Vector2 = battle.fog_contacts()[near.uid]["position"]
+	near.visible = false
+	near.global_position = Vector2(99, 99)
+	var hidden_pos: Vector2 = sm._attack_overlay_target_pos(near)
+	assert_eq(hidden_pos, recorded_pos, "hidden target reports last-known ghost position")
+
+	near.state = Unit.State.DEAD
+	var dead_pos: Vector2 = sm._attack_overlay_target_pos(near)
+	assert_false(is_finite(dead_pos.x), "dead target reports infinite overlay position")
 
