@@ -74,6 +74,7 @@ checked() {
 }
 assert_eq "empty selection passes the catalog check" ok "$(checked "")"
 assert_eq "known names pass the catalog check" ok "$(checked "charge, support")"
+assert_eq "a stray comma is not an unknown clip" ok "$(checked "charge,,support,")"
 assert_eq "an unknown name fails the catalog check" bad "$(checked "charge,chrage")"
 assert_eq "the check names the unknown clip" \
   "1" "$(grep -c 'not in website/tools/demo-catalog.sh: chrage$' "$CHECK_ERR" || true)"

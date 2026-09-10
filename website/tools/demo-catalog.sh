@@ -145,6 +145,8 @@ demo_catalog_check_selection() {
   for name in "${names[@]}"; do
     name="${name#"${name%%[![:space:]]*}"}"
     name="${name%"${name##*[![:space:]]}"}"
+    # A stray comma ("a,,b", "a,") yields an empty name; that is not a misspelt clip.
+    [ -n "$name" ] || continue
     for spec in "${DEMOS[@]}"; do
       catalog_name="${spec%%|*}"
       [ "$catalog_name" = "$name" ] && continue 2
