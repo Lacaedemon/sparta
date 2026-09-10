@@ -971,7 +971,7 @@
             ]
           },
           "soldiers": 120,
-          "stamina_mean": 88.7,
+          "stamina_mean": 89.1,
           "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -1053,7 +1053,7 @@
             ]
           },
           "soldiers": 120,
-          "stamina_mean": 83.7,
+          "stamina_mean": 84.1,
           "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -1135,7 +1135,7 @@
             ]
           },
           "soldiers": 120,
-          "stamina_mean": 78.7,
+          "stamina_mean": 79.1,
           "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -1217,7 +1217,7 @@
             ]
           },
           "soldiers": 120,
-          "stamina_mean": 73.7,
+          "stamina_mean": 74.1,
           "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -1299,7 +1299,7 @@
             ]
           },
           "soldiers": 120,
-          "stamina_mean": 68.7,
+          "stamina_mean": 69.1,
           "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -1316,7 +1316,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "0.9 m",
-        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 15 files\nOrder: Moving to (800, 1120)\nHP per man: 110 ±0 of 110\nStamina per man: 64 ±0 of 100\nGait: Sprint (4.0 m/s)\nSpeed: 3.2 m/s\nAccel: -1.4 m/s²",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 15 files\nOrder: Moving to (800, 1120)\nHP per man: 110 ±0 of 110\nStamina per man: 65 ±0 of 100\nGait: Sprint (4.0 m/s)\nSpeed: 3.2 m/s\nAccel: -1.4 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 0,
@@ -1381,7 +1381,7 @@
             ]
           },
           "soldiers": 120,
-          "stamina_mean": 64.0,
+          "stamina_mean": 64.9,
           "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -1398,7 +1398,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "0.9 m",
-        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 15 files\nOrder: Moving to (800, 1120)\nHP per man: 110 ±0 of 110\nStamina per man: 63 ±0 of 100\nGait: Sprint (4.0 m/s)\nSpeed: 1.9 m/s\nAccel: -1.4 m/s²",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 15 files\nOrder: Moving to (800, 1120)\nHP per man: 110 ±0 of 110\nStamina per man: 64 ±0 of 100\nGait: Sprint (4.0 m/s)\nSpeed: 1.9 m/s\nAccel: -1.4 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 0,
@@ -1463,7 +1463,7 @@
             ]
           },
           "soldiers": 120,
-          "stamina_mean": 63.1,
+          "stamina_mean": 64.0,
           "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -1480,7 +1480,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "0.9 m",
-        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 15 files\nOrder: Moving to (800, 1120)\nHP per man: 110 ±0 of 110\nStamina per man: 63 ±0 of 100\nGait: Sprint (4.0 m/s)\nSpeed: 1.2 m/s\nAccel: +1.4 m/s²",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 15 files\nOrder: Moving to (800, 1120)\nHP per man: 110 ±0 of 110\nStamina per man: 64 ±0 of 100\nGait: Sprint (4.0 m/s)\nSpeed: 1.2 m/s\nAccel: +1.4 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 0,
@@ -1545,7 +1545,7 @@
             ]
           },
           "soldiers": 120,
-          "stamina_mean": 63.1,
+          "stamina_mean": 64.0,
           "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -1562,7 +1562,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "0.9 m",
-        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 15 files\nOrder: Moving to (800, 1120)\nHP per man: 110 ±0 of 110\nStamina per man: 63 ±0 of 100\nGait: Sprint (4.0 m/s)\nSpeed: 0.4 m/s\nAccel: -0.2 m/s²",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 15 files\nOrder: Moving to (800, 1120)\nHP per man: 110 ±0 of 110\nStamina per man: 64 ±0 of 100\nGait: Sprint (4.0 m/s)\nSpeed: 0.4 m/s\nAccel: -0.2 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 0,
@@ -1627,7 +1627,7 @@
             ]
           },
           "soldiers": 120,
-          "stamina_mean": 63.1,
+          "stamina_mean": 64.0,
           "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 0,
