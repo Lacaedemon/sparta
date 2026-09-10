@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "CI-only change: adds a push-triggered workflow that comments on a PR when GitHub creates no pull_request runs for it because it conflicts with main. Nothing in the game changes, so no recorded battle can show it."
+}
