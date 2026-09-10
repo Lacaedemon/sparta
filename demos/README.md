@@ -140,6 +140,7 @@ script under `demos/inputs/`:
   contorting a staging around the default map's fixed forest and hill -- and note a replay
   recorded on a custom map carries it in its header, so playback reconstructs the same
   battlefield (`demos/inputs/custom-map-defile.json` is the worked example).
+
 - `deployment_gap_m` (optional) -- **open the battle at a chosen deployment distance**:
   the distance in metres between the two spawn lines (the default map's is 29 m).
   Team 0's line stays put,
@@ -152,6 +153,7 @@ script under `demos/inputs/`:
   Beyond 30 m both armies open in the far tier (see `tier_ranges` below for the thresholds)
   and promote back as they close.
   (`demos/inputs/campaign-deployment-gap.json` is the worked example.)
+
 - `drill` (optional bool, **default it to `true` unless the demo needs an enemy**) -- solo/
   no-opponent rehearsal: only the player army (team 0) deploys and the battle never auto-ends
   on "no enemies", so a unit can rehearse a maneuver with no combat. Set `"drill": true` for
