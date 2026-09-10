@@ -6684,10 +6684,11 @@ func mean_soldier_stamina() -> float:
 ## same flow per body in SoldierBodies.step, which a far-tier regiment skips (it has no
 ## bodies), so without this a far-tier jog approach would be free.
 func _tick_far_stamina(delta: float) -> void:
-	if tier != FormationTier.FAR or far_stamina < 0.0:
+	if tier != FormationTier.FAR:
 		return
-	far_stamina = StaminaFlow.apply(far_stamina, stamina_flow_per_s(), delta,
-			combat_profile()["max_stamina"])
+	var max_stamina: float = combat_profile()["max_stamina"]
+	var pool: float = far_stamina if far_stamina >= 0.0 else max_stamina
+	far_stamina = StaminaFlow.apply(pool, stamina_flow_per_s(), delta, max_stamina)
 
 
 ## The lethality of the weapon soldier `i` carries: the per-soldier weapon id

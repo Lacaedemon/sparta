@@ -54,6 +54,7 @@ func _sample_unit() -> Unit:
 	u.subcommander_rank_title = "Tribune"
 	u.engage_reshape_mode = Unit.EngageReshapeMode.RECREATE_WIDTH
 	u.tier = FormationTier.FAR
+	u.far_stamina = 42.0
 	u.frontage_override = 6
 	u.frontage_anchor_offset = 3.5
 	u._last_reshape_tick = 42
@@ -144,6 +145,8 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(restored.has_move_target, original.has_move_target)
 	assert_eq(restored.order_mode, original.order_mode)
 	assert_eq(restored.formation_mode, original.formation_mode)
+	assert_eq(restored.tier, original.tier)
+	assert_almost_eq(restored.far_stamina, original.far_stamina, 0.001)
 	assert_eq(restored.player_group_id, original.player_group_id,
 		"Battle AI phase 4: player delegation survives a snapshot round-trip")
 	assert_eq(restored.subcommander_rank_title, original.subcommander_rank_title)

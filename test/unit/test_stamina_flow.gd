@@ -72,10 +72,13 @@ func test_band_a_jog_no_faster_than_the_walk_bills_walk_then_jog_and_never_sprin
 			"rest is unaffected, jog_speed %s" % jog)
 		assert_eq(StaminaFlow.band_for_speed(45.0, 45.0, jog, 1.0), Unit.GAIT_WALK,
 			"at the walk pace, jog_speed %s" % jog)
+		assert_push_error("is not above walk_speed")
 		assert_eq(StaminaFlow.band_for_speed(45.01, 45.0, jog, 1.0), Unit.GAIT_JOG,
 			"just above the walk pace, jog_speed %s" % jog)
+		assert_push_error("is not above walk_speed")
 		assert_eq(StaminaFlow.band_for_speed(200.0, 45.0, jog, 1.0), Unit.GAIT_JOG,
 			"no sprint band without a jog pace to set it against, jog_speed %s" % jog)
+		assert_push_error("is not above walk_speed")
 
 
 # --- StaminaFlow: rates ------------------------------------------------------------------
@@ -91,6 +94,11 @@ func test_flow_signs_follow_the_posture_table() -> void:
 func test_flow_reads_the_callers_own_rates_not_the_defaults() -> void:
 	assert_almost_eq(StaminaFlow.flow_per_s(Unit.GAIT_JOG, 6.0, 2.0, 3.5, 5.0), -3.5, TOL)
 	assert_almost_eq(StaminaFlow.flow_per_s(Unit.GAIT_WALK, 6.0, 2.0, 3.5, 5.0), 2.0, TOL)
+
+
+func test_flow_unknown_band_reports_error_and_returns_zero() -> void:
+	assert_almost_eq(StaminaFlow.flow_per_s(99, 6.0, 0.0, 1.0, 5.0), 0.0, TOL)
+	assert_push_error("unknown band 99")
 
 
 func test_apply_clamps_the_pool_to_its_range() -> void:
@@ -249,6 +257,17 @@ func test_far_stamina_tick_is_a_no_op_off_the_far_tier() -> void:
 	u._current_speed = u.move_speed
 	u._tick_far_stamina(1.0)
 	assert_almost_eq(u.far_stamina, 50.0, TOL, "a close-tier unit's bodies own the pool")
+
+
+func test_unseeded_far_stamina_seeds_from_full_on_far_tier() -> void:
+	var u := _make_unit(7)
+	u.tier = FormationTier.FAR
+	assert_lt(u.far_stamina, 0.0, "starts with unseeded sentinel")
+	u._current_speed = u.jog_speed
+	var full: float = u.combat_profile()["max_stamina"]
+	u._tick_far_stamina(1.0)
+	assert_almost_eq(u.far_stamina, full - SoldierCombat.KAPPA_JOG, 1e-3,
+		"the unseeded sentinel seeds from the full pool and drains")
 
 
 func test_far_stamina_round_trips_through_a_snapshot() -> void:
