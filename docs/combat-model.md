@@ -582,7 +582,10 @@ front-facing shield wall has $\mathrm{br}\to 1$ and holds.
 > $\rho_\sigma$ per second and charged $\kappa_p$ on the tick a soldier rose from prone.
 > Posture-dependent regen and the stamina HUD, originally deferred, are now implemented (#1466):
 > `SoldierBodies.step` applies `Unit.stamina_flow_per_s` (via `StaminaFlow`'s
-> rest, walk, jog, and sprint speed bands) and the HUD displays each soldier's pool.
+> rest, walk, jog, and sprint speed bands).
+> In the HUD, `HUD._dynamic_stats` formats an aggregate
+> 'Stamina per man' readout from `UnitStats.mean_sd`
+> (mean and spread over living bodies).
 
 ## Receiving a charge
 

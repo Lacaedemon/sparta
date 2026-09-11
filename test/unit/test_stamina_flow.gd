@@ -363,6 +363,25 @@ func test_routing_unit_bills_flee_pace_on_the_tick_it_rallies() -> void:
 			"routing tick bills flee pace even when the unit rallies on the same tick")
 
 
+func test_far_tier_coasting_tick_bills_post_decay_speed_matching_close_tier() -> void:
+	var far_unit := _make_unit(10)
+	far_unit.tier = FormationTier.FAR
+	far_unit.far_stamina = 50.0
+	var close_unit := _cruising_unit(11, 0.0, 50.0)
+	var init_speed: float = 65.0
+	far_unit._current_speed = init_speed
+	far_unit._approach_velocity = Vector2.DOWN * init_speed
+	close_unit._current_speed = init_speed
+	close_unit._approach_velocity = Vector2.DOWN * init_speed
+	far_unit._physics_process(0.5)
+	close_unit._physics_process(0.5)
+	SoldierBodies.step(close_unit, 0.5)
+	assert_almost_eq(far_unit._current_speed, 50.0, TOL, "both units decayed to walk pace")
+	assert_almost_eq(close_unit._current_speed, 50.0, TOL)
+	assert_almost_eq(far_unit.far_stamina, close_unit.mean_soldier_stamina(), TOL,
+			"far tier and close tier bill the post-decay speed on a coasting tick")
+
+
 # --- Far tier: the isolated record and its rules -----------------------------------------
 
 

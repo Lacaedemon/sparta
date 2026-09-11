@@ -1475,7 +1475,6 @@ func _physics_process(delta: float) -> void:
 	_separate(delta)
 
 	UnitMorale.tick_fatigue(self, delta)
-	_tick_far_stamina(delta)
 	UnitMorale.tick_cohesion(self, delta)
 	UnitMorale.tick_morale(self, delta)
 	tick_engaged(delta)
@@ -1564,6 +1563,8 @@ func _physics_process(delta: float) -> void:
 			position += travel_dir * (_current_speed * terrain_speed * delta)
 			position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
 			position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
+
+	_tick_far_stamina(delta)
 
 	# The parallel soldier-body layer (seeding + the global engaged-soldier
 	# separation) is orchestrated once per tick by Battle, AFTER every unit has
