@@ -940,13 +940,20 @@ func _is_fog_toggle_keypress(event: InputEvent) -> bool:
 
 
 ## Flip Settings.fog_of_war (persisted, like the Menu check item). Fog hides
-## units, so an unannounced switch would read as units vanishing. Refused during playback,
-## where Battle.is_fog_active() answers from the recording instead.
-## Flipping the live setting there would change nothing on screen while the toast claimed it had.
+## units, so an unannounced switch would read as units vanishing. Refused wherever
+## Battle.is_fog_active() answers from something other than the live setting: during
+## playback it answers from the recording, and under all-teams control it forces fog
+## off because the tester drives both armies. Flipping the setting in either case
+## changes nothing on screen while the toast claims it did, and the flip persists into
+## the next ordinary battle.
 ## Returns true if applied, false if refused.
 func _toggle_fog() -> bool:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		flash_message("Fog of war is fixed by the recording during playback")
+		return false
+	var battle = get_parent()
+	if battle != null and battle.get("all_teams_control") == true:
+		flash_message("Fog of war stays off while you control both armies")
 		return false
 	Settings.fog_of_war = not Settings.fog_of_war
 	flash_message("Fog of war: %s" % ("on" if Settings.fog_of_war else "off"))

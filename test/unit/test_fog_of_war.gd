@@ -262,6 +262,23 @@ func test_switching_fog_off_mid_battle_restores_every_hidden_unit() -> void:
 
 ## The F7 toggle is refused during playback, where is_fog_active() answers from the
 ## recording: flipping the live setting there would leave the indicator unchanged while
+## The toggle is refused under all-teams control for the same reason it is refused
+## during playback: is_fog_active() answers from something other than the live setting,
+## so flipping it changes nothing on screen while the toast claims it did -- and the
+## flip persists into the next ordinary battle, which is the part that outlives the run.
+func test_fog_toggle_is_refused_under_all_teams_control() -> void:
+	var battle: Node = _staged_battle(false, true)
+	await wait_frames(2)
+	var hud = battle.get_node("HUD")
+	assert_false(battle.is_fog_active(), "all-teams control forces fog off")
+	hud._toggle_fog()
+	assert_false(Settings.fog_of_war,
+			"the live setting is untouched, so nothing leaks into the next battle")
+	assert_eq(hud._flash_label.text, "Fog of war stays off while you control both armies",
+			"and the toast says why rather than announcing a switch")
+	assert_false(hud._fog_label.visible, "the indicator stays hidden")
+
+
 ## the toast announced a switch, so the two would visibly disagree.
 func test_fog_toggle_is_refused_during_playback() -> void:
 	var battle: Node = _staged_battle(false)
