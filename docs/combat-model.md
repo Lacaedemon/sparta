@@ -117,9 +117,10 @@ Two consequences fall straight out of this table and matter everywhere below:
 > `advancing` / `jogging` / `sprinting` / `braced` / `prone`, each with its own stamina-regen
 > rate) is **not** implemented as a discrete state machine -- bracing instead reads a
 > continuous penalty from the regiment's own `current_speed`, not a named gait.
-> The table's **stamina column** is implemented the same way (#1466, `StaminaFlow`): the
-> rest / walk / jog / sprint rates are read off `current_speed` bands, so `at ease` and
-> `at attention` share the rest rate and `braced` reads as whatever pace the line holds
+> The table's **stamina column** is implemented the same way (#1466, `StaminaFlow`):
+> the rest / walk / jog / sprint rates are read off `current_speed` bands,
+> so `at ease` and `at attention` share the rest rate
+> and `braced` reads as whatever pace the line holds
 > (see "Stamina" below).
 > `prone` is implemented separately (see "Going prone and getting
 > up" below).

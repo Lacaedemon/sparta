@@ -571,6 +571,22 @@ func test_tick_rout_bills_custom_sprint_drain_rate() -> void:
 			"routing movement applies the custom sprint drain rate")
 
 
+func test_tick_rout_zero_effective_speed_recovers_stamina_at_rest() -> void:
+	var rec := _rec(Unit.GAIT_JOG)
+	rec.stamina = 50.0
+	rec.jog_speed = 0.0
+	rec.march_speed = 0.0
+	FarTierRules.enter_rout(rec)
+	var enemy := _rec()
+	enemy.position = Vector2(0.0, 100.0)
+	FarTierRules.tick_rout(rec, enemy, 1.0)
+	assert_almost_eq(rec.position.x, 0.0, TOL, "no movement when speed is zero")
+	assert_almost_eq(rec.position.y, 0.0, TOL, "no movement when speed is zero")
+	assert_gt(rec.stamina, 50.0, "stamina recovers rather than draining")
+	assert_almost_eq(rec.stamina, 50.0 + rec.stamina_rest_regen_per_s * 1.0, TOL,
+			"a routing formation with zero effective speed recovers stamina at rest rate")
+
+
 func test_a_spent_formation_strikes_at_the_stamina_floor() -> void:
 	var defender := _rec()
 	var attacker := _rec()

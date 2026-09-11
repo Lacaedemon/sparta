@@ -319,8 +319,10 @@ static func tick_rout(rec: FarTierFormation, enemy: FarTierFormation, delta: flo
 	var moved: bool = false
 	if away.length_squared() >= 0.000001:
 		rec.facing = away.normalized()
-		rec.position += rec.facing * (effective_speed(rec) * FLEE_SPEED_MULTIPLIER) * delta
-		moved = true
+		var speed: float = effective_speed(rec) * FLEE_SPEED_MULTIPLIER
+		var step: float = speed * delta
+		rec.position += rec.facing * step
+		moved = step > 0.0
 	tick_stamina(rec, moved, delta)
 	if rec.morale < Unit.ROUT_RALLY_BASELINE:
 		rec.morale += (Unit.ROUT_RALLY_BASELINE - rec.morale) * Unit.ROUT_MORALE_RECOVER_RATE * delta
