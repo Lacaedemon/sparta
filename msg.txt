@@ -1,8 +1,0 @@
-docs(reinforce): restore the squared-host and far-tier guard bullets
-
-The guard list in the design note had been rephrased down to the row-major and
-file-group cases, dropping the two conditions ReinforceGuard.refusal_reason()
-still enforces first. Restore both, and add the file-group refusal to the
-player-facing tactics list, which never carried it.
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
