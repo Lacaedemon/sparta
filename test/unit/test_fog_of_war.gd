@@ -260,6 +260,34 @@ func test_switching_fog_off_mid_battle_restores_every_hidden_unit() -> void:
 		"but the contact table is kept, so switching back on remembers the sighting")
 
 
+## A fog pass in one battle never mutates units belonging to a concurrent battle.
+## Before the fix, get_nodes_in_group collected units across the entire SceneTree,
+## so a fog pass in the first battle set visible = false on foreign enemies and
+## _sync_rout_margin overwrote foreign retreat bounds with its own field_with_margin.
+func test_fog_pass_does_not_mutate_units_in_concurrent_battle() -> void:
+	var b_fog: Node = _staged_battle(true)
+	var b_other: Node = _staged_battle(false, true)
+	Settings.set_fog_of_war_session(true)
+	await wait_frames(2)
+	var foreign_units: Array = []
+	for group in ["units", "routers"]:
+		for node in get_tree().get_nodes_in_group(group):
+			var u := node as Unit
+			if u != null and b_other.is_ancestor_of(u):
+				foreign_units.append(u)
+	assert_gt(foreign_units.size(), 0, "concurrent battle has live units")
+	for u in foreign_units:
+		assert_true(u.visible, "concurrent battle units are visible under all-teams control")
+		assert_eq(u.retreat_bounds, b_other.field_with_margin,
+				"concurrent battle unit has its own battle's retreat bounds")
+	b_fog._tick_fog()
+	for u in foreign_units:
+		assert_true(u.visible,
+				"fog pass in first battle never hides a unit belonging to the second battle")
+		assert_eq(u.retreat_bounds, b_other.field_with_margin,
+				"retreat bounds sync in first battle never overrides foreign unit bounds")
+
+
 ## The toggle is refused under all-teams control for the same reason it is refused
 ## during playback: is_fog_active() answers from something other than the live setting,
 ## so flipping it changes nothing on screen while the toast claims it did -- and the
@@ -313,6 +341,45 @@ func test_fog_menu_toggle_is_refused_during_playback() -> void:
 	Replay.mode = Replay.Mode.IDLE
 	hud._on_menu_id(hud.MENU_FOG_OF_WAR)
 	assert_true(Settings.fog_of_war, "outside playback the menu item flips the setting")
+	Settings.set_fog_of_war_session(false)
+
+
+## The F7 toggle is refused while recording, where Replay has no ticked fog
+## track and Replay.map stores only the initial boolean. A mid-run switch would
+## fail to reproduce on playback.
+func test_fog_toggle_is_refused_during_recording() -> void:
+	var battle: Node = _staged_battle(false)
+	await wait_frames(2)
+	var hud = battle.get_node("HUD")
+	Replay.mode = Replay.Mode.RECORD
+	hud._toggle_fog()
+	assert_false(Settings.fog_of_war, "recording leaves the live fog setting alone")
+	assert_eq(hud._flash_label.text, "Fog of war is fixed for the duration of a recording",
+		"and reports why recording refused the fog toggle")
+	Replay.mode = Replay.Mode.IDLE
+	hud._toggle_fog()
+	assert_true(Settings.fog_of_war, "outside recording the same key still flips it")
+
+
+## The menu toggle is also refused during recording and restores its checkmark,
+## because PopupMenu auto-toggles check state before id_pressed fires.
+func test_fog_menu_toggle_is_refused_during_recording() -> void:
+	var battle: Node = _staged_battle(false)
+	await wait_frames(2)
+	var hud = battle.get_node("HUD")
+	var popup: PopupMenu = hud._menu_button.get_popup()
+	var idx: int = popup.get_item_index(hud.MENU_FOG_OF_WAR)
+	Replay.mode = Replay.Mode.RECORD
+	# Simulate PopupMenu's auto-toggle flipping the item before id_pressed.
+	popup.set_item_checked(idx, true)
+	hud._on_menu_id(hud.MENU_FOG_OF_WAR)
+	assert_false(Settings.fog_of_war, "recording leaves the live fog setting alone")
+	assert_false(popup.is_item_checked(idx), "menu checkmark is restored on refusal")
+	assert_eq(hud._flash_label.text, "Fog of war is fixed for the duration of a recording",
+		"and reports why recording refused the menu toggle")
+	Replay.mode = Replay.Mode.IDLE
+	hud._on_menu_id(hud.MENU_FOG_OF_WAR)
+	assert_true(Settings.fog_of_war, "outside recording the menu item flips the setting")
 	Settings.set_fog_of_war_session(false)
 
 

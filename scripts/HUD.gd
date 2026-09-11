@@ -945,7 +945,8 @@ func _is_fog_toggle_keypress(event: InputEvent) -> bool:
 ## playback it answers from the recording, and under all-teams control it forces fog
 ## off because the tester drives both armies. Flipping the setting in either case
 ## changes nothing on screen while the toast claims it did, and the flip persists into
-## the next ordinary battle.
+## the next ordinary battle. Also refused while recording because Replay has no
+## recorded fog-transition track and Replay.map stores only the initial boolean.
 ## Returns true if applied, false if refused.
 func _toggle_fog() -> bool:
 	if Replay.mode == Replay.Mode.PLAYBACK:
@@ -954,6 +955,9 @@ func _toggle_fog() -> bool:
 	var battle = get_parent()
 	if battle != null and battle.get("all_teams_control") == true:
 		flash_message("Fog of war stays off while you control both armies")
+		return false
+	if Replay.mode == Replay.Mode.RECORD:
+		flash_message("Fog of war is fixed for the duration of a recording")
 		return false
 	Settings.fog_of_war = not Settings.fog_of_war
 	flash_message("Fog of war: %s" % ("on" if Settings.fog_of_war else "off"))

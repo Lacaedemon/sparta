@@ -1771,7 +1771,7 @@ func _fog_units_in_play() -> Array:
 	for group in ["units", "routers"]:
 		for node in get_tree().get_nodes_in_group(group):
 			var u := node as UnitRef
-			if u != null:
+			if u != null and is_ancestor_of(u):
 				units.append(u)
 	return units
 
@@ -1824,7 +1824,7 @@ func _sync_rout_margin() -> void:
 		for group in ["units", "routers"]:
 			for node in get_tree().get_nodes_in_group(group):
 				var u := node as UnitRef
-				if u != null:
+				if u != null and is_ancestor_of(u):
 					u.retreat_bounds = field_with_margin
 
 

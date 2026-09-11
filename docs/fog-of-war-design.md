@@ -601,6 +601,7 @@ playback if the two ever differed in render state.
 So the rule is explicit.
 Fog affects `CanvasItem.visible`, ghost markers, and the retreat margin.
 The recorded replay map value drives playback.
+Mid-battle toggles are refused while recording and during replay, keeping fog fixed for the duration of any recorded battle.
 Group membership, `_physics_process`, targeting, and collision are untouched.
 A headless run with no rendering at all and a rendered run must produce byte-identical replays under the recorded fog state.
 
