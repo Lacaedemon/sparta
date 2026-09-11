@@ -303,6 +303,30 @@ func test_tick_rout_flee_speed_is_the_close_tier_multiplier_on_the_march_pace() 
 		rec.march_speed * FarTierRules.FLEE_SPEED_MULTIPLIER, 0.0001)
 
 
+func test_tick_rout_flee_speed_scales_jog_pace_when_ordered_to_jog() -> void:
+	var rec := _make_rec(Vector2.ZERO)
+	rec.morale = 0.0
+	rec.gait = Unit.GAIT_JOG
+	FarTierRules.enter_rout(rec)
+	var enemy := _make_rec(Vector2(0.0, 100.0))
+	FarTierRules.tick_rout(rec, enemy, 1.0)
+	assert_almost_eq(rec.position.distance_to(Vector2.ZERO),
+		rec.jog_speed * FarTierRules.FLEE_SPEED_MULTIPLIER, 0.0001,
+		"a routing formation ordered to jog flees at the multiplied jog pace")
+
+
+func test_tick_rout_coincident_positions_regenerate_stamina_at_rest() -> void:
+	var rec := _make_rec(Vector2(50.0, 50.0))
+	rec.morale = 0.0
+	rec.stamina = 50.0
+	FarTierRules.enter_rout(rec)
+	var enemy := _make_rec(Vector2(50.0, 50.0))
+	FarTierRules.tick_rout(rec, enemy, 1.0)
+	assert_eq(rec.position, Vector2(50.0, 50.0), "coincident pair cannot determine away vector and does not move")
+	assert_almost_eq(rec.stamina, 50.0 + rec.stamina_rest_regen_per_s * 1.0, 0.0001,
+		"a non-moving routing formation regenerates stamina at the rest rate")
+
+
 func test_tick_rout_morale_climbs_toward_the_rally_baseline() -> void:
 	var rec := _make_rec(Vector2.ZERO)
 	rec.morale = 0.0
@@ -427,11 +451,14 @@ func test_advance_clamps_at_the_target_without_overshooting() -> void:
 
 func test_advance_on_the_spot_changes_nothing() -> void:
 	var rec := _make_rec(Vector2(5.0, 5.0), Vector2.DOWN)
+	rec.stamina = 50.0
 	FarTierRules.advance(rec, Vector2(5.0, 5.0), 1.0)
 	assert_almost_eq(rec.position.x, 5.0, 0.0001)
 	assert_almost_eq(rec.position.y, 5.0, 0.0001)
 	assert_eq(rec.facing.x, Vector2.DOWN.x)
 	assert_eq(rec.facing.y, Vector2.DOWN.y)
+	assert_gt(rec.stamina, 50.0, "a formation at its target recovers rather than holding flat")
+	assert_almost_eq(rec.stamina, 50.0 + SoldierCombat.RHO_STAMINA, 0.0001)
 
 
 func test_effective_speed_is_capped_by_the_stance() -> void:
@@ -766,3 +793,46 @@ func test_far_tier_expectation_matches_the_close_tier_strike_distribution() -> v
 	var close_mean := float(killed_total) / float(strikes)
 	assert_almost_eq(close_mean, far_expectation, far_expectation * 0.15,
 		"the far-tier expectation sits within 15%% of the sampled close-tier mean")
+
+
+# --- stamina through tick_pair -------------------------------------------------------------
+
+func test_tick_pair_charges_a_jogging_approach_once_with_no_rest_regen_on_top() -> void:
+	# advance pays the gait's flow; the morale-only recovery that follows must not add the
+	# rest band as well, or a jog nets the men a GAIN (rest regen minus jog drain).
+	var a := _make_rec(Vector2.ZERO, Vector2.DOWN)
+	var b := _make_rec(Vector2(0.0, 5000.0), Vector2.UP)   # far out of reach
+	a.gait = Unit.GAIT_JOG
+	a.stamina = 50.0
+	a.morale = 50.0
+	b.stamina = 50.0
+	FarTierRules.tick_pair(a, b, 1.0)
+	assert_almost_eq(a.stamina, 50.0 - SoldierCombat.KAPPA_JOG, 0.0001,
+		"a jogging approach pays exactly the jog drain per second")
+	assert_almost_eq(b.stamina, 50.0 + SoldierCombat.RHO_STAMINA_WALK, 0.0001,
+		"a walking approach is neutral")
+	assert_almost_eq(a.morale, 50.0 + Unit.MORALE_RECOVER_PER_SEC, 0.0001,
+		"the advancing side still recovers morale")
+
+
+func test_tick_pair_applies_non_zero_walk_flow_to_advancing_side() -> void:
+	var a := _make_rec(Vector2.ZERO, Vector2.DOWN)
+	var b := _make_rec(Vector2(0.0, 5000.0), Vector2.UP)   # far out of reach
+	b.stamina = 50.0
+	b.stamina_walk_regen_per_s = 2.0
+	FarTierRules.tick_pair(a, b, 1.0)
+	assert_almost_eq(b.stamina, 52.0, 0.0001,
+		"a non-zero walk regen rate is applied to the walking advancing side")
+
+
+func test_tick_pair_rests_the_pool_of_a_side_fighting_where_it_stands() -> void:
+	var pair := _frontal_pair()
+	pair[0].stamina = 50.0
+	pair[1].stamina = 50.0
+	pair[0].stamina_rest_regen_per_s = 7.0
+	pair[0].stamina_walk_regen_per_s = 3.0
+	pair[0].stamina_jog_drain_per_s = 4.0
+	FarTierRules.tick_pair(pair[0], pair[1], 1.0)
+	assert_almost_eq(pair[0].stamina, 57.0, 0.0001,
+		"a side in reach stands, so its pool rests like a stationary regiment's bodies")
+	assert_almost_eq(pair[1].stamina, 50.0 + SoldierCombat.RHO_STAMINA, 0.0001)

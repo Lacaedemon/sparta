@@ -490,7 +490,14 @@ const COND_STAMINA_FLOOR: float = 0.4   # g(0): a spent soldier fights at 40% ef
 const KAPPA_A: float = 2.0              # stamina drained per strike thrown
 const KAPPA_D: float = 1.5             # base stamina drained per blow met (scaled by phi*(1+c))
 const KAPPA_P: float = 10.0            # stamina cost of rising from prone
-const RHO_STAMINA: float = 6.0         # stamina restored per second (flat; posture table deferred)
+# The posture table's stamina column (docs/combat-model.md "Posture"), per second of
+# simulated time, keyed off the regiment's live pace by StaminaFlow: rest regenerates,
+# a walk is neutral, a jog drains slowly, a sprint fast. These are the DEFAULTS behind
+# Unit.stamina_rest_regen_per_s and siblings; the sim reads the unit's own fields.
+const RHO_STAMINA: float = 6.0         # stamina restored per second at rest
+const RHO_STAMINA_WALK: float = 0.0    # a walk neither restores nor drains
+const KAPPA_JOG: float = 1.0           # stamina drained per second at a jog (a slow drain)
+const KAPPA_SPRINT: float = 5.0        # stamina drained per second at a sprint (a fast drain)
 
 
 ## The fatigue factor g(sigma) in [COND_STAMINA_FLOOR, 1]: a spent soldier fights worse

@@ -23,10 +23,11 @@ bracing is graded and takes time to set, not an instant switch -- order **Brace*
 still before the charge lands, or a moving/merely-engaged line gets only partial credit),
 and **stamina and exhaustion** (every strike thrown and every blow met drains stamina;
 a soldier under sustained pressure tires, their defence collapses, and then blows land
-freely -- surround and exhaust is real, not a modifier).
-**Coming:** the full posture/stance system (distinct named gaits -- *at ease*, *advancing*,
-*jogging*, *sprinting* -- each with its own stamina-regen rate, rather than a continuous
-speed-scaled penalty) and the rearward domino cascade (a blow that punches through the front
+freely -- surround and exhaust is real, not a modifier;
+live speed-band stamina flow regenerates at rest, stays neutral at a walk, and drains at a jog or sprint).
+**Coming:** the full discrete posture state machine
+(named stance states rather than continuous speed-band stamina flow)
+and the rearward domino cascade (a blow that punches through the front
 rank topples men rearward until the impulse is spent). The sections below describe the whole
 model; where a piece isn't live yet, it soon will be.
 :::
@@ -119,7 +120,11 @@ Armour is the only thing that protects a man hit from behind.
 
 **3. Everyone tires.** Stamina is spent by **attacking**, by **defending** (every
 blow you meet costs you --- a charge costs more), and by **getting up** after being
-knocked down. It refills only while resting. So a soldier under sustained pressure,
+knocked down. Movement follows the regiment's live pace:
+resting restores stamina,
+a walk is neutral,
+and a jog or sprint drains it.
+So a soldier under sustained pressure,
 or surrounded, burns through stamina, their defence collapses, and then blows land
 freely. Fatigue, not a hidden timer, is what breaks a line.
 

@@ -62,6 +62,8 @@ static func full_tick_hash(tree: SceneTree, rng_state: int) -> String:
 			ctx.update((u._sim_soldier_hp as PackedFloat32Array).to_byte_array())
 			ctx.update((u._sim_prone as PackedFloat32Array).to_byte_array())
 			ctx.update((u._sim_soldier_stamina as PackedFloat32Array).to_byte_array())
+		else:
+			ctx.update(_float_bytes([u.far_stamina]))
 	ctx.update(_int_bytes([rng_state]))
 	return ctx.finish().hex_encode()
 

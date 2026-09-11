@@ -82,6 +82,23 @@ var uid: int = -1
 # never get a loadout.
 @export var walk_speed: float = 45.0
 @export var jog_speed: float = 67.5
+# Per-gait stamina flow (StaminaFlow; docs/combat-model.md "Posture"): what every soldier's
+# stamina does per second while the regiment rests, walks, jogs, or sprints -- the
+# posture table's stamina column, read off the live pace (stamina_band). Points per
+# SECOND of simulated time, so no metres-to-world-units conversion applies. Rest keeps
+# the flat regen the pool always had (SoldierCombat.RHO_STAMINA); a walk is neutral; a
+# jog drains slowly and a sprint fast, which is what finally prices a run: the AUTO
+# ladder's terminal charge, or a multi-click Sprint order, arrives with a tired line.
+# Independent per unit (Battle sets them from the loadout's optional
+# stamina_*_per_s keys) so a hardier type, or a test, can retune any one of them.
+@export var stamina_rest_regen_per_s: float = SoldierCombat.RHO_STAMINA
+@export var stamina_walk_regen_per_s: float = SoldierCombat.RHO_STAMINA_WALK
+@export var stamina_jog_drain_per_s: float = SoldierCombat.KAPPA_JOG
+@export var stamina_sprint_drain_per_s: float = SoldierCombat.KAPPA_SPRINT
+## Max stamina per soldier from this regiment's combat profile. Cached as a
+## scalar so hot far-tier movement and combat paths allocate nothing per tick.
+var max_stamina: float = 100.0
+var _cached_combat_profile: Dictionary = {}
 # Backward-walk speed factor: a soldier repositioning BACKWARD relative to his own
 # facing (a common motion during a maneuver -- conversio, quarter-turn, frontage
 # reshape -- where the rear ranks back up into new slots) is capped slower than one
@@ -145,11 +162,28 @@ var shield_type_id: int = LoadoutRegistry.SHIELD_SCUTUM
 # and contact mass through them. Defaults are the same infantry baseline as the
 # weapon/shield ids above (mail on foot), so a bare test unit's profile stays
 # bit-identical to the pre-registry infantry row.
-var armor_type_id: int = LoadoutRegistry.ARMOR_HAMATA
-var mount_type_id: int = LoadoutRegistry.MOUNT_NONE
-@export var is_cavalry: bool = false
-@export var anti_cavalry: bool = false   # spearmen: blunt cavalry charges
-@export var is_ranged: bool = false   # archers: loose volleys from a distance
+var armor_type_id: int = LoadoutRegistry.ARMOR_HAMATA:
+	set(v):
+		armor_type_id = v
+		update_combat_profile()
+var mount_type_id: int = LoadoutRegistry.MOUNT_NONE:
+	set(v):
+		mount_type_id = v
+		update_combat_profile()
+@export var is_cavalry: bool = false:
+	set(v):
+		is_cavalry = v
+		update_combat_profile()
+# Spearmen: blunt cavalry charges.
+@export var anti_cavalry: bool = false:
+	set(v):
+		anti_cavalry = v
+		update_combat_profile()
+# Archers: loose volleys from a distance.
+@export var is_ranged: bool = false:
+	set(v):
+		is_ranged = v
+		update_combat_profile()
 # Seconds before the unit starts executing a new order. Models the real-world
 # lag between a signal and the regiment actually stepping off. Default 0.5 s;
 # faster units (cavalry) can be given a lower value at spawn time.
@@ -168,6 +202,7 @@ var mount_type_id: int = LoadoutRegistry.MOUNT_NONE
 @export var training: float = 0.0:
 	set(v):
 		training = clampf(v, 0.0, 1.0)
+		update_combat_profile()
 # Whether the unit executes march orders as a formed body -- centre-pivoting gradually
 # onto its new heading before advancing (see _move_to's pivot_as_formation) -- or
 # individually, turning to face the destination immediately and walking there directly
@@ -182,6 +217,12 @@ var mount_type_id: int = LoadoutRegistry.MOUNT_NONE
 var soldiers: int
 var morale: float = 100.0
 var fatigue: float = 0.0   # 0 fresh .. 100 exhausted; rotated out by relief
+# The far tier's aggregate stamina: the one scalar the per-soldier pool collapses to on
+# demotion (TierTransition.demote takes the mean) and that promotion re-seeds every body
+# from, so a far-tier jog approach costs the same per-gait flow (_tick_far_stamina) a
+# close-tier one does instead of arriving rested. Negative means "never demoted", and a
+# promotion then reads full stamina, matching a unit that spawned close-tier.
+var far_stamina: float = -1.0
 var cohesion: float = 1.0   # 1.0 gelled; drops on a merge, then ramps back
 var state: int = State.IDLE
 var facing: Vector2 = Vector2.DOWN
@@ -1041,6 +1082,9 @@ const PIN_DOWN_ATTACK_INTERVAL: float = 1.2
 const PIN_DOWN_EXPOSURE_DURATION: float = 0.3
 const PIN_DOWN_DEFENSE_FACTOR: float = 0.7
 const ROUT_TIME: float = 6.0
+## Speed multiplier on move_speed while routing: fleeing soldiers run slightly faster
+## than their normal sprint pace.
+const FLEE_SPEED_MULTIPLIER: float = 1.3
 # Live rout-timer duration -- a caller-configurable parameter (CLAUDE.md's code
 # conventions) defaulting to ROUT_TIME above. Settable BEFORE the node enters the
 # tree, the same set-before-_ready contract Battle.gd's ai_period/camera_smoothing
@@ -1341,6 +1385,10 @@ var _separation_velocity: Vector2 = Vector2.ZERO
 # _cycle_charge_tick — set on the contact strike, cleared once the unit has opened
 # to CYCLE_CHARGE_STANDOFF. Meaningful only while order_mode == ORDER_CYCLE_CHARGE.
 var _cycle_recharging: bool = false
+# Transient intra-tick flag:
+# true when the unit moved at flee speed during _process_rout,
+# so stamina_band can bill the flight at sprint pace even if _rally transitioned to IDLE.
+var _moved_while_routing: bool = false
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -1432,7 +1480,13 @@ var _figure_faces_left: bool = false        # which mirror is on the MultiMeshes
 # cached across all units); this node just holds the per-unit mesh handles below.
 
 
+func _init() -> void:
+	update_combat_profile()
+
+
 func _ready() -> void:
+	if _cached_combat_profile.is_empty():
+		update_combat_profile()
 	soldiers = max_soldiers
 	team_color = Color("4a7fd6") if team == 0 else Color("d65a4a")
 	if sight_range <= 0.0:
@@ -1452,6 +1506,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
+	_moved_while_routing = false
 
 	# Before the rout branch below returns, so a routing tick records ROUTING as the
 	# previous-tick reading and the rally that _process_rout performs is seen on the next
@@ -1461,6 +1516,7 @@ func _physics_process(delta: float) -> void:
 		_process_rout(delta)
 		if state != State.DEAD:   # timer expired: rallied (IDLE) or shattered (DEAD -> freed)
 			_separate(delta)   # routers still shoulder past anyone in their path
+			_tick_far_stamina(delta)
 		return
 
 	_attack_cd = max(0.0, _attack_cd - delta)
@@ -1580,6 +1636,8 @@ func _physics_process(delta: float) -> void:
 			position += travel_dir * (_current_speed * terrain_speed * delta)
 			position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
 			position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
+
+	_tick_far_stamina(delta)
 
 	# The parallel soldier-body layer (seeding + the global engaged-soldier
 	# separation) is orchestrated once per tick by Battle, AFTER every unit has
@@ -4463,8 +4521,10 @@ var _strike_easing_active: bool = false
 # Per-soldier stamina pool (slice D), index-aligned with _sim_soldier_pos: current stamina
 # in [0, max_stamina] where max_stamina is the per-type value from combat_profile(). Drained
 # by every strike thrown (KAPPA_A), by every blow met (KAPPA_D*phi*(1+c)), and by rising from
-# prone (KAPPA_P); restored at RHO_STAMINA per second in SoldierBodies.step. Low stamina
-# reduces both offence and active defence through SoldierCombat.stamina_factor (g(sigma)).
+# prone (KAPPA_P); and by the regiment's pace (a jog drains slowly, a sprint fast --
+# stamina_flow_per_s), which is also what restores it at rest (stamina_rest_regen_per_s
+# per second in SoldierBodies.step). Low stamina reduces both offence and active
+# defence through SoldierCombat.stamina_factor (g(sigma)).
 var _sim_soldier_stamina: PackedFloat32Array = PackedFloat32Array()
 
 # Per-soldier "broken from the shield-lock" flag (1 = broken, 0 = holding), index-aligned
@@ -6832,13 +6892,84 @@ static func couple_all_sim_soldiers(units: Array, delta: float) -> void:
 # the wound, the charge term, the facing gate, the per-type profile). Unit just
 # exposes its own profile, reading its type flags and training.
 
+## Recompute and cache the per-soldier combat profile and max_stamina scalar from
+## this regiment's type flags, training, and panoply.
+func update_combat_profile() -> void:
+	_cached_combat_profile = SoldierCombat.profile_for(
+			is_cavalry, anti_cavalry, is_ranged, training,
+			armor_type_id, mount_type_id)
+	max_stamina = _cached_combat_profile["max_stamina"]
+
+
 ## This regiment's per-soldier combat profile, from its own type flags, training,
 ## and typed panoply (armour protection and mount mass resolve through the interned
-## armor/mount ids). See SoldierCombat.profile_for / docs/combat-model.md
-## "Soldier attributes".
+## armor/mount ids). Cached so callers pay no Dictionary allocation per call.
+## See SoldierCombat.profile_for / docs/combat-model.md "Soldier attributes".
 func combat_profile() -> Dictionary:
-	return SoldierCombat.profile_for(is_cavalry, anti_cavalry, is_ranged, training,
-			armor_type_id, mount_type_id)
+	if _cached_combat_profile.is_empty():
+		update_combat_profile()
+	return _cached_combat_profile
+
+
+## Flee pace while routing (move_speed * FLEE_SPEED_MULTIPLIER), shared by the movement
+## step (_process_rout) and the stamina pace classification (stamina_band).
+func flee_speed() -> float:
+	return move_speed * FLEE_SPEED_MULTIPLIER
+
+
+## The stamina band this regiment's live pace puts its soldiers in (StaminaFlow.BAND_REST
+## or GAIT_WALK/GAIT_JOG/GAIT_SPRINT): read off _current_speed against this unit's own
+## walk, jog, and sprint paces, the same continuous-speed reading bracing uses rather than
+## a named posture. ARRIVE_SPEED_EPSILON is the rest threshold, so a unit the arrival check
+## already treats as stopped is resting here too.
+func stamina_band() -> int:
+	if state == State.FIGHTING:
+		return StaminaFlow.BAND_REST
+	if state == State.ROUTING or _moved_while_routing:
+		return StaminaFlow.band_for_speed(flee_speed(), walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
+	return StaminaFlow.band_for_speed(_current_speed, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
+
+
+## Signed stamina change per second every soldier of this regiment sees from its pace
+## alone (positive regenerates, negative drains), before melee's own per-strike costs.
+func stamina_flow_per_s() -> float:
+	return StaminaFlow.flow_per_s(stamina_band(), stamina_rest_regen_per_s,
+			stamina_walk_regen_per_s, stamina_jog_drain_per_s, stamina_sprint_drain_per_s)
+
+
+## Mean of the living per-soldier stamina pool (hp > 0); the type's full pool when there are no
+## bodies (a far-tier unit, or one not yet seeded) or no living soldiers, so a reader never
+## sees a spurious zero.
+func mean_soldier_stamina() -> float:
+	if tier == FormationTier.FAR:
+		return far_stamina if far_stamina >= 0.0 else max_stamina
+	if _sim_soldier_stamina.is_empty():
+		return max_stamina
+	if _sim_soldier_hp.is_empty():
+		var sum_all: float = 0.0
+		for s in _sim_soldier_stamina:
+			sum_all += s
+		return sum_all / _sim_soldier_stamina.size()
+	var sum: float = 0.0
+	var count: int = 0
+	var n: int = mini(_sim_soldier_stamina.size(), _sim_soldier_hp.size())
+	for i in range(n):
+		if _sim_soldier_hp[i] > 0.0:
+			sum += _sim_soldier_stamina[i]
+			count += 1
+	if count == 0:
+		return max_stamina
+	return sum / count
+
+
+## Apply the per-gait flow to the far tier's aggregate pool. The close tier applies the
+## same flow per body in SoldierBodies.step, which a far-tier regiment skips (it has no
+## bodies), so without this a far-tier jog approach would be free.
+func _tick_far_stamina(delta: float) -> void:
+	if tier != FormationTier.FAR:
+		return
+	var pool: float = far_stamina if far_stamina >= 0.0 else max_stamina
+	far_stamina = StaminaFlow.apply(pool, stamina_flow_per_s(), delta, max_stamina)
 
 
 ## The lethality of the weapon soldier `i` carries: the per-soldier weapon id
@@ -7426,12 +7557,13 @@ func _process_rout(delta: float) -> void:
 	var to: Vector2 = step - position
 	var dir: Vector2 = to.normalized()
 	_face_dir(dir)
-	var next: Vector2 = position + dir * (move_speed * 1.3) * delta
+	var next: Vector2 = position + dir * flee_speed() * delta
 	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
 			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
 		_escape()
 		return
 	position = next
+	_moved_while_routing = true
 
 	# A SHATTERED unit has lost its nerve for good: it just keeps fleeing (the movement
 	# above already ran), with no morale recovery and no rally check ever again. The only
@@ -8244,6 +8376,10 @@ func to_snapshot_dict() -> Dictionary:
 		"anti_cavalry": anti_cavalry, "is_cavalry": is_cavalry, "is_ranged": is_ranged,
 		"max_soldiers": max_soldiers, "attack": attack, "defense": defense,
 		"move_speed": move_speed, "walk_speed": walk_speed, "jog_speed": jog_speed,
+		"stamina_rest_regen_per_s": stamina_rest_regen_per_s,
+		"stamina_walk_regen_per_s": stamina_walk_regen_per_s,
+		"stamina_jog_drain_per_s": stamina_jog_drain_per_s,
+		"stamina_sprint_drain_per_s": stamina_sprint_drain_per_s,
 		"back_speed_fraction": back_speed_fraction,
 		"superphysical_speed_frac": superphysical_speed_frac,
 		"accel": accel, "decel": decel,
@@ -8283,7 +8419,7 @@ func to_snapshot_dict() -> Dictionary:
 		"order_mode": order_mode, "knockback_push_indefinite": knockback_push_indefinite,
 		"formation_mode": formation_mode, "rank_relief": rank_relief,
 		"player_group_id": player_group_id, "subcommander_rank_title": subcommander_rank_title,
-		"engage_reshape_mode": engage_reshape_mode, "tier": tier,
+		"engage_reshape_mode": engage_reshape_mode, "tier": tier, "far_stamina": far_stamina,
 		"frontage_override": frontage_override,
 		"frontage_anchor_offset": frontage_anchor_offset,
 		"last_reshape_tick": _last_reshape_tick,
@@ -8371,6 +8507,14 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	move_speed = float(d["move_speed"])
 	walk_speed = float(d["walk_speed"])
 	jog_speed = float(d["jog_speed"])
+	stamina_rest_regen_per_s = float(
+			d.get("stamina_rest_regen_per_s", SoldierCombat.RHO_STAMINA))
+	stamina_walk_regen_per_s = float(
+			d.get("stamina_walk_regen_per_s", SoldierCombat.RHO_STAMINA_WALK))
+	stamina_jog_drain_per_s = float(
+			d.get("stamina_jog_drain_per_s", SoldierCombat.KAPPA_JOG))
+	stamina_sprint_drain_per_s = float(
+			d.get("stamina_sprint_drain_per_s", SoldierCombat.KAPPA_SPRINT))
 	back_speed_fraction = float(d["back_speed_fraction"])
 	# Defaulted rather than required: a snapshot written before this field existed still
 	# applies, falling back to the same shared constant the @export default uses.
@@ -8432,6 +8576,9 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	subcommander_rank_title = String(d["subcommander_rank_title"])
 	engage_reshape_mode = int(d["engage_reshape_mode"])
 	tier = int(d["tier"])
+	# Absent from snapshots written before the far tier carried stamina: read as "never
+	# demoted", the same value a fresh unit starts with.
+	far_stamina = float(d.get("far_stamina", -1.0))
 	frontage_override = int(d["frontage_override"])
 	frontage_anchor_offset = float(d["frontage_anchor_offset"])
 	_last_reshape_tick = int(d["last_reshape_tick"])
@@ -8503,4 +8650,5 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 			(d.get("sim_soldier_row_slot", PackedInt32Array()) as PackedInt32Array).duplicate()
 	_sim_soldier_broken = (d.get("sim_soldier_broken",
 			PackedByteArray()) as PackedByteArray).duplicate()
+	update_combat_profile()
 
