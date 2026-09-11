@@ -531,6 +531,14 @@ func test_advance_zero_effective_speed_guards_division() -> void:
 	assert_gt(rec.stamina, 50.0, "rest recovery applies when stationary with zero speed")
 
 
+func test_advance_already_at_target_recovers_stamina() -> void:
+	var rec := _rec(Unit.GAIT_JOG)
+	rec.stamina = 50.0
+	FarTierRules.advance(rec, Vector2.ZERO, 1.0)
+	assert_almost_eq(rec.position.x, 0.0, TOL, "no movement when already at target")
+	assert_gt(rec.stamina, 50.0, "rest recovery applies when already at target")
+
+
 func test_unit_flee_speed_shares_flee_multiplier() -> void:
 	var u := _make_unit()
 	u.move_speed = 100.0

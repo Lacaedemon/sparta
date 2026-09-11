@@ -408,6 +408,7 @@ static func advance(rec: FarTierFormation, target: Vector2, delta: float) -> voi
 	var to_target: Vector2 = target - rec.position
 	var dist: float = to_target.length()
 	if dist < 0.001:
+		tick_stamina(rec, false, delta)
 		return
 	var dir: Vector2 = to_target / dist
 	var speed: float = effective_speed(rec)

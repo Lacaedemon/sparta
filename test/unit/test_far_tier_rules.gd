@@ -451,11 +451,14 @@ func test_advance_clamps_at_the_target_without_overshooting() -> void:
 
 func test_advance_on_the_spot_changes_nothing() -> void:
 	var rec := _make_rec(Vector2(5.0, 5.0), Vector2.DOWN)
+	rec.stamina = 50.0
 	FarTierRules.advance(rec, Vector2(5.0, 5.0), 1.0)
 	assert_almost_eq(rec.position.x, 5.0, 0.0001)
 	assert_almost_eq(rec.position.y, 5.0, 0.0001)
 	assert_eq(rec.facing.x, Vector2.DOWN.x)
 	assert_eq(rec.facing.y, Vector2.DOWN.y)
+	assert_gt(rec.stamina, 50.0, "a formation at its target recovers rather than holding flat")
+	assert_almost_eq(rec.stamina, 50.0 + SoldierCombat.RHO_STAMINA, 0.0001)
 
 
 func test_effective_speed_is_capped_by_the_stance() -> void:
