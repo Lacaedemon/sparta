@@ -166,6 +166,9 @@ func test_guards_on_state_refuse_the_pair() -> void:
 	host.state = Unit.State.ROUTING
 	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "", "a routing host is refused")
 	host.state = Unit.State.IDLE
+	reserve.state = Unit.State.ROUTING
+	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "", "a routing reserve is refused")
+	reserve.state = Unit.State.IDLE
 	reserve.state = Unit.State.FIGHTING
 	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "", "an engaged reserve is refused")
 	reserve.state = Unit.State.IDLE
@@ -245,6 +248,36 @@ func test_a_mixed_selection_is_refused_whole() -> void:
 			"one refusal abandons the command whole: the allowed reserve arms nothing")
 	assert_eq(refused.current_order, refused_prior,
 			"and the refused reserve keeps its own order too")
+
+
+func test_a_selection_with_missing_uid_is_refused_whole() -> void:
+	Replay.forced_seed = 12345
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.drill_mode = true
+	_battle.scenario = [
+		{"team": 0, "type": "Infantry", "count": 40,
+			"x": HOST_POS.x, "y": HOST_POS.y},
+		{"team": 0, "type": "Infantry", "count": 40,
+			"x": RESERVE_POS.x, "y": RESERVE_POS.y},
+	]
+	add_child(_battle)
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var allowed: Unit = _unit_at(RESERVE_POS)
+	assert_eq(ReinforceGuard.refusal_reason(allowed, host), "",
+			"the like-armed pair would be allowed on its own")
+	var allowed_prior: Order = allowed.current_order
+	var missing_uid: int = 99999
+	_battle._apply_order_cmd({
+		"units": [missing_uid, allowed.uid],
+		"x": host.position.x, "y": host.position.y,
+		"target": host.uid,
+		"mode": BattleScript.OrderMode.NORMAL,
+		"reinforce": BattleScript.ReinforceAxis.FILES,
+	})
+	assert_eq(allowed.current_order, allowed_prior,
+			"a missing uid abandons the command whole; " \
+			+ "the valid reserve keeps its prior order")
 
 
 func test_a_refused_order_leaves_a_marching_reserve_untouched() -> void:
@@ -358,6 +391,10 @@ func test_the_unwired_ranks_axis_and_far_or_touching_reserves_are_refused() -> v
 	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "",
 			"a far-tier reserve has no bodies to file in with and is refused")
 	reserve.tier = FormationTier.CLOSE
+	host.tier = FormationTier.FAR
+	assert_ne(ReinforceGuard.refusal_reason(reserve, host), "",
+			"a far-tier host has no bodies to file in with and is refused")
+	host.tier = FormationTier.CLOSE
 	assert_eq(ReinforceGuard.refusal_reason(reserve, host), "", "restored, the pair is allowed")
 
 
@@ -655,4 +692,25 @@ func test_understrength_host_wide_frontage_override_bounds_files_and_preserves_i
 	host.formation_slots(host.soldiers)
 	assert_eq(host._file_assignment_files, 41, "file assignment files remains 41 after slot query")
 	assert_eq(host._sim_soldier_file.size(), 21, "every soldier has a file assignment")
+
+
+func test_commit_is_refused_when_per_soldier_array_is_short() -> void:
+	_spawn()
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	var initial_host_soldiers: int = host.soldiers
+	var initial_broken_size: int = host._sim_soldier_broken.size()
+	reserve._sim_soldier_broken.resize(reserve.soldiers - 1)
+	UnitReinforce.commit(reserve, host)
+	assert_eq(host.soldiers, initial_host_soldiers,
+			"commit is refused when reserve per-soldier array is out of sync")
+	assert_eq(host._sim_soldier_broken.size(), initial_broken_size,
+			"host per-soldier array is not appended with mismatched data")
+	reserve._sim_soldier_broken.resize(reserve.soldiers)
+	host._sim_soldier_broken.resize(host.soldiers - 1)
+	UnitReinforce.commit(reserve, host)
+	assert_eq(host.soldiers, initial_host_soldiers,
+			"commit is refused when host per-soldier array is out of sync")
+
 

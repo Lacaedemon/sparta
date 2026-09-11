@@ -2537,7 +2537,7 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 		for uid in cmd["units"]:
 			var reserve: Unit = _unit_by_uid(int(uid))
 			if reserve == null:
-				continue
+				return
 			if target_unit == null or target_unit == reserve \
 					or target_unit.team != reserve.team \
 					or ReinforceGuard.refusal_reason(reserve, target_unit, reinforce) != "":

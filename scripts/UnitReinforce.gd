@@ -56,6 +56,8 @@ static func update(reserve: Unit, heading_tolerance_rad: float = HEADING_TOLERAN
 ## reserve would otherwise push the front rank forward), hold the anchor for the arrival
 ## (or the centroid coupling would back the line up to the newcomers), and remove the reserve.
 static func commit(reserve: Unit, host: Unit) -> void:
+	if not _bodies_aligned(reserve) or not _bodies_aligned(host):
+		return
 	var files: int = UnitFormation.frontage(host)
 	host._ensure_file_assignment(host.soldiers, files)
 	# The old depth is the persistent rank array's (a rear survivor keeps a deeper file
@@ -82,7 +84,6 @@ static func _aim(reserve: Unit, host: Unit) -> void:
 	reserve.has_move_target = true
 	reserve.ordered_facing = host.facing
 
-
 ## Drop the pass-through link and stop the reserve where it stands -- no march, no enemy
 ## left over from a previous order for targeting to resume on -- so that with no link and
 ## no march in flight, Unit._update_current_order retires the REINFORCE order next tick.
@@ -92,7 +93,7 @@ static func _halt(reserve: Unit, order: Order) -> void:
 	reserve.ordered_facing = Vector2.ZERO
 	reserve.target_enemy = null
 
-
 ## Body layers match the count (a casualty leaves them one tick out of step until resized).
 static func _bodies_aligned(u: Unit) -> bool:
-	return u._sim_soldier_pos.size() == u.soldiers and u._sim_soldier_hp.size() == u.soldiers
+	return u._sim_soldier_pos.size() == u.soldiers and u._sim_body_vel.size() == u.soldiers and u._sim_steer.size() == u.soldiers and u._sim_soldier_hp.size() == u.soldiers and u._sim_prone.size() == u.soldiers and u._sim_soldier_stamina.size() == u.soldiers and u._sim_soldier_broken.size() == u.soldiers and u._sim_soldier_weapon_id.size() == u.soldiers and u._sim_soldier_shield_id.size() == u.soldiers and u._sim_soldier_shield_hold_angle.size() == u.soldiers and u._sim_soldier_facing.size() == u.soldiers
+
