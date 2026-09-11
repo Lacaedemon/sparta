@@ -35,3 +35,6 @@ For example, use the `SQRT_SKIP_BAND` (1.0001) as a safety factor on the thresho
 **Learning:** Jules re-pushes its regenerated diff onto its own PR branch after every review round, which discards commits another author (a human or another agent) has since pushed to that same branch -- this has happened five times (see #1262, #1529).
 **Action:** If a commit not authored by `google-labs-jules[bot]` already exists on this branch, do not push again to it.
 Stop, and let the other author's PR continue instead.
+## 2024-05-18 - Optimize vector length ratios
+**Learning:** In GDScript, a ratio of two vector lengths `a.length() / b.length()` incurs two expensive square root operations. This can be optimized to a single square root operation by computing `sqrt(a.length_squared() / b.length_squared())`, cutting the `sqrt` cost in half.
+**Action:** When computing the ratio of vector lengths in a hot loop, use the `length_squared()` on both vectors and apply a single `sqrt()` to the ratio.
