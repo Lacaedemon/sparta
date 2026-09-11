@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/reinforcement-insertion.json",
+  "caption": "Reinforcement insertion (doubling by number), files axis. A 40-man reserve behind a 40-man host is selected, Shift+M arms insertion by files, and a right-click on the host issues the order. The reserve marches up to a rendezvous just behind the host with its heading held, then its men file into the host's ranks: the host's own files spread apart and each reserve file steps into a gap, so the host goes from 9 files to 18 with its front rank holding its ground, and the reserve regiment is absorbed. The host pays the same strangers cohesion debuff a merge does. The transferred men re-key under the host's uid on the commit tick, which the state transcript shows as one deliberate discontinuity.",
+  "fixed_fps": 30,
+  "max_frames": 450,
+  "fps": 15,
+  "width": 640
+}

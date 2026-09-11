@@ -811,6 +811,14 @@ static func couple(unit: Unit, delta: float) -> void:
 	# always used to be. Also anchors a merely-in-contact (not fighting) regiment on its real
 	# front-rank bodies, not the whole-block centroid -- see Unit._in_enemy_contact.
 	var indices: PackedInt32Array = unit.position_anchor_indices(n)
+	# With no engaged front to anchor on, the drift is averaged over every body -- and while
+	# a reinforcement's newcomers are still walking in from behind, that average reads their
+	# approach as the whole regiment standing off its slots. Hold `position` for the arrival
+	# window instead (Unit._anchor_hold_until_tick); an engaged host anchors on its front
+	# ranks alone and never enters this branch.
+	if indices.is_empty() and unit.position_anchor_held():
+		unit._body_follow_vel = Vector2.ZERO
+		return
 	var body_centroid := Vector2.ZERO
 	var slot_centroid := Vector2.ZERO
 	var count: int = indices.size()

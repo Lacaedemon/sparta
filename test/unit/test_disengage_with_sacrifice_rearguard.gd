@@ -267,6 +267,27 @@ func test_pursuer_is_physically_blocked_by_the_rearguard_while_the_main_body_esc
 			"meanwhile the main body itself is no longer in that fight -- it got away")
 
 
+func test_rearguard_truncates_sim_soldier_broken_to_headcount() -> void:
+	var battle := _spawn([
+		{"team": 0, "type": "Infantry", "x": SPAWN.x, "y": SPAWN.y,
+			"count": 20, "facing": [0, 1]},
+	])
+	battle.drill_mode = true
+	while battle.current_tick() < 5:
+		await get_tree().physics_frame
+	var units := _units_by_uid(battle)
+	var main_body: Unit = units.values()[0]
+	main_body._sim_soldier_broken = PackedByteArray()
+	main_body._sim_soldier_broken.resize(20)
+	for i in range(20):
+		main_body._sim_soldier_broken[i] = i % 2
+	var rearguard: Unit = battle._spawn_rearguard_detachment(main_body, 5, 1.0)
+	assert_not_null(rearguard, "rearguard spawned")
+	assert_eq(rearguard.soldiers, 5, "rearguard has 5 soldiers")
+	assert_eq(rearguard._sim_soldier_broken.size(), 5,
+		"sim_soldier_broken is truncated to rearguard headcount")
+
+
 func test_rearguard_detachment_inherits_parent_missile_profile() -> void:
 	var battle := _spawn(_clash_scenario())
 	while battle.current_tick() < 5:

@@ -21,6 +21,12 @@ func test_state_name_unknown_int_is_visible_token() -> void:
 		"an out-of-range state surfaces as a greppable token, not a dropped field")
 
 
+func test_maneuver_name_pins_the_appended_members_to_their_enum_values() -> void:
+	assert_eq(DemoState.maneuver_name(Unit.Maneuver.COUNTERMARCH), "COUNTERMARCH")
+	assert_eq(DemoState.maneuver_name(Unit.Maneuver.REINFORCING), "REINFORCING",
+		"the demo's maneuver expectation reads this token, so enum drift must fail here")
+
+
 func test_formation_name_maps_each_member() -> void:
 	assert_eq(DemoState.formation_name(0), "NORMAL")
 	assert_eq(DemoState.formation_name(1), "TIGHT")
