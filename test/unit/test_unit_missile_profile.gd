@@ -173,6 +173,44 @@ func test_equidistant_routing_enemies_preserve_first_match_tie() -> void:
 		"equidistant routers retain first-match tie behavior")
 
 
+func test_exact_detection_boundary_discriminates_unprofiled_from_profiled_units() -> void:
+	# Unprofiled unit at exact detection range -- strict reach excludes candidate
+	var unprofiled := _unit(40, 0, Vector2.ZERO)
+	var det_range: float = unprofiled.detection_range
+	var boundary_enemy := _unit(41, 1, Vector2(0.0, det_range), Vector2.UP)
+	assert_null(UnitTargeting.nearest_enemy(unprofiled),
+		"unprofiled unit with enemy at exact detection boundary acquires nothing")
+
+	var unprofiled_router_tester := _unit(42, 0, Vector2.ZERO)
+	var r_det_range: float = unprofiled_router_tester.detection_range
+	var boundary_router := _unit(43, 1, Vector2(0.0, r_det_range), Vector2.UP)
+	boundary_router.state = Unit.State.ROUTING
+	boundary_router.add_to_group("routers")
+	assert_null(UnitTargeting.nearest_routing_enemy(unprofiled_router_tester),
+		"unprofiled unit with routing enemy at exact detection boundary acquires nothing")
+
+	# Profiled unit at exact missile range -- inclusive reach acquires candidate
+	var p_base := Vector2(1000.0, 0.0)
+	var profiled := _unit(44, 0, p_base)
+	assert_true(profiled.equip_missile(LoadoutRegistry.MISSILE_PILUM), "pilum equipped")
+	var p_enemy_range: float = profiled.missile_range
+	var p_pos := p_base + Vector2(0.0, p_enemy_range)
+	var profiled_enemy := _unit(45, 1, p_pos, Vector2.UP)
+	assert_eq(UnitTargeting.nearest_enemy(profiled), profiled_enemy,
+		"profiled unit with enemy at exact profile range acquires target")
+
+	var pr_base := Vector2(2000.0, 0.0)
+	var profiled_router_tester := _unit(46, 0, pr_base)
+	assert_true(profiled_router_tester.equip_missile(LoadoutRegistry.MISSILE_PILUM), "pilum equipped")
+	var p_range: float = profiled_router_tester.missile_range
+	var pr_pos := pr_base + Vector2(0.0, p_range)
+	var profiled_router := _unit(47, 1, pr_pos, Vector2.UP)
+	profiled_router.state = Unit.State.ROUTING
+	profiled_router.add_to_group("routers")
+	assert_eq(UnitTargeting.nearest_routing_enemy(profiled_router_tester), profiled_router,
+		"profiled unit with routing enemy at exact profile range acquires router")
+
+
 func test_firing_cadence_distinguishes_pilum_two_second_interval_from_bow_one_second() -> void:
 	Replay.rng.seed = SEED
 	var target_pilum := _unit(30, 1, Vector2(0.0, 100.0), Vector2.UP, 60)

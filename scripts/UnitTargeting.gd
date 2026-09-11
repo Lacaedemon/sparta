@@ -28,7 +28,9 @@ static func current_target(u: Unit) -> Unit:
 ## detection_range (a caller-configurable field, default Unit.DETECTION_RANGE).
 ## Includes routing enemies --- see nearest_enemy_to's include_routing.
 static func nearest_enemy(u: Unit) -> Unit:
-	return nearest_enemy_to(u, u.position, u.detection_range, true)
+	var inclusive: bool = \
+		u != null and u.carries_non_default_missile_profile()
+	return nearest_enemy_to(u, u.position, u.detection_range, true, inclusive)
 
 
 ## Nearest routing enemy for SWEEP_ROUTERS stance: the closest routing (broken/shattered)
@@ -41,6 +43,8 @@ static func nearest_enemy(u: Unit) -> Unit:
 static func nearest_routing_enemy(u: Unit) -> Unit:
 	var best_router: Unit = null
 	var best_router_d_sq: float = u.detection_range * u.detection_range
+	var inclusive: bool = \
+		u != null and u.carries_non_default_missile_profile()
 
 	for o in u.get_tree().get_nodes_in_group("routers"):
 		var other: Unit = o as Unit
@@ -51,7 +55,7 @@ static func nearest_routing_enemy(u: Unit) -> Unit:
 
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		var d_sq: float = u.position.distance_squared_to(other.position)
-		if d_sq < best_router_d_sq or (best_router == null and d_sq <= best_router_d_sq):
+		if d_sq < best_router_d_sq or (inclusive and best_router == null and d_sq <= best_router_d_sq):
 			best_router_d_sq = d_sq
 			best_router = other
 
@@ -85,8 +89,12 @@ static func roll_the_line_target(u: Unit) -> Unit:
 ## regiment can still be run down, relentlessly if the pursuer can keep pace); the rally
 ## contact-check (Unit._can_rally) wants them excluded --- a routing enemy passing nearby
 ## shouldn't itself count as "still in contact" blocking this unit's own rally.
+##
+## `inclusive` (default false) allows candidates sitting at exact boundary radius to
+## be acquired, scoped to non-default missile profile auto-acquisition.
 static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
-		include_routing: bool = false) -> Unit:
+		include_routing: bool = false,
+		inclusive: bool = false) -> Unit:
 	var best: Unit = null
 	var best_d_sq: float = radius * radius
 	var groups: Array = ["units", "routers"] if include_routing else ["units"]
@@ -99,7 +107,7 @@ static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 				continue
 			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 			var d_sq: float = center.distance_squared_to(other.position)
-			if d_sq < best_d_sq or (best == null and d_sq <= best_d_sq):
+			if d_sq < best_d_sq or (inclusive and best == null and d_sq <= best_d_sq):
 				best_d_sq = d_sq
 				best = other
 	return best

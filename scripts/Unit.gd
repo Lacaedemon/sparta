@@ -2245,6 +2245,11 @@ func missile_accuracy(dist_wu: float) -> float:
 	return MissileProfile.accuracy_at(dist_wu, missile_range, missile_accuracy_at_max)
 
 
+## Whether this unit carries a non-default missile profile.
+func carries_non_default_missile_profile() -> bool:
+	return missile_type_id != LoadoutRegistry.MISSILE_BOW
+
+
 ## Returns false, changing nothing, for any id can_equip_weapon rejects -- a malformed
 ## order can't strand the regiment holding a type nothing resolves, and a selection-wide
 ## id can't force a regiment onto a weapon its own soldiers never carried.
