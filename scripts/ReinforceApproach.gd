@@ -5,10 +5,12 @@ class_name ReinforceApproach
 ## block (nonzero formation angle) or one still settling onto its slots measures as it
 ## stands. Pure and static; no scene tree.
 
-## Arrival slack along the host's facing, in host rank pitches: the commit fires once the
-## reserve's front edge is within the one-pitch rendezvous gap plus this many pitches of
-## the host's rear edge. The default is the one pitch a decelerating arrival can stop short.
-const ARRIVAL_SLACK_PITCHES: float = 1.0
+## Arrival slack along the host's facing, in host rank pitches:
+## the commit fires once the reserve's front edge is within the one-pitch
+## rendezvous gap plus this many pitches of the host's rear edge.
+## The default is zero.
+## The reserve must reach the one-pitch rendezvous gap.
+const ARRIVAL_SLACK_PITCHES: float = 0.0
 ## How far past the host's rear edge the reserve's front edge may press (bodies touching
 ## the rear rank) before the arrival counts as an overshoot and the commit waits.
 const OVERSHOOT_TOLERANCE_PITCHES: float = 0.25
@@ -54,7 +56,8 @@ static func rendezvous_point(host: Unit, reserve: Unit) -> Vector2:
 	var gap: float = -extent_along(host, dir).x + extent_along(reserve, dir).y + host.rank_pitch_wu()
 	var centre_delta: Vector2 = \
 			host.block_centre_offset() - reserve.block_centre_offset()
-	return host.position + centre_delta - dir * gap
+	var lateral_delta: Vector2 = centre_delta - dir * centre_delta.dot(dir)
+	return host.position + lateral_delta - dir * gap
 
 
 ## True once the reserve stands at the rendezvous: its front edge behind the host's rear

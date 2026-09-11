@@ -432,6 +432,11 @@ func test_commit_waits_for_the_longitudinal_gap_and_lateral_alignment() -> void:
 	UnitReinforce.update(reserve)
 	assert_eq(host.soldiers, 40, "and does not commit either")
 
+	_teleport(reserve, target - host.facing * pitch)   # two pitches behind the host
+	assert_false(ReinforceApproach.at_rendezvous(reserve, host), "a two-pitch gap is not arrival")
+	UnitReinforce.update(reserve)
+	assert_eq(host.soldiers, 40, "and does not commit short of the rendezvous")
+
 	_teleport(reserve, target)
 	assert_true(ReinforceApproach.at_rendezvous(reserve, host), "standing at the rendezvous is")
 	UnitReinforce.update(reserve)
@@ -471,6 +476,41 @@ func test_rendezvous_and_arrival_respect_frontage_anchor_offset() -> void:
 	assert_almost_eq(both_anchored_target.x, unanchored_target.x, 0.001, "equal offsets cancel")
 	_teleport(reserve, both_anchored_target)
 	assert_true(ReinforceApproach.at_rendezvous(reserve, host), "equally shifted blocks align")
+
+
+func test_rendezvous_depth_is_invariant_to_longitudinal_centre_offset() -> void:
+	_spawn()
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	var pitch: float = host.rank_pitch_wu()
+	reserve.facing = host.facing
+	var unanchored_target: Vector2 = \
+			ReinforceApproach.rendezvous_point(host, reserve)
+
+	# Nonzero depth offset on reserve via folded formation angle with anchor:
+	# reserve block centre swings onto depth axis, while host shifts sideways.
+	host.frontage_anchor_offset = 4.0 * pitch
+	reserve.frontage_anchor_offset = 3.0 * pitch
+	reserve._formation_angle = PI * 0.5
+	var target: Vector2 = \
+			ReinforceApproach.rendezvous_point(host, reserve)
+	var centre_delta: Vector2 = \
+			host.block_centre_offset() - reserve.block_centre_offset()
+	var dir: Vector2 = ReinforceApproach.depth_axis(host)
+
+	assert_gt(absf(centre_delta.dot(dir)), 0.001,
+			"the centre delta has a nonzero depth component")
+	assert_gt(absf(centre_delta.dot(dir.orthogonal())), 0.001,
+			"the centre delta has a nonzero lateral component")
+	assert_almost_eq(target.dot(dir), unanchored_target.dot(dir), 0.001,
+			"rendezvous depth is unchanged by the longitudinal centre offset")
+	assert_almost_eq((target - unanchored_target).dot(dir.orthogonal()),
+			centre_delta.dot(dir.orthogonal()), 0.001,
+			"lateral offset still shifts the point sideways")
+	_teleport(reserve, target)
+	assert_true(ReinforceApproach.at_rendezvous(reserve, host),
+			"block-aligned reserve at rendezvous arrives despite depth offset")
 
 
 
