@@ -286,8 +286,10 @@ The manifest `demos/demo.1555.json` points at this recording with `max_frames: 4
   the demo-diff and hash tooling read that as a change at one tick, which is correct.
 
 - **Gesture.**
-  `Shift+M` and `Ctrl+Shift+M` are unbound today: `M` merges, and the `Shift` and `Ctrl` chords `SelectionManager`'s key handler binds sit on `I`, `V`, `T`, `O`, `B`, `X`, `Y`, `Down`, and the control-group digits.
-  Confirm against `KeybindingsDialog` when wiring.
+  `Shift+M` is now wired in `SelectionManager`'s key handler and arms insertion by files.
+  `Ctrl+Shift+M` stays reserved for the ranks axis and is still unbound, since that axis is Phase 4 work.
+  The chord was free to take: `M` merges, and the `Shift` and `Ctrl` chords the handler already binds sit on `I`, `V`, `T`, `O`, `B`, `X`, `Y`, `Down`, and the control-group digits.
+  Confirm against `KeybindingsDialog` when wiring the ranks chord.
 
 ## Sources
 
