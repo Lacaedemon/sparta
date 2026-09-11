@@ -258,7 +258,7 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 				# field, so the shield gate is never skipped in play; only a fieldless unit test
 				# sees the older, blunter resolution.
 				SoldierMelee.apply_ranged_casualties(target, u.position, u, volley_size, flank)
-	else:
+	elif accuracy > 0.0:
 		take_casualties(target, raw, u)
 
 

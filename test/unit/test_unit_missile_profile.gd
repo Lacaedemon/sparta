@@ -403,3 +403,25 @@ func test_zero_accuracy_at_maximum_range_suppresses_launch_and_casualties() -> v
 
 	LoadoutRegistry._missiles.erase(99)
 
+
+func test_zero_accuracy_at_maximum_range_suppresses_aggregate_target_casualties() -> void:
+	var zero_profile: MissileProfile = (
+			MissileProfile.make(99, "ZeroAccuracyAggregate", 8.0, 1.0, 0.7, 0.0,
+			ProjectilePhysics.ANGLE_ARCED))
+	LoadoutRegistry._missiles[99] = zero_profile
+
+	var shooter := _unit(1, 0, Vector2.ZERO, Vector2.DOWN, 10)
+	shooter.is_ranged = true
+	shooter.attack = 40
+	assert_true(shooter.equip_missile(99), "zero accuracy profile equips")
+
+	var target := _unit(2, 1, Vector2(0.0, shooter.missile_range), Vector2.UP, 60)
+	target.state = Unit.State.FIGHTING
+
+	UnitCombat.shoot(shooter, target)
+	assert_eq(target.soldiers, 60,
+		"aggregate target without soldier layer loses no soldiers to zero-accuracy shot")
+
+	LoadoutRegistry._missiles.erase(99)
+
+
