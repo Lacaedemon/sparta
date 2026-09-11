@@ -248,6 +248,21 @@ func test_mean_soldier_stamina_reads_the_pool_and_falls_back_to_full() -> void:
 	assert_almost_eq(u.mean_soldier_stamina(), (40.0 * (n - 1) + 100.0) / n, 1e-3)
 
 
+func test_mean_soldier_stamina_filters_by_hp_and_retains_zero_stamina() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	# 0: hp = 0.0 (fallen), stamina = 100.0 (dead body awaiting reap)
+	# 1: hp = 50.0 (living), stamina = 0.0 (spent living soldier)
+	# 2: hp = 50.0 (living), stamina = 60.0 (living soldier with stamina)
+	u._sim_soldier_hp = PackedFloat32Array([0.0, 50.0, 50.0])
+	u._sim_soldier_stamina = PackedFloat32Array([100.0, 0.0, 60.0])
+	# Living pool is soldiers 1 and 2: mean = (0.0 + 60.0) / 2 = 30.0.
+	# The pre-fix code averaged all entries including the fallen man.
+	# A stamina-only filter would wrongly drop the zero-stamina living soldier.
+	assert_almost_eq(u.mean_soldier_stamina(), 30.0, TOL,
+			"mean stamina excludes wounded-dead awaiting reap and keeps zero-stamina living men")
+
+
 func test_demote_collapses_the_pool_to_its_mean_and_promote_reseeds_from_it() -> void:
 	var u := _make_unit(7)
 	u.seed_sim_soldiers()
@@ -425,6 +440,33 @@ func test_gait_for_ordered_collapses_to_walk_or_jog() -> void:
 			"the sprint burst is below the far tier's resolution")
 
 
+func test_from_unit_auto_gait_derives_from_live_speed_band() -> void:
+	var u := _make_unit()
+	# With no explicit gait order, ordered_gait() reports AUTO (-1).
+	assert_eq(u.ordered_gait(), -1)
+	# At rest: collapses to GAIT_WALK.
+	u._current_speed = 0.0
+	assert_eq(FarTierFormation.from_unit(u).gait, Unit.GAIT_WALK)
+	# At walk: collapses to GAIT_WALK.
+	u._current_speed = u.walk_speed
+	assert_eq(FarTierFormation.from_unit(u).gait, Unit.GAIT_WALK)
+	# At jog (e.g. under missile fire or in pursuit): collapses to GAIT_JOG.
+	u._current_speed = u.jog_speed
+	assert_eq(FarTierFormation.from_unit(u).gait, Unit.GAIT_JOG,
+			"auto unit moving at jog pace snapshots as GAIT_JOG")
+	# At sprint: collapses down to GAIT_JOG.
+	u._current_speed = u.move_speed
+	assert_eq(FarTierFormation.from_unit(u).gait, Unit.GAIT_JOG,
+			"auto unit moving at sprint pace collapses to GAIT_JOG")
+	# Explicit walk order overrides live speed band.
+	var order := Order.new()
+	order.type = Order.Type.MOVE
+	order.gait = Unit.GAIT_WALK
+	u.current_order = order
+	assert_eq(FarTierFormation.from_unit(u).gait, Unit.GAIT_WALK,
+			"explicit order overrides live speed")
+
+
 func test_jog_gait_paces_at_the_jog_and_walk_at_the_march() -> void:
 	var rec := _rec(Unit.GAIT_JOG)
 	assert_almost_eq(FarTierRules.pace_speed(rec), rec.jog_speed, TOL)
@@ -459,6 +501,34 @@ func test_jog_formation_capped_by_stance_bills_walk_band() -> void:
 	FarTierRules.advance(rec, Vector2(1000.0, 0.0), 1.0)
 	assert_almost_eq(rec.stamina, 50.0 + 2.0, TOL,
 			"capped below the midpoint, advance bills the walk band instead of the jog drain")
+
+
+func test_advance_partial_tick_charges_moving_time_and_recovers_remainder() -> void:
+	# 10 wu final leg at jog pace (67.5 wu/s) inside a 1 s tick covers the distance in ~0.15 s,
+	# spending jog drain only for that moving fraction and recovering at rest for the remainder.
+	var rec := _rec(Unit.GAIT_JOG)
+	rec.stamina = 50.0
+	rec.stamina_jog_drain_per_s = 6.0
+	rec.stamina_rest_regen_per_s = 2.0
+	var speed: float = FarTierRules.effective_speed(rec)
+	var dist: float = 10.0
+	var delta: float = 1.0
+	var move_time: float = dist / speed
+	var rest_time: float = delta - move_time
+	var expected: float = 50.0 - 6.0 * move_time + 2.0 * rest_time
+	FarTierRules.advance(rec, Vector2(10.0, 0.0), delta)
+	assert_almost_eq(rec.position.x, 10.0, TOL, "formation arrives at target")
+	assert_almost_eq(rec.stamina, expected, TOL,
+			"partial tick charges moving fraction and recovers during stationary remainder")
+
+
+func test_advance_zero_effective_speed_guards_division() -> void:
+	var rec := _rec(Unit.GAIT_JOG)
+	rec.stamina = 50.0
+	rec.jog_speed = 0.0
+	FarTierRules.advance(rec, Vector2(10.0, 0.0), 1.0)
+	assert_almost_eq(rec.position.x, 0.0, TOL, "no movement when speed is zero")
+	assert_gt(rec.stamina, 50.0, "rest recovery applies when stationary with zero speed")
 
 
 func test_unit_flee_speed_shares_flee_multiplier() -> void:
@@ -525,6 +595,7 @@ func test_stat_sheet_reports_stamina_per_man() -> void:
 	hud.show_unit(u, 1)
 	assert_string_contains(hud._info.text, "Stamina per man: 100 ±0 of 100",
 			"an unseeded unit reads as a full pool")
+	u._sim_soldier_hp = PackedFloat32Array([100.0, 100.0])
 	u._sim_soldier_stamina = PackedFloat32Array([80.0, 60.0])
 	hud.show_unit(u, 1)
 	assert_string_contains(hud._info.text, "Stamina per man: 70 ±10 of 100",
@@ -546,6 +617,22 @@ func test_mean_sd_counts_zero_entries() -> void:
 	assert_almost_eq(v.x, 50.0, TOL)
 	assert_almost_eq(v.y, 50.0, TOL)
 	assert_eq(UnitStats.mean_sd(PackedFloat32Array()), Vector2.ZERO)
+
+
+func test_stat_sheet_stamina_skips_fallen_and_keeps_zero_stamina() -> void:
+	var hud = load("res://scripts/HUD.gd").new()
+	add_child_autofree(hud)
+	var u := _make_unit()
+	# 0: hp = 0.0 (fallen), stamina = 100.0 (dead body awaiting reap)
+	# 1: hp = 50.0 (living), stamina = 0.0 (spent living soldier)
+	# 2: hp = 50.0 (living), stamina = 60.0 (living soldier with stamina)
+	u._sim_soldier_hp = PackedFloat32Array([0.0, 50.0, 50.0])
+	u._sim_soldier_stamina = PackedFloat32Array([100.0, 0.0, 60.0])
+	hud.show_unit(u, 1)
+	# Living pool is 0.0 and 60.0: mean = 30, sd = 30.
+	# The pre-fix readout averaged all entries including the fallen soldier (53 +- 41).
+	assert_string_contains(hud._info.text, "Stamina per man: 30 ±30 of 100",
+			"HUD stat sheet stamina readout excludes fallen soldiers and retains zero-stamina men")
 
 
 # --- Cached combat profile and max_stamina scalar ---------------------------------------

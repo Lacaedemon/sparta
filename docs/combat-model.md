@@ -584,7 +584,7 @@ front-facing shield wall has $\mathrm{br}\to 1$ and holds.
 > `SoldierBodies.step` applies `Unit.stamina_flow_per_s` (via `StaminaFlow`'s
 > rest, walk, jog, and sprint speed bands).
 > In the HUD, `HUD._dynamic_stats` formats an aggregate
-> 'Stamina per man' readout from `UnitStats.mean_sd`
+> 'Stamina per man' readout from `UnitStats.mean_sd_living`
 > (mean and spread over living bodies).
 
 ## Receiving a charge

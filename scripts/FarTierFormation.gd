@@ -62,7 +62,7 @@ var sprint_speed: float = DEFAULT_SPRINT_SPEED
 ## The formation's gait: Unit.GAIT_WALK (march_speed) or Unit.GAIT_JOG (jog_speed). The
 ## far tier's only two paces -- a walk approach, or a jog approach that arrives sooner and
 ## pays for it in stamina (FarTierRules.tick_stamina). from_unit maps a unit's ordered
-## jog/run/sprint to the jog and everything else to the walk.
+## jog/run/sprint to the jog, or derives the gait from the live speed band for AUTO.
 var gait: int = Unit.GAIT_WALK
 ## Aggregate stamina pool, the far tier's stand-in for the per-soldier
 ## Unit._sim_soldier_stamina array: one scalar in [0, max_stamina], following the same
@@ -137,7 +137,12 @@ static func from_unit(u: Unit) -> FarTierFormation:
 	rec.march_speed = u.walk_speed
 	rec.jog_speed = u.jog_speed
 	rec.sprint_speed = u.move_speed
-	rec.gait = gait_for_ordered(u.ordered_gait())
+	var ordered: int = u.ordered_gait()
+	if ordered >= 0:
+		rec.gait = gait_for_ordered(ordered)
+	else:
+		var band: int = u.stamina_band()
+		rec.gait = Unit.GAIT_JOG if band >= Unit.GAIT_JOG else Unit.GAIT_WALK
 	rec.stamina = u.mean_soldier_stamina()
 	rec.max_stamina = u.max_stamina
 	rec.stamina_rest_regen_per_s = u.stamina_rest_regen_per_s

@@ -399,7 +399,8 @@ static func tick_stamina(rec: FarTierFormation, moving: bool, delta: float) -> v
 
 ## March the centroid straight toward `target` at the effective pace, clamped so it never
 ## oversteps the point in one tick; facing tracks the direction of travel, and the men pay
-## the gait's stamina flow for the tick (tick_stamina). Terrain routing and the close
+## the gait's stamina flow for the moving portion of the tick, with any remainder of the
+## tick treated as stationary recovery (tick_stamina). Terrain routing and the close
 ## tier's arrival braking are below this tier's resolution.
 static func advance(rec: FarTierFormation, target: Vector2, delta: float) -> void:
 	var to_target: Vector2 = target - rec.position
@@ -407,10 +408,16 @@ static func advance(rec: FarTierFormation, target: Vector2, delta: float) -> voi
 	if dist < 0.001:
 		return
 	var dir: Vector2 = to_target / dist
-	var step: float = minf(effective_speed(rec) * delta, dist)
+	var speed: float = effective_speed(rec)
+	var step: float = minf(speed * delta, dist)
 	rec.position += dir * step
 	rec.facing = dir
-	tick_stamina(rec, true, delta)
+	var move_time: float = minf(step / speed, delta) if speed > 0.0 else 0.0
+	if move_time > 0.0:
+		tick_stamina(rec, true, move_time)
+	var rest_time: float = delta - move_time
+	if rest_time > 0.0:
+		tick_stamina(rec, false, rest_time)
 
 
 ## Turn the formation in place to face `point` (used on contact, where the line squares up

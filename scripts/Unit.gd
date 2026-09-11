@@ -6725,17 +6725,29 @@ func stamina_flow_per_s() -> float:
 			stamina_walk_regen_per_s, stamina_jog_drain_per_s, stamina_sprint_drain_per_s)
 
 
-## Mean of the per-soldier stamina pool; the type's full pool when there are no bodies
-## (a far-tier unit, or one not yet seeded), so a reader never sees a spurious zero.
+## Mean of the living per-soldier stamina pool (hp > 0); the type's full pool when there are no
+## bodies (a far-tier unit, or one not yet seeded) or no living soldiers, so a reader never
+## sees a spurious zero.
 func mean_soldier_stamina() -> float:
 	if tier == FormationTier.FAR:
 		return far_stamina if far_stamina >= 0.0 else max_stamina
 	if _sim_soldier_stamina.is_empty():
 		return max_stamina
+	if _sim_soldier_hp.is_empty():
+		var sum_all: float = 0.0
+		for s in _sim_soldier_stamina:
+			sum_all += s
+		return sum_all / _sim_soldier_stamina.size()
 	var sum: float = 0.0
-	for s in _sim_soldier_stamina:
-		sum += s
-	return sum / _sim_soldier_stamina.size()
+	var count: int = 0
+	var n: int = mini(_sim_soldier_stamina.size(), _sim_soldier_hp.size())
+	for i in range(n):
+		if _sim_soldier_hp[i] > 0.0:
+			sum += _sim_soldier_stamina[i]
+			count += 1
+	if count == 0:
+		return max_stamina
+	return sum / count
 
 
 ## Apply the per-gait flow to the far tier's aggregate pool. The close tier applies the
