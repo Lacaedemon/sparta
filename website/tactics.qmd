@@ -309,6 +309,61 @@ line behind it.
   little on the way out" cost described above --- distributed relief only
   changes how the targets are assigned, not how any one swap behaves.
 
+## Reinforcement insertion
+
+Three ways to combine two regiments, and they answer different questions.
+A **merge** (<kbd>M</kbd>) pools two selected regiments into one on the spot:
+the extra men drop onto the tail of the primary's grid, instantly.
+**Line relief** and **passage of lines** (above) swap a fresh regiment for a
+tired one: the headcount in the line never changes, only who is holding it.
+**Reinforcement insertion** is the missing case --- the line's headcount
+grows *and* the newcomers arrive on foot: a reserve marches up behind a
+friendly host and its men file into the host's ranks, so the host's own men
+keep their places relative to one another while the block doubles.
+Asclepiodotus called it doubling *by number*, as against the file-doubling
+drills (explicatio and duplicatio), which double a regiment's own frontage
+*by place* without adding a man.
+
+::: {#fig-reinforcement-insertion .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/reinforcement_insertion.jpg">
+  <source src="media/reinforcement_insertion.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A 40-man reserve files into a 40-man host by files: select the reserve, press
+<kbd>Shift</kbd> + <kbd>M</kbd>, right-click the host. The reserve marches to a
+rendezvous just behind the host, then its files step forward into gaps the
+host's own files open as they spread, and the host goes from 9 files
+to 18 with its front rank holding its ground.
+:::
+
+- **Select the reserve, arm with <kbd>Shift</kbd> + <kbd>M</kbd>, right-click
+  the host.** The arm is one-shot, like a stance arm: it applies to the next
+  right-click on a friendly outside the selection and clears on
+  <kbd>Esc</kbd>. The host can be idle or already fighting; it keeps whatever
+  order it holds and its fight goes on.
+- **By files** widens the line: the host's frontage grows by the inserted
+  files, up to double, and the front rank does not move forward. Use it on an
+  engaged line that needs to overlap the enemy. (Insertion by ranks --- deepening
+  the block for a push --- is planned and not yet available.)
+- **The order is refused, with the reason flashed on the HUD**, when the two
+  are on different teams, either is routing or dead, the reserve is itself in
+  contact (a body in a fight cannot file off), the loadouts differ, the host
+  is squared or too far off to hold files, the host reflows row-major
+  (cavalry and undisciplined foot have no files to interleave into), or the
+  host is drilled in file groups (subunit-aware insertion is not yet wired).
+- **It costs cohesion.** The host starts at the same strangers debuff a merge
+  pays and recovers at the usual rate; Asclepiodotus notes that some
+  condemned doubling with the enemy near, and preferred to fake the widening
+  with light troops on the wings rather than disturb the phalanx. A host
+  reshaped while moving faster than a walk also pays the moving-reshape
+  penalty.
+
 ## Acies triplex
 
 The Roman **acies triplex** deployed infantry in three lines --- hastati,

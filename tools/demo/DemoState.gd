@@ -42,7 +42,8 @@ const FORMATION_NAMES := {
 
 ## Unit.current_maneuver() int -> readable name. Mirrors `enum Maneuver { IDLE, MARCHING,
 ## FIGHTING, CONVERSIO, QUARTER_TURN, WHEELING, FILE_DOUBLE_DEEPEN, FILE_DOUBLE_WIDEN,
-## NUDGE_SIDESTEP, NUDGE_BACKSTEP, NUDGE_FORWARD_STEP, CYCLE_CHARGE, COUNTERMARCH }` on Unit.gd.
+## NUDGE_SIDESTEP, NUDGE_BACKSTEP, NUDGE_FORWARD_STEP, CYCLE_CHARGE, COUNTERMARCH,
+## REINFORCING }` on Unit.gd.
 const MANEUVER_NAMES := {
 	0: "IDLE",
 	1: "MARCHING",
@@ -57,6 +58,7 @@ const MANEUVER_NAMES := {
 	10: "NUDGE_FORWARD_STEP",
 	11: "CYCLE_CHARGE",
 	12: "COUNTERMARCH",
+	13: "REINFORCING",
 }
 
 ## Unit.countermarch_variant() int -> readable name. Mirrors `enum CountermarchVariant {

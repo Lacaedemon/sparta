@@ -212,6 +212,26 @@ func test_save_load_round_trips_an_anchored_frontage_orders_anchor_offset() -> v
 			"the anchor offset round-trips through save/load, not just live recording")
 
 
+func test_a_reinforcement_orders_axis_round_trips_and_is_omitted_when_none() -> void:
+	# A reinforcement insertion rides a friendly-target order with its axis in `reinforce`;
+	# every other order omits the key so older replays stay valid and byte-identical.
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [0], Vector2.ZERO, 3, 0, 0, 0, INF, 0, 0.0, -1, 0, 0, -1, -1, 1)   # FILES
+	r.record_order(6, [0], Vector2.ZERO, 3)   # a plain relief on the same friendly
+	var path: String = r.save("Test", 6)
+	assert_ne(path, "", "the recording saves")
+
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var due: Array = loaded.orders_for_tick(5)
+	assert_eq(due.size(), 1, "the insertion order round-trips")
+	assert_eq(int(due[0].get("reinforce", 0)), 1, "the axis round-trips through save/load")
+	var relief: Array = loaded.orders_for_tick(6)
+	assert_eq(relief.size(), 1, "the relief order round-trips")
+	assert_false(relief[0].has("reinforce"), "a plain friendly-target order carries no reinforce key")
+
+
 func test_a_centred_frontage_order_omits_anchor_offset_on_round_trip() -> void:
 	# The plain (centred) case -- anchor_offset 0.0 -- stays omitted on save (matching the
 	# in-memory record_order behaviour for every other optional field) and reads back as the

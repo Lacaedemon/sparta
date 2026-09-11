@@ -94,4 +94,8 @@ exclude = [
   # Internal Server Error / bot protection even though the pages load in a
   # browser. Linked as citations from docs/3d-conversion-design.md.
   "^https://www\\.gamedeveloper\\.com",
+  # perseus.tufts.edu (linked from docs/fog-of-war-design.md) returns HTTP 503
+  # Service Unavailable to automated probes or times out under lychee's budget.
+  # Skip it rather than reddening unrelated PRs on an upstream outage.
+  "^https://www\\.perseus\\.tufts\\.edu",
 ]

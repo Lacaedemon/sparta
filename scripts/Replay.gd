@@ -322,7 +322,7 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		group_attack: int = 0, anchor_offset: float = 0.0,
 		form_up_group: int = -1, walk_advance_toggle: int = 0, reform_toggle: int = 0,
 		file_major_reform_mode_toggle: int = -1,
-		line_index: int = -1) -> void:
+		line_index: int = -1, reinforce: int = 0) -> void:
 	if mode != Mode.RECORD:
 		return
 	_order_stream.append(ReplayOrderEntryRef.build(tick, uids, pos, target_uid,
@@ -330,7 +330,7 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 			group_attack, anchor_offset,
 			form_up_group, walk_advance_toggle, reform_toggle,
 			file_major_reform_mode_toggle,
-			line_index))
+			line_index, reinforce))
 
 
 ## PLAYBACK: reposition the order-read cursor (via ReplayOrders.rewind_cursor_to_tick)

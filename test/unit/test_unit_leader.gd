@@ -268,6 +268,56 @@ func test_reliever_still_reacts_to_a_flank_threat_while_relieving() -> void:
 		"a flank threat still overrides the relief order's advance, same as any other unit")
 
 
+# --- a reinforcing reserve's REINFORCE order must survive AI re-decide --------
+
+
+func test_reinforce_order_is_protected_from_ai_replacement() -> void:
+	var host := _unit(42, Vector2(0, 0), 1)
+	var reserve := _unit(99, Vector2(0, -100), 1)
+	var reinforce := Order.new_reinforce(host.uid, 1)
+	reinforce.friendly_target = host
+	reserve.set_current_order(reinforce)
+	var _foe := _unit(1, Vector2(400, 0), 0)
+	var cmd: Dictionary = UnitLeaderScript.decide(reserve, _all())
+	assert_true(cmd.is_empty(),
+		"a reinforcing reserve is protected from AI attack replacement")
+	assert_eq(reserve.current_order.type, Order.Type.REINFORCE,
+		"the REINFORCE order is preserved")
+
+
+func test_reinforce_order_is_protected_from_flank_and_square_reactions() -> void:
+	var host := _unit(42, Vector2(0, 0), 1)
+	var reserve := _unit(99, Vector2(0, 0), 1)
+	var reinforce := Order.new_reinforce(host.uid, 1)
+	reinforce.friendly_target = host
+	reserve.set_current_order(reinforce)
+	reserve.facing = Vector2.DOWN
+	reserve.attack_range = 100.0
+	reserve.anti_cavalry = true
+	var flanker := _unit(1, Vector2(60, 0), 0)
+	flanker.is_cavalry = true
+	var cmd: Dictionary = UnitLeaderScript.decide(reserve, _all())
+	assert_true(cmd.is_empty(),
+		"a reinforcing reserve is protected from flank threat and square reactions")
+
+
+func test_wavering_unit_ignores_an_ally_executing_reinforce() -> void:
+	var tired := _unit(1, Vector2(0, 0), 1)
+	tired.state = Unit.State.FIGHTING
+	tired.morale = 10.0
+	var busy := _unit(99, Vector2(50, 0), 1)
+	busy.morale = 100.0
+	var reinforce := Order.new_reinforce(tired.uid, 1)
+	reinforce.friendly_target = tired
+	busy.set_current_order(reinforce)
+	var foe := _unit(2, Vector2(0, 40), 0)
+	tired.target_enemy = foe
+	tired.facing = Vector2.DOWN
+	var cmd: Dictionary = UnitLeaderScript.decide(tired, _all())
+	assert_true(cmd.is_empty(),
+		"an ally currently reinforcing someone else is not called away to relieve")
+
+
 # --- a subcommander directive must not interrupt a live chase ------------------
 
 func test_directive_does_not_interrupt_a_unit_already_chasing_a_live_target() -> void:

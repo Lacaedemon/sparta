@@ -77,6 +77,12 @@ static func decide(u: Unit, all_units: Array, directive: Dictionary = {},
 	if u.state == Unit.State.DEAD or u.state == Unit.State.ROUTING:
 		return {}
 
+	# A unit executing a REINFORCE order is marching to rendezvous with its host
+	# and filing into its ranks. Leaving it alone protects its friendly_target link and
+	# held heading from being clobbered by flank, square, directive, or attack commands.
+	if u.current_order != null and u.current_order.type == Order.Type.REINFORCE:
+		return {}
+
 	var flanker: Unit = _flank_threat(u, all_units)
 	if flanker != null:
 		return _attack_cmd(u, flanker)
@@ -205,7 +211,8 @@ static func _relief_candidate(tired: Unit, all_units: Array) -> Unit:
 				or a.state == Unit.State.DEAD or a.state == Unit.State.ROUTING \
 				or a.state == Unit.State.FIGHTING or a.morale < RELIEF_MORALE_THRESHOLD \
 				or a.support_target != null \
-				or (a.current_order != null and a.current_order.type == Order.Type.RELIEF):
+				or (a.current_order != null and (a.current_order.type == Order.Type.RELIEF \
+						or a.current_order.type == Order.Type.REINFORCE)):
 			continue
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		var d_sq: float = tired.position.distance_squared_to(a.position)

@@ -224,6 +224,10 @@ var _armed_mode: int = BattleRef.OrderMode.NORMAL
 # rides along on the same enqueue_order/enqueue_stance/enqueue_form_up call that carries
 # _armed_mode, so Battle._apply_order_cmd only reads it when mode == KNOCKBACK_FOCUS.
 var _armed_knockback_indefinite: bool = false
+## One-shot reinforcement-insertion arm (Shift+M): the next right-click on a live friendly
+## outside the selection orders the selection to file into it along this Battle.ReinforceAxis.
+## NONE when idle; clears on issue and on Esc, like the stance arms.
+var _armed_reinforce: int = BattleRef.ReinforceAxis.NONE
 
 # Deterministic cursor injection. Normally null (the cursor follows the live OS mouse). A
 # demo-recording tool or a test sets a world position here so the selection/order logic and
@@ -400,6 +404,12 @@ func _dispatch_key(event: InputEventKey) -> bool:
 		return true
 	elif event.keycode == KEY_C:
 		_issue_wheel(1)    # wheel right: swing 90° about the right flank file
+		return true
+	elif event.keycode == KEY_M and event.shift_pressed and event.ctrl_pressed:
+		_arm_reinforce(BattleRef.ReinforceAxis.RANKS)   # reserved: refused until the ranks axis lands
+		return true
+	elif event.keycode == KEY_M and event.shift_pressed:
+		_arm_reinforce(BattleRef.ReinforceAxis.FILES)   # next RMB on a friendly inserts by files
 		return true
 	elif event.keycode == KEY_M:
 		_issue_merge()   # merge the selected friendly regiments into one
@@ -619,6 +629,8 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 	# Set when the click resolves to a line-relief target (a friendly, not a SUPPORT
 	# ward) -- distinguishes it from a SUPPORT ward below, which always stays focused.
 	var relief_click: bool = false
+	# The reinforcement axis this click routes: set only by the armed-friendly branch below.
+	var reinforce: int = BattleRef.ReinforceAxis.NONE
 	if enemy != null:
 		target_uid = enemy.uid
 	else:
@@ -626,9 +638,27 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 		# line-relief order on an engaged friendly, or — when SUPPORT is armed
 		# — a guard order on any friendly, engaged or not. Plain ground stays
 		# an ordinary move.
-		var friend: UnitRef = _unit_at(world_pos, _friend_team())
 		var supporting: bool = _armed_mode == BattleRef.OrderMode.SUPPORT
-		if friend != null and not _selected.has(friend) \
+		var reinforcing: bool = _armed_reinforce != BattleRef.ReinforceAxis.NONE
+		# While an insertion is armed the lookup includes routers too, so a click on a
+		# routing friendly reaches the guard (which refuses it by name) instead of
+		# resolving to open ground and leaving the arm set.
+		var friend: UnitRef = _unit_at(world_pos, _friend_team(), reinforcing)
+		if friend != null and not _selected.has(friend) and reinforcing:
+			# Reinforcement insertion targets ANY live friendly, idle or engaged. Refuse
+			# up front (with the reason on the HUD) rather than issuing an order Battle
+			# would drop silently. This click consumes the arm either way, like a stance
+			# arm; a click that resolves to anything else (open ground, an enemy, a
+			# selected friendly) leaves it armed for the next friendly, as documented.
+			var reason: String = _reinforce_refusal(friend, _armed_reinforce)
+			reinforce = _armed_reinforce
+			_armed_reinforce = BattleRef.ReinforceAxis.NONE
+			if reason != "":
+				if _hud != null:
+					_hud.flash_message(reason)
+				return
+			target_uid = friend.uid
+		elif friend != null and not _selected.has(friend) \
 				and (supporting or friend.state == UnitRef.State.FIGHTING):
 			target_uid = friend.uid
 			relief_click = not supporting
@@ -652,8 +682,41 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 	if uids.size() > 1 and (enemy != null or relief_click):
 		group_attack = _group_attack_mode
 	_battle.enqueue_order(uids, world_pos, target_uid, _armed_mode, group_attack, gait,
-			_armed_knockback_indefinite)
+			_armed_knockback_indefinite, reinforce)
 	Sfx.play(&"order")
+
+
+## Arm a one-shot reinforcement insertion along `axis` for the next right-click on a friendly.
+## An axis the guard refuses outright (RANKS, until it is wired) flashes the guard's own
+## reason and arms nothing, so the chord neither merges nor inserts by files.
+func _arm_reinforce(axis: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK or not has_selection():
+		return
+	if axis != BattleRef.ReinforceAxis.FILES:
+		# Refused whether or not a live unit is found: a selection whose units all died
+		# this tick must not arm the axis with the wrong HUD message either.
+		if _hud != null:
+			_hud.flash_message(ReinforceGuard.refusal_reason(null, null, axis))
+		return
+	_armed_reinforce = axis
+	if _hud != null:
+		_hud.flash_message("Reinforce: right-click the friendly regiment to file into")
+
+
+## The refusal reason of the first selected unit that may not reinforce `host` along `axis`
+## ("" when every live selected unit may) -- the same per-unit check Battle re-runs at its
+## apply site (ReinforceGuard.refusal_reason), applied to the whole selection so a mixed one
+## is refused up front rather than half of it marching and the rest halting at the apply site.
+func _reinforce_refusal(host: UnitRef, axis: int = BattleRef.ReinforceAxis.FILES) -> String:
+	var any_live: bool = false
+	for unit in _selected:
+		if not is_instance_valid(unit) or unit.state == UnitRef.State.DEAD:
+			continue   # the same live predicate as _selected_uids: a dead node lingers a frame
+		any_live = true
+		var reason: String = ReinforceGuard.refusal_reason(unit, host, axis)
+		if reason != "":
+			return reason
+	return "" if any_live else "Nothing selected to reinforce with"
 
 
 # --- drag-to-form-up (move orders) -----------------------------------------
@@ -2284,6 +2347,8 @@ func _order_mode_for_keycode(physical_keycode: Key) -> int:
 
 
 func _set_armed_mode(mode: int) -> void:
+	if mode == BattleRef.OrderMode.NORMAL:
+		_armed_reinforce = BattleRef.ReinforceAxis.NONE   # Esc clears the insertion arm too
 	if mode == _armed_mode:
 		return
 	_armed_mode = mode

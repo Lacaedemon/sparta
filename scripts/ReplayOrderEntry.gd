@@ -7,7 +7,7 @@ static func build(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		group_attack: int = 0, anchor_offset: float = 0.0,
 		form_up_group: int = -1, walk_advance_toggle: int = 0, reform_toggle: int = 0,
 		file_major_reform_mode_toggle: int = -1,
-		line_index: int = -1) -> Dictionary:
+		line_index: int = -1, reinforce: int = 0) -> Dictionary:
 	var entry := {
 		"tick": tick,
 		"units": uids.duplicate(),
@@ -54,4 +54,8 @@ static func build(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	# Omitted for a plain drag and every other order kind so old replays stay valid.
 	if line_index != -1:
 		entry["line"] = line_index
+	# 0 = Battle.ReinforceAxis.NONE (the default -- not a reinforcement insertion); omitted
+	# for every other order kind so old replays stay valid and byte-identical on re-save.
+	if reinforce != 0:
+		entry["reinforce"] = reinforce
 	return entry

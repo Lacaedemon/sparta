@@ -103,6 +103,7 @@ func _sample_unit() -> Unit:
 	u._sim_soldier_stamina = PackedFloat32Array([80.0, 60.0])
 	u._sim_soldier_facing = PackedVector2Array([Vector2(0, -1), Vector2(0, -1)])
 	u._sim_soldier_file = PackedInt32Array([0, 1])
+	u._sim_soldier_broken = PackedByteArray([0, 1])
 	u._file_assignment_files = 2   # non-default (the field defaults -1), so the round-trip is provable
 
 	var move := Order.new_move(Vector2(700, 300))
@@ -110,6 +111,51 @@ func _sample_unit() -> Unit:
 	u.orders = [move]
 	u.current_order = move
 	return u
+
+
+func test_reinforce_cohesion_floor_round_trips_and_defaults_for_older_snapshots() -> void:
+	var original := _sample_unit()
+	original.reinforce_cohesion_floor = 0.8
+	var d := original.to_snapshot_dict()
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(d)
+	assert_almost_eq(restored.reinforce_cohesion_floor, 0.8, 0.001,
+		"a per-unit reinforcement cohesion floor survives a replay-seek restore")
+	d.erase("reinforce_cohesion_floor")
+	var older := Unit.new()
+	older.apply_snapshot_dict(d)
+	assert_almost_eq(older.reinforce_cohesion_floor, Unit.REINFORCE_COHESION_FLOOR, 0.001,
+		"a snapshot from before the field existed restores the default")
+
+
+func test_anchor_hold_until_tick_round_trips_and_defaults_for_older_snapshots() -> void:
+	var original := _sample_unit()
+	original._anchor_hold_until_tick = 99
+	var d := original.to_snapshot_dict()
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(d)
+	assert_eq(restored._anchor_hold_until_tick, 99,
+		"a held anchor deadline survives a replay-seek restore")
+	d.erase("anchor_hold_until_tick")
+	var older := Unit.new()
+	older.apply_snapshot_dict(d)
+	assert_eq(older._anchor_hold_until_tick, -1,
+		"a snapshot from before the field existed restores the default")
+
+
+func test_sim_soldier_broken_round_trips_and_defaults_for_older_snapshots() -> void:
+	var original := _sample_unit()
+	original._sim_soldier_broken = PackedByteArray([0, 1])
+	var d := original.to_snapshot_dict()
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(d)
+	assert_eq(Array(restored._sim_soldier_broken), [0, 1],
+		"individual broken flags survive a replay-seek restore")
+	d.erase("sim_soldier_broken")
+	var older := Unit.new()
+	older.apply_snapshot_dict(d)
+	assert_eq(older._sim_soldier_broken.size(), 0,
+		"a snapshot from before the field existed restores an empty array")
 
 
 func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
@@ -193,6 +239,7 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(Array(restored._sim_soldier_facing), Array(original._sim_soldier_facing))
 	assert_eq(Array(restored._sim_soldier_weapon_id), Array(original._sim_soldier_weapon_id))
 	assert_eq(Array(restored._sim_soldier_file), Array(original._sim_soldier_file))
+	assert_eq(Array(restored._sim_soldier_broken), Array(original._sim_soldier_broken))
 
 	assert_eq(restored.orders.size(), 1)
 	assert_eq(restored.orders[0].type, Order.Type.MOVE)

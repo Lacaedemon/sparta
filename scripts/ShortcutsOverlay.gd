@@ -23,6 +23,7 @@ const _ROWS: Array = [
 	["Form up in selection order", "Shift + RMB + drag"],
 	["Add waypoint", "Shift + RMB"],
 	["Merge selected units", "M"],
+	["Reinforce a friendly (arm, then RMB the host)", "Shift+M"],
 	["— Stances (Esc clears) —", ""],
 	["STANCES", ""],
 	["Set stance in place (no move needed)", "Ctrl + stance key"],

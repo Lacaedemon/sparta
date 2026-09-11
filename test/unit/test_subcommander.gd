@@ -308,3 +308,27 @@ func test_defend_plan_preserves_mutual_support_priority() -> void:
 		"y": 700.0,
 	}, "unengaged idle unit continues holding position")
 
+
+func test_reinforce_and_relief_orders_are_excluded_from_directives() -> void:
+	var fighter := _unit(1, Vector2(500, 700))
+	fighter.state = Unit.State.FIGHTING
+	var reliever := _unit(2, Vector2(550, 700))
+	reliever.current_order = Order.new_relief(fighter.uid)
+	var host := _unit(42, Vector2(650, 700))
+	var reserve := _unit(99, Vector2(650, 750))
+	var reinforce := Order.new_reinforce(host.uid, 1)
+	reinforce.friendly_target = host
+	reserve.current_order = reinforce
+	var idle := _unit(3, Vector2(700, 700))
+	var enemy := _unit(4, Vector2(500, 680), 0)
+	var group: Array = [fighter, reliever, host, reserve, idle]
+	var all_units: Array = [fighter, reliever, host, reserve, idle, enemy]
+
+	var directives: Dictionary = SubcommanderScript.decide_group(
+		group, all_units, "defend")
+
+	assert_false(directives.has(reliever.uid),
+		"reliever with live RELIEF order is excluded from directives")
+	assert_false(directives.has(reserve.uid),
+		"reserve with live REINFORCE order is excluded from directives")
+

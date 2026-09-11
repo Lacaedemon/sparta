@@ -260,6 +260,12 @@ const ENGAGED_FRACTION_CANCELS_MOVE: float = 0.10
 ## sorted by proximity to the clicked target; extra units cycle through the list.
 enum GroupAttackMode { FOCUSED = 0, DISTRIBUTED = 1 }
 
+## Reinforcement insertion axis carried on an order whose target is a friendly outside the
+## selection (docs/reinforcement-insertion-design.md): NONE is every ordinary order (and the
+## omitted default in a recorded replay); FILES interjects the reserve's men as whole files,
+## doubling the host's frontage. RANKS is reserved for the depth axis, not yet wired.
+enum ReinforceAxis { NONE = 0, FILES = 1, RANKS = 2 }
+
 const GROUP_ATTACK_MODE_NAMES := {
 	GroupAttackMode.FOCUSED: "Group order: focused",
 	GroupAttackMode.DISTRIBUTED: "Group order: distributed",
@@ -1471,7 +1477,7 @@ const SIM_SOLDIER_ARRAY_KEYS: Array[String] = [
 	"sim_soldier_pos", "sim_body_vel", "sim_steer", "sim_soldier_hp",
 	"sim_soldier_weapon_id", "sim_soldier_shield_id", "sim_soldier_shield_hold_angle",
 	"sim_prone", "sim_soldier_stamina", "sim_soldier_facing", "sim_soldier_file",
-	"sim_soldier_rank", "sim_soldier_square_slot",
+	"sim_soldier_rank", "sim_soldier_square_slot", "sim_soldier_broken",
 ]
 
 
@@ -1590,7 +1596,8 @@ func _physics_process(delta: float) -> void:
 					int(o.get("walk_advance_toggle", UnitSettingToggle.LEAVE)),
 					int(o.get("reform_toggle", UnitSettingToggle.LEAVE)),
 					int(o.get("file_major_reform_mode_toggle", REFORM_MODE_TOGGLE_LEAVE)),
-					int(o.get("line", LINE_INDEX_UNCHANGED)))
+					int(o.get("line", LINE_INDEX_UNCHANGED)),
+					int(o.get("reinforce", ReinforceAxis.NONE)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply
@@ -1723,7 +1730,8 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		order_mode: int = OrderMode.NORMAL,
 		group_attack: int = GroupAttackMode.FOCUSED,
 		gait: int = -1,
-		knockback_indefinite: bool = false) -> void:
+		knockback_indefinite: bool = false,
+		reinforce: int = ReinforceAxis.NONE) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -1735,6 +1743,7 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		"group_attack": group_attack,
 		"gait": gait,
 		"knockback_indefinite": knockback_indefinite,
+		"reinforce": reinforce,
 	}
 	_pending_orders.append(cmd)
 	# A waypoint append is tick-authoritative (its point is derived from positions at
@@ -2422,7 +2431,14 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the
 	# disambiguator). Handle it first, then fall through to attack/relief/move.
+	# A reinforcement insertion rides a friendly-target order: the axis picks the branch
+	# further down; NONE (the omitted default in older replays) is a relief or support as
+	# before. Read here, ahead of the merge branch: a reinforce command whose host is one
+	# of its own ordered units is malformed and applies nothing, never a merge.
+	var reinforce: int = int(cmd.get("reinforce", ReinforceAxis.NONE))
 	if target_uid >= 0 and _uids_contain(cmd["units"], target_uid):
+		if reinforce != ReinforceAxis.NONE:
+			return
 		_apply_merge(cmd["units"], target_uid)
 		return
 	# A move whose target is the append sentinel queues a waypoint instead of
@@ -2508,6 +2524,24 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				var da: float = a.position.distance_squared_to(relief_ref_pos)
 				var db: float = b.position.distance_squared_to(relief_ref_pos)
 				return da < db if da != db else a.uid < b.uid)
+	# A refused reinforcement applies nothing at all: the reserve keeps its current
+	# order, march and stance (the design's refusal contract). That contract covers the
+	# whole selection rather than each unit, so validate every pair before the loop
+	# below mutates anything. Checking inside the loop would let the valid reserves
+	# reinforce while the refused ones kept their old orders -- a half-applied maneuver,
+	# reachable whenever a selection changes between arming and application, and by any
+	# hand-edited or replayed command carrying a mixed set. A missing, self or enemy
+	# target is refused here too, so a malformed entry cannot fall through to a plain
+	# move or attack. UnitReinforce.begin re-checks and halts defensively regardless.
+	if reinforce != ReinforceAxis.NONE:
+		for uid in cmd["units"]:
+			var reserve: Unit = _unit_by_uid(int(uid))
+			if reserve == null:
+				return
+			if target_unit == null or target_unit == reserve \
+					or target_unit.team != reserve.team \
+					or ReinforceGuard.refusal_reason(reserve, target_unit, reinforce) != "":
+				return
 	var relieved: bool = false
 	var relief_foe: Unit = null
 	for uid in cmd["units"]:
@@ -2562,6 +2596,23 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 			u.has_move_target = false
 			u.set_current_order(Order.new_attack(u.target_enemy.uid, mode))
 		elif target_unit != null and target_unit != u and target_unit.team == u.team:
+			if reinforce != ReinforceAxis.NONE:
+				# Reinforcement insertion: the reserve marches up behind the host and its men
+				# file into the host's ranks. Install the REINFORCE order first, then arm the
+				# approach on it (the order owns the pass-through link, as a relief's does).
+				# The host keeps whatever it was doing. The admission guard above already
+				# skipped every refused pair (including the not-yet-wired RANKS axis), so
+				# begin's own re-check is defensive: a pair that slips past it arms nothing
+				# and is halted, and that no-op order retires next tick.
+				var reinforce_order := Order.new_reinforce(target_unit.uid, reinforce)
+				u.set_current_order(reinforce_order)
+				UnitReinforce.begin(u, target_unit, reinforce_order)
+				# Skip the order-response delay: the approach is a held-heading march and
+				# the men only file in once the reserve stands at the rendezvous. A delay
+				# still counting down from the previous order would freeze the march the
+				# same way, so drop it too (set_current_order leaves the timer alone).
+				u._order_response_timer = 0.0
+				continue
 			if mode == OrderMode.SUPPORT:
 				# Support: guard the targeted friendly. Every ordered unit shadows
 				# the same ward and engages threats near it — no relief swap.
@@ -2942,6 +2993,8 @@ func unit_by_uid(uid: int) -> UnitRef:
 func _tick_tier_transitions() -> Array:
 	var all_units: Array = get_tree().get_nodes_in_group("units")
 	_far_tier_count = 0
+	var reinforce_targets: Dictionary = \
+			TierTransition.live_reinforcement_targets(all_units)
 	for node in all_units:
 		var u = node as UnitRef
 		if u == null or u.state == UnitRef.State.DEAD:
@@ -2965,7 +3018,7 @@ func _tick_tier_transitions() -> Array:
 		if u.tier == FormationTier.FAR:
 			if FormationTier.should_promote(u.position, nearest_pos, promote_range):
 				TierTransition.promote(u, _tick, Replay.seed_value)
-		elif TierTransition.can_demote(u) \
+		elif TierTransition.can_demote(u, reinforce_targets.has(u)) \
 				and FormationTier.should_demote(u.position, nearest_pos, demote_range):
 			TierTransition.demote(u)
 		# Counted AFTER the transition, so the tally is this tick's tiers, not last tick's.
