@@ -106,6 +106,12 @@
       "value": 80
     },
     {
+      "tick": 600,
+      "uid": 0,
+      "field": "engaged",
+      "value": false
+    },
+    {
       "tick": 850,
       "uid": 1,
       "field": "visible",

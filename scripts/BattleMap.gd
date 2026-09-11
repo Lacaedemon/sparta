@@ -11,7 +11,7 @@ extends RefCounted
 ## engine state -- directly unit-testable, like DemoState/DemoFrames.
 
 ## Parse a `map` block into {field: Rect2, terrain: Array, spawn_lines: Array,
-## sight_scale: float}.
+## sight_scale: float, fog_of_war: bool}.
 ## Every key is optional; an absent key means "keep the battle's current
 ## default" and comes back absent from the result, so a caller merges only what
 ## the block actually set. Returns {error: String} instead when the block is
@@ -64,14 +64,20 @@ static func parse(block: Dictionary) -> Dictionary:
 		if not _num(ss) or float(ss) <= 0.0 or not is_finite(float(ss)):
 			return {"error": "map.sight_scale must be a positive, finite number"}
 		out["sight_scale"] = float(ss)
+	if block.has("fog_of_war"):
+		var fow = block["fog_of_war"]
+		if not (fow is bool):
+			return {"error": "map.fog_of_war must be a boolean"}
+		out["fog_of_war"] = bool(fow)
 	return out
 
 
 ## The JSON-ready form of a live map, for the replay header. Inverse of parse():
-## parse(serialize(field, terrain, spawn_lines, sight_scale)) reproduces the same values,
-## so a replay reconstructs the exact battlefield it was recorded on.
+## parse(serialize(field, terrain, spawn_lines, sight_scale, fog_of_war))
+## reproduces the same values, so a replay reconstructs the exact battlefield it
+## was recorded on.
 static func serialize(field: Rect2, terrain: Array, spawn_lines: Array,
-		sight_scale: float = -1.0) -> Dictionary:
+		sight_scale: float = -1.0, fog_of_war: bool = false) -> Dictionary:
 	var patches: Array = []
 	for p in terrain:
 		var r: Rect2 = p["rect"]
@@ -90,6 +96,8 @@ static func serialize(field: Rect2, terrain: Array, spawn_lines: Array,
 	}
 	if sight_scale > 0.0:
 		out["sight_scale"] = sight_scale
+	if fog_of_war:
+		out["fog_of_war"] = true
 	return out
 
 
@@ -98,8 +106,8 @@ static func serialize(field: Rect2, terrain: Array, spawn_lines: Array,
 ## pre-map format, so old replays and new default-map replays are the same shape).
 static func differs_from_default(field: Rect2, terrain: Array, spawn_lines: Array,
 		default_field: Rect2, default_terrain: Array, default_spawn_lines: Array,
-		sight_scale: float = -1.0) -> bool:
-	if sight_scale > 0.0:
+		sight_scale: float = -1.0, fog_of_war: bool = false) -> bool:
+	if sight_scale > 0.0 or fog_of_war:
 		return true
 	if field != default_field or spawn_lines != default_spawn_lines:
 		return true

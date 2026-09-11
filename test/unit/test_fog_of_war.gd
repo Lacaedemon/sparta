@@ -598,3 +598,109 @@ func test_attack_overlay_uses_world_space_at_non_zero_battle_offset() -> void:
 	assert_eq(hidden_pos, last_seen_global,
 		"hidden target overlay position matches target global position at last-seen spot")
 
+
+func test_paused_fog_toggle_refreshes_battlefield_immediately() -> void:
+	var battle := _staged_battle(false)
+	for _k in range(3):
+		await get_tree().physics_frame
+	var far := _enemy_nearest(FAR_ENEMY_POS)
+	assert_true(far.visible, "far enemy visible with fog off")
+	assert_eq(battle.rout_margin, battle.ROUT_MARGIN, "rout margin at default floor with fog off")
+
+	var before: bool = Settings.fog_of_war
+	get_tree().paused = true
+	Settings.fog_of_war = true
+	assert_false(far.visible, "toggling fog while paused immediately hides unseen enemies")
+	assert_almost_eq(battle.rout_margin, battle.sight_scale * Unit.SIGHT_MOUNTED, 0.001,
+			"rout margin widens immediately while paused")
+	assert_true(battle._fog_active, "fog active flag set immediately while paused")
+
+	Settings.fog_of_war = false
+	assert_true(far.visible, "toggling fog off while paused immediately restores visibility")
+	assert_eq(battle.rout_margin, battle.ROUT_MARGIN, "rout margin resets immediately while paused")
+	assert_false(battle._fog_active, "fog active flag cleared immediately while paused")
+	get_tree().paused = false
+	Settings.fog_of_war = before
+
+
+func test_replay_recorded_with_fog_on_reproduces_identically_when_live_fog_is_off() -> void:
+	var old_mode: int = Replay.mode
+	var old_map: Dictionary = Replay.map
+	var prev_fog: bool = Settings.fog_of_war
+
+	# 1. Record a battle with fog ON.
+	Settings.set_fog_of_war_session(true)
+	Replay.mode = Replay.Mode.RECORD
+	var battle_rec: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle_rec.drill_mode = true
+	battle_rec.terrain = []
+	battle_rec.scenario = [
+		{"team": 0, "type": "Infantry", "x": 800, "y": 120, "count": 12},
+	]
+	_staged_battles.append(battle_rec)
+	add_child(battle_rec)
+	await get_tree().physics_frame
+
+	var u_rec: Unit = battle_rec.get_tree().get_nodes_in_group("units")[0] as Unit
+	assert_not_null(u_rec, "infantry spawned in recording")
+	u_rec._rout()
+	u_rec._shatter()
+
+	for _k in range(250):
+		await get_tree().physics_frame
+
+	var live_u_rec: Node = null
+	for n in battle_rec.get_tree().get_nodes_in_group("routers"):
+		if (n as Unit).uid == u_rec.uid:
+			live_u_rec = n
+			break
+	assert_not_null(live_u_rec, "router is still in play at tick 250 under widened rout margin")
+	var rec_pos: Vector2 = (live_u_rec as Unit).position
+	var recorded_map: Dictionary = Replay.map.duplicate(true)
+	assert_true(bool(recorded_map.get("fog_of_war", false)), "recording map saved fog_of_war: true")
+
+	battle_rec.free()
+	await get_tree().physics_frame
+
+	# 2. Playback with live fog setting OFF.
+	Settings.set_fog_of_war_session(false)
+	Replay.mode = Replay.Mode.PLAYBACK
+	Replay.seed_value = 42
+	Replay.rng.seed = Replay.seed_value
+	Replay.map = recorded_map
+
+	var battle_play: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle_play.drill_mode = true
+	battle_play.terrain = []
+	battle_play.scenario = [
+		{"team": 0, "type": "Infantry", "x": 800, "y": 120, "count": 12},
+	]
+	_staged_battles.append(battle_play)
+	add_child(battle_play)
+	await get_tree().physics_frame
+
+	var u_play: Unit = battle_play.get_tree().get_nodes_in_group("units")[0] as Unit
+	assert_not_null(u_play, "infantry spawned in playback")
+	u_play._rout()
+	u_play._shatter()
+
+	for _k in range(250):
+		await get_tree().physics_frame
+
+	var live_u_play: Node = null
+	for n in battle_play.get_tree().get_nodes_in_group("routers"):
+		if (n as Unit).uid == u_play.uid:
+			live_u_play = n
+			break
+	assert_not_null(live_u_play, "router is still in play at tick 250 during playback")
+	var play_pos: Vector2 = (live_u_play as Unit).position
+	assert_almost_eq(play_pos.x, rec_pos.x, 0.01, "playback position x matches recorded run")
+	assert_almost_eq(play_pos.y, rec_pos.y, 0.01, "playback position y matches recorded run")
+
+	battle_play.free()
+	await get_tree().physics_frame
+	Replay.mode = old_mode
+	Replay.map = old_map
+	Settings.set_fog_of_war_session(prev_fog)
+
+

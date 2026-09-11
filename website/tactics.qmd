@@ -2106,14 +2106,15 @@ Units keep fighting, pathing, and shooting under the same rules.
 
 | Unit | Multiplier | Sight (default field) | Role |
 | --- | --- | --- | --- |
-| **Cavalry** | 1.4x | **21 m** (420 wu) | Scouting, screening, pursuit |
-| **Ranged** | 1.2x | **18 m** (360 wu) | Forward observation, support |
-| **Foot** | 1.0x | **15 m** (300 wu) | Line-of-sight across front |
+| **Cavalry** | 1.4x | **21 m** | Scouting, screening, pursuit |
+| **Ranged** | 1.2x | **18 m** | Forward observation, support |
+| **Foot** | 1.0x | **15 m** | Line-of-sight across front |
 
 Sight ranges by unit category under fog of war.
 :::
 
-Sight ranges are strictly typed by unit category.
+Sight ranges default by unit category.
+
 Mounted troops see farthest:
 21 m on the default field (a 1.4x multiplier).
 Ranged troops see intermediate distances:
@@ -2150,15 +2151,16 @@ Understanding the limits of a ghost marker is critical:
 
 - Its opacity indicates age, fading as the sighting grows stale.
 
-- An attack order against a ghost marker directs units to where the contact was.
+- Right-clicking a ghost marker falls through to a ground move order.
 
+Attack orders require a visible target, so an order against a ghost cannot lock on.
 If the enemy has marched away, your troops will march into empty ground.
 
 ### Scouting and pursuit decisions
 
 Fog of war fundamentally reshapes pursuit and battlefield control.
 When fog is enabled, the retreat boundary expands.
-The retreat margin widens from 9.5 m (190 wu) to match the mounted sight radius of 21 m.
+The retreat margin widens from 9.5 m to match the mounted sight radius of 21 m.
 This ensures a broken enemy does not escape off-map while still in sight.
 However, if your pursuers lose sight of a routing enemy, that enemy enters the dark.
 A broken unit that breaks contact and gains distance can steady its nerve and rally.

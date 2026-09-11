@@ -270,6 +270,10 @@ func _start_battle() -> void:
 		_battle.terrain = _map["terrain"]
 	if _map.has("spawn_lines"):
 		_battle.spawn_line_ys = _map["spawn_lines"]
+	if _map.has("sight_scale"):
+		_battle.sight_scale = float(_map["sight_scale"])
+	if _map.has("fog_of_war"):
+		Settings.set_fog_of_war_session(bool(_map["fog_of_war"]))
 	if _deployment_gap_m > 0.0:
 		# Likewise before add_child: Battle._ready widens the map from it before spawning.
 		_battle.deployment_gap_m = _deployment_gap_m

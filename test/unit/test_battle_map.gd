@@ -71,6 +71,10 @@ func test_parse_rejects_malformed_blocks_with_named_errors() -> void:
 	assert_true(
 			BattleMap.parse({"sight_scale": INF}).has("error"),
 			"infinite sight_scale is an error")
+	assert_true(
+			BattleMap.parse({"fog_of_war": "yes"}).has("error"),
+			"non-boolean fog_of_war is an error")
+
 
 
 func test_serialize_round_trips_through_parse() -> void:
@@ -79,7 +83,7 @@ func test_serialize_round_trips_through_parse() -> void:
 		{"rect": Rect2(500, 400, 200, 300), "type": "forest", "kind": "slow", "speed": 0.5},
 	]
 	var blob: Dictionary = BattleMap.serialize(
-			Rect2(0, 0, 800, 1600), terrain, [200.0, 1400.0], 450.0)
+			Rect2(0, 0, 800, 1600), terrain, [200.0, 1400.0], 450.0, true)
 	var back: Dictionary = BattleMap.parse(blob)
 	assert_false(back.has("error"), "a serialized map parses clean")
 	assert_eq(back["field"], Rect2(0, 0, 800, 1600), "field survives the round trip")
@@ -87,9 +91,11 @@ func test_serialize_round_trips_through_parse() -> void:
 	assert_almost_eq(float(back["terrain"][1]["speed"]), 0.5, 0.001, "slow speed survives")
 	assert_eq(back["spawn_lines"], [200.0, 1400.0], "spawn lines survive")
 	assert_almost_eq(float(back["sight_scale"]), 450.0, 0.001, "sight_scale survives round trip")
+	assert_true(bool(back["fog_of_war"]), "fog_of_war survives round trip")
 	var blob_default: Dictionary = BattleMap.serialize(
 			Rect2(0, 0, 800, 1600), terrain, [200.0, 1400.0])
 	assert_false(blob_default.has("sight_scale"), "unset sight_scale is omitted from serialized map")
+	assert_false(blob_default.has("fog_of_war"), "unset fog_of_war is omitted from serialized map")
 
 
 func test_differs_from_default_detects_each_axis_and_accepts_the_default() -> void:
@@ -108,6 +114,11 @@ func test_differs_from_default_detects_each_axis_and_accepts_the_default() -> vo
 			d_field, d_terrain, d_spawn, 450.0), "a custom sight_scale differs from default")
 	assert_false(BattleMap.differs_from_default(d_field, d_terrain, d_spawn,
 			d_field, d_terrain, d_spawn, -1.0), "unset sight_scale does not differ")
+	assert_true(BattleMap.differs_from_default(d_field, d_terrain, d_spawn,
+			d_field, d_terrain, d_spawn, -1.0, true), "fog_of_war on differs from default")
+	assert_false(BattleMap.differs_from_default(d_field, d_terrain, d_spawn,
+			d_field, d_terrain, d_spawn, -1.0, false), "fog_of_war off does not differ")
+
 
 
 # --- a live battle rebuilds the battlefield from instance map data ----------------
@@ -361,3 +372,41 @@ func test_recording_custom_sight_scale_publishes_to_replay_map() -> void:
 			"published map carries custom sight_scale")
 	Replay.mode = old_mode
 	Replay.map = old_map
+
+
+func test_playback_restores_fog_of_war_from_recorded_map() -> void:
+	var old_mode: int = Replay.mode
+	var old_map: Dictionary = Replay.map
+	var prev_fog: bool = Settings.fog_of_war
+	Settings.set_fog_of_war_session(false)
+	Replay.mode = Replay.Mode.PLAYBACK
+	Replay.seed_value = 42
+	Replay.rng.seed = Replay.seed_value
+	Replay.map = BattleMap.serialize(Rect2(0, 0, 800, 600), [], [100.0, 500.0], -1.0, true)
+	var scene := load("res://scenes/Battle.tscn") as PackedScene
+	var battle: Node = scene.instantiate()
+	add_child_autofree(battle)
+	assert_true(battle.is_fog_active(), "playback restores recorded fog_of_war even when live setting is off")
+	assert_almost_eq(battle.rout_margin, battle.sight_scale * Unit.SIGHT_MOUNTED, 0.001,
+			"rout_margin derives from mounted sight range under recorded fog")
+	Replay.mode = old_mode
+	Replay.map = old_map
+	Settings.set_fog_of_war_session(prev_fog)
+
+
+func test_recording_fog_publishes_to_replay_map() -> void:
+	var old_mode: int = Replay.mode
+	var old_map: Dictionary = Replay.map
+	var prev_fog: bool = Settings.fog_of_war
+	Settings.set_fog_of_war_session(true)
+	Replay.mode = Replay.Mode.RECORD
+	var scene := load("res://scenes/Battle.tscn") as PackedScene
+	var battle: Node = scene.instantiate()
+	add_child_autofree(battle)
+	assert_false(Replay.map.is_empty(), "fog of war on publishes map to recording")
+	assert_true(bool(Replay.map.get("fog_of_war", false)),
+			"published map carries fog_of_war: true")
+	Replay.mode = old_mode
+	Replay.map = old_map
+	Settings.set_fog_of_war_session(prev_fog)
+

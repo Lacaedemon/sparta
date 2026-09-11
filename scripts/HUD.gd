@@ -950,7 +950,10 @@ func _sync_fog_label() -> void:
 		return
 	var battle = get_parent()
 	var all_teams: bool = battle != null and battle.get("all_teams_control") == true
-	_fog_label.visible = Settings.fog_of_war and not all_teams
+	var fog_on: bool = Settings.fog_of_war
+	if battle != null and battle.has_method("is_fog_active"):
+		fog_on = battle.is_fog_active()
+	_fog_label.visible = fog_on and not all_teams
 
 
 func _update_slowmo_label() -> void:

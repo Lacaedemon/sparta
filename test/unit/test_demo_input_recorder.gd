@@ -262,3 +262,17 @@ func test_recorder_clears_fog_session_when_omitted_by_script() -> void:
 	OS.set_environment("SPARTA_DEMO_INPUT", "")
 	Settings.set_fog_of_war_session(false)
 
+
+func test_recorder_applies_map_sight_scale_and_fog_to_battle() -> void:
+	var recorder: Node = load("res://tools/demo/DemoInputRecorder.tscn").instantiate()
+	add_child_autofree(recorder)
+	recorder._map = BattleMap.parse({"sight_scale": 450.0, "fog_of_war": true})
+	recorder._drill = true
+	recorder._start_battle()
+	assert_almost_eq(recorder._battle.sight_scale, 450.0, 0.001,
+			"demo battle inherits sight_scale from map block")
+	assert_true(Settings.fog_of_war,
+			"demo battle enables fog session from map block")
+	Settings.set_fog_of_war_session(false)
+
+

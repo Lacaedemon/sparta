@@ -429,6 +429,10 @@ var _fog_contacts: Dictionary = {}
 var _fog_seen: Dictionary = {}
 var _fog_active: bool = false
 var _fog_ghosts: Node2D = null
+# Replay playback drives fog state and rout margins from this recorded value
+# rather than from the live global Settings.fog_of_war setting.
+var _recorded_fog_of_war: bool = false
+
 
 # Custom demo matchup (tooling): a list of unit specs the demo recorder can set from an input
 # script's "scenario" field BEFORE the node enters the tree, to stage a specific fight (a weak
@@ -580,6 +584,14 @@ func _ready() -> void:
 		field = widened["field"]
 		spawn_line_ys = widened["spawn_lines"]
 
+	# The main menu's "All-Teams Control" button requests all-teams control across the scene
+	# swap the same way ParadeGround does below. Same replay-playback exclusion for the
+	# same reason: a playback's recorded orders assume normal team-0-only control, and letting
+	# this re-arm here would relax SelectionManager's team checks against a replay it isn't
+	# actually driving (the player never touches the controls during a Watch Replay).
+	if AllTeamsControl.pending and Replay.mode != Replay.Mode.PLAYBACK:
+		all_teams_control = true
+
 	# Start a fresh recording for every live battle (so any battle can be
 	# replayed for debugging). During playback the recorder is already armed by
 	# the seed loaded from the file, so we leave it alone.
@@ -592,9 +604,11 @@ func _ready() -> void:
 		var custom_sight: float = -1.0
 		if sight_scale > 0.0:
 			custom_sight = sight_scale
+		var recording_fog: bool = is_fog_active()
 		if BattleMapRef.differs_from_default(field, terrain, spawn_line_ys,
-				FIELD, TERRAIN, SPAWN_LINE_YS, custom_sight):
-			Replay.map = BattleMapRef.serialize(field, terrain, spawn_line_ys, custom_sight)
+				FIELD, TERRAIN, SPAWN_LINE_YS, custom_sight, recording_fog):
+			Replay.map = BattleMapRef.serialize(field, terrain, spawn_line_ys,
+					custom_sight, recording_fog)
 	else:
 		# Playback: restore the recorded map (empty = the default map) BEFORE any
 		# of the map consumers below run, so camera bounds, the routing grid, and
@@ -609,6 +623,8 @@ func _ready() -> void:
 				spawn_line_ys = parsed.get("spawn_lines", spawn_line_ys)
 				if parsed.has("sight_scale"):
 					sight_scale = float(parsed["sight_scale"])
+				if parsed.has("fog_of_war"):
+					_recorded_fog_of_war = bool(parsed["fog_of_war"])
 
 	# Sight scale derives from the final field's short side unless explicitly overridden
 	# before _ready.
@@ -667,17 +683,9 @@ func _ready() -> void:
 	if ParadeGround.pending and Replay.mode != Replay.Mode.PLAYBACK:
 		drill_mode = true
 
-	# The main menu's "All-Teams Control" button requests all-teams control across the scene
-	# swap the same way ParadeGround does just above. Same replay-playback exclusion for the
-	# same reason: a playback's recorded orders assume normal team-0-only control, and letting
-	# this re-arm here would relax SelectionManager's team checks against a replay it isn't
-	# actually driving (the player never touches the controls during a Watch Replay).
-	if AllTeamsControl.pending and Replay.mode != Replay.Mode.PLAYBACK:
-		all_teams_control = true
-
-	# Compute the retreat margin and sync bounds to live units. Done after pending flags
-	# (AllTeamsControl) have settled so an all-teams battle does not widen the margin.
+	# Compute the retreat margin and sync bounds to live units.
 	_sync_rout_margin()
+
 
 	# Drill mode is a no-opponent rehearsal; a campaign clash always has a defender. They are
 	# mutually exclusive — assert it so a future path that ends a drill battle can't silently
@@ -750,9 +758,13 @@ func _ready() -> void:
 	# reads _sim_soldier_pos). See docs/individual-collision-design.md.
 	if UnitRef.INDIVIDUAL_COLLISION:
 		get_tree().physics_frame.connect(_on_soldier_tick)
+	Settings.changed.connect(_on_settings_changed)
 
 
 func _exit_tree() -> void:
+	if Settings.changed.is_connected(_on_settings_changed):
+		Settings.changed.disconnect(_on_settings_changed)
+
 	# physics_frame lives on the SceneTree, which outlives this node across a
 	# reload_current_scene(). Without disconnecting, this freed-but-not-yet-gone
 	# Battle gets one more _on_soldier_tick after it leaves the tree, where
@@ -1475,7 +1487,7 @@ func restore_snapshot(snap: Dictionary) -> void:
 ## Reapplies fog visibility to newly respawned units and refreshes the ghost layer
 ## immediately after restoring a snapshot, preventing units from flashing visible.
 func _reapply_fog_after_restore() -> void:
-	var on: bool = Settings.fog_of_war and not all_teams_control
+	var on: bool = is_fog_active()
 	if not on:
 		_fog_active = false
 		_fog_seen = {}
@@ -1707,7 +1719,7 @@ func _physics_process(delta: float) -> void:
 ## and clears the markers; the contact table itself is kept, so switching back on
 ## remembers what was seen before.
 func _tick_fog() -> void:
-	var on: bool = Settings.fog_of_war and not all_teams_control
+	var on: bool = is_fog_active()
 	if not on:
 		if _fog_active:
 			_fog_active = false
@@ -1754,10 +1766,29 @@ func fog_contacts() -> Dictionary:
 	return _fog_contacts
 
 
+## Whether fog of war is active in this battle: driven by the recorded fog state
+## during replay playback, or by the live Settings.fog_of_war outside playback.
+## Always disabled when all_teams_control is on.
+func is_fog_active() -> bool:
+	if all_teams_control:
+		return false
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return _recorded_fog_of_war
+	return Settings.fog_of_war
+
+
+## Immediate response to Settings changes so toggling fog while paused updates
+## unit visibility, ghost markers, and retreat bounds without waiting for the
+## next physics frame.
+func _on_settings_changed() -> void:
+	if is_fog_active() != _fog_active:
+		_tick_fog()
+
+
 ## Recompute rout_margin and field_with_margin from the live field and effective fog state,
 ## and sync the updated bounds to all live units and routers.
 func _sync_rout_margin() -> void:
-	if Settings.fog_of_war and not all_teams_control:
+	if is_fog_active():
 		var scale_val: float = sight_scale
 		if scale_val <= 0.0:
 			scale_val = DEFAULT_SIGHT_SCALE_FRACTION * minf(field.size.x, field.size.y)
