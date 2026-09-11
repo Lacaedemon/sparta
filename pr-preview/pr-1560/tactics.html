@@ -543,7 +543,7 @@ window.Quarto = {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Last updated: 2026-09-10</p>
+      <p class="date">Last updated: 2026-09-11</p>
     </div>
   </div>
   
@@ -1695,12 +1695,6 @@ Table&nbsp;4: Sight ranges by unit category under fog of war.
 </figcaption>
 <div aria-describedby="tbl-sight-ranges-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table">
-<colgroup>
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>Unit</th>
@@ -1713,19 +1707,19 @@ Table&nbsp;4: Sight ranges by unit category under fog of war.
 <tr class="odd">
 <td><strong>Cavalry</strong></td>
 <td>1.4x</td>
-<td><strong>21 m</strong> (420 wu)</td>
+<td><strong>21 m</strong></td>
 <td>Scouting, screening, pursuit</td>
 </tr>
 <tr class="even">
 <td><strong>Ranged</strong></td>
 <td>1.2x</td>
-<td><strong>18 m</strong> (360 wu)</td>
+<td><strong>18 m</strong></td>
 <td>Forward observation, support</td>
 </tr>
 <tr class="odd">
 <td><strong>Foot</strong></td>
 <td>1.0x</td>
-<td><strong>15 m</strong> (300 wu)</td>
+<td><strong>15 m</strong></td>
 <td>Line-of-sight across front</td>
 </tr>
 </tbody>
@@ -1733,7 +1727,8 @@ Table&nbsp;4: Sight ranges by unit category under fog of war.
 </div>
 </figure>
 </div>
-<p>Sight ranges are strictly typed by unit category. Mounted troops see farthest: 21 m on the default field (a 1.4x multiplier). Ranged troops see intermediate distances: 18 m on the default field (a 1.2x multiplier). Foot troops hold the baseline: 15 m on the default field (a 1.0x multiplier). When a unit routs, panic degrades its observation: a fleeing unit suffers a 0.6x penalty to its sight radius.</p>
+<p>Sight ranges default by unit category.</p>
+<p>Mounted troops see farthest: 21 m on the default field (a 1.4x multiplier). Ranged troops see intermediate distances: 18 m on the default field (a 1.2x multiplier). Foot troops hold the baseline: 15 m on the default field (a 1.0x multiplier). When a unit routs, panic degrades its observation: a fleeing unit suffers a 0.6x penalty to its sight radius.</p>
 <section id="why-a-cavalry-screen-is-worth-more" class="level3">
 <h3 class="anchored" data-anchor-id="why-a-cavalry-screen-is-worth-more">Why a cavalry screen is worth more</h3>
 <p>On an open field with fog active, blind marching is dangerous. A standard deployment gap of 29 m means opposing foot lines deploy out of sight. Heavy infantry marching forward without reconnaissance risks blundering into spears. This gives cavalry a decisive tactical purpose before the lines meet. With a 21 m sight radius (a 40% reach advantage over foot) and superior speed, horsemen can push ahead of the heavy line as a scouting screen. A forward screen reveals enemy deployments and flags open flanks. It illuminates approaching columns while your main formation stays hidden. Skirmishers and archers (18 m reach) can also screen the heavy line, maintaining contact while staying outside the 15 m sight of enemy foot.</p>
@@ -1745,13 +1740,13 @@ Table&nbsp;4: Sight ranges by unit category under fog of war.
 <li><p>It marks where the enemy was, not where it stands now.</p></li>
 <li><p>It preserves the last-seen facing, but hides subsequent maneuvers.</p></li>
 <li><p>Its opacity indicates age, fading as the sighting grows stale.</p></li>
-<li><p>An attack order against a ghost marker directs units to where the contact was.</p></li>
+<li><p>Right-clicking a ghost marker falls through to a ground move order.</p></li>
 </ul>
-<p>If the enemy has marched away, your troops will march into empty ground.</p>
+<p>Attack orders require a visible target, so an order against a ghost cannot lock on. If the enemy has marched away, your troops will march into empty ground.</p>
 </section>
 <section id="scouting-and-pursuit-decisions" class="level3">
 <h3 class="anchored" data-anchor-id="scouting-and-pursuit-decisions">Scouting and pursuit decisions</h3>
-<p>Fog of war fundamentally reshapes pursuit and battlefield control. When fog is enabled, the retreat boundary expands. The retreat margin widens from 9.5 m (190 wu) to match the mounted sight radius of 21 m. This ensures a broken enemy does not escape off-map while still in sight. However, if your pursuers lose sight of a routing enemy, that enemy enters the dark. A broken unit that breaks contact and gains distance can steady its nerve and rally. Dropping pursuit in the fog risks allowing shattered remnants to reform. Fast cavalry must stay in contact, shadowing routers until they shatter or break completely.</p>
+<p>Fog of war fundamentally reshapes pursuit and battlefield control. When fog is enabled, the retreat boundary expands. The retreat margin widens from 9.5 m to match the mounted sight radius of 21 m. This ensures a broken enemy does not escape off-map while still in sight. However, if your pursuers lose sight of a routing enemy, that enemy enters the dark. A broken unit that breaks contact and gains distance can steady its nerve and rally. Dropping pursuit in the fog risks allowing shattered remnants to reform. Fast cavalry must stay in contact, shadowing routers until they shatter or break completely.</p>
 </section>
 </section>
 <section id="terrain" class="level2">
