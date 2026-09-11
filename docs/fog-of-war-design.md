@@ -106,10 +106,11 @@ Verified against the tree at the time of writing.
   This is the single most important constraint on the whole design.
   See "The scale problem" below.
 
-- `Battle.ROUT_MARGIN` is `maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)` = 190 wu, and `field_with_margin = field.grow(ROUT_MARGIN)` (`scripts/Battle.gd:41-42`, recomputed for the live map at `:531`) is what every spawned unit receives as `Unit.retreat_bounds` (`:1088`).
+- `Battle.ROUT_MARGIN` is `UnitRef.DETECTION_RANGE` = 190 wu (it was `maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)` until the missile reach became per unit), and `field_with_margin = field.grow(ROUT_MARGIN)` (`scripts/Battle.gd:41-42`, recomputed for the live map at `:531`) is what every spawned unit receives as `Unit.retreat_bounds` (`:1088`).
   A router that leaves it is removed from play by `Unit._escape()`.
   The comment above it states an invariant this design has to honour: the margin is sized to "the game's maximum visual range", with `DETECTION_RANGE` standing in for "a fog-of-war vision range, which this game doesn't have yet", "so a fleeing unit stays a plausible target for as long as it's still visible, rather than vanishing early".
-  A real sight range longer than 190 wu breaks that invariant, so the parameter section below has to say what happens to the margin.
+  Phase 2 equips pilum units with 300-wu detection while intentionally keeping `Battle.ROUT_MARGIN` battle-wide and fixed at 190 wu to prevent per-unit boundary drift.
+  A real sight range longer than 190 wu still breaks that invariant under fog of war, so the parameter section below specifies what happens to the margin.
 
 ### What the AI can see
 
@@ -126,7 +127,10 @@ Verified against the tree at the time of writing.
   Introducing the type is therefore part of this work rather than a pre-existing seam to swap behind, and it is the largest single piece of unplanned work this design surfaces.
 
 - `Unit.DETECTION_RANGE` is `9.5 * WorldScaleRef.WU_PER_M` (190 wu = 9.5 m), exposed per unit as the caller-configurable `Unit.detection_range`.
-  It is a **target-acquisition** radius consumed by `UnitTargeting.nearest_enemy` and `UnitTargeting.nearest_routing_enemy`, not a sight radius: it governs which enemy a unit auto-engages, and at 9.5 m it is barely longer than `Unit.RANGED_RANGE` (`8.0 * WorldScaleRef.WU_PER_M` = 160 wu = 8 m).
+  It is a **target-acquisition** radius consumed by `UnitTargeting.nearest_enemy` and `UnitTargeting.nearest_routing_enemy`, not a sight radius.
+  It governs which enemy a unit auto-engages.
+  For unprofiled and default-bow units, at 9.5 m it is barely longer than `Unit.RANGED_RANGE` (`8.0 * WorldScaleRef.WU_PER_M` = 160 wu = 8 m).
+  Units equipped with the pilum profile scale `detection_range` to match their 15.0 m (300 wu) missile reach.
   Sight is a separate quantity needing its own field.
   Conflating the two would silently change combat.
 
@@ -353,7 +357,7 @@ Extent-based or partial visibility is therefore a named later phase, listed
 under the open questions below.
 
 **The rout margin has to grow with sight range.**
-`Battle.ROUT_MARGIN` is `maxf(RANGED_RANGE, DETECTION_RANGE)` = 190 wu, and its
+`Battle.ROUT_MARGIN` is `DETECTION_RANGE` = 190 wu, and its
 comment (`scripts/Battle.gd:32-41`) sizes it to "the game's maximum visual
 range" so that "a fleeing unit stays a plausible target for as long as it's
 still visible".

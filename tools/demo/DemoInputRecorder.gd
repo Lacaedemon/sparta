@@ -293,7 +293,7 @@ func _start_battle() -> void:
 	# clicks land on empty ground where a unit used to be (the silent spawn-drift failure mode).
 	var live_fingerprint: String = SpawnFingerprint.of_tree(get_tree())
 	print("[demo-input] spawn fingerprint: %s" % live_fingerprint)
-	if _spawn_fingerprint != "" and _spawn_fingerprint != live_fingerprint:
+	if _spawn_fingerprint != "" and not SpawnFingerprint.matches_tree(_spawn_fingerprint, get_tree()):
 		push_error(("[demo-input] spawn-layout mismatch: script declares spawn_fingerprint %s " +
 				"but this build spawns %s. The spawn table changed since this script was authored, " +
 				"so its scripted clicks may no longer land on the intended units. Re-verify the " +

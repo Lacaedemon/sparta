@@ -80,12 +80,13 @@ func count() -> int:
 ## target with a soldier layer each arrow is tested against the shield the man it reaches is
 ## holding, so only some of them pierce. It collapses to a casualty count only on the
 ## fieldless fallback path, which has no shields to test.
-## `arced` picks the lob vs the flat trajectory. A degenerate (zero-distance) solve lands on
-## the next tick so the volley still resolves.
+## `angle` is the launch angle in radians above horizontal (ProjectilePhysics.ANGLE_ARCED for
+## a lob, ANGLE_FLAT for a flat shot, or a missile profile's own); with GRAVITY it fixes the
+## flight time, so a flat throw lands sooner than a lob at the same distance. A degenerate
+## (zero-distance) solve lands on the next tick so the volley still resolves.
 func launch(from: Vector2, to: Vector2, shooter_uid: int, target_uid: int,
-		arrows: int, flank: float, arced: bool) -> void:
+		arrows: int, flank: float, angle: float) -> void:
 	var dist: float = from.distance_to(to)
-	var angle: float = ProjectilePhysics.ANGLE_ARCED if arced else ProjectilePhysics.ANGLE_FLAT
 	var sol: Dictionary = ProjectilePhysics.solve_launch(dist, GRAVITY, angle)
 	var flight: float = sol["flight_time"]
 	if flight <= 0.0:
@@ -256,3 +257,74 @@ func _remove_at(index: int) -> void:
 ## The fixed physics step (deterministic); 1/60 fallback when no SceneTree is available.
 func get_physics_delta() -> float:
 	return 1.0 / float(maxi(1, Engine.physics_ticks_per_second))
+
+
+## Drop all in-flight projectiles and lodged shield records.
+func clear() -> void:
+	_from.clear()
+	_to.clear()
+	_elapsed.clear()
+	_flight.clear()
+	_speed.clear()
+	_angle.clear()
+	_shooter_uid.clear()
+	_target_uid.clear()
+	_arrows.clear()
+	_flank.clear()
+	_lodged.clear()
+
+
+## Serializes all in-flight projectile arrays and lodged shield state for replay snapshots.
+func to_snapshot_dict() -> Dictionary:
+	return {
+		"from": _from.duplicate(),
+		"to": _to.duplicate(),
+		"elapsed": _elapsed.duplicate(),
+		"flight": _flight.duplicate(),
+		"speed": _speed.duplicate(),
+		"angle": _angle.duplicate(),
+		"shooter_uid": _shooter_uid.duplicate(),
+		"target_uid": _target_uid.duplicate(),
+		"arrows": _arrows.duplicate(),
+		"flank": _flank.duplicate(),
+		"lodged": _lodged.duplicate(),
+	}
+
+
+## Restores in-flight projectiles and lodged shield state from a replay snapshot dict.
+func apply_snapshot_dict(snap: Dictionary) -> void:
+	clear()
+	var from_arr: Array = snap.get("from", [])
+	var to_arr: Array = snap.get("to", [])
+	var elapsed_arr: Array = snap.get("elapsed", [])
+	var flight_arr: Array = snap.get("flight", [])
+	var speed_arr: Array = snap.get("speed", [])
+	var angle_arr: Array = snap.get("angle", [])
+	var shooter_uid_arr: Array = snap.get("shooter_uid", [])
+	var target_uid_arr: Array = snap.get("target_uid", [])
+	var arrows_arr: Array = snap.get("arrows", [])
+	var flank_arr: Array = snap.get("flank", [])
+	for val in from_arr:
+		_from.append(val as Vector2)
+	for val in to_arr:
+		_to.append(val as Vector2)
+	for val in elapsed_arr:
+		_elapsed.append(float(val))
+	for val in flight_arr:
+		_flight.append(float(val))
+	for val in speed_arr:
+		_speed.append(float(val))
+	for val in angle_arr:
+		_angle.append(float(val))
+	for val in shooter_uid_arr:
+		_shooter_uid.append(int(val))
+	for val in target_uid_arr:
+		_target_uid.append(int(val))
+	for val in arrows_arr:
+		_arrows.append(int(val))
+	for val in flank_arr:
+		_flank.append(float(val))
+	var lodged_dict: Dictionary = snap.get("lodged", {})
+	for k in lodged_dict:
+		_lodged[int(k)] = int(lodged_dict[k])
+
