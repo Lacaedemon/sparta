@@ -260,8 +260,6 @@ func test_switching_fog_off_mid_battle_restores_every_hidden_unit() -> void:
 		"but the contact table is kept, so switching back on remembers the sighting")
 
 
-## The F7 toggle is refused during playback, where is_fog_active() answers from the
-## recording: flipping the live setting there would leave the indicator unchanged while
 ## The toggle is refused under all-teams control for the same reason it is refused
 ## during playback: is_fog_active() answers from something other than the live setting,
 ## so flipping it changes nothing on screen while the toast claims it did -- and the
@@ -279,6 +277,8 @@ func test_fog_toggle_is_refused_under_all_teams_control() -> void:
 	assert_false(hud._fog_label.visible, "the indicator stays hidden")
 
 
+## The F7 toggle is refused during playback, where is_fog_active() answers from the
+## recording: flipping the live setting there would leave the indicator unchanged while
 ## the toast announced a switch, so the two would visibly disagree.
 func test_fog_toggle_is_refused_during_playback() -> void:
 	var battle: Node = _staged_battle(false)
