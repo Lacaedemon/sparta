@@ -65,6 +65,8 @@ The order is refused -- nothing is armed, and a HUD flash says why -- when:
 - the two regiments are on different teams, or either is routing or dead;
 - the reserve is itself in enemy contact (`Unit._in_enemy_contact`), since a body in a fight cannot file off to the rear;
 - the loadouts differ (`weapon_type_id` or `shield_type_id`), because `melee_attack_interval()` and `shield_rest_angle()` read those ids per unit even though `soldier_lethality()`, `soldier_shield_block()`, and `soldier_is_piercing()` already resolve them per soldier, so a mixed regiment cannot yet be represented consistently;
+- the host is squared (`in_square()`), because a square holds no files to open;
+- either regiment is in the far tier (`FormationTier.FAR`), since a far-tier body carries no per-soldier slots to interleave into or to file in with, so the commit could never align;
 - the host reflows row-major (`_effective_file_major_reform()` is false), for the same reason;
 - the host has file-group subunits (`FILE_GROUP`), until subunit-aware insertion is wired in a follow-up.
 

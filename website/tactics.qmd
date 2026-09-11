@@ -354,8 +354,9 @@ to 18 with its front rank holding its ground.
 - **The order is refused, with the reason flashed on the HUD**, when the two
   are on different teams, either is routing or dead, the reserve is itself in
   contact (a body in a fight cannot file off), the loadouts differ, the host
-  is squared or too far off to hold files, or the host reflows row-major
-  (cavalry and undisciplined foot have no files to interleave into).
+  is squared or too far off to hold files, the host reflows row-major
+  (cavalry and undisciplined foot have no files to interleave into), or the
+  host is drilled in file groups (subunit-aware insertion is not yet wired).
 - **It costs cohesion.** The host starts at the same strangers debuff a merge
   pays and recovers at the usual rate; Asclepiodotus notes that some
   condemned doubling with the enemy near, and preferred to fake the widening
