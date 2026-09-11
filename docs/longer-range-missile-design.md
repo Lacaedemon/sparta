@@ -279,8 +279,8 @@ Per this repo's caller-configurable convention, every value named here enters th
 ### A missile profile in the loadout registry
 
 `scripts/LoadoutRegistry.gd` already interns weapon, shield, armor, and mount records on disjoint id ranges, and the record types it constructs convert authored metric lengths once at construction time:
-`Weapon.make` sets `reach_wu` from `reach_m` through `WorldScaleRef.m_to_wu` (`scripts/Weapon.gd`), which is the only call site of that helper anywhere in `scripts/`.
-The registry file itself holds no `WorldScale` reference, so the proposed profile's conversion belongs in its record type's `make` rather than in the registry.
+`Weapon.make` sets `reach_wu` from `reach_m` through `WorldScaleRef.m_to_wu` (`scripts/Weapon.gd`), and `MissileProfile.make` sets `range_wu` from `range_m` through the same helper (`scripts/MissileProfile.gd`) -- the only two call sites of that helper anywhere in `scripts/`.
+The registry file itself holds no `WorldScale` reference, so the profile's conversion belongs in its record type's `make` rather than in the registry.
 A missile profile is the same shape, on its own id range.
 
 Proposed fields, with defaults chosen so that an unset profile reproduces today's numbers exactly:

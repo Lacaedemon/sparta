@@ -374,3 +374,32 @@ func test_skirmish_kite_retreat_uses_profile_specific_kite_distance() -> void:
 	assert_lt(pilum_skirmisher.position.x, 0.0,
 		"a pilum skirmisher retreats away from an enemy inside its 187.5-wu kite threshold")
 
+
+func test_zero_accuracy_at_maximum_range_suppresses_launch_and_casualties() -> void:
+	var zero_profile: MissileProfile = (
+			MissileProfile.make(99, "ZeroAccuracy", 8.0, 1.0, 0.7, 0.0,
+			ProjectilePhysics.ANGLE_ARCED))
+	LoadoutRegistry._missiles[99] = zero_profile
+
+	var field := ProjectileField.new()
+	ProjectileField.active = field
+
+	var shooter := _unit(1, 0, Vector2.ZERO, Vector2.DOWN, 10)
+	shooter.is_ranged = true
+	shooter.attack = 40
+	assert_true(shooter.equip_missile(99), "zero accuracy profile equips")
+
+	var target := _unit(2, 1, Vector2(0.0, shooter.missile_range), Vector2.UP, 60)
+	target.state = Unit.State.FIGHTING
+	target.seed_sim_soldiers()
+
+	UnitCombat.shoot(shooter, target)
+	assert_eq(field.count(), 0, "no projectile launches into the field when accuracy is zero")
+	assert_eq(target.soldiers, 60, "and no casualty results under active field")
+
+	ProjectileField.active = null
+	UnitCombat.shoot(shooter, target)
+	assert_eq(target.soldiers, 60, "fieldless shot with zero accuracy inflicts no casualties")
+
+	LoadoutRegistry._missiles.erase(99)
+

@@ -238,23 +238,26 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 		var flank: float = flank_multiplier(target, u)
 		# Named for the volley rather than for either outcome, because the same number means
 		# two different things below: with a field it is how many ARROWS fly, without one it
-		# is how many men fall.
-		var volley_size: int = max(1, int(round(float(raw) * flank)))
-		if ProjectileField.active != null:
-			# Fly the volley: the arrows deliver when they LAND, after their real flight time,
-			# at the target position captured at launch -- so ranged fire now has travel time and lands where it was
-			# aimed. `volley_size` is the arrow count here, not the death toll: the field gates
-			# each arrow on the shield arc of the man it reaches, so a front turned toward the
-			# archers loses far fewer men than an exposed flank does.
-			ProjectileField.active.launch(u.position, target.position, u.uid, target.uid,
-					volley_size, flank, _volley_angle(u, target))
-		else:
-			# No projectile field (headless unit tests): resolve immediately at the shooter.
-			# This path has no flight and no per-arrow shield test -- it is the whole volley
-			# landing at once, as before projectiles existed. A live battle always has a
-			# field, so the shield gate is never skipped in play; only a fieldless unit test
-			# sees the older, blunter resolution.
-			SoldierMelee.apply_ranged_casualties(target, u.position, u, volley_size, flank)
+		# is how many men fall. A profile whose accuracy falls to zero suppresses the volley
+		# entirely, while a small-but-nonzero accuracy rounds up to at least one arrow.
+		var volley_size: int = (0 if accuracy <= 0.0
+				else max(1, int(round(float(raw) * flank))))
+		if volley_size > 0:
+			if ProjectileField.active != null:
+				# Fly the volley: the arrows deliver when they LAND, after their real flight time,
+				# at the target position captured at launch -- so ranged fire now has travel time and lands where it was
+				# aimed. `volley_size` is the arrow count here, not the death toll: the field gates
+				# each arrow on the shield arc of the man it reaches, so a front turned toward the
+				# archers loses far fewer men than an exposed flank does.
+				ProjectileField.active.launch(u.position, target.position, u.uid, target.uid,
+						volley_size, flank, _volley_angle(u, target))
+			else:
+				# No projectile field (headless unit tests): resolve immediately at the shooter.
+				# This path has no flight and no per-arrow shield test -- it is the whole volley
+				# landing at once, as before projectiles existed. A live battle always has a
+				# field, so the shield gate is never skipped in play; only a fieldless unit test
+				# sees the older, blunter resolution.
+				SoldierMelee.apply_ranged_casualties(target, u.position, u, volley_size, flank)
 	else:
 		take_casualties(target, raw, u)
 

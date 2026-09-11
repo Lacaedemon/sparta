@@ -1974,10 +1974,13 @@ A profile fixes five things at once:
 
 - **Cadence** --- how long the regiment takes between volleys.
   A bow looses every second; a pilum regiment throws every two.
+
 - **Flight** --- whether the volley is lobbed or thrown flat.
-  A lob hangs in the air; a flat throw to the same spot lands sooner, so a fast
-  target has less time to walk out from under it.
+  A lob hangs in the air.
+  A flat throw to the same spot lands sooner, so a fast target has less time to reposition before impact.
+
 - **Punch** --- how hard each volley hits against a melee strike of the same stats.
+
 - **Accuracy at range** --- how much of that punch survives to the edge of the
   reach.
   A bow loses nothing across its 8 m.
