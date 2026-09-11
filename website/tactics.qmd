@@ -1290,8 +1290,9 @@ standing start.)
 
 By default, foot units advance on **AUTO** pace: they walk on the approach, jog
 when a ranged enemy is firing at them (to spend less time under missiles), and
-sprint at full speed once within about 200 px of the target --- so a charge
-arrives at full momentum without wearing out the troops on the march.
+sprint at full speed once within about 10 m of the target --- so a charge
+arrives at full momentum while the walk-and-jog approach keeps the
+[stamina](#stamina) bill to that final stretch rather than the whole march.
 
 **Check Walk advance in the unit settings panel** to lock the selection to walk
 pace throughout. This is required for formed stances like shield wall or pike

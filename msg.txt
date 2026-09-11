@@ -1,0 +1,7 @@
+docs(stamina): stop the pace-modes paragraph claiming AUTO movement is free
+
+AUTO's terminal sprint now bills stamina like any other sprint, so the Pace
+modes paragraph contradicted the new stamina section. It also gave the
+threshold in raw world units; state it as 10 m, which is what the player sees.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
