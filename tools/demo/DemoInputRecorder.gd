@@ -150,8 +150,9 @@ func _ready() -> void:
 	# `position`, the regiment's own kinematic point) visible requests it here.
 	if script.get("show_position_anchor", false):
 		Settings.set_show_position_anchor_session(true)
-	# Session-only fog setting: set unconditionally from the script's option (default false)
+	# Session-only fog setting -- set unconditionally from the script's option (default false)
 	# so a developer's persisted preference cannot leak into the recorded demo.
+	# Scripted F7 steps in _fire() stay session-only too, avoiding disk writes.
 	Settings.set_fog_of_war_session(bool(script.get("fog_of_war", false)))
 	# Deterministic seed so the recorded battle is reproducible run to run.
 	Replay.forced_seed = int(str(script.get("seed", "12345")))
@@ -590,8 +591,11 @@ func _fire(ev: Dictionary) -> void:
 			k.pressed = true
 			k.ctrl_pressed = bool(ev.get("ctrl", false))
 			k.shift_pressed = bool(ev.get("shift", false))
-			_sel._unhandled_input(k)
-			if _hud != null and is_instance_valid(_hud):
+			if _sel != null and is_instance_valid(_sel):
+				_sel._unhandled_input(k)
+			if k.physical_keycode == KEY_F7:
+				_toggle_fog_session()
+			elif _hud != null and is_instance_valid(_hud):
 				_hud._unhandled_input(k)
 		"hold_space":
 			# Update hardware key state so Input.is_key_pressed(KEY_SPACE) returns true
@@ -622,6 +626,21 @@ func _set_time_scale(scale: float, tick: int) -> void:
 			_hud._update_slowmo_label()
 		if _hud.has_method("flash_message"):
 			_hud.flash_message("Speed: %d%%" % roundi(scale * 100.0))
+
+
+## Toggle fog of war session-only so scripted F7 demo steps never write settings.cfg.
+## Refused during replay playback (matching HUD._toggle_fog), and emits Settings.changed
+## with the HUD flash message so Battle and HUD update immediately.
+func _toggle_fog_session() -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		if _hud != null and is_instance_valid(_hud) and _hud.has_method("flash_message"):
+			_hud.flash_message("Fog of war is fixed by the recording during playback")
+		return
+	Settings.set_fog_of_war_session(not Settings.fog_of_war)
+	Settings.changed.emit()
+	if _hud != null and is_instance_valid(_hud) and _hud.has_method("flash_message"):
+		var state_str: String = "on" if Settings.fog_of_war else "off"
+		_hud.flash_message("Fog of war: %s" % state_str)
 
 
 # --- script -> per-tick event schedule -------------------------------------

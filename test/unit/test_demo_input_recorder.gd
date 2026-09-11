@@ -276,3 +276,34 @@ func test_recorder_applies_map_sight_scale_and_fog_to_battle() -> void:
 	Settings.set_fog_of_war_session(false)
 
 
+class _HudFlashMock:
+	extends Node
+	var last_flash: String = ""
+	func flash_message(text: String) -> void:
+		last_flash = text
+
+
+func test_recorder_f7_step_toggles_fog_session_only() -> void:
+	Settings.set_fog_of_war_session(false)
+	var r = _rec()
+	var hud := _HudFlashMock.new()
+	autofree(hud)
+	r._hud = hud
+	watch_signals(Settings)
+	r._fire({"kind": "key", "keycode": KEY_F7})
+	assert_true(Settings.fog_of_war, "F7 flips fog of war in-memory")
+	assert_signal_emitted(Settings, "changed", "and emits Settings.changed")
+	assert_eq(hud.last_flash, "Fog of war: on", "shows HUD flash message")
+	r._fire({"kind": "key", "keycode": KEY_F7})
+	assert_false(Settings.fog_of_war, "a second F7 flips it back")
+	assert_eq(hud.last_flash, "Fog of war: off", "shows off message")
+	Replay.mode = Replay.Mode.PLAYBACK
+	r._fire({"kind": "key", "keycode": KEY_F7})
+	assert_false(Settings.fog_of_war, "F7 is refused during replay playback")
+	assert_eq(hud.last_flash, "Fog of war is fixed by the recording during playback",
+			"and explains why in HUD message")
+	Replay.mode = Replay.Mode.IDLE
+	Settings.set_fog_of_war_session(false)
+
+
+
