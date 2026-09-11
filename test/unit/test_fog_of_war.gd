@@ -260,6 +260,23 @@ func test_switching_fog_off_mid_battle_restores_every_hidden_unit() -> void:
 		"but the contact table is kept, so switching back on remembers the sighting")
 
 
+## The F7 toggle is refused during playback, where is_fog_active() answers from the
+## recording: flipping the live setting there would leave the indicator unchanged while
+## the toast announced a switch, so the two would visibly disagree.
+func test_fog_toggle_is_refused_during_playback() -> void:
+	var battle: Node = _staged_battle(false)
+	await wait_frames(2)
+	var hud = battle.get_node("HUD")
+	Replay.mode = Replay.Mode.PLAYBACK
+	hud._toggle_fog()
+	assert_false(Settings.fog_of_war, "playback leaves the live fog setting alone")
+	assert_eq(hud._flash_label.text, "Fog of war is fixed by the recording during playback",
+		"and says why instead of announcing a switch that did not happen")
+	Replay.mode = Replay.Mode.IDLE
+	hud._toggle_fog()
+	assert_true(Settings.fog_of_war, "outside playback the same key still flips it")
+
+
 func test_all_teams_control_disables_fog() -> void:
 	var battle: Node = _staged_battle(true, true)
 	for _k in range(3):

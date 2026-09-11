@@ -1,0 +1,7 @@
+fix(fog): refuse the F7 fog toggle during replay playback
+
+is_fog_active() answers from the recording during playback, so flipping the
+live setting there left the on-screen indicator unchanged while the toast
+announced a switch. The key now says the recording fixes fog instead.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
