@@ -74,7 +74,9 @@ static func roll_the_line_target(u: Unit) -> Unit:
 			and t.state != Unit.State.ROUTING:
 		return t
 	u.target_enemy = null
-	return nearest_enemy_to(u, u.position, u.detection_range, false)
+	var inclusive: bool = \
+		u != null and u.carries_non_default_missile_profile()
+	return nearest_enemy_to(u, u.position, u.detection_range, false, inclusive)
 
 
 ## Nearest living enemy within `radius` of `center`. Backs both normal auto-acquisition

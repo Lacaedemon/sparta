@@ -211,6 +211,31 @@ func test_exact_detection_boundary_discriminates_unprofiled_from_profiled_units(
 		"profiled unit with routing enemy at exact profile range acquires router")
 
 
+func test_exact_boundary_roll_the_line_discriminates_unprofiled_from_profiled_units() -> void:
+	# Unprofiled unit under roll-the-line at exact detection range rejects candidate
+	var unprofiled := _unit(50, 0, Vector2.ZERO)
+	unprofiled.order_mode = Unit.ORDER_ROLL_THE_LINE
+	var det_range: float = unprofiled.detection_range
+	var boundary_enemy := _unit(51, 1, Vector2(0.0, det_range), Vector2.UP)
+	assert_null(UnitTargeting.roll_the_line_target(unprofiled),
+		"unprofiled roll-the-line unit with enemy at exact detection boundary acquires nothing")
+
+	# Profiled pilum unit at exact reach under roll-the-line acquires candidate
+	var p_base := Vector2(3000.0, 0.0)
+	var pilum_unit := _unit(52, 0, p_base)
+	pilum_unit.order_mode = Unit.ORDER_ROLL_THE_LINE
+	assert_true(pilum_unit.equip_missile(LoadoutRegistry.MISSILE_PILUM), "pilum equipped")
+	var p_range: float = pilum_unit.missile_range
+	var profiled_enemy := _unit(53, 1, p_base + Vector2(0.0, p_range), Vector2.UP)
+	assert_eq(UnitTargeting.roll_the_line_target(pilum_unit), profiled_enemy,
+		"profiled roll-the-line unit with enemy at exact reach acquires candidate")
+
+	pilum_unit._think(0.05)
+	assert_eq(pilum_unit.target_enemy, profiled_enemy,
+		"pilum roll-the-line unit acquires enemy as target_enemy under ORDER_ROLL_THE_LINE")
+
+
+
 func test_firing_cadence_distinguishes_pilum_two_second_interval_from_bow_one_second() -> void:
 	Replay.rng.seed = SEED
 	var target_pilum := _unit(30, 1, Vector2(0.0, 100.0), Vector2.UP, 60)
