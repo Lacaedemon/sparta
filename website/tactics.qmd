@@ -480,6 +480,42 @@ So a unit that has been grinding at the front for a while is measurably weaker t
 that just arrived fresh. Rank cycling (above) helps by rotating tired soldiers to the
 rear to recover; simply pulling a unit out of melee and letting it rest works too.
 
+**The pace of the march spends stamina too.**
+Every soldier's pool follows the regiment's live pace, not just its blows:
+a halted regiment regenerates,
+a walk is neutral,
+a jog drains slowly,
+and a sprint drains fast.
+So a regiment that jogs its whole approach arrives sooner than one that walks,
+but arrives with less in the tank,
+and one that sprints the whole way arrives spent ---
+its condition factor already down before the first blow lands.
+That is the trade-off behind [choosing a gait by click count](#choosing-a-gait-by-click-count)
+and behind AUTO pace's default profile:
+the unthreatened walk costs nothing,
+so the men reach charge distance fresh and spend the pool only on the terminal sprint
+(or on an earlier jog if under missile fire or pursuing).
+Read the pool off the selected unit's stat sheet
+(the **Stamina per man** line, mean and spread over the living men)
+to see how much of it a march has already cost.
+
+::: {#fig-gait-stamina-drain .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/gait_stamina_drain.jpg">
+  <source src="media/gait_stamina_drain.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A lone Infantry regiment jogs a long leg south, then is re-ordered to sprint
+mid-jog. The stat sheet's Stamina per man readout bleeds slowly through the
+jog (about one point a second) and steeply through the sprint (about five a
+second), with no rest in between to mask the difference.
+:::
+
 ## Prone / knockdown
 
 A blow that delivers enough force can **knock a soldier off their feet**. A prone
@@ -1309,8 +1345,9 @@ standing start.)
 
 By default, foot units advance on **AUTO** pace: they walk on the approach, jog
 when a ranged enemy is firing at them (to spend less time under missiles), and
-sprint at full speed once within about 200 px of the target --- so a charge
-arrives at full momentum without wearing out the troops on the march.
+sprint at full speed once within about 10 m of the target --- so a charge
+arrives at full momentum while the walk-and-jog approach keeps the
+[stamina](#stamina) bill to that final stretch rather than the whole march.
 
 **Check Walk advance in the unit settings panel** to lock the selection to walk
 pace throughout. This is required for formed stances like shield wall or pike
@@ -1364,6 +1401,11 @@ threat it would otherwise jog or sprint through (screening a flank, keeping
 a formation intact under fire without also toggling Walk advance), or to
 force an early sprint before AUTO's close-range threshold would normally
 trigger it.
+
+A chosen gait is also a chosen [stamina](#stamina) bill: a walk is free, a
+jog drains the men slowly for as long as it lasts, and a sprint drains them
+fast, so a regiment sprinted across the whole field arrives sooner and
+arrives tired. Spend the faster gaits on the legs that need them.
 
 ::: {#fig-multi-click-speeds .demo}
 

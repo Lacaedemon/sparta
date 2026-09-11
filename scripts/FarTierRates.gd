@@ -79,7 +79,13 @@ static func strike_expectation(attacker: Unit, defender: Unit) -> float:
 		var ranged_base: float = maxf(1.0, eff_ranged - float(defender.defense)) \
 				* Unit.RANGED_DAMAGE_FACTOR
 		return ranged_base * defender.missile_defense_factor(attacker)
-	var eff_attack: float = float(attacker.attack) \
+	# The regiment's mean pool gives its blows the g(sigma) each close-tier soldier's own
+	# pool feeds into cond_a (SoldierMelee.resolve), applied before the defence subtraction
+	# exactly as FarTierRules.strike_expectation applies it to the record model's aggregate,
+	# so a line that jogged its approach can lose its whole margin over the defence.
+	var fatigue: float = SoldierCombat.stamina_factor(attacker.mean_soldier_stamina(),
+			attacker.max_stamina)
+	var eff_attack: float = float(attacker.attack) * fatigue \
 			* attacker.formation_attack_factor() * attacker.formation_melee_attack_factor()
 	var base: float = maxf(1.0, eff_attack - float(defender.defense))
 	return base * defender.melee_defense_factor(attacker)

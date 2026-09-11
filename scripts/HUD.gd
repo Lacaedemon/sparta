@@ -1046,8 +1046,17 @@ func _dynamic_stats(u) -> String:
 				u.gait_pace(gait), BattleRef.WORLD_UNITS_PER_METER, BattleRef.SPEED_SCALE)
 		gait_text = "%s (%s)" % [UnitRef.GAIT_NAMES.get(gait, "Auto"),
 				DistanceLegend.speed_label_text(gait_mps)]
+	# Stamina: the living men's pool (a fallen man's entry is compacted out at the reap),
+	# or the far tier's single aggregate scalar with no spread. Zero is a real stamina
+	# value, so mean_sd_living reads it while filtering dead bodies awaiting the reap.
+	var stamina: Vector2 = Vector2(u.mean_soldier_stamina(), 0.0) \
+			if u.tier == FormationTier.FAR else UnitStats.mean_sd_living(
+					u._sim_soldier_stamina, u._sim_soldier_hp)
+	if u.tier != FormationTier.FAR and u._sim_soldier_stamina.is_empty():
+		stamina = Vector2(profile["max_stamina"], 0.0)   # bodies not seeded yet
 	return "\n".join([
 		"HP per man: %.0f ±%.0f of %.0f" % [hp.x, hp.y, profile["max_health"]],
+		"Stamina per man: %.0f ±%.0f of %.0f" % [stamina.x, stamina.y, profile["max_stamina"]],
 		"Gait: %s" % gait_text,
 		"Speed: %s" % DistanceLegend.speed_label_text(mean_mps),
 		# Snap sub-display-precision values to zero so the readout can't show "-0.0".

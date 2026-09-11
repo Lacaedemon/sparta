@@ -303,6 +303,9 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		"soldiers": u.soldiers,
 		"current_speed": round_to(u._current_speed, 1),
 		"current_speed_mps": mps(u._current_speed, WorldScaleRef.WU_PER_M, speed_scale),
+		# Mean per-soldier stamina (the far tier's aggregate scalar once demoted), so a
+		# gait's drain is verifiable straight off the transcript without a FULL dump.
+		"stamina_mean": round_to(u.mean_soldier_stamina(), 1),
 		"order_mode": order_mode_name(order_mode_names, u.order_mode),
 		# Intra-unit rank-relief mode (phase 3): whether rear ranks rotate forward to
 		# relieve their own fighting line. A durable mode like formation, so a stance

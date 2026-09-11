@@ -236,6 +236,35 @@ func test_unit_record_dumps_pitches_at_top_level() -> void:
 			"dumped caption matches the HUD so the analyzer need not load Unit")
 
 
+func test_unit_record_dumps_stamina_mean_close_tier() -> void:
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u._sim_soldier_stamina = PackedFloat32Array([40.24, 60.18])
+	var rec: Dictionary = DemoState.unit_record(u, {}, 1.0, false)
+	assert_true(rec.has("stamina_mean"), "unit_record carries stamina_mean")
+	assert_almost_eq(float(rec["stamina_mean"]), 50.2, 0.0001,
+		"stamina_mean computes mean over living soldiers and rounds to one decimal place")
+
+
+func test_unit_record_dumps_stamina_mean_zero_valued() -> void:
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u._sim_soldier_stamina = PackedFloat32Array([0.0, 0.0])
+	var rec: Dictionary = DemoState.unit_record(u, {}, 1.0, false)
+	assert_almost_eq(float(rec["stamina_mean"]), 0.0, 0.0001,
+		"fully exhausted unit serializes stamina_mean as 0.0")
+
+
+func test_unit_record_dumps_stamina_mean_far_tier_aggregate() -> void:
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u.tier = FormationTier.FAR
+	u.far_stamina = 73.46
+	var rec: Dictionary = DemoState.unit_record(u, {}, 1.0, false)
+	assert_almost_eq(float(rec["stamina_mean"]), 73.5, 0.0001,
+		"far-tier unit reads aggregate far_stamina rounded to one decimal place")
+
+
 func test_build_snapshot_captures_hud_when_present() -> void:
 	var hud = preload("res://scripts/HUD.gd").new()
 	add_child_autofree(hud)

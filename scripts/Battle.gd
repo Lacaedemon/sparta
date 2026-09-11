@@ -944,6 +944,12 @@ func _line_start_x(half_widths: Array[float], xs: Array[float], field_width: flo
 ## as the pace speeds above. Optional; _spawn_unit falls back to the Unit.gd default (0.5)
 ## for a loadout entry that omits it.
 ##
+## `stamina_rest_regen_per_s` / `stamina_walk_regen_per_s` / `stamina_jog_drain_per_s` /
+## `stamina_sprint_drain_per_s` are the type's per-gait stamina flow, in stamina points per
+## second (Unit.stamina_rest_regen_per_s and siblings; StaminaFlow). All optional; every
+## shipped type currently takes the Unit.gd defaults, which are the combat model's posture
+## table, so no entry below carries them yet.
+##
 ## `walk_advance_default`/`reform_before_move_default` are this type's starting
 ## values for the two per-unit settings a player can later toggle from the info panel
 ## checkbox (Unit.walk_advance/Unit.reform_before_move) -- both optional, defaulting to
@@ -1080,6 +1086,13 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	# keeps the Unit.gd default (0.5), matching pre-loadout behavior.
 	if d.has("back_fraction"):
 		u.back_speed_fraction = d["back_fraction"]
+	# Per-type stamina flow per gait (see Unit.stamina_rest_regen_per_s and siblings):
+	# stamina points per second, so no world-unit conversion. Optional; an entry that
+	# omits a key keeps the Unit.gd default for it (the combat model's posture table).
+	for key in ["stamina_rest_regen_per_s", "stamina_walk_regen_per_s",
+			"stamina_jog_drain_per_s", "stamina_sprint_drain_per_s"]:
+		if d.has(key):
+			u.set(key, float(d[key]))
 	# Loadout types: interned LoadoutRegistry ids. The weapon type is the single
 	# source of truth for melee reach — its reach_m (metres) -> world units becomes
 	# the unit's attack_range, the same scalar combat read before the registry
