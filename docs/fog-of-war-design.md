@@ -127,7 +127,10 @@ Verified against the tree at the time of writing.
   Introducing the type is therefore part of this work rather than a pre-existing seam to swap behind, and it is the largest single piece of unplanned work this design surfaces.
 
 - `Unit.DETECTION_RANGE` is `9.5 * WorldScaleRef.WU_PER_M` (190 wu = 9.5 m), exposed per unit as the caller-configurable `Unit.detection_range`.
-  It is a **target-acquisition** radius consumed by `UnitTargeting.nearest_enemy` and `UnitTargeting.nearest_routing_enemy`, not a sight radius: it governs which enemy a unit auto-engages, and at 9.5 m it is barely longer than `Unit.RANGED_RANGE` (`8.0 * WorldScaleRef.WU_PER_M` = 160 wu = 8 m).
+  It is a **target-acquisition** radius consumed by `UnitTargeting.nearest_enemy` and `UnitTargeting.nearest_routing_enemy`, not a sight radius.
+  It governs which enemy a unit auto-engages.
+  For unprofiled and default-bow units, at 9.5 m it is barely longer than `Unit.RANGED_RANGE` (`8.0 * WorldScaleRef.WU_PER_M` = 160 wu = 8 m).
+  Units equipped with the pilum profile scale `detection_range` to match their 15.0 m (300 wu) missile reach.
   Sight is a separate quantity needing its own field.
   Conflating the two would silently change combat.
 

@@ -1969,8 +1969,9 @@ A profile fixes five things at once:
 
 - **Reach** --- how far the regiment can loose at all.
   The bow reaches 8 m; the pilum, a heavy shaft thrown by hand, reaches 15 m.
-  A regiment also *sees* as far as it can shoot, so a longer-reaching profile
-  acquires a target on its own past the ordinary sighting distance.
+  A longer-reaching profile extends auto-acquisition to its missile reach.
+  The regiment acquires a target on its own past the ordinary acquisition distance.
+
 - **Cadence** --- how long the regiment takes between volleys.
   A bow looses every second; a pilum regiment throws every two.
 - **Flight** --- whether the volley is lobbed or thrown flat.
@@ -2005,7 +2006,7 @@ so a longer-ranged skirmisher backs off further before it is caught.
 Two player-controlled archer regiments stand on one line, both 14.5 m from an enemy regiment.
 The left one carries the pilum profile (15 m reach) and opens fire on its own; the
 right one carries the bow (8 m reach) and holds, the enemy out of both its reach and
-its sight.
+its auto-acquisition range.
 :::
 
 ## Turn your shields toward the archers

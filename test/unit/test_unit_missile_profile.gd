@@ -326,3 +326,51 @@ func test_equipped_pilum_volley_launches_with_flat_flight_timing_under_active_fi
 			"flat volley lands significantly faster than an arced lob")
 	ProjectileField.active = null
 
+
+# --- profile-specific tactical behavior in _think ----------------------------------
+
+func test_under_fire_boundary_uses_shooters_profile_reach() -> void:
+	var victim := _unit(40, 0, Vector2.ZERO)
+	var shooter := _unit(41, 1, Vector2(250.0, 0.0))
+	shooter.is_ranged = true
+
+	# Control: with the default bow (160 wu reach), an enemy at 250 wu does not
+	# put the victim under fire.
+	victim._think(0.1)
+	assert_false(victim._under_fire,
+		"at 250 wu, a bow shooter with 160-wu reach does not put the victim under fire")
+
+	# With the pilum profile equipped (300 wu reach), the same 250 wu distance
+	# is inside the shooter's missile range and sets under fire.
+	assert_true(shooter.equip_missile(LoadoutRegistry.MISSILE_PILUM), "equips pilum")
+	victim._think(0.1)
+	assert_true(victim._under_fire,
+		"at 250 wu, a pilum shooter with 300-wu reach puts the victim under fire")
+
+
+func test_skirmish_kite_retreat_uses_profile_specific_kite_distance() -> void:
+	# At 140 wu, the enemy is between the bow kite distance (100 wu) and the
+	# pilum kite distance (187.5 wu).
+	var gap := 140.0
+
+	# Bow control.
+	# 140 wu is outside the 100-wu kite threshold, so it does not retreat.
+	var bow_skirmisher := _unit(42, 0, Vector2.ZERO)
+	bow_skirmisher.is_ranged = true
+	bow_skirmisher.order_mode = Unit.ORDER_SKIRMISH
+	var enemy_bow := _unit(43, 1, Vector2(gap, 0.0))
+	bow_skirmisher._think(0.1)
+	assert_eq(bow_skirmisher.position.x, 0.0,
+		"a bow skirmisher holds ground and does not retreat from an enemy at 140 wu")
+
+	# Pilum skirmisher.
+	# 140 wu is inside the 187.5-wu kite distance, so it retreats.
+	var pilum_skirmisher := _unit(44, 0, Vector2(0.0, 500.0))
+	pilum_skirmisher.is_ranged = true
+	pilum_skirmisher.order_mode = Unit.ORDER_SKIRMISH
+	assert_true(pilum_skirmisher.equip_missile(LoadoutRegistry.MISSILE_PILUM), "equips pilum")
+	var enemy_pilum := _unit(45, 1, Vector2(gap, 500.0))
+	pilum_skirmisher._think(0.1)
+	assert_lt(pilum_skirmisher.position.x, 0.0,
+		"a pilum skirmisher retreats away from an enemy inside its 187.5-wu kite threshold")
+
