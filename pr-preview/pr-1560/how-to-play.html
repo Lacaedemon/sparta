@@ -645,74 +645,78 @@ Table&nbsp;1: Battle controls: selection, orders, formations, drill maneuvers, a
 <td><kbd>M</kbd></td>
 </tr>
 <tr class="odd">
+<td>Reinforce a friendly (doubling numbers)</td>
+<td><kbd>Shift</kbd> + <kbd>M</kbd> arms it, then <strong>right-click</strong> the friendly regiment to file into. The selection marches up behind it and its men step into the host’s files, widening the host’s frontage (up to doubling for an equal-strength reserve — see <a href="./tactics.html#reinforcement-insertion">Tactics</a>). <kbd>Esc</kbd> clears the arm</td>
+</tr>
+<tr class="even">
 <td>Control groups</td>
 <td><kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall. Binding a selection that’s exactly the combined membership of one or more other groups (no partial overlap, no extras) nests those groups under the new one, so recalling it always reflects whatever its nested groups currently hold</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Delegate to AI subcommander</td>
 <td><kbd>Ctrl</kbd>+<kbd>Shift</kbd> + <kbd>0</kbd>-<kbd>9</kbd> hands the selection to AI subcommander group <em>N</em> (press again on the same selection to take it back); any explicit order to a delegated unit reclaims it immediately – see <a href="./tactics.html#player-delegation">Tactics</a></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Distance legend</td>
 <td><strong>☰ Menu → Distance legend</strong> toggles the map-scale bar (top-left, on by default)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Order distance labels</td>
 <td><strong>☰ Menu → Order distance labels</strong> toggles the metric distance shown on each order line in the hold-<kbd>Space</kbd> survey (on by default)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Unit speed labels</td>
 <td><strong>☰ Menu → Unit speed labels</strong> shows each unit’s current speed in metres/second above it in the hold-<kbd>Space</kbd> survey (off by default)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Soldier IDs (selected unit, zoom in)</td>
 <td><strong>☰ Menu → Soldier IDs (selected unit, zoom in)</strong> draws each soldier’s per-body index over a selected unit at figure LOD (zoomed in); a developer debug visual (off by default)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Engaged-soldier highlight</td>
 <td><strong>☰ Menu → Engaged-soldier highlight</strong> tints a unit’s currently-engaged soldiers (the ones the sim actually treats as melee/contact candidates this tick) a distinct color, for every unit, at any zoom; a developer debug visual (off by default)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Position-anchor marker</td>
 <td><strong>☰ Menu → Position-anchor marker</strong> draws a small dot at each unit’s <code>position</code> – the regiment’s own kinematic anchor point, distinct from any individual soldier; a developer debug visual (off by default)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Frame rate</td>
 <td><strong>☰ Menu → Show frame rate</strong> toggles a counter showing render FPS and the live simulation tick rate (ticks/s, which reads below the 60 Hz target if a large battle can’t keep up); <strong>☰ Menu → Frame rate corner…</strong> picks which screen corner it renders in (top-left by default, off by default)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Unit card tray</td>
 <td><kbd>F1</kbd> or the <strong>Tray</strong> button beside <strong>☰ Menu</strong> (or <strong>☰ Menu → Unit card tray</strong>) shows a panel for organizing your units into named battle lines. Each line is a fixed-width grid of cells (<strong>+ Line</strong>/<strong>- Line</strong> and <strong>+ Column</strong>/<strong>- Column</strong> resize it) – a cell can be empty, so a line can leave gaps for a quincunx/checkerboard-style offset against the line below it. Drag a card onto another cell to swap the two (an empty target cell just moves the card there), or use its arrow buttons for the same moves – a lone unit always has an empty neighbor cell to shift into. Click a line’s name to select every unit in it at once. Check <strong>Tray formation placement</strong> to deploy that grid onto the field with a form-up drag (Line 1 = front rank; see <a href="#deploy-from-the-unit-card-tray">Deploy from the unit card tray</a>)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Pan camera</td>
 <td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges (all four arrows nudge instead while a unit is selected; <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> always pans)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Zoom</td>
 <td><strong>Mouse wheel</strong></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Show all orders + formation preview</td>
 <td>hold <kbd>Space</kbd></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Active pause</td>
 <td><kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Slow motion (100% → 50% → 25% → 10%, <kbd>Shift</kbd> reverses)</td>
 <td><kbd>F5</kbd></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Fog of war</td>
 <td><kbd>F7</kbd> or <strong>☰ Menu → Fog of war</strong> hides every enemy unit outside your own units’ sight radii and leaves a fading ghost outline where each was last seen. A “FOG OF WAR” indicator shows while it’s on (off by default) – see <a href="#fog-of-war">Fog of war</a></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>All shortcuts (this list, in-game)</td>
 <td><kbd>?</kbd> (Shift + <kbd>/</kbd>) or <strong>☰ Menu → Shortcuts</strong></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Quit to Main Menu</td>
 <td><strong>☰ Menu → Quit to Main Menu</strong> leaves the battle immediately and returns to the Main Menu — the only way out of a <a href="#parade-ground">Parade Ground</a> drill, which never auto-ends</td>
 </tr>
@@ -745,7 +749,7 @@ Figure&nbsp;2: One unit is bound as group 2 and two more as group 3; selecting e
 </figcaption>
 </figure>
 </div>
-<p><strong>Pace modes (AUTO by default).</strong> Units walk on approach, jog when a ranged enemy is within range (under missile fire), and accelerate to full sprint speed once within about 200 px of the target — so a charge arrives at full momentum without wearing out the troops on the march. Check <strong>Walk advance</strong> in the unit settings panel to lock the selection to walk pace throughout; this is required for formed stances like shield wall or pike phalanx that break if the unit breaks into a run. Each unit type has its own default — spearmen start with it on, everyone else off — and the setting persists per unit until you (or a replayed order) change it again.</p>
+<p><strong>Pace modes (AUTO by default).</strong> Units walk on approach, jog when a ranged enemy is within range (under missile fire), and accelerate to full sprint speed once within about 10 m of the target — preserving stamina on the approach walk and spending it only on the terminal charge (or when jogging under fire or pursuing). Check <strong>Walk advance</strong> in the unit settings panel to lock the selection to walk pace throughout; this is required for formed stances like shield wall or pike phalanx that break if the unit breaks into a run. Each unit type has its own default — spearmen start with it on, everyone else off — and the setting persists per unit until you (or a replayed order) change it again.</p>
 <p><strong>Move order sequence.</strong> When you right-click a destination, the regiment turns to face it and marches there in good order: it <strong>pivots about its centre</strong> onto the new heading — turning in place before it advances on a sharp turn — marches, and settles back into formation on arrival. The next two sections cover the special cases: a small sideways shift (<strong>side-step</strong>) and a larger turn (<strong>centre pivot</strong>).</p>
 <p><strong>Disciplined vs.&nbsp;undisciplined units.</strong> The centre-pivot march above is what a <strong>disciplined</strong> (trained, professional) unit executes. An <strong>undisciplined</strong> unit — a levy or mob — skips it: it turns to face its destination immediately and walks there directly, re-forming as its soldiers arrive rather than turning as one formed body. A disciplined unit given an <strong>in-haste</strong> order — a triple- or quadruple-click move, i.e.&nbsp;run or sprint pace — marches the same undisciplined way for that order: there’s no time to execute a formed turn at a dead run.</p>
 <div id="fig-disciplined-march" class="demo quarto-float quarto-figure quarto-figure-center anchored">
@@ -1389,7 +1393,7 @@ Figure&nbsp;42: Toggling fog of war mid-battle with F7. Units outside sight rang
 </figcaption>
 </figure>
 </div>
-<p><kbd>F7</kbd> (or <strong>☰ Menu → Fog of war</strong>) switches fog of war on and off. It is off by default, so a battle looks exactly as before until you ask for it. With fog on, each of your units sees a disc around itself — 15 m for foot, 18 m for ranged units (archers and skirmishers), 21 m for cavalry on the default field — and an enemy unit whose center lies outside every one of those discs is not drawn. Your own units are always visible. An enemy you have seen and then lost leaves a <strong>ghost outline</strong> in its team color at the spot and facing it was last seen, fading over the next ten seconds. A standing “FOG OF WAR” indicator sits below the order-mode banner while fog is on. Fog affects what is drawn and widens the retreat boundary so fleeing enemies do not escape while still inside your sight discs. Units fight, target, and move under the same AI and physics rules. The recorded fog state drives replay playback with mid-battle toggles disabled while recording and during replay, and the enemy AI still sees everything for now. Terrain does not block or shorten sight yet, and the map itself is never darkened. For tactical guidance on scouting screens, ghost staleness, and pursuit decisions, see <a href="./tactics.html#fog-of-war">Tactics</a>.</p>
+<p><kbd>F7</kbd> (or <strong>☰ Menu → Fog of war</strong>) switches fog of war on and off. It is off by default, so a battle looks exactly as before until you ask for it. With fog on, each of your units sees a disc around itself — 15 m for foot, 18 m for ranged units (archers and skirmishers), 21 m for cavalry on the default field — and an enemy unit whose center lies outside every one of those discs is not drawn. Your own units are always visible. An enemy you have seen and then lost leaves a <strong>ghost outline</strong> in its team color at the spot and facing it was last seen, fading over the next ten seconds. A standing “FOG OF WAR” indicator sits below the order-mode banner while fog is on. Fog affects what is drawn and widens the retreat boundary so fleeing enemies do not escape while still inside your sight discs. Units fight, target, and move under the same AI and physics rules. A replay reproduces the fog state the battle started with, mid-battle toggles are not reproduced on playback, and the enemy AI still sees everything for now. Terrain does not block or shorten sight yet, and the map itself is never darkened. For tactical guidance on scouting screens, ghost staleness, and pursuit decisions, see <a href="./tactics.html#fog-of-war">Tactics</a>.</p>
 </section>
 </section>
 <section id="the-battle-loop" class="level2">
