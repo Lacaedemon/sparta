@@ -408,11 +408,11 @@ func _ready() -> void:
 	# has no enemy to win against) — also handy as a plain "give up" from any other battle.
 	popup.add_item("Quit to Main Menu", MENU_QUIT_TO_MENU)
 	_sync_setting_toggles()
-	# Battle._ready applies all_teams_control from AllTeamsControl.pending AFTER child
+	# Battle._ready applies all_teams_control and parses Replay.map AFTER child
 	# HUD._ready has run.
-	# Re-sync the fog indicator one idle frame later once the parent
-	# has finalized whether all-teams control is active.
-	_sync_fog_label.call_deferred()
+	# Re-sync setting toggles and the fog indicator one idle frame later once the parent
+	# has finalized whether fog is active.
+	_sync_setting_toggles.call_deferred()
 	# Re-stamp the form-up labels now that the popup exists, in case set_team_factions()
 	# was already called before _ready() ran (Battle hands factions over in its own _ready,
 	# and node ready order isn't guaranteed). A no-op when team_factions is still empty.
@@ -705,7 +705,11 @@ func _sync_setting_toggles() -> void:
 	popup.set_item_checked(popup.get_item_index(MENU_SHOW_FPS), Settings.show_fps)
 	popup.set_item_checked(popup.get_item_index(MENU_PERFORMANCE_GRAPH), Settings.show_performance_graph)
 	popup.set_item_checked(popup.get_item_index(MENU_UNIT_CARD_TRAY), Settings.show_unit_card_tray)
-	popup.set_item_checked(popup.get_item_index(MENU_FOG_OF_WAR), Settings.fog_of_war)
+	var fog_checked: bool = Settings.fog_of_war
+	var battle = get_parent()
+	if battle != null and battle.has_method("is_fog_active"):
+		fog_checked = battle.is_fog_active()
+	popup.set_item_checked(popup.get_item_index(MENU_FOG_OF_WAR), fog_checked)
 	_sync_fog_label()
 	_tray_toggle_btn.set_pressed_no_signal(Settings.show_unit_card_tray)
 	for entry in _FPS_CORNER_ENTRIES:
@@ -769,8 +773,8 @@ func _on_menu_id(id: int) -> void:
 		MENU_UNIT_CARD_TRAY:
 			Settings.show_unit_card_tray = not Settings.show_unit_card_tray
 		MENU_FOG_OF_WAR:
-			# Settings.changed -> _sync_setting_toggles -> _sync_fog_label, like the rest.
-			Settings.fog_of_war = not Settings.fog_of_war
+			if not _toggle_fog():
+				_sync_setting_toggles()
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
 		MENU_SHORTCUTS:
@@ -935,16 +939,18 @@ func _is_fog_toggle_keypress(event: InputEvent) -> bool:
 	return event.physical_keycode == KEY_F7
 
 
-## Flip Settings.fog_of_war (persisted, like the Menu check item) and say so: fog hides
+## Flip Settings.fog_of_war (persisted, like the Menu check item). Fog hides
 ## units, so an unannounced switch would read as units vanishing. Refused during playback,
-## where Battle.is_fog_active() answers from the recording instead: flipping the live
-## setting there would change nothing on screen while the toast claimed it had.
-func _toggle_fog() -> void:
+## where Battle.is_fog_active() answers from the recording instead.
+## Flipping the live setting there would change nothing on screen while the toast claimed it had.
+## Returns true if applied, false if refused.
+func _toggle_fog() -> bool:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		flash_message("Fog of war is fixed by the recording during playback")
-		return
+		return false
 	Settings.fog_of_war = not Settings.fog_of_war
 	flash_message("Fog of war: %s" % ("on" if Settings.fog_of_war else "off"))
+	return true
 
 
 ## Show the standing "FOG OF WAR" indicator exactly while fog is effectively active.

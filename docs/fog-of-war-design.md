@@ -594,12 +594,11 @@ would change** -- a unit would stop auto-acquiring an enemy the *player* cannot
 see, which is both wrong and a silent desync between a recording and its
 playback if the two ever differed in render state.
 
-So the rule is explicit: fog sets `CanvasItem.visible` and nothing else.
-Group membership, `_physics_process`, targeting, and collision are all
-untouched.
-A headless run with no rendering at all and a rendered run must produce
-byte-identical replays, and a test asserting that is the cheapest guard
-available.
+So the rule is explicit.
+Fog affects `CanvasItem.visible`, ghost markers, and the retreat margin.
+The recorded replay map value drives playback.
+Group membership, `_physics_process`, targeting, and collision are untouched.
+A headless run with no rendering at all and a rendered run must produce byte-identical replays under the recorded fog state.
 
 The corollary is that **soldier-level combat stays unfogged**: a soldier
 strikes whoever is in reach whether or not the commander can see the unit.
@@ -616,9 +615,10 @@ a judgement call about a video, which is what `CLAUDE.md` asks for.
 ## Phase plan
 
 Design only; no implementation is dispatched by this doc.
-Each phase is a separate PR with its own demo, and each holds the two standing
-invariants: fog never touches simulation state, and a replay re-derives
-identically.
+Each phase is a separate PR with its own demo.
+Each holds the standing invariants.
+Fog effects are bounded to visibility, ghost markers, and the retreat margin.
+A replay re-derives identically under its recorded map state.
 
 ### Phase 1 -- battle visibility core, headless
 

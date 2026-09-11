@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/fog-of-war-toggle.json",
-  "caption": "Fog of war toggled mid-battle with F7: at 1.5 s the far enemy Archers (south-east) vanish while the enemy Infantry inside the player's Cavalry sight disc stays, and a FOG OF WAR indicator appears under the banner; the Cavalry then moves westward from (600, 300) to (100, 300), opening the gap past 420 wu and suffering 0 casualties while remaining unengaged; the Infantry drops out of sight and leaves a red ghost outline where last seen, fading over ten seconds; at 14 s F7 switches fog off and both enemies reappear where they actually are. The simulation is untouched either way (fog only sets CanvasItem.visible).",
+  "caption": "Fog of war toggled mid-battle with F7: at 1.5 s the far enemy Archers (south-east) vanish while the enemy Infantry inside the player's Cavalry sight disc stays, and a FOG OF WAR indicator appears under the banner; the Cavalry then moves westward from (600, 300) to (100, 300), opening the gap past 420 wu and suffering 0 casualties while remaining unengaged; the Infantry drops out of sight and leaves a red ghost outline where last seen, fading over ten seconds; at 14 s F7 switches fog off and both enemies reappear where they actually are. Fog affects unit visibility, ghost markers, and the retreat margin, with the recorded value driving playback.",
   "fixed_fps": 30,
   "max_frames": 480,
   "fps": 15,

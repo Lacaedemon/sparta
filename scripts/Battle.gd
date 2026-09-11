@@ -602,7 +602,7 @@ func _ready() -> void:
 		# default-map battle records no map at all — its replay file stays exactly
 		# the pre-map shape, and old replays keep playing unchanged.
 		var custom_sight: float = -1.0
-		if sight_scale > 0.0:
+		if sight_scale > 0.0 and is_finite(sight_scale):
 			custom_sight = sight_scale
 		var recording_fog: bool = is_fog_active()
 		if BattleMapRef.differs_from_default(field, terrain, spawn_line_ys,
@@ -628,7 +628,7 @@ func _ready() -> void:
 
 	# Sight scale derives from the final field's short side unless explicitly overridden
 	# before _ready.
-	if sight_scale <= 0.0:
+	if sight_scale <= 0.0 or not is_finite(sight_scale):
 		sight_scale = DEFAULT_SIGHT_SCALE_FRACTION * minf(field.size.x, field.size.y)
 
 	_camera.bounds = field
@@ -733,6 +733,7 @@ func _ready() -> void:
 	# @onready child, so its own _ready has already built the widgets this restamps.
 	if _hud != null:
 		_hud.set_team_factions(team_factions)
+		_hud._sync_setting_toggles()
 
 	# Now that every unit has deployed, stamp (RECORD) or verify (PLAYBACK) the spawn-layout
 	# fingerprint, so a replay can fail loudly if a later build's spawn table no longer matches
@@ -1708,16 +1709,16 @@ func _physics_process(delta: float) -> void:
 	_tick += 1
 
 
-## Fog of war: with Settings.fog_of_war on (and not under all-teams control, where the
-## tester drives both armies and must see both), the fog team's units each perceive a
+## Fog of war. With Settings.fog_of_war on, the fog team's units each perceive a
 ## disc, every enemy outside all of them is hidden by CanvasItem.visible, and each enemy's
-## last sighting is kept for the ghost layer. Nothing here is read by the simulation --
-## group membership, unit-level AI targeting, collision, and the replay are untouched --
-## so a fogged and an unfogged run of one seed stay byte-identical. Player-side order
-## targeting in SelectionManager filters on visibility so a click in empty fog cannot
-## target an unseen enemy. Switching fog off restores every unit
-## and clears the markers; the contact table itself is kept, so switching back on
-## remembers what was seen before.
+## last sighting is kept for the ghost layer. (Disabled under all-teams control.)
+## Fog affects unit visibility, ghost markers, and the retreat margin -- widened to
+## match mounted sight range so routers do not escape while in view -- with the
+## recorded replay map value driving playback. Group membership, unit-level AI
+## targeting, and collision are untouched. Player-side order targeting in
+## SelectionManager filters on visibility so a click in empty fog cannot target an
+## unseen enemy. Switching fog off restores every unit and clears the markers.
+## The contact table itself is kept, so switching back on remembers what was seen before.
 func _tick_fog() -> void:
 	var on: bool = is_fog_active()
 	if not on:
@@ -1786,11 +1787,13 @@ func _on_settings_changed() -> void:
 
 
 ## Recompute rout_margin and field_with_margin from the live field and effective fog state,
-## and sync the updated bounds to all live units and routers.
+## and sync the updated bounds to all live units and routers. Fog affects routing escape
+## bounds -- wider so fleeing units stay in-bounds while visible -- recorded in the replay
+## map for deterministic playback.
 func _sync_rout_margin() -> void:
 	if is_fog_active():
 		var scale_val: float = sight_scale
-		if scale_val <= 0.0:
+		if scale_val <= 0.0 or not is_finite(scale_val):
 			scale_val = DEFAULT_SIGHT_SCALE_FRACTION * minf(field.size.x, field.size.y)
 		rout_margin = maxf(ROUT_MARGIN, scale_val * UnitRef.SIGHT_MOUNTED)
 	else:

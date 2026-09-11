@@ -1,9 +1,9 @@
 extends GutTest
-## Fog of war: the Perception visibility query and last-known table (pure functions over
-## unit state), Unit's type-derived sight defaults, the off-by-default Settings toggle,
-## and Battle's rendering pass -- which hides unseen enemies by CanvasItem.visible, never
-## touches the simulation (a fogged and an unfogged run of one seed match unit for unit),
-## restores everything when switched off, and stays off under all-teams control.
+## Fog of war. Perception visibility query and last-known table, Unit type-derived
+## sight defaults, the off-by-default Settings toggle, and Battle's fog pass -- which
+## hides unseen enemies by CanvasItem.visible, syncs ghost markers and the retreat margin
+## (with the recorded value driving playback), restores everything when switched off,
+## and stays off under all-teams control.
 
 const Perception = preload("res://scripts/Perception.gd")
 const FogGhostLayer = preload("res://scripts/FogGhostLayer.gd")
@@ -226,7 +226,7 @@ func test_fog_hides_the_far_enemy_and_shows_the_near_one_and_every_friendly() ->
 	assert_false(battle.fog_visible_uids().has(far.uid), "and not the far one")
 	assert_true(battle.fog_contacts().has(near.uid), "the near enemy has a last-known entry")
 	assert_false(battle.fog_contacts().has(far.uid), "the never-seen far enemy has none")
-	assert_true(far.is_in_group("units"), "a hidden unit stays in the units group -- fog is rendering only")
+	assert_true(far.is_in_group("units"), "a hidden unit stays in the units group -- visibility does not alter group membership")
 	assert_true(battle.get_node("HUD")._fog_label.visible, "the HUD shows the FOG OF WAR indicator")
 	# The hidden enemy's sight_range came from the battle's own scale, not the bare default.
 	assert_almost_eq(far.sight_range, battle.sight_scale * Unit.SIGHT_FOOT, 0.001,
@@ -275,6 +275,76 @@ func test_fog_toggle_is_refused_during_playback() -> void:
 	Replay.mode = Replay.Mode.IDLE
 	hud._toggle_fog()
 	assert_true(Settings.fog_of_war, "outside playback the same key still flips it")
+
+
+## The menu toggle is also refused during playback and restores its checkmark,
+## because PopupMenu auto-toggles check state before id_pressed fires.
+func test_fog_menu_toggle_is_refused_during_playback() -> void:
+	var battle: Node = _staged_battle(false)
+	await wait_frames(2)
+	var hud = battle.get_node("HUD")
+	var popup: PopupMenu = hud._menu_button.get_popup()
+	var idx: int = popup.get_item_index(hud.MENU_FOG_OF_WAR)
+	Replay.mode = Replay.Mode.PLAYBACK
+	# Simulate PopupMenu's auto-toggle flipping the item before id_pressed.
+	popup.set_item_checked(idx, true)
+	hud._on_menu_id(hud.MENU_FOG_OF_WAR)
+	assert_false(Settings.fog_of_war, "playback leaves the live fog setting alone")
+	assert_false(popup.is_item_checked(idx), "menu checkmark is restored on refusal")
+	assert_eq(hud._flash_label.text, "Fog of war is fixed by the recording during playback",
+		"and reports why playback refused the menu toggle")
+	Replay.mode = Replay.Mode.IDLE
+	hud._on_menu_id(hud.MENU_FOG_OF_WAR)
+	assert_true(Settings.fog_of_war, "outside playback the menu item flips the setting")
+	Settings.set_fog_of_war_session(false)
+
+
+## The menu checkmark derives from the battle's effective fog state rather than
+## Settings.fog_of_war alone, staying in sync with the indicator during playback.
+func test_fog_menu_checkmark_reflects_effective_battle_state() -> void:
+	var old_mode: int = Replay.mode
+	var old_map: Dictionary = Replay.map
+	var prev_fog: bool = Settings.fog_of_war
+	Settings.set_fog_of_war_session(false)
+	Replay.mode = Replay.Mode.PLAYBACK
+	Replay.seed_value = 42
+	Replay.rng.seed = Replay.seed_value
+	Replay.map = BattleMap.serialize(Rect2(0, 0, 800, 600), [], [100.0, 500.0], -1.0, true)
+	var scene := load("res://scenes/Battle.tscn") as PackedScene
+	var battle: Node = scene.instantiate()
+	add_child_autofree(battle)
+	await wait_frames(2)
+	var hud = battle.get_node("HUD")
+	var popup: PopupMenu = hud._menu_button.get_popup()
+	var idx: int = popup.get_item_index(hud.MENU_FOG_OF_WAR)
+	assert_true(battle.is_fog_active(), "recorded map activates fog")
+	assert_true(popup.is_item_checked(idx), "menu checkmark reflects active recorded fog")
+	assert_true(hud._fog_label.visible, "FOG OF WAR indicator agrees with checkmark")
+	Replay.mode = old_mode
+	Replay.map = old_map
+	Settings.set_fog_of_war_session(prev_fog)
+
+
+## A non-finite sight_scale (NAN or INF) assigned before _ready is rejected
+## and falls back to the default fraction of the short field dimension.
+func test_battle_sight_scale_rejects_nan_and_inf() -> void:
+	var scene := load("res://scenes/Battle.tscn") as PackedScene
+	var battle_nan: Node = scene.instantiate()
+	battle_nan.sight_scale = NAN
+	add_child_autofree(battle_nan)
+	assert_true(is_finite(battle_nan.sight_scale), "NAN sight_scale resolves to finite value")
+	var expected_default: float = (
+		BattleScript.DEFAULT_SIGHT_SCALE_FRACTION * minf(battle_nan.field.size.x, battle_nan.field.size.y)
+	)
+	assert_almost_eq(battle_nan.sight_scale, expected_default, 0.001,
+		"NAN sight_scale falls back to default field-derived scale")
+
+	var battle_inf: Node = scene.instantiate()
+	battle_inf.sight_scale = INF
+	add_child_autofree(battle_inf)
+	assert_true(is_finite(battle_inf.sight_scale), "INF sight_scale resolves to finite value")
+	assert_almost_eq(battle_inf.sight_scale, expected_default, 0.001,
+		"INF sight_scale falls back to default field-derived scale")
 
 
 func test_all_teams_control_disables_fog() -> void:

@@ -993,7 +993,8 @@ var detection_range: float = DETECTION_RANGE
 # troops see farthest (eye level, the scouting role), skirmishers and archers next, foot
 # at the baseline. A routing unit is not observing, so its own range is cut by
 # SIGHT_ROUTING_PENALTY while it flees. Separate from detection_range, which is the sim's
-# auto-acquisition radius: sight feeds rendering only and never targeting.
+# auto-acquisition radius.
+# Sight feeds visibility and the rout margin, never AI targeting.
 const SIGHT_FOOT: float = 1.0
 const SIGHT_MOUNTED: float = 1.4
 const SIGHT_RANGED: float = 1.2
