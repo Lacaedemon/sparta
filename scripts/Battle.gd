@@ -2504,23 +2504,30 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				var da: float = a.position.distance_squared_to(relief_ref_pos)
 				var db: float = b.position.distance_squared_to(relief_ref_pos)
 				return da < db if da != db else a.uid < b.uid)
+	# A refused reinforcement applies nothing at all: the reserve keeps its current
+	# order, march and stance (the design's refusal contract). That contract covers the
+	# whole selection rather than each unit, so validate every pair before the loop
+	# below mutates anything. Checking inside the loop would let the valid reserves
+	# reinforce while the refused ones kept their old orders -- a half-applied maneuver,
+	# reachable whenever a selection changes between arming and application, and by any
+	# hand-edited or replayed command carrying a mixed set. A missing, self or enemy
+	# target is refused here too, so a malformed entry cannot fall through to a plain
+	# move or attack. UnitReinforce.begin re-checks and halts defensively regardless.
+	if reinforce != ReinforceAxis.NONE:
+		for uid in cmd["units"]:
+			var reserve: Unit = _unit_by_uid(int(uid))
+			if reserve == null:
+				continue
+			if target_unit == null or target_unit == reserve \
+					or target_unit.team != reserve.team \
+					or ReinforceGuard.refusal_reason(reserve, target_unit, reinforce) != "":
+				return
 	var relieved: bool = false
 	var relief_foe: Unit = null
 	for uid in cmd["units"]:
 		var u: Unit = _unit_by_uid(int(uid))
 		if u == null:
 			continue
-		# A reinforcement insertion whose pair is refused applies nothing at all -- the
-		# reserve keeps its current order, march and stance (the design's refusal
-		# contract) -- so validate before the fresh-order reset below touches anything.
-		# That covers a command with no target, a self target or an enemy target as well
-		# (a malformed or hand-edited replay entry), which must not fall through to a
-		# plain move or attack. UnitReinforce.begin re-checks and halts defensively for
-		# anything that slips past.
-		if reinforce != ReinforceAxis.NONE:
-			if target_unit == null or target_unit == u or target_unit.team != u.team \
-					or ReinforceGuard.refusal_reason(u, target_unit, reinforce) != "":
-				continue
 		# A fresh order (anything but a waypoint append) discards the queued route --
 		# each branch below replaces the orders queue, and the route lives there now --
 		# and sets the unit's stance; an append continues the current march/stance.

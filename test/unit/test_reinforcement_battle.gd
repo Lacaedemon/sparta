@@ -209,6 +209,44 @@ func test_a_host_that_leaves_the_line_halts_the_reserve() -> void:
 	assert_null(reserve.current_order, "and the order retires")
 
 
+## A mixed selection is refused whole, not per unit. One like-armed reserve and one
+## Spearmen reserve are ordered to reinforce the same host in a single command: the
+## Spearmen pair is refused on loadout, and the Infantry pair would be allowed on its
+## own. Before the apply site validated the selection up front, the allowed reserve
+## armed while the refused one kept its old order, leaving the maneuver half applied.
+func test_a_mixed_selection_is_refused_whole() -> void:
+	Replay.forced_seed = 12345
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.drill_mode = true
+	_battle.scenario = [
+		{"team": 0, "type": "Infantry", "count": 40, "x": HOST_POS.x, "y": HOST_POS.y},
+		{"team": 0, "type": "Infantry", "count": 40, "x": RESERVE_POS.x, "y": RESERVE_POS.y},
+		{"team": 0, "type": "Spearmen", "count": 40, "x": RESERVE_POS.x - 200.0, "y": RESERVE_POS.y},
+	]
+	add_child(_battle)
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var allowed: Unit = _unit_at(RESERVE_POS)
+	var refused: Unit = _unit_at(Vector2(RESERVE_POS.x - 200.0, RESERVE_POS.y))
+	assert_eq(ReinforceGuard.refusal_reason(allowed, host), "",
+			"the like-armed pair would be allowed on its own")
+	assert_ne(ReinforceGuard.refusal_reason(refused, host), "",
+			"and the Spearmen pair is refused on loadout")
+	var allowed_prior: Order = allowed.current_order
+	var refused_prior: Order = refused.current_order
+	_battle._apply_order_cmd({
+		"units": [allowed.uid, refused.uid],
+		"x": host.position.x, "y": host.position.y,
+		"target": host.uid,
+		"mode": BattleScript.OrderMode.NORMAL,
+		"reinforce": BattleScript.ReinforceAxis.FILES,
+	})
+	assert_eq(allowed.current_order, allowed_prior,
+			"one refusal abandons the command whole: the allowed reserve arms nothing")
+	assert_eq(refused.current_order, refused_prior,
+			"and the refused reserve keeps its own order too")
+
+
 func test_a_refused_order_leaves_a_marching_reserve_untouched() -> void:
 	_spawn("Spearmen")   # a different loadout, so the pair is refused at the apply site
 	await get_tree().physics_frame
