@@ -19,6 +19,7 @@ func test_type_name_maps_every_known_type() -> void:
 	assert_eq(Order.type_name(Order.Type.FORM_UP), "FORM_UP")
 	assert_eq(Order.type_name(Order.Type.SWITCH_WEAPON), "SWITCH_WEAPON")
 	assert_eq(Order.type_name(Order.Type.COMBO), "COMBO")
+	assert_eq(Order.type_name(Order.Type.REINFORCE), "REINFORCE")
 
 
 func test_phase_name_maps_every_known_phase() -> void:

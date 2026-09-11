@@ -76,6 +76,11 @@ enum Type {
 	              ## reads the unit's state at the moment it starts, not at issue time. Built by
 	              ## Unit.begin_combo; the quarter-turn -> explicatio combo is the first. Appended
 	              ## last so recorded transcripts keep every other type's value stable.
+	REINFORCE,    ## Reinforcement insertion (docs/reinforcement-insertion-design.md): a reserve
+	              ## marches up behind a friendly host and its men file into the host's ranks,
+	              ## doubling the host's files. target_uid is the host; `reinforce_axis` is the
+	              ## Battle.ReinforceAxis; friendly_target arms the approach's pass-through.
+	              ## Appended last so recorded transcripts keep every other type's value stable.
 }
 
 ## An order's internal choreography, for the phased case that already exists: a move into a
@@ -161,6 +166,7 @@ const TYPE_NAMES := {
 	Type.FORM_UP: "FORM_UP",
 	Type.SWITCH_WEAPON: "SWITCH_WEAPON",
 	Type.COMBO: "COMBO",
+	Type.REINFORCE: "REINFORCE",
 }
 
 const PHASE_NAMES := {
@@ -367,6 +373,10 @@ var pivot_return_angle: float = 0.0
 ## bare Order.Type.ABOUT_FACE leaf and can't otherwise be told apart from a plain conversio or
 ## rear-move turn. Set once at issue time; never mutated afterward.
 var countermarch_variant: int = -1
+## REINFORCE only: which way the reserve's men are interjected into the host (a
+## Battle.ReinforceAxis value -- FILES doubles the host's frontage). 0 (NONE) for every other
+## order type. Set once at issue time; never mutated afterward.
+var reinforce_axis: int = 0
 ## A live pass-through link to a friendly unit, settable by ANY order type -- not just
 ## RELIEF. While armed, Unit._separation_exempt lets the two units interpenetrate instead
 ## of shoving each other apart, and resolve_friendly_target (below) clears the link once
@@ -486,6 +496,7 @@ func to_dict() -> Dictionary:
 		"reform": reform,
 		"pivot_return_angle": pivot_return_angle,
 		"countermarch_variant": countermarch_variant,
+		"reinforce_axis": reinforce_axis,
 		"guard": guard,
 		"guard_param": guard_param,
 		"guard_uid": guard_uid,
@@ -529,6 +540,7 @@ static func from_dict(d: Dictionary) -> Order:
 	o.reform = bool(d.get("reform", false))
 	o.pivot_return_angle = float(d.get("pivot_return_angle", 0.0))
 	o.countermarch_variant = int(d.get("countermarch_variant", -1))
+	o.reinforce_axis = int(d.get("reinforce_axis", 0))
 	o.guard = int(d.get("guard", Guard.NONE))
 	o.guard_param = float(d.get("guard_param", 0.0))
 	o.guard_uid = int(d.get("guard_uid", -1))
@@ -600,6 +612,14 @@ static func new_support(ward_uid: int) -> Order:
 	var o := Order.new()
 	o.type = Type.SUPPORT
 	o.target_uid = ward_uid
+	return o
+
+
+static func new_reinforce(host_uid: int, axis: int) -> Order:
+	var o := Order.new()
+	o.type = Type.REINFORCE
+	o.target_uid = host_uid
+	o.reinforce_axis = axis
 	return o
 
 

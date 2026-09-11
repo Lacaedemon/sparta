@@ -30,6 +30,7 @@ func _sample_unit() -> Unit:
 	u.shield_type_id = LoadoutRegistry.SHIELD_SCUTUM
 	u.armor_type_id = LoadoutRegistry.ARMOR_TUNIC       # non-default, so the round-trip is provable
 	u.mount_type_id = LoadoutRegistry.MOUNT_WARHORSE    # non-default, so the round-trip is provable
+	u.equip_missile(LoadoutRegistry.MISSILE_PILUM)      # non-default, so the round-trip is provable
 	u.order_response_delay = 0.5
 	u.atomic_response_delay = 0.35
 	u.training = 0.75
@@ -107,6 +108,7 @@ func _sample_unit() -> Unit:
 	u._sim_soldier_stamina = PackedFloat32Array([80.0, 60.0])
 	u._sim_soldier_facing = PackedVector2Array([Vector2(0, -1), Vector2(0, -1)])
 	u._sim_soldier_file = PackedInt32Array([0, 1])
+	u._sim_soldier_broken = PackedByteArray([0, 1])
 	u._file_assignment_files = 2   # non-default (the field defaults -1), so the round-trip is provable
 
 	var move := Order.new_move(Vector2(700, 300))
@@ -114,6 +116,51 @@ func _sample_unit() -> Unit:
 	u.orders = [move]
 	u.current_order = move
 	return u
+
+
+func test_reinforce_cohesion_floor_round_trips_and_defaults_for_older_snapshots() -> void:
+	var original := _sample_unit()
+	original.reinforce_cohesion_floor = 0.8
+	var d := original.to_snapshot_dict()
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(d)
+	assert_almost_eq(restored.reinforce_cohesion_floor, 0.8, 0.001,
+		"a per-unit reinforcement cohesion floor survives a replay-seek restore")
+	d.erase("reinforce_cohesion_floor")
+	var older := Unit.new()
+	older.apply_snapshot_dict(d)
+	assert_almost_eq(older.reinforce_cohesion_floor, Unit.REINFORCE_COHESION_FLOOR, 0.001,
+		"a snapshot from before the field existed restores the default")
+
+
+func test_anchor_hold_until_tick_round_trips_and_defaults_for_older_snapshots() -> void:
+	var original := _sample_unit()
+	original._anchor_hold_until_tick = 99
+	var d := original.to_snapshot_dict()
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(d)
+	assert_eq(restored._anchor_hold_until_tick, 99,
+		"a held anchor deadline survives a replay-seek restore")
+	d.erase("anchor_hold_until_tick")
+	var older := Unit.new()
+	older.apply_snapshot_dict(d)
+	assert_eq(older._anchor_hold_until_tick, -1,
+		"a snapshot from before the field existed restores the default")
+
+
+func test_sim_soldier_broken_round_trips_and_defaults_for_older_snapshots() -> void:
+	var original := _sample_unit()
+	original._sim_soldier_broken = PackedByteArray([0, 1])
+	var d := original.to_snapshot_dict()
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(d)
+	assert_eq(Array(restored._sim_soldier_broken), [0, 1],
+		"individual broken flags survive a replay-seek restore")
+	d.erase("sim_soldier_broken")
+	var older := Unit.new()
+	older.apply_snapshot_dict(d)
+	assert_eq(older._sim_soldier_broken.size(), 0,
+		"a snapshot from before the field existed restores an empty array")
 
 
 func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
@@ -131,6 +178,14 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(restored.weapon_type_id, original.weapon_type_id)
 	assert_eq(restored.armor_type_id, original.armor_type_id)
 	assert_eq(restored.mount_type_id, original.mount_type_id)
+	assert_eq(restored.missile_type_id, original.missile_type_id)
+	assert_almost_eq(restored.missile_range, original.missile_range, 0.001)
+	assert_almost_eq(restored.missile_interval, original.missile_interval, 0.001)
+	assert_almost_eq(restored.missile_damage_factor, original.missile_damage_factor, 0.001)
+	assert_almost_eq(restored.missile_accuracy_at_max, original.missile_accuracy_at_max, 0.001)
+	assert_almost_eq(restored.missile_launch_angle, original.missile_launch_angle, 0.001)
+	assert_almost_eq(restored.detection_range, original.detection_range, 0.001)
+	assert_almost_eq(restored.skirmish_kite_distance, original.skirmish_kite_distance, 0.001)
 	assert_almost_eq(restored.order_response_delay, original.order_response_delay, 0.001)
 	assert_almost_eq(restored.atomic_response_delay, original.atomic_response_delay, 0.001,
 		"a spawn-customized drill beat survives a replay-seek snapshot restore")
@@ -195,6 +250,7 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(Array(restored._sim_soldier_facing), Array(original._sim_soldier_facing))
 	assert_eq(Array(restored._sim_soldier_weapon_id), Array(original._sim_soldier_weapon_id))
 	assert_eq(Array(restored._sim_soldier_file), Array(original._sim_soldier_file))
+	assert_eq(Array(restored._sim_soldier_broken), Array(original._sim_soldier_broken))
 
 	assert_eq(restored.orders.size(), 1)
 	assert_eq(restored.orders[0].type, Order.Type.MOVE)
@@ -248,3 +304,29 @@ func test_mutating_the_original_units_arrays_after_capture_does_not_alter_the_sn
 	u._sim_soldier_pos[0] = Vector2(999, 999)
 	assert_eq((d["sim_soldier_pos"] as PackedVector2Array)[0], Vector2(1, 2),
 			"the cached snapshot's array is an independent copy")
+
+
+func test_snapshot_restore_defaults_legacy_missile_and_range_fields() -> void:
+	var original := _sample_unit()
+	var d := original.to_snapshot_dict()
+	d.erase("missile_type_id")
+	d.erase("missile_range")
+	d.erase("missile_interval")
+	d.erase("missile_damage_factor")
+	d.erase("missile_accuracy_at_max")
+	d.erase("missile_launch_angle")
+	d.erase("detection_range")
+	d.erase("skirmish_kite_distance")
+
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(d)
+
+	assert_eq(restored.missile_type_id, LoadoutRegistry.MISSILE_BOW)
+	assert_almost_eq(restored.missile_range, Unit.RANGED_RANGE, 0.001)
+	assert_almost_eq(restored.missile_interval, Unit.RANGED_INTERVAL, 0.001)
+	assert_almost_eq(restored.missile_damage_factor, Unit.RANGED_DAMAGE_FACTOR, 0.001)
+	assert_almost_eq(restored.missile_accuracy_at_max, Unit.RANGED_ACCURACY_AT_MAX, 0.001)
+	assert_almost_eq(restored.missile_launch_angle, ProjectilePhysics.ANGLE_ARCED, 0.001)
+	assert_almost_eq(restored.detection_range, Unit.DETECTION_RANGE, 0.001)
+	assert_almost_eq(restored.skirmish_kite_distance, Unit.SKIRMISH_KITE_DISTANCE, 0.001)
+

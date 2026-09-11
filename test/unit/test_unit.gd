@@ -360,6 +360,48 @@ func test_support_ranged_unit_fires_at_a_threat_near_its_ward() -> void:
 	assert_lt(threat.soldiers, before, "the volley hits the threat")
 
 
+func test_support_ranged_unit_with_pilum_fires_at_its_own_range_and_interval() -> void:
+	var u := _make_unit()
+	u.team = 0
+	u.is_ranged = true
+	u.order_mode = Unit.ORDER_SUPPORT
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u.equip_missile(LoadoutRegistry.MISSILE_PILUM)
+	var ward := _make_unit()
+	ward.team = 0
+	ward.position = Vector2(200, 80)
+	u.support_target = ward
+	var threat := _make_unit()
+	threat.team = 1
+	threat.position = Vector2(250, 0)
+	var before: int = threat.soldiers
+	u._think(0.1)
+	assert_eq(u.state, Unit.State.FIGHTING, "pilum supporter fights threat inside 300 wu")
+	assert_eq(u.position, Vector2.ZERO, "stands off and fires without marching")
+	assert_lt(threat.soldiers, before, "inflicts casualties at 250 wu")
+	assert_almost_eq(u._attack_cd, u.missile_interval, 0.001,
+			"sets attack cooldown from missile_interval (2.0s), not RANGED_INTERVAL (1.0s)")
+
+	var bow := _make_unit()
+	bow.team = 0
+	bow.is_ranged = true
+	bow.order_mode = Unit.ORDER_SUPPORT
+	bow.position = Vector2.ZERO
+	bow.facing = Vector2.RIGHT
+	var ward2 := _make_unit()
+	ward2.team = 0
+	ward2.position = Vector2(200, 80)
+	bow.support_target = ward2
+	var threat2 := _make_unit()
+	threat2.team = 1
+	threat2.position = Vector2(250, 0)
+	var before2: int = threat2.soldiers
+	bow._think(0.1)
+	assert_eq(threat2.soldiers, before2, "bow supporter cannot shoot past 190 wu reach")
+	assert_gt(bow.position.x, 0.0, "and must march forward toward the threat instead")
+
+
 func test_support_unit_reverts_to_normal_when_ward_dies() -> void:
 	# Once the guarded ward is gone the support order is spent: the unit drops the
 	# dangling reference and reverts to NORMAL auto-behaviour.

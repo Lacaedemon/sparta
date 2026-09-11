@@ -53,7 +53,7 @@ const WOUND_SPREAD: float = 0.5
 ## pass-through window. A fighting or engaged unit never qualifies; the demote trigger
 ## distance already sits far beyond every combat range, so this mostly guards the linger
 ## window and mid-maneuver edge cases. Pure read of deterministic sim fields — replay-safe.
-static func can_demote(u: Unit) -> bool:
+static func can_demote(u: Unit, is_reinforce_target: bool = false) -> bool:
 	if u.tier != FormationTier.CLOSE:
 		return false
 	if u.state != Unit.State.IDLE and u.state != Unit.State.MOVING:
@@ -70,12 +70,39 @@ static func can_demote(u: Unit) -> bool:
 	# REFORM leaf order mechanism. Plain MARCH is aggregate-safe.
 	if u._per_soldier_facing or u._reform_holding():
 		return false
+	# An active anchor hold (e.g. post-commit newcomer arrival after a reinforcement)
+	# keeps the host close-tier so interleaved bodies can reach their assigned slots.
+	if u.position_anchor_held():
+		return false
 	var o: Order = u.current_order
 	# A live relief keeps the reliever close-tier: the swap runs on per-soldier
-	# pass-through geometry from approach to resolution.
-	if o != null and o.type == Order.Type.RELIEF:
+	# pass-through geometry from approach to resolution. A reinforcement insertion
+	# likewise: its commit interleaves the reserve's bodies into the host's, so a
+	# reserve demoted mid-march (nearest enemy beyond the demote range) would have
+	# no bodies to file in with and could never commit. The host of a live reinforcement
+	# likewise stays close-tier:
+	# demoting it would drop its bodies, after which the guard rejects it and the
+	# approach halts.
+	if o != null and (o.type == Order.Type.RELIEF or o.type == Order.Type.REINFORCE):
+		return false
+	if is_reinforce_target:
 		return false
 	return true
+
+
+## Find all units that are the friendly target of an in-flight REINFORCE order.
+## Returns a Dictionary mapping Unit -> true for O(1) membership test.
+static func live_reinforcement_targets(all_units: Array) -> Dictionary:
+	var targets := {}
+	for node in all_units:
+		var other := node as Unit
+		if other != null and other.state != Unit.State.DEAD:
+			var ord: Order = other.current_order
+			if ord != null and ord.type == Order.Type.REINFORCE \
+					and ord.friendly_target != null and is_instance_valid(ord.friendly_target) \
+					and ord.friendly_target.team == other.team:
+				targets[ord.friendly_target] = true
+	return targets
 
 
 ## Demote `u` to the far tier: drop every per-soldier array. The unit's own scalar fields

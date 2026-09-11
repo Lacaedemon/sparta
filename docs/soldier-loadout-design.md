@@ -182,16 +182,9 @@ exists concretely:
 | `WEAPON_PILUM` | heavy javelin | 2.0 | Infantry |
 | `WEAPON_LANCE` | cavalry lance | 3.0 | Cavalry |
 
-Archers' bow itself is not a `reach_m`-bearing melee weapon today -- ranged
-attacks use a fixed `RANGED_RANGE` constant (160 world units,
-`scripts/Unit.gd:310`), not `attack_range`/`reach_m`. The 0.6 m reach (now
-`WEAPON_SIDEARM`'s `reach_m`) is the archer's melee sidearm reach, used only
-when an enemy closes to melee contact (per `Battle.gd`'s own loadout comment:
-"the archers' sidearm is short (they fight at range)"). A
-`WEAPON_BOW` type is a plausible future addition once ranged range is folded
-into the same registry, but that is a separate, larger change (`RANGED_RANGE`
-is currently a single shared constant, not per-type) and out of scope for
-phase 1.
+Archers' bow itself is not a `reach_m`-bearing melee weapon -- ranged attacks use per-type missile profiles in `scripts/LoadoutRegistry.gd` (Phase 2), falling back to `Unit.RANGED_RANGE` (160 world units) when unprofiled, rather than `attack_range`/`reach_m`.
+The 0.6 m reach (now `WEAPON_SIDEARM`'s `reach_m`) is the archer's melee sidearm reach, used only when an enemy closes to melee contact per `Battle.gd`'s note that archers fight at range.
+While out of scope for Phase 1 when `RANGED_RANGE` was a single shared constant, Phase 2 implements per-type ranged profiles in `LoadoutRegistry` (`MISSILE_BOW`, `MISSILE_PILUM`) with per-unit `missile_range` and cadence.
 
 | id | type | carried by |
 |---|---|---|

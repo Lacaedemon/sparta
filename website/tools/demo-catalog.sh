@@ -44,6 +44,7 @@ DEMOS=(
   "fighting_withdrawal|demos/inputs/relief-fighting-withdrawal.json|30|280|640|input"
   "plain_move_withdrawal|demos/inputs/fighting-withdrawal.json|30|470|640|input"
   "passage_of_lines|demos/inputs/passage-of-lines.json|30|110|640|input"
+  "reinforcement_insertion|demos/inputs/reinforcement-insertion.json|30|450|640|input"
   "stance_order|demos/inputs/stance-order-gesture.json|30|130|640|input"
   "formation_preview_square|demos/inputs/formation-preview-square.json|30|300|640|input"
   "cannae_scale|demos/inputs/cannae-scale.json|60|300|720|input"
@@ -110,6 +111,7 @@ DEMOS=(
   "shield_arc_block|demos/inputs/shield-arc-block.json|30|330|720|input"
   "skirmisher_screen|demos/inputs/skirmisher-screen.json|30|480|720|input"
   "campaign_deployment_gap|demos/inputs/campaign-deployment-gap.json|30|720|640|input"
+  "missile_profile_reach|demos/inputs/missile-profile-reach.json|30|240|720|input"
 )
 
 # The SPARTA_DUMP_CLIPS narrowing helpers (demo_catalog_selected,

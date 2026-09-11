@@ -281,6 +281,13 @@ script under `demos/inputs/`:
     recovery at all. See `demos/inputs/morale-recovery.json` (morale `1.0`, so the
     climb back to the ~35 rally threshold is gradual and visible).
 
+  - `missile` (optional) -- missile profile integer ID from `LoadoutRegistry`.
+    Sets the unit's ranged profile.
+    Maps to `401` for `MISSILE_BOW` or `402` for `MISSILE_PILUM`.
+    An unknown ID logs a warning (`push_warning`).
+    It keeps the default bow profile (`MISSILE_BOW`) rather than aborting.
+    See `demos/inputs/missile-profile-reach.json`.
+
   Example -- stage a lone, low-morale infantry unit against a strong cavalry force so it routs
   (then rallies, if the build has that): `demos/inputs/rout-rally.json`.
 - `frames` (optional) -- a list of physics ticks to save a viewport PNG at, for visual
@@ -450,7 +457,7 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | `target_enemy_uid` | The uid this unit is attacking, or `null`. |
 | `engaged` | Whether the regiment is in the engaged tier (front ranks in/just-out of melee) -- a COMBAT-state decision (see `Unit.is_engaged()`). |
 | `in_enemy_contact` | Whether ANY live enemy regiment is within melee contact range, from proximity alone, regardless of combat state (`Unit._in_enemy_contact`). A "disengaging" unit (a plain move order with no attack target) can read `in_enemy_contact: true, engaged: false` at once -- physical contact still holds even though it never decided to fight. |
-| `maneuver` | A single readable label for the in-progress drill/maneuver -- `IDLE` / `MARCHING` / `FIGHTING` / `CONVERSIO` / `QUARTER_TURN` / `WHEELING` / `FILE_DOUBLE_DEEPEN` / `FILE_DOUBLE_WIDEN` / `NUDGE_SIDESTEP` / `NUDGE_BACKSTEP` / `NUDGE_FORWARD_STEP` / `CYCLE_CHARGE` / `COUNTERMARCH`. Consolidates `current_order`/`order_phase`/`order_mode` into one field, so e.g. a conversio and a centre-pivot (both otherwise `MOVE`/`TURN` vs `QUARTER_TURN`) are distinguishable directly. `FILE_DOUBLE_DEEPEN`/`WIDEN` only show on the exact tick the reshape order applied -- the order itself retires the same tick. See `Unit.current_maneuver()`. |
+| `maneuver` | A single readable label for the in-progress drill/maneuver -- `IDLE` / `MARCHING` / `FIGHTING` / `CONVERSIO` / `QUARTER_TURN` / `WHEELING` / `FILE_DOUBLE_DEEPEN` / `FILE_DOUBLE_WIDEN` / `NUDGE_SIDESTEP` / `NUDGE_BACKSTEP` / `NUDGE_FORWARD_STEP` / `CYCLE_CHARGE` / `COUNTERMARCH` / `REINFORCING`. Consolidates `current_order`/`order_phase`/`order_mode` into one field, so e.g. a conversio and a centre-pivot (both otherwise `MOVE`/`TURN` vs `QUARTER_TURN`) are distinguishable directly. `FILE_DOUBLE_DEEPEN`/`WIDEN` only show on the exact tick the reshape order applied -- the order itself retires the same tick. See `Unit.current_maneuver()`. |
 | `countermarch_variant` | Which exelismos variant a `maneuver: "COUNTERMARCH"` is running -- `MACEDONIAN` / `LACONIAN` / `CHORAL`, or `null` when the unit isn't countermarching (`maneuver` alone can't distinguish the three). See `Unit.countermarch_variant()`. |
 | `tier` | The formation's **simulation tier** -- `CLOSE` (full per-soldier arrays) or `FAR` (aggregate record, no individual bodies). See `docs/large-scale-simulation-design.md`. |
 | `soldier_summary` | Per-soldier `{count, centroid:[x,y], bbox:[w,h], prone_count, broken_count}` -- a compact digest, **not** the full per-soldier arrays. `broken_count` is how many soldiers have individually broken from a SHIELD_WALL/TESTUDO stance under encirclement (`Unit._sim_soldier_broken` / `SoldierEncirclement`) -- always 0 for a formation that can't break (`NORMAL`/`TIGHT`/`LOOSE`/`SQUARE`/`SCHILTRON`). **Close-tier units only.** |

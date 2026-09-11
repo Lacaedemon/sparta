@@ -37,7 +37,9 @@ enum Maneuver {
 	NUDGE_BACKSTEP,
 	NUDGE_FORWARD_STEP,
 	CYCLE_CHARGE,
-	COUNTERMARCH,   # Appended last so recorded/dumped transcripts keep every other value stable.
+	COUNTERMARCH,
+	REINFORCING,    # A reserve's approach to the host it will file into (UnitReinforce).
+	                # Appended last so recorded/dumped transcripts keep every other value stable.
 }
 
 ## The three historical exelismos (countermarch) variants Unit.countermarch() can run --
@@ -386,6 +388,14 @@ var _last_reshape_widened: bool = false
 # any re-slot has happened, Engine.get_physics_frames() (>= 0) already exceeds it, so the
 # pass is skipped by default rather than by a special-cased sentinel check.
 var _standoff_settle_until_tick: int = -1
+# Tick until which SoldierBodies.couple leaves `position` alone on its whole-regiment path
+# (a unit with no engaged front to anchor on). Armed by a reinforcement insertion: the
+# newcomers walk in from a rendezvous behind the host, so for the length of that arrival
+# half the block stands well off its slots by design, and the drift average would read
+# the approach as the regiment being out of place and back the whole line up to meet it.
+# An engaged host is unaffected -- its anchor already reads off its front ranks alone.
+# -1 means "never armed", on the same convention as _standoff_settle_until_tick above.
+var _anchor_hold_until_tick: int = -1
 # The state this unit was in on its previous physics tick, read only to notice a unit
 # LEAVING a fight or a rout: both leave the bodies wherever the press or the flight put
 # them, and the walk back to pitch spacing is the same file-crossing traversal a re-slot
@@ -456,9 +466,10 @@ var ordered_facing: Vector2 = Vector2.ZERO
 # engaged" (the _think fallthrough at the bottom of the enemy branch skips the
 # auto-advance-on-a-near-enemy path when order_mode == ORDER_HOLD); it does NOT suppress
 # fighting or firing at whatever is already in range/contact, so "hold UNTIL in range THEN
-# fire" needs no HOLD-specific carve-out -- a ranged unit fires at anything within
-# RANGED_RANGE unconditionally (see the is_ranged branch below _think's ORDER_SUPPORT
-# early return), i.e. fire-at-will is the default rather than a mode of its own.
+# fire" needs no HOLD-specific carve-out -- a ranged unit fires at anything within its live
+# missile_range (default RANGED_RANGE) unconditionally
+# (see the is_ranged branch below _think's ORDER_SUPPORT early return),
+# i.e. fire-at-will is the default rather than a mode of its own.
 # CYCLE_CHARGE is the caracole/repeated-charge ROE; SKIRMISH is the ranged kite-at-range
 # ROE; ATTACK_FLANK/ATTACK_REAR bias the approach angle. Phase 4 is the promotion
 # referenced above: these were a "crude version" per the design doc before the guard
@@ -710,8 +721,8 @@ const MELEE_INTERMIX_MAX: float = 0.85
 # How hard a committed melee unit presses onto the enemy while fighting, as a fraction
 # of move speed. The separation / engaged-enemy front-rank floor counters it, so the
 # value only sets how fast the lines close to contact, not the final spacing.
-# AUTO mode walks by default (walk_speed), jogs when a ranged enemy is within
-# RANGED_RANGE (jog_speed, under fire), and sprints (move_speed) once within
+# AUTO mode walks by default (walk_speed), jogs when a ranged enemy has this unit
+# inside its missile_range (jog_speed, under fire), and sprints (move_speed) once within
 # SPRINT_START_DISTANCE of the target. WALK mode holds walk pace throughout —
 # mandatory for formed stances (shield wall, pike phalanx) that break on a jog.
 const SPRINT_START_DISTANCE: float = 200.0   # tuned in wu: gameplay pacing distance from target to start the full-speed charge
@@ -861,6 +872,9 @@ var routing_melee_press_fraction: float = ROUTING_MELEE_PRESS_FRACTION
 # distance, instead of standing to fire. Above melee contact (~62) and below
 # RANGED_RANGE (160) so there's room to fire before being caught.
 const SKIRMISH_KITE_DISTANCE: float = 100.0   # tuned in wu, between melee contact and RANGED_RANGE
+# Live kite distance -- a caller-configurable parameter defaulting to SKIRMISH_KITE_DISTANCE
+# above; equip_missile rescales it to SKIRMISH_KITE_FRACTION of the profile's range.
+var skirmish_kite_distance: float = SKIRMISH_KITE_DISTANCE
 # Disengage and step back: how far a melee-engaged unit marches on the
 # combat-legal back-step maneuver (see disengage() below). Past melee contact (~62, same
 # baseline SKIRMISH_KITE_DISTANCE is pinned against) so the common case clears the fight
@@ -1102,20 +1116,47 @@ const RALLY_MORALE_THRESHOLD: float = 35.0
 # RALLY_MORALE_THRESHOLD above, same set-before-_ready contract as rout_time.
 var rally_morale_threshold: float = RALLY_MORALE_THRESHOLD
 
-# Ranged combat. A ranged unit looses volleys at any enemy within
-# RANGED_RANGE that isn't already in melee contact — far outreaching melee's
-# ~62px contact, so archers skirmish from safety. RANGED_RANGE stays below
-# DETECTION_RANGE so an auto-acquired target is always in detection too, by default
-# (a unit whose own detection_range is shrunk below RANGED_RANGE no longer gets this
-# for free). Volleys fire on their own (slower) cadence and hit a touch softer per
-# shot than melee.
+# Ranged combat. A ranged unit looses volleys at any enemy within its missile_range
+# that isn't already in melee contact -- far outreaching melee's ~62px contact, so
+# archers skirmish from safety. The DEFAULT range stays below DETECTION_RANGE so an
+# auto-acquired target is always in detection too (a unit whose own detection_range is
+# shrunk below its missile range no longer gets this for free; equip_missile raises
+# detection_range to cover a longer profile). Volleys fire on their own (slower)
+# cadence and hit a touch softer per shot than melee.
+#
+# These consts are the DEFAULTS -- the pre-profile numbers, which LoadoutRegistry's
+# MISSILE_BOW profile reproduces exactly. What a unit actually shoots with are the
+# missile_* instance fields below (docs/longer-range-missile-design.md), set from a
+# MissileProfile by equip_missile or directly by a scenario/test, the same
+# Battle.field / Battle.FIELD split the caller-configurable convention names.
 const RANGED_RANGE: float = 8.0 * WorldScaleRef.WU_PER_M
-# A router in archer reach has not broken contact: the rally check reuses the ranged
-# reach outright, so retuning RANGED_RANGE moves the rally radius with it (the identity
-# the old literal only asserted in a comment, made structural).
-const RALLY_CONTACT_RADIUS: float = RANGED_RANGE
 const RANGED_INTERVAL: float = 1.0
 const RANGED_DAMAGE_FACTOR: float = 0.7
+# Fraction of nominal volley damage delivered at maximum range (MissileProfile.accuracy_at's
+# linear falloff): 1.0 is no falloff at all, so an unprofiled unit's formula is unchanged.
+const RANGED_ACCURACY_AT_MAX: float = 1.0
+# A router in archer reach has not broken contact. Its own constant at the pre-profile
+# archer reach (8 m) rather than an alias of RANGED_RANGE: what it measures is how close an
+# enemy has to be for a rallying regiment to still count as engaged, which does not grow
+# with a longer-ranged profile -- a router need not outrun a javelin's full reach to be
+# gone, and a per-unit missile range would otherwise make the rally radius depend on which
+# enemy happened to be nearest.
+const RALLY_CONTACT_RADIUS: float = 8.0 * WorldScaleRef.WU_PER_M
+# Skirmish kite distance as a fraction of the kiting unit's own missile_range, so a
+# longer-ranged skirmisher backs off proportionally further. At the default range this is
+# exactly the long-standing 100 wu (160 * 0.625), so an unprofiled skirmisher is unchanged.
+const SKIRMISH_KITE_FRACTION: float = 0.625
+# Live missile parameters -- caller-configurable, defaulting to the consts above; set
+# BEFORE the node enters the tree (the same contract detection_range follows) or through
+# equip_missile. missile_range / skirmish_kite_distance are world units; missile_interval
+# is seconds; missile_launch_angle is radians above horizontal and, with the projectile
+# field's gravity, fixes the volley's flight time (ProjectilePhysics.solve_launch).
+var missile_type_id: int = LoadoutRegistry.MISSILE_BOW
+var missile_range: float = RANGED_RANGE
+var missile_interval: float = RANGED_INTERVAL
+var missile_damage_factor: float = RANGED_DAMAGE_FACTOR
+var missile_accuracy_at_max: float = RANGED_ACCURACY_AT_MAX
+var missile_launch_angle: float = ProjectilePhysics.ANGLE_ARCED
 
 # Fatigue builds while FIGHTING and recovers while resting; it bites into attack
 # so rotating tired regiments out via line relief is a real tactical lever.
@@ -1191,6 +1232,12 @@ const MORALE_RECOVER_PER_SEC: float = 2.0
 # (scales attack) that ramps back to full as the merged unit gels.
 const MERGE_COHESION_FLOOR: float = 0.6
 const COHESION_RECOVER_PER_SEC: float = 0.1
+# A reinforcement insertion pays the same strangers debuff as a merge (Asclepiodotus
+# condemns doubling with the enemy near); a milder same-loadout floor waits on balance data.
+const REINFORCE_COHESION_FLOOR: float = MERGE_COHESION_FLOOR
+## The cohesion a host drops to when a reserve files into it (per unit; the const above is
+## the default, so a scenario or test can vary the cost).
+var reinforce_cohesion_floor: float = REINFORCE_COHESION_FLOOR
 
 # Scrambling ranks or changing formation density/stance while moving faster than
 # walk speed breaks cadence and dress. Drops speed to walk_speed, resets charge
@@ -1480,6 +1527,9 @@ func _physics_process(delta: float) -> void:
 	tick_engaged(delta)
 	tick_brace_settle(delta)
 	UnitRelief.update(self)
+	UnitReinforce.update(self)
+	if state == State.DEAD:
+		return   # this tick's insertion committed: the reserve has just been merged away
 	var was_ranks_closed: bool = _ranks_closed
 	var pre_flip_files: int = UnitFormation.frontage(self)
 	_ranks_closed = UnitFormation.should_close_ranks(_ranks_closed, soldiers, max_soldiers)
@@ -1877,18 +1927,25 @@ func about_face_goal() -> Vector2:
 ##    ahead of the plain about-face check below: a countermarch's opening phase IS an
 ##    Order.Type.ABOUT_FACE leaf, so about_face_goal() alone can't tell it apart from a bare
 ##    conversio or a rear-move's turn phase.
-## 3. An in-place turn (about_face_goal() != ZERO -> CONVERSIO, else QUARTER_TURN).
-## 4. A wheel mid-swing (WHEELING).
-## 5. A nudge order still translating (NUDGE_SIDESTEP/BACKSTEP/FORWARD_STEP, keyed by
+## 3. A reinforcement approach (REINFORCING) -- reported while the REINFORCE order's
+##    pass-through link is live, from the issue tick until the commit frees this unit;
+##    ahead of the turn family because the approach is a held-heading march that never
+##    arms a drill, so none of the checks below would otherwise name it.
+## 4. An in-place turn (about_face_goal() != ZERO -> CONVERSIO, else QUARTER_TURN).
+## 5. A wheel mid-swing (WHEELING).
+## 6. A nudge order still translating (NUDGE_SIDESTEP/BACKSTEP/FORWARD_STEP, keyed by
 ##    current_order.dir).
-## 6. The durable CYCLE_CHARGE stance (order_mode), independent of the above -- can layer
+## 7. The durable CYCLE_CHARGE stance (order_mode), independent of the above -- can layer
 ##    under MOVING or FIGHTING, but nothing above it applies while it's issued.
-## 7. Otherwise the baseline: FIGHTING / MARCHING / IDLE, from `state`.
+## 8. Otherwise the baseline: FIGHTING / MARCHING / IDLE, from `state`.
 func current_maneuver() -> int:
 	if _last_reshape_tick == Engine.get_physics_frames():
 		return Maneuver.FILE_DOUBLE_WIDEN if _last_reshape_widened else Maneuver.FILE_DOUBLE_DEEPEN
 	if current_order != null and current_order.countermarch_variant >= 0:
 		return Maneuver.COUNTERMARCH
+	if current_order != null and current_order.type == Order.Type.REINFORCE \
+			and current_order.friendly_target != null:
+		return Maneuver.REINFORCING
 	if is_order_turning():
 		return Maneuver.CONVERSIO if about_face_goal() != Vector2.ZERO else Maneuver.QUARTER_TURN
 	if is_wheeling():
@@ -1979,6 +2036,15 @@ func _update_current_order() -> void:
 				retire_current_order()
 		Order.Type.SUPPORT:
 			if support_target == null:
+				retire_current_order()
+		Order.Type.REINFORCE:
+			# The approach is the order's work: a live link keeps it (UnitReinforce.update
+			# re-aims every tick and commits at the rendezvous, which frees this unit). It
+			# retires once the link is gone and no march is in flight -- a host that left
+			# the line or stopped qualifying mid-approach, or the defensive halt for a pair
+			# that slipped past Battle's admission guard (an ordinarily refused command
+			# installs no order at all) -- so the reserve halts where it stands.
+			if current_order.friendly_target == null and not has_move_target:
 				retire_current_order()
 		Order.Type.FORMATION, Order.Type.FRONTAGE, Order.Type.STANCE, Order.Type.SWITCH_WEAPON:
 			# Instantaneous: applied and complete in the same tick Battle issues them, so they
@@ -2239,6 +2305,44 @@ func can_equip_weapon(type_id: int) -> bool:
 	return type_id == spawn_weapon_type_id or type_id == sidearm_type_id
 
 
+## Take a MissileProfile's fields as this unit's live missile parameters: range, cadence,
+## damage factor, accuracy falloff, and launch angle, copied out of the interned type once
+## (the profile is never referenced afterwards, so a shared instance is never mutated).
+## Two dependent parameters follow the range: detection_range is raised to at least the
+## missile range, since Unit._think only ever auto-acquires a target inside detection and
+## a profile that out-reaches the 190-wu default would otherwise never fire at its own
+## range (never lowered -- a scenario that widened detection keeps it); and the skirmish
+## kite distance rescales to SKIRMISH_KITE_FRACTION of the range. Returns false, changing
+## nothing, for an id the registry does not know, so a malformed loadout can't strand a
+## unit on a range nothing authored. Equipping MISSILE_BOW is an exact no-op against the
+## defaults, which is what keeps the roster's Archers bit-identical.
+func equip_missile(type_id: int) -> bool:
+	var profile: MissileProfile = LoadoutRegistry.missile(type_id)
+	if profile == null:
+		return false
+	missile_type_id = type_id
+	missile_range = profile.range_wu
+	missile_interval = profile.interval_s
+	missile_damage_factor = profile.damage_factor
+	missile_accuracy_at_max = profile.accuracy_at_max
+	missile_launch_angle = profile.launch_angle
+	detection_range = maxf(detection_range, missile_range)
+	skirmish_kite_distance = missile_range * SKIRMISH_KITE_FRACTION
+	return true
+
+
+## The fraction of nominal volley damage this unit delivers at `dist_wu` -- its own
+## range-accuracy falloff (MissileProfile.accuracy_at over the live missile fields).
+## Exactly 1.0 at every distance while missile_accuracy_at_max is at its 1.0 default.
+func missile_accuracy(dist_wu: float) -> float:
+	return MissileProfile.accuracy_at(dist_wu, missile_range, missile_accuracy_at_max)
+
+
+## Whether this unit carries a non-default missile profile.
+func carries_non_default_missile_profile() -> bool:
+	return missile_type_id != LoadoutRegistry.MISSILE_BOW
+
+
 ## Returns false, changing nothing, for any id can_equip_weapon rejects -- a malformed
 ## order can't strand the regiment holding a type nothing resolves, and a selection-wide
 ## id can't force a regiment onto a weapon its own soldiers never carried.
@@ -2279,14 +2383,14 @@ func equip_weapon(type_id: int) -> bool:
 
 
 ## Arm the attack cooldown for the swing about to land, picking the interval that
-## matches the unit's stance: PIN_DOWN swings on the slower PIN_DOWN_ATTACK_INTERVAL
-## and opens its own exposure window (pin_down_defense_factor); every other stance
-## uses the normal baseline (the caller's own melee_attack_interval() or
-## RANGED_INTERVAL). Called right before UnitCombat.strike()/shoot(), so the exposure
-## window is already open for any riposte that lands later in the same tick.
+## matches the unit's stance: PIN_DOWN swings on PIN_DOWN_ATTACK_INTERVAL, bounded
+## below by baseline_interval so a slow profile like the pilum never fires faster
+## while pinning down, and opens its own exposure window.
+## Every other stance uses the normal baseline (melee_attack_interval() or
+## missile_interval). Called right before UnitCombat.strike() or shoot().
 func _start_attack_cd(baseline_interval: float) -> void:
 	if order_mode == ORDER_PIN_DOWN:
-		_attack_cd = PIN_DOWN_ATTACK_INTERVAL
+		_attack_cd = maxf(PIN_DOWN_ATTACK_INTERVAL, baseline_interval)
 		_pin_down_exposure_cd = PIN_DOWN_EXPOSURE_DURATION
 	else:
 		_attack_cd = baseline_interval
@@ -2438,16 +2542,16 @@ func _think(delta: float) -> void:
 				state = State.IDLE
 			return
 
-	# Under-fire detection for AUTO pace: true when any alive enemy ranged unit is
-	# within RANGED_RANGE of this unit (i.e. could be shooting at us this frame).
+	# Under-fire detection for AUTO pace: true when any alive enemy ranged unit has this
+	# unit inside ITS OWN missile range (i.e. could be shooting at us this frame) -- the
+	# shooter's profile decides the beaten zone, not a global reach.
 	# Must run before the ORDER_SUPPORT early return so _support_tick's _move_to
 	# calls see the correct value.
-	var ranged_range_sq: float = RANGED_RANGE * RANGED_RANGE
 	_under_fire = false
 	for u in get_tree().get_nodes_in_group("units"):
 		if u is Unit and u.team != team and u.is_ranged and u.state != State.DEAD \
 				and u.state != State.ROUTING \
-				and position.distance_squared_to(u.position) <= ranged_range_sq:
+				and position.distance_squared_to(u.position) <= u.missile_range * u.missile_range:
 			_under_fire = true
 			break
 
@@ -2525,19 +2629,19 @@ func _think(delta: float) -> void:
 		# than standing to fire or being caught in melee; beyond it, it falls through
 		# to the normal ranged fire below. Gated by the same "not disengaging" rule
 		# as firing, so a plain move order still marches it off instead of kiting.
-		if is_ranged and order_mode == ORDER_SKIRMISH and dist_sq < SKIRMISH_KITE_DISTANCE * SKIRMISH_KITE_DISTANCE \
+		if is_ranged and order_mode == ORDER_SKIRMISH and dist_sq < skirmish_kite_distance * skirmish_kite_distance \
 				and (target_enemy != null or not has_move_target):
 			var away: Vector2 = position - enemy.position
 			if away.length_squared() < 0.000001:
 				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
-			_move_to(UnitTargeting.clamp_to_field(self, position + away.normalized() * SKIRMISH_KITE_DISTANCE), delta)
+			_move_to(UnitTargeting.clamp_to_field(self, position + away.normalized() * skirmish_kite_distance), delta)
 			# Only commit to the retreat if it actually moved. If the unit is cornered
 			# against the field edge (clamp snapped the target onto its position),
 			# fall through to the fire/melee branches so it still shoots instead of
 			# standing idle.
 			if _moved_last_frame:
 				return
-		# Ranged units stand and loose volleys at any enemy inside RANGED_RANGE
+		# Ranged units stand and loose volleys at any enemy inside their own missile_range
 		# that hasn't closed to melee — they skirmish at distance instead of charging.
 		# Gated by the same "not disengaging" rule as melee: a plain move order with
 		# no explicit attack target marches them off rather than rooting them to fire.
@@ -2546,7 +2650,7 @@ func _think(delta: float) -> void:
 		# to fire under a plain move order -- see ORDER_MARCH_TO_CONTACT's own doc comment
 		# for why has_move_target is deliberately left untouched (the march resumes on its
 		# own once the fight ends).
-		if is_ranged and not in_contact and dist_sq <= RANGED_RANGE * RANGED_RANGE \
+		if is_ranged and not in_contact and dist_sq <= missile_range * missile_range \
 				and (target_enemy != null or not has_move_target or chasing \
 					or order_mode == ORDER_MARCH_TO_CONTACT):
 			state = State.FIGHTING
@@ -2565,7 +2669,7 @@ func _think(delta: float) -> void:
 			# Turn to bring the line to bear before loosing; a large swing turns in place
 			# gradually, a small correction snaps. Fire is withheld until faced.
 			if _face_for_action(enemy.position, delta, enemy) and _attack_cd <= 0.0:
-				_start_attack_cd(RANGED_INTERVAL)
+				_start_attack_cd(missile_interval)
 				UnitCombat.shoot(self, enemy)
 			return
 		# Fight when in contact, UNLESS the player gave a plain move order with no
@@ -2859,10 +2963,10 @@ func _support_tick(delta: float) -> void:
 		var dist_sq: float = position.distance_squared_to(threat.position)
 		var contact_dist: float = attack_range + RADIUS + threat.RADIUS
 		var in_contact: bool = dist_sq <= contact_dist * contact_dist
-		if is_ranged and not in_contact and dist_sq <= RANGED_RANGE * RANGED_RANGE:
+		if is_ranged and not in_contact and dist_sq <= missile_range * missile_range:
 			state = State.FIGHTING
 			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
-				_attack_cd = RANGED_INTERVAL
+				_attack_cd = missile_interval
 				UnitCombat.shoot(self, threat)
 		elif in_contact:
 			state = State.FIGHTING
@@ -4820,17 +4924,79 @@ func _ensure_file_assignment(count: int, files: int) -> void:
 ## -- so they are the right thing to pair against. Treating that window as "no data" instead
 ## silently reverted a settled square to the index-order layout on its first melee strike.
 func _slot_frame_positions(count: int) -> PackedVector2Array:
-	var out := PackedVector2Array()
 	if count <= 0 or _sim_soldier_pos.size() < count:
-		return out
+		return PackedVector2Array()
+	return to_slot_frame(_sim_soldier_pos.slice(0, count))
+
+
+## `points` (parent-local, like _sim_soldier_pos) expressed in THIS unit's slot-grid frame --
+## the transform _slot_frame_positions applies to its own bodies, exposed so another
+## regiment's men can be dealt onto this grid (a reinforcement insertion reads the reserve's
+## lateral order in the host's frame). Pure; the mirror and rotation are this unit's own.
+func to_slot_frame(points: PackedVector2Array) -> PackedVector2Array:
+	var out := PackedVector2Array()
 	var ang: float = soldier_block_world_angle()
-	out.resize(count)
-	for i in range(count):
-		var local: Vector2 = (_sim_soldier_pos[i] - position).rotated(-ang)
+	out.resize(points.size())
+	for i in range(points.size()):
+		var local: Vector2 = (points[i] - position).rotated(-ang)
 		if _formation_mirror_x:
 			local.x = -local.x
 		out[i] = local
 	return out
+
+
+## Append `other`'s per-soldier body arrays onto this unit's, index-aligned with
+## _sim_soldier_pos, for a reinforcement insertion. Both regiments' bodies live in the
+## shared parent's frame, so positions concatenate without a transform. This is
+## SoldierMelee.reap in reverse: reap removes one index from each array, this appends
+## `other`'s entries at the tail. The file/rank ids are NOT carried -- the caller installs
+## the interleaved assignment (install_file_assignment) -- and the render-only progress
+## arrays resize lazily on the next draw, as they do after a reap.
+func append_soldier_bodies(other: Unit) -> void:
+	_sim_soldier_pos.append_array(other._sim_soldier_pos)
+	_sim_body_vel.append_array(other._sim_body_vel)
+	_sim_steer.append_array(other._sim_steer)
+	_sim_soldier_hp.append_array(other._sim_soldier_hp)
+	_sim_prone.append_array(other._sim_prone)
+	_sim_soldier_stamina.append_array(other._sim_soldier_stamina)
+	_sim_soldier_broken.append_array(other._sim_soldier_broken)
+	_sim_soldier_weapon_id.append_array(other._sim_soldier_weapon_id)
+	_sim_soldier_shield_id.append_array(other._sim_soldier_shield_id)
+	_sim_soldier_shield_hold_angle.append_array(other._sim_soldier_shield_hold_angle)
+	_sim_soldier_facing.append_array(other._sim_soldier_facing)
+
+
+## Install an explicit file-major assignment -- `file_ids` and `ranks` index-aligned with the
+## bodies, over `files` files -- together with the frontage that matches it. Writing
+## _file_assignment_files alongside the ids is what stops _ensure_file_assignment from
+## re-dealing the files by lateral order on the next slot query (a frontage change is exactly
+## the event that triggers that re-deal), so an interleave survives; set_frontage cannot do
+## this, which is why an insertion needs its own setter. Stamps the reshape tick as
+## set_frontage does, so the unit reports FILE_DOUBLE_WIDEN on the commit tick. A flank
+## held by a prior anchored widen stays held: the standing offset is kept and the width
+## delta is added the way enqueue_frontage accumulates it, with the held side read off the
+## offset's sign (an anchored widen only ever shifts the grid away from its held flank).
+## `old_files` is the frontage the change is measured against; the default reads the
+## current one, and a caller that has already pooled strength (which can move the automatic
+## frontage) passes the value it read beforehand so the reshape is still stamped.
+func install_file_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array, files: int,
+		old_files: int = -1) -> void:
+	if old_files < 0:
+		old_files = UnitFormation.frontage(self)
+	_sim_soldier_file = file_ids
+	_sim_soldier_rank = ranks
+	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
+	_file_assignment_files = frontage_override
+	if frontage_anchor_offset != 0.0:
+		var held: int = UnitFormation.Anchor.RIGHT if frontage_anchor_offset < 0.0 \
+				else UnitFormation.Anchor.LEFT
+		frontage_anchor_offset += UnitFormation.anchor_shift(old_files, frontage_override,
+				file_pitch_wu(), held)
+	if frontage_override != old_files:
+		_last_reshape_tick = Engine.get_physics_frames()
+		_last_reshape_widened = frontage_override > old_files
+		_apply_moving_reshape_penalty()
+		_arm_standoff_settle_window(_reshape_timeout(old_files))
 
 
 ## Rebuild the square slot pairing (_sim_soldier_square_slot) whenever it is out of sync
@@ -5669,6 +5835,18 @@ func _arm_standoff_on_leaving_fight_or_rout() -> void:
 func _arm_standoff_settle_window(timeout_sec: float) -> void:
 	var ticks: int = int(ceil(timeout_sec * float(Engine.physics_ticks_per_second)))
 	_standoff_settle_until_tick = maxi(_standoff_settle_until_tick, Engine.get_physics_frames() + ticks)
+
+
+## Hold `position` against the body-centroid coupling for `timeout_sec` more seconds (see
+## _anchor_hold_until_tick). Only ever moves the deadline forward, like the standoff window.
+func hold_position_anchor(timeout_sec: float) -> void:
+	var ticks: int = int(ceil(timeout_sec * float(Engine.physics_ticks_per_second)))
+	_anchor_hold_until_tick = maxi(_anchor_hold_until_tick, Engine.get_physics_frames() + ticks)
+
+
+## True while a hold_position_anchor window is in effect.
+func position_anchor_held() -> bool:
+	return Engine.get_physics_frames() < _anchor_hold_until_tick
 
 
 ## Advance an in-place turn one tick: rotate `facing` toward `target` at the drill rate and
@@ -6823,6 +7001,10 @@ func order_summary() -> String:
 				and current_order.friendly_target != null \
 				and is_instance_valid(current_order.friendly_target):
 			return "Relieving %s" % current_order.friendly_target.unit_name
+		if current_order != null and current_order.type == Order.Type.REINFORCE \
+				and current_order.friendly_target != null \
+				and is_instance_valid(current_order.friendly_target):
+			return "Reinforcing %s" % current_order.friendly_target.unit_name
 		# A routing target still counts (it's still a live, fightable enemy --- see
 		# UnitTargeting.nearest_enemy's include_routing), so the HUD keeps reporting
 		# "Attacking" rather than falling through to "Holding position".
@@ -7205,11 +7387,26 @@ func _commit_pending_reform() -> void:
 ## combat stats weighted by strength, and start with a cohesion debuff that
 ## decays. The absorbed unit is removed. Caller guarantees same team.
 func absorb(other: Unit) -> void:
+	if not pool_strength(other, MERGE_COHESION_FLOOR):
+		return
+	set_formation(formation_mode)
+	other._merged_away()
+	queue_redraw()
+
+
+## The strength half of a merge, shared with reinforcement insertion: pool `other`'s
+## soldiers and max_soldiers into this unit, blend the combat stats weighted by strength,
+## drop cohesion to `cohesion_floor`, and widen the body. Leaves `other` in play and the
+## formation untouched -- absorb adds the spatial finish (a set_formation re-square and the
+## removal), an insertion carries the bodies across itself and must NOT re-square, which
+## would reset every shield hold angle the transfer just preserved. False when there is
+## nothing to pool (both empty), in which case nothing changes.
+func pool_strength(other: Unit, cohesion_floor: float) -> bool:
 	var a: float = float(soldiers)
 	var b: float = float(other.soldiers)
 	var total: float = a + b
 	if total <= 0.0:
-		return
+		return false
 	max_soldiers += other.max_soldiers
 	# Strength-weighted blend so the bigger regiment dominates the result.
 	attack = int(round((attack * a + other.attack * b) / total))
@@ -7217,15 +7414,13 @@ func absorb(other: Unit) -> void:
 	morale = (morale * a + other.morale * b) / total
 	fatigue = (fatigue * a + other.fatigue * b) / total
 	soldiers += other.soldiers
-	# Strangers debuff and a wider body for the combined regiment — capped so the
+	# Strangers debuff and a wider body for the combined regiment -- capped so the
 	# footprint never grows past melee reach (which would deadlock contact).
-	cohesion = MERGE_COHESION_FLOOR
+	cohesion = cohesion_floor
 	separation_radius = minf(maxf(separation_radius, other.separation_radius) + 2.0,
 		SEPARATION_RADIUS_MAX)
 	_base_separation_radius = separation_radius
-	set_formation(formation_mode)
-	other._merged_away()
-	queue_redraw()
+	return true
 
 
 ## Remove a unit that has been absorbed by a merge (not a battle death). Any relief this
@@ -8163,6 +8358,17 @@ func to_snapshot_dict() -> Dictionary:
 		# contract for any parent whose weapon differs from that default.
 		"spawn_weapon_type_id": spawn_weapon_type_id, "sidearm_type_id": sidearm_type_id,
 		"armor_type_id": armor_type_id, "mount_type_id": mount_type_id,
+		# Live missile profile parameters and dependent values. Dropping these would revert
+		# a restored unit or rearguard clone to the default bow profile and reset detection
+		# and kite distances.
+		"missile_type_id": missile_type_id,
+		"missile_range": missile_range,
+		"missile_interval": missile_interval,
+		"missile_damage_factor": missile_damage_factor,
+		"missile_accuracy_at_max": missile_accuracy_at_max,
+		"missile_launch_angle": missile_launch_angle,
+		"detection_range": detection_range,
+		"skirmish_kite_distance": skirmish_kite_distance,
 		"order_response_delay": order_response_delay,
 		"atomic_response_delay": atomic_response_delay,
 		"training": training, "disciplined": disciplined,
@@ -8185,6 +8391,8 @@ func to_snapshot_dict() -> Dictionary:
 		"last_reshape_tick": _last_reshape_tick,
 		"last_reshape_widened": _last_reshape_widened,
 		"standoff_settle_until_tick": _standoff_settle_until_tick,
+		"anchor_hold_until_tick": _anchor_hold_until_tick,
+		"reinforce_cohesion_floor": reinforce_cohesion_floor,
 		"standoff_prev_state": _standoff_prev_state,
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
 		"formation_mirror_x": _formation_mirror_x,
@@ -8243,6 +8451,7 @@ func to_snapshot_dict() -> Dictionary:
 		"sim_soldier_rank": _sim_soldier_rank.duplicate(),
 		"sim_soldier_square_slot": _sim_soldier_square_slot.duplicate(),
 		"sim_soldier_row_slot": _sim_soldier_row_slot.duplicate(),
+		"sim_soldier_broken": _sim_soldier_broken.duplicate(),
 	}
 
 
@@ -8289,6 +8498,17 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	sidearm_type_id = int(d.get("sidearm_type_id", 0))
 	armor_type_id = int(d["armor_type_id"])
 	mount_type_id = int(d["mount_type_id"])
+	# Defaulted rather than required.
+	# A snapshot written before these fields existed still applies, falling back to
+	# the default bow profile and the baseline detection and kite distances.
+	missile_type_id = int(d.get("missile_type_id", LoadoutRegistry.MISSILE_BOW))
+	missile_range = float(d.get("missile_range", RANGED_RANGE))
+	missile_interval = float(d.get("missile_interval", RANGED_INTERVAL))
+	missile_damage_factor = float(d.get("missile_damage_factor", RANGED_DAMAGE_FACTOR))
+	missile_accuracy_at_max = float(d.get("missile_accuracy_at_max", RANGED_ACCURACY_AT_MAX))
+	missile_launch_angle = float(d.get("missile_launch_angle", ProjectilePhysics.ANGLE_ARCED))
+	detection_range = float(d.get("detection_range", DETECTION_RANGE))
+	skirmish_kite_distance = float(d.get("skirmish_kite_distance", SKIRMISH_KITE_DISTANCE))
 	order_response_delay = float(d["order_response_delay"])
 	atomic_response_delay = float(d["atomic_response_delay"])
 	training = float(d["training"])
@@ -8327,6 +8547,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_last_reshape_tick = int(d["last_reshape_tick"])
 	_last_reshape_widened = bool(d["last_reshape_widened"])
 	_standoff_settle_until_tick = int(d.get("standoff_settle_until_tick", -1))
+	_anchor_hold_until_tick = int(d.get("anchor_hold_until_tick", -1))
+	reinforce_cohesion_floor = float(d.get("reinforce_cohesion_floor", REINFORCE_COHESION_FLOOR))
 	_standoff_prev_state = int(d.get("standoff_prev_state", state))
 	_ranks_closed = bool(d["ranks_closed"])
 	_formation_angle = float(d["formation_angle"])
@@ -8389,4 +8611,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 			(d["sim_soldier_square_slot"] as PackedInt32Array).duplicate()
 	_sim_soldier_row_slot = \
 			(d.get("sim_soldier_row_slot", PackedInt32Array()) as PackedInt32Array).duplicate()
+	_sim_soldier_broken = (d.get("sim_soldier_broken",
+			PackedByteArray()) as PackedByteArray).duplicate()
 	update_combat_profile()
+

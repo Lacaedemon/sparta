@@ -211,7 +211,8 @@ static func _is_available(u: Unit, self_unit: Unit, directives: Dictionary) -> b
 	if u.support_target != null:
 		return false
 	if u.current_order != null and (u.current_order.type == Order.Type.RELIEF \
-			or u.current_order.type == Order.Type.SUPPORT):
+			or u.current_order.type == Order.Type.SUPPORT \
+			or u.current_order.type == Order.Type.REINFORCE):
 		return false
 	# A unit mid-chase against a live target is UnitLeader.decide's own concern to leave
 	# alone (see UnitLeader.is_chasing_live_target) -- don't even offer it as a directive
@@ -265,6 +266,9 @@ static func _line_integrity_directives(group: Array, axis: Vector2, directives: 
 		# Same exemption as _is_available: a unit already chasing a live target of its own
 		# is left to close and fight, not held back to the line mid-pursuit.
 		if UnitLeader.is_chasing_live_target(u):
+			continue
+		if u.current_order != null and (u.current_order.type == Order.Type.REINFORCE \
+				or u.current_order.type == Order.Type.RELIEF):
 			continue
 		var proj: float = u.position.dot(axis)
 		if proj - median <= LINE_AHEAD_THRESHOLD:
@@ -376,5 +380,8 @@ static func _defend_hold_directives(group: Array, directives: Dictionary) -> voi
 		if u == null or directives.has(u.uid) or u.state == Unit.State.FIGHTING:
 			continue
 		if UnitLeader.is_chasing_live_target(u):
+			continue
+		if u.current_order != null and (u.current_order.type == Order.Type.REINFORCE \
+				or u.current_order.type == Order.Type.RELIEF):
 			continue
 		directives[u.uid] = {"type": DIRECTIVE_HOLD_LINE, "x": u.position.x, "y": u.position.y}

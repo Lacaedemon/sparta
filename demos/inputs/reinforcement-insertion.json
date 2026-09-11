@@ -1,0 +1,32 @@
+{
+  "_comment": "Reinforcement insertion (doubling by number, files axis). Two 40-man player Infantry blocks face down: a host at (600, 520) and a reserve straight behind it at (600, 340). The player clicks the reserve, presses Shift+M to arm insertion by files, and right-clicks the host. The reserve marches to a rendezvous one rank pitch behind the host's rear edge with the host's heading held (its maneuver reads REINFORCING on the way), and once there its men file into the host: the host's own files side-step apart onto the even file ids, each reserve file steps forward into a gap on the odd ids, the host's frontage doubles from 9 files to 18 while its front rank holds its ground, and the reserve regiment is gone. On the commit tick every transferred man re-keys under the host's uid, so the per-soldier id stream shows one discontinuity there by design.",
+  "seed": "378211",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "count": 40, "x": 600, "y": 520},
+    {"team": 0, "type": "Infantry", "count": 40, "x": 600, "y": 340}
+  ],
+  "camera": [
+    {"tick": 0, "x": 600.0, "y": 450.0, "zoom": 1.4}
+  ],
+  "steps": [
+    {"tick": 20, "click": [600, 340]},
+    {"tick": 35, "key": "M", "shift": true},
+    {"tick": 50, "rmb_click": [600, 520]}
+  ],
+  "state": [8, 20, 40, 60, 80, 100, 120, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240,
+            250, 260, 280, 300, 320, 340, 360, 380, 400, 420, 450],
+  "defect_exemptions": {
+    "shape_residual": {
+      "uids": [0],
+      "reason": "The commit interleaves the reserve's 40 men onto slots inside the host's footprint while their bodies still stand at the rendezvous one rank pitch behind it, so the host's mean body-to-slot distance runs several pitches for the ~100 ticks they take to walk in (the designed arrival window, held against the anchor coupling) before settling; the misslotted, overlap and path_crossing checks stay live and prove the arrival is orderly."
+    }
+  },
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [600, 520]},
+    {"tick": 8, "uid": 1, "field": "position", "value": [600, 340]},
+    {"tick": [60, 150], "uid": 1, "field": "maneuver", "value": "REINFORCING"},
+    {"tick": [250, 450], "uid": 0, "field": "soldiers", "value": 80},
+    {"tick": [250, 450], "uid": 0, "field": "frontage", "value": 18}
+  ]
+}

@@ -31,14 +31,15 @@ const FIELD := Rect2(0, 0, 1600, 1200)
 
 # Extra room beyond the field that a ROUTING unit may flee into before it's removed from
 # play (see Unit._escape()). Fixed and known up front (not sized per unit) since it's drawn
-# once as a visible margin strip at battle start (see _draw()). Sized to the game's maximum
-# visual range — the longest ranged attack (RANGED_RANGE) and the farthest a unit can
-# currently be noticed at BY DEFAULT (DETECTION_RANGE, the closest existing stand-in for a
+# once as a visible margin strip at battle start (see _draw()). Sized to the farthest a unit
+# can be noticed at BY DEFAULT (DETECTION_RANGE, the closest existing stand-in for a
 # fog-of-war vision range, which this game doesn't have yet) — so a fleeing unit stays a
-# plausible target for as long as it's still visible, rather than vanishing early. Reads the
+# plausible target for as long as it's still visible, rather than vanishing early. Follows
+# detection alone, not the missile reach: a router does not have to outrun the longest
+# missile profile on the field to be gone, and the reach is per unit now anyway. Reads the
 # class constant, not any one unit's own (caller-configurable) detection_range field, since
 # this margin is a single battle-wide strip, not sized per unit.
-const ROUT_MARGIN: float = maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)
+const ROUT_MARGIN: float = UnitRef.DETECTION_RANGE
 var field_with_margin: Rect2 = FIELD.grow(ROUT_MARGIN)
 
 # Terrain patches; type keys into TERRAIN_COLOR. kind="block" is impassable; kind="slow" is a speed zone.
@@ -258,6 +259,12 @@ const ENGAGED_FRACTION_CANCELS_MOVE: float = 0.10
 ## spread across nearby enemies (attack) or nearby engaged friendlies (relief),
 ## sorted by proximity to the clicked target; extra units cycle through the list.
 enum GroupAttackMode { FOCUSED = 0, DISTRIBUTED = 1 }
+
+## Reinforcement insertion axis carried on an order whose target is a friendly outside the
+## selection (docs/reinforcement-insertion-design.md): NONE is every ordinary order (and the
+## omitted default in a recorded replay); FILES interjects the reserve's men as whole files,
+## doubling the host's frontage. RANKS is reserved for the depth axis, not yet wired.
+enum ReinforceAxis { NONE = 0, FILES = 1, RANKS = 2 }
 
 const GROUP_ATTACK_MODE_NAMES := {
 	GroupAttackMode.FOCUSED: "Group order: focused",
@@ -693,7 +700,7 @@ func _ready() -> void:
 		# (orders target unit positions this build no longer produces). Surface it loudly; HUD
 		# shows the flag, and push_warning puts it in the log for a headless replay run too.
 		# Unstamped replays (loaded_spawn_fingerprint == "") skip the check, like pre-map ones.
-		if Replay.loaded_spawn_fingerprint != "" and Replay.loaded_spawn_fingerprint != live_fingerprint:
+		if Replay.loaded_spawn_fingerprint != "" and not SpawnFingerprint.matches_tree(Replay.loaded_spawn_fingerprint, get_tree()):
 			Replay.last_load_spawn_mismatch = Replay.loaded_spawn_fingerprint
 			push_warning("Replay spawn layout mismatch: recorded fingerprint %s, this build spawns %s. Orders may target the wrong units." %
 					[Replay.loaded_spawn_fingerprint, live_fingerprint])
@@ -1123,6 +1130,14 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 		u.armor_type_id = d["armor"]
 	if d.has("mount"):
 		u.mount_type_id = d["mount"]
+	# Missile profile: a LoadoutRegistry missile id naming the ranged stats this unit shoots
+	# with (range, cadence, damage factor, accuracy falloff, launch angle -- Unit.equip_missile,
+	# which also widens detection to the range). A dict without the key keeps the Unit
+	# defaults, which are the bow profile's own numbers, so every roster row and bare test
+	# unit shoots exactly as it did before profiles existed. An unknown id warns and keeps
+	# those defaults rather than aborting the spawn, like an unrecognised subunit_structure.
+	if d.has("missile") and not u.equip_missile(int(d["missile"])):
+		push_warning("[battle] unknown missile profile id %s; keeping the default profile." % str(d["missile"]))
 	u.training = d.get("training", 0.0)
 	u.disciplined = d.get("disciplined", true)
 	# Per-type starting values for the player-togglable settings; a loadout entry
@@ -1196,6 +1211,8 @@ func _spawn_scenario(specs: Array) -> void:
 			d["morale"] = float(spec["morale"])
 		if spec.has("formation"):
 			d["formation"] = int(spec["formation"])
+		if spec.has("missile"):
+			d["missile"] = int(spec["missile"])
 		if spec.has("starting_state"):
 			d["starting_state"] = int(spec["starting_state"])
 		if spec.has("disciplined"):
@@ -1354,10 +1371,10 @@ func _apply_starting_state(u: Unit, starting_state: int) -> void:
 ## Every live unit ("units" + "routers" -- a unit that has died and left play is in
 ## neither, so it's correctly excluded, matching how a rewind to before its death
 ## should look) plus the whole-battle bookkeeping (tick, RNG stream position, the next
-## fresh uid, and the active Engine.time_scale -- a global engine property with no
-## per-unit trace, so it has to ride in the snapshot itself rather than being derivable
-## from anything captured above) needed to resume simulating from this exact moment.
-## Opaque to callers other than restore_snapshot; never written to the canonical
+## fresh uid, in-flight projectiles in ProjectileField, and the active Engine.time_scale -- a
+## global engine property with no per-unit trace, so it has to ride in the snapshot itself rather
+## than being derivable from anything captured above) needed to resume simulating from this
+## exact moment. Opaque to callers other than restore_snapshot; never written to the canonical
 ## .replay file.
 func capture_snapshot() -> Dictionary:
 	var units: Array = []
@@ -1366,13 +1383,16 @@ func capture_snapshot() -> Dictionary:
 			var u := node as UnitRef
 			if u != null:
 				units.append(u.to_snapshot_dict())
-	return {
+	var snap: Dictionary = {
 		"tick": _tick,
 		"rng_state": Replay.rng.state,
 		"next_uid": _next_uid,
 		"units": units,
 		"time_scale": Engine.time_scale,
 	}
+	if ProjectileField.active != null:
+		snap["projectile_field"] = ProjectileField.active.to_snapshot_dict()
+	return snap
 
 
 ## Rebuilds the battle to exactly the moment `snap` was captured at: frees every current
@@ -1382,8 +1402,8 @@ func capture_snapshot() -> Dictionary:
 ## spawned" default, self-healing on the first tick exactly like an ordinary spawn already
 ## does -- see .claude/memories/sparta.md's frame-keyed-cache hazards this sidesteps.
 ## Restores the tick counter, the RNG stream position (so subsequent combat rolls draw
-## exactly where the original run would have), Replay's own order-read cursor, and the
-## active Engine.time_scale.
+## exactly where the original run would have), Replay's own order-read cursor, the
+## active Engine.time_scale, and any active projectiles in ProjectileField.
 func restore_snapshot(snap: Dictionary) -> void:
 	for group in ["units", "routers"]:
 		for node in get_tree().get_nodes_in_group(group):
@@ -1421,6 +1441,12 @@ func restore_snapshot(snap: Dictionary) -> void:
 	# `_tick`; a slow-motion change made before the snapshot was captured has no per-unit
 	# trace to fall back on, so the value has to come from the snapshot itself.
 	Engine.time_scale = float(snap.get("time_scale", 1.0))
+
+	if ProjectileField.active != null:
+		if snap.has("projectile_field"):
+			ProjectileField.active.apply_snapshot_dict(snap["projectile_field"])
+		else:
+			ProjectileField.active.clear()
 
 	# A completed replay has _ended set and the tree paused behind the end overlay
 	# (_check_victory runs during PLAYBACK too), and both _physics_process and
@@ -1464,7 +1490,7 @@ const SIM_SOLDIER_ARRAY_KEYS: Array[String] = [
 	"sim_soldier_pos", "sim_body_vel", "sim_steer", "sim_soldier_hp",
 	"sim_soldier_weapon_id", "sim_soldier_shield_id", "sim_soldier_shield_hold_angle",
 	"sim_prone", "sim_soldier_stamina", "sim_soldier_facing", "sim_soldier_file",
-	"sim_soldier_rank", "sim_soldier_square_slot",
+	"sim_soldier_rank", "sim_soldier_square_slot", "sim_soldier_broken",
 ]
 
 
@@ -1583,7 +1609,8 @@ func _physics_process(delta: float) -> void:
 					int(o.get("walk_advance_toggle", UnitSettingToggle.LEAVE)),
 					int(o.get("reform_toggle", UnitSettingToggle.LEAVE)),
 					int(o.get("file_major_reform_mode_toggle", REFORM_MODE_TOGGLE_LEAVE)),
-					int(o.get("line", LINE_INDEX_UNCHANGED)))
+					int(o.get("line", LINE_INDEX_UNCHANGED)),
+					int(o.get("reinforce", ReinforceAxis.NONE)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply
@@ -1716,7 +1743,8 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		order_mode: int = OrderMode.NORMAL,
 		group_attack: int = GroupAttackMode.FOCUSED,
 		gait: int = -1,
-		knockback_indefinite: bool = false) -> void:
+		knockback_indefinite: bool = false,
+		reinforce: int = ReinforceAxis.NONE) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -1728,6 +1756,7 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		"group_attack": group_attack,
 		"gait": gait,
 		"knockback_indefinite": knockback_indefinite,
+		"reinforce": reinforce,
 	}
 	_pending_orders.append(cmd)
 	# A waypoint append is tick-authoritative (its point is derived from positions at
@@ -2415,7 +2444,14 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the
 	# disambiguator). Handle it first, then fall through to attack/relief/move.
+	# A reinforcement insertion rides a friendly-target order: the axis picks the branch
+	# further down; NONE (the omitted default in older replays) is a relief or support as
+	# before. Read here, ahead of the merge branch: a reinforce command whose host is one
+	# of its own ordered units is malformed and applies nothing, never a merge.
+	var reinforce: int = int(cmd.get("reinforce", ReinforceAxis.NONE))
 	if target_uid >= 0 and _uids_contain(cmd["units"], target_uid):
+		if reinforce != ReinforceAxis.NONE:
+			return
 		_apply_merge(cmd["units"], target_uid)
 		return
 	# A move whose target is the append sentinel queues a waypoint instead of
@@ -2501,6 +2537,24 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				var da: float = a.position.distance_squared_to(relief_ref_pos)
 				var db: float = b.position.distance_squared_to(relief_ref_pos)
 				return da < db if da != db else a.uid < b.uid)
+	# A refused reinforcement applies nothing at all: the reserve keeps its current
+	# order, march and stance (the design's refusal contract). That contract covers the
+	# whole selection rather than each unit, so validate every pair before the loop
+	# below mutates anything. Checking inside the loop would let the valid reserves
+	# reinforce while the refused ones kept their old orders -- a half-applied maneuver,
+	# reachable whenever a selection changes between arming and application, and by any
+	# hand-edited or replayed command carrying a mixed set. A missing, self or enemy
+	# target is refused here too, so a malformed entry cannot fall through to a plain
+	# move or attack. UnitReinforce.begin re-checks and halts defensively regardless.
+	if reinforce != ReinforceAxis.NONE:
+		for uid in cmd["units"]:
+			var reserve: Unit = _unit_by_uid(int(uid))
+			if reserve == null:
+				return
+			if target_unit == null or target_unit == reserve \
+					or target_unit.team != reserve.team \
+					or ReinforceGuard.refusal_reason(reserve, target_unit, reinforce) != "":
+				return
 	var relieved: bool = false
 	var relief_foe: Unit = null
 	for uid in cmd["units"]:
@@ -2555,6 +2609,23 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 			u.has_move_target = false
 			u.set_current_order(Order.new_attack(u.target_enemy.uid, mode))
 		elif target_unit != null and target_unit != u and target_unit.team == u.team:
+			if reinforce != ReinforceAxis.NONE:
+				# Reinforcement insertion: the reserve marches up behind the host and its men
+				# file into the host's ranks. Install the REINFORCE order first, then arm the
+				# approach on it (the order owns the pass-through link, as a relief's does).
+				# The host keeps whatever it was doing. The admission guard above already
+				# skipped every refused pair (including the not-yet-wired RANKS axis), so
+				# begin's own re-check is defensive: a pair that slips past it arms nothing
+				# and is halted, and that no-op order retires next tick.
+				var reinforce_order := Order.new_reinforce(target_unit.uid, reinforce)
+				u.set_current_order(reinforce_order)
+				UnitReinforce.begin(u, target_unit, reinforce_order)
+				# Skip the order-response delay: the approach is a held-heading march and
+				# the men only file in once the reserve stands at the rendezvous. A delay
+				# still counting down from the previous order would freeze the march the
+				# same way, so drop it too (set_current_order leaves the timer alone).
+				u._order_response_timer = 0.0
+				continue
 			if mode == OrderMode.SUPPORT:
 				# Support: guard the targeted friendly. Every ordered unit shadows
 				# the same ward and engages threats near it — no relief swap.
@@ -2935,6 +3006,8 @@ func unit_by_uid(uid: int) -> UnitRef:
 func _tick_tier_transitions() -> Array:
 	var all_units: Array = get_tree().get_nodes_in_group("units")
 	_far_tier_count = 0
+	var reinforce_targets: Dictionary = \
+			TierTransition.live_reinforcement_targets(all_units)
 	for node in all_units:
 		var u = node as UnitRef
 		if u == null or u.state == UnitRef.State.DEAD:
@@ -2958,7 +3031,7 @@ func _tick_tier_transitions() -> Array:
 		if u.tier == FormationTier.FAR:
 			if FormationTier.should_promote(u.position, nearest_pos, promote_range):
 				TierTransition.promote(u, _tick, Replay.seed_value)
-		elif TierTransition.can_demote(u) \
+		elif TierTransition.can_demote(u, reinforce_targets.has(u)) \
 				and FormationTier.should_demote(u.position, nearest_pos, demote_range):
 			TierTransition.demote(u)
 		# Counted AFTER the transition, so the tally is this tick's tiers, not last tick's.

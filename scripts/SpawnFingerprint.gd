@@ -21,7 +21,7 @@ class_name SpawnFingerprint
 ## Build one unit's fingerprint record. Reads spawn-time-stable fields only, so the record is
 ## the same whether taken at spawn or mid-battle.
 static func record_of(u) -> Dictionary:
-	return {
+	var rec: Dictionary = {
 		"uid": int(u.uid),
 		"team": int(u.team),
 		"type": String(u.unit_name),
@@ -36,6 +36,14 @@ static func record_of(u) -> Dictionary:
 		"x": roundi(u.position.x),
 		"y": roundi(u.position.y),
 	}
+	# Include missile_type_id ONLY when it differs from the default profile
+	# (LoadoutRegistry.MISSILE_BOW). Omitting it for the default keeps the digest
+	# byte-identical to the pre-missile 9-field format, so every existing demo script
+	# and replay stamp stays valid without re-recording. Unlike weapon_type_id,
+	# missile_type_id is not switchable mid-battle, so it remains spawn-stable.
+	if int(u.missile_type_id) != LoadoutRegistry.MISSILE_BOW:
+		rec["missile"] = int(u.missile_type_id)
+	return rec
 
 
 ## Every combat unit currently on the field as fingerprint records, in ascending uid order.
@@ -52,7 +60,29 @@ static func records_of_tree(tree: SceneTree) -> Array:
 ## Canonical digest of a record list. Pure: the same records in the same order always produce
 ## the same hex string. Fields are joined with delimiters that can't appear in the values
 ## (unit_name has no colon/newline), so two distinct layouts can never collide by concatenation.
+## Records that carry no "missile" key (the default profile, LoadoutRegistry.MISSILE_BOW) are
+## hashed with the original 9-field format so the digest is byte-identical to the pre-missile
+## code and every legacy stamp stays valid.
 static func digest(records: Array) -> String:
+	var parts: PackedStringArray = []
+	for r in records:
+		if r.has("missile"):
+			parts.append("%d:%d:%s:%d:%d:%d:%d:%d:%d:%d" % [
+				int(r["uid"]), int(r["team"]), String(r["type"]),
+				int(r["weapon"]), int(r["shield"]), int(r["mount"]),
+				int(r["missile"]),
+				int(r["soldiers"]), int(r["x"]), int(r["y"])])
+		else:
+			parts.append("%d:%d:%s:%d:%d:%d:%d:%d:%d" % [
+				int(r["uid"]), int(r["team"]), String(r["type"]),
+				int(r["weapon"]), int(r["shield"]), int(r["mount"]),
+				int(r["soldiers"]), int(r["x"]), int(r["y"])])
+	return "\n".join(parts).md5_text()
+
+
+## Pre-missile digest (the original 9-field format).
+## Retained so replays and demo scripts carrying an old stamp continue to match.
+static func legacy_digest(records: Array) -> String:
 	var parts: PackedStringArray = []
 	for r in records:
 		parts.append("%d:%d:%s:%d:%d:%d:%d:%d:%d" % [
@@ -62,6 +92,26 @@ static func digest(records: Array) -> String:
 	return "\n".join(parts).md5_text()
 
 
+static func _all_default_missiles(records: Array) -> bool:
+	for r in records:
+		if r.has("missile") and int(r["missile"]) != LoadoutRegistry.MISSILE_BOW:
+			return false
+	return true
+
+
+## Check if a stamp matches the layout represented by `records`, accepting either the
+## canonical digest, or the legacy pre-missile digest when every record uses the
+## default missile profile.
+static func matches(stamp: String, records: Array) -> bool:
+	if stamp == "":
+		return false
+	if stamp == digest(records):
+		return true
+	if _all_default_missiles(records) and stamp == legacy_digest(records):
+		return true
+	return false
+
+
 ## The current live layout's fingerprint, or "" when no units are on the field (nothing to
 ## stamp or check against yet).
 static func of_tree(tree: SceneTree) -> String:
@@ -69,3 +119,24 @@ static func of_tree(tree: SceneTree) -> String:
 	if records.is_empty():
 		return ""
 	return digest(records)
+
+
+## The current live layout's legacy fingerprint, or "" when no units are on the field.
+## Provided primarily for test assertions and migration comparisons.
+static func legacy_of_tree(tree: SceneTree) -> String:
+	var records: Array = records_of_tree(tree)
+	if records.is_empty():
+		return ""
+	return legacy_digest(records)
+
+
+## Check if a stamp matches the live layout in `tree`, accepting either the canonical
+## digest or the legacy pre-missile digest when every unit has the default profile.
+static func matches_tree(stamp: String, tree: SceneTree) -> bool:
+	if stamp == "":
+		return false
+	var records: Array = records_of_tree(tree)
+	if records.is_empty():
+		return false
+	return matches(stamp, records)
+

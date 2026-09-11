@@ -1,7 +1,9 @@
 # Design: reinforcement insertion (doubling by number)
 
-Status: **design drafted** -- the maneuver is not implemented;
-this document is the implementation plan for it, phased so each slice ships as its own reviewable PR.
+Status: **files axis implemented**.
+Phases 2 and 3 below shipped as `ReinforceLayout.gd`, `UnitReinforce.gd`, and the `Shift+M` gesture.
+The ranks axis (phase 4) and the follow-ups are still open.
+This document is the implementation plan, phased so each slice ships as its own reviewable PR.
 Builds on [#378](https://github.com/Lacaedemon/sparta/issues/378), [#362](https://github.com/Lacaedemon/sparta/issues/362), and [#369](https://github.com/Lacaedemon/sparta/issues/369), and connects to [#377](https://github.com/Lacaedemon/sparta/issues/377), [#373](https://github.com/Lacaedemon/sparta/issues/373), [#3](https://github.com/Lacaedemon/sparta/issues/3), [#1327](https://github.com/Lacaedemon/sparta/issues/1327), [`docs/historical-reshaping-maneuvers.md`](historical-reshaping-maneuvers.md), [`docs/unit-groups-grand-tactics-design.md`](unit-groups-grand-tactics-design.md), and [`docs/orders-queue-design.md`](orders-queue-design.md).
 
 File, function, and field names below were read from `main` at commit `0bae0766` (2026-09-01);
@@ -63,8 +65,10 @@ The order is refused -- nothing is armed, and a HUD flash says why -- when:
 - the two regiments are on different teams, or either is routing or dead;
 - the reserve is itself in enemy contact (`Unit._in_enemy_contact`), since a body in a fight cannot file off to the rear;
 - the loadouts differ (`weapon_type_id` or `shield_type_id`), because `melee_attack_interval()` and `shield_rest_angle()` read those ids per unit even though `soldier_lethality()`, `soldier_shield_block()`, and `soldier_is_piercing()` already resolve them per soldier, so a mixed regiment cannot yet be represented consistently;
-- the host is squared (`in_square()`) or in the far simulation tier (`tier == FormationTier.FAR`), since neither has a file-major grid to interleave into;
-- the host reflows row-major (`_effective_file_major_reform()` false: cavalry, and undisciplined foot), for the same reason.
+- the host is squared (`in_square()`), because a square holds no files to open;
+- either regiment is in the far tier (`FormationTier.FAR`), since a far-tier body carries no per-soldier slots to interleave into or to file in with, so the commit could never align;
+- the host reflows row-major (`_effective_file_major_reform()` is false), for the same reason;
+- the host has file-group subunits (`FILE_GROUP`), until subunit-aware insertion is wired in a follow-up.
 
 **Costs.**
 The result starts at a cohesion floor and recovers at `COHESION_RECOVER_PER_SEC`, the same strangers debuff a merge pays;
@@ -107,12 +111,12 @@ No new length constant is needed: the approach gap and the commit tolerance are 
 Runs once, inside the physics tick, and does five things in order.
 
 1. **Interleave assignment** (`ReinforceLayout`, pure).
-   Read the host's `_sim_soldier_file` and `_sim_soldier_rank`, its file count `F = UnitFormation.frontage(host)`, and its depth `D` (the largest file capacity).
+   Read the host's `_sim_soldier_file` and `_sim_soldier_rank`, its file count `F = UnitFormation.frontage(host)`, and its headcount `H`.
    Deal the reserve's `R` bodies into the inserted files or ranks with the same `UnitFormation.deal_file_ids_by_lateral_order` and `deal_ranks_by_depth` the reshape path uses, so the leftmost reserve man takes the leftmost inserted file.
    Then remap the ids:
 
    - *Files.*
-     `k = min(F, ceil(R / D))` files are inserted.
+     `k = min(F, ceil(R * F / H))` files are inserted -- the reserve at the host's own density, so equal strength doubles the frontage exactly even when the host's rear rank is partial (a deepest-file divisor would insert one file too few there).
      Inserted file `j` (for `0 <= j < k`) goes immediately to the right of host file `h_j = floor((j + 0.5) * F / k)`, which spreads a partial reserve evenly and, at `k = F`, alternates strictly.
      Host file `f` becomes `f + |{j : h_j < f}|`, and inserted file `j` becomes `h_j + 1 + j`.
      With `k = F`, the host's men land on the even ids and the reserve on the odd ones.
@@ -146,11 +150,19 @@ Runs once, inside the physics tick, and does five things in order.
    Commit calls `pool_strength` with the reinforcement floor, then removes the reserve with `_merged_away()`, and does *not* call `set_formation`, which would reset every shield hold angle the transfer just carried.
    `absorb` keeps its behaviour by calling the two halves in turn.
 
-5. **Anchor the front (ranks axis only).**
+5. **Anchor the front (both axes).**
    The slot grid is centred on `position` -- `SoldierBodies.couple` relies on `mean(slots) ~ position` -- so deepening from `D` to `D'` ranks would push the front rank forward by `(D' - D) / 2` rank pitches, into the enemy on an engaged host.
    Commit instead moves `host.position` rearward along `host.facing` by that amount: a one-time relocation of the anchor rather than a standing offset, so the coupling premise holds again from the next tick and the growth lands entirely at the rear.
-   The files axis widens laterally about the same centre and needs no shift;
+   The files axis widens laterally about the same centre and needs no lateral shift of its own;
    a flank-held widen can reuse `frontage_anchor_offset` and `UnitFormation.anchor_shift` exactly as the anchored explicatio does.
+   It does need the same rearward shift whenever the interleave changes the deepest file (a partial or surplus reserve), since the slot grid is centred on depth too;
+   commit applies `rear_anchor_shift` for that depth change on both axes.
+   Both axes need the anchor **held** through the arrival, though.
+   `SoldierBodies.couple` averages body-minus-slot drift over the whole regiment when no engaged front narrows it,
+   and the newcomers walking in from the rendezvous read as that drift,
+   backing the line up about three rank pitches (measured on the first files-axis recording).
+   Commit arms `Unit.hold_position_anchor(_reshape_timeout(old_files))`, and `couple` skips its whole-regiment path while the hold runs;
+   an engaged host, which anchors on its front ranks alone, is unaffected.
 
 After commit, the host's bodies ease onto their new slots at velocity through the ordinary arrival dynamics;
 nobody teleports.
@@ -205,30 +217,34 @@ Both new scripts need their `.gd.uid` sidecars committed, generated by a headles
   and lateral order (the leftmost reserve body takes the leftmost inserted file).
 
 - `test/unit/test_reinforcement_battle.gd` (an in-tree `Battle` in `drill_mode`, modelled on `test_passage_of_lines.gd`): a reserve behind a host receives a `REINFORCE` order with the link and the exemption armed and the host's own order untouched;
-  stepping until commit leaves `host.soldiers` at the sum, the reserve out of the `units` group, every per-soldier array at the new size, `UnitFormation.frontage(host)` at `F + k`, the interleave pattern in `_sim_soldier_file` surviving a `formation_slots` query, `host.position` unchanged on the files axis, and the front-rank slot unchanged on the ranks axis;
+  stepping until commit leaves `host.soldiers` at the sum, the reserve out of the `units` group, every per-soldier array at the new size, `UnitFormation.frontage(host)` at `F + k`, the interleave pattern in `_sim_soldier_file` surviving a `formation_slots` query, `host.position` unchanged on the files axis for equal-depth insertions (moving rearward via `rear_anchor_shift` for depth-changing insertions such as surplus or partial reserves), and the front-rank slot unchanged on the ranks axis;
   and each guard refuses (different loadout, routing host, engaged reserve, squared host).
 
 - `test/unit/test_replay.gd`: `reinforce` round-trips when set and is omitted when zero, beside the existing `anchor_offset` cases.
+
 - `test/unit/test_order.gd` and `test/unit/test_demo_state.gd`: the new type and maneuver names are added to the name-table tests there.
-- `test/unit/test_lockstep_ab_sim_hash.gd`: one A/B run whose script commits an insertion, so the commit tick is proven deterministic.
+
+- `test/unit/test_lockstep_ab_sim_hash.gd`: an insertion scenario is planned for follow-up verification;
+  files-axis determinism for Phase 3 is covered by the pure `test_reinforce_layout.gd` cases and deterministic execution in `test_reinforcement_battle.gd`.
 
 ## Demo
 
 A scripted-input recording, `demos/inputs/reinforcement-insertion.json`, with `drill: true` and its own scenario: a 40-man `Infantry` host at about (600, 520) facing down and a 40-man `Infantry` reserve at about (600, 340) behind it, camera framed on the pair.
-Steps: click the reserve, `Shift+M`, right-click the host;
-then a second pair to the right, showing the ranks axis with `Ctrl+Shift+M`.
+Steps: click the reserve, `Shift+M` to arm insertion by files, right-click the host;
+the ranks axis (`Ctrl+Shift+M`) is planned as a second pair for Phase 4.
 `state` dumps before the approach, mid-approach, and after commit, with `expect` entries: the reserve's `maneuver` reads `REINFORCING` mid-approach;
-after commit the host's `soldiers` is 80 and its `frontage` has doubled (files pair) or held (ranks pair), and the reserve rows are gone.
+after commit the host's `soldiers` is 80, its `frontage` has doubled from 9 to 18 (on the files axis), and the reserve rows are gone.
 Run the standard defect checklist on the dump;
-the commit tick needs a `path_crossing` exemption on the host uids, with the reason stated (the inserted men cross the host's rear rank by design).
-The manifest must not point at this recording until Stage C is implemented;
-a design-only or layout-only PR ships a skip-form manifest.
+the commit tick has a `shape_residual` exemption on the host uid, with the reason stated (the inserted men walk in from the rendezvous behind the host during the arrival window, before settling).
+The manifest `demos/demo.1555.json` points at this recording with `max_frames: 450`.
 
 ## Website
 
 - `website/how-to-play.qmd`: a controls row "Reinforce a friendly (doubling numbers)" beside "Merge selected units".
+
 - `website/tactics.qmd`: a section after "Passage of lines" contrasting the three ways to combine regiments (merge, relief, insertion), the two axes, when to use each, and the cohesion cost, with a `{#fig-reinforcement-insertion .demo}` video div.
-- `website/tools/demo-catalog.sh`: a `reinforcement_insertion|demos/inputs/reinforcement-insertion.json|30|300|640|input` row.
+
+- `website/tools/demo-catalog.sh`: a `reinforcement_insertion|demos/inputs/reinforcement-insertion.json|30|450|640|input` row.
 
 ## Phases
 
@@ -255,7 +271,7 @@ a design-only or layout-only PR ships a skip-form manifest.
 
 - **File-group subunits.**
   For a `FILE_GROUP` host, `UnitFormation.frontage` derives the width from `subunit_size` unless overridden, and `_ensure_file_assignment` reforms through `subunit_reform_files`;
-  phase 3 sets the override explicitly and leaves subunit-aware insertion to a follow-up.
+  ReinforceGuard refuses `FILE_GROUP` hosts, leaving subunit-aware insertion to a follow-up.
 
 - **Mixed loadouts.**
   The per-soldier `weapon_id` and `shield_id` arrays could carry a mixed regiment, but `melee_attack_interval()`, `shield_rest_angle()`, and the type-level stats read per unit;
@@ -270,8 +286,10 @@ a design-only or layout-only PR ships a skip-form manifest.
   the demo-diff and hash tooling read that as a change at one tick, which is correct.
 
 - **Gesture.**
-  `Shift+M` and `Ctrl+Shift+M` are unbound today: `M` merges, and the `Shift` and `Ctrl` chords `SelectionManager`'s key handler binds sit on `I`, `V`, `T`, `O`, `B`, `X`, `Y`, `Down`, and the control-group digits.
-  Confirm against `KeybindingsDialog` when wiring.
+  `Shift+M` is now wired in `SelectionManager`'s key handler and arms insertion by files.
+  `Ctrl+Shift+M` stays reserved for the ranks axis and is still unbound, since that axis is Phase 4 work.
+  The chord was free to take: `M` merges, and the `Shift` and `Ctrl` chords the handler already binds sit on `I`, `V`, `T`, `O`, `B`, `X`, `Y`, `Down`, and the control-group digits.
+  Confirm against `KeybindingsDialog` when wiring the ranks chord.
 
 ## Sources
 
