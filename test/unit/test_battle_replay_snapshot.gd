@@ -296,3 +296,42 @@ func test_restore_snapshot_defaults_time_scale_to_normal_for_a_pre_field_snapsho
 
 	Engine.time_scale = 1.0   # don't leak into a later test
 	_leave_playback(prev_mode)
+
+
+func test_restore_snapshot_preserves_and_rewinds_in_flight_projectiles() -> void:
+	var prev_mode := _enter_playback()
+	var scenario := [
+		{"team": 0, "type": "Archers", "x": 500, "y": 400, "count": 20, "facing": [0, 1]},
+		{"team": 1, "type": "Infantry", "x": 500, "y": 520, "count": 20, "facing": [0, -1]},
+	]
+	var battle := _spawn_battle(scenario, 10, 20)
+	battle.drill_mode = true
+	var waited: int = 0
+	while (ProjectileField.active == null or ProjectileField.active.count() == 0) and waited < 120:
+		await get_tree().physics_frame
+		waited += 1
+
+	assert_not_null(ProjectileField.active, "projectile field is active")
+	assert_gt(ProjectileField.active.count(), 0, "a volley was launched and is in flight")
+	var in_flight_count: int = ProjectileField.active.count()
+	var snap: Dictionary = battle.capture_snapshot()
+	assert_true(snap.has("projectile_field"), "snapshot captures projectile field")
+
+	while ProjectileField.active.count() > 0 and waited < 240:
+		await get_tree().physics_frame
+		waited += 1
+
+	assert_eq(ProjectileField.active.count(), 0, "volley landed")
+
+	battle.restore_snapshot(snap)
+	assert_eq(ProjectileField.active.count(), in_flight_count,
+			"in-flight volley is restored when rewinding to mid-flight snapshot")
+
+	var pre_snap: Dictionary = snap.duplicate(true)
+	pre_snap.erase("projectile_field")
+	battle.restore_snapshot(pre_snap)
+	assert_eq(ProjectileField.active.count(), 0,
+			"restoring a snapshot without projectile_field clears active projectiles")
+
+	_leave_playback(prev_mode)
+

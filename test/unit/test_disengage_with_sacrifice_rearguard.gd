@@ -265,3 +265,23 @@ func test_pursuer_is_physically_blocked_by_the_rearguard_while_the_main_body_esc
 			+ " still closing the distance") % worst_advance)
 	assert_ne(main_body.state, Unit.State.FIGHTING,
 			"meanwhile the main body itself is no longer in that fight -- it got away")
+
+
+func test_rearguard_detachment_inherits_parent_missile_profile() -> void:
+	var battle := _spawn(_clash_scenario())
+	while battle.current_tick() < 5:
+		await get_tree().physics_frame
+	var units := _units_by_uid(battle)
+	var main_body: Unit = units.values()[0]
+	assert_true(main_body.equip_missile(LoadoutRegistry.MISSILE_PILUM), "equips pilum")
+	var rearguard: Unit = battle._spawn_rearguard_detachment(main_body, 10, 0.2)
+	assert_true(is_instance_valid(rearguard), "spawned rearguard")
+	assert_eq(rearguard.missile_type_id, LoadoutRegistry.MISSILE_PILUM,
+			"rearguard preserves parent's equipped missile profile")
+	assert_almost_eq(rearguard.missile_range, main_body.missile_range, 0.001,
+			"rearguard preserves parent's missile range")
+	assert_almost_eq(rearguard.detection_range, main_body.detection_range, 0.001,
+			"rearguard preserves parent's widened detection range")
+	assert_almost_eq(rearguard.skirmish_kite_distance, main_body.skirmish_kite_distance, 0.001,
+			"rearguard preserves parent's kite distance")
+

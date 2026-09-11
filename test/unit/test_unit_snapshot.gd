@@ -26,6 +26,7 @@ func _sample_unit() -> Unit:
 	u.shield_type_id = LoadoutRegistry.SHIELD_SCUTUM
 	u.armor_type_id = LoadoutRegistry.ARMOR_TUNIC       # non-default, so the round-trip is provable
 	u.mount_type_id = LoadoutRegistry.MOUNT_WARHORSE    # non-default, so the round-trip is provable
+	u.equip_missile(LoadoutRegistry.MISSILE_PILUM)      # non-default, so the round-trip is provable
 	u.order_response_delay = 0.5
 	u.atomic_response_delay = 0.35
 	u.training = 0.75
@@ -126,6 +127,14 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(restored.weapon_type_id, original.weapon_type_id)
 	assert_eq(restored.armor_type_id, original.armor_type_id)
 	assert_eq(restored.mount_type_id, original.mount_type_id)
+	assert_eq(restored.missile_type_id, original.missile_type_id)
+	assert_almost_eq(restored.missile_range, original.missile_range, 0.001)
+	assert_almost_eq(restored.missile_interval, original.missile_interval, 0.001)
+	assert_almost_eq(restored.missile_damage_factor, original.missile_damage_factor, 0.001)
+	assert_almost_eq(restored.missile_accuracy_at_max, original.missile_accuracy_at_max, 0.001)
+	assert_almost_eq(restored.missile_launch_angle, original.missile_launch_angle, 0.001)
+	assert_almost_eq(restored.detection_range, original.detection_range, 0.001)
+	assert_almost_eq(restored.skirmish_kite_distance, original.skirmish_kite_distance, 0.001)
 	assert_almost_eq(restored.order_response_delay, original.order_response_delay, 0.001)
 	assert_almost_eq(restored.atomic_response_delay, original.atomic_response_delay, 0.001,
 		"a spawn-customized drill beat survives a replay-seek snapshot restore")
@@ -237,3 +246,29 @@ func test_mutating_the_original_units_arrays_after_capture_does_not_alter_the_sn
 	u._sim_soldier_pos[0] = Vector2(999, 999)
 	assert_eq((d["sim_soldier_pos"] as PackedVector2Array)[0], Vector2(1, 2),
 			"the cached snapshot's array is an independent copy")
+
+
+func test_snapshot_restore_defaults_legacy_missile_and_range_fields() -> void:
+	var original := _sample_unit()
+	var d := original.to_snapshot_dict()
+	d.erase("missile_type_id")
+	d.erase("missile_range")
+	d.erase("missile_interval")
+	d.erase("missile_damage_factor")
+	d.erase("missile_accuracy_at_max")
+	d.erase("missile_launch_angle")
+	d.erase("detection_range")
+	d.erase("skirmish_kite_distance")
+
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(d)
+
+	assert_eq(restored.missile_type_id, LoadoutRegistry.MISSILE_BOW)
+	assert_almost_eq(restored.missile_range, Unit.RANGED_RANGE, 0.001)
+	assert_almost_eq(restored.missile_interval, Unit.RANGED_INTERVAL, 0.001)
+	assert_almost_eq(restored.missile_damage_factor, Unit.RANGED_DAMAGE_FACTOR, 0.001)
+	assert_almost_eq(restored.missile_accuracy_at_max, Unit.RANGED_ACCURACY_AT_MAX, 0.001)
+	assert_almost_eq(restored.missile_launch_angle, ProjectilePhysics.ANGLE_ARCED, 0.001)
+	assert_almost_eq(restored.detection_range, Unit.DETECTION_RANGE, 0.001)
+	assert_almost_eq(restored.skirmish_kite_distance, Unit.SKIRMISH_KITE_DISTANCE, 0.001)
+

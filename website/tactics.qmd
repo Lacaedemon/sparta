@@ -1645,8 +1645,9 @@ into different tools:
   maneuvers for the side or back rather than the front, cashing in the &times;1.5 / &times;2
   multipliers above. Pair it with a frontal pin.
 - **Skirmish** (<kbd>K</kbd>) --- a ranged unit kites: it backs off when a threat
-  closes inside its firing range, trading ground to keep shooting rather than being
-  caught in melee.
+  closes inside its kite distance, a fixed fraction of its own missile reach, trading
+  ground to keep shooting rather than being caught in melee. A longer-ranged missile
+  weapon kites proportionally further out.
 - **Support** (<kbd>G</kbd>) --- the unit guards a chosen ally, shadowing it and
   intercepting any enemy that closes on it. Good for gluing spearmen to vulnerable
   horse, or a guard onto your archers.
@@ -1959,6 +1960,57 @@ A volley is not instant: the arrows fly a real arc and **land where they were ai
 a moment later**, so a fast unit can partly outrun a shot loosed at long range, and
 casualties arrive on the beat the arrows come down rather than the instant they leave
 the bow.
+
+## Each missile weapon has its own reach
+
+A ranged regiment shoots with the **missile profile** of the weapon it carries,
+not with one reach shared by every archer on the field.
+A profile fixes five things at once:
+
+- **Reach** --- how far the regiment can loose at all.
+  The bow reaches 8 m; the pilum, a heavy shaft thrown by hand, reaches 15 m.
+  A longer-reaching profile extends auto-acquisition to its missile reach.
+  The regiment acquires a target on its own past the ordinary acquisition distance.
+
+- **Cadence** --- how long the regiment takes between volleys.
+  A bow looses every second; a pilum regiment throws every two.
+
+- **Flight** --- whether the volley is lobbed or thrown flat.
+  A lob hangs in the air.
+  A flat throw to the same spot lands sooner, so a fast target has less time to reposition before impact.
+
+- **Punch** --- how hard each volley hits against a melee strike of the same stats.
+
+- **Accuracy at range** --- how much of that punch survives to the edge of the
+  reach.
+  A bow loses nothing across its 8 m.
+  A pilum volley falls off steadily with distance and lands at **half** its effect
+  at the full 15 m, so the last few metres of its reach are the least worth using.
+
+So a longer reach is not a free upgrade.
+A pilum regiment at 14 m throws at a target it can only just reach,
+with about 64% of the effect it would deliver at 5 m.
+Closing that distance improves a volley by about 56%,
+at the cost of being closer to whatever it is throwing at.
+The kite distance under [Skirmish](#order-stances) scales with the reach,
+so a longer-ranged skirmisher backs off further before it is caught.
+
+::: {#fig-missile-profile-reach .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/missile_profile_reach.jpg">
+  <source src="media/missile_profile_reach.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Two player-controlled archer regiments stand on one line, both 14.5 m from an enemy regiment.
+The left one carries the pilum profile (15 m reach) and opens fire on its own; the
+right one carries the bow (8 m reach) and holds, the enemy out of both its reach and
+its auto-acquisition range.
+:::
 
 ## Turn your shields toward the archers
 

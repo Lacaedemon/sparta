@@ -8,9 +8,13 @@ const UnitScript = preload("res://scripts/Unit.gd")
 
 
 func _rec(uid: int, team: int, type: String, x: int, y: int,
-		soldiers: int = 100, weapon: int = 0, shield: int = 0, mount: int = 0) -> Dictionary:
-	return {"uid": uid, "team": team, "type": type, "weapon": weapon, "shield": shield,
-			"mount": mount, "soldiers": soldiers, "x": x, "y": y}
+		soldiers: int = 100, weapon: int = 0, shield: int = 0, mount: int = 0,
+		missile: int = LoadoutRegistry.MISSILE_BOW) -> Dictionary:
+	var rec: Dictionary = {"uid": uid, "team": team, "type": type, "weapon": weapon,
+			"shield": shield, "mount": mount, "soldiers": soldiers, "x": x, "y": y}
+	if missile != LoadoutRegistry.MISSILE_BOW:
+		rec["missile"] = missile
+	return rec
 
 
 ## A tree-registered unit with the fingerprint-relevant fields pinned, so of_tree hashes exactly
@@ -61,9 +65,54 @@ func test_a_loadout_id_change_changes_the_digest() -> void:
 			"a different weapon type id flips the digest")
 
 
+func test_a_missile_profile_change_changes_the_digest() -> void:
+	assert_ne(SpawnFingerprint.digest([_rec(0, 0, "Spearmen", 100, 300, 100, 0, 0, 0, LoadoutRegistry.MISSILE_BOW)]),
+			SpawnFingerprint.digest([_rec(0, 0, "Spearmen", 100, 300, 100, 0, 0, 0, LoadoutRegistry.MISSILE_PILUM)]),
+			"a different missile profile id flips the digest")
+
+
+func test_legacy_digest_and_matches_handle_old_stamps() -> void:
+	# Use a non-default missile so digest (10-field) and legacy_digest (9-field) actually differ.
+	var rec: Dictionary = _rec(0, 0, "Spearmen", 100, 300, 100, 1, 0, 0, LoadoutRegistry.MISSILE_PILUM)
+	var legacy: String = SpawnFingerprint.legacy_digest([rec])
+	var current: String = SpawnFingerprint.digest([rec])
+	assert_ne(legacy, "", "legacy digest is non-empty")
+	assert_ne(legacy, current, "legacy 9-field digest differs from 10-field digest")
+	assert_false(SpawnFingerprint.matches(legacy, [rec]),
+			"matches rejects a legacy pre-missile stamp when records contain non-default missile profiles")
+	assert_true(SpawnFingerprint.matches(current, [rec]),
+			"matches accepts the current digest")
+	assert_false(SpawnFingerprint.matches("stale_invalid_hash", [rec]),
+			"matches rejects a mismatched stamp")
+	assert_false(SpawnFingerprint.matches("", [rec]),
+			"matches rejects an empty stamp")
+	# When every record uses the default missile profile, the legacy fallback is accepted.
+	var def_rec: Dictionary = _rec(0, 0, "Spearmen", 100, 300, 100, 1, 0, 0, LoadoutRegistry.MISSILE_BOW)
+	var def_legacy: String = SpawnFingerprint.legacy_digest([def_rec])
+	assert_true(SpawnFingerprint.matches(def_legacy, [def_rec]),
+			"matches accepts a legacy pre-missile stamp when all records use default missile profile")
+
+
+func test_default_profile_digest_matches_legacy_format() -> void:
+	# A record with the default missile profile (LoadoutRegistry.MISSILE_BOW) carries no
+	# "missile" key, so digest() uses the 9-field format -- byte-identical to the pre-missile
+	# code. Verify digest() == legacy_digest() for such records.
+	var rec: Dictionary = _rec(0, 0, "Spearmen", 100, 300, 100, 1, 0, 0)
+	assert_false(rec.has("missile"),
+			"default-profile record omits the missile key")
+	assert_eq(SpawnFingerprint.digest([rec]), SpawnFingerprint.legacy_digest([rec]),
+			"digest equals legacy_digest when every record uses the default missile profile")
+
+
 func test_of_tree_is_empty_when_no_units_are_on_the_field() -> void:
 	assert_eq(SpawnFingerprint.of_tree(get_tree()), "",
 			"no units on the field means nothing to stamp or check against")
+	assert_eq(SpawnFingerprint.legacy_of_tree(get_tree()), "",
+			"legacy of_tree is also empty when no units are on the field")
+	assert_false(SpawnFingerprint.matches_tree("abc123def456", get_tree()),
+			"matches_tree returns false when no units are on the field")
+	assert_false(SpawnFingerprint.matches_tree("", get_tree()),
+			"matches_tree returns false for an empty stamp")
 
 
 func test_of_tree_orders_units_by_uid_not_insertion_order() -> void:
@@ -76,6 +125,10 @@ func test_of_tree_orders_units_by_uid_not_insertion_order() -> void:
 		uids.append(r["uid"])
 	assert_eq(uids, [3, 7], "records come out in ascending uid order")
 	assert_ne(SpawnFingerprint.of_tree(get_tree()), "", "a populated field has a non-empty digest")
+	assert_true(SpawnFingerprint.matches_tree(SpawnFingerprint.of_tree(get_tree()), get_tree()),
+			"matches_tree accepts live digest")
+	assert_true(SpawnFingerprint.matches_tree(SpawnFingerprint.legacy_of_tree(get_tree()), get_tree()),
+			"matches_tree accepts legacy digest")
 
 
 func test_sub_world_unit_jitter_does_not_change_the_digest() -> void:
@@ -99,3 +152,16 @@ func test_digest_reads_max_soldiers_not_the_live_casualty_count() -> void:
 	u.soldiers = 40   # simulate casualties
 	assert_eq(SpawnFingerprint.of_tree(get_tree()), at_spawn,
 			"a mid-battle casualty count does not change the spawn fingerprint")
+
+
+func test_matches_tree_rejects_legacy_stamp_when_unit_has_non_default_missile() -> void:
+	var u: Unit = _unit(1, Vector2(100, 300), "Archers")
+	u.equip_missile(LoadoutRegistry.MISSILE_PILUM)
+	var legacy: String = SpawnFingerprint.legacy_of_tree(get_tree())
+	var current: String = SpawnFingerprint.of_tree(get_tree())
+	assert_ne(legacy, current, "pilum unit produces different current and legacy tree digests")
+	assert_true(SpawnFingerprint.matches_tree(current, get_tree()),
+			"matches_tree accepts current digest for non-default missile unit")
+	assert_false(SpawnFingerprint.matches_tree(legacy, get_tree()),
+			"matches_tree rejects legacy stamp when a unit has non-default missile profile")
+
