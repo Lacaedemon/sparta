@@ -344,42 +344,44 @@ func test_fog_menu_toggle_is_refused_during_playback() -> void:
 	Settings.set_fog_of_war_session(false)
 
 
-## The F7 toggle is refused while recording, where Replay has no ticked fog
-## track and Replay.map stores only the initial boolean. A mid-run switch would
-## fail to reproduce on playback.
-func test_fog_toggle_is_refused_during_recording() -> void:
+## F7 toggles fog of war during a live battle. Live battles always record for debug
+## replays, but recording does not refuse the toggle.
+func test_fog_toggle_works_during_recording() -> void:
 	var battle: Node = _staged_battle(false)
 	await wait_frames(2)
+	assert_eq(Replay.mode, Replay.Mode.RECORD, "staged battle is recording")
 	var hud = battle.get_node("HUD")
-	Replay.mode = Replay.Mode.RECORD
 	hud._toggle_fog()
-	assert_false(Settings.fog_of_war, "recording leaves the live fog setting alone")
-	assert_eq(hud._flash_label.text, "Fog of war is fixed for the duration of a recording",
-		"and reports why recording refused the fog toggle")
-	Replay.mode = Replay.Mode.IDLE
+	assert_true(Settings.fog_of_war, "F7 flips fog on during a live battle")
+	assert_eq(hud._flash_label.text, "Fog of war: on",
+		"and reports the new state")
 	hud._toggle_fog()
-	assert_true(Settings.fog_of_war, "outside recording the same key still flips it")
+	assert_false(Settings.fog_of_war, "F7 flips fog back off")
+	assert_eq(hud._flash_label.text, "Fog of war: off",
+		"and reports the updated state")
 
 
-## The menu toggle is also refused during recording and restores its checkmark,
-## because PopupMenu auto-toggles check state before id_pressed fires.
-func test_fog_menu_toggle_is_refused_during_recording() -> void:
+## The menu toggle also flips fog during a live battle and keeps its checkmark in sync.
+func test_fog_menu_toggle_works_during_recording() -> void:
 	var battle: Node = _staged_battle(false)
 	await wait_frames(2)
+	assert_eq(Replay.mode, Replay.Mode.RECORD, "staged battle is recording")
 	var hud = battle.get_node("HUD")
 	var popup: PopupMenu = hud._menu_button.get_popup()
 	var idx: int = popup.get_item_index(hud.MENU_FOG_OF_WAR)
-	Replay.mode = Replay.Mode.RECORD
 	# Simulate PopupMenu's auto-toggle flipping the item before id_pressed.
 	popup.set_item_checked(idx, true)
 	hud._on_menu_id(hud.MENU_FOG_OF_WAR)
-	assert_false(Settings.fog_of_war, "recording leaves the live fog setting alone")
-	assert_false(popup.is_item_checked(idx), "menu checkmark is restored on refusal")
-	assert_eq(hud._flash_label.text, "Fog of war is fixed for the duration of a recording",
-		"and reports why recording refused the menu toggle")
-	Replay.mode = Replay.Mode.IDLE
+	assert_true(Settings.fog_of_war, "menu toggle flips fog on during a live battle")
+	assert_true(popup.is_item_checked(idx), "menu checkmark remains checked")
+	assert_eq(hud._flash_label.text, "Fog of war: on",
+		"and reports the new state")
+	popup.set_item_checked(idx, false)
 	hud._on_menu_id(hud.MENU_FOG_OF_WAR)
-	assert_true(Settings.fog_of_war, "outside recording the menu item flips the setting")
+	assert_false(Settings.fog_of_war, "menu toggle flips fog back off")
+	assert_false(popup.is_item_checked(idx), "menu checkmark remains unchecked")
+	assert_eq(hud._flash_label.text, "Fog of war: off",
+		"and reports the updated state")
 	Settings.set_fog_of_war_session(false)
 
 
@@ -547,8 +549,9 @@ func _key_event(physical_keycode: int) -> InputEventKey:
 ## The persisted toggle is flipped twice, so a developer's saved preference ends where it
 ## started even though each flip writes the settings file.
 func test_f7_toggles_fog_of_war_and_the_indicator_and_the_menu_item() -> void:
-	var hud: CanvasLayer = HUDScript.new()
-	add_child_autofree(hud)
+	var battle: Node = _staged_battle(false)
+	await wait_frames(2)
+	var hud = battle.get_node("HUD")
 	var before: bool = Settings.fog_of_war
 	hud._unhandled_input(_key_event(KEY_F7))
 	assert_eq(Settings.fog_of_war, not before, "F7 flips the setting")

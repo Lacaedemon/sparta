@@ -1296,7 +1296,7 @@ An enemy you have seen and then lost leaves a **ghost outline** in its team colo
 A standing "FOG OF WAR" indicator sits below the order-mode banner while fog is on.
 Fog affects what is drawn and widens the retreat boundary so fleeing enemies do not escape while still inside your sight discs.
 Units fight, target, and move under the same AI and physics rules.
-The recorded fog state drives replay playback with mid-battle toggles disabled while recording and during replay, and the enemy AI still sees everything for now.
+A replay reproduces the fog state the battle started with, mid-battle toggles are not reproduced on playback, and the enemy AI still sees everything for now.
 Terrain does not block or shorten sight yet, and the map itself is never darkened.
 For tactical guidance on scouting screens, ghost staleness, and pursuit decisions, see [Tactics](tactics.qmd#fog-of-war).
 
