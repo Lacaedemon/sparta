@@ -129,6 +129,10 @@ Violating one costs a fix round.
    count how many bodies take that branch in the clip's dump;
    zero means the fix is elsewhere.
 
+30. When staging ranged combat test fixtures,
+    offset friendly units laterally from the line of fire,
+    because friendly_interceptor redirects shots into any ally in the corridor.
+
 END OF STANDING RULES
 
 ## Provenance

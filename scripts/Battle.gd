@@ -31,14 +31,15 @@ const FIELD := Rect2(0, 0, 1600, 1200)
 
 # Extra room beyond the field that a ROUTING unit may flee into before it's removed from
 # play (see Unit._escape()). Fixed and known up front (not sized per unit) since it's drawn
-# once as a visible margin strip at battle start (see _draw()). Sized to the game's maximum
-# visual range — the longest ranged attack (RANGED_RANGE) and the farthest a unit can
-# currently be noticed at BY DEFAULT (DETECTION_RANGE, the closest existing stand-in for a
+# once as a visible margin strip at battle start (see _draw()). Sized to the farthest a unit
+# can be noticed at BY DEFAULT (DETECTION_RANGE, the closest existing stand-in for a
 # fog-of-war vision range, which this game doesn't have yet) — so a fleeing unit stays a
-# plausible target for as long as it's still visible, rather than vanishing early. Reads the
+# plausible target for as long as it's still visible, rather than vanishing early. Follows
+# detection alone, not the missile reach: a router does not have to outrun the longest
+# missile profile on the field to be gone, and the reach is per unit now anyway. Reads the
 # class constant, not any one unit's own (caller-configurable) detection_range field, since
 # this margin is a single battle-wide strip, not sized per unit.
-const ROUT_MARGIN: float = maxf(UnitRef.RANGED_RANGE, UnitRef.DETECTION_RANGE)
+const ROUT_MARGIN: float = UnitRef.DETECTION_RANGE
 var field_with_margin: Rect2 = FIELD.grow(ROUT_MARGIN)
 
 # Terrain patches; type keys into TERRAIN_COLOR. kind="block" is impassable; kind="slow" is a speed zone.
@@ -699,7 +700,7 @@ func _ready() -> void:
 		# (orders target unit positions this build no longer produces). Surface it loudly; HUD
 		# shows the flag, and push_warning puts it in the log for a headless replay run too.
 		# Unstamped replays (loaded_spawn_fingerprint == "") skip the check, like pre-map ones.
-		if Replay.loaded_spawn_fingerprint != "" and Replay.loaded_spawn_fingerprint != live_fingerprint:
+		if Replay.loaded_spawn_fingerprint != "" and not SpawnFingerprint.matches_tree(Replay.loaded_spawn_fingerprint, get_tree()):
 			Replay.last_load_spawn_mismatch = Replay.loaded_spawn_fingerprint
 			push_warning("Replay spawn layout mismatch: recorded fingerprint %s, this build spawns %s. Orders may target the wrong units." %
 					[Replay.loaded_spawn_fingerprint, live_fingerprint])
@@ -1116,6 +1117,14 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 		u.armor_type_id = d["armor"]
 	if d.has("mount"):
 		u.mount_type_id = d["mount"]
+	# Missile profile: a LoadoutRegistry missile id naming the ranged stats this unit shoots
+	# with (range, cadence, damage factor, accuracy falloff, launch angle -- Unit.equip_missile,
+	# which also widens detection to the range). A dict without the key keeps the Unit
+	# defaults, which are the bow profile's own numbers, so every roster row and bare test
+	# unit shoots exactly as it did before profiles existed. An unknown id warns and keeps
+	# those defaults rather than aborting the spawn, like an unrecognised subunit_structure.
+	if d.has("missile") and not u.equip_missile(int(d["missile"])):
+		push_warning("[battle] unknown missile profile id %s; keeping the default profile." % str(d["missile"]))
 	u.training = d.get("training", 0.0)
 	u.disciplined = d.get("disciplined", true)
 	# Per-type starting values for the player-togglable settings; a loadout entry
@@ -1189,6 +1198,8 @@ func _spawn_scenario(specs: Array) -> void:
 			d["morale"] = float(spec["morale"])
 		if spec.has("formation"):
 			d["formation"] = int(spec["formation"])
+		if spec.has("missile"):
+			d["missile"] = int(spec["missile"])
 		if spec.has("starting_state"):
 			d["starting_state"] = int(spec["starting_state"])
 		if spec.has("disciplined"):
@@ -1347,10 +1358,10 @@ func _apply_starting_state(u: Unit, starting_state: int) -> void:
 ## Every live unit ("units" + "routers" -- a unit that has died and left play is in
 ## neither, so it's correctly excluded, matching how a rewind to before its death
 ## should look) plus the whole-battle bookkeeping (tick, RNG stream position, the next
-## fresh uid, and the active Engine.time_scale -- a global engine property with no
-## per-unit trace, so it has to ride in the snapshot itself rather than being derivable
-## from anything captured above) needed to resume simulating from this exact moment.
-## Opaque to callers other than restore_snapshot; never written to the canonical
+## fresh uid, in-flight projectiles in ProjectileField, and the active Engine.time_scale -- a
+## global engine property with no per-unit trace, so it has to ride in the snapshot itself rather
+## than being derivable from anything captured above) needed to resume simulating from this
+## exact moment. Opaque to callers other than restore_snapshot; never written to the canonical
 ## .replay file.
 func capture_snapshot() -> Dictionary:
 	var units: Array = []
@@ -1359,13 +1370,16 @@ func capture_snapshot() -> Dictionary:
 			var u := node as UnitRef
 			if u != null:
 				units.append(u.to_snapshot_dict())
-	return {
+	var snap: Dictionary = {
 		"tick": _tick,
 		"rng_state": Replay.rng.state,
 		"next_uid": _next_uid,
 		"units": units,
 		"time_scale": Engine.time_scale,
 	}
+	if ProjectileField.active != null:
+		snap["projectile_field"] = ProjectileField.active.to_snapshot_dict()
+	return snap
 
 
 ## Rebuilds the battle to exactly the moment `snap` was captured at: frees every current
@@ -1375,8 +1389,8 @@ func capture_snapshot() -> Dictionary:
 ## spawned" default, self-healing on the first tick exactly like an ordinary spawn already
 ## does -- see .claude/memories/sparta.md's frame-keyed-cache hazards this sidesteps.
 ## Restores the tick counter, the RNG stream position (so subsequent combat rolls draw
-## exactly where the original run would have), Replay's own order-read cursor, and the
-## active Engine.time_scale.
+## exactly where the original run would have), Replay's own order-read cursor, the
+## active Engine.time_scale, and any active projectiles in ProjectileField.
 func restore_snapshot(snap: Dictionary) -> void:
 	for group in ["units", "routers"]:
 		for node in get_tree().get_nodes_in_group(group):
@@ -1414,6 +1428,12 @@ func restore_snapshot(snap: Dictionary) -> void:
 	# `_tick`; a slow-motion change made before the snapshot was captured has no per-unit
 	# trace to fall back on, so the value has to come from the snapshot itself.
 	Engine.time_scale = float(snap.get("time_scale", 1.0))
+
+	if ProjectileField.active != null:
+		if snap.has("projectile_field"):
+			ProjectileField.active.apply_snapshot_dict(snap["projectile_field"])
+		else:
+			ProjectileField.active.clear()
 
 	# A completed replay has _ended set and the tree paused behind the end overlay
 	# (_check_victory runs during PLAYBACK too), and both _physics_process and

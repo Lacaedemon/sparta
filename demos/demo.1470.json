@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Design document only (docs/longer-range-missile-design.md). No scripts/, scenes/, or assets/ change, so a recorded battle would show the game exactly as it is on main; the per-phase demos are specified inside the document and ship with the phases that implement them."
+  "input": "demos/inputs/missile-profile-reach.json",
+  "caption": "Per-type missile profiles (issue #1470, phase 2): two player Archers regiments stand 290 wu (14.5 m) from an enemy regiment. The left one carries the new pilum profile (15 m / 300 wu reach, thrown flat, 2 s cadence, accuracy halving by maximum range) and opens fire on its own at that range -- past the old global 8 m / 160 wu reach and the 190 wu detection default -- while the right one keeps the default bow profile and holds, the enemy out of both its reach and its sight. A ranged unit now shoots with its own profile's range, cadence, damage factor, accuracy falloff, and launch angle (a flat throw lands sooner than a lob), all metre-authored and caller-configurable; an unprofiled unit shoots exactly as before.",
+  "fixed_fps": 30,
+  "max_frames": 240,
+  "fps": 15,
+  "width": 720
 }

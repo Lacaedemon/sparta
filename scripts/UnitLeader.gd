@@ -275,7 +275,7 @@ static func _directive_cmd(u: Unit, directive: Dictionary) -> Dictionary:
 static func _screen_directive_cmd(u: Unit, directive: Dictionary) -> Dictionary:
 	var point := Vector2(float(directive.get("x", u.position.x)),
 			float(directive.get("y", u.position.y)))
-	var station: float = _station_of(directive)
+	var station: float = maxf(_station_of(directive), u.skirmish_kite_distance)
 	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 	if u.position.distance_squared_to(point) <= station * station:
 		return {}

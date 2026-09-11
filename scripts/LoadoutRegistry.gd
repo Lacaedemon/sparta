@@ -12,9 +12,10 @@ class_name LoadoutRegistry
 ## these shared instances.
 ##
 ## Id ranges are disjoint on purpose — weapons 1-99, shields 101-199, armor
-## 201-299, mounts 301-399, 0 reserved invalid — so an id read against the
-## wrong namespace (or a missed array fill, which PackedInt32Array defaults
-## to 0) resolves to null instead of silently aliasing another type.
+## 201-299, mounts 301-399, missile profiles 401-499, 0 reserved invalid -- so
+## an id read against the wrong namespace (or a missed array fill, which
+## PackedInt32Array defaults to 0) resolves to null instead of silently
+## aliasing another type.
 
 const WEAPON_SPEAR: int = 1
 const WEAPON_GLADIUS: int = 2
@@ -34,6 +35,9 @@ const ARMOR_SQUAMATA: int = 204
 
 const MOUNT_NONE: int = 301
 const MOUNT_WARHORSE: int = 302
+
+const MISSILE_BOW: int = 401
+const MISSILE_PILUM: int = 402
 
 # Stat sources — the registry names what already exists, it invents nothing:
 # reach_m carries the exact per-type values Battle._default_loadout() held as
@@ -145,6 +149,34 @@ static var _mounts: Dictionary = {
 	MOUNT_WARHORSE: Mount.make(MOUNT_WARHORSE, "Warhorse", 450.0, 8.5),
 }
 
+# Missile profiles (docs/longer-range-missile-design.md, phase 2): per-type ranged fire,
+# one profile per weapon on its own id range. Every field enters Unit through
+# equip_missile as an instance value with today's behaviour as the default, and every
+# range is authored in metres and converted once in MissileProfile.make.
+#
+# MISSILE_BOW carries EXACTLY the pre-profile numbers -- Unit.RANGED_RANGE (8 m),
+# RANGED_INTERVAL (1.0 s), RANGED_DAMAGE_FACTOR (0.7), no accuracy falloff (1.0), and
+# ProjectilePhysics.ANGLE_ARCED's lob -- so the roster's Archers and every unprofiled
+# ranged unit shoot as they did before profiles existed and existing replays stay
+# bit-identical. Its 8 m is the game's long-standing balance figure for a field 80 m
+# across, not a historical bow range; the design note's historical rows (self bow,
+# sling, composite bow, javelin, artillery, 20-400 m) reach the far tier's promotion
+# band or beyond it, so they wait for the design's far-tier phase and are deliberately
+# NOT registered here rather than authored untested.
+#
+# MISSILE_PILUM is the one historical row that fits strictly inside
+# FormationTier.PROMOTE_RANGE (400 wu, 20 m), authored at the bottom of its 15-20 m band:
+# a heavy shaft thrown flat, so it flies ProjectilePhysics.ANGLE_FLAT and lands sooner than
+# a lob, on a slow 2.0 s cadence (two shafts carried, thrown deliberately), losing half
+# its effect by maximum range. The cadence and the falloff are balance placeholders on the
+# historical shape, per the design note's open question on rates.
+static var _missiles: Dictionary = {
+	MISSILE_BOW: MissileProfile.make(MISSILE_BOW, "Bow", 8.0, 1.0, 0.7, 1.0,
+			ProjectilePhysics.ANGLE_ARCED),
+	MISSILE_PILUM: MissileProfile.make(MISSILE_PILUM, "Pilum", 15.0, 2.0, 0.7, 0.5,
+			ProjectilePhysics.ANGLE_FLAT),
+}
+
 
 ## The shared Weapon instance for `type_id`, or null for an unknown id.
 static func weapon(type_id: int) -> Weapon:
@@ -166,6 +198,11 @@ static func mount(type_id: int) -> Mount:
 	return _mounts.get(type_id) as Mount
 
 
+## The shared MissileProfile instance for `type_id`, or null for an unknown id.
+static func missile(type_id: int) -> MissileProfile:
+	return _missiles.get(type_id) as MissileProfile
+
+
 ## Every registered weapon id, for roster-wide iteration (tests, tools).
 static func weapon_ids() -> PackedInt32Array:
 	return PackedInt32Array(_weapons.keys())
@@ -184,3 +221,8 @@ static func armor_ids() -> PackedInt32Array:
 ## Every registered mount id, for roster-wide iteration (tests, tools).
 static func mount_ids() -> PackedInt32Array:
 	return PackedInt32Array(_mounts.keys())
+
+
+## Every registered missile profile id, for roster-wide iteration (tests, tools).
+static func missile_ids() -> PackedInt32Array:
+	return PackedInt32Array(_missiles.keys())

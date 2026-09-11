@@ -518,19 +518,15 @@ a replay with conditions produces identical branch choices on re-run.
   the counterpart to the existing `_start_promoted_move` hook that commits a
   promoted route leg's march. A player-issued attack (a resolved `target_uid`)
   is untouched; `Battle._apply_order_cmd` already sets `target_enemy` at issue
-  time.
-- **"Hold UNTIL in range THEN fire" needed no new mechanism.** A ranged unit
-  already fires at any live enemy inside `RANGED_RANGE` unconditionally (the
-  `is_ranged` branch in `Unit._think` is not gated on `order_mode`), so
-  fire-at-will is the existing default rather than a mode of its own. The ROE
-  modes the design doc asks to promote (`HOLD` / `SKIRMISH` / `CYCLE_CHARGE` /
-  `SUPPORT` / the flank/rear attack bias) already exist as `Unit.OrderMode` --
-  phase 4 documents them as the mode-layer promotion in place (see the
-  comment block above `Unit.ORDER_HOLD`) rather than renaming or duplicating
-  them; the guard vocabulary is what was actually missing, and gives the
-  queue a first-class way to gate an order's own early completion on one of
-  them instead of the ad-hoc `if order_mode == ORDER_HOLD` checks scattered
-  through `_think`.
+
+- **"Hold UNTIL in range THEN fire" needed no new mechanism.**
+  A ranged unit already fires at any live enemy inside its missile reach unconditionally (the `is_ranged` branch in `Unit._think` is not gated on `order_mode`).
+  In the baseline sim this reach is `RANGED_RANGE` (160 wu for default bows), while Phase 2 missile profiles scale reach per weapon (up to 300 wu for pilums).
+  Fire-at-will is therefore the existing default rather than a mode of its own.
+  The ROE modes the design doc asks to promote (`HOLD` / `SKIRMISH` / `CYCLE_CHARGE` / `SUPPORT` / the flank/rear attack bias) already exist as `Unit.OrderMode`.
+  Phase 4 documents them as the mode-layer promotion in place (see the comment block above `Unit.ORDER_HOLD`) rather than renaming or duplicating them.
+  The guard vocabulary is what was actually missing, and gives the queue a first-class way to gate an order's own early completion on one of them instead of the ad-hoc `if order_mode == ORDER_HOLD` checks scattered through `_think`.
+
 - **No new player gesture yet**, matching phase 3's `StanceOrder` precedent:
   guarded orders are reachable via the `Order` API (for demos, tests, and a
   future reactive-AI layer per the design doc's "out of the core" boundary),

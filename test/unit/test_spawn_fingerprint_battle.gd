@@ -55,3 +55,16 @@ func test_playback_of_a_stale_stamp_flags_a_mismatch() -> void:
 	_spawn_default_battle()
 	assert_eq(Replay.last_load_spawn_mismatch, "stale-fingerprint-from-an-older-build",
 			"a stale stamp raises the spawn-mismatch flag with the recorded fingerprint")
+
+
+func test_playback_of_a_legacy_stamp_does_not_flag_mismatch() -> void:
+	# A replay recorded before missile profiles carried the pre-missile 9-field fingerprint.
+	# digest() omits the missile key for default-profile units, so of_tree produces the same
+	# value directly; matches_tree also falls back to legacy_of_tree as a second check.
+	Replay.mode = Replay.Mode.PLAYBACK
+	Replay.rng.seed = 12345
+	Replay.loaded_spawn_fingerprint = "4621b7af088f5053219fd8f50380b181"
+	Replay.last_load_spawn_mismatch = ""
+	_spawn_default_battle()
+	assert_eq(Replay.last_load_spawn_mismatch, "",
+			"a legacy pre-missile stamp matches the layout without flagging a mismatch")

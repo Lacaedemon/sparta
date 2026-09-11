@@ -59,7 +59,9 @@ static func directives(group: Array, all_units: Array, axis: Vector2, out: Dicti
 	for node in light:
 		var u := node as Unit
 		var lateral: float = u.position.dot(perp)
-		if _enemy_within(u, all_units, trigger):
+		var unit_station: float = maxf(station, u.skirmish_kite_distance)
+		var unit_trigger: float = maxf(trigger, u.skirmish_kite_distance)
+		if _enemy_within(u, all_units, unit_trigger):
 			# Reconstructed from the (axis, perp) basis like Subcommander's hold-line point:
 			# the line's depth minus the rally offset, at the nearest gap between blocks
 			# instead of the unit's own lateral -- which is what puts the path through one.
@@ -69,7 +71,8 @@ static func directives(group: Array, all_units: Array, axis: Vector2, out: Dicti
 					"station": station}
 			continue
 		var post: Vector2 = axis * (depth + lead) + perp * lateral
-		out[u.uid] = {"type": DIRECTIVE_SCREEN, "x": post.x, "y": post.y, "station": station}
+		out[u.uid] = {"type": DIRECTIVE_SCREEN, "x": post.x, "y": post.y,
+				"station": unit_station}
 
 
 ## Split `group` into the light troops that form the screen and the heavy blocks it screens
