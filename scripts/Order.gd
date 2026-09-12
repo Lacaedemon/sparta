@@ -389,6 +389,9 @@ var reinforce_axis: int = 0
 ## (target_uid still carries a RELIEF order's ally uid for the transcript; this is the
 ## resolved node the exemption compares.)
 var friendly_target: Unit = null
+## UID of friendly_target captured across snapshot serialize/deserialize; -1 when none.
+var friendly_target_uid: int = -1
+
 
 # --- Terminal-condition / guard state (phase 4) -------------------------------
 # The guard itself (which condition, and its parameter) is set once at issue time and never
@@ -461,12 +464,10 @@ static func resolve_friendly_target(u: Unit) -> void:
 
 ## Serializes this order -- and, recursively, its children -- to a plain Dictionary for
 ## Replay's derived state-snapshot cache (see ReplaySnapshotCache.gd / Unit.to_snapshot_dict).
-## `friendly_target`, the only Unit reference an Order carries, is deliberately NOT captured:
-## it's a live pass-through link used only to exempt two specific units from separation mid-
-## relief-swap (see the field's own doc comment above), so the rare case of a snapshot landing
-## exactly inside that swap loses the exemption for one tick -- the units shove apart instead
-## of interpenetrating -- rather than resolving into whatever they'd have naturally settled to
-## a moment later either way.
+## `friendly_target`'s identity is captured as `friendly_target_uid` (resolved back to a live
+## Unit ref during Battle.restore_snapshot's second pass, like target_enemy_uid and friends),
+## preserving pass-through exemptions across replay seeks for reinforcement approaches and
+## relief swaps.
 func to_dict() -> Dictionary:
 	var d := {
 		"type": type,
@@ -477,6 +478,7 @@ func to_dict() -> Dictionary:
 		"reform_settle_eps": reform_settle_eps,
 		"target_pos": target_pos,
 		"target_uid": target_uid,
+		"friendly_target_uid": friendly_target.uid if (friendly_target != null and is_instance_valid(friendly_target)) else friendly_target_uid,
 		"formation": formation,
 		"frontage": frontage,
 		"frontage_anchor_offset": frontage_anchor_offset,
@@ -509,8 +511,9 @@ func to_dict() -> Dictionary:
 
 
 ## Rebuilds an order tree from to_dict()'s output (children recursively, each with `parent`
-## re-linked back to its rebuilt parent). See to_dict()'s doc for what's deliberately not
-## round-tripped (friendly_target).
+## re-linked back to its rebuilt parent). `friendly_target` is left null here with
+## `friendly_target_uid` populated; Battle.restore_snapshot resolves the live reference in
+## its second pass once all units exist.
 static func from_dict(d: Dictionary) -> Order:
 	var o := Order.new()
 	o.type = int(d.get("type", Type.MOVE))
@@ -521,6 +524,7 @@ static func from_dict(d: Dictionary) -> Order:
 	o.reform_settle_eps = float(d.get("reform_settle_eps", 0.0))
 	o.target_pos = d.get("target_pos", Vector2.ZERO)
 	o.target_uid = int(d.get("target_uid", -1))
+	o.friendly_target_uid = int(d.get("friendly_target_uid", -1))
 	o.formation = int(d.get("formation", -1))
 	o.frontage = int(d.get("frontage", -1))
 	o.frontage_anchor_offset = float(d.get("frontage_anchor_offset", 0.0))

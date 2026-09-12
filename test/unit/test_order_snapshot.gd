@@ -83,3 +83,21 @@ func test_round_trip_a_leaf_order_with_no_children_reports_itself_as_the_active_
 	var r := Order.from_dict(o.to_dict())
 	assert_eq(r.active_leaf(), r)
 	assert_true(r.children.is_empty())
+
+
+func test_round_trip_preserves_friendly_target_uid() -> void:
+	var o := Order.new_reinforce(42, 1)
+	o.friendly_target_uid = 42
+	var r := Order.from_dict(o.to_dict())
+	assert_eq(r.friendly_target_uid, 42)
+	assert_null(r.friendly_target, "friendly_target remains null until Battle pass 2 resolves it")
+
+	var target_u := Unit.new()
+	target_u.uid = 77
+	o.friendly_target = target_u
+	var d := o.to_dict()
+	assert_eq(int(d["friendly_target_uid"]), 77)
+	var r2 := Order.from_dict(d)
+	assert_eq(r2.friendly_target_uid, 77)
+	target_u.free()
+

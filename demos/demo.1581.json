@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Replay-playback internals only: snapshot restore and deadline rebasing are simulation-state restoration mechanisms during replay seeks, without an in-game UI scrubber or hotkey. The behavior is verified via unit and battle-level snapshot round-trip tests in test/unit/test_unit_snapshot.gd, test/unit/test_order_snapshot.gd, test/unit/test_reinforcement_battle.gd, and test/unit/test_relief_corridor.gd."
+}

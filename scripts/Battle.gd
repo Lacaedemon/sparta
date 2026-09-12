@@ -1493,6 +1493,7 @@ func restore_snapshot(snap: Dictionary) -> void:
 		u.target_enemy = by_uid.get(int(ud.get("target_enemy_uid", -1)))
 		u.support_target = by_uid.get(int(ud.get("support_target_uid", -1)))
 		u._engage_turn_enemy = by_uid.get(int(ud.get("engage_turn_enemy_uid", -1)))
+		_resolve_unit_order_friendly_targets(u, by_uid)
 
 	_tick = int(snap["tick"])
 	Replay.rng.state = int(snap["rng_state"])
@@ -1521,6 +1522,19 @@ func restore_snapshot(snap: Dictionary) -> void:
 		_ended = false
 		if _hud != null:
 			_hud.hide_end()
+
+
+## Re-links friendly_target on each restored order from its captured friendly_target_uid.
+func _resolve_unit_order_friendly_targets(u: Unit, by_uid: Dictionary) -> void:
+	for o in u.orders:
+		_resolve_order_friendly_target_tree(o, by_uid)
+
+
+func _resolve_order_friendly_target_tree(order: Order, by_uid: Dictionary) -> void:
+	if order.friendly_target_uid >= 0:
+		order.friendly_target = by_uid.get(order.friendly_target_uid)
+	for child in order.children:
+		_resolve_order_friendly_target_tree(child, by_uid)
 
 
 ## Reapplies fog visibility to newly respawned units and refreshes the ghost layer

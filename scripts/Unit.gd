@@ -8363,7 +8363,7 @@ func _draw() -> void:
 # (_engaged_indices_cache and friends, keyed by Engine.get_physics_frames()) -- both
 # regenerate on the next tick/draw exactly as they already do for a freshly spawned unit
 # that hasn't ticked or drawn yet, so restoring into a fresh node needs no special handling
-# for them. Order.friendly_target is also not captured -- see Order.to_dict()'s doc.
+# for them. Order.friendly_target is captured by uid on Order -- see Order.to_dict()'s doc.
 
 ## Everything needed to resume simulating this unit from this exact moment. Unit references
 ## (target_enemy, support_target, _engage_turn_enemy) are written as bare uids -- the caller
@@ -8425,7 +8425,15 @@ func to_snapshot_dict() -> Dictionary:
 		"last_reshape_tick": _last_reshape_tick,
 		"last_reshape_widened": _last_reshape_widened,
 		"standoff_settle_until_tick": _standoff_settle_until_tick,
+		"standoff_settle_remaining_ticks": (
+				_standoff_settle_until_tick - Engine.get_physics_frames()
+				if _standoff_settle_until_tick > Engine.get_physics_frames() else -1
+		),
 		"anchor_hold_until_tick": _anchor_hold_until_tick,
+		"anchor_hold_remaining_ticks": (
+				_anchor_hold_until_tick - Engine.get_physics_frames()
+				if _anchor_hold_until_tick > Engine.get_physics_frames() else -1
+		),
 		"reinforce_cohesion_floor": reinforce_cohesion_floor,
 		"standoff_prev_state": _standoff_prev_state,
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
@@ -8583,8 +8591,20 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	frontage_anchor_offset = float(d["frontage_anchor_offset"])
 	_last_reshape_tick = int(d["last_reshape_tick"])
 	_last_reshape_widened = bool(d["last_reshape_widened"])
-	_standoff_settle_until_tick = int(d.get("standoff_settle_until_tick", -1))
-	_anchor_hold_until_tick = int(d.get("anchor_hold_until_tick", -1))
+	if d.has("standoff_settle_remaining_ticks"):
+		var rem_standoff: int = int(d["standoff_settle_remaining_ticks"])
+		_standoff_settle_until_tick = (
+				Engine.get_physics_frames() + rem_standoff if rem_standoff > 0 else -1
+		)
+	else:
+		_standoff_settle_until_tick = int(d.get("standoff_settle_until_tick", -1))
+	if d.has("anchor_hold_remaining_ticks"):
+		var rem_anchor: int = int(d["anchor_hold_remaining_ticks"])
+		_anchor_hold_until_tick = (
+				Engine.get_physics_frames() + rem_anchor if rem_anchor > 0 else -1
+		)
+	else:
+		_anchor_hold_until_tick = int(d.get("anchor_hold_until_tick", -1))
 	reinforce_cohesion_floor = float(d.get("reinforce_cohesion_floor", REINFORCE_COHESION_FLOOR))
 	_standoff_prev_state = int(d.get("standoff_prev_state", state))
 	_ranks_closed = bool(d["ranks_closed"])
