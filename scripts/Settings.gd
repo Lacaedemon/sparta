@@ -366,7 +366,6 @@ func reserved_key_label(keycode: int) -> String:
 	return SettingsKeybindingsRef.reserved_label(keycode)
 
 
-
 ## Rebind a single order mode. No-ops on an unknown slug or an unchanged value.
 ## Callers (the rebind dialog) are responsible for conflict checks first.
 func set_order_binding(slug: String, keycode: int) -> void:

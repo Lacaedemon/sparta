@@ -334,8 +334,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_note_key(_key_label(event))
 
 
-## Route a gameplay hotkey to its action. Returns true if a known action fired (so the
-## caller records the keystroke for the demo overlay), false for an unhandled key.
+## Whether event matches key by either its translated keycode or its layout-independent physical_keycode.
 static func _is_key(event: InputEventKey, key: Key) -> bool:
 	return event.keycode == key or event.physical_keycode == key
 
