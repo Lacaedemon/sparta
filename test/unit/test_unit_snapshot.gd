@@ -306,6 +306,16 @@ func test_mutating_the_original_units_arrays_after_capture_does_not_alter_the_sn
 			"the cached snapshot's array is an independent copy")
 
 
+func test_an_older_snapshot_missing_sight_range_falls_back_to_type_derived_default() -> void:
+	var u := _sample_unit()
+	var d := u.to_snapshot_dict()
+	d.erase("sight_range")
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(d)
+	assert_eq(restored.sight_range, Unit.DEFAULT_SIGHT_SCALE * restored.sight_multiplier(),
+			"missing sight_range falls back to the type-derived default")
+
+
 func test_snapshot_restore_defaults_legacy_missile_and_range_fields() -> void:
 	var original := _sample_unit()
 	var d := original.to_snapshot_dict()

@@ -77,6 +77,7 @@ Selecting units and issuing move/attack orders during a battle.
 | Show all orders + formation preview | hold <kbd>Space</kbd> |
 | Active pause | <kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>) |
 | Slow motion (100% → 50% → 25% → 10%, <kbd>Shift</kbd> reverses) | <kbd>F5</kbd> |
+| Fog of war | <kbd>F7</kbd> or **☰ Menu → Fog of war** hides every enemy unit outside your own units' sight radii and leaves a fading ghost outline where each was last seen. A "FOG OF WAR" indicator shows while it's on (off by default) -- see [Fog of war](#fog-of-war) |
 | All shortcuts (this list, in-game) | <kbd>?</kbd> (Shift + <kbd>/</kbd>) or **☰ Menu → Shortcuts** |
 | Quit to Main Menu | **☰ Menu → Quit to Main Menu** leaves the battle immediately and returns to the Main Menu --- the only way out of a [Parade Ground](#parade-ground) drill, which never auto-ends |
 
@@ -1270,6 +1271,36 @@ resolution play out tick by tick instead of compressed into a blink.
 A marching unit visibly covers less ground per stretch of the clip as F5 steps
 through 50%, 25%, and 10% speed.
 :::
+
+### Fog of war
+
+::: {#fig-fog-of-war .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/fog_of_war.jpg">
+  <source src="media/fog_of_war.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Toggling fog of war mid-battle with F7.
+Units outside sight range are hidden and leave fading ghost markers where last seen.
+:::
+
+<kbd>F7</kbd> (or **☰ Menu → Fog of war**) switches fog of war on and off.
+It is off by default, so a battle looks exactly as before until you ask for it.
+With fog on, each of your units sees a disc around itself --- 15 m for foot, 18 m for ranged units (archers and skirmishers), 21 m for cavalry on the default field --- and an enemy unit whose center lies outside every one of those discs is not drawn.
+Your own units are always visible.
+An enemy you have seen and then lost leaves a **ghost outline** in its team color at the spot and facing it was last seen, fading over the next ten seconds.
+A standing "FOG OF WAR" indicator sits below the order-mode banner while fog is on.
+Fog affects what is drawn and leaves ghost markers.
+It does not alter the retreat boundary.
+Units fight, target, and move under the same AI and physics rules.
+A replay reproduces the fog state the battle started with, mid-battle toggles are not reproduced on playback, and the enemy AI still sees everything for now.
+Terrain does not block or shorten sight yet, and the map itself is never darkened.
+For tactical guidance on scouting screens, ghost staleness, and pursuit decisions, see [Tactics](tactics.qmd#fog-of-war).
 
 ## The battle loop
 

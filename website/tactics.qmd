@@ -2239,6 +2239,82 @@ marched at the enemy while the enemy advances to meet it, and both promote
 back to individual soldiers as the gap closes.
 :::
 
+## Fog of war
+
+Battles open with complete visibility across the entire map by default.
+Toggling fog of war (<kbd>F7</kbd> or **☰ Menu -> Fog of war**) limits your intelligence.
+When fog is enabled, you see only what your own regiments can directly observe.
+Every friendly regiment projects a circular sight disc around its center.
+An enemy unit whose center lies outside every friendly sight disc is hidden.
+Friendly units are always visible to you.
+Terrain does not block sight lines yet, and the field itself is never darkened.
+Fog changes visibility only.
+Units keep fighting, pathing, and shooting under the same rules.
+
+::: {#tbl-sight-ranges}
+
+| Unit | Multiplier | Sight (default field) | Role |
+| --- | --- | --- | --- |
+| **Cavalry** | 1.4x | **21 m** | Scouting, screening, pursuit |
+| **Ranged** | 1.2x | **18 m** | Forward observation, support |
+| **Foot** | 1.0x | **15 m** | Line-of-sight across front |
+
+Sight ranges by unit category under fog of war.
+:::
+
+Sight ranges default by unit category.
+
+Mounted troops see farthest:
+21 m on the default field (a 1.4x multiplier).
+Ranged troops see intermediate distances:
+18 m on the default field (a 1.2x multiplier).
+Foot troops hold the baseline:
+15 m on the default field (a 1.0x multiplier).
+When a unit routs, panic degrades its observation:
+a fleeing unit suffers a 0.6x penalty to its sight radius.
+
+### Why a cavalry screen is worth more
+
+On an open field with fog active, blind marching is dangerous.
+A standard deployment gap of 29 m means opposing foot lines deploy out of sight.
+Heavy infantry marching forward without reconnaissance risks blundering into spears.
+This gives cavalry a decisive tactical purpose before the lines meet.
+With a 21 m sight radius (a 40% reach advantage over foot) and superior speed,
+horsemen can push ahead of the heavy line as a scouting screen.
+A forward screen reveals enemy deployments and flags open flanks.
+It illuminates approaching columns while your main formation stays hidden.
+Skirmishers and archers (18 m reach) can also screen the heavy line,
+maintaining contact while staying outside the 15 m sight of enemy foot.
+
+### What ghost markers tell you --- and what they do not
+
+When a spotted enemy leaves your sight discs, it leaves a **ghost marker**.
+The marker is a fixed rectangular silhouette (3 m wide by 1.5 m deep).
+It sits at the exact position and facing the enemy had when last observed.
+Over the next ten seconds (600 ticks), the marker fades from 60% to 20% opacity.
+Understanding the limits of a ghost marker is critical:
+
+- It marks where the enemy was, not where it stands now.
+
+- It preserves the last-seen facing, but hides subsequent maneuvers.
+
+- Its opacity indicates age, fading as the sighting grows stale.
+
+- Right-clicking a ghost marker falls through to a ground move order.
+
+Attack orders require a visible target, so an order against a ghost cannot lock on.
+If the enemy has marched away, your troops will march into empty ground.
+
+### Scouting and pursuit decisions
+
+Fog of war fundamentally reshapes pursuit and battlefield control.
+Fog of war does not alter the retreat boundary.
+The retreat margin remains fixed at 9.5 m regardless of whether fog is enabled.
+However, if your pursuers lose sight of a routing enemy, that enemy enters the dark.
+A broken unit that breaks contact and gains distance can steady its nerve and rally.
+Dropping pursuit in the fog risks allowing shattered remnants to reform.
+Fast cavalry must stay in contact, shadowing routers until they shatter or break completely.
+
 ## Terrain
 
 Two types of terrain patch appear on the battle field:

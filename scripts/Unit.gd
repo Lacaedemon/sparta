@@ -1042,6 +1042,27 @@ const DETECTION_RANGE: float = 9.5 * WorldScaleRef.WU_PER_M
 # demo/test/campaign unit can see farther or shorter without touching the default every
 # other unit relies on.
 var detection_range: float = DETECTION_RANGE
+# Fog-of-war sight (Perception.gd). A unit sees a full disc of radius `sight_range` around
+# its own `position`; the per-battle scale is Battle.sight_scale and the type multipliers
+# below are gameplay tuning for legibility on an 80 m field, not eyesight claims. Mounted
+# troops see farthest (eye level, the scouting role), skirmishers and archers next, foot
+# at the baseline. A routing unit is not observing, so its own range is cut by
+# SIGHT_ROUTING_PENALTY while it flees. Separate from detection_range, which is the sim's
+# auto-acquisition radius.
+# Sight feeds visibility, never AI targeting or retreat bounds.
+const SIGHT_FOOT: float = 1.0
+const SIGHT_MOUNTED: float = 1.4
+const SIGHT_RANGED: float = 1.2
+const SIGHT_ROUTING_PENALTY: float = 0.6
+# The sight scale a unit falls back to when no Battle sets one (a bare Unit in a test or a
+# tool): 15 m, which is 0.25 x the default field's short side, Battle.sight_scale's own
+# default.
+const DEFAULT_SIGHT_SCALE: float = 15.0 * WorldScaleRef.WU_PER_M
+# Caller-configurable per unit, world units. Set BEFORE the node enters the tree to
+# override; a non-positive value at _ready resolves to the type default
+# (DEFAULT_SIGHT_SCALE x sight_multiplier()). Battle._spawn_unit sets it from the
+# battle's own sight_scale, the same set-before-_ready contract detection_range follows.
+var sight_range: float = 0.0
 # How often a melee unit applies a damage tick. This is the regiment's *aggregate*
 # cadence — one tick stands for the whole front rank trading blows over that span,
 # not a single soldier's swing — so it's tuned for battle pace, not literal sword
@@ -1468,6 +1489,8 @@ func _ready() -> void:
 		update_combat_profile()
 	soldiers = max_soldiers
 	team_color = Color("4a7fd6") if team == 0 else Color("d65a4a")
+	if sight_range <= 0.0:
+		sight_range = DEFAULT_SIGHT_SCALE * sight_multiplier()
 	separation_radius = _type_separation_radius()
 	_base_separation_radius = separation_radius
 	add_to_group("units")
@@ -3652,6 +3675,17 @@ func _rotate_facing_toward(target_dir: Vector2, delta: float, rate: float = TURN
 		_is_facing_turning = true
 	var step: float = clampf(diff, -rate * delta, rate * delta)
 	facing = Vector2.from_angle(cur + step)
+
+
+## The type multiplier on the battle's sight scale (fog of war):
+## mounted beats ranged beats foot. A pure function of the two type flags,
+## so a caller that changes them before _ready gets the matching default sight_range.
+func sight_multiplier() -> float:
+	if is_cavalry:
+		return SIGHT_MOUNTED
+	if is_ranged:
+		return SIGHT_RANGED
+	return SIGHT_FOOT
 
 
 ## Collision footprint by unit type. Cavalry get the widest body, spearmen a bit
@@ -8349,7 +8383,7 @@ func to_snapshot_dict() -> Dictionary:
 		"back_speed_fraction": back_speed_fraction,
 		"superphysical_speed_frac": superphysical_speed_frac,
 		"accel": accel, "decel": decel,
-		"attack_range": attack_range,
+		"attack_range": attack_range, "sight_range": sight_range,
 		"weapon_type_id": weapon_type_id, "shield_type_id": shield_type_id,
 		# The deployed weapon and the carried second one travel with the clone too: a
 		# rearguard detachment inherits its parent's loadout, and dropping these would
@@ -8511,6 +8545,9 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	skirmish_kite_distance = float(d.get("skirmish_kite_distance", SKIRMISH_KITE_DISTANCE))
 	order_response_delay = float(d["order_response_delay"])
 	atomic_response_delay = float(d["atomic_response_delay"])
+	# Defaulted rather than required: a snapshot written before this field existed still
+	# applies, falling back to the type-derived default.
+	sight_range = float(d.get("sight_range", DEFAULT_SIGHT_SCALE * sight_multiplier()))
 	training = float(d["training"])
 	disciplined = bool(d["disciplined"])
 	field_bounds = d["field_bounds"]

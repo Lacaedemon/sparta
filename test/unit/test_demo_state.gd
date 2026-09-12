@@ -274,3 +274,36 @@ func test_build_snapshot_captures_hud_when_present() -> void:
 	assert_eq(snap["hud"]["info_text"], "No unit selected")
 	assert_null(snap["hud"]["shown_unit_uid"])
 
+
+func test_unit_record_dumps_visibility() -> void:
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u.visible = true
+	var rec1: Dictionary = DemoState.unit_record(u, {}, 1.0, false)
+	assert_true(rec1["visible"], "visible unit dumps visible: true")
+	u.visible = false
+	var rec2: Dictionary = DemoState.unit_record(u, {}, 1.0, false)
+	assert_false(rec2["visible"], "hidden unit dumps visible: false")
+
+
+func test_build_snapshot_captures_ghosts_when_present() -> void:
+	var ghost_layer = preload("res://scripts/FogGhostLayer.gd").new()
+	add_child_autofree(ghost_layer)
+	ghost_layer.update({
+		42: {
+			"position": Vector2(100, 200),
+			"facing": Vector2(0, 1),
+			"strength": 80,
+			"state": Unit.State.IDLE,
+			"tick": 10,
+			"team": 1,
+			"color": Color.RED,
+		}
+	}, {}, 50)
+	var snap: Dictionary = DemoState.build_snapshot(
+		get_tree(), 50, {}, 1.0, false
+	)
+	assert_true(snap.has("ghosts"), "snapshot includes ghosts array when FogGhostLayer is present")
+	assert_eq(snap["ghosts"].size(), 1, "contains one ghost record")
+	assert_eq(snap["ghosts"][0]["uid"], 42, "records the enemy uid")
+

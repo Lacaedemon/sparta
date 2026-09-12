@@ -1920,6 +1920,9 @@ func _unit_at(world_pos: Vector2, team: int, include_routers: bool = false) -> U
 			# control-group recall guards. (A dead unit also draws no flag.)
 			if unit == null or unit.state == UnitRef.State.DEAD:
 				continue
+			# An unseen enemy hidden by fog cannot be clicked or targeted.
+			if not unit.visible:
+				continue
 			if team == TEAM_ANY_OWN:
 				if not _is_own_team(unit.team):
 					continue
@@ -2744,10 +2747,11 @@ func _draw_orders() -> void:
 		# still a live, fightable enemy (see UnitTargeting.nearest_enemy's include_routing).
 		if tgt != null and is_instance_valid(tgt) \
 				and tgt.state != UnitRef.State.DEAD:
-			var tp: Vector2 = tgt.global_position
-			draw_dashed_line(origin, tp, ORDER_ATTACK_COLOR, 2.0, 9.0)
-			_draw_attack_marker(tp, ORDER_ATTACK_COLOR)
-			_draw_order_distance(origin, tp, origin.distance_to(tp), ORDER_ATTACK_COLOR)
+			var tp: Vector2 = _attack_overlay_target_pos(tgt)
+			if is_finite(tp.x):
+				draw_dashed_line(origin, tp, ORDER_ATTACK_COLOR, 2.0, 9.0)
+				_draw_attack_marker(tp, ORDER_ATTACK_COLOR)
+				_draw_order_distance(origin, tp, origin.distance_to(tp), ORDER_ATTACK_COLOR)
 		elif ward != null:
 			# A SUPPORT unit holds no target_enemy/move_target of its own, so draw
 			# its guard duty instead: a teal link to the ward it's shadowing.
@@ -2777,6 +2781,23 @@ func _support_ward_of(u: UnitRef) -> UnitRef:
 			and ward.state != UnitRef.State.DEAD and ward.state != UnitRef.State.ROUTING:
 		return ward
 	return null
+
+
+## Target position for an attack order overlay.
+## Returns the enemy's live position if visible, or its last-known contact
+## position from fog memory if hidden under fog. Returns an infinite Vector2
+## when the target is hidden without a recorded contact.
+func _attack_overlay_target_pos(tgt: UnitRef) -> Vector2:
+	if tgt == null or not is_instance_valid(tgt) or tgt.state == UnitRef.State.DEAD:
+		return Vector2(INF, INF)
+	if tgt.visible:
+		return tgt.global_position
+	if _battle != null and _battle.has_method("fog_contacts"):
+		var contacts: Dictionary = _battle.fog_contacts()
+		if contacts.has(tgt.uid):
+			var c: Dictionary = contacts[tgt.uid]
+			return _battle.to_global(c.get("position", tgt.position))
+	return Vector2(INF, INF)
 
 
 ## A unit's full move route for the overlay: its committed destination and the queued

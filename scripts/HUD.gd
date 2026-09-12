@@ -42,7 +42,7 @@ enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_CYCLE_ECHELON_RIGHT, MENU_FORMUP_CYCLE_ECHELON_LEFT,
 		MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
 		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_POSITION_ANCHOR, MENU_SHOW_FPS,
-		MENU_PERFORMANCE_GRAPH, MENU_UNIT_CARD_TRAY,
+		MENU_PERFORMANCE_GRAPH, MENU_UNIT_CARD_TRAY, MENU_FOG_OF_WAR,
 		MENU_FPS_CORNER_TOP_LEFT, MENU_FPS_CORNER_TOP_RIGHT, MENU_FPS_CORNER_BOTTOM_LEFT,
 		MENU_FPS_CORNER_BOTTOM_RIGHT, MENU_KEYBINDINGS, MENU_SHORTCUTS,
 		MENU_QUIT_TO_MENU }
@@ -77,6 +77,7 @@ var _paused_label: Label
 var _order_mode_label: Label
 var _flash_label: Label
 var _slowmo_label: Label
+var _fog_label: Label   # "FOG OF WAR" indicator, shown while Settings.fog_of_war is on
 # Live index into SLOWMO_PRESETS; 0 = normal speed. Transient UI state, not persisted --
 # a fresh battle (a fresh HUD instance) always starts at normal speed.
 var _slowmo_index: int = 0
@@ -320,6 +321,21 @@ func _ready() -> void:
 	_slowmo_label.visible = false
 	add_child(_slowmo_label)
 
+	# Persistent fog-of-war indicator, below the slow-motion one: fog hides units, so the
+	# player needs a standing reminder that an empty-looking field may not be empty.
+	# Placed 24 px below _slowmo_label (font size 16 plus 8 px layout gap).
+	# Shown/hidden by _sync_fog_label from Settings.changed.
+	_fog_label = Label.new()
+	_fog_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_fog_label.position = Vector2(-90, _slowmo_label.position.y + 24.0)
+	_fog_label.custom_minimum_size = Vector2(180, 0)
+	_fog_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_fog_label.add_theme_font_size_override("font_size", 16)
+	_fog_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.7))
+	_fog_label.text = "FOG OF WAR"
+	_fog_label.visible = false
+	add_child(_fog_label)
+
 	# Menu button (top-right) gathering the global options that used to be
 	# scattered across the HUD — restart, replay loading, and the edge-scroll
 	# toggle. Its popup is PROCESS_MODE_ALWAYS so it stays usable while the
@@ -381,6 +397,7 @@ func _ready() -> void:
 	popup.add_check_item("Show frame rate", MENU_SHOW_FPS)
 	popup.add_check_item("Performance graph overlay", MENU_PERFORMANCE_GRAPH)
 	popup.add_check_item("Unit card tray", MENU_UNIT_CARD_TRAY)
+	popup.add_check_item("Fog of war", MENU_FOG_OF_WAR)
 	popup.add_separator("Frame rate corner…")
 	for entry in _FPS_CORNER_ENTRIES:
 		popup.add_radio_check_item(entry["label"], entry["id"])
@@ -391,6 +408,11 @@ func _ready() -> void:
 	# has no enemy to win against) — also handy as a plain "give up" from any other battle.
 	popup.add_item("Quit to Main Menu", MENU_QUIT_TO_MENU)
 	_sync_setting_toggles()
+	# Battle._ready applies all_teams_control and parses Replay.map AFTER child
+	# HUD._ready has run.
+	# Re-sync setting toggles and the fog indicator one idle frame later once the parent
+	# has finalized whether fog is active.
+	_sync_setting_toggles.call_deferred()
 	# Re-stamp the form-up labels now that the popup exists, in case set_team_factions()
 	# was already called before _ready() ran (Battle hands factions over in its own _ready,
 	# and node ready order isn't guaranteed). A no-op when team_factions is still empty.
@@ -683,6 +705,12 @@ func _sync_setting_toggles() -> void:
 	popup.set_item_checked(popup.get_item_index(MENU_SHOW_FPS), Settings.show_fps)
 	popup.set_item_checked(popup.get_item_index(MENU_PERFORMANCE_GRAPH), Settings.show_performance_graph)
 	popup.set_item_checked(popup.get_item_index(MENU_UNIT_CARD_TRAY), Settings.show_unit_card_tray)
+	var fog_checked: bool = Settings.fog_of_war
+	var battle = get_parent()
+	if battle != null and battle.has_method("is_fog_active"):
+		fog_checked = battle.is_fog_active()
+	popup.set_item_checked(popup.get_item_index(MENU_FOG_OF_WAR), fog_checked)
+	_sync_fog_label()
 	_tray_toggle_btn.set_pressed_no_signal(Settings.show_unit_card_tray)
 	for entry in _FPS_CORNER_ENTRIES:
 		popup.set_item_checked(popup.get_item_index(entry["id"]),
@@ -744,6 +772,9 @@ func _on_menu_id(id: int) -> void:
 			Settings.show_performance_graph = not Settings.show_performance_graph
 		MENU_UNIT_CARD_TRAY:
 			Settings.show_unit_card_tray = not Settings.show_unit_card_tray
+		MENU_FOG_OF_WAR:
+			if not _toggle_fog():
+				_sync_setting_toggles()
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
 		MENU_SHORTCUTS:
@@ -819,6 +850,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _is_slowmo_keypress(event):
 		_cycle_slowmo(event.shift_pressed)   # Shift+F5: cycle the other way (parallels Shift+Y)
 		get_viewport().set_input_as_handled()
+	elif _is_fog_toggle_keypress(event):
+		_toggle_fog()
+		get_viewport().set_input_as_handled()
 
 
 ## Shift+/ produces "?" on a standard layout; physical_keycode (the / key) keeps the
@@ -893,6 +927,53 @@ func _cycle_slowmo(reverse: bool = false) -> void:
 		Replay.record_time_scale_change(battle.current_tick(), new_scale)
 	_update_slowmo_label()
 	flash_message("Speed: %d%%" % roundi(new_scale * 100.0))
+
+
+## F7 toggles fog of war. F1-F6 are claimed (tray toggle, multiple_engage, march_to_contact,
+## brace, slow motion, flanking_maneuver -- see Settings.gd's DEFAULT_ORDER_BINDINGS notes
+## on key scarcity), so F7 is the next free function key; physical_keycode for the same
+## layout-independence as the other function-key toggles above.
+func _is_fog_toggle_keypress(event: InputEvent) -> bool:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return false
+	return event.physical_keycode == KEY_F7
+
+
+## Flip Settings.fog_of_war (persisted, like the Menu check item). Fog hides
+## units, so an unannounced switch would read as units vanishing. Refused wherever
+## Battle.is_fog_active() answers from something other than the live setting: during
+## playback it answers from the recording, and under all-teams control it forces fog
+## off because the tester drives both armies. Flipping the setting in either case
+## changes nothing on screen while the toast claims it did, and the flip persists into
+## the next ordinary battle.
+## Fog of war is render-only, so a toggle cannot change a replay's outcome.
+## Playback still answers from the recorded value.
+## Returns true if applied, false if refused.
+func _toggle_fog() -> bool:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		flash_message("Fog of war is fixed by the recording during playback")
+		return false
+	var battle = get_parent()
+	if battle != null and battle.get("all_teams_control") == true:
+		flash_message("Fog of war stays off while you control both armies")
+		return false
+	Settings.fog_of_war = not Settings.fog_of_war
+	flash_message("Fog of war: %s" % ("on" if Settings.fog_of_war else "off"))
+	return true
+
+
+## Show the standing "FOG OF WAR" indicator exactly while fog is effectively active.
+## When all-teams control is on, fog is disabled in Battle._tick_fog, so the indicator
+## stays hidden.
+func _sync_fog_label() -> void:
+	if _fog_label == null:
+		return
+	var battle = get_parent()
+	var all_teams: bool = battle != null and battle.get("all_teams_control") == true
+	var fog_on: bool = Settings.fog_of_war
+	if battle != null and battle.has_method("is_fog_active"):
+		fog_on = battle.is_fog_active()
+	_fog_label.visible = fog_on and not all_teams
 
 
 func _update_slowmo_label() -> void:
