@@ -298,6 +298,14 @@ script under `demos/inputs/`:
     It keeps the default bow profile (`MISSILE_BOW`) rather than aborting.
     See `demos/inputs/missile-profile-reach.json`.
 
+  - `ammo` (optional) -- ammunition count override for the unit's missile profile
+    (`-1` for unlimited, positive integer for finite capacity).
+
+  - `under_fire_morale_floor` (optional) -- lowest morale value
+    (default 50.0 / `THRESHOLD_SHAKEN`)
+    that unanswered incoming missile fire can erode the unit down to.
+    See `demos/inputs/suppression-ammo-1567.json`.
+
   Example -- stage a lone, low-morale infantry unit against a strong cavalry force so it routs
   (then rallies, if the build has that): `demos/inputs/rout-rally.json`.
 - `frames` (optional) -- a list of physics ticks to save a viewport PNG at, for visual

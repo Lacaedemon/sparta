@@ -349,6 +349,9 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		# resist an enemy it's touching without ever deciding to fight it. See
 		# Unit.contact_soldier_indices' own doc comment.
 		"in_enemy_contact": u._in_enemy_contact,
+		"under_fire": u._under_fire,
+		"under_fire_can_reply": u._under_fire_can_reply,
+		"missile_ammo": u.missile_ammo if u.is_ranged else null,
 		# A single readable label for the in-progress drill/maneuver, consolidating
 		# current_order/order_phase/order_mode into one field a verifier can read directly --
 		# e.g. a conversio and a centre-pivot both otherwise read as current_order: "MOVE"/

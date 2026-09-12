@@ -31,6 +31,7 @@ const LOCAL_FORCE_RADIUS_SQ: float = (6.0 * WorldScaleRef.WU_PER_M) * (6.0 * Wor
 const UNOPPOSED_LOCAL_FORCE_RATIO: float = 2.0
 const OUTNUMBERED_MORALE_EROSION_PER_SEC: float = 2.0
 const UNDER_FIRE_MORALE_EROSION_PER_SEC: float = 1.5
+const UNDER_FIRE_MORALE_FLOOR: float = THRESHOLD_SHAKEN
 const LOCAL_SUPERIORITY_MORALE_BOOST_PER_SEC: float = 1.0
 
 enum CombatStatus { NOT_IN_COMBAT, WINNING_DECISIVELY, WINNING, BALANCED, LOSING, LOSING_DECISIVELY }
@@ -188,10 +189,13 @@ static func tick_morale(u: Unit, delta: float) -> void:
 	elif combat_status == CombatStatus.LOSING_DECISIVELY:
 		u.morale = maxf(0.0, u.morale - LOSING_DECISIVELY_COMBAT_MORALE_EROSION_PER_SEC * delta)
 
-	# Incoming fire erosion:
-	if u._under_fire:
-		var fire_erosion := UNDER_FIRE_MORALE_EROSION_PER_SEC * delta
-		u.morale = maxf(0.0, u.morale - fire_erosion)
+	# Incoming fire erosion (docs/longer-range-missile-design.md, phase 3):
+	# Erodes morale only when the unit cannot reply to incoming fire, halting at the
+	# suppression floor so incoming fire shakes a formation without breaking it unaided.
+	if u._under_fire and not u._under_fire_can_reply:
+		if u.morale > u.under_fire_morale_floor:
+			var fire_erosion := u.under_fire_morale_erosion * delta
+			u.morale = maxf(u.under_fire_morale_floor, u.morale - fire_erosion)
 
 	# Ambient rout trigger: a unit at or below zero morale when the trigger runs has broken
 	# (whether it eroded there this tick or spawned there); recovery must not rescue it.

@@ -42,7 +42,7 @@ fightable --- for as long as it's plausibly still in view.
 
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
   break too. One collapse can cascade down a line.
-- **Local force ratio, combat status & named morale ladder.** Morale reflects local tactical context: being locally outnumbered, under missile fire, or losing local melee balance drains morale over time, while local numerical superiority steadies nerve. Unit combat status (`Winning decisively`, `Winning`, `Balanced`, `Losing`, `Losing decisively`) is derived from engaged physics and displayed on the `Combat:` HUD readout, alongside the 7-rung morale ladder (`routing`...`berserk`).
+- **Local force ratio, combat status & named morale ladder.** Morale reflects local tactical context: being locally outnumbered, under unanswered missile fire (ambient incoming fire erosion halts at the `shaken` suppression floor at 50.0, shaking the formation without breaking it unaided, though separate casualty morale shock remains unfloored, and erosion halts entirely if the target can reply with its own ranged weapons), or losing local melee balance drains morale over time, while local numerical superiority steadies nerve. Unit combat status (`Winning decisively`, `Winning`, `Balanced`, `Losing`, `Losing decisively`) is derived from engaged physics and displayed on the `Combat:` HUD readout, alongside the 7-rung morale ladder (`routing`...`berserk`).
 - This makes morale a *weapon*: you can win by breaking the enemy's will before
   you've killed even half their soldiers.
 - **A routing unit is still fair game.** Routing doesn't grant immunity --- a fleeing
@@ -2066,7 +2066,7 @@ the bow.
 
 A ranged regiment shoots with the **missile profile** of the weapon it carries,
 not with one reach shared by every archer on the field.
-A profile fixes five things at once:
+A profile fixes six things at once:
 
 - **Reach** --- how far the regiment can loose at all.
   The bow reaches 8 m; the pilum, a heavy shaft thrown by hand, reaches 15 m.
@@ -2087,6 +2087,11 @@ A profile fixes five things at once:
   A bow loses nothing across its 8 m.
   A pilum volley falls off steadily with distance and lands at **half** its effect
   at the full 15 m, so the last few metres of its reach are the least worth using.
+
+- **Ammo** --- how many volleys the regiment carries before exhausting its ammunition.
+  A bow regiment fires without limit (`-1` / unlimited).
+  A pilum regiment carries 2 throws by default, expending its heavy shafts in the opening clash before closing for melee or retiring.
+  Units out of ammo halt firing and stop suppressing enemy formations.
 
 So a longer reach is not a free upgrade.
 A pilum regiment at 14 m throws at a target it can only just reach,

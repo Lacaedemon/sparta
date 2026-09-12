@@ -1238,6 +1238,10 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.set_formation(d.get("formation", Unit.FORMATION_NORMAL))
 	if d.has("morale"):
 		u.morale = float(d["morale"])
+	if d.has("ammo"):
+		u.missile_ammo = int(d["ammo"])
+	if d.has("under_fire_morale_floor"):
+		u.under_fire_morale_floor = float(d["under_fire_morale_floor"])
 	if d.has("frontage_override"):
 		u.frontage_override = int(d["frontage_override"])
 	# Apply a starting state if specified (ROUTING for demo recovery scenarios, etc).
@@ -1271,6 +1275,10 @@ func _spawn_scenario(specs: Array) -> void:
 			d["formation"] = int(spec["formation"])
 		if spec.has("missile"):
 			d["missile"] = int(spec["missile"])
+		if spec.has("ammo"):
+			d["ammo"] = int(spec["ammo"])
+		if spec.has("under_fire_morale_floor"):
+			d["under_fire_morale_floor"] = float(spec["under_fire_morale_floor"])
 		if spec.has("starting_state"):
 			d["starting_state"] = int(spec["starting_state"])
 		if spec.has("disciplined"):

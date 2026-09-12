@@ -74,6 +74,8 @@ func _sample_unit() -> Unit:
 	u.file_major_reform_mode = Unit.ReformMode.AUTO   # non-default (defaults FILE_MAJOR); also
 	# proves the round-trip carries the full 3-state mode, not just the bool compat view
 	u._under_fire = true
+	u._under_fire_can_reply = true
+	u.under_fire_morale_floor = 60.0
 	u._attack_cd = 0.2
 	u._pin_down_exposure_cd = 0.1
 	u._rout_timer = 3.0
@@ -235,6 +237,9 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_almost_eq(restored.missile_damage_factor, original.missile_damage_factor, 0.001)
 	assert_almost_eq(restored.missile_accuracy_at_max, original.missile_accuracy_at_max, 0.001)
 	assert_almost_eq(restored.missile_launch_angle, original.missile_launch_angle, 0.001)
+	assert_eq(restored.missile_ammo, original.missile_ammo)
+	assert_almost_eq(restored.under_fire_morale_floor, original.under_fire_morale_floor, 0.001)
+	assert_almost_eq(restored.under_fire_morale_erosion, original.under_fire_morale_erosion, 0.001)
 	assert_almost_eq(restored.detection_range, original.detection_range, 0.001)
 	assert_almost_eq(restored.skirmish_kite_distance, original.skirmish_kite_distance, 0.001)
 	assert_almost_eq(restored.order_response_delay, original.order_response_delay, 0.001)
@@ -272,6 +277,8 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(restored.frontage_override, original.frontage_override)
 	assert_eq(restored._formation_angle, original._formation_angle)
 	assert_eq(restored._shattered, original._shattered)
+	assert_eq(restored._under_fire, original._under_fire)
+	assert_eq(restored._under_fire_can_reply, original._under_fire_can_reply)
 	assert_eq(restored._rout_timer, original._rout_timer)
 	assert_eq(restored._far_tier_casualty_carry, original._far_tier_casualty_carry,
 		"the far tier's sub-soldier casualty carry survives a restore -- a mid-fight rewind"
@@ -376,6 +383,10 @@ func test_snapshot_restore_defaults_legacy_missile_and_range_fields() -> void:
 	d.erase("missile_damage_factor")
 	d.erase("missile_accuracy_at_max")
 	d.erase("missile_launch_angle")
+	d.erase("missile_ammo")
+	d.erase("under_fire_morale_floor")
+	d.erase("under_fire_morale_erosion")
+	d.erase("under_fire_can_reply")
 	d.erase("detection_range")
 	d.erase("skirmish_kite_distance")
 
@@ -388,6 +399,10 @@ func test_snapshot_restore_defaults_legacy_missile_and_range_fields() -> void:
 	assert_almost_eq(restored.missile_damage_factor, Unit.RANGED_DAMAGE_FACTOR, 0.001)
 	assert_almost_eq(restored.missile_accuracy_at_max, Unit.RANGED_ACCURACY_AT_MAX, 0.001)
 	assert_almost_eq(restored.missile_launch_angle, ProjectilePhysics.ANGLE_ARCED, 0.001)
+	assert_eq(restored.missile_ammo, MissileProfile.AMMO_UNLIMITED)
+	assert_almost_eq(restored.under_fire_morale_floor, UnitMorale.UNDER_FIRE_MORALE_FLOOR, 0.001)
+	assert_almost_eq(restored.under_fire_morale_erosion, UnitMorale.UNDER_FIRE_MORALE_EROSION_PER_SEC, 0.001)
+	assert_false(restored._under_fire_can_reply)
 	assert_almost_eq(restored.detection_range, Unit.DETECTION_RANGE, 0.001)
 	assert_almost_eq(restored.skirmish_kite_distance, Unit.SKIRMISH_KITE_DISTANCE, 0.001)
 

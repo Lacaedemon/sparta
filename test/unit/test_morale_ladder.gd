@@ -59,6 +59,61 @@ func test_under_fire_morale_erosion():
 
 	assert_true(unit.morale < initial_morale, "unit under fire suffers morale erosion")
 
+
+func test_under_fire_morale_erosion_halts_at_suppression_floor() -> void:
+	var unit: Unit = UnitRef.new()
+	autofree(unit)
+	unit.team = 0
+	unit.morale = 51.0
+	unit._under_fire = true
+	unit._under_fire_can_reply = false
+
+	# 1.5 erosion per sec would reach 49.5 without floor; floor halts erosion at 50.0
+	UnitMorale.tick_morale(unit, 1.0)
+	assert_almost_eq(unit.morale, UnitMorale.UNDER_FIRE_MORALE_FLOOR, 0.001,
+			"incoming fire erosion clamps at the suppression floor (50.0 / shaken)")
+
+	# Subsequent fire does not erode below the floor -- suppression shakes but never routs unaided
+	UnitMorale.tick_morale(unit, 5.0)
+	assert_almost_eq(unit.morale, UnitMorale.UNDER_FIRE_MORALE_FLOOR, 0.001,
+			"continued incoming fire does not erode morale below the floor")
+
+	# If already below the suppression floor (e.g. from combat/outnumbered), fire does not erode further
+	unit.morale = 40.0
+	UnitMorale.tick_morale(unit, 1.0)
+	assert_almost_eq(unit.morale, 40.0, 0.001,
+			"fire does not erode a unit already below the suppression floor")
+
+
+func test_under_fire_with_ability_to_reply_suffers_no_erosion() -> void:
+	var unit: Unit = UnitRef.new()
+	autofree(unit)
+	unit.team = 0
+	unit.morale = 80.0
+	unit._under_fire = true
+	unit._under_fire_can_reply = true
+
+	UnitMorale.tick_morale(unit, 1.0)
+	assert_almost_eq(unit.morale, 80.0, 0.001,
+			"a unit able to reply to incoming fire does not suffer suppression erosion")
+
+
+func test_under_fire_caller_configurable_floor_and_rate() -> void:
+	var unit: Unit = UnitRef.new()
+	autofree(unit)
+	unit.team = 0
+	unit.morale = 75.0
+	unit._under_fire = true
+	unit._under_fire_can_reply = false
+	unit.under_fire_morale_floor = 65.0
+	unit.under_fire_morale_erosion = 5.0
+
+	UnitMorale.tick_morale(unit, 1.0)
+	assert_almost_eq(unit.morale, 70.0, 0.001, "custom erosion rate applies")
+
+	UnitMorale.tick_morale(unit, 2.0)
+	assert_almost_eq(unit.morale, 65.0, 0.001, "custom suppression floor clamps erosion")
+
 func test_morale_ladder_name_method_and_snapshot():
 	var unit: Unit = UnitRef.new()
 	autofree(unit)

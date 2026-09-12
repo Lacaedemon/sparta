@@ -45,6 +45,8 @@ func test_an_unprofiled_unit_reproduces_the_pre_profile_constants_exactly() -> v
 	assert_eq(u.missile_damage_factor, Unit.RANGED_DAMAGE_FACTOR, "damage factor")
 	assert_eq(u.missile_accuracy_at_max, 1.0, "no falloff")
 	assert_eq(u.missile_launch_angle, ProjectilePhysics.ANGLE_ARCED, "lobbed volleys")
+	assert_eq(u.missile_ammo, MissileProfile.AMMO_UNLIMITED, "unlimited ammo by default")
+	assert_true(u.has_missile_ammo(), "has ammo")
 	assert_eq(u.skirmish_kite_distance, Unit.SKIRMISH_KITE_DISTANCE, "kite distance")
 	assert_eq(u.detection_range, Unit.DETECTION_RANGE, "detection")
 	for d in [0.0, 80.0, 160.0]:
@@ -65,6 +67,8 @@ func test_equipping_the_bow_profile_changes_nothing() -> void:
 	assert_eq(u.missile_interval, Unit.RANGED_INTERVAL, "same cadence")
 	assert_eq(u.missile_damage_factor, Unit.RANGED_DAMAGE_FACTOR, "same damage factor")
 	assert_eq(u.missile_accuracy_at_max, 1.0, "same (absent) falloff")
+	assert_eq(u.missile_ammo, MissileProfile.AMMO_UNLIMITED, "bow has unlimited ammo")
+	assert_true(u.has_missile_ammo(), "has ammo")
 	for d in [0.0, 80.0, 160.0]:
 		assert_eq(u.missile_accuracy(d), 1.0,
 			"accuracy pinned to 1.0 at %s wu" % str(d))
@@ -83,6 +87,8 @@ func test_equipping_the_pilum_takes_its_own_range_cadence_and_falloff() -> void:
 	assert_eq(u.missile_interval, p.interval_s, "its cadence")
 	assert_eq(u.missile_damage_factor, p.damage_factor, "its damage factor")
 	assert_eq(u.missile_accuracy_at_max, p.accuracy_at_max, "its falloff")
+	assert_eq(u.missile_ammo, 2, "pilum loadout has 2 ammo")
+	assert_true(u.has_missile_ammo(), "has ammo")
 	assert_almost_eq(u.missile_accuracy(0.0), 1.0, TOL,
 		"point-blank accuracy pinned to 1.0")
 	assert_almost_eq(u.missile_accuracy(p.range_wu * 0.5),
@@ -486,5 +492,159 @@ func test_zero_accuracy_at_maximum_range_suppresses_aggregate_target_casualties(
 		"aggregate target without soldier layer loses no soldiers to zero-accuracy shot")
 
 	LoadoutRegistry._missiles.erase(99)
+
+
+# --- phase 3: ammunition and suppression -------------------------------------------
+
+func test_finite_ammo_decrements_on_shoot_and_halts_when_empty() -> void:
+	var shooter := _unit(50, 0, Vector2.ZERO, Vector2.DOWN, 10)
+	shooter.is_ranged = true
+	shooter.attack = 30
+	assert_true(shooter.equip_missile(LoadoutRegistry.MISSILE_PILUM), "equips pilum")
+	assert_eq(shooter.missile_ammo, 2, "begins with 2 pila")
+	assert_true(shooter.has_missile_ammo(), "has ammo")
+
+	var target := _unit(51, 1, Vector2(0.0, 100.0), Vector2.UP, 50)
+	target.state = Unit.State.FIGHTING
+	target.defense = 5
+
+	# First volley
+	UnitCombat.shoot(shooter, target)
+	assert_eq(shooter.missile_ammo, 1, "ammo decremented to 1 after first volley")
+	assert_true(shooter.has_missile_ammo(), "still has ammo")
+	var soldiers_after_first: int = target.soldiers
+	assert_lt(soldiers_after_first, 50, "first volley inflicted casualties")
+
+	# Second volley
+	UnitCombat.shoot(shooter, target)
+	assert_eq(shooter.missile_ammo, 0, "ammo decremented to 0 after second volley")
+	assert_false(shooter.has_missile_ammo(), "no ammo remains")
+	var soldiers_after_second: int = target.soldiers
+	assert_lt(soldiers_after_second, soldiers_after_first, "second volley inflicted casualties")
+
+	# Third volley attempt: empty unit cannot shoot
+	UnitCombat.shoot(shooter, target)
+	assert_eq(shooter.missile_ammo, 0, "ammo remains 0")
+	assert_eq(target.soldiers, soldiers_after_second, "no casualties inflicted when empty")
+
+
+func test_unlimited_ammo_does_not_deplete_on_shoot() -> void:
+	var shooter := _unit(52, 0, Vector2.ZERO, Vector2.DOWN, 10)
+	shooter.is_ranged = true
+	shooter.attack = 30
+	assert_true(shooter.equip_missile(LoadoutRegistry.MISSILE_BOW), "equips bow")
+	assert_eq(shooter.missile_ammo, MissileProfile.AMMO_UNLIMITED, "unlimited ammo (-1)")
+
+	var target := _unit(53, 1, Vector2(0.0, 100.0), Vector2.UP, 50)
+	target.state = Unit.State.FIGHTING
+	target.defense = 5
+
+	for i in range(5):
+		UnitCombat.shoot(shooter, target)
+		assert_eq(shooter.missile_ammo, MissileProfile.AMMO_UNLIMITED,
+				"unlimited ammo stays -1 on volley %d" % (i + 1))
+		assert_true(shooter.has_missile_ammo(), "always has ammo")
+
+
+func test_exhausted_shooter_stops_suppressing_enemy_at_same_moment() -> void:
+	var victim := _unit(54, 0, Vector2.ZERO)
+	var shooter := _unit(55, 1, Vector2(250.0, 0.0))
+	shooter.is_ranged = true
+	assert_true(shooter.equip_missile(LoadoutRegistry.MISSILE_PILUM), "equips pilum")
+	assert_eq(shooter.missile_ammo, 2)
+
+	# While shooter has ammo, victim is under fire
+	victim._think(0.1)
+	assert_true(victim._under_fire, "victim is under fire while shooter carries ammo")
+
+	# Exhaust shooter's ammo
+	shooter.missile_ammo = 0
+	assert_false(shooter.has_missile_ammo())
+
+	# Empty shooter immediately stops suppressing the victim
+	victim._think(0.1)
+	assert_false(victim._under_fire,
+			"victim is no longer under fire once shooter has exhausted ammunition")
+
+
+func test_unit_able_to_reply_is_not_suppressed_in_sim() -> void:
+	var victim := _unit(56, 0, Vector2.ZERO)
+	victim.is_ranged = true
+	victim.morale = 80.0
+	assert_true(victim.equip_missile(LoadoutRegistry.MISSILE_BOW))
+
+	var shooter := _unit(57, 1, Vector2(100.0, 0.0))
+	shooter.is_ranged = true
+	assert_true(shooter.equip_missile(LoadoutRegistry.MISSILE_BOW))
+
+	# Both units in range of each other (100 wu <= 160 wu reach)
+	victim._think(0.1)
+	assert_true(victim._under_fire, "victim is inside enemy shooter reach")
+	assert_true(victim._under_fire_can_reply,
+			"victim has ranged weapon, ammo, and reach to reply to enemy shooter")
+
+	# Tick morale -- ability to reply prevents suppression erosion
+	UnitMorale.tick_morale(victim, 1.0)
+	assert_almost_eq(victim.morale, 80.0, 0.001,
+			"morale does not erode when unit is able to reply")
+
+
+func test_unit_unable_to_reply_due_to_reach_is_suppressed_in_sim() -> void:
+	# Victim has bow (160 wu reach); shooter has pilum (300 wu reach) at 250 wu
+	var victim := _unit(58, 0, Vector2.ZERO)
+	victim.is_ranged = true
+	victim.morale = 80.0
+	assert_true(victim.equip_missile(LoadoutRegistry.MISSILE_BOW))
+
+	var shooter := _unit(59, 1, Vector2(250.0, 0.0))
+	shooter.is_ranged = true
+	assert_true(shooter.equip_missile(LoadoutRegistry.MISSILE_PILUM))
+
+	victim._think(0.1)
+	assert_true(victim._under_fire, "victim is inside pilum reach (250 <= 300)")
+	assert_false(victim._under_fire_can_reply,
+			"victim cannot reply because shooter is beyond bow reach (250 > 160)")
+
+	# Tick morale -- unable to reply, so morale erodes towards suppression floor
+	UnitMorale.tick_morale(victim, 1.0)
+	assert_lt(victim.morale, 80.0,
+			"morale erodes when under fire without the ability to reply")
+
+
+func test_unit_unable_to_reply_due_to_empty_ammo_is_suppressed_in_sim() -> void:
+	# Both at 100 wu, but victim has 0 ammo
+	var victim := _unit(60, 0, Vector2.ZERO)
+	victim.is_ranged = true
+	victim.morale = 80.0
+	assert_true(victim.equip_missile(LoadoutRegistry.MISSILE_BOW))
+	victim.missile_ammo = 0
+	assert_false(victim.has_missile_ammo())
+
+	var shooter := _unit(61, 1, Vector2(100.0, 0.0))
+	shooter.is_ranged = true
+	assert_true(shooter.equip_missile(LoadoutRegistry.MISSILE_BOW))
+
+	victim._think(0.1)
+	assert_true(victim._under_fire, "victim is inside enemy reach")
+	assert_false(victim._under_fire_can_reply,
+			"victim cannot reply because it has zero ammunition")
+
+	UnitMorale.tick_morale(victim, 1.0)
+	assert_lt(victim.morale, 80.0,
+			"morale erodes when under fire without ammunition to reply")
+
+
+func test_ranged_unit_with_no_ammo_does_not_fire_in_think() -> void:
+	var shooter := _unit(62, 0, Vector2.ZERO, Vector2.DOWN)
+	shooter.is_ranged = true
+	shooter.missile_ammo = 0
+
+	var enemy := _unit(63, 1, Vector2(0.0, 100.0), Vector2.UP)
+
+	shooter._think(0.1)
+	assert_ne(shooter.state, Unit.State.FIGHTING,
+			"an empty ranged unit outside melee contact does not enter shooting stance")
+	assert_eq(shooter._attack_cd, 0.0,
+			"no attack cooldown triggered when empty")
 
 
