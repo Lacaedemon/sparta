@@ -39,6 +39,9 @@ func test_lower_solving_angle_monotonic_and_bounded() -> void:
 		assert_true(a >= prev_angle, "angle monotonic with distance")
 		prev_angle = a
 
+	assert_eq(ProjectilePhysics.lower_solving_angle(0.0, 100.0), 0.0, "zero distance returns zero angle")
+	assert_eq(ProjectilePhysics.lower_solving_angle(50.0, 0.0), 0.0, "zero max_range returns zero angle")
+
 
 func test_height_at_fraction_parabolic_profile() -> void:
 	var dist: float = 200.0
@@ -49,6 +52,8 @@ func test_height_at_fraction_parabolic_profile() -> void:
 		"height at launch fraction 0 is zero")
 	assert_almost_eq(ProjectilePhysics.height_at_fraction(dist, gravity, angle, 1.0), 0.0, TOL,
 		"height at landing fraction 1 is zero")
+	assert_eq(ProjectilePhysics.height_at_fraction(0.0, gravity, angle, 0.5), 0.0,
+		"degenerate zero distance yields zero height")
 
 	var sol: Dictionary = ProjectilePhysics.solve_launch(dist, gravity, angle)
 	var peak_h: float = ProjectilePhysics.peak_height(sol["speed"], angle, gravity)
@@ -114,6 +119,17 @@ func test_volley_angle_selection_flat_inside_fraction_solving_beyond() -> void:
 	var angle_custom: float = UnitCombat._volley_angle(shooter, target)
 	assert_almost_eq(angle_custom, 0.5, TOL,
 		"explicit missile_launch_angle override is honored directly")
+
+	# Degenerate target or distance returns shooter.missile_launch_angle
+	assert_eq(UnitCombat._volley_angle(shooter, null), 0.5,
+		"null target returns missile_launch_angle")
+	shooter.missile_launch_angle = ProjectilePhysics.ANGLE_ARCED
+	var same_pos := _unit(3, 1, Vector2.ZERO)
+	assert_eq(UnitCombat._volley_angle(shooter, same_pos), ProjectilePhysics.ANGLE_ARCED,
+		"zero distance returns missile_launch_angle")
+	shooter.missile_range = 0.0
+	assert_eq(UnitCombat._volley_angle(shooter, target), ProjectilePhysics.ANGLE_ARCED,
+		"zero range returns missile_launch_angle")
 
 
 # --- height-aware friendly interception ---------------------------------------------
@@ -195,3 +211,11 @@ func test_projectile_field_snapshot_preserves_gravity() -> void:
 	field2.apply_snapshot_dict(snap)
 	assert_almost_eq(field2._gravity[0], 120.0, TOL, "field restored custom gravity")
 	assert_almost_eq(field2.height_of(0), field.height_of(0), TOL, "height computation matches")
+
+	# Legacy snapshot without gravity key restores to default GRAVITY
+	var legacy_snap: Dictionary = snap.duplicate(true)
+	legacy_snap.erase("gravity")
+	var field3: ProjectileField = ProjectileField.new()
+	field3.apply_snapshot_dict(legacy_snap)
+	assert_almost_eq(field3._gravity[0], ProjectileField.GRAVITY, TOL,
+		"legacy snapshot without gravity restores to default GRAVITY")
