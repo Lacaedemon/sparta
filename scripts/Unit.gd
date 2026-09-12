@@ -1440,7 +1440,10 @@ const ROUTING_ALPHA: float = 0.45
 const STATE_RING_FIGHTING_COLOR := Color(0.90, 0.15, 0.15)
 const STATE_RING_ROUTING_COLOR := Color(0.95, 0.50, 0.05)
 const STATE_RING_ALPHA := 0.40
+const STATE_RING_LOD_ALPHA_SCALE := 0.50
 const STATE_RING_WIDTH := 1.5
+const STATE_RING_WIDTH_ROUTING := 1.75
+const STATE_RING_WIDTH_LOD := 1.0
 # Per-second rate _render_alpha eases toward its target (an active fade, not a snap) --
 # fast enough to read as an immediate response to the state change, slow enough to
 # actually be visible as a fade rather than an instant cut.
@@ -8375,14 +8378,15 @@ func _draw() -> void:
 	# Settings.show_combat_state_rings so combat feedback leaves unit footprints, commander
 	# hitboxes, and soldier glyphs readable during melee.
 	if Settings.show_combat_state_rings:
-		var ring_alpha: float = STATE_RING_ALPHA * (0.5 if _detailed_lod else 1.0)
-		var ring_width: float = 1.0 if _detailed_lod else STATE_RING_WIDTH
+		var ring_alpha: float = STATE_RING_ALPHA * (STATE_RING_LOD_ALPHA_SCALE if _detailed_lod else 1.0)
 		match state:
 			State.FIGHTING:
+				var ring_width: float = STATE_RING_WIDTH_LOD if _detailed_lod else STATE_RING_WIDTH
 				draw_arc(centre, extent + 2.0, 0, TAU, 36,
 						Color(STATE_RING_FIGHTING_COLOR.r, STATE_RING_FIGHTING_COLOR.g,
 								STATE_RING_FIGHTING_COLOR.b, ring_alpha * alpha), ring_width)
 			State.ROUTING:
+				var ring_width: float = STATE_RING_WIDTH_LOD if _detailed_lod else STATE_RING_WIDTH_ROUTING
 				draw_arc(centre, extent + 2.0, 0, TAU, 36,
 						Color(STATE_RING_ROUTING_COLOR.r, STATE_RING_ROUTING_COLOR.g,
 								STATE_RING_ROUTING_COLOR.b, ring_alpha), ring_width)
