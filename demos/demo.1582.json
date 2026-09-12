@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Tooling-only change to the offline DemoDefects analyzer (exempting post-reshape transit samples from shape_residual while keeping them live before/after and keeping overlap/misslotted/path_crossing live throughout) and removing the now-obsolete clip-level exemption from reinforcement-insertion.json; no simulation or visual battle change to show."
+}

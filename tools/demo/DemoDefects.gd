@@ -327,6 +327,7 @@ static func analyze(snapshots: Array) -> Dictionary:
 					"ticks": [], "engaged": [], "in_enemy_contact": [],
 					"moving": [], "routing": [], "counts": [],
 					"formation": [], "frontage": [],
+					"last_reshape_tick": [], "anchor_held": [],
 					"nnd_min": [], "nnd_med": [], "angle": [], "residual": [],
 					"misslotted": [], "facing_angle": [], "pos": [],
 					"motion_ref": u["motion_ref"],
@@ -347,6 +348,8 @@ static func analyze(snapshots: Array) -> Dictionary:
 			s["counts"].append(bodies.size())
 			s["formation"].append(String(u.get("formation", "")))
 			s["frontage"].append(int(u.get("frontage", 0)))
+			s["last_reshape_tick"].append(int(u.get("last_reshape_tick", -1)))
+			s["anchor_held"].append(bool(u.get("anchor_held", false)))
 			s["nnd_min"].append(nnd["min"])
 			s["nnd_med"].append(nnd["median"])
 			s["angle"].append(fit["angle"])
@@ -434,6 +437,90 @@ static func judged_mask(s: Dictionary) -> Array:
 	return mask
 
 
+## Reshape transit timeout (seconds) matching Unit._reshape_timeout(): upper bound on the time
+## bodies need to walk from an old slot configuration to a new one across the formation diagonals.
+static func reshape_timeout(old_files: int, new_files: int, soldiers: int,
+		file_pitch: float, rank_pitch: float, jog_speed: float,
+		back_speed_fraction: float = 0.5) -> float:
+	new_files = maxi(1, new_files)
+	var new_ranks: int = int(ceil(float(soldiers) / float(new_files)))
+	var new_crossing: float = Vector2(
+			float(maxi(0, new_files - 1)) * file_pitch,
+			float(maxi(0, new_ranks - 1)) * rank_pitch).length()
+	var old_crossing: float = 0.0
+	if old_files != new_files and old_files > 0:
+		var old_ranks: int = int(ceil(float(soldiers) / float(maxi(1, old_files))))
+		old_crossing = Vector2(
+				float(maxi(0, old_files - 1)) * file_pitch,
+				float(maxi(0, old_ranks - 1)) * rank_pitch).length()
+	var slowest: float = maxf(1.0, jog_speed * back_speed_fraction)
+	return (old_crossing + new_crossing) / slowest * 2.0 + 1.0
+
+
+## Which samples are judged for shape_residual: starts with judged_mask(), and additionally
+## exempts samples inside a unit's post-reshape transit window (e.g. while bodies walk onto
+## newly expanded/contracted slots after a frontage change, formation change, or reinforcement
+## insertion). The exemption window extends from the reshape tick for reshape_timeout() seconds
+## (or while anchor_held is true), ending early once the bodies settle onto the new grid.
+static func shape_residual_mask(s: Dictionary, base_mask: Array = []) -> Array:
+	var n: int = s["ticks"].size()
+	var mask: Array = base_mask.duplicate() if not base_mask.is_empty() else judged_mask(s)
+	if n == 0:
+		return mask
+
+	var spacing: float = float(s["motion_ref"]["formation_spacing"])
+	var threshold: float = spacing * SHAPE_RMS_FRAC
+	var fp: float = float(s["motion_ref"].get("file_pitch", spacing))
+	var rp: float = float(s["motion_ref"].get("rank_pitch", spacing))
+	var jog: float = float(s["motion_ref"].get("jog_speed", 64.0))
+	var back_frac: float = float(s["motion_ref"].get("back_speed_fraction", 0.5))
+
+	var transit_until_tick: int = -1
+	var transit_active := false
+
+	for i in range(n):
+		var tick: int = int(s["ticks"][i])
+		var has_last_tick: bool = s.has("last_reshape_tick") and s["last_reshape_tick"].size() > i
+		var cur_last_tick: int = int(s["last_reshape_tick"][i]) if has_last_tick else -1
+		var prev_last_tick: int = int(s["last_reshape_tick"][i - 1]) if (has_last_tick and i > 0) else -1
+
+		var reshape_event := false
+		var old_files: int = int(s["frontage"][i - 1]) if (i > 0 and s.has("frontage") and s["frontage"].size() > i) else 1
+		var new_files: int = int(s["frontage"][i]) if (s.has("frontage") and s["frontage"].size() > i) else old_files
+
+		if cur_last_tick >= 0 and cur_last_tick != prev_last_tick:
+			reshape_event = true
+		elif i > 0:
+			if (s.has("frontage") and s["frontage"].size() > i and int(s["frontage"][i]) != int(s["frontage"][i - 1])):
+				reshape_event = true
+			elif (s.has("formation") and s["formation"].size() > i and String(s["formation"][i]) != String(s["formation"][i - 1])):
+				reshape_event = true
+
+		if reshape_event:
+			var start_tick: int = cur_last_tick if cur_last_tick >= 0 else tick
+			var count: int = int(s["counts"][i]) if (s.has("counts") and s["counts"].size() > i) else 1
+			var timeout_sec: float = reshape_timeout(old_files, new_files, count, fp, rp, jog, back_frac)
+			var timeout_ticks: int = int(ceil(timeout_sec * 60.0))
+			transit_until_tick = start_tick + timeout_ticks
+			transit_active = true
+
+		var anchor: bool = s.has("anchor_held") and s["anchor_held"].size() > i and bool(s["anchor_held"][i])
+		if anchor:
+			transit_active = true
+
+		if transit_active:
+			if tick <= transit_until_tick or anchor:
+				var res_val: float = float(s["residual"][i]) if (s.has("residual") and s["residual"].size() > i) else 0.0
+				if res_val <= threshold and not anchor:
+					transit_active = false
+				else:
+					mask[i] = false
+			else:
+				transit_active = false
+
+	return mask
+
+
 static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	var out: Array = []
 	var spacing: float = float(s["motion_ref"]["formation_spacing"])
@@ -446,6 +533,7 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	var sprint: float = float(s["motion_ref"]["move_speed"])
 	var n: int = s["ticks"].size()
 	var mask: Array = judged_mask(s)
+	var shape_mask: Array = shape_residual_mask(s, mask)
 
 	# Blob: median-neighbour compression, sustained -- bodies stacked well inside
 	# each other on median, floored at a pitch fraction for roomy-grid collapse.
@@ -457,7 +545,7 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	# Shape scramble: post-fit residual, sustained. Pitch-based deliberately --
 	# it measures deviation from the ordered grid, where pitch IS the basis.
 	out.append(_sustained_verdict(uid, "shape_residual", s, "residual",
-			spacing * SHAPE_RMS_FRAC, mask, MIN_SUSTAIN, true))
+			spacing * SHAPE_RMS_FRAC, shape_mask, MIN_SUSTAIN, true))
 	# Slot misassignment: the fraction of soldiers nearer another man's (fit-aligned)
 	# slot than their own, sustained.
 	out.append(_sustained_verdict(uid, "misslotted", s, "misslotted",
