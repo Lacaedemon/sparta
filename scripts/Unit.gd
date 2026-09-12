@@ -6310,8 +6310,8 @@ func pick_distance_squared(world_pos: Vector2, pad: float = 6.0) -> float:
 		var d_sq: float = gp.distance_squared_to(world_pos)
 		if d_sq <= mark_hit_r_sq:
 			is_hit = true
-		if d_sq < min_dist_sq:
-			min_dist_sq = d_sq
+			if d_sq < min_dist_sq:
+				min_dist_sq = d_sq
 
 	return min_dist_sq if is_hit else -1.0
 
