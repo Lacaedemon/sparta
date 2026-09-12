@@ -121,9 +121,9 @@ func test_volley_angle_selection_flat_inside_fraction_solving_beyond() -> void:
 		"explicit missile_launch_angle override is honored directly")
 
 	# Degenerate target or distance returns shooter.missile_launch_angle
-	assert_eq(UnitCombat._volley_angle(shooter, null), 0.5,
-		"null target returns missile_launch_angle")
 	shooter.missile_launch_angle = ProjectilePhysics.ANGLE_ARCED
+	assert_eq(UnitCombat._volley_angle(shooter, null), ProjectilePhysics.ANGLE_ARCED,
+		"null target returns missile_launch_angle")
 	var same_pos := _unit(3, 1, Vector2.ZERO)
 	assert_eq(UnitCombat._volley_angle(shooter, same_pos), ProjectilePhysics.ANGLE_ARCED,
 		"zero distance returns missile_launch_angle")
