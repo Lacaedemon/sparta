@@ -1,0 +1,9 @@
+{
+  "_comment": "Soldier glyph picking and right-click attack targeting (fixes #1570 and #1569). Left-clicking a soldier marker selects the regiment; right-clicking an enemy soldier marker issues an attack order instead of a ground move.",
+  "input": "demos/inputs/soldier-glyph-selection-attack-1570.json",
+  "caption": "Clicking soldier glyphs outside the commander center now selects units and issues attack orders (#1570, #1569).",
+  "fixed_fps": 30,
+  "max_frames": 240,
+  "fps": 12,
+  "width": 640
+}

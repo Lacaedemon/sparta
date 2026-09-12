@@ -6308,3 +6308,42 @@ func test_pivot_radius_grows_with_rank_pitch() -> void:
 	var base: float = u._pivot_radius()
 	u.rank_pitch *= 4.0
 	assert_gt(u._pivot_radius(), base, "a deeper grid has a farther corner man to pace")
+
+
+func test_pick_distance_squared_hits_regiment_center() -> void:
+	var u := _make_unit(60)
+	u.position = Vector2(200, 200)
+	var d_sq: float = u.pick_distance_squared(Vector2(200, 200))
+	assert_almost_eq(d_sq, 0.0, 0.01, "center hit has near zero distance")
+
+
+func test_pick_distance_squared_hits_flank_soldier() -> void:
+	var u := _make_unit(60)
+	u.position = Vector2(200, 200)
+	u.seed_sim_soldiers()
+	var poses: PackedVector2Array = u.soldier_world_positions()
+	assert_gt(poses.size(), 0)
+	var flank_p: Vector2 = poses[0]
+	var d_sq: float = u.pick_distance_squared(flank_p)
+	assert_almost_eq(d_sq, 0.0, 0.01, "clicking exact soldier position yields near zero distance")
+
+
+func test_pick_distance_squared_misses_outside_bounds() -> void:
+	var u := _make_unit(60)
+	u.position = Vector2(200, 200)
+	u.seed_sim_soldiers()
+	var d_sq: float = u.pick_distance_squared(Vector2(1000, 1000))
+	assert_eq(d_sq, -1.0, "far point does not hit")
+
+
+func test_intersects_rect_detects_flank_soldier_box() -> void:
+	var u := _make_unit(60)
+	u.position = Vector2(200, 200)
+	u.seed_sim_soldiers()
+	var poses: PackedVector2Array = u.soldier_world_positions()
+	var flank_p: Vector2 = poses[0]
+	var r: float = u.soldier_body_radius()
+	var box := Rect2(flank_p - Vector2(r, r), Vector2(2.0 * r, 2.0 * r))
+	assert_true(u.intersects_rect(box), "box around flank soldier intersects")
+	var outside_box := Rect2(Vector2(1000, 1000), Vector2(50, 50))
+	assert_false(u.intersects_rect(outside_box), "distant box does not intersect")
