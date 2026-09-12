@@ -3292,6 +3292,43 @@ func test_ctrl_shift_m_is_reserved_for_the_ranks_axis_and_arms_nothing() -> void
 	assert_true(s["battle"]._pending_orders.is_empty(), "and it does not fall through to a merge")
 
 
+func test_rebound_order_mode_onto_m_does_not_swallow_shift_m() -> void:
+	var s := _reinforce_setup()
+	var sm = s["sm"]
+	var b = s["battle"]
+	var prev_hold: int = Settings.order_binding("hold")
+	# Rebind hold ground onto KEY_M
+	Settings.set_order_binding("hold", KEY_M)
+
+	# Shift+M must arm reinforcement files insertion, NOT be swallowed by hold ground
+	var shift_m := _key_event(KEY_M, false, true)
+	assert_true(sm._dispatch_key(shift_m), "Shift+M is handled even when hold is bound to M")
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.FILES,
+			"Shift+M armed files reinforcement insertion")
+	assert_ne(sm._armed_mode, BattleScript.OrderMode.HOLD,
+			"hold ground stance was not armed by Shift+M")
+
+	# Clear the armed reinforcement state before testing the ranks chord
+	sm._armed_reinforce = BattleScript.ReinforceAxis.NONE
+
+	# Ctrl+Shift+M must arm nothing (reserved ranks axis), NOT issue hold ground in place
+	var ctrl_shift_m := _key_event(KEY_M, true, true)
+	assert_true(sm._dispatch_key(ctrl_shift_m), "Ctrl+Shift+M is handled")
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE,
+			"Ctrl+Shift+M does not arm files insertion")
+	assert_true(b._pending_orders.is_empty(),
+			"hold ground stance was not issued in place by Ctrl+Shift+M")
+
+	# Plain M (unmodified) should still select/arm the rebound hold ground stance
+	var plain_m := _key_event(KEY_M, false, false)
+	assert_true(sm._dispatch_key(plain_m), "plain M is handled")
+	assert_eq(sm._armed_mode, BattleScript.OrderMode.HOLD,
+			"plain M armed the rebound hold ground stance")
+
+	# Restore previous binding
+	Settings.set_order_binding("hold", prev_hold)
+
+
 func test_an_armed_click_on_a_routing_friendly_is_refused_not_a_move() -> void:
 	var s := _reinforce_setup()
 	var sm = s["sm"]

@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Input dispatch ordering and keybinding dialog conflict validation; no battle simulation or visual battle change to show."
+}

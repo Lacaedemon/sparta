@@ -129,6 +129,12 @@ func _input(event: InputEvent) -> void:
 		_status.text = "Enter is reserved and can't be bound."
 		_refresh_labels()
 		return
+	var reserved := Settings.reserved_key_label(keycode)
+	if reserved != "":
+		_status.text = "%s is reserved for %s." % [
+			OS.get_keycode_string(keycode), reserved]
+		_refresh_labels()
+		return
 	var conflict := Settings.slug_for_keycode(keycode)
 	if conflict != "" and conflict != slug:
 		_status.text = "%s is already bound to %s." % [

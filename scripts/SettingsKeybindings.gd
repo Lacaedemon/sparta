@@ -79,3 +79,58 @@ static func set_binding(bindings: Dictionary, slug: String, keycode: int) -> boo
 
 static func reset_bindings() -> Dictionary:
 	return DEFAULT_ORDER_BINDINGS.duplicate()
+
+
+## Fixed keys that cannot be rebound to order modes in the Keybindings dialog because
+## they own dedicated actions or fixed modifier chords (ShortcutsOverlay).
+const RESERVED_KEYS := {
+	KEY_M: "Merge",
+	KEY_I: "Rank relief",
+	KEY_X: "Group attack mode",
+	KEY_T: "Formation",
+	KEY_O: "Anti-cavalry square",
+	KEY_L: "Shield wall",
+	KEY_U: "Testudo",
+	KEY_BRACKETLEFT: "Line width",
+	KEY_BRACKETRIGHT: "Line width",
+	KEY_B: "Explicatio",
+	KEY_N: "Duplicatio",
+	KEY_Y: "Form-up split mode",
+	KEY_LEFT: "Nudge left",
+	KEY_RIGHT: "Nudge right",
+	KEY_UP: "Nudge forward",
+	KEY_DOWN: "Nudge / Disengage",
+	KEY_V: "About-face / Countermarch",
+	KEY_Q: "Quarter-turn left",
+	KEY_E: "Quarter-turn right",
+	KEY_Z: "Wheel left",
+	KEY_C: "Wheel right",
+	KEY_0: "Control group 0",
+	KEY_1: "Control group 1",
+	KEY_2: "Control group 2",
+	KEY_3: "Control group 3",
+	KEY_4: "Control group 4",
+	KEY_5: "Control group 5",
+	KEY_6: "Control group 6",
+	KEY_7: "Control group 7",
+	KEY_8: "Control group 8",
+	KEY_9: "Control group 9",
+	KEY_W: "Camera pan",
+	KEY_A: "Camera pan",
+	KEY_S: "Camera pan",
+	KEY_D: "Camera pan",
+	KEY_SPACE: "Formation preview",
+	KEY_P: "Pause",
+	KEY_F1: "Unit card tray",
+	KEY_F5: "Slow motion",
+	KEY_F7: "Fog of war",
+}
+
+
+static func is_reserved_key(keycode: int) -> bool:
+	return RESERVED_KEYS.has(keycode)
+
+
+static func reserved_label(keycode: int) -> String:
+	return str(RESERVED_KEYS.get(keycode, ""))
+
