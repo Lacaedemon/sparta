@@ -1061,6 +1061,8 @@ const SIGHT_FOOT: float = 1.0
 const SIGHT_MOUNTED: float = 1.4
 const SIGHT_RANGED: float = 1.2
 const SIGHT_ROUTING_PENALTY: float = 0.6
+## Sight range multiplier per screening terrain patch crossed.
+const SIGHT_SCREEN_FACTOR: float = 0.5
 # The sight scale a unit falls back to when no Battle sets one (a bare Unit in a test or a
 # tool): 15 m, which is 0.25 x the default field's short side, Battle.sight_scale's own
 # default.

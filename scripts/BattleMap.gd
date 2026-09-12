@@ -45,10 +45,15 @@ static func parse(block: Dictionary) -> Dictionary:
 				return {"error": "map.terrain patch kind must be 'block' or 'slow'"}
 			if kind == "slow" and not _num(p.get("speed")):
 				return {"error": "a 'slow' map.terrain patch needs a numeric speed scale"}
+			var default_sight: String = "block" if kind == "block" else "screen"
+			var sight: String = str(p.get("sight", default_sight))
+			if sight != "clear" and sight != "screen" and sight != "block":
+				return {"error": "map.terrain patch sight must be 'clear', 'screen', or 'block'"}
 			var patch: Dictionary = {
 				"rect": Rect2(float(r[0]), float(r[1]), float(r[2]), float(r[3])),
 				"type": str(p.get("type", "hill")),
 				"kind": kind,
+				"sight": sight,
 			}
 			if kind == "slow":
 				patch["speed"] = float(p["speed"])
@@ -88,6 +93,10 @@ static func serialize(field: Rect2, terrain: Array, spawn_lines: Array,
 		}
 		if patch["kind"] == "slow":
 			patch["speed"] = float(p.get("speed", 1.0))
+		var default_sight: String = "block" if patch["kind"] == "block" else "screen"
+		var sight: String = str(p.get("sight", default_sight))
+		if sight != default_sight:
+			patch["sight"] = sight
 		patches.append(patch)
 	var out: Dictionary = {
 		"field": [field.size.x, field.size.y],
@@ -116,9 +125,14 @@ static func differs_from_default(field: Rect2, terrain: Array, spawn_lines: Arra
 	for i in range(terrain.size()):
 		var a: Dictionary = terrain[i]
 		var b: Dictionary = default_terrain[i]
+		var a_kind: String = str(a.get("kind", "block"))
+		var b_kind: String = str(b.get("kind", "block"))
+		var a_default_sight: String = "block" if a_kind == "block" else "screen"
+		var b_default_sight: String = "block" if b_kind == "block" else "screen"
 		if a.get("rect") != b.get("rect") or str(a.get("type", "")) != str(b.get("type", "")) \
-				or str(a.get("kind", "block")) != str(b.get("kind", "block")) \
-				or float(a.get("speed", 1.0)) != float(b.get("speed", 1.0)):
+				or a_kind != b_kind \
+				or float(a.get("speed", 1.0)) != float(b.get("speed", 1.0)) \
+				or str(a.get("sight", a_default_sight)) != str(b.get("sight", b_default_sight)):
 			return true
 	return false
 

@@ -74,6 +74,9 @@ func test_parse_rejects_malformed_blocks_with_named_errors() -> void:
 	assert_true(
 			BattleMap.parse({"fog_of_war": "yes"}).has("error"),
 			"non-boolean fog_of_war is an error")
+	assert_true(
+			BattleMap.parse({"terrain": [{"rect": [0, 0, 10, 10], "kind": "block", "sight": "fogged"}]}).has("error"),
+			"an unknown patch sight value is an error")
 
 
 
@@ -409,4 +412,45 @@ func test_recording_fog_publishes_to_replay_map() -> void:
 	Replay.mode = old_mode
 	Replay.map = old_map
 	Settings.set_fog_of_war_session(prev_fog)
+
+
+func test_parse_terrain_sight_axis_and_defaults() -> void:
+	var out: Dictionary = BattleMap.parse({
+		"terrain": [
+			{"rect": [0, 0, 100, 100], "type": "hill", "kind": "block"},
+			{"rect": [100, 0, 100, 100], "type": "forest", "kind": "slow", "speed": 0.5},
+			{"rect": [200, 0, 100, 100], "type": "wall", "kind": "block", "sight": "clear"},
+			{"rect": [300, 0, 100, 100], "type": "brush", "kind": "slow", "speed": 0.8, "sight": "block"},
+		],
+	})
+	var patches: Array = out["terrain"]
+	assert_eq(patches[0]["sight"], "block", "block kind defaults to sight: block")
+	assert_eq(patches[1]["sight"], "screen", "slow kind defaults to sight: screen")
+	assert_eq(patches[2]["sight"], "clear", "explicit sight: clear is parsed")
+	assert_eq(patches[3]["sight"], "block", "explicit sight: block override is parsed")
+
+
+func test_serialize_terrain_sight_axis_omits_default_and_keeps_overrides() -> void:
+	var terrain: Array = [
+		{"rect": Rect2(0, 0, 100, 100), "type": "hill", "kind": "block", "sight": "block"},
+		{"rect": Rect2(100, 0, 100, 100), "type": "forest", "kind": "slow", "speed": 0.5, "sight": "screen"},
+		{"rect": Rect2(200, 0, 100, 100), "type": "wall", "kind": "block", "sight": "screen"},
+	]
+	var blob: Dictionary = BattleMap.serialize(Rect2(0, 0, 800, 600), terrain, [100.0, 500.0])
+	assert_false(blob["terrain"][0].has("sight"), "default block sight is omitted from serialized map")
+	assert_false(blob["terrain"][1].has("sight"), "default slow sight is omitted from serialized map")
+	assert_eq(blob["terrain"][2].get("sight"), "screen", "custom sight override is serialized")
+	var back: Dictionary = BattleMap.parse(blob)
+	assert_eq(back["terrain"][0]["sight"], "block", "default block sight restores on parse")
+	assert_eq(back["terrain"][1]["sight"], "screen", "default slow sight restores on parse")
+	assert_eq(back["terrain"][2]["sight"], "screen", "custom sight override restores on parse")
+
+
+func test_differs_from_default_detects_sight_axis_override() -> void:
+	var d_field := Rect2(0, 0, 1600, 1200)
+	var d_terrain: Array = [{"rect": Rect2(1, 1, 2, 2), "type": "hill", "kind": "block", "sight": "block"}]
+	var custom_terrain: Array = [{"rect": Rect2(1, 1, 2, 2), "type": "hill", "kind": "block", "sight": "clear"}]
+	var d_spawn: Array = [300.0, 880.0]
+	assert_true(BattleMap.differs_from_default(d_field, custom_terrain, d_spawn,
+			d_field, d_terrain, d_spawn), "custom sight differs from default map")
 
