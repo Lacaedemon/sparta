@@ -43,9 +43,11 @@ permissions: {}
 # keys on its PR number instead: its github.ref is whatever ref it was run
 # against (usually main), so keying on the ref alone would let two dispatched
 # checks for different PRs cancel each other.
+# Pushes to main scan all open PRs, so cancel-in-progress is disabled for main
+# to avoid cutting off a multi-PR scan mid-loop when main advances rapidly.
 concurrency:
   group: conflicting-pr-notice-${{ inputs.pr_number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   notice:
@@ -102,7 +104,7 @@ jobs:
               }
               for (const pr of openPRs) {
                 const existing = await findExistingNotice(pr.number);
-                if (!existing || existing.body.includes('Resolved:')) {
+                if (!existing) {
                   continue;
                 }
                 const { mergeable, mergeableState, head } = await getMergeability(pr.number);
@@ -112,16 +114,36 @@ jobs:
                   continue;
                 }
                 if (mergeable === true) {
-                  const body = [
-                    marker,
-                    `Resolved: \`${short}\` no longer conflicts with \`${pr.base.ref}\` following a \`main\` advance. Push to this branch (or merge \`${pr.base.ref}\`) to trigger \`pull_request\` workflows.`,
-                    '',
-                    '_Posted by the `conflicting-pr-notice` workflow (an automation) --- not written by a human._',
-                  ].join('\n');
-                  await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
-                  core.info(`PR #${pr.number}: conflict dissolved by main advance for ${short}; updated notice.`);
-                } else {
-                  core.info(`PR #${pr.number}: ${short} still conflicts (${mergeableState}); leaving warning in place.`);
+                  if (!existing.body.includes('Resolved:')) {
+                    const body = [
+                      marker,
+                      `Resolved: \`${short}\` no longer conflicts with \`${pr.base.ref}\` following a \`main\` advance. Push to this branch (or merge \`${pr.base.ref}\`) to trigger \`pull_request\` workflows.`,
+                      '',
+                      '_Posted by the `conflicting-pr-notice` workflow (an automation) --- not written by a human._',
+                    ].join('\n');
+                    await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+                    core.info(`PR #${pr.number}: conflict dissolved by main advance for ${short}; updated notice.`);
+                  } else {
+                    core.info(`PR #${pr.number}: ${short} remains resolved.`);
+                  }
+                } else if (mergeable === false) {
+                  if (existing.body.includes('Resolved:')) {
+                    const body = [
+                      marker,
+                      `**No \`pull_request\` workflows ran for \`${short}\`.**`,
+                      `This PR conflicts with its base branch (\`mergeable_state: ${mergeableState}\`) following a \`main\` advance. GitHub creates no \`pull_request\` workflow run at all -- not even a skipped one -- while a PR has a merge conflict.`,
+                      'The Claude review, Godot CI, the lint checks, and the demo clip will stay silent until the conflict is resolved.',
+                      '',
+                      `Merge \`${pr.base.ref}\` into this branch and resolve the conflict; the push of that merge commit triggers all of them normally.`,
+                      `A review of the current head can be requested without waiting: \`gh workflow run claude-code-review.yml -R ${owner}/${repo} -f pr_number=${pr.number}\`.`,
+                      '',
+                      '_Posted by the `conflicting-pr-notice` workflow (an automation) --- not written by a human._',
+                    ].join('\n');
+                    await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+                    core.info(`PR #${pr.number}: conflict re-introduced by main advance for ${short}; updated notice.`);
+                  } else {
+                    core.info(`PR #${pr.number}: ${short} still conflicts (${mergeableState}); leaving warning in place.`);
+                  }
                 }
               }
               return;

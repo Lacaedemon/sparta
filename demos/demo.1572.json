@@ -1,4 +1,4 @@
-﻿{
+{
   "skip": true,
   "reason": "CI-only change to the conflicting-pr-notice workflow; no gameplay to record."
 }
