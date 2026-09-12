@@ -57,6 +57,10 @@ static func parse(block: Dictionary) -> Dictionary:
 			}
 			if kind == "slow":
 				patch["speed"] = float(p["speed"])
+			if p.has("screen_factor"):
+				if not _num(p.get("screen_factor")) or float(p["screen_factor"]) <= 0.0 or float(p["screen_factor"]) > 1.0 or not is_finite(float(p["screen_factor"])):
+					return {"error": "map.terrain patch screen_factor must be a finite number in (0.0, 1.0]"}
+				patch["screen_factor"] = float(p["screen_factor"])
 			parsed.append(patch)
 		out["terrain"] = parsed
 	if block.has("spawn_lines"):
@@ -97,6 +101,10 @@ static func serialize(field: Rect2, terrain: Array, spawn_lines: Array,
 		var sight: String = str(p.get("sight", default_sight))
 		if sight != default_sight:
 			patch["sight"] = sight
+		if sight == "screen" and p.has("screen_factor"):
+			var sf: float = float(p["screen_factor"])
+			if not is_equal_approx(sf, Unit.SIGHT_SCREEN_FACTOR):
+				patch["screen_factor"] = sf
 		patches.append(patch)
 	var out: Dictionary = {
 		"field": [field.size.x, field.size.y],
@@ -132,7 +140,9 @@ static func differs_from_default(field: Rect2, terrain: Array, spawn_lines: Arra
 		if a.get("rect") != b.get("rect") or str(a.get("type", "")) != str(b.get("type", "")) \
 				or a_kind != b_kind \
 				or float(a.get("speed", 1.0)) != float(b.get("speed", 1.0)) \
-				or str(a.get("sight", a_default_sight)) != str(b.get("sight", b_default_sight)):
+				or str(a.get("sight", a_default_sight)) != str(b.get("sight", b_default_sight)) \
+				or not is_equal_approx(float(a.get("screen_factor", Unit.SIGHT_SCREEN_FACTOR)),
+					float(b.get("screen_factor", Unit.SIGHT_SCREEN_FACTOR))):
 			return true
 	return false
 

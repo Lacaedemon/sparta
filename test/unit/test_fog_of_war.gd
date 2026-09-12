@@ -99,6 +99,18 @@ func test_perceives_compounding_screening_attenuation() -> void:
 		"target beyond doubly-attenuated range is not perceived")
 
 
+func test_perceives_custom_screen_factor_attenuation() -> void:
+	var o := Vector2(100.0, 100.0)
+	# Custom screen_factor of 0.25 on a dense hedge: 400 wu sight becomes 100 wu.
+	var hedge := {"rect": Rect2(50.0, 130.0, 100.0, 40.0), "type": "forest", "kind": "slow", "sight": "screen", "screen_factor": 0.25}
+	var target_in := Vector2(100.0, 180.0)      # 80 wu away <= 100 wu
+	var target_out := Vector2(100.0, 220.0)     # 120 wu away > 100 wu
+	assert_true(Perception.perceives(o, 400.0, target_in, [hedge]),
+		"target inside custom-attenuated range is perceived")
+	assert_false(Perception.perceives(o, 400.0, target_out, [hedge]),
+		"target outside custom-attenuated range is not perceived")
+
+
 # --- Perception.visible_enemy_uids ---------------------------------------------------
 
 

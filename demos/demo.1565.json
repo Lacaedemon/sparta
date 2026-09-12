@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/fog-terrain-occlusion-1565.json",
-  "caption": "Fog of war phase 1: terrain line-of-sight occlusion and screening. The player cavalry (team 0, sight 420 wu) surveys the battlefield under fog of war. An enemy infantry unit deployed south of the hill (uid 1) is hidden behind the hill occluder despite sitting within sight range (distance 239 wu), while a distant enemy in the forest (uid 2) is hidden by screening attenuation. As the cavalry marches south past the shoulder of the hill (y=580), clear line of sight opens and the enemy unit resolves out of the fog.",
+  "caption": "Fog of war phase 1: terrain line-of-sight occlusion. The player cavalry (team 0, sight 420 wu) surveys the battlefield under fog of war. An enemy infantry unit deployed south of the hill (uid 1) is hidden behind the hill occluder despite sitting within sight range (distance 239 wu). As the cavalry marches south past the shoulder of the hill (y=580), clear line of sight opens and the enemy unit resolves out of the fog by tick 250.",
   "fixed_fps": 30,
   "max_frames": 90,
   "fps": 20,

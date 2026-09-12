@@ -30,19 +30,17 @@ static func perceives(observer_pos: Vector2, sight_range: float, target_pos: Vec
 	if dist_sq > sight_range * sight_range:
 		return false
 
-	# Count distinct screening patches crossed by the segment.
-	var n_screens: int = 0
+	# Attenuate sight range across screening patches crossed by the segment.
+	var eff_range: float = sight_range
 	if not terrain.is_empty():
 		for patch in terrain:
 			var sight: String = patch.get("sight", "block" if patch.get("kind", "block") == "block" else "screen")
 			if sight == "screen":
 				if PathFieldRef.segment_intersects_rect(observer_pos, target_pos, patch["rect"]):
-					n_screens += 1
+					eff_range *= float(patch.get("screen_factor", UnitRef.SIGHT_SCREEN_FACTOR))
 
-	if n_screens > 0:
-		var eff_range: float = sight_range * pow(UnitRef.SIGHT_SCREEN_FACTOR, n_screens)
-		if dist_sq > eff_range * eff_range:
-			return false
+	if dist_sq > eff_range * eff_range:
+		return false
 
 	# Line-of-sight occlusion: blocking terrain patches.
 	if path_field != null:

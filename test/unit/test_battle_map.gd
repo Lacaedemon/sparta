@@ -454,3 +454,40 @@ func test_differs_from_default_detects_sight_axis_override() -> void:
 	assert_true(BattleMap.differs_from_default(d_field, custom_terrain, d_spawn,
 			d_field, d_terrain, d_spawn), "custom sight differs from default map")
 
+
+func test_parse_terrain_screen_factor_validation_and_storage() -> void:
+	var valid: Dictionary = BattleMap.parse({
+		"terrain": [
+			{"rect": [0, 0, 100, 100], "type": "forest", "kind": "slow", "speed": 0.5, "screen_factor": 0.25},
+		],
+	})
+	assert_false(valid.has("error"), "valid screen_factor parses without error")
+	var patches: Array = valid["terrain"]
+	assert_almost_eq(float(patches[0]["screen_factor"]), 0.25, 0.001, "custom screen_factor is stored")
+
+	var invalid_neg: Dictionary = BattleMap.parse({
+		"terrain": [
+			{"rect": [0, 0, 100, 100], "type": "forest", "kind": "slow", "speed": 0.5, "screen_factor": 0.0},
+		],
+	})
+	assert_true(invalid_neg.has("error"), "screen_factor <= 0 is rejected")
+
+	var invalid_large: Dictionary = BattleMap.parse({
+		"terrain": [
+			{"rect": [0, 0, 100, 100], "type": "forest", "kind": "slow", "speed": 0.5, "screen_factor": 1.5},
+		],
+	})
+	assert_true(invalid_large.has("error"), "screen_factor > 1 is rejected")
+
+
+func test_serialize_terrain_screen_factor_omits_default_and_keeps_overrides() -> void:
+	var terrain: Array = [
+		{"rect": Rect2(0, 0, 100, 100), "type": "forest", "kind": "slow", "speed": 0.5, "sight": "screen", "screen_factor": 0.5},
+		{"rect": Rect2(100, 0, 100, 100), "type": "forest", "kind": "slow", "speed": 0.5, "sight": "screen", "screen_factor": 0.25},
+	]
+	var blob: Dictionary = BattleMap.serialize(Rect2(0, 0, 800, 600), terrain, [100.0, 500.0])
+	assert_false(blob["terrain"][0].has("screen_factor"), "default 0.5 screen_factor is omitted")
+	assert_almost_eq(float(blob["terrain"][1].get("screen_factor")), 0.25, 0.001, "custom screen_factor is serialized")
+	var back: Dictionary = BattleMap.parse(blob)
+	assert_almost_eq(float(back["terrain"][1]["screen_factor"]), 0.25, 0.001, "custom screen_factor survives round-trip")
+

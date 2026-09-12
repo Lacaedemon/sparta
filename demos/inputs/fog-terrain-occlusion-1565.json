@@ -1,5 +1,5 @@
 {
-  "_comment": "Fog of war terrain occlusion and screening (phase 1 of docs/fog-of-war-design.md, #1565): player Cavalry (uid 0, sight 420 wu) deployed at (1420, 450) surveys the field under fog of war. Enemy uid 1 at (1275, 640) is deployed south of the hill at Rect2(1150, 380, 250, 200); at tick 15, the line of sight passes directly through the hill and the enemy is occluded and hidden despite being within the 420-wu sight radius (distance 239 wu). Enemy uid 2 at (325, 520) is screened by the forest and also hidden. At tick 8, the player orders the cavalry south to (1420, 700); as the cavalry marches past the southern edge of the hill (y=580), clear line of sight opens and enemy uid 1 is revealed by tick 300.",
+  "_comment": "Fog of war terrain occlusion (phase 1 of docs/fog-of-war-design.md, #1565): player Cavalry (uid 0, sight 420 wu) deployed at (1420, 450) surveys the field under fog of war. Enemy uid 1 at (1275, 640) is deployed south of the hill at Rect2(1150, 380, 250, 200); at ticks 15, 60, and 150, the line of sight passes directly through the hill and the enemy is occluded and hidden despite being within the 420-wu sight radius (distance 239 wu). At tick 8, the player orders the cavalry south to (1420, 700); as the cavalry advances, clear line of sight opens past the hill shoulder and enemy uid 1 is revealed by tick 250.",
   "seed": "1565",
   "fog_of_war": true,
   "camera": [
@@ -28,22 +28,9 @@
       "x": 1275,
       "y": 640,
       "count": 80,
-      "formation": 5,
       "facing": [
-        0,
-        -1
-      ]
-    },
-    {
-      "team": 1,
-      "type": "Infantry",
-      "x": 325,
-      "y": 520,
-      "count": 80,
-      "formation": 5,
-      "facing": [
-        0,
-        -1
+        -1,
+        0
       ]
     }
   ],
@@ -78,8 +65,14 @@
       "value": false
     },
     {
-      "tick": 15,
-      "uid": 2,
+      "tick": 60,
+      "uid": 1,
+      "field": "visible",
+      "value": false
+    },
+    {
+      "tick": 150,
+      "uid": 1,
       "field": "visible",
       "value": false
     },
@@ -87,19 +80,13 @@
       "tick": 250,
       "uid": 1,
       "field": "visible",
-      "value": false
+      "value": true
     },
     {
       "tick": 300,
       "uid": 1,
       "field": "visible",
       "value": true
-    },
-    {
-      "tick": 300,
-      "uid": 2,
-      "field": "visible",
-      "value": false
     }
   ]
 }
