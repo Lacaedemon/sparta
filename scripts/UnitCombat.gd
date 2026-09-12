@@ -8,6 +8,14 @@ class_name UnitCombat
 ## in a fixed order, so battles stay replay-deterministic.
 
 
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+
+## Clearance height in metres (docs/longer-range-missile-design.md, phase 4):
+## a projectile whose height arc clears this threshold passes safely over friendly soldiers
+## instead of being intercepted.
+const INTERCEPTION_CLEARANCE_HEIGHT_M: float = 2.0
+const INTERCEPTION_CLEARANCE_HEIGHT: float = INTERCEPTION_CLEARANCE_HEIGHT_M * WorldScaleRef.WU_PER_M
+
 ## Extra morale debuff for a flank/rear attack, ON TOP OF the extra casualties it already
 ## deals. A rear hit already kills more men (the flank multiplier scales the casualty count,
 ## and rear blows bypass shield/active defence), and morale erosion tracks the casualty
@@ -192,7 +200,8 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 	# RNG consumed first so the seeded stream stays deterministic regardless of which unit
 	# is ultimately hit.
 	var rng_roll: float = Replay.rng.randf_range(0.6, 1.4)
-	var interceptor: Unit = friendly_interceptor(u, enemy)
+	var angle: float = _volley_angle(u, enemy)
+	var interceptor: Unit = friendly_interceptor(u, enemy, angle)
 	var target: Unit = enemy if interceptor == null else interceptor
 	var mods := order_mode_modifiers(u, target)
 	var eff_attack: float = float(u.attack) * UnitMorale.fatigue_attack_factor(u) * u.cohesion \
@@ -256,7 +265,7 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 				# each arrow on the shield arc of the man it reaches, so a front turned toward the
 				# archers loses far fewer men than an exposed flank does.
 				ProjectileField.active.launch(u.position, target.position, u.uid, target.uid,
-						volley_size, flank, _volley_angle(u, target))
+						volley_size, flank, angle, u.missile_gravity)
 			else:
 				# No projectile field (headless unit tests): resolve immediately at the shooter.
 				# This path has no flight and no per-arrow shield test -- it is the whole volley
@@ -268,24 +277,41 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 		take_casualties(target, raw, u)
 
 
-## The launch angle a volley from `shooter` flies at (radians above horizontal): the
-## shooter's own profile angle -- a lob for a bow, a flat throw for a pilum -- which with the
-## field's gravity fixes how long the volley hangs in the air. Still a seam rather than an
-## inline field read: the auto flat-vs-arced choice by line of sight / cover, and the
-## range-driven angle pick the missile design proposes, are later slices that decide here.
-static func _volley_angle(shooter: Unit, _target: Unit) -> float:
-	return shooter.missile_launch_angle
+## The launch angle a volley from `shooter` flies at (radians above horizontal):
+## if the shooter's missile_launch_angle is set to a specific non-arced angle (e.g. ANGLE_FLAT
+## or an explicit scenario/unit override), that angle is honored directly.
+## For the default arced profile (ANGLE_ARCED), dynamic trajectory selection applies:
+## flat (ANGLE_FLAT) inside TRAJECTORY_FLAT_FRACTION of maximum range, and beyond that the
+## lower solving angle theta = 0.5 * arcsin(dist / max_range), bounded below by ANGLE_FLAT
+## and above by PI / 4.
+static func _volley_angle(shooter: Unit, target: Unit) -> float:
+	if shooter.missile_launch_angle != ProjectilePhysics.ANGLE_ARCED:
+		return shooter.missile_launch_angle
+	if target == null:
+		return shooter.missile_launch_angle
+	var dist: float = shooter.position.distance_to(target.position)
+	var max_range: float = shooter.missile_range
+	if dist <= 0.0 or max_range <= 0.0:
+		return shooter.missile_launch_angle
+	if dist <= ProjectilePhysics.TRAJECTORY_FLAT_FRACTION * max_range:
+		return ProjectilePhysics.ANGLE_FLAT
+	var solving_angle: float = ProjectilePhysics.lower_solving_angle(dist, max_range)
+	return maxf(ProjectilePhysics.ANGLE_FLAT, solving_angle)
 
 
 ## Return the nearest living friendly unit that lies in the straight-line flight path from
 ## `u` toward `target`, or null if the path is clear. A friendly blocks a shot when their
-## centre is within their own separation_radius of the flight line AND the closest point on
-## that line is strictly between shooter and target (projection in [0.05, 0.95]).
-static func friendly_interceptor(u: Unit, target: Unit) -> Unit:
+## centre is within their own separation_radius of the flight line, the closest point on
+## that line is strictly between shooter and target (projection in [0.05, 0.95]), AND the
+## projectile arc at that point is at or below clearance_height.
+static func friendly_interceptor(u: Unit, target: Unit, angle: float = NAN, clearance_height: float = INTERCEPTION_CLEARANCE_HEIGHT) -> Unit:
 	var seg: Vector2 = target.position - u.position
 	var seg_len_sq: float = seg.length_squared()
 	if seg_len_sq < 0.001:
 		return null
+	var launch_angle: float = _volley_angle(u, target) if is_nan(angle) else angle
+	var gravity: float = u.missile_gravity if ("missile_gravity" in u) else ProjectileField.GRAVITY
+	var dist: float = sqrt(seg_len_sq)
 	var closest: Unit = null
 	var closest_proj: float = INF
 	for u_node in u.get_tree().get_nodes_in_group("units"):
@@ -296,9 +322,11 @@ static func friendly_interceptor(u: Unit, target: Unit) -> Unit:
 		if proj < 0.05 or proj > 0.95:
 			continue
 		var foot: Vector2 = u.position + seg * proj
-		if (other.position - foot).length_squared() < other.separation_radius * other.separation_radius and proj < closest_proj:
-			closest = other
-			closest_proj = proj
+		if (other.position - foot).length_squared() < other.separation_radius * other.separation_radius:
+			var h: float = ProjectilePhysics.height_at_fraction(dist, gravity, launch_angle, proj)
+			if h <= clearance_height and proj < closest_proj:
+				closest = other
+				closest_proj = proj
 	return closest
 
 

@@ -19,7 +19,8 @@ func test_scenario_spawns_exactly_its_units_with_types_positions_and_overrides()
 		{"team": 0, "type": "Spearmen", "x": 500, "y": 250, "count": 40, "morale": 30.0,
 			"facing": [1, 0], "disciplined": false, "training": 0.2,
 			"walk_advance": false, "reform_before_move": false, "file_major_reform": false,
-			"ammo": 5, "under_fire_morale_floor": 45.0},
+			"ammo": 5, "under_fire_morale_floor": 45.0,
+			"missile_range": 220.0, "missile_launch_angle": 0.5},
 		# A plain enemy cavalry unit: no facing override, so it takes the team-1 default (up),
 		# and no disciplined override, so it takes Unit's own default (true).
 		{"team": 1, "type": "Cavalry", "x": 500, "y": 750},
@@ -73,6 +74,12 @@ func test_scenario_spawns_exactly_its_units_with_types_positions_and_overrides()
 	assert_eq(spear.missile_ammo, 5, "the ammo override sets missile_ammo")
 	assert_almost_eq(spear.under_fire_morale_floor, 45.0, 0.001,
 		"the under_fire_morale_floor override sets under_fire_morale_floor")
+	assert_almost_eq(spear.missile_range, 220.0, 0.001,
+		"the missile_range override sets missile_range")
+	assert_almost_eq(spear.missile_launch_angle, 0.5, 0.001,
+		"the missile_launch_angle override sets missile_launch_angle")
+	assert_almost_eq(UnitCombat._volley_angle(spear, team1[0]), 0.5, 0.001,
+		"a unit with missile_launch_angle override fires at that angle")
 
 	for horse: Unit in team1:
 		assert_true(horse.is_cavalry, "type 'Cavalry' maps onto the cavalry loadout")

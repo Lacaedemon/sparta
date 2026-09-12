@@ -17,10 +17,12 @@ class_name ProjectilePhysics
 const ANGLE_FLAT: float = 20.0 * PI / 180.0
 const ANGLE_ARCED: float = 55.0 * PI / 180.0
 
-# Below this squared length a direction vector is treated as carrying no direction at all
-# (a soldier whose facing was never set, or an arrow that landed on top of its own launch
-# point). Named rather than inlined so every guard that needs it agrees on the threshold.
 const DEGENERATE_LENGTH_SQ: float = 1e-6
+
+# Fraction of weapon maximum range inside which auto-trajectory chooses a flat shot (ANGLE_FLAT)
+# rather than an elevated solving angle.
+const TRAJECTORY_FLAT_FRACTION: float = 0.5
+
 
 
 ## Launch speed and flight time to carry a projectile a level-ground horizontal distance
@@ -57,6 +59,29 @@ static func peak_height(speed: float, angle: float, gravity: float) -> float:
 ## `f` = t / flight_time; clamped so a sampler slightly past landing stays at the target.
 static func ground_at(from: Vector2, to: Vector2, f: float) -> Vector2:
 	return from.lerp(to, clampf(f, 0.0, 1.0))
+
+
+## Lower launch angle (radians) solving the range equation R = v^2 sin(2*theta)/g for target
+## distance `dist` given maximum range `max_range` at 45 degrees:
+## theta = 0.5 * arcsin(clamp(dist / max_range, 0, 1)) <= 45 deg.
+static func lower_solving_angle(dist: float, max_range: float) -> float:
+	if max_range <= 0.0 or dist <= 0.0:
+		return 0.0
+	var ratio: float = clampf(dist / max_range, 0.0, 1.0)
+	return 0.5 * asin(ratio)
+
+
+## Height above the launch level at horizontal flight fraction `f` in [0, 1] (f = x / dist)
+## for a shot launched across level-ground horizontal distance `dist` at launch angle `angle`
+## under `gravity`. Evaluates height_at at t = f * flight_time; returns 0.0 for degenerate
+## or non-positive solves.
+static func height_at_fraction(dist: float, gravity: float, angle: float, f: float) -> float:
+	var sol: Dictionary = solve_launch(dist, gravity, angle)
+	if sol["flight_time"] <= 0.0:
+		return 0.0
+	var t: float = clampf(f, 0.0, 1.0) * sol["flight_time"]
+	return height_at(sol["speed"], angle, gravity, t)
+
 
 
 ## The three ways a landing arrow can meet a shield. PIERCE is the only outcome that

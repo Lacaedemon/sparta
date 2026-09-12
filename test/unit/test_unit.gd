@@ -4693,7 +4693,8 @@ func test_friendly_fire_intercepts_unit_in_path() -> void:
 
 	var blocker: Unit = _make_unit()
 	blocker.team = 0
-	blocker.position = Vector2(80, 0)   # directly between archer and enemy
+	# Positioned along flight path at height ~34.4 wu, safely below clearance threshold (40 wu)
+	blocker.position = Vector2(50, 0)
 
 	var enemy: Unit = _make_unit()
 	enemy.team = 1

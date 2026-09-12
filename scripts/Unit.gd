@@ -1186,6 +1186,7 @@ var missile_damage_factor: float = RANGED_DAMAGE_FACTOR
 var missile_accuracy_at_max: float = RANGED_ACCURACY_AT_MAX
 var missile_launch_angle: float = ProjectilePhysics.ANGLE_ARCED
 var missile_ammo: int = MissileProfile.AMMO_UNLIMITED
+var missile_gravity: float = ProjectileField.GRAVITY
 
 # Fatigue builds while FIGHTING and recovers while resting; it bites into attack
 # so rotating tired regiments out via line relief is a real tactical lever.
@@ -2366,6 +2367,7 @@ func equip_missile(type_id: int) -> bool:
 	missile_accuracy_at_max = profile.accuracy_at_max
 	missile_launch_angle = profile.launch_angle
 	missile_ammo = profile.ammo
+	missile_gravity = profile.gravity
 	detection_range = maxf(detection_range, missile_range)
 	skirmish_kite_distance = missile_range * SKIRMISH_KITE_FRACTION
 	return true
@@ -8526,6 +8528,7 @@ func to_snapshot_dict() -> Dictionary:
 		"missile_accuracy_at_max": missile_accuracy_at_max,
 		"missile_launch_angle": missile_launch_angle,
 		"missile_ammo": missile_ammo,
+		"missile_gravity": missile_gravity,
 		"under_fire_morale_floor": under_fire_morale_floor,
 		"under_fire_morale_erosion": under_fire_morale_erosion,
 		"detection_range": detection_range,
@@ -8678,6 +8681,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	missile_accuracy_at_max = float(d.get("missile_accuracy_at_max", RANGED_ACCURACY_AT_MAX))
 	missile_launch_angle = float(d.get("missile_launch_angle", ProjectilePhysics.ANGLE_ARCED))
 	missile_ammo = int(d.get("missile_ammo", MissileProfile.AMMO_UNLIMITED))
+	missile_gravity = float(d.get("missile_gravity", ProjectileField.GRAVITY))
 	under_fire_morale_floor = float(d.get("under_fire_morale_floor", UnitMorale.UNDER_FIRE_MORALE_FLOOR))
 	under_fire_morale_erosion = float(d.get("under_fire_morale_erosion", UnitMorale.UNDER_FIRE_MORALE_EROSION_PER_SEC))
 	detection_range = float(d.get("detection_range", DETECTION_RANGE))

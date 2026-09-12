@@ -1,0 +1,134 @@
+{
+  "_comment": "Trajectory selection and height-aware friendly interception (phase 4 of docs/longer-range-missile-design.md): player archers posted at (600, 200) with a 300-wu range lob a volley over a friendly infantry regiment holding at (600, 320), directly in the line of fire toward an enemy infantry unit positioned at (600, 480) (280 wu away). At 280 wu with dynamic trajectory solving, the volley reaches approximately 47.1 wu of ballistic arc height at the friendly line (proj = 0.43) -- clearing the 40.0 wu (2.0 m) shoulder/head clearance threshold. The volley sails cleanly overhead without friendly interception, leaving the friendly line unharmed (50/50 soldiers intact) while striking the enemy.",
+  "seed": "20260912",
+  "drill": true,
+  "all_teams_control": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Archers",
+      "x": 600,
+      "y": 200,
+      "count": 10,
+      "missile_range": 300.0,
+      "facing": [
+        0,
+        1
+      ]
+    },
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 600,
+      "y": 320,
+      "count": 50,
+      "formation": 4,
+      "facing": [
+        0,
+        1
+      ]
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 600,
+      "y": 480,
+      "count": 50,
+      "facing": [
+        0,
+        -1
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 600.0,
+      "y": 340.0,
+      "zoom": 1.2
+    }
+  ],
+  "steps": [
+    {
+      "tick": 10,
+      "click": [
+        600,
+        320
+      ]
+    },
+    {
+      "tick": 60,
+      "click": [
+        600,
+        480
+      ]
+    }
+  ],
+  "frames": [
+    8,
+    30,
+    60,
+    90,
+    120
+  ],
+  "state": [
+    8,
+    30,
+    60,
+    90,
+    120
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        600,
+        200
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 1,
+      "field": "position",
+      "value": [
+        600,
+        320
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 2,
+      "field": "position",
+      "value": [
+        600,
+        480
+      ]
+    },
+    {
+      "tick": [
+        8,
+        120
+      ],
+      "uid": 1,
+      "field": "soldiers",
+      "value": 50
+    },
+    {
+      "tick": [
+        8,
+        120
+      ],
+      "uid": 0,
+      "field": "state",
+      "value": "FIGHTING"
+    },
+    {
+      "tick": 120,
+      "uid": 2,
+      "field": "under_fire",
+      "value": true
+    }
+  ]
+}
