@@ -1,0 +1,8 @@
+﻿{
+  "input": "demos/inputs/suppression-ammo-1567.json",
+  "caption": "Longer-range missile model phase 3: suppression morale floor and ammunition. Player skirmishers engage an enemy heavy infantry formation (locked shield wall, melee-only) from standoff reach. Under fire without the ability to reply, the infantry formation's morale erodes toward the suppression floor (50.0 / shaken threshold) where it flattens without routing unaided. Units track missile ammunition and halt firing when empty.",
+  "fixed_fps": 30,
+  "max_frames": 480,
+  "fps": 20,
+  "width": 640
+}

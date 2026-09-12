@@ -1009,9 +1009,16 @@ var file_major_reform: bool:
 		return file_major_reform_mode == ReformMode.FILE_MAJOR
 	set(value):
 		file_major_reform_mode = ReformMode.FILE_MAJOR if value else ReformMode.ROW_MAJOR
-# Set to true in _think when a ranged enemy is within RANGED_RANGE; drives the
-# AUTO-pace jog escalation. Cleared each frame before the check.
+# Set to true in _think when an enemy ranged unit with ammunition has this unit in reach;
+# drives the AUTO-pace jog escalation. Cleared each frame before the check.
 var _under_fire: bool = false
+# Suppression parameters (docs/longer-range-missile-design.md, phase 3): incoming fire
+# erodes morale when the unit cannot reply, halting at the floor so suppression shakes
+# a formation without breaking it unaided.
+var under_fire_morale_erosion: float = UnitMorale.UNDER_FIRE_MORALE_EROSION_PER_SEC
+var under_fire_morale_floor: float = UnitMorale.UNDER_FIRE_MORALE_FLOOR
+# True when under fire and able to reply (has ranged capability, ammo, and range to reach all threats).
+var _under_fire_can_reply: bool = false
 # Set to true in _think when ANY live-or-routing enemy regiment is within melee contact
 # range of EITHER side's own reach -- PURE PROXIMITY, independent of order_mode/state
 # (unlike is_engaged(), which only goes true once this unit itself decides to fight).
@@ -1178,6 +1185,7 @@ var missile_interval: float = RANGED_INTERVAL
 var missile_damage_factor: float = RANGED_DAMAGE_FACTOR
 var missile_accuracy_at_max: float = RANGED_ACCURACY_AT_MAX
 var missile_launch_angle: float = ProjectilePhysics.ANGLE_ARCED
+var missile_ammo: int = MissileProfile.AMMO_UNLIMITED
 
 # Fatigue builds while FIGHTING and recovers while resting; it bites into attack
 # so rotating tired regiments out via line relief is a real tactical lever.
@@ -2357,6 +2365,7 @@ func equip_missile(type_id: int) -> bool:
 	missile_damage_factor = profile.damage_factor
 	missile_accuracy_at_max = profile.accuracy_at_max
 	missile_launch_angle = profile.launch_angle
+	missile_ammo = profile.ammo
 	detection_range = maxf(detection_range, missile_range)
 	skirmish_kite_distance = missile_range * SKIRMISH_KITE_FRACTION
 	return true
@@ -2372,6 +2381,11 @@ func missile_accuracy(dist_wu: float) -> float:
 ## Whether this unit carries a non-default missile profile.
 func carries_non_default_missile_profile() -> bool:
 	return missile_type_id != LoadoutRegistry.MISSILE_BOW
+
+
+## Whether this unit has ammunition remaining for ranged attacks.
+func has_missile_ammo() -> bool:
+	return missile_ammo < 0 or missile_ammo > 0
 
 
 ## Returns false, changing nothing, for any id can_equip_weapon rejects -- a malformed
@@ -2573,18 +2587,29 @@ func _think(delta: float) -> void:
 				state = State.IDLE
 			return
 
-	# Under-fire detection for AUTO pace: true when any alive enemy ranged unit has this
-	# unit inside ITS OWN missile range (i.e. could be shooting at us this frame) -- the
-	# shooter's profile decides the beaten zone, not a global reach.
+	# Under-fire detection for AUTO pace and suppression morale (docs/longer-range-missile-design.md, phase 3):
+	# true when any alive enemy ranged unit with ammunition has this unit inside ITS OWN missile range.
+	# _under_fire_can_reply is true only when under fire AND this unit has ranged capability, ammo,
+	# and sufficient reach to reply to every enemy threatening it.
 	# Must run before the ORDER_SUPPORT early return so _support_tick's _move_to
 	# calls see the correct value.
 	_under_fire = false
+	_under_fire_can_reply = false
+	var had_threat: bool = false
+	var cannot_reply: bool = false
 	for u in get_tree().get_nodes_in_group("units"):
-		if u is Unit and u.team != team and u.is_ranged and u.state != State.DEAD \
-				and u.state != State.ROUTING \
-				and position.distance_squared_to(u.position) <= u.missile_range * u.missile_range:
-			_under_fire = true
-			break
+		if u is Unit and u.team != team and u.is_ranged and u.has_missile_ammo() \
+				and u.state != State.DEAD and u.state != State.ROUTING:
+			var d_sq: float = position.distance_squared_to(u.position)
+			if d_sq <= u.missile_range * u.missile_range:
+				had_threat = true
+				var can_reply_to_u: bool = is_ranged and has_missile_ammo() \
+						and d_sq <= missile_range * missile_range
+				if not can_reply_to_u:
+					cannot_reply = true
+	if had_threat:
+		_under_fire = true
+		_under_fire_can_reply = not cannot_reply
 
 	# Support stance: guard a friendly ward — engage threats near it, else
 	# shadow it. Handled up front so it overrides the normal target/move logic. If
@@ -2681,7 +2706,7 @@ func _think(delta: float) -> void:
 		# to fire under a plain move order -- see ORDER_MARCH_TO_CONTACT's own doc comment
 		# for why has_move_target is deliberately left untouched (the march resumes on its
 		# own once the fight ends).
-		if is_ranged and not in_contact and dist_sq <= missile_range * missile_range \
+		if is_ranged and has_missile_ammo() and not in_contact and dist_sq <= missile_range * missile_range \
 				and (target_enemy != null or not has_move_target or chasing \
 					or order_mode == ORDER_MARCH_TO_CONTACT):
 			state = State.FIGHTING
@@ -2994,7 +3019,7 @@ func _support_tick(delta: float) -> void:
 		var dist_sq: float = position.distance_squared_to(threat.position)
 		var contact_dist: float = attack_range + RADIUS + threat.RADIUS
 		var in_contact: bool = dist_sq <= contact_dist * contact_dist
-		if is_ranged and not in_contact and dist_sq <= missile_range * missile_range:
+		if is_ranged and has_missile_ammo() and not in_contact and dist_sq <= missile_range * missile_range:
 			state = State.FIGHTING
 			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
 				_attack_cd = missile_interval
@@ -8500,6 +8525,9 @@ func to_snapshot_dict() -> Dictionary:
 		"missile_damage_factor": missile_damage_factor,
 		"missile_accuracy_at_max": missile_accuracy_at_max,
 		"missile_launch_angle": missile_launch_angle,
+		"missile_ammo": missile_ammo,
+		"under_fire_morale_floor": under_fire_morale_floor,
+		"under_fire_morale_erosion": under_fire_morale_erosion,
 		"detection_range": detection_range,
 		"skirmish_kite_distance": skirmish_kite_distance,
 		"order_response_delay": order_response_delay,
@@ -8547,7 +8575,8 @@ func to_snapshot_dict() -> Dictionary:
 		"file_assignment_files": _file_assignment_files,
 		"square_slot_files": _square_slot_files,
 		"row_slot_files": _row_slot_files,
-		"under_fire": _under_fire, "in_enemy_contact": _in_enemy_contact,
+		"under_fire": _under_fire, "under_fire_can_reply": _under_fire_can_reply,
+		"in_enemy_contact": _in_enemy_contact,
 		"attack_cd": _attack_cd, "pin_down_exposure_cd": _pin_down_exposure_cd,
 		"rout_timer": _rout_timer, "shattered": _shattered,
 		"far_tier_casualty_carry": _far_tier_casualty_carry,
@@ -8648,6 +8677,9 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	missile_damage_factor = float(d.get("missile_damage_factor", RANGED_DAMAGE_FACTOR))
 	missile_accuracy_at_max = float(d.get("missile_accuracy_at_max", RANGED_ACCURACY_AT_MAX))
 	missile_launch_angle = float(d.get("missile_launch_angle", ProjectilePhysics.ANGLE_ARCED))
+	missile_ammo = int(d.get("missile_ammo", MissileProfile.AMMO_UNLIMITED))
+	under_fire_morale_floor = float(d.get("under_fire_morale_floor", UnitMorale.UNDER_FIRE_MORALE_FLOOR))
+	under_fire_morale_erosion = float(d.get("under_fire_morale_erosion", UnitMorale.UNDER_FIRE_MORALE_EROSION_PER_SEC))
 	detection_range = float(d.get("detection_range", DETECTION_RANGE))
 	skirmish_kite_distance = float(d.get("skirmish_kite_distance", SKIRMISH_KITE_DISTANCE))
 	order_response_delay = float(d["order_response_delay"])
@@ -8720,6 +8752,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_square_slot_files = int(d["square_slot_files"])
 	_row_slot_files = int(d.get("row_slot_files", -1))
 	_under_fire = bool(d["under_fire"])
+	_under_fire_can_reply = bool(d.get("under_fire_can_reply", false))
 	_in_enemy_contact = bool(d["in_enemy_contact"])
 	_attack_cd = float(d["attack_cd"])
 	_pin_down_exposure_cd = float(d["pin_down_exposure_cd"])

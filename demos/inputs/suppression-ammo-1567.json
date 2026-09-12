@@ -1,0 +1,146 @@
+{
+  "_comment": "Suppression morale floor and ammunition (phase 3 of docs/longer-range-missile-design.md): a fresh, minimal two-regiment matchup. A player skirmisher (2 archers, default bow profile with 8 m = 160 wu reach) stands at (600, 300) facing south towards an enemy heavy Infantry regiment (50 men, locked shield wall, melee-only) posted at (600, 440), 140 wu away -- inside archer reach, outside melee contact. all_teams_control keeps both sides under test control, and drill holds the sim open. The infantry begins with 52.0 morale and cannot reply to the incoming arrows; under fire without reply, its morale erodes at 1.5/s towards the suppression floor (50.0 / THRESHOLD_SHAKEN). By tick 80 the morale reaches 50.0 exactly and flattens there across the remaining ticks of the clip rather than routing unaided. The click at tick 12 selects the infantry to display its shaken condition on the HUD. State is sampled every 30 ticks across the 480-tick clip.",
+  "seed": "20260912",
+  "drill": true,
+  "all_teams_control": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Archers",
+      "x": 600,
+      "y": 300,
+      "count": 2,
+      "facing": [
+        0,
+        1
+      ]
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 600,
+      "y": 440,
+      "count": 50,
+      "morale": 52.0,
+      "under_fire_morale_floor": 50.0,
+      "formation": 4,
+      "facing": [
+        0,
+        -1
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 600.0,
+      "y": 370.0,
+      "zoom": 1.5
+    }
+  ],
+  "steps": [
+    {
+      "tick": 12,
+      "click": [
+        600,
+        440
+      ]
+    }
+  ],
+  "frames": [
+    8,
+    120,
+    240,
+    470
+  ],
+  "state": [
+    8,
+    30,
+    60,
+    90,
+    120,
+    150,
+    180,
+    210,
+    240,
+    270,
+    300,
+    330,
+    360,
+    390,
+    420,
+    450,
+    470
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        600,
+        300
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 1,
+      "field": "position",
+      "value": [
+        600,
+        440
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 1,
+      "field": "morale",
+      "value": 51.8
+    },
+    {
+      "tick": [
+        30,
+        470
+      ],
+      "uid": 0,
+      "field": "state",
+      "value": "FIGHTING"
+    },
+    {
+      "tick": [
+        30,
+        470
+      ],
+      "uid": 0,
+      "field": "target_enemy_uid",
+      "value": 1
+    },
+    {
+      "tick": [
+        30,
+        470
+      ],
+      "uid": 1,
+      "field": "under_fire",
+      "value": true
+    },
+    {
+      "tick": [
+        30,
+        470
+      ],
+      "uid": 1,
+      "field": "under_fire_can_reply",
+      "value": false
+    },
+    {
+      "tick": [
+        90,
+        120
+      ],
+      "uid": 1,
+      "field": "morale",
+      "value": 50.0
+    }
+  ]
+}

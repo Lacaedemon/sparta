@@ -172,9 +172,9 @@ static var _mounts: Dictionary = {
 # historical shape, per the design note's open question on rates.
 static var _missiles: Dictionary = {
 	MISSILE_BOW: MissileProfile.make(MISSILE_BOW, "Bow", 8.0, 1.0, 0.7, 1.0,
-			ProjectilePhysics.ANGLE_ARCED),
+			ProjectilePhysics.ANGLE_ARCED, MissileProfile.AMMO_UNLIMITED),
 	MISSILE_PILUM: MissileProfile.make(MISSILE_PILUM, "Pilum", 15.0, 2.0, 0.7, 0.5,
-			ProjectilePhysics.ANGLE_FLAT),
+			ProjectilePhysics.ANGLE_FLAT, 2),
 }
 
 

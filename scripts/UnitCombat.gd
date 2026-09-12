@@ -183,6 +183,12 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 	# loosing a second, rolled volley for the same tick.
 	if u.tier == FormationTier.FAR:
 		return
+	# Finite ammunition check (docs/longer-range-missile-design.md, phase 3): empty units
+	# cannot loose. Decrements after passing the check before the RNG draw.
+	if not u.has_missile_ammo():
+		return
+	if u.missile_ammo > 0:
+		u.missile_ammo -= 1
 	# RNG consumed first so the seeded stream stays deterministic regardless of which unit
 	# is ultimately hit.
 	var rng_roll: float = Replay.rng.randf_range(0.6, 1.4)

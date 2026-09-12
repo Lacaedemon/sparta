@@ -9,6 +9,8 @@ extends Resource
 
 const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 
+const AMMO_UNLIMITED: int = -1
+
 @export var id: int
 @export var display_name: String
 # Maximum reach in metres -- the authored value, the one the stat tables speak in.
@@ -29,12 +31,17 @@ const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 # flight time to a given distance (ProjectilePhysics.solve_launch): a lob hangs in the
 # air, a flat throw arrives sooner.
 @export var launch_angle: float
+# Ammunition count for this weapon type (docs/longer-range-missile-design.md, phase 3):
+# AMMO_UNLIMITED (-1) means infinite supply (bows/slings); positive integers enforce a
+# finite quiver or shaft bundle (e.g. 2 pila).
+@export var ammo: int = AMMO_UNLIMITED
 
 
 ## Build one interned type instance. Registry construction only -- everything else reads
 ## shared instances through LoadoutRegistry.missile(id).
 static func make(p_id: int, p_name: String, p_range_m: float, p_interval_s: float,
-		p_damage_factor: float, p_accuracy_at_max: float, p_launch_angle: float) -> MissileProfile:
+		p_damage_factor: float, p_accuracy_at_max: float, p_launch_angle: float,
+		p_ammo: int = AMMO_UNLIMITED) -> MissileProfile:
 	var m := MissileProfile.new()
 	m.id = p_id
 	m.display_name = p_name
@@ -44,6 +51,7 @@ static func make(p_id: int, p_name: String, p_range_m: float, p_interval_s: floa
 	m.damage_factor = p_damage_factor
 	m.accuracy_at_max = p_accuracy_at_max
 	m.launch_angle = p_launch_angle
+	m.ammo = p_ammo
 	return m
 
 
