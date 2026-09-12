@@ -266,7 +266,7 @@ enum GroupAttackMode { FOCUSED = 0, DISTRIBUTED = 1 }
 ## Reinforcement insertion axis carried on an order whose target is a friendly outside the
 ## selection (docs/reinforcement-insertion-design.md): NONE is every ordinary order (and the
 ## omitted default in a recorded replay); FILES interjects the reserve's men as whole files,
-## doubling the host's frontage. RANKS is reserved for the depth axis, not yet wired.
+## doubling the host's frontage; RANKS interjects men as whole ranks, deepening the host.
 enum ReinforceAxis { NONE = 0, FILES = 1, RANKS = 2 }
 
 const GROUP_ATTACK_MODE_NAMES := {
@@ -2818,9 +2818,9 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				# file into the host's ranks. Install the REINFORCE order first, then arm the
 				# approach on it (the order owns the pass-through link, as a relief's does).
 				# The host keeps whatever it was doing. The admission guard above already
-				# skipped every refused pair (including the not-yet-wired RANKS axis), so
-				# begin's own re-check is defensive: a pair that slips past it arms nothing
-				# and is halted, and that no-op order retires next tick.
+				# skipped every refused pair (including unsupported axes), so begin's own
+				# re-check is defensive: a pair that slips past it arms nothing and is halted,
+				# and that no-op order retires next tick.
 				var reinforce_order := Order.new_reinforce(target_unit.uid, reinforce)
 				u.set_current_order(reinforce_order)
 				UnitReinforce.begin(u, target_unit, reinforce_order)

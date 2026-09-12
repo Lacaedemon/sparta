@@ -346,7 +346,7 @@ func _dispatch_fixed_chord(event: InputEventKey) -> bool:
 	if not (event.shift_pressed or event.ctrl_pressed):
 		return false
 	if _is_key(event, KEY_M) and event.shift_pressed and event.ctrl_pressed:
-		_arm_reinforce(BattleRef.ReinforceAxis.RANKS)   # reserved: refused until the ranks axis lands
+		_arm_reinforce(BattleRef.ReinforceAxis.RANKS)   # next RMB on a friendly inserts by ranks
 		return true
 	elif _is_key(event, KEY_M) and event.shift_pressed:
 		_arm_reinforce(BattleRef.ReinforceAxis.FILES)   # next RMB on a friendly inserts by files
@@ -683,13 +683,12 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 	Sfx.play(&"order")
 
 
-## Arm a one-shot reinforcement insertion along `axis` for the next right-click on a friendly.
-## An axis the guard refuses outright (RANKS, until it is wired) flashes the guard's own
-## reason and arms nothing, so the chord neither merges nor inserts by files.
+## Arm a one-shot reinforcement insertion along `axis` (FILES or RANKS) for the next right-click
+## on a friendly. An unsupported axis flashes the guard's own refusal reason and arms nothing.
 func _arm_reinforce(axis: int) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK or not has_selection():
 		return
-	if axis != BattleRef.ReinforceAxis.FILES:
+	if axis != BattleRef.ReinforceAxis.FILES and axis != BattleRef.ReinforceAxis.RANKS:
 		# Refused whether or not a live unit is found: a selection whose units all died
 		# this tick must not arm the axis with the wrong HUD message either.
 		if _hud != null:
@@ -697,7 +696,10 @@ func _arm_reinforce(axis: int) -> void:
 		return
 	_armed_reinforce = axis
 	if _hud != null:
-		_hud.flash_message("Reinforce: right-click the friendly regiment to file into")
+		var msg: String = "Reinforce: right-click the friendly regiment to deepen" \
+				if axis == BattleRef.ReinforceAxis.RANKS \
+				else "Reinforce: right-click the friendly regiment to file into"
+		_hud.flash_message(msg)
 
 
 ## The refusal reason of the first selected unit that may not reinforce `host` along `axis`

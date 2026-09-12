@@ -3,9 +3,10 @@ class_name ReinforceGuard
 ## file into a host right now. Pure and static, so the HUD preview, Battle's apply site,
 ## and the per-tick approach all refuse identically, in live play and in replay alike.
 
-## Battle.ReinforceAxis.FILES, mirrored as an int (as Unit mirrors Battle.OrderMode) so this
-## helper stays decoupled from Battle.gd. The only axis wired so far: RANKS is refused.
+## Battle.ReinforceAxis values, mirrored as ints (as Unit mirrors Battle.OrderMode) so this
+## helper stays decoupled from Battle.gd.
 const AXIS_FILES: int = 1
+const AXIS_RANKS: int = 2
 
 
 ## Why `reserve` may not reinforce `host` along `axis` right now, or "" when it may: the HUD
@@ -13,8 +14,8 @@ const AXIS_FILES: int = 1
 ## where live play did, and again every tick of the approach so a pair that stops qualifying
 ## mid-march halts instead of committing. `axis` is a Battle.ReinforceAxis value.
 static func refusal_reason(reserve: Unit, host: Unit, axis: int = AXIS_FILES) -> String:
-	if axis != AXIS_FILES:
-		return "Insertion by ranks is not yet available"
+	if axis != AXIS_FILES and axis != AXIS_RANKS:
+		return "Unsupported reinforcement axis"
 	if reserve == host:
 		return "A regiment cannot reinforce itself"
 	if reserve.team != host.team:

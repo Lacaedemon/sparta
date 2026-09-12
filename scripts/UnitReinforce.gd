@@ -12,17 +12,11 @@ const ReinforceLayoutRef = preload("res://scripts/ReinforceLayout.gd")
 ## Battle.OrderMode.NORMAL mirrored as an int, matching Unit.order_mode's decoupling.
 const ORDER_MODE_NORMAL: int = 0
 
-## Default heading agreement the commit waits for (radians between the two facings).
-## Calibrated from recordings.
-## Twenty degrees tolerates march drift without stalling the commit.
+## Default heading agreement the commit waits for (twenty degrees tolerates march drift).
 const HEADING_TOLERANCE_RAD: float = deg_to_rad(20.0)
 
-## Arm the approach on `order` (the reserve's REINFORCE order, already current): link the
-## pair, drop the reserve's stance to NORMAL (a persistent auto-targeting stance such as
-## CHASE would otherwise pull it off the rendezvous at the first nearby enemy), and aim it
-## at the rendezvous with the host's heading held; the host keeps whatever it was doing.
-## Battle refuses a bad pair before installing the order; this re-check halts the reserve
-## where it stands for anything that slips past (the dangling order retires next tick).
+## Arm the approach on `order`: link the pair, drop the reserve's stance to NORMAL,
+## and aim it at the rendezvous with the host's heading held; the host keeps its order.
 static func begin(reserve: Unit, host: Unit, order: Order) -> void:
 	if ReinforceGuard.refusal_reason(reserve, host, order.reinforce_axis) != "":
 		_halt(reserve, order)
@@ -50,11 +44,8 @@ static func update(reserve: Unit, heading_tolerance_rad: float = HEADING_TOLERAN
 			and _bodies_aligned(reserve) and _bodies_aligned(host):
 		commit(reserve, host)
 
-## The reserve's men file into the host: interleave the ids, carry the per-soldier arrays
-## across, pool strength, install the assignment, move the anchor rearward by half of any
-## depth the interleave added (the slot grid is centred on depth, so a partial or surplus
-## reserve would otherwise push the front rank forward), hold the anchor for the arrival
-## (or the centroid coupling would back the line up to the newcomers), and remove the reserve.
+## The reserve's men file into the host: interleave ids, carry soldier arrays, pool strength,
+## install assignment, move anchor rearward by added depth, and remove the reserve.
 static func commit(reserve: Unit, host: Unit) -> void:
 	if not _bodies_aligned(reserve) or not _bodies_aligned(host):
 		return
@@ -65,8 +56,11 @@ static func commit(reserve: Unit, host: Unit) -> void:
 	var old_ranks: int = ReinforceApproach.deepest(host._sim_soldier_rank) + 1 \
 			if host._sim_soldier_rank.size() == host.soldiers \
 			else ReinforceApproach.deepest(UnitFormation.file_capacities(host.soldiers, files))
+	var axis: int = reserve.current_order.reinforce_axis if reserve.current_order != null else ReinforceGuard.AXIS_FILES
 	var layout: Dictionary = \
-			ReinforceLayoutRef.interleave_files(host._sim_soldier_file, host._sim_soldier_rank, files, host.to_slot_frame(reserve._sim_soldier_pos), host.max_soldiers + reserve.max_soldiers)
+			ReinforceLayoutRef.interleave_ranks(host._sim_soldier_file, host._sim_soldier_rank, files, host.to_slot_frame(reserve._sim_soldier_pos)) \
+			if axis == ReinforceGuard.AXIS_RANKS \
+			else ReinforceLayoutRef.interleave_files(host._sim_soldier_file, host._sim_soldier_rank, files, host.to_slot_frame(reserve._sim_soldier_pos), host.max_soldiers + reserve.max_soldiers)
 	var new_ranks: int = ReinforceApproach.deepest(layout["ranks"]) + 1
 	host.append_soldier_bodies(reserve)
 	host.pool_strength(reserve, host.reinforce_cohesion_floor)
@@ -75,6 +69,11 @@ static func commit(reserve: Unit, host: Unit) -> void:
 	host.install_file_assignment(layout["file_ids"], layout["ranks"], int(layout["files"]), files)
 	host.position -= ReinforceApproach.depth_axis(host) * ReinforceLayoutRef.rear_anchor_shift(old_ranks, new_ranks, host.rank_pitch_wu())
 	host.hold_position_anchor(host._reshape_timeout(files))
+	if axis == ReinforceGuard.AXIS_RANKS:
+		host._last_reshape_tick = Engine.get_physics_frames()
+		host._last_reshape_widened = false
+		host._apply_moving_reshape_penalty()
+		host._arm_standoff_settle_window(host._reshape_timeout(files))
 	reserve.current_order.friendly_target = null
 	reserve._merged_away()
 	host.queue_redraw()
