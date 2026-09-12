@@ -306,6 +306,10 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		# mode-layer state a completed order writes and that then persists as queryable Unit
 		# state -- UnitFormation.frontage is the same pure lookup the sim itself uses.
 		"frontage": UnitFormation.frontage(u),
+		# Physics-frame stamp of the last set_frontage() or reinforcement insertion call.
+		"last_reshape_tick": u._last_reshape_tick,
+		# True while a hold_position_anchor window is in effect (e.g. during reinforcement arrival).
+		"anchor_held": u.position_anchor_held(),
 		"soldiers": u.soldiers,
 		"current_speed": round_to(u._current_speed, 1),
 		"current_speed_mps": mps(u._current_speed, WorldScaleRef.WU_PER_M, speed_scale),
@@ -464,6 +468,7 @@ static func motion_ref(u: Node) -> Dictionary:
 		"walk_speed": round_to(u.walk_speed, 2),
 		"jog_speed": round_to(u.jog_speed, 2),
 		"move_speed": round_to(u.move_speed, 2),
+		"back_speed_fraction": round_to(u.back_speed_fraction, 2),
 		"pivot_radius": round_to(u._pivot_radius(), 2),
 		"turn_rate": round_to(u.TURN_RATE, 4),
 	}

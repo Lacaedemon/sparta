@@ -24,15 +24,19 @@ func _grid(files: int, ranks: int, spacing: float, origin: Vector2 = Vector2.ZER
 func _snapshot(tick: int, bodies: Array, slots: Array, engaged: bool = false,
 		state: String = "MOVING", facing: Array = [0.0, 1.0],
 		motion_ref: Dictionary = {}, in_enemy_contact: bool = false,
-		formation: String = "NORMAL", frontage: int = 6) -> Dictionary:
+		formation: String = "NORMAL", frontage: int = 6,
+		last_reshape_tick: int = -1, anchor_held: bool = false) -> Dictionary:
 	var ref: Dictionary = {"formation_spacing": SPACING, "soldier_body_radius": SPACING * 0.5,
 			"walk_speed": 34.0, "jog_speed": 64.0, "move_speed": 126.0,
-			"pivot_radius": 56.0, "turn_rate": PI}
+			"pivot_radius": 56.0, "turn_rate": PI,
+			"back_speed_fraction": 0.5}
 	ref.merge(motion_ref, true)
 	return {"tick": tick, "units": [{
 		"uid": 1, "engaged": engaged, "in_enemy_contact": in_enemy_contact,
 		"state": state, "facing": facing,
 		"formation": formation, "frontage": frontage,
+		"last_reshape_tick": last_reshape_tick,
+		"anchor_held": anchor_held,
 		"soldiers_full": {"pos": bodies, "slots": slots},
 		"motion_ref": ref,
 	}]}
@@ -337,6 +341,105 @@ func test_the_sample_after_a_formation_reshape_is_exempt() -> void:
 	]
 	assert_true(bool(_verdict(DemoDefects.analyze(transient), "shape_residual")["pass"]),
 			"shape residual right after a formation reshape is exempt during transition")
+
+
+func test_reshape_timeout_calculation() -> void:
+	var t_same: float = DemoDefects.reshape_timeout(6, 6, 24, 9.0, 9.0, 64.0, 0.5)
+	var diag6x4: float = Vector2(45.0, 27.0).length()
+	var expected_same: float = (diag6x4 / 32.0) * 2.0 + 1.0
+	assert_almost_eq(t_same, expected_same, 0.01, "timeout with same files matches formula")
+
+	var t_change: float = DemoDefects.reshape_timeout(6, 12, 24, 9.0, 9.0, 64.0, 0.5)
+	var diag12x2: float = Vector2(99.0, 9.0).length()
+	var expected_change: float = ((diag6x4 + diag12x2) / 32.0) * 2.0 + 1.0
+	assert_almost_eq(t_change, expected_change, 0.01, "timeout with changed files matches formula")
+
+
+func test_post_reshape_transit_window_exempts_shape_residual_over_multiple_samples() -> void:
+	var slots_start: Array = _grid(6, 4, SPACING)
+	var slots_wide: Array = _grid(12, 2, SPACING)
+	var transit_bodies: Array = []
+	for i in range(slots_start.size()):
+		transit_bodies.append(slots_start[(i * 7 + 3) % slots_start.size()])
+
+	var snaps_reshape: Array = [
+		_snapshot(0, slots_start.duplicate(), slots_start, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6),
+		_snapshot(20, transit_bodies.duplicate(), slots_wide, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 12, 20),
+		_snapshot(40, transit_bodies.duplicate(), slots_wide, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 12, 20),
+		_snapshot(60, transit_bodies.duplicate(), slots_wide, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 12, 20),
+		_snapshot(80, slots_wide.duplicate(), slots_wide, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 12, 20),
+	]
+	var res_reshape: Dictionary = DemoDefects.analyze(snaps_reshape)
+	assert_true(bool(_verdict(res_reshape, "shape_residual")["pass"]),
+			"shape residual during multi-sample post-reshape transit is exempt")
+
+	var snaps_control: Array = [
+		_snapshot(0, slots_start.duplicate(), slots_start, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6),
+		_snapshot(20, transit_bodies.duplicate(), slots_start, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6),
+		_snapshot(40, transit_bodies.duplicate(), slots_start, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6),
+		_snapshot(60, transit_bodies.duplicate(), slots_start, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6),
+		_snapshot(80, slots_start.duplicate(), slots_start, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6),
+	]
+	var res_control: Dictionary = DemoDefects.analyze(snaps_control)
+	assert_false(bool(_verdict(res_control, "shape_residual")["pass"]),
+			"unreshaped block holding high residual fails shape_residual")
+
+
+func test_stuck_reshape_past_timeout_fails_shape_residual() -> void:
+	var slots: Array = _grid(6, 4, SPACING)
+	var scrambled: Array = []
+	for i in range(slots.size()):
+		scrambled.append(slots[(i * 7 + 3) % slots.size()])
+	var snaps: Array = [
+		_snapshot(0, slots.duplicate(), slots, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6),
+		_snapshot(20, scrambled.duplicate(), slots, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6, 20),
+		_snapshot(120, scrambled.duplicate(), slots, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6, 20),
+		_snapshot(240, scrambled.duplicate(), slots, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6, 20),
+		_snapshot(360, scrambled.duplicate(), slots, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6, 20),
+		_snapshot(480, scrambled.duplicate(), slots, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6, 20),
+	]
+	var res: Dictionary = DemoDefects.analyze(snaps)
+	assert_false(bool(_verdict(res, "shape_residual")["pass"]),
+			"scramble persisting past reshape timeout fails shape_residual")
+
+
+func test_reshape_transit_window_closes_early_once_settled() -> void:
+	var slots_start: Array = _grid(6, 4, SPACING)
+	var slots_wide: Array = _grid(12, 2, SPACING)
+	var scrambled: Array = []
+	for i in range(slots_wide.size()):
+		scrambled.append(slots_wide[(i * 7 + 3) % slots_wide.size()])
+
+	var snaps: Array = [
+		_snapshot(0, slots_start.duplicate(), slots_start, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6),
+		_snapshot(20, slots_start.duplicate(), slots_wide, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 12, 20),
+		_snapshot(40, slots_wide.duplicate(), slots_wide, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 12, 20),
+		_snapshot(60, scrambled.duplicate(), slots_wide, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 12, 20),
+		_snapshot(80, scrambled.duplicate(), slots_wide, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 12, 20),
+		_snapshot(100, scrambled.duplicate(), slots_wide, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 12, 20),
+		_snapshot(120, scrambled.duplicate(), slots_wide, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 12, 20),
+	]
+	var res: Dictionary = DemoDefects.analyze(snaps)
+	assert_false(bool(_verdict(res, "shape_residual")["pass"]),
+			"scramble occurring after early settlement fails shape_residual")
+
+
+func test_anchor_held_exempts_shape_residual() -> void:
+	var slots: Array = _grid(6, 4, SPACING)
+	var scrambled: Array = []
+	for i in range(slots.size()):
+		scrambled.append(slots[(i * 7 + 3) % slots.size()])
+
+	var snaps: Array = [
+		_snapshot(0, slots.duplicate(), slots, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6),
+		_snapshot(20, scrambled.duplicate(), slots, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6, -1, true),
+		_snapshot(40, scrambled.duplicate(), slots, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6, -1, true),
+		_snapshot(60, scrambled.duplicate(), slots, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6, -1, true),
+		_snapshot(80, slots.duplicate(), slots, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6, -1, false),
+	]
+	var res: Dictionary = DemoDefects.analyze(snaps)
+	assert_true(bool(_verdict(res, "shape_residual")["pass"]),
+			"shape residual while anchor_held is active is exempt")
 
 
 
