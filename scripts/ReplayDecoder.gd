@@ -83,6 +83,14 @@ static func decode(data: Dictionary) -> Dictionary:
 			"tick": int(t.get("tick", 0)),
 			"value": float(t.get("value", 1.0)),
 		})
+	var fog_of_war: Array = []
+	var raw_fog = data.get("fog_of_war", [])
+	if raw_fog is Array:
+		for f in raw_fog:
+			fog_of_war.append({
+				"tick": int(f.get("tick", 0)),
+				"value": bool(f.get("value", false)),
+			})
 	return {
 		"version": int(data.get("version", 0)),
 		"physics_tps": int(data.get("physics_tps", 0)),
@@ -97,4 +105,5 @@ static func decode(data: Dictionary) -> Dictionary:
 		"pointer": pointer,
 		"keys": keys,
 		"time_scale": time_scale,
+		"fog_of_war": fog_of_war,
 	}

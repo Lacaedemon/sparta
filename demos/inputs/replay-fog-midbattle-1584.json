@@ -1,0 +1,91 @@
+{
+  "_comment": "Mid-battle fog of war transitions recorded as a replay track (#1579). Staged: player Spearmen (uid 0, at 500, 500, foot sight 15 m = 300 wu) and enemy Archers (uid 1, at 1100, 500, 600 wu east, outside foot sight). Fog starts off so both units are visible. Tick 30: F7 toggles fog of war on -- the distant enemy Archers vanish and the HUD displays the FOG OF WAR status indicator. Tick 60/80: select the Spearmen and order an advance eastward toward (1000, 500); as the gap closes, fog remains active and unrevealed enemies stay hidden. Tick 320: F7 toggles fog of war off -- full battlefield visibility is restored and the HUD indicator disappears. The mid-battle toggles are recorded into the replay event track and reproduced deterministically on playback.",
+  "seed": "1584",
+  "camera": [
+    {
+      "tick": 0,
+      "x": 800.0,
+      "y": 500.0,
+      "zoom": 0.8
+    }
+  ],
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 500,
+      "y": 500,
+      "facing": [
+        1,
+        0
+      ]
+    },
+    {
+      "team": 1,
+      "type": "Archers",
+      "x": 1100,
+      "y": 500,
+      "facing": [
+        -1,
+        0
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "tick": 30,
+      "key": "F7"
+    },
+    {
+      "tick": 60,
+      "click": [
+        500,
+        500
+      ]
+    },
+    {
+      "tick": 80,
+      "rmb_click": [
+        1000,
+        500
+      ]
+    },
+    {
+      "tick": 320,
+      "key": "F7"
+    }
+  ],
+  "state": [
+    20,
+    50,
+    150,
+    280,
+    340
+  ],
+  "expect": [
+    {
+      "tick": 20,
+      "uid": 1,
+      "field": "visible",
+      "value": true
+    },
+    {
+      "tick": 50,
+      "uid": 1,
+      "field": "visible",
+      "value": false
+    },
+    {
+      "tick": 280,
+      "uid": 1,
+      "field": "visible",
+      "value": false
+    },
+    {
+      "tick": 340,
+      "uid": 1,
+      "field": "visible",
+      "value": true
+    }
+  ]
+}

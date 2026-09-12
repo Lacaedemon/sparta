@@ -37,8 +37,8 @@ static func encode(state: Dictionary) -> Dictionary:
 	if not dirty.is_empty():
 		payload["git_dirty_status"] = dirty
 	# Only emit each track when captured so recordings without activity stay
-	# simple; time_scale feeds the simulation on load, unlike cosmetic tracks.
-	for track_key in ["camera", "pointer", "keys", "time_scale"]:
+	# simple; time_scale and fog_of_war feed the simulation on load, unlike cosmetic tracks.
+	for track_key in ["camera", "pointer", "keys", "time_scale", "fog_of_war"]:
 		var arr: Array = state.get(track_key, [])
 		if not arr.is_empty():
 			payload[track_key] = arr
