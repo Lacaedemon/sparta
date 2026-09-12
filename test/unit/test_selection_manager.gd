@@ -3288,6 +3288,16 @@ func test_shift_m_arms_reinforcement_by_files_and_escape_clears_it() -> void:
 	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE, "Esc clears the arm")
 
 
+func test_ctrl_shift_m_arms_reinforcement_by_ranks_and_escape_clears_it() -> void:
+	var s := _reinforce_setup()
+	var sm = s["sm"]
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE, "idle until armed")
+	assert_true(sm._dispatch_key(_key_event(KEY_M, true, true)), "Ctrl+Shift+M is a handled hotkey")
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.RANKS, "Ctrl+Shift+M arms insertion by ranks")
+	sm._set_armed_mode(BattleScript.OrderMode.NORMAL)   # what Esc routes to
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE, "Esc clears the arm")
+
+
 func test_reinforce_arm_needs_a_selection_and_a_live_battle() -> void:
 	var sm := _sm()
 	sm._arm_reinforce(BattleScript.ReinforceAxis.FILES)
@@ -3315,6 +3325,21 @@ func test_armed_right_click_on_a_valid_friendly_routes_the_axis_to_battle() -> v
 	var cmd: Dictionary = b._pending_orders[-1]
 	assert_eq(int(cmd["target"]), host.uid, "targeting the clicked friendly")
 	assert_eq(int(cmd["reinforce"]), BattleScript.ReinforceAxis.FILES, "carrying the armed axis")
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE, "the arm is one-shot")
+
+
+func test_armed_right_click_with_ranks_axis_routes_the_axis_to_battle() -> void:
+	var s := _reinforce_setup()
+	var sm = s["sm"]
+	var b = s["battle"]
+	var host: Unit = s["host"]
+	assert_eq(sm._reinforce_refusal(host, BattleScript.ReinforceAxis.RANKS), "", "a like-armed idle pair is allowed on ranks axis")
+	sm._arm_reinforce(BattleScript.ReinforceAxis.RANKS)
+	sm._issue_order(host.position)
+	assert_false(b._pending_orders.is_empty(), "the click queues an order")
+	var cmd: Dictionary = b._pending_orders[-1]
+	assert_eq(int(cmd["target"]), host.uid, "targeting the clicked friendly")
+	assert_eq(int(cmd["reinforce"]), BattleScript.ReinforceAxis.RANKS, "carrying the armed ranks axis")
 	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE, "the arm is one-shot")
 
 
@@ -3353,12 +3378,12 @@ func test_an_armed_click_on_open_ground_keeps_the_arm_for_the_next_friendly() ->
 			"the arm survives a click that resolved to nothing reinforceable")
 
 
-func test_ctrl_shift_m_is_reserved_for_the_ranks_axis_and_arms_nothing() -> void:
+func test_ctrl_shift_m_arms_the_ranks_axis_and_does_not_merge() -> void:
 	var s := _reinforce_setup()
 	var sm = s["sm"]
 	assert_true(sm._dispatch_key(_key_event(KEY_M, true, true)), "Ctrl+Shift+M is a handled hotkey")
-	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE,
-			"the reserved ranks chord arms neither files insertion nor anything else")
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.RANKS,
+			"Ctrl+Shift+M arms ranks insertion")
 	assert_true(s["battle"]._pending_orders.is_empty(), "and it does not fall through to a merge")
 
 
@@ -3381,11 +3406,11 @@ func test_rebound_order_mode_onto_m_does_not_swallow_shift_m() -> void:
 	# Clear the armed reinforcement state before testing the ranks chord
 	sm._armed_reinforce = BattleScript.ReinforceAxis.NONE
 
-	# Ctrl+Shift+M must arm nothing (reserved ranks axis), NOT issue hold ground in place
+	# Ctrl+Shift+M must arm ranks axis, NOT issue hold ground in place
 	var ctrl_shift_m := _key_event(KEY_M, true, true)
 	assert_true(sm._dispatch_key(ctrl_shift_m), "Ctrl+Shift+M is handled")
-	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE,
-			"Ctrl+Shift+M does not arm files insertion")
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.RANKS,
+			"Ctrl+Shift+M arms ranks insertion")
 	assert_true(b._pending_orders.is_empty(),
 			"hold ground stance was not issued in place by Ctrl+Shift+M")
 

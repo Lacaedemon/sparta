@@ -53,13 +53,13 @@ func _unit_at(pos: Vector2) -> Unit:
 	return null
 
 
-func _order_reinforce(reserve: Unit, host: Unit) -> void:
+func _order_reinforce(reserve: Unit, host: Unit, axis: int = BattleScript.ReinforceAxis.FILES) -> void:
 	_battle._apply_order_cmd({
 		"units": [reserve.uid],
 		"x": host.position.x, "y": host.position.y,
 		"target": host.uid,
 		"mode": BattleScript.OrderMode.NORMAL,
-		"reinforce": BattleScript.ReinforceAxis.FILES,
+		"reinforce": axis,
 	})
 
 
@@ -94,6 +94,27 @@ func test_order_arms_the_approach_and_leaves_the_host_alone() -> void:
 	assert_false(TierTransition.can_demote(host, targets.has(host)),
 			"the host also keeps its close-tier bodies for the approach")
 	assert_true(reserve.order_summary().begins_with("Reinforcing"), "the HUD summary names the maneuver")
+
+
+func test_order_arms_the_ranks_approach_and_leaves_the_host_alone() -> void:
+	_spawn()
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	assert_not_null(host, "host spawned")
+	assert_not_null(reserve, "reserve spawned")
+	assert_eq(ReinforceGuard.refusal_reason(reserve, host, BattleScript.ReinforceAxis.RANKS), "",
+			"a like-armed idle pair is allowed on ranks axis")
+
+	_order_reinforce(reserve, host, BattleScript.ReinforceAxis.RANKS)
+
+	assert_eq(reserve.current_order.type, Order.Type.REINFORCE, "the reserve holds a REINFORCE order")
+	assert_eq(reserve.current_order.reinforce_axis, BattleScript.ReinforceAxis.RANKS, "on the ranks axis")
+	assert_eq(reserve.current_order.friendly_target, host, "the pass-through link names the host")
+	assert_true(reserve._separation_exempt(host), "the pair is exempt from separation")
+	assert_true(reserve.has_move_target, "the reserve is marching")
+	assert_null(host.current_order, "the host's own order is untouched")
+	assert_eq(reserve.current_maneuver(), Unit.Maneuver.REINFORCING, "reads as REINFORCING")
 
 
 func test_commit_doubles_the_host_and_interleaves_the_files() -> void:
@@ -143,6 +164,60 @@ func test_commit_doubles_the_host_and_interleaves_the_files() -> void:
 	for _tick in range(ANCHOR_HOLD_CHECK_TICKS):
 		await get_tree().physics_frame
 	assert_lt(host.position.distance_to(host_start), host.rank_pitch_wu(),
+			"the anchor holds through the arrival; the front rank keeps its ground")
+
+
+func test_commit_deepens_the_host_and_interleaves_the_ranks() -> void:
+	_spawn()
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	var files_before: int = UnitFormation.frontage(host)
+	var host_start: Vector2 = host.position
+	var front_rank_slot_before: Vector2 = host.soldier_world_slots(host.soldiers)[0]
+	_order_reinforce(reserve, host, BattleScript.ReinforceAxis.RANKS)
+
+	var committed: bool = false
+	for _tick in range(COMMIT_BUDGET_TICKS):
+		await get_tree().physics_frame
+		if not is_instance_valid(reserve) or reserve.state == Unit.State.DEAD:
+			committed = true
+			break
+	assert_true(committed, "the reserve commits within the budget")
+	assert_eq(host.soldiers, 80, "the host holds both regiments' men")
+	assert_eq(host.max_soldiers, 80, "max_soldiers pooled as in a merge")
+	assert_eq(_battle.get_tree().get_nodes_in_group("units").size(), 1, "only the host remains in play")
+	assert_eq(host._sim_soldier_pos.size(), 80, "bodies carried across")
+	assert_eq(host._sim_soldier_hp.size(), 80, "health pool carried across")
+	assert_eq(host._sim_soldier_shield_hold_angle.size(), 80, "shield hold angles carried across")
+	assert_eq(UnitFormation.frontage(host), files_before, "frontage is unchanged on the ranks axis")
+	# Cohesion has recovered for at most a tick or two since the commit.
+	assert_almost_eq(host.cohesion, host.reinforce_cohesion_floor, 0.01, "the strangers debuff applies")
+	assert_false(host._last_reshape_widened, "the host stamped the commit as a deepen")
+
+	# The interleave survives a slot query (the re-deal trap), and every slot is unique.
+	host.formation_slots(host.soldiers)
+	assert_eq(host._sim_soldier_file.size(), 80, "file ids cover every man after a slot query")
+	var seen: Dictionary = {}
+	for i in range(80):
+		var expected_parity: int = 0 if i < 40 else 1
+		assert_eq(host._sim_soldier_rank[i] % 2, expected_parity,
+				"man %d stands on a%s rank" % [i, "n even (host)" if i < 40 else "n odd (reserve)"])
+		var key := Vector2i(host._sim_soldier_file[i], host._sim_soldier_rank[i])
+		assert_false(seen.has(key), "slot %s is held by one man" % key)
+		seen[key] = true
+
+	# On the ranks axis, host position moves rearward to anchor the front rank.
+	var front_rank_slot_after: Vector2 = host.soldier_world_slots(host.soldiers)[0]
+	assert_almost_eq(front_rank_slot_after.y, front_rank_slot_before.y, 0.5,
+			"front rank holds its ground in world coordinates")
+	assert_true(host.position.y < host_start.y, "host position shifted rearward (-y for down-facing)")
+
+	# The newcomers walk in from the rendezvous behind the host; anchor holds through arrival.
+	for _tick in range(ANCHOR_HOLD_CHECK_TICKS):
+		await get_tree().physics_frame
+	var front_rank_slot_settled: Vector2 = host.soldier_world_slots(host.soldiers)[0]
+	assert_almost_eq(front_rank_slot_settled.y, front_rank_slot_before.y, 0.5,
 			"the anchor holds through the arrival; the front rank keeps its ground")
 
 
@@ -349,20 +424,21 @@ func test_install_file_assignment_keeps_a_held_flank_anchored() -> void:
 	assert_almost_eq(host.frontage_anchor_offset, 0.0, 0.001, "a centred host stays centred")
 
 
-func test_the_unwired_ranks_axis_and_far_or_touching_reserves_are_refused() -> void:
+func test_an_unsupported_axis_and_far_or_touching_reserves_are_refused() -> void:
 	_spawn()
 	await get_tree().physics_frame
 	var host: Unit = _unit_at(HOST_POS)
 	var reserve: Unit = _unit_at(RESERVE_POS)
 	var files_before: int = UnitFormation.frontage(host)
-	assert_ne(ReinforceGuard.refusal_reason(reserve, host, BattleScript.ReinforceAxis.RANKS), "",
-			"the ranks axis is refused rather than silently run as files")
+	const UNSUPPORTED_AXIS: int = 99
+	assert_ne(ReinforceGuard.refusal_reason(reserve, host, UNSUPPORTED_AXIS), "",
+			"an unsupported axis is refused")
 	_battle._apply_order_cmd({
 		"units": [reserve.uid], "x": host.position.x, "y": host.position.y,
 		"target": host.uid, "mode": BattleScript.OrderMode.NORMAL,
-		"reinforce": BattleScript.ReinforceAxis.RANKS,
+		"reinforce": UNSUPPORTED_AXIS,
 	})
-	assert_null(reserve.current_order, "a RANKS order applies nothing")
+	assert_null(reserve.current_order, "an unsupported axis order applies nothing")
 	assert_false(reserve.has_move_target, "and starts no march")
 	assert_eq(UnitFormation.frontage(host), files_before, "the host is untouched")
 	# A malformed command (an axis with no target, or a self target) is rejected before

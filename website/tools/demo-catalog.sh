@@ -45,6 +45,7 @@ DEMOS=(
   "plain_move_withdrawal|demos/inputs/fighting-withdrawal.json|30|470|640|input"
   "passage_of_lines|demos/inputs/passage-of-lines.json|30|110|640|input"
   "reinforcement_insertion|demos/inputs/reinforcement-insertion.json|30|450|640|input"
+  "reinforcement_insertion_ranks|demos/inputs/reinforcement-insertion-ranks.json|30|450|640|input"
   "stance_order|demos/inputs/stance-order-gesture.json|30|130|640|input"
   "formation_preview_square|demos/inputs/formation-preview-square.json|30|300|640|input"
   "cannae_scale|demos/inputs/cannae-scale.json|60|300|720|input"
