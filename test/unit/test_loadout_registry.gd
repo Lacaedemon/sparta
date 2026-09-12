@@ -329,6 +329,12 @@ const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 const ROSTER_MISSILES: Array = [
 	LoadoutRegistry.MISSILE_BOW,
 	LoadoutRegistry.MISSILE_PILUM,
+	LoadoutRegistry.MISSILE_JAVELIN,
+	LoadoutRegistry.MISSILE_SLING,
+	LoadoutRegistry.MISSILE_SELF_BOW,
+	LoadoutRegistry.MISSILE_COMPOSITE_BOW,
+	LoadoutRegistry.MISSILE_BOLT_SHOOTER,
+	LoadoutRegistry.MISSILE_STONE_THROWER,
 ]
 
 
@@ -372,13 +378,30 @@ func test_the_bow_profile_is_exactly_the_pre_profile_constants() -> void:
 	assert_eq(bow.launch_angle, ProjectilePhysics.ANGLE_ARCED, "the same lob")
 
 
-func test_every_missile_range_stays_inside_the_close_tier() -> void:
-	# Phase 2's bound: a profile that reached the far tier's promotion band would fire at a
-	# formation with no bodies to hit; promotion tests strictly below PROMOTE_RANGE.
-	for type_id in ROSTER_MISSILES:
+func test_close_and_far_tier_missile_ranges() -> void:
+	# Close-tier profiles (the game's baseline bow and the pilum) stay inside PROMOTE_RANGE
+	var close_profiles: Array = [
+		LoadoutRegistry.MISSILE_BOW,
+		LoadoutRegistry.MISSILE_PILUM,
+	]
+	for type_id in close_profiles:
 		var m: MissileProfile = LoadoutRegistry.missile(type_id)
 		assert_lt(m.range_wu, FormationTier.PROMOTE_RANGE,
 			"%s reaches %.0f wu, strictly inside the %.0f-wu promote range" \
+				% [m.display_name, m.range_wu, FormationTier.PROMOTE_RANGE])
+	# Historical long-range profiles (phase 5) reach or exceed PROMOTE_RANGE into the far tier
+	var far_profiles: Array = [
+		LoadoutRegistry.MISSILE_JAVELIN,
+		LoadoutRegistry.MISSILE_SLING,
+		LoadoutRegistry.MISSILE_SELF_BOW,
+		LoadoutRegistry.MISSILE_COMPOSITE_BOW,
+		LoadoutRegistry.MISSILE_BOLT_SHOOTER,
+		LoadoutRegistry.MISSILE_STONE_THROWER,
+	]
+	for type_id in far_profiles:
+		var m: MissileProfile = LoadoutRegistry.missile(type_id)
+		assert_gte(m.range_wu, FormationTier.PROMOTE_RANGE,
+			"%s reaches %.0f wu, reaching the %.0f-wu promote range" \
 				% [m.display_name, m.range_wu, FormationTier.PROMOTE_RANGE])
 
 
@@ -390,3 +413,30 @@ func test_the_pilum_out_reaches_the_bow_and_loses_accuracy_at_range() -> void:
 	assert_gt(pilum.range_wu, Unit.DETECTION_RANGE, "past the 190-wu detection default")
 	assert_lt(pilum.accuracy_at_max, 1.0, "and it falls off toward maximum range")
 	assert_lt(pilum.launch_angle, bow.launch_angle, "thrown flatter than a lobbed arrow")
+
+
+func test_historical_missile_profiles_properties() -> void:
+	var javelin: MissileProfile = LoadoutRegistry.missile(LoadoutRegistry.MISSILE_JAVELIN)
+	assert_eq(javelin.range_m, 25.0, "20-30 m band")
+	assert_eq(javelin.ammo, 2, "2 shafts carried")
+	assert_eq(javelin.interval_s, 2.0)
+
+	var sling: MissileProfile = LoadoutRegistry.missile(LoadoutRegistry.MISSILE_SLING)
+	assert_eq(sling.range_m, 180.0, "180-200 m band")
+	assert_eq(sling.ammo, MissileProfile.AMMO_UNLIMITED)
+
+	var self_bow: MissileProfile = LoadoutRegistry.missile(LoadoutRegistry.MISSILE_SELF_BOW)
+	assert_eq(self_bow.range_m, 120.0, "100-150 m band")
+
+	var comp_bow: MissileProfile = LoadoutRegistry.missile(LoadoutRegistry.MISSILE_COMPOSITE_BOW)
+	assert_eq(comp_bow.range_m, 180.0, "150-200 m band")
+	assert_gt(comp_bow.damage_factor, self_bow.damage_factor)
+
+	var bolt: MissileProfile = LoadoutRegistry.missile(LoadoutRegistry.MISSILE_BOLT_SHOOTER)
+	assert_eq(bolt.range_m, 350.0, "300-400 m band")
+	assert_gt(bolt.damage_factor, comp_bow.damage_factor)
+
+	var stone: MissileProfile = LoadoutRegistry.missile(LoadoutRegistry.MISSILE_STONE_THROWER)
+	assert_eq(stone.range_m, 370.0, "around 370 m band")
+	assert_gt(stone.damage_factor, bolt.damage_factor)
+

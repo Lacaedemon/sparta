@@ -114,6 +114,18 @@ func test_from_unit_copies_is_ranged() -> void:
 	assert_true(rec.is_ranged)
 
 
+func test_from_unit_copies_missile_fields() -> void:
+	var u := _make_unit()
+	u.is_ranged = true
+	u.equip_missile(LoadoutRegistry.MISSILE_SLING)
+	var rec := FarTierFormation.from_unit(u)
+	assert_true(rec.is_ranged)
+	assert_eq(rec.missile_range, u.missile_range)
+	assert_eq(rec.missile_interval, u.missile_interval)
+	assert_eq(rec.missile_damage_factor, u.missile_damage_factor)
+	assert_eq(rec.missile_accuracy_at_max, u.missile_accuracy_at_max)
+
+
 func test_from_unit_copies_routing_state() -> void:
 	var u := _make_unit()
 	u.state = Unit.State.ROUTING

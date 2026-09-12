@@ -115,6 +115,7 @@ DEMOS=(
   "fog_of_war|demos/inputs/fog-of-war-toggle.json|30|480|640|input"
   "missile_profile_reach|demos/inputs/missile-profile-reach.json|30|240|720|input"
   "trajectory_lob|demos/inputs/trajectory-lob-1567.json|30|60|640|input"
+  "far_tier_missile|demos/inputs/far-tier-missile-1567.json|30|60|640|input"
 )
 
 # The SPARTA_DUMP_CLIPS narrowing helpers (demo_catalog_selected,

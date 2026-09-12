@@ -1,6 +1,6 @@
 {
-  "input": "demos/inputs/trajectory-lob-1567.json",
-  "caption": "Longer-range missile model phase 4: dynamic trajectory selection, height-aware friendly interception, and per-profile gravity. Player archers lob a volley over a friendly heavy infantry regiment directly between shooter and target. Dynamic trajectory solving elevates the ballistic arc to approximately 47.1 wu of height at the friendly line, clearing the 40.0 wu (2.0 m) clearance threshold and passing cleanly overhead without friendly interception, leaving the friendly line unharmed while striking the enemy.",
+  "input": "demos/inputs/far-tier-missile-1567.json",
+  "caption": "Longer-range missile model phase 5: long ranges at the far tier. Rhodian slingers (team 0, range 180 m / 3600 wu) engage an advancing enemy infantry column (team 1) deployed at an 850-wu opening distance, well beyond the 600-wu DEMOTE_RANGE. Operating in the far tier as flock marks without individual soldier bodies, the slingers open fire across the 850-wu gap, inflicting continuous far-tier missile attrition and suppression before the battle lines ever close to close-tier promotion range.",
   "fixed_fps": 30,
   "max_frames": 60,
   "fps": 20,

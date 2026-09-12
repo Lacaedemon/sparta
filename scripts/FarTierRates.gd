@@ -39,26 +39,26 @@ static func melee_contact_distance(attacker: Unit, defender: Unit) -> float:
 ## regiment falls through to the melee branch and UnitCombat.strike. FarTierRules has no such
 ## rule, so this deliberately diverges from it for a ranged attacker in contact.
 static func resolves_as_ranged(attacker: Unit, defender: Unit) -> bool:
-	if not attacker.is_ranged:
+	if not attacker.is_ranged or not attacker.has_missile_ammo():
 		return false
 	var contact: float = melee_contact_distance(attacker, defender)
 	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 	return attacker.position.distance_squared_to(defender.position) > contact * contact
 
 
-## Strike cadence in seconds: Unit.RANGED_INTERVAL for a volley, else the equipped weapon's
+## Strike cadence in seconds: attacker.missile_interval for a volley, else the equipped weapon's
 ## melee interval (Unit.melee_attack_interval, itself falling back to Unit.ATTACK_INTERVAL --
 ## MORE faithful than FarTierRules can be, since no weapon rides on the record).
 static func attack_interval(attacker: Unit, defender: Unit) -> float:
 	if resolves_as_ranged(attacker, defender):
-		return Unit.RANGED_INTERVAL
+		return attacker.missile_interval
 	return attacker.melee_attack_interval()
 
 
 ## How far this attacker reaches, in world units.
 static func striking_reach(attacker: Unit, defender: Unit) -> float:
 	if resolves_as_ranged(attacker, defender):
-		return Unit.RANGED_RANGE
+		return attacker.missile_range
 	return melee_contact_distance(attacker, defender)
 
 
@@ -71,13 +71,16 @@ static func in_striking_range(attacker: Unit, defender: Unit) -> bool:
 
 ## Expected casualties from ONE strike at the mean damage roll: max(1, effective attack -
 ## defense), then the defender's stance blunting. A volley mirrors UnitCombat.shoot instead:
-## no melee-stance offence penalty, Unit.RANGED_DAMAGE_FACTOR applied, missile_defense_factor
-## rather than melee_defense_factor. Flanking and thinning scale the RATE, so they live below.
+## no melee-stance offence penalty, attacker.missile_damage_factor and range accuracy applied,
+## missile_defense_factor rather than melee_defense_factor. Flanking and thinning scale the
+## RATE, so they live below.
 static func strike_expectation(attacker: Unit, defender: Unit) -> float:
 	if resolves_as_ranged(attacker, defender):
 		var eff_ranged: float = float(attacker.attack) * attacker.formation_attack_factor()
+		var dist: float = attacker.position.distance_to(defender.position)
+		var accuracy: float = attacker.missile_accuracy(dist)
 		var ranged_base: float = maxf(1.0, eff_ranged - float(defender.defense)) \
-				* Unit.RANGED_DAMAGE_FACTOR
+				* attacker.missile_damage_factor * accuracy
 		return ranged_base * defender.missile_defense_factor(attacker)
 	# The regiment's mean pool gives its blows the g(sigma) each close-tier soldier's own
 	# pool feeds into cond_a (SoldierMelee.resolve), applied before the defence subtraction
