@@ -2076,9 +2076,12 @@ A profile fixes six things at once:
 - **Cadence** --- how long the regiment takes between volleys.
   A bow looses every second; a pilum regiment throws every two.
 
-- **Flight** --- whether the volley is lobbed or thrown flat.
-  A lob hangs in the air.
-  A flat throw to the same spot lands sooner, so a fast target has less time to reposition before impact.
+- **Flight & trajectory** --- whether the volley is lobbed or thrown flat.
+  Inside half of maximum range, shots fire flat for quick delivery.
+  Beyond that threshold, dynamic trajectory solving selects the lower launch angle (up to 45 degrees).
+  Dedicated flat weapons like the pilum stay flat at all distances.
+
+- **Gravity** --- per-profile vertical acceleration governing flight hang time and arc height.
 
 - **Punch** --- how hard each volley hits against a melee strike of the same stats.
 
@@ -2092,6 +2095,10 @@ A profile fixes six things at once:
   A bow regiment fires without limit (`-1` / unlimited).
   A pilum regiment carries 2 throws by default, expending its heavy shafts in the opening clash before closing for melee or retiring.
   Units out of ammo halt firing and stop suppressing enemy formations.
+
+- **Overhead friendly clearance** --- volleys passing over friendly troops test ballistic arc height.
+  Shots clearing the 2.0 m shoulder clearance threshold pass safely overhead without friendly fire,
+  while low or flat shots through friendly lines are intercepted.
 
 So a longer reach is not a free upgrade.
 A pilum regiment at 14 m throws at a target it can only just reach,

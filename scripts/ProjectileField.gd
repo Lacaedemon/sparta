@@ -67,6 +67,7 @@ var _shooter_uid: Array[int] = []
 var _target_uid: Array[int] = []
 var _arrows: Array[int] = []         # arrows in the volley (potential hits, not guaranteed kills)
 var _flank: Array[float] = []
+var _gravity: Array[float] = []       # acceleration of gravity in wu/s^2
 
 
 ## Number of projectiles in flight (for tests / diagnostics).
@@ -81,13 +82,13 @@ func count() -> int:
 ## holding, so only some of them pierce. It collapses to a casualty count only on the
 ## fieldless fallback path, which has no shields to test.
 ## `angle` is the launch angle in radians above horizontal (ProjectilePhysics.ANGLE_ARCED for
-## a lob, ANGLE_FLAT for a flat shot, or a missile profile's own); with GRAVITY it fixes the
+## a lob, ANGLE_FLAT for a flat shot, or a missile profile's own); with `gravity` it fixes the
 ## flight time, so a flat throw lands sooner than a lob at the same distance. A degenerate
 ## (zero-distance) solve lands on the next tick so the volley still resolves.
 func launch(from: Vector2, to: Vector2, shooter_uid: int, target_uid: int,
-		arrows: int, flank: float, angle: float) -> void:
+		arrows: int, flank: float, angle: float, gravity: float = GRAVITY) -> void:
 	var dist: float = from.distance_to(to)
-	var sol: Dictionary = ProjectilePhysics.solve_launch(dist, GRAVITY, angle)
+	var sol: Dictionary = ProjectilePhysics.solve_launch(dist, gravity, angle)
 	var flight: float = sol["flight_time"]
 	if flight <= 0.0:
 		flight = get_physics_delta()   # degenerate: resolve next tick rather than never
@@ -97,6 +98,7 @@ func launch(from: Vector2, to: Vector2, shooter_uid: int, target_uid: int,
 	_flight.append(flight)
 	_speed.append(sol["speed"])
 	_angle.append(angle)
+	_gravity.append(gravity)
 	_shooter_uid.append(shooter_uid)
 	_target_uid.append(target_uid)
 	_arrows.append(arrows)
@@ -120,7 +122,7 @@ func step(delta: float, battle: Node) -> void:
 
 ## Height of projectile `i` above the ground right now (for a renderer; 0 once landed).
 func height_of(i: int) -> float:
-	return ProjectilePhysics.height_at(_speed[i], _angle[i], GRAVITY, _elapsed[i])
+	return ProjectilePhysics.height_at(_speed[i], _angle[i], _gravity[i], _elapsed[i])
 
 
 ## Ground position of projectile `i` right now.
@@ -248,6 +250,7 @@ func _remove_at(index: int) -> void:
 	_flight.remove_at(index)
 	_speed.remove_at(index)
 	_angle.remove_at(index)
+	_gravity.remove_at(index)
 	_shooter_uid.remove_at(index)
 	_target_uid.remove_at(index)
 	_arrows.remove_at(index)
@@ -267,6 +270,7 @@ func clear() -> void:
 	_flight.clear()
 	_speed.clear()
 	_angle.clear()
+	_gravity.clear()
 	_shooter_uid.clear()
 	_target_uid.clear()
 	_arrows.clear()
@@ -283,6 +287,7 @@ func to_snapshot_dict() -> Dictionary:
 		"flight": _flight.duplicate(),
 		"speed": _speed.duplicate(),
 		"angle": _angle.duplicate(),
+		"gravity": _gravity.duplicate(),
 		"shooter_uid": _shooter_uid.duplicate(),
 		"target_uid": _target_uid.duplicate(),
 		"arrows": _arrows.duplicate(),
@@ -300,6 +305,7 @@ func apply_snapshot_dict(snap: Dictionary) -> void:
 	var flight_arr: Array = snap.get("flight", [])
 	var speed_arr: Array = snap.get("speed", [])
 	var angle_arr: Array = snap.get("angle", [])
+	var gravity_arr: Array = snap.get("gravity", [])
 	var shooter_uid_arr: Array = snap.get("shooter_uid", [])
 	var target_uid_arr: Array = snap.get("target_uid", [])
 	var arrows_arr: Array = snap.get("arrows", [])
@@ -316,6 +322,12 @@ func apply_snapshot_dict(snap: Dictionary) -> void:
 		_speed.append(float(val))
 	for val in angle_arr:
 		_angle.append(float(val))
+	if gravity_arr.size() == flight_arr.size():
+		for val in gravity_arr:
+			_gravity.append(float(val))
+	else:
+		for _j in range(flight_arr.size()):
+			_gravity.append(GRAVITY)
 	for val in shooter_uid_arr:
 		_shooter_uid.append(int(val))
 	for val in target_uid_arr:
@@ -327,4 +339,5 @@ func apply_snapshot_dict(snap: Dictionary) -> void:
 	var lodged_dict: Dictionary = snap.get("lodged", {})
 	for k in lodged_dict:
 		_lodged[int(k)] = int(lodged_dict[k])
+
 

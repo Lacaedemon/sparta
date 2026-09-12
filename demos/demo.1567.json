@@ -1,6 +1,6 @@
 {
-  "input": "demos/inputs/suppression-ammo-1567.json",
-  "caption": "Longer-range missile model phase 3: suppression morale floor and ammunition. Player skirmishers engage an enemy heavy infantry formation (locked shield wall, melee-only) from standoff reach. Under fire without the ability to reply, the infantry formation's ambient morale erodes toward the suppression floor (50.0 / shaken threshold) where it flattens without routing unaided (while separate casualty morale shock remains unfloored). Units track finite missile ammunition and halt firing when empty.",
+  "input": "demos/inputs/trajectory-lob-1567.json",
+  "caption": "Longer-range missile model phase 4: dynamic trajectory selection, height-aware friendly interception, and per-profile gravity. Player archers lob a volley over a friendly heavy infantry regiment directly between shooter and target. Dynamic trajectory solving elevates the ballistic arc to 46.5 wu of height at the friendly line, clearing the 40.0 wu (2.0 m) clearance threshold and passing cleanly overhead without friendly interception, leaving the friendly line unharmed while striking the enemy.",
   "fixed_fps": 30,
   "max_frames": 60,
   "fps": 20,

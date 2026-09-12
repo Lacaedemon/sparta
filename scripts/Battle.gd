@@ -1240,6 +1240,12 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 		u.morale = float(d["morale"])
 	if d.has("ammo"):
 		u.missile_ammo = int(d["ammo"])
+	if d.has("missile_range"):
+		u.missile_range = float(d["missile_range"])
+		u.detection_range = maxf(u.detection_range, u.missile_range)
+		u.skirmish_kite_distance = u.missile_range * Unit.SKIRMISH_KITE_FRACTION
+	if d.has("missile_launch_angle"):
+		u.missile_launch_angle = float(d["missile_launch_angle"])
 	if d.has("under_fire_morale_floor"):
 		u.under_fire_morale_floor = float(d["under_fire_morale_floor"])
 	if d.has("frontage_override"):
@@ -1277,6 +1283,10 @@ func _spawn_scenario(specs: Array) -> void:
 			d["missile"] = int(spec["missile"])
 		if spec.has("ammo"):
 			d["ammo"] = int(spec["ammo"])
+		if spec.has("missile_range"):
+			d["missile_range"] = float(spec["missile_range"])
+		if spec.has("missile_launch_angle"):
+			d["missile_launch_angle"] = float(spec["missile_launch_angle"])
 		if spec.has("under_fire_morale_floor"):
 			d["under_fire_morale_floor"] = float(spec["under_fire_morale_floor"])
 		if spec.has("starting_state"):

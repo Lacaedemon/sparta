@@ -306,6 +306,13 @@ script under `demos/inputs/`:
     that unanswered incoming missile fire can erode the unit down to.
     See `demos/inputs/suppression-ammo-1567.json`.
 
+  - `missile_range` (optional) -- world-unit missile range override for the unit.
+    Also updates `detection_range` and `skirmish_kite_distance` proportionally.
+    See `demos/inputs/trajectory-lob-1567.json`.
+
+  - `missile_launch_angle` (optional) -- launch angle override in radians above horizontal.
+    See `demos/inputs/trajectory-lob-1567.json`.
+
   Example -- stage a lone, low-morale infantry unit against a strong cavalry force so it routs
   (then rallies, if the build has that): `demos/inputs/rout-rally.json`.
 - `frames` (optional) -- a list of physics ticks to save a viewport PNG at, for visual
