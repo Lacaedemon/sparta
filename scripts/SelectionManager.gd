@@ -683,9 +683,8 @@ func _issue_order(world_pos: Vector2, append: bool = false, gait: int = -1) -> v
 	Sfx.play(&"order")
 
 
-## Arm a one-shot reinforcement insertion along `axis` for the next right-click on a friendly.
-## An axis the guard refuses outright (RANKS, until it is wired) flashes the guard's own
-## reason and arms nothing, so the chord neither merges nor inserts by files.
+## Arm a one-shot reinforcement insertion along `axis` (FILES or RANKS) for the next right-click
+## on a friendly. An unsupported axis flashes the guard's own refusal reason and arms nothing.
 func _arm_reinforce(axis: int) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK or not has_selection():
 		return

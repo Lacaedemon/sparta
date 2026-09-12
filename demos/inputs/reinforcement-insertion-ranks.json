@@ -1,24 +1,23 @@
 {
-  "_comment": "Reinforcement insertion (doubling by number, ranks axis). Two 40-man player Infantry blocks face down: a host at (600, 520) and a reserve straight behind it at (600, 340). The player clicks the reserve, presses Ctrl+Shift+M to arm insertion by ranks, and right-clicks the host. The reserve marches to a rendezvous one rank pitch behind the host's rear edge with the host's heading held (its maneuver reads REINFORCING on the way), and once there its men file into the host: the host's frontage holds at 9 files while each reserve rank interjects between the host's ranks, doubling the host's depth with its front rank holding its ground as the anchor shifts rearward, and the reserve regiment is absorbed. On the commit tick every transferred man re-keys under the host's uid, so the per-soldier id stream shows one discontinuity there by design.",
-  "seed": "378211",
+  "_comment": "Reinforcement insertion by ranks (depth axis doubling, #1574). Two 40-man player Infantry units stand in column: host at (520, 560) facing down, reserve at (520, 390) in the rear. The player selects the reserve, presses Ctrl+Shift+M to arm insertion by ranks, and right-clicks the host. The reserve marches to the rendezvous behind the host (maneuver REINFORCING); upon arrival, each reserve rank steps into the host between existing ranks, doubling depth from 5 to 10 ranks while holding frontage at 9 files. Formation anchor shifts rearward so the front rank holds its ground.",
+  "seed": "157404",
   "drill": true,
   "scenario": [
-    {"team": 0, "type": "Infantry", "count": 40, "x": 600, "y": 520},
-    {"team": 0, "type": "Infantry", "count": 40, "x": 600, "y": 340}
+    {"team": 0, "type": "Infantry", "count": 40, "x": 520, "y": 560},
+    {"team": 0, "type": "Infantry", "count": 40, "x": 520, "y": 390}
   ],
   "camera": [
-    {"tick": 0, "x": 600.0, "y": 450.0, "zoom": 1.4}
+    {"tick": 0, "x": 520.0, "y": 480.0, "zoom": 1.45}
   ],
   "steps": [
-    {"tick": 20, "click": [600, 340]},
-    {"tick": 35, "key": "M", "shift": true, "ctrl": true},
-    {"tick": 50, "rmb_click": [600, 520]}
+    {"tick": 15, "click": [520, 390]},
+    {"tick": 30, "key": "M", "ctrl": true, "shift": true},
+    {"tick": 45, "rmb_click": [520, 560]}
   ],
-  "state": [8, 20, 40, 60, 80, 100, 120, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240,
-            250, 260, 280, 300, 320, 340, 360, 380, 400, 420, 450],
+  "state": [10, 25, 45, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340, 360, 380, 400, 420, 450],
   "expect": [
-    {"tick": 8, "uid": 0, "field": "position", "value": [600, 520]},
-    {"tick": 8, "uid": 1, "field": "position", "value": [600, 340]},
+    {"tick": 10, "uid": 0, "field": "position", "value": [520, 560]},
+    {"tick": 10, "uid": 1, "field": "position", "value": [520, 390]},
     {"tick": [60, 150], "uid": 1, "field": "maneuver", "value": "REINFORCING"},
     {"tick": [300, 450], "uid": 0, "field": "soldiers", "value": 80},
     {"tick": [300, 450], "uid": 0, "field": "frontage", "value": 9}
