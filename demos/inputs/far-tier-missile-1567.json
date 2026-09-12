@@ -1,0 +1,96 @@
+{
+  "_comment": "Long ranges at the far tier (phase 5 of docs/longer-range-missile-design.md): Rhodian slingers (team 0, range 180 m / 3600 wu) posted at (600, 250) engage an advancing enemy infantry block (team 1, 120 soldiers) deployed at (600, 1100), an 850-wu opening gap. Because the initial separation exceeds DEMOTE_RANGE (600 wu), both formations open in the far tier (flock marks, no individual bodies). The slingers' 3600-wu reach spans the gap, opening fire at long range and inflicting continuous far-tier attrition and suppression on the advancing column before the lines ever close to close-tier promotion range.",
+  "seed": "1567",
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Archers",
+      "x": 600,
+      "y": 250,
+      "count": 80,
+      "missile": 404,
+      "facing": [0, 1]
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 600,
+      "y": 1100,
+      "count": 120,
+      "facing": [0, -1]
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 600.0,
+      "y": 675.0,
+      "zoom": 0.8
+    }
+  ],
+  "steps": [
+    {
+      "tick": 10,
+      "click": [600, 250]
+    }
+  ],
+  "state": [8, 30, 60, 90, 120],
+  "frames": [8, 60, 120],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        600,
+        250
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 1,
+      "field": "position",
+      "value": [
+        600,
+        1100
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "tier",
+      "value": "FAR"
+    },
+    {
+      "tick": 8,
+      "uid": 1,
+      "field": "tier",
+      "value": "FAR"
+    },
+    {
+      "tick": 120,
+      "uid": 0,
+      "field": "tier",
+      "value": "FAR"
+    },
+    {
+      "tick": 120,
+      "uid": 1,
+      "field": "tier",
+      "value": "FAR"
+    },
+    {
+      "tick": 120,
+      "uid": 0,
+      "field": "state",
+      "value": "FIGHTING"
+    },
+    {
+      "tick": 120,
+      "uid": 1,
+      "field": "under_fire",
+      "value": true
+    }
+  ]
+}
+

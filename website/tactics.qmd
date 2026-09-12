@@ -2142,6 +2142,23 @@ it clears the 2.0 m shoulder clearance threshold and passes safely overhead with
 striking the enemy line beyond.
 :::
 
+::: {#fig-far-tier-missile .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/far_tier_missile.jpg">
+  <source src="media/far_tier_missile.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Rhodian slingers with an authored 180 m reach engage an advancing enemy infantry block from 42.5 m (850 world units).
+Because the distance exceeds the 30 m demote range, both formations fight in the far tier as aggregate flock marks.
+The slingers' long reach spans the gap, opening fire immediately and eroding enemy morale and cohesion well before the lines close to close-tier promotion range.
+:::
+
+
 ## Turn your shields toward the archers
 
 Arrows are resolved **one man at a time** when they land, and each one is tested

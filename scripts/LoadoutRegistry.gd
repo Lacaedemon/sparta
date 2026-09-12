@@ -38,6 +38,12 @@ const MOUNT_WARHORSE: int = 302
 
 const MISSILE_BOW: int = 401
 const MISSILE_PILUM: int = 402
+const MISSILE_JAVELIN: int = 403
+const MISSILE_SLING: int = 404
+const MISSILE_SELF_BOW: int = 405
+const MISSILE_COMPOSITE_BOW: int = 406
+const MISSILE_BOLT_SHOOTER: int = 407
+const MISSILE_STONE_THROWER: int = 408
 
 # Stat sources — the registry names what already exists, it invents nothing:
 # reach_m carries the exact per-type values Battle._default_loadout() held as
@@ -175,6 +181,18 @@ static var _missiles: Dictionary = {
 			ProjectilePhysics.ANGLE_ARCED, MissileProfile.AMMO_UNLIMITED),
 	MISSILE_PILUM: MissileProfile.make(MISSILE_PILUM, "Pilum", 15.0, 2.0, 0.7, 0.5,
 			ProjectilePhysics.ANGLE_FLAT, 2),
+	MISSILE_JAVELIN: MissileProfile.make(MISSILE_JAVELIN, "Javelin", 25.0, 2.0, 0.7, 0.5,
+			ProjectilePhysics.ANGLE_FLAT, 2),
+	MISSILE_SLING: MissileProfile.make(MISSILE_SLING, "Sling", 180.0, 10.0, 0.6, 0.6,
+			ProjectilePhysics.ANGLE_ARCED, MissileProfile.AMMO_UNLIMITED),
+	MISSILE_SELF_BOW: MissileProfile.make(MISSILE_SELF_BOW, "Self bow", 120.0, 6.0, 0.7, 0.5,
+			ProjectilePhysics.ANGLE_ARCED, MissileProfile.AMMO_UNLIMITED),
+	MISSILE_COMPOSITE_BOW: MissileProfile.make(MISSILE_COMPOSITE_BOW, "Composite bow", 180.0, 6.0, 0.8, 0.6,
+			ProjectilePhysics.ANGLE_ARCED, MissileProfile.AMMO_UNLIMITED),
+	MISSILE_BOLT_SHOOTER: MissileProfile.make(MISSILE_BOLT_SHOOTER, "Bolt-shooter", 350.0, 20.0, 2.0, 0.7,
+			ProjectilePhysics.ANGLE_FLAT, MissileProfile.AMMO_UNLIMITED),
+	MISSILE_STONE_THROWER: MissileProfile.make(MISSILE_STONE_THROWER, "Stone-thrower", 370.0, 60.0, 4.0, 0.4,
+			ProjectilePhysics.ANGLE_ARCED, MissileProfile.AMMO_UNLIMITED),
 }
 
 

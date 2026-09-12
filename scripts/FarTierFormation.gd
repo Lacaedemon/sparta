@@ -80,10 +80,14 @@ var stamina_walk_regen_per_s: float = SoldierCombat.RHO_STAMINA_WALK
 var stamina_jog_drain_per_s: float = SoldierCombat.KAPPA_JOG
 var stamina_sprint_drain_per_s: float = SoldierCombat.KAPPA_SPRINT
 ## Whether this formation is a ranged formation (archers), matching Unit.is_ranged's default.
-## Drives FarTierRules' rate/reach split: a ranged formation strikes at RANGED_RANGE on the
-## RANGED_INTERVAL/RANGED_DAMAGE_FACTOR cadence and never takes return melee attrition from a
+## Drives FarTierRules' rate/reach split: a ranged formation strikes at missile_range on the
+## missile_interval/missile_damage_factor cadence and never takes return melee attrition from a
 ## target beyond melee reach, mirroring how a close-tier archer skirmishes rather than presses.
 var is_ranged: bool = false
+var missile_range: float = Unit.RANGED_RANGE
+var missile_interval: float = Unit.RANGED_INTERVAL
+var missile_damage_factor: float = Unit.RANGED_DAMAGE_FACTOR
+var missile_accuracy_at_max: float = 1.0
 
 ## Fractional casualties accumulated by the far tier's continuous attrition rate, carried
 ## between ticks until a whole soldier falls (FarTierRules.tick_attrition). Sub-soldier
@@ -150,6 +154,10 @@ static func from_unit(u: Unit) -> FarTierFormation:
 	rec.stamina_jog_drain_per_s = u.stamina_jog_drain_per_s
 	rec.stamina_sprint_drain_per_s = u.stamina_sprint_drain_per_s
 	rec.is_ranged = u.is_ranged
+	rec.missile_range = u.missile_range
+	rec.missile_interval = u.missile_interval
+	rec.missile_damage_factor = u.missile_damage_factor
+	rec.missile_accuracy_at_max = u.missile_accuracy_at_max
 	rec.routing = u.state == Unit.State.ROUTING
 	if rec.routing:
 		rec.rout_timer = u._rout_timer

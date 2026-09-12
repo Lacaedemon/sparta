@@ -167,7 +167,11 @@ static func flank_multiplier(defender: FarTierFormation, attacker_pos: Vector2) 
 static func strike_expectation(attacker: FarTierFormation, defender: FarTierFormation) -> float:
 	if attacker.is_ranged:
 		var eff_ranged: float = float(attacker.attack) * formation_attack_factor(attacker)
-		var ranged_base: float = maxf(1.0, eff_ranged - float(defender.defense)) * Unit.RANGED_DAMAGE_FACTOR
+		var dist: float = attacker.position.distance_to(defender.position)
+		var accuracy: float = MissileProfile.accuracy_at(dist, attacker.missile_range,
+				attacker.missile_accuracy_at_max)
+		var ranged_base: float = maxf(1.0, eff_ranged - float(defender.defense)) \
+				* attacker.missile_damage_factor * accuracy
 		return ranged_base * missile_defense_factor(defender, attacker.position)
 	# The aggregate pool's g(sigma) scales the attack stat the way each close-tier soldier's
 	# own stamina scales his cond_a (SoldierMelee.resolve), before the defence subtraction,
@@ -181,14 +185,14 @@ static func strike_expectation(attacker: FarTierFormation, defender: FarTierForm
 
 ## Expected casualties per second the attacker inflicts on the defender: one expected
 ## strike per ATTACK_INTERVAL (or, for a ranged attacker, one expected volley per
-## RANGED_INTERVAL), scaled by the defender's flank exposure. A melee attacker's output is
+## missile_interval), scaled by the defender's flank exposure. A melee attacker's output is
 ## also scaled by its remaining-strength ratio (the Lanchester-style thinning term) — mirroring
 ## the close tier's per-soldier melee, which naturally loses output as fighters fall. A ranged
 ## attacker is NOT thinned this way: UnitCombat.shoot draws volley damage from the flat
 ## attack stat with no soldier-count scaling, so a 10-man archer regiment volleys exactly as
 ## hard as a 140-man one, and the far tier must match that to stay a faithful mirror.
 static func casualty_rate(attacker: FarTierFormation, defender: FarTierFormation) -> float:
-	var interval: float = Unit.RANGED_INTERVAL if attacker.is_ranged else Unit.ATTACK_INTERVAL
+	var interval: float = attacker.missile_interval if attacker.is_ranged else Unit.ATTACK_INTERVAL
 	var thinning: float = 1.0 if attacker.is_ranged else strength_ratio(attacker)
 	return strike_expectation(attacker, defender) \
 			* flank_multiplier(defender, attacker.position) \
@@ -198,10 +202,10 @@ static func casualty_rate(attacker: FarTierFormation, defender: FarTierFormation
 ## Whether the attacker's centroid is close enough to strike — mirrors the close tier's
 ## contact check for a melee attacker (attack_range + both unit radii), so a longer-reach
 ## formation opens up first, exactly like a spear line meeting a sword line. A ranged
-## attacker instead uses RANGED_RANGE, matching the close tier's archer, which looses
+## attacker instead uses its missile_range, matching the close tier's shooter, which looses
 ## volleys from well beyond melee contact rather than closing to reach.
 static func in_striking_range(attacker: FarTierFormation, defender: FarTierFormation) -> bool:
-	var reach: float = Unit.RANGED_RANGE if attacker.is_ranged \
+	var reach: float = attacker.missile_range if attacker.is_ranged \
 			else attacker.attack_range + Unit.RADIUS * 2.0
 	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 	return attacker.position.distance_squared_to(defender.position) <= reach * reach
