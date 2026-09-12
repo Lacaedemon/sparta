@@ -110,7 +110,7 @@ Verified against the tree at the time of writing.
   A router that leaves it is removed from play by `Unit._escape()`.
   The comment above it states an invariant this design has to honour: the margin is sized to "the game's maximum visual range", with `DETECTION_RANGE` standing in for "a fog-of-war vision range, which this game doesn't have yet", "so a fleeing unit stays a plausible target for as long as it's still visible, rather than vanishing early".
   Phase 2 equips pilum units with 300-wu detection while intentionally keeping `Battle.ROUT_MARGIN` battle-wide and fixed at 190 wu to prevent per-unit boundary drift.
-  A real sight range longer than 190 wu still breaks that invariant under fog of war, so the parameter section below specifies what happens to the margin.
+  Fog of war is render-only, so `Battle.ROUT_MARGIN` remains fixed at 190 wu.
 
 ### What the AI can see
 
@@ -321,7 +321,7 @@ Proposed parameters:
 | `Unit.sight_range` | resolved from `is_cavalry` and `is_ranged` at spawn, overridable before `_ready` | The same set-before-tree contract `detection_range`, `drill_mode`, and `ai_doctrine` already follow |
 | `Unit.SIGHT_SCREEN_FACTOR` | 0.5 | Remaining range through one screening patch |
 | `Unit.SIGHT_ROUTING_PENALTY` | 0.6 | A routing unit is not observing; multiplies its own sight range while its state is ROUTING |
-| `Battle.ROUT_MARGIN` | redefined to include the largest sight range: 420 wu on these defaults, up from 190 wu | Keeps the invariant its own comment states -- the margin a router must clear is never shorter than the longest sight range in play |
+| `Battle.ROUT_MARGIN` | 190 wu | Unaffected by fog, staying fixed at `DETECTION_RANGE` (render-only) |
 
 The multipliers are gameplay tuning and are labelled as such; only
 `sight_scale`'s tie to field size is a structural claim.
@@ -356,52 +356,14 @@ explored grid) currently has a representation for.
 Extent-based or partial visibility is therefore a named later phase, listed
 under the open questions below.
 
-**The rout margin has to grow with sight range.**
-`Battle.ROUT_MARGIN` is `DETECTION_RANGE` = 190 wu, and its
-comment (`scripts/Battle.gd:32-41`) sizes it to "the game's maximum visual
-range" so that "a fleeing unit stays a plausible target for as long as it's
-still visible".
-The defaults above put foot sight at 300 wu and mounted sight at 420 wu, which
-is 1.6x to 2.2x that margin, so leaving the margin alone would have a routing
-enemy cross `Unit.retreat_bounds`, be removed by `Unit._escape()`, and visibly
-pop out of existence while still well inside a friendly unit's sight radius.
-The proposal is to redefine the margin as the maximum of every range that makes
-a unit worth watching, sight included: `maxf(RANGED_RANGE, maxf(DETECTION_RANGE,
-max_sight_range))`, where `max_sight_range` is `sight_scale` times the largest
-sight multiplier (`SIGHT_MOUNTED` 1.4, so 420 wu on the default field).
-That makes it a per-battle instance value rather than a `const`, since
-`sight_scale` is itself per-battle; `field_with_margin` is then recomputed in
-the one place it is already recomputed for a non-default map
-(`scripts/Battle.gd:531`), so nothing else in the *spawn path* changes.
-Two things outside the spawn path do change, and phase 1 owns both.
+**The rout margin is decoupled from fog of war.**
+`Battle.ROUT_MARGIN` remains fixed at `DETECTION_RANGE` = 190 wu.
+Fog is render-only.
+It sets `CanvasItem.visible` and draws ghost markers, but does not alter `rout_margin` or `field_with_margin`.
+A routing enemy crosses `Unit.retreat_bounds` and escapes at the same tick whether fog of war is enabled or disabled.
+This decoupling ensures that mid-battle fog toggles cannot cause replay determinism divergence between recording and playback.
+`Battle.rout_margin` remains an instance property initialized to `ROUT_MARGIN` for compatibility, but its value is constant.
 
-The member has to be renamed `rout_margin`.
-`.gdlintrc` leaves gdlint's `class-variable-name` rule enabled (it is absent
-from that file's `disable:` list) and `.github/workflows/check-gdlint.yml` runs
-gdlint in CI, so a member `var ROUT_MARGIN` fails lint where the current
-`const ROUT_MARGIN` (`scripts/Battle.gd:41`) passes.
-The rename also reverses a deliberate earlier change: `demos/demo.1103.json`
-records `ROUT_MARGIN` being promoted var-to-const as one of the
-naming-convention fixes gdlint itself flagged.
-That is a cost worth naming rather than a blocker -- the promotion was made
-because the value was constant, and this design is exactly what stops it being
-constant.
-
-`test/unit/test_battle_map.gd` has to be updated in the same commit.
-Both `:101` and `:166` assert `battle.field_with_margin == <rect>.grow(battle.ROUT_MARGIN)`,
-so the rename breaks them outright, and the per-battle value changes what they
-assert: the margin they compare against is now a function of the battle's own
-`sight_scale` rather than a compile-time constant.
-Reading the margin off the battle instance keeps both assertions honest under
-the new definition.
-The visible costs are a wider margin strip drawn under the field
-(`scripts/Battle.gd:688`) and a longer flight before escape, both of which are
-the intended behaviour rather than a regression.
-The alternative -- keep the margin at 190 wu and accept the pop-out -- is
-rejected here rather than left unstated, because a unit vanishing inside your
-own sight radius reads as a bug to the player and would undercut the
-ghost-marker model in the same breath.
-Phase 1 owns the change, since that is where sight ranges first exist.
 
 ### Last-known contact
 
@@ -599,7 +561,8 @@ see, which is both wrong and a silent desync between a recording and its
 playback if the two ever differed in render state.
 
 So the rule is explicit.
-Fog affects `CanvasItem.visible`, ghost markers, and the retreat margin.
+Fog affects `CanvasItem.visible` and ghost markers.
+The retreat margin is unaffected because fog is render-only.
 The recorded replay map value drives playback.
 A replay reproduces the fog state the battle started with, and a mid-battle toggle is not reproduced on playback.
 A dedicated fog-transition track is planned as a follow-up (sparta#1579).
@@ -623,7 +586,8 @@ a judgement call about a video, which is what `CLAUDE.md` asks for.
 Design only; no implementation is dispatched by this doc.
 Each phase is a separate PR with its own demo.
 Each holds the standing invariants.
-Fog effects are bounded to visibility, ghost markers, and the retreat margin.
+Fog effects are bounded to visibility and ghost markers.
+The retreat margin is unaffected.
 A replay re-derives identically under its recorded map state.
 
 ### Phase 1 -- battle visibility core, headless
@@ -637,11 +601,8 @@ The `sight` axis on terrain patches in `BattleMap.parse` and
 `BattleMap.serialize`.
 Sightline tests reuse the existing public `PathField.is_leg_blocked` with
 `clearance` 0.0; no new `PathField` entry point is added.
-`Battle.ROUT_MARGIN` widened to the largest sight range, per "The rout margin
-has to grow with sight range" above -- which includes renaming the member
-`rout_margin` to satisfy gdlint's `class-variable-name` rule, and updating the
-two assertions in `test/unit/test_battle_map.gd` (`:101` and `:166`) that read
-it.
+`Battle.ROUT_MARGIN` remains fixed at `DETECTION_RANGE` (190 wu).
+Fog is render-only and does not alter the rout margin or retreat bounds.
 No rendering and no AI consumption: the sim runs exactly as today and the new
 state is computed alongside it.
 
@@ -658,10 +619,8 @@ A target across the `forest` screen patch is visible within the reduced range
 and not beyond it.
 A contact record is written on the tick of last sighting and not after.
 A unit that dies while unobserved keeps its record.
-A routing unit spawned on the default map is still in play at 300 wu beyond
-the field edge and removed by `Unit._escape()` only past the widened margin, so
-the distance it must clear is never shorter than the longest sight range in the
-battle.
+A routing unit is removed by `Unit._escape()` at `Battle.ROUT_MARGIN` (190 wu)
+beyond the field edge whether fog is enabled or disabled.
 A fixed-seed battle produces a byte-identical replay with the module active,
 proving no simulation feedback.
 `BattleMap.parse(BattleMap.serialize(...))` round-trips the new key, and a map

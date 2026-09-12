@@ -1049,7 +1049,7 @@ var detection_range: float = DETECTION_RANGE
 # at the baseline. A routing unit is not observing, so its own range is cut by
 # SIGHT_ROUTING_PENALTY while it flees. Separate from detection_range, which is the sim's
 # auto-acquisition radius.
-# Sight feeds visibility and the rout margin, never AI targeting.
+# Sight feeds visibility, never AI targeting or retreat bounds.
 const SIGHT_FOOT: float = 1.0
 const SIGHT_MOUNTED: float = 1.4
 const SIGHT_RANGED: float = 1.2

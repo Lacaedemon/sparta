@@ -387,8 +387,8 @@ func test_playback_restores_fog_of_war_from_recorded_map() -> void:
 	var battle: Node = scene.instantiate()
 	add_child_autofree(battle)
 	assert_true(battle.is_fog_active(), "playback restores recorded fog_of_war even when live setting is off")
-	assert_almost_eq(battle.rout_margin, battle.sight_scale * Unit.SIGHT_MOUNTED, 0.001,
-			"rout_margin derives from mounted sight range under recorded fog")
+	assert_almost_eq(battle.rout_margin, battle.ROUT_MARGIN, 0.001,
+			"rout_margin stays at ROUT_MARGIN under recorded fog")
 	Replay.mode = old_mode
 	Replay.map = old_map
 	Settings.set_fog_of_war_session(prev_fog)

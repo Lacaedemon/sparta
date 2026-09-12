@@ -167,10 +167,10 @@ var show_position_anchor: bool = false:
 # Fog of war.
 # Hide every enemy unit outside all of your own units' sight radii and draw a
 # fading ghost marker where each was last seen (Battle._tick_fog / Perception.gd).
-# Fog affects unit visibility, ghost markers, and the retreat margin -- widened to
-# match mounted sight range so fleeing units do not escape while in view -- with the
-# recorded replay map value driving playback. Default off, so every existing demo,
-# replay, and test renders and routes exactly as before.
+# Fog affects unit visibility and ghost markers, with the recorded replay map value
+# driving playback. Fog is render-only and does not affect retreat bounds or simulation
+# state. Default off, so every existing demo, replay, and test renders and routes
+# exactly as before.
 var fog_of_war: bool = false:
 	set(value):
 		if value == fog_of_war:

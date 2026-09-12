@@ -5,8 +5,8 @@ extends RefCounted
 ## A pure query over unit state.
 ## It reads positions, teams, sight ranges, and states and writes nothing back into
 ## any unit. Perception output feeds unit visibility and ghost markers in Battle.
-## Battle also syncs retreat bounds to sight scale under fog, with the recorded
-## map value driving playback. Visibility is a disc per observer.
+## Fog is render-only and does not affect retreat bounds or simulation state.
+## Visibility is a disc per observer.
 ## A target is seen when its center lies within some friendly observer's sight range.
 ## Terrain occlusion and screening are not modelled yet.
 ## A unit's own team always sees it (an army knows where its own regiments stand).

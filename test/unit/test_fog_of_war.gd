@@ -1,9 +1,10 @@
 extends GutTest
 ## Fog of war. Perception visibility query and last-known table, Unit type-derived
 ## sight defaults, the off-by-default Settings toggle, and Battle's fog pass -- which
-## hides unseen enemies by CanvasItem.visible, syncs ghost markers and the retreat margin
-## (with the recorded value driving playback), restores everything when switched off,
-## and stays off under all-teams control.
+## hides unseen enemies by CanvasItem.visible, syncs ghost markers with the recorded
+## value driving playback, restores everything when switched off,
+## and stays off under all-teams control. Fog is render-only and does not alter the
+## retreat margin.
 
 const Perception = preload("res://scripts/Perception.gd")
 const FogGhostLayer = preload("res://scripts/FogGhostLayer.gd")
@@ -611,7 +612,7 @@ func test_sight_scale_derives_from_final_field_or_preserves_override() -> void:
 		"explicit caller sight_scale override is preserved")
 
 
-func test_rout_margin_derives_from_largest_sight_range() -> void:
+func test_rout_margin_stays_at_rout_margin_when_fog_is_on() -> void:
 	var b1: Node = load("res://scenes/Battle.tscn").instantiate()
 	add_child_autofree(b1)
 	assert_almost_eq(b1.rout_margin, b1.ROUT_MARGIN, 0.001,
@@ -623,22 +624,18 @@ func test_rout_margin_derives_from_largest_sight_range() -> void:
 	Settings.set_fog_of_war_session(true)
 	var b2: Node = load("res://scenes/Battle.tscn").instantiate()
 	add_child_autofree(b2)
-	# Default field is 1600x1200: 0.25 * 1200.0 * 1.4 = 420.0 wu.
-	assert_almost_eq(b2.rout_margin, 420.0, 0.001,
-		"default rout_margin derives from mounted sight range when fog is on")
-	assert_gt(b2.rout_margin, b2.ROUT_MARGIN,
-		"derived rout_margin exceeds pre-fog fixed margin when fog is on")
-	assert_eq(b2.field_with_margin, b2.field.grow(420.0),
-		"field_with_margin grows by the derived margin when fog is on")
+	assert_almost_eq(b2.rout_margin, b2.ROUT_MARGIN, 0.001,
+		"rout_margin remains ROUT_MARGIN when fog is on")
+	assert_eq(b2.field_with_margin, b2.field.grow(b2.ROUT_MARGIN),
+		"field_with_margin matches baseline when fog is on")
 
 	var b3: Node = load("res://scenes/Battle.tscn").instantiate()
 	b3.sight_scale = 450.0
 	add_child_autofree(b3)
-	# Overridden sight_scale 450.0 * 1.4 = 630.0 wu.
-	assert_almost_eq(b3.rout_margin, 630.0, 0.001,
-		"rout_margin tracks caller-overridden sight_scale when fog is on")
-	assert_eq(b3.field_with_margin, b3.field.grow(630.0),
-		"field_with_margin widens with overridden sight_scale when fog is on")
+	assert_almost_eq(b3.rout_margin, b3.ROUT_MARGIN, 0.001,
+		"rout_margin remains ROUT_MARGIN even with custom sight_scale")
+	assert_eq(b3.field_with_margin, b3.field.grow(b3.ROUT_MARGIN),
+		"field_with_margin matches baseline even with custom sight_scale")
 
 	Settings.set_fog_of_war_session(prev_fog)
 
@@ -696,7 +693,7 @@ func test_pending_all_teams_control_preserves_default_rout_margin() -> void:
 	Settings.set_fog_of_war_session(prev_fog)
 
 
-func test_mid_battle_fog_toggle_updates_rout_margin_and_live_units() -> void:
+func test_mid_battle_fog_toggle_preserves_rout_margin_and_live_units() -> void:
 	var battle: Node = _staged_battle(false)
 	for _k in range(3):
 		await get_tree().physics_frame
@@ -709,19 +706,18 @@ func test_mid_battle_fog_toggle_updates_rout_margin_and_live_units() -> void:
 	Settings.set_fog_of_war_session(true)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
-	var expected_margin: float = battle.sight_scale * Unit.SIGHT_MOUNTED
-	assert_almost_eq(battle.rout_margin, expected_margin, 0.001,
-		"rout_margin expands after mid-battle fog toggle on")
-	assert_eq(unit.retreat_bounds, battle.field.grow(expected_margin),
-		"live unit retreat_bounds expands after toggle on")
+	assert_almost_eq(battle.rout_margin, battle.ROUT_MARGIN, 0.001,
+		"rout_margin remains unchanged after mid-battle fog toggle on")
+	assert_eq(unit.retreat_bounds, battle.field.grow(battle.ROUT_MARGIN),
+		"live unit retreat_bounds remains unchanged after toggle on")
 
 	Settings.set_fog_of_war_session(false)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	assert_almost_eq(battle.rout_margin, battle.ROUT_MARGIN, 0.001,
-		"rout_margin resets to baseline after mid-battle toggle off")
+		"rout_margin remains unchanged after mid-battle toggle off")
 	assert_eq(unit.retreat_bounds, battle.field.grow(battle.ROUT_MARGIN),
-		"live unit retreat_bounds resets after toggle off")
+		"live unit retreat_bounds remains unchanged after toggle off")
 
 
 func test_attack_overlay_respects_fog_visibility_and_shows_last_known_ghost() -> void:
@@ -785,13 +781,13 @@ func test_paused_fog_toggle_refreshes_battlefield_immediately() -> void:
 	get_tree().paused = true
 	Settings.fog_of_war = true
 	assert_false(far.visible, "toggling fog while paused immediately hides unseen enemies")
-	assert_almost_eq(battle.rout_margin, battle.sight_scale * Unit.SIGHT_MOUNTED, 0.001,
-			"rout margin widens immediately while paused")
+	assert_eq(battle.rout_margin, battle.ROUT_MARGIN, "rout margin remains fixed while paused")
 	assert_true(battle._fog_active, "fog active flag set immediately while paused")
 
 	Settings.fog_of_war = false
 	assert_true(far.visible, "toggling fog off while paused immediately restores visibility")
-	assert_eq(battle.rout_margin, battle.ROUT_MARGIN, "rout margin resets immediately while paused")
+	assert_eq(battle.rout_margin, battle.ROUT_MARGIN,
+			"rout margin remains fixed when toggled off while paused")
 	assert_false(battle._fog_active, "fog active flag cleared immediately while paused")
 	get_tree().paused = false
 	Settings.fog_of_war = before
@@ -828,7 +824,7 @@ func test_replay_recorded_with_fog_on_reproduces_identically_when_live_fog_is_of
 		if (n as Unit).uid == u_rec.uid:
 			live_u_rec = n
 			break
-	assert_not_null(live_u_rec, "router is still in play at tick 250 under widened rout margin")
+	assert_not_null(live_u_rec, "router is still in play at tick 250")
 	var rec_pos: Vector2 = (live_u_rec as Unit).position
 	var recorded_map: Dictionary = Replay.map.duplicate(true)
 	assert_true(bool(recorded_map.get("fog_of_war", false)), "recording map saved fog_of_war: true")
@@ -876,5 +872,66 @@ func test_replay_recorded_with_fog_on_reproduces_identically_when_live_fog_is_of
 	Replay.mode = old_mode
 	Replay.map = old_map
 	Settings.set_fog_of_war_session(prev_fog)
+
+
+func _measure_rout_escape(fog_on: bool) -> Dictionary:
+	Settings.set_fog_of_war_session(fog_on)
+	Replay.mode = Replay.Mode.IDLE
+	Replay.seed_value = 42
+	Replay.rng.seed = Replay.seed_value
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.drill_mode = true
+	battle.terrain = []
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": 800, "y": 10, "count": 12},
+	]
+	_staged_battles.append(battle)
+	add_child(battle)
+	await get_tree().physics_frame
+
+	var unit: Unit = battle.get_tree().get_nodes_in_group("units")[0] as Unit
+	assert_not_null(unit, "unit spawned")
+	var unit_bounds: Rect2 = unit.retreat_bounds
+	var battle_bounds: Rect2 = battle.field_with_margin
+	unit._rout()
+	unit._shatter()
+
+	var escape_tick: int = -1
+	for tick in range(1, 600):
+		await get_tree().physics_frame
+		if not is_instance_valid(unit) or unit.state == Unit.State.DEAD or not unit.is_in_group("routers"):
+			escape_tick = tick
+			break
+
+	battle.free()
+	await get_tree().physics_frame
+	return {
+		"unit_bounds": unit_bounds,
+		"battle_bounds": battle_bounds,
+		"escape_tick": escape_tick,
+	}
+
+
+func test_fog_on_and_off_have_identical_retreat_bounds_and_escape_tick() -> void:
+	var prev_fog: bool = Settings.fog_of_war
+	var old_mode: int = Replay.mode
+	var old_map: Dictionary = Replay.map
+
+	var res_off: Dictionary = await _measure_rout_escape(false)
+	var res_on: Dictionary = await _measure_rout_escape(true)
+
+	assert_gt(res_off["escape_tick"], 0, "router escaped in fog-off run")
+	assert_gt(res_on["escape_tick"], 0, "router escaped in fog-on run")
+	assert_eq(res_on["unit_bounds"], res_off["unit_bounds"],
+		"unit retreat_bounds is identical between fog on and fog off")
+	assert_eq(res_on["battle_bounds"], res_off["battle_bounds"],
+		"battle field_with_margin is identical between fog on and fog off")
+	assert_eq(res_on["escape_tick"], res_off["escape_tick"],
+		"routing unit escapes at the exact same tick whether fog is on or off")
+
+	Replay.mode = old_mode
+	Replay.map = old_map
+	Settings.set_fog_of_war_session(prev_fog)
+
 
 

@@ -39,9 +39,8 @@ const FIELD := Rect2(0, 0, 1600, 1200)
 # detection alone, not the missile reach: a router does not have to outrun the longest
 # missile profile on the field to be gone, and the reach is per unit now anyway. Reads the
 # class constant, not any one unit's own detection_range field, since
-# this margin is a single battle-wide strip, not sized per unit. ROUT_MARGIN serves as the pre-fog
-# floor. When fog of war is enabled, rout_margin expands to track the largest configured sight
-# range (sight_scale * SIGHT_MOUNTED) so fleeing units remain in-bounds while visible.
+# this margin is a single battle-wide strip, not sized per unit. Fog of war is render-only
+# and does not alter the rout margin or retreat bounds.
 const ROUT_MARGIN: float = UnitRef.DETECTION_RANGE
 var rout_margin: float = ROUT_MARGIN
 var field_with_margin: Rect2 = FIELD.grow(ROUT_MARGIN)
@@ -436,7 +435,7 @@ var _fog_contacts: Dictionary = {}
 var _fog_seen: Dictionary = {}
 var _fog_active: bool = false
 var _fog_ghosts: Node2D = null
-# Replay playback drives fog state and rout margins from this recorded value
+# Replay playback drives fog state from this recorded value
 # rather than from the live global Settings.fog_of_war setting.
 var _recorded_fog_of_war: bool = false
 
@@ -1535,10 +1534,8 @@ func _reapply_fog_after_restore() -> void:
 			u.visible = true
 		if _fog_ghosts != null:
 			_fog_ghosts.clear()
-		_sync_rout_margin()
 		return
 	_fog_active = true
-	_sync_rout_margin()
 	for u in _fog_units_in_play():
 		u.visible = u.team == fog_team or _fog_seen.has(u.uid)
 	if _fog_ghosts != null:
@@ -1752,12 +1749,12 @@ func _physics_process(delta: float) -> void:
 ## Fog of war. With Settings.fog_of_war on, the fog team's units each perceive a
 ## disc, every enemy outside all of them is hidden by CanvasItem.visible, and each enemy's
 ## last sighting is kept for the ghost layer. (Disabled under all-teams control.)
-## Fog affects unit visibility, ghost markers, and the retreat margin -- widened to
-## match mounted sight range so routers do not escape while in view -- with the
-## recorded replay map value driving playback. Group membership, unit-level AI
-## targeting, and collision are untouched. Player-side order targeting in
-## SelectionManager filters on visibility so a click in empty fog cannot target an
-## unseen enemy. Switching fog off restores every unit and clears the markers.
+## Fog affects unit visibility and ghost markers, with the recorded replay map value
+## driving playback. Fog is render-only and does not affect the retreat margin.
+## Group membership, unit-level AI targeting, and collision are untouched.
+## Player-side order targeting in SelectionManager filters on visibility so a click in
+## empty fog cannot target an unseen enemy. Switching fog off restores every unit
+## and clears the markers.
 ## The contact table itself is kept, so switching back on remembers what was seen before.
 func _tick_fog() -> void:
 	var on: bool = is_fog_active()
@@ -1769,10 +1766,7 @@ func _tick_fog() -> void:
 				u.visible = true
 			if _fog_ghosts != null:
 				_fog_ghosts.clear()
-			_sync_rout_margin()
 		return
-	if not _fog_active:
-		_sync_rout_margin()
 	_fog_active = true
 	var units: Array = _fog_units_in_play()
 	_fog_seen = PerceptionRef.visible_enemy_uids(fog_team, units)
@@ -1819,25 +1813,16 @@ func is_fog_active() -> bool:
 
 
 ## Immediate response to Settings changes so toggling fog while paused updates
-## unit visibility, ghost markers, and retreat bounds without waiting for the
-## next physics frame.
+## unit visibility and ghost markers without waiting for the next physics frame.
 func _on_settings_changed() -> void:
 	if is_fog_active() != _fog_active:
 		_tick_fog()
 
 
-## Recompute rout_margin and field_with_margin from the live field and effective fog state,
-## and sync the updated bounds to all live units and routers. Fog affects routing escape
-## bounds -- wider so fleeing units stay in-bounds while visible -- recorded in the replay
-## map for deterministic playback.
+## Recompute rout_margin and field_with_margin from the live field,
+## and sync the updated bounds to all live units and routers.
 func _sync_rout_margin() -> void:
-	if is_fog_active():
-		var scale_val: float = sight_scale
-		if scale_val <= 0.0 or not is_finite(scale_val):
-			scale_val = DEFAULT_SIGHT_SCALE_FRACTION * minf(field.size.x, field.size.y)
-		rout_margin = maxf(ROUT_MARGIN, scale_val * UnitRef.SIGHT_MOUNTED)
-	else:
-		rout_margin = ROUT_MARGIN
+	rout_margin = ROUT_MARGIN
 	field_with_margin = field.grow(rout_margin)
 	queue_redraw()
 	if is_inside_tree():

@@ -2308,9 +2308,8 @@ If the enemy has marched away, your troops will march into empty ground.
 ### Scouting and pursuit decisions
 
 Fog of war fundamentally reshapes pursuit and battlefield control.
-When fog is enabled, the retreat boundary expands.
-The retreat margin widens from 9.5 m to match the mounted sight radius of 21 m.
-This ensures a broken enemy does not escape off-map while still in sight.
+Fog of war does not alter the retreat boundary.
+The retreat margin remains fixed at 9.5 m regardless of whether fog is enabled.
 However, if your pursuers lose sight of a routing enemy, that enemy enters the dark.
 A broken unit that breaks contact and gains distance can steady its nerve and rally.
 Dropping pursuit in the fog risks allowing shattered remnants to reform.

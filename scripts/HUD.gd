@@ -946,12 +946,8 @@ func _is_fog_toggle_keypress(event: InputEvent) -> bool:
 ## off because the tester drives both armies. Flipping the setting in either case
 ## changes nothing on screen while the toast claims it did, and the flip persists into
 ## the next ordinary battle.
-## Known limitation:
-## Replay stores only the initial fog boolean at battle start and has no
-## recorded fog-transition track, so a mid-battle toggle will not reproduce
-## on playback. Refusing the toggle while recording is not the remedy,
-## because every live battle is recording for debug replays, which would
-## disable the hotkey in all real play.
+## Fog of war is render-only, so a toggle cannot change a replay's outcome.
+## Playback still answers from the recorded value.
 ## Returns true if applied, false if refused.
 func _toggle_fog() -> bool:
 	if Replay.mode == Replay.Mode.PLAYBACK:
