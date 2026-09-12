@@ -1436,6 +1436,11 @@ var _render_last_facing: Vector2 = Vector2.DOWN
 # (below) is what actually eases toward this target each tick, so a routing transition
 # never jumps straight to 0.45 (or back to 1.0) in a single frame.
 const ROUTING_ALPHA: float = 0.45
+# State ring visual constants: subtle translucent arcs around the block during combat.
+const STATE_RING_FIGHTING_COLOR := Color(0.90, 0.15, 0.15)
+const STATE_RING_ROUTING_COLOR := Color(0.95, 0.50, 0.05)
+const STATE_RING_ALPHA := 0.40
+const STATE_RING_WIDTH := 1.5
 # Per-second rate _render_alpha eases toward its target (an active fade, not a snap) --
 # fast enough to read as an immediate response to the state change, slow enough to
 # actually be visible as a fade rather than an instant cut.
@@ -8365,13 +8370,22 @@ func _draw() -> void:
 	var centre: Vector2 = block_centre_offset()
 
 	# State ring around the block: red = engaged, orange = routing.
-	match state:
-		State.FIGHTING:
-			draw_arc(centre, extent + 2.0, 0, TAU, 36,
-					Color(0.90, 0.15, 0.15, alpha), 3.0)
-		State.ROUTING:
-			draw_arc(centre, extent + 2.0, 0, TAU, 36,
-					Color(0.95, 0.50, 0.05, 1.0), 3.5)
+	# Rendered as a subtle translucent ring (STATE_RING_ALPHA) rather than an opaque circle,
+	# softened further at figure LOD (_detailed_lod) and completely toggleable via
+	# Settings.show_combat_state_rings so combat feedback leaves unit footprints, commander
+	# hitboxes, and soldier glyphs readable during melee.
+	if Settings.show_combat_state_rings:
+		var ring_alpha: float = STATE_RING_ALPHA * (0.5 if _detailed_lod else 1.0)
+		var ring_width: float = 1.0 if _detailed_lod else STATE_RING_WIDTH
+		match state:
+			State.FIGHTING:
+				draw_arc(centre, extent + 2.0, 0, TAU, 36,
+						Color(STATE_RING_FIGHTING_COLOR.r, STATE_RING_FIGHTING_COLOR.g,
+								STATE_RING_FIGHTING_COLOR.b, ring_alpha * alpha), ring_width)
+			State.ROUTING:
+				draw_arc(centre, extent + 2.0, 0, TAU, 36,
+						Color(STATE_RING_ROUTING_COLOR.r, STATE_RING_ROUTING_COLOR.g,
+								STATE_RING_ROUTING_COLOR.b, ring_alpha), ring_width)
 
 	if selected:
 		draw_arc(centre, extent + 4.0, 0, TAU, 36, Color(0.95, 0.95, 0.3), 2.5)

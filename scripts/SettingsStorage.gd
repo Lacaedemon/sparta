@@ -14,6 +14,7 @@ const SECTIONS := {
 	"show_soldier_ids": "camera",
 	"show_engaged_highlight": "camera",
 	"show_position_anchor": "camera",
+	"show_combat_state_rings": "camera",
 	"show_fps": "camera",
 	"show_performance_graph": "camera",
 	"show_unit_card_tray": "camera",

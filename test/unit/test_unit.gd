@@ -5482,6 +5482,14 @@ func test_foot_kind_matches_unit_type() -> void:
 	assert_eq(_archer_unit()._foot_kind(), UnitMeshes.FOOT_ARCHER, "ranged unit -> archer (bow)")
 
 
+func test_state_ring_constants_and_visual_properties() -> void:
+	assert_almost_eq(Unit.STATE_RING_ALPHA, 0.40, 0.001, "combat state ring alpha is 0.40")
+	assert_almost_eq(Unit.STATE_RING_WIDTH, 1.5, 0.001, "combat state ring width is 1.5")
+	assert_eq(Unit.STATE_RING_FIGHTING_COLOR, Color(0.90, 0.15, 0.15), "fighting ring is red")
+	assert_eq(Unit.STATE_RING_ROUTING_COLOR, Color(0.95, 0.50, 0.05), "routing ring is orange")
+
+
+
 func test_foot_kind_prefers_the_actual_equipped_weapon_type_over_the_flags() -> void:
 	# docs/soldier-loadout-design.md phase 3: _foot_kind reads weapon_type_id first, ahead
 	# of the coarse anti_cavalry/is_ranged flags -- a future weapon-switch order writes

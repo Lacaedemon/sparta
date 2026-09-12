@@ -1,0 +1,22 @@
+{
+  "_comment": "Combat feedback readability during melee engagement: a player Infantry block at (550, 500) advances to engage an enemy Spearmen block at (690, 500). During active melee, the refined translucent combat state rings maintain clear visibility of unit boundaries, soldier marks, and commander positions without visual clutter.",
+  "seed": "8307509100273286081",
+  "drill": false,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 550, "y": 500, "count": 40, "facing": [1, 0]},
+    {"team": 1, "type": "Spearmen", "x": 690, "y": 500, "count": 40, "facing": [-1, 0]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 620.0, "y": 500.0, "zoom": 1.0}
+  ],
+  "steps": [
+    {"tick": 6, "click": [550.0, 500.0]},
+    {"tick": 14, "rmb_click": [690.0, 500.0]}
+  ],
+  "state": [10, 30, 80, 140, 200],
+  "expect": [
+    {"tick": [30, 80], "uid": 0, "field": "current_order", "value": "ATTACK"},
+    {"tick": [30, 80], "uid": 0, "field": "target_enemy_uid", "value": 1},
+    {"tick": 200, "uid": 0, "field": "engaged", "value": true}
+  ]
+}

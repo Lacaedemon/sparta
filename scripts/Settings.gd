@@ -164,6 +164,17 @@ var show_position_anchor: bool = false:
 			_save()
 			changed.emit()
 
+# Combat state rings: draw coloured rings around fighting (red) or routing (orange)
+# units. Cosmetic only. Default on.
+var show_combat_state_rings: bool = true:
+	set(value):
+		if value == show_combat_state_rings:
+			return
+		show_combat_state_rings = value
+		if not _loading:
+			_save()
+			changed.emit()
+
 # Fog of war.
 # Hide every enemy unit outside all of your own units' sight radii and draw a
 # fading ghost marker where each was last seen (Battle._tick_fog / Perception.gd).
@@ -399,6 +410,7 @@ func _to_storage_dict() -> Dictionary:
 		"show_soldier_ids": show_soldier_ids,
 		"show_engaged_highlight": show_engaged_highlight,
 		"show_position_anchor": show_position_anchor,
+		"show_combat_state_rings": show_combat_state_rings,
 		"fog_of_war": fog_of_war,
 		"show_fps": show_fps,
 		"show_performance_graph": show_performance_graph,
@@ -424,6 +436,7 @@ func _load(path: String = SAVE_PATH) -> void:
 	show_soldier_ids = loaded.get("show_soldier_ids", show_soldier_ids)
 	show_engaged_highlight = loaded.get("show_engaged_highlight", show_engaged_highlight)
 	show_position_anchor = loaded.get("show_position_anchor", show_position_anchor)
+	show_combat_state_rings = loaded.get("show_combat_state_rings", show_combat_state_rings)
 	fog_of_war = loaded.get("fog_of_war", fog_of_war)
 	show_fps = loaded.get("show_fps", show_fps)
 	show_performance_graph = loaded.get("show_performance_graph", show_performance_graph)
