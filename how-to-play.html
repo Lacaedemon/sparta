@@ -445,6 +445,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#controls" id="toc-controls" class="nav-link active" data-scroll-target="#controls">Controls</a>
   <ul class="collapse">
   <li><a href="#deploy-from-the-unit-card-tray" id="toc-deploy-from-the-unit-card-tray" class="nav-link" data-scroll-target="#deploy-from-the-unit-card-tray">Deploy from the unit card tray</a></li>
+  <li><a href="#fog-of-war" id="toc-fog-of-war" class="nav-link" data-scroll-target="#fog-of-war">Fog of war</a></li>
   </ul></li>
   <li><a href="#the-battle-loop" id="toc-the-battle-loop" class="nav-link" data-scroll-target="#the-battle-loop">The battle loop</a></li>
   <li><a href="#parade-ground" id="toc-parade-ground" class="nav-link" data-scroll-target="#parade-ground">Parade Ground</a></li>
@@ -480,7 +481,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Last updated: 2026-09-11</p>
+      <p class="date">Last updated: 2026-09-12</p>
     </div>
   </div>
   
@@ -708,10 +709,14 @@ Table&nbsp;1: Battle controls: selection, orders, formations, drill maneuvers, a
 <td><kbd>F5</kbd></td>
 </tr>
 <tr class="odd">
+<td>Fog of war</td>
+<td><kbd>F7</kbd> or <strong>☰ Menu → Fog of war</strong> hides every enemy unit outside your own units’ sight radii and leaves a fading ghost outline where each was last seen. A “FOG OF WAR” indicator shows while it’s on (off by default) – see <a href="#fog-of-war">Fog of war</a></td>
+</tr>
+<tr class="even">
 <td>All shortcuts (this list, in-game)</td>
 <td><kbd>?</kbd> (Shift + <kbd>/</kbd>) or <strong>☰ Menu → Shortcuts</strong></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Quit to Main Menu</td>
 <td><strong>☰ Menu → Quit to Main Menu</strong> leaves the battle immediately and returns to the Main Menu — the only way out of a <a href="#parade-ground">Parade Ground</a> drill, which never auto-ends</td>
 </tr>
@@ -1372,6 +1377,24 @@ Figure&nbsp;41: A marching unit visibly covers less ground per stretch of the cl
 </figure>
 </div>
 </section>
+<section id="fog-of-war" class="level3">
+<h3 class="anchored" data-anchor-id="fog-of-war">Fog of war</h3>
+<div id="fig-fog-of-war" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-fog-of-war-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/fog_of_war.jpg">
+  <source src="media/fog_of_war.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fog-of-war-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;42: Toggling fog of war mid-battle with F7. Units outside sight range are hidden and leave fading ghost markers where last seen.
+</figcaption>
+</figure>
+</div>
+<p><kbd>F7</kbd> (or <strong>☰ Menu → Fog of war</strong>) switches fog of war on and off. It is off by default, so a battle looks exactly as before until you ask for it. With fog on, each of your units sees a disc around itself — 15 m for foot, 18 m for ranged units (archers and skirmishers), 21 m for cavalry on the default field — and an enemy unit whose center lies outside every one of those discs is not drawn. Your own units are always visible. An enemy you have seen and then lost leaves a <strong>ghost outline</strong> in its team color at the spot and facing it was last seen, fading over the next ten seconds. A standing “FOG OF WAR” indicator sits below the order-mode banner while fog is on. Fog affects what is drawn and leaves ghost markers. It does not alter the retreat boundary. Units fight, target, and move under the same AI and physics rules. A replay reproduces the fog state the battle started with, mid-battle toggles are not reproduced on playback, and the enemy AI still sees everything for now. Terrain does not block or shorten sight yet, and the map itself is never darkened. For tactical guidance on scouting screens, ghost staleness, and pursuit decisions, see <a href="./tactics.html#fog-of-war">Tactics</a>.</p>
+</section>
 </section>
 <section id="the-battle-loop" class="level2">
 <h2 class="anchored" data-anchor-id="the-battle-loop">The battle loop</h2>
@@ -1386,7 +1409,7 @@ Figure&nbsp;41: A marching unit visibly covers less ground per stretch of the cl
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-charge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;42: Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.
+Figure&nbsp;43: Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.
 </figcaption>
 </figure>
 </div>
@@ -1412,7 +1435,7 @@ Figure&nbsp;42: Cavalry charge: two horse units receive an attack order and acce
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-parade-ground-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;43: Parade Ground: the standard player line, no enemy on the field, given a group move order and settling into formation.
+Figure&nbsp;44: Parade Ground: the standard player line, no enemy on the field, given a group move order and settling into formation.
 </figcaption>
 </figure>
 </div>
@@ -1430,7 +1453,7 @@ Figure&nbsp;43: Parade Ground: the standard player line, no enemy on the field, 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-all-teams-control-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;44: All-Teams Control: both the top (team 0) and bottom (team 1) lines box-selected and marched forward in turn, one commanded directly by the player just like the other.
+Figure&nbsp;45: All-Teams Control: both the top (team 0) and bottom (team 1) lines box-selected and marched forward in turn, one commanded directly by the player just like the other.
 </figcaption>
 </figure>
 </div>
@@ -1444,7 +1467,7 @@ Figure&nbsp;44: All-Teams Control: both the top (team 0) and bottom (team 1) lin
 <img src="media/custom-battle-setup.png" class="img-fluid figure-img" width="700">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-custom-battle-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;45: Custom Battle Setup: picking Sparta vs.&nbsp;Rome, with each side’s roster shown alongside its own faction dropdown.
+Figure&nbsp;46: Custom Battle Setup: picking Sparta vs.&nbsp;Rome, with each side’s roster shown alongside its own faction dropdown.
 </figcaption>
 </figure>
 </div>
@@ -1460,7 +1483,7 @@ Figure&nbsp;45: Custom Battle Setup: picking Sparta vs.&nbsp;Rome, with each sid
 <img src="media/faction-identity-hud-sparta.png" class="img-fluid figure-img" width="700">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-faction-formation-sparta-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;46: A Spartan spear block at normal order: the control bar and the info panel both read <em>0.9 m (pyknosis)</em>, and the identity pair sits below the live-state block — <strong>Faction</strong> Sparta (Laconian), with <strong>Doctrine</strong> Phalanx Shock Push (othismos) on the line under it, at the panel’s scroll fold in this 720p frame.
+Figure&nbsp;47: A Spartan spear block at normal order: the control bar and the info panel both read <em>0.9 m (pyknosis)</em>, and the identity pair sits below the live-state block — <strong>Faction</strong> Sparta (Laconian), with <strong>Doctrine</strong> Phalanx Shock Push (othismos) on the line under it, at the panel’s scroll fold in this 720p frame.
 </figcaption>
 </figure>
 </div>
@@ -1470,7 +1493,7 @@ Figure&nbsp;46: A Spartan spear block at normal order: the control bar and the i
 <img src="media/faction-identity-hud-rome.png" class="img-fluid figure-img" width="700">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-faction-formation-rome-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;47: The same battle, a Roman maniple selected instead. Its shield wall reads <em>0.34 m Shield Wall (scuta undique)</em>; the Spartan army in the same clip stands a shield wall of its own, and that one reads <em>phalanx</em> — one stance, two names. <strong>Faction</strong> reads Rome (Latin / Roman), with the Manipular Line Rotation (acies triplex) doctrine on the line below it.
+Figure&nbsp;48: The same battle, a Roman maniple selected instead. Its shield wall reads <em>0.34 m Shield Wall (scuta undique)</em>; the Spartan army in the same clip stands a shield wall of its own, and that one reads <em>phalanx</em> — one stance, two names. <strong>Faction</strong> reads Rome (Latin / Roman), with the Manipular Line Rotation (acies triplex) doctrine on the line below it.
 </figcaption>
 </figure>
 </div>

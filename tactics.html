@@ -510,6 +510,12 @@ window.Quarto = {
   <li><a href="#turn-your-shields-toward-the-archers" id="toc-turn-your-shields-toward-the-archers" class="nav-link" data-scroll-target="#turn-your-shields-toward-the-archers">Turn your shields toward the archers</a></li>
   <li><a href="#group-attack-distribution" id="toc-group-attack-distribution" class="nav-link" data-scroll-target="#group-attack-distribution">Group attack distribution</a></li>
   <li><a href="#deployment-distance" id="toc-deployment-distance" class="nav-link" data-scroll-target="#deployment-distance">Deployment distance</a></li>
+  <li><a href="#fog-of-war" id="toc-fog-of-war" class="nav-link" data-scroll-target="#fog-of-war">Fog of war</a>
+  <ul class="collapse">
+  <li><a href="#why-a-cavalry-screen-is-worth-more" id="toc-why-a-cavalry-screen-is-worth-more" class="nav-link" data-scroll-target="#why-a-cavalry-screen-is-worth-more">Why a cavalry screen is worth more</a></li>
+  <li><a href="#what-ghost-markers-tell-you-and-what-they-do-not" id="toc-what-ghost-markers-tell-you-and-what-they-do-not" class="nav-link" data-scroll-target="#what-ghost-markers-tell-you-and-what-they-do-not">What ghost markers tell you — and what they do not</a></li>
+  <li><a href="#scouting-and-pursuit-decisions" id="toc-scouting-and-pursuit-decisions" class="nav-link" data-scroll-target="#scouting-and-pursuit-decisions">Scouting and pursuit decisions</a></li>
+  </ul></li>
   <li><a href="#terrain" id="toc-terrain" class="nav-link" data-scroll-target="#terrain">Terrain</a></li>
   <li><a href="#order-response-delay" id="toc-order-response-delay" class="nav-link" data-scroll-target="#order-response-delay">Order-response delay</a></li>
   <li><a href="#disengaging-a-risky-lever" id="toc-disengaging-a-risky-lever" class="nav-link" data-scroll-target="#disengaging-a-risky-lever">Disengaging — a risky lever</a></li>
@@ -539,7 +545,7 @@ window.Quarto = {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Last updated: 2026-09-11</p>
+      <p class="date">Last updated: 2026-09-12</p>
     </div>
   </div>
   
@@ -1747,13 +1753,77 @@ Figure&nbsp;50: A 60 m deployment: both lines open as far-tier marks, the player
 </figure>
 </div>
 </section>
+<section id="fog-of-war" class="level2">
+<h2 class="anchored" data-anchor-id="fog-of-war">Fog of war</h2>
+<p>Battles open with complete visibility across the entire map by default. Toggling fog of war (<kbd>F7</kbd> or <strong>☰ Menu -&gt; Fog of war</strong>) limits your intelligence. When fog is enabled, you see only what your own regiments can directly observe. Every friendly regiment projects a circular sight disc around its center. An enemy unit whose center lies outside every friendly sight disc is hidden. Friendly units are always visible to you. Terrain does not block sight lines yet, and the field itself is never darkened. Fog changes visibility only. Units keep fighting, pathing, and shooting under the same rules.</p>
+<div id="tbl-sight-ranges" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-sight-ranges-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;4: Sight ranges by unit category under fog of war.
+</figcaption>
+<div aria-describedby="tbl-sight-ranges-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Unit</th>
+<th>Multiplier</th>
+<th>Sight (default field)</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Cavalry</strong></td>
+<td>1.4x</td>
+<td><strong>21 m</strong></td>
+<td>Scouting, screening, pursuit</td>
+</tr>
+<tr class="even">
+<td><strong>Ranged</strong></td>
+<td>1.2x</td>
+<td><strong>18 m</strong></td>
+<td>Forward observation, support</td>
+</tr>
+<tr class="odd">
+<td><strong>Foot</strong></td>
+<td>1.0x</td>
+<td><strong>15 m</strong></td>
+<td>Line-of-sight across front</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<p>Sight ranges default by unit category.</p>
+<p>Mounted troops see farthest: 21 m on the default field (a 1.4x multiplier). Ranged troops see intermediate distances: 18 m on the default field (a 1.2x multiplier). Foot troops hold the baseline: 15 m on the default field (a 1.0x multiplier). When a unit routs, panic degrades its observation: a fleeing unit suffers a 0.6x penalty to its sight radius.</p>
+<section id="why-a-cavalry-screen-is-worth-more" class="level3">
+<h3 class="anchored" data-anchor-id="why-a-cavalry-screen-is-worth-more">Why a cavalry screen is worth more</h3>
+<p>On an open field with fog active, blind marching is dangerous. A standard deployment gap of 29 m means opposing foot lines deploy out of sight. Heavy infantry marching forward without reconnaissance risks blundering into spears. This gives cavalry a decisive tactical purpose before the lines meet. With a 21 m sight radius (a 40% reach advantage over foot) and superior speed, horsemen can push ahead of the heavy line as a scouting screen. A forward screen reveals enemy deployments and flags open flanks. It illuminates approaching columns while your main formation stays hidden. Skirmishers and archers (18 m reach) can also screen the heavy line, maintaining contact while staying outside the 15 m sight of enemy foot.</p>
+</section>
+<section id="what-ghost-markers-tell-you-and-what-they-do-not" class="level3">
+<h3 class="anchored" data-anchor-id="what-ghost-markers-tell-you-and-what-they-do-not">What ghost markers tell you — and what they do not</h3>
+<p>When a spotted enemy leaves your sight discs, it leaves a <strong>ghost marker</strong>. The marker is a fixed rectangular silhouette (3 m wide by 1.5 m deep). It sits at the exact position and facing the enemy had when last observed. Over the next ten seconds (600 ticks), the marker fades from 60% to 20% opacity. Understanding the limits of a ghost marker is critical:</p>
+<ul>
+<li><p>It marks where the enemy was, not where it stands now.</p></li>
+<li><p>It preserves the last-seen facing, but hides subsequent maneuvers.</p></li>
+<li><p>Its opacity indicates age, fading as the sighting grows stale.</p></li>
+<li><p>Right-clicking a ghost marker falls through to a ground move order.</p></li>
+</ul>
+<p>Attack orders require a visible target, so an order against a ghost cannot lock on. If the enemy has marched away, your troops will march into empty ground.</p>
+</section>
+<section id="scouting-and-pursuit-decisions" class="level3">
+<h3 class="anchored" data-anchor-id="scouting-and-pursuit-decisions">Scouting and pursuit decisions</h3>
+<p>Fog of war fundamentally reshapes pursuit and battlefield control. Fog of war does not alter the retreat boundary. The retreat margin remains fixed at 9.5 m regardless of whether fog is enabled. However, if your pursuers lose sight of a routing enemy, that enemy enters the dark. A broken unit that breaks contact and gains distance can steady its nerve and rally. Dropping pursuit in the fog risks allowing shattered remnants to reform. Fast cavalry must stay in contact, shadowing routers until they shatter or break completely.</p>
+</section>
+</section>
 <section id="terrain" class="level2">
 <h2 class="anchored" data-anchor-id="terrain">Terrain</h2>
 <p>Two types of terrain patch appear on the battle field:</p>
 <div id="tbl-terrain" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-terrain-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;4: Terrain patches and their movement effects.
+Table&nbsp;5: Terrain patches and their movement effects.
 </figcaption>
 <div aria-describedby="tbl-terrain-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table">
