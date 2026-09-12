@@ -30,8 +30,6 @@ static func load_from_path(path: String, defaults: Dictionary, form_up_dist_max:
 		return {}
 	var out: Dictionary = defaults.duplicate(true)
 	for key in SECTIONS:
-		if not defaults.has(key):
-			continue
 		var section: String = SECTIONS[key]
 		var default_val: Variant = defaults.get(key)
 		var val: Variant = cfg.get_value(section, key, default_val)
@@ -69,8 +67,7 @@ static func save_to_path(path: String, values: Dictionary) -> Error:
 	var cfg := ConfigFile.new()
 	cfg.load(path)
 	for key in SECTIONS:
-		if values.has(key):
-			cfg.set_value(SECTIONS[key], key, values[key])
+		cfg.set_value(SECTIONS[key], key, values[key])
 	var bindings: Dictionary = values.get("order_bindings", {})
 	for slug in bindings:
 		cfg.set_value("keybindings", slug, int(bindings[slug]))
