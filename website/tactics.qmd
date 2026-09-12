@@ -2125,6 +2125,23 @@ right one carries the bow (8 m reach) and holds, the enemy out of both its reach
 its auto-acquisition range.
 :::
 
+::: {#fig-trajectory-lob .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/trajectory_lob.jpg">
+  <source src="media/trajectory_lob.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Player-controlled archers lob a volley at 14 m over a friendly infantry line deployed 6 m ahead.
+Because the dynamic ballistic arc reaches approximately 47 wu of height at the friendly position,
+it clears the 2.0 m shoulder clearance threshold and passes safely overhead without friendly fire,
+striking the enemy line beyond.
+:::
+
 ## Turn your shields toward the archers
 
 Arrows are resolved **one man at a time** when they land, and each one is tested

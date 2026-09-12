@@ -78,6 +78,8 @@ func test_scenario_spawns_exactly_its_units_with_types_positions_and_overrides()
 		"the missile_range override sets missile_range")
 	assert_almost_eq(spear.missile_launch_angle, 0.5, 0.001,
 		"the missile_launch_angle override sets missile_launch_angle")
+	assert_almost_eq(UnitCombat._volley_angle(spear, team1[0]), 0.5, 0.001,
+		"a unit with missile_launch_angle override fires at that angle")
 
 	for horse: Unit in team1:
 		assert_true(horse.is_cavalry, "type 'Cavalry' maps onto the cavalry loadout")

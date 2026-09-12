@@ -17,7 +17,6 @@ const INTERCEPTION_CLEARANCE_HEIGHT_M: float = 2.0
 const INTERCEPTION_CLEARANCE_HEIGHT: float = INTERCEPTION_CLEARANCE_HEIGHT_M * WorldScaleRef.WU_PER_M
 
 ## Extra morale debuff for a flank/rear attack, ON TOP OF the extra casualties it already
-
 ## deals. A rear hit already kills more men (the flank multiplier scales the casualty count,
 ## and rear blows bypass shield/active defence), and morale erosion tracks the casualty
 ## count -- so the extra damage already costs extra morale. This knob adds a FURTHER morale
@@ -279,13 +278,15 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 
 
 ## The launch angle a volley from `shooter` flies at (radians above horizontal):
-## if the shooter's profile specifies a flat launch (e.g. javelin / pilum), it remains flat.
-## Otherwise, for distances inside TRAJECTORY_FLAT_FRACTION of maximum range, a flat shot
-## is used. Beyond that, the lower solving angle theta = 0.5 * arcsin(dist / max_range)
-## is selected, bounded below by ANGLE_FLAT and above by PI / 4.
+## if the shooter's missile_launch_angle is set to a specific non-arced angle (e.g. ANGLE_FLAT
+## or an explicit scenario/unit override), that angle is honored directly.
+## For the default arced profile (ANGLE_ARCED), dynamic trajectory selection applies:
+## flat (ANGLE_FLAT) inside TRAJECTORY_FLAT_FRACTION of maximum range, and beyond that the
+## lower solving angle theta = 0.5 * arcsin(dist / max_range), bounded below by ANGLE_FLAT
+## and above by PI / 4.
 static func _volley_angle(shooter: Unit, target: Unit) -> float:
-	if shooter.missile_launch_angle == ProjectilePhysics.ANGLE_FLAT:
-		return ProjectilePhysics.ANGLE_FLAT
+	if shooter.missile_launch_angle != ProjectilePhysics.ANGLE_ARCED:
+		return shooter.missile_launch_angle
 	if target == null:
 		return shooter.missile_launch_angle
 	var dist: float = shooter.position.distance_to(target.position)

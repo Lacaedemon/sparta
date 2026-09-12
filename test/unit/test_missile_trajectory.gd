@@ -109,6 +109,12 @@ func test_volley_angle_selection_flat_inside_fraction_solving_beyond() -> void:
 	assert_almost_eq(angle_pilum, ProjectilePhysics.ANGLE_FLAT, TOL,
 		"weapon with flat launch angle stays flat even at long range")
 
+	# Custom launch angle override (e.g. 0.5 rad) is honored directly
+	shooter.missile_launch_angle = 0.5
+	var angle_custom: float = UnitCombat._volley_angle(shooter, target)
+	assert_almost_eq(angle_custom, 0.5, TOL,
+		"explicit missile_launch_angle override is honored directly")
+
 
 # --- height-aware friendly interception ---------------------------------------------
 
