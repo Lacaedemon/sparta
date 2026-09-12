@@ -1,4 +1,4 @@
-﻿extends GutTest
+extends GutTest
 ## Phase 5 acceptance tests: long ranges at the far tier (docs/longer-range-missile-design.md).
 ##
 ## Covers the three phase-5 acceptance criteria from the design note:
