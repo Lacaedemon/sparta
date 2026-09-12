@@ -27,6 +27,48 @@ static func mean_sd_positive(values: PackedFloat32Array) -> Vector2:
 	return Vector2(mean, sqrt(var_sum / count))
 
 
+## Mean and standard deviation (population) of EVERY entry -- for a pool where zero is a
+## real value (stamina: a spent soldier reads 0 and is still standing), unlike hit points,
+## where a non-positive entry is a casualty awaiting the reap. Vector2.ZERO when empty.
+static func mean_sd(values: PackedFloat32Array) -> Vector2:
+	if values.is_empty():
+		return Vector2.ZERO
+	var sum := 0.0
+	for v in values:
+		sum += v
+	var mean := sum / values.size()
+	var var_sum := 0.0
+	for v in values:
+		var_sum += (v - mean) * (v - mean)
+	return Vector2(mean, sqrt(var_sum / values.size()))
+
+
+## Mean and standard deviation (population) over the living soldiers' entries (hp > 0).
+## Zero is a valid entry value (stamina: a spent soldier reads 0 and is still standing),
+## but entries whose aligned hit points are non-positive are casualties awaiting the reap
+## and do not count. Vector2.ZERO when no soldier is alive or the arrays are empty.
+static func mean_sd_living(values: PackedFloat32Array, hp: PackedFloat32Array) -> Vector2:
+	if values.is_empty():
+		return Vector2.ZERO
+	if hp.is_empty():
+		return mean_sd(values)
+	var sum := 0.0
+	var count := 0
+	var n: int = mini(values.size(), hp.size())
+	for i in range(n):
+		if hp[i] > 0.0:
+			sum += values[i]
+			count += 1
+	if count == 0:
+		return Vector2.ZERO
+	var mean := sum / count
+	var var_sum := 0.0
+	for i in range(n):
+		if hp[i] > 0.0:
+			var_sum += (values[i] - mean) * (values[i] - mean)
+	return Vector2(mean, sqrt(var_sum / count))
+
+
 ## Mean speed (magnitude of velocity, world units/s) over the living soldiers'
 ## bodies. `vels` and `hp` are the index-aligned per-soldier arrays; an entry only
 ## counts while its soldier is alive (hp > 0), mirroring mean_sd_positive's

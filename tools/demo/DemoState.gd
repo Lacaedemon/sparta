@@ -263,6 +263,11 @@ static func build_snapshot(tree: SceneTree, tick: int, order_mode_names: Diction
 		var hud: Node = hud_nodes[0]
 		if hud != null and is_instance_valid(hud) and hud.has_method("hud_state"):
 			snap["hud"] = hud.hud_state()
+	var ghost_nodes: Array = tree.get_nodes_in_group("fog_ghosts")
+	if not ghost_nodes.is_empty():
+		var gl: Node = ghost_nodes[0]
+		if gl != null and is_instance_valid(gl) and gl.has_method("ghost_records"):
+			snap["ghosts"] = gl.ghost_records()
 	return snap
 
 
@@ -278,6 +283,7 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		"uid": u.uid,
 		"name": u.unit_name,
 		"team": u.team,
+		"visible": u.visible,
 		"position": vec2_pair(u.position),
 		# Metric mirror of position, per the units convention: dev-facing numbers read in
 		# metres like every user-facing surface already does. The wu field above stays.
@@ -303,6 +309,9 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		"soldiers": u.soldiers,
 		"current_speed": round_to(u._current_speed, 1),
 		"current_speed_mps": mps(u._current_speed, WorldScaleRef.WU_PER_M, speed_scale),
+		# Mean per-soldier stamina (the far tier's aggregate scalar once demoted), so a
+		# gait's drain is verifiable straight off the transcript without a FULL dump.
+		"stamina_mean": round_to(u.mean_soldier_stamina(), 1),
 		"order_mode": order_mode_name(order_mode_names, u.order_mode),
 		# Intra-unit rank-relief mode (phase 3): whether rear ranks rotate forward to
 		# relieve their own fighting line. A durable mode like formation, so a stance

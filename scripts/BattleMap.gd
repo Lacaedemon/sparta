@@ -10,7 +10,8 @@ extends RefCounted
 ## a replay records so playback reconstructs the same map. No SceneTree, no
 ## engine state -- directly unit-testable, like DemoState/DemoFrames.
 
-## Parse a `map` block into {field: Rect2, terrain: Array, spawn_lines: Array}.
+## Parse a `map` block into {field: Rect2, terrain: Array, spawn_lines: Array,
+## sight_scale: float, fog_of_war: bool}.
 ## Every key is optional; an absent key means "keep the battle's current
 ## default" and comes back absent from the result, so a caller merges only what
 ## the block actually set. Returns {error: String} instead when the block is
@@ -58,13 +59,25 @@ static func parse(block: Dictionary) -> Dictionary:
 		if not (s is Array) or (s as Array).size() != 2 or not _num(s[0]) or not _num(s[1]):
 			return {"error": "map.spawn_lines must be a [attacker_y, defender_y] pair"}
 		out["spawn_lines"] = [float(s[0]), float(s[1])]
+	if block.has("sight_scale"):
+		var ss = block["sight_scale"]
+		if not _num(ss) or float(ss) <= 0.0 or not is_finite(float(ss)):
+			return {"error": "map.sight_scale must be a positive, finite number"}
+		out["sight_scale"] = float(ss)
+	if block.has("fog_of_war"):
+		var fow = block["fog_of_war"]
+		if not (fow is bool):
+			return {"error": "map.fog_of_war must be a boolean"}
+		out["fog_of_war"] = bool(fow)
 	return out
 
 
 ## The JSON-ready form of a live map, for the replay header. Inverse of parse():
-## parse(serialize(field, terrain, spawn_lines)) reproduces the same values, so
-## a replay reconstructs the exact battlefield it was recorded on.
-static func serialize(field: Rect2, terrain: Array, spawn_lines: Array) -> Dictionary:
+## parse(serialize(field, terrain, spawn_lines, sight_scale, fog_of_war))
+## reproduces the same values, so a replay reconstructs the exact battlefield it
+## was recorded on.
+static func serialize(field: Rect2, terrain: Array, spawn_lines: Array,
+		sight_scale: float = -1.0, fog_of_war: bool = false) -> Dictionary:
 	var patches: Array = []
 	for p in terrain:
 		var r: Rect2 = p["rect"]
@@ -76,18 +89,26 @@ static func serialize(field: Rect2, terrain: Array, spawn_lines: Array) -> Dicti
 		if patch["kind"] == "slow":
 			patch["speed"] = float(p.get("speed", 1.0))
 		patches.append(patch)
-	return {
+	var out: Dictionary = {
 		"field": [field.size.x, field.size.y],
 		"terrain": patches,
 		"spawn_lines": [float(spawn_lines[0]), float(spawn_lines[1])],
 	}
+	if sight_scale > 0.0:
+		out["sight_scale"] = sight_scale
+	if fog_of_war:
+		out["fog_of_war"] = true
+	return out
 
 
 ## Whether a live map differs from the default one -- decides if a replay needs
 ## the map recorded at all (a default-map replay stays byte-identical to the
 ## pre-map format, so old replays and new default-map replays are the same shape).
 static func differs_from_default(field: Rect2, terrain: Array, spawn_lines: Array,
-		default_field: Rect2, default_terrain: Array, default_spawn_lines: Array) -> bool:
+		default_field: Rect2, default_terrain: Array, default_spawn_lines: Array,
+		sight_scale: float = -1.0, fog_of_war: bool = false) -> bool:
+	if sight_scale > 0.0 or fog_of_war:
+		return true
 	if field != default_field or spawn_lines != default_spawn_lines:
 		return true
 	if terrain.size() != default_terrain.size():

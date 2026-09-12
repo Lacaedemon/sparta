@@ -18,6 +18,10 @@ func _sample_unit() -> Unit:
 	u.move_speed = 200.0
 	u.walk_speed = 50.0
 	u.jog_speed = 90.0
+	u.stamina_rest_regen_per_s = 4.2
+	u.stamina_walk_regen_per_s = 1.5
+	u.stamina_jog_drain_per_s = 3.3
+	u.stamina_sprint_drain_per_s = 7.7
 	u.back_speed_fraction = 0.35
 	u.accel = 20.0
 	u.decel = 45.0
@@ -55,6 +59,7 @@ func _sample_unit() -> Unit:
 	u.subcommander_rank_title = "Tribune"
 	u.engage_reshape_mode = Unit.EngageReshapeMode.RECREATE_WIDTH
 	u.tier = FormationTier.FAR
+	u.far_stamina = 42.0
 	u.frontage_override = 6
 	u.frontage_anchor_offset = 3.5
 	u._last_reshape_tick = 42
@@ -184,6 +189,10 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_almost_eq(restored.order_response_delay, original.order_response_delay, 0.001)
 	assert_almost_eq(restored.atomic_response_delay, original.atomic_response_delay, 0.001,
 		"a spawn-customized drill beat survives a replay-seek snapshot restore")
+	assert_almost_eq(restored.stamina_rest_regen_per_s, original.stamina_rest_regen_per_s, 0.001)
+	assert_almost_eq(restored.stamina_walk_regen_per_s, original.stamina_walk_regen_per_s, 0.001)
+	assert_almost_eq(restored.stamina_jog_drain_per_s, original.stamina_jog_drain_per_s, 0.001)
+	assert_almost_eq(restored.stamina_sprint_drain_per_s, original.stamina_sprint_drain_per_s, 0.001)
 	assert_eq(restored.disciplined, original.disciplined)
 	assert_eq(restored.field_bounds, original.field_bounds)
 	assert_eq(restored.retreat_bounds, original.retreat_bounds)
@@ -199,6 +208,8 @@ func test_to_snapshot_dict_round_trips_every_captured_field() -> void:
 	assert_eq(restored.has_move_target, original.has_move_target)
 	assert_eq(restored.order_mode, original.order_mode)
 	assert_eq(restored.formation_mode, original.formation_mode)
+	assert_eq(restored.tier, original.tier)
+	assert_almost_eq(restored.far_stamina, original.far_stamina, 0.001)
 	assert_eq(restored.player_group_id, original.player_group_id,
 		"Battle AI phase 4: player delegation survives a snapshot round-trip")
 	assert_eq(restored.subcommander_rank_title, original.subcommander_rank_title)
@@ -293,6 +304,16 @@ func test_mutating_the_original_units_arrays_after_capture_does_not_alter_the_sn
 	u._sim_soldier_pos[0] = Vector2(999, 999)
 	assert_eq((d["sim_soldier_pos"] as PackedVector2Array)[0], Vector2(1, 2),
 			"the cached snapshot's array is an independent copy")
+
+
+func test_an_older_snapshot_missing_sight_range_falls_back_to_type_derived_default() -> void:
+	var u := _sample_unit()
+	var d := u.to_snapshot_dict()
+	d.erase("sight_range")
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(d)
+	assert_eq(restored.sight_range, Unit.DEFAULT_SIGHT_SCALE * restored.sight_multiplier(),
+			"missing sight_range falls back to the type-derived default")
 
 
 func test_snapshot_restore_defaults_legacy_missile_and_range_fields() -> void:

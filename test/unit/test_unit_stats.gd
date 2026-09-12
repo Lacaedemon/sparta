@@ -60,3 +60,34 @@ func test_mean_body_speed_bounds_to_the_shorter_array() -> void:
 	var hp := PackedFloat32Array([1.0])
 	assert_almost_eq(UnitStats.mean_body_speed(vels, hp), 5.0, 0.001,
 			"only the first pair exists in both arrays")
+
+
+func test_mean_sd_living_filters_by_hp_and_retains_zero_stamina() -> void:
+	# 0: hp = 0.0 (fallen), stamina = 100.0
+	# 1: hp = 50.0 (living), stamina = 0.0
+	# 2: hp = 50.0 (living), stamina = 60.0
+	var stamina := PackedFloat32Array([100.0, 0.0, 60.0])
+	var hp := PackedFloat32Array([0.0, 50.0, 50.0])
+	var out: Vector2 = UnitStats.mean_sd_living(stamina, hp)
+	# Living pool is 0.0 and 60.0: mean = 30.0, sd = 30.0.
+	# Raw mean_sd would give mean = 53.333.
+	# A stamina-only filter would wrongly drop the zero-stamina soldier.
+	assert_almost_eq(out.x, 30.0, 0.001, "mean excludes dead body and keeps zero-stamina living soldier")
+	assert_almost_eq(out.y, 30.0, 0.001, "sd is computed over the living pool")
+
+
+func test_mean_sd_living_of_nothing_alive_is_zero() -> void:
+	assert_eq(UnitStats.mean_sd_living(PackedFloat32Array(), PackedFloat32Array()), Vector2.ZERO,
+			"empty arrays have no living mean or sd")
+	assert_eq(UnitStats.mean_sd_living(
+			PackedFloat32Array([100.0, 50.0]), PackedFloat32Array([0.0, -10.0])), Vector2.ZERO,
+			"all-fallen has no living mean or sd either")
+
+
+func test_mean_sd_living_bounds_to_the_shorter_array() -> void:
+	var stamina := PackedFloat32Array([40.0, 80.0])
+	var hp := PackedFloat32Array([100.0])
+	var out: Vector2 = UnitStats.mean_sd_living(stamina, hp)
+	assert_almost_eq(out.x, 40.0, 0.001, "only the first pair exists in both arrays")
+	assert_almost_eq(out.y, 0.0, 0.001, "single living entry has zero spread")
+

@@ -250,3 +250,60 @@ func test_a_malformed_deployment_gap_is_rejected() -> void:
 	for bad in ["60", 0, -60.0, INF, NAN, [], {}]:
 		assert_true(RecorderScript.parse_deployment_gap_m(bad).has("error"),
 			"a deployment gap that is not a positive, finite number is rejected: %s" % [bad])
+
+
+func test_recorder_clears_fog_session_when_omitted_by_script() -> void:
+	Settings.set_fog_of_war_session(true)
+	assert_true(Settings.fog_of_war, "fog starts on for the test")
+	OS.set_environment("SPARTA_DEMO_INPUT", "demos/inputs/about-face.json")
+	var recorder: Node = load("res://tools/demo/DemoInputRecorder.tscn").instantiate()
+	add_child_autofree(recorder)
+	assert_false(Settings.fog_of_war, "a script omitting fog_of_war unconditionally sets it false")
+	OS.set_environment("SPARTA_DEMO_INPUT", "")
+	Settings.set_fog_of_war_session(false)
+
+
+func test_recorder_applies_map_sight_scale_and_fog_to_battle() -> void:
+	var recorder: Node = load("res://tools/demo/DemoInputRecorder.tscn").instantiate()
+	add_child_autofree(recorder)
+	recorder._map = BattleMap.parse({"sight_scale": 450.0, "fog_of_war": true})
+	recorder._drill = true
+	recorder._start_battle()
+	assert_almost_eq(recorder._battle.sight_scale, 450.0, 0.001,
+			"demo battle inherits sight_scale from map block")
+	assert_true(Settings.fog_of_war,
+			"demo battle enables fog session from map block")
+	Settings.set_fog_of_war_session(false)
+
+
+class _HudFlashMock:
+	extends Node
+	var last_flash: String = ""
+	func flash_message(text: String) -> void:
+		last_flash = text
+
+
+func test_recorder_f7_step_toggles_fog_session_only() -> void:
+	Settings.set_fog_of_war_session(false)
+	var r = _rec()
+	var hud := _HudFlashMock.new()
+	autofree(hud)
+	r._hud = hud
+	watch_signals(Settings)
+	r._fire({"kind": "key", "keycode": KEY_F7})
+	assert_true(Settings.fog_of_war, "F7 flips fog of war in-memory")
+	assert_signal_emitted(Settings, "changed", "and emits Settings.changed")
+	assert_eq(hud.last_flash, "Fog of war: on", "shows HUD flash message")
+	r._fire({"kind": "key", "keycode": KEY_F7})
+	assert_false(Settings.fog_of_war, "a second F7 flips it back")
+	assert_eq(hud.last_flash, "Fog of war: off", "shows off message")
+	Replay.mode = Replay.Mode.PLAYBACK
+	r._fire({"kind": "key", "keycode": KEY_F7})
+	assert_false(Settings.fog_of_war, "F7 is refused during replay playback")
+	assert_eq(hud.last_flash, "Fog of war is fixed by the recording during playback",
+			"and explains why in HUD message")
+	Replay.mode = Replay.Mode.IDLE
+	Settings.set_fog_of_war_session(false)
+
+
+

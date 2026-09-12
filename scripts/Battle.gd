@@ -12,6 +12,8 @@ const CustomMatchup = preload("res://scripts/CustomMatchup.gd")
 const FactionRef = preload("res://scripts/Faction.gd")
 const WorldScaleRef = preload("res://scripts/WorldScale.gd")
 const BattleMapRef = preload("res://scripts/BattleMap.gd")
+const PerceptionRef = preload("res://scripts/Perception.gd")
+const FogGhostLayerRef = preload("res://scripts/FogGhostLayer.gd")
 
 ## Signals emitted for battle-significant events
 signal tide_of_battle_changed(stronger_team: int)
@@ -32,14 +34,15 @@ const FIELD := Rect2(0, 0, 1600, 1200)
 # Extra room beyond the field that a ROUTING unit may flee into before it's removed from
 # play (see Unit._escape()). Fixed and known up front (not sized per unit) since it's drawn
 # once as a visible margin strip at battle start (see _draw()). Sized to the farthest a unit
-# can be noticed at BY DEFAULT (DETECTION_RANGE, the closest existing stand-in for a
-# fog-of-war vision range, which this game doesn't have yet) — so a fleeing unit stays a
+# can be noticed at BY DEFAULT -- UnitRef.DETECTION_RANGE -- so a fleeing unit stays a
 # plausible target for as long as it's still visible, rather than vanishing early. Follows
 # detection alone, not the missile reach: a router does not have to outrun the longest
 # missile profile on the field to be gone, and the reach is per unit now anyway. Reads the
-# class constant, not any one unit's own (caller-configurable) detection_range field, since
-# this margin is a single battle-wide strip, not sized per unit.
+# class constant, not any one unit's own detection_range field, since
+# this margin is a single battle-wide strip, not sized per unit. Fog of war is render-only
+# and does not alter the rout margin or retreat bounds.
 const ROUT_MARGIN: float = UnitRef.DETECTION_RANGE
+var rout_margin: float = ROUT_MARGIN
 var field_with_margin: Rect2 = FIELD.grow(ROUT_MARGIN)
 
 # Terrain patches; type keys into TERRAIN_COLOR. kind="block" is impassable; kind="slow" is a speed zone.
@@ -411,6 +414,32 @@ var drill_mode: bool = false
 # test can force it. Off = the normal team-0-vs-AI battle.
 var all_teams_control: bool = false
 
+# Fog of war (Settings.fog_of_war; Perception.gd). Per-battle sight scale every unit's
+# type multiplier applies to (Unit.sight_multiplier): a quarter of the field's short
+# side, so a foot unit sees a quarter of the way across the field. A gameplay
+# legibility parameter, not an eyesight claim. Settable BEFORE the node enters the tree.
+# Set <= 0 for unset (derives scale from DEFAULT_SIGHT_SCALE_FRACTION x short side).
+# _spawn_unit reads it when it sizes each unit's sight_range in _ready.
+const DEFAULT_SIGHT_SCALE_FRACTION: float = 0.25
+var sight_scale: float = -1.0
+# Ticks after which a remembered enemy contact counts as stale: the ghost marker has
+# fully faded by then (FogGhostLayer.stale_ticks). 10 s of sim time; settable before
+# _ready.
+var contact_stale_ticks: int = 10 * Replay.PHYSICS_TPS
+# Whose view the screen shows under fog: the player's team.
+var fog_team: int = 0
+# The fog team's last-known table (Perception.record_contacts's shape, keyed by enemy
+# uid), the enemy uids it saw on the last fog pass, whether that pass hid anything (so a
+# switch-off knows to restore every unit), and the ghost-marker layer.
+var _fog_contacts: Dictionary = {}
+var _fog_seen: Dictionary = {}
+var _fog_active: bool = false
+var _fog_ghosts: Node2D = null
+# Replay playback drives fog state from this recorded value
+# rather than from the live global Settings.fog_of_war setting.
+var _recorded_fog_of_war: bool = false
+
+
 # Custom demo matchup (tooling): a list of unit specs the demo recorder can set from an input
 # script's "scenario" field BEFORE the node enters the tree, to stage a specific fight (a weak
 # unit that will rout, an enemy placed off a unit's flank, cavalry vs a target). Empty = the
@@ -527,6 +556,12 @@ func _ready() -> void:
 			and UnitRef.NUDGE_BACK == NudgeDir.BACK \
 			and UnitRef.NUDGE_FORWARD == NudgeDir.FORWARD,
 			"Unit nudge-direction mirror constants are out of sync with Battle.NudgeDir")
+	# Ghost markers for remembered enemy contacts under fog of war. Always present so the
+	# toggle can flip mid-battle; it draws nothing until _tick_fog hands it a contact.
+	_fog_ghosts = FogGhostLayerRef.new()
+	_fog_ghosts.name = "FogGhosts"
+	_fog_ghosts.stale_ticks = contact_stale_ticks
+	add_child(_fog_ghosts)
 
 	# Fresh per-battle snapshot cache (never reused across a scene reload -- a stale cache
 	# from a previous instance would key snapshots to freed Unit nodes). Built from
@@ -555,6 +590,14 @@ func _ready() -> void:
 		field = widened["field"]
 		spawn_line_ys = widened["spawn_lines"]
 
+	# The main menu's "All-Teams Control" button requests all-teams control across the scene
+	# swap the same way ParadeGround does below. Same replay-playback exclusion for the
+	# same reason: a playback's recorded orders assume normal team-0-only control, and letting
+	# this re-arm here would relax SelectionManager's team checks against a replay it isn't
+	# actually driving (the player never touches the controls during a Watch Replay).
+	if AllTeamsControl.pending and Replay.mode != Replay.Mode.PLAYBACK:
+		all_teams_control = true
+
 	# Start a fresh recording for every live battle (so any battle can be
 	# replayed for debugging). During playback the recorder is already armed by
 	# the seed loaded from the file, so we leave it alone.
@@ -564,9 +607,14 @@ func _ready() -> void:
 		# the saved replay can reconstruct the same battlefield on playback. A
 		# default-map battle records no map at all — its replay file stays exactly
 		# the pre-map shape, and old replays keep playing unchanged.
+		var custom_sight: float = -1.0
+		if sight_scale > 0.0 and is_finite(sight_scale):
+			custom_sight = sight_scale
+		var recording_fog: bool = is_fog_active()
 		if BattleMapRef.differs_from_default(field, terrain, spawn_line_ys,
-				FIELD, TERRAIN, SPAWN_LINE_YS):
-			Replay.map = BattleMapRef.serialize(field, terrain, spawn_line_ys)
+				FIELD, TERRAIN, SPAWN_LINE_YS, custom_sight, recording_fog):
+			Replay.map = BattleMapRef.serialize(field, terrain, spawn_line_ys,
+					custom_sight, recording_fog)
 	else:
 		# Playback: restore the recorded map (empty = the default map) BEFORE any
 		# of the map consumers below run, so camera bounds, the routing grid, and
@@ -579,9 +627,15 @@ func _ready() -> void:
 				field = parsed.get("field", field)
 				terrain = parsed.get("terrain", terrain)
 				spawn_line_ys = parsed.get("spawn_lines", spawn_line_ys)
+				if parsed.has("sight_scale"):
+					sight_scale = float(parsed["sight_scale"])
+				if parsed.has("fog_of_war"):
+					_recorded_fog_of_war = bool(parsed["fog_of_war"])
 
-	# The rout margin tracks the live field, not the default const.
-	field_with_margin = field.grow(ROUT_MARGIN)
+	# Sight scale derives from the final field's short side unless explicitly overridden
+	# before _ready.
+	if sight_scale <= 0.0 or not is_finite(sight_scale):
+		sight_scale = DEFAULT_SIGHT_SCALE_FRACTION * minf(field.size.x, field.size.y)
 
 	_camera.bounds = field
 	_camera.position = field.position + field.size * 0.5
@@ -635,13 +689,9 @@ func _ready() -> void:
 	if ParadeGround.pending and Replay.mode != Replay.Mode.PLAYBACK:
 		drill_mode = true
 
-	# The main menu's "All-Teams Control" button requests all-teams control across the scene
-	# swap the same way ParadeGround does just above. Same replay-playback exclusion for the
-	# same reason: a playback's recorded orders assume normal team-0-only control, and letting
-	# this re-arm here would relax SelectionManager's team checks against a replay it isn't
-	# actually driving (the player never touches the controls during a Watch Replay).
-	if AllTeamsControl.pending and Replay.mode != Replay.Mode.PLAYBACK:
-		all_teams_control = true
+	# Compute the retreat margin and sync bounds to live units.
+	_sync_rout_margin()
+
 
 	# Drill mode is a no-opponent rehearsal; a campaign clash always has a defender. They are
 	# mutually exclusive — assert it so a future path that ends a drill battle can't silently
@@ -689,6 +739,7 @@ func _ready() -> void:
 	# @onready child, so its own _ready has already built the widgets this restamps.
 	if _hud != null:
 		_hud.set_team_factions(team_factions)
+		_hud._sync_setting_toggles()
 
 	# Now that every unit has deployed, stamp (RECORD) or verify (PLAYBACK) the spawn-layout
 	# fingerprint, so a replay can fail loudly if a later build's spawn table no longer matches
@@ -714,9 +765,13 @@ func _ready() -> void:
 	# reads _sim_soldier_pos). See docs/individual-collision-design.md.
 	if UnitRef.INDIVIDUAL_COLLISION:
 		get_tree().physics_frame.connect(_on_soldier_tick)
+	Settings.changed.connect(_on_settings_changed)
 
 
 func _exit_tree() -> void:
+	if Settings.changed.is_connected(_on_settings_changed):
+		Settings.changed.disconnect(_on_settings_changed)
+
 	# physics_frame lives on the SceneTree, which outlives this node across a
 	# reload_current_scene(). Without disconnecting, this freed-but-not-yet-gone
 	# Battle gets one more _on_soldier_tick after it leaves the tree, where
@@ -944,6 +999,12 @@ func _line_start_x(half_widths: Array[float], xs: Array[float], field_width: flo
 ## as the pace speeds above. Optional; _spawn_unit falls back to the Unit.gd default (0.5)
 ## for a loadout entry that omits it.
 ##
+## `stamina_rest_regen_per_s` / `stamina_walk_regen_per_s` / `stamina_jog_drain_per_s` /
+## `stamina_sprint_drain_per_s` are the type's per-gait stamina flow, in stamina points per
+## second (Unit.stamina_rest_regen_per_s and siblings; StaminaFlow). All optional; every
+## shipped type currently takes the Unit.gd defaults, which are the combat model's posture
+## table, so no entry below carries them yet.
+##
 ## `walk_advance_default`/`reform_before_move_default` are this type's starting
 ## values for the two per-unit settings a player can later toggle from the info panel
 ## checkbox (Unit.walk_advance/Unit.reform_before_move) -- both optional, defaulting to
@@ -1060,6 +1121,8 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.anti_cavalry = d["anti_cav"]
 	u.is_cavalry = d["cav"]
 	u.is_ranged = d.get("ranged", false)
+	# Fog-of-war sight, from this battle's scale and the type flags just set above.
+	u.sight_range = sight_scale * u.sight_multiplier()
 	u.max_soldiers = d["soldiers"]
 	u.attack = d["atk"]
 	u.defense = d["def"]
@@ -1080,6 +1143,13 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	# keeps the Unit.gd default (0.5), matching pre-loadout behavior.
 	if d.has("back_fraction"):
 		u.back_speed_fraction = d["back_fraction"]
+	# Per-type stamina flow per gait (see Unit.stamina_rest_regen_per_s and siblings):
+	# stamina points per second, so no world-unit conversion. Optional; an entry that
+	# omits a key keeps the Unit.gd default for it (the combat model's posture table).
+	for key in ["stamina_rest_regen_per_s", "stamina_walk_regen_per_s",
+			"stamina_jog_drain_per_s", "stamina_sprint_drain_per_s"]:
+		if d.has(key):
+			u.set(key, float(d[key]))
 	# Loadout types: interned LoadoutRegistry ids. The weapon type is the single
 	# source of truth for melee reach — its reach_m (metres) -> world units becomes
 	# the unit's attack_range, the same scalar combat read before the registry
@@ -1376,6 +1446,9 @@ func capture_snapshot() -> Dictionary:
 		"next_uid": _next_uid,
 		"units": units,
 		"time_scale": Engine.time_scale,
+		"fog_contacts": _fog_contacts.duplicate(true),
+		"fog_seen": _fog_seen.duplicate(true),
+		"fog_active": _fog_active,
 	}
 	if ProjectileField.active != null:
 		snap["projectile_field"] = ProjectileField.active.to_snapshot_dict()
@@ -1428,6 +1501,10 @@ func restore_snapshot(snap: Dictionary) -> void:
 	# `_tick`; a slow-motion change made before the snapshot was captured has no per-unit
 	# trace to fall back on, so the value has to come from the snapshot itself.
 	Engine.time_scale = float(snap.get("time_scale", 1.0))
+	_fog_contacts = (snap.get("fog_contacts", {}) as Dictionary).duplicate(true)
+	_fog_seen = (snap.get("fog_seen", {}) as Dictionary).duplicate(true)
+	_fog_active = bool(snap.get("fog_active", false))
+	_reapply_fog_after_restore()
 
 	if ProjectileField.active != null:
 		if snap.has("projectile_field"):
@@ -1444,6 +1521,25 @@ func restore_snapshot(snap: Dictionary) -> void:
 		_ended = false
 		if _hud != null:
 			_hud.hide_end()
+
+
+## Reapplies fog visibility to newly respawned units and refreshes the ghost layer
+## immediately after restoring a snapshot, preventing units from flashing visible.
+func _reapply_fog_after_restore() -> void:
+	var on: bool = is_fog_active()
+	if not on:
+		_fog_active = false
+		_fog_seen = {}
+		for u in _fog_units_in_play():
+			u.visible = true
+		if _fog_ghosts != null:
+			_fog_ghosts.clear()
+		return
+	_fog_active = true
+	for u in _fog_units_in_play():
+		u.visible = u.team == fog_team or _fog_seen.has(u.uid)
+	if _fog_ghosts != null:
+		_fog_ghosts.update(_fog_contacts, _fog_seen, _tick)
 
 
 ## Builds one Unit from a captured per-unit dict, mirroring _spawn_unit's own two-phase
@@ -1643,9 +1739,98 @@ func _physics_process(delta: float) -> void:
 			_run_enemy_ai()
 		_run_player_delegated_ai()
 
+	# Fog of war is a rendering pass over the finished tick, after every sim step above.
+	_tick_fog()
 	_check_victory()
 	_evaluate_battle_event_signals()
 	_tick += 1
+
+
+## Fog of war. With Settings.fog_of_war on, the fog team's units each perceive a
+## disc, every enemy outside all of them is hidden by CanvasItem.visible, and each enemy's
+## last sighting is kept for the ghost layer. (Disabled under all-teams control.)
+## Fog affects unit visibility and ghost markers, with the recorded replay map value
+## driving playback. Fog is render-only and does not affect the retreat margin.
+## Group membership, unit-level AI targeting, and collision are untouched.
+## Player-side order targeting in SelectionManager filters on visibility so a click in
+## empty fog cannot target an unseen enemy. Switching fog off restores every unit
+## and clears the markers.
+## The contact table itself is kept, so switching back on remembers what was seen before.
+func _tick_fog() -> void:
+	var on: bool = is_fog_active()
+	if not on:
+		if _fog_active:
+			_fog_active = false
+			_fog_seen = {}
+			for u in _fog_units_in_play():
+				u.visible = true
+			if _fog_ghosts != null:
+				_fog_ghosts.clear()
+		return
+	_fog_active = true
+	var units: Array = _fog_units_in_play()
+	_fog_seen = PerceptionRef.visible_enemy_uids(fog_team, units)
+	PerceptionRef.record_contacts(_fog_contacts, units, _fog_seen, _tick)
+	for u in units:
+		u.visible = u.team == fog_team or _fog_seen.has(u.uid)
+	if _fog_ghosts != null:
+		_fog_ghosts.update(_fog_contacts, _fog_seen, _tick)
+
+
+## Every unit fog can hide or observe from: the live "units" plus the fleeing "routers"
+## (a router still renders and still, with a penalty, observes -- see
+## Perception.observer_range).
+func _fog_units_in_play() -> Array:
+	var units: Array = []
+	for group in ["units", "routers"]:
+		for node in get_tree().get_nodes_in_group(group):
+			var u := node as UnitRef
+			if u != null and is_ancestor_of(u):
+				units.append(u)
+	return units
+
+
+## The enemy uids the fog team saw on the last fog pass (empty while fog is off).
+func fog_visible_uids() -> Dictionary:
+	return _fog_seen
+
+
+## The fog team's last-known enemy contacts (Perception.record_contacts's shape), kept
+## across toggles.
+func fog_contacts() -> Dictionary:
+	return _fog_contacts
+
+
+## Whether fog of war is active in this battle: driven by the recorded fog state
+## during replay playback, or by the live Settings.fog_of_war outside playback.
+## Always disabled when all_teams_control is on.
+func is_fog_active() -> bool:
+	if all_teams_control:
+		return false
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return _recorded_fog_of_war
+	return Settings.fog_of_war
+
+
+## Immediate response to Settings changes so toggling fog while paused updates
+## unit visibility and ghost markers without waiting for the next physics frame.
+func _on_settings_changed() -> void:
+	if is_fog_active() != _fog_active:
+		_tick_fog()
+
+
+## Recompute rout_margin and field_with_margin from the live field,
+## and sync the updated bounds to all live units and routers.
+func _sync_rout_margin() -> void:
+	rout_margin = ROUT_MARGIN
+	field_with_margin = field.grow(rout_margin)
+	queue_redraw()
+	if is_inside_tree():
+		for group in ["units", "routers"]:
+			for node in get_tree().get_nodes_in_group(group):
+				var u := node as UnitRef
+				if u != null and is_ancestor_of(u):
+					u.retreat_bounds = field_with_margin
 
 
 ## Per-tick orchestration of the parallel individual-soldier layer (connected to

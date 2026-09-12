@@ -52,6 +52,19 @@ func test_morale_changes_only_the_full_tier() -> void:
 			"morale is part of the full tier")
 
 
+func test_far_stamina_changes_only_the_full_tier_for_far_tier_unit() -> void:
+	var u := _make_hash_unit(1, Vector2(100, 100))
+	u.tier = FormationTier.FAR
+	u.far_stamina = 50.0
+	var cheap_before: String = DemoStateHash.cheap_tick_hash(get_tree())
+	var full_before: String = DemoStateHash.full_tick_hash(get_tree(), 42)
+	u.far_stamina = 49.0
+	assert_eq(DemoStateHash.cheap_tick_hash(get_tree()), cheap_before,
+			"far_stamina is not part of the cheap positions tier")
+	assert_ne(DemoStateHash.full_tick_hash(get_tree(), 42), full_before,
+			"far_stamina is part of the full tier")
+
+
 func test_rng_state_changes_only_the_full_tier() -> void:
 	_make_hash_unit(1, Vector2(100, 100))
 	assert_ne(DemoStateHash.full_tick_hash(get_tree(), 1), DemoStateHash.full_tick_hash(get_tree(), 2),

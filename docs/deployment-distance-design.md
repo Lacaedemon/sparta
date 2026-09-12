@@ -62,16 +62,19 @@ World scale is 20 wu per metre (`WorldScale.WU_PER_M`).
   `Unit._move_to`'s AUTO ladder walks by default, jogs under fire, and sprints inside `Unit.SPRINT_START_DISTANCE` (200 wu, 10 m);
   `Unit.walk_advance` (on by default for spearmen, since a formed stance breaks at a jog) pins the walk.
   A live far-tier unit keeps its regiment-level `_move_to` and the same ladder, only without soldier bodies;
-  the isolated far-tier record (`FarTierFormation`, whose rules no live battle ticks yet) carries a single pace, `march_speed`, copied from `walk_speed`.
+  the isolated far-tier record (`FarTierFormation`, whose rules originally had no live battle ticks wired) originally carried only `march_speed`,
+  though [#1466](https://github.com/Lacaedemon/sparta/issues/1466) has since added `jog_speed` and a walk-or-jog `gait`.
   The enemy AI (`Battle._run_enemy_ai`, once per `AI_PERIOD` of 60 ticks) runs the general's plan, `General.PLAN_ADVANCE_LINE` by default, down through `Subcommander.decide_group` to `UnitLeader.decide`, whose fallback issues an ATTACK on the nearest enemy.
-  No AI directive or ATTACK carries a gait, so the AI approaches on the AUTO ladder:
-  a walk until the last 10 m, then the sprint.
+  No AI directive or ATTACK carries an explicit gait, so the AI approaches on the AUTO ladder:
+  a walk by default, a jog under missile fire or pursuing, and a sprint inside the last 10 m.
 
 - **Fatigue**:
-  Movement is free today.
+  Movement was free when this design was written (2026-08).
   `Unit.fatigue` builds only while a unit is in `State.FIGHTING` (`UnitMorale.tick_fatigue`) and recovers otherwise;
-  per-soldier stamina drains on strikes thrown, blows met, and rising from prone (`SoldierCombat.KAPPA_A` / `KAPPA_D` / `KAPPA_P`), never on distance covered.
-  The combat model's posture table (`docs/combat-model.md`, "posture") specifies a slow drain for jogging and a fast drain for sprinting, and its own implementation note says that table is not implemented as a state machine.
+  per-soldier stamina was drained on strikes thrown, blows met, and rising from prone (`SoldierCombat.KAPPA_A` / `KAPPA_D` / `KAPPA_P`), never on distance covered.
+  The combat model's posture table (`docs/combat-model.md`, "posture") specifies a slow drain for jogging and a fast drain for sprinting, and its own implementation note said that table is not implemented as a state machine.
+  [#1466](https://github.com/Lacaedemon/sparta/issues/1466) has since landed the stamina column of that table (`StaminaFlow`: a jog drains slowly, a sprint fast, a walk is neutral, rest regenerates), so a jog or sprint approach now costs the men something;
+  the charge-distance retune that waited on it is still [#1468](https://github.com/Lacaedemon/sparta/issues/1468).
 
 - **Time**:
   `Engine.time_scale` is already the game's speed mechanism, cycled by F5 through `HUD.SLOWMO_PRESETS` (1.0, 0.5, 0.25, 0.1) and recorded into the replay's time-scale track so playback reproduces the same per-tick delta.
@@ -130,15 +133,21 @@ A setup preset decides how far apart the armies start, fast-forward decides how 
   a walk for the whole approach and a run only at the end.
   Historically that run covered the last hundred metres or less;
   in the game it covers the last 10 m (`SPRINT_START_DISTANCE`), two and a half seconds at infantry's 4 m/s sprint.
-  Stretching the charge toward the historical distance is a retune of one constant, but a 40 m sprint at 4 m/s is ten seconds of the fastest gait, and movement is free today, so that retune waits for per-gait stamina.
+  Stretching the charge toward the historical distance is a retune of one constant,
+  but a 40 m sprint at 4 m/s is ten seconds of the fastest gait,
+  and movement was free when this was written,
+  so that retune waited for per-gait stamina (which has since landed in [#1466](https://github.com/Lacaedemon/sparta/issues/1466);
+  the retune itself is [#1468](https://github.com/Lacaedemon/sparta/issues/1468)).
 
 - **A jog approach is gated on two things this design does not build.**
-  First, movement costs nothing, so an AI that jogged its approach would simply arrive sooner with no penalty;
-  the issue's premise that the fatigue system already prices a run does not hold on the current build, and the gate is the combat model's deferred per-gait stamina flow.
-  Second, the isolated far-tier rules carry only the walk, and the walk is the right resolution for them, so a jog approach has to reach `FarTierRules` before those rules take over live movement, or the two paths diverge.
-  Both belong to the combat model and the far-tier rules, not here.
-  Until they land, the AI keeps walking;
-  spearmen would keep walking regardless, since `walk_advance` is the price of a formed stance.
+  First, movement costs nothing without per-gait stamina, so an AI that jogged its approach would simply have arrived sooner with no penalty;
+  the issue's premise that the fatigue system already priced a run did not hold on that build, and the gate was the combat model's deferred per-gait stamina flow.
+  Second, the isolated far-tier rules carried only the walk, and the walk is the right resolution for them, so a jog approach had to reach `FarTierRules` before those rules take over live movement, or the two paths diverge.
+  Both belong to the combat model and the far-tier rules, not here,
+  and both have since landed in [#1466](https://github.com/Lacaedemon/sparta/issues/1466) (`StaminaFlow`, and a walk-or-jog `FarTierFormation.gait` with an aggregate stamina pool);
+  the AI approach pace itself is still a separate phase.
+  With those prerequisites landed, the AI still walks until that separate phase assigns it a jog approach;
+  spearmen keep walking regardless, since `walk_advance` is the price of a formed stance.
 
 - **Fast-forward is a small extension of an existing mechanism.**
   `Engine.time_scale` and its replay track already exist;
@@ -202,7 +211,7 @@ A setup preset decides how far apart the armies start, fast-forward decides how 
 
 - **Which of a paced AI advance, a time-acceleration control, or a setup-time engagement range comes first?**
   All three, in this order:
-  fast-forward with an automatic return at first promotion (Phase 3), then the setup preset (Phase 4), and the AI approach pace last (Phase 5), because a jog approach is gated on per-gait stamina and a far-tier gait that belong to other designs.
+  fast-forward with an automatic return at first promotion (Phase 3), then the setup preset (Phase 4), and the AI approach pace last (Phase 5).
 
 - **The player convenience.**
   The fast-forward key and the preset cover it;
@@ -213,7 +222,6 @@ A setup preset decides how far apart the armies start, fast-forward decides how 
   grow the field downward from the spawn anchor by the preset's gap, with the default untouched so the demo catalog needs no retiming.
 
 Deferred, each tracked in its own issue:
-the per-gait stamina flow and the far-tier gait that a jog approach needs ([#1466](https://github.com/Lacaedemon/sparta/issues/1466));
 the skirmisher-screen subcommander directive ([#1467](https://github.com/Lacaedemon/sparta/issues/1467), since shipped -- see the "Skirmisher screening" bullet above);
 a charge-distance retune once sprinting costs stamina ([#1468](https://github.com/Lacaedemon/sparta/issues/1468));
 per-clash deployment distances for campaign battles ([#1469](https://github.com/Lacaedemon/sparta/issues/1469), since shipped -- see "The default does not move" above);
@@ -238,6 +246,6 @@ and any longer-range missile model ([#1470](https://github.com/Lacaedemon/sparta
    cover the three presets with a spawn-layout test.
 
 5. **Phase 5 (AI approach pacing, deferred)**:
-   Once the combat model's per-gait stamina and a far-tier gait exist, revisit a jog approach and the charge distance.
+   With per-gait stamina and the far-tier gait landed in [#1466](https://github.com/Lacaedemon/sparta/issues/1466), revisit a jog approach and the charge distance ([#1468](https://github.com/Lacaedemon/sparta/issues/1468)).
    The skirmisher-screen half of this phase turned out not to depend on either, and shipped ahead of the rest ([#1467](https://github.com/Lacaedemon/sparta/issues/1467)):
    `scripts/SkirmisherScreen.gd` and `scripts/ScreenIntervals.gd`, threaded through `scripts/Subcommander.gd` and `scripts/UnitLeader.gd` on a doctrine flag.

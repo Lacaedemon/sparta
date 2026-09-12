@@ -4,6 +4,8 @@ extends GutTest
 ## snapshot reduction (pure, read-only, a value copy rather than a live view). No sim
 ## behavior is exercised; phase 1 wires none.
 
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+
 
 func _make_unit() -> Unit:
 	var u: Unit = Unit.new()
@@ -29,10 +31,18 @@ func test_defaults_match_a_fresh_full_strength_formation() -> void:
 	assert_eq(rec.defense, 0)
 	assert_eq(rec.attack_range, 26.0)   # Unit.attack_range default (gladius baseline)
 	assert_eq(rec.march_speed, 45.0)    # Unit.walk_speed default
+	assert_eq(rec.jog_speed, 67.5)      # Unit.jog_speed default
+	assert_eq(rec.sprint_speed, 90.0)   # Unit.move_speed default
 	assert_eq(rec.casualty_carry, 0.0)
 	assert_false(rec.is_ranged)         # Unit.is_ranged default
 	assert_false(rec.routing)           # Unit.State.ROUTING default (fresh formations fight)
 	assert_eq(rec.rout_timer, 0.0)
+
+
+func test_pace_constants_author_in_metres() -> void:
+	assert_eq(FarTierFormation.DEFAULT_MARCH_SPEED, 2.25 * WorldScaleRef.WU_PER_M)
+	assert_eq(FarTierFormation.DEFAULT_JOG_SPEED, 3.375 * WorldScaleRef.WU_PER_M)
+	assert_eq(FarTierFormation.DEFAULT_SPRINT_SPEED, 4.5 * WorldScaleRef.WU_PER_M)
 
 
 func test_fields_round_trip() -> void:
@@ -84,12 +94,16 @@ func test_from_unit_copies_the_durable_regiment_stats() -> void:
 	u.defense = 8
 	u.attack_range = 48.0   # spear reach
 	u.walk_speed = 40.0
+	u.jog_speed = 65.0
+	u.move_speed = 85.0
 	var rec := FarTierFormation.from_unit(u)
 	assert_eq(rec.max_soldiers, 10)
 	assert_eq(rec.attack, 15)
 	assert_eq(rec.defense, 8)
 	assert_eq(rec.attack_range, 48.0)
 	assert_eq(rec.march_speed, 40.0)   # the sustained AUTO pace is the walk
+	assert_eq(rec.jog_speed, 65.0)
+	assert_eq(rec.sprint_speed, 85.0)
 	assert_eq(rec.casualty_carry, 0.0)
 
 

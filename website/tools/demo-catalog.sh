@@ -16,6 +16,7 @@ DEMOS=(
   "support|demos/support_demo.json|30|400|640|replay"
   "group_attack|demos/inputs/group-attack-distributed.json|30|400|640|input"
   "pace_modes|demos/inputs/pace-modes.json|30|720|640|input"
+  "gait_stamina_drain|demos/inputs/gait-stamina-drain.json|30|560|640|input"
   "hold_formation|demos/inputs/hold-formation-default.json|30|200|640|input"
   "sidestep|demos/inputs/sidestep.json|30|150|640|input"
   "back_step|demos/inputs/backstep.json|30|300|640|input"
@@ -110,6 +111,7 @@ DEMOS=(
   "shield_arc_block|demos/inputs/shield-arc-block.json|30|330|720|input"
   "skirmisher_screen|demos/inputs/skirmisher-screen.json|30|480|720|input"
   "campaign_deployment_gap|demos/inputs/campaign-deployment-gap.json|30|720|640|input"
+  "fog_of_war|demos/inputs/fog-of-war-toggle.json|30|480|640|input"
   "missile_profile_reach|demos/inputs/missile-profile-reach.json|30|240|720|input"
 )
 

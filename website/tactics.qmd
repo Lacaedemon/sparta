@@ -480,6 +480,42 @@ So a unit that has been grinding at the front for a while is measurably weaker t
 that just arrived fresh. Rank cycling (above) helps by rotating tired soldiers to the
 rear to recover; simply pulling a unit out of melee and letting it rest works too.
 
+**The pace of the march spends stamina too.**
+Every soldier's pool follows the regiment's live pace, not just its blows:
+a halted regiment regenerates,
+a walk is neutral,
+a jog drains slowly,
+and a sprint drains fast.
+So a regiment that jogs its whole approach arrives sooner than one that walks,
+but arrives with less in the tank,
+and one that sprints the whole way arrives spent ---
+its condition factor already down before the first blow lands.
+That is the trade-off behind [choosing a gait by click count](#choosing-a-gait-by-click-count)
+and behind AUTO pace's default profile:
+the unthreatened walk costs nothing,
+so the men reach charge distance fresh and spend the pool only on the terminal sprint
+(or on an earlier jog if under missile fire or pursuing).
+Read the pool off the selected unit's stat sheet
+(the **Stamina per man** line, mean and spread over the living men)
+to see how much of it a march has already cost.
+
+::: {#fig-gait-stamina-drain .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/gait_stamina_drain.jpg">
+  <source src="media/gait_stamina_drain.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A lone Infantry regiment jogs a long leg south, then is re-ordered to sprint
+mid-jog. The stat sheet's Stamina per man readout bleeds slowly through the
+jog (about one point a second) and steeply through the sprint (about five a
+second), with no rest in between to mask the difference.
+:::
+
 ## Prone / knockdown
 
 A blow that delivers enough force can **knock a soldier off their feet**. A prone
@@ -1309,8 +1345,9 @@ standing start.)
 
 By default, foot units advance on **AUTO** pace: they walk on the approach, jog
 when a ranged enemy is firing at them (to spend less time under missiles), and
-sprint at full speed once within about 200 px of the target --- so a charge
-arrives at full momentum without wearing out the troops on the march.
+sprint at full speed once within about 10 m of the target --- so a charge
+arrives at full momentum while the walk-and-jog approach keeps the
+[stamina](#stamina) bill to that final stretch rather than the whole march.
 
 **Check Walk advance in the unit settings panel** to lock the selection to walk
 pace throughout. This is required for formed stances like shield wall or pike
@@ -1364,6 +1401,11 @@ threat it would otherwise jog or sprint through (screening a flank, keeping
 a formation intact under fire without also toggling Walk advance), or to
 force an early sprint before AUTO's close-range threshold would normally
 trigger it.
+
+A chosen gait is also a chosen [stamina](#stamina) bill: a walk is free, a
+jog drains the men slowly for as long as it lasts, and a sprint drains them
+fast, so a regiment sprinted across the whole field arrives sooner and
+arrives tired. Spend the faster gaits on the legs that need them.
 
 ::: {#fig-multi-click-speeds .demo}
 
@@ -2196,6 +2238,82 @@ A 60 m deployment: both lines open as far-tier marks, the player's line is
 marched at the enemy while the enemy advances to meet it, and both promote
 back to individual soldiers as the gap closes.
 :::
+
+## Fog of war
+
+Battles open with complete visibility across the entire map by default.
+Toggling fog of war (<kbd>F7</kbd> or **☰ Menu -> Fog of war**) limits your intelligence.
+When fog is enabled, you see only what your own regiments can directly observe.
+Every friendly regiment projects a circular sight disc around its center.
+An enemy unit whose center lies outside every friendly sight disc is hidden.
+Friendly units are always visible to you.
+Terrain does not block sight lines yet, and the field itself is never darkened.
+Fog changes visibility only.
+Units keep fighting, pathing, and shooting under the same rules.
+
+::: {#tbl-sight-ranges}
+
+| Unit | Multiplier | Sight (default field) | Role |
+| --- | --- | --- | --- |
+| **Cavalry** | 1.4x | **21 m** | Scouting, screening, pursuit |
+| **Ranged** | 1.2x | **18 m** | Forward observation, support |
+| **Foot** | 1.0x | **15 m** | Line-of-sight across front |
+
+Sight ranges by unit category under fog of war.
+:::
+
+Sight ranges default by unit category.
+
+Mounted troops see farthest:
+21 m on the default field (a 1.4x multiplier).
+Ranged troops see intermediate distances:
+18 m on the default field (a 1.2x multiplier).
+Foot troops hold the baseline:
+15 m on the default field (a 1.0x multiplier).
+When a unit routs, panic degrades its observation:
+a fleeing unit suffers a 0.6x penalty to its sight radius.
+
+### Why a cavalry screen is worth more
+
+On an open field with fog active, blind marching is dangerous.
+A standard deployment gap of 29 m means opposing foot lines deploy out of sight.
+Heavy infantry marching forward without reconnaissance risks blundering into spears.
+This gives cavalry a decisive tactical purpose before the lines meet.
+With a 21 m sight radius (a 40% reach advantage over foot) and superior speed,
+horsemen can push ahead of the heavy line as a scouting screen.
+A forward screen reveals enemy deployments and flags open flanks.
+It illuminates approaching columns while your main formation stays hidden.
+Skirmishers and archers (18 m reach) can also screen the heavy line,
+maintaining contact while staying outside the 15 m sight of enemy foot.
+
+### What ghost markers tell you --- and what they do not
+
+When a spotted enemy leaves your sight discs, it leaves a **ghost marker**.
+The marker is a fixed rectangular silhouette (3 m wide by 1.5 m deep).
+It sits at the exact position and facing the enemy had when last observed.
+Over the next ten seconds (600 ticks), the marker fades from 60% to 20% opacity.
+Understanding the limits of a ghost marker is critical:
+
+- It marks where the enemy was, not where it stands now.
+
+- It preserves the last-seen facing, but hides subsequent maneuvers.
+
+- Its opacity indicates age, fading as the sighting grows stale.
+
+- Right-clicking a ghost marker falls through to a ground move order.
+
+Attack orders require a visible target, so an order against a ghost cannot lock on.
+If the enemy has marched away, your troops will march into empty ground.
+
+### Scouting and pursuit decisions
+
+Fog of war fundamentally reshapes pursuit and battlefield control.
+Fog of war does not alter the retreat boundary.
+The retreat margin remains fixed at 9.5 m regardless of whether fog is enabled.
+However, if your pursuers lose sight of a routing enemy, that enemy enters the dark.
+A broken unit that breaks contact and gains distance can steady its nerve and rally.
+Dropping pursuit in the fog risks allowing shattered remnants to reform.
+Fast cavalry must stay in contact, shadowing routers until they shatter or break completely.
 
 ## Terrain
 

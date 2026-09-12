@@ -248,6 +248,16 @@ script under `demos/inputs/`:
   for the recording, without touching a developer's saved settings. Off by default; set
   `"show_position_anchor": true` for a demo specifically about how `position` tracks (or
   doesn't track) the block.
+
+- `fog_of_war` (optional bool, default `false`) -- session-only:
+  starts the recording with fog of war on
+  (`Settings.fog_of_war`:
+  enemies outside every friendly unit's sight radius
+  are hidden and leave a fading ghost marker where they were last seen),
+  without touching a developer's saved settings.
+  Leave it off and script a `{"key": "F7"}` step instead
+  when the demo is about the toggle itself.
+
 - `scenario` (optional) -- **stage a custom matchup** instead of the default 5v5 lines, so a
   demo can show a *specific* fight the default battle won't produce on its own (a weak unit
   that routs, an enemy placed off a unit's flank, cavalry vs a single target). A list of unit
@@ -447,6 +457,7 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | `soldiers` | Living soldier count (drops as the unit takes casualties). |
 | `current_speed` | Current movement speed (world units/s). |
 | `current_speed_mps` | The same speed in m/s (folding in `Battle.SPEED_SCALE`, so it reads back as the loadout's declared figure). |
+| `stamina_mean` | Mean per-soldier stamina (including zero-stamina values) for close tier, or the far tier's aggregate scalar once demoted. |
 | `order_mode` | Readable order stance (`Normal`, `Hold`, `Attack flank`, …). |
 | `rank_relief` | Whether the intra-unit rank-relief mode is on (rear ranks rotate forward to relieve their own fighting line; written by a stance order). |
 | `current_order` | The head of the unit's orders queue -- readable `Order.Type` name (`MOVE`, `ATTACK`, `RELIEF`, `WHEEL`, …), or `null` when idle. |

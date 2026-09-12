@@ -18,6 +18,7 @@ const SECTIONS := {
 	"show_performance_graph": "camera",
 	"show_unit_card_tray": "camera",
 	"tray_row_order_placement": "gameplay",
+	"fog_of_war": "gameplay",
 	"fps_corner": "camera",
 }
 

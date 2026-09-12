@@ -20,6 +20,9 @@ extends RefCounted
 ## rather than lost soldier detail:
 ## - Fatigue, cohesion, and training read as fresh/untrained defaults — the far-tier
 ##   record carries none of them (so there is no rank-cycle in-fight morale recovery).
+##   Stamina is the exception: the record carries one aggregate pool, drained by a jog
+##   approach and restored at rest (tick_stamina), and its g(sigma) scales the strike
+##   expectation the way each close-tier soldier's own pool scales his blows.
 ## A MELEE attacker's output also scales with its remaining-strength ratio (a thinned
 ## formation presents less fighting frontage), which is where the model earns its
 ## Lanchester-style attrition curves: the close tier's live per-soldier melee scales output
@@ -29,12 +32,12 @@ extends RefCounted
 ## ranged output stays flat too, to keep mirroring it faithfully.
 
 
-## A routing formation's flee pace, relative to its (stance-capped) march speed — mirrors
-## Unit._process_rout's move_speed * 1.3 flee rate. The close tier flees at its sprint pace
-## (move_speed), which the far-tier record doesn't carry (bursts are below this tier's
-## resolution; see the walk-only march_speed field), so this scales the walk-derived
-## effective_speed instead — the same 1.3 multiplier applied to the far tier's only pace.
-const FLEE_SPEED_MULTIPLIER: float = 1.3
+## A routing formation's flee pace, relative to its (stance-capped) effective speed -- mirrors
+## Unit.FLEE_SPEED_MULTIPLIER (move_speed * FLEE_SPEED_MULTIPLIER flee rate). The close tier flees
+## at its multiplied sprint pace. The far tier scales effective_speed (walk or jog pace)
+## by FLEE_SPEED_MULTIPLIER while tick_stamina bills moving flight at
+## the sprint drain rate (stamina_sprint_drain_per_s).
+const FLEE_SPEED_MULTIPLIER: float = Unit.FLEE_SPEED_MULTIPLIER
 
 
 ## Remaining-strength ratio in [0, 1]: the aggregate analog of soldiers / max_soldiers.
@@ -166,7 +169,11 @@ static func strike_expectation(attacker: FarTierFormation, defender: FarTierForm
 		var eff_ranged: float = float(attacker.attack) * formation_attack_factor(attacker)
 		var ranged_base: float = maxf(1.0, eff_ranged - float(defender.defense)) * Unit.RANGED_DAMAGE_FACTOR
 		return ranged_base * missile_defense_factor(defender, attacker.position)
-	var eff_attack: float = float(attacker.attack) \
+	# The aggregate pool's g(sigma) scales the attack stat the way each close-tier soldier's
+	# own stamina scales his cond_a (SoldierMelee.resolve), before the defence subtraction,
+	# so a spent formation can lose the whole margin over the defender's defense, not just
+	# a fraction of the blows that clear it.
+	var eff_attack: float = float(attacker.attack) * stamina_factor(attacker) \
 			* formation_attack_factor(attacker) * formation_melee_attack_factor(attacker)
 	var base: float = maxf(1.0, eff_attack - float(defender.defense))
 	return base * melee_defense_factor(defender, attacker.position)
@@ -298,7 +305,7 @@ static func shatter(rec: FarTierFormation) -> void:
 ## One tick of a routing formation's flight: the far-tier analog of Unit._process_rout().
 ## Flees straight away from `enemy` (the pair's own opposing formation — the far tier has no
 ## fixed "own back edge" to run toward, so fleeing the immediate threat is the natural
-## two-body substitute) at 1.3x the march pace, matching the close tier's flee multiplier.
+## two-body substitute) at FLEE_SPEED_MULTIPLIER on effective_speed, matching the close tier.
 ## Morale steadies toward ROUT_RALLY_BASELINE at a rate proportional to the remaining gap,
 ## and the formation rallies the moment it crosses rec.rally_morale_threshold (carried forward
 ## from the demoted unit's own caller-configurable rally_morale_threshold, default
@@ -309,9 +316,14 @@ static func tick_rout(rec: FarTierFormation, enemy: FarTierFormation, delta: flo
 	if not rec.routing:
 		return
 	var away: Vector2 = rec.position - enemy.position
+	var moved: bool = false
 	if away.length_squared() >= 0.000001:
 		rec.facing = away.normalized()
-		rec.position += rec.facing * (effective_speed(rec) * FLEE_SPEED_MULTIPLIER) * delta
+		var speed: float = effective_speed(rec) * FLEE_SPEED_MULTIPLIER
+		var step: float = speed * delta
+		rec.position += rec.facing * step
+		moved = step > 0.0
+	tick_stamina(rec, moved, delta)
 	if rec.morale < Unit.ROUT_RALLY_BASELINE:
 		rec.morale += (Unit.ROUT_RALLY_BASELINE - rec.morale) * Unit.ROUT_MORALE_RECOVER_RATE * delta
 	if rec.morale >= rec.rally_morale_threshold and can_rally(rec, enemy):
@@ -326,33 +338,89 @@ static func tick_rout(rec: FarTierFormation, enemy: FarTierFormation, delta: flo
 		shatter(rec)
 
 
+## Out-of-combat recovery for a formation STANDING out of contact: the pool rests back up
+## (the posture table's fast-regen row) and morale recovers (tick_morale_recovery). A
+## formation that moved this tick already paid its gait's flow inside advance, so it gets
+## tick_morale_recovery alone -- charging the rest band on top of the jog drain would net
+## the men a GAIN for jogging (rest regen minus jog drain), which tick_pair pins against.
+static func tick_recovery(rec: FarTierFormation, delta: float) -> void:
+	if not can_fight(rec):
+		return
+	tick_stamina(rec, false, delta)
+	tick_morale_recovery(rec, delta)
+
+
 ## Out-of-combat morale recovery — mirrors UnitMorale.tick_morale's resting branch. Gated by
 ## can_fight, so neither a broken-but-not-yet-routing formation nor an already-routing one
 ## uses this path: routing recovery follows its own curve toward ROUT_RALLY_BASELINE
 ## (tick_rout), not the ordinary resting rate up to 100.
-static func tick_recovery(rec: FarTierFormation, delta: float) -> void:
-	if not can_fight(rec) or rec.morale >= 100.0:
+static func tick_morale_recovery(rec: FarTierFormation, delta: float) -> void:
+	if not can_fight(rec):
+		return
+	if rec.morale >= 100.0:
 		return
 	rec.morale = minf(100.0, rec.morale + Unit.MORALE_RECOVER_PER_SEC * delta)
 
 
-## The formation's aggregate march pace: its sustained speed capped by the stance.
+## The pace the formation's gait orders, before the stance cap: the jog while gait is
+## Unit.GAIT_JOG, the walk (march_speed) otherwise. Mirrors Unit.gait_pace for the two
+## gaits the far tier carries.
+static func pace_speed(rec: FarTierFormation) -> float:
+	return rec.jog_speed if rec.gait == Unit.GAIT_JOG else rec.march_speed
+
+
+## The formation's aggregate march pace: its gait's pace capped by the stance.
 static func effective_speed(rec: FarTierFormation) -> float:
-	return rec.march_speed * formation_speed_factor(rec)
+	return pace_speed(rec) * formation_speed_factor(rec)
+
+
+## The fatigue factor g(sigma) the formation's aggregate pool gives its blows -- the same
+## SoldierCombat.stamina_factor every close-tier soldier's own pool feeds into cond_a, so
+## a formation that jogged its approach strikes as a tired line would.
+static func stamina_factor(rec: FarTierFormation) -> float:
+	return SoldierCombat.stamina_factor(rec.stamina, rec.max_stamina)
+
+
+## One tick of the per-gait stamina flow on the aggregate pool (StaminaFlow, the same rule
+## SoldierBodies.step applies per body): resting regenerates, a walk is neutral, a jog
+## drains. `moving` derives the band from effective_speed against the record's paces;
+## a stationary formation rests. Routing flight drains at the sprint rate when moving.
+static func tick_stamina(rec: FarTierFormation, moving: bool, delta: float) -> void:
+	var band: int
+	if not moving:
+		band = StaminaFlow.BAND_REST
+	elif rec.routing:
+		band = Unit.GAIT_SPRINT
+	else:
+		band = StaminaFlow.band_for_speed(effective_speed(rec), rec.march_speed,
+				rec.jog_speed, rec.sprint_speed, Unit.ARRIVE_SPEED_EPSILON)
+	var flow: float = StaminaFlow.flow_per_s(band, rec.stamina_rest_regen_per_s,
+			rec.stamina_walk_regen_per_s, rec.stamina_jog_drain_per_s, rec.stamina_sprint_drain_per_s)
+	rec.stamina = StaminaFlow.apply(rec.stamina, flow, delta, rec.max_stamina)
 
 
 ## March the centroid straight toward `target` at the effective pace, clamped so it never
-## oversteps the point in one tick; facing tracks the direction of travel. Terrain routing
-## and the close tier's arrival braking are below this tier's resolution.
+## oversteps the point in one tick; facing tracks the direction of travel, and the men pay
+## the gait's stamina flow for the moving portion of the tick, with any remainder of the
+## tick treated as stationary recovery (tick_stamina). Terrain routing and the close
+## tier's arrival braking are below this tier's resolution.
 static func advance(rec: FarTierFormation, target: Vector2, delta: float) -> void:
 	var to_target: Vector2 = target - rec.position
 	var dist: float = to_target.length()
 	if dist < 0.001:
+		tick_stamina(rec, false, delta)
 		return
 	var dir: Vector2 = to_target / dist
-	var step: float = minf(effective_speed(rec) * delta, dist)
+	var speed: float = effective_speed(rec)
+	var step: float = minf(speed * delta, dist)
 	rec.position += dir * step
 	rec.facing = dir
+	var move_time: float = minf(step / speed, delta) if speed > 0.0 else 0.0
+	if move_time > 0.0:
+		tick_stamina(rec, true, move_time)
+	var rest_time: float = delta - move_time
+	if rest_time > 0.0:
+		tick_stamina(rec, false, rest_time)
 
 
 ## Turn the formation in place to face `point` (used on contact, where the line squares up
@@ -402,17 +470,23 @@ static func tick_pair(a: FarTierFormation, b: FarTierFormation, delta: float) ->
 	# A side in reach squares up and fights; one out of reach presses into contact (so a
 	# shorter-reach line closes the last stretch under a spear line's blows, as it does
 	# in the close tier). An advancing side is MOVING rather than FIGHTING, so it also
-	# recovers morale, mirroring UnitMorale.tick_morale's out-of-combat branch.
+	# recovers morale, mirroring UnitMorale.tick_morale's out-of-combat branch -- morale
+	# only, since advance already charged the gait's stamina flow for this tick. A side
+	# fighting where it stands rests its pool, as a stationary close-tier regiment's
+	# bodies do (SoldierBodies.step reads the rest band off a zero pace); the far tier
+	# books no per-strike stamina cost, so that regen is the whole of its flow in contact.
 	if a_in_reach:
 		face_toward(a, a_target)
+		tick_stamina(a, false, delta)
 	else:
 		advance(a, a_target, delta)
-		tick_recovery(a, delta)
+		tick_morale_recovery(a, delta)
 	if b_in_reach:
 		face_toward(b, b_target)
+		tick_stamina(b, false, delta)
 	else:
 		advance(b, b_target, delta)
-		tick_recovery(b, delta)
+		tick_morale_recovery(b, delta)
 	if rate_on_b > 0.0:
 		tick_attrition(b, rate_on_b, delta)
 	if rate_on_a > 0.0:
