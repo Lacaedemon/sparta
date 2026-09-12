@@ -1054,6 +1054,76 @@ func test_unit_at_flag_click_respects_team() -> void:
 			"a team-1 query resolves the same flag to the enemy")
 
 
+func test_unit_at_selects_unit_by_clicking_soldier_glyph_outside_center_radius() -> void:
+	var sm := _sm()
+	var u := _seeded_unit(0)
+	u.position = Vector2(500, 500)
+	u.seed_sim_soldiers()
+	var poses: PackedVector2Array = u.soldier_world_positions()
+	assert_gt(poses.size(), 0, "unit has simulated soldiers")
+	var flank_soldier_pos: Vector2 = poses[0]
+	var body_pick: float = UnitScript.RADIUS + SelectionManagerScript.BODY_PICK_PAD
+	assert_gt(flank_soldier_pos.distance_to(u.global_position), body_pick,
+			"soldier on flank sits outside the commander center pick radius")
+	assert_eq(sm._unit_at(flank_soldier_pos, 0), u,
+			"clicking a soldier glyph selects the unit")
+
+
+func test_unit_at_selects_enemy_soldier_glyph_for_attack_targeting() -> void:
+	var sm := _sm()
+	var enemy := _seeded_unit(1)
+	enemy.position = Vector2(700, 500)
+	enemy.seed_sim_soldiers()
+	var poses: PackedVector2Array = enemy.soldier_world_positions()
+	assert_gt(poses.size(), 0, "enemy has simulated soldiers")
+	var flank_soldier_pos: Vector2 = poses[0]
+	var body_pick: float = UnitScript.RADIUS + SelectionManagerScript.BODY_PICK_PAD
+	assert_gt(flank_soldier_pos.distance_to(enemy.global_position), body_pick,
+			"enemy flank soldier sits outside the commander center pick radius")
+	assert_eq(sm._unit_at(flank_soldier_pos, 1, true), enemy,
+			"clicking an enemy soldier glyph resolves the enemy unit for an attack order")
+
+
+func test_finish_right_button_on_enemy_soldier_issues_attack_order() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var friend := _seeded_unit(0)
+	friend.uid = 101
+	friend.position = Vector2(200, 200)
+	var enemy := _seeded_unit(1)
+	enemy.uid = 202
+	enemy.position = Vector2(500, 500)
+	enemy.seed_sim_soldiers()
+	sm._selected = [friend]
+	var poses: PackedVector2Array = enemy.soldier_world_positions()
+	var flank_soldier_pos: Vector2 = poses[0]
+	sm._finish_right_button(flank_soldier_pos, false)
+	assert_gt(b._pending_orders.size(), 0, "an order was recorded")
+	var cmd: Dictionary = b._pending_orders[-1]
+	assert_eq(int(cmd["target"]), enemy.uid,
+			"right-clicking enemy soldier targets the enemy uid instead of open-ground move")
+
+
+func test_finish_selection_box_select_selects_unit_when_box_encloses_only_flank_soldiers() -> void:
+	var sm := _sm()
+	var u := _seeded_unit(0)
+	u.position = Vector2(500, 500)
+	u.seed_sim_soldiers()
+	var poses: PackedVector2Array = u.soldier_world_positions()
+	var flank_soldier_pos: Vector2 = poses[0]
+	var r: float = u.soldier_body_radius()
+	var box := Rect2(flank_soldier_pos - Vector2(r, r), Vector2(2.0 * r, 2.0 * r))
+	assert_false(box.has_point(u.global_position),
+			"drag box on flank does not enclose unit.global_position")
+	sm._drag_start = box.position
+	sm._drag_cur = box.position + box.size
+	sm._finish_selection()
+	assert_true(sm._selected.has(u),
+			"box enclosing flank soldiers selects the unit")
+
+
 # --- all-teams control --------------------------------------------------------
 
 func test_is_own_team_defaults_to_team_zero_only() -> void:

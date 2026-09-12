@@ -1,0 +1,22 @@
+{
+  "_comment": "Soldier glyph picking and attack targeting (#1570, #1569): a player Spearmen regiment at (600, 500) faces east toward an enemy Infantry regiment at (730, 500) facing west. The player first left-clicks a front soldier marker on their own regiment at (658.5, 500.0) -- 58.5 WU outside the 24 WU center radius -- selecting the regiment. The player then right-clicks a flank soldier marker on the enemy formation at (694.0, 554.0) -- 64.9 WU outside the enemy center. Before the fix, SelectionManager._unit_at tested only distance to unit.global_position within 24 WU, so clicking a soldier glyph returned null; selection failed to register and right-clicking issued a MOVE order to ground coordinates instead of an ATTACK order against the enemy. With the fix, the soldier glyph hitboxes resolve the click: the regiment is selected, an ATTACK order locks onto enemy uid 1, and the spearmen advance and engage the enemy in combat.",
+  "seed": "8307509100273286081",
+  "drill": false,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 600, "y": 500, "count": 40, "facing": [1, 0]},
+    {"team": 1, "type": "Infantry", "x": 730, "y": 500, "count": 40, "facing": [-1, 0]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 665.0, "y": 500.0, "zoom": 1.0}
+  ],
+  "steps": [
+    {"tick": 8, "click": [658.5, 500.0]},
+    {"tick": 18, "rmb_click": [694.0, 554.0]}
+  ],
+  "state": [12, 30, 80, 140, 200],
+  "expect": [
+    {"tick": [30, 80], "uid": 0, "field": "current_order", "value": "ATTACK"},
+    {"tick": [30, 80], "uid": 0, "field": "target_enemy_uid", "value": 1},
+    {"tick": 200, "uid": 0, "field": "engaged", "value": true}
+  ]
+}

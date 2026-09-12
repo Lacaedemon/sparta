@@ -552,7 +552,9 @@ func _finish_selection() -> void:
 			var unit = node as UnitRef
 			if unit == null or not _is_own_team(unit.team) or unit.state == UnitRef.State.DEAD:
 				continue
-			if rect.has_point(unit.global_position):
+			if not unit.visible:
+				continue
+			if unit.intersects_rect(rect):
 				_select(unit)
 		_last_click_unit = null   # a box-select breaks any double-click streak
 
@@ -1899,7 +1901,7 @@ func _unit_at(world_pos: Vector2, team: int, include_routers: bool = false) -> U
 	# click on the enemy team, since routing units are valid combat targets but a plain
 	# "units"-only scan can't resolve a click on one at all.
 	var best = null
-	var best_d_sq: float = (UnitRef.RADIUS + BODY_PICK_PAD) * (UnitRef.RADIUS + BODY_PICK_PAD)
+	var best_d_sq: float = INF
 	# Fallback: the unit whose raised standard (flag + pole) is under the cursor, so the
 	# flag is clickable just like the body. A body hit always wins; the standard only
 	# resolves the click when no block is under the cursor. Nearest flag breaks ties.
@@ -1923,9 +1925,8 @@ func _unit_at(world_pos: Vector2, team: int, include_routers: bool = false) -> U
 					continue
 			elif unit.team != team:
 				continue
-			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-			var d_sq: float = unit.global_position.distance_squared_to(world_pos)
-			if d_sq < best_d_sq:
+			var d_sq: float = unit.pick_distance_squared(world_pos, BODY_PICK_PAD)
+			if d_sq >= 0.0 and d_sq < best_d_sq:
 				best_d_sq = d_sq
 				best = unit
 			var fd_sq: float = _flag_pick_distance_squared(unit, world_pos)

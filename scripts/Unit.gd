@@ -6258,6 +6258,87 @@ func block_centre_offset() -> Vector2:
 	return local.rotated(soldier_block_world_angle())
 
 
+## Live world positions of this unit's soldiers. Reads `_sim_soldier_pos` when populated
+## (close tier and active sim), or falls back to `soldier_world_slots(soldiers)` (far tier
+## or unseeded state).
+func soldier_world_positions() -> PackedVector2Array:
+	if not _sim_soldier_pos.is_empty():
+		return _sim_soldier_pos
+	return soldier_world_slots(soldiers)
+
+
+## Distance-squared from `world_pos` to this unit's pickable body (soldiers, formation block,
+## and regiment center), or -1.0 if `world_pos` does not hit the unit.
+## When `world_pos` falls within any soldier's marker (+pad), inside the formation block
+## (+pad), or within the regiment center radius (+pad), returns the squared distance to the
+## nearest hit element so SelectionManager can tiebreak overlapping candidates.
+func pick_distance_squared(world_pos: Vector2, pad: float = 6.0) -> float:
+	if state == State.DEAD or soldiers <= 0:
+		return -1.0
+	var is_hit: bool = false
+	var min_dist_sq: float = INF
+
+	# 1. Regiment center disc
+	var d_center_sq: float = global_position.distance_squared_to(world_pos)
+	var center_hit_r: float = RADIUS + pad
+	if d_center_sq <= center_hit_r * center_hit_r:
+		is_hit = true
+		min_dist_sq = d_center_sq
+
+	# 2. Formation block oriented bounding box
+	var files: int = formation_files(soldiers)
+	var ranks: int = UnitFormation.ranks_for(soldiers, files)
+	var mark_r: float = soldier_body_radius()
+	var half_w: float = float(maxi(0, files - 1)) * 0.5 * file_pitch_wu()
+	var half_d: float = float(maxi(0, ranks - 1)) * 0.5 * rank_pitch_wu()
+	var ext: Vector2 = Vector2(half_w + mark_r + pad, half_d + mark_r + pad)
+	var b_center: Vector2 = global_position + block_centre_offset()
+	var b_angle: float = soldier_block_world_angle()
+	var rel: Vector2 = (world_pos - b_center).rotated(-b_angle)
+	if absf(rel.x) <= ext.x and absf(rel.y) <= ext.y:
+		is_hit = true
+		var d_block_sq: float = rel.length_squared()
+		if d_block_sq < min_dist_sq:
+			min_dist_sq = d_block_sq
+
+	# 3. Individual soldier markers
+	var mark_hit_r: float = mark_r + pad
+	var mark_hit_r_sq: float = mark_hit_r * mark_hit_r
+	var poses: PackedVector2Array = soldier_world_positions()
+	for p in poses:
+		var gp: Vector2 = global_position + (p - position)
+		var d_sq: float = gp.distance_squared_to(world_pos)
+		if d_sq <= mark_hit_r_sq:
+			is_hit = true
+			if d_sq < min_dist_sq:
+				min_dist_sq = d_sq
+
+	return min_dist_sq if is_hit else -1.0
+
+
+## Whether this unit's pickable body or flag intersects or is enclosed by `rect`.
+## Matches the criteria for drag-box selection.
+func intersects_rect(rect: Rect2) -> bool:
+	if state == State.DEAD or soldiers <= 0:
+		return false
+	if rect.has_point(global_position):
+		return true
+	var mark_r: float = soldier_body_radius()
+	var grown_rect: Rect2 = rect.grow(mark_r)
+	for p in soldier_world_positions():
+		var gp: Vector2 = global_position + (p - position)
+		if grown_rect.has_point(gp):
+			return true
+	var flag_center: Vector2 = global_position \
+			+ UnitSprites.standard_bounds(render_block_extent(), block_centre_offset()).get_center()
+	if rect.has_point(flag_center):
+		return true
+	var b_center: Vector2 = global_position + block_centre_offset()
+	if rect.has_point(b_center):
+		return true
+	return false
+
+
 ## Seed the parallel soldier-body layer from the current formation. Deterministic
 ## and side-effect-free beyond `_sim_soldier_pos`. Read by the global separation
 ## pass and the flock render (phase 3), but NOT by gameplay (the regiment circle
