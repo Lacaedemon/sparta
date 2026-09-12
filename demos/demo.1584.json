@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Replay serialization format extension and headless replay track dispatch; no visual battle simulation change to demonstrate."
+}

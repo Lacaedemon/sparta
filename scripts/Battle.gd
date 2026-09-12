@@ -615,6 +615,7 @@ func _ready() -> void:
 				FIELD, TERRAIN, SPAWN_LINE_YS, custom_sight, recording_fog):
 			Replay.map = BattleMapRef.serialize(field, terrain, spawn_line_ys,
 					custom_sight, recording_fog)
+		Replay.init_fog(recording_fog)
 	else:
 		# Playback: restore the recorded map (empty = the default map) BEFORE any
 		# of the map consumers below run, so camera bounds, the routing grid, and
@@ -1449,6 +1450,7 @@ func capture_snapshot() -> Dictionary:
 		"fog_contacts": _fog_contacts.duplicate(true),
 		"fog_seen": _fog_seen.duplicate(true),
 		"fog_active": _fog_active,
+		"recorded_fog_of_war": _recorded_fog_of_war,
 	}
 	if ProjectileField.active != null:
 		snap["projectile_field"] = ProjectileField.active.to_snapshot_dict()
@@ -1502,10 +1504,14 @@ func restore_snapshot(snap: Dictionary) -> void:
 	# `_tick`; a slow-motion change made before the snapshot was captured has no per-unit
 	# trace to fall back on, so the value has to come from the snapshot itself.
 	Engine.time_scale = float(snap.get("time_scale", 1.0))
+	_recorded_fog_of_war = bool(snap.get("recorded_fog_of_war", snap.get("fog_active", false)))
 	_fog_contacts = (snap.get("fog_contacts", {}) as Dictionary).duplicate(true)
 	_fog_seen = (snap.get("fog_seen", {}) as Dictionary).duplicate(true)
 	_fog_active = bool(snap.get("fog_active", false))
 	_reapply_fog_after_restore()
+	if _hud != null and _hud.has_method("_sync_fog_label"):
+		_hud._sync_fog_label()
+		_hud._sync_setting_toggles()
 
 	if ProjectileField.active != null:
 		if snap.has("projectile_field"):
@@ -1680,6 +1686,17 @@ func _physics_process(delta: float) -> void:
 		var recorded_scale: float = Replay.time_scale_for_tick(_tick)
 		if recorded_scale > 0.0:
 			Engine.time_scale = recorded_scale
+		# Re-apply recorded fog of war transitions so the replay's unit visibility matches
+		# what was actually seen during recording.
+		var recorded_fog: int = Replay.fog_for_tick(_tick)
+		if recorded_fog >= 0:
+			var next_fog: bool = (recorded_fog == 1)
+			if next_fog != _recorded_fog_of_war:
+				_recorded_fog_of_war = next_fog
+				_tick_fog()
+				if _hud != null and _hud.has_method("_sync_fog_label"):
+					_hud._sync_fog_label()
+					_hud._sync_setting_toggles()
 		# Drive the camera from the recorded presentation track so the replay is framed
 		# (zoom/pan) as it was played — only when asked (the demo recorder), so in-app
 		# Watch Replay keeps free pan/zoom. No track -> static camera, as before.
@@ -1831,6 +1848,8 @@ func is_fog_active() -> bool:
 func _on_settings_changed() -> void:
 	if is_fog_active() != _fog_active:
 		_tick_fog()
+		if Replay.mode == Replay.Mode.RECORD:
+			Replay.record_fog_change(_tick, is_fog_active())
 
 
 ## Recompute rout_margin and field_with_margin from the live field,

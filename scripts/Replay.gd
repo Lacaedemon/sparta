@@ -28,6 +28,7 @@ const ReplayCameraTrackRef = preload("res://scripts/ReplayCameraTrack.gd")
 const ReplayPointerTrackRef = preload("res://scripts/ReplayPointerTrack.gd")
 const ReplayKeyTrackRef = preload("res://scripts/ReplayKeyTrack.gd")
 const ReplayTimeScaleTrackRef = preload("res://scripts/ReplayTimeScaleTrack.gd")
+const ReplayFogTrackRef = preload("res://scripts/ReplayFogTrack.gd")
 const ReplayStorageRef = preload("res://scripts/ReplayStorage.gd")
 const ReplayCodecRef = preload("res://scripts/ReplayCodec.gd")
 const ReplayDecoderRef = preload("res://scripts/ReplayDecoder.gd")
@@ -159,6 +160,16 @@ var _time_scale_index: int:
 	get: return _time_scale.index
 	set(v): _time_scale.index = v
 
+# Fog of war transition track: mid-battle fog toggles (F7 / menu). Each entry:
+# { "tick": int, "value": bool }. Consecutive identical states are deduped.
+var _fog := ReplayFogTrackRef.new()
+var _fog_track: Array:
+	get: return _fog.track
+	set(v): _fog.track = v
+var _fog_index: int:
+	get: return _fog.index
+	set(v): _fog.index = v
+
 # Cursor moves smaller than this (world px) don't add a keyframe — drops sub-pixel jitter
 # while keeping deliberate motion. Larger than the camera track's exact dedup because the
 # cursor is a continuous signal, not the camera's occasional pan.
@@ -229,6 +240,7 @@ func start_recording() -> void:
 	_pointer.reset()
 	_keys.reset()
 	_time_scale.reset()
+	_fog.reset()
 	drive_camera = false
 	show_demo_orders = false
 	map = {}
@@ -298,6 +310,8 @@ func start_playback(path: String) -> bool:
 	# exactly the pre-existing behaviour.
 	_time_scale.reset()
 	_time_scale.track = decoded.get("time_scale", [])
+	_fog.reset()
+	_fog.track = decoded.get("fog_of_war", [])
 	loaded_path = path
 	mode = Mode.PLAYBACK
 	return true
@@ -309,6 +323,17 @@ func reset() -> void:
 	mode = Mode.IDLE
 	drive_camera = false
 	show_demo_orders = false
+	_order_stream.reset()
+	_camera.reset()
+	_pointer.reset()
+	_keys.reset()
+	_time_scale.reset()
+	_fog.reset()
+	map = {}
+	spawn_fingerprint = ""
+	last_load_spawn_mismatch = ""
+	loaded_path = ""
+	last_saved_path = ""
 
 
 ## The folder replays are saved to (created if needed). For a file picker.
@@ -348,6 +373,7 @@ func rewind_cursor_to_tick(tick: int) -> void:
 		return
 	_order_stream.rewind_cursor_to_tick(tick)
 	_time_scale.rewind_cursor_to_tick(tick)
+	_fog.rewind_cursor_to_tick(tick)
 
 
 ## PLAYBACK: return all orders scheduled for `tick` (in record order), advancing
@@ -472,6 +498,27 @@ func time_scale_for_tick(tick: int) -> float:
 	return _time_scale.for_tick(tick)
 
 
+## RECORD: initialize starting fog state for dedup against the battle's initial map fog.
+func init_fog(initial_fog: bool) -> void:
+	_fog.init_state(initial_fog)
+
+
+## RECORD: append a fog transition at `tick`. No-op outside RECORD, and when `value`
+## matches the currently-active fog state.
+func record_fog_change(tick: int, value: bool) -> void:
+	if mode != Mode.RECORD:
+		return
+	_fog.record_fog_change(tick, value)
+
+
+## PLAYBACK: 1 if fog enabled at tick, 0 if disabled, or -1 if no change due.
+## Advances the read cursor. Returns -1 outside playback.
+func fog_for_tick(tick: int) -> int:
+	if mode != Mode.PLAYBACK:
+		return -1
+	return _fog.for_tick(tick)
+
+
 ## PLAYBACK: form-up (drag-deploy) orders issued within `window` ticks before `tick`,
 ## each as {x, y (centre), face (radians), frontage, age, uid (the slice's unit, -1 when
 ## the order carried none)}, so the overlay can replay the dragged flank line on that
@@ -504,6 +551,7 @@ func save(result: String, duration_ticks: int) -> String:
 		"pointer": _pointer_track,
 		"keys": _key_track,
 		"time_scale": _time_scale_track,
+		"fog_of_war": _fog_track,
 	}
 	var payload := ReplayCodecRef.encode(state)
 	if not ReplayStorageRef.write_text(path, JSON.stringify(payload, "  ")):
