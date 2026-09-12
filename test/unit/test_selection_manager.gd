@@ -3313,6 +3313,27 @@ func test_reinforce_arm_needs_a_selection_and_a_live_battle() -> void:
 			"a playback cannot be steered, so the arm is refused")
 
 
+func test_reinforce_arm_hud_messages_and_unsupported_axis() -> void:
+	var s := _reinforce_setup()
+	var sm = s["sm"]
+	var hud := _StubHud.new()
+	sm._hud = hud
+
+	sm._arm_reinforce(BattleScript.ReinforceAxis.RANKS)
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.RANKS, "RANKS is armed")
+	assert_eq(hud.messages[-1], "Reinforce: right-click the friendly regiment to deepen")
+
+	sm._arm_reinforce(BattleScript.ReinforceAxis.FILES)
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.FILES, "FILES is armed")
+	assert_eq(hud.messages[-1], "Reinforce: right-click the friendly regiment to file into")
+
+	sm._armed_reinforce = BattleScript.ReinforceAxis.NONE
+	sm._arm_reinforce(99)
+	assert_eq(sm._armed_reinforce, BattleScript.ReinforceAxis.NONE, "unsupported axis arms nothing")
+	assert_eq(hud.messages[-1], "Unsupported reinforcement axis",
+			"unsupported axis flashes refusal reason")
+
+
 func test_armed_right_click_on_a_valid_friendly_routes_the_axis_to_battle() -> void:
 	var s := _reinforce_setup()
 	var sm = s["sm"]
