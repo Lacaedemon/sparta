@@ -72,7 +72,9 @@ static func body_trim_scale(orig_vel: Vector2, delta: Vector2) -> float:
 		return 1.0
 	var isolated: Vector2 = SoldierCombat.capped_knockback_velocity(orig_vel, delta)
 	var effective: Vector2 = isolated - orig_vel
-	return clampf(effective.length() / delta.length(), 0.0, 1.0)
+	# ⚡ Bolt: compute magnitude ratio by doing length_squared() on both vectors and one sqrt(),
+	# saving one costly sqrt() evaluation per contact body.
+	return clampf(sqrt(effective.length_squared() / delta.length_squared()), 0.0, 1.0)
 
 
 ## Resolve every enemy-contact pair this tick, writing the resulting velocity deltas into
