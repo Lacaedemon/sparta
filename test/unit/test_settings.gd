@@ -265,3 +265,21 @@ func test_default_bindings_cover_exactly_battles_hotkey_slugs() -> void:
 	setting_slugs.sort()
 	assert_eq(setting_slugs, battle_slugs,
 		"every rebindable mode has a default binding and vice-versa")
+
+
+func test_show_combat_state_rings_defaults_on_and_round_trips() -> void:
+	assert_true(_settings().show_combat_state_rings, "combat state rings default on")
+
+	var a = SettingsScript.new()
+	autofree(a)
+	a._loading = true
+	a.show_combat_state_rings = false
+	a._save(TEST_PATH)
+
+	var b = SettingsScript.new()
+	autofree(b)
+	b._load(TEST_PATH)
+	assert_false(b.show_combat_state_rings, "the toggle survives save + load")
+
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
+

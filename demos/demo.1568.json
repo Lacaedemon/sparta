@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/combat-feedback-readability-1568.json",
+  "caption": "Combat feedback readability during melee engagement. A player Infantry regiment advances to engage an enemy Spearmen regiment. During active melee, the refined translucent combat state rings preserve clean visibility of unit boundaries, soldier marks, and commander hitboxes without visual clutter or terrain occlusion.",
+  "fixed_fps": 30,
+  "max_frames": 240,
+  "fps": 15,
+  "width": 640
+}

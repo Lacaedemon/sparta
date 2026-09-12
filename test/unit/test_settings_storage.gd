@@ -23,6 +23,7 @@ func _sample_defaults() -> Dictionary:
 		"show_soldier_ids": false,
 		"show_engaged_highlight": false,
 		"show_position_anchor": false,
+		"show_combat_state_rings": true,
 		"fog_of_war": false,
 		"show_fps": false,
 		"show_performance_graph": false,
@@ -51,6 +52,7 @@ func test_save_and_load_round_trip() -> void:
 	values["show_soldier_ids"] = true
 	values["show_engaged_highlight"] = true
 	values["show_position_anchor"] = true
+	values["show_combat_state_rings"] = false
 	values["fog_of_war"] = true
 	values["show_fps"] = true
 	values["show_performance_graph"] = true

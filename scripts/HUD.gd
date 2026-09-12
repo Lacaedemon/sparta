@@ -41,7 +41,8 @@ enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_CYCLE_WIDTH, MENU_FORMUP_CYCLE_WIDTH_COUNT, MENU_FORMUP_CYCLE_CHECKERBOARD,
 		MENU_FORMUP_CYCLE_ECHELON_RIGHT, MENU_FORMUP_CYCLE_ECHELON_LEFT,
 		MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
-		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_POSITION_ANCHOR, MENU_SHOW_FPS,
+		MENU_UNIT_SPEED, MENU_SOLDIER_IDS, MENU_ENGAGED_HIGHLIGHT, MENU_POSITION_ANCHOR,
+		MENU_COMBAT_STATE_RINGS, MENU_SHOW_FPS,
 		MENU_PERFORMANCE_GRAPH, MENU_UNIT_CARD_TRAY, MENU_FOG_OF_WAR,
 		MENU_FPS_CORNER_TOP_LEFT, MENU_FPS_CORNER_TOP_RIGHT, MENU_FPS_CORNER_BOTTOM_LEFT,
 		MENU_FPS_CORNER_BOTTOM_RIGHT, MENU_KEYBINDINGS, MENU_SHORTCUTS,
@@ -394,6 +395,7 @@ func _ready() -> void:
 	popup.add_check_item("Soldier IDs (selected unit, zoom in)", MENU_SOLDIER_IDS)
 	popup.add_check_item("Engaged-soldier highlight", MENU_ENGAGED_HIGHLIGHT)
 	popup.add_check_item("Position-anchor marker", MENU_POSITION_ANCHOR)
+	popup.add_check_item("Combat state rings", MENU_COMBAT_STATE_RINGS)
 	popup.add_check_item("Show frame rate", MENU_SHOW_FPS)
 	popup.add_check_item("Performance graph overlay", MENU_PERFORMANCE_GRAPH)
 	popup.add_check_item("Unit card tray", MENU_UNIT_CARD_TRAY)
@@ -702,6 +704,8 @@ func _sync_setting_toggles() -> void:
 			Settings.show_engaged_highlight)
 	popup.set_item_checked(popup.get_item_index(MENU_POSITION_ANCHOR),
 			Settings.show_position_anchor)
+	popup.set_item_checked(popup.get_item_index(MENU_COMBAT_STATE_RINGS),
+			Settings.show_combat_state_rings)
 	popup.set_item_checked(popup.get_item_index(MENU_SHOW_FPS), Settings.show_fps)
 	popup.set_item_checked(popup.get_item_index(MENU_PERFORMANCE_GRAPH), Settings.show_performance_graph)
 	popup.set_item_checked(popup.get_item_index(MENU_UNIT_CARD_TRAY), Settings.show_unit_card_tray)
@@ -766,6 +770,8 @@ func _on_menu_id(id: int) -> void:
 			Settings.show_engaged_highlight = not Settings.show_engaged_highlight
 		MENU_POSITION_ANCHOR:
 			Settings.show_position_anchor = not Settings.show_position_anchor
+		MENU_COMBAT_STATE_RINGS:
+			Settings.show_combat_state_rings = not Settings.show_combat_state_rings
 		MENU_SHOW_FPS:
 			Settings.show_fps = not Settings.show_fps
 		MENU_PERFORMANCE_GRAPH:
