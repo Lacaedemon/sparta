@@ -40,3 +40,13 @@ func test_reset_produces_fresh_dictionary_equal_to_defaults() -> void:
 	assert_eq(copy, SettingsKeybindings.DEFAULT_ORDER_BINDINGS, "reset returns defaults content")
 	copy["hold"] = KEY_Z
 	assert_eq(SettingsKeybindings.DEFAULT_ORDER_BINDINGS["hold"], KEY_H, "mutating copy does not alter defaults")
+
+
+func test_reserved_keys_include_fixed_hotkeys() -> void:
+	assert_true(SettingsKeybindings.is_reserved_key(KEY_M), "M is reserved for Merge")
+	assert_true(SettingsKeybindings.is_reserved_key(KEY_I), "I is reserved for Rank relief")
+	assert_true(SettingsKeybindings.is_reserved_key(KEY_V), "V is reserved for About-face")
+	assert_eq(SettingsKeybindings.reserved_label(KEY_M), "Merge")
+	assert_false(SettingsKeybindings.is_reserved_key(KEY_F2), "F2 is not reserved")
+	assert_eq(SettingsKeybindings.reserved_label(KEY_F2), "")
+

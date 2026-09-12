@@ -97,3 +97,18 @@ func test_shift_with_another_key_is_not_a_shortcuts_keypress() -> void:
 	var hud := _hud()
 	assert_false(hud._is_shortcuts_keypress(_key_event(KEY_A, true)),
 		"Shift+A is unrelated")
+
+
+func test_keybindings_dialog_rejects_reserved_fixed_keys() -> void:
+	var dialog = preload("res://scripts/KeybindingsDialog.gd").new()
+	add_child_autofree(dialog)
+	dialog._begin_capture("hold")
+
+	var ev_m := InputEventKey.new()
+	ev_m.physical_keycode = KEY_M
+	ev_m.pressed = true
+	dialog._input(ev_m)
+
+	assert_string_contains(dialog._status.text, "M is reserved for Merge")
+	assert_eq(Settings.order_binding("hold"), KEY_H, "hold ground was not rebound to reserved key M")
+

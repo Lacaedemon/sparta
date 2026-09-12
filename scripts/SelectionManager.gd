@@ -334,9 +334,87 @@ func _unhandled_input(event: InputEvent) -> void:
 			_note_key(_key_label(event))
 
 
+## Whether event matches key by either its translated keycode or its layout-independent physical_keycode.
+static func _is_key(event: InputEventKey, key: Key) -> bool:
+	return event.keycode == key or event.physical_keycode == key
+
+
+## Route fixed modifier chords (Shift+key, Ctrl+key, etc.) before rebindable order modes
+## so an order mode bound onto a key with fixed chords (e.g. M, I, V, Q, E, T, O, B, X, Y)
+## never swallows those chords.
+func _dispatch_fixed_chord(event: InputEventKey) -> bool:
+	if not (event.shift_pressed or event.ctrl_pressed):
+		return false
+	if _is_key(event, KEY_M) and event.shift_pressed and event.ctrl_pressed:
+		_arm_reinforce(BattleRef.ReinforceAxis.RANKS)   # reserved: refused until the ranks axis lands
+		return true
+	elif _is_key(event, KEY_M) and event.shift_pressed:
+		_arm_reinforce(BattleRef.ReinforceAxis.FILES)   # next RMB on a friendly inserts by files
+		return true
+	elif _is_key(event, KEY_I) and event.shift_pressed:
+		_toggle_weapon()
+		return true
+	elif _is_key(event, KEY_V) and event.ctrl_pressed and event.shift_pressed:
+		_issue_countermarch(UnitRef.CountermarchVariant.LACONIAN)
+		return true
+	elif _is_key(event, KEY_V) and event.ctrl_pressed:
+		_issue_countermarch(UnitRef.CountermarchVariant.MACEDONIAN)
+		return true
+	elif _is_key(event, KEY_V) and event.shift_pressed:
+		_issue_countermarch(UnitRef.CountermarchVariant.CHORAL)
+		return true
+	elif _is_key(event, KEY_Q) and event.shift_pressed:
+		_issue_turn_explicatio(-1)
+		return true
+	elif _is_key(event, KEY_E) and event.shift_pressed:
+		_issue_turn_explicatio(1)
+		return true
+	elif _is_key(event, KEY_DOWN) and event.ctrl_pressed:
+		if event.shift_pressed:
+			_issue_disengage_with_sacrifice()   # Shift+Ctrl+Down: disengage with rearguard sacrifice
+		else:
+			_issue_disengage()   # Ctrl+Down: disengage and step back -- combat-legal even while FIGHTING
+		return true
+	elif _is_key(event, KEY_T) and event.shift_pressed:
+		_cycle_formation(true)   # Shift+T: cycle the other way (parallels Shift+Tab)
+		return true
+	elif _is_key(event, KEY_O) and event.shift_pressed:
+		_toggle_schiltron()
+		return true
+	elif _is_key(event, KEY_B):
+		if event.shift_pressed:
+			_issue_file_double(1, UnitFormation.Anchor.RIGHT)
+			return true
+		elif event.ctrl_pressed:
+			_issue_file_double(1, UnitFormation.Anchor.LEFT)
+			return true
+	elif _is_key(event, FORM_UP_DIST_CYCLE_KEY) and event.shift_pressed:
+		_cycle_form_up_dist(true)   # Shift+Y: cycle the other way (parallels Shift+Tab)
+		return true
+	elif _is_key(event, GROUP_ATTACK_CYCLE_KEY) and event.shift_pressed:
+		_cycle_group_attack_mode(true)   # Shift+X: cycle the other way (parallels Shift+Tab)
+		return true
+
+	var delegate_group: int = _digit_for_keycode(event.keycode)
+	if delegate_group < 0:
+		delegate_group = _digit_for_keycode(event.physical_keycode)
+	if delegate_group >= 0:
+		if event.ctrl_pressed and event.shift_pressed:
+			_toggle_delegation(delegate_group)
+			return true
+		elif event.ctrl_pressed:
+			_bind_group(delegate_group)
+			return true
+
+	return false
+
+
 ## Route a gameplay hotkey to its action. Returns true if a known action fired (so the
 ## caller records the keystroke for the demo overlay), false for an unhandled key.
 func _dispatch_key(event: InputEventKey) -> bool:
+	if _dispatch_fixed_chord(event):
+		return true
+
 	var mode: int = _order_mode_for_keycode(event.physical_keycode)
 	if mode >= 0:
 		# KNOCKBACK_FOCUS's own per-order push-distance parameter: Shift held at the
@@ -352,159 +430,76 @@ func _dispatch_key(event: InputEventKey) -> bool:
 		else:
 			_set_armed_mode(mode)   # arm a smart-order stance
 		return true
-	elif event.keycode == KEY_I and event.shift_pressed:
-		# Shift+I: swap to the other weapon these soldiers carry (the legionary's pilum
-		# beside his gladius). Shares I with the rank-relief toggle below because every
-		# plain letter and punctuation key is already spoken for (see Settings.gd's own
-		# key-exhaustion notes on the stance bindings), and of the fixed keys I is the
-		# closest fit -- it already owns the "intra-unit drill the regiment performs
-		# without moving" slot, which is exactly what a weapon switch is. Same
-		# reuse-with-a-modifier convention as Shift+O (schiltron) and the V countermarch
-		# variants.
-		_toggle_weapon()
-		return true
-	elif event.keycode == KEY_I:
+	elif _is_key(event, KEY_I):
 		_toggle_rank_relief()   # I: toggle the intra-unit rank-relief (discipline) mode
 		return true
-	elif event.keycode == KEY_V and event.ctrl_pressed and event.shift_pressed:
-		# Ctrl+Shift+V: countermarch, Laconian (withdraw onto new ground). V is already
-		# claimed by conversio and every plain letter key is already spoken for elsewhere
-		# (see HUD.gd/SelectionManager.gd's own key map), so the countermarch's three
-		# variants share V with modifiers -- the same "reuse the key, since every plain
-		# letter is claimed" convention Shift+O already uses for the schiltron stance.
-		_issue_countermarch(UnitRef.CountermarchVariant.LACONIAN)
+	elif _is_key(event, KEY_V):
+		_issue_conversio()   # conversio: every soldier reverses 180 deg in place
 		return true
-	elif event.keycode == KEY_V and event.ctrl_pressed:
-		_issue_countermarch(UnitRef.CountermarchVariant.MACEDONIAN)   # Ctrl+V: advance onto new ground
+	elif _is_key(event, KEY_Q):
+		_issue_quarter_turn(-1)   # quarter-turn left: every soldier pivots 90 deg CCW
 		return true
-	elif event.keycode == KEY_V and event.shift_pressed:
-		_issue_countermarch(UnitRef.CountermarchVariant.CHORAL)   # Shift+V: reverse on the same ground
+	elif _is_key(event, KEY_E):
+		_issue_quarter_turn(1)    # quarter-turn right: every soldier pivots 90 deg CW
 		return true
-	elif event.keycode == KEY_V:
-		_issue_conversio()   # conversio: every soldier reverses 180° in place
+	elif _is_key(event, KEY_Z):
+		_issue_wheel(-1)   # wheel left: swing 90 deg about the left flank file
 		return true
-	elif event.keycode == KEY_Q and event.shift_pressed:
-		# Shift+Q / Shift+E: the quarter-turn -> explicatio combo -- the same turn as the
-		# plain key, then the block doubles the frontage it presents once turned. Shares
-		# Q/E with the bare drill since every plain letter is already claimed (the same
-		# reuse-with-a-modifier convention as the Shift/Ctrl+V countermarch variants).
-		_issue_turn_explicatio(-1)
+	elif _is_key(event, KEY_C):
+		_issue_wheel(1)    # wheel right: swing 90 deg about the right flank file
 		return true
-	elif event.keycode == KEY_E and event.shift_pressed:
-		_issue_turn_explicatio(1)
-		return true
-	elif event.keycode == KEY_Q:
-		_issue_quarter_turn(-1)   # quarter-turn left: every soldier pivots 90° CCW
-		return true
-	elif event.keycode == KEY_E:
-		_issue_quarter_turn(1)    # quarter-turn right: every soldier pivots 90° CW
-		return true
-	elif event.keycode == KEY_Z:
-		_issue_wheel(-1)   # wheel left: swing 90° about the left flank file
-		return true
-	elif event.keycode == KEY_C:
-		_issue_wheel(1)    # wheel right: swing 90° about the right flank file
-		return true
-	elif event.keycode == KEY_M and event.shift_pressed and event.ctrl_pressed:
-		_arm_reinforce(BattleRef.ReinforceAxis.RANKS)   # reserved: refused until the ranks axis lands
-		return true
-	elif event.keycode == KEY_M and event.shift_pressed:
-		_arm_reinforce(BattleRef.ReinforceAxis.FILES)   # next RMB on a friendly inserts by files
-		return true
-	elif event.keycode == KEY_M:
+	elif _is_key(event, KEY_M):
 		_issue_merge()   # merge the selected friendly regiments into one
 		return true
-	elif event.keycode == KEY_LEFT and has_selection():
+	elif _is_key(event, KEY_LEFT) and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.LEFT)    # side-step left (holds facing)
 		return true
-	elif event.keycode == KEY_RIGHT and has_selection():
+	elif _is_key(event, KEY_RIGHT) and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.RIGHT)   # side-step right (holds facing)
 		return true
-	elif event.keycode == KEY_DOWN and event.ctrl_pressed:
-		if event.shift_pressed:
-			_issue_disengage_with_sacrifice()   # Shift+Ctrl+Down: disengage with rearguard sacrifice
-		else:
-			_issue_disengage()   # Ctrl+Down: disengage and step back -- combat-legal even while FIGHTING
-		return true
-	elif event.keycode == KEY_DOWN and has_selection():
+	elif _is_key(event, KEY_DOWN) and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.BACK)    # back-step (holds facing)
 		return true
-	elif event.keycode == KEY_UP and has_selection():
+	elif _is_key(event, KEY_UP) and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.FORWARD)   # forward-step (holds facing)
 		return true
-	elif event.keycode == KEY_T and event.shift_pressed:
-		_cycle_formation(true)   # Shift+T: cycle the other way (parallels Shift+Tab)
+	elif _is_key(event, KEY_T):
+		_cycle_formation()   # cycle normal -> tight -> loose -> square for selected units
 		return true
-	elif event.keycode == KEY_T:
-		_cycle_formation()   # cycle normal → tight → loose → square for selected units
-		return true
-	elif event.keycode == KEY_O and event.shift_pressed:
-		# Shift+O jumps straight to the schiltron -- the other hollow-square variant,
-		# sharing O's key since every plain letter is already claimed (I is the
-		# rank-relief toggle). The harder anti-cavalry brace, at a deeper offence cost
-		# than orbis. Toggles back to Normal like the other direct-select stances.
-		_toggle_schiltron()
-		return true
-	elif event.keycode == KEY_O:
+	elif _is_key(event, KEY_O):
 		# Jump straight to the anti-cavalry square (O for orbis) -- a fast reaction to
 		# a charge, without cycling through Tight/Loose first. Toggles back to Normal
 		# so the same key drops the square once the horse is beaten off. (Shift+O
 		# reaches the schiltron variant instead -- see above.)
 		_toggle_square()
 		return true
-	elif event.keycode == KEY_L:
+	elif _is_key(event, KEY_L):
 		# Lock the shield wall (L for locked shields) -- a frontal holding stance.
 		# Toggles back to Normal so the same key stands the unit down.
 		_toggle_shield_wall()
 		return true
-	elif event.keycode == KEY_U:
+	elif _is_key(event, KEY_U):
 		# Form testudo (U for testUdo) -- all-around overhead arrow cover. Toggles
 		# back to Normal so the same key drops the roof once out of the beaten zone.
 		_toggle_testudo()
 		return true
-	elif event.keycode == KEY_BRACKETRIGHT:
+	elif _is_key(event, KEY_BRACKETRIGHT):
 		_resize_frontage(1)    # right bracket widens the line by one file
 		return true
-	elif event.keycode == KEY_BRACKETLEFT:
+	elif _is_key(event, KEY_BRACKETLEFT):
 		_resize_frontage(-1)   # left bracket narrows the line by one file
 		return true
-	elif event.keycode == KEY_B:
-		# Plain B is the centred (symmetric) explicatio; Shift+B / Ctrl+B hold the
-		# right/left flank fixed instead and let the whole widen land on the other
-		# side -- an asymmetric explicatio for when a flank must stay pinned to
-		# terrain or a neighbour. Mirrors the Shift-modifier convention Shift+O
-		# already uses for a stance variant.
-		if event.shift_pressed:
-			_issue_file_double(1, UnitFormation.Anchor.RIGHT)
-		elif event.ctrl_pressed:
-			_issue_file_double(1, UnitFormation.Anchor.LEFT)
-		else:
-			_issue_file_double(1)    # explicatio: files split, doubling frontage / halving depth
+	elif _is_key(event, KEY_B):
+		_issue_file_double(1)    # explicatio: files split, doubling frontage / halving depth
 		return true
-	elif event.keycode == KEY_N:
+	elif _is_key(event, KEY_N):
 		_issue_file_double(-1)   # duplicatio: files tuck in, halving frontage / doubling depth
 		return true
-	elif event.keycode == FORM_UP_DIST_CYCLE_KEY and event.shift_pressed:
-		_cycle_form_up_dist(true)   # Shift+Y: cycle the other way (parallels Shift+Tab)
-		return true
-	elif event.keycode == FORM_UP_DIST_CYCLE_KEY:
+	elif _is_key(event, FORM_UP_DIST_CYCLE_KEY):
 		_cycle_form_up_dist()   # switch how a multi-unit form-up splits the line
 		return true
-	elif event.keycode == GROUP_ATTACK_CYCLE_KEY and event.shift_pressed:
-		_cycle_group_attack_mode(true)   # Shift+X: cycle the other way (parallels Shift+Tab)
-		return true
-	elif event.keycode == GROUP_ATTACK_CYCLE_KEY:
+	elif _is_key(event, GROUP_ATTACK_CYCLE_KEY):
 		_cycle_group_attack_mode()   # switch focused / distributed attack for multi-unit orders
-		return true
-	# Battle AI phase 4 (docs/battle-ai-design.md): Ctrl+Shift+<0-9> delegates/revokes the
-	# current selection to/from AI subcommander group N. Checked BEFORE _handle_group_key
-	# below, whose own Ctrl+<digit> (bind a UI control group) would otherwise fire first --
-	# every plain letter key is already claimed (see Settings.DEFAULT_ORDER_BINDINGS's own
-	# "letter key exhaustion" note) and Ctrl+<digit>/plain <digit> are already spoken for, so
-	# adding Shift is the smallest free extension of an already-learned convention.
-	var delegate_group: int = _digit_for_keycode(event.keycode)
-	if delegate_group >= 0 and event.ctrl_pressed and event.shift_pressed:
-		_toggle_delegation(delegate_group)
 		return true
 	return _handle_group_key(event)   # Ctrl+<0-9> bind / <0-9> recall
 

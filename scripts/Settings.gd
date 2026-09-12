@@ -356,6 +356,16 @@ func slug_for_keycode(keycode: int) -> String:
 	return SettingsKeybindingsRef.slug_for_keycode(order_bindings, keycode)
 
 
+## Whether a keycode is reserved for fixed gameplay actions or modifier chords.
+func is_reserved_key(keycode: int) -> bool:
+	return SettingsKeybindingsRef.is_reserved_key(keycode)
+
+
+## Human-readable label for a reserved fixed keycode, or "" if not reserved.
+func reserved_key_label(keycode: int) -> String:
+	return SettingsKeybindingsRef.reserved_label(keycode)
+
+
 ## Rebind a single order mode. No-ops on an unknown slug or an unchanged value.
 ## Callers (the rebind dialog) are responsible for conflict checks first.
 func set_order_binding(slug: String, keycode: int) -> void:
