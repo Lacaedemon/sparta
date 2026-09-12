@@ -176,8 +176,23 @@ jobs:
           # -e also fails the step on a non-zero exit from godot itself (a missing binary
           # or a crash), on top of the log grep that catches the script errors Godot
           # does not reliably exit non-zero on.
+          # Headless Godot occasionally aborts with SIGABRT (exit 134) during cleanup on Linux;
+          # retry once on non-zero exit so a transient crash does not fail the run.
           set -euo pipefail
-          godot --headless --import --verbose 2>&1 | tee import.log
+          run_import() {
+            set +e
+            godot --headless --import --verbose 2>&1 | tee import.log
+            local rc=$?
+            set -e
+            return "$rc"
+          }
+
+          if ! run_import; then
+            echo "::warning::Base-tip import exited with non-zero status; retrying once..."
+            sleep 2
+            run_import
+          fi
+
           if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
             echo "::error::Godot reported script/resource errors during base-tip import"
             exit 1
