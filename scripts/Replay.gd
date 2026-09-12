@@ -323,17 +323,7 @@ func reset() -> void:
 	mode = Mode.IDLE
 	drive_camera = false
 	show_demo_orders = false
-	_order_stream.reset()
-	_camera.reset()
-	_pointer.reset()
-	_keys.reset()
-	_time_scale.reset()
 	_fog.reset()
-	map = {}
-	spawn_fingerprint = ""
-	last_load_spawn_mismatch = ""
-	loaded_path = ""
-	last_saved_path = ""
 
 
 ## The folder replays are saved to (created if needed). For a file picker.

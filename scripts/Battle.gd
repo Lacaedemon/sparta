@@ -1693,7 +1693,6 @@ func _physics_process(delta: float) -> void:
 			var next_fog: bool = (recorded_fog == 1)
 			if next_fog != _recorded_fog_of_war:
 				_recorded_fog_of_war = next_fog
-				_tick_fog()
 				if _hud != null and _hud.has_method("_sync_fog_label"):
 					_hud._sync_fog_label()
 					_hud._sync_setting_toggles()

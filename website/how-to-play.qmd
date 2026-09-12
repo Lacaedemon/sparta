@@ -1298,7 +1298,7 @@ A standing "FOG OF WAR" indicator sits below the order-mode banner while fog is 
 Fog affects what is drawn and leaves ghost markers.
 It does not alter the retreat boundary.
 Units fight, target, and move under the same AI and physics rules.
-A replay reproduces the fog state the battle started with, mid-battle toggles are not reproduced on playback, and the enemy AI still sees everything for now.
+A replay reproduces the initial fog state and any mid-battle toggles on playback, and the enemy AI still sees everything for now.
 Terrain does not block or shorten sight yet, and the map itself is never darkened.
 For tactical guidance on scouting screens, ghost staleness, and pursuit decisions, see [Tactics](tactics.qmd#fog-of-war).
 

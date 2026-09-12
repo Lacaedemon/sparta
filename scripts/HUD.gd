@@ -958,8 +958,6 @@ func _toggle_fog() -> bool:
 		flash_message("Fog of war stays off while you control both armies")
 		return false
 	Settings.fog_of_war = not Settings.fog_of_war
-	if Replay.mode == Replay.Mode.RECORD and battle != null and battle.has_method("current_tick"):
-		Replay.record_fog_change(battle.current_tick(), Settings.fog_of_war)
 	flash_message("Fog of war: %s" % ("on" if Settings.fog_of_war else "off"))
 	return true
 

@@ -84,7 +84,7 @@ static func decode(data: Dictionary) -> Dictionary:
 			"value": float(t.get("value", 1.0)),
 		})
 	var fog_of_war: Array = []
-	var raw_fog = data.get("fog_of_war", data.get("fog", []))
+	var raw_fog = data.get("fog_of_war", [])
 	if raw_fog is Array:
 		for f in raw_fog:
 			fog_of_war.append({

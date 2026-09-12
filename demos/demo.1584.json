@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Replay serialization format extension and headless replay track dispatch; no visual battle simulation change to demonstrate."
+  "input": "demos/inputs/replay-fog-midbattle-1584.json",
+  "caption": "Mid-battle fog of war transitions recorded as a replay track (#1579). Fog starts off with both units visible; at 0.5 s F7 toggles fog of war on, causing the distant enemy Archers to vanish and displaying the FOG OF WAR indicator on the HUD; the friendly Spearmen advance eastward while fog remains active; at 5.3 s F7 toggles fog off, restoring full battlefield visibility.",
+  "fixed_fps": 30,
+  "max_frames": 400,
+  "fps": 15,
+  "width": 640
 }
