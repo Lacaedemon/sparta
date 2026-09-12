@@ -1,0 +1,12 @@
+{
+  "_comment": "Two 100-man infantry battalions engage in close head-on contact clash at mid-field, exercising soldier body collision impulse calculation and body_trim_scale knockback trimming across hundreds of colliding soldier pairs.",
+  "seed": "1580",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 720, "y": 460, "count": 100},
+    {"team": 1, "type": "Infantry", "x": 720, "y": 560, "count": 100}
+  ],
+  "camera": [
+    {"tick": 0, "x": 720.0, "y": 510.0, "zoom": 1.4}
+  ],
+  "steps": []
+}

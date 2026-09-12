@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/body-trim-scale-contact.json",
+  "caption": "Backend performance optimization: body_trim_scale computes vector length ratio with a single sqrt() via length_squared() on both vectors, preserving bit-identical knockback capping and body separation behavior in dense infantry melee contact.",
+  "fixed_fps": 30,
+  "max_frames": 260,
+  "fps": 15,
+  "width": 640
+}

@@ -172,6 +172,17 @@ func test_body_trim_scale_shrinks_a_delta_that_alone_exceeds_the_cap() -> void:
 		"a wildly oversized delta must be trimmed down close to what the cap alone allows")
 
 
+func test_body_trim_scale_near_zero_delta_for_capped_body() -> void:
+	# Regression test: a body already at/above KNOCKBACK_SPEED_MAX receiving a tiny non-zero
+	# delta from near-canceling impulses must be scaled down near 0.0, NOT return 1.0.
+	var orig_vel := Vector2(SoldierCombat.KNOCKBACK_SPEED_MAX, 0.0)
+	var tiny_delta := Vector2(0.001, 0.0)
+	var scale: float = SoldierEnemyContact.body_trim_scale(orig_vel, tiny_delta)
+	assert_almost_eq(scale, 0.0, 0.01,
+		"a body at the speed cap receiving a tiny forward delta must be trimmed down to zero, not 1.0")
+
+
+
 # --- formation_containment_margin widens the contact test (melee-intermixing depth) --
 
 func test_shield_wall_containment_margin_triggers_contact_before_raw_radii_overlap() -> void:
