@@ -98,4 +98,8 @@ exclude = [
   # Service Unavailable to automated probes or times out under lychee's budget.
   # Skip it rather than reddening unrelated PRs on an upstream outage.
   "^https://www\\.perseus\\.tufts\\.edu",
+  # godotengine.org download pages intermittently fail with Cloudflare HTTP 522
+  # or time out under lychee's budget during upstream outages/rate-limiting.
+  # Skip it rather than reddening PRs on an upstream infrastructure issue.
+  "^https://godotengine\\.org",
 ]
