@@ -490,3 +490,37 @@ func _ungated_misslot_frac(base: PackedVector2Array, bodies: Array, y_min: float
 				slot, rank, ranks, perp, spread)
 		slots.append([widened.x, widened.y])
 	return float(DemoDefects.misslotted_count(slots, bodies)) / float(base.size())
+
+
+func test_snapshot_restore_during_relief_restores_friendly_target() -> void:
+	var battle := _spawn_battle()
+	for _k in range(10):
+		await get_tree().physics_frame
+
+	var tired: Unit = _unit_by_uid(battle, 0)
+	var fresh: Unit = _unit_by_uid(battle, 1)
+	assert_not_null(tired, "found tired unit")
+	assert_not_null(fresh, "found fresh unit")
+
+	var relief_order := Order.new_relief(tired.uid)
+	fresh.set_current_order(relief_order)
+	UnitRelief.begin(fresh, tired, relief_order)
+	assert_eq(fresh.current_order.friendly_target, tired, "relief swap armed")
+
+	var snap: Dictionary = battle.capture_snapshot()
+
+	for _k in range(5):
+		await get_tree().physics_frame
+
+	battle.restore_snapshot(snap)
+	await get_tree().physics_frame
+
+	var restored_tired: Unit = _unit_by_uid(battle, 0)
+	var restored_fresh: Unit = _unit_by_uid(battle, 1)
+	assert_not_null(restored_tired, "restored tired unit")
+	assert_not_null(restored_fresh, "restored fresh unit")
+	assert_not_null(restored_fresh.current_order, "restored relief order")
+	assert_eq(restored_fresh.current_order.friendly_target, restored_tired,
+			"friendly_target link on RELIEF order is preserved across snapshot restore")
+	assert_true(restored_fresh._separation_exempt(restored_tired),
+			"separation exemption is active across the relieved pair after restore")

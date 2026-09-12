@@ -714,3 +714,123 @@ func test_commit_is_refused_when_per_soldier_array_is_short() -> void:
 			"commit is refused when host per-soldier array is out of sync")
 
 
+func test_snapshot_restore_mid_approach_preserves_friendly_target_and_commits() -> void:
+	_spawn()
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	var host_uid: int = host.uid
+	var reserve_uid: int = reserve.uid
+	_order_reinforce(reserve, host)
+
+	# Let the reserve march midway toward the host
+	for _i in range(30):
+		await get_tree().physics_frame
+
+	assert_not_null(reserve.current_order)
+	assert_eq(reserve.current_order.friendly_target, host,
+			"friendly_target is set during approach before snapshot")
+
+	# Attach a queued order with a child order to verify recursive friendly_target resolution
+	var queued := Order.new_stance(3, 1)
+	var child := Order.new_about_face()
+	child.friendly_target = host
+	queued.children = [child]
+	reserve.orders.append(queued)
+
+	# Capture snapshot while in transit
+	var snap: Dictionary = _battle.capture_snapshot()
+
+	# Simulate more frames so engine physics frames advance
+	for _i in range(20):
+		await get_tree().physics_frame
+
+	# Restore snapshot
+	_battle.restore_snapshot(snap)
+	await get_tree().physics_frame
+
+	# Locate restored units
+	var restored_host: Unit = null
+	var restored_reserve: Unit = null
+	for node in _battle.get_tree().get_nodes_in_group("units"):
+		var u: Unit = node as Unit
+		if u == null:
+			continue
+		if u.uid == host_uid:
+			restored_host = u
+		elif u.uid == reserve_uid:
+			restored_reserve = u
+
+	assert_not_null(restored_host, "host restored")
+	assert_not_null(restored_reserve, "reserve restored")
+	assert_not_null(restored_reserve.current_order, "reserve order restored")
+	assert_eq(restored_reserve.current_order.friendly_target, restored_host,
+			"friendly_target link is successfully re-established on restored reserve order")
+	assert_true(restored_reserve._separation_exempt(restored_host),
+			"separation exemption is active across the pair")
+	assert_eq(restored_reserve.orders.size(), 2, "reserve queued order restored")
+	assert_eq(restored_reserve.orders[1].children.size(), 1, "child order restored")
+	assert_eq(restored_reserve.orders[1].children[0].friendly_target, restored_host,
+			"child order friendly_target is recursively resolved")
+	restored_reserve.orders.remove_at(1)
+
+	# Run until commit finishes
+	var committed: bool = false
+	for _tick in range(COMMIT_BUDGET_TICKS):
+		await get_tree().physics_frame
+		if not is_instance_valid(restored_reserve) or restored_reserve.state == Unit.State.DEAD:
+			committed = true
+			break
+	assert_true(committed, "reinforcement commit completes successfully after snapshot restore")
+	assert_eq(restored_host.soldiers, 80, "host doubled soldiers upon commit")
+
+
+func test_snapshot_restore_mid_hold_rebases_engine_deadlines() -> void:
+	_spawn()
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var host_uid: int = host.uid
+
+	# Arm both deadlines with 2 seconds of hold time
+	host.hold_position_anchor(2.0)
+	host._arm_standoff_settle_window(2.0)
+
+	# Let a couple ticks run
+	for _i in range(5):
+		await get_tree().physics_frame
+
+	assert_true(host.position_anchor_held(), "anchor is held before snapshot")
+	var frames_before: int = Engine.get_physics_frames()
+	var remaining_anchor: int = host._anchor_hold_until_tick - frames_before
+	var remaining_standoff: int = host._standoff_settle_until_tick - frames_before
+	assert_gt(remaining_anchor, 0)
+	assert_gt(remaining_standoff, 0)
+
+	# Capture snapshot
+	var snap: Dictionary = _battle.capture_snapshot()
+
+	# Advance physics frames significantly (e.g. 60 ticks)
+	for _i in range(60):
+		await get_tree().physics_frame
+
+	# Restore snapshot
+	_battle.restore_snapshot(snap)
+	await get_tree().physics_frame
+
+	var restored_host: Unit = null
+	for node in _battle.get_tree().get_nodes_in_group("units"):
+		var u: Unit = node as Unit
+		if u != null and u.uid == host_uid:
+			restored_host = u
+			break
+
+	assert_not_null(restored_host, "host restored")
+	assert_true(restored_host.position_anchor_held(),
+			"held anchor remains active after seek even though engine frames advanced")
+	assert_gt(restored_host._anchor_hold_until_tick, Engine.get_physics_frames(),
+			"anchor hold deadline rebased ahead of current engine frame")
+	assert_gt(restored_host._standoff_settle_until_tick, Engine.get_physics_frames(),
+			"standoff settle deadline rebased ahead of current engine frame")
+
+
+

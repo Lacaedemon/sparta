@@ -135,17 +135,68 @@ func test_reinforce_cohesion_floor_round_trips_and_defaults_for_older_snapshots(
 
 func test_anchor_hold_until_tick_round_trips_and_defaults_for_older_snapshots() -> void:
 	var original := _sample_unit()
-	original._anchor_hold_until_tick = 99
+	var remaining: int = 50
+	original._anchor_hold_until_tick = Engine.get_physics_frames() + remaining
 	var d := original.to_snapshot_dict()
+	assert_eq(int(d["anchor_hold_remaining_ticks"]), remaining,
+		"snapshot captures remaining ticks relative to current physics frame")
+
 	var restored := Unit.new()
 	restored.apply_snapshot_dict(d)
-	assert_eq(restored._anchor_hold_until_tick, 99,
-		"a held anchor deadline survives a replay-seek restore")
-	d.erase("anchor_hold_until_tick")
+	assert_eq(restored._anchor_hold_until_tick, Engine.get_physics_frames() + remaining,
+		"a held anchor deadline is rebased on restore so its remaining duration survives")
+	assert_true(restored.position_anchor_held(),
+		"restored unit anchor remains held")
+
+	# Expired or unset deadline (-1) round-trips cleanly as -1
+	original._anchor_hold_until_tick = -1
+	var d_unset := original.to_snapshot_dict()
+	assert_eq(int(d_unset["anchor_hold_remaining_ticks"]), -1)
+	var restored_unset := Unit.new()
+	restored_unset.apply_snapshot_dict(d_unset)
+	assert_eq(restored_unset._anchor_hold_until_tick, -1)
+	assert_false(restored_unset.position_anchor_held())
+
+	# Older snapshot fallback: has anchor_hold_until_tick but no anchor_hold_remaining_ticks
+	d.erase("anchor_hold_remaining_ticks")
+	d["anchor_hold_until_tick"] = 99
 	var older := Unit.new()
 	older.apply_snapshot_dict(d)
-	assert_eq(older._anchor_hold_until_tick, -1,
-		"a snapshot from before the field existed restores the default")
+	assert_eq(older._anchor_hold_until_tick, 99,
+		"an older snapshot without remaining_ticks falls back to verbatim tick")
+
+	# Oldest snapshot fallback: neither field present
+	d.erase("anchor_hold_until_tick")
+	var oldest := Unit.new()
+	oldest.apply_snapshot_dict(d)
+	assert_eq(oldest._anchor_hold_until_tick, -1,
+		"a snapshot from before either field existed restores the default")
+
+
+func test_standoff_settle_until_tick_rebases_and_defaults_for_older_snapshots() -> void:
+	var original := _sample_unit()
+	var remaining: int = 40
+	original._standoff_settle_until_tick = Engine.get_physics_frames() + remaining
+	var d := original.to_snapshot_dict()
+	assert_eq(int(d["standoff_settle_remaining_ticks"]), remaining,
+		"snapshot captures remaining standoff ticks relative to physics frame")
+
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(d)
+	assert_eq(restored._standoff_settle_until_tick, Engine.get_physics_frames() + remaining,
+		"standoff deadline is rebased onto restore engine frame")
+
+	# Older snapshot fallback:
+	d.erase("standoff_settle_remaining_ticks")
+	d["standoff_settle_until_tick"] = 120
+	var older := Unit.new()
+	older.apply_snapshot_dict(d)
+	assert_eq(older._standoff_settle_until_tick, 120)
+
+	d.erase("standoff_settle_until_tick")
+	var oldest := Unit.new()
+	oldest.apply_snapshot_dict(d)
+	assert_eq(oldest._standoff_settle_until_tick, -1)
 
 
 func test_sim_soldier_broken_round_trips_and_defaults_for_older_snapshots() -> void:
