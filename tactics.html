@@ -513,6 +513,7 @@ window.Quarto = {
   <li><a href="#fog-of-war" id="toc-fog-of-war" class="nav-link" data-scroll-target="#fog-of-war">Fog of war</a>
   <ul class="collapse">
   <li><a href="#why-a-cavalry-screen-is-worth-more" id="toc-why-a-cavalry-screen-is-worth-more" class="nav-link" data-scroll-target="#why-a-cavalry-screen-is-worth-more">Why a cavalry screen is worth more</a></li>
+  <li><a href="#terrain-occlusion-and-screening" id="toc-terrain-occlusion-and-screening" class="nav-link" data-scroll-target="#terrain-occlusion-and-screening">Terrain occlusion and screening</a></li>
   <li><a href="#what-ghost-markers-tell-you-and-what-they-do-not" id="toc-what-ghost-markers-tell-you-and-what-they-do-not" class="nav-link" data-scroll-target="#what-ghost-markers-tell-you-and-what-they-do-not">What ghost markers tell you — and what they do not</a></li>
   <li><a href="#scouting-and-pursuit-decisions" id="toc-scouting-and-pursuit-decisions" class="nav-link" data-scroll-target="#scouting-and-pursuit-decisions">Scouting and pursuit decisions</a></li>
   </ul></li>
@@ -545,7 +546,7 @@ window.Quarto = {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Last updated: 2026-09-12</p>
+      <p class="date">Last updated: 2026-09-13</p>
     </div>
   </div>
   
@@ -1786,7 +1787,7 @@ Figure&nbsp;52: A 60 m deployment: both lines open as far-tier marks, the player
 </section>
 <section id="fog-of-war" class="level2">
 <h2 class="anchored" data-anchor-id="fog-of-war">Fog of war</h2>
-<p>Battles open with complete visibility across the entire map by default. Toggling fog of war (<kbd>F7</kbd> or <strong>☰ Menu -&gt; Fog of war</strong>) limits your intelligence. When fog is enabled, you see only what your own regiments can directly observe. Every friendly regiment projects a circular sight disc around its center. An enemy unit whose center lies outside every friendly sight disc is hidden. Friendly units are always visible to you. Terrain does not block sight lines yet, and the field itself is never darkened. Fog changes visibility only. Units keep fighting, pathing, and shooting under the same rules.</p>
+<p>Battles open with complete visibility across the entire map by default. Toggling fog of war (<kbd>F7</kbd> or <strong>☰ Menu -&gt; Fog of war</strong>) limits your intelligence. When fog is enabled, you see only what your own regiments can directly observe. Every friendly regiment projects a circular sight disc around its center. An enemy unit whose center lies outside every friendly sight disc is hidden. Friendly units are always visible to you. Terrain actively shapes line of sight: impassable features (like hills) block sight lines completely, while wooded ground screens vision and attenuates observation range. The field itself is never darkened. Fog changes visibility only. Units keep fighting, pathing, and shooting under the same rules.</p>
 <div id="tbl-sight-ranges" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-sight-ranges-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1831,6 +1832,14 @@ Table&nbsp;4: Sight ranges by unit category under fog of war.
 <section id="why-a-cavalry-screen-is-worth-more" class="level3">
 <h3 class="anchored" data-anchor-id="why-a-cavalry-screen-is-worth-more">Why a cavalry screen is worth more</h3>
 <p>On an open field with fog active, blind marching is dangerous. A standard deployment gap of 29 m means opposing foot lines deploy out of sight. Heavy infantry marching forward without reconnaissance risks blundering into spears. This gives cavalry a decisive tactical purpose before the lines meet. With a 21 m sight radius (a 40% reach advantage over foot) and superior speed, horsemen can push ahead of the heavy line as a scouting screen. A forward screen reveals enemy deployments and flags open flanks. It illuminates approaching columns while your main formation stays hidden. Skirmishers and archers (18 m reach) can also screen the heavy line, maintaining contact while staying outside the 15 m sight of enemy foot.</p>
+</section>
+<section id="terrain-occlusion-and-screening" class="level3">
+<h3 class="anchored" data-anchor-id="terrain-occlusion-and-screening">Terrain occlusion and screening</h3>
+<p>Open ground allows units to observe up to their full sight radius, but terrain actively alters visibility:</p>
+<ul>
+<li><p><strong>Impassable terrain blocks line of sight</strong>: Hills and solid barriers completely occlude vision (<code>sight: "block"</code>). An enemy directly behind a hill cannot be seen, regardless of proximity, until friendly scouts maneuver around the obstacle and establish an unobstructed line of sight.</p></li>
+<li><p><strong>Foliage screens and attenuates sight lines</strong>: Forests and slow patches (<code>sight: "screen"</code>) attenuate vision across them. Each screening patch cuts effective sight range by half (a default 0.5x multiplier), compounding if multiple patches intervene. An enemy sitting deep inside or across a wooded patch requires scouts to close well within the attenuated radius to spot them.</p></li>
+</ul>
 </section>
 <section id="what-ghost-markers-tell-you-and-what-they-do-not" class="level3">
 <h3 class="anchored" data-anchor-id="what-ghost-markers-tell-you-and-what-they-do-not">What ghost markers tell you — and what they do not</h3>
