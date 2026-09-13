@@ -435,6 +435,7 @@ var _fog_contacts: Dictionary = {}
 var _fog_seen: Dictionary = {}
 var _fog_active: bool = false
 var _fog_ghosts: Node2D = null
+var _sight_path_field: PathField = null
 # Replay playback drives fog state from this recorded value
 # rather than from the live global Settings.fog_of_war setting.
 var _recorded_fog_of_war: bool = false
@@ -653,12 +654,16 @@ func _ready() -> void:
 
 	# Register terrain patches as PathField obstacles or speed zones; cleared in _exit_tree().
 	PathField.active = PathField.new(field)
+	_sight_path_field = PathField.new(field)
 	for patch in terrain:
 		if patch.get("kind", "block") == "slow":
 			assert(patch.has("speed"), "slow terrain patch missing required 'speed' key")
 			PathField.active.set_speed_rect(patch["rect"], float(patch["speed"]))
 		else:
 			PathField.active.block_rect(patch["rect"])
+		var sight_val: String = patch.get("sight", "block" if patch.get("kind", "block") == "block" else "screen")
+		if sight_val == "block":
+			_sight_path_field.block_rect(patch["rect"])
 
 	# Build the procedural ground/terrain art (TerrainArt; render-only, fixed art seed --
 	# see the _ground_texture field docs). Built here once; _draw only ever samples them.
@@ -791,6 +796,7 @@ func _exit_tree() -> void:
 	# of whether the disconnect above ran, so a teardown that hits the null-tree case above
 	# still frees these. The next Battle._ready() republishes both.
 	PathField.active = null
+	_sight_path_field = null
 	ProjectileField.active = null   # drop any in-flight arrows with the battle
 
 	# The per-tick spatial-hash grids (SpatialHash / SoldierSpatialHash) key their cached
@@ -1817,7 +1823,7 @@ func _tick_fog() -> void:
 		return
 	_fog_active = true
 	var units: Array = _fog_units_in_play()
-	_fog_seen = PerceptionRef.visible_enemy_uids(fog_team, units)
+	_fog_seen = PerceptionRef.visible_enemy_uids(fog_team, units, terrain, _sight_path_field)
 	PerceptionRef.record_contacts(_fog_contacts, units, _fog_seen, _tick)
 	for u in units:
 		u.visible = u.team == fog_team or _fog_seen.has(u.uid)

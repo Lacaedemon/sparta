@@ -17,9 +17,9 @@ const AllTeamsControl = preload("res://scripts/AllTeamsControl.gd")
 const FOOT_SIGHT: float = 15.0 * WorldScale.WU_PER_M
 
 # A near enemy (inside foot sight of the friendly), a far one (outside every disc), and
-# the friendly observer. Coordinates are well inside the default 1600x1200 field.
-const FRIENDLY_POS := Vector2(400.0, 300.0)
-const NEAR_ENEMY_POS := Vector2(400.0, 500.0)    # 200 wu away: seen
+# the friendly observer. Coordinates are on open ground between the forest and the hill.
+const FRIENDLY_POS := Vector2(600.0, 300.0)
+const NEAR_ENEMY_POS := Vector2(600.0, 500.0)    # 200 wu away: seen on open ground
 const FAR_ENEMY_POS := Vector2(1200.0, 900.0)    # ~1000 wu away: unseen
 var _staged_battles: Array[Node] = []
 
@@ -59,6 +59,58 @@ func test_perceives_inside_range_and_on_the_boundary_but_not_beyond() -> void:
 	assert_false(Perception.perceives(o, 0.0, o), "a zero sight range sees nothing, not even itself")
 
 
+func test_perceives_blocked_by_occluding_terrain() -> void:
+	var o := Vector2(100.0, 100.0)
+	var t := Vector2(100.0, 250.0)    # 150 wu away, inside 200 wu sight range
+	var hill_patch := {"rect": Rect2(50.0, 150.0, 100.0, 20.0), "type": "hill", "kind": "block", "sight": "block"}
+	assert_true(Perception.perceives(o, 200.0, t), "unobstructed target inside sight range is perceived")
+	assert_false(Perception.perceives(o, 200.0, t, [hill_patch]), "occluding terrain patch blocks line of sight")
+
+
+func test_perceives_clear_sight_override_on_block_terrain() -> void:
+	var o := Vector2(100.0, 100.0)
+	var t := Vector2(100.0, 250.0)    # 150 wu away
+	var low_wall := {"rect": Rect2(50.0, 150.0, 100.0, 20.0), "type": "wall", "kind": "block", "sight": "clear"}
+	assert_true(Perception.perceives(o, 200.0, t, [low_wall]), "sight: clear patch does not block line of sight")
+
+
+func test_perceives_attenuated_by_screening_terrain() -> void:
+	var o := Vector2(100.0, 100.0)
+	var screen_patch := {"rect": Rect2(50.0, 130.0, 100.0, 40.0), "type": "forest", "kind": "slow", "sight": "screen"}
+	# Sight range 200 wu, attenuated by 0.5 is 100 wu.
+	var near_target := Vector2(100.0, 180.0)    # 80 wu away <= 100 wu
+	var far_target := Vector2(100.0, 220.0)     # 120 wu away > 100 wu, but < 200 wu unattenuated
+	assert_true(Perception.perceives(o, 200.0, near_target, [screen_patch]),
+		"target inside attenuated screening range is perceived")
+	assert_false(Perception.perceives(o, 200.0, far_target, [screen_patch]),
+		"target beyond attenuated screening range is not perceived even if inside unattenuated radius")
+
+
+func test_perceives_compounding_screening_attenuation() -> void:
+	var o := Vector2(100.0, 100.0)
+	var patch1 := {"rect": Rect2(50.0, 130.0, 100.0, 20.0), "type": "forest", "kind": "slow", "sight": "screen"}
+	var patch2 := {"rect": Rect2(50.0, 170.0, 100.0, 20.0), "type": "forest", "kind": "slow", "sight": "screen"}
+	# Sight range 400 wu, crossing 2 screening patches: 400 * 0.5 * 0.5 = 100 wu.
+	var target_in := Vector2(100.0, 190.0)      # 90 wu away <= 100 wu
+	var target_out := Vector2(100.0, 210.0)     # 110 wu away > 100 wu
+	assert_true(Perception.perceives(o, 400.0, target_in, [patch1, patch2]),
+		"target inside doubly-attenuated range is perceived")
+	assert_false(Perception.perceives(o, 400.0, target_out, [patch1, patch2]),
+		"target beyond doubly-attenuated range is not perceived")
+
+
+func test_perceives_custom_screen_factor_attenuation() -> void:
+	var o := Vector2(100.0, 100.0)
+	# Custom screen_factor of 0.25 on a dense hedge: 400 wu sight becomes 100 wu.
+	var hedge := {"rect": Rect2(50.0, 130.0, 100.0, 40.0), "type": "forest", "kind": "slow", "sight": "screen", "screen_factor": 0.25}
+	var target_in := Vector2(100.0, 180.0)      # 80 wu away <= 100 wu
+	var target_out := Vector2(100.0, 220.0)     # 120 wu away > 100 wu
+	assert_true(Perception.perceives(o, 400.0, target_in, [hedge]),
+		"target inside custom-attenuated range is perceived")
+	assert_false(Perception.perceives(o, 400.0, target_out, [hedge]),
+		"target outside custom-attenuated range is not perceived")
+
+
 # --- Perception.visible_enemy_uids ---------------------------------------------------
 
 
@@ -66,7 +118,7 @@ func test_visible_enemy_uids_holds_only_enemies_inside_some_friendly_disc() -> v
 	var friendly := _unit(1, 0, FRIENDLY_POS)
 	var near := _unit(2, 1, NEAR_ENEMY_POS)
 	var far := _unit(3, 1, FAR_ENEMY_POS)
-	var other_friendly := _unit(4, 0, Vector2(600.0, 300.0))
+	var other_friendly := _unit(4, 0, Vector2(800.0, 300.0))
 	var seen: Dictionary = Perception.visible_enemy_uids(0, [friendly, near, far, other_friendly])
 	assert_true(seen.has(near.uid), "an enemy inside a friendly sight disc is visible")
 	assert_false(seen.has(far.uid), "an enemy outside every friendly disc is not")
@@ -147,6 +199,7 @@ func test_unit_sight_range_defaults_by_type_at_ready() -> void:
 	assert_almost_eq(pinned.sight_range, 123.0, 0.001, "a caller's own sight_range survives _ready")
 	assert_gt(Unit.SIGHT_MOUNTED, Unit.SIGHT_RANGED, "mounted > ranged")
 	assert_gt(Unit.SIGHT_RANGED, Unit.SIGHT_FOOT, "ranged > foot")
+	assert_almost_eq(Unit.SIGHT_SCREEN_FACTOR, 0.5, 0.001, "screening multiplier default")
 
 
 # --- Settings toggle -------------------------------------------------------------------
@@ -934,4 +987,32 @@ func test_fog_on_and_off_have_identical_retreat_bounds_and_escape_tick() -> void
 	Settings.set_fog_of_war_session(prev_fog)
 
 
+func test_battle_fog_terrain_occlusion_and_screening() -> void:
+	var prev_fog: bool = Settings.fog_of_war
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 414
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": 600.0, "y": 300.0},
+		{"team": 1, "type": "Infantry", "x": 600.0, "y": 500.0},
+		{"team": 0, "type": "Infantry", "x": 1275.0, "y": 300.0},
+		{"team": 1, "type": "Infantry", "x": 1275.0, "y": 600.0},
+		{"team": 0, "type": "Infantry", "x": 325.0, "y": 300.0},
+		{"team": 1, "type": "Infantry", "x": 325.0, "y": 500.0},
+		{"team": 1, "type": "Infantry", "x": 325.0, "y": 420.0},
+	]
+	_staged_battles.append(battle)
+	add_child_autofree(battle)
+	for _k in range(3):
+		await get_tree().physics_frame
 
+	var open_enemy := _enemy_nearest(Vector2(600.0, 500.0))
+	var hill_enemy := _enemy_nearest(Vector2(1275.0, 600.0))
+	var forest_screened := _enemy_nearest(Vector2(325.0, 500.0))
+	var forest_close := _enemy_nearest(Vector2(325.0, 420.0))
+
+	assert_true(open_enemy.visible, "enemy on open ground inside sight range is visible")
+	assert_false(hill_enemy.visible, "enemy behind hill occluder is hidden")
+	assert_false(forest_screened.visible, "enemy across forest beyond attenuated sight range is hidden")
+	assert_true(forest_close.visible, "enemy across forest within attenuated sight range is visible")
+	Settings.set_fog_of_war_session(prev_fog)

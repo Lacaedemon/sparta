@@ -1300,8 +1300,23 @@ Fog affects what is drawn and leaves ghost markers.
 It does not alter the retreat boundary.
 Units fight, target, and move under the same AI and physics rules.
 A replay reproduces the initial fog state and any mid-battle toggles on playback, and the enemy AI still sees everything for now.
-Terrain does not block or shorten sight yet, and the map itself is never darkened.
+Hills block line of sight completely (terrain occlusion), while forests screen vision and attenuate effective sight range.
+The map itself is never darkened.
 For tactical guidance on scouting screens, ghost staleness, and pursuit decisions, see [Tactics](tactics.qmd#fog-of-war).
+
+::: {#fig-fog-terrain-occlusion .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/fog_terrain_occlusion.jpg">
+  <source src="media/fog_terrain_occlusion.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Terrain occlusion under fog of war: enemy units positioned behind hills are occluded until cavalry scouts advance past the shoulder to open an unobstructed line of sight.
+:::
 
 ## The battle loop
 

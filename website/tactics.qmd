@@ -2297,7 +2297,8 @@ When fog is enabled, you see only what your own regiments can directly observe.
 Every friendly regiment projects a circular sight disc around its center.
 An enemy unit whose center lies outside every friendly sight disc is hidden.
 Friendly units are always visible to you.
-Terrain does not block sight lines yet, and the field itself is never darkened.
+Terrain actively shapes line of sight: impassable features (like hills) block sight lines completely, while wooded ground screens vision and attenuates observation range.
+The field itself is never darkened.
 Fog changes visibility only.
 Units keep fighting, pathing, and shooting under the same rules.
 
@@ -2335,6 +2336,14 @@ A forward screen reveals enemy deployments and flags open flanks.
 It illuminates approaching columns while your main formation stays hidden.
 Skirmishers and archers (18 m reach) can also screen the heavy line,
 maintaining contact while staying outside the 15 m sight of enemy foot.
+
+### Terrain occlusion and screening
+
+Open ground allows units to observe up to their full sight radius, but terrain actively alters visibility:
+
+- **Impassable terrain blocks line of sight**: Hills and solid barriers completely occlude vision (`sight: "block"`). An enemy directly behind a hill cannot be seen, regardless of proximity, until friendly scouts maneuver around the obstacle and establish an unobstructed line of sight.
+
+- **Foliage screens and attenuates sight lines**: Forests and slow patches (`sight: "screen"`) attenuate vision across them. Each screening patch cuts effective sight range by half (a default 0.5x multiplier), compounding if multiple patches intervene. An enemy sitting deep inside or across a wooded patch requires scouts to close well within the attenuated radius to spot them.
 
 ### What ghost markers tell you --- and what they do not
 

@@ -45,13 +45,22 @@ static func parse(block: Dictionary) -> Dictionary:
 				return {"error": "map.terrain patch kind must be 'block' or 'slow'"}
 			if kind == "slow" and not _num(p.get("speed")):
 				return {"error": "a 'slow' map.terrain patch needs a numeric speed scale"}
+			var default_sight: String = "block" if kind == "block" else "screen"
+			var sight: String = str(p.get("sight", default_sight))
+			if sight != "clear" and sight != "screen" and sight != "block":
+				return {"error": "map.terrain patch sight must be 'clear', 'screen', or 'block'"}
 			var patch: Dictionary = {
 				"rect": Rect2(float(r[0]), float(r[1]), float(r[2]), float(r[3])),
 				"type": str(p.get("type", "hill")),
 				"kind": kind,
+				"sight": sight,
 			}
 			if kind == "slow":
 				patch["speed"] = float(p["speed"])
+			if p.has("screen_factor"):
+				if not _num(p.get("screen_factor")) or float(p["screen_factor"]) <= 0.0 or float(p["screen_factor"]) > 1.0 or not is_finite(float(p["screen_factor"])):
+					return {"error": "map.terrain patch screen_factor must be a finite number in (0.0, 1.0]"}
+				patch["screen_factor"] = float(p["screen_factor"])
 			parsed.append(patch)
 		out["terrain"] = parsed
 	if block.has("spawn_lines"):
@@ -88,6 +97,14 @@ static func serialize(field: Rect2, terrain: Array, spawn_lines: Array,
 		}
 		if patch["kind"] == "slow":
 			patch["speed"] = float(p.get("speed", 1.0))
+		var default_sight: String = "block" if patch["kind"] == "block" else "screen"
+		var sight: String = str(p.get("sight", default_sight))
+		if sight != default_sight:
+			patch["sight"] = sight
+		if sight == "screen" and p.has("screen_factor"):
+			var sf: float = float(p["screen_factor"])
+			if not is_equal_approx(sf, Unit.SIGHT_SCREEN_FACTOR):
+				patch["screen_factor"] = sf
 		patches.append(patch)
 	var out: Dictionary = {
 		"field": [field.size.x, field.size.y],
@@ -116,9 +133,16 @@ static func differs_from_default(field: Rect2, terrain: Array, spawn_lines: Arra
 	for i in range(terrain.size()):
 		var a: Dictionary = terrain[i]
 		var b: Dictionary = default_terrain[i]
+		var a_kind: String = str(a.get("kind", "block"))
+		var b_kind: String = str(b.get("kind", "block"))
+		var a_default_sight: String = "block" if a_kind == "block" else "screen"
+		var b_default_sight: String = "block" if b_kind == "block" else "screen"
 		if a.get("rect") != b.get("rect") or str(a.get("type", "")) != str(b.get("type", "")) \
-				or str(a.get("kind", "block")) != str(b.get("kind", "block")) \
-				or float(a.get("speed", 1.0)) != float(b.get("speed", 1.0)):
+				or a_kind != b_kind \
+				or float(a.get("speed", 1.0)) != float(b.get("speed", 1.0)) \
+				or str(a.get("sight", a_default_sight)) != str(b.get("sight", b_default_sight)) \
+				or not is_equal_approx(float(a.get("screen_factor", Unit.SIGHT_SCREEN_FACTOR)),
+					float(b.get("screen_factor", Unit.SIGHT_SCREEN_FACTOR))):
 			return true
 	return false
 
