@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "CI and documentation only. This PR adds .github/workflows/truncate-artifact-branches.yml, which replaces the demo-media and gh-pages branches with a single orphan commit over their existing tree, plus a README section on cloning without those branches. Nothing in scenes/, scripts/, assets/, or project.godot changes, so a recorded battle is identical before and after."
+}

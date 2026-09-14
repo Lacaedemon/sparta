@@ -1,0 +1,280 @@
+# Hold the ceiling on the two branches that store generated artifacts.
+#
+# `demo-media` (each PR's recorded clip, pushed by demo-video.yml) and
+# `gh-pages` (the rendered site plus per-PR previews) are both branches whose
+# every commit is regenerable output -- and whose entire history is retained
+# forever. Measured 2026-09-13, that history had taken the repository to 5.02 GB
+# (`gh api repos/<owner>/<repo> --jq .size` -> 5264734 KB), up from the ~4 GB in
+# the issue that first reported it. A contributor cloning normally pays all of
+# it to check out a game whose working tree is a fraction of that.
+#
+# This workflow replaces each branch with ONE orphan commit carrying that
+# branch's current tree.
+#
+# It never checks either branch out, which is the point: checking out a 5 GB
+# branch to rewrite it is the problem, not the fix. Instead it reuses the
+# branch's EXISTING tree object through the git-data API --
+#
+#   GET  git/ref/heads/<branch>     -> current commit sha
+#   GET  git/commits/<sha>          -> its tree sha
+#   POST git/commits (no parents)   -> orphan commit over that same tree
+#   PATCH git/refs/heads/<branch>   -> force
+#
+# -- so the branch's CONTENT is bit-for-bit unchanged and only the ancestry is
+# dropped. There is no re-render, no re-upload, and nothing in a file that can
+# differ afterwards. That is what makes it safe to run against the branch the
+# site is actually served from.
+#
+# Two things this does NOT do, both of which look like failure if unstated:
+#
+#   * It does not reclaim the space on its own. Truncating makes the old
+#     objects unreachable; reclaiming them is GitHub's garbage collection, and
+#     at this size that usually wants a support request. `.size` lags, possibly
+#     by a lot, so re-reading it the same day proves nothing either way.
+#   * It does not stop the growth. Both branches resume accumulating with the
+#     next clip and the next deploy. This holds a ceiling; the cause-level fix
+#     is to stop storing media in git at all.
+#
+# A force-update to these branches races their other writers, and that risk is
+# real rather than theoretical: demo-video.yml pushes a clip to `demo-media` on
+# every PR that records one, publish-site.yml deploys to `gh-pages` on every
+# qualifying push to main, and website-preview-deploy.yml writes a per-PR
+# preview there. demo-video.yml's own comments already name this race and
+# refuse a blind `--force` for exactly this reason. So this workflow:
+#
+#   * skips a branch entirely when any of those writers has a queued or
+#     in-progress run, rather than racing it -- at a monthly cadence, waiting
+#     for the next run costs nothing;
+#   * re-reads the ref immediately before the force-update and restarts the
+#     branch if it moved, which narrows the window to a single API call rather
+#     than the several calls it takes to walk the history and build the commit;
+#   * retries a bounded number of times and then gives up on that branch.
+#
+# The window is narrowed, not closed: a push landing between the final re-read
+# and the update would still be discarded. That residual is accepted here
+# because the cost is one regenerable artifact that its workflow will rebuild,
+# and the alternative -- never truncating -- is what produced a 5 GB
+# repository.#
+# Safe to re-run: a branch already at a single commit is left alone.
+name: Truncate artifact branches
+
+on:
+  schedule:
+    # Monthly, offset off midnight and off the 1st to avoid the busiest
+    # scheduling windows. Monthly rather than weekly because each run makes the
+    # previous history unreachable without reclaiming it, so running more often
+    # buys nothing until GitHub has collected.
+    - cron: '41 4 3 * *'
+  workflow_dispatch:
+    inputs:
+      branches:
+        description: 'Comma-separated branches to truncate'
+        required: false
+        default: 'demo-media,gh-pages'
+        type: string
+      dry_run:
+        description: 'Report what would change without writing'
+        required: false
+        default: false
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: truncate-artifact-branches
+  cancel-in-progress: false
+
+jobs:
+  truncate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      # Needed by the writer-activity guard, which lists workflow runs to see
+      # whether demo-video / publish-site / website-preview-deploy is live.
+      actions: read
+    steps:
+      - name: Replace each artifact branch with a single orphan commit
+        uses: actions/github-script@v7
+        env:
+          INPUT_BRANCHES: ${{ inputs.branches || 'demo-media,gh-pages' }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const dryRun = process.env.INPUT_DRY_RUN === 'true';
+            const branches = process.env.INPUT_BRANCHES
+              .split(',')
+              .map((b) => b.trim())
+              .filter(Boolean);
+
+            if (branches.length === 0) {
+              core.setFailed('No branches given to truncate.');
+              return;
+            }
+
+            // Count commits up to a cap. The point is only to tell "already a
+            // single commit" from "has history", and to put a real number in
+            // the log, so walking the whole 5 GB ancestry would be waste.
+            const COUNT_CAP = 100;
+            async function countCommits(sha) {
+              let seen = 0;
+              let cursor = sha;
+              while (cursor && seen < COUNT_CAP) {
+                const { data } = await github.rest.git.getCommit({
+                  owner, repo, commit_sha: cursor,
+                });
+                seen += 1;
+                cursor = data.parents.length > 0 ? data.parents[0].sha : null;
+              }
+              return { count: seen, capped: seen >= COUNT_CAP && cursor !== null };
+            }
+
+            // The branches this workflow rewrites have other, more frequent
+            // writers. Rather than race them, skip the cycle when one is live:
+            // at a monthly cadence, deferring to the next run costs nothing,
+            // while losing a just-pushed clip or deploy costs a rebuild.
+            const WRITER_WORKFLOWS = [
+              'demo-video.yml',
+              'publish-site.yml',
+              'website-preview-deploy.yml',
+            ];
+
+            async function activeWriters() {
+              const live = [];
+              for (const status of ['queued', 'in_progress']) {
+                const { data } = await github.rest.actions.listWorkflowRunsForRepo({
+                  owner, repo, status, per_page: 100,
+                });
+                for (const run of data.workflow_runs) {
+                  const file = (run.path || '').split('/').pop();
+                  if (WRITER_WORKFLOWS.includes(file)) {
+                    live.push(`${file}#${run.id} (${status})`);
+                  }
+                }
+              }
+              return live;
+            }
+
+            const sizeBefore = (await github.rest.repos.get({ owner, repo })).data.size;
+            core.info(`Repository size before: ${sizeBefore} KB (GitHub's own figure; it lags a rewrite).`);
+
+            const live = await activeWriters();
+            if (live.length > 0) {
+              core.warning(
+                `Skipping this cycle: ${live.length} writer run(s) active -- ${live.join(', ')}. ` +
+                'Truncation force-updates these branches, so it defers rather than racing a live push.');
+              core.info('Examined 0 branch(es); 0 truncated.');
+              return;
+            }
+
+            let examined = 0;
+            let truncated = 0;
+
+            // Bounded retry. When the ref moves between the snapshot and the
+            // force-update, the tree we froze is stale, so the branch is rebuilt
+            // against the new head and re-attempted rather than abandoned:
+            // giving up on first detection would leave a branch untruncated
+            // whenever a writer happened to land, which at a monthly cadence
+            // could mean never.
+            const MAX_ATTEMPTS = 3;
+
+            // One attempt at one branch. Returns a status string so the caller
+            // can decide whether to retry, rather than deciding here.
+            async function attemptTruncate(branch) {
+              let ref;
+              try {
+                ref = await github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
+              } catch (error) {
+                if (error.status === 404) {
+                  core.warning(`Branch ${branch} does not exist; skipping.`);
+                  return 'absent';
+                }
+                throw error;
+              }
+
+              const headSha = ref.data.object.sha;
+              const head = await github.rest.git.getCommit({ owner, repo, commit_sha: headSha });
+              const treeSha = head.data.tree.sha;
+              const { count, capped } = await countCommits(headSha);
+              const depth = capped ? `${count}+` : `${count}`;
+
+              if (count <= 1) {
+                core.info(`${branch}: already a single commit (${headSha.slice(0, 8)}); nothing to do.`);
+                return 'noop';
+              }
+
+              if (dryRun) {
+                core.info(`${branch}: would truncate ${depth} commits to 1, keeping tree ${treeSha.slice(0, 8)}.`);
+                return 'dry-run';
+              }
+
+              const message = [
+                `chore: truncate ${branch} history`,
+                '',
+                `Replaces ${depth} commits of generated output with a single commit over`,
+                `the identical tree (${treeSha}). Content is unchanged; only the ancestry`,
+                'is dropped. See .github/workflows/truncate-artifact-branches.yml.',
+                '',
+                'Posted by the truncate-artifact-branches workflow (an automation) --- not written by a human.',
+              ].join('\n');
+
+              const orphan = await github.rest.git.createCommit({
+                owner, repo, message, tree: treeSha, parents: [],
+              });
+
+              // Compare-and-swap, as close to the write as the API allows.
+              // GitHub has no conditional ref update for a non-fast-forward, so
+              // re-read the ref immediately before forcing and abandon this
+              // attempt if anything landed while we were walking the history and
+              // building the commit.
+              const current = await github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
+              if (current.data.object.sha !== headSha) {
+                core.warning(
+                  `${branch}: ref moved from ${headSha.slice(0, 8)} to ` +
+                  `${current.data.object.sha.slice(0, 8)} while this attempt was preparing; ` +
+                  'discarding the attempt rather than that push.');
+                return 'raced';
+              }
+
+              await github.rest.git.updateRef({
+                owner, repo, ref: `heads/${branch}`, sha: orphan.data.sha, force: true,
+              });
+
+              // Re-read rather than trusting the write, and confirm the tree
+              // survived: an identical tree sha is the whole safety claim this
+              // workflow rests on, so it is worth one API call to check.
+              const after = await github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
+              const afterCommit = await github.rest.git.getCommit({
+                owner, repo, commit_sha: after.data.object.sha,
+              });
+              if (afterCommit.data.tree.sha !== treeSha) {
+                throw new Error(`${branch}: tree changed during truncation (${treeSha} -> ${afterCommit.data.tree.sha}).`);
+              }
+              if (afterCommit.data.parents.length !== 0) {
+                throw new Error(`${branch}: new head still has parents.`);
+              }
+
+              core.info(`${branch}: ${depth} commits -> 1 (${after.data.object.sha.slice(0, 8)}), tree ${treeSha.slice(0, 8)} unchanged.`);
+              return 'truncated';
+            }
+
+            for (const branch of branches) {
+              examined += 1;
+              let outcome = 'raced';
+              for (let attempt = 1; attempt <= MAX_ATTEMPTS && outcome === 'raced'; attempt += 1) {
+                if (attempt > 1) {
+                  core.info(`${branch}: retrying against the new head (attempt ${attempt} of ${MAX_ATTEMPTS}).`);
+                }
+                outcome = await attemptTruncate(branch);
+              }
+              if (outcome === 'truncated' || outcome === 'dry-run') {
+                truncated += 1;
+              } else if (outcome === 'raced') {
+                core.warning(`${branch}: still racing another writer after ${MAX_ATTEMPTS} attempts; left untouched.`);
+              }
+            }
+
+            core.info(`Examined ${examined} branch(es); ${truncated} ${dryRun ? 'would be ' : ''}truncated.`);
+            core.info('Space is NOT reclaimed by this run: the old objects are now unreachable, and');
+            core.info("collecting them is GitHub's GC. Re-reading the repository size today proves nothing.");
