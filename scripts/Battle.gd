@@ -885,11 +885,11 @@ func _line_start_x(half_widths: Array[float], xs: Array[float], field_width: flo
 ## it.
 func _default_loadout() -> Array:
 	return [
-		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "back_fraction": 0.35, "weapon": LoadoutRegistry.WEAPON_SPEAR, "sidearm": LoadoutRegistry.WEAPON_SIDEARM, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_LINOTHORAX, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.75, "formation": Unit.FORMATION_TIGHT, "walk_advance_default": true, "subunit_structure": "file_group", "subunit_size": 16},
+		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "back_fraction": 0.35, "weapon": LoadoutRegistry.WEAPON_SPEAR, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_LINOTHORAX, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.75, "formation": Unit.FORMATION_TIGHT, "walk_advance_default": true, "subunit_structure": "file_group", "subunit_size": 16},
 		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "back_fraction": 0.45, "weapon": LoadoutRegistry.WEAPON_GLADIUS, "sidearm": LoadoutRegistry.WEAPON_PILUM, "shield": LoadoutRegistry.SHIELD_SCUTUM, "armor": LoadoutRegistry.ARMOR_HAMATA, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.5, "formation": Unit.FORMATION_NORMAL, "subunit_structure": "lateral_halves"},
 		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "back_fraction": 0.55, "weapon": LoadoutRegistry.WEAPON_SIDEARM, "shield": LoadoutRegistry.SHIELD_NONE, "armor": LoadoutRegistry.ARMOR_TUNIC, "mount": LoadoutRegistry.MOUNT_NONE, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "sidearm": LoadoutRegistry.WEAPON_LANCE, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false, "file_major_reform_default": false},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "sidearm": LoadoutRegistry.WEAPON_LANCE, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false, "file_major_reform_default": false},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false, "file_major_reform_default": false},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "back_fraction": 0.3, "weapon": LoadoutRegistry.WEAPON_SPATHA, "shield": LoadoutRegistry.SHIELD_ROUND, "armor": LoadoutRegistry.ARMOR_SQUAMATA, "mount": LoadoutRegistry.MOUNT_WARHORSE, "training": 0.6, "formation": Unit.FORMATION_NORMAL, "file_pitch_m": 1.0, "rank_pitch_m": 3.0, "reform_before_move_default": false, "file_major_reform_default": false},
 	]
 
 
@@ -1004,10 +1004,9 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	# the dict so a bare test unit (no "weapon" key) pins Unit's own default instead of 0.
 	u.spawn_weapon_type_id = u.weapon_type_id
 	# The second weapon these soldiers carry, if any (docs/soldier-loadout-design.md phase
-	# 4). Infantry carry a pilum beside the gladius they deploy holding, cavalry carry a
-	# lance sidearm beside their spatha, and spearmen carry a secondary sidearm blade beside
-	# their spear; a row without the key keeps Unit's 0 default, which equip_weapon refuses
-	# -- so those units have no switch available.
+	# 4). Absent for every roster type but Infantry, whose legionaries carry a pilum beside
+	# the gladius they deploy holding; a row without the key keeps Unit's 0 default, which
+	# equip_weapon refuses -- so those units have no switch available, which is correct.
 	if d.has("sidearm"):
 		u.sidearm_type_id = d["sidearm"]
 	if d.has("shield"):
@@ -1387,6 +1386,10 @@ func _spawn_rearguard_detachment(parent: Unit, soldier_count: int, delay_sec: fl
 	_by_uid[u.uid] = u
 	u.is_rearguard_detachment = true
 	u._rearguard_lifetime_timer = delay_sec
+	# _spawn_from_snapshot/apply_snapshot_dict never resolve target_enemy/support_target --
+	# that's a second pass restore_snapshot runs separately, over uids, once every unit in a
+	# whole-battle restore exists. Set it directly from the live parent instead.
+	u.target_enemy = parent.target_enemy
 	return u
 
 
@@ -2238,12 +2241,7 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				var result: Dictionary = u.disengage_with_sacrifice()
 				var sacrifice_count: int = int(result["sacrifice_count"])
 				if sacrifice_count > 0:
-					var rearguard: Unit = _spawn_rearguard_detachment(u, sacrifice_count, float(result["delay_sec"]))
-					var foe: Unit = result.get("target_enemy", null) as Unit
-					if foe != null:
-						rearguard.target_enemy = foe
-						if foe.target_enemy == u:
-							foe.target_enemy = rearguard
+					_spawn_rearguard_detachment(u, sacrifice_count, float(result["delay_sec"]))
 		return
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the

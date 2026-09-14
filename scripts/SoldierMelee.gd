@@ -170,10 +170,9 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 		var cond_d: float = SoldierCombat.condition(defender._sim_soldier_hp[target], en_maxhp) \
 				* SoldierCombat.stamina_factor(stam_d, en_maxstam)
 		# Strike-time loadout reads, through the per-soldier id arrays: the
-		# attacker's weapon sets the blow's lethality and piercing nature, the struck
-		# soldier's shield adds its block value to the defender's stance residual.
+		# attacker's weapon sets the blow's lethality, the struck soldier's
+		# shield adds its block value to the defender's stance residual.
 		var lethality_a: float = attacker.soldier_lethality(ai)
-		var is_piercing: bool = attacker.soldier_is_piercing(ai)
 		var shield_d: float = en_shield_residual + defender.soldier_shield_block(target)
 		var p_land: float = SoldierCombat.land_chance(my_prof["skill"], en_prof["skill"], shield_d, phi, c, cond_a, cond_d)
 		# One seeded draw per striking attacker, in id order, after the target is fixed.
@@ -194,7 +193,7 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 		var kb_focus: bool = attacker.order_mode == Unit.ORDER_KNOCKBACK_FOCUS
 		var impulse_mult: float = SoldierCombat.KNOCKBACK_FOCUS_IMPULSE_MULT if kb_focus else 1.0
 		var impulse_mag: float = SoldierCombat.knockback_impulse(
-				lethality_a, c, en_prof["mass"], eta, impulse_mult, is_piercing)
+				lethality_a, c, en_prof["mass"], eta, impulse_mult)
 		# Bracing: a front-facing, set, deep file resists a shove with the whole column's
 		# footing (docs/combat-model.md "Bracing"). Walk the target's file rearward (phi > 0 only:
 		# a flank/rear blow gets no buttress), stopping at the first dead/missing rank. A
@@ -241,9 +240,6 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 				var clear_dist: float = attacker._front_depth() + defender._front_depth()
 				defender_speed_cap = SoldierCombat.knockback_focus_clear_line_cap(
 						clear_dist, SoldierBodies.BODY_ACCEL_FLOOR)
-		# Pre-strike defender motion status (read before this blow's velocity mutations).
-		var defender_speed_sq: float = defender._sim_body_vel[target].length_squared()
-		var is_moving: bool = defender_speed_sq > SoldierCombat.STATIC_FRICTION_VELOCITY_GATE * SoldierCombat.STATIC_FRICTION_VELOCITY_GATE
 		# Newton's laws collision (bidirectional impulses): both attacker and defender
 		# exchange momentum. The impulse is split inversely by effective mass (which
 		# includes bracing). Bracing gates the DEFENDER's forward motion (via `cap`
@@ -266,15 +262,23 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 			if impulse_attacker.length_squared() > 0.0001:
 				attacker._sim_body_vel[ai] = SoldierCombat.capped_knockback_velocity(
 					attacker._sim_body_vel[ai], impulse_attacker)
-			# Torque vs. translation partition (docs/combat-model.md "Coupling the slide and the fall:
-			# a friction-anchored pivot"):
-			# A defender's footing anchors the impulse up to J_anchor (mass & bracing scaled).
-			# The anchored share J_rot turns into tipping torque; only the surplus J_trans breaks
-			# the footing loose to translate/shove the body.
-			var j_trans: float = SoldierCombat.translational_impulse(received, en_prof["mass"], brace_d, is_moving)
-			if j_trans > 0.0:
+			# Apply reduced impulse to defender, still gated by bracing capacity: scale the
+			# momentum-split defender impulse by the surviving fraction of the strike above
+			# the file's brace capacity (SoldierCollision.braced_defender_impulse), so the
+			# shove grows smoothly from zero at `cap` instead of jumping straight to the full
+			# mass-split impulse the instant impulse_mag crosses it. The attacker's own recoil
+			# (above) is untouched by this scaling, matching the "bracing does NOT reduce the
+			# attacker's recoil" rule stated above.
+			# Static friction gates whether the surviving impulse moves the defender's body AT
+			# ALL: a resting (or slow) body needs `received` to clear a mass/bracing-scaled
+			# threshold before it budges, so a genuinely tiny shove leaves it standing still
+			# instead of nudging it (SoldierCollision.overcomes_static_friction). A body already
+			# in motion has no such gate (kinetic friction only) -- it's the CURRENT velocity,
+			# read before this strike's own impulse is applied, that decides which regime applies.
+			if received > 0.0 and SoldierCollision.overcomes_static_friction(
+					received, defender._sim_body_vel[target].length_squared(), en_prof["mass"], brace_d):
 				var braced_impulse_defender: Vector2 = SoldierCollision.braced_defender_impulse(
-						impulse_defender, j_trans, impulse_mag)
+						impulse_defender, received, impulse_mag)
 				defender._sim_body_vel[target] = SoldierCombat.capped_knockback_velocity(
 						defender._sim_body_vel[target], braced_impulse_defender, defender_speed_cap)
 		# Accumulate under a clamp: impulses from every attacker shoving this body this
@@ -283,17 +287,17 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 		# knocks a man back body-lengths, never launches him across the field.
 		if landed:
 			defender._sim_soldier_hp[target] -= \
-					SoldierCombat.wound(lethality_a, c, en_prof["armour"], cond_a, is_piercing) * wound_scale
-		# Going prone: a big enough impulse delivers tipping torque that fells the defender
-		# (docs/combat-model.md "Going prone and getting up" and "Coupling the slide and the fall").
-		# The fall roll is a second seeded draw per striking attacker, ALWAYS drawn (after the
-		# land roll, in id order) so the draw count per in-reach strike is fixed -- the size guard
-		# gates only the assignment, never the draw, so an out-of-sync array can't silently shift
-		# the RNG stream. A felled body loses active defence and can't strike until it rises; a
-		# fresh blow on a downed man refreshes the timer, keeping him down under assault.
+					SoldierCombat.wound(lethality_a, c, en_prof["armour"], cond_a) * wound_scale
+		# Going prone: a big enough impulse fells the defender. The fall roll is a second seeded
+		# draw per striking attacker, ALWAYS drawn (after the land roll, in id order) so the draw
+		# count per in-reach strike is fixed -- the size guard gates only the assignment, never
+		# the draw, so an out-of-sync array can't silently shift the RNG stream. A felled body
+		# loses active defence and can't strike until it rises; a fresh blow on a downed man
+		# refreshes the timer, keeping him down under assault. Prone rolls on the full impulse;
+		# the depth brace raises the threshold so a set phalanx resists going down.
 		var fall_roll: float = Replay.rng.randf()
 		if target < defender._sim_prone.size() \
-				and fall_roll < SoldierCombat.prone_chance(impulse_mag, en_prof["mass"], brace_d, is_moving):
+				and fall_roll < SoldierCombat.prone_chance(impulse_mag, en_prof["mass"], brace_d):
 			defender._sim_prone[target] = SoldierCombat.PRONE_RISE_TIME
 		# Stamina drain: attacker pays KAPPA_A per strike thrown; defender pays KAPPA_D
 		# scaled by how much of the blow it had to meet (phi*(1+c) — zero for prone/flanked).

@@ -337,25 +337,6 @@ func test_wound_is_never_negative() -> void:
 	assert_almost_eq(SoldierCombat.wound(1.0, -5.0, 1.5), 0.0, TOL)
 
 
-func test_wound_piercing_partially_bypasses_armour() -> void:
-	# Against 40% armour:
-	# Non-piercing: effective armour 0.40 -> wound = DAMAGE_SCALE * 0.60
-	# Piercing: effective armour 0.40 * (1 - 0.25) = 0.30 -> wound = DAMAGE_SCALE * 0.70
-	var non_piercing: float = SoldierCombat.wound(1.0, 0.0, 0.40, 1.0, false)
-	var piercing: float = SoldierCombat.wound(1.0, 0.0, 0.40, 1.0, true)
-	assert_almost_eq(non_piercing, SoldierCombat.DAMAGE_SCALE * 0.60, TOL)
-	assert_almost_eq(piercing, SoldierCombat.DAMAGE_SCALE * 0.70, TOL)
-	assert_gt(piercing, non_piercing, "piercing hits deal more damage against armoured targets")
-
-
-func test_wound_piercing_unarmoured_matches_non_piercing() -> void:
-	# Unarmoured target (armour 0.0): both deal full baseline wound
-	var non_piercing: float = SoldierCombat.wound(1.0, 0.0, 0.0, 1.0, false)
-	var piercing: float = SoldierCombat.wound(1.0, 0.0, 0.0, 1.0, true)
-	assert_almost_eq(non_piercing, SoldierCombat.DAMAGE_SCALE, TOL)
-	assert_almost_eq(piercing, SoldierCombat.DAMAGE_SCALE, TOL)
-
-
 # --- Determinism: the math is a pure function of its inputs -------------------
 
 func test_math_is_deterministic() -> void:
@@ -518,14 +499,6 @@ func test_knockback_impulse_never_negative() -> void:
 	assert_gt(SoldierCombat.knockback_impulse(1.0, 0.0, 0.0, 1.0), 0.0, "zero mass is floored, not a divide-by-zero")
 
 
-func test_knockback_impulse_piercing_is_reduced() -> void:
-	var standard: float = SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, 1.0, 1.0, false)
-	var piercing: float = SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, 1.0, 1.0, true)
-	assert_almost_eq(piercing, standard * SoldierCombat.PIERCING_IMPULSE_MULT, 1e-6,
-			"piercing strikes impart reduced knockback impulse")
-	assert_lt(piercing, standard, "piercing strikes shove less than non-piercing blows")
-
-
 # --- capped knockback velocity (add-then-clamp per strike) --------------------------------
 
 func test_capped_knockback_single_blow_below_ceiling_passes_through() -> void:
@@ -599,51 +572,6 @@ func test_heavier_and_braced_defenders_resist_going_prone() -> void:
 	var unbraced: float = SoldierCombat.prone_chance(120.0, 1.0, 0.0)
 	var braced: float = SoldierCombat.prone_chance(120.0, 1.0, 1.0)
 	assert_lt(braced, unbraced, "bracing raises the knockdown threshold")
-
-
-func test_moving_defender_is_easier_to_fell() -> void:
-	var stationary: float = SoldierCombat.prone_chance(50.0, 1.0, 0.0, false)
-	var moving: float = SoldierCombat.prone_chance(50.0, 1.0, 0.0, true)
-	assert_gt(moving, stationary, "a moving defender is easier to topple than a settled stance")
-
-
-# --- torque vs translation impulse partition (docs/combat-model.md) ------------
-
-func test_anchor_capacity_stationary_vs_moving() -> void:
-	var base: float = SoldierCombat.anchor_capacity(1.0, 0.0, false)
-	assert_almost_eq(base, SoldierCombat.STATIC_FRICTION_THRESHOLD, 1e-6, "stationary unbraced is baseline")
-	var moving: float = SoldierCombat.anchor_capacity(1.0, 0.0, true)
-	assert_almost_eq(moving, SoldierCombat.STATIC_FRICTION_THRESHOLD * SoldierCombat.KINETIC_ANCHOR_RATIO, 1e-6,
-		"moving anchor capacity is attenuated by kappa")
-
-
-func test_anchor_capacity_bracing_scales_effective_mass() -> void:
-	var unbraced: float = SoldierCombat.anchor_capacity(1.0, 0.0, false)
-	var braced: float = SoldierCombat.anchor_capacity(1.0, 1.0, false)
-	var expected: float = SoldierCombat.STATIC_FRICTION_THRESHOLD * (1.0 + SoldierCombat.FRICTION_BRACING_MULTIPLIER * 1.0)
-	assert_almost_eq(braced, expected, 1e-6, "bracing scales anchor capacity with effective mass")
-	assert_gt(braced, unbraced, "braced footing holds more shear before slipping")
-
-
-func test_partition_impulse_below_anchor_is_pure_torque() -> void:
-	var parts: Array[float] = SoldierCombat.partition_impulse(15.0, 1.0, 0.0, false)
-	assert_almost_eq(parts[0], 15.0, 1e-6, "rotational torque takes entire sub-anchor impulse")
-	assert_almost_eq(parts[1], 0.0, 1e-6, "translational knockback is zero below anchor capacity")
-
-
-func test_partition_impulse_above_anchor_splits_into_translation() -> void:
-	var parts: Array[float] = SoldierCombat.partition_impulse(35.0, 1.0, 0.0, false)
-	assert_almost_eq(parts[0], 20.0, 1e-6, "rotational share caps at anchor capacity")
-	assert_almost_eq(parts[1], 15.0, 1e-6, "surplus impulse goes into translational slide")
-
-
-func test_translational_impulse_matches_partition_surplus() -> void:
-	var below: float = SoldierCombat.translational_impulse(15.0, 1.0, 0.0, false)
-	assert_almost_eq(below, 0.0, 1e-6, "sub-anchor translational impulse is zero")
-	var above: float = SoldierCombat.translational_impulse(35.0, 1.0, 0.0, false)
-	assert_almost_eq(above, 15.0, 1e-6, "super-anchor translational impulse is surplus")
-	var moving: float = SoldierCombat.translational_impulse(20.0, 1.0, 0.0, true)
-	assert_almost_eq(moving, 4.0, 1e-6, "moving defender has lower anchor capacity so higher translational surplus")
 
 
 # --- bracing depth and capacity (docs/combat-model.md "Bracing") ---------------

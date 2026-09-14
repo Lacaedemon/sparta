@@ -226,34 +226,16 @@ A blow that lands wounds. We do **not** roll kill-or-not; we subtract damage fro
 the defender's health. Its size is the weapon's lethality, amplified by closing
 momentum, blunted by armour, and scaled by the attacker's own condition:
 
-$$\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_{\mathrm{eff}})\,q(h_A)\,g(\sigma_A),
-\qquad
-a_{\mathrm{eff}} = \begin{cases} a_D\,(1 - \alpha_{\mathrm{pierce}}) & \text{piercing weapon} \\ a_D & \text{non-piercing,} \end{cases}
+$$\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_D)\,q(h_A)\,g(\sigma_A),
 \qquad
 h_D \leftarrow h_D - \Delta h.$$
 
-$D_0 > 0$ is a base damage scale
-(the wound a baseline weapon, $\ell = 1$, deals to an unarmoured, standing target).
-Piercing weapons (spears, lances, daggers, pilum thrusts) concentrate impact force onto a narrow point,
-bypassing a fraction $\alpha_{\mathrm{pierce}} = 0.25$ (`PIERCING_ARMOR_PENETRATION`) of the defender's armour.
-Non-piercing weapons (swords, spathas, axes, blunt impacts) meet the defender's full armour rating $a_D$.
-The soldier **dies** when $h_D \le 0$.
-Until then it fights on at reduced capacity through $q(h_D)$ -- wounds compound,
-because a hurt soldier both defends and hits worse,
-so the second and third wounds come easier than the first.
-Armour $a_D$ is the only thing that protects a back-turned or downed man,
-since it sits outside the facing-gated contest.
-
-### 2b. Cavalry: lance thrust vs. body collision separation
-
-For charging cavalry, combat separates into two distinct physical phases across consecutive ticks:
-
-1. **Lance thrust (weapon reach strike)**: When closing, the rider's lance or spear point makes contact first at weapon reach ($r_{\mathrm{lance}} \approx 3.0\text{ m} = 60\text{ wu}$).
-The thrust lands on this earlier tick in `SoldierMelee`, dealing piercing wound damage that bypasses partial armor ($\alpha_{\mathrm{pierce}} = 0.25$) scaled by the closing charge factor $c$.
-Because piercing thrusts concentrate force on penetration, the weapon thrust imparts minimal whole-body displacement (`PIERCING_IMPULSE_MULT`).
-
-2. **Body collision (horse impact)**: As the horse's mount continues closing and reaches body contact radius ($r_{\mathrm{mount}} + r_{\mathrm{target}} \approx 1.8\text{ m} = 36\text{ wu}$), `SoldierEnemyContact` resolves the physical body-to-body collision.
-This impact transfers momentum from the full 525 kg warhorse mass, delivering blunt collision damage, massive knockback displacement, and rolling prone knockdown ($p_{\mathrm{prone}}$) against unbraced defenders.
+$D_0 > 0$ is a base damage scale (the wound a baseline weapon, $\ell = 1$, deals to
+an unarmoured, standing target). The soldier **dies** when $h_D \le 0$. Until then it fights on at reduced capacity
+through $q(h_D)$ -- wounds compound, because a hurt soldier both defends and hits
+worse, so the second and third wounds come easier than the first. Armour $a_D$ is
+the only thing that protects a back-turned or downed man, since it sits outside the
+facing-gated contest.
 
 ### 3. Stamina: attacking, defending, and rising all cost
 
@@ -285,26 +267,19 @@ stand and defends nothing while down.
 ### 4. Knockback impulse
 
 Every committed strike imparts an impulse along the strike axis, scaled by the
-blow's force, inversely by the defender's mass, reduced (not erased) when the
-blow is actively defended rather than landing clean, and scaled by weapon impact type:
+blow's force, inversely by the defender's mass, and reduced (not erased) when the
+blow is actively defended rather than landing clean:
 
-$$J = J_0\,\frac{\ell_A\,(1 + c)}{m_D}\;\eta\;\gamma_{\mathrm{type}},
+$$J = J_0\,\frac{\ell_A\,(1 + c)}{m_D}\;\eta,
 \qquad
-\eta = \begin{cases} \eta_{\mathrm{def}} \in (0,1) & \text{defended (turned aside)} \\ 1 & \text{landed,} \end{cases}
-\qquad
-\gamma_{\mathrm{type}} = \begin{cases} \gamma_{\mathrm{pierce}} \in (0,1) & \text{piercing weapon} \\ 1 & \text{non-piercing.} \end{cases}$$
+\eta = \begin{cases} \eta_{\mathrm{def}} \in (0,1) & \text{defended (turned aside)} \\ 1 & \text{landed.} \end{cases}$$
 
-$J_0 > 0$ is a base impulse scale,
-and $\eta$ is the fraction of momentum transmitted -- $\eta_{\mathrm{def}}$ for a defended blow,
-$1$ for a clean landing.
-$\gamma_{\mathrm{type}}$ reflects kinetic energy delivery:
-piercing weapons slip into tissue rather than shoving whole body mass backward,
-transmitting a reduced fraction $\gamma_{\mathrm{pierce}} = 0.35$ (`PIERCING_IMPULSE_MULT`) of knockback impulse.
-Non-piercing weapons deliver full whole-body displacement ($\gamma_{\mathrm{type}} = 1$).
-The struck soldier is displaced by $J\,\hat{u}_{A\to D}$;
-the formation's bounded arrival dynamics then decelerate and return it over the following ticks.
-A blocked blow draws no blood but still shoves -- which is how a spear wall pushes a stalled enemy back
-even when it can't wound it.
+$J_0 > 0$ is a base impulse scale, and $\eta$ is the fraction of momentum
+transmitted -- $\eta_{\mathrm{def}}$ for a defended blow, $1$ for a clean landing.
+The struck soldier is displaced by $J\,\hat{u}_{A\to D}$; the formation's bounded
+arrival dynamics then decelerate and return it over the following ticks. A blocked blow draws no blood but still
+shoves -- which is how a spear wall pushes a stalled enemy back even when it can't
+wound it.
 
 Impulses **accumulate under a clamp**: in an intermixed press several attackers
 commonly shove the same body within one melee cadence, so their impulses
@@ -451,19 +426,47 @@ it sends a moving body's whole impulse into translation and none into rotation,
 which is the least physical case of all and the one that produces the widest
 slide-while-standing window.
 
-Under the partition $J_{\mathrm{fall}}$ is scaled by the stance geometry $\Lambda = 0.25$ (`PIVOT_ADVANTAGE`),
-coupling tipping resistance directly to effective mass and kinetic motion:
+Under the partition $J_{\mathrm{fall}}$ stops being a free parameter.
+It is the anchoring capacity scaled by the stance geometry, so a single ratio
+replaces two independently tuned knobs:
 
-$$J_{\mathrm{fall}} = \Lambda\,\mathrm{PRONE\_FALL\_THRESHOLD}\,m_{\mathrm{eff}}\,(\kappa\text{ if moving else } 1.0).$$
+$$J_{\mathrm{fall}} \;=\; \Lambda\,J_{\mathrm{anchor}} \;=\; \frac{d_b}{\mu_s\,z_b}\,J_{\mathrm{anchor}}.$$
 
-> **Implemented:** `SoldierCombat.anchor_capacity`, `SoldierCombat.translational_impulse`, `SoldierCombat.partition_impulse`,
-> and `SoldierCombat.prone_chance` with $\Lambda = 0.25$ (`PIVOT_ADVANTAGE`)
-> and $\kappa = 0.8$ (`KINETIC_ANCHOR_RATIO`).
-> Wired into `SoldierMelee`:
-> the defender's footing anchors impulse up to $J_{\mathrm{anchor}}$,
-> converting the anchored share into tipping torque that drives the prone fall roll,
-> while only the surplus $J_{\mathrm{trans}} = (J - J_{\mathrm{anchor}})_+$
-> breaks the feet loose into translational knockback slide.
+> **Not yet implemented, and each of the following still needs pinning down.**
+>
+> *The scale of $J$.* The geometry above constrains the **form** of the relation
+> between the two thresholds, not the absolute scale of $J$ itself, which is a
+> tuned quantity (`KNOCKBACK_IMPULSE_SCALE`, calibrated to a pre-mass
+> flat-knockback feel rather than to newton-seconds).
+> Substituting $\Lambda \approx 0.21$ naively takes $J_{\mathrm{fall}}$ from 55 to about 4.2,
+> which fells a man on roughly 40% of ordinary blows --- a physically-sound
+> ordering hung off an uncalibrated scale.
+>
+> *The value of $\Lambda$.* The three stance constants are estimates, not
+> measurements, and $\Lambda$ is linear in $d_b$ and inverse-linear in $\mu_s$ and
+> $z_b$, so it is more sensitive than a single quoted figure suggests.
+> Across a tight plausible band ($\mu_s\ 0.5$--$0.7$, $d_b\ 0.12$--$0.20$ m,
+> $z_b\ 1.1$--$1.3$ m) $\Lambda$ spans about $0.13$--$0.36$, a 2.8x swing ---
+> comparable to the 2.75x inversion diagnosed above.
+> Every figure derived from it inherits that spread, the "roughly a fifth" and
+> the "about 4.2" included.
+> What survives the whole band is the ordering $\Lambda < 1$, which is what the
+> partition actually rests on.
+>
+> *The anchoring capacity.* $J_{\mathrm{anchor}}$ is pinned at rest, where it is
+> the shipped `STATIC_FRICTION_THRESHOLD` gate, and unpinned in motion: $\kappa$
+> has no shipped counterpart to inherit, since the existing kinetic-friction
+> constants are a damping rate rather than a capacity.
+> A physical starting point is that kinetic friction typically runs somewhat below
+> static, so $\kappa$ near $0.8$ is a plausible opening guess --- but it is a guess,
+> and it belongs in the calibration rather than in this specification.
+>
+> Landing this therefore needs $J_0$, $J_{\mathrm{scale}}$,
+> $p_{\mathrm{prone}}^{\max}$, $\Lambda$ and $\kappa$ re-derived together, with the
+> demo catalog's own defect sweep as the check that a melee still looks like a
+> melee.
+> Tracked separately; the equations here are the specification that work
+> implements, not a description of shipped behaviour.
 
 ## Bracing and the knockback chain (domino)
 

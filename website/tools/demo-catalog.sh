@@ -101,9 +101,5 @@ DEMOS=(
   "spearmen_declared_frontage|demos/inputs/spearmen-declared-frontage.json|30|240|640|input"
   "cavalry_squadron_structureless|demos/inputs/cavalry-squadron-structureless.json|30|240|640|input"
   "subunits_phase_4_reform|demos/inputs/subunits-phase-4-reform.json|30|300|640|input"
-  "piercing_melee_hits|demos/inputs/demo-piercing-melee-hits.json|30|240|640|input"
-  "knockback_torque_coupling|demos/inputs/demo-knockback-torque-coupling.json|30|240|640|input"
-  "spearmen_weapon_switch|demos/inputs/demo-spearmen-weapon-switch.json|30|240|640|input"
 )
-
 

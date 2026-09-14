@@ -35,14 +35,6 @@ const CHARGE_REFERENCE_SPEED: float = 8.5 * WorldScaleRef.WU_PER_M
 # fraction of full effectiveness. q scales both offence and active defence.
 const COND_HEALTH_FLOOR: float = 0.5
 
-# Piercing vs non-piercing hits (docs/combat-model.md "Piercing vs. non-piercing melee hits"):
-# Piercing weapons (spears, lances, daggers, pilums) concentrate impact force on a narrow point,
-# penetrating armour (PIERCING_ARMOR_PENETRATION) while transmitting minimal whole-body shove
-# (PIERCING_IMPULSE_MULT). Non-piercing weapons (swords, spathas, axes, maces) deliver a full
-# mix of knockback and standard-armour damage.
-const PIERCING_IMPULSE_MULT: float = 0.35
-const PIERCING_ARMOR_PENETRATION: float = 0.25
-
 # Knockback impulse (docs/combat-model.md "Knockback impulse"):
 #   J = KNOCKBACK_IMPULSE_SCALE * lethality_A * (1 + c) * eta / m_D
 # the velocity (world units/sec) added to the struck body along the strike axis. Scaled by
@@ -83,26 +75,16 @@ const KNOCKBACK_FOCUS_IMPULSE_MULT: float = 2.5
 # 3.3x KNOCKBACK_SPEED_MAX (so ~11x the coast distance, since distance scales with v^2).
 const KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP: float = 10.0 * WorldScaleRef.WU_PER_M
 
-# Going prone (docs/combat-model.md "Going prone and getting up" and "Coupling the slide and the fall"):
-# a knockback impulse J delivers torque about the defender's friction-anchored footing (J_rot).
-# Toppling requires less force than sliding the feet across ground (pivot advantage Lambda ~ 0.25).
-# Effective tipping torque threshold J_fall = PIVOT_ADVANTAGE * PRONE_FALL_THRESHOLD * m_eff.
-# Prone chance scales with surplus impulse over the mass- and bracing-raised threshold:
-#   p_prone = clip((J - J_fall) / (J_scale * m_eff), 0, p_prone_max)
+# Going prone (docs/combat-model.md "Going prone and getting up"): a knockback impulse J
+# large enough to clear a mass- and bracing-raised threshold can fell the defender.
+#   p_prone = clip((J - J_fall * (1 + br_D) * m_D) / J_scale, 0, p_prone_max)
 # A felled soldier loses active defence, can't strike, and rises after PRONE_RISE_TIME.
-const PRONE_FALL_THRESHOLD: float = 55.0   # J_fall base scale
-const PRONE_SCALE: float = 180.0           # J_scale: how fast the fall chance climbs with surplus impulse
+# Tuned so a normal melee shove (J ~ 14..40) almost never fells, but a charge impulse (well
+# above the threshold) often does, and a heavy/braced defender resists.
+const PRONE_FALL_THRESHOLD: float = 55.0   # J_fall: impulse below this never fells a man
+const PRONE_SCALE: float = 90.0            # J_scale: how fast the fall chance climbs with surplus J
 const PRONE_CHANCE_MAX: float = 0.6        # p_prone_max: no single blow is a sure knockdown
 const PRONE_RISE_TIME: float = 1.2         # T_up (seconds) a felled soldier needs to stand
-
-# Pivot advantage (docs/combat-model.md "Coupling the slide and the fall"): ratio of tipping
-# force to sliding force (Lambda = d_b / (mu_s * z_b)). For an upright fighting stance,
-# toppling requires roughly a fourth of the force needed to slide the feet (Lambda ~ 0.25).
-const PIVOT_ADVANTAGE: float = 0.25
-
-# Kinetic-to-static anchoring capacity ratio (kappa): a moving soldier's footing is less secure
-# than a stationary stance, so J_anchor reduces to kappa * J_anchor_static.
-const KINETIC_ANCHOR_RATIO: float = 0.8
 
 
 ## The baseline body mass (kilograms) the sim's relative contact-mass scalar of 1.0
@@ -208,12 +190,10 @@ static func land_chance(skill_a: float, skill_d: float, shield_d: float, phi_d: 
 
 
 ## The wound (health removed) from a landed blow: lethality, amplified by closing
-## momentum (1 + c), blunted by the defender's armour (piercing hits partially bypass armour
-## via PIERCING_ARMOR_PENETRATION), scaled by the attacker's condition. Always >= 0.
-## See docs/combat-model.md "Wound".
-static func wound(lethality_a: float, c: float, armour_d: float, cond_a: float = 1.0, is_piercing: bool = false) -> float:
-	var effective_armour: float = armour_d * (1.0 - PIERCING_ARMOR_PENETRATION) if is_piercing else armour_d
-	var armour: float = clampf(effective_armour, 0.0, 1.0)
+## momentum (1 + c), blunted by the defender's armour, scaled by the attacker's
+## condition. Always >= 0. See docs/combat-model.md "Wound".
+static func wound(lethality_a: float, c: float, armour_d: float, cond_a: float = 1.0) -> float:
+	var armour: float = clampf(armour_d, 0.0, 1.0)
 	var cond: float = clampf(cond_a, 0.0, 1.0)
 	return DAMAGE_SCALE * maxf(0.0, lethality_a) * (1.0 + maxf(0.0, c)) * (1.0 - armour) * cond
 
@@ -222,14 +202,13 @@ static func wound(lethality_a: float, c: float, armour_d: float, cond_a: float =
 ## (lethality * (1 + charge)) divided by the defender's mass, times eta (1 landed, < 1
 ## defended), times an optional `impulse_mult` (KNOCKBACK_FOCUS_IMPULSE_MULT for a
 ## knockback-focus attacker, 1.0 -- the default, unchanged behaviour -- for every other
-## stance), and scaled by PIERCING_IMPULSE_MULT for piercing attacks. See docs/combat-model.md
-## "Knockback impulse". Pure; never negative.
+## stance). See docs/combat-model.md "Knockback impulse". Pure; never negative.
 static func knockback_impulse(lethality_a: float, c: float, defender_mass: float, eta: float,
-		impulse_mult: float = 1.0, is_piercing: bool = false) -> float:
-	# Numerator (force * charge * eta * impulse_mult * piercing_factor) over the defender's mass.
-	var piercing_factor: float = PIERCING_IMPULSE_MULT if is_piercing else 1.0
+		impulse_mult: float = 1.0) -> float:
+	# Numerator (force * charge * eta * impulse_mult) over the defender's mass -- grouped so
+	# eta/impulse_mult read as numerator terms, not part of the denominator.
 	var force: float = KNOCKBACK_IMPULSE_SCALE * maxf(0.0, lethality_a) * (1.0 + maxf(0.0, c)) \
-			* maxf(0.0, eta) * maxf(0.0, impulse_mult) * piercing_factor
+			* maxf(0.0, eta) * maxf(0.0, impulse_mult)
 	return force / maxf(0.01, defender_mass)
 
 
@@ -273,48 +252,12 @@ static func knockback_focus_clear_line_cap(clear_distance: float, body_accel: fl
 	return maxf(KNOCKBACK_SPEED_MAX, clear_line_speed_cap(clear_distance, body_accel))
 
 
-## Anchoring capacity of a soldier's footing: the maximum impulse the feet can hold before
-## breaking loose into translation. Scales with effective mass (mass * (1 + FRICTION_BRACING_MULTIPLIER * brace)).
-## In motion, anchoring capacity is scaled by KINETIC_ANCHOR_RATIO. Pure; never negative.
-static func anchor_capacity(defender_mass: float, brace_d: float = 0.0, is_moving: bool = false) -> float:
-	var m_eff: float = effective_mass(defender_mass, brace_d)
-	var base: float = STATIC_FRICTION_THRESHOLD * m_eff
-	return base * KINETIC_ANCHOR_RATIO if is_moving else base
-
-
-## Translational surplus impulse that breaks footing loose into translation. Pure; never negative.
-static func translational_impulse(impulse_j: float, defender_mass: float, brace_d: float = 0.0, is_moving: bool = false) -> float:
-	var anchor: float = anchor_capacity(defender_mass, brace_d, is_moving)
-	return maxf(0.0, impulse_j - anchor)
-
-
-## Partition a knockback impulse into rotational (torque about feet) and translational
-## (center-of-mass slide) components (docs/combat-model.md "Coupling the slide and the fall: a friction-anchored pivot").
-## The anchored share J_rot is held by the footing, generating torque that drives the prone
-## roll (amplified by 1 / PIVOT_ADVANTAGE). The surplus J_trans breaks the feet loose into
-## translational knockback.
-## Returns [J_rot, J_trans]. Pure; replay-safe.
-static func partition_impulse(impulse_j: float, defender_mass: float, brace_d: float = 0.0, is_moving: bool = false) -> Array[float]:
-	var anchor: float = anchor_capacity(defender_mass, brace_d, is_moving)
-	var j_rot: float = minf(maxf(0.0, impulse_j), anchor)
-	var j_trans: float = maxf(0.0, impulse_j - anchor)
-	return [j_rot, j_trans]
-
-
 ## Probability that a knockback impulse `impulse_j` fells the defender (docs/combat-model.md
-## "Going prone and getting up" and "Coupling the slide and the fall: a friction-anchored pivot"):
-## A standing body's footing anchors the impulse, creating torque about the feet.
-## Tipping threshold J_fall = PIVOT_ADVANTAGE * PRONE_FALL_THRESHOLD * m_eff * (KINETIC_ANCHOR_RATIO if is_moving else 1.0).
-## Surplus impulse over the mass- and bracing-raised threshold scales with PRONE_SCALE * m_eff.
-## Pure; clamped to [0, PRONE_CHANCE_MAX].
-static func prone_chance(impulse_j: float, defender_mass: float, brace_d: float = 0.0, is_moving: bool = false) -> float:
-	var m_eff: float = effective_mass(defender_mass, brace_d)
-	if m_eff <= 0.0:
-		return 0.0
-	var motion_mult: float = KINETIC_ANCHOR_RATIO if is_moving else 1.0
-	var threshold: float = PIVOT_ADVANTAGE * PRONE_FALL_THRESHOLD * m_eff * motion_mult
-	var surplus: float = maxf(0.0, impulse_j - threshold)
-	return clampf(surplus / (PRONE_SCALE * m_eff), 0.0, PRONE_CHANCE_MAX)
+## "Going prone"): surplus impulse over a mass- and bracing-raised threshold, scaled and
+## capped. `brace_d` is 0 until bracing lands. Pure; clamped to [0, PRONE_CHANCE_MAX].
+static func prone_chance(impulse_j: float, defender_mass: float, brace_d: float = 0.0) -> float:
+	var threshold: float = PRONE_FALL_THRESHOLD * (1.0 + maxf(0.0, brace_d)) * maxf(0.01, defender_mass)
+	return clampf((impulse_j - threshold) / PRONE_SCALE, 0.0, PRONE_CHANCE_MAX)
 
 
 # Bracing (docs/combat-model.md "Bracing and the knockback chain"): a set, deep, front-facing

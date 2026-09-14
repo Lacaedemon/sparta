@@ -21,7 +21,6 @@ const WEAPON_GLADIUS: int = 2
 const WEAPON_SIDEARM: int = 3
 const WEAPON_SPATHA: int = 4
 const WEAPON_PILUM: int = 5
-const WEAPON_LANCE: int = 6
 
 const SHIELD_SCUTUM: int = 101
 const SHIELD_ROUND: int = 102
@@ -77,12 +76,11 @@ const MOUNT_WARHORSE: int = 302
 # rate is 0.40 lethality/s against the gladius's 0.83, so holding the pilum too long
 # costs real casualties and switching too early throws away the reach.
 static var _weapons: Dictionary = {
-	WEAPON_SPEAR: Weapon.make(WEAPON_SPEAR, "Spear", 2.4, 0.85, 0.6, deg_to_rad(15.0), true),
-	WEAPON_GLADIUS: Weapon.make(WEAPON_GLADIUS, "Gladius", 1.3, 1.0, 1.2, 0.0, false),
-	WEAPON_SIDEARM: Weapon.make(WEAPON_SIDEARM, "Sidearm", 0.6, 0.5, 0.6, 0.0, true),
-	WEAPON_SPATHA: Weapon.make(WEAPON_SPATHA, "Spatha", 1.5, 1.1, 0.6, 0.0, false),
-	WEAPON_PILUM: Weapon.make(WEAPON_PILUM, "Pilum", 2.0, 0.6, 1.5, deg_to_rad(15.0), true),
-	WEAPON_LANCE: Weapon.make(WEAPON_LANCE, "Lance", 3.0, 1.2, 1.2, deg_to_rad(15.0), true),
+	WEAPON_SPEAR: Weapon.make(WEAPON_SPEAR, "Spear", 2.4, 0.85, 0.6, deg_to_rad(15.0)),
+	WEAPON_GLADIUS: Weapon.make(WEAPON_GLADIUS, "Gladius", 1.3, 1.0, 1.2),
+	WEAPON_SIDEARM: Weapon.make(WEAPON_SIDEARM, "Sidearm", 0.6, 0.5, 0.6),
+	WEAPON_SPATHA: Weapon.make(WEAPON_SPATHA, "Spatha", 1.5, 1.1, 0.6),
+	WEAPON_PILUM: Weapon.make(WEAPON_PILUM, "Pilum", 2.0, 0.6, 1.5, deg_to_rad(15.0)),
 }
 
 # block_value: the shield's OWN contribution to the defensive shield weight.

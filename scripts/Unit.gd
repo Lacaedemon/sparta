@@ -2069,9 +2069,6 @@ func can_equip_weapon(type_id: int) -> bool:
 		return false
 	if type_id == weapon_type_id:
 		return true
-	if is_cavalry:
-		return type_id == LoadoutRegistry.WEAPON_LANCE or type_id == LoadoutRegistry.WEAPON_SPATHA \
-				or type_id == spawn_weapon_type_id or type_id == sidearm_type_id
 	return type_id == spawn_weapon_type_id or type_id == sidearm_type_id
 
 
@@ -5328,7 +5325,6 @@ func disengage_with_sacrifice(step_distance: float = disengage_step_distance,
 	# stepping back to safety, so the sacrifice must never annihilate the unit itself.
 	sacrifice_count = mini(sacrifice_count, soldiers - 1)
 	soldiers -= sacrifice_count
-	var prev_foe: Unit = target_enemy
 	set_current_order(Order.new_nudge(NUDGE_BACK))
 	target_enemy = null
 	support_target = null
@@ -5338,7 +5334,7 @@ func disengage_with_sacrifice(step_distance: float = disengage_step_distance,
 	move_target = position + disengage_offset(facing, step_distance)
 	has_move_target = true
 	start_order_response()
-	return {"sacrifice_count": sacrifice_count, "delay_sec": delay_sec, "target_enemy": prev_foe}
+	return {"sacrifice_count": sacrifice_count, "delay_sec": delay_sec}
 
 
 ## Wheel (circumductio, Aelian/Asclepiodotus): the block swings about one fixed flank file like a
@@ -6242,18 +6238,6 @@ func soldier_shield_block(i: int) -> float:
 	return s.block_value if s != null else 0.0
 
 
-## Whether the weapon soldier `i` carries deals piercing damage (spears, lances,
-## daggers, pilum thrusts). Resolved through the per-soldier weapon id. Piercing hits
-## penetrate armor with minimal whole-body knockback, while non-piercing hits deliver
-## a full mix of knockback and standard-armor damage. Same fallback chain as soldier_lethality.
-func soldier_is_piercing(i: int) -> bool:
-	var type_id: int = _sim_soldier_weapon_id[i] if i < _sim_soldier_weapon_id.size() else weapon_type_id
-	var w: Weapon = LoadoutRegistry.weapon(type_id)
-	if w == null:
-		w = LoadoutRegistry.weapon(weapon_type_id)
-	return w.is_piercing if w != null else false
-
-
 # --- Order summary (for the HUD / selection overlay) -----------------------
 
 ## Human-readable description of this unit's current order — what the player
@@ -7123,22 +7107,22 @@ func _build_figure_meshes(mark_r: float) -> void:
 ##
 ## Prefers the soldier's actual equipped weapon type (docs/soldier-loadout-design.md
 ## phase 3) over the coarse anti_cavalry/is_ranged flags, since weapon_type_id is the
-## field a weapon-switch order writes -- reading it here means the render follows a switch
-## immediately instead of needing its own update. When Spearmen (anti_cavalry = true) draw
-## their secondary sidearm blade, they switch from the spear shaft to the infantry shield/blade
-## figure. Falls back to the flags when weapon_type_id doesn't resolve to either archetype
-## (such as a synthetic unit built in a test that sets flags directly).
+## field a future weapon-switch order would actually write -- reading it here means
+## the render follows a switch immediately instead of needing its own update.
+## Falls back to the flags when weapon_type_id doesn't resolve to either archetype
+## (a bare/synthetic unit built directly in a test, which sets anti_cavalry/is_ranged
+## but keeps Unit's default WEAPON_GLADIUS): under today's roster every real spawned
+## unit's weapon_type_id and flags agree (WEAPON_SPEAR <-> anti_cavalry, WEAPON_SIDEARM
+## <-> is_ranged), so this is a behavior-preserving remap of the old flag-only logic,
+## not a new selection.
 func _foot_kind() -> int:
 	# Both shafted types share the shaft glyph: a held pilum reads as a shaft at this
 	# scale, so a legionary switching pilum -> gladius visibly drops the shaft and
 	# shows his shield instead (equip_weapon rebuilds these meshes).
 	if weapon_type_id == LoadoutRegistry.WEAPON_SPEAR \
-			or weapon_type_id == LoadoutRegistry.WEAPON_PILUM \
-			or weapon_type_id == LoadoutRegistry.WEAPON_LANCE:
+			or weapon_type_id == LoadoutRegistry.WEAPON_PILUM:
 		return UnitMeshes.FOOT_SPEAR
 	if weapon_type_id == LoadoutRegistry.WEAPON_SIDEARM:
-		if anti_cavalry and weapon_type_id != spawn_weapon_type_id:
-			return UnitMeshes.FOOT_INFANTRY
 		return UnitMeshes.FOOT_ARCHER
 	if anti_cavalry:
 		return UnitMeshes.FOOT_SPEAR
