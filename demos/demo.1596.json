@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "CI-only change. This PR adds a scheduled scan to .github/workflows/conflicting-pr-notice.yml so a conflicting fork PR gets a notice that its pull_request runs were withheld. Nothing in scenes/, scripts/, assets/, or project.godot changes, so a recorded battle would be identical before and after."
+}
