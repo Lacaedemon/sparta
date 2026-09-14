@@ -171,6 +171,23 @@ run_detector --warn-only
 assert_status 0 "case 7: --warn-only exits 0 over a flagged repo"
 assert_absent '"flagged":0' "case 7: --warn-only still reports the flags"
 
+# ---------------------------------------------------------------------------
+# Case 8: --help prints the whole header, not a fixed slice of it. A hard-coded
+# line range truncated silently when the header grew, dropping the Environment
+# section -- the only place --help names the two tuning knobs. Asserting on the
+# LAST section means any future truncation fails here rather than going unnoticed.
+# ---------------------------------------------------------------------------
+HELP_OUT="$(bash "$DETECTOR" --help 2>/dev/null)"
+for needle in "SPARTA_WORKTREE_REMOTE" "SPARTA_WORKTREE_STALE_MAX" "--warn-only" "Usage:"; do
+  case "$HELP_OUT" in
+    *"$needle"*) pass "case 8: --help mentions $needle" ;;
+    *) fail "case 8: --help omits $needle" ;;
+  esac
+done
+case "$HELP_OUT" in
+  *"#"*) fail "case 8: --help leaks a raw comment marker" ;;
+  *) pass "case 8: --help strips the comment markers" ;;
+esac
 if [ "$FAILURES" -gt 0 ]; then
   printf '\n%s assertion(s) failed; fixture kept at %s\n' "$FAILURES" "$TMP" >&2
   exit 1

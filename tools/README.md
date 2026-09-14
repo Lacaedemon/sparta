@@ -283,6 +283,14 @@ The summary line reports how many worktrees were **examined** alongside how many
 were flagged, so a clean run is distinguishable from a detector that silently
 examined nothing.
 
+The default-branch verdicts (`stale`, `diverged`, `misplaced`) key on the
+worktree's branch NAME matching the resolved default branch.
+A worktree sitting at the default branch's tip in detached HEAD is therefore
+judged by the feature-branch rules instead, so its dirt reads as `dirty` rather
+than `misplaced`.
+That is a deliberate narrowing rather than an oversight:
+a detached worktree is somebody's deliberate scratch checkout,
+and the state this tool exists to catch was a named `main` checkout.
 The default branch is resolved from the remote
 (`refs/remotes/<remote>/HEAD`, falling back to `git ls-remote --symref`),
 never assumed to be `main`.

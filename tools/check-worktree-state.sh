@@ -58,7 +58,12 @@ while [ $# -gt 0 ]; do
     --strict) STRICT=1 ;;
     --warn-only) WARN_ONLY=1 ;;
     --json) AS_JSON=1 ;;
-    -h|--help) sed -n '2,45p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    # Print the whole leading comment block rather than a fixed line range:
+    # a hard-coded range silently truncates the moment the header grows, and
+    # the cut lands on whatever section happens to be last -- which is how the
+    # Environment section went missing from --help. awk stops at the first
+    # non-comment line, so the boundary is derived from the file itself.
+    -h|--help) awk 'NR > 1 { if ($0 !~ /^#/) exit; sub(/^# ?/, ""); print }' "$0"; exit 0 ;;
     *) printf 'check-worktree-state: unknown argument: %s\n' "$1" >&2; exit 2 ;;
   esac
   shift
