@@ -242,6 +242,57 @@ powershell -NoProfile -File tools/kill-orphan-godot.ps1 -Force   # kill
 Optionally (user-machine config, not repo policy), register the sweep as a
 scheduled task every 30-60 min so a leak never builds up unattended.
 
+## `check-worktree-state.sh` -- find stale or abandoned worktrees
+
+A checkout can sit dozens of commits behind `origin` with staged entries that
+exist in no commit and on no remote, and still look entirely ordinary: it is not
+mid-merge, mid-rebase, or mid-cherry-pick, so nothing announces it. Two hazards
+follow. A session obeying the standing freshness rule either fails to
+fast-forward or silently carries that staged set into unrelated work. And the
+staged content itself is one disk failure from gone.
+
+This script makes that observable. It walks every worktree of the repository and
+reports, per worktree, its branch, how far it is behind and ahead of the remote
+default branch, how many commits no remote ref contains, and how many
+uncommitted and staged entries it holds.
+
+```sh
+tools/check-worktree-state.sh            # table; exit 1 if anything is flagged
+tools/check-worktree-state.sh --json     # one JSON object, for scripting
+tools/check-worktree-state.sh --strict   # also flag feature-branch dirt
+tools/check-worktree-state.sh --warn-only  # report, but always exit 0
+```
+
+The verdicts:
+
+| verdict | meaning | remedy |
+| --- | --- | --- |
+| `prunable` | the worktree's directory is gone | `git worktree prune` |
+| `stale` | on the default branch, behind its remote | `git merge --ff-only origin/<default>` |
+| `diverged` | on the default branch, with commits the remote lacks | needs a human; a fast-forward will refuse |
+| `unpushed` | commits reachable from HEAD that no remote ref contains | push the branch |
+| `misplaced` | uncommitted entries in a default-branch worktree | commit to a branch and push, then clean up |
+| `dirty` | uncommitted entries on a feature branch | nothing; this is what a live session looks like |
+
+`dirty` is reported but not flagged unless `--strict`, deliberately: a working
+session always has uncommitted edits, and a check that goes red every time is a
+check nobody reads.
+
+The summary line reports how many worktrees were **examined** alongside how many
+were flagged, so a clean run is distinguishable from a detector that silently
+examined nothing.
+
+The default branch is resolved from the remote (`refs/remotes/<remote>/HEAD`,
+falling back to `git ls-remote --symref`), never assumed to be `main` -- against
+a wrong ref every worktree would read as clean. Tune with
+`SPARTA_WORKTREE_REMOTE` (default `origin`) and `SPARTA_WORKTREE_STALE_MAX`
+(commits of staleness tolerated on the default branch, default `0`).
+
+`tools/lib/tests/test-worktree-state.sh` covers it, and runs with the rest of the
+shell tests (`tools/check.sh shell_tests`). Each case regresses a throwaway
+repository into the state one verdict is meant to catch and asserts both the
+verdict and the exit status, so the suite would fail if the detector answered
+"ok" for everything.
 ## `bootstrap-ai-config.sh` -- vendor ai-config for Gemini / Antigravity
 
 Shallow-clones [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config)
