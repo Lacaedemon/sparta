@@ -35,6 +35,26 @@
 #     next clip and the next deploy. This holds a ceiling; the cause-level fix
 #     is to stop storing media in git at all.
 #
+# A force-update to these branches races their other writers, and that risk is
+# real rather than theoretical: demo-video.yml pushes a clip to `demo-media` on
+# every PR that records one, publish-site.yml deploys to `gh-pages` on every
+# qualifying push to main, and website-preview-deploy.yml writes a per-PR
+# preview there. demo-video.yml's own comments already name this race and
+# refuse a blind `--force` for exactly this reason. So this workflow:
+#
+#   * skips a branch entirely when any of those writers has a queued or
+#     in-progress run, rather than racing it -- at a monthly cadence, waiting
+#     for the next run costs nothing;
+#   * re-reads the ref immediately before the force-update and restarts the
+#     branch if it moved, which narrows the window to a single API call rather
+#     than the several calls it takes to walk the history and build the commit;
+#   * retries a bounded number of times and then gives up on that branch.
+#
+# The window is narrowed, not closed: a push landing between the final re-read
+# and the update would still be discarded. That residual is accepted here
+# because the cost is one regenerable artifact that its workflow will rebuild,
+# and the alternative -- never truncating -- is what produced a 5 GB
+# repository.#
 # Safe to re-run: a branch already at a single commit is left alone.
 name: Truncate artifact branches
 
@@ -70,6 +90,9 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write
+      # Needed by the writer-activity guard, which lists workflow runs to see
+      # whether demo-video / publish-site / website-preview-deploy is live.
+      actions: read
     steps:
       - name: Replace each artifact branch with a single orphan commit
         uses: actions/github-script@v7
@@ -107,8 +130,43 @@ jobs:
               return { count: seen, capped: seen >= COUNT_CAP && cursor !== null };
             }
 
+            // The branches this workflow rewrites have other, more frequent
+            // writers. Rather than race them, skip the cycle when one is live:
+            // at a monthly cadence, deferring to the next run costs nothing,
+            // while losing a just-pushed clip or deploy costs a rebuild.
+            const WRITER_WORKFLOWS = [
+              'demo-video.yml',
+              'publish-site.yml',
+              'website-preview-deploy.yml',
+            ];
+
+            async function activeWriters() {
+              const live = [];
+              for (const status of ['queued', 'in_progress']) {
+                const { data } = await github.rest.actions.listWorkflowRunsForRepo({
+                  owner, repo, status, per_page: 100,
+                });
+                for (const run of data.workflow_runs) {
+                  const file = (run.path || '').split('/').pop();
+                  if (WRITER_WORKFLOWS.includes(file)) {
+                    live.push(`${file}#${run.id} (${status})`);
+                  }
+                }
+              }
+              return live;
+            }
+
             const sizeBefore = (await github.rest.repos.get({ owner, repo })).data.size;
             core.info(`Repository size before: ${sizeBefore} KB (GitHub's own figure; it lags a rewrite).`);
+
+            const live = await activeWriters();
+            if (live.length > 0) {
+              core.warning(
+                `Skipping this cycle: ${live.length} writer run(s) active -- ${live.join(', ')}. ` +
+                'Truncation force-updates these branches, so it defers rather than racing a live push.');
+              core.info('Examined 0 branch(es); 0 truncated.');
+              return;
+            }
 
             let examined = 0;
             let truncated = 0;
@@ -156,6 +214,19 @@ jobs:
               const orphan = await github.rest.git.createCommit({
                 owner, repo, message, tree: treeSha, parents: [],
               });
+
+              // Compare-and-swap, as close to the write as the API allows.
+              // GitHub has no conditional ref update for a non-fast-forward, so
+              // re-read the ref immediately before forcing and bail if anything
+              // landed while we were walking history and building the commit.
+              const current = await github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
+              if (current.data.object.sha !== headSha) {
+                core.warning(
+                  `${branch}: ref moved from ${headSha.slice(0, 8)} to ` +
+                  `${current.data.object.sha.slice(0, 8)} while this run was preparing; ` +
+                  'leaving it alone rather than discarding that push.');
+                continue;
+              }
 
               await github.rest.git.updateRef({
                 owner, repo, ref: `heads/${branch}`, sha: orphan.data.sha, force: true,

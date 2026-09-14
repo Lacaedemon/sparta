@@ -15,28 +15,45 @@ controls, tactics, the replay system, architecture, and roadmap, with gameplay c
 
 ## Cloning
 
-Clone with the two artifact branches excluded:
+`gh-pages` (the rendered site and its per-PR previews) and `demo-media` (each
+PR's recorded gameplay clip) hold generated output.
+Nothing in the game, the tests, or the website sources needs either branch, and
+together their current content is about 1.4 GB -- almost all of it `demo-media`,
+which keeps one clip per PR forever.
+
+The exclusion has to be configured **before the first fetch**.
+`git clone` fetches every branch as part of cloning, so a `git config` line
+added afterwards is too late to save anything:
 
 ```sh
-git clone https://github.com/Lacaedemon/sparta.git
+git init sparta
 cd sparta
+git remote add origin https://github.com/Lacaedemon/sparta.git
 git config --add remote.origin.fetch '^refs/heads/gh-pages'
 git config --add remote.origin.fetch '^refs/heads/demo-media'
+git fetch origin
+git checkout main
 ```
 
-`gh-pages` (the rendered site and its per-PR previews) and `demo-media` (each
-PR's recorded gameplay clip) hold generated output, and their retained history
-is most of the repository's size.
-Nothing in the game, the tests, or the website sources needs either branch, so
-excluding them costs you nothing.
+If you have already cloned, those two `config` lines stop future fetches but do
+not remove what is already present, and `git fetch --prune` does not remove it
+either.
+Drop the remote-tracking refs explicitly and let git collect the objects:
 
-If you have already cloned, adding those two lines and running
-`git fetch --prune origin` drops them from this checkout.
-Existing objects stay until `git gc` runs.
+```sh
+git config --add remote.origin.fetch '^refs/heads/gh-pages'
+git config --add remote.origin.fetch '^refs/heads/demo-media'
+git branch -rd origin/gh-pages origin/demo-media
+git gc --prune=now
+```
+
+Both claims above were checked on git 2.55.0 against a scratch repository:
+after `git clone` followed by `git config --add`, the excluded branch is still
+present, and a subsequent `git fetch --prune` leaves it in place; configured
+before the first fetch, it is never fetched at all.
 
 `tools/check-worktree-state.sh` reports every worktree's branch, staleness, and
 uncommitted work if you keep several checkouts around.
-
 ## Run it
 1. Install **Godot 4.7.x -- Standard build** (not the .NET/C# build) from
    <https://godotengine.org/download/windows/>.
