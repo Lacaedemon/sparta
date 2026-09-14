@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "No gameplay surface is touched. This PR adds a developer tool (tools/check-worktree-state.sh) that reports stale or abandoned git worktrees, its shell test, and the tools/README.md section documenting it. Nothing in scenes/, scripts/, assets/, or project.godot changes, so a recorded battle would show the same picture before and after."
+}
