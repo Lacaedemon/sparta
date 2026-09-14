@@ -1,0 +1,186 @@
+# Hold the ceiling on the two branches that store generated artifacts.
+#
+# `demo-media` (each PR's recorded clip, pushed by demo-video.yml) and
+# `gh-pages` (the rendered site plus per-PR previews) are both branches whose
+# every commit is regenerable output -- and whose entire history is retained
+# forever. Measured 2026-09-13, that history had taken the repository to 5.02 GB
+# (`gh api repos/<owner>/<repo> --jq .size` -> 5264734 KB), up from the ~4 GB in
+# the issue that first reported it. A contributor cloning normally pays all of
+# it to check out a game whose working tree is a fraction of that.
+#
+# This workflow replaces each branch with ONE orphan commit carrying that
+# branch's current tree.
+#
+# It never checks either branch out, which is the point: checking out a 5 GB
+# branch to rewrite it is the problem, not the fix. Instead it reuses the
+# branch's EXISTING tree object through the git-data API --
+#
+#   GET  git/ref/heads/<branch>     -> current commit sha
+#   GET  git/commits/<sha>          -> its tree sha
+#   POST git/commits (no parents)   -> orphan commit over that same tree
+#   PATCH git/refs/heads/<branch>   -> force
+#
+# -- so the branch's CONTENT is bit-for-bit unchanged and only the ancestry is
+# dropped. There is no re-render, no re-upload, and nothing in a file that can
+# differ afterwards. That is what makes it safe to run against the branch the
+# site is actually served from.
+#
+# Two things this does NOT do, both of which look like failure if unstated:
+#
+#   * It does not reclaim the space on its own. Truncating makes the old
+#     objects unreachable; reclaiming them is GitHub's garbage collection, and
+#     at this size that usually wants a support request. `.size` lags, possibly
+#     by a lot, so re-reading it the same day proves nothing either way.
+#   * It does not stop the growth. Both branches resume accumulating with the
+#     next clip and the next deploy. This holds a ceiling; the cause-level fix
+#     is to stop storing media in git at all.
+#
+# Safe to re-run: a branch already at a single commit is left alone.
+name: Truncate artifact branches
+
+on:
+  schedule:
+    # Monthly, offset off midnight and off the 1st to avoid the busiest
+    # scheduling windows. Monthly rather than weekly because each run makes the
+    # previous history unreachable without reclaiming it, so running more often
+    # buys nothing until GitHub has collected.
+    - cron: '41 4 3 * *'
+  workflow_dispatch:
+    inputs:
+      branches:
+        description: 'Comma-separated branches to truncate'
+        required: false
+        default: 'demo-media,gh-pages'
+        type: string
+      dry_run:
+        description: 'Report what would change without writing'
+        required: false
+        default: false
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: truncate-artifact-branches
+  cancel-in-progress: false
+
+jobs:
+  truncate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Replace each artifact branch with a single orphan commit
+        uses: actions/github-script@v7
+        env:
+          INPUT_BRANCHES: ${{ inputs.branches || 'demo-media,gh-pages' }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const dryRun = process.env.INPUT_DRY_RUN === 'true';
+            const branches = process.env.INPUT_BRANCHES
+              .split(',')
+              .map((b) => b.trim())
+              .filter(Boolean);
+
+            if (branches.length === 0) {
+              core.setFailed('No branches given to truncate.');
+              return;
+            }
+
+            // Count commits up to a cap. The point is only to tell "already a
+            // single commit" from "has history", and to put a real number in
+            // the log, so walking the whole 5 GB ancestry would be waste.
+            const COUNT_CAP = 100;
+            async function countCommits(sha) {
+              let seen = 0;
+              let cursor = sha;
+              while (cursor && seen < COUNT_CAP) {
+                const { data } = await github.rest.git.getCommit({
+                  owner, repo, commit_sha: cursor,
+                });
+                seen += 1;
+                cursor = data.parents.length > 0 ? data.parents[0].sha : null;
+              }
+              return { count: seen, capped: seen >= COUNT_CAP && cursor !== null };
+            }
+
+            const sizeBefore = (await github.rest.repos.get({ owner, repo })).data.size;
+            core.info(`Repository size before: ${sizeBefore} KB (GitHub's own figure; it lags a rewrite).`);
+
+            let examined = 0;
+            let truncated = 0;
+
+            for (const branch of branches) {
+              examined += 1;
+              let ref;
+              try {
+                ref = await github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
+              } catch (error) {
+                if (error.status === 404) {
+                  core.warning(`Branch ${branch} does not exist; skipping.`);
+                  continue;
+                }
+                throw error;
+              }
+
+              const headSha = ref.data.object.sha;
+              const head = await github.rest.git.getCommit({ owner, repo, commit_sha: headSha });
+              const treeSha = head.data.tree.sha;
+              const { count, capped } = await countCommits(headSha);
+              const depth = capped ? `${count}+` : `${count}`;
+
+              if (count <= 1) {
+                core.info(`${branch}: already a single commit (${headSha.slice(0, 8)}); nothing to do.`);
+                continue;
+              }
+
+              if (dryRun) {
+                core.info(`${branch}: would truncate ${depth} commits to 1, keeping tree ${treeSha.slice(0, 8)}.`);
+                truncated += 1;
+                continue;
+              }
+
+              const message = [
+                `chore: truncate ${branch} history`,
+                '',
+                `Replaces ${depth} commits of generated output with a single commit over`,
+                `the identical tree (${treeSha}). Content is unchanged; only the ancestry`,
+                'is dropped. See .github/workflows/truncate-artifact-branches.yml.',
+                '',
+                'Posted by the truncate-artifact-branches workflow (an automation) --- not written by a human.',
+              ].join('\n');
+
+              const orphan = await github.rest.git.createCommit({
+                owner, repo, message, tree: treeSha, parents: [],
+              });
+
+              await github.rest.git.updateRef({
+                owner, repo, ref: `heads/${branch}`, sha: orphan.data.sha, force: true,
+              });
+
+              // Re-read the ref rather than trusting the write, and confirm the
+              // tree survived: an identical tree sha is the whole safety claim
+              // this workflow rests on, so it is worth one API call to check.
+              const after = await github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
+              const afterCommit = await github.rest.git.getCommit({
+                owner, repo, commit_sha: after.data.object.sha,
+              });
+              if (afterCommit.data.tree.sha !== treeSha) {
+                core.setFailed(`${branch}: tree changed during truncation (${treeSha} -> ${afterCommit.data.tree.sha}).`);
+                return;
+              }
+              if (afterCommit.data.parents.length !== 0) {
+                core.setFailed(`${branch}: new head still has parents.`);
+                return;
+              }
+
+              truncated += 1;
+              core.info(`${branch}: ${depth} commits -> 1 (${after.data.object.sha.slice(0, 8)}), tree ${treeSha.slice(0, 8)} unchanged.`);
+            }
+
+            core.info(`Examined ${examined} branch(es); ${truncated} ${dryRun ? 'would be ' : ''}truncated.`);
+            core.info('Space is NOT reclaimed by this run: the old objects are now unreachable, and');
+            core.info("collecting them is GitHub's GC. Re-reading the repository size today proves nothing.");

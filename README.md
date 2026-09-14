@@ -13,8 +13,31 @@ map and the integration between the two layers come in later milestones (see the
 controls, tactics, the replay system, architecture, and roadmap, with gameplay clips.
 (Built with Quarto from `website/`; published via GitHub Pages.)
 
-## Run it
+## Cloning
 
+Clone with the two artifact branches excluded:
+
+```sh
+git clone https://github.com/Lacaedemon/sparta.git
+cd sparta
+git config --add remote.origin.fetch '^refs/heads/gh-pages'
+git config --add remote.origin.fetch '^refs/heads/demo-media'
+```
+
+`gh-pages` (the rendered site and its per-PR previews) and `demo-media` (each
+PR's recorded gameplay clip) hold generated output, and their retained history
+is most of the repository's size.
+Nothing in the game, the tests, or the website sources needs either branch, so
+excluding them costs you nothing.
+
+If you have already cloned, adding those two lines and running
+`git fetch --prune origin` drops them from this checkout.
+Existing objects stay until `git gc` runs.
+
+`tools/check-worktree-state.sh` reports every worktree's branch, staleness, and
+uncommitted work if you keep several checkouts around.
+
+## Run it
 1. Install **Godot 4.7.x -- Standard build** (not the .NET/C# build) from
    <https://godotengine.org/download/windows/>.
 2. Open Godot, click **Import**, and select this folder's `project.godot`.
