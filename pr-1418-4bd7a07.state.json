@@ -1,0 +1,1381 @@
+{
+  "ticks": [
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Holding position\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 8,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            400.0,
+            150.0
+          ],
+          "position_m": [
+            20.0,
+            7.5
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              150.6
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              7.53
+            ]
+          },
+          "soldiers": 90,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Holding position\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 20,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            400.0,
+            150.0
+          ],
+          "position_m": [
+            20.0,
+            7.5
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              150.6
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              7.53
+            ]
+          },
+          "soldiers": 90,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Re-forming\nHP per man: 80 ±0 of 80\nGait: Run (4.5 m/s)\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 23,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            400.0,
+            150.0
+          ],
+          "position_m": [
+            20.0,
+            7.5
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              150.6
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              7.53
+            ]
+          },
+          "soldiers": 90,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Re-forming\nHP per man: 80 ±0 of 80\nGait: Sprint (4.5 m/s)\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 60,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            400.0,
+            150.0
+          ],
+          "position_m": [
+            20.0,
+            7.5
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              150.6
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              7.53
+            ]
+          },
+          "soldiers": 90,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Moving to (400, 750)\nHP per man: 80 ±0 of 80\nGait: Sprint (4.5 m/s)\nSpeed: 1.6 m/s\nAccel: +1.8 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 120,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 33.3,
+          "current_speed_mps": 1.667,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.0,
+            163.89
+          ],
+          "position_m": [
+            20.0,
+            8.195
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              164.33
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              8.217
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Moving to (400, 750)\nHP per man: 80 ±0 of 80\nGait: Sprint (4.5 m/s)\nSpeed: 3.3 m/s\nAccel: +1.7 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 180,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 73.3,
+          "current_speed_mps": 3.667,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.0,
+            214.59
+          ],
+          "position_m": [
+            20.0,
+            10.73
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              214.4
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              10.72
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Moving to (400, 750)\nHP per man: 80 ±0 of 80\nGait: Sprint (4.5 m/s)\nSpeed: 4.4 m/s\nAccel: +1.6 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 220,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 90.0,
+          "current_speed_mps": 4.5,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.0,
+            266.85
+          ],
+          "position_m": [
+            20.0,
+            13.343
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              266.78
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              13.339
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Moving to (400, 750)\nHP per man: 80 ±0 of 80\nGait: Sprint (4.5 m/s)\nSpeed: 4.9 m/s\nAccel: -0.3 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 240,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 90.0,
+          "current_speed_mps": 4.5,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.0,
+            296.97
+          ],
+          "position_m": [
+            20.0,
+            14.848
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              298.29
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              14.915
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Moving to (400, 750)\nHP per man: 80 ±0 of 80\nGait: Sprint (4.5 m/s)\nSpeed: 4.8 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 260,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 90.0,
+          "current_speed_mps": 4.5,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.0,
+            329.01
+          ],
+          "position_m": [
+            20.0,
+            16.451
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              330.58
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              16.529
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Moving to (400, 750)\nHP per man: 80 ±0 of 80\nGait: Sprint (4.5 m/s)\nSpeed: 4.8 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 280,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 90.0,
+          "current_speed_mps": 4.5,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.0,
+            361.17
+          ],
+          "position_m": [
+            20.0,
+            18.059
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              362.75
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              18.137
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Moving to (400, 750)\nHP per man: 80 ±0 of 80\nGait: Sprint (4.5 m/s)\nSpeed: 4.5 m/s\nAccel: -2.4 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 300,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 90.0,
+          "current_speed_mps": 4.5,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.0,
+            390.13
+          ],
+          "position_m": [
+            20.0,
+            19.506
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              394.42
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              19.721
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Moving to (400, 750)\nHP per man: 80 ±0 of 80\nGait: Sprint (4.5 m/s)\nSpeed: 3.7 m/s\nAccel: -2.3 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 320,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 90.0,
+          "current_speed_mps": 4.5,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.0,
+            417.29
+          ],
+          "position_m": [
+            20.0,
+            20.865
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              421.64
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              21.082
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Moving to (400, 750)\nHP per man: 80 ±0 of 80\nGait: Sprint (4.5 m/s)\nSpeed: 3.0 m/s\nAccel: -2.3 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 340,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 90.0,
+          "current_speed_mps": 4.5,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.0,
+            441.35
+          ],
+          "position_m": [
+            20.0,
+            22.067
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              443.66
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              22.183
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Moving to (400, 750)\nHP per man: 80 ±0 of 80\nGait: Sprint (4.5 m/s)\nSpeed: 3.0 m/s\nAccel: +1.7 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 360,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 90.0,
+          "current_speed_mps": 4.5,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.0,
+            461.18
+          ],
+          "position_m": [
+            20.0,
+            23.059
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              462.36
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              23.118
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Moving to (400, 750)\nHP per man: 80 ±0 of 80\nGait: Sprint (4.5 m/s)\nSpeed: 2.9 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 380,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 90.0,
+          "current_speed_mps": 4.5,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.0,
+            480.61
+          ],
+          "position_m": [
+            20.0,
+            24.031
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              481.87
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              24.094
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Moving to (400, 750)\nHP per man: 80 ±0 of 80\nGait: Sprint (4.5 m/s)\nSpeed: 2.9 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 400,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 90.0,
+          "current_speed_mps": 4.5,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.0,
+            500.08
+          ],
+          "position_m": [
+            20.0,
+            25.004
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              501.34
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              25.067
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 90 / 90\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 0.9 m\nWidth: 13 files\nOrder: Moving to (400, 750)\nHP per man: 80 ±0 of 80\nGait: Sprint (4.5 m/s)\nSpeed: 2.9 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 420,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 90.0,
+          "current_speed_mps": 4.5,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 13,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            400.0,
+            519.54
+          ],
+          "position_m": [
+            20.0,
+            25.977
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              216.0,
+              108.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              401.2,
+              520.8
+            ],
+            "count": 90,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.8,
+              5.4
+            ],
+            "centroid_m": [
+              20.06,
+              26.04
+            ]
+          },
+          "soldiers": 90,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        }
+      ]
+    }
+  ]
+}
