@@ -171,15 +171,24 @@ jobs:
             let examined = 0;
             let truncated = 0;
 
-            for (const branch of branches) {
-              examined += 1;
+            // Bounded retry. When the ref moves between the snapshot and the
+            // force-update, the tree we froze is stale, so the branch is rebuilt
+            // against the new head and re-attempted rather than abandoned:
+            // giving up on first detection would leave a branch untruncated
+            // whenever a writer happened to land, which at a monthly cadence
+            // could mean never.
+            const MAX_ATTEMPTS = 3;
+
+            // One attempt at one branch. Returns a status string so the caller
+            // can decide whether to retry, rather than deciding here.
+            async function attemptTruncate(branch) {
               let ref;
               try {
                 ref = await github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
               } catch (error) {
                 if (error.status === 404) {
                   core.warning(`Branch ${branch} does not exist; skipping.`);
-                  continue;
+                  return 'absent';
                 }
                 throw error;
               }
@@ -192,13 +201,12 @@ jobs:
 
               if (count <= 1) {
                 core.info(`${branch}: already a single commit (${headSha.slice(0, 8)}); nothing to do.`);
-                continue;
+                return 'noop';
               }
 
               if (dryRun) {
                 core.info(`${branch}: would truncate ${depth} commits to 1, keeping tree ${treeSha.slice(0, 8)}.`);
-                truncated += 1;
-                continue;
+                return 'dry-run';
               }
 
               const message = [
@@ -217,39 +225,54 @@ jobs:
 
               // Compare-and-swap, as close to the write as the API allows.
               // GitHub has no conditional ref update for a non-fast-forward, so
-              // re-read the ref immediately before forcing and bail if anything
-              // landed while we were walking history and building the commit.
+              // re-read the ref immediately before forcing and abandon this
+              // attempt if anything landed while we were walking the history and
+              // building the commit.
               const current = await github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
               if (current.data.object.sha !== headSha) {
                 core.warning(
                   `${branch}: ref moved from ${headSha.slice(0, 8)} to ` +
-                  `${current.data.object.sha.slice(0, 8)} while this run was preparing; ` +
-                  'leaving it alone rather than discarding that push.');
-                continue;
+                  `${current.data.object.sha.slice(0, 8)} while this attempt was preparing; ` +
+                  'discarding the attempt rather than that push.');
+                return 'raced';
               }
 
               await github.rest.git.updateRef({
                 owner, repo, ref: `heads/${branch}`, sha: orphan.data.sha, force: true,
               });
 
-              // Re-read the ref rather than trusting the write, and confirm the
-              // tree survived: an identical tree sha is the whole safety claim
-              // this workflow rests on, so it is worth one API call to check.
+              // Re-read rather than trusting the write, and confirm the tree
+              // survived: an identical tree sha is the whole safety claim this
+              // workflow rests on, so it is worth one API call to check.
               const after = await github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
               const afterCommit = await github.rest.git.getCommit({
                 owner, repo, commit_sha: after.data.object.sha,
               });
               if (afterCommit.data.tree.sha !== treeSha) {
-                core.setFailed(`${branch}: tree changed during truncation (${treeSha} -> ${afterCommit.data.tree.sha}).`);
-                return;
+                throw new Error(`${branch}: tree changed during truncation (${treeSha} -> ${afterCommit.data.tree.sha}).`);
               }
               if (afterCommit.data.parents.length !== 0) {
-                core.setFailed(`${branch}: new head still has parents.`);
-                return;
+                throw new Error(`${branch}: new head still has parents.`);
               }
 
-              truncated += 1;
               core.info(`${branch}: ${depth} commits -> 1 (${after.data.object.sha.slice(0, 8)}), tree ${treeSha.slice(0, 8)} unchanged.`);
+              return 'truncated';
+            }
+
+            for (const branch of branches) {
+              examined += 1;
+              let outcome = 'raced';
+              for (let attempt = 1; attempt <= MAX_ATTEMPTS && outcome === 'raced'; attempt += 1) {
+                if (attempt > 1) {
+                  core.info(`${branch}: retrying against the new head (attempt ${attempt} of ${MAX_ATTEMPTS}).`);
+                }
+                outcome = await attemptTruncate(branch);
+              }
+              if (outcome === 'truncated' || outcome === 'dry-run') {
+                truncated += 1;
+              } else if (outcome === 'raced') {
+                core.warning(`${branch}: still racing another writer after ${MAX_ATTEMPTS} attempts; left untouched.`);
+              }
             }
 
             core.info(`Examined ${examined} branch(es); ${truncated} ${dryRun ? 'would be ' : ''}truncated.`);
