@@ -22,6 +22,20 @@
 # main commit independently dissolves the conflict, the notice is updated to
 # note that the conflict is gone and a branch push is needed to trigger runs.
 #
+# The `schedule` path exists because a PR whose head lives in a FORK pushes to
+# the fork, where this workflow does not exist -- so the push path never sees
+# it, and the main-push path only ever refreshes a notice that the push path
+# already posted. A scheduled scan runs on the base repository regardless of
+# any PR's mergeability, reads each open PR's state with an explicit
+# `pulls.get`, and posts a FIRST notice to any conflicting PR the push path
+# could not reach. It also recovers a same-repo PR whose push-triggered run was
+# cancelled, superseded, or otherwise lost.
+#
+# `pull_request_target` would be the other candidate trigger, and is
+# deliberately not used: whether it fires for a PR that already has a merge
+# conflict is exactly the premise such a fix would rest on, and this repository
+# has no fork PRs to establish it against.
+#
 # The `workflow_dispatch` path runs the same check for a given PR on demand
 # (it reads the PR's current head), which is how the conflicting branch of the
 # script can be exercised without waiting for a real conflict.
@@ -29,6 +43,11 @@ name: Conflicting PR Notice
 
 on:
   push:
+  schedule:
+    # Every six hours, offset off the hour to avoid the congested top-of-hour
+    # scheduling window. A conflicting fork PR is discovered within one period
+    # rather than on its next base-repository push, which may never come.
+    - cron: '23 */6 * * *'
   workflow_dispatch:
     inputs:
       pr_number:
@@ -44,7 +63,11 @@ permissions: {}
 # against (usually main), so keying on the ref alone would let two dispatched
 # checks for different PRs cancel each other.
 # Pushes to main scan all open PRs, so cancel-in-progress is disabled for main
-# to avoid cutting off a multi-PR scan mid-loop when main advances rapidly.
+# to avoid cutting off a multi-PR scan mid-loop when main advances rapidly. A
+# scheduled run reports github.ref as the default branch and therefore shares
+# that group without cancellation: a scheduled scan and a main-push scan queue
+# behind each other rather than cutting each other off, which is what a
+# whole-repository sweep needs.
 concurrency:
   group: conflicting-pr-notice-${{ inputs.pr_number || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -52,19 +75,26 @@ concurrency:
 jobs:
   notice:
     # A branch deletion is also a push event; there is nothing to check for it.
-    if: github.event_name == 'workflow_dispatch' || github.event.deleted == false
+    # The schedule and dispatch events carry no `deleted` field at all, so they
+    # are admitted by name rather than relying on how an absent field coerces.
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || github.event_name == 'schedule'
+      || github.event.deleted == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       pull-requests: write
     steps:
-      - name: Comment when the pushed PR conflicts with its base
+      - name: Comment when a PR conflicts with its base
         uses: actions/github-script@v7
         with:
           script: |
             const marker = '<!-- conflicting-pr-notice -->';
             const { owner, repo } = context.repo;
             const delaysMs = [0, 5000, 10000, 15000, 20000, 30000];
+            const signature =
+              '_Posted by the `conflicting-pr-notice` workflow (an automation) --- not written by a human._';
 
             async function getMergeability(prNumber) {
               let mergeable = null;
@@ -94,58 +124,113 @@ jobs:
                 .pop();
             }
 
-            if (context.eventName === 'push' && context.ref === 'refs/heads/main') {
+            // One conflict body for every path. The text deliberately does not
+            // record which trigger observed the conflict: a PR stays
+            // conflicting across many main pushes and many scheduled scans, so
+            // a path-dependent body would rewrite the same comment on every one
+            // of them. Identical text for identical state makes the update
+            // below a no-op instead.
+            function conflictBody(pr, short, mergeableState) {
+              return [
+                marker,
+                `**No \`pull_request\` workflows ran for \`${short}\`.**`,
+                `This PR conflicts with its base branch (\`mergeable_state: ${mergeableState}\`), and GitHub creates no \`pull_request\` workflow run at all -- not even a skipped one -- while a PR has a merge conflict.`,
+                'The Claude review, Godot CI, the lint checks, and the demo clip are all silent for this head, and they stay silent for every further push until the conflict is resolved.',
+                '',
+                `Merge \`${pr.base.ref}\` into this branch and resolve the conflict; the push of that merge commit triggers all of them normally.`,
+                `A review of the current head can be requested without waiting: \`gh workflow run claude-code-review.yml -R ${owner}/${repo} -f pr_number=${pr.number}\`.`,
+                '',
+                signature,
+              ].join('\n');
+            }
+
+            // Resolution DOES keep two forms, because they differ in what the
+            // reader has to do next. A conflict dissolved by a branch push has
+            // already triggered the workflows; one dissolved by a main advance
+            // or found clean by a scan has not, and needs a push. Resolution is
+            // a one-time transition, so the two forms cost no repeated edits.
+            function resolvedBody(pr, short, needsPush) {
+              const line = needsPush
+                ? `Resolved: \`${short}\` no longer conflicts with \`${pr.base.ref}\`. Push to this branch (or merge \`${pr.base.ref}\`) to trigger \`pull_request\` workflows.`
+                : `Resolved: \`${short}\` no longer conflicts with \`${pr.base.ref}\`, so \`pull_request\` workflows run for this PR again.`;
+              return [marker, line, '', signature].join('\n');
+            }
+
+            // Write only when the text would actually change. Every path funnels
+            // through here, so a repeated scan over unchanged state performs no
+            // API write at all.
+            async function upsert(prNumber, existing, body) {
+              if (existing && existing.body === body) {
+                return 'unchanged';
+              }
+              if (existing) {
+                await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+                return 'updated';
+              }
+              await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
+              return 'created';
+            }
+
+            // Walk one PR and bring its notice into line with its current state.
+            // `postFirstNotice` false means refresh-only: a PR with no notice yet
+            // is left alone, which is what a main push wants (it is reacting to
+            // base movement, not surveying the repository).
+            async function reconcile(pr, { postFirstNotice, needsPushOnResolve }) {
+              const existing = await findExistingNotice(pr.number);
+              if (!existing && !postFirstNotice) {
+                return 'skipped';
+              }
+              const { mergeable, mergeableState, head } = await getMergeability(pr.number);
+              const short = head.slice(0, 8);
+              if (mergeable === null) {
+                core.warning(`PR #${pr.number}: GitHub did not report mergeability for ${short} within the polling window; notice untouched.`);
+                return 'unknown';
+              }
+              if (mergeable === false) {
+                const action = await upsert(pr.number, existing, conflictBody(pr, short, mergeableState));
+                core.info(`PR #${pr.number}: ${short} conflicts (${mergeableState}); notice ${action}.`);
+                return 'conflicting';
+              }
+              if (existing) {
+                const action = await upsert(pr.number, existing, resolvedBody(pr, short, needsPushOnResolve));
+                core.info(`PR #${pr.number}: ${short} is mergeable (${mergeableState}); notice ${action}.`);
+              } else {
+                core.info(`PR #${pr.number}: ${short} is mergeable (${mergeableState}); nothing to post.`);
+              }
+              return 'mergeable';
+            }
+
+            // Report how many PRs were EXAMINED alongside how many conflicted,
+            // so an all-clear sweep is distinguishable in the log from a sweep
+            // that listed nothing.
+            async function sweep(listOpts, options) {
               const openPRs = await github.paginate(github.rest.pulls.list, {
-                owner, repo, state: 'open', base: 'main', per_page: 50,
+                owner, repo, state: 'open', per_page: 50, ...listOpts,
               });
               if (openPRs.length === 0) {
-                core.info('No open PRs targeting main; nothing to check.');
+                core.info('No open PRs matched; nothing to check.');
                 return;
               }
+              let conflicting = 0;
               for (const pr of openPRs) {
-                const existing = await findExistingNotice(pr.number);
-                if (!existing) {
-                  continue;
-                }
-                const { mergeable, mergeableState, head } = await getMergeability(pr.number);
-                const short = head.slice(0, 8);
-                if (mergeable === null) {
-                  core.warning(`PR #${pr.number}: GitHub did not report mergeability for ${short} within the polling window; notice untouched.`);
-                  continue;
-                }
-                if (mergeable === true) {
-                  if (!existing.body.includes('Resolved:')) {
-                    const body = [
-                      marker,
-                      `Resolved: \`${short}\` no longer conflicts with \`${pr.base.ref}\` following a \`main\` advance. Push to this branch (or merge \`${pr.base.ref}\`) to trigger \`pull_request\` workflows.`,
-                      '',
-                      '_Posted by the `conflicting-pr-notice` workflow (an automation) --- not written by a human._',
-                    ].join('\n');
-                    await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
-                    core.info(`PR #${pr.number}: conflict dissolved by main advance for ${short}; updated notice.`);
-                  } else {
-                    core.info(`PR #${pr.number}: ${short} remains resolved.`);
-                  }
-                } else if (mergeable === false) {
-                  if (existing.body.includes('Resolved:')) {
-                    const body = [
-                      marker,
-                      `**No \`pull_request\` workflows ran for \`${short}\`.**`,
-                      `This PR conflicts with its base branch (\`mergeable_state: ${mergeableState}\`) following a \`main\` advance. GitHub creates no \`pull_request\` workflow run at all -- not even a skipped one -- while a PR has a merge conflict.`,
-                      'The Claude review, Godot CI, the lint checks, and the demo clip will stay silent until the conflict is resolved.',
-                      '',
-                      `Merge \`${pr.base.ref}\` into this branch and resolve the conflict; the push of that merge commit triggers all of them normally.`,
-                      `A review of the current head can be requested without waiting: \`gh workflow run claude-code-review.yml -R ${owner}/${repo} -f pr_number=${pr.number}\`.`,
-                      '',
-                      '_Posted by the `conflicting-pr-notice` workflow (an automation) --- not written by a human._',
-                    ].join('\n');
-                    await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
-                    core.info(`PR #${pr.number}: conflict re-introduced by main advance for ${short}; updated notice.`);
-                  } else {
-                    core.info(`PR #${pr.number}: ${short} still conflicts (${mergeableState}); leaving warning in place.`);
-                  }
+                const verdict = await reconcile(pr, options);
+                if (verdict === 'conflicting') {
+                  conflicting += 1;
                 }
               }
+              core.info(`Examined ${openPRs.length} open PR(s); ${conflicting} conflicting.`);
+            }
+
+            if (context.eventName === 'schedule') {
+              // No base filter: a PR stacked on another branch suffers the same
+              // withheld runs, and the push path cannot reach a fork head
+              // whatever its base.
+              await sweep({}, { postFirstNotice: true, needsPushOnResolve: true });
+              return;
+            }
+
+            if (context.eventName === 'push' && context.ref === 'refs/heads/main') {
+              await sweep({ base: 'main' }, { postFirstNotice: false, needsPushOnResolve: true });
               return;
             }
 
@@ -165,43 +250,5 @@ jobs:
               }
             }
             for (const pr of prs) {
-              const { mergeable, mergeableState, head } = await getMergeability(pr.number);
-              const short = head.slice(0, 8);
-              if (mergeable === null) {
-                core.warning(`PR #${pr.number}: GitHub did not report mergeability for ${short} within the polling window; no comment posted.`);
-                continue;
-              }
-              const existing = await findExistingNotice(pr.number);
-              if (mergeable === false) {
-                const body = [
-                  marker,
-                  `**No \`pull_request\` workflows ran for \`${short}\`.**`,
-                  `This PR conflicts with its base branch (\`mergeable_state: ${mergeableState}\`), and GitHub creates no \`pull_request\` workflow run at all -- not even a skipped one -- while a PR has a merge conflict.`,
-                  'The Claude review, Godot CI, the lint checks, and the demo clip are all silent for this push, and they stay silent for every further push until the conflict is resolved.',
-                  '',
-                  `Merge \`${pr.base.ref}\` into this branch and resolve the conflict; the push of that merge commit triggers all of them normally.`,
-                  `A review of the current head can be requested without waiting: \`gh workflow run claude-code-review.yml -R ${owner}/${repo} -f pr_number=${pr.number}\`.`,
-                  '',
-                  '_Posted by the `conflicting-pr-notice` workflow (an automation) --- not written by a human._',
-                ].join('\n');
-                if (existing) {
-                  await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
-                  core.info(`PR #${pr.number}: refreshed the conflict notice for ${short}.`);
-                } else {
-                  await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
-                  core.info(`PR #${pr.number}: posted a conflict notice for ${short}.`);
-                }
-                continue;
-              }
-              core.info(`PR #${pr.number}: ${short} is mergeable (${mergeableState}); pull_request workflows run for it.`);
-              if (existing && (!existing.body.includes('Resolved:') || existing.body.includes('following a `main` advance'))) {
-                const body = [
-                  marker,
-                  `Resolved: \`${short}\` no longer conflicts with \`${pr.base.ref}\`, so \`pull_request\` workflows run for this PR again.`,
-                  '',
-                  '_Posted by the `conflicting-pr-notice` workflow (an automation) --- not written by a human._',
-                ].join('\n');
-                await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
-                core.info(`PR #${pr.number}: marked conflict as resolved for ${short}.`);
-              }
+              await reconcile(pr, { postFirstNotice: true, needsPushOnResolve: false });
             }
