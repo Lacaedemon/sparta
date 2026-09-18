@@ -853,6 +853,7 @@ and the workflow header are both easy to skim into the opposite conclusion:
 
 - `VERDICT` is set solely from `BT_REGRESSED` / `BT_REGRESSED_P95`, derived
   from `BT_MEAN_PCT` / `BT_P95_PCT`, the base-tip percentages.
+
 - `BL_MEAN` / `BL_P95`, the values read from `baseline.json`, are consumed only
   by `BASELINE_TABLE`, a `printf` display string rendered inside a collapsed
   `<details>` block in the PR comment.
