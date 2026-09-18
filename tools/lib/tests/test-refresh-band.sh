@@ -21,9 +21,14 @@
 #      lets the workflow file carry no band literal to drift from this module's.
 #      'nan' and 'inf' are rejected explicitly: both parse as floats and slip past a
 #      plain non-negative test, then silently suppress every refresh forever.
-#   8. A corrupt committed baseline (a non-positive metric, which no real tick time
-#      ever is) is REPLACED rather than raising. Raising would wedge the weekly cron:
-#      every later run would hit the same bad file and nothing would replace it.
+#   8. A corrupt committed baseline (a non-positive OR non-finite metric, which no real
+#      tick time ever is) is REPLACED rather than raising. Raising would wedge the
+#      weekly cron: every later run would hit the same bad file and nothing would
+#      replace it. NaN matters specifically: json.load accepts a bare NaN and
+#      `nan <= 0` is False, so a non-positive test alone would let it through and
+#      suppress every future refresh.
+#   8b. A non-finite NEW measurement raises instead, since writing it would poison
+#      the committed baseline for every later run.
 #
 # The real refresh case this was built for is a +6.1%/+5.9%/+7.7% week against a
 # 20% band, which case 1 reproduces exactly.
@@ -122,7 +127,7 @@ check(
 )
 
 # 8. A corrupt baseline is replaced, not raised on -- otherwise the weekly cron wedges.
-for bad in (0.0, -1.0):
+for bad in (0.0, -1.0, float("nan"), float("inf")):
     # Guarded: a regression here raises, and an unguarded raise would abort the whole
     # script, skipping every later case and reporting a traceback instead of a label.
     try:
@@ -135,6 +140,15 @@ for bad in (0.0, -1.0):
     check("non-positive incumbent (%s) says the baseline was unusable" % bad,
           "unusable" in r["reason"])
     check("non-positive incumbent (%s) reports no deltas" % bad, r["deltas"] == {})
+
+# 8b. A non-finite NEW measurement is a broken benchmark, not a stale baseline, so it
+#     raises rather than being written into the committed file.
+for bad_new in (float("nan"), float("inf")):
+    try:
+        evaluate(stats(45.0, 50.0, 58.0), stats(bad_new, 50.0, 58.0), 30.0)
+        check("non-finite new stat (%s) raises" % bad_new, False)
+    except ValueError:
+        check("non-finite new stat (%s) raises" % bad_new, True)
 
 # 9. tolerance_from_env resolves the band, so the workflow needs no literal of its own.
 #    A scheduled run passes nothing; only a dispatch override passes a number.

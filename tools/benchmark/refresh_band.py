@@ -105,17 +105,35 @@ def evaluate(old_stats, new_stats, tolerance_pct=DEFAULT_TOLERANCE_PCT):
     if missing:
         raise KeyError("stats missing required metric(s): %s" % ", ".join(missing))
 
-    # A non-positive incumbent metric cannot anchor a percent change, and a tick time
-    # is never legitimately <= 0, so the committed file is corrupt rather than merely
-    # stale. Treat it as no usable baseline and write a fresh one. Raising instead
-    # would wedge an unattended weekly job: every future run would hit the same bad
-    # file, and nothing would ever replace it.
-    unusable = [m for m in METRICS if old_stats[m] <= 0]
+    # A new measurement that is not a finite number means the benchmark itself went
+    # wrong. Writing it would poison the committed baseline for every later run, so
+    # this raises rather than being absorbed like a corrupt incumbent below.
+    unmeasurable = [m for m in METRICS if not math.isfinite(new_stats[m])]
+    if unmeasurable:
+        raise ValueError(
+            "new stats are not finite for: %s" % ", ".join(unmeasurable)
+        )
+
+    # An incumbent metric that is non-finite or non-positive cannot anchor a percent
+    # change, and a tick time is never legitimately either, so the committed file is
+    # corrupt rather than merely stale. Treat it as no usable baseline and write a
+    # fresh one. Raising instead would wedge an unattended weekly job: every future
+    # run would hit the same bad file, and nothing would ever replace it.
+    #
+    # isfinite is tested FIRST and separately: json.load accepts a bare NaN, and
+    # `nan <= 0` is False, so a non-positive test alone lets NaN through -- after
+    # which every band comparison against it is False and the refresh is suppressed
+    # forever, reported as a "+nan%" change.
+    unusable = [
+        m for m in METRICS
+        if not math.isfinite(old_stats[m]) or old_stats[m] <= 0
+    ]
     if unusable:
         return {
             "write": True,
             "reason": (
-                "Committed baseline is unusable (non-positive %s) -- replacing it."
+                "Committed baseline is unusable (non-finite or non-positive %s)"
+                " -- replacing it."
                 % ", ".join(unusable)
             ),
             "deltas": {},
