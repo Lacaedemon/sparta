@@ -2,9 +2,8 @@
 
 The weekly refresh measures the GitHub Actions runners' current speed, which
 drifts for reasons unrelated to this repo's code. Two functionally identical
-runs on a shared runner swing roughly 20% on their own (see
-tools/perf/README.md and refresh-benchmark-baseline.yml's header), so a
-refresh whose delta is smaller than that band carries no information: it
+runs on a shared runner swing by 20-30% on their own (tools/perf/README.md),
+so a refresh whose delta is smaller than that carries no information: it
 cannot separate a real change from noise, and opening a PR for it asks a
 reviewer a question the attached evidence cannot answer.
 
@@ -19,9 +18,12 @@ Only the decision lives here, kept out of the workflow's inline script so it
 can be unit-tested directly instead of exercised once a week by cron.
 """
 
-# Run-to-run swing between functionally identical builds on a shared CI runner.
+# Upper bound of the 20-30% run-to-run swing between functionally identical builds
+# on a shared CI runner, documented in tools/perf/README.md. The UPPER bound, not
+# the lower one: a band set at 20 would still pass through noise in the 20-30%
+# part of that range, which is the exact case this exists to suppress.
 # This is the DEFAULT; a run uses whatever REFRESH_TOLERANCE_PCT passes in.
-DEFAULT_TOLERANCE_PCT = 20.0
+DEFAULT_TOLERANCE_PCT = 30.0
 
 # Reporting order for the metrics carried in a baseline's "stats" object.
 METRICS = ("mean_ms", "p95_ms", "max_ms")
@@ -75,6 +77,25 @@ def evaluate(old_stats, new_stats, tolerance_pct=DEFAULT_TOLERANCE_PCT):
     missing = [m for m in METRICS if m not in old_stats or m not in new_stats]
     if missing:
         raise KeyError("stats missing required metric(s): %s" % ", ".join(missing))
+
+    # A non-positive incumbent metric cannot anchor a percent change, and a tick time
+    # is never legitimately <= 0, so the committed file is corrupt rather than merely
+    # stale. Treat it as no usable baseline and write a fresh one. Raising instead
+    # would wedge an unattended weekly job: every future run would hit the same bad
+    # file, and nothing would ever replace it.
+    unusable = [m for m in METRICS if old_stats[m] <= 0]
+    if unusable:
+        return {
+            "write": True,
+            "reason": (
+                "Committed baseline is unusable (non-positive %s) -- replacing it."
+                % ", ".join(unusable)
+            ),
+            "deltas": {},
+            "largest_metric": None,
+            "largest_pct": None,
+            "tolerance_pct": tolerance_pct,
+        }
 
     deltas = {m: pct_change(old_stats[m], new_stats[m]) for m in METRICS}
     largest_metric = max(METRICS, key=lambda m: abs(deltas[m]))

@@ -16,6 +16,9 @@
 #      than baked in.
 #   7. Bad input fails fast: a negative tolerance and a stats object missing a
 #      metric both raise rather than silently deciding.
+#   8. A corrupt committed baseline (a non-positive metric, which no real tick time
+#      ever is) is REPLACED rather than raising. Raising would wedge the weekly cron:
+#      every later run would hit the same bad file and nothing would replace it.
 #
 # The real refresh case this was built for is a +6.1%/+5.9%/+7.7% week against a
 # 20% band, which case 1 reproduces exactly.
@@ -25,7 +28,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 MODULE_DIR="$REPO_ROOT/tools/benchmark"
 
 if ! command -v python3 >/dev/null 2>&1; then
-  echo "SKIP: python3 not on PATH -- cannot exercise refresh_band.py"
+  echo "skip: python3 not on PATH; refresh_band.py cannot be exercised" >&2
   exit 0
 fi
 
@@ -87,7 +90,18 @@ loud = evaluate(stats(100.0, 100.0, 100.0), stats(105.0, 100.0, 100.0), 1.0)
 check("same data suppressed at 20%", quiet["write"] is False)
 check("same data refreshed at 1%", loud["write"] is True)
 check("the applied tolerance is reported back", loud["tolerance_pct"] == 1.0)
-check("default tolerance is the documented 20%", DEFAULT_TOLERANCE_PCT == 20.0)
+check(
+    "default tolerance is the upper bound of the documented 20-30% swing",
+    DEFAULT_TOLERANCE_PCT == 30.0,
+)
+
+# 8. A corrupt baseline is replaced, not raised on -- otherwise the weekly cron wedges.
+for bad in (0.0, -1.0):
+    r = evaluate(stats(bad, 50.0, 60.0), stats(45.0, 50.0, 60.0), 20.0)
+    check("non-positive incumbent (%s) writes rather than raising" % bad, r["write"] is True)
+    check("non-positive incumbent (%s) says the baseline was unusable" % bad,
+          "unusable" in r["reason"])
+    check("non-positive incumbent (%s) reports no deltas" % bad, r["deltas"] == {})
 
 # 7. Bad input fails fast rather than deciding quietly.
 try:

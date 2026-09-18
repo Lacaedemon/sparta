@@ -10,7 +10,9 @@
 # automatically instead of relying on someone noticing drift and re-running it by hand.
 #
 # Averaging narrows that swing but does not remove it, so the refresh also applies a
-# TOLERANCE BAND (REFRESH_TOLERANCE_PCT, default 20% -- the documented swing): the baseline
+# TOLERANCE BAND (REFRESH_TOLERANCE_PCT, default 30% -- the UPPER bound of the 20-30%
+# swing tools/perf/README.md documents; a 20% band would still pass through noise in the
+# upper part of that range, which is the case this exists to suppress): the baseline
 # is only rewritten when the largest metric change clears the band. Below it, the measured
 # delta cannot be told apart from runner noise, so opening a PR would ask a reviewer a
 # question the evidence cannot answer, and repeatedly doing so trains the reflex to wave
@@ -26,6 +28,13 @@ on:
     # not a tighter interval this repo's commit rate doesn't need.
     - cron: '0 6 * * 1'
   workflow_dispatch:
+    inputs:
+      tolerance_pct:
+        description: >-
+          Largest metric change still treated as runner noise, in percent. Defaults to
+          the committed band; set it lower to force a refresh this run only.
+        required: false
+        default: '30'
 
 concurrency:
   group: refresh-benchmark-baseline
@@ -43,10 +52,10 @@ env:
   # under.
   WARMUP_TICKS: 60
   MEASURE_TICKS: 300
-  # Largest metric change that still counts as runner noise. Default matches the
-  # run-to-run swing documented above and in tools/perf/README.md; override per-run
-  # via workflow_dispatch by editing this value.
-  REFRESH_TOLERANCE_PCT: '20'
+  # Largest metric change that still counts as runner noise, per the band described in
+  # this workflow's header. A workflow_dispatch run may override it for that run alone
+  # via the tolerance_pct input; a scheduled run has no inputs, so it falls back here.
+  REFRESH_TOLERANCE_PCT: ${{ inputs.tolerance_pct || '30' }}
 
 jobs:
   refresh-baseline:
@@ -88,7 +97,6 @@ jobs:
         id: refresh
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          REFRESH_TOLERANCE_PCT: ${{ env.REFRESH_TOLERANCE_PCT }}
         run: |
           set -euo pipefail
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
@@ -198,17 +206,21 @@ jobs:
               json.dump(new_baseline, f, indent=2)
               f.write("\n")
 
-          def fmt_row(name, old_v, new_v):
+          # Percent change comes from the decision's own deltas rather than being
+          # recomputed here: one implementation of the arithmetic, which is why the
+          # band module exists at all. Absent only when there was no usable baseline.
+          def fmt_row(metric, name, old_v, new_v):
               old_s = f"{old_v:.3f} ms" if old_v is not None else "n/a"
-              pct = f"{(new_v - old_v) / old_v * 100:+.1f}%" if old_v else "n/a"
+              delta = decision["deltas"].get(metric)
+              pct = "n/a" if delta is None else f"{delta:+.1f}%"
               return f"| {name} | {old_s} | {new_v:.3f} ms | {pct} |"
 
           table = "\n".join([
               "| metric | old baseline | new baseline (avg) | change |",
               "| --- | --- | --- | --- |",
-              fmt_row("mean tick time", old_mean, avg_mean),
-              fmt_row("p95 tick time", old_p95, avg_p95),
-              fmt_row("max tick time", old_max, avg_max),
+              fmt_row("mean_ms", "mean tick time", old_mean, avg_mean),
+              fmt_row("p95_ms", "p95 tick time", old_p95, avg_p95),
+              fmt_row("max_ms", "max tick time", old_max, avg_max),
           ])
 
           print("pr_body<<BASELINE_PR_BODY_EOF")
