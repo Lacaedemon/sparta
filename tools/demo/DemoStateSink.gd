@@ -27,6 +27,8 @@ var _full: bool = false
 var _dumped: Dictionary = {}   # tick -> true, so each snapshot is written at most once
 var _hash_stream: FileAccess = null   # per-tick state-hash stream (armed with the dump)
 var _hash_last_tick: int = -1         # last tick hashed, so a frozen tick writes one line only
+var _bit_ticks: Array = []            # ticks to dump raw bits for (SPARTA_DEMO_BITDUMP)
+var _bit_dump: FileAccess = null      # raw-bit position dump, opened only when armed
 
 
 ## Build an armed sink from the environment, or null when SPARTA_DEMO_STATE is unset/empty —
@@ -42,6 +44,12 @@ static func arm_from_env(tag: String) -> DemoStateSink:
 	sink._ticks = ticks
 	sink._full = OS.get_environment("SPARTA_DEMO_STATE_FULL") == "1"
 	sink._dir = OS.get_environment("SPARTA_DEMO_STATE_DIR")
+	# Raw-bit dumping is armed separately and is off by default: it rides on the state
+	# dump (same run, same directory) but answers a different question, and its lines are
+	# far larger than a hash line. The hash stream is what names the tick worth dumping,
+	# so the normal order is to read a stream comparison first and arm this second.
+	if OS.has_environment("SPARTA_DEMO_BITDUMP"):
+		sink._bit_ticks = DemoFrames.merge_ticks(OS.get_environment("SPARTA_DEMO_BITDUMP"), [])
 	if sink._dir == "":
 		sink._dir = OS.get_temp_dir().path_join("sparta_demo_state")
 	sink.name = "DemoStateSink_%s" % tag
@@ -56,6 +64,13 @@ func _ready() -> void:
 	if _hash_stream == null:
 		push_warning("[demo-state] could not open hash_stream.jsonl in %s (err %d)"
 				% [_dir, FileAccess.get_open_error()])
+	if not _bit_ticks.is_empty():
+		_bit_dump = DemoBitDump.open_dump(_dir)
+		if _bit_dump == null:
+			push_warning("[demo-state] could not open bit_dump.jsonl in %s (err %d)"
+					% [_dir, FileAccess.get_open_error()])
+		else:
+			print("[demo-state] raw-bit dump armed at ticks %s" % str(_bit_ticks))
 	print("[demo-state] state dump armed at ticks %s -> %s%s" % [
 		str(_ticks), _dir, " (full per-soldier arrays)" if _full else ""])
 	# Safety net: quit unconditionally when the budget expires, warning only when snapshots
@@ -77,6 +92,11 @@ func _physics_process(_delta: float) -> void:
 	if _hash_stream != null and tick != _hash_last_tick:
 		_hash_last_tick = tick
 		DemoStateHash.write_tick(_hash_stream, battle.get_tree(), tick, Replay.rng.state)
+		# Deliberately inside the hash guard, so the dump samples the SAME instant the
+		# hash did. Sampled anywhere else it could disagree with the stream that sent
+		# anyone looking at this tick, which would make it worse than no dump at all.
+		if _bit_dump != null and _bit_ticks.has(tick):
+			DemoStateHash.dump_tick(_bit_dump, battle.get_tree(), tick)
 	if _ticks.has(tick) and not _dumped.has(tick):
 		_dumped[tick] = true
 		_dump(battle, tick)
