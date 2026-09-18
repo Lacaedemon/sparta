@@ -162,10 +162,48 @@ func test_adjacent_float32_values_are_one_ulp_apart() -> void:
 			+ "difference rather than a different code path")
 
 
-func test_ulps_is_null_across_a_sign_change() -> void:
-	assert_null(DemoBitDump.ulps_between(DemoBitDump.f32_hex(1.0), DemoBitDump.f32_hex(-1.0)),
-			"IEEE754 is sign-magnitude, so a raw subtraction across zero would report a "
-			+ "huge distance that means nothing -- null says so instead")
+func test_float32_ulps_are_exact_across_a_sign_change() -> void:
+	# Refusing across a sign would drop the diagnostic for every negative coordinate, so
+	# float32 patterns are reordered rather than rejected. Built from raw bit patterns
+	# rather than from literals: this build does not preserve negative zero (measured --
+	# -0.0, 0.0 * -1.0 and 0.0 all encode to 00000000), so a hand-written -0.0 would not
+	# produce the sign-crossing pair this is about.
+	var smallest_negative := PackedByteArray()
+	smallest_negative.resize(4)
+	smallest_negative.encode_u32(0, 0x80000001)   # the float32 just below -0.0
+	var smallest_positive := PackedByteArray()
+	smallest_positive.resize(4)
+	smallest_positive.encode_u32(0, 0x00000001)   # the float32 just above +0.0
+	var neg_hex: String = DemoBitDump.f32_hex(smallest_negative.decode_float(0))
+	var pos_hex: String = DemoBitDump.f32_hex(smallest_positive.decode_float(0))
+	assert_ne(neg_hex, pos_hex, "the two denormals sit on opposite sides of zero")
+	# Three steps, not two: the run through zero is -denormal, -0.0, +0.0, +denormal,
+	# and both zeros are their own representable values.
+	assert_eq(DemoBitDump.ulps_between(neg_hex, pos_hex), 3,
+			"they are three representable steps apart THROUGH zero, which a raw "
+			+ "subtraction would have reported as roughly 2^31")
+
+
+func test_adjacent_negative_float32_values_are_one_ulp_apart() -> void:
+	# A same-sign negative pair: the sign contributes an identical offset to both
+	# patterns, so nulling here would have discarded the figure for half the number line.
+	var a_bits: int = PackedFloat32Array([-1.5]).to_byte_array().decode_u32(0)
+	var nudged := PackedByteArray()
+	nudged.resize(4)
+	nudged.encode_u32(0, a_bits + 1)
+	assert_eq(DemoBitDump.ulps_between(DemoBitDump.f32_hex(-1.5),
+			DemoBitDump.f32_hex(nudged.decode_float(0))), 1,
+			"two adjacent negative float32 values are one step apart")
+
+
+func test_float64_still_refuses_across_a_sign_change() -> void:
+	# float64's ordered key needs a full 64 unsigned bits, which a GDScript int cannot
+	# hold, so the narrower same-sign rule stands for that width.
+	assert_null(DemoBitDump.ulps_between(DemoBitDump.f64_hex(1.0), DemoBitDump.f64_hex(-1.0)),
+			"a float64 pair across zero reports null rather than a wrapped number")
+	assert_eq(DemoBitDump.ulps_between(DemoBitDump.f64_hex(-1.5),
+			DemoBitDump.f64_hex(-1.5 - pow(2.0, -52))), 1,
+			"but a same-sign float64 pair is still exact")
 
 
 func test_ulps_is_null_for_mismatched_widths_and_bad_input() -> void:
@@ -270,3 +308,16 @@ func test_adjacent_unit_positions_are_one_ulp_apart_end_to_end() -> void:
 	assert_true(out["divergent"], "one float32 step in a unit position is a divergence")
 	assert_eq(out["field"], "pos.x", "and is named as the unit position")
 	assert_eq(out["ulps"], 1, "and reads as ONE representable step, not as 2^29")
+
+
+func test_a_non_far_unit_with_no_soldiers_hashes_without_an_engine_error() -> void:
+	# The guard keys on emptiness, not on the FAR tier, and those are different sets:
+	# HUD.gd handles a below-FAR unit whose per-soldier arrays are not seeded yet. A guard
+	# keyed on tier alone would push the engine error in exactly this state, and no test
+	# covering only the FAR case would notice.
+	var u := _make_unit(1, Vector2(100, 100))
+	u._sim_soldier_pos = PackedVector2Array()
+	assert_ne(u.tier, FormationTier.FAR, "the fixture is deliberately below FAR tier")
+	var first: String = DemoStateHash.cheap_tick_hash(get_tree())
+	assert_eq(first.length(), 32, "an unseeded below-FAR unit still hashes to a digest")
+	assert_eq(DemoStateHash.cheap_tick_hash(get_tree()), first, "and does so repeatably")

@@ -27,7 +27,10 @@ class_name DemoBitDump
 ##
 ## The cheap hash widens a unit position to float64 before hashing it, and this dump
 ## deliberately does NOT copy that. The widening is lossless and bijective, so no
-## information is lost by dumping the narrower form -- but a distance in float64 steps
+## information is lost by dumping the narrower form (exactly so for every finite
+## value, including denormals and both zeros; a NaN payload across a widening is
+## implementation-defined, and a NaN position would be a far larger bug than this
+## tool is for) -- but a distance in float64 steps
 ## between two widened float32 values is not a measurement of anything. Two adjacent
 ## float32 values report about 2^29 float64 steps apart, which this file elsewhere
 ## tells the reader means "a different code path taken". Dumping the true width is
@@ -189,58 +192,74 @@ static func _by_uid(units: Array) -> Dictionary:
 ## when that number would not mean anything.
 ##
 ## The figure separates the two explanations this dump exists to tell apart: a gap of
-## one or two steps is rounding in the last place, while a large one is a different
-## code path taken.
+## one or two steps is rounding in the last place, while a large one is a different code
+## path taken.
 ##
-## Both float32 (8 hex chars) and float64 (16) are supported. float64 is the width that
-## matters most in practice -- the unit position is checked before the soldier array, so
-## it is usually the first field reported -- and an earlier version capped the parser
-## below 64 bits, which made the distance unconditionally null for exactly that case.
+## float32 (8 hex chars) is mapped through a monotonic ordering first, so the distance is
+## exact across the whole number line INCLUDING a sign change. IEEE754 is sign-magnitude,
+## so subtracting raw patterns across zero would count the entire negative range -- but
+## the fix is to reorder, not to refuse. Refusing would drop the diagnostic for every
+## negative coordinate, and a battlefield has those whenever the field origin is not at
+## zero; it would also drop -0.0 against +0.0, which is a classic cross-platform libm
+## artifact and reads here as the adjacent pair it is.
 ##
-## Null, rather than a number, whenever the arithmetic would not be a measurement:
-## a width that is not 8 or 16, unparseable input, or either value carrying the sign
-## bit. IEEE754 is sign-magnitude, so subtracting raw patterns across zero counts the
-## whole negative range; a negative tick time or coordinate is not what this is for, and
-## reporting a huge number there would read as a finding.
+## float64 (16) keeps the narrower same-sign rule: its ordered key needs a full 64
+## unsigned bits, which a GDScript int cannot hold without wrapping. Same-sign pairs are
+## still exact, because the sign contributes an identical offset to both patterns and
+## cancels in the subtraction. Nothing this dump writes is float64 today -- positions are
+## dumped at their true float32 width -- so this is the path a caller reaches only by
+## encoding a genuine GDScript scalar itself.
 static func ulps_between(hex_a: String, hex_b: String) -> Variant:
 	if hex_a.length() != hex_b.length():
 		return null
-	if hex_a.length() != 8 and hex_a.length() != 16:
+	if not _is_hex_pattern(hex_a) or not _is_hex_pattern(hex_b):
 		return null
-	if _sign_bit_set(hex_a) or _sign_bit_set(hex_b):
+	if hex_a.length() == 8:
+		return abs(_ordered_key32(hex_a) - _ordered_key32(hex_b))
+	if _sign_bit_set(hex_a) != _sign_bit_set(hex_b):
 		return null
-	var ia: int = _hex_to_int_le(hex_a)
-	var ib: int = _hex_to_int_le(hex_b)
-	if ia < 0 or ib < 0:
-		return null
-	return abs(ia - ib)
+	return abs(_hex_to_int_le(hex_a) - _hex_to_int_le(hex_b))
+
+
+## A float32 pattern mapped to a monotonically increasing key, so that subtracting two
+## keys counts representable steps in the ordinary way regardless of sign.
+##
+## The standard transform: a non-negative pattern moves above the midpoint, and a
+## negative one is reflected below it. Adjacent floats stay adjacent keys, and +0.0 and
+## -0.0 land one apart, which is what they are.
+static func _ordered_key32(hex: String) -> int:
+	var p: int = _hex_to_int_le(hex)
+	if (p & 0x80000000) != 0:
+		return 0xFFFFFFFF - p
+	return p + 0x80000000
 
 
 ## True when the little-endian pattern's sign bit is set -- the high bit of its LAST
-## byte. Read from the hex directly rather than from the parsed int, so a 16-char
-## pattern is classified before any parse that the sign bit itself would make negative.
+## byte. Callers validate the pattern first, so this is only ever read from hex it can
+## trust.
 static func _sign_bit_set(hex: String) -> bool:
-	if hex.length() < 2:
-		return false
-	var last: String = hex.substr(hex.length() - 2, 2)
-	if not _is_hex_byte(last):
-		return false
-	return (last.hex_to_int() & 0x80) != 0
+	return (hex.substr(hex.length() - 2, 2).hex_to_int() & 0x80) != 0
 
 
-## Little-endian hex to a non-negative int, or -1 when the string is not parseable as
-## one. Callers screen the sign bit first, so every value reaching here fits a signed
-## 64-bit int without wrapping.
+## A whole raw-bit pattern of a width this module encodes: 8 hex chars for float32, 16
+## for float64, every character a hex digit.
+static func _is_hex_pattern(hex: String) -> bool:
+	if hex.length() != 8 and hex.length() != 16:
+		return false
+	for i in range(0, hex.length(), 2):
+		if not _is_hex_byte(hex.substr(i, 2)):
+			return false
+	return true
+
+
+## Little-endian hex to int. Assumes _is_hex_pattern already passed; a 16-char pattern
+## with its top bit set wraps negative, which is harmless where it is used because two
+## same-sign patterns wrap identically and their difference survives.
 static func _hex_to_int_le(hex: String) -> int:
-	if hex.length() % 2 != 0 or hex.length() == 0 or hex.length() > 16:
-		return -1
 	var out: int = 0
 	var shift: int = 0
 	for i in range(0, hex.length(), 2):
-		var byte_hex: String = hex.substr(i, 2)
-		if not _is_hex_byte(byte_hex):
-			return -1
-		out |= byte_hex.hex_to_int() << shift
+		out |= hex.substr(i, 2).hex_to_int() << shift
 		shift += 8
 	return out
 
@@ -249,9 +268,9 @@ static func _hex_to_int_le(hex: String) -> int:
 ##
 ## String.is_valid_hex_number() is the obvious choice and the wrong one: it validates a
 ## signed numeric literal, so it accepts a leading + or -, and hex_to_int() then honours
-## that sign. The byte pair "-0" would pass and parse to 0, indistinguishable from a
-## real "00" -- so a corrupted dump byte would read as agreement rather than as
-## unparseable input, which is the one answer this must never give.
+## that sign. The byte pair "-0" would pass and parse to 0, indistinguishable from a real
+## "00" -- so a corrupted dump byte would read as agreement rather than as unparseable
+## input, which is the one answer this must never give.
 static func _is_hex_byte(pair: String) -> bool:
 	if pair.length() != 2:
 		return false
