@@ -65,12 +65,15 @@ def is_usable(value):
     (testing only <= 0) silently passes NaN, since every comparison against NaN is
     False.
     """
-    # bool is a subclass of int, so True would otherwise pass as a finite positive
-    # number and be read as a 1.0 ms measurement. json.load turns a literal `true`
-    # in the file into exactly that, so a corrupt baseline would be silently
-    # believed rather than replaced. A string or null raises TypeError from
-    # isfinite instead, which is loud and needs no guard of its own.
-    if isinstance(value, bool):
+    # Type first, because json.load will hand back whatever the file contains and no
+    # caller constrains it. bool is the dangerous one: it subclasses int, so True is
+    # finite and positive and would be read as a 1.0 ms measurement -- a literal
+    # `true` in the file believed rather than replaced. A string, null, list or dict
+    # would instead reach math.isfinite and raise a bare TypeError, which loses this
+    # module's own descriptive errors and the incumbent path's ability to self-heal.
+    # Answering False for all of them routes every corrupt type through the same two
+    # behaviours: replace a bad incumbent, raise a named error on a bad measurement.
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
         return False
     return math.isfinite(value) and value > 0
 
@@ -135,7 +138,7 @@ def evaluate(old_stats, new_stats, tolerance_pct=DEFAULT_TOLERANCE_PCT):
     ]
     if unmeasurable:
         raise ValueError(
-            "new stats are not finite and positive for: %s"
+            "new stats are not a finite positive number for: %s"
             % ", ".join(unmeasurable)
         )
 
@@ -157,8 +160,8 @@ def evaluate(old_stats, new_stats, tolerance_pct=DEFAULT_TOLERANCE_PCT):
         return {
             "write": True,
             "reason": (
-                "Committed baseline is unusable (non-finite or non-positive %s)"
-                " -- replacing it."
+                "Committed baseline is unusable -- %s is not a finite positive"
+                " number. Replacing it."
                 % ", ".join(unusable)
             ),
             "deltas": {},
