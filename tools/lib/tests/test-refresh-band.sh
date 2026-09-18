@@ -19,6 +19,8 @@
 #   9. tolerance_from_env(): an unset/empty/blank env value falls back to the module's
 #      own default, a supplied value wins, and a malformed one raises. This is what
 #      lets the workflow file carry no band literal to drift from this module's.
+#      'nan' and 'inf' are rejected explicitly: both parse as floats and slip past a
+#      plain non-negative test, then silently suppress every refresh forever.
 #   8. A corrupt committed baseline (a non-positive metric, which no real tick time
 #      ever is) is REPLACED rather than raising. Raising would wedge the weekly cron:
 #      every later run would hit the same bad file and nothing would replace it.
@@ -125,11 +127,22 @@ check("empty env takes the module default", tolerance_from_env("") == DEFAULT_TO
 check("blank env takes the module default", tolerance_from_env("   ") == DEFAULT_TOLERANCE_PCT)
 check("a supplied override wins", tolerance_from_env("1.5") == 1.5)
 check("an integer-looking override parses", tolerance_from_env("40") == 40.0)
-try:
-    tolerance_from_env("not-a-number")
-    check("a malformed override raises", False)
-except ValueError:
-    check("a malformed override raises", True)
+for bad_raw in ("not-a-number", "nan", "inf", "-inf"):
+    # nan and inf parse fine as floats and are NOT caught by a plain "< 0" test:
+    # nan loses every comparison and inf wins every one, so either silently turns
+    # the refresh off for good instead of failing.
+    try:
+        tolerance_from_env(bad_raw)
+        check("override %r raises" % bad_raw, False)
+    except ValueError:
+        check("override %r raises" % bad_raw, True)
+
+for bad_tol in (float("nan"), float("inf")):
+    try:
+        evaluate(stats(100.0, 100.0, 100.0), stats(200.0, 100.0, 100.0), bad_tol)
+        check("evaluate rejects a %s band" % bad_tol, False)
+    except ValueError:
+        check("evaluate rejects a %s band" % bad_tol, True)
 
 # 7. Bad input fails fast rather than deciding quietly.
 try:

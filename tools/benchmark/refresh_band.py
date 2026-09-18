@@ -18,6 +18,8 @@ Only the decision lives here, kept out of the workflow's inline script so it
 can be unit-tested directly instead of exercised once a week by cron.
 """
 
+import math
+
 # Upper bound of the 20-30% run-to-run swing between functionally identical builds
 # on a shared CI runner, documented in tools/perf/README.md. The UPPER bound, not
 # the lower one: a band set at 20 would still pass through noise in the 20-30%
@@ -45,7 +47,14 @@ def tolerance_from_env(raw):
     """
     if raw is None or not raw.strip():
         return DEFAULT_TOLERANCE_PCT
-    return float(raw)
+    value = float(raw)
+    # float() happily accepts "nan" and "inf", and neither is caught downstream:
+    # nan fails every comparison, so abs(change) > nan is always False, and inf is
+    # never exceeded. Either one silently suppresses every refresh forever, which is
+    # the feature quietly doing nothing rather than failing. Reject them here.
+    if not math.isfinite(value):
+        raise ValueError("tolerance must be a finite number, got %r" % (raw,))
+    return value
 
 
 def pct_change(old_value, new_value):
@@ -74,8 +83,13 @@ def evaluate(old_stats, new_stats, tolerance_pct=DEFAULT_TOLERANCE_PCT):
     refresh-worthy as a big regression: the baseline tracks runner speed in
     both directions, and suppressing only one would ratchet it.
     """
-    if tolerance_pct < 0:
-        raise ValueError("tolerance_pct must be non-negative, got %r" % (tolerance_pct,))
+    # isfinite first: nan fails every comparison, so a bare "< 0" test lets it through
+    # and it then suppresses every refresh silently.
+    if not math.isfinite(tolerance_pct) or tolerance_pct < 0:
+        raise ValueError(
+            "tolerance_pct must be a finite non-negative number, got %r"
+            % (tolerance_pct,)
+        )
 
     if old_stats is None:
         return {
