@@ -111,6 +111,7 @@ jobs:
           # exercises it on every PR) rather than inline here, where only cron would run it.
           sys.path.insert(0, "tools/benchmark")
           from refresh_band import (
+              METRICS,
               evaluate,
               format_delta_table,
               is_usable,
@@ -132,29 +133,42 @@ jobs:
 
           run_url = os.environ["RUN_URL"]
           old_baseline_path = "tools/benchmark/baseline.json"
+
+          # The try covers the READ ONLY. It deliberately does not wrap the shape check
+          # below: a KeyError or TypeError raised while picking metrics out of a parsed
+          # object could just as easily be this script's own typo as the file's
+          # corruption, and absorbing it as "no usable baseline" would hide a script bug
+          # behind the self-heal path -- the opposite of the fail-fast split the except
+          # list is chosen for.
+          #
+          # Catch by base class where the subclasses are interchangeable, because
+          # enumerating them leaves gaps: json.JSONDecodeError and UnicodeDecodeError are
+          # siblings under ValueError, not parent and child, so a truncation landing
+          # mid-way through a multi-byte character escapes a catch naming only the
+          # former. Any escape wedges the weekly cron, because the bad file stays
+          # committed and every later run fails on it identically.
+          #
+          # FileNotFoundError specifically, NOT OSError: a missing file is the ordinary
+          # bootstrap case, while a PermissionError or an I/O fault is an infrastructure
+          # problem that should fail the run loudly rather than be laundered into a
+          # routine-looking refresh PR.
           try:
               with open(old_baseline_path) as f:
                   old = json.load(f)
-              old_mean, old_p95, old_max = (
-                  old["stats"]["mean_ms"], old["stats"]["p95_ms"], old["stats"]["max_ms"],
-              )
-          # Catch by base class where the subclasses are interchangeable, because
-          # enumerating them leaves gaps: json.JSONDecodeError and
-          # UnicodeDecodeError are siblings under ValueError, not parent and child, so
-          # a truncation landing mid-way through a multi-byte character escapes a catch
-          # that names only the former. Any escape wedges the weekly cron, because the
-          # bad file stays committed and every later run fails on it identically --
-          # exactly what refresh_band's unusable-incumbent path exists to prevent. So an
-          # unreadable baseline is treated like an absent one: replaced.
-          #
-          # FileNotFoundError specifically, NOT OSError: a missing file is the ordinary
-          # bootstrap case, while a PermissionError or an I/O fault is an
-          # infrastructure problem that should fail the run loudly rather than be
-          # laundered into a routine-looking refresh PR. ValueError covers malformed
-          # JSON and undecodable bytes together, TypeError covers a "stats" that
-          # parsed as something unsubscriptable, and KeyError a missing metric.
-          except (FileNotFoundError, ValueError, TypeError, KeyError):
-              old_mean = old_p95 = old_max = None
+          except (FileNotFoundError, ValueError):
+              old = None
+
+          # Shape check, outside the try. A file whose shape is wrong has no usable
+          # incumbent, exactly like an absent one. Individual VALUES are not judged here:
+          # refresh_band.is_usable owns that, and routing a present-but-corrupt value
+          # through it is what makes the reported reason say the baseline was unusable
+          # rather than that none was committed. METRICS comes from the module so this
+          # cannot drift from the keys evaluate actually reads.
+          old_stats = None
+          if isinstance(old, dict):
+              stats = old.get("stats")
+              if isinstance(stats, dict) and all(m in stats for m in METRICS):
+                  old_stats = {m: stats[m] for m in METRICS}
 
           base = reports[0]
           comment = (
@@ -197,9 +211,6 @@ jobs:
           # Only rewrite the baseline when the change clears the noise band. Below it the
           # measured delta is indistinguishable from runner drift, so leaving the committed
           # file alone means open-sync-pr sees no change and opens no PR.
-          old_stats = None
-          if old_mean is not None:
-              old_stats = {"mean_ms": old_mean, "p95_ms": old_p95, "max_ms": old_max}
           # Compare the ROUNDED values that would actually be written, so a delta that
           # survives the band cannot round away to an identical file.
           decision = evaluate(
@@ -232,21 +243,27 @@ jobs:
           # Percent change comes from the decision's own deltas rather than being
           # recomputed here: one implementation of the arithmetic, which is why the
           # band module exists at all. Absent only when there was no usable baseline.
-          def fmt_row(metric, name, old_v, new_v):
-              if old_v is None:
-                  old_s = "n/a"
-              elif not is_usable(old_v):
-                  # Flag the corrupt reading in the cell itself. Rendered bare it reads
-                  # as an ordinary historical measurement, and the row carries no other
-                  # signal that this is the value that invalidated the whole comparison.
-                  # Uses the module's own test rather than re-deriving one: a local
-                  # `old_v <= 0` would miss NaN, which is exactly the value most in
-                  # need of the marker and the one that renders most innocently.
+          def fmt_row(metric, name, new_v):
+              # Reads old_stats directly rather than taking the value as an argument, so
+              # "no baseline at all" and "a baseline whose value is unusable" stay
+              # distinguishable. Passing a bare value collapses them: a null metric in a
+              # present file is indistinguishable from an absent file once it is just None.
+              if old_stats is None:
+                  return f"| {name} | n/a | {new_v:.3f} ms | n/a |"
+              old_v = old_stats[metric]
+              if not is_usable(old_v):
+                  # Flag the corrupt reading in the cell itself. Rendered bare it reads as
+                  # an ordinary historical measurement, and the row carries no other signal
+                  # that this is the value that invalidated the whole comparison. Uses the
+                  # module's own test rather than re-deriving one: a local `old_v <= 0`
+                  # would miss NaN, the value most in need of the marker and the one that
+                  # renders most innocently.
                   #
-                  # repr, not a float format: an unusable value may be a string, a
-                  # bool or null, and ":.3f" raises on all three -- which would crash
-                  # the step while building the PR body that explains the corruption,
-                  # after evaluate had already handled it.
+                  # The format may raise: ":.3f" rejects a string and None. It does NOT
+                  # reject a bool, which formats as 1.000 through int -- that case is
+                  # caught by is_usable above, not by this except, and still gets the
+                  # marker. repr is the fallback so a corrupt value is still named rather
+                  # than crashing the step that is building the body explaining it.
                   try:
                       old_s = f"{old_v:.3f} ms (unusable)"
                   except (TypeError, ValueError):
@@ -260,9 +277,9 @@ jobs:
           table = "\n".join([
               "| metric | old baseline | new baseline (avg) | change |",
               "| --- | --- | --- | --- |",
-              fmt_row("mean_ms", "mean tick time", old_mean, avg_mean),
-              fmt_row("p95_ms", "p95 tick time", old_p95, avg_p95),
-              fmt_row("max_ms", "max tick time", old_max, avg_max),
+              fmt_row("mean_ms", "mean tick time", avg_mean),
+              fmt_row("p95_ms", "p95 tick time", avg_p95),
+              fmt_row("max_ms", "max tick time", avg_max),
           ])
 
           print("pr_body<<BASELINE_PR_BODY_EOF")
