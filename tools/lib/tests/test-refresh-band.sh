@@ -14,24 +14,26 @@
 #   5. No committed baseline: always writes, with no deltas to report.
 #   6. A custom tolerance is honoured, so the band is caller-configurable rather
 #      than baked in.
-#   7. Bad input fails fast: a negative tolerance and a stats object missing a
-#      metric both raise rather than silently deciding.
-#   8. A corrupt committed baseline (a non-positive OR non-finite metric, which no real
-#      tick time ever is) is REPLACED rather than raising. Raising would wedge the
-#      weekly cron: every later run would hit the same bad file and nothing would
-#      replace it. NaN matters specifically: json.load accepts a bare NaN and
-#      `nan <= 0` is False, so a non-positive test alone would let it through and
-#      suppress every future refresh.
-#   9. A non-finite or non-positive NEW measurement raises instead, since writing
-#      it would poison the committed baseline for every later run.
-#   10. tolerance_from_env(): an unset/empty/blank env value falls back to the module's
+#   7. A corrupt committed baseline (a non-positive, non-finite, or wrongly-typed
+#      metric, which no real tick time ever is) is REPLACED rather than raising.
+#      Raising would wedge the weekly cron: every later run would hit the same bad
+#      file and nothing would replace it. NaN matters specifically: json.load accepts
+#      a bare NaN and `nan <= 0` is False, so a non-positive test alone would let it
+#      through and suppress every future refresh.
+#   8. A NEW measurement that is not a finite positive number RAISES instead, since
+#      writing it would poison the committed baseline for every later run. Checked
+#      before the no-baseline shortcut, so the very first baseline is guarded too.
+#   9. is_usable() is the single definition all three sites share: finite, positive,
+#      and an actual number. bool matters most, since it subclasses int and a literal
+#      `true` would otherwise read as a 1.0 ms measurement; a string or null would
+#      raise a bare TypeError out of isfinite.
+#  10. tolerance_from_env(): an unset/empty/blank env value falls back to the module's
 #      own default, a supplied value wins, and a malformed one raises. This is what
 #      lets the workflow file carry no band literal to drift from this module's.
-#      is_usable() also rejects any non-number. bool matters most, since it
-#      subclasses int and a literal `true` would read as a 1.0 ms measurement; a
-#      string or null would otherwise raise a bare TypeError out of isfinite.
 #      'nan' and 'inf' are rejected explicitly: both parse as floats and slip past a
 #      plain non-negative test, then silently suppress every refresh forever.
+#  11. Bad input fails fast: a negative tolerance and a stats object missing a metric
+#      both raise rather than silently deciding.
 #
 # The real refresh case this was built for is a +6.1%/+5.9%/+7.7% week, which
 # case 1 reproduces exactly against a 20% band -- it is suppressed at the
@@ -152,7 +154,7 @@ def run_cases():
         DEFAULT_TOLERANCE_PCT == 30.0,
     )
 
-    # 8. A corrupt baseline is replaced, not raised on -- otherwise the weekly cron wedges.
+    # 7. A corrupt baseline is replaced, not raised on -- otherwise the weekly cron wedges.
     for bad in (0.0, -1.0, float("nan"), float("inf")):
         # Guarded: a regression here raises, and an unguarded raise would abort the whole
         # script, skipping every later case and reporting a traceback instead of a label.
@@ -167,7 +169,8 @@ def run_cases():
               "is not a finite positive" in r["reason"])
         check("non-positive incumbent (%s) reports no deltas" % bad, r["deltas"] == {})
 
-    # 9. A non-finite or non-positive NEW measurement is a broken benchmark, not a stale baseline, so it
+    # 8. A non-finite or non-positive NEW measurement is a broken benchmark, not a
+    #    stale baseline, so it
     #     raises rather than being written into the committed file.
     for bad_new in (float("nan"), float("inf"), 0.0, -5.0):
         try:
@@ -176,15 +179,36 @@ def run_cases():
         except ValueError:
             check("unusable new stat (%s) raises" % bad_new, True)
 
-        # is_usable is the one definition all three sites share, so pin it directly.
+    # The bootstrap path is validated too. It is the one that writes with no
+    # comparison table to make a bad value visible, so checking the measurement
+    # only after the no-baseline shortcut would leave the FIRST baseline the least
+    # guarded value in the system.
+    for bad_new in (float("nan"), 0.0, -3.0, "45", None):
+        try:
+            evaluate(None, stats(bad_new, 50.0, 58.0), 30.0)
+            check("bootstrap rejects an unusable measurement (%r)" % bad_new, False)
+        except ValueError:
+            check("bootstrap rejects an unusable measurement (%r)" % bad_new, True)
+    check_value("bootstrap still writes a good first baseline",
+                lambda: evaluate(None, stats(45.0, 50.0, 58.0), 30.0)["write"], True)
+
+    # 9. is_usable is the one definition all three sites share, so pin it directly.
     for ok_v in (0.001, 45.107, 1e9):
         check_value("is_usable(%s) is True" % ok_v, lambda v=ok_v: is_usable(v), True)
     for bad_v in (0.0, -1.0, float("nan"), float("inf"), float("-inf"), True, False,
                   "45.1", None, [], {}):
         check_value("is_usable(%s) is False" % bad_v, lambda v=bad_v: is_usable(v), False)
 
-# 10. tolerance_from_env resolves the band, so the workflow needs no literal of its own.
-    #    A scheduled run passes nothing; only a dispatch override passes a number.
+    # The default parameter itself: every other call passes a band explicitly, so
+    # without this nothing would notice DEFAULT_TOLERANCE_PCT being wired up wrong.
+    r = evaluate(stats(100.0, 100.0, 100.0), stats(125.0, 100.0, 100.0))
+    check("evaluate default band suppresses a 25% change", r["write"] is False)
+    check("evaluate default band reports 30.0", r["tolerance_pct"] == 30.0)
+    r = evaluate(stats(100.0, 100.0, 100.0), stats(135.0, 100.0, 100.0))
+    check("evaluate default band refreshes a 35% change", r["write"] is True)
+
+    # 10. tolerance_from_env resolves the band, so the workflow needs no literal of
+    #     its own. A scheduled run passes nothing; only a dispatch override does.
     check_value("unset env takes the module default",
                 lambda: tolerance_from_env(None), DEFAULT_TOLERANCE_PCT)
     check_value("empty env takes the module default",
@@ -210,7 +234,7 @@ def run_cases():
         except ValueError:
             check("evaluate rejects a %s band" % bad_tol, True)
 
-    # 7. Bad input fails fast rather than deciding quietly.
+    # 11. Bad input fails fast rather than deciding quietly.
     try:
         evaluate(stats(1.0, 1.0, 1.0), stats(1.0, 1.0, 1.0), -1.0)
         check("negative tolerance raises", False)

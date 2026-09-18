@@ -112,6 +112,28 @@ def evaluate(old_stats, new_stats, tolerance_pct=DEFAULT_TOLERANCE_PCT):
             % (tolerance_pct,)
         )
 
+    # The NEW measurement is validated before anything else, including before the
+    # no-baseline shortcut below. A bad measurement is equally unfit to commit whether
+    # or not a baseline already exists, and the bootstrap path is the one that writes
+    # it with no comparison table to make it visible -- so checking it after that
+    # shortcut would leave the first baseline the least guarded value in the system.
+    #
+    # A tick time is never legitimately zero, negative, or non-finite, so such a value
+    # means the benchmark run itself went wrong. This raises rather than being absorbed
+    # like a corrupt incumbent further down: the measurement is regenerated every run,
+    # while a committed baseline is not.
+    new_missing = [m for m in METRICS if m not in new_stats]
+    if new_missing:
+        raise KeyError(
+            "new stats missing required metric(s): %s" % ", ".join(new_missing)
+        )
+    unmeasurable = [m for m in METRICS if not is_usable(new_stats[m])]
+    if unmeasurable:
+        raise ValueError(
+            "new stats are not a finite positive number for: %s"
+            % ", ".join(unmeasurable)
+        )
+
     if old_stats is None:
         return {
             "write": True,
@@ -122,25 +144,9 @@ def evaluate(old_stats, new_stats, tolerance_pct=DEFAULT_TOLERANCE_PCT):
             "tolerance_pct": tolerance_pct,
         }
 
-    missing = [m for m in METRICS if m not in old_stats or m not in new_stats]
+    missing = [m for m in METRICS if m not in old_stats]
     if missing:
         raise KeyError("stats missing required metric(s): %s" % ", ".join(missing))
-
-    # A new measurement that is not a finite POSITIVE number means the benchmark
-    # itself went wrong: a tick time is never legitimately zero or negative, any more
-    # than it is NaN. Writing one would poison the committed baseline for every later
-    # run, so this raises rather than being absorbed like a corrupt incumbent below.
-    # Deliberately the same bar as the incumbent check further down -- a value too
-    # corrupt to compare against is also too corrupt to commit.
-    unmeasurable = [
-        m for m in METRICS
-        if not is_usable(new_stats[m])
-    ]
-    if unmeasurable:
-        raise ValueError(
-            "new stats are not a finite positive number for: %s"
-            % ", ".join(unmeasurable)
-        )
 
     # An incumbent metric that is non-finite or non-positive cannot anchor a percent
     # change, and a tick time is never legitimately either, so the committed file is
