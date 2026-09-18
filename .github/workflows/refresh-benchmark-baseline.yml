@@ -8,6 +8,14 @@
 # that two functionally-identical runs can swing ~20% on their own, so averaging guards
 # against a false-positive baseline the same way a manual refresh would, applied here
 # automatically instead of relying on someone noticing drift and re-running it by hand.
+#
+# Averaging narrows that swing but does not remove it, so the refresh also applies a
+# TOLERANCE BAND (REFRESH_TOLERANCE_PCT, default 20% -- the documented swing): the baseline
+# is only rewritten when the largest metric change clears the band. Below it, the measured
+# delta cannot be told apart from runner noise, so opening a PR would ask a reviewer a
+# question the evidence cannot answer, and repeatedly doing so trains the reflex to wave
+# such PRs through. A suppressed refresh still writes a job summary, so 'no PR this week'
+# stays distinguishable from a broken workflow. See tools/benchmark/refresh_band.py.
 
 name: Refresh benchmark baseline
 
@@ -35,6 +43,10 @@ env:
   # under.
   WARMUP_TICKS: 60
   MEASURE_TICKS: 300
+  # Largest metric change that still counts as runner noise. Default matches the
+  # run-to-run swing documented above and in tools/perf/README.md; override per-run
+  # via workflow_dispatch by editing this value.
+  REFRESH_TOLERANCE_PCT: '20'
 
 jobs:
   refresh-baseline:
@@ -76,12 +88,18 @@ jobs:
         id: refresh
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REFRESH_TOLERANCE_PCT: ${{ env.REFRESH_TOLERANCE_PCT }}
         run: |
           set -euo pipefail
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           import os
           import sys
+
+          # The band decision lives in a testable module (tools/lib/tests/test-refresh-band.sh
+          # exercises it on every PR) rather than inline here, where only cron would run it.
+          sys.path.insert(0, "tools/benchmark")
+          from refresh_band import evaluate, format_delta_table
 
           reports = [json.load(open(f"/tmp/benchmark-run{i}.json")) for i in (1, 2)]
           for i, r in enumerate(reports, 1):
@@ -145,6 +163,37 @@ jobs:
                   "max_ms": round(avg_max, 3),
               },
           }
+          # Only rewrite the baseline when the change clears the noise band. Below it the
+          # measured delta is indistinguishable from runner drift, so leaving the committed
+          # file alone means open-sync-pr sees no change and opens no PR.
+          old_stats = None
+          if old_mean is not None:
+              old_stats = {"mean_ms": old_mean, "p95_ms": old_p95, "max_ms": old_max}
+          # Compare the ROUNDED values that would actually be written, so a delta that
+          # survives the band cannot round away to an identical file.
+          decision = evaluate(
+              old_stats,
+              new_baseline["stats"],
+              float(os.environ["REFRESH_TOLERANCE_PCT"]),
+          )
+
+          summary_lines = ["## Benchmark baseline refresh", "", decision["reason"], ""]
+          if decision["deltas"]:
+              summary_lines += [format_delta_table(decision["deltas"]), ""]
+          summary_lines.append("Band: %.1f%% (REFRESH_TOLERANCE_PCT). Source run: %s"
+                               % (decision["tolerance_pct"], run_url))
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_path:
+              with open(summary_path, "a") as f:
+                  f.write("\n".join(summary_lines) + "\n")
+          # stderr, not stdout -- stdout is redirected into $GITHUB_OUTPUT.
+          print(decision["reason"], file=sys.stderr)
+
+          print("refreshed=%s" % ("true" if decision["write"] else "false"))
+          if not decision["write"]:
+              # Nothing written, nothing for open-sync-pr to find. Done.
+              sys.exit(0)
+
           with open(old_baseline_path, "w") as f:
               json.dump(new_baseline, f, indent=2)
               f.write("\n")
@@ -164,10 +213,19 @@ jobs:
 
           print("pr_body<<BASELINE_PR_BODY_EOF")
           print(table)
+          print()
+          # Name the metric that cleared the band, so the reviewer sees the trigger
+          # rather than having to work out which number crossed which threshold.
+          print(decision["reason"])
           print("BASELINE_PR_BODY_EOF")
           PY
 
       - name: Open PR if the baseline changed
+        # Belt and braces: a suppressed refresh leaves baseline.json untouched, so
+        # open-sync-pr would find nothing to push anyway. Gating explicitly keeps the
+        # intent readable and stops a future edit to the write path from silently
+        # reviving the weekly noise PR.
+        if: steps.refresh.outputs.refreshed == 'true'
         uses: Morrison-Lab/gha/open-sync-pr@v2
         with:
           branch: automated/refresh-benchmark-baseline
