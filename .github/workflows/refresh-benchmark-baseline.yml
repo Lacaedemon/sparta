@@ -114,6 +114,7 @@ jobs:
               METRICS,
               evaluate,
               format_delta_table,
+              format_metric,
               is_usable,
               tolerance_from_env,
           )
@@ -285,28 +286,16 @@ jobs:
               # "no baseline at all" and "a baseline whose value is unusable" stay
               # distinguishable. Passing a bare value collapses them: a null metric in a
               # present file is indistinguishable from an absent file once it is just None.
+              #
+              # Rendering is refresh_band.format_metric, not an inline format here. A
+              # corrupt value that crashes the FORMATTING fails the run exactly as one
+              # that crashes the decision does, and it fails after the corrected baseline
+              # has been written but before this step reports success -- wedging the cron
+              # on the very file it just repaired. The module is the part with tests.
               if old_stats is None:
-                  return f"| {name} | n/a | {new_v:.3f} ms | n/a |"
-              old_v = old_stats[metric]
-              if not is_usable(old_v):
-                  # Flag the corrupt reading in the cell itself. Rendered bare it reads as
-                  # an ordinary historical measurement, and the row carries no other signal
-                  # that this is the value that invalidated the whole comparison. Uses the
-                  # module's own test rather than re-deriving one: a local `old_v <= 0`
-                  # would miss NaN, the value most in need of the marker and the one that
-                  # renders most innocently.
-                  #
-                  # The format may raise: ":.3f" rejects a string and None. It does NOT
-                  # reject a bool, which formats as 1.000 through int -- that case is
-                  # caught by is_usable above, not by this except, and still gets the
-                  # marker. repr is the fallback so a corrupt value is still named rather
-                  # than crashing the step that is building the body explaining it.
-                  try:
-                      old_s = f"{old_v:.3f} ms (unusable)"
-                  except (TypeError, ValueError):
-                      old_s = f"{old_v!r} (unusable)"
+                  old_s = "n/a"
               else:
-                  old_s = f"{old_v:.3f} ms"
+                  old_s = format_metric(old_stats[metric])
               delta = decision["deltas"].get(metric)
               pct = "n/a" if delta is None else f"{delta:+.1f}%"
               return f"| {name} | {old_s} | {new_v:.3f} ms | {pct} |"

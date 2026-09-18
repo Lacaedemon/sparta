@@ -31,6 +31,10 @@ DEFAULT_TOLERANCE_PCT = 30.0
 # Reporting order for the metrics carried in a baseline's "stats" object.
 METRICS = ("mean_ms", "p95_ms", "max_ms")
 
+# Longest repr rendered for an unusable value before it is elided. A corrupt int can
+# repr to hundreds of digits, which would drown the table it is meant to annotate.
+UNUSABLE_REPR_MAX = 24
+
 METRIC_LABELS = {
     "mean_ms": "mean tick time",
     "p95_ms": "p95 tick time",
@@ -228,6 +232,30 @@ def evaluate(old_stats, new_stats, tolerance_pct=DEFAULT_TOLERANCE_PCT,
         "largest_pct": largest_pct,
         "tolerance_pct": tolerance_pct,
     }
+
+
+def format_metric(value):
+    """Render one metric for a table cell, marking it when it is not usable.
+
+    Lives here rather than in the workflow's inline script for the reason the whole
+    module does: the inline script has no test coverage, so a corrupt value that
+    crashes the FORMATTING crashes the run just as surely as one that crashes the
+    decision -- and after the corrected baseline has been written but before the
+    step reports success, which wedges the cron on the very file it just fixed.
+
+    The float format raises on a string and on None, and OverflowError on an int
+    too large to convert to float. It does NOT raise on a bool, which renders as
+    1.000 through int; that value is unusable all the same, and still gets marked.
+    """
+    usable = is_usable(value)
+    try:
+        rendered = "%.3f ms" % value
+    except (TypeError, ValueError, OverflowError):
+        rendered = repr(value)
+        if len(rendered) > UNUSABLE_REPR_MAX:
+            head = UNUSABLE_REPR_MAX - 9
+            rendered = rendered[:head] + "..." + rendered[-6:]
+    return rendered if usable else rendered + " (unusable)"
 
 
 def format_delta_table(deltas):

@@ -70,6 +70,7 @@ from refresh_band import (
     DEFAULT_TOLERANCE_PCT,
     evaluate,
     format_delta_table,
+    format_metric,
     is_usable,
     tolerance_from_env,
 )
@@ -113,6 +114,11 @@ def run_cases():
     instead of naming what broke. The caller below turns that into a labelled
     failure while preserving the non-zero exit.
     """
+    def label(v):
+        # A huge int reprs to hundreds of digits, which would drown the output.
+        text = repr(v)
+        return text if len(text) <= 24 else text[:12] + "..." + text[-6:]
+
     # 1. The real week that motivated the band: +6.1% / +5.9% / +7.7% against 20%.
     old = stats(45.107, 50.389, 58.287)
     new = stats(47.868, 53.377, 62.770)
@@ -215,11 +221,6 @@ def run_cases():
     check("two bad metrics read 'are not'", "mean_ms, p95_ms are not" in r["reason"])
 
     # 9. is_usable is the one definition all three sites share, so pin it directly.
-    def label(v):
-        # A huge int reprs to hundreds of digits, which would drown the output.
-        text = repr(v)
-        return text if len(text) <= 24 else text[:12] + "..." + text[-6:]
-
     for ok_v in (0.001, 45.107, 1e9):
         check_value("is_usable(%s) is True" % label(ok_v), lambda v=ok_v: is_usable(v), True)
     for bad_v in (0.0, -1.0, float("nan"), float("inf"), float("-inf"), True, False,
@@ -233,6 +234,29 @@ def run_cases():
     check("evaluate default band reports 30.0", r["tolerance_pct"] == 30.0)
     r = evaluate(stats(100.0, 100.0, 100.0), stats(135.0, 100.0, 100.0))
     check("evaluate default band refreshes a 35% change", r["write"] is True)
+
+    # format_metric renders the table cell. It is tested HERE rather than left inline
+    # in the workflow because a corrupt value that crashes the formatting fails the
+    # run after the corrected baseline has been written and before the step reports
+    # success -- wedging the cron on the file it just repaired. A huge int is the
+    # case that did exactly that: is_usable survives it, "%.3f" does not.
+    check_value("a usable value renders plainly",
+                lambda: format_metric(45.107), "45.107 ms")
+    for bad_v, expect in (
+        (0.0, "0.000 ms (unusable)"),
+        (-1.0, "-1.000 ms (unusable)"),
+        (True, "1.000 ms (unusable)"),
+        ("x", "'x' (unusable)"),
+        (None, "None (unusable)"),
+    ):
+        check_value("format_metric(%s)" % label(bad_v),
+                    lambda v=bad_v: format_metric(v), expect)
+    for bad_v in (float("nan"), float("inf")):
+        check_value("format_metric(%s) is marked unusable" % bad_v,
+                    lambda v=bad_v: format_metric(v).endswith("(unusable)"), True)
+    huge = format_metric(10 ** 400)
+    check("a huge int renders without raising", huge.endswith("(unusable)"))
+    check("a huge int is elided rather than printed in full", len(huge) < 60)
 
     # 10. tolerance_from_env resolves the band, so the workflow needs no literal of
     #     its own. A scheduled run passes nothing; only a dispatch override does.

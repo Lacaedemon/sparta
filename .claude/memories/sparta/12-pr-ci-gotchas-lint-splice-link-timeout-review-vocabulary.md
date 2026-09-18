@@ -843,10 +843,10 @@ To review the current head without waiting:
 
 ## `tools/benchmark/baseline.json` does not drive the benchmark verdict
 
-The committed baseline is **informational only**. `benchmark.yml`'s pass/fail
-comes from a same-run comparison of the PR's merged tree against the base
-branch's own tip -- both measured in the one run, so there is nothing to go
-stale.
+The committed baseline is **informational only**.
+`benchmark.yml`'s pass/fail comes from a same-run comparison of the PR's
+merged tree against the base branch's own tip -- both measured in the one run,
+so there is nothing to go stale.
 
 Read the logic, not the header comments, because the file's own `_comment`
 and the workflow header are both easy to skim into the opposite conclusion:
@@ -862,14 +862,15 @@ Two consequences worth keeping.
 
 A drifting or stale baseline costs **reviewer attention, not guard
 precision** -- it cannot make the regression check more or less sensitive,
-because the check never reads it. An issue was filed in 2026-09 arguing the
-opposite, taking the framing from the workflow's header comment without
-checking it against the computation underneath; the fix that followed was
-scoped to the wrong harm until the code was actually read. A comment
-describing behaviour is a claim.
+because the check never reads it.
+An issue was filed in 2026-09 arguing the opposite, taking the framing from
+the workflow's header comment without checking it against the computation
+underneath; the fix that followed was scoped to the wrong harm until the code
+was actually read.
+A comment describing behaviour is a claim.
 
 And a benchmark comment's **primary** table is the one that means something.
 The secondary table compares against the committed baseline, so a large
 percentage there can be entirely an artifact of baseline drift while the PR
-itself changed nothing. Quote the base-tip row when reporting a benchmark
-result.
+itself changed nothing.
+Quote the base-tip row when reporting a benchmark result.
