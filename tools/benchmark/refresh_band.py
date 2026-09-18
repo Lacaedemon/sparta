@@ -65,6 +65,13 @@ def is_usable(value):
     (testing only <= 0) silently passes NaN, since every comparison against NaN is
     False.
     """
+    # bool is a subclass of int, so True would otherwise pass as a finite positive
+    # number and be read as a 1.0 ms measurement. json.load turns a literal `true`
+    # in the file into exactly that, so a corrupt baseline would be silently
+    # believed rather than replaced. A string or null raises TypeError from
+    # isfinite instead, which is loud and needs no guard of its own.
+    if isinstance(value, bool):
+        return False
     return math.isfinite(value) and value > 0
 
 

@@ -27,6 +27,8 @@
 #   10. tolerance_from_env(): an unset/empty/blank env value falls back to the module's
 #      own default, a supplied value wins, and a malformed one raises. This is what
 #      lets the workflow file carry no band literal to drift from this module's.
+#      is_usable() also rejects a bool, since bool subclasses int and json.load turns
+#      a literal `true` into one -- otherwise it would read as a 1.0 ms measurement.
 #      'nan' and 'inf' are rejected explicitly: both parse as floats and slip past a
 #      plain non-negative test, then silently suppress every refresh forever.
 #
@@ -173,7 +175,7 @@ def run_cases():
         # is_usable is the one definition all three sites share, so pin it directly.
     for ok_v in (0.001, 45.107, 1e9):
         check_value("is_usable(%s) is True" % ok_v, lambda v=ok_v: is_usable(v), True)
-    for bad_v in (0.0, -1.0, float("nan"), float("inf"), float("-inf")):
+    for bad_v in (0.0, -1.0, float("nan"), float("inf"), float("-inf"), True, False):
         check_value("is_usable(%s) is False" % bad_v, lambda v=bad_v: is_usable(v), False)
 
 # 10. tolerance_from_env resolves the band, so the workflow needs no literal of its own.
