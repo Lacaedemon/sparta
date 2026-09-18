@@ -17,11 +17,22 @@ class_name DemoBitDump
 ##
 ## Every float is the hex of its RAW BITS, never formatted text. A last-ulp difference
 ## is precisely what this exists to catch, and any decimal rendering can round two
-## different values into the same string. Unit positions are float64 (GDScript scalars,
-## matching DemoStateHash._float_bytes); soldier positions are float32 (Vector2
-## components), matching the PackedVector2Array bytes the cheap hash consumes. That
-## pairing is deliberate: the dump must describe exactly what the hash hashed, or a
-## divergence the stream reports could be missing from the dump entirely.
+## different values into the same string.
+##
+## EVERY position is dumped at float32, unit and soldier alike, because that is the
+## precision the data actually has: Vector2 components are real_t, which is 32-bit in
+## a standard build (measured on Godot 4.7 win64 -- a Node2D position component does
+## not compare equal to the float64 literal it was assigned, and round-trips exactly
+## through float32).
+##
+## The cheap hash widens a unit position to float64 before hashing it, and this dump
+## deliberately does NOT copy that. The widening is lossless and bijective, so no
+## information is lost by dumping the narrower form -- but a distance in float64 steps
+## between two widened float32 values is not a measurement of anything. Two adjacent
+## float32 values report about 2^29 float64 steps apart, which this file elsewhere
+## tells the reader means "a different code path taken". Dumping the true width is
+## what makes the one-or-two-steps reading correct for the field most likely to be
+## reported first.
 
 ## Open (truncating) the dump file for a run, mirroring DemoHashStream.open_stream:
 ## callers keep the handle for the whole run and dump_tick flushes after every line, so
@@ -31,6 +42,10 @@ static func open_dump(dir: String) -> FileAccess:
 
 
 ## Hex of a float64's raw bits, little-endian, as PackedFloat64Array encodes it.
+##
+## Not used for positions -- see the class docstring on why those are dumped at their
+## true float32 width. Kept because ulps_between handles both widths, so a caller
+## dumping a genuine GDScript scalar has the encoder it needs.
 static func f64_hex(v: float) -> String:
 	return PackedFloat64Array([v]).to_byte_array().hex_encode()
 
@@ -55,7 +70,7 @@ static func format_line(tick: int, records: Array) -> String:
 			flat.append(f32_hex(p.y))
 		units.append({
 			"uid": int(r["uid"]),
-			"pos": [f64_hex(pos.x), f64_hex(pos.y)],
+			"pos": [f32_hex(pos.x), f32_hex(pos.y)],
 			"soldiers": flat,
 		})
 	return JSON.stringify({"tick": tick, "units": units})

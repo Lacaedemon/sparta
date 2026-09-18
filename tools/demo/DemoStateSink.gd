@@ -90,15 +90,20 @@ func _physics_process(_delta: float) -> void:
 	var tick: int = battle.current_tick()
 	# Stream the per-tick state hash. The tick guard makes a frozen tick -- the sim stops
 	# advancing once the battle ends -- write one line, not one per remaining physics frame.
-	if _hash_stream != null and tick != _hash_last_tick:
+	var first_frame_of_tick: bool = tick != _hash_last_tick
+	if first_frame_of_tick:
 		_hash_last_tick = tick
+	if _hash_stream != null and first_frame_of_tick:
 		DemoStateHash.write_tick(_hash_stream, battle.get_tree(), tick, Replay.rng.state)
-		# Deliberately inside the hash guard, so the dump samples the SAME instant the
-		# hash did. Sampled anywhere else it could disagree with the stream that sent
-		# anyone looking at this tick, which would make it worse than no dump at all.
-		if _bit_dump != null and _bit_ticks.has(tick) and not _bit_dumped.has(tick):
-			_bit_dumped[tick] = true
-			DemoStateHash.dump_tick(_bit_dump, battle.get_tree(), tick)
+	# Same sampling point as the hash -- the first physics frame of a new tick -- so the
+	# dump describes the instant the stream described. But gated on that point rather
+	# than nested inside the hash write: a hash_stream.jsonl that failed to open is an
+	# unrelated file, and letting it suppress the bit-dump bookkeeping left a dump that
+	# could have finished instantly waiting out the full timeout instead.
+	var dump_this_tick: bool = _bit_dump != null and first_frame_of_tick
+	if dump_this_tick and _bit_ticks.has(tick) and not _bit_dumped.has(tick):
+		_bit_dumped[tick] = true
+		DemoStateHash.dump_tick(_bit_dump, battle.get_tree(), tick)
 	if _ticks.has(tick) and not _dumped.has(tick):
 		_dumped[tick] = true
 		_dump(battle, tick)

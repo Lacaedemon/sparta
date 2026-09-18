@@ -91,6 +91,8 @@ func test_format_and_parse_round_trip() -> void:
 	var units: Array = parsed[0]["units"]
 	assert_eq(int(units[0]["uid"]), 1, "the uid round-trips")
 	assert_eq((units[0]["pos"] as Array).size(), 2, "a unit position is two hex components")
+	assert_eq((units[0]["pos"] as Array)[0].length(), 8,
+			"a unit position is dumped at float32, its true width")
 	assert_eq((units[0]["soldiers"] as Array).size(), 4,
 			"two soldiers flatten to four hex components")
 
@@ -246,3 +248,25 @@ func test_a_far_tier_unit_hashes_without_pushing_an_engine_error() -> void:
 	assert_eq(before.length(), 32, "a FAR-tier unit still hashes to a full md5 digest")
 	assert_eq(DemoStateHash.cheap_tick_hash(get_tree()), before,
 			"and does so repeatably")
+
+
+func test_adjacent_unit_positions_are_one_ulp_apart_end_to_end() -> void:
+	# The whole point of dumping positions at float32: two units one representable step
+	# apart must read as ONE step, not as the ~2^29 a float64 comparison of the same two
+	# widened values would report -- which this file elsewhere tells a reader means a
+	# different code path was taken.
+	var a := _make_unit(1, Vector2(1.5, 3.0))
+	var dump_a: Array = DemoBitDump.parse_dump(
+			DemoBitDump.format_line(21, DemoStateHash.cheap_tick_records(get_tree())))
+	var stepped: float = PackedFloat32Array([1.5]).to_byte_array().decode_float(0)
+	var bits: int = PackedFloat32Array([stepped]).to_byte_array().decode_u32(0) + 1
+	var nudged := PackedByteArray()
+	nudged.resize(4)
+	nudged.encode_u32(0, bits)
+	a.position = Vector2(nudged.decode_float(0), 3.0)
+	var dump_b: Array = DemoBitDump.parse_dump(
+			DemoBitDump.format_line(21, DemoStateHash.cheap_tick_records(get_tree())))
+	var out: Dictionary = DemoBitDump.compare_dumps(dump_a, dump_b)
+	assert_true(out["divergent"], "one float32 step in a unit position is a divergence")
+	assert_eq(out["field"], "pos.x", "and is named as the unit position")
+	assert_eq(out["ulps"], 1, "and reads as ONE representable step, not as 2^29")
