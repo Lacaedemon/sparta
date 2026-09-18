@@ -169,9 +169,8 @@ def run_cases():
               "is not a finite positive" in r["reason"])
         check("non-positive incumbent (%s) reports no deltas" % bad, r["deltas"] == {})
 
-    # 8. A non-finite or non-positive NEW measurement is a broken benchmark, not a
-    #    stale baseline, so it
-    #     raises rather than being written into the committed file.
+    # 8. A non-finite or non-positive NEW measurement is a broken benchmark rather
+    #    than a stale baseline, so it raises rather than being written to the file.
     for bad_new in (float("nan"), float("inf"), 0.0, -5.0):
         try:
             evaluate(stats(45.0, 50.0, 58.0), stats(bad_new, 50.0, 58.0), 30.0)
