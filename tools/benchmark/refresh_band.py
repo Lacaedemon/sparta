@@ -1,0 +1,267 @@
+"""Decide whether a refreshed CI benchmark baseline is worth committing.
+
+The weekly refresh measures the GitHub Actions runners' current speed, which
+drifts for reasons unrelated to this repo's code. Two functionally identical
+runs on a shared runner swing by 20-30% on their own (tools/perf/README.md),
+so a refresh whose delta is smaller than that carries no information: it
+cannot separate a real change from noise, and opening a PR for it asks a
+reviewer a question the attached evidence cannot answer.
+
+Note what this file is NOT. tools/benchmark/baseline.json is a SECONDARY,
+informational comparison; benchmark.yml's pass/fail verdict comes from a
+same-run PR-vs-base-tip measurement and never reads this baseline. So the
+cost of a noise-dominated refresh is reviewer attention, not guard precision,
+and a tolerance band is sized to remove that cost rather than to sharpen a
+number nothing decides on.
+
+Only the decision lives here, kept out of the workflow's inline script so it
+can be unit-tested directly instead of exercised once a week by cron.
+"""
+
+import math
+
+# Upper bound of the 20-30% run-to-run swing between functionally identical builds
+# on a shared CI runner, documented in tools/perf/README.md. The UPPER bound, not
+# the lower one: a band set at 20 would still pass through noise in the 20-30%
+# part of that range, which is the exact case this exists to suppress.
+# This module is the SINGLE source of the number: the workflow carries no band
+# literal of its own, and passes one only when a workflow_dispatch run overrides it.
+DEFAULT_TOLERANCE_PCT = 30.0
+
+# Reporting order for the metrics carried in a baseline's "stats" object.
+METRICS = ("mean_ms", "p95_ms", "max_ms")
+
+# Longest repr rendered for an unusable value before it is elided. A corrupt int can
+# repr to hundreds of digits, which would drown the table it is meant to annotate.
+UNUSABLE_REPR_MAX = 24
+
+METRIC_LABELS = {
+    "mean_ms": "mean tick time",
+    "p95_ms": "p95 tick time",
+    "max_ms": "max tick time",
+}
+
+
+def tolerance_from_env(raw):
+    """Resolve a band from an env value that may be unset or empty.
+
+    A scheduled run passes nothing, so it takes DEFAULT_TOLERANCE_PCT. Only a
+    workflow_dispatch override supplies a value, which keeps the default in one
+    place rather than duplicated into the workflow file.
+    """
+    if raw is None or not raw.strip():
+        return DEFAULT_TOLERANCE_PCT
+    value = float(raw)
+    # float() happily accepts "nan" and "inf", and neither is caught downstream:
+    # nan fails every comparison, so abs(change) > nan is always False, and inf is
+    # never exceeded. Either one silently suppresses every refresh forever, which is
+    # the feature quietly doing nothing rather than failing. Reject them here.
+    if not math.isfinite(value):
+        raise ValueError("tolerance must be a finite number, got %r" % (raw,))
+    return value
+
+
+def is_usable(value):
+    """True when a metric can be measured, compared against, and committed.
+
+    One definition of corrupt, shared by the incumbent check, the new-measurement
+    check, and any caller rendering a metric. A narrower re-derivation elsewhere
+    (testing only <= 0) silently passes NaN, since every comparison against NaN is
+    False.
+    """
+    # Type first, because json.load will hand back whatever the file contains and no
+    # caller constrains it. bool is the dangerous one: it subclasses int, so True is
+    # finite and positive and would be read as a 1.0 ms measurement -- a literal
+    # `true` in the file believed rather than replaced. A string, null, list or dict
+    # would instead reach math.isfinite and raise a bare TypeError, which loses this
+    # module's own descriptive errors and the incumbent path's ability to self-heal.
+    # Answering False for all of them routes every corrupt type through the same two
+    # behaviours: replace a bad incumbent, raise a named error on a bad measurement.
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value) and value > 0
+    except OverflowError:
+        # json parses an integer literal at arbitrary precision, so a corrupt file can
+        # hold an int too large to convert to float. isfinite raises on it rather than
+        # answering, which would crash the weekly run on a file it is supposed to
+        # replace -- the wedge this predicate exists to prevent.
+        return False
+
+
+def pct_change(old_value, new_value):
+    """Signed percent change from old_value to new_value."""
+    if old_value == 0:
+        raise ValueError("old_value of 0 has no meaningful percent change")
+    return (new_value - old_value) / old_value * 100.0
+
+
+def evaluate(old_stats, new_stats, tolerance_pct=DEFAULT_TOLERANCE_PCT,
+             incumbent="absent"):
+    """Decide whether new_stats should replace old_stats.
+
+    old_stats is None when there is no usable incumbent; both are otherwise
+    mappings carrying every key in METRICS.
+
+    incumbent says WHY old_stats is None, and only affects the reported reason:
+    "absent" for no file at all, "malformed" for a file that exists but could not
+    be read into three metrics. Reporting a broken file as though nothing had ever
+    been committed understates what happened to whoever reads the PR body, which
+    is the audience the band exists to serve.
+
+    Returns a dict with:
+      write          -- True when the baseline file should be rewritten.
+      reason         -- one line explaining the decision, for a job summary.
+      deltas         -- {metric: signed percent change}, empty when old_stats
+                        is None.
+      largest_metric -- the metric with the largest ABSOLUTE change, or None.
+      largest_pct    -- that metric's signed change, or None.
+      tolerance_pct  -- the band actually applied.
+
+    The largest change is chosen by absolute value so a big improvement is as
+    refresh-worthy as a big regression: the baseline tracks runner speed in
+    both directions, and suppressing only one would ratchet it.
+    """
+    # isfinite first: nan fails every comparison, so a bare "< 0" test lets it through
+    # and it then suppresses every refresh silently.
+    if not math.isfinite(tolerance_pct) or tolerance_pct < 0:
+        raise ValueError(
+            "tolerance_pct must be a finite non-negative number, got %r"
+            % (tolerance_pct,)
+        )
+
+    # The NEW measurement is validated before anything else, including before the
+    # no-baseline shortcut below. A bad measurement is equally unfit to commit whether
+    # or not a baseline already exists, and the bootstrap path is the one that writes
+    # it with no comparison table to make it visible -- so checking it after that
+    # shortcut would leave the first baseline the least guarded value in the system.
+    #
+    # A tick time is never legitimately zero, negative, or non-finite, so such a value
+    # means the benchmark run itself went wrong. This raises rather than being absorbed
+    # like a corrupt incumbent further down: the measurement is regenerated every run,
+    # while a committed baseline is not.
+    new_missing = [m for m in METRICS if m not in new_stats]
+    if new_missing:
+        raise KeyError(
+            "new stats missing required metric(s): %s" % ", ".join(new_missing)
+        )
+    unmeasurable = [m for m in METRICS if not is_usable(new_stats[m])]
+    if unmeasurable:
+        raise ValueError(
+            "new stats are not a finite positive number for: %s"
+            % ", ".join(unmeasurable)
+        )
+
+    if incumbent not in ("absent", "malformed"):
+        raise ValueError(
+            "incumbent must be 'absent' or 'malformed', got %r" % (incumbent,)
+        )
+
+    if old_stats is None:
+        if incumbent == "malformed":
+            reason = (
+                "Committed baseline could not be read as three metrics"
+                " -- replacing it."
+            )
+        else:
+            reason = "No baseline committed yet -- writing the first one."
+        return {
+            "write": True,
+            "reason": reason,
+            "deltas": {},
+            "largest_metric": None,
+            "largest_pct": None,
+            "tolerance_pct": tolerance_pct,
+        }
+
+    missing = [m for m in METRICS if m not in old_stats]
+    if missing:
+        raise KeyError("stats missing required metric(s): %s" % ", ".join(missing))
+
+    # An incumbent metric that is non-finite or non-positive cannot anchor a percent
+    # change, and a tick time is never legitimately either, so the committed file is
+    # corrupt rather than merely stale. Treat it as no usable baseline and write a
+    # fresh one. Raising instead would wedge an unattended weekly job: every future
+    # run would hit the same bad file, and nothing would ever replace it.
+    #
+    # isfinite is tested FIRST and separately: json.load accepts a bare NaN, and
+    # `nan <= 0` is False, so a non-positive test alone lets NaN through -- after
+    # which every band comparison against it is False and the refresh is suppressed
+    # forever, reported as a "+nan%" change.
+    unusable = [
+        m for m in METRICS
+        if not is_usable(old_stats[m])
+    ]
+    if unusable:
+        return {
+            "write": True,
+            "reason": (
+                "Committed baseline is unusable -- %s %s not a finite positive"
+                " number. Replacing it."
+                % (", ".join(unusable), "is" if len(unusable) == 1 else "are")
+            ),
+            "deltas": {},
+            "largest_metric": None,
+            "largest_pct": None,
+            "tolerance_pct": tolerance_pct,
+        }
+
+    deltas = {m: pct_change(old_stats[m], new_stats[m]) for m in METRICS}
+    largest_metric = max(METRICS, key=lambda m: abs(deltas[m]))
+    largest_pct = deltas[largest_metric]
+
+    if abs(largest_pct) > tolerance_pct:
+        reason = (
+            "Largest change %s %+.1f%% exceeds the %.1f%% noise band -- refreshing."
+            % (METRIC_LABELS[largest_metric], largest_pct, tolerance_pct)
+        )
+        write = True
+    else:
+        reason = (
+            "Largest change %s %+.1f%% is within the %.1f%% noise band -- "
+            "keeping the committed baseline."
+            % (METRIC_LABELS[largest_metric], largest_pct, tolerance_pct)
+        )
+        write = False
+
+    return {
+        "write": write,
+        "reason": reason,
+        "deltas": deltas,
+        "largest_metric": largest_metric,
+        "largest_pct": largest_pct,
+        "tolerance_pct": tolerance_pct,
+    }
+
+
+def format_metric(value):
+    """Render one metric for a table cell, marking it when it is not usable.
+
+    Lives here rather than in the workflow's inline script for the reason the whole
+    module does: the inline script has no test coverage, so a corrupt value that
+    crashes the FORMATTING crashes the run just as surely as one that crashes the
+    decision -- and after the corrected baseline has been written but before the
+    step reports success, which wedges the cron on the very file it just fixed.
+
+    The float format raises on a string and on None, and OverflowError on an int
+    too large to convert to float. It does NOT raise on a bool, which renders as
+    1.000 through int; that value is unusable all the same, and still gets marked.
+    """
+    usable = is_usable(value)
+    try:
+        rendered = "%.3f ms" % value
+    except (TypeError, ValueError, OverflowError):
+        rendered = repr(value)
+        if len(rendered) > UNUSABLE_REPR_MAX:
+            head = UNUSABLE_REPR_MAX - 9
+            rendered = rendered[:head] + "..." + rendered[-6:]
+    return rendered if usable else rendered + " (unusable)"
+
+
+def format_delta_table(deltas):
+    """Render deltas as a markdown table, for a job summary or a PR body."""
+    rows = ["| metric | change vs committed baseline |", "| --- | --- |"]
+    for metric in METRICS:
+        if metric in deltas:
+            rows.append("| %s | %+.1f%% |" % (METRIC_LABELS[metric], deltas[metric]))
+    return "\n".join(rows)
