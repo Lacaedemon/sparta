@@ -28,17 +28,47 @@ class_name DemoStateHash
 const NO_TARGET := -2
 
 
+## The values the cheap tier covers, per unit, in ascending uid order: uid, the unit
+## position, and the per-soldier positions (empty for a FAR-tier unit, which carries no
+## soldier arrays).
+##
+## Extracted so the hash and the raw-bit dump read ONE walk rather than two. They have
+## to agree exactly -- a dump that sampled different values could miss a divergence the
+## stream reports, or invent one it does not -- and sharing the walk makes that
+## structural instead of a property two functions have to be kept in.
+static func cheap_tick_records(tree: SceneTree) -> Array:
+	var out: Array = []
+	for u in units_by_uid(tree):
+		var soldiers := PackedVector2Array()
+		if u.tier != FormationTier.FAR:
+			soldiers = u._sim_soldier_pos as PackedVector2Array
+		out.append({"uid": u.uid, "pos": u.position, "soldiers": soldiers})
+	return out
+
+
 ## The cheap tier: every unit's uid + position plus the raw per-soldier position bytes.
 ## Positions move on virtually every divergent tick, so this tier alone localizes the
 ## first divergence; the full tier (below) classifies it.
 static func cheap_tick_hash(tree: SceneTree) -> String:
 	var ctx := HashingContext.new()
 	ctx.start(HashingContext.HASH_MD5)
-	for u in units_by_uid(tree):
-		ctx.update(_int_bytes([u.uid]))
-		ctx.update(_float_bytes([u.position.x, u.position.y]))
-		if u.tier != FormationTier.FAR:
-			ctx.update((u._sim_soldier_pos as PackedVector2Array).to_byte_array())
+	for r in cheap_tick_records(tree):
+		ctx.update(_int_bytes([r["uid"]]))
+		var pos: Vector2 = r["pos"]
+		ctx.update(_float_bytes([pos.x, pos.y]))
+		var soldiers: PackedVector2Array = r["soldiers"]
+		# Skipped when empty, not merely harmless: HashingContext.update() REJECTS a
+		# zero-length array and pushes an engine error, which GUT surfaces as a test
+		# failure.
+		#
+		# Keyed on emptiness rather than on the FAR tier, which is what the pre-refactor
+		# code tested. Those are not the same set: a unit can be below FAR tier and still
+		# carry an empty array before its bodies are seeded, which HUD.gd handles
+		# explicitly. The original would have pushed the engine error in that state, so
+		# this is a strict improvement rather than a faithful copy -- and the HASH is
+		# unchanged either way, since a rejected update contributes no bytes.
+		if not soldiers.is_empty():
+			ctx.update(soldiers.to_byte_array())
 	return ctx.finish().hex_encode()
 
 
@@ -98,3 +128,12 @@ static func _float_bytes(vals: Array) -> PackedByteArray:
 static func write_tick(f: FileAccess, tree: SceneTree, tick: int, rng_state: int) -> void:
 	var full: String = full_tick_hash(tree, rng_state) if tick % DemoHashStream.FULL_EVERY == 0 else ""
 	DemoHashStream.append_line(f, tick, cheap_tick_hash(tree), full)
+
+
+## Append one tick's RAW BITS to an open bit-dump handle, for the ticks a cross-platform
+## investigation is narrowing on. Deliberately not on the per-tick path: the dump is
+## many times larger than a hash line, and the hash stream is what finds the tick worth
+## dumping in the first place.
+static func dump_tick(f: FileAccess, tree: SceneTree, tick: int) -> void:
+	f.store_line(DemoBitDump.format_line(tick, cheap_tick_records(tree)))
+	f.flush()

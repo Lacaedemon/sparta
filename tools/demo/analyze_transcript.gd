@@ -8,6 +8,8 @@ extends SceneTree
 ##       --compare-hashes <other-dump-dir>
 ##   godot --headless --path . -s tools/demo/analyze_transcript.gd -- <base-tree> \
 ##       --compare-hash-trees <pr-tree>
+##   godot --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir> \
+##       --compare-bit-dumps <other-dump-dir>
 ##
 ## --script points at the clip's own input script and reads two optional declarations from
 ## it: the `expect` list (intent as data: {tick, uid, field, value}), evaluated against the
@@ -22,6 +24,13 @@ extends SceneTree
 ## see DemoStateHash / DemoHashStream) and report the FIRST divergent tick and tier, replacing an
 ## eyeball diff of the full field-level dumps when asking "when did two runs of this
 ## clip diverge."
+## --compare-bit-dumps is the DIAGNOSTIC follow-up to --compare-hashes. The hash
+## compare names the first divergent TICK and can say nothing about which value
+## moved, because a hash is maximally sensitive and minimally informative. Re-run
+## both sides with SPARTA_DEMO_BITDUMP set to that tick and its neighbours, then use
+## this to get the first differing component -- unit, axis, soldier index -- and how
+## many representable steps apart the two values are. One or two steps is rounding in
+## the last place; a large gap is a different code path taken.
 ## --compare-hash-trees is the whole-catalog counterpart: each argument is a TREE of
 ## per-clip transcript subdirectories (website/tools/dump-demo-states.sh output), and it
 ## prints one `HASHCMP<TAB>...` line per clip classifying it SAME / CHANGED / ADDED /
@@ -45,7 +54,7 @@ extends SceneTree
 func _init() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	if args.is_empty():
-		push_error("usage: godot --headless -s tools/demo/analyze_transcript.gd -- <dump-dir> [--json] [--script <input-script.json>] [--compare-hashes <other-dump-dir>] [--compare-hash-trees <pr-tree>]")
+		push_error("usage: godot --headless -s tools/demo/analyze_transcript.gd -- <dump-dir> [--json] [--script <input-script.json>] [--compare-hashes <other-dump-dir>] [--compare-hash-trees <pr-tree>] [--compare-bit-dumps <other-dump-dir>]")
 		quit(2)
 		return
 	var dir_path: String = args[0]
@@ -56,6 +65,14 @@ func _init() -> void:
 			quit(2)
 			return
 		_compare_hash_trees(dir_path, args[tree_idx + 1])
+		return
+	var bits_idx: int = args.find("--compare-bit-dumps")
+	if bits_idx != -1:
+		if bits_idx + 1 >= args.size():
+			push_error("--compare-bit-dumps needs the other dump directory to compare against")
+			quit(2)
+			return
+		_compare_bit_dumps(dir_path, args[bits_idx + 1])
 		return
 	var cmp_idx: int = args.find("--compare-hashes")
 	if cmp_idx != -1:
@@ -181,6 +198,38 @@ func _compare_hashes(dir_a: String, dir_b: String) -> void:
 		quit(1)
 		return
 	print("IDENTICAL over %d common ticks (%d only in first stream, %d only in second)"
+			% [verdict["compared"], verdict["only_a"], verdict["only_b"]])
+	quit(0)
+
+
+## Localize a divergence the hash compare already found: read both runs' bit_dump.jsonl
+## and print the first differing component.
+##
+## Exits 1 on a difference and 0 on agreement, matching --compare-hashes, so a script
+## can branch on it. A missing or empty dump exits 2 rather than reporting agreement --
+## an empty dump and two identical runs are the same silence otherwise, and reading the
+## first as the second is the one failure this whole tool exists to prevent.
+func _compare_bit_dumps(dir_a: String, dir_b: String) -> void:
+	var dumps: Array = []
+	for d in [dir_a, dir_b]:
+		var path: String = String(d).path_join("bit_dump.jsonl")
+		var dump: Array = DemoBitDump.parse_dump(FileAccess.get_file_as_string(path))
+		if dump.is_empty():
+			push_error("no usable bit dump at: " + path
+					+ " (was the run armed with SPARTA_DEMO_BITDUMP?)")
+			quit(2)
+			return
+		dumps.append(dump)
+	var verdict: Dictionary = DemoBitDump.compare_dumps(dumps[0], dumps[1])
+	if verdict["divergent"]:
+		var ulps = verdict.get("ulps")
+		var ulp_text: String = " ulps=%d" % ulps if ulps != null else ""
+		print("DIVERGENT tick=%d uid=%d field=%s a=%s b=%s%s (%d common ticks compared)"
+				% [verdict["tick"], verdict["uid"], verdict["field"],
+				verdict["a"], verdict["b"], ulp_text, verdict["compared"]])
+		quit(1)
+		return
+	print("IDENTICAL over %d common ticks (%d only in first dump, %d only in second)"
 			% [verdict["compared"], verdict["only_a"], verdict["only_b"]])
 	quit(0)
 

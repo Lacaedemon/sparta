@@ -27,6 +27,9 @@ var _full: bool = false
 var _dumped: Dictionary = {}   # tick -> true, so each snapshot is written at most once
 var _hash_stream: FileAccess = null   # per-tick state-hash stream (armed with the dump)
 var _hash_last_tick: int = -1         # last tick hashed, so a frozen tick writes one line only
+var _bit_ticks: Array = []            # ticks to dump raw bits for (SPARTA_DEMO_BITDUMP)
+var _bit_dump: FileAccess = null      # raw-bit position dump, opened only when armed
+var _bit_dumped: Dictionary = {}      # tick -> true, mirroring _dumped for the bit dump
 
 
 ## Build an armed sink from the environment, or null when SPARTA_DEMO_STATE is unset/empty —
@@ -42,6 +45,12 @@ static func arm_from_env(tag: String) -> DemoStateSink:
 	sink._ticks = ticks
 	sink._full = OS.get_environment("SPARTA_DEMO_STATE_FULL") == "1"
 	sink._dir = OS.get_environment("SPARTA_DEMO_STATE_DIR")
+	# Raw-bit dumping is armed separately and is off by default: it rides on the state
+	# dump (same run, same directory) but answers a different question, and its lines are
+	# far larger than a hash line. The hash stream is what names the tick worth dumping,
+	# so the normal order is to read a stream comparison first and arm this second.
+	if OS.has_environment("SPARTA_DEMO_BITDUMP"):
+		sink._bit_ticks = DemoFrames.merge_ticks(OS.get_environment("SPARTA_DEMO_BITDUMP"), [])
 	if sink._dir == "":
 		sink._dir = OS.get_temp_dir().path_join("sparta_demo_state")
 	sink.name = "DemoStateSink_%s" % tag
@@ -56,6 +65,13 @@ func _ready() -> void:
 	if _hash_stream == null:
 		push_warning("[demo-state] could not open hash_stream.jsonl in %s (err %d)"
 				% [_dir, FileAccess.get_open_error()])
+	if not _bit_ticks.is_empty():
+		_bit_dump = DemoBitDump.open_dump(_dir)
+		if _bit_dump == null:
+			push_warning("[demo-state] could not open bit_dump.jsonl in %s (err %d)"
+					% [_dir, FileAccess.get_open_error()])
+		else:
+			print("[demo-state] raw-bit dump armed at ticks %s" % str(_bit_ticks))
 	print("[demo-state] state dump armed at ticks %s -> %s%s" % [
 		str(_ticks), _dir, " (full per-soldier arrays)" if _full else ""])
 	# Safety net: quit unconditionally when the budget expires, warning only when snapshots
@@ -74,14 +90,31 @@ func _physics_process(_delta: float) -> void:
 	var tick: int = battle.current_tick()
 	# Stream the per-tick state hash. The tick guard makes a frozen tick -- the sim stops
 	# advancing once the battle ends -- write one line, not one per remaining physics frame.
-	if _hash_stream != null and tick != _hash_last_tick:
+	var first_frame_of_tick: bool = tick != _hash_last_tick
+	if first_frame_of_tick:
 		_hash_last_tick = tick
+	if _hash_stream != null and first_frame_of_tick:
 		DemoStateHash.write_tick(_hash_stream, battle.get_tree(), tick, Replay.rng.state)
+	# Same sampling point as the hash -- the first physics frame of a new tick -- so the
+	# dump describes the instant the stream described. But gated on that point rather
+	# than nested inside the hash write: a hash_stream.jsonl that failed to open is an
+	# unrelated file, and letting it suppress the bit-dump bookkeeping left a dump that
+	# could have finished instantly waiting out the full timeout instead.
+	var dump_this_tick: bool = _bit_dump != null and first_frame_of_tick
+	if dump_this_tick and _bit_ticks.has(tick) and not _bit_dumped.has(tick):
+		_bit_dumped[tick] = true
+		DemoStateHash.dump_tick(_bit_dump, battle.get_tree(), tick)
 	if _ticks.has(tick) and not _dumped.has(tick):
 		_dumped[tick] = true
 		_dump(battle, tick)
-	if _dumped.size() == _ticks.size():
-		print("[demo-state] all %d state snapshots written; quitting." % _ticks.size())
+	# Both sets gate the quit. Keying it on the state snapshots alone let a run that
+	# finished those quit before reaching a LATER bit-dump tick, leaving an empty
+	# bit_dump.jsonl behind a "all snapshots written" line -- a clean-looking success
+	# trail for a diagnostic that produced nothing.
+	if _dumped.size() == _ticks.size() and _bit_dumped.size() == _bit_ticks.size():
+		print("[demo-state] all %d state snapshot(s)%s written; quitting." % [
+				_ticks.size(),
+				" and %d raw-bit dump(s)" % _bit_ticks.size() if not _bit_ticks.is_empty() else ""])
 		get_tree().quit()
 
 
@@ -107,4 +140,10 @@ func _on_timeout() -> void:
 	if _dumped.size() < _ticks.size():
 		push_warning("[demo-state] run timed out: %d/%d state snapshots (a tick may be past the battle's end)."
 				% [_dumped.size(), _ticks.size()])
+	# Reported separately rather than folded in: a bit dump that never reached its
+	# tick is silent otherwise, and an empty dump file is the one outcome an
+	# investigation must not mistake for "the two platforms agreed".
+	if _bit_dumped.size() < _bit_ticks.size():
+		push_warning("[demo-state] run timed out: %d/%d raw-bit dumps (a tick may be past the battle's end)."
+				% [_bit_dumped.size(), _bit_ticks.size()])
 	get_tree().quit()
