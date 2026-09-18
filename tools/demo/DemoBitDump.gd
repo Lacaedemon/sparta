@@ -109,48 +109,65 @@ static func compare_dumps(a: Array, b: Array) -> Dictionary:
 
 
 ## The first differing component within one tick's two entries, or {} when identical.
+##
+## Walks the UNION of both sides' uids in ascending order rather than side a's own
+## order. Walking one side first would report a high-uid field difference ahead of a
+## low-uid unit that is missing entirely, contradicting compare_dumps' documented
+## "tick then uid then field" ordering on exactly the input where the structural
+## difference is the more informative of the two.
 static func _first_unit_diff(entry_a: Dictionary, entry_b: Dictionary) -> Dictionary:
-	var units_a: Array = entry_a["units"]
-	var units_b: Array = entry_b["units"]
-	var by_uid_b: Dictionary = {}
-	for u in units_b:
-		by_uid_b[int(u["uid"])] = u
-	for ua in units_a:
-		var uid: int = int(ua["uid"])
+	var by_uid_a: Dictionary = _by_uid(entry_a["units"])
+	var by_uid_b: Dictionary = _by_uid(entry_b["units"])
+	var uids: Array = []
+	for uid in by_uid_a:
+		uids.append(uid)
+	for uid in by_uid_b:
+		if not by_uid_a.has(uid):
+			uids.append(uid)
+	uids.sort()
+	for uid in uids:
 		if not by_uid_b.has(uid):
 			return {"uid": uid, "field": "unit", "a": "present", "b": "absent", "ulps": null}
-		var ub: Dictionary = by_uid_b[uid]
-		var pos_a: Array = ua["pos"]
-		var pos_b: Array = ub["pos"]
-		for i in range(2):
-			if pos_a[i] != pos_b[i]:
-				var axis: String = "x" if i == 0 else "y"
-				return {"uid": uid, "field": "pos.%s" % axis, "a": pos_a[i], "b": pos_b[i],
-						"ulps": ulps_between(pos_a[i], pos_b[i])}
-		var sol_a: Array = ua["soldiers"]
-		var sol_b: Array = ub["soldiers"]
-		if sol_a.size() != sol_b.size():
-			return {"uid": uid, "field": "soldiers.size",
-					"a": str(sol_a.size()), "b": str(sol_b.size()), "ulps": null}
-		for i in range(sol_a.size()):
-			if sol_a[i] != sol_b[i]:
-				var axis2: String = "x" if i % 2 == 0 else "y"
-				var which: int = i / 2
-				return {"uid": uid, "field": "soldier[%d].%s" % [which, axis2],
-						"a": sol_a[i], "b": sol_b[i],
-						"ulps": ulps_between(sol_a[i], sol_b[i])}
-	for ub in units_b:
-		if not _has_uid(units_a, int(ub["uid"])):
-			return {"uid": int(ub["uid"]), "field": "unit", "a": "absent", "b": "present",
-					"ulps": null}
+		if not by_uid_a.has(uid):
+			return {"uid": uid, "field": "unit", "a": "absent", "b": "present", "ulps": null}
+		var found: Dictionary = _first_field_diff(by_uid_a[uid], by_uid_b[uid])
+		if not found.is_empty():
+			found["uid"] = uid
+			return found
 	return {}
 
 
-static func _has_uid(units: Array, uid: int) -> bool:
+## The first differing field within one unit's two records, or {} when identical. The
+## unit position is checked before the soldier array, so the outermost difference is the
+## one reported.
+static func _first_field_diff(ua: Dictionary, ub: Dictionary) -> Dictionary:
+	var pos_a: Array = ua["pos"]
+	var pos_b: Array = ub["pos"]
+	for i in range(2):
+		if pos_a[i] != pos_b[i]:
+			var axis: String = "x" if i == 0 else "y"
+			return {"field": "pos.%s" % axis, "a": pos_a[i], "b": pos_b[i],
+					"ulps": ulps_between(pos_a[i], pos_b[i])}
+	var sol_a: Array = ua["soldiers"]
+	var sol_b: Array = ub["soldiers"]
+	if sol_a.size() != sol_b.size():
+		return {"field": "soldiers.size", "a": str(sol_a.size()), "b": str(sol_b.size()),
+				"ulps": null}
+	for i in range(sol_a.size()):
+		if sol_a[i] != sol_b[i]:
+			# The flat array interleaves x then y, so the soldier index is the pair index
+			# and the axis is the parity.
+			var axis2: String = "x" if i % 2 == 0 else "y"
+			return {"field": "soldier[%d].%s" % [i / 2, axis2], "a": sol_a[i], "b": sol_b[i],
+					"ulps": ulps_between(sol_a[i], sol_b[i])}
+	return {}
+
+
+static func _by_uid(units: Array) -> Dictionary:
+	var out: Dictionary = {}
 	for u in units:
-		if int(u["uid"]) == uid:
-			return true
-	return false
+		out[int(u["uid"])] = u
+	return out
 
 
 ## Distance in representable steps between two same-width raw-bit hex values, or null
@@ -158,40 +175,76 @@ static func _has_uid(units: Array, uid: int) -> bool:
 ##
 ## The figure separates the two explanations this dump exists to tell apart: a gap of
 ## one or two steps is rounding in the last place, while a large one is a different
-## code path taken. It is meaningful only when both values carry the same sign bit --
-## IEEE754 is sign-magnitude, so subtracting the raw patterns across zero counts the
-## entire negative range -- and null is returned rather than a number that would read
-## as a measurement.
+## code path taken.
+##
+## Both float32 (8 hex chars) and float64 (16) are supported. float64 is the width that
+## matters most in practice -- the unit position is checked before the soldier array, so
+## it is usually the first field reported -- and an earlier version capped the parser
+## below 64 bits, which made the distance unconditionally null for exactly that case.
+##
+## Null, rather than a number, whenever the arithmetic would not be a measurement:
+## a width that is not 8 or 16, unparseable input, or either value carrying the sign
+## bit. IEEE754 is sign-magnitude, so subtracting raw patterns across zero counts the
+## whole negative range; a negative tick time or coordinate is not what this is for, and
+## reporting a huge number there would read as a finding.
 static func ulps_between(hex_a: String, hex_b: String) -> Variant:
 	if hex_a.length() != hex_b.length():
+		return null
+	if hex_a.length() != 8 and hex_a.length() != 16:
+		return null
+	if _sign_bit_set(hex_a) or _sign_bit_set(hex_b):
 		return null
 	var ia: int = _hex_to_int_le(hex_a)
 	var ib: int = _hex_to_int_le(hex_b)
 	if ia < 0 or ib < 0:
 		return null
-	var bits: int = hex_a.length() * 4
-	# A 64-bit pattern cannot carry its sign bit in a signed int, so the mask test below
-	# is only sound for widths that leave room for it. float32 is the width that matters
-	# here; float64 pairs fall through to null rather than reporting a wrong distance.
-	if bits >= 64:
-		return null
-	var sign_mask: int = 1 << (bits - 1)
-	if (ia & sign_mask) != (ib & sign_mask):
-		return null
 	return abs(ia - ib)
 
 
-## Little-endian hex to int, or -1 when the string is not parseable as one. Widths past
-## 56 bits are refused rather than silently losing the top byte to the sign bit.
+## True when the little-endian pattern's sign bit is set -- the high bit of its LAST
+## byte. Read from the hex directly rather than from the parsed int, so a 16-char
+## pattern is classified before any parse that the sign bit itself would make negative.
+static func _sign_bit_set(hex: String) -> bool:
+	if hex.length() < 2:
+		return false
+	var last: String = hex.substr(hex.length() - 2, 2)
+	if not _is_hex_byte(last):
+		return false
+	return (last.hex_to_int() & 0x80) != 0
+
+
+## Little-endian hex to a non-negative int, or -1 when the string is not parseable as
+## one. Callers screen the sign bit first, so every value reaching here fits a signed
+## 64-bit int without wrapping.
 static func _hex_to_int_le(hex: String) -> int:
-	if hex.length() % 2 != 0 or hex.length() == 0 or hex.length() > 14:
+	if hex.length() % 2 != 0 or hex.length() == 0 or hex.length() > 16:
 		return -1
 	var out: int = 0
 	var shift: int = 0
 	for i in range(0, hex.length(), 2):
 		var byte_hex: String = hex.substr(i, 2)
-		if not byte_hex.is_valid_hex_number():
+		if not _is_hex_byte(byte_hex):
 			return -1
 		out |= byte_hex.hex_to_int() << shift
 		shift += 8
 	return out
+
+
+## Exactly two hex digits, no sign and no 0x prefix.
+##
+## String.is_valid_hex_number() is the obvious choice and the wrong one: it validates a
+## signed numeric literal, so it accepts a leading + or -, and hex_to_int() then honours
+## that sign. The byte pair "-0" would pass and parse to 0, indistinguishable from a
+## real "00" -- so a corrupted dump byte would read as agreement rather than as
+## unparseable input, which is the one answer this must never give.
+static func _is_hex_byte(pair: String) -> bool:
+	if pair.length() != 2:
+		return false
+	for i in range(2):
+		var c: int = pair.unicode_at(i)
+		var is_digit: bool = c >= 48 and c <= 57
+		var is_lower: bool = c >= 97 and c <= 102
+		var is_upper: bool = c >= 65 and c <= 70
+		if not (is_digit or is_lower or is_upper):
+			return false
+	return true

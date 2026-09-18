@@ -29,6 +29,7 @@ var _hash_stream: FileAccess = null   # per-tick state-hash stream (armed with t
 var _hash_last_tick: int = -1         # last tick hashed, so a frozen tick writes one line only
 var _bit_ticks: Array = []            # ticks to dump raw bits for (SPARTA_DEMO_BITDUMP)
 var _bit_dump: FileAccess = null      # raw-bit position dump, opened only when armed
+var _bit_dumped: Dictionary = {}      # tick -> true, mirroring _dumped for the bit dump
 
 
 ## Build an armed sink from the environment, or null when SPARTA_DEMO_STATE is unset/empty —
@@ -95,13 +96,20 @@ func _physics_process(_delta: float) -> void:
 		# Deliberately inside the hash guard, so the dump samples the SAME instant the
 		# hash did. Sampled anywhere else it could disagree with the stream that sent
 		# anyone looking at this tick, which would make it worse than no dump at all.
-		if _bit_dump != null and _bit_ticks.has(tick):
+		if _bit_dump != null and _bit_ticks.has(tick) and not _bit_dumped.has(tick):
+			_bit_dumped[tick] = true
 			DemoStateHash.dump_tick(_bit_dump, battle.get_tree(), tick)
 	if _ticks.has(tick) and not _dumped.has(tick):
 		_dumped[tick] = true
 		_dump(battle, tick)
-	if _dumped.size() == _ticks.size():
-		print("[demo-state] all %d state snapshots written; quitting." % _ticks.size())
+	# Both sets gate the quit. Keying it on the state snapshots alone let a run that
+	# finished those quit before reaching a LATER bit-dump tick, leaving an empty
+	# bit_dump.jsonl behind a "all snapshots written" line -- a clean-looking success
+	# trail for a diagnostic that produced nothing.
+	if _dumped.size() == _ticks.size() and _bit_dumped.size() == _bit_ticks.size():
+		print("[demo-state] all %d state snapshot(s)%s written; quitting." % [
+				_ticks.size(),
+				" and %d raw-bit dump(s)" % _bit_ticks.size() if not _bit_ticks.is_empty() else ""])
 		get_tree().quit()
 
 
@@ -127,4 +135,10 @@ func _on_timeout() -> void:
 	if _dumped.size() < _ticks.size():
 		push_warning("[demo-state] run timed out: %d/%d state snapshots (a tick may be past the battle's end)."
 				% [_dumped.size(), _ticks.size()])
+	# Reported separately rather than folded in: a bit dump that never reached its
+	# tick is silent otherwise, and an empty dump file is the one outcome an
+	# investigation must not mistake for "the two platforms agreed".
+	if _bit_dumped.size() < _bit_ticks.size():
+		push_warning("[demo-state] run timed out: %d/%d raw-bit dumps (a tick may be past the battle's end)."
+				% [_bit_dumped.size(), _bit_ticks.size()])
 	get_tree().quit()

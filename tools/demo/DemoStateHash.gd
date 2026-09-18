@@ -57,7 +57,13 @@ static func cheap_tick_hash(tree: SceneTree) -> String:
 		var pos: Vector2 = r["pos"]
 		ctx.update(_float_bytes([pos.x, pos.y]))
 		var soldiers: PackedVector2Array = r["soldiers"]
-		ctx.update(soldiers.to_byte_array())
+		# Skipped when empty, not merely harmless: HashingContext.update() REJECTS a
+		# zero-length array and pushes an engine error, which GUT surfaces as a test
+		# failure. The pre-refactor code skipped the call for a FAR-tier unit, and a
+		# FAR-tier unit is exactly the one whose record carries no soldiers -- so this
+		# reproduces the original control flow rather than merely its hash.
+		if not soldiers.is_empty():
+			ctx.update(soldiers.to_byte_array())
 	return ctx.finish().hex_encode()
 
 

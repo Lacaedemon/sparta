@@ -169,5 +169,80 @@ func test_ulps_is_null_across_a_sign_change() -> void:
 func test_ulps_is_null_for_mismatched_widths_and_bad_input() -> void:
 	assert_null(DemoBitDump.ulps_between("0000803f", "000000000000f03f"),
 			"a float32 and a float64 pattern are not comparable")
-	assert_null(DemoBitDump.ulps_between("zzzz", "0000"), "non-hex input reports null")
+	assert_null(DemoBitDump.ulps_between("zzzzzzzz", "00000000"), "non-hex input reports null")
 	assert_null(DemoBitDump.ulps_between("abc", "def"), "an odd-length pattern reports null")
+
+
+func test_adjacent_float64_values_are_one_ulp_apart() -> void:
+	# The unit position is float64 and is checked before the soldier array, so it is
+	# usually the FIRST field reported -- an earlier version capped the parser below 64
+	# bits, which made the distance null for exactly that case.
+	var a: String = DemoBitDump.f64_hex(1.0)
+	var b: String = DemoBitDump.f64_hex(1.0 + pow(2.0, -52))
+	assert_eq(DemoBitDump.ulps_between(a, b), 1,
+			"one representable float64 step reads as one ulp")
+
+
+func test_a_signed_hex_byte_is_not_read_as_agreement() -> void:
+	# String.is_valid_hex_number() accepts a leading sign, so the byte pair "-0" would
+	# parse to 0 and read as identical to a real "00" -- a corrupted dump byte reported
+	# as agreement, which is the one answer this must never give.
+	assert_null(DemoBitDump.ulps_between("0000-000", "00000000"),
+			"a byte pair carrying a sign is unparseable, not zero")
+
+
+func test_uppercase_hex_is_accepted() -> void:
+	assert_eq(DemoBitDump.ulps_between("0000803F", "0000803f"), 0,
+			"case does not change a raw byte's value")
+
+
+# --- ordering and round trip ----------------------------------------------------
+
+func test_a_missing_low_uid_outranks_a_high_uid_field_difference() -> void:
+	# Walking side a's own order would report uid 5's position first and never look at
+	# uid 2, though the missing unit is both lower-numbered and the more informative
+	# difference.
+	var a: Dictionary = {"tick": 21, "units": [
+		{"uid": 5, "pos": ["aa", "bb"], "soldiers": []}]}
+	var b: Dictionary = {"tick": 21, "units": [
+		{"uid": 2, "pos": ["cc", "dd"], "soldiers": []},
+		{"uid": 5, "pos": ["aa", "99"], "soldiers": []}]}
+	var out: Dictionary = DemoBitDump.compare_dumps([a], [b])
+	assert_eq(int(out["uid"]), 2, "the lower uid is reported first")
+	assert_eq(out["field"], "unit", "and as the structural difference it is")
+
+
+func test_compare_works_on_genuinely_json_round_tripped_entries() -> void:
+	# The hand-built entries elsewhere in this file never exercise JSON's number typing:
+	# a parsed tick or uid comes back as a float, and the production code leans on int()
+	# casts to cope. Piping through parse_dump is what actually pins that.
+	_make_unit(1, Vector2(100, 100))
+	var line_a: String = DemoBitDump.format_line(21, DemoStateHash.cheap_tick_records(get_tree()))
+	var parsed_a: Array = DemoBitDump.parse_dump(line_a)
+	assert_false(DemoBitDump.compare_dumps(parsed_a, parsed_a)["divergent"],
+			"a parsed dump does not diverge from itself")
+	# Nudge one soldier by the smallest float32 step and confirm the parsed comparison
+	# still localizes it.
+	var records: Array = DemoStateHash.cheap_tick_records(get_tree())
+	var soldiers: PackedVector2Array = records[0]["soldiers"]
+	soldiers[0] = Vector2(soldiers[0].x + 0.001, soldiers[0].y)
+	records[0]["soldiers"] = soldiers
+	var parsed_b: Array = DemoBitDump.parse_dump(DemoBitDump.format_line(21, records))
+	var out: Dictionary = DemoBitDump.compare_dumps(parsed_a, parsed_b)
+	assert_true(out["divergent"], "a nudged soldier diverges through the JSON round trip")
+	assert_eq(out["field"], "soldier[0].x", "and is still named by index and axis")
+	assert_eq(int(out["uid"]), 1, "and by uid, despite JSON returning it as a float")
+
+
+# --- the FAR-tier regression ----------------------------------------------------
+
+func test_a_far_tier_unit_hashes_without_pushing_an_engine_error() -> void:
+	# HashingContext.update() REJECTS a zero-length array and pushes an engine error,
+	# which GUT surfaces as a failure. A FAR-tier unit is the one whose record carries no
+	# soldiers, so the shared walk has to skip the call rather than pass an empty array.
+	var u := _make_unit(1, Vector2(100, 100))
+	u.tier = FormationTier.FAR
+	var before: String = DemoStateHash.cheap_tick_hash(get_tree())
+	assert_eq(before.length(), 32, "a FAR-tier unit still hashes to a full md5 digest")
+	assert_eq(DemoStateHash.cheap_tick_hash(get_tree()), before,
+			"and does so repeatably")
