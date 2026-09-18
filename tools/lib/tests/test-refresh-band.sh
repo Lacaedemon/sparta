@@ -191,6 +191,28 @@ def run_cases():
     check_value("bootstrap still writes a good first baseline",
                 lambda: evaluate(None, stats(45.0, 50.0, 58.0), 30.0)["write"], True)
 
+    # The incumbent kind only changes the reported reason, and reporting a broken
+    # file as though nothing was ever committed understates it to whoever reads
+    # the PR body -- the audience the band exists to serve.
+    r = evaluate(None, stats(45.0, 50.0, 58.0), 30.0, incumbent="absent")
+    check("absent incumbent says nothing was committed",
+          "No baseline committed yet" in r["reason"])
+    r = evaluate(None, stats(45.0, 50.0, 58.0), 30.0, incumbent="malformed")
+    check("malformed incumbent says the file was unreadable",
+          "could not be read as three metrics" in r["reason"])
+    check("malformed incumbent still writes", r["write"] is True)
+    try:
+        evaluate(None, stats(45.0, 50.0, 58.0), 30.0, incumbent="bogus")
+        check("an unknown incumbent kind raises", False)
+    except ValueError:
+        check("an unknown incumbent kind raises", True)
+
+    # The unusable reason agrees in number with how many metrics it names.
+    r = evaluate(stats(0.0, 50.0, 58.0), stats(45.0, 50.0, 58.0), 30.0)
+    check("one bad metric reads 'is not'", "mean_ms is not" in r["reason"])
+    r = evaluate(stats(0.0, float("nan"), 58.0), stats(45.0, 50.0, 58.0), 30.0)
+    check("two bad metrics read 'are not'", "mean_ms, p95_ms are not" in r["reason"])
+
     # 9. is_usable is the one definition all three sites share, so pin it directly.
     for ok_v in (0.001, 45.107, 1e9):
         check_value("is_usable(%s) is True" % ok_v, lambda v=ok_v: is_usable(v), True)

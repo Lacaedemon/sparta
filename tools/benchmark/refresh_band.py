@@ -85,11 +85,18 @@ def pct_change(old_value, new_value):
     return (new_value - old_value) / old_value * 100.0
 
 
-def evaluate(old_stats, new_stats, tolerance_pct=DEFAULT_TOLERANCE_PCT):
+def evaluate(old_stats, new_stats, tolerance_pct=DEFAULT_TOLERANCE_PCT,
+             incumbent="absent"):
     """Decide whether new_stats should replace old_stats.
 
-    old_stats is None when no baseline is committed yet; both are otherwise
+    old_stats is None when there is no usable incumbent; both are otherwise
     mappings carrying every key in METRICS.
+
+    incumbent says WHY old_stats is None, and only affects the reported reason:
+    "absent" for no file at all, "malformed" for a file that exists but could not
+    be read into three metrics. Reporting a broken file as though nothing had ever
+    been committed understates what happened to whoever reads the PR body, which
+    is the audience the band exists to serve.
 
     Returns a dict with:
       write          -- True when the baseline file should be rewritten.
@@ -134,10 +141,22 @@ def evaluate(old_stats, new_stats, tolerance_pct=DEFAULT_TOLERANCE_PCT):
             % ", ".join(unmeasurable)
         )
 
+    if incumbent not in ("absent", "malformed"):
+        raise ValueError(
+            "incumbent must be 'absent' or 'malformed', got %r" % (incumbent,)
+        )
+
     if old_stats is None:
+        if incumbent == "malformed":
+            reason = (
+                "Committed baseline could not be read as three metrics"
+                " -- replacing it."
+            )
+        else:
+            reason = "No baseline committed yet -- writing the first one."
         return {
             "write": True,
-            "reason": "No baseline committed yet -- writing the first one.",
+            "reason": reason,
             "deltas": {},
             "largest_metric": None,
             "largest_pct": None,
@@ -166,9 +185,9 @@ def evaluate(old_stats, new_stats, tolerance_pct=DEFAULT_TOLERANCE_PCT):
         return {
             "write": True,
             "reason": (
-                "Committed baseline is unusable -- %s is not a finite positive"
+                "Committed baseline is unusable -- %s %s not a finite positive"
                 " number. Replacing it."
-                % ", ".join(unusable)
+                % (", ".join(unusable), "is" if len(unusable) == 1 else "are")
             ),
             "deltas": {},
             "largest_metric": None,

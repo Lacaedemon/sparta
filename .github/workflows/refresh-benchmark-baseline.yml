@@ -10,8 +10,8 @@
 # automatically instead of relying on someone noticing drift and re-running it by hand.
 #
 # Averaging narrows that swing but does not remove it, so the refresh also applies a
-# TOLERANCE BAND: the baseline
-# is only rewritten when the largest metric change clears it. The band itself is
+# TOLERANCE BAND: the baseline is only rewritten when the largest metric change
+# clears it. The band itself is
 # DEFAULT_TOLERANCE_PCT in tools/benchmark/refresh_band.py -- the UPPER bound of the
 # 20-30% swing tools/perf/README.md documents, since a band at the lower end would still
 # pass through noise in the upper part of that range. Below the band, the measured
@@ -126,6 +126,20 @@ jobs:
                   # would fail the step's output-file parsing.
                   print(f"::warning::benchmark run {i} ended early; averaged baseline may be partial.", file=sys.stderr)
 
+          # Validate each RAW run before averaging. Averaging launders a bad input: a
+          # -1.0 ms run paired with a normal 47.868 ms one averages to a finite,
+          # positive 23.434, which passes every later check and commits as a genuine
+          # "47.9% faster" result. NaN and Infinity poison the mean and would be
+          # caught downstream, but zero and negative do not, so checking only the
+          # average validates the derived number instead of the inputs that made it.
+          for i, r in enumerate(reports, 1):
+              bad = [m for m in METRICS if not is_usable(r["stats"].get(m))]
+              if bad:
+                  raise ValueError(
+                      "benchmark run %d reported an unusable %s"
+                      % (i, ", ".join(bad))
+                  )
+
           means = [r["stats"]["mean_ms"] for r in reports]
           p95s = [r["stats"]["p95_ms"] for r in reports]
           maxs = [r["stats"]["max_ms"] for r in reports]
@@ -155,8 +169,15 @@ jobs:
           try:
               with open(old_baseline_path) as f:
                   old = json.load(f)
-          except (FileNotFoundError, ValueError):
+          except FileNotFoundError:
               old = None
+              file_present = False
+          except ValueError:
+              # Present, but unparseable or undecodable -- not the same as absent.
+              old = None
+              file_present = True
+          else:
+              file_present = True
 
           # Shape check, outside the try. A file whose shape is wrong has no usable
           # incumbent, exactly like an absent one. Individual VALUES are not judged here:
@@ -164,11 +185,17 @@ jobs:
           # through it is what makes the reported reason say the baseline was unusable
           # rather than that none was committed. METRICS comes from the module so this
           # cannot drift from the keys evaluate actually reads.
+          # "absent" only when there is genuinely no file. A file that exists but does
+          # not yield three metrics is "malformed", and saying so is the difference
+          # between telling a reader nothing was ever committed and telling them what
+          # was committed is broken.
           old_stats = None
+          incumbent = "malformed" if file_present else "absent"
           if isinstance(old, dict):
               stats = old.get("stats")
               if isinstance(stats, dict) and all(m in stats for m in METRICS):
                   old_stats = {m: stats[m] for m in METRICS}
+                  incumbent = "absent"
 
           base = reports[0]
           comment = (
@@ -217,6 +244,7 @@ jobs:
               old_stats,
               new_baseline["stats"],
               tolerance_from_env(os.environ.get("REFRESH_TOLERANCE_PCT")),
+              incumbent=incumbent,
           )
 
           summary_lines = ["## Benchmark baseline refresh", "", decision["reason"], ""]
@@ -231,9 +259,9 @@ jobs:
           # stderr, not stdout -- stdout is redirected into $GITHUB_OUTPUT.
           print(decision["reason"], file=sys.stderr)
 
-          print("refreshed=%s" % ("true" if decision["write"] else "false"))
           if not decision["write"]:
               # Nothing written, nothing for open-sync-pr to find. Done.
+              print("refreshed=false")
               sys.exit(0)
 
           with open(old_baseline_path, "w") as f:
@@ -282,6 +310,11 @@ jobs:
               fmt_row("max_ms", "max tick time", avg_max),
           ])
 
+          # refreshed=true is emitted only AFTER the write has actually happened, so
+          # the output can never claim a refresh the file did not receive. GitHub
+          # would skip the gated step anyway on a failed step, but that is an implicit
+          # success() gate a later `if: always()` on that step would quietly remove.
+          print("refreshed=true")
           print("pr_body<<BASELINE_PR_BODY_EOF")
           # Reason FIRST: it names the metric that cleared the band, or says the old
           # baseline was unusable. A reader skimming a long PR body should meet that
