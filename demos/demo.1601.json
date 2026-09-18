@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "CI tooling only. This PR adds a tolerance band to .github/workflows/refresh-benchmark-baseline.yml so the weekly baseline refresh only opens a PR when the measured change clears the runners' documented 20-30% noise floor, plus tools/benchmark/refresh_band.py holding the decision and tools/lib/tests/test-refresh-band.sh exercising it. Nothing in scenes/, scripts/, assets/, or project.godot changes, so a recorded battle is identical before and after."
+}
