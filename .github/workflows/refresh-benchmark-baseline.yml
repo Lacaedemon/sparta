@@ -10,10 +10,11 @@
 # automatically instead of relying on someone noticing drift and re-running it by hand.
 #
 # Averaging narrows that swing but does not remove it, so the refresh also applies a
-# TOLERANCE BAND (REFRESH_TOLERANCE_PCT, default 30% -- the UPPER bound of the 20-30%
-# swing tools/perf/README.md documents; a 20% band would still pass through noise in the
-# upper part of that range, which is the case this exists to suppress): the baseline
-# is only rewritten when the largest metric change clears the band. Below it, the measured
+# TOLERANCE BAND: the baseline
+# is only rewritten when the largest metric change clears it. The band itself is
+# DEFAULT_TOLERANCE_PCT in tools/benchmark/refresh_band.py -- the UPPER bound of the
+# 20-30% swing tools/perf/README.md documents, since a band at the lower end would still
+# pass through noise in the upper part of that range. Below the band, the measured
 # delta cannot be told apart from runner noise, so opening a PR would ask a reviewer a
 # question the evidence cannot answer, and repeatedly doing so trains the reflex to wave
 # such PRs through. A suppressed refresh still writes a job summary, so 'no PR this week'
@@ -31,10 +32,12 @@ on:
     inputs:
       tolerance_pct:
         description: >-
-          Largest metric change still treated as runner noise, in percent. Defaults to
-          the committed band; set it lower to force a refresh this run only.
+          Largest metric change still treated as runner noise, in percent. Leave blank
+          to use the committed default (DEFAULT_TOLERANCE_PCT in
+          tools/benchmark/refresh_band.py); set it lower to force a refresh this run
+          only. Deliberately has no default here, so the band lives in exactly one
+          place and this dialog cannot drift from what the weekly run actually uses.
         required: false
-        default: '30'
 
 concurrency:
   group: refresh-benchmark-baseline
@@ -52,10 +55,10 @@ env:
   # under.
   WARMUP_TICKS: 60
   MEASURE_TICKS: 300
-  # Largest metric change that still counts as runner noise, per the band described in
-  # this workflow's header. A workflow_dispatch run may override it for that run alone
-  # via the tolerance_pct input; a scheduled run has no inputs, so it falls back here.
-  REFRESH_TOLERANCE_PCT: ${{ inputs.tolerance_pct || '30' }}
+  # Empty on a scheduled run (no inputs), which makes refresh_band.py's own
+  # DEFAULT_TOLERANCE_PCT the band. Only a workflow_dispatch override puts a number
+  # here, so this file holds no band literal to drift from the module's.
+  REFRESH_TOLERANCE_PCT: ${{ inputs.tolerance_pct || '' }}
 
 jobs:
   refresh-baseline:
@@ -107,7 +110,7 @@ jobs:
           # The band decision lives in a testable module (tools/lib/tests/test-refresh-band.sh
           # exercises it on every PR) rather than inline here, where only cron would run it.
           sys.path.insert(0, "tools/benchmark")
-          from refresh_band import evaluate, format_delta_table
+          from refresh_band import evaluate, format_delta_table, tolerance_from_env
 
           reports = [json.load(open(f"/tmp/benchmark-run{i}.json")) for i in (1, 2)]
           for i, r in enumerate(reports, 1):
@@ -182,7 +185,7 @@ jobs:
           decision = evaluate(
               old_stats,
               new_baseline["stats"],
-              float(os.environ["REFRESH_TOLERANCE_PCT"]),
+              tolerance_from_env(os.environ.get("REFRESH_TOLERANCE_PCT")),
           )
 
           summary_lines = ["## Benchmark baseline refresh", "", decision["reason"], ""]
@@ -210,7 +213,15 @@ jobs:
           # recomputed here: one implementation of the arithmetic, which is why the
           # band module exists at all. Absent only when there was no usable baseline.
           def fmt_row(metric, name, old_v, new_v):
-              old_s = f"{old_v:.3f} ms" if old_v is not None else "n/a"
+              if old_v is None:
+                  old_s = "n/a"
+              elif old_v <= 0:
+                  # Flag the corrupt reading in the cell itself. Rendered bare it reads
+                  # as an ordinary historical measurement, and the row carries no other
+                  # signal that this is the value that invalidated the whole comparison.
+                  old_s = f"{old_v:.3f} ms (unusable)"
+              else:
+                  old_s = f"{old_v:.3f} ms"
               delta = decision["deltas"].get(metric)
               pct = "n/a" if delta is None else f"{delta:+.1f}%"
               return f"| {name} | {old_s} | {new_v:.3f} ms | {pct} |"
@@ -224,11 +235,12 @@ jobs:
           ])
 
           print("pr_body<<BASELINE_PR_BODY_EOF")
-          print(table)
-          print()
-          # Name the metric that cleared the band, so the reviewer sees the trigger
-          # rather than having to work out which number crossed which threshold.
+          # Reason FIRST: it names the metric that cleared the band, or says the old
+          # baseline was unusable. A reader skimming a long PR body should meet that
+          # before the table, not after it.
           print(decision["reason"])
+          print()
+          print(table)
           print("BASELINE_PR_BODY_EOF")
           PY
 

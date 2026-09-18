@@ -22,7 +22,8 @@ can be unit-tested directly instead of exercised once a week by cron.
 # on a shared CI runner, documented in tools/perf/README.md. The UPPER bound, not
 # the lower one: a band set at 20 would still pass through noise in the 20-30%
 # part of that range, which is the exact case this exists to suppress.
-# This is the DEFAULT; a run uses whatever REFRESH_TOLERANCE_PCT passes in.
+# This module is the SINGLE source of the number: the workflow carries no band
+# literal of its own, and passes one only when a workflow_dispatch run overrides it.
 DEFAULT_TOLERANCE_PCT = 30.0
 
 # Reporting order for the metrics carried in a baseline's "stats" object.
@@ -33,6 +34,18 @@ METRIC_LABELS = {
     "p95_ms": "p95 tick time",
     "max_ms": "max tick time",
 }
+
+
+def tolerance_from_env(raw):
+    """Resolve a band from an env value that may be unset or empty.
+
+    A scheduled run passes nothing, so it takes DEFAULT_TOLERANCE_PCT. Only a
+    workflow_dispatch override supplies a value, which keeps the default in one
+    place rather than duplicated into the workflow file.
+    """
+    if raw is None or not raw.strip():
+        return DEFAULT_TOLERANCE_PCT
+    return float(raw)
 
 
 def pct_change(old_value, new_value):

@@ -16,6 +16,9 @@
 #      than baked in.
 #   7. Bad input fails fast: a negative tolerance and a stats object missing a
 #      metric both raise rather than silently deciding.
+#   9. tolerance_from_env(): an unset/empty/blank env value falls back to the module's
+#      own default, a supplied value wins, and a malformed one raises. This is what
+#      lets the workflow file carry no band literal to drift from this module's.
 #   8. A corrupt committed baseline (a non-positive metric, which no real tick time
 #      ever is) is REPLACED rather than raising. Raising would wedge the weekly cron:
 #      every later run would hit the same bad file and nothing would replace it.
@@ -36,7 +39,12 @@ python3 - "$MODULE_DIR" <<'PY'
 import sys
 
 sys.path.insert(0, sys.argv[1])
-from refresh_band import DEFAULT_TOLERANCE_PCT, evaluate, format_delta_table
+from refresh_band import (
+    DEFAULT_TOLERANCE_PCT,
+    evaluate,
+    format_delta_table,
+    tolerance_from_env,
+)
 
 failures = []
 
@@ -97,11 +105,31 @@ check(
 
 # 8. A corrupt baseline is replaced, not raised on -- otherwise the weekly cron wedges.
 for bad in (0.0, -1.0):
-    r = evaluate(stats(bad, 50.0, 60.0), stats(45.0, 50.0, 60.0), 20.0)
+    # Guarded: a regression here raises, and an unguarded raise would abort the whole
+    # script, skipping every later case and reporting a traceback instead of a label.
+    try:
+        r = evaluate(stats(bad, 50.0, 60.0), stats(45.0, 50.0, 60.0), 20.0)
+    except Exception as exc:
+        check("non-positive incumbent (%s) does not raise" % bad, False)
+        print("       raised: %r" % (exc,))
+        continue
     check("non-positive incumbent (%s) writes rather than raising" % bad, r["write"] is True)
     check("non-positive incumbent (%s) says the baseline was unusable" % bad,
           "unusable" in r["reason"])
     check("non-positive incumbent (%s) reports no deltas" % bad, r["deltas"] == {})
+
+# 9. tolerance_from_env resolves the band, so the workflow needs no literal of its own.
+#    A scheduled run passes nothing; only a dispatch override passes a number.
+check("unset env takes the module default", tolerance_from_env(None) == DEFAULT_TOLERANCE_PCT)
+check("empty env takes the module default", tolerance_from_env("") == DEFAULT_TOLERANCE_PCT)
+check("blank env takes the module default", tolerance_from_env("   ") == DEFAULT_TOLERANCE_PCT)
+check("a supplied override wins", tolerance_from_env("1.5") == 1.5)
+check("an integer-looking override parses", tolerance_from_env("40") == 40.0)
+try:
+    tolerance_from_env("not-a-number")
+    check("a malformed override raises", False)
+except ValueError:
+    check("a malformed override raises", True)
 
 # 7. Bad input fails fast rather than deciding quietly.
 try:
