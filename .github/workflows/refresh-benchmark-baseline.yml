@@ -133,7 +133,13 @@ jobs:
           # caught downstream, but zero and negative do not, so checking only the
           # average validates the derived number instead of the inputs that made it.
           for i, r in enumerate(reports, 1):
-              bad = [m for m in METRICS if not is_usable(r["stats"].get(m))]
+              # .get on BOTH levels: a report with no "stats" at all would otherwise
+              # raise a bare KeyError carrying neither the run number nor the metric,
+              # which is a worse message than every other corruption path here.
+              run_stats = r.get("stats")
+              if not isinstance(run_stats, dict):
+                  run_stats = {}
+              bad = [m for m in METRICS if not is_usable(run_stats.get(m))]
               if bad:
                   raise ValueError(
                       "benchmark run %d reported an unusable %s"
@@ -195,7 +201,10 @@ jobs:
               stats = old.get("stats")
               if isinstance(stats, dict) and all(m in stats for m in METRICS):
                   old_stats = {m: stats[m] for m in METRICS}
-                  incumbent = "absent"
+                  # Left as-is deliberately: evaluate reads incumbent only when
+                  # old_stats is None, and relabelling a present, valid baseline
+                  # "absent" here would be a lie waiting for the first reader who
+                  # consults it outside that branch.
 
           base = reports[0]
           comment = (

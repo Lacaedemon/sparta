@@ -75,7 +75,14 @@ def is_usable(value):
     # behaviours: replace a bad incumbent, raise a named error on a bad measurement.
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return False
-    return math.isfinite(value) and value > 0
+    try:
+        return math.isfinite(value) and value > 0
+    except OverflowError:
+        # json parses an integer literal at arbitrary precision, so a corrupt file can
+        # hold an int too large to convert to float. isfinite raises on it rather than
+        # answering, which would crash the weekly run on a file it is supposed to
+        # replace -- the wedge this predicate exists to prevent.
+        return False
 
 
 def pct_change(old_value, new_value):

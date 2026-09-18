@@ -26,7 +26,8 @@
 #   9. is_usable() is the single definition all three sites share: finite, positive,
 #      and an actual number. bool matters most, since it subclasses int and a literal
 #      `true` would otherwise read as a 1.0 ms measurement; a string or null would
-#      raise a bare TypeError out of isfinite.
+#      raise a bare TypeError out of isfinite, and an int too large to convert
+#      to float makes isfinite itself raise OverflowError.
 #  10. tolerance_from_env(): an unset/empty/blank env value falls back to the module's
 #      own default, a supplied value wins, and a malformed one raises. This is what
 #      lets the workflow file carry no band literal to drift from this module's.
@@ -214,11 +215,16 @@ def run_cases():
     check("two bad metrics read 'are not'", "mean_ms, p95_ms are not" in r["reason"])
 
     # 9. is_usable is the one definition all three sites share, so pin it directly.
+    def label(v):
+        # A huge int reprs to hundreds of digits, which would drown the output.
+        text = repr(v)
+        return text if len(text) <= 24 else text[:12] + "..." + text[-6:]
+
     for ok_v in (0.001, 45.107, 1e9):
-        check_value("is_usable(%s) is True" % ok_v, lambda v=ok_v: is_usable(v), True)
+        check_value("is_usable(%s) is True" % label(ok_v), lambda v=ok_v: is_usable(v), True)
     for bad_v in (0.0, -1.0, float("nan"), float("inf"), float("-inf"), True, False,
-                  "45.1", None, [], {}):
-        check_value("is_usable(%s) is False" % bad_v, lambda v=bad_v: is_usable(v), False)
+                  "45.1", None, [], {}, 10 ** 400, -(10 ** 400)):
+        check_value("is_usable(%s) is False" % label(bad_v), lambda v=bad_v: is_usable(v), False)
 
     # The default parameter itself: every other call passes a band explicitly, so
     # without this nothing would notice DEFAULT_TOLERANCE_PCT being wired up wrong.
