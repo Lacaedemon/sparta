@@ -59,6 +59,22 @@ def check(label, condition):
         failures.append(label)
 
 
+def check_value(label, fn, expected):
+    """Call fn() and compare, reporting a raise as a labelled failure.
+
+    Bare calls inside check() abort the whole script when the production code
+    regresses into raising, which skips every later case and prints a traceback
+    instead of naming what broke.
+    """
+    try:
+        actual = fn()
+    except Exception as exc:
+        check(label, False)
+        print("       raised: %r" % (exc,))
+        return
+    check(label, actual == expected)
+
+
 def stats(mean, p95, mx):
     return {"mean_ms": mean, "p95_ms": p95, "max_ms": mx}
 
@@ -122,11 +138,14 @@ for bad in (0.0, -1.0):
 
 # 9. tolerance_from_env resolves the band, so the workflow needs no literal of its own.
 #    A scheduled run passes nothing; only a dispatch override passes a number.
-check("unset env takes the module default", tolerance_from_env(None) == DEFAULT_TOLERANCE_PCT)
-check("empty env takes the module default", tolerance_from_env("") == DEFAULT_TOLERANCE_PCT)
-check("blank env takes the module default", tolerance_from_env("   ") == DEFAULT_TOLERANCE_PCT)
-check("a supplied override wins", tolerance_from_env("1.5") == 1.5)
-check("an integer-looking override parses", tolerance_from_env("40") == 40.0)
+check_value("unset env takes the module default",
+            lambda: tolerance_from_env(None), DEFAULT_TOLERANCE_PCT)
+check_value("empty env takes the module default",
+            lambda: tolerance_from_env(""), DEFAULT_TOLERANCE_PCT)
+check_value("blank env takes the module default",
+            lambda: tolerance_from_env("   "), DEFAULT_TOLERANCE_PCT)
+check_value("a supplied override wins", lambda: tolerance_from_env("1.5"), 1.5)
+check_value("an integer-looking override parses", lambda: tolerance_from_env("40"), 40.0)
 for bad_raw in ("not-a-number", "nan", "inf", "-inf"):
     # nan and inf parse fine as floats and are NOT caught by a plain "< 0" test:
     # nan loses every comparison and inf wins every one, so either silently turns
