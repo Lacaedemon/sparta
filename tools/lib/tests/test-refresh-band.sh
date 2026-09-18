@@ -16,28 +16,38 @@
 #      than baked in.
 #   7. Bad input fails fast: a negative tolerance and a stats object missing a
 #      metric both raise rather than silently deciding.
-#   9. tolerance_from_env(): an unset/empty/blank env value falls back to the module's
-#      own default, a supplied value wins, and a malformed one raises. This is what
-#      lets the workflow file carry no band literal to drift from this module's.
-#      'nan' and 'inf' are rejected explicitly: both parse as floats and slip past a
-#      plain non-negative test, then silently suppress every refresh forever.
 #   8. A corrupt committed baseline (a non-positive OR non-finite metric, which no real
 #      tick time ever is) is REPLACED rather than raising. Raising would wedge the
 #      weekly cron: every later run would hit the same bad file and nothing would
 #      replace it. NaN matters specifically: json.load accepts a bare NaN and
 #      `nan <= 0` is False, so a non-positive test alone would let it through and
 #      suppress every future refresh.
-#   8b. A non-finite NEW measurement raises instead, since writing it would poison
-#      the committed baseline for every later run.
+#   9. A non-finite or non-positive NEW measurement raises instead, since writing
+#      it would poison the committed baseline for every later run.
+#   10. tolerance_from_env(): an unset/empty/blank env value falls back to the module's
+#      own default, a supplied value wins, and a malformed one raises. This is what
+#      lets the workflow file carry no band literal to drift from this module's.
+#      'nan' and 'inf' are rejected explicitly: both parse as floats and slip past a
+#      plain non-negative test, then silently suppress every refresh forever.
 #
-# The real refresh case this was built for is a +6.1%/+5.9%/+7.7% week against a
-# 20% band, which case 1 reproduces exactly.
+# The real refresh case this was built for is a +6.1%/+5.9%/+7.7% week, which
+# case 1 reproduces exactly against a 20% band -- it is suppressed at the
+# committed 30% default too, by a wider margin.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 MODULE_DIR="$REPO_ROOT/tools/benchmark"
 
+# Every assertion here needs python3, so without it this file would exit 0 having
+# checked nothing -- and check.sh's driver reads only the exit code, so that is
+# indistinguishable from a pass. In CI, where python3 is a given (the workflow under
+# test runs on it), treat its absence as a failure rather than a silent skip. Locally
+# it stays a skip, matching check.sh's own optional-python3 handling.
 if ! command -v python3 >/dev/null 2>&1; then
+  if [ -n "${CI:-}" ]; then
+    echo "error: python3 not on PATH in CI; refresh_band.py went unexercised" >&2
+    exit 1
+  fi
   echo "skip: python3 not on PATH; refresh_band.py cannot be exercised" >&2
   exit 0
 fi
@@ -51,6 +61,7 @@ from refresh_band import (
     DEFAULT_TOLERANCE_PCT,
     evaluate,
     format_delta_table,
+    is_usable,
     tolerance_from_env,
 )
 
@@ -150,16 +161,22 @@ def run_cases():
               "unusable" in r["reason"])
         check("non-positive incumbent (%s) reports no deltas" % bad, r["deltas"] == {})
 
-    # 8b. A non-finite NEW measurement is a broken benchmark, not a stale baseline, so it
+    # 9. A non-finite or non-positive NEW measurement is a broken benchmark, not a stale baseline, so it
     #     raises rather than being written into the committed file.
-    for bad_new in (float("nan"), float("inf")):
+    for bad_new in (float("nan"), float("inf"), 0.0, -5.0):
         try:
             evaluate(stats(45.0, 50.0, 58.0), stats(bad_new, 50.0, 58.0), 30.0)
-            check("non-finite new stat (%s) raises" % bad_new, False)
+            check("unusable new stat (%s) raises" % bad_new, False)
         except ValueError:
-            check("non-finite new stat (%s) raises" % bad_new, True)
+            check("unusable new stat (%s) raises" % bad_new, True)
 
-    # 9. tolerance_from_env resolves the band, so the workflow needs no literal of its own.
+        # is_usable is the one definition all three sites share, so pin it directly.
+    for ok_v in (0.001, 45.107, 1e9):
+        check_value("is_usable(%s) is True" % ok_v, lambda v=ok_v: is_usable(v), True)
+    for bad_v in (0.0, -1.0, float("nan"), float("inf"), float("-inf")):
+        check_value("is_usable(%s) is False" % bad_v, lambda v=bad_v: is_usable(v), False)
+
+# 10. tolerance_from_env resolves the band, so the workflow needs no literal of its own.
     #    A scheduled run passes nothing; only a dispatch override passes a number.
     check_value("unset env takes the module default",
                 lambda: tolerance_from_env(None), DEFAULT_TOLERANCE_PCT)

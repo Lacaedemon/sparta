@@ -110,7 +110,12 @@ jobs:
           # The band decision lives in a testable module (tools/lib/tests/test-refresh-band.sh
           # exercises it on every PR) rather than inline here, where only cron would run it.
           sys.path.insert(0, "tools/benchmark")
-          from refresh_band import evaluate, format_delta_table, tolerance_from_env
+          from refresh_band import (
+              evaluate,
+              format_delta_table,
+              is_usable,
+              tolerance_from_env,
+          )
 
           reports = [json.load(open(f"/tmp/benchmark-run{i}.json")) for i in (1, 2)]
           for i, r in enumerate(reports, 1):
@@ -215,10 +220,13 @@ jobs:
           def fmt_row(metric, name, old_v, new_v):
               if old_v is None:
                   old_s = "n/a"
-              elif old_v <= 0:
+              elif not is_usable(old_v):
                   # Flag the corrupt reading in the cell itself. Rendered bare it reads
                   # as an ordinary historical measurement, and the row carries no other
                   # signal that this is the value that invalidated the whole comparison.
+                  # Uses the module's own test rather than re-deriving one: a local
+                  # `old_v <= 0` would miss NaN, which is exactly the value most in
+                  # need of the marker and the one that renders most innocently.
                   old_s = f"{old_v:.3f} ms (unusable)"
               else:
                   old_s = f"{old_v:.3f} ms"

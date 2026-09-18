@@ -57,6 +57,17 @@ def tolerance_from_env(raw):
     return value
 
 
+def is_usable(value):
+    """True when a metric can be measured, compared against, and committed.
+
+    One definition of corrupt, shared by the incumbent check, the new-measurement
+    check, and any caller rendering a metric. A narrower re-derivation elsewhere
+    (testing only <= 0) silently passes NaN, since every comparison against NaN is
+    False.
+    """
+    return math.isfinite(value) and value > 0
+
+
 def pct_change(old_value, new_value):
     """Signed percent change from old_value to new_value."""
     if old_value == 0:
@@ -105,13 +116,20 @@ def evaluate(old_stats, new_stats, tolerance_pct=DEFAULT_TOLERANCE_PCT):
     if missing:
         raise KeyError("stats missing required metric(s): %s" % ", ".join(missing))
 
-    # A new measurement that is not a finite number means the benchmark itself went
-    # wrong. Writing it would poison the committed baseline for every later run, so
-    # this raises rather than being absorbed like a corrupt incumbent below.
-    unmeasurable = [m for m in METRICS if not math.isfinite(new_stats[m])]
+    # A new measurement that is not a finite POSITIVE number means the benchmark
+    # itself went wrong: a tick time is never legitimately zero or negative, any more
+    # than it is NaN. Writing one would poison the committed baseline for every later
+    # run, so this raises rather than being absorbed like a corrupt incumbent below.
+    # Deliberately the same bar as the incumbent check further down -- a value too
+    # corrupt to compare against is also too corrupt to commit.
+    unmeasurable = [
+        m for m in METRICS
+        if not is_usable(new_stats[m])
+    ]
     if unmeasurable:
         raise ValueError(
-            "new stats are not finite for: %s" % ", ".join(unmeasurable)
+            "new stats are not finite and positive for: %s"
+            % ", ".join(unmeasurable)
         )
 
     # An incumbent metric that is non-finite or non-positive cannot anchor a percent
@@ -126,7 +144,7 @@ def evaluate(old_stats, new_stats, tolerance_pct=DEFAULT_TOLERANCE_PCT):
     # forever, reported as a "+nan%" change.
     unusable = [
         m for m in METRICS
-        if not math.isfinite(old_stats[m]) or old_stats[m] <= 0
+        if not is_usable(old_stats[m])
     ]
     if unusable:
         return {
