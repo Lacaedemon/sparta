@@ -84,6 +84,9 @@ var _state_full: bool = false          # also dump the raw per-soldier arrays (d
 var _state_dumped: Dictionary = {}     # tick -> true, so each snapshot is written at most once
 var _hash_stream: FileAccess = null    # per-tick state-hash stream (armed with the state dump)
 var _hash_last_tick: int = -1          # last tick hashed, so a frozen tick writes one line only
+var _bit_ticks: Array = []             # ticks to dump raw bits at (SPARTA_DEMO_BITDUMP; empty = off)
+var _bit_dump: FileAccess = null       # raw-bit position dump, opened only when armed
+var _bit_dumped: Dictionary = {}       # tick -> true, mirroring _state_dumped for the bit dump
 
 
 ## Parse an input script's "tier_ranges" block into {"promote": float, "demote": float}, or
@@ -343,9 +346,20 @@ func _on_physics_frame() -> void:
 	# Stream the per-tick state hash (armed with the state dump). The tick guard makes a
 	# frozen tick -- the sim stops advancing once the battle ends -- write one line, not one
 	# per remaining physics frame.
-	if _hash_stream != null and tick != _hash_last_tick:
+	var first_frame_of_tick: bool = tick != _hash_last_tick
+	if first_frame_of_tick:
 		_hash_last_tick = tick
+	if _hash_stream != null and first_frame_of_tick:
 		DemoStateHash.write_tick(_hash_stream, get_tree(), tick, Replay.rng.state)
+	# Same sampling point as the hash -- the first physics frame of a new tick -- so the raw-bit
+	# dump describes the instant the stream described, which is what makes the two comparable.
+	# Gated on that point rather than nested inside the hash write, matching DemoStateSink: a
+	# hash_stream.jsonl that failed to open is an unrelated file, and letting it suppress the
+	# bit-dump bookkeeping would strand a run that could have finished instantly.
+	if _bit_dump != null and first_frame_of_tick \
+			and _bit_ticks.has(tick) and not _bit_dumped.has(tick):
+		_bit_dumped[tick] = true
+		DemoStateHash.dump_tick(_bit_dump, get_tree(), tick)
 	if _state_ticks.has(tick) and not _state_dumped.has(tick):
 		_state_dumped[tick] = true
 		_dump_state(tick)
@@ -370,6 +384,14 @@ func _on_physics_frame() -> void:
 		for t in _state_ticks:
 			if not _state_dumped.has(t):
 				_state_dumped[t] = true
+	# Bit-dump ticks past the frozen tick can never fire either, for the same reason, and they
+	# gate the same quit -- so drain them too or the run sits out the wall-clock timeout. Its
+	# OWN branch rather than a few lines inside the one above, because the two lists run out
+	# independently: a run whose state snapshots have all landed but whose last bit tick sits
+	# past the end would never enter that branch, and draining nothing there is exactly the
+	# hang this exists to prevent.
+	if _battle._ended:
+		_drain_unreachable_bit_ticks()
 	if _frame_ticks.has(tick) and not _captured.has(tick):
 		_captured[tick] = true
 		_capture_frame(tick)
@@ -450,9 +472,15 @@ func _capture_frame(tick: int) -> void:
 ## and quit after the first physics tick. The guard keeps this false unless at least one
 ## artifact type is armed, so an unarmed recording runs to Movie Maker's own --quit-after.
 func _all_artifacts_done() -> bool:
+	# _bit_ticks is deliberately NOT in the `> 0` guard: it can only be non-empty once
+	# _state_ticks is (the bit dump is armed from inside _arm_state_dump, past its own empty
+	# check), so adding it there could never change the answer. The equality below is live,
+	# though -- without it a run quits on its last state snapshot and leaves a later armed
+	# bit tick undumped, which is the empty-diagnostic trap DemoStateSink documents.
 	return (_frame_ticks.size() + _state_ticks.size()) > 0 \
 		and _captured.size() == _frame_ticks.size() \
-		and _state_dumped.size() == _state_ticks.size()
+		and _state_dumped.size() == _state_ticks.size() \
+		and _bit_dumped.size() == _bit_ticks.size()
 
 
 ## Quit the tree once every armed frame is captured, after the pending save_png awaits finish.
@@ -468,8 +496,9 @@ func _quit_after_captures() -> void:
 	Engine.time_scale = 1.0
 	if not _frame_ticks.is_empty():
 		await RenderingServer.frame_post_draw
-	print("[demo-input] all artifacts done (%d frames, %d state snapshots); quitting."
-		% [_frame_ticks.size(), _state_ticks.size()])
+	print("[demo-input] all artifacts done (%d frames, %d state snapshots%s); quitting."
+		% [_frame_ticks.size(), _state_ticks.size(),
+			", %d raw-bit dumps" % _bit_ticks.size() if not _bit_ticks.is_empty() else ""])
 	get_tree().quit()
 
 
@@ -481,8 +510,9 @@ func _quit_after_captures() -> void:
 func _on_capture_timeout() -> void:
 	Engine.time_scale = 1.0
 	if not _all_artifacts_done():
-		push_warning("[demo-input] run timed out: %d/%d frames, %d/%d state snapshots (a tick may be past the battle's end)."
-			% [_captured.size(), _frame_ticks.size(), _state_dumped.size(), _state_ticks.size()])
+		push_warning("[demo-input] run timed out: %d/%d frames, %d/%d state snapshots, %d/%d raw-bit dumps (a tick may be past the battle's end)."
+			% [_captured.size(), _frame_ticks.size(), _state_dumped.size(), _state_ticks.size(),
+				_bit_dumped.size(), _bit_ticks.size()])
 	get_tree().quit()
 
 
@@ -500,9 +530,14 @@ func _arm_state_dump(script_state: Array) -> void:
 	# recording (CI) leaves it unset, so a demo's own `state` array never affects the recording —
 	# that array just supplies default ticks for a dump run. Reuses DemoFrames' tick parse/merge.
 	if not OS.has_environment("SPARTA_DEMO_STATE"):
+		# The raw-bit dump rides on the state dump, so arming it alone produces nothing.
+		# Say so: a diagnostic that silently does nothing is worse than one that fails,
+		# because the empty output reads as "the two runs agree".
+		_warn_bitdump_unarmed()
 		return
 	_state_ticks = DemoFrames.merge_ticks(OS.get_environment("SPARTA_DEMO_STATE"), script_state)
 	if _state_ticks.is_empty():
+		_warn_bitdump_unarmed()
 		return
 	_state_full = OS.get_environment("SPARTA_DEMO_STATE_FULL") == "1"
 	_state_dir = OS.get_environment("SPARTA_DEMO_STATE_DIR")
@@ -516,12 +551,64 @@ func _arm_state_dump(script_state: Array) -> void:
 	if _hash_stream == null:
 		push_warning("[demo-input] could not open hash_stream.jsonl in %s (err %d)"
 				% [_state_dir, FileAccess.get_open_error()])
+	_arm_bit_dump()
 	print("[demo-input] state dump armed at ticks %s -> %s%s" % [
 		str(_state_ticks), _state_dir, " (full per-soldier arrays)" if _state_full else ""])
 	# Same safety net as capture: quit after a generous wall time so a tick past the battle's
 	# end can't hang the run. Guarded so two arms don't stack two timers unnecessarily is not
 	# needed — a duplicate timer just fires a redundant already-done check.
 	get_tree().create_timer(CAPTURE_TIMEOUT_SEC).timeout.connect(_on_capture_timeout)
+
+
+## Open the raw-bit position dump when SPARTA_DEMO_BITDUMP names any ticks. Armed separately
+## from the state dump and off by default, exactly as on the replay path's DemoStateSink: it
+## rides on that dump (same run, same directory) but answers a different question, and its
+## lines are far larger than a hash line. The hash stream is what names the tick worth
+## dumping, so the normal order is to read a stream comparison first and arm this second.
+##
+## Its own method, and deliberately touching no tree state, so the arming contract is
+## directly unit-testable -- _arm_state_dump's wall-clock timer needs a SceneTree, and the
+## thing worth pinning here is that this path reads SPARTA_DEMO_BITDUMP at all.
+func _arm_bit_dump() -> void:
+	_bit_ticks = DemoBitDump.ticks_from_env()
+	if _bit_ticks.is_empty():
+		return
+	_bit_dump = DemoBitDump.open_dump(_state_dir)
+	if _bit_dump == null:
+		push_warning("[demo-input] could not open bit_dump.jsonl in %s (err %d)"
+				% [_state_dir, FileAccess.get_open_error()])
+	else:
+		print("[demo-input] raw-bit dump armed at ticks %s" % str(_bit_ticks))
+
+
+## Mark every still-unwritten armed bit tick done, once a decided battle has frozen the sim's
+## tick and they can no longer fire. Without this a run sits out the full wall-clock timeout
+## waiting for a tick that will never arrive.
+##
+## The size equality is only an early-out -- the loop body is idempotent, so re-running it on
+## every physics frame after the battle ends would be correct, merely wasteful.
+##
+## The null guard is the whole point of the method and is NOT belt-and-braces: when the dump
+## file failed to open, _bit_ticks is still armed and nothing was ever written, so draining
+## would satisfy _all_artifacts_done() and let the run print "N raw-bit dumps; quitting" and
+## exit 0 over an absent file -- the precise false success the bit dump exists to avoid. Left
+## undrained, the run instead reaches _on_capture_timeout, whose warning names the shortfall.
+func _drain_unreachable_bit_ticks() -> void:
+	if _bit_dump == null or _bit_dumped.size() == _bit_ticks.size():
+		return
+	for t in _bit_ticks:
+		if not _bit_dumped.has(t):
+			_bit_dumped[t] = true
+
+
+## Warn when SPARTA_DEMO_BITDUMP is set on a run whose state dump never armed, which is the
+## one way to ask for a bit dump and get nothing. Its own failure mode is the reason it is
+## worth a line: an absent bit_dump.jsonl and two agreeing dumps look identical to every
+## consumer, so the caller has to be told the file was never going to be written.
+func _warn_bitdump_unarmed() -> void:
+	if OS.has_environment("SPARTA_DEMO_BITDUMP"):
+		push_warning("[demo-input] SPARTA_DEMO_BITDUMP is set but SPARTA_DEMO_STATE armed no "
+				+ "ticks, so no bit_dump.jsonl will be written; the bit dump rides on the state dump.")
 
 
 ## Write a readable JSON snapshot of the authoritative game state at `tick`. The snapshot

@@ -321,3 +321,136 @@ func test_a_non_far_unit_with_no_soldiers_hashes_without_an_engine_error() -> vo
 	var first: String = DemoStateHash.cheap_tick_hash(get_tree())
 	assert_eq(first.length(), 32, "an unseeded below-FAR unit still hashes to a digest")
 	assert_eq(DemoStateHash.cheap_tick_hash(get_tree()), first, "and does so repeatably")
+
+
+# --- SPARTA_DEMO_BITDUMP arming, shared by both dump paths --------------------
+#
+# Regression cover for the defect where the variable was read in DemoStateSink only, so a
+# scripted-input clip -- 102 of the catalog's 106 rows, `sidestep` among them -- armed the
+# dump, exited 0, and wrote no bit_dump.jsonl. Both paths now read ticks_from_env, and the
+# recorder-side test below is what fails if that path stops doing so.
+
+const RecorderScript = preload("res://tools/demo/DemoInputRecorder.gd")
+const SinkScript = preload("res://tools/demo/DemoStateSink.gd")
+
+const _ARMING_ENV := ["SPARTA_DEMO_BITDUMP", "SPARTA_DEMO_STATE"]
+
+var _saved_env: Dictionary = {}
+
+
+func before_each() -> void:
+	# Snapshot/restore both arming variables, so a developer's shell (or another test) can't
+	# leak state in either direction -- and so a failing assert below cannot leave
+	# SPARTA_DEMO_STATE set for whatever runs next.
+	_saved_env = {}
+	for key in _ARMING_ENV:
+		_saved_env[key] = OS.get_environment(key) if OS.has_environment(key) else null
+		OS.unset_environment(key)
+
+
+func after_each() -> void:
+	for key in _saved_env:
+		if _saved_env[key] == null:
+			OS.unset_environment(key)
+		else:
+			OS.set_environment(key, _saved_env[key])
+
+
+func test_ticks_from_env_is_empty_when_unset() -> void:
+	assert_eq(DemoBitDump.ticks_from_env(), [],
+			"an unset variable arms nothing, so a normal run never opens a dump")
+
+
+func test_ticks_from_env_is_empty_for_a_blank_value() -> void:
+	# A workflow that wires the variable to an unfilled dispatch input passes "", which
+	# must read as off rather than as "dump every tick" or as an error.
+	OS.set_environment("SPARTA_DEMO_BITDUMP", "")
+	assert_eq(DemoBitDump.ticks_from_env(), [], "a blank value arms nothing either")
+
+
+func test_ticks_from_env_parses_sorts_and_dedupes() -> void:
+	OS.set_environment("SPARTA_DEMO_BITDUMP", "22, 19,21,20,21")
+	assert_eq(DemoBitDump.ticks_from_env(), [19, 20, 21, 22],
+			"the tick list parses whitespace-tolerantly, sorted and de-duplicated")
+
+
+func test_the_scripted_input_recorder_arms_from_the_same_variable() -> void:
+	# The bug this pins: the recorder path ignored SPARTA_DEMO_BITDUMP entirely. Driving
+	# _arm_bit_dump directly rather than _arm_state_dump keeps this tree-free -- the state
+	# arming starts a wall-clock timer, which needs a SceneTree the bare recorder has none of.
+	OS.set_environment("SPARTA_DEMO_BITDUMP", "19,21")
+	var r = RecorderScript.new()
+	autofree(r)
+	r._state_dir = "user://bitdump_arm_test"
+	DirAccess.make_dir_recursive_absolute(r._state_dir)
+	r._arm_bit_dump()
+	assert_eq(r._bit_ticks, [19, 21],
+			"the scripted-input path reads the same variable the replay path does")
+	assert_not_null(r._bit_dump, "and opens the dump file, so the run can actually write one")
+	if r._bit_dump != null:
+		r._bit_dump.close()
+	_remove_dump_dir(r._state_dir)
+
+
+## Delete a scratch dump dir and the bit_dump.jsonl inside it. remove_absolute needs a real
+## OS path -- a raw user:// silently fails to delete, leaving a stray file in the app-data
+## dir after every run (the same trap test_demo_state_sink.gd documents for its snapshots).
+func _remove_dump_dir(dir: String) -> void:
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(dir.path_join("bit_dump.jsonl")))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(dir))
+
+
+func test_a_failed_dump_open_does_not_let_the_run_report_success() -> void:
+	# The drain exists so armed ticks past a decided battle's frozen tick cannot hang the run.
+	# Draining unconditionally would also "complete" a run whose dump file never opened, which
+	# is the one outcome worse than hanging: an absent bit_dump.jsonl and two agreeing dumps
+	# are the same silence to a cross-platform comparison, so a clean exit over a missing file
+	# reads as evidence the platforms match.
+	# No env var here on purpose: _arm_bit_dump is never called, so the fields are set directly
+	# to stage the one state arming cannot produce on demand -- ticks armed, dump file not open.
+	var r = RecorderScript.new()
+	autofree(r)
+	r._bit_ticks = [19, 21]
+	r._bit_dump = null   # as a failed DemoBitDump.open_dump leaves it
+	# A satisfied state dump, so _all_artifacts_done()'s leading `> 0` guard is cleared and
+	# its other two conjuncts hold: the bit-tick equality is then the only thing left deciding
+	# the assert below, which is what makes it discriminate rather than pass by default.
+	r._state_ticks = [8]
+	r._state_dumped = {8: true}
+	r._bit_dumped = {19: true, 21: true}
+	assert_true(r._all_artifacts_done(),
+			"sanity: with the bit ticks accounted for, this fixture DOES read as done -- so the "
+			+ "assert below is decided by the bit ticks alone, not by some other conjunct")
+	r._bit_dumped = {}
+	r._drain_unreachable_bit_ticks()
+	assert_eq(r._bit_dumped, {},
+			"nothing is marked dumped when no dump file was ever opened")
+	assert_false(r._all_artifacts_done(),
+			"so the run cannot quit claiming raw-bit dumps it never wrote")
+
+
+func test_the_drain_clears_ticks_that_can_no_longer_fire() -> void:
+	# The other half of the same guard: with a real dump open, ticks stranded past the frozen
+	# tick DO drain, so a run that did its work quits promptly instead of sitting out the
+	# wall-clock timeout.
+	OS.set_environment("SPARTA_DEMO_BITDUMP", "19,21")
+	var r = RecorderScript.new()
+	autofree(r)
+	r._state_dir = "user://bitdump_drain_test"
+	DirAccess.make_dir_recursive_absolute(r._state_dir)
+	r._arm_bit_dump()
+	assert_not_null(r._bit_dump, "sanity: the dump opened")
+	r._drain_unreachable_bit_ticks()
+	assert_eq(r._bit_dumped.size(), 2, "both stranded ticks are accounted for")
+	if r._bit_dump != null:
+		r._bit_dump.close()
+	_remove_dump_dir(r._state_dir)
+
+
+func test_the_replay_sink_arms_from_the_same_variable() -> void:
+	OS.set_environment("SPARTA_DEMO_BITDUMP", "19,21")
+	OS.set_environment("SPARTA_DEMO_STATE", "8")
+	var sink = SinkScript.arm_from_env("test")
+	assert_not_null(sink, "sanity: the state dump armed")
+	autofree(sink)
+	assert_eq(sink._bit_ticks, [19, 21], "the replay path reads it through the same helper")

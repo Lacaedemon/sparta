@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Diagnostic instrumentation only: SPARTA_DEMO_BITDUMP now arms on the scripted-input recorder path as well as the replay path, so a run writes bit_dump.jsonl where before it silently wrote nothing. Nothing about the battle changes -- the dump reads sim state and never touches it, and the clip a recording produces is byte-identical either way, so a video could only show that the change is invisible. The evidence that belongs to this PR is a bit_dump.jsonl that exists, which the PR description carries directly."
+}
