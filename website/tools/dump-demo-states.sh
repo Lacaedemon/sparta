@@ -154,12 +154,25 @@ for spec in "${DEMOS[@]}"; do
     echo "::error::state dump produced no transcripts for '$NAME'"
     exit 1
   fi
-  # Same guard, for the raw-bit dump: a requested bit_dump.jsonl that is absent or empty is
-  # the one failure that reads as good news downstream, because "no differences" and "no data"
-  # are the same silence to a cross-platform comparison. Only checked when one was asked for.
-  if [ -n "${SPARTA_DEMO_BITDUMP:-}" ] && [ ! -s "$CLIP_OUT/bit_dump.jsonl" ]; then
-    echo "::error::SPARTA_DEMO_BITDUMP was set but '$NAME' produced no bit_dump.jsonl"
-    exit 1
+  # Same guard, for the raw-bit dump -- but split, because absent and empty mean different
+  # things here and only one of them is a defect.
+  #
+  # SPARTA_DEMO_BITDUMP is ONE tick list applied to every clip, unlike the state ticks, which
+  # tick_list() derives per clip from that clip's own fixed_fps/max_frames and so are reachable
+  # by construction. Covered ranges across the catalog span roughly 240 to 5000 ticks, so a
+  # tick chosen for a long clip simply never arrives in a short one.
+  #
+  #   absent  -- the dump was never opened, so the tool did not do what it was told. Fail.
+  #   empty   -- opened, but no armed tick occurred before this clip's battle ended. Say so
+  #              and carry on: aborting here would take the whole sweep down over a clip
+  #              nobody was asking about.
+  if [ -n "${SPARTA_DEMO_BITDUMP:-}" ]; then
+    if [ ! -f "$CLIP_OUT/bit_dump.jsonl" ]; then
+      echo "::error::SPARTA_DEMO_BITDUMP was set but '$NAME' opened no bit_dump.jsonl at all"
+      exit 1
+    elif [ ! -s "$CLIP_OUT/bit_dump.jsonl" ]; then
+      echo "::warning::'$NAME' wrote an empty bit_dump.jsonl -- tick(s) ${SPARTA_DEMO_BITDUMP} lie past this clip's covered range"
+    fi
   fi
 done
 

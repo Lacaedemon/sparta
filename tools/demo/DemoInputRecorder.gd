@@ -585,13 +585,16 @@ func _arm_bit_dump() -> void:
 ## tick and they can no longer fire. Without this a run sits out the full wall-clock timeout
 ## waiting for a tick that will never arrive.
 ##
+## The size equality is only an early-out -- the loop body is idempotent, so re-running it on
+## every physics frame after the battle ends would be correct, merely wasteful.
+##
 ## The null guard is the whole point of the method and is NOT belt-and-braces: when the dump
 ## file failed to open, _bit_ticks is still armed and nothing was ever written, so draining
 ## would satisfy _all_artifacts_done() and let the run print "N raw-bit dumps; quitting" and
 ## exit 0 over an absent file -- the precise false success the bit dump exists to avoid. Left
 ## undrained, the run instead reaches _on_capture_timeout, whose warning names the shortfall.
 func _drain_unreachable_bit_ticks() -> void:
-	if _bit_dump == null:
+	if _bit_dump == null or _bit_dumped.size() == _bit_ticks.size():
 		return
 	for t in _bit_ticks:
 		if not _bit_dumped.has(t):

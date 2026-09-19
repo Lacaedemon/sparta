@@ -406,7 +406,8 @@ func test_a_failed_dump_open_does_not_let_the_run_report_success() -> void:
 	# is the one outcome worse than hanging: an absent bit_dump.jsonl and two agreeing dumps
 	# are the same silence to a cross-platform comparison, so a clean exit over a missing file
 	# reads as evidence the platforms match.
-	OS.set_environment("SPARTA_DEMO_BITDUMP", "19,21")
+	# No env var here on purpose: _arm_bit_dump is never called, so the fields are set directly
+	# to stage the one state arming cannot produce on demand -- ticks armed, dump file not open.
 	var r = RecorderScript.new()
 	autofree(r)
 	r._bit_ticks = [19, 21]
