@@ -44,6 +44,16 @@ on:
           of a clip whose verdict differs from a local run.
         type: string
         default: ''
+      bit_ticks:
+        description: >-
+          Comma-separated ticks to ALSO dump raw soldier-position bits at, written as
+          bit_dump.jsonl beside each dumped clip's transcripts and published in the same
+          artifact. Empty = off. This is the Linux half of a cross-platform localization:
+          the hash stream names the tick that first differs, and these bits name which
+          unit, field and axis moved there. Pair it with `clips` -- a whole-catalog bit
+          dump is large and answers nothing the hash stream has not already located.
+        type: string
+        default: ''
 
 # A diagnostic dispatch (report=false) gets its own group: it shares the runner budget
 # but must not cancel an in-flight Monday sweep, whose report it would not replace since
@@ -70,6 +80,11 @@ jobs:
       # Job-wide because BOTH the dump and the sweep read it: a sweep that saw the whole
       # catalog while the dump saw one clip would report every other row as missing.
       SPARTA_DUMP_CLIPS: ${{ inputs.clips }}
+      # Empty on a scheduled run, and empty reads as OFF (DemoBitDump.ticks_from_env, pinned
+      # by test_demo_bit_dump.gd) -- so this costs a scheduled sweep nothing. dump-demo-states.sh
+      # invokes Godot through `env KEY=VALUE godot`, which adds to the ambient environment
+      # rather than replacing it, so a job-wide variable reaches the engine unaided.
+      SPARTA_DEMO_BITDUMP: ${{ inputs.bit_ticks }}
     steps:
       - uses: actions/checkout@v4
 

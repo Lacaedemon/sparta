@@ -37,9 +37,14 @@ var _bit_dumped: Dictionary = {}      # tick -> true, mirroring _dumped for the 
 ## `tag` prefixes the log lines so a transcript reads which path produced it.
 static func arm_from_env(tag: String) -> DemoStateSink:
 	if not OS.has_environment("SPARTA_DEMO_STATE"):
+		# The raw-bit dump rides on the state dump, so arming it alone produces nothing.
+		# Say so: a diagnostic that silently does nothing is worse than one that fails,
+		# because the empty output reads as "the two runs agree".
+		_warn_bitdump_unarmed()
 		return null
 	var ticks: Array = DemoFrames.merge_ticks(OS.get_environment("SPARTA_DEMO_STATE"), [])
 	if ticks.is_empty():
+		_warn_bitdump_unarmed()
 		return null
 	var sink := DemoStateSink.new()
 	sink._ticks = ticks
@@ -49,12 +54,21 @@ static func arm_from_env(tag: String) -> DemoStateSink:
 	# dump (same run, same directory) but answers a different question, and its lines are
 	# far larger than a hash line. The hash stream is what names the tick worth dumping,
 	# so the normal order is to read a stream comparison first and arm this second.
-	if OS.has_environment("SPARTA_DEMO_BITDUMP"):
-		sink._bit_ticks = DemoFrames.merge_ticks(OS.get_environment("SPARTA_DEMO_BITDUMP"), [])
+	sink._bit_ticks = DemoBitDump.ticks_from_env()
 	if sink._dir == "":
 		sink._dir = OS.get_temp_dir().path_join("sparta_demo_state")
 	sink.name = "DemoStateSink_%s" % tag
 	return sink
+
+
+## Warn when SPARTA_DEMO_BITDUMP is set on a run whose state dump never armed, which is the
+## one way to ask for a bit dump and get nothing. Its own failure mode is the reason it is
+## worth a line: an absent bit_dump.jsonl and two agreeing dumps look identical to every
+## consumer, so the caller has to be told the file was never going to be written.
+static func _warn_bitdump_unarmed() -> void:
+	if OS.has_environment("SPARTA_DEMO_BITDUMP"):
+		push_warning("[demo-state] SPARTA_DEMO_BITDUMP is set but SPARTA_DEMO_STATE armed no "
+				+ "ticks, so no bit_dump.jsonl will be written; the bit dump rides on the state dump.")
 
 
 func _ready() -> void:

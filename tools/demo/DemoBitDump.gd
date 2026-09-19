@@ -37,6 +37,20 @@ class_name DemoBitDump
 ## what makes the one-or-two-steps reading correct for the field most likely to be
 ## reported first.
 
+## The tick list SPARTA_DEMO_BITDUMP asks for, or [] when it is unset or names no ticks.
+##
+## One reading of the contract, shared by both dump paths (DemoStateSink for replays,
+## DemoInputRecorder for scripted input), because the two paths having grown their own is
+## what made the variable silently inert on the scripted-input path -- which is 102 of the
+## catalog's 106 clips, `sidestep` among them. Reuses DemoFrames, which is pure parsing with
+## no node or engine state, so this class stays usable from the bare `godot -s` SceneTree
+## analyze_transcript.gd runs in.
+static func ticks_from_env() -> Array:
+	if not OS.has_environment("SPARTA_DEMO_BITDUMP"):
+		return []
+	return DemoFrames.merge_ticks(OS.get_environment("SPARTA_DEMO_BITDUMP"), [])
+
+
 ## Open (truncating) the dump file for a run, mirroring DemoHashStream.open_stream:
 ## callers keep the handle for the whole run and dump_tick flushes after every line, so
 ## a run that quits without an explicit close still leaves a complete dump on disk.
