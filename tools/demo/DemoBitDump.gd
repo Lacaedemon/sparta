@@ -1,9 +1,12 @@
 class_name DemoBitDump
 ## The bit_dump.jsonl file format and its offline comparison -- the pure half of the
 ## raw-bit position dump (DemoStateHash.dump_tick writes it from live game state; this
-## class never touches a game script). Kept dependency-free for the same reason
+## class never touches a game script). Kept clear of the game scripts for the same reason
 ## DemoHashStream is: analyze_transcript.gd runs as a bare `godot -s` SceneTree with no
-## autoloads, where any reference chain into the game scripts spews compile errors.
+## autoloads, where any reference chain into the game scripts spews compile errors. The one
+## class referenced here, DemoFrames, is pure tick-list parsing with no node or engine state
+## of its own, so it carries no such chain -- that is the bar a new dependency has to clear,
+## rather than "no dependencies at all".
 ##
 ## Why this exists alongside hash_stream.jsonl. The hash stream localizes a divergence
 ## to a TICK and, being a hash, can say nothing about which value moved -- which is what

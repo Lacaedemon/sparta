@@ -28,6 +28,15 @@
 #                            the whole catalog). A one-clip dump is the cheap way to
 #                            reproduce a single sweep row, or to get one platform's
 #                            transcript of a clip for a cross-platform hash compare.
+#   SPARTA_DEMO_BITDUMP      Comma-separated ticks to ALSO dump raw soldier-position bits
+#                            at, as bit_dump.jsonl beside each clip's snapshots (default:
+#                            empty, off). Where the hash stream names the tick that first
+#                            differs across platforms, these bits name which unit, field and
+#                            axis moved there. Pass it through to both platforms unchanged --
+#                            only ticks present on both sides are compared. A clip that
+#                            produces no bit_dump.jsonl when this is set fails the run rather
+#                            than dumping on, since an absent dump and two agreeing dumps are
+#                            the same silence to the comparison.
 #
 # Every dump also writes OUTPUT_DIR/platform.txt (OS, Godot version, tick cadence): the
 # sim is bit-exact only within one build and platform, so a transcript tree that travels
@@ -143,6 +152,13 @@ for spec in "${DEMOS[@]}"; do
   # of trusting the exit status (the same guard tools/check.sh coverage uses).
   if ! ls "$CLIP_OUT"/state_*.json >/dev/null 2>&1; then
     echo "::error::state dump produced no transcripts for '$NAME'"
+    exit 1
+  fi
+  # Same guard, for the raw-bit dump: a requested bit_dump.jsonl that is absent or empty is
+  # the one failure that reads as good news downstream, because "no differences" and "no data"
+  # are the same silence to a cross-platform comparison. Only checked when one was asked for.
+  if [ -n "${SPARTA_DEMO_BITDUMP:-}" ] && [ ! -s "$CLIP_OUT/bit_dump.jsonl" ]; then
+    echo "::error::SPARTA_DEMO_BITDUMP was set but '$NAME' produced no bit_dump.jsonl"
     exit 1
   fi
 done

@@ -389,6 +389,61 @@ func test_the_scripted_input_recorder_arms_from_the_same_variable() -> void:
 	assert_not_null(r._bit_dump, "and opens the dump file, so the run can actually write one")
 	if r._bit_dump != null:
 		r._bit_dump.close()
+	_remove_dump_dir(r._state_dir)
+
+
+## Delete a scratch dump dir and the bit_dump.jsonl inside it. remove_absolute needs a real
+## OS path -- a raw user:// silently fails to delete, leaving a stray file in the app-data
+## dir after every run (the same trap test_demo_state_sink.gd documents for its snapshots).
+func _remove_dump_dir(dir: String) -> void:
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(dir.path_join("bit_dump.jsonl")))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(dir))
+
+
+func test_a_failed_dump_open_does_not_let_the_run_report_success() -> void:
+	# The drain exists so armed ticks past a decided battle's frozen tick cannot hang the run.
+	# Draining unconditionally would also "complete" a run whose dump file never opened, which
+	# is the one outcome worse than hanging: an absent bit_dump.jsonl and two agreeing dumps
+	# are the same silence to a cross-platform comparison, so a clean exit over a missing file
+	# reads as evidence the platforms match.
+	OS.set_environment("SPARTA_DEMO_BITDUMP", "19,21")
+	var r = RecorderScript.new()
+	autofree(r)
+	r._bit_ticks = [19, 21]
+	r._bit_dump = null   # as a failed DemoBitDump.open_dump leaves it
+	# A satisfied state dump, so _all_artifacts_done()'s leading `> 0` guard is cleared and
+	# its other two conjuncts hold: the bit-tick equality is then the only thing left deciding
+	# the assert below, which is what makes it discriminate rather than pass by default.
+	r._state_ticks = [8]
+	r._state_dumped = {8: true}
+	r._bit_dumped = {19: true, 21: true}
+	assert_true(r._all_artifacts_done(),
+			"sanity: with the bit ticks accounted for, this fixture DOES read as done -- so the "
+			+ "assert below is decided by the bit ticks alone, not by some other conjunct")
+	r._bit_dumped = {}
+	r._drain_unreachable_bit_ticks()
+	assert_eq(r._bit_dumped, {},
+			"nothing is marked dumped when no dump file was ever opened")
+	assert_false(r._all_artifacts_done(),
+			"so the run cannot quit claiming raw-bit dumps it never wrote")
+
+
+func test_the_drain_clears_ticks_that_can_no_longer_fire() -> void:
+	# The other half of the same guard: with a real dump open, ticks stranded past the frozen
+	# tick DO drain, so a run that did its work quits promptly instead of sitting out the
+	# wall-clock timeout.
+	OS.set_environment("SPARTA_DEMO_BITDUMP", "19,21")
+	var r = RecorderScript.new()
+	autofree(r)
+	r._state_dir = "user://bitdump_drain_test"
+	DirAccess.make_dir_recursive_absolute(r._state_dir)
+	r._arm_bit_dump()
+	assert_not_null(r._bit_dump, "sanity: the dump opened")
+	r._drain_unreachable_bit_ticks()
+	assert_eq(r._bit_dumped.size(), 2, "both stranded ticks are accounted for")
+	if r._bit_dump != null:
+		r._bit_dump.close()
+	_remove_dump_dir(r._state_dir)
 
 
 func test_the_replay_sink_arms_from_the_same_variable() -> void:

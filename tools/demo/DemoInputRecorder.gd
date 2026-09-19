@@ -390,10 +390,8 @@ func _on_physics_frame() -> void:
 	# independently: a run whose state snapshots have all landed but whose last bit tick sits
 	# past the end would never enter that branch, and draining nothing there is exactly the
 	# hang this exists to prevent.
-	if _battle._ended and _bit_dumped.size() < _bit_ticks.size():
-		for t in _bit_ticks:
-			if not _bit_dumped.has(t):
-				_bit_dumped[t] = true
+	if _battle._ended:
+		_drain_unreachable_bit_ticks()
 	if _frame_ticks.has(tick) and not _captured.has(tick):
 		_captured[tick] = true
 		_capture_frame(tick)
@@ -581,6 +579,23 @@ func _arm_bit_dump() -> void:
 				% [_state_dir, FileAccess.get_open_error()])
 	else:
 		print("[demo-input] raw-bit dump armed at ticks %s" % str(_bit_ticks))
+
+
+## Mark every still-unwritten armed bit tick done, once a decided battle has frozen the sim's
+## tick and they can no longer fire. Without this a run sits out the full wall-clock timeout
+## waiting for a tick that will never arrive.
+##
+## The null guard is the whole point of the method and is NOT belt-and-braces: when the dump
+## file failed to open, _bit_ticks is still armed and nothing was ever written, so draining
+## would satisfy _all_artifacts_done() and let the run print "N raw-bit dumps; quitting" and
+## exit 0 over an absent file -- the precise false success the bit dump exists to avoid. Left
+## undrained, the run instead reaches _on_capture_timeout, whose warning names the shortfall.
+func _drain_unreachable_bit_ticks() -> void:
+	if _bit_dump == null:
+		return
+	for t in _bit_ticks:
+		if not _bit_dumped.has(t):
+			_bit_dumped[t] = true
 
 
 ## Warn when SPARTA_DEMO_BITDUMP is set on a run whose state dump never armed, which is the
