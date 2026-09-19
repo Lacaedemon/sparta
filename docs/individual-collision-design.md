@@ -270,8 +270,8 @@ and at 61 and 60 in `rout_rally` and `general_doctrine_reserves`.
 What rules melee out is not the tick number but `sidestep` itself,
 which is a lone regiment side-stepping with no enemy in reach and diverges as early as any of them.
 One contact-free witness is enough, and it is the only one:
-`cycle_charge` lands a momentum hit by construction, and `support` and `showcase` both reach melee,
-which is what grows their drift to tens and then hundreds of world units later in the clip.
+the other three clips that diverge at tick 21 all reach contact,
+so none of them could separate a melee cause from a pre-melee one.
 `demos/README.md` has said so since #1557 merged on 2026-09-09,
 and #1566 records the per-clip measurement behind it.
 What the raw bits add is an elimination rather than an inference:
