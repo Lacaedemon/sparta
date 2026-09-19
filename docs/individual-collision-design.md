@@ -247,9 +247,9 @@ That tool deliberately reports the **first** divergent field and stops
 (`DemoBitDump.compare_dumps` returns on the first differing tick,
 and `_first_unit_diff` on the first differing field within it),
 so it answers "where does this start" and cannot answer "how much of the state moved".
-Its reading on this pair is
-`DIVERGENT tick=21 uid=9 field=soldier[26].x a=d28abd44 b=d18abd44 ulps=1`,
-which is the first row of the table and none of the rest.
+Its whole reading on this pair is one line,
+`DIVERGENT tick=21 uid=9 field=soldier[26].x a=d28abd44 b=d18abd44 ulps=1 (5 common ticks compared)`,
+which is the table's first divergent row and none of the rest.
 
 Three things the numbers settle, each of which had been open.
 
@@ -264,9 +264,12 @@ which is why it compounds gradually rather than displacing a formation at once.
 
 **It is not melee-specific, and this is confirmation rather than news.**
 The melee-knife-edge reading was already falsified by the hash streams,
-which put the first divergent tick at 21 in every clip, contact or not;
-`demos/README.md` has said so since #1557 merged on 2026-09-10,
-and #1566 records the measurement behind it.
+which put the first divergent tick at 21 in four of the six clips measured --
+`sidestep`, `support`, `cycle_charge` and `showcase` --
+and at 61 and 60 in `rout_rally` and `general_doctrine_reserves`.
+What rules melee out is not the tick number but that the early ones include clips with no contact at all.
+`demos/README.md` has said so since #1557 merged on 2026-09-09,
+and #1566 records the per-clip measurement behind it.
 What the raw bits add is an elimination rather than an inference:
 `SoldierCombat`'s land-chance sigmoid is the only `exp` on the per-soldier path,
 and it is unreachable on `sidestep`, which has no enemy in reach,
