@@ -240,6 +240,17 @@ both dumps taken through `website/tools/dump-demo-states.sh` so the two sides ru
 | **21** | **1** | **1 ulp** |
 | 22 | 2 | 1 ulp |
 
+The per-tick counts come from decoding the two `bit_dump.jsonl` files directly
+and comparing every field,
+not from `analyze_transcript.gd --compare-bit-dumps`.
+That tool deliberately reports the **first** divergent field and stops
+(`DemoBitDump.compare_dumps` returns on the first differing tick,
+and `_first_unit_diff` on the first differing field within it),
+so it answers "where does this start" and cannot answer "how much of the state moved".
+Its reading on this pair is
+`DIVERGENT tick=21 uid=9 field=soldier[26].x a=d28abd44 b=d18abd44 ulps=1`,
+which is the first row of the table and none of the rest.
+
 Three things the numbers settle, each of which had been open.
 
 **It is rounding, not a divergent branch.**
@@ -251,12 +262,17 @@ No unit position component differs at any dumped tick.
 The perturbation therefore starts in the per-soldier body update and is carried up from there,
 which is why it compounds gradually rather than displacing a formation at once.
 
-**It is not melee-specific.**
-`SoldierCombat`'s land-chance sigmoid is the only `exp` on the path,
-and it is unreachable on `sidestep`, which has no enemy in reach.
+**It is not melee-specific, and this is confirmation rather than news.**
+The melee-knife-edge reading was already falsified by the hash streams,
+which put the first divergent tick at 21 in every clip, contact or not;
+`demos/README.md` has said so since #1557 merged on 2026-09-10,
+and #1566 records the measurement behind it.
+What the raw bits add is an elimination rather than an inference:
+`SoldierCombat`'s land-chance sigmoid is the only `exp` on the per-soldier path,
+and it is unreachable on `sidestep`, which has no enemy in reach,
+so it is ruled out by construction instead of by the timing of the first divergence.
 The surviving transcendental candidate is the `rotated()` round trip in `SoldierBodies._corridor_to_slot`,
 on the post-spawn slot chase every clip runs.
-The earlier reading that attributed this to melee reach checks on the knife edge is superseded.
 
 **Not established.**
 Whether the ulp originates inside `Vector2.rotated()` itself,
