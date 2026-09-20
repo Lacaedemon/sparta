@@ -24,8 +24,8 @@ This note was the producer side of that contract; the battle-side visibility
 and rendering it specifies (phases 1-2 below) have since shipped, but the
 phase-3 AI-consumption swap that would actually close the loop for #588 has
 not -- see "Implementation status" below and `docs/battle-ai-design.md`'s
-own "Implementation status" section for why #588 nonetheless reads closed
-on GitHub.
+own "Implementation status" section for why #588 spent two weeks closed in
+error.
 
 ## Implementation status (verified 2026-09-19)
 
@@ -33,7 +33,7 @@ on GitHub.
 | --- | --- | --- |
 | 1 -- battle visibility core | per-team visible/remembered/unknown state, terrain `sight` axis | shipped |
 | 2 -- fog rendering and player UX | ghost markers, `Settings` toggle, HUD indicator, targeting restricted to visible units | shipped |
-| 3 -- the AI honors fog, closing #588 | `CommanderView`, AI reads the fogged view | **not shipped** |
+| 3 -- the AI honors fog, the phase #588 tracks | `CommanderView`, AI reads the fogged view | **not shipped** |
 | 4 -- campaign-map fog | province-level visibility on `CampaignState` | not shipped |
 | 5 -- saga-scale knowledge | n/a -- saga layer does not exist | not shipped |
 
@@ -67,15 +67,15 @@ Phase 3 has **not** shipped: no `CommanderView` class exists in
 `scripts/`, and `scripts/UnitLeader.gd`, `scripts/Subcommander.gd`,
 `scripts/General.gd`, and `scripts/PlayerDelegation.gd` each still document
 their perception source as "the omniscient placeholder" (verified by grep,
-2026-09-19). Despite that, GitHub shows #588 as closed -- it closed at the
-same moment [#1499](https://github.com/Lacaedemon/sparta/pull/1499) (the PR
-that originally wrote this document) merged, because that PR's commit
-message contained the sentence "phase 3 closes #588" describing a *future*
-phase's effect rather than this PR's own. GitHub's parser closes on any
-`<keyword> #N` substring regardless of the sentence around it. Reopening
-#588 is outside this document's scope (tracked separately as
-[#1614](https://github.com/Lacaedemon/sparta/issues/1614)), but its closed
-state should not be read as evidence phase 3 shipped -- it has not. See
+2026-09-19). GitHub nonetheless showed #588 as closed for two weeks: it
+closed at the same moment
+[#1499](https://github.com/Lacaedemon/sparta/pull/1499) (the PR that
+originally wrote this document) merged, because that PR's commit message
+described a *future* phase 3's effect in a sentence that placed a closing
+keyword next to the number. GitHub's parser closes on any `<keyword> #N`
+substring regardless of the sentence around it. #588 was reopened on
+2026-09-19 once the cause was traced; the pattern is written up in
+[#1614](https://github.com/Lacaedemon/sparta/issues/1614). See
 `docs/battle-ai-design.md`'s own "Implementation status" section for the
 same note from the consumer side.
 
@@ -777,10 +777,10 @@ A real clip: the player's line advances across the field, an enemy unit
 resolves out of the fog as it comes into sight, the player pulls back, and the
 enemy leaves a fading ghost marker where it was last seen.
 
-### Phase 3 -- the AI honors fog, closing #588
+### Phase 3 -- the AI honors fog, the phase #588 tracks
 
-**Not shipped**, despite #588 reading closed on GitHub -- see
-"Implementation status" above for why.
+**Not shipped.** #588 was closed in error on 2026-09-02 and reopened on
+2026-09-19 -- see "Implementation status" above for why.
 
 **Scope.**
 Build `CommanderView` as `docs/battle-ai-design.md` sketches it, route every
@@ -793,7 +793,7 @@ second.
 Phase 1; phase 2 only for the demo.
 
 **Acceptance tests.**
-This phase closes #588, so its acceptance criteria are that issue's: an AI
+This phase is the one #588 tracks, so its acceptance criteria are that issue's: an AI
 general cannot react to an unseen flanking force until it enters some friendly
 unit's perception, and reacts on the first decision tick after it does; no AI
 code path reads unfogged state; determinism on replay is preserved with fog
@@ -924,9 +924,9 @@ A saga layer existing.
   [#1594](https://github.com/Lacaedemon/sparta/pull/1594).
 
 - **[#588](https://github.com/Lacaedemon/sparta/issues/588)** -- battle-AI phase 5, blocked on this.
-  Phase 3 above would close it, but has not shipped; #588 nonetheless reads
-  closed on GitHub for the reason explained in "Implementation status"
-  above.
+  Phase 3 above is the phase that would finish it, and has not shipped.
+  #588 was closed in error on 2026-09-02 and reopened on 2026-09-19, for the
+  reason explained in "Implementation status" above.
 
 - **#498 and `docs/battle-ai-design.md`** -- the consumer.
   Its perception interface sketch, its "AI honors fog of war" requirement, and its determinism rules are all inherited here unchanged.

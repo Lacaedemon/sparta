@@ -10,7 +10,7 @@ the phased plan tracked by the phase issues linked below
 sub-issues of #498). As of 2026-09-19, phases 1-4 have shipped; #498 stays
 open by design (the epic tracks the whole build-out, not just these
 phases). See "Implementation status" immediately below for what shipped
-and for why phase 5 / #588 needs a caveat despite reading closed. Except
+and for why phase 5 / #588 spent two weeks closed in error. Except
 where marked, the rest of this document is preserved as originally
 written -- a design proposal, in present and future tense, describing the
 system *before* any of it existed -- rather than rewritten to describe
@@ -24,7 +24,7 @@ today's code.
 | 2 -- subcommanders | [#585](https://github.com/Lacaedemon/sparta/issues/585) | closed -- shipped |
 | 3 -- the general | [#586](https://github.com/Lacaedemon/sparta/issues/586) | closed -- shipped |
 | 4 -- player delegation | [#587](https://github.com/Lacaedemon/sparta/issues/587) | closed -- shipped |
-| 5 -- perception honors fog of war | [#588](https://github.com/Lacaedemon/sparta/issues/588) | closed on GitHub, but see below -- not actually done |
+| 5 -- perception honors fog of war | [#588](https://github.com/Lacaedemon/sparta/issues/588) | **not shipped**; closed in error 2026-09-02, reopened 2026-09-19 -- see below |
 
 `Battle._run_enemy_ai()` now calls `General.decide_army`,
 `Subcommander.decide_group`, and `UnitLeader.decide`, and applies every
@@ -57,18 +57,23 @@ formal perception-view interface this document describes below as
 existing "from phase 1, day one" was never actually built as a type; the
 shipped phases pass the caller's units array directly instead.
 
-**Why #588 reads closed despite that gap:** #588 closed at the same moment
+**Why #588 spent two weeks closed:** it was closed mechanically, not
+because anything shipped. #588 closed at the same moment
 [#1499](https://github.com/Lacaedemon/sparta/pull/1499) merged -- a
 docs-only PR that added `docs/fog-of-war-design.md` and stated in its own
-description "There is no `CommanderView` class in the tree." Its commit
-message contained the sentence "phase 3 closes #588", describing what a
-*future* phase would do; GitHub's issue-closing parser matches any
-`<keyword> #N` substring regardless of the surrounding sentence, so it
-closed #588 on that incidental phrasing rather than on completed work.
-Reopening #588 is outside this document's scope (tracked separately as
-[#1614](https://github.com/Lacaedemon/sparta/issues/1614)), but its closed
-state should not be read as evidence the fogged-perception swap shipped --
-it has not.
+description "There is no `CommanderView` class in the tree." That PR's
+commit message contained a sentence describing what a *future* phase 3
+would do, with a closing keyword sitting next to the number; GitHub's
+issue-closing parser matches any `<keyword> #N` substring regardless of the
+surrounding sentence, so it closed the issue on that incidental phrasing rather
+than on completed work.
+
+#588 was reopened on 2026-09-19 once the cause was traced, and the pattern
+(which also hit #603) is written up in
+[#1614](https://github.com/Lacaedemon/sparta/issues/1614). The lasting
+lesson for this document's own prose: never let a closing keyword sit
+beside an issue number in text that may reach a commit message or a PR
+description, even when the sentence around it says the opposite.
 
 The goal, per #498: a **chain of command** -- a general who orchestrates army
 movements through subcommander AIs assigned control of unit groups, with
@@ -493,8 +498,8 @@ delegated group in a replay behaves identically on re-run.
 
 ### Phase 5 -- perception honors fog of war -- [#588](https://github.com/Lacaedemon/sparta/issues/588)
 
-**Not shipped**, despite #588 reading closed on GitHub -- see
-"Implementation status" above for why.
+**Not shipped.** #588 was closed in error on 2026-09-02 and reopened on
+2026-09-19 -- see "Implementation status" above for why.
 
 **Scope.** Swap the omniscient placeholder implementation of the perception
 interface for the fogged view, when fog of war (#414, battle side) lands.
