@@ -1,6 +1,9 @@
 # Design note: chain-of-command battle AI
 
-Status: **historical design note -- phases 1-4 shipped, phase 5 disputed.**
+Status: **historical design note -- phases 1-4 shipped, phase 5 not shipped.**
+
+Every date in this document is Pacific, including ones translated from a
+GitHub timestamp, which the API reports in UTC.
 This note originally consolidated #498 (the battle half of #387) into one
 spec, following the same design-doc-first pattern as #516
 (`docs/orders-queue-design.md`), #535 (`docs/soldier-loadout-design.md`),
@@ -20,8 +23,6 @@ system *before* any of it existed -- rather than rewritten to describe
 today's code.
 
 ## Implementation status (verified 2026-09-19)
-Every date in this section is Pacific, including ones translated from a
-GitHub timestamp, which the API reports in UTC.
 
 
 | Phase | Issue | State |

@@ -2,6 +2,9 @@
 
 Status: **historical design note -- battle-side phases 1-2 shipped; phase 3
 (AI consumption) and campaign/saga fog have not.**
+
+Every date in this document is Pacific, including ones translated from a
+GitHub timestamp, which the API reports in UTC.
 This note was originally the design deliverable for
 [#414](https://github.com/Lacaedemon/sparta/issues/414) (title: "add fog of
 war"; body: "both in battles and in campaigns and sagas"; still open as of
@@ -29,8 +32,6 @@ own "Implementation status" section for why #588 spent over two weeks closed in
 error.
 
 ## Implementation status (verified 2026-09-19)
-Every date in this section is Pacific, including ones translated from a
-GitHub timestamp, which the API reports in UTC.
 
 
 | Phase | Scope | State |
