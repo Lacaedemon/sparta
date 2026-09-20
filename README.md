@@ -5,9 +5,12 @@
 A prototype that fuses grand strategy with real-time tactical battles. 
 Built in **Godot 4.7** with GDScript.
 
-This repo currently contains **Milestone 1: a single, self-contained tactical battle** --
-the hardest and most differentiating piece, built first as a vertical slice. The campaign
-map and the integration between the two layers come in later milestones (see the project plan).
+Both layers are playable today:
+a **real-time tactical battle** (the hardest and most differentiating piece, built first as a vertical slice)
+and a **turn-based campaign map** with diplomacy.
+They are already joined:
+attacking a defended province on the campaign map launches the tactical battle and carries its result back.
+See [`PLAN.md`](PLAN.md) for what has landed and what is next.
 
 📖 **Documentation site:** <https://lacaedemon.github.io/sparta/> -- getting started,
 controls, tactics, the replay system, architecture, and roadmap, with gameplay clips.
@@ -170,11 +173,21 @@ setup beyond a Godot 4.7 binary on `PATH` (or set `GODOT_BIN`). See
 [`tools/README.md`](tools/README.md) for details.
 
 ## Roadmap
-- **M1 (here):** one playable tactical battle. ✅ scaffolded
-- **M2:** campaign map -- provinces, characters, turn-based diplomacy; battles auto-resolved.
-  🚧 first slice in (#70): a Gallic War conquest map (provinces, army moves,
-  auto-resolved battles, enemy AI, victory). Diplomacy/characters are follow-ups.
-- **M3:** integration -- armies on the map launch into this battle scene and return a result.
+
+- **M1:** one playable tactical battle.
+  ✅ shipped and under continuous development
+  (formations, per-soldier combat, morale, fog of war, deterministic replays).
+- **M2:** campaign map -- provinces, characters, turn-based diplomacy.
+  🚧 in progress: data-driven conquest maps (the Gallic War, The Four Kingdoms)
+  with army moves, an enemy AI, war/peace/truce diplomacy, and victory.
+  Characters and dynasties are follow-ups.
+- **M3:** integration -- armies on the map launch into the battle scene and return a result.
+  🚧 in progress: a player attack on a defended province launches the tactical battle
+  and applies the outcome to the campaign.
+  AI-initiated battles still auto-resolve.
+
+`PLAN.md` carries the detail.
+Open work is tracked as `P0`-`P3` issues.
 
 ## License
 

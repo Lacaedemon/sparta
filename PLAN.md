@@ -182,8 +182,9 @@ and the child's numeric id as the `sub_issue_id` body field) as soon as it's fil
 shows which issues belong to which epic instead of relying on prose that can drift.
 
 - **P0 -- Foundation (do first):**
-  - #12 M1 first run & verification in Godot -- nothing below is validated until this passes.
-  - #13 Spacebar active pause -- implemented in PR #2, pending live confirm.
+  - #12 M1 first run & verification in Godot -- done in practice:
+    CI imports the project and runs the GUT suite in the engine on every PR, and gameplay PRs record a demo.
+  - #13 Spacebar active pause -- shipped (`HUD.gd` → `_toggle_pause()`).
 - **P1 -- Collision pillar (core, in dependency order):**
   - #6 Per-type footprint (`_separate()` now uses per-type separation radii instead of the shared `RADIUS`). (shipped)
   - #10 NavigationAgent2D pathfinding (decide path-vs-collision split here). (shipped)
@@ -191,58 +192,51 @@ shows which issues belong to which epic instead of relying on prose that can dri
   - #7 Formation cohesion (depends on #6). (shipped)
   - #8 Hard blocking: spears stop cavalry (depends on solid collision + formations). (shipped)
 - **P2 -- Features on the shared "collision-exemption" primitive (build it once in #5, reuse):**
-  - #5 Friendly pass-through (simplest; establishes the primitive).
-  - #4 Line relief (adds fatigue stat + handoff).
-  - #3 Unit merging (stat blending + "strangers" debuff).
+  - #5 Friendly pass-through (simplest; establishes the primitive) -- shipped.
+  - #4 Line relief (adds fatigue stat + handoff) -- shipped.
+  - #3 Unit merging (stat blending + "strangers" debuff) -- shipped.
 - **P3 -- Independent polish:**
-  - #11 Richer selection (double-click type-select, control groups).
+  - #11 Richer selection (double-click type-select, control groups) -- shipped.
 
-## Current status -- Milestone 1: SCAFFOLDED, not yet run in Godot
-All code written and committed to the repo. Runs with **zero downloaded art** (units are
-self-drawn colored tokens). **Not yet opened in the Godot editor**, so no live playtest has
-happened -- first run is the immediate next step (see Verification).
+Everything in this original roadmap has landed.
+Current priorities live in the open `P0`-`P3` issues, not in this list.
 
-### What exists
-```
-project.godot          Config; main scene = scenes/Battle.tscn
-scenes/Battle.tscn     Wires Camera2D + Units container + SelectionManager + HUD
-scripts/
-  Battle.gd            Spawns two 5-unit armies, enemy AI, win/lose check
-  Unit.gd              Regiment: stats, movement, melee w/ flanking, morale, routing, _draw visuals
-  SelectionManager.gd  LMB click + drag-box select; RMB move/attack orders
-  CameraController.gd  WASD/arrow/edge pan, mouse-wheel zoom
-  HUD.gd               Selected-unit info panel, victory/defeat overlay (built in code)
-assets/sprites, assets/ui   Empty (.gitkeep) -- CC0 art drops here later
-README.md, ASSETS.md   Run instructions + CC0 asset sourcing
-```
+## Current status -- both layers playable and joined
+The tactical battle (M1) is shipped and under continuous development.
+The campaign map (M2) and the campaign-to-battle hand-off (M3) have landed as playable slices;
+see "Milestones" below for what each one covers and what remains.
+Tagged releases start at `v0.1.0` (`git tag` lists them).
 
-### Implemented systems (all 10 from the original plan)
-1. Project bootstrap (config, main scene). 2. Unit scene/stats + state machine
-(IDLE→MOVING→FIGHTING→ROUTING/DEAD). 3. Straight-line movement. 4. Click + drag-box selection,
-order issuing. 5. Melee combat with **flanking** (x1.5 side / x2 rear). 6. **Morale & routing**
-(contagious to nearby allies). 7. Win condition (a team with no fighting units loses).
-8. HUD (info panel + end overlay). 9. Camera pan/zoom. 10. Polish: unit types
-(infantry / anti-cavalry spearmen / cavalry with charge bonus = rock-paper-scissors) + grass field.
+This section used to describe the first scaffold (five scripts, never run in the engine).
+That description is kept only in git history (`git log -- PLAN.md`), because it no longer matches the code.
 
-**Deliberate deviation from original plan:** UI is built in code in `HUD.gd` instead of separate
-`.tscn` files, and Units are instantiated in code (`Unit.new()` in `Battle.gd`) instead of a
-`Unit.tscn`. Simpler, fewer scene files to corrupt. Functionally equivalent.
+### Where the current picture lives
+This file records vision, locked decisions, and design pillars.
+It does not try to mirror the code, which moves faster than a hand-kept inventory can.
 
-## Verification (do this FIRST in the new session)
-Godot was **not installed** in the authoring environment, so only static checks passed
-(consistent tab indentation, references resolve, Godot 4.7 API reviewed). Live run still needed.
+- **Layout and how to run:** `README.md` ("Project layout", "Run it").
+- **Architecture, simulation tiers, determinism:** `website/architecture.qmd`.
+- **Combat model:** `docs/combat-model.md`.
+- **Per-feature designs:** the `*-design.md` files under `docs/`.
+- **Replays:** `REPLAY.md`.
+- **Open work:** the `P0`-`P3` issues on `Lacaedemon/sparta`.
 
-1. Install Godot 4.7.x Standard: <https://godotengine.org/download/windows/>
-   (or headless check: `godot --headless --path . --quit` to catch parse/load errors).
-2. Open the folder in Godot → **F5**. Expect two armies (blue top, red bottom) on a green field.
-3. Left-click a unit → info panel fills. Drag a box → multi-select friendlies.
-4. Right-click an enemy → selected units advance and fight; strength bars drop.
-5. Flank/rear-attack an enemy → it takes extra damage and routs faster.
-6. Eliminate one side → Victory/Defeat overlay + "Fight Again" restart.
-7. Camera: WASD/edge pans, wheel zooms.
+### Standing deviation from a scene-heavy design
+UI is built in code (for example `HUD.gd`) instead of separate `.tscn` files,
+and units are instantiated in code (`Unit.new()` in `Battle.gd`) instead of from a `Unit.tscn`.
+Fewer scene files means fewer files to corrupt and cleaner diffs.
 
-If any script error appears on first run, fix it before building further -- this is expected for
-hand-authored GDScript that hasn't been engine-checked.
+## Verification
+The engine checks every change, so a new session verifies with the same commands CI runs:
+
+1. Install Godot 4.7.x Standard (`AGENTS.md` has a one-line headless install).
+2. Run `tools/check.sh` for import validation, the GUT suite, and the doc checks.
+   The full suite takes several minutes; it is not hung.
+3. For a change under `scripts/`, add `patch_coverage` to the same invocation (see `CLAUDE.md`).
+4. To see the game without a display, record a demo (see `demos/README.md`).
+
+To play it, open the folder in Godot and press **F5**.
+The main menu launches a battle or a campaign.
 
 ## Added since scaffold
 - **Reproducible replays** (`scripts/Replay.gd`): deterministic sim + order log
@@ -251,7 +245,7 @@ hand-authored GDScript that hasn't been engine-checked.
   `Replay.rng`; AI + orders on the fixed physics tick). Verified end-to-end:
   a recorded battle replays bit-identically tick-for-tick. See `REPLAY.md`.
 
-## Next milestones (not started)
+## Milestones
 - **M1 polish (optional, after first run is fun):**
   - Swap token `_draw()` for real CC0 `Sprite2D` art (see README "Swapping placeholder art").
   - Stretch: render each regiment as an NxM block of soldier sprites that thins with casualties
@@ -301,7 +295,11 @@ hand-authored GDScript that hasn't been engine-checked.
     scene changes during the enemy turn). Remaining: launching battles for AI-vs-AI or
     AI-vs-player clashes, and richer army composition from province/unit data.
 
-## Feature backlog (design goals -- captured early, not yet scheduled)
+## Feature backlog (original design notes -- all three have shipped)
+Unit merging (#3), line relief with fatigue (#4), and friendly pass-through (#5) below have all landed.
+The notes are kept as the record of the design intent and open questions at the time.
+Their "code touch-points" predate the split of `Unit.gd` into helpers such as `UnitCombat.gd`, `UnitRelief.gd`, and `UnitMorale.gd`.
+
 - **Unit merging -- combine two units into one.** Player can merge two friendly units into a single
   regiment. Two intended uses:
   1. **Consolidation:** fold depleted units together after casualties so a thinned line becomes one
@@ -368,6 +366,7 @@ hand-authored GDScript that hasn't been engine-checked.
 - Collision spacing / soft-resolve logic in `Unit.gd` → `_separate()` (center-to-center floor =
   `RADIUS + other.RADIUS`). Tune spawn gaps via `spacing` in `Battle.gd` → `_spawn_line()`.
 - Tune movement pace in `Battle.gd` → `SPEED_SCALE` constant (lower = slower).
-- Combat math in `Unit.gd` → `_strike()` / `take_casualties()` / `_flank_multiplier()`.
+- Combat math in `UnitCombat.gd` → `strike()` / `take_casualties()` / `flank_multiplier()`.
 - Active pause: `HUD.gd` → `_toggle_pause()` (Space); selection/camera stay live via `PROCESS_MODE_ALWAYS`.
-- Enemy AI in `Battle.gd` → `_run_enemy_ai()` (currently: advance on nearest player unit).
+- Enemy AI in `Battle.gd` → `_run_enemy_ai()`, which layers `General.gd` (army plan), `Subcommander.gd` (groups),
+  and `UnitLeader.gd` (per-unit orders); design in `docs/battle-ai-design.md`.
