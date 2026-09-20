@@ -1,7 +1,23 @@
 # Design note: unified campaign layer
 
-Status: **accepted design -- not yet implemented.** The owner reviewed this
-note and answered its six open questions in
+Status: **accepted design -- phase 1's foundation slice has landed; the rest
+is not yet implemented.** As of 2026-09-19, `scripts/campaign/CampaignClock.gd`,
+`CampaignCalendar.gd`, `CampaignProjection.gd`, and `CampaignGeography.gd`
+exist ([#1496](https://github.com/Lacaedemon/sparta/pull/1496)), but
+`scripts/campaign/CampaignState.gd`'s actual turn loop (`end_turn()`,
+`_acted`) is untouched -- the new clock runs alongside the still-turn-based
+game logic rather than having replaced it, exactly as
+[Roadmap](../website/roadmap.qmd) describes ("continuous army movement...
+and retiring turn order... are the rest of the phase"). Tracking issue
+[#603](https://github.com/Lacaedemon/sparta/issues/603) reads closed on
+GitHub, but PR #1496's own description says the opposite -- "It does not
+close #603" -- and that very sentence is what closed it: GitHub's parser
+matches the substring "close #603" regardless of the "does not" in front of
+it (the same incidental-keyword failure documented for #588 and #1565 in
+`docs/battle-ai-design.md` and `docs/fog-of-war-design.md`'s own
+"Implementation status" sections). #603's closed state should not be read
+as phase 1 being complete. The owner reviewed this note and answered its
+six open questions in
 [the PR #583 review](https://github.com/Lacaedemon/sparta/pull/583#pullrequestreview-4618476256);
 this revision folds those answers in. This note unifies the
 campaign-cluster epics --

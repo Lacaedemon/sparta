@@ -1,25 +1,96 @@
 # Design note: fog of war
 
-Status: **design -- not yet implemented.**
-This note is the design deliverable for
+Status: **historical design note -- battle-side phases 1-2 shipped; phase 3
+(AI consumption) and campaign/saga fog have not.**
+This note was originally the design deliverable for
 [#414](https://github.com/Lacaedemon/sparta/issues/414) (title: "add fog of
-war"; body: "both in battles and in campaigns and sagas"), following the same
+war"; body: "both in battles and in campaigns and sagas"; still open as of
+2026-09-19, covering the remaining scope below), following the same
 design-doc-first pattern as [`docs/battle-ai-design.md`](battle-ai-design.md)
 (#498), [`docs/orders-queue-design.md`](orders-queue-design.md) (#516), and
-[`docs/campaign-layer-design.md`](campaign-layer-design.md) (#582).
+[`docs/campaign-layer-design.md`](campaign-layer-design.md) (#582). See
+"Implementation status" immediately below for what has shipped since;
+except where marked, the rest of this document is preserved as originally
+written, describing the system before any of it existed.
 
-It is also a **blocker for battle-AI phase 5**
+It was also written as a **blocker for battle-AI phase 5**
 ([#588](https://github.com/Lacaedemon/sparta/issues/588)), whose entire scope
 is "swap the omniscient placeholder implementation of the perception interface
 for the fogged view, when fog of war (#414, battle side) lands."
 That doc states the ownership split in its own non-goals: "#414 owns visibility
 rules, rendering, and player UX; this design only consumes the resulting view
 through the perception interface."
-This note is the producer side of that contract.
+This note was the producer side of that contract; the battle-side visibility
+and rendering it specifies (phases 1-2 below) have since shipped, but the
+phase-3 AI-consumption swap that would actually close the loop for #588 has
+not -- see "Implementation status" below and `docs/battle-ai-design.md`'s
+own "Implementation status" section for why #588 nonetheless reads closed
+on GitHub.
+
+## Implementation status (verified 2026-09-19)
+
+| Phase | Scope | State |
+| --- | --- | --- |
+| 1 -- battle visibility core | per-team visible/remembered/unknown state, terrain `sight` axis | shipped |
+| 2 -- fog rendering and player UX | ghost markers, `Settings` toggle, HUD indicator, targeting restricted to visible units | shipped |
+| 3 -- the AI honors fog, closing #588 | `CommanderView`, AI reads the fogged view | **not shipped** |
+| 4 -- campaign-map fog | province-level visibility on `CampaignState` | not shipped |
+| 5 -- saga-scale knowledge | n/a -- saga layer does not exist | not shipped |
+
+Phases 1 and 2 shipped, substantially as this document proposes, across
+[#1560](https://github.com/Lacaedemon/sparta/pull/1560) (merged
+2026-09-12) and [#1594](https://github.com/Lacaedemon/sparta/pull/1594)
+(merged 2026-09-13): `scripts/Perception.gd` implements the
+range-and-line-of-sight visibility test with screening-patch attenuation;
+`Unit.sight_range`, `Unit.SIGHT_FOOT` / `SIGHT_MOUNTED` / `SIGHT_RANGED` /
+`SIGHT_SCREEN_FACTOR` / `SIGHT_ROUTING_PENALTY`, and `Battle.sight_scale`
+all exist as named; `BattleMap.parse` / `serialize` carry the proposed
+`sight` key on terrain patches with the `kind`-derived default;
+`scripts/FogGhostLayer.gd` draws the last-known ghost markers;
+`Settings.fog_of_war` is the off-by-default toggle (`scripts/HUD.gd`, F7
+hotkey and menu item); `scripts/SelectionManager.gd` restricts targeting to
+visible units and falls a click on a ghost through to a ground-move order,
+matching the open question below; the fog contact table is carried through
+`Battle.capture_snapshot` / `restore_snapshot`; mid-battle fog transitions
+are recorded as a replay track (`scripts/ReplayFogTrack.gd`, per
+[#1579](https://github.com/Lacaedemon/sparta/issues/1579)); and the state
+dump includes a ghost-records section (`tools/demo/DemoState.gd`, via
+`FogGhostLayer.ghost_records()`). One divergence from the proposal below:
+the shipped code has no persistent "explored terrain" grid and no
+`FogOverlay` node -- there is no unexplored/explored *terrain* render
+layer, `Battle.fog_cell` does not exist, and the "Fog rendering" section's
+three-layer scheme below shipped only for units (visible /
+hidden-with-ghost), not for terrain. Whether a terrain exploration layer is
+still wanted is open and untracked.
+
+Phase 3 has **not** shipped: no `CommanderView` class exists in
+`scripts/`, and `scripts/UnitLeader.gd`, `scripts/Subcommander.gd`,
+`scripts/General.gd`, and `scripts/PlayerDelegation.gd` each still document
+their perception source as "the omniscient placeholder" (verified by grep,
+2026-09-19). Despite that, GitHub shows #588 as closed -- it closed at the
+same moment [#1499](https://github.com/Lacaedemon/sparta/pull/1499) (the PR
+that originally wrote this document) merged, because that PR's commit
+message contained the sentence "phase 3 closes #588" describing a *future*
+phase's effect rather than this PR's own. GitHub's parser closes on any
+`<keyword> #N` substring regardless of the sentence around it. Reopening
+#588 is outside this document's scope (tracked separately as
+[#1614](https://github.com/Lacaedemon/sparta/issues/1614)), but its closed
+state should not be read as evidence phase 3 shipped -- it has not. See
+`docs/battle-ai-design.md`'s own "Implementation status" section for the
+same note from the consumer side.
+
+Phases 4 and 5 (campaign and saga fog) have not started: `scripts/campaign/`
+has no visibility code, and the saga layer itself still does not exist.
+[#414](https://github.com/Lacaedemon/sparta/issues/414) stays open to track
+exactly that remaining scope.
 
 ## Motivation
 
 ### Both armies currently see everything, and nothing in the code pretends otherwise
+
+*(As verified before phase 1 of this design shipped. See "Implementation
+status" above for what changed; the corrective paragraph after this
+section's original text says what is still true today and what is not.)*
 
 There is no visibility layer in the tree at all.
 `git grep -in fog` finds no visibility *code*: the three hits under `scripts/`
@@ -44,6 +115,18 @@ Every decision in the game is therefore a decision made with perfect
 information, which removes an entire dimension of generalship: reconnaissance,
 screening, deception, and the reserve committed at a moment the enemy cannot
 yet see are all unrepresentable.
+
+**Since #1560/#1594, this is no longer true for the player.** A
+`Perception` module, ghost markers, terrain occlusion and screening, and an
+off-by-default `Settings.fog_of_war` toggle now exist
+(`scripts/Perception.gd`, `scripts/FogGhostLayer.gd`); with the toggle on,
+the player sees only what their own units' sight radii and lines of sight
+cover, per the mechanism proposed below. **It remains true for the AI**:
+`Battle._run_enemy_ai()` and the whole chain-of-command AI still read
+`get_tree().get_nodes_in_group("units")` (or the array the caller passes)
+directly, with no fog applied, regardless of the `Settings.fog_of_war`
+toggle -- see "Implementation status" above and
+`docs/battle-ai-design.md`'s own note on the same gap.
 
 ### The historical case
 
@@ -94,6 +177,7 @@ Verified against the tree at the time of writing.
   Left click selects a friendly unit by its block or its raised flag, box-drag selects several, right click issues a move or an attack on the enemy unit clicked.
   Its `_unit_at` hit test resolves any unit's body or flag.
   Nothing consults visibility, so an enemy unit anywhere on the field is right-clickable as an attack target.
+  **This changed in [#1560](https://github.com/Lacaedemon/sparta/pull/1560):** with `Settings.fog_of_war` on, `_unit_at` now honors `unit.visible`, so an unseen enemy cannot be clicked or targeted; a right click on empty fog or on a ghost marker falls through to a ground-move order instead.
 
 - `scripts/CameraController.gd` is a free RTS camera: WASD and arrow-key pan, screen-edge pan, wheel zoom between `zoom_min` 0.45 and `zoom_max` 2.2, with `bounds` clamped to the battlefield rect Battle publishes.
   It is unconstrained within the field, which is the standard RTS arrangement and stays correct under fog.
@@ -113,6 +197,9 @@ Verified against the tree at the time of writing.
   Fog of war is render-only, so `Battle.ROUT_MARGIN` remains fixed at 190 wu.
 
 ### What the AI can see
+
+*(Still accurate as of 2026-09-19 -- unlike the player-facing state above,
+none of this has changed. See "Implementation status" above.)*
 
 - The chain-of-command AI is implemented through phase 4: `scripts/UnitLeader.gd`, `scripts/Subcommander.gd`, `scripts/General.gd`, `scripts/DoctrineRegistry.gd`, and `scripts/PlayerDelegation.gd`, dispatched from `Battle._run_enemy_ai()` and `Battle._run_player_delegated_ai()` on the `ai_period` cadence (default 60 ticks, once per second at `Replay.PHYSICS_TPS` 60).
 
@@ -207,6 +294,10 @@ authored in metres.
 
 ## Proposed mechanism
 
+*(As designed. Phases 1-2 below shipped substantially as described, with
+the exceptions called out per-phase in "Implementation status" above and
+inline below. Phases 3-5 remain as originally proposed -- not yet built.)*
+
 ### Three knowledge states, per observing team, per target unit
 
 - **Visible** -- some living unit of the observing team perceives the target this tick.
@@ -227,6 +318,10 @@ battlefield you have walked is a battlefield you know the shape of:
 
 - **Unexplored** -- never covered.
   Rendered as an opaque unexplored layer.
+
+**This terrain axis was not built.** See "Implementation status" above:
+the shipped code fogs enemy units and leaves ghost markers but has no
+persistent per-cell explored/unexplored terrain state or render layer.
 
 ### Observers are units, never the camera
 
@@ -423,6 +518,12 @@ the second is a refinement of it.
 
 ### Fog rendering
 
+*(As designed. The shipped code implements layer 3 (visible, unchanged)
+and an approximation of layer 2 for units only -- ghost markers at reduced
+alpha -- but not the ground/terrain dimming, and not layer 1 at all; there
+is no `FogOverlay` node, no `Battle.fog_cell`, and no persistent per-cell
+explored state. See "Implementation status" above.)*
+
 Three layers, drawn above the battlefield and below the HUD.
 
 1. **Unexplored.**
@@ -451,6 +552,9 @@ ever displays a distance (a scout report, a contact age in seconds), it renders
 through `DistanceLegend`'s helpers, never as a raw world-unit figure.
 
 ## How the AI consumes perception without cheating
+
+*(As designed -- this whole section describes phase 3, which has not
+shipped. See "Implementation status" above.)*
 
 ### Build the interface `docs/battle-ai-design.md` sketched
 
@@ -592,6 +696,11 @@ A replay re-derives identically under its recorded map state.
 
 ### Phase 1 -- battle visibility core, headless
 
+**Shipped** in [#1560](https://github.com/Lacaedemon/sparta/pull/1560) and
+[#1594](https://github.com/Lacaedemon/sparta/pull/1594), substantially as
+scoped below -- see "Implementation status" above for the one divergence
+(no terrain explored/unexplored grid).
+
 **Scope.**
 A `Perception` module (proposed path `scripts/Perception.gd`) computing
 per-team visible sets and maintaining the explored grid and the last-known
@@ -633,6 +742,11 @@ changing as units advance.
 
 ### Phase 2 -- fog rendering and player UX
 
+**Shipped** in the same PRs. Ghost markers, the `Settings.fog_of_war`
+toggle, and targeting restricted to visible units all match this phase's
+acceptance tests below. The `FogOverlay` terrain render layer described in
+scope was not built -- see "Implementation status" above.
+
 **Scope.**
 The `FogOverlay` node, the three render layers, ghost markers for remembered
 contacts with a staleness fade, and hiding non-visible enemy `Unit` nodes by
@@ -665,6 +779,9 @@ enemy leaves a fading ghost marker where it was last seen.
 
 ### Phase 3 -- the AI honors fog, closing #588
 
+**Not shipped**, despite #588 reading closed on GitHub -- see
+"Implementation status" above for why.
+
 **Scope.**
 Build `CommanderView` as `docs/battle-ai-design.md` sketches it, route every
 commander read through it, then swap the omniscient implementation for the
@@ -691,6 +808,9 @@ it, with the state dump showing the decision tick.
 
 ### Phase 4 -- campaign-map fog
 
+**Not shipped.** No province-level visibility exists in
+`scripts/campaign/` as of 2026-09-19 (verified by grep).
+
 **Scope.**
 Province-level visibility on `CampaignState`: a province is visible when the
 faction owns it or has an army adjacent to it, remembered once entered, and
@@ -716,6 +836,9 @@ Skip manifest if the campaign map has no clip harness at the time; otherwise a
 short campaign-map clip showing a province resolving as an army moves adjacent.
 
 ### Phase 5 -- saga-scale knowledge
+
+**Not shipped**; the saga layer itself still does not exist, as the scope
+note below already says.
 
 **Scope.**
 Deferred by design.
@@ -793,11 +916,17 @@ A saga layer existing.
 
 ## Relationship to existing issues
 
-- **#414** -- this doc is its design deliverable.
-  The phases above should be filed as sub-issues.
+- **#414** -- this doc is its design deliverable, and stays open tracking
+  the remaining scope (phase 3 AI consumption, plus campaign and saga fog).
+  The phases above were not filed as separate sub-issues; phases 1-2
+  shipped directly under #414 via
+  [#1560](https://github.com/Lacaedemon/sparta/pull/1560) and
+  [#1594](https://github.com/Lacaedemon/sparta/pull/1594).
 
 - **[#588](https://github.com/Lacaedemon/sparta/issues/588)** -- battle-AI phase 5, blocked on this.
-  Phase 3 above closes it.
+  Phase 3 above would close it, but has not shipped; #588 nonetheless reads
+  closed on GitHub for the reason explained in "Implementation status"
+  above.
 
 - **#498 and `docs/battle-ai-design.md`** -- the consumer.
   Its perception interface sketch, its "AI honors fog of war" requirement, and its determinism rules are all inherited here unchanged.

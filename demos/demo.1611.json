@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation-only change: historicizes docs/battle-ai-design.md and docs/fog-of-war-design.md (and a stale website/roadmap.qmd link) so their status lines and bodies match the shipped code. No scripts/ or scenes/ change and no player-visible behaviour to film."
+}

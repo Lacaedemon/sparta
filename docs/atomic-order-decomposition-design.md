@@ -1,9 +1,18 @@
 # Design note: atomic order decomposition (nested order tree)
 
-Status: **design draft, no code yet**. Tracks [#822](https://github.com/Lacaedemon/sparta/issues/822).
-Builds on [`orders-queue-design.md`](orders-queue-design.md) (phases 1-4
-landed) but **overrides one of its decisions** -- see "Relationship to the
-existing design" below.
+Status: **historical design note -- all four slices shipped.** Tracks
+[#822](https://github.com/Lacaedemon/sparta/issues/822) (closed) and
+[#826](https://github.com/Lacaedemon/sparta/issues/826) (closed): PRs #831
+(slice 0), #839 (slice 1), #840 (slice 2), and #841 (slice 3) all merged
+2026-07-14. `scripts/Order.gd`'s `children: Array[Order]` and
+`active_leaf()` are the shipped data model this note only proposed below
+(verified 2026-09-19). The "Suggested phasing" section marks slice 2 as
+done; slices 0, 1, and 3 are equally done but were never annotated the same
+way -- treat every slice below as shipped rather than trusting the
+per-slice annotations. Builds on
+[`orders-queue-design.md`](orders-queue-design.md) (phases 1-4 landed) but
+**overrides one of its decisions** -- see "Relationship to the existing
+design" below.
 
 ## The ask
 

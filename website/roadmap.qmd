@@ -48,8 +48,11 @@ and the battle presentation:
 - **Battle AI** --- subcommanders, the general's doctrine/reserves layer, and
   player delegation to AI subcommanders (phases 2--4) have shipped; see
   [Tactics](tactics.qmd#enemy-coordination) for what's live.
-  [Phase 5](https://github.com/Lacaedemon/sparta/issues?q=is%3Aissue+is%3Aopen+%22Battle+AI+phase%22+in%3Atitle),
-  fog-of-war-aware perception, is what's left of the chain-of-command build-out.
+  [Phase 5](https://github.com/Lacaedemon/sparta/issues/588), fog-of-war-aware
+  perception, is what's left of the chain-of-command build-out --- tracked on
+  an issue that reads closed on GitHub for reasons unrelated to the work
+  being done (see `docs/battle-ai-design.md`'s "Implementation status"
+  section for why).
 - **3D battlefield** --- a planned conversion of the battle view from 2D
   top-down to a Total War-style 3D presentation with a rotatable camera
   ([#69](https://github.com/Lacaedemon/sparta/issues/69)); the deterministic
