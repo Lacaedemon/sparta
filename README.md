@@ -61,11 +61,18 @@ uncommitted work if you keep several checkouts around.
 1. Install **Godot 4.7.x -- Standard build** (not the .NET/C# build) from
    <https://godotengine.org/download/windows/>.
 2. Open Godot, click **Import**, and select this folder's `project.godot`.
-3. Press **F5** (Play). A title menu opens with two modes -- no art download required:
-   - **Tactical Battle** -- the M1 real-time battle (units render as colored tokens).
-   - **Campaign: Gallic War** -- the M2 turn-based province-conquest map (Rome vs the
+3. Press **F5** (Play).
+   A title menu opens -- no art download required.
+   The two to start with:
+   - **Tactical Battle** -- the real-time battle (units render as colored tokens).
+   - **Campaign: Gallic War** -- a turn-based province-conquest map (Rome vs the
      Gallic tribes). Click one of your (blue) armies, then an adjacent province to
      move or attack; **End Turn** runs the enemy; conquer every province to win.
+
+   The menu also offers **Parade Ground** and **All-Teams Control** (drill and debug
+   variants of the battle), **Custom Battle** for picking the rosters yourself, and one
+   button per campaign in `scripts/campaign/Campaigns.gd` -- **The Four Kingdoms** alongside
+   the Gallic War today.
 
 ## How to play
 
