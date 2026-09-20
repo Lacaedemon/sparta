@@ -32,6 +32,89 @@ adjacent items with no blank line between them.
   renders fine locally -- the splice checker is the blocking gate, not visual
   inspection.
 
+## All four markdown gates are locally runnable from `Morrison-Lab/gha@v2`, and `fail-on-table-splits` is the fourth one nobody names
+
+The section above covers two of the four: whole-repo `markdownlint` (advisory)
+and the diff-scoped list-item splice check (blocking).
+Two more apply to every Markdown PR in this repo and are easy to miss because
+neither this repo's own caller workflows nor the section above names them
+by their actual gate name:
+
+- **`check_table_splits.mjs`** (whole-tree, not diff-scoped -- a split table
+  has no legitimate form, so there is nothing to diff-scope).
+  It fails when a blank line splits a GFM table, orphaning the rows below
+  it so they render as literal text instead of a table.
+  `fail-on-table-splits` defaults to `true` in the reusable
+  `Morrison-Lab/gha` `lint-markdown.yml@v2`
+  workflow, exactly like `fail-on-item-splices` above, and this repo's
+  caller `.github/workflows/lint-markdown.yml` overrides neither.
+
+- **`check-new-line-breaks/check-new-line-breaks.py`** (diff-scoped,
+  blocking -- see the section below for this repo's specific clause rule).
+  It runs as its own separate workflow (`.github/workflows/check-new-line-breaks.yml`),
+  not through `lint-markdown.yml`.
+
+All four are fetchable from a `Morrison-Lab/gha@v2` checkout and runnable
+locally before pushing, which is much cheaper than a CI round trip.
+Both `.mjs` gates -- `check_list_item_splices.mjs` and
+`check_table_splits.mjs` -- import `_pathspec.mjs` from the same
+`lint-markdown/` directory, so fetching either one alone fails with
+`ERR_MODULE_NOT_FOUND` before it examines anything.
+
+- **Do:** fetch either `.mjs` gate together with `_pathspec.mjs` from the
+  same directory, not as a single isolated file -- both import it.
+
+- **Do:** treat `fail-on-table-splits` as on by default, the same as
+  `fail-on-item-splices`, even though this repo's caller workflow never
+  mentions either input by name.
+
+- **Don't:** assume a repo's own thin caller `.yml` shows every input the
+  reusable workflow sets -- read the pinned `@v2` ref of `Morrison-Lab/gha`
+  itself for the defaults, per the section above's own "Do."
+
+**On Windows, run `check-new-line-breaks.py` from a short working directory
+-- a deep one makes it silently examine zero files, which looks identical to
+a clean pass.**
+Measured at a 295-character checkout path, which is past Windows' roughly
+260-character limit.
+The Python checker gates its read on `pathlib.Path(...).is_file()`, which
+returns `False` rather than raising at that depth, so the file is skipped and
+the script reports examining 0 added lines across 0 files, then reports no
+lines missing semantic breaks, and exits 0.
+
+**The two Node checkers were tested at the same depth and are not affected.**
+With a real list-item splice and a real split table injected into a file at
+that 295-character path, `check_list_item_splices.mjs` and
+`check_table_splits.mjs` each found and reported the violation: `git ls-files`
+and `readFileSync` both worked.
+So a "0 found" from either of those is informative, and only the Python
+checker's zero needs distrusting.
+This matters in the other direction too: if a Node checker ever does report 0
+at depth, path length is not the explanation and something else is wrong.
+
+A Claude Code scratchpad path
+(`...\AppData\Local\Temp\claude\<repo>-...\<session-id>\scratchpad\...`) is
+exactly the kind of path long enough to trip the Python one.
+
+- **Do:** run these checkers from a short working directory (the repo
+  checkout itself, or a shallow worktree) rather than a deep scratchpad
+  path, when running them locally before a push.
+
+- **Do:** read a "0 files examined" from `check-new-line-breaks.py` as a
+  failed run rather than a pass, and re-run it from a shorter path.
+
+- **Don't:** discount a "0 found" from either Node checker on path-length
+  grounds -- both were measured working at a depth that defeats the Python
+  one, so their zero means something.
+
+- **Do:** sanity-check a suspiciously-clean local run against a file already
+  known to trip the checker, before trusting a pass on the real diff, if the
+  working directory is unavoidably deep.
+
+- **Don't:** generalize the Python checker's behaviour to the Node ones --
+  that was the original form of this note, and reproducing it at a
+  295-character path is what showed the two Node checkers are unaffected.
+
 ## `check / link-checker` (lychee) fails on TIMEOUTS, not just broken links
 
 `lychee.toml`-driven link checking exits non-zero (exit 2) on a request
