@@ -68,12 +68,17 @@ issue-closing parser matches any `<keyword> #N` substring regardless of the
 surrounding sentence, so it closed the issue on that incidental phrasing rather
 than on completed work.
 
-#588 was reopened on 2026-09-19 once the cause was traced, and the pattern
-(which also hit #603) is written up in
-[#1614](https://github.com/Lacaedemon/sparta/issues/1614). The lasting
-lesson for this document's own prose: never let a closing keyword sit
-beside an issue number in text that may reach a commit message or a PR
-description, even when the sentence around it says the opposite.
+#588 was reopened on 2026-09-19 once the cause was traced. The same parser
+behaviour also caught #1565, and those two cases are written up in
+[#1614](https://github.com/Lacaedemon/sparta/issues/1614). A third
+instance, #603, is described in
+[`docs/campaign-layer-design.md`](campaign-layer-design.md) rather than
+there.
+
+The lasting lesson for this document's own prose: never let a closing
+keyword sit beside an issue number in text that may reach a commit
+message or a PR description, even when the sentence around it says the
+opposite.
 
 The goal, per #498: a **chain of command** -- a general who orchestrates army
 movements through subcommander AIs assigned control of unit groups, with
@@ -575,7 +580,12 @@ the only door); determinism on replay is preserved with fog active.
 - **#414** -- fog of war; phase 5 (disputed -- see "Implementation status"
   above) integrates it through the perception interface, with the AI
   honoring it by requirement.
-  Its design lives in [`docs/fog-of-war-design.md`](fog-of-war-design.md), which settles the friendly-knowledge rule this document leaves open above (same-team units are always visible to their own side) and whose battle-side visibility and rendering phases have shipped, separately from the AI-consumption phase this document's phase 5 still needs.
+  Its design lives in
+  [`docs/fog-of-war-design.md`](fog-of-war-design.md), which settles the
+  friendly-knowledge rule this document leaves open above (same-team units
+  are always visible to their own side) and whose battle-side visibility
+  and rendering phases have shipped, separately from the AI-consumption
+  phase this document's phase 5 still needs.
 
 - **#290** -- lockstep multiplayer; the determinism rules keep that door open.
 - **#516** (`docs/orders-queue-design.md`) -- the actuation layer this whole
