@@ -72,22 +72,38 @@ together, or the import fails.
   reusable workflow sets -- read the pinned `@v2` ref of `Morrison-Lab/gha`
   itself for the defaults, per the section above's own "Do."
 
-**On Windows, run these from a short working directory -- a deep one can
-make a checker silently examine zero files, which looks identical to a
-clean pass.**
-This is reported rather than independently reproduced in this
-session: Node's (and Python's) filesystem calls can fail silently or return
-an empty match set once the working directory plus a repo-relative path
-crosses Windows' roughly 260-character path limit, and none of these four
-scripts distinguishes "0 files scanned" from "0 findings" in its output --
-both print as a pass.
+**On Windows, run `check-new-line-breaks.py` from a short working directory
+-- a deep one makes it silently examine zero files, which looks identical to
+a clean pass.**
+Measured at a 295-character checkout path, which is past Windows' roughly
+260-character limit.
+The Python checker gates its read on `pathlib.Path(...).is_file()`, which
+returns `False` rather than raising at that depth, so the file is skipped and
+the script reports examining 0 added lines across 0 files, then reports no
+lines missing semantic breaks, and exits 0.
+
+**The two Node checkers were tested at the same depth and are not affected.**
+With a real list-item splice and a real split table injected into a file at
+that 295-character path, `check_list_item_splices.mjs` and
+`check_table_splits.mjs` each found and reported the violation: `git ls-files`
+and `readFileSync` both worked.
+So a "0 found" from either of those is informative, and only the Python
+checker's zero needs distrusting.
+This matters in the other direction too: if a Node checker ever does report 0
+at depth, path length is not the explanation and something else is wrong.
+
 A Claude Code scratchpad path
 (`...\AppData\Local\Temp\claude\<repo>-...\<session-id>\scratchpad\...`) is
-exactly the kind of path long enough to trip this.
+exactly the kind of path long enough to trip the Python one.
 
 - **Do:** run these checkers from a short working directory (the repo
   checkout itself, or a shallow worktree) rather than a deep scratchpad
   path, when running them locally before a push.
+- **Do:** read a "0 files examined" from `check-new-line-breaks.py` as a
+  failed run rather than a pass, and re-run it from a shorter path.
+- **Don't:** discount a "0 found" from either Node checker on path-length
+  grounds -- both were measured working at a depth that defeats the Python
+  one, so their zero means something.
 
 - **Do:** sanity-check a suspiciously-clean local run against a file already
   known to trip the checker, before trusting a pass on the real diff, if the
