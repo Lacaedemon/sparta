@@ -21,10 +21,12 @@ then grow outward.
 - **Commercial Total War engines:** stay on Godot. REX/M2EX (and any leaked CA
   source or patched RTW/M2TW executable) are design-only; do not reconstruct,
   disassemble, or vendor them. See [`docs/related-games.md`](docs/related-games.md).
+
 - **First milestone:** one self-contained tactical battle, with no campaign map.
   Held, and now discharged: the battle shipped first and the campaign map followed.
   Kept because it records the sequencing decision.
   The present state is in "Current status".
+
 - **Performance target (#549, hardware floor revised with #69):** **60fps at a representative
   large-battle scale** (several hundred soldiers across multiple regiments, actively engaged
   in melee and ranged combat -- the biggest battle the game is expected to support), on named
@@ -187,6 +189,7 @@ shows which issues belong to which epic instead of relying on prose that can dri
 - **P0 -- Foundation (do first):**
   - #12 M1 first run & verification in Godot -- done in practice:
     CI imports the project and runs the GUT suite in the engine on every PR, and gameplay PRs record a demo.
+
   - #13 Spacebar active pause -- shipped (`HUD.gd` → `_toggle_pause()`).
 - **P1 -- Collision pillar (core, in dependency order):**
   - #6 Per-type footprint (`_separate()` now uses per-type separation radii instead of the shared `RADIUS`). (shipped)
@@ -235,6 +238,7 @@ The engine checks every change, so a new session verifies with the same commands
 1. Install Godot 4.7.x Standard (`AGENTS.md` has a one-line headless install).
 2. Run `tools/check.sh` for import validation, the GUT suite, and the doc checks.
    The full suite takes several minutes; it is not hung.
+
 3. For a change under `scripts/`, add `patch_coverage` to the same invocation (see `CLAUDE.md`).
 4. To see the game without a display, record a demo (see `demos/README.md`).
 

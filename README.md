@@ -64,6 +64,7 @@ uncommitted work if you keep several checkouts around.
 3. Press **F5** (Play).
    A title menu opens -- no art download required.
    The two to start with:
+
    - **Tactical Battle** -- the real-time battle (units render as colored tokens).
    - **Campaign: Gallic War** -- a turn-based province-conquest map (Rome vs the
      Gallic tribes). Click one of your (blue) armies, then an adjacent province to
@@ -185,10 +186,12 @@ setup beyond a Godot 4.7 binary on `PATH` (or set `GODOT_BIN`). See
 - **M1:** one playable tactical battle.
   ✅ shipped and under continuous development
   (formations, per-soldier combat, morale, fog of war, deterministic replays).
+
 - **M2:** campaign map -- provinces, characters, turn-based diplomacy.
   🚧 in progress: data-driven conquest maps (the Gallic War, The Four Kingdoms)
   with army moves, an enemy AI, war/peace/truce diplomacy, and victory.
   Characters and dynasties are follow-ups.
+
 - **M3:** integration -- armies on the map launch into the battle scene and return a result.
   🚧 in progress: a player attack on a defended province launches the tactical battle
   and applies the outcome to the campaign.
