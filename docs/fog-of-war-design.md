@@ -29,6 +29,9 @@ own "Implementation status" section for why #588 spent over two weeks closed in
 error.
 
 ## Implementation status (verified 2026-09-19)
+Every date in this section is Pacific, including ones translated from a
+GitHub timestamp, which the API reports in UTC.
+
 
 | Phase | Scope | State |
 | --- | --- | --- |

@@ -20,6 +20,9 @@ system *before* any of it existed -- rather than rewritten to describe
 today's code.
 
 ## Implementation status (verified 2026-09-19)
+Every date in this section is Pacific, including ones translated from a
+GitHub timestamp, which the API reports in UTC.
+
 
 | Phase | Issue | State |
 | --- | --- | --- |
