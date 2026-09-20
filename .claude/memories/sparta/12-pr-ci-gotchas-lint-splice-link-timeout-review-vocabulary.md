@@ -56,13 +56,13 @@ by their actual gate name:
 
 All four are fetchable from a `Morrison-Lab/gha@v2` checkout and runnable
 locally before pushing, which is much cheaper than a CI round trip.
-The list-item splice checker (`check_list_item_splices.mjs`) needs
-`_pathspec.mjs` from the same `lint-markdown/` directory -- fetch both
-together, or the import fails.
+Both `.mjs` gates -- `check_list_item_splices.mjs` and
+`check_table_splits.mjs` -- import `_pathspec.mjs` from the same
+`lint-markdown/` directory, so fetching either one alone fails with
+`ERR_MODULE_NOT_FOUND` before it examines anything.
 
-- **Do:** fetch a `.mjs` gate together with its same-directory dependencies
-  (`_pathspec.mjs` beside `check_list_item_splices.mjs`), not as a single
-  isolated file.
+- **Do:** fetch either `.mjs` gate together with `_pathspec.mjs` from the
+  same directory, not as a single isolated file -- both import it.
 
 - **Do:** treat `fail-on-table-splits` as on by default, the same as
   `fail-on-item-splices`, even though this repo's caller workflow never
@@ -99,8 +99,10 @@ exactly the kind of path long enough to trip the Python one.
 - **Do:** run these checkers from a short working directory (the repo
   checkout itself, or a shallow worktree) rather than a deep scratchpad
   path, when running them locally before a push.
+
 - **Do:** read a "0 files examined" from `check-new-line-breaks.py` as a
   failed run rather than a pass, and re-run it from a shorter path.
+
 - **Don't:** discount a "0 found" from either Node checker on path-length
   grounds -- both were measured working at a depth that defeats the Python
   one, so their zero means something.
@@ -109,9 +111,9 @@ exactly the kind of path long enough to trip the Python one.
   known to trip the checker, before trusting a pass on the real diff, if the
   working directory is unavoidably deep.
 
-- **Don't:** treat this note as confirmed measurement -- it is relayed
-  guidance, not something reproduced in this session; verify it directly
-  before relying on it for a genuinely deep path.
+- **Don't:** generalize the Python checker's behaviour to the Node ones --
+  that was the original form of this note, and reproducing it at a
+  295-character path is what showed the two Node checkers are unaffected.
 
 ## `check / link-checker` (lychee) fails on TIMEOUTS, not just broken links
 
