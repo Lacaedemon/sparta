@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Design-doc-only PR: far-tier winner pursuit and rout contagion (#621) are scoped here but not implemented -- the doc's central finding is that FarTierRules.tick_pair is never wired into live Battle.gd combat at all, so no recorded battle can show the behaviour being scoped."
+  "input": "demos/inputs/far-tier-winner-pursuit-621.json",
+  "caption": "Far tier, phase 1 (docs/far-tier-pursuit-contagion-design.md): a lone far-tier Cavalry regiment breaks a weak Spearmen formation, which is run down while routing and disappears from play around tick 171. UnitLeader's existing pursue_routers fallback -- unmodified by this phase -- picks up the very next AI decision: the cavalry's target_enemy_uid flips to the neighbouring Infantry regiment at tick 181, and by tick 260 it is fighting that new target through the same FarTierCombat resolution (phase 0), never promoting out of the far tier for the whole clip. This is the 'fighting it' branch of phase 1's done-check: winner pursuit reaching a far-tier formation needed no new targeting code, only phase 0's live far-tier combat to give the existing AI something to fight with once it retargets.",
+  "fixed_fps": 30,
+  "max_frames": 270,
+  "fps": 12,
+  "width": 640
 }

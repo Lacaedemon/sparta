@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation-only change: adds a note to .claude/memories/sparta/12-pr-ci-gotchas-lint-splice-link-timeout-review-vocabulary.md about locally running the repo's four markdown CI gates and a Windows MAX_PATH gotcha. No scripts/ or scenes/ change and no player-visible behaviour to film."
+}
