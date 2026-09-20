@@ -103,8 +103,9 @@ so they're handy for both re-watching battles and debugging. See
 
 ```
 project.godot          Godot project config (main scene = scenes/MainMenu.tscn)
-scenes/MainMenu.tscn   Title screen: launch the battle (M1) or the campaign (M2)
+scenes/MainMenu.tscn   Title screen: launch a battle, a custom battle, or a campaign
 scenes/Battle.tscn     Battle scene: camera + units container + selection + HUD
+scenes/Prebattle.tscn  Custom-battle roster picker
 scenes/Campaign.tscn   Campaign map: province view/controller + campaign HUD
 scripts/
   Battle.gd            Spawns armies, enemy AI, win/lose check, tick clock + replay orders
@@ -120,7 +121,7 @@ scripts/
     Campaigns.gd         Registry of available campaigns (what the menu lists)
     CampaignMap.gd       Renders provinces, handles clicks, runs the enemy turn
     CampaignHUD.gd       Turn banner, End Turn, standings, victory overlay
-data/campaigns/        Campaign map data files (gallic_war.json) -- add a JSON + a
+data/campaigns/        Campaign map data files (one JSON per campaign) -- add a JSON + a
                        Campaigns.gd row to ship a new campaign
 assets/                CC0 art goes here (see ASSETS.md) -- not required to run
 ```
