@@ -323,9 +323,11 @@ transcript records the unit's plan with no special-case dump code:
   set by completed orders and already serialized today,
 - optionally the queue tail (the pending orders) for full plan legibility.
 
-This resolves #515 as a side effect: the explicit-maneuver field it asks for is
+This settles #515 as a side effect: the explicit-maneuver field it asks for is
 just `current_order` plus its phase, so #515 becomes phase 1 of this work rather
 than a separate bolt-on.
+The closing keyword is deliberately kept off the number here, since a sentence
+quoted into a commit message would otherwise close that issue.
 
 ## Phased implementation plan
 

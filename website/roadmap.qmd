@@ -50,7 +50,7 @@ and the battle presentation:
   [Tactics](tactics.qmd#enemy-coordination) for what's live.
   [Phase 5](https://github.com/Lacaedemon/sparta/issues/588), fog-of-war-aware
   perception, is what's left of the chain-of-command build-out. That issue
-  spent two weeks closed in error and was reopened on 2026-09-19 (see
+  spent over two weeks closed in error and was reopened on 2026-09-19 (see
   `docs/battle-ai-design.md`'s "Implementation status" section for why).
 - **3D battlefield** --- a planned conversion of the battle view from 2D
   top-down to a Total War-style 3D presentation with a rotatable camera

@@ -25,7 +25,7 @@ This note was the producer side of that contract; the battle-side visibility
 and rendering it specifies (phases 1-2 below) have since shipped, but the
 phase-3 AI-consumption swap that would actually close the loop for #588 has
 not -- see "Implementation status" below and `docs/battle-ai-design.md`'s
-own "Implementation status" section for why #588 spent two weeks closed in
+own "Implementation status" section for why #588 spent over two weeks closed in
 error.
 
 ## Implementation status (verified 2026-09-19)
@@ -40,8 +40,8 @@ error.
 
 Phases 1 and 2 shipped, substantially as this document proposes, across
 [#1560](https://github.com/Lacaedemon/sparta/pull/1560) (merged
-2026-09-12) and [#1594](https://github.com/Lacaedemon/sparta/pull/1594)
-(merged 2026-09-13): `scripts/Perception.gd` implements the
+2026-09-11) and [#1594](https://github.com/Lacaedemon/sparta/pull/1594)
+(merged 2026-09-12), both dated Pacific: `scripts/Perception.gd` implements the
 range-and-line-of-sight visibility test with screening-patch attenuation;
 `Unit.sight_range`, `Unit.SIGHT_FOOT` / `SIGHT_MOUNTED` / `SIGHT_RANGED` /
 `SIGHT_SCREEN_FACTOR` / `SIGHT_ROUTING_PENALTY`, and `Battle.sight_scale`
@@ -72,7 +72,7 @@ Phase 3 has **not** shipped: no `CommanderView` class exists in
 their perception source as omniscient -- `UnitLeader.gd` in exactly those
 words, the other three as an "omniscient perception source" or an
 "omniscient, already-serialized order" (read 2026-09-19).
-GitHub nonetheless showed #588 as closed for two weeks: it
+GitHub nonetheless showed #588 as closed for over two weeks: it
 closed at the same moment
 [#1499](https://github.com/Lacaedemon/sparta/pull/1499) (the PR that
 originally wrote this document) merged, because that PR's commit message

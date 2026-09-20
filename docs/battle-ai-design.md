@@ -12,7 +12,7 @@ As of 2026-09-19, phases 1-4 have shipped; #498 stays
 open by design (the epic tracks the whole build-out, not just these
 phases).
 See "Implementation status" immediately below for what shipped
-and for why phase 5 / #588 spent two weeks closed in error.
+and for why phase 5 / #588 spent over two weeks closed in error.
 Except
 where marked, the rest of this document is preserved as originally
 written -- a design proposal, in present and future tense, describing the
@@ -68,7 +68,7 @@ formal perception-view interface this document describes below as
 existing "from phase 1, day one" was never actually built as a type; the
 shipped phases pass the caller's units array directly instead.
 
-**Why #588 spent two weeks closed:** it was closed mechanically, not
+**Why #588 spent over two weeks closed:** it was closed mechanically, not
 because anything shipped. #588 closed at the same moment
 [#1499](https://github.com/Lacaedemon/sparta/pull/1499) merged -- a
 docs-only PR that added `docs/fog-of-war-design.md` and stated in its own

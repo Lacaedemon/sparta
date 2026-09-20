@@ -4,8 +4,8 @@ Status: **historical design note -- all four slices shipped.**
 Tracks
 [#822](https://github.com/Lacaedemon/sparta/issues/822) (closed) and
 [#826](https://github.com/Lacaedemon/sparta/issues/826) (closed): PRs #831
-(slice 0), #839 (slice 1), #840 (slice 2), and #841 (slice 3) all merged
-2026-07-14.
+(slice 0), #839 (slice 1) and #840 (slice 2) merged 2026-07-13, and #841
+(slice 3) on 2026-07-14, Pacific.
 `scripts/Order.gd`'s `children: Array[Order]` and
 `active_leaf()` are the shipped data model this note only proposed below
 (verified 2026-09-19).
