@@ -488,11 +488,14 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>Sparta’s Milestone&nbsp;1 is one self-contained battle scene wired up in code. The codebase is small and deliberately flat — easy to read end to end.</p>
+<p>Sparta is a self-contained tactical battle and a turn-based campaign map, wired up in code, with the campaign able to launch a battle and take its result back. The codebase is small and deliberately flat — easy to read end to end.</p>
 <section id="project-layout" class="level2">
 <h2 class="anchored" data-anchor-id="project-layout">Project layout</h2>
-<pre><code>project.godot          Godot project config (main scene = scenes/Battle.tscn)
-scenes/Battle.tscn     Main scene: camera + units container + selection + HUD
+<pre><code>project.godot          Godot project config (main scene = scenes/MainMenu.tscn)
+scenes/MainMenu.tscn   Title screen: launch a battle, a custom battle, or a campaign
+scenes/Battle.tscn     Battle scene: camera + units container + selection + HUD
+scenes/Prebattle.tscn  Custom-battle roster picker
+scenes/Campaign.tscn   Campaign map: province view/controller + campaign HUD
 scripts/
   Battle.gd            Spawns armies, enemy AI, win/lose check, tick clock + replay orders
   Replay.gd            Deterministic record/playback (autoload): seeded RNG + order log
@@ -638,7 +641,7 @@ Table&nbsp;2: Common tuning knobs and where each lives.
 </tr>
 <tr class="even">
 <td>Combat math</td>
-<td><code>Unit.gd</code> → <code>_strike()</code> / <code>take_casualties()</code> / <code>_flank_multiplier()</code></td>
+<td><code>UnitCombat.gd</code> → <code>strike()</code> / <code>take_casualties()</code> / <code>flank_multiplier()</code></td>
 </tr>
 <tr class="odd">
 <td>Active pause</td>
@@ -646,7 +649,7 @@ Table&nbsp;2: Common tuning knobs and where each lives.
 </tr>
 <tr class="even">
 <td>Enemy AI</td>
-<td><code>Battle.gd</code> → <code>_run_enemy_ai()</code></td>
+<td><code>Battle.gd</code> → <code>_run_enemy_ai()</code>, layering <code>General.gd</code>, <code>Subcommander.gd</code>, and <code>UnitLeader.gd</code></td>
 </tr>
 </tbody>
 </table>

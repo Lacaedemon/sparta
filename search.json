@@ -712,7 +712,7 @@
     "href": "architecture.html",
     "title": "Architecture",
     "section": "",
-    "text": "Sparta’s Milestone 1 is one self-contained battle scene wired up in code. The codebase is small and deliberately flat — easy to read end to end.",
+    "text": "Sparta is a self-contained tactical battle and a turn-based campaign map, wired up in code, with the campaign able to launch a battle and take its result back. The codebase is small and deliberately flat — easy to read end to end.",
     "crumbs": [
       "Home",
       "Under the Hood",
@@ -724,7 +724,7 @@
     "href": "architecture.html#project-layout",
     "title": "Architecture",
     "section": "Project layout",
-    "text": "Project layout\nproject.godot          Godot project config (main scene = scenes/Battle.tscn)\nscenes/Battle.tscn     Main scene: camera + units container + selection + HUD\nscripts/\n  Battle.gd            Spawns armies, enemy AI, win/lose check, tick clock + replay orders\n  Replay.gd            Deterministic record/playback (autoload): seeded RNG + order log\n  Unit.gd              Regiment: stats, movement, melee, flanking, morale, routing\n  SelectionManager.gd  Click + drag-box selection, move/attack orders\n  CameraController.gd  WASD / edge pan, wheel zoom\n  HUD.gd               Unit info panel, victory/defeat overlay\nassets/                CC0 art goes here (see Assets) --- not required to run\n\n\n\n\n\n\nNoteA deliberate deviation from a scene-heavy design\n\n\n\nThe UI is built in code in HUD.gd instead of separate .tscn files, and units are instantiated in code (Unit.new() in Battle.gd) instead of a Unit.tscn. Fewer scene files to corrupt, functionally equivalent.",
+    "text": "Project layout\nproject.godot          Godot project config (main scene = scenes/MainMenu.tscn)\nscenes/MainMenu.tscn   Title screen: launch a battle, a custom battle, or a campaign\nscenes/Battle.tscn     Battle scene: camera + units container + selection + HUD\nscenes/Prebattle.tscn  Custom-battle roster picker\nscenes/Campaign.tscn   Campaign map: province view/controller + campaign HUD\nscripts/\n  Battle.gd            Spawns armies, enemy AI, win/lose check, tick clock + replay orders\n  Replay.gd            Deterministic record/playback (autoload): seeded RNG + order log\n  Unit.gd              Regiment: stats, movement, melee, flanking, morale, routing\n  SelectionManager.gd  Click + drag-box selection, move/attack orders\n  CameraController.gd  WASD / edge pan, wheel zoom\n  HUD.gd               Unit info panel, victory/defeat overlay\nassets/                CC0 art goes here (see Assets) --- not required to run\n\n\n\n\n\n\nNoteA deliberate deviation from a scene-heavy design\n\n\n\nThe UI is built in code in HUD.gd instead of separate .tscn files, and units are instantiated in code (Unit.new() in Battle.gd) instead of a Unit.tscn. Fewer scene files to corrupt, functionally equivalent.",
     "crumbs": [
       "Home",
       "Under the Hood",
@@ -784,7 +784,7 @@
     "href": "architecture.html#tuning-pointers",
     "title": "Architecture",
     "section": "Tuning pointers",
-    "text": "Tuning pointers\n\n\n\nTable 2: Common tuning knobs and where each lives.\n\n\n\n\n\n\n\n\n\nWant to change…\nLook in…\n\n\n\n\nUnit stats / loadout\nBattle.gd → _spawn_line() array\n\n\nCollision spacing / soft-resolve\nUnit.gd → _separate() (floor = RADIUS + other.RADIUS); spawn gaps via spacing in _spawn_line()\n\n\nMovement pace\nBattle.gd → SPEED_SCALE constant (lower = slower)\n\n\nCombat math\nUnit.gd → _strike() / take_casualties() / _flank_multiplier()\n\n\nActive pause\nHUD.gd → _toggle_pause() (Space)\n\n\nEnemy AI\nBattle.gd → _run_enemy_ai()\n\n\n\n\n\n\n\nSource: PLAN.md and README.md in the repository.",
+    "text": "Tuning pointers\n\n\n\nTable 2: Common tuning knobs and where each lives.\n\n\n\n\n\n\n\n\n\nWant to change…\nLook in…\n\n\n\n\nUnit stats / loadout\nBattle.gd → _spawn_line() array\n\n\nCollision spacing / soft-resolve\nUnit.gd → _separate() (floor = RADIUS + other.RADIUS); spawn gaps via spacing in _spawn_line()\n\n\nMovement pace\nBattle.gd → SPEED_SCALE constant (lower = slower)\n\n\nCombat math\nUnitCombat.gd → strike() / take_casualties() / flank_multiplier()\n\n\nActive pause\nHUD.gd → _toggle_pause() (Space)\n\n\nEnemy AI\nBattle.gd → _run_enemy_ai(), layering General.gd, Subcommander.gd, and UnitLeader.gd\n\n\n\n\n\n\n\nSource: PLAN.md and README.md in the repository.",
     "crumbs": [
       "Home",
       "Under the Hood",
