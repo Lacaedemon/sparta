@@ -202,7 +202,7 @@ future command builds on top of `enqueue_macro`.
 > tests exercised it -- `Order.macro_id`/`Unit.enqueue_macro()`/`cancel_macro()`
 > were removed rather than kept for a hypothetical future "cancel as one unit"
 > case; a future need can re-add the same mechanism if it materializes.
-
+>
 > **Built, as a tree composite rather than a flat tag: `Order.Type.COMBO` /
 > `Unit.begin_combo(steps)`.**
 > The combo the removed tag was named for arrived as the nested form the
@@ -341,9 +341,9 @@ stays legible) and must preserve every existing behavior it touches
 
 **Scope.** Introduce the `Order` value type, the `orders` queue on `Unit`, and
 `current_order` with phase support. Make each order **apply exactly once** in the
-sim step -- the queue advances deterministically per tick, retiring the immediate
-+ tick-drain double-apply. Wire `current_order` (+ its phase) into the
-transcript.
+sim step -- the queue advances deterministically per tick, retiring the
+immediate + tick-drain double-apply.
+Wire `current_order` (+ its phase) into the transcript.
 
 **Subsumes.** The move-only waypoint/append list becomes the queue; #515's
 explicit-maneuver field becomes `current_order` + phase.

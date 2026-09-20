@@ -474,7 +474,6 @@ A routing enemy crosses `Unit.retreat_bounds` and escapes at the same tick wheth
 This decoupling ensures that mid-battle fog toggles cannot cause replay determinism divergence between recording and playback.
 `Battle.rout_margin` remains an instance property initialized to `ROUT_MARGIN` for compatibility, but its value is constant.
 
-
 ### Last-known contact
 
 Per observing team, a dictionary keyed by target unit id.

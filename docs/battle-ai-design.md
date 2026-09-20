@@ -598,7 +598,7 @@ the only door); determinism on replay is preserved with fog active.
 - **#385** -- its core ("disciplined units use the implemented professional
   battlefield maneuvers to execute orders") lands in phase 1's unit leaders;
   its click-count pace-gesture system is separate player-input UX.
-- **#523 / #524** -- orders-queue phases 2-3, the gate for phase 1 (both closed).
+- **#523 / #524** -- orders-queue phases 2-3, the gate for phase 1.
 - **#369 / #377 / #378 / #379** -- the multi-unit maneuver foundations phase
   2's subcommanders coordinate.
 - **#427** -- factions by time period; doctrine profiles (phase 3) are the AI
