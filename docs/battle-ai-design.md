@@ -1,14 +1,6 @@
 # Design note: chain-of-command battle AI
 
-Status: **implemented -- phases 1 to 5 have shipped**
-([#584](https://github.com/Lacaedemon/sparta/issues/584),
-[#585](https://github.com/Lacaedemon/sparta/issues/585),
-[#586](https://github.com/Lacaedemon/sparta/issues/586),
-[#587](https://github.com/Lacaedemon/sparta/issues/587) and
-[#588](https://github.com/Lacaedemon/sparta/issues/588) are all closed;
-`General.gd`, `Subcommander.gd` and `UnitLeader.gd` are live behind `Battle.gd`'s `_run_enemy_ai()`).
-The phased plan below is kept as the design record.
-This note consolidates #498 (the
+Status: **design -- not yet implemented.** This note consolidates #498 (the
 battle half of #387) into one spec, following the same design-doc-first
 pattern as #516 (`docs/orders-queue-design.md`), #535
 (`docs/soldier-loadout-design.md`), and #550

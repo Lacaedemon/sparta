@@ -372,4 +372,7 @@ Their "code touch-points" predate the split of `Unit.gd` into helpers such as `U
 - Combat math in `UnitCombat.gd` → `strike()` / `take_casualties()` / `flank_multiplier()`.
 - Active pause: `HUD.gd` → `_toggle_pause()` (Space); selection/camera stay live via `PROCESS_MODE_ALWAYS`.
 - Enemy AI in `Battle.gd` → `_run_enemy_ai()`, which layers `General.gd` (army plan), `Subcommander.gd` (groups),
-  and `UnitLeader.gd` (per-unit orders); design in `docs/battle-ai-design.md`.
+  and `UnitLeader.gd` (per-unit orders).
+  The original spec is `docs/battle-ai-design.md`, which is a design record written before the work
+  and still carries its pre-implementation status line.
+  Read the scripts for current behaviour.

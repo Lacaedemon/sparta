@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Documentation only: brings PLAN.md, README.md, CLAUDE.md, GEMINI.md and website/architecture.qmd in line with the shipped game, whose status text still described the first scaffold. No scene, script, asset or project setting changes, so a recorded battle is byte-identical before and after. The evidence for the change is the gap between what those files claim and what the tree contains."
+  "reason": "Documentation only: brings the project-status docs in line with the shipped game, whose status text still described the first scaffold. No scene, script, asset or project setting changes, so a recorded battle is byte-identical before and after. The evidence for the change is the gap between what those files claim and what the tree contains."
 }
