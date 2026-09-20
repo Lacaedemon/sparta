@@ -611,7 +611,7 @@ the only door); determinism on replay is preserved with fog active.
 - **#427** -- factions by time period; doctrine profiles (phase 3) are the AI
   side of that data.
 - **#135 / #502** -- player delegation and period rank names, phase 4.
-- **#414** -- fog of war; phase 5 (disputed -- see "Implementation status"
+- **#414** -- fog of war; phase 5 (not shipped -- see "Implementation status"
   above) integrates it through the perception interface, with the AI
   honoring it by requirement.
   Its design lives in
