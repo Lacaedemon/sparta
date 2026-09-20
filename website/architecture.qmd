@@ -3,8 +3,9 @@ title: "Architecture"
 description: "Project layout, the scripts, and the collision design pillar."
 ---
 
-Sparta's Milestone&nbsp;1 is one self-contained battle scene wired up in code. The
-codebase is small and deliberately flat --- easy to read end to end.
+Sparta is a self-contained tactical battle and a turn-based campaign map, wired up in code,
+with the campaign able to launch a battle and take its result back.
+The codebase is small and deliberately flat --- easy to read end to end.
 
 ## Project layout
 

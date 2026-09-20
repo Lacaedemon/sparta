@@ -239,7 +239,7 @@ The engine checks every change, so a new session verifies with the same commands
 4. To see the game without a display, record a demo (see `demos/README.md`).
 
 To play it, open the folder in Godot and press **F5**.
-The main menu launches a battle or a campaign.
+The main menu launches a battle, a custom battle, or a campaign.
 
 ## Added since scaffold
 - **Reproducible replays** (`scripts/Replay.gd`): deterministic sim + order log
