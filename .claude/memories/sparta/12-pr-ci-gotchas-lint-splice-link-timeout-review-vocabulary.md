@@ -47,6 +47,7 @@ by their actual gate name:
   defaults to `true` in the reusable `Morrison-Lab/gha` `lint-markdown.yml@v2`
   workflow, exactly like `fail-on-item-splices` above, and this repo's
   caller `.github/workflows/lint-markdown.yml` overrides neither.
+
 - **`check-new-line-breaks/check-new-line-breaks.py`** (diff-scoped,
   blocking -- see the section below for this repo's specific clause rule).
   It runs as its own separate workflow (`.github/workflows/check-new-line-breaks.yml`),
@@ -61,9 +62,11 @@ together, or the import fails.
 - **Do:** fetch a `.mjs` gate together with its same-directory dependencies
   (`_pathspec.mjs` beside `check_list_item_splices.mjs`), not as a single
   isolated file.
+
 - **Do:** treat `fail-on-table-splits` as on by default, the same as
   `fail-on-item-splices`, even though this repo's caller workflow never
   mentions either input by name.
+
 - **Don't:** assume a repo's own thin caller `.yml` shows every input the
   reusable workflow sets -- read the pinned `@v2` ref of `Morrison-Lab/gha`
   itself for the defaults, per the section above's own "Do."
@@ -82,9 +85,11 @@ exactly the kind of path long enough to trip this.
 - **Do:** run these checkers from a short working directory (the repo
   checkout itself, or a shallow worktree) rather than a deep scratchpad
   path, when running them locally before a push.
+
 - **Do:** sanity-check a suspiciously-clean local run against a file already
   known to trip the checker, before trusting a pass on the real diff, if the
   working directory is unavoidably deep.
+
 - **Don't:** treat this note as confirmed measurement -- it is relayed
   guidance, not something reproduced in this session; verify it directly
   before relying on it for a genuinely deep path.
