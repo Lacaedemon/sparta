@@ -1,0 +1,24 @@
+{
+  "_comment": "Phase 1 winner-pursuit verification (docs/far-tier-pursuit-contagion-design.md). A lone far-tier Cavalry regiment (team 1, the whole AI roster -- Subcommander.decide_group short-circuits to {} for a group under 2 living members, so UnitLeader.decide's own nearest-enemy fallback runs unshadowed by any hold-line/cover-flank directive) starts nearest a weakened far-tier Spearmen formation (team 0, non-ranged so the cavalry takes no free hits while closing) and engages it through FarTierCombat (phase 0). The Spearmen break and are run down while routing (fleeing grants no immunity) and disappear from play by tick ~171; the cavalry's target_enemy clears that same window, which is exactly the gate that unlocks UnitLeader.decide's advance/attack fallback again. A second, undamaged Infantry formation sits far enough away that it is not the cavalry's first pick, but close enough that the fallback picks it the instant the Spearmen are gone: the state dump shows target_enemy_uid flipping straight to the Infantry's uid at tick 181, ten ticks after the old target vanished and with no directive or promotion in between. promote_range is pulled far below any combat reach (as in the phase-0 demo); measured, both formations stay far-tier for the whole clip -- including the cavalry's second fight against the Infantry -- so this scenario demonstrates the 'fighting it (Phase 0)' branch of the phase-1 done-check rather than the promotion branch. Frontages are kept modest (not single-rank) after an earlier attempt with a 30-wide single-rank cavalry line produced a facing whipsaw while pivoting toward the new target -- a staging artifact of that extreme aspect ratio, not a defect in the retarget logic itself.",
+  "seed": "552217",
+  "tier_ranges": {"promote": 6.0, "demote": 95.0},
+  "scenario": [
+    {"team": 1, "type": "Cavalry", "x": 500, "y": 850, "count": 30, "frontage_override": 10, "facing": [0.0, -1.0]},
+    {"team": 0, "type": "Spearmen", "x": 500, "y": 730, "count": 20, "frontage_override": 7, "morale": 12.0, "facing": [0.0, 1.0]},
+    {"team": 0, "type": "Infantry", "x": 650, "y": 730, "count": 50, "frontage_override": 17, "facing": [0.0, 1.0]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 560.0, "y": 800.0, "zoom": 1.05},
+    {"tick": 190, "x": 590.0, "y": 720.0, "zoom": 1.05},
+    {"tick": 380, "x": 670.0, "y": 730.0, "zoom": 1.05}
+  ],
+  "steps": [],
+  "state": [8, 150, 160, 171, 181, 230, 260, 340, 420, 480, 500, 514],
+  "frames": [8, 160, 181, 260, 480],
+  "expect": [
+    {"tick": 171, "uid": 0, "field": "target_enemy_uid", "value": null},
+    {"tick": 181, "uid": 0, "field": "target_enemy_uid", "value": 2},
+    {"tick": 181, "uid": 0, "field": "tier", "value": "FAR"},
+    {"tick": 260, "uid": 2, "field": "state", "value": "FIGHTING"}
+  ]
+}

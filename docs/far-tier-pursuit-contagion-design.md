@@ -147,6 +147,20 @@ Deviations from the sketch above, and the open questions it settled:
   Making the general case reachable is a **tuning** decision about the tier band, not more code;
   phase 2's measurement is the natural place to take it.
 
+## Phase 1 as verified
+
+Verified for [#621](https://github.com/Lacaedemon/sparta/issues/621).
+No production code changed -- the phased plan's own prediction held: with phase 0 live, `UnitLeader.decide`'s existing `pursue_routers` fallback already reaches a far-tier formation correctly, with nothing to fix.
+
+- **Scenario:** `demos/inputs/far-tier-winner-pursuit-621.json` / `demos/demo.621.json`.
+  A lone far-tier Cavalry regiment (team 1's whole AI roster, so `Subcommander.decide_group` short-circuits to `{}` for its under-2-member group and the fallback runs unshadowed by any hold-line/cover-flank directive) breaks a weak far-tier Spearmen formation, which is run down while routing and disappears from play around tick 171.
+  A second, undamaged Infantry formation sits far enough away that it is not the cavalry's first pick, but close enough to become the nearer target the instant the Spearmen are gone.
+- **Measured:** the state-dump transcript shows `target_enemy_uid` on the cavalry clearing at tick 171 (its old target gone) and flipping straight to the Infantry's uid at tick 181 -- ten ticks later, with no directive and no promotion in between.
+  By tick 260 the cavalry is `FIGHTING` the Infantry, resolved through the same `FarTierCombat` path (phase 0) as the first fight; both formations stay far-tier for the whole clip.
+  This exercises the done-check's "fighting it (Phase 0)" branch specifically -- the promotion branch (a formation pressing forward into `PROMOTE_RANGE` of the new target) was not forced or observed in this run, consistent with the phase-0 section above's own finding that two far-tier formations rarely stay far-tier while in mutual combat reach at the shipped band.
+- **A staging artifact, not a phase-1 defect:** an earlier attempt at this scenario used a deliberately wide, single-rank cavalry frontage (matching the "wide, shallow blocks" cosmetic trick the phase-0 demo uses for visual interpenetration) and produced a facing whipsaw while the formation pivoted onto the new bearing -- the wide block's own pivot-radius throttling fought itself. Moderate (multi-rank) frontages resolved it. Filed here rather than as a tracked issue because it never reached shipped behavior; it is purely a property of the extreme aspect ratio this scenario staged.
+- **The `pursue_routers` hardcode asymmetry (`Battle.gd`'s `_run_player_delegated_ai`, flagged for this phase) is deliberate, not a defect.** It shipped with the phase-4 player-delegation PR itself (`Lacaedemon/sparta` PR #1082, commit `b2d02bbf`) with its own doc comment already explaining why: team 1 threads `pursue_routers` from `General.decide_army`'s doctrine-driven decision, but team 0's player-delegated groups have no `General` standing up an army-level plan in phases 1-2 of `docs/battle-ai-design.md` -- the player fills that role directly, choosing group membership themselves -- so hardcoding `true` is the correct phase-1/phase-2 default rather than an omission. `docs/battle-ai-design.md`'s own phase-4 scope (rank names and flavor surfacing from the doctrine profile, nothing about rout-exploitation) corroborates this. No issue filed.
+
 ## Open questions this doc does not resolve
 
 - **`ROUT_SHOCK_RADIUS` (7 m) was tuned for close-order soldier spacing, not for the distance between far-tier formation centroids.**
