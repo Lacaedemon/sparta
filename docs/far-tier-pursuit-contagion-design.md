@@ -11,7 +11,7 @@ re-check them against the tree before wiring.
 ## The gap #621 names, restated precisely
 
 `FarTierRules.tick_pair` is a pure, two-body driver: given exactly formation A and formation B, it resolves one tick of their mutual attrition, movement, and rout/rally/shatter.
-#621 asks for the multi-formation analogs of two close-tier behaviours it cannot express:
+Issue #621 asks for the multi-formation analogs of two close-tier behaviours it cannot express:
 
 - **Winner pursuit** -- a formation whose opponent just broke should press toward a *new* target (a neighbouring enemy formation) instead of idling once the old opponent starts fleeing.
 - **Rout contagion** -- a formation that breaks should shake morale in *sibling* formations nearby, not just its one opponent.
@@ -151,23 +151,27 @@ Deviations from the sketch above, and the open questions it settled:
 
 Verified for [#621](https://github.com/Lacaedemon/sparta/issues/621).
 No production code changed -- the phased plan's own prediction held: with phase 0 live, `UnitLeader.decide`'s existing `pursue_routers` fallback already reaches a far-tier formation correctly, with nothing to fix.
-The phase-1 done-check as originally worded (see the "Phased plan" section below) turned out to be unreachable given current targeting semantics; the paragraphs below say what was actually demonstrated, why the literal wording cannot happen, and the done-check text below has been amended to match.
+The phase-1 done-check as originally worded (see the "Phased plan" section below) turned out to be unreachable given current targeting semantics.
+The paragraphs below say what was actually demonstrated, why the literal wording cannot happen, and the done-check text below has been amended to match.
 
 - **Scenario:** `demos/inputs/far-tier-winner-pursuit-621.json` / `demos/demo.621.json`.
   A lone far-tier Cavalry regiment (team 1's whole AI roster, so `Subcommander.decide_group` short-circuits to `{}` for its under-2-member group and the fallback runs unshadowed by any hold-line/cover-flank directive) breaks a weak far-tier Spearmen formation.
   A second, undamaged Infantry formation sits far enough away that it is not the cavalry's first pick, but close enough to become the nearer target once the Spearmen are gone.
 
 - **What actually triggers the retarget is the old target's death, not its rout -- and it cannot be otherwise.**
-  `UnitTargeting.current_target`'s own docstring is explicit: "A routing enemy (broken or shattered) stays a live target here -- a unit doesn't lose interest in prey just because it broke and ran; it keeps pressing the pursuit."
+  `UnitTargeting.current_target`'s own docstring is explicit: "A routing enemy (broken or shattered) stays a live target here -- a unit doesn't lose interest in prey just because it broke and ran;
+  it keeps pressing the pursuit."
   Its implementation clears `target_enemy` only when the target's `state` is `DEAD` (or the reference goes invalid) -- never on a transition to `ROUTING`.
-  So a formation entering `ROUTING` can never by itself unlock `UnitLeader.decide`'s advance/attack fallback; only the target's removal from play (death, or a pursuer that loses or outruns it) does that.
+  So a formation entering `ROUTING` can never by itself unlock `UnitLeader.decide`'s advance/attack fallback.
+  Only the target's removal from play (death, or a pursuer that loses or outruns it) does that.
   The phase-1 done-check as originally worded ("a far-tier formation's target routs shows the formation's order retargeting") describes a trigger the current targeting code cannot produce.
   This is a defect in the done-check's wording, not in this verification, and it is the most valuable thing this phase found.
 
 - **What the scenario actually shows, measured:** the Spearmen enter `ROUTING` at tick 160 (pinned by the `expect` entry below) and are run down while fleeing -- `can_be_struck`/`register_casualties` grant a routing target no immunity -- dying somewhere between tick 170 (1 soldier, still present) and tick 171 (gone from both the `units` and `routers` groups, so `target_enemy` clears to `null` that same tick).
   The cavalry's `target_enemy_uid` then flips straight to the Infantry's uid at tick 181.
   The ten-tick gap is `Battle.AI_PERIOD` (60), not an unexplained lag: `UnitLeader.decide`'s fallback is the only thing that can assign a *new* `target_enemy`, and it only runs from `Battle._run_enemy_ai`, gated on `_tick % ai_period == 0`.
-  The prior AI decision ran at tick 120, while the Spearmen were still alive; the next one lands at tick 180, nine ticks after the death, with its effect first visible in the tick-181 dump (state dumps and the `_tick` counter's own advance land one physics frame apart).
+  The prior AI decision ran at tick 120, while the Spearmen were still alive.
+  The next one lands at tick 180, nine ticks after the death, with its effect first visible in the tick-181 dump (state dumps and the `_tick` counter's own advance land one physics frame apart).
   So the true wait after death was 9 ticks here, not 10 -- it can be anywhere from 0 to 59 ticks depending on where in the AI cycle the death falls, and this run measured the low end of that range, not a fixed cadence.
 
 - **By tick 260 the cavalry is `FIGHTING` the Infantry**, resolved through the same `FarTierCombat` path (phase 0) as the first fight.
