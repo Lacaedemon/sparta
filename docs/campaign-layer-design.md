@@ -1,25 +1,30 @@
 # Design note: unified campaign layer
 
 Status: **accepted design -- phase 1's foundation slice has landed; the rest
-is not yet implemented.** As of 2026-09-19, `scripts/campaign/CampaignClock.gd`,
+is not yet implemented.**
+As of 2026-09-19, `scripts/campaign/CampaignClock.gd`,
 `CampaignCalendar.gd`, `CampaignProjection.gd`, and `CampaignGeography.gd`
 exist ([#1496](https://github.com/Lacaedemon/sparta/pull/1496)), but
 `scripts/campaign/CampaignState.gd`'s actual turn loop (`end_turn()`,
 `_acted`) is untouched -- the new clock runs alongside the still-turn-based
 game logic rather than having replaced it, exactly as
 [Roadmap](../website/roadmap.qmd) describes ("continuous army movement...
-and retiring turn order... are the rest of the phase"). Tracking issue
+and retiring turn order... are the rest of the phase").
+Tracking issue
 [#603](https://github.com/Lacaedemon/sparta/issues/603) reads closed on
 GitHub, but PR #1496's own description says the opposite: it stated that
 the PR did *not* resolve the issue, placing the closing keyword directly
-before the number inside that denial. That very sentence is what closed it,
+before the number inside that denial.
+That very sentence is what closed it,
 because GitHub's parser matches the keyword-and-number substring regardless
-of the "does not" in front of it. The offending pair is deliberately not
+of the "does not" in front of it.
+The offending pair is deliberately not
 reproduced verbatim here, so that quoting this paragraph into a commit
 message or a PR description cannot close the issue a second time (the same incidental-keyword failure documented for #588 and #1565 in
 `docs/battle-ai-design.md` and `docs/fog-of-war-design.md`'s own
 "Implementation status" sections). #603's closed state should not be read
-as phase 1 being complete. The owner reviewed this note and answered its
+as phase 1 being complete.
+The owner reviewed this note and answered its
 six open questions in
 [the PR #583 review](https://github.com/Lacaedemon/sparta/pull/583#pullrequestreview-4618476256);
 this revision folds those answers in. This note unifies the
@@ -41,8 +46,8 @@ cluster issues as sub-issues.
 
 The design held its phase issues back until the owner had reviewed it.
 That review has happened -- acceptance with amendments -- so the phase
-issues are now filed and linked from each phase below, as sub-issues of
-#582.
+issues are now filed and linked from each phase below, as sub-issues
+of #582.
 
 ## Motivation
 
@@ -178,7 +183,7 @@ of the same campaign session cannot be reproduced. (The seeded path exists --
 
 ### The dynastic germ
 
-#124 (characters & dynasties) closed with the thin slice that exists today:
+[#124](https://github.com/Lacaedemon/sparta/issues/124) (characters & dynasties) closed with the thin slice that exists today:
 one ruler per faction, a `{name, trait}` pair surfaced in the turn banner
 and steering AI diplomacy thresholds. There is no lifecycle -- rulers don't
 age, die, or have heirs. The saga layer (#126) is where that grows; see
