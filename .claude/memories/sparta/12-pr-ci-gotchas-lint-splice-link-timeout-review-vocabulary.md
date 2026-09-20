@@ -216,11 +216,12 @@ reviews, each `COMMENTED` with the standard quota-limit body, at
 returned only those three entries -- no Claude review ever shows up there,
 quota-skipped or not. The real verdict for the same three pushes arrived
 only as three separate `**Claude finished review**` issue comments
-(`github-actions` login), at `01:49:21Z`, `01:54:33Z`, and `03:32:24Z`,
-exactly matching the "formal reviews" (`pulls/<N>/reviews`) versus
-"verdict comment" (`issues/<N>/comments`) split documented above. Re-verify
-before treating this as still current: GitHub does not state a reset time
-anywhere in the notice.
+(`github-actions[bot]` login), at `01:49:21Z`, `01:54:33Z`, and
+`03:32:24Z`, exactly matching the "formal reviews" (`pulls/<N>/reviews`)
+versus "verdict comment" (`issues/<N>/comments`) split documented above.
+
+- **Don't:** treat this confirmation as still current without re-checking:
+  GitHub does not state a reset time anywhere in the quota-limit notice.
 
 Links/provenance: measured 2026-09-01 on `Lacaedemon/sparta` CI (workflow runs
 observed on PRs in the #1452/#1453/#1459/#1462 range); the Copilot-quota
