@@ -23,8 +23,8 @@ then grow outward.
   disassemble, or vendor them. See [`docs/related-games.md`](docs/related-games.md).
 - **First milestone:** one self-contained tactical battle, with no campaign map.
   Held, and now discharged: the battle shipped first and the campaign map followed.
-  Kept because it records the sequencing decision, not the present state --
-  for that see "Current status" below.
+  Kept because it records the sequencing decision.
+  The present state is in "Current status".
 - **Performance target (#549, hardware floor revised with #69):** **60fps at a representative
   large-battle scale** (several hundred soldiers across multiple regiments, actively engaged
   in melee and ranged combat -- the biggest battle the game is expected to support), on named
@@ -206,8 +206,8 @@ Current priorities live in the open `P0`-`P3` issues, not in this list.
 
 ## Current status -- both layers playable and joined
 The tactical battle (M1) is shipped and under continuous development.
-The campaign map (M2) and the campaign-to-battle hand-off (M3) have landed as playable slices;
-see "Milestones" below for what each one covers and what remains.
+The campaign map (M2) and the campaign-to-battle hand-off (M3) have landed as playable slices.
+"Milestones" covers what each one includes and what remains.
 Tagged releases start at `v0.1.0` (`git tag` lists them).
 
 This section used to describe the first scaffold (five scripts, never run in the engine).
