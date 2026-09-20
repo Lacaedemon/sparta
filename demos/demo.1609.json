@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation only: records the measured size of the cross-platform float divergence and the decision to keep the same-build/platform-only caveat, in docs/individual-collision-design.md. No scene, script, asset or project setting changes, so a recorded battle would be byte-identical before and after and could only show that the change is invisible. The evidence behind the text is a raw-bit dump comparison, which the PR description carries directly."
+}
