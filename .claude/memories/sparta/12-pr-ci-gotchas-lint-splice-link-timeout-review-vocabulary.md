@@ -41,10 +41,11 @@ neither this repo's own caller workflows nor the section above names them
 by their actual gate name:
 
 - **`check_table_splits.mjs`** (whole-tree, not diff-scoped -- a split table
-  has no legitimate form, so there is nothing to diff-scope). It fails when
-  a blank line splits a GFM table, orphaning the rows below it so they
-  render as literal text instead of a table. `fail-on-table-splits`
-  defaults to `true` in the reusable `Morrison-Lab/gha` `lint-markdown.yml@v2`
+  has no legitimate form, so there is nothing to diff-scope).
+  It fails when a blank line splits a GFM table, orphaning the rows below
+  it so they render as literal text instead of a table.
+  `fail-on-table-splits` defaults to `true` in the reusable
+  `Morrison-Lab/gha` `lint-markdown.yml@v2`
   workflow, exactly like `fail-on-item-splices` above, and this repo's
   caller `.github/workflows/lint-markdown.yml` overrides neither.
 
@@ -73,12 +74,14 @@ together, or the import fails.
 
 **On Windows, run these from a short working directory -- a deep one can
 make a checker silently examine zero files, which looks identical to a
-clean pass.** This is reported rather than independently reproduced in this
+clean pass.**
+This is reported rather than independently reproduced in this
 session: Node's (and Python's) filesystem calls can fail silently or return
 an empty match set once the working directory plus a repo-relative path
 crosses Windows' roughly 260-character path limit, and none of these four
 scripts distinguishes "0 files scanned" from "0 findings" in its output --
-both print as a pass. A Claude Code scratchpad path
+both print as a pass.
+A Claude Code scratchpad path
 (`...\AppData\Local\Temp\claude\<repo>-...\<session-id>\scratchpad\...`) is
 exactly the kind of path long enough to trip this.
 
