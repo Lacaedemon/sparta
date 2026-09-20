@@ -2,9 +2,11 @@
 
 Status: **all five phases landed** (the `Order` type + queue + apply-once,
 the movement-maneuver migration, the transition/relief/waypoint absorption,
-the guard vocabulary, and the transcript's remaining gaps). Phases 4-5 were
+the guard vocabulary, and the transcript's remaining gaps).
+Phases 4-5 were
 described here as "in review" against #525 and #526; both of those issues
-are closed (checked 2026-09-20). This
+are closed (checked 2026-09-20).
+This
 note consolidates the design from #516 (and its refinement comments) into one
 spec, and lays out the phased implementation plan tracked by the phase issues
 linked below.
@@ -412,8 +414,9 @@ stale-march bug the parallel flags had. Two scoping notes:
 Split the current `_relief_partner` / `UnitRelief` mechanism into its two real
 behaviors: **inter-unit relief** becomes a `RelieveUnitOrder` queue entry (names the ally;
 response-delay + ward become the order's execution state), and **intra-unit
-rank-relief** becomes a durable mode toggled by a `StanceOrder` (cross-links
-#529, whose rank-cycle recovery is exactly this mode). Finish absorbing the
+rank-relief** becomes a durable mode toggled by a `StanceOrder`
+(cross-links #529, whose rank-cycle recovery is exactly this mode).
+Finish absorbing the
 waypoint list. Decide support-ward: durable assignment mode vs standing
 `SupportOrder`.
 
