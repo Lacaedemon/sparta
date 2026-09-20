@@ -1,11 +1,15 @@
 # Design note: subdividing units into subunits
 
 Status: **historical design note -- phases 1-4 shipped, phase 5 optional
-and not started.** [#1218](https://github.com/Lacaedemon/sparta/issues/1218)
-(the issue this note answers) is closed. Phases 1-4 below shipped as PR
-#1303 (phase 1, merged 2026-08-16), #1326 (phase 2), #1328 (phase 3), and
-#1329 (phase 4, all merged 2026-08-18) -- verified 2026-09-19. Phase 5
-("ride #547") has not started. Except where marked, the rest of this
+and not started.**
+[#1218](https://github.com/Lacaedemon/sparta/issues/1218)
+(the issue this note answers) is closed.
+Phases 1-4 below shipped as
+PR #1303 (phase 1, merged 2026-08-16), #1326 (phase 2), #1328 (phase 3),
+and #1329 (phase 4, all merged 2026-08-18) -- verified 2026-09-19.
+Phase 5
+("ride #547") has not started.
+Except where marked, the rest of this
 document is preserved as originally written, describing the design before
 any of it existed.
 
@@ -468,8 +472,8 @@ mapping is many-to-one in exactly the place that matters: Spartan Hoplites,
 Triarii, the Sacred Band, Libyan Spearmen and the Pezhetairoi Phalanx are all
 `Spearmen`.
 Attaching structure to the loadout type alone would give a Spartan file and a
-Macedonian file the same declared depth, which is precisely the distinction
-#1218 exists to capture.
+Macedonian file the same declared depth, which is precisely the
+distinction #1218 exists to capture.
 
 Attaching it to the roster name instead would mean seventeen answers, most of
 them guesses, and would strand any scenario that spawns a bare `Infantry` with
@@ -710,7 +714,8 @@ scenario, per `PLAN.md`'s standing performance constraint, and checks the demo
 against the standard defect checklist in
 `.claude/skills/verify-via-state-dump`.
 
-- **Phase 1 (shipped, #1303) --- declare the structure, change nothing.** Add the per-type
+- **Phase 1 (shipped, #1303) --- declare the structure, change nothing.**
+Add the per-type
   structural key to `Battle._default_loadout()` (**both** `Cavalry` entries ---
   see the trap above), thread it onto `Unit` in `_spawn_unit` the way
   `file_major_reform_default` is threaded, allow a roster-name and scenario
@@ -724,7 +729,8 @@ against the standard defect checklist in
   separately from the behaviour question.
   Smallest, lowest-risk slice; the recommended first PR.
 
-- **Phase 2 (shipped, #1326) --- make the declared depth the input for the foot types.** Spearmen
+- **Phase 2 (shipped, #1326) --- make the declared depth the input for the foot types.**
+Spearmen
   and Archers derive their subunit count from `ceil(live / depth)` instead of
   `_files(max_soldiers)`, subject to the no-continuous-re-deal constraint above.
   Infantry and Cavalry are untouched, so the blast radius is two types.
@@ -737,7 +743,8 @@ against the standard defect checklist in
   Expect the demo to look different --- a Spearmen block at a declared 16 is
   markedly deeper and narrower than today's 8--9.
 
-- **Phase 3 (shipped, #1328) --- give cavalry no file structure.** Stop laying cavalry out as
+- **Phase 3 (shipped, #1328) --- give cavalry no file structure.**
+Stop laying cavalry out as
   files.
   This is the phase that most needs a decision made before it starts, because
   "no subunit" still requires *some* layout, and the historically motivated
@@ -749,7 +756,8 @@ against the standard defect checklist in
   itself structureless so nothing downstream reasons about cavalry files.
   That is strictly less wrong than today and does not prejudge the leader model.
 
-- **Phase 4 (shipped, #1329) --- express one reform as a subunit operation.** The issue's own
+- **Phase 4 (shipped, #1329) --- express one reform as a subunit operation.**
+The issue's own
   example: convert a flank file into a back rank by marching that file around
   the edge of the block into its rear, as a body, rather than relabelling every
   man.
@@ -762,7 +770,8 @@ against the standard defect checklist in
   A conversion that does not improve that pair of numbers has not earned its
   complexity.
 
-- **Phase 5 (optional, later, not started) --- ride #547.** Once explicit per-soldier slot
+- **Phase 5 (optional, later, not started) --- ride #547.**
+Once explicit per-soldier slot
   ownership lands, a subunit becomes an addressable recipient of an order ("your
   file wheels onto the east face") rather than an input to a centralized layout
   recompute.
