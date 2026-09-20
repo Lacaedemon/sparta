@@ -43,8 +43,8 @@ mirrors the same pipeline for player-delegated groups.
 
 **Orders-queue phases 2-3 (#523, #524), which phase 1 below lists as a
 dependency, are both closed.**
-The "in flight" note on that dependency is
-stale and is corrected in place below.
+Two "in flight" notes on that dependency were
+stale, and both are corrected in place below.
 
 **Fog of war (#414) has partially landed, and the interaction with phase 5
 is where this document and `docs/fog-of-war-design.md` need to be read
@@ -152,8 +152,11 @@ Phase 1 of that design is merged (PR #555): the `Order` value type
 (`scripts/Order.gd`) exists with types `MOVE` / `ATTACK` / `RELIEF` /
 `SUPPORT` / `WHEEL` / `NUDGE` / `FORMATION` / `FRONTAGE`, every unit carries
 an `orders` queue with a transcript-visible `current_order`, and
-`Battle._apply_order_cmd` is the single exactly-once apply site. Phases 2-3
-(#523 / #524, in flight) migrate execution itself onto the queue.
+`Battle._apply_order_cmd` is the single exactly-once apply site.
+Phases 2-3
+([#523](https://github.com/Lacaedemon/sparta/issues/523) /
+[#524](https://github.com/Lacaedemon/sparta/issues/524), both closed as of
+2026-09-19) migrate execution itself onto the queue.
 
 Once that lands, "the AI issues real orders" stops being aspirational: an AI
 attack decision becomes `Order.new_attack(uid)` on the same apply path as a
