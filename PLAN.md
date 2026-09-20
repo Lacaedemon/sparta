@@ -21,7 +21,10 @@ then grow outward.
 - **Commercial Total War engines:** stay on Godot. REX/M2EX (and any leaked CA
   source or patched RTW/M2TW executable) are design-only; do not reconstruct,
   disassemble, or vendor them. See [`docs/related-games.md`](docs/related-games.md).
-- **First milestone:** one self-contained tactical battle. No campaign map yet.
+- **First milestone:** one self-contained tactical battle, with no campaign map.
+  Held, and now discharged: the battle shipped first and the campaign map followed.
+  Kept because it records the sequencing decision, not the present state --
+  for that see "Current status" below.
 - **Performance target (#549, hardware floor revised with #69):** **60fps at a representative
   large-battle scale** (several hundred soldiers across multiple regiments, actively engaged
   in melee and ranged combat -- the biggest battle the game is expected to support), on named
