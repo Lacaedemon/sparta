@@ -219,6 +219,102 @@ The four design/perf trade-offs are settled:
    level float ordering amplifies it, but bit-exact cross-platform replay stays out
    of scope -- no fixed-point position path. Determinism within a build/platform
    (the property replays and tests rely on) is still required.
+   Re-affirmed 2026-09-19 against a measurement rather than an estimate;
+   see "How large the cross-platform divergence actually is" below.
+
+### How large the cross-platform divergence actually is
+
+The caveat above was accepted on the reasoning that soldier-level float ordering
+amplifies a platform difference,
+without a figure for how big that difference starts out.
+It now has one.
+
+Windows 11 win64 against an `ubuntu-latest` runner,
+same engine build (`4.7.stable.official.5b4e0cb0f`),
+the `sidestep` clip,
+both dumps taken through `website/tools/dump-demo-states.sh` so the two sides run an identical path:
+
+| tick | components differing, of 2060 float32 | worst gap |
+| --- | --- | --- |
+| 8, 19, 20 | 0 | -- |
+| **21** | **1** | **1 ulp** |
+| 22 | 2 | 1 ulp |
+
+The per-tick counts come from decoding the two `bit_dump.jsonl` files directly
+and comparing every field,
+not from `analyze_transcript.gd --compare-bit-dumps`.
+That tool deliberately reports the **first** divergent field and stops
+(`DemoBitDump.compare_dumps` returns on the first differing tick,
+and `_first_unit_diff` on the first differing field within it),
+so it answers "where does this start" and cannot answer "how much of the state moved".
+Its whole reading on this pair is one line,
+`DIVERGENT tick=21 uid=9 field=soldier[26].x a=d28abd44 b=d18abd44 ulps=1 (5 common ticks compared)`,
+which is the table's first divergent row and none of the rest.
+
+Three things the numbers settle, each of which had been open.
+
+**It is rounding, not a divergent branch.**
+Every differing component is one representable step.
+A comparison flipping on one platform and not the other -- the mechanism previously suspected -- would show as a large gap rather than a single ulp.
+
+**It enters in a soldier, not a unit.**
+No unit position component differs at any dumped tick.
+The perturbation therefore starts in the per-soldier body update and is carried up from there,
+which is why it compounds gradually rather than displacing a formation at once.
+
+**It is not melee-specific, and this is confirmation rather than news.**
+The melee-knife-edge reading was already falsified by the hash streams,
+which put the first divergent tick at 21 in four of the six clips measured --
+`sidestep`, `support`, `cycle_charge` and `showcase` --
+and at 61 and 60 in `rout_rally` and `general_doctrine_reserves`.
+What rules melee out is not the tick number but `sidestep` itself,
+which is a lone regiment side-stepping with no enemy in reach and diverges as early as any of them.
+One contact-free witness is enough, and it is the only one:
+the other three clips that diverge at tick 21 all reach contact,
+so none of them could separate a melee cause from a pre-melee one.
+`demos/README.md` has said so since #1557 merged on 2026-09-09,
+and #1566 records the per-clip measurement behind it.
+What the raw bits add is an elimination rather than an inference:
+`SoldierCombat`'s land-chance sigmoid is the only `exp` on the per-soldier path,
+and it is unreachable on `sidestep`, which has no enemy in reach,
+so it is ruled out by construction instead of by the timing of the first divergence.
+The surviving transcendental candidate is the `rotated()` round trip in `SoldierBodies._corridor_to_slot`,
+on the post-spawn slot chase every clip runs.
+
+**Not established.**
+Whether the ulp originates inside `Vector2.rotated()` itself,
+or in a per-soldier branch downstream of it.
+A uniform `sin`/`cos` difference would be expected to perturb many of a unit's soldiers,
+and exactly one component moved.
+Settling it needs intermediate values dumped inside `_corridor_to_slot`,
+and is only worth doing if this decision is revisited.
+
+**Why the decision stands.**
+One ulp in one of 2060 components is the floating-point noise floor.
+Removing it costs a deterministic implementation for every transcendental on the per-tick path,
+plus a bit-exactness gate in CI -- a permanent tax on the hot loop.
+The user-visible symptom was addressed separately:
+the demo defect sweep publishes the runner's own transcripts,
+so a verdict is reproduced by re-judging that dump rather than by re-running the sim on a machine whose sim will not match it.
+What remains lost is local reproduction of the sim itself off Linux,
+and that is the price this decision accepts.
+
+**Reproducing it.**
+Arm `SPARTA_DEMO_BITDUMP` with a tick list alongside a state dump to write `bit_dump.jsonl`,
+then compare two runs:
+
+```
+godot --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-a> --compare-bit-dumps <dump-b>
+```
+
+It exits 1 on a difference, 0 on agreement,
+and 2 on a missing or empty dump rather than reporting agreement.
+On a difference it names the unit, the field, the axis,
+and how many representable steps apart the two values are.
+The Linux side comes from the demo defect sweep's `bit_ticks` dispatch input,
+which writes the same file into the run's transcript artifact.
+Run the comparison against a dump and itself first:
+an empty result and a clean result are otherwise indistinguishable.
 
 ## Simulation level-of-detail (engaged vs. unengaged)
 
