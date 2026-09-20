@@ -54,7 +54,7 @@ Battle-side visibility and rendering for the *player* --
 `Settings.fog_of_war` toggle, and a `sight` axis on terrain patches --
 shipped in [#1560](https://github.com/Lacaedemon/sparta/pull/1560) and
 [#1594](https://github.com/Lacaedemon/sparta/pull/1594) (merged
-2026-09-12 and 2026-09-13).
+2026-09-11 and 2026-09-12, Pacific).
 Campaign- and saga-side fog have not shipped.
 Separately, and this is the part phase 5 below actually needed: **no
 `CommanderView` class exists**, and `scripts/UnitLeader.gd`,
