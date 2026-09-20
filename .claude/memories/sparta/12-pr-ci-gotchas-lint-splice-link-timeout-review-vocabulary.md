@@ -210,11 +210,14 @@ status checks (#1432), so under `mwc` the agent is the only gate.
 
 **Copilot's quota exhaustion is still ongoing through 2026-09-20, and the
 two-surface split above holds even when Copilot's side is completely
-dead.** PR #1612 carried three separate `copilot-pull-request-reviewer`
+dead.**
+PR #1612 carried three separate `copilot-pull-request-reviewer`
 reviews, each `COMMENTED` with the standard quota-limit body, at
-`01:45:20Z`, `01:53:08Z`, and `03:27:30Z`. `gh pr view --json reviews`
+`01:45:20Z`, `01:53:08Z`, and `03:27:30Z`.
+`gh pr view --json reviews`
 returned only those three entries -- no Claude review ever shows up there,
-quota-skipped or not. The real verdict for the same three pushes arrived
+quota-skipped or not.
+The real verdict for the same three pushes arrived
 only as three separate `**Claude finished review**` issue comments
 (`github-actions[bot]` login), at `01:49:21Z`, `01:54:33Z`, and
 `03:32:24Z`, exactly matching the "formal reviews" (`pulls/<N>/reviews`)
