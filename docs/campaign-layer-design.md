@@ -10,10 +10,13 @@ game logic rather than having replaced it, exactly as
 [Roadmap](../website/roadmap.qmd) describes ("continuous army movement...
 and retiring turn order... are the rest of the phase"). Tracking issue
 [#603](https://github.com/Lacaedemon/sparta/issues/603) reads closed on
-GitHub, but PR #1496's own description says the opposite -- "It does not
-close #603" -- and that very sentence is what closed it: GitHub's parser
-matches the substring "close #603" regardless of the "does not" in front of
-it (the same incidental-keyword failure documented for #588 and #1565 in
+GitHub, but PR #1496's own description says the opposite: it stated that
+the PR did *not* resolve the issue, placing the closing keyword directly
+before the number inside that denial. That very sentence is what closed it,
+because GitHub's parser matches the keyword-and-number substring regardless
+of the "does not" in front of it. The offending pair is deliberately not
+reproduced verbatim here, so that quoting this paragraph into a commit
+message or a PR description cannot close the issue a second time (the same incidental-keyword failure documented for #588 and #1565 in
 `docs/battle-ai-design.md` and `docs/fog-of-war-design.md`'s own
 "Implementation status" sections). #603's closed state should not be read
 as phase 1 being complete. The owner reviewed this note and answered its

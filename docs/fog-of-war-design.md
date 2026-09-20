@@ -66,8 +66,9 @@ still wanted is open and untracked.
 Phase 3 has **not** shipped: no `CommanderView` class exists in
 `scripts/`, and `scripts/UnitLeader.gd`, `scripts/Subcommander.gd`,
 `scripts/General.gd`, and `scripts/PlayerDelegation.gd` each still document
-their perception source as "the omniscient placeholder" (verified by grep,
-2026-09-19). GitHub nonetheless showed #588 as closed for two weeks: it
+their perception source as omniscient -- `UnitLeader.gd` in exactly those
+words, the other three as an "omniscient perception source" or an
+"omniscient, already-serialized order" (read 2026-09-19). GitHub nonetheless showed #588 as closed for two weeks: it
 closed at the same moment
 [#1499](https://github.com/Lacaedemon/sparta/pull/1499) (the PR that
 originally wrote this document) merged, because that PR's commit message

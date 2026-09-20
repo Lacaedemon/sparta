@@ -1,9 +1,10 @@
 # Design note: unified orders queue
 
-Status: **in implementation -- phases 1-3 landed** (the `Order` type + queue +
-apply-once, the movement-maneuver migration, and the transition/relief/waypoint
-absorption); phases 4-5 (the guard vocabulary and the transcript's remaining
-gaps) are implemented and in review (#525, #526). This
+Status: **all five phases landed** (the `Order` type + queue + apply-once,
+the movement-maneuver migration, the transition/relief/waypoint absorption,
+the guard vocabulary, and the transcript's remaining gaps). Phases 4-5 were
+described here as "in review" against #525 and #526; both of those issues
+are closed (checked 2026-09-20). This
 note consolidates the design from #516 (and its refinement comments) into one
 spec, and lays out the phased implementation plan tracked by the phase issues
 linked below.

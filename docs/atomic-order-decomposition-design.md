@@ -10,7 +10,7 @@ Status: **historical design note -- all four slices shipped.** Tracks
 done; slices 0, 1, and 3 are equally done but were never annotated the same
 way -- treat every slice below as shipped rather than trusting the
 per-slice annotations. Builds on
-[`orders-queue-design.md`](orders-queue-design.md) (phases 1-4 landed) but
+[`orders-queue-design.md`](orders-queue-design.md) (all five phases landed) but
 **overrides one of its decisions** -- see "Relationship to the existing
 design" below.
 

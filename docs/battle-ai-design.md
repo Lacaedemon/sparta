@@ -52,7 +52,9 @@ Separately, and this is the part phase 5 below actually needed: **no
 `CommanderView` class exists**, and `scripts/UnitLeader.gd`,
 `scripts/Subcommander.gd`, `scripts/General.gd`, and
 `scripts/PlayerDelegation.gd` still each document their perception source
-as "the omniscient placeholder" (verified by grep, 2026-09-19). The
+as omniscient: `UnitLeader.gd` calls it "the omniscient placeholder" in
+those words, and the other three name an "omniscient perception source" or
+an "omniscient, already-serialized order" (read 2026-09-19). The
 formal perception-view interface this document describes below as
 existing "from phase 1, day one" was never actually built as a type; the
 shipped phases pass the caller's units array directly instead.
@@ -70,10 +72,10 @@ than on completed work.
 
 #588 was reopened on 2026-09-19 once the cause was traced. The same parser
 behaviour also caught #1565, and those two cases are written up in
-[#1614](https://github.com/Lacaedemon/sparta/issues/1614). A third
-instance, #603, is described in
-[`docs/campaign-layer-design.md`](campaign-layer-design.md) rather than
-there.
+[#1614](https://github.com/Lacaedemon/sparta/issues/1614), which a later
+comment extends to cover a third instance, #603. That third case is also
+described, with its own evidence, in
+[`docs/campaign-layer-design.md`](campaign-layer-design.md).
 
 The lasting lesson for this document's own prose: never let a closing
 keyword sit beside an issue number in text that may reach a commit
