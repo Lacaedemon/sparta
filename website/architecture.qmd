@@ -3,14 +3,18 @@ title: "Architecture"
 description: "Project layout, the scripts, and the collision design pillar."
 ---
 
-Sparta's Milestone&nbsp;1 is one self-contained battle scene wired up in code. The
-codebase is small and deliberately flat --- easy to read end to end.
+Sparta is a self-contained tactical battle and a turn-based campaign map, wired up in code,
+with the campaign able to launch a battle and take its result back.
+The codebase is small and deliberately flat --- easy to read end to end.
 
 ## Project layout
 
 ```
-project.godot          Godot project config (main scene = scenes/Battle.tscn)
-scenes/Battle.tscn     Main scene: camera + units container + selection + HUD
+project.godot          Godot project config (main scene = scenes/MainMenu.tscn)
+scenes/MainMenu.tscn   Title screen: launch a battle, a custom battle, or a campaign
+scenes/Battle.tscn     Battle scene: camera + units container + selection + HUD
+scenes/Prebattle.tscn  Custom-battle roster picker
+scenes/Campaign.tscn   Campaign map: province view/controller + campaign HUD
 scripts/
   Battle.gd            Spawns armies, enemy AI, win/lose check, tick clock + replay orders
   Replay.gd            Deterministic record/playback (autoload): seeded RNG + order log
@@ -137,9 +141,9 @@ share a code path. This is what powers the replay system and the CI demo clips. 
 | Unit stats / loadout | `Battle.gd` → `_spawn_line()` array |
 | Collision spacing / soft-resolve | `Unit.gd` → `_separate()` (floor = `RADIUS + other.RADIUS`); spawn gaps via `spacing` in `_spawn_line()` |
 | Movement pace | `Battle.gd` → `SPEED_SCALE` constant (lower = slower) |
-| Combat math | `Unit.gd` → `_strike()` / `take_casualties()` / `_flank_multiplier()` |
+| Combat math | `UnitCombat.gd` → `strike()` / `take_casualties()` / `flank_multiplier()` |
 | Active pause | `HUD.gd` → `_toggle_pause()` (Space) |
-| Enemy AI | `Battle.gd` → `_run_enemy_ai()` |
+| Enemy AI | `Battle.gd` → `_run_enemy_ai()`, layering `General.gd`, `Subcommander.gd`, and `UnitLeader.gd` |
 
 Common tuning knobs and where each lives.
 :::

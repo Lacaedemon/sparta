@@ -24,7 +24,10 @@ Sparta-specific working notes and gotchas, imported so they load with this file:
 
 ## Project at a glance
 - Godot **4.7.x Standard** (GDScript, not C#/.NET). 2D top-down tactical battle.
-- Main scene: `scenes/Battle.tscn`. Core scripts live in `scripts/`.
+- Main scene: `scenes/MainMenu.tscn`, which launches the battle (`scenes/Battle.tscn`), the
+  custom-battle roster picker (`scenes/Prebattle.tscn`), or a campaign (`scenes/Campaign.tscn`).
+  Core scripts live in `scripts/`.
+
 - Issues are tracked on this repo with `P0`-`P3` labels; `PLAN.md` mirrors the roadmap.
 - Gemini skills live in `.gemini/skills/` (including `verify-via-state-dump`).
 
