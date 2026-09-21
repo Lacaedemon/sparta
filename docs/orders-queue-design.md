@@ -1,9 +1,12 @@
 # Design note: unified orders queue
 
-Status: **in implementation -- phases 1-3 landed** (the `Order` type + queue +
-apply-once, the movement-maneuver migration, and the transition/relief/waypoint
-absorption); phases 4-5 (the guard vocabulary and the transcript's remaining
-gaps) are implemented and in review (#525, #526). This
+Status: **all five phases landed** (the `Order` type + queue + apply-once,
+the movement-maneuver migration, the transition/relief/waypoint absorption,
+the guard vocabulary, and the transcript's remaining gaps).
+Phases 4-5 were
+described here as "in review" against #525 and #526; both of those issues
+are closed (checked 2026-09-20).
+This
 note consolidates the design from #516 (and its refinement comments) into one
 spec, and lays out the phased implementation plan tracked by the phase issues
 linked below.
@@ -199,7 +202,7 @@ future command builds on top of `enqueue_macro`.
 > tests exercised it -- `Order.macro_id`/`Unit.enqueue_macro()`/`cancel_macro()`
 > were removed rather than kept for a hypothetical future "cancel as one unit"
 > case; a future need can re-add the same mechanism if it materializes.
-
+>
 > **Built, as a tree composite rather than a flat tag: `Order.Type.COMBO` /
 > `Unit.begin_combo(steps)`.**
 > The combo the removed tag was named for arrived as the nested form the
@@ -320,9 +323,11 @@ transcript records the unit's plan with no special-case dump code:
   set by completed orders and already serialized today,
 - optionally the queue tail (the pending orders) for full plan legibility.
 
-This resolves #515 as a side effect: the explicit-maneuver field it asks for is
+This settles #515 as a side effect: the explicit-maneuver field it asks for is
 just `current_order` plus its phase, so #515 becomes phase 1 of this work rather
 than a separate bolt-on.
+The closing keyword is deliberately kept off the number here, since a sentence
+quoted into a commit message would otherwise close that issue.
 
 ## Phased implementation plan
 
@@ -338,9 +343,9 @@ stays legible) and must preserve every existing behavior it touches
 
 **Scope.** Introduce the `Order` value type, the `orders` queue on `Unit`, and
 `current_order` with phase support. Make each order **apply exactly once** in the
-sim step -- the queue advances deterministically per tick, retiring the immediate
-+ tick-drain double-apply. Wire `current_order` (+ its phase) into the
-transcript.
+sim step -- the queue advances deterministically per tick, retiring the
+immediate + tick-drain double-apply.
+Wire `current_order` (+ its phase) into the transcript.
 
 **Subsumes.** The move-only waypoint/append list becomes the queue; #515's
 explicit-maneuver field becomes `current_order` + phase.
@@ -411,8 +416,9 @@ stale-march bug the parallel flags had. Two scoping notes:
 Split the current `_relief_partner` / `UnitRelief` mechanism into its two real
 behaviors: **inter-unit relief** becomes a `RelieveUnitOrder` queue entry (names the ally;
 response-delay + ward become the order's execution state), and **intra-unit
-rank-relief** becomes a durable mode toggled by a `StanceOrder` (cross-links
-#529, whose rank-cycle recovery is exactly this mode). Finish absorbing the
+rank-relief** becomes a durable mode toggled by a `StanceOrder`
+(cross-links #529, whose rank-cycle recovery is exactly this mode).
+Finish absorbing the
 waypoint list. Decide support-ward: durable assignment mode vs standing
 `SupportOrder`.
 
