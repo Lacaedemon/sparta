@@ -74,7 +74,11 @@ The close tier's own analogous behaviours are not pair-scoped, and neither syste
   > centroid separations never fall below 150 wu in any scenario sampled:
   > 0 of 106 pair-observations across two live runs land inside the radius.
   > So contagion does not merely under-reach at formation scale --
-  > it never fires between two formations at all, at either tier.
+  > in every scenario sampled it never fires between two formations at all,
+  > at either tier.
+  > That result is bounded rather than universal; see "Scope of the
+  > generalization" in the phase 2 section for the formation counts and
+  > block widths at which it stops holding.
   > See "Phase 2 as measured" below.
 
 - **Winner pursuit already exists as an AI decision, tier-agnostic, today.**
@@ -257,13 +261,55 @@ which is why the result holds for compositions beyond the two sampled.
     gap = max(base_spacing, half_width[i] + half_width[i+1] + FORMATION_SPACING)
     base_spacing = min(150.0, (field_width - 200.0) / (count - 1))
 
-so **150 wu is the tightest spacing the spawn can ever choose**,
-already above the 140 wu radius,
-and the no-overlap floor pushes it further apart for any block wider than that.
-For the default line the floors are 202.5, 351.0, 335.0 and 229.0 wu --
-1.4x to 2.5x the radius.
-The measured 150.0 wu minimum in the far-tier scenario is exactly `base_spacing`,
-and the 170.8 wu minimum in the default line is its no-overlap floor.
+The measured spawn gaps for the default line, read from the tick-30 dump
+rather than derived, are:
+
+| neighbours | gap | vs 140 wu |
+| --- | --- | --- |
+| Spearmen -> Infantry | 171.0 wu | 1.2x |
+| Infantry -> Archers | 351.0 wu | 2.5x |
+| Archers -> Cavalry | 384.4 wu | 2.7x |
+| Cavalry -> Cavalry | 330.2 wu | 2.4x |
+
+The 170.8 wu minimum in the measurement table is the first of these,
+essentially unchanged from tick 30 to tick 1300.
+
+**Scope of the generalization, corrected.**
+An earlier draft of this section derived those four gaps by hand and got
+three of the four wrong, then argued from them that 150 wu is "the tightest
+spacing the spawn can ever choose".
+Both halves need qualifying.
+
+The hand derivation used `UnitFormation._files` for every type.
+`half_width_for_soldiers` does not: a `file_group` subunit structure goes
+through `auto_files_for_subunit_size` (Spearmen, `subunit_size` 16) and
+cavalry through `cavalry_files` at its own `file_pitch_m`.
+Only the Infantry-to-Archers figure survived.
+Take the widths from `half_width_for_soldiers` or from a dump, not from
+`_files`.
+
+And `base_spacing` is *not* floored at 150 wu.
+It is `min(150, (field_width - 200) / (count - 1))`, so on the default
+1600 wu field it falls to 140.0 wu at eleven formations per side and below
+the radius from twelve:
+
+| formations per side | `base_spacing` |
+| --- | --- |
+| 10 | 150.0 wu |
+| 11 | 140.0 wu |
+| 12 | 127.3 wu |
+| 15 | 100.0 wu |
+
+So the "never fires" result is **bounded, not universal**, which matters
+because many-formation battles are this document's own subject.
+Firing needs both terms of `max(base_spacing, half_i + half_j + spacing)`
+below 140 wu -- a large formation count AND blocks narrow enough that their
+half-widths sum under 131 wu.
+The default composition does not qualify at any count: Spearmen and Infantry
+alone sum to 162 wu.
+A line of twelve or more *small* formations on the default field would.
+Phase 3 should treat the existing constant as the floor term it is rather
+than as unreachable.
 
 A single block can also exceed the radius on its own frontage:
 files are `ceil(sqrt(n * FORMATION_ASPECT))` at a `FORMATION_SPACING` pitch
