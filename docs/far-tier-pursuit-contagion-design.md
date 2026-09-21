@@ -67,6 +67,20 @@ The close tier's own analogous behaviours are not pair-scoped, and neither syste
   Nothing there reads `tier`.
   A far-tier formation that breaks already rings this shockwave against its far-tier and close-tier neighbours alike, the day it can break at all.
 
+  > **Correction, measured in phase 2 (2026-09-21).**
+  > The last sentence is wrong in practice, and the line reference above is stale --
+  > `_rout()` is at `scripts/Unit.gd:7606` and its distance test at `:7641` on the current tree.
+  > The check compares unit CENTROIDS against 140 wu, and measured same-team
+  > centroid separations never fall below 150 wu in any scenario sampled:
+  > 0 of 106 pair-observations across two live runs land inside the radius.
+  > So contagion does not merely under-reach at formation scale --
+  > in every scenario sampled it never fires between two formations at all,
+  > at either tier.
+  > That result is bounded rather than universal; see "Scope of the
+  > generalization" in the phase 2 section for the formation counts and
+  > block widths at which it stops holding.
+  > See "Phase 2 as measured" below.
+
 - **Winner pursuit already exists as an AI decision, tier-agnostic, today.**
   `UnitLeader.decide` (`scripts/UnitLeader.gd`), driven by the general's `pursue_routers` doctrine flag (`docs/battle-ai-design.md` phase 3), already retargets *any* unit -- via `UnitTargeting.nearest_enemy_to(..., pursue_routers)`, which has no tier check either -- onto a fresh enemy the instant its current target is gone or breaks.
   `UnitLeader.decide` runs over every AI-controlled unit regardless of tier (`Battle._run_enemy_ai` iterates `_team_units(1)`, not filtered by tier), so a far-tier formation already receives a fresh attack order onto a neighbour the moment its old target routs -- it just currently has nothing to *execute* that order's combat with once it arrives, per the gap above.
@@ -194,6 +208,136 @@ The paragraphs below say what was actually demonstrated, why the literal wording
   So hardcoding `true` is the correct phase-1/phase-2 default rather than an omission.
   `docs/battle-ai-design.md`'s own phase-4 scope (rank names and flavor surfacing from the doctrine profile, nothing about rout-exploitation) corroborates this.
   No issue filed.
+
+## Phase 2 as measured: 7 m does not suffice, and never fires at all
+
+Phase 2 asked whether `ROUT_SHOCK_RADIUS` needs a far-tier-appropriate variant,
+and said to measure that against a real multi-formation scenario rather than
+guess a number up front.
+The measurement is decisive in a stronger way than expected:
+at formation scale the contagion check does not merely reach too little,
+it **never fires between two formations at all**.
+
+### What the check actually compares
+
+`Unit._rout()` (`scripts/Unit.gd:7641`) shakes a friendly unit when
+
+    position.distance_squared_to(friend.position) < ROUT_SHOCK_RADIUS ** 2
+
+so the comparison is **centroid to centroid**, same team,
+against `ROUT_SHOCK_RADIUS` = `7.0 * WorldScaleRef.WU_PER_M` = **140 wu**
+(`scripts/Unit.gd:1122`, `scripts/WorldScale.gd:10`).
+The same constant also sizes the cosmetic `RoutShockwave` at `Unit.gd:7647`,
+so any change to it moves the visual as well as the rule.
+
+### Measured, from live runs
+
+Godot 4.7.stable.official.5b4e0cb0f, headless, `--fixed-fps 60`,
+state dumps via `SPARTA_DEMO_STATE_FULL=1`.
+Every same-team unit pair in each dumped tick, distance centroid to centroid:
+
+| scenario | units | pair-observations | within 140 wu | min gap |
+| --- | --- | --- | --- | --- |
+| `showcase-clash` (default 5v5 line) | 10 | 100 | **0** | 170.8 wu |
+| `far-tier-winner-pursuit-621` | 3 | 6 | **0** | 150.0 wu |
+
+`showcase-clash` was chosen because it carries no scenario override,
+so it spawns the default composition
+(Spearmen 140 tight, Infantry 120 normal, Archers 90 loose, Cavalry 80 x2 normal)
+and runs through contact -- ticks 30, 200, 500, 900 and 1300, the last well past the clash.
+The minimum never drops below 170.8 wu at any sampled tick,
+and the median same-team separation is roughly 700 wu.
+
+A third scenario, `far-tier-contact-1485`, was run and is **excluded**:
+it fields no two same-team units, so it yields zero pairs.
+A "0 of 0" result is a null reading, not a confirming one.
+
+### Why, from the spawn geometry
+
+The runs confirm a figure derivable from the constants,
+which is why the result holds for compositions beyond the two sampled.
+`Battle._line_x_offsets` spaces neighbouring units by
+
+    gap = max(base_spacing, half_width[i] + half_width[i+1] + FORMATION_SPACING)
+    base_spacing = min(150.0, (field_width - 200.0) / (count - 1))
+
+The measured spawn gaps for the default line, read from the tick-30 dump
+rather than derived, are:
+
+| neighbours | gap | vs 140 wu |
+| --- | --- | --- |
+| Spearmen -> Infantry | 171.0 wu | 1.2x |
+| Infantry -> Archers | 351.0 wu | 2.5x |
+| Archers -> Cavalry | 384.4 wu | 2.7x |
+| Cavalry -> Cavalry | 330.2 wu | 2.4x |
+
+The 170.8 wu minimum in the measurement table is the first of these,
+essentially unchanged from tick 30 to tick 1300.
+
+**Scope of the generalization, corrected.**
+An earlier draft of this section derived those four gaps by hand and got
+three of the four wrong, then argued from them that 150 wu is "the tightest
+spacing the spawn can ever choose".
+Both halves need qualifying.
+
+The hand derivation used `UnitFormation._files` for every type.
+`half_width_for_soldiers` does not: a `file_group` subunit structure goes
+through `auto_files_for_subunit_size` (Spearmen, `subunit_size` 16) and
+cavalry through `cavalry_files` at its own `file_pitch_m`.
+Only the Infantry-to-Archers figure survived.
+Take the widths from `half_width_for_soldiers` or from a dump, not from
+`_files`.
+
+And `base_spacing` is *not* floored at 150 wu.
+It is `min(150, (field_width - 200) / (count - 1))`, so on the default
+1600 wu field it falls to 140.0 wu at eleven formations per side and below
+the radius from twelve:
+
+| formations per side | `base_spacing` |
+| --- | --- |
+| 10 | 150.0 wu |
+| 11 | 140.0 wu |
+| 12 | 127.3 wu |
+| 15 | 100.0 wu |
+
+So the "never fires" result is **bounded, not universal**, which matters
+because many-formation battles are this document's own subject.
+Firing needs both terms of `max(base_spacing, half_i + half_j + spacing)`
+below 140 wu -- a large formation count AND blocks narrow enough that their
+half-widths sum under 131 wu.
+The default composition does not qualify at any count: Spearmen and Infantry
+alone sum to 162 wu.
+A line of twelve or more *small* formations on the default field would.
+Phase 3 should treat the existing constant as the floor term it is rather
+than as unreachable.
+
+A single block can also exceed the radius on its own frontage:
+files are `ceil(sqrt(n * FORMATION_ASPECT))` at a `FORMATION_SPACING` pitch
+scaled by density, so a tight block of 151 soldiers is 144 wu wide.
+Past that size, two formations whose edges *touch* have centroids
+further apart than the contagion radius.
+
+### The decision
+
+7 m does not suffice, and a larger fixed constant is the wrong shape:
+the observed separations span 150 wu to over 1400 wu within one battle line,
+so any single number either reaches nothing or reaches the whole army.
+`DEMOTE_RANGE` (600 wu) sits near the median same-team separation,
+which would shake roughly half the line on every rout.
+
+The measurement supports a **frontage-derived, per-pair threshold**:
+
+    max(ROUT_SHOCK_RADIUS, own_half_width + friend_half_width + FORMATION_SPACING)
+
+That is the spawn's own no-overlap floor,
+so it reaches exactly the formations the deployment places adjacent,
+at any composition or density,
+and it degenerates to today's behaviour for close-order soldiers
+because the existing constant is the floor.
+Phase 3 carries the implementation, its parameterization
+(the threshold is a tunable and enters through per-battle data,
+not a bare literal, per this repo's caller-configurable convention),
+and the demo.
 
 ## Open questions this doc does not resolve
 
