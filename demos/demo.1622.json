@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation only: this PR records Phase 2's measurement in docs/far-tier-pursuit-contagion-design.md and changes no scene, script, asset, or project setting. There is nothing new for a clip to show, and the measurement's own subject is something a clip cannot show either -- rout contagion never firing between formations. The finding is that same-team unit centroids never come within ROUT_SHOCK_RADIUS (140 wu): 0 of 106 pair-observations across two live headless runs, minimum gap 150.0 wu. A recorded battle would render exactly as it does on main, because the absence of an effect looks identical to the effect never having been reachable. The evidence that belongs in review is the state-dump measurement quoted in the doc, not footage. Phase 3 implements the frontage-derived threshold and carries the demo that will show contagion actually crossing between formations."
+}
