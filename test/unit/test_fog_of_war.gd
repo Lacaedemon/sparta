@@ -1097,6 +1097,33 @@ func test_fog_overlay_draws_with_no_grid_without_error() -> void:
 	pass_test("a zero-size grid draws nothing rather than erroring")
 
 
+## terrain_stats() is the state-dump-facing summary (tools/demo/DemoState.gd's
+## "fog_terrain" key, mirroring FogGhostLayer.ghost_records()'s "ghosts" key) --
+## verify it reports the grid shape, the right explored/visible counts, and the active
+## flag, both while active and after clear().
+func test_fog_overlay_terrain_stats_reports_counts_and_active_flag() -> void:
+	var overlay: FogOverlay = FogOverlay.new()
+	add_child_autofree(overlay)
+	overlay.grid_w = 2
+	overlay.grid_h = 2
+	overlay.cell_size = 40.0
+	overlay.update(PackedByteArray([1, 0, 1, 1]), {0: true, 2: true})
+	var stats: Dictionary = overlay.terrain_stats()
+	assert_true(stats["active"], "active while the overlay is drawing")
+	assert_eq(stats["grid_w"], 2, "grid_w passes through")
+	assert_eq(stats["grid_h"], 2, "grid_h passes through")
+	assert_almost_eq(float(stats["cell_size"]), 40.0, 0.001, "cell_size passes through")
+	assert_eq(stats["explored_count"], 3, "counts the three set bytes in the explored array")
+	assert_eq(stats["total_cells"], 4, "total_cells is grid_w * grid_h")
+	assert_eq(stats["visible_now_count"], 2, "counts the currently-visible set's entries")
+
+	overlay.clear()
+	var cleared_stats: Dictionary = overlay.terrain_stats()
+	assert_false(cleared_stats["active"], "inactive after clear()")
+	assert_eq(cleared_stats["visible_now_count"], 0, "clear() drops the currently-visible set")
+	assert_eq(cleared_stats["explored_count"], 3, "clear() does not touch the explored grid itself")
+
+
 # --- Battle's persistent explored terrain grid ------------------------------------------
 
 

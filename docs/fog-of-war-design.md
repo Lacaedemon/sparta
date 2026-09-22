@@ -72,10 +72,12 @@ hidden-with-ghost), not for terrain.
 [#1621](https://github.com/Lacaedemon/sparta/issues/1621) /
 PR [#1623](https://github.com/Lacaedemon/sparta/pull/1623).**
 A persistent per-cell explored grid (`Battle._fog_explored`, sized from
-`Battle.fog_cell`, default 40 wu = `2.0 * WorldScale.WU_PER_M`) is now owned
-by `Battle`, survives `capture_snapshot`/`restore_snapshot`, and only
-advances while fog is active (paused, not cleared, while fog is off, mirroring
-`_fog_contacts`).
+`Battle.fog_cell`, default 40 wu -- a tuned gameplay-legibility knob with no
+physical derivation, authored as a bare wu literal per
+`docs/units-convention.md`'s "Deliberately NOT metric" section, not dressed
+in a metres expression) is now owned by `Battle`, survives
+`capture_snapshot`/`restore_snapshot`, and only advances while fog is active
+(paused, not cleared, while fog is off, mirroring `_fog_contacts`).
 `scripts/FogOverlay.gd` renders it: an opaque unexplored fill,
 a dimmed alpha over explored-but-not-currently-visible ground, and normal
 rendering for ground inside the fog team's current sight coverage -- the
@@ -85,9 +87,14 @@ The per-cell "currently visible"/"explored" test reuses `Perception.perceives`
 directly (via the new `Perception.visible_cells`), so a cell is explored under
 exactly the same range/screening/occlusion rules as an enemy unit.
 The explored grid is scoped to the fog team only (matching `_fog_seen`/
-`_fog_contacts`'s existing single-team shape), not per-team for every team in
-play -- the per-team generalization phase 3 (`CommanderView`) would need
-remains open, tracked by that phase rather than by this issue.
+`_fog_contacts`'s existing single-team shape), not generalized to a
+per-team grid for every team in play -- that generalization is what phase 3
+(`CommanderView`) would need, and stays open, tracked by that phase rather
+than by this issue.
+The state dump (`tools/demo/DemoState.gd`) exposes a `fog_terrain` summary
+(grid shape, explored/total cell counts, currently-visible count) via
+`FogOverlay.terrain_stats()`, the same way `ghosts` already exposes
+`FogGhostLayer.ghost_records()`.
 
 Phase 3 has **not** shipped: no `CommanderView` class exists in
 `scripts/`, and `scripts/UnitLeader.gd`, `scripts/Subcommander.gd`,

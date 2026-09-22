@@ -57,6 +57,27 @@ func clear() -> void:
 	queue_redraw()
 
 
+## Summary counts for the state dump (tools/demo/DemoState.gd, mirroring
+## FogGhostLayer.ghost_records()) and other verification tooling: grid shape, how many
+## cells are explored (cumulative, out of the grid total), how many are currently visible
+## this tick (a subset of explored, 0 while inert), and whether the overlay is currently
+## drawing at all. Read-only; never consulted by rendering itself.
+func terrain_stats() -> Dictionary:
+	var explored_count: int = 0
+	for b in _explored:
+		if b != 0:
+			explored_count += 1
+	return {
+		"active": _active,
+		"grid_w": grid_w,
+		"grid_h": grid_h,
+		"cell_size": cell_size,
+		"explored_count": explored_count,
+		"total_cells": grid_w * grid_h,
+		"visible_now_count": _visible_now.size(),
+	}
+
+
 func _draw() -> void:
 	if not _active or grid_w <= 0 or grid_h <= 0:
 		return
