@@ -1176,3 +1176,26 @@ func test_capture_and_restore_snapshot_round_trips_the_explored_grid() -> void:
 	assert_eq(battle._fog_explored_remaining, int(snap["fog_explored_remaining"]),
 		"restoring the snapshot restores the remaining-unexplored count")
 	assert_true(battle._fog_overlay._active, "the overlay is reactivated immediately on restore")
+
+
+## A snapshot whose "fog_explored" array is the wrong SIZE for this battle's live grid
+## (not just missing, which the test above already covers) must never be adopted verbatim
+## -- restore_snapshot reconciles against the live grid dims instead of trusting the
+## snapshot's own size, since _tick_explored's writes index by the live _fog_grid_w/
+## _fog_grid_h with no resize path of their own.
+func test_restore_snapshot_rejects_a_wrong_sized_explored_grid() -> void:
+	var battle := _staged_battle(true)
+	for _k in range(5):
+		await get_tree().physics_frame
+	var snap: Dictionary = battle.capture_snapshot()
+	var mismatched: PackedByteArray = PackedByteArray([1, 1, 1])
+	assert_ne(mismatched.size(), battle._fog_grid_w * battle._fog_grid_h,
+		"the test fixture itself must be the wrong size to prove anything")
+	snap["fog_explored"] = mismatched
+	snap["fog_explored_remaining"] = 0
+
+	battle.restore_snapshot(snap)
+	assert_eq(battle._fog_explored.size(), battle._fog_grid_w * battle._fog_grid_h,
+		"a mismatched snapshot array is replaced by one sized to the live grid")
+	assert_eq(battle._fog_explored_remaining, battle._fog_grid_w * battle._fog_grid_h,
+		"and the remaining-unexplored count falls back to every cell, not the snapshot's stale 0")

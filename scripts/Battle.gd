@@ -444,10 +444,11 @@ var _recorded_fog_of_war: bool = false
 # Terrain fog-of-war overlay (FogOverlay.gd): darkens ground the fog team has never
 # explored and dims ground explored before but not currently visible, independent of
 # unit fog (which hides enemy Unit nodes rather than ground). Cell edge length in world
-# units -- 2 m, small enough to read as a grid, coarse enough to stay cheap. A new
-# gameplay-legibility tunable like sight_scale, not a physical claim. Settable BEFORE
-# the node enters the tree.
-const DEFAULT_FOG_CELL: float = 2.0 * WorldScaleRef.WU_PER_M
+# units: small enough to read as a grid, coarse enough to stay cheap. A tuned
+# gameplay-legibility knob like sight_scale, with no physical derivation -- kept as a
+# bare wu literal per docs/units-convention.md's "Deliberately NOT metric" section
+# rather than dressed in a metres expression. Settable BEFORE the node enters the tree.
+const DEFAULT_FOG_CELL: float = 40.0   # tuned in wu (roughly 2 m at the default WU_PER_M)
 var fog_cell: float = DEFAULT_FOG_CELL
 # Unexplored fill color (alpha 1.0 hides ground/terrain entirely) and the alpha the same
 # color is drawn at over an explored-but-not-currently-visible cell. Caller-configurable,
@@ -460,10 +461,12 @@ var _fog_grid_h: int = 0
 # Persistent per-cell explored grid, row-major (cy * _fog_grid_w + cx), one byte (0/1)
 # per cell. Owned by the sim (not FogOverlay), so it survives capture_snapshot/
 # restore_snapshot like _fog_contacts. Monotonic: once a cell is explored it is never
-# un-explored, so _fog_explored_remaining lets _tick_explored() skip the scan entirely
-# once the whole field has been seen. Sized once in _ready() from the final `field` and
-# `fog_cell`; never resized again this battle. Advances only while fog is active, exactly
-# like _fog_contacts -- toggling fog off pauses exploration rather than losing it.
+# un-explored, so _fog_explored_remaining lets _tick_explored() skip re-marking cells
+# already known explored once the whole field has been seen (the per-tick visibility
+# scan itself still runs every tick -- rendering needs it regardless, to tell currently-
+# visible cells from merely-explored ones). Sized once in _ready() from the final `field`
+# and `fog_cell`; never resized again this battle. Advances only while fog is active,
+# exactly like _fog_contacts -- toggling fog off pauses exploration rather than losing it.
 var _fog_explored: PackedByteArray = PackedByteArray()
 var _fog_explored_remaining: int = 0
 
@@ -1588,10 +1591,19 @@ func restore_snapshot(snap: Dictionary) -> void:
 	# fall back to an all-unexplored grid of the current size rather than an empty array,
 	# so FogOverlay's bounds checks (idx < _explored.size()) don't just read every cell
 	# as explored by falling through the size guard.
-	var explored_default := PackedByteArray()
-	explored_default.resize(_fog_grid_w * _fog_grid_h)
-	_fog_explored = (snap.get("fog_explored", explored_default) as PackedByteArray).duplicate()
-	_fog_explored_remaining = int(snap.get("fog_explored_remaining", _fog_grid_w * _fog_grid_h))
+	var restored_explored: PackedByteArray = (snap.get("fog_explored", PackedByteArray()) as PackedByteArray).duplicate()
+	# Reconcile against THIS battle's own grid dims rather than trusting the snapshot's
+	# size blindly: a mismatch (missing key above, or any future caller handing a
+	# snapshot captured against a different fog_cell/field) would otherwise leave
+	# _fog_explored sized wrong for _tick_explored's writes, which index by the live
+	# _fog_grid_w/_fog_grid_h and have no resize path of their own.
+	if restored_explored.size() == _fog_grid_w * _fog_grid_h:
+		_fog_explored = restored_explored
+		_fog_explored_remaining = int(snap.get("fog_explored_remaining", _fog_grid_w * _fog_grid_h))
+	else:
+		_fog_explored = PackedByteArray()
+		_fog_explored.resize(_fog_grid_w * _fog_grid_h)
+		_fog_explored_remaining = _fog_grid_w * _fog_grid_h
 	_reapply_fog_after_restore()
 	if _hud != null and _hud.has_method("_sync_fog_label"):
 		_hud._sync_fog_label()
@@ -1901,6 +1913,9 @@ func _tick_fog() -> void:
 	if _fog_ghosts != null:
 		_fog_ghosts.update(_fog_contacts, _fog_seen, _tick)
 	if _fog_overlay != null:
+		# Filters the `units` this call already fetched, rather than calling
+		# _fog_observers() below -- that helper re-walks _fog_units_in_play() itself,
+		# which would cost a second full group scan every tick for no benefit here.
 		var fog_observers: Array = []
 		for u in units:
 			if u.team == fog_team:
@@ -1923,14 +1938,22 @@ func _fog_observers() -> Array:
 ## set (idx -> true; never persisted) -- both derived from `observers`' Perception
 ## coverage exactly like _fog_seen is for enemy units: a cell counts as explored/visible
 ## when some friendly observer's sight (Perception.perceives, via visible_cells) covers
-## its center. Skips the whole grid scan once every cell has been seen, so a battle that
-## has fully explored its own field pays nothing more here.
+## its center. The visibility SCAN itself runs every tick regardless -- FogOverlay needs
+## the currently-visible set every tick to tell it apart from merely-explored ground, so
+## nothing here can skip computing it. What _fog_explored_remaining skips is the cheap
+## mark-newly-explored loop below: once every cell is already known explored, there is
+## nothing left for it to do.
 func _tick_explored(observers: Array) -> Dictionary:
 	var visible_now: Dictionary = PerceptionRef.visible_cells(
 			observers, field, fog_cell, _fog_grid_w, _fog_grid_h, terrain, _sight_path_field)
 	if _fog_explored_remaining > 0:
 		for idx in visible_now:
-			if _fog_explored[idx] == 0:
+			# Bounds-guarded: _fog_explored is untrusted after a restore_snapshot() whose
+			# payload predates this battle's own grid dimensions (see restore_snapshot's
+			# own size-reconciliation, which is this write's actual defense -- this check
+			# is the belt to that belt-and-suspenders pair, in case a future caller hands
+			# _tick_explored a grid that has drifted from _fog_explored's real size).
+			if idx < _fog_explored.size() and _fog_explored[idx] == 0:
 				_fog_explored[idx] = 1
 				_fog_explored_remaining -= 1
 	return visible_now

@@ -32,10 +32,10 @@ var _visible_now: Dictionary = {}
 
 func _ready() -> void:
 	add_to_group("fog_overlay")
-	# Above the field/terrain (Battle._draw, effective z 0), below units (Unit.z_index 3)
-	# and combat fx (Fallen.gd, RoutShockwave.gd, both 1) -- ground dimming must never
-	# paint over a unit that is actually rendering.
-	z_index = 1
+	# Above the field/terrain (Battle._draw, effective z 0) and Fallen.gd's ground fx
+	# (z 1), below units (Unit.z_index 3) and RoutShockwave.gd (z 4) -- ground dimming
+	# must never paint over a unit that is actually rendering.
+	z_index = 2
 
 
 ## Redraw from the latest fog pass. `explored` is Battle's persistent per-cell grid
