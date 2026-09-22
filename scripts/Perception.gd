@@ -87,6 +87,39 @@ static func visible_enemy_uids(team: int, units: Array, terrain: Array = [],
 	return seen
 
 
+## The grid cells `observers` currently perceive, as row-major indices (cy * grid_w + cx)
+## into a grid_w x grid_h array covering `field` at `cell_size`. Reuses `perceives()` per
+## cell center, so a cell counts as seen under exactly the same range/screening/occlusion
+## rules as an enemy unit does -- terrain exploration is "was some friendly observer's
+## sight disc over this ground", nothing more. Bounded per observer to the cells within its
+## sight range (a bounding-box prefilter) so a battle with many empty cells doesn't pay for
+## a full grid scan per observer. Returns a Dictionary set (idx -> true); this is always
+## recomputed fresh (never cumulative) -- a caller wanting a persistent explored grid ORs
+## this into its own storage (see Battle._fog_explored).
+static func visible_cells(observers: Array, field: Rect2, cell_size: float, grid_w: int, grid_h: int,
+		terrain: Array = [], path_field: Object = null) -> Dictionary:
+	var out: Dictionary = {}
+	if cell_size <= 0.0 or grid_w <= 0 or grid_h <= 0:
+		return out
+	for o in observers:
+		var sight: float = observer_range(o)
+		if sight <= 0.0:
+			continue
+		var min_cx: int = clampi(int(floor((o.position.x - sight - field.position.x) / cell_size)), 0, grid_w - 1)
+		var max_cx: int = clampi(int(ceil((o.position.x + sight - field.position.x) / cell_size)), 0, grid_w - 1)
+		var min_cy: int = clampi(int(floor((o.position.y - sight - field.position.y) / cell_size)), 0, grid_h - 1)
+		var max_cy: int = clampi(int(ceil((o.position.y + sight - field.position.y) / cell_size)), 0, grid_h - 1)
+		for cy in range(min_cy, max_cy + 1):
+			for cx in range(min_cx, max_cx + 1):
+				var idx: int = cy * grid_w + cx
+				if out.has(idx):
+					continue
+				var center: Vector2 = field.position + Vector2((cx + 0.5) * cell_size, (cy + 0.5) * cell_size)
+				if perceives(o.position, sight, center, terrain, path_field):
+					out[idx] = true
+	return out
+
+
 ## Refresh a team's last-known table from this tick's `seen` set. Each visible enemy's
 ## entry is rewritten with where and how it was seen; an unseen enemy's entry is left
 ## exactly as it was and is never deleted, so a commander's memory goes stale on its own

@@ -61,14 +61,33 @@ are recorded as a replay track (`scripts/ReplayFogTrack.gd`, per
 [#1579](https://github.com/Lacaedemon/sparta/issues/1579)); and the state
 dump includes a ghost-records section (`tools/demo/DemoState.gd`, via
 `FogGhostLayer.ghost_records()`).
-One divergence from the proposal below:
-the shipped code has no persistent "explored terrain" grid and no
-`FogOverlay` node -- there is no unexplored/explored *terrain* render
-layer, `Battle.fog_cell` does not exist, and the "Fog rendering" section's
+One divergence from the proposal below, as originally written:
+the shipped code had no persistent "explored terrain" grid and no
+`FogOverlay` node -- there was no unexplored/explored *terrain* render
+layer, `Battle.fog_cell` did not exist, and the "Fog rendering" section's
 three-layer scheme below shipped only for units (visible /
 hidden-with-ghost), not for terrain.
-Whether a terrain exploration layer is
-still wanted is open and untracked.
+
+**Update, 2026-09-22: this divergence is closed by
+[#1621](https://github.com/Lacaedemon/sparta/issues/1621) /
+PR [#1623](https://github.com/Lacaedemon/sparta/pull/1623).**
+A persistent per-cell explored grid (`Battle._fog_explored`, sized from
+`Battle.fog_cell`, default 40 wu = `2.0 * WorldScale.WU_PER_M`) is now owned
+by `Battle`, survives `capture_snapshot`/`restore_snapshot`, and only
+advances while fog is active (paused, not cleared, while fog is off, mirroring
+`_fog_contacts`).
+`scripts/FogOverlay.gd` renders it: an opaque unexplored fill,
+a dimmed alpha over explored-but-not-currently-visible ground, and normal
+rendering for ground inside the fog team's current sight coverage -- the
+"Fog rendering" section's three-layer scheme below, now for terrain as well
+as units.
+The per-cell "currently visible"/"explored" test reuses `Perception.perceives`
+directly (via the new `Perception.visible_cells`), so a cell is explored under
+exactly the same range/screening/occlusion rules as an enemy unit.
+The explored grid is scoped to the fog team only (matching `_fog_seen`/
+`_fog_contacts`'s existing single-team shape), not per-team for every team in
+play -- the per-team generalization phase 3 (`CommanderView`) would need
+remains open, tracked by that phase rather than by this issue.
 
 Phase 3 has **not** shipped: no `CommanderView` class exists in
 `scripts/`, and `scripts/UnitLeader.gd`, `scripts/Subcommander.gd`,
@@ -337,10 +356,13 @@ battlefield you have walked is a battlefield you know the shape of:
 - **Unexplored** -- never covered.
   Rendered as an opaque unexplored layer.
 
-**This terrain axis was not built.**
-See "Implementation status" above:
-the shipped code fogs enemy units and leaves ghost markers but has no
-persistent per-cell explored/unexplored terrain state or render layer.
+**This terrain axis shipped in
+[#1621](https://github.com/Lacaedemon/sparta/issues/1621)/#1623
+(2026-09-22), as the fuller three-state scheme the "Fog rendering" section
+below already describes** (explored ground that is not currently visible
+renders dimmed, not fully normal as the simpler two-state description above
+suggests) rather than this paragraph's original two-state simplification.
+See "Implementation status" above.
 
 ### Observers are units, never the camera
 
@@ -538,10 +560,11 @@ the second is a refinement of it.
 
 *(As designed.
 The shipped code implements layer 3 (visible, unchanged)
-and an approximation of layer 2 for units only -- ghost markers at reduced
-alpha -- but not the ground/terrain dimming, and not layer 1 at all; there
-is no `FogOverlay` node, no `Battle.fog_cell`, and no persistent per-cell
-explored state.
+and layer 2 for units -- ghost markers at reduced alpha -- and, as of
+[#1621](https://github.com/Lacaedemon/sparta/issues/1621), layers 1 and 2
+for ground/terrain as well: `scripts/FogOverlay.gd` draws the opaque
+unexplored fill and the dimmed explored-but-not-visible fill described
+below, reading `Battle._fog_explored` (sized from `Battle.fog_cell`).
 See "Implementation status" above.)*
 
 Three layers, drawn above the battlefield and below the HUD.
@@ -763,12 +786,13 @@ changing as units advance.
 
 ### Phase 2 -- fog rendering and player UX
 
-**Shipped** in the same PRs.
+**Shipped** in the same PRs, with the `FogOverlay` terrain render layer
+following later in
+[#1621](https://github.com/Lacaedemon/sparta/issues/1621)/#1623 (2026-09-22).
 Ghost markers, the `Settings.fog_of_war`
-toggle, and targeting restricted to visible units all match this phase's
-acceptance tests below.
-The `FogOverlay` terrain render layer described in
-scope was not built -- see "Implementation status" above.
+toggle, targeting restricted to visible units, and the terrain
+explored/unexplored overlay all match this phase's acceptance tests below --
+see "Implementation status" above.
 
 **Scope.**
 The `FogOverlay` node, the three render layers, ghost markers for remembered
