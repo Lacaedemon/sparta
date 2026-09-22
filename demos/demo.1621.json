@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/fog-terrain-explored-1621.json",
-  "caption": "New: the terrain explored/unexplored overlay (issue #1621). With fog of war on, the whole field starts pitch black (unexplored). A lone infantryman marches southeast from (250, 1000); the ground within its sight disc renders normally, while the ground it has already left behind stays lit but visibly dimmed (explored, not currently visible) rather than reverting to black. By the clip's end (~17s / tick 1000) the unit has covered about 420 world units -- past its ~300 wu sight radius -- so the dimmed trail and the still-black ground ahead are both clearly visible at once.",
+  "caption": "New: the terrain explored/unexplored overlay (issue #1621). With fog of war on, the whole field starts pitch black (unexplored). A lone infantryman marches northeast from (250, 1000); the ground within its sight disc renders normally, while the ground it has already left behind stays lit but visibly dimmed (explored, not currently visible) rather than reverting to black. By the clip's end (~17s / tick 1000) the unit has covered about 420 world units -- past its ~300 wu sight radius -- so the dimmed trail and the still-black ground ahead are both clearly visible at once.",
   "fixed_fps": 30,
   "max_frames": 500,
   "fps": 15,
