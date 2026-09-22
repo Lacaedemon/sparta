@@ -1054,6 +1054,19 @@ func test_visible_cells_respects_occlusion_and_zero_sight_range() -> void:
 		"an observer with zero sight range marks no cell")
 
 
+func test_visible_cells_returns_empty_for_a_degenerate_grid() -> void:
+	var observer := _unit(1, 0, Vector2(100.0, 100.0), 200.0)
+	var field := Rect2(0.0, 0.0, 400.0, 400.0)
+	assert_true(Perception.visible_cells([observer], field, 0.0, 10, 10).is_empty(),
+		"a zero cell_size marks no cell")
+	assert_true(Perception.visible_cells([observer], field, -5.0, 10, 10).is_empty(),
+		"a negative cell_size marks no cell")
+	assert_true(Perception.visible_cells([observer], field, 40.0, 0, 10).is_empty(),
+		"a zero grid_w marks no cell")
+	assert_true(Perception.visible_cells([observer], field, 40.0, 10, 0).is_empty(),
+		"a zero grid_h marks no cell")
+
+
 # --- FogOverlay draw --------------------------------------------------------------------
 
 
