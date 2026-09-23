@@ -799,3 +799,49 @@ func test_funnel_corner_a_bulging_nonzero_nearest_point_agrees_with_the_old_logi
 	# change picked the wrong signal for a bending path.
 	assert_gt(corner.x, rect_centre.x,
 		"the nearest point's (B's) side wins, matching the side the corridor actually rounds the rect on")
+
+
+func test_funnel_corner_zero_length_axis_does_not_divide_by_zero() -> void:
+	# Codecov flagged this diff's `if axis_len <= 0.0: continue` guard (inside
+	# the route_side loop) as unreached by any existing test. axis_len can
+	# only be exactly 0.0 there when `heading` (to - from) is ALSO zero --
+	# the length_squared() fallback a few lines up already rescues a
+	# degenerate corridor_axis by replacing it with `heading`, so the ONLY
+	# way axis_len survives that rescue at 0.0 is `from == to` making
+	# `heading` itself zero too. No caller today constructs that -- not
+	# next_step() (its callers never query a unit's own current position as
+	# both `from` and `to`), not any other test in this file -- so build it
+	# directly, the same way this file's other degenerate-input tests do.
+	#
+	# Without the guard, `absf(cross) / axis_len` would compute 0.0 / 0.0 ==
+	# NAN (cross is guaranteed exactly 0.0 too: the cross product of a zero
+	# vector with anything is always 0). `NAN < ROUTE_SIDE_COLLINEAR_EPS`
+	# evaluates false (NaN never compares true), so the loop would still
+	# fall through to `side := signf(cross)` -- 0.0, same value the guard's
+	# explicit `continue` leaves route_side at -- meaning this exact input
+	# would NOT actually misbehave without the guard; the guard exists to
+	# make that safety explicit and inspectable rather than to rest on
+	# implicit NaN-comparison semantics. Confirmed here as a real assertion:
+	# `from == to` sitting inside the rect's own raw footprint (not just its
+	# grown margin) already makes every corner's own sightline blocked
+	# (the same "walker inside the rect" case
+	# test_funnel_from_inside_the_rect_falls_back_to_the_corridor pins), so
+	# the function is expected to return INF regardless of route_side -- and
+	# does, without hanging, crashing, or propagating a NaN into the return
+	# value (Vector2.is_finite() reads false for both INF and NAN alike, so
+	# a NaN leak here would still read as "not finite," but a leaked NaN and
+	# a clean INF are not the same failure, which is exactly why this test
+	# exists rather than trusting the coincidence above by inspection alone).
+	var pf := PathField.new(Rect2(0, 0, 640, 640))
+	var rect := Rect2(100, 100, 50, 50)
+	pf.block_rect(rect)
+	var from := Vector2(125, 125)   # the rect's own centre -- literally inside it
+	var to := from                  # from == to, so heading == Vector2.ZERO
+	# path.size() == 1 (< 2), so corridor_axis starts at Vector2.ZERO and the
+	# length_squared() fallback assigns it `heading` -- also Vector2.ZERO --
+	# leaving axis_len at exactly 0.0 when the loop below reaches this one
+	# path point.
+	var path := PackedVector2Array([Vector2(500, 500)])
+	var corner: Vector2 = pf._funnel_corner(from, to, path, 10.0)
+	assert_false(corner.is_finite(),
+		"from == to sitting inside the rect has no corner with a clear sightline, same as any other walker-inside-the-rect case -- INF, not a NaN leak")
