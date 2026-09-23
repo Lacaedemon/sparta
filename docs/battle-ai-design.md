@@ -638,7 +638,10 @@ met, `test/unit/test_battle_ai_fog.gd`.
 No AI code path reads unfogged state
 (enforced by the interface being the only door) --
 met for the four command scripts
-(a grep-based regression test that also forbids a direct `Battle` instance field access)
+(a grep-based regression test that also rejects a direct `get_nodes_in_group` call
+and misuse of the `BattleRef` token --
+not every possible untyped-Battle-instance access,
+a known gap the test's own header records)
 and, discovered and closed during review across three rounds so far,
 for the independent per-unit paths that ran outside the command layer entirely
 (`Unit._think()`'s and `Unit._support_tick`'s own not-yet-engaged targeting decisions, plus

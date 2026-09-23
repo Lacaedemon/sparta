@@ -159,10 +159,13 @@ the rest run identically for a player-commanded unit --
 see "What the AI can see" above for why that is a deliberate symmetric choice,
 not an omission.
 The grep-based regression test this section's "The invariant" subsection calls for --
-extended during review to also forbid a direct `Battle` instance field access,
+extended during review to also reject misuse of the `BattleRef` token,
 not just a direct group lookup --
 lives in `test/unit/test_battle_ai_fog.gd`,
 alongside fog-on/fog-off coverage for each of the per-unit paths above.
+It does not catch a live Battle instance reached through some other untyped variable,
+a known gap the test's own header records
+(reliably catching that needs real static type analysis, not a grep).
 **Update, 2026-09-23: three more fresh-acquisition gaps found and closed during a later
 review round -- the ORDER_SKIRMISH kite branch, the ORDER_SWEEP_ROUTERS and
 ORDER_ROLL_THE_LINE target acquisitions, and the `chasing`-with-no-committed-`target_enemy`
@@ -1010,11 +1013,14 @@ and an interposition test that inserting the still-omniscient `CommanderView`
 leaves a fixed-seed replay byte-identical.
 **Met, adapted to the shipped shape**:
 the regression test checks for no direct group lookup
-AND no direct `Battle` instance field access
+AND no misuse of the `BattleRef` token
 (there being no formal `CommanderView` type to interpose,
 the "insert the still-omniscient implementation" half is instead the fog-off invariance test
 in the same file,
 proving `_ai_perceptible_units` reproduces the omniscient set exactly).
+It does not catch a live Battle instance reached through some other untyped variable --
+a known gap recorded in the test's own header,
+since catching that reliably needs real static type analysis rather than a grep.
 
 **Demo.**
 A scripted flank march the AI does not react to until a screening unit sights
