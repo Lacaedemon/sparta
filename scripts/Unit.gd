@@ -292,6 +292,17 @@ var line_index: int = 0
 # too but closes via its leader's explicit attack order, never this fallback. ORDER_HOLD
 # and ORDER_BRACE already suppress the same advance regardless of this flag.
 var auto_advance_on_detect: bool = true
+# The owning Battle node, cached once in _ready() as Battle -> $Units -> Unit (Battle.
+# _spawn_unit adds every unit through the $Units container, never directly), or null for a
+# bare unit built outside a battle scene (most GUT tests do this, e.g. test_unit_leader.gd's
+# _unit() helper). Deliberately untyped rather than `as BattleRef` -- Battle.gd already
+# preloads Unit.gd (its own `const UnitRef`), so Unit.gd preloading Battle.gd back would be a
+# genuine circular preload, unlike HUD.gd/SelectionManager.gd/UnitLeader.gd's own `BattleRef`
+# aliases (safe one-directional preloads, since Battle.gd never preloads any of those back).
+# Every call site duck-types via has_method() and treats a null or method-less owner as "no
+# battle to ask" rather than failing -- see _enemy_is_perceived's own doc comment, the one
+# consumer today.
+var _owning_battle: Node = null
 # KNOCKBACK_FOCUS's own per-order parameter: how far a struck enemy body should be shoved.
 # false (default) -- just clear the battle line -- is the common case; true pushes it much
 # further. A genuine per-ORDER setting, not a global Settings toggle: Battle._apply_order_cmd
@@ -1513,6 +1524,8 @@ func _ready() -> void:
 	separation_radius = _type_separation_radius()
 	_base_separation_radius = separation_radius
 	add_to_group("units")
+	var grandparent := get_parent()
+	_owning_battle = grandparent.get_parent() if grandparent != null else null
 	# Layer budget: field=0, then this unit's cosmetic stack sits 1..3 — shadow (eff 1),
 	# marks (eff 2), chrome (this _draw, eff 3) — all below the z=4 rout shockwave / z=5
 	# volley trails / z=100 selection box. The marks/shadow are child nodes (MultiMeshes /
@@ -2445,6 +2458,22 @@ func _start_attack_cd(baseline_interval: float) -> void:
 		_attack_cd = baseline_interval
 
 
+## Whether `enemy` is a valid target for the auto-advance-on-detect fallback below: true
+## unconditionally when there is no owning battle to ask (a bare unit built outside a battle
+## scene, or an owner that predates ai_team_perceives -- both treated as "no gate", matching
+## the historical unfogged behaviour) or when the owning battle itself is unfogged (its own
+## ai_team_perceives already returns true for that case); otherwise delegates to the owning
+## Battle's ai_team_perceives(team, enemy) -- the SAME Perception-based test Battle.
+## _ai_perceptible_units uses for the command-level AI (General/Subcommander/UnitLeader), so
+## this per-unit fallback can no longer see an enemy the command layer itself couldn't.
+## Duck-typed via has_method rather than a static Battle type -- see _owning_battle's own
+## doc comment for why Unit.gd cannot safely preload Battle.gd.
+func _enemy_is_perceived(enemy: Unit) -> bool:
+	if _owning_battle == null or not _owning_battle.has_method("ai_team_perceives"):
+		return true
+	return _owning_battle.ai_team_perceives(team, enemy)
+
+
 ## Decide what to do this frame: fight if in contact, otherwise move.
 func _think(delta: float) -> void:
 	# Physical contact: true when ANY live-or-routing enemy regiment is within melee
@@ -2925,12 +2954,22 @@ func _think(delta: float) -> void:
 				# (has_move_target false, active_leaf().turn_target still zero), leaving
 				# the unit facing the pivoted heading instead of turning back.
 	elif enemy != null and auto_advance_on_detect \
-			and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
+			and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE \
+			and _enemy_is_perceived(enemy):
 		# Auto-advance on a near enemy the combat branches didn't engage this tick (out of
 		# range/contact). Gated by auto_advance_on_detect: a directly player-commanded unit
 		# leaves this false and holds formation instead (the else branch below), waiting for
 		# an order rather than closing on a foe still outside weapon range; the AI-driven
-		# enemy keeps it true so it still closes. If a re-face turn was in progress, settle it
+		# enemy keeps it true so it still closes -- but only onto an enemy its own side
+		# currently perceives (_enemy_is_perceived, below). `enemy` itself comes from
+		# UnitTargeting.current_target()/nearest_enemy() above, a bare detection_range scan
+		# of the live groups with no LOS or fog test at all -- without this extra gate, an
+		# idle AI-driven unit under fog of war would keep marching, every physics tick, toward
+		# any foe within detection_range regardless of whether its own side has actually
+		# sighted it: an omniscient backdoor phase 5 (docs/battle-ai-design.md) exists to
+		# close everywhere, not just in the command-level AI (_run_enemy_ai). With fog off,
+		# _enemy_is_perceived is unconditionally true, so this branch is byte-for-byte
+		# unchanged from before that phase. If a re-face turn was in progress, settle it
 		# first: the unit is marching now, so the frozen arrival must release (folding the
 		# partial rotation into _formation_angle) or the bodies would stay pinned and never
 		# keep up with the march.
@@ -3011,11 +3050,12 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 
 ## Support stance: guard the ward. If an enemy has closed within
 ## SUPPORT_GUARD_RADIUS of the ward, peel off and engage it (firing at standoff if
-## ranged, melee in contact, else closing on it); otherwise shadow the ward,
-## holding a short standoff so the supporter doesn't pile onto the unit it guards.
-## Targeting keys off the WARD's position, so the supporter returns to its charge
-## once a threat is dealt with. Deterministic (no RNG / wall-clock), matching the
-## normal fire/melee cadence so live and replayed battles stay in lockstep.
+## ranged, melee in contact, else closing on it, when perceived -- see the chase branch's
+## own comment); otherwise shadow the ward, holding a short standoff so the supporter
+## doesn't pile onto the unit it guards. Targeting keys off the WARD's position, so the
+## supporter returns to its charge once a threat is dealt with. Deterministic (no RNG /
+## wall-clock), matching the normal fire/melee cadence so live and replayed battles stay
+## in lockstep.
 func _support_tick(delta: float) -> void:
 	var ward: Unit = support_target
 	var threat: Unit = UnitTargeting.nearest_enemy_to(self, ward.position, SUPPORT_GUARD_RADIUS)
@@ -3028,22 +3068,37 @@ func _support_tick(delta: float) -> void:
 			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
 				_attack_cd = missile_interval
 				UnitCombat.shoot(self, threat)
-		elif in_contact:
+			return
+		if in_contact:
 			state = State.FIGHTING
 			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
 				_attack_cd = melee_attack_interval()
 				UnitCombat.strike(self, threat)
-		else:
-			# Threat out of range: chase it. Settle a dangling re-face first so the frozen
-			# body arrival releases before the march (the turn re-arms on the next contact).
+			return
+		# Threat out of weapon range: chase it, but only when this unit's own side
+		# currently perceives it (_enemy_is_perceived) -- the same fog-of-war gate
+		# Unit._think()'s auto-advance-on-detect fallback uses, and for the same reason:
+		# nearest_enemy_to above is a bare-radius scan of the live groups with no LOS or
+		# fog test at all, so an AI-driven supporter (a SUPPORT stance an AI subcommander
+		# can issue) would otherwise peel off toward a threat none of its own side has
+		# actually sighted. A threat already in weapon range above is unaffected --
+		# soldier-level combat stays unfogged either way, matching every other in-range
+		# branch in this file. With fog off, _enemy_is_perceived is unconditionally true,
+		# so this branch is unchanged from before phase 5. An unperceived threat falls
+		# through to the "shadow the ward" behaviour below instead, exactly as if none had
+		# been detected at all.
+		if _enemy_is_perceived(threat):
+			# Settle a dangling re-face first so the frozen body arrival releases before
+			# the march (the turn re-arms on the next contact).
 			if _engage_turn_target != Vector2.ZERO:
 				_settle_engage_turn()
 			_move_to(threat.position, delta, false, true)
-		return
-	# No threat near the ward: shadow it, holding station a short distance off so
-	# the supporter doesn't crowd the unit it's guarding. If a re-face turn was still
-	# running when the threat left (died/routed/cleared the guard radius), settle it here
-	# so the body arrival isn't left frozen indefinitely.
+			return
+	# No threat near the ward (none detected, or one out of weapon range that this unit's
+	# side does not yet perceive): shadow it, holding station a short distance off so the
+	# supporter doesn't crowd the unit it's guarding. If a re-face turn was still running
+	# when the threat left (died/routed/cleared the guard radius, or dropped out of
+	# perception), settle it here so the body arrival isn't left frozen indefinitely.
 	if _engage_turn_target != Vector2.ZERO:
 		_settle_engage_turn()
 	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt

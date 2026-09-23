@@ -1981,6 +1981,51 @@ func _ai_perceptible_units(team: int) -> Array:
 	return out
 
 
+## Per-tick cache backing ai_team_perceives: team -> Dictionary(enemy_uid -> true), the
+## enemy subset of _ai_perceptible_units(team) for whichever teams asked this tick. Keyed by
+## _tick (never read across a tick boundary), so every unit on the same team asking the same
+## tick costs one _ai_perceptible_units recompute, not one per unit -- see ai_team_perceives'
+## own doc comment for why a per-unit, every-physics-tick caller needs this rather than
+## calling _ai_perceptible_units directly. Purely derived from already-serialized state
+## (nothing here is itself simulation state), so it needs no snapshot/restore handling: a
+## restored battle just recomputes it fresh on the next query, same as any other tick.
+var _ai_perceives_cache: Dictionary = {}
+var _ai_perceives_cache_tick: int = -1
+
+
+## Whether team `team` currently perceives `enemy`: true unconditionally when `enemy` is null
+## or fog of war is inactive (today's omniscient behaviour, unchanged), else membership in
+## _ai_perceptible_units(team)'s own enemy subset (see that function's doc comment for the
+## exact rule -- the SAME Perception.visible_enemy_uids test either way).
+##
+## The one caller is Unit._think()'s auto-advance-on-detect fallback (scripts/Unit.gd): that
+## per-unit, every-physics-tick branch marches an idle AI-driven unit toward the nearest
+## enemy within its own bare detection_range (UnitTargeting.nearest_enemy_to, no LOS or fog
+## test at all) whenever nothing is already in weapon range. _ai_perceptible_units above
+## closes the command-level AI's own omniscient reads (General/Subcommander/UnitLeader,
+## decided once per ai_period), but this per-unit fallback runs independently, every tick, and
+## was a real remaining omniscient backdoor phase 5 otherwise left open. Routing it through
+## the same perception test here closes it without touching combat already in progress
+## (melee resolution stays soldier-level and unfogged, per docs/fog-of-war-design.md's own
+## "soldier-level combat stays unfogged" rule -- this function is never consulted once an
+## enemy is already in contact range, only for the not-yet-engaged chase decision).
+func ai_team_perceives(team: int, enemy: UnitRef) -> bool:
+	if enemy == null:
+		return false
+	if not is_fog_active():
+		return true
+	if _ai_perceives_cache_tick != _tick:
+		_ai_perceives_cache = {}
+		_ai_perceives_cache_tick = _tick
+	if not _ai_perceives_cache.has(team):
+		var seen: Dictionary = {}
+		for u in _ai_perceptible_units(team):
+			if u.team != team:
+				seen[u.uid] = true
+		_ai_perceives_cache[team] = seen
+	return (_ai_perceives_cache[team] as Dictionary).has(enemy.uid)
+
+
 ## Advances the persistent explored grid and returns this tick's currently-visible cell
 ## set (idx -> true; never persisted) -- both derived from `observers`' Perception
 ## coverage exactly like _fog_seen is for enemy units: a cell counts as explored/visible

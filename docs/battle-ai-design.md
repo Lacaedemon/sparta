@@ -1,6 +1,9 @@
 # Design note: chain-of-command battle AI
 
-Status: **historical design note -- phases 1-4 shipped, phase 5 not shipped.**
+Status: **historical design note -- phases 1-5 shipped. Phase 5 shipped its
+team-wide half only (see "Implementation status" below); commander-scoped
+narrowing, up-the-chain report propagation, and last-known-contact memory
+for the AI are deferred, tracked as their own follow-ups.**
 
 Every date in this document is Pacific, including ones translated from a
 GitHub timestamp, which the API reports in UTC.
@@ -11,11 +14,12 @@ and #550 (`docs/large-scale-simulation-design.md`), and laid out the model and
 the phased plan tracked by the phase issues linked below
 ([#584](https://github.com/Lacaedemon/sparta/issues/584)-[#588](https://github.com/Lacaedemon/sparta/issues/588),
 sub-issues of #498).
-As of 2026-09-19, phases 1-4 have shipped; #498 stays
+As of 2026-09-19, phases 1-4 have shipped, and as of 2026-09-22 phase 5's
+team-wide fogged view has shipped too; #498 stays
 open by design (the epic tracks the whole build-out, not just these
 phases).
-See "Implementation status" immediately below for what shipped
-and for why phase 5 / #588 spent over two weeks closed in error.
+See "Implementation status" immediately below for what shipped, what phase
+5 still defers, and why phase 5 / #588 spent over two weeks closed in error.
 Except
 where marked, the rest of this document is preserved as originally
 written -- a design proposal, in present and future tense, describing the
@@ -31,7 +35,7 @@ today's code.
 | 2 -- subcommanders | [#585](https://github.com/Lacaedemon/sparta/issues/585) | closed -- shipped |
 | 3 -- the general | [#586](https://github.com/Lacaedemon/sparta/issues/586) | closed -- shipped |
 | 4 -- player delegation | [#587](https://github.com/Lacaedemon/sparta/issues/587) | closed -- shipped |
-| 5 -- perception honors fog of war | [#588](https://github.com/Lacaedemon/sparta/issues/588) | **not shipped**; closed in error 2026-09-02, reopened 2026-09-19 -- see below |
+| 5 -- perception honors fog of war | [#588](https://github.com/Lacaedemon/sparta/issues/588) | shipped (team-wide view); closed in error 2026-09-02, reopened 2026-09-19 -- see below |
 
 `Battle._run_enemy_ai()` now calls `General.decide_army`,
 `Subcommander.decide_group`, and `UnitLeader.decide`, and applies every
@@ -60,17 +64,49 @@ shipped in [#1560](https://github.com/Lacaedemon/sparta/pull/1560) and
 [#1594](https://github.com/Lacaedemon/sparta/pull/1594) (merged
 2026-09-11 and 2026-09-12, Pacific).
 Campaign- and saga-side fog have not shipped.
-Separately, and this is the part phase 5 below actually needed: **no
-`CommanderView` class exists**, and `scripts/UnitLeader.gd`,
+Separately, and this is the part phase 5 below actually needed: as of
+2026-09-19, **no `CommanderView` class exist[ed]**, and `scripts/UnitLeader.gd`,
 `scripts/Subcommander.gd`, `scripts/General.gd`, and
-`scripts/PlayerDelegation.gd` still each document their perception source
-as omniscient: `UnitLeader.gd` calls it "the omniscient placeholder" in
-those words, and the other three name an "omniscient perception source" or
-an "omniscient, already-serialized order" (read 2026-09-19).
+`scripts/PlayerDelegation.gd` still each documented their perception source
+as omniscient: `UnitLeader.gd` called it "the omniscient placeholder" in
+those words, and the other three named an "omniscient perception source" or
+an "omniscient, already-serialized order".
 The
 formal perception-view interface this document describes below as
 existing "from phase 1, day one" was never actually built as a type; the
-shipped phases pass the caller's units array directly instead.
+shipped phases passed the caller's units array directly instead.
+
+**Update, 2026-09-22: the team-wide half of that swap has shipped, still
+without a formal `CommanderView` type.**
+`Battle._ai_perceptible_units(team)` is the interposed perception source: a
+team's own units are always included (own-command knowledge stays exempt
+from fog), and an enemy unit is included only when fog of war is off
+(reproducing the prior omniscient set exactly) or when `team` currently
+perceives it via `Perception.visible_enemy_uids` -- the same test that
+drives the player's own fog rendering.
+`Battle._run_enemy_ai` and `_run_player_delegated_ai` read `all_units` from
+it instead of an unfiltered group query, and `UnitLeader.decide`'s own
+advance/attack fallback (which used to bypass `all_units` entirely and
+re-query the live groups directly through `UnitTargeting.nearest_enemy_to`)
+now searches only the caller's own array (`UnitLeader._nearest_enemy_in`).
+A second, independent unfogged path was found and closed the same way during
+review: `Unit._think()`'s auto-advance-on-detect fallback and
+`Unit._support_tick`'s threat-chase branch each ran every physics tick
+(not gated by the AI decision cadence at all) and picked a target from a
+bare `detection_range`/`SUPPORT_GUARD_RADIUS` scan with no line-of-sight or
+fog test; both now consult `Battle.ai_team_perceives` (`Unit.
+_enemy_is_perceived`) before chasing an enemy not yet in weapon range,
+leaving combat already in progress untouched (soldier-level combat stays
+unfogged, per `docs/fog-of-war-design.md`).
+Deliberately still no formal `CommanderView` type -- the caller's array
+remains the interface, exactly as it was for the omniscient implementation,
+so this phase really is the swap-not-a-retrofit the design intended.
+Two pieces of the original design sketch remain unbuilt and are tracked as
+follow-ups rather than blocking #588's own acceptance test: commander-scoped
+narrowing and up-the-chain report propagation
+([#1625](https://github.com/Lacaedemon/sparta/issues/1625)), and AI
+reasoning over a `last_known` stale contact rather than only current
+perception ([#1626](https://github.com/Lacaedemon/sparta/issues/1626)).
 
 **Why #588 spent over two weeks closed:** it was closed mechanically, not
 because anything shipped. #588 closed at the same moment
@@ -537,14 +573,24 @@ delegated group in a replay behaves identically on re-run.
 
 ### Phase 5 -- perception honors fog of war -- [#588](https://github.com/Lacaedemon/sparta/issues/588)
 
-**Not shipped.** #588 was closed in error on 2026-09-02 and reopened on
-2026-09-19 -- see "Implementation status" above for why.
+**Shipped its team-wide half on 2026-09-22.** #588 was closed in error on
+2026-09-02 and reopened on 2026-09-19 -- see "Implementation status" above
+for why, and for what shipped.
 
 **Scope.** Swap the omniscient placeholder implementation of the perception
 interface for the fogged view, when fog of war (#414, battle side) lands.
-Every command level reads the same fogged information the player gets;
-subordinate reports become the way information legitimately travels up the
-chain (a general reacts to a flanking force *because a unit saw it*).
+Every command level reads the same fogged information the player gets.
+**As shipped:** every level of one team's chain reads the SAME team-wide
+fogged view this AI tick (`Battle._ai_perceptible_units`) -- the acceptance
+criteria below only need a team ever perceiving the enemy, not which of its
+own units did. **Deferred, per the original design's own sequencing ("team-
+wide fogged view first; commander-scoped narrowing plus report propagation
+second," `docs/fog-of-war-design.md`):** subordinate reports as the way
+information legitimately travels up the chain (a general reacting to a
+flanking force *because a unit saw it*, rather than because the team overall
+perceives it) is [#1625](https://github.com/Lacaedemon/sparta/issues/1625);
+AI reasoning over a stale `last_known` contact once it drops out of current
+perception is [#1626](https://github.com/Lacaedemon/sparta/issues/1626).
 
 **Dependencies.** Phase 1 (#584) for the interface; #414 for fog of war
 itself. (Phases 2-4 don't gate this -- the swap covers whatever levels exist
@@ -553,8 +599,16 @@ when it lands.)
 **Acceptance criteria.** An explicit "AI honors fog of war" test: an AI
 general cannot react to an unseen flanking force until it enters some
 friendly unit's perception, and reacts on the first decision tick after it
-does; no AI code path reads unfogged state (enforced by the interface being
-the only door); determinism on replay is preserved with fog active.
+does -- met, `test/unit/test_battle_ai_fog.gd`.
+No AI code path reads unfogged state (enforced by the interface being
+the only door) -- met for the four command scripts (a grep-based regression
+test) and, discovered and closed during review, for two independent per-unit
+paths that ran outside the command layer entirely
+(`Unit._think()`'s auto-advance-on-detect fallback and
+`Unit._support_tick`'s threat-chase branch, both gated through
+`Battle.ai_team_perceives` now).
+Determinism on replay is preserved with fog active -- met,
+`test_ai_decisions_replay_identically_with_fog_active`.
 
 ## Non-goals
 
@@ -611,15 +665,17 @@ the only door); determinism on replay is preserved with fog active.
 - **#427** -- factions by time period; doctrine profiles (phase 3) are the AI
   side of that data.
 - **#135 / #502** -- player delegation and period rank names, phase 4.
-- **#414** -- fog of war; phase 5 (not shipped -- see "Implementation status"
-  above) integrates it through the perception interface, with the AI
-  honoring it by requirement.
+- **#414** -- fog of war; phase 5 (team-wide half shipped -- see
+  "Implementation status" above) integrates it through the perception
+  interface, with the AI honoring it by requirement.
   Its design lives in
   [`docs/fog-of-war-design.md`](fog-of-war-design.md), which settles the
   friendly-knowledge rule this document leaves open above (same-team units
   are always visible to their own side) and whose battle-side visibility
-  and rendering phases have shipped, separately from the AI-consumption
-  phase this document's phase 5 still needs.
+  and rendering phases have shipped alongside the AI-consumption phase this
+  document's phase 5 now partly ships too -- commander-scoped narrowing and
+  report propagation remain, tracked as
+  [#1625](https://github.com/Lacaedemon/sparta/issues/1625).
 
 - **#290** -- lockstep multiplayer; the determinism rules keep that door open.
 - **#516** (`docs/orders-queue-design.md`) -- the actuation layer this whole

@@ -1,7 +1,8 @@
 # Design note: fog of war
 
 Status: **historical design note -- battle-side phases 1-2 shipped; phase 3
-(AI consumption) and campaign/saga fog have not.**
+(AI consumption) has shipped its team-wide half (commander-scoped narrowing
+and report propagation deferred); campaign/saga fog have not.**
 
 Every date in this document is Pacific, including ones translated from a
 GitHub timestamp, which the API reports in UTC.
@@ -25,9 +26,10 @@ That doc states the ownership split in its own non-goals: "#414 owns visibility
 rules, rendering, and player UX; this design only consumes the resulting view
 through the perception interface."
 This note was the producer side of that contract; the battle-side visibility
-and rendering it specifies (phases 1-2 below) have since shipped, but the
-phase-3 AI-consumption swap that would actually close the loop for #588 has
-not -- see "Implementation status" below and `docs/battle-ai-design.md`'s
+and rendering it specifies (phases 1-2 below) have since shipped, and as of
+2026-09-22 the phase-3 AI-consumption swap that closes the loop for #588 has
+shipped its team-wide half -- see "Implementation status" below and
+`docs/battle-ai-design.md`'s
 own "Implementation status" section for why #588 spent over two weeks closed in
 error.
 
@@ -38,7 +40,7 @@ error.
 | --- | --- | --- |
 | 1 -- battle visibility core | per-team visible/remembered/unknown state, terrain `sight` axis | shipped |
 | 2 -- fog rendering and player UX | ghost markers, `Settings` toggle, HUD indicator, targeting restricted to visible units | shipped |
-| 3 -- the AI honors fog, the phase #588 tracks | `CommanderView`, AI reads the fogged view | **not shipped** |
+| 3 -- the AI honors fog, the phase #588 tracks | `CommanderView`, AI reads the fogged view | shipped (team-wide view; commander-scoped narrowing deferred) |
 | 4 -- campaign-map fog | province-level visibility on `CampaignState` | not shipped |
 | 5 -- saga-scale knowledge | n/a -- saga layer does not exist | not shipped |
 
@@ -96,12 +98,12 @@ The state dump (`tools/demo/DemoState.gd`) exposes a `fog_terrain` summary
 `FogOverlay.terrain_stats()`, the same way `ghosts` already exposes
 `FogGhostLayer.ghost_records()`.
 
-Phase 3 has **not** shipped: no `CommanderView` class exists in
-`scripts/`, and `scripts/UnitLeader.gd`, `scripts/Subcommander.gd`,
-`scripts/General.gd`, and `scripts/PlayerDelegation.gd` each still document
+As of 2026-09-19, phase 3 had **not** shipped: no `CommanderView` class existed
+in `scripts/`, and `scripts/UnitLeader.gd`, `scripts/Subcommander.gd`,
+`scripts/General.gd`, and `scripts/PlayerDelegation.gd` each still documented
 their perception source as omniscient -- `UnitLeader.gd` in exactly those
 words, the other three as an "omniscient perception source" or an
-"omniscient, already-serialized order" (read 2026-09-19).
+"omniscient, already-serialized order".
 GitHub nonetheless showed #588 as closed for over two weeks: it
 closed at the same moment
 [#1499](https://github.com/Lacaedemon/sparta/pull/1499) (the PR that
@@ -115,6 +117,37 @@ substring regardless of the sentence around it. #588 was reopened on
 See
 `docs/battle-ai-design.md`'s own "Implementation status" section for the
 same note from the consumer side.
+
+**Update, 2026-09-22: the team-wide half of phase 3 has shipped, still
+without a formal `CommanderView` type.**
+`Battle._ai_perceptible_units(team)` is the interposed perception source
+this section's own "Build the interface" and "The invariant" subsections
+below describe: a team's own units are always included, and an enemy unit is
+included only when fog is off (reproducing the prior omniscient set exactly)
+or when `team` currently perceives it via `Perception.visible_enemy_uids`.
+`Battle._run_enemy_ai`/`_run_player_delegated_ai` read from it instead of an
+unfiltered group query, and `UnitLeader.decide`'s advance/attack fallback --
+which used to bypass its own caller-supplied array entirely and re-query the
+live groups directly through `UnitTargeting.nearest_enemy_to` -- now searches
+only that array (`UnitLeader._nearest_enemy_in`).
+Two independent per-unit paths outside the command layer were found to have
+the same gap during review and closed the same way: `Unit._think()`'s
+auto-advance-on-detect fallback and `Unit._support_tick`'s threat-chase
+branch each ran every physics tick, picking a target from a bare
+`detection_range`/`SUPPORT_GUARD_RADIUS` scan with no line-of-sight or fog
+test at all; both now consult `Battle.ai_team_perceives` before chasing an
+enemy not yet in weapon range, leaving combat already in progress untouched.
+The grep-based regression test this section's "The invariant" subsection
+calls for lives in `test/unit/test_battle_ai_fog.gd`.
+Team-wide, not commander-scoped: every level of one team's chain reads the
+same set this AI tick, matching this document's own "Phase 3 below
+implements the team-wide view first and the commander-scoped narrowing
+second" sequencing (see "Friendly visibility" above).
+Commander-scoped narrowing and up-the-chain report propagation are tracked
+as [#1625](https://github.com/Lacaedemon/sparta/issues/1625); AI reasoning
+over a stale `last_known` contact (this document's own "Last-known contact"
+section above) rather than only current perception is
+[#1626](https://github.com/Lacaedemon/sparta/issues/1626).
 
 Phases 4 and 5 (campaign and saga fog) have not started: `scripts/campaign/`
 has no visibility code, and the saga layer itself still does not exist.
@@ -161,12 +194,15 @@ off-by-default `Settings.fog_of_war` toggle now exist
 (`scripts/Perception.gd`, `scripts/FogGhostLayer.gd`); with the toggle on,
 the player sees only what their own units' sight radii and lines of sight
 cover, per the mechanism proposed below.
-**It remains true for the AI**:
-`Battle._run_enemy_ai()` and the whole chain-of-command AI still read
-`get_tree().get_nodes_in_group("units")` (or the array the caller passes)
-directly, with no fog applied, regardless of the `Settings.fog_of_war`
-toggle -- see "Implementation status" above and
-`docs/battle-ai-design.md`'s own note on the same gap.
+**It was true for the AI until 2026-09-22.**
+`Battle._run_enemy_ai()` and the whole chain-of-command AI used to read
+`get_tree().get_nodes_in_group("units")` directly, with no fog applied,
+regardless of the `Settings.fog_of_war` toggle.
+As of that date, `Battle._ai_perceptible_units(team)` is what they read
+instead -- fogged when `team`'s own side does not perceive an enemy, and
+unconditionally omniscient (reproducing the old behaviour exactly) when fog
+is off -- see "Implementation status" above and
+`docs/battle-ai-design.md`'s own note on the same swap.
 
 ### The historical case
 
@@ -239,9 +275,17 @@ Verified against the tree at the time of writing.
 
 ### What the AI can see
 
-*(Still accurate as of 2026-09-19 -- unlike the player-facing state above,
-none of this has changed.
-See "Implementation status" above.)*
+*(Accurate as of 2026-09-19 -- describes the omniscient state this section's
+own bullets record, which `Battle._ai_perceptible_units` (the "Implementation
+status" section's 2026-09-22 update, above) has since replaced with the
+fogged-or-omniscient view for every consumer named below.
+`UnitTargeting.nearest_enemy`/`nearest_routing_enemy`'s own bare-radius
+detection_range scan (last bullet) is unchanged in itself -- it still governs
+soldier-level auto-engagement, which stays unfogged by design -- but the two
+AI-only per-tick callers built on top of it (`Unit._think()`'s
+auto-advance-on-detect fallback, `Unit._support_tick`'s threat-chase branch)
+now gate on perception before treating a detected-but-not-yet-in-range enemy
+as a valid chase target; see that update for the detail.)*
 
 - The chain-of-command AI is implemented through phase 4: `scripts/UnitLeader.gd`, `scripts/Subcommander.gd`, `scripts/General.gd`, `scripts/DoctrineRegistry.gd`, and `scripts/PlayerDelegation.gd`, dispatched from `Battle._run_enemy_ai()` and `Battle._run_player_delegated_ai()` on the `ai_period` cadence (default 60 ticks, once per second at `Replay.PHYSICS_TPS` 60).
 
@@ -843,8 +887,9 @@ enemy leaves a fading ghost marker where it was last seen.
 
 ### Phase 3 -- the AI honors fog, the phase #588 tracks
 
-**Not shipped.** #588 was closed in error on 2026-09-02 and reopened on
-2026-09-19 -- see "Implementation status" above for why.
+**Shipped its team-wide half on 2026-09-22.** #588 was closed in error on
+2026-09-02 and reopened on 2026-09-19 -- see "Implementation status" above for
+the full history and what shipped.
 
 **Scope.**
 Build `CommanderView` as `docs/battle-ai-design.md` sketches it, route every
@@ -852,6 +897,11 @@ commander read through it, then swap the omniscient implementation for the
 fogged one.
 Team-wide fogged view first; commander-scoped narrowing plus report propagation
 second.
+**As shipped:** the team-wide view (`Battle._ai_perceptible_units`), with no
+formal `CommanderView` type -- the caller's own array remains the interface,
+same as the omniscient implementation it replaced.
+Commander-scoped narrowing and report propagation are
+[#1625](https://github.com/Lacaedemon/sparta/issues/1625).
 
 **Dependencies.**
 Phase 1; phase 2 only for the demo.
@@ -862,9 +912,21 @@ general cannot react to an unseen flanking force until it enters some friendly
 unit's perception, and reacts on the first decision tick after it does; no AI
 code path reads unfogged state; determinism on replay is preserved with fog
 active.
+**Met** -- `test/unit/test_battle_ai_fog.gd`, including a fixed-seed
+replay-determinism check under fog and coverage for two independent per-unit
+paths found during review to bypass the command layer's own fog gate
+entirely (`Unit._think()`'s auto-advance-on-detect fallback and
+`Unit._support_tick`'s threat-chase branch, both closed the same way -- see
+the "Implementation status" update above).
 Add a grep-based regression test that the four AI scripts contain no direct
 group lookups, and an interposition test that inserting the still-omniscient
 `CommanderView` leaves a fixed-seed replay byte-identical.
+**Met, adapted to the shipped shape**: the regression test checks for no
+direct group lookup AND no direct `Battle` instance field access (there
+being no formal `CommanderView` type to interpose, the "insert the still-
+omniscient implementation" half is instead the fog-off invariance test in
+the same file, proving `_ai_perceptible_units` reproduces the omniscient set
+exactly).
 
 **Demo.**
 A scripted flank march the AI does not react to until a screening unit sights
@@ -976,20 +1038,31 @@ A saga layer existing.
   Lean: keep the point test through phase 2, and revisit extent or partial visibility only if the ghost-marker UI turns out to need a partial state anyway.
 
 - **Does fog change combat balance?**
-  It should not, since targeting stays unfogged, but a screening skirmisher line becomes far more valuable and cavalry's longer sight becomes a real advantage.
+  It should not once two sides are actually in contact, since SOLDIER-level
+  targeting (who a body already fighting strikes) stays unfogged by design --
+  see "Rendering must not feed back into the simulation" above.
+  Getting TO contact is where fog changes things: a screening skirmisher line
+  becomes far more valuable, cavalry's longer sight becomes a real advantage,
+  and (since phase 3's team-wide swap) an AI side can no longer close on a
+  force none of its own units has sighted.
   That is intended, and worth measuring rather than assuming.
 
 ## Relationship to existing issues
 
 - **#414** -- this doc is its design deliverable, and stays open tracking
-  the remaining scope (phase 3 AI consumption, plus campaign and saga fog).
+  the remaining scope (phase 3's commander-scoped narrowing and report
+  propagation, plus campaign and saga fog).
   The phases above were not filed as separate sub-issues; phases 1-2
   shipped directly under #414 via
   [#1560](https://github.com/Lacaedemon/sparta/pull/1560) and
-  [#1594](https://github.com/Lacaedemon/sparta/pull/1594).
+  [#1594](https://github.com/Lacaedemon/sparta/pull/1594), and phase 3's
+  team-wide half shipped 2026-09-22 (see "Implementation status" above).
 
 - **[#588](https://github.com/Lacaedemon/sparta/issues/588)** -- battle-AI phase 5, blocked on this.
-  Phase 3 above is the phase that would finish it, and has not shipped.
+  Phase 3 above is the phase that finishes it; its team-wide half shipped
+  2026-09-22, closing #588's own acceptance test (see "Implementation
+  status" above), with commander-scoped narrowing tracked as
+  [#1625](https://github.com/Lacaedemon/sparta/issues/1625).
   #588 was closed in error on 2026-09-02 and reopened on 2026-09-19, for the
   reason explained in "Implementation status" above.
 

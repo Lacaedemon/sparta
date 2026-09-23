@@ -12,13 +12,35 @@ const SubcommanderSrc := "res://scripts/Subcommander.gd"
 const GeneralSrc := "res://scripts/General.gd"
 const PlayerDelegationSrc := "res://scripts/PlayerDelegation.gd"
 
+const WorldScale = preload("res://scripts/WorldScale.gd")
+
 const AI_PERIOD: int = 60   # Battle.AI_PERIOD -- the first _run_enemy_ai() decision is at tick 0.
+
+## Foot sight radius on the default battle: Unit.SIGHT_FOOT (1.0) x Battle's own default
+## sight_scale (0.25 * min(field.size.x, field.size.y) = 0.25 * 1200 = 300 wu on the default
+## 1600x1200 field). Same derivation as test_fog_of_war.gd's own FOOT_SIGHT constant, so a
+## change to the sight scale or field size invalidates this file's "beyond"/"inside" sight
+## claims LOUDLY (the derived positions below move with it) rather than silently leaving a
+## bare literal that quietly stops meaning what its comment says.
+const FOOT_SIGHT: float = 15.0 * WorldScale.WU_PER_M
 
 # Well clear of the default TERRAIN patches (forest x:200-450, hill x:1150-1400, both
 # y:380-580), so line-of-sight between these points is never occluded by accident.
 const WATCHER_POS := Vector2(600.0, 1100.0)
-const FAR_FLANKER_POS := Vector2(600.0, 50.0)     # ~1050 wu away: well beyond foot sight
-const NEAR_FLANKER_POS := Vector2(600.0, 850.0)   # 250 wu away: well inside foot sight
+const FAR_FLANKER_POS := WATCHER_POS - Vector2(0.0, FOOT_SIGHT + 750.0)   # well beyond sight
+const NEAR_FLANKER_POS := WATCHER_POS - Vector2(0.0, FOOT_SIGHT - 50.0)   # well inside sight
+
+## A sight range forced well below Unit.DETECTION_RANGE (190 wu on the default WorldScale),
+## used only by the auto-advance-on-detect tests below: small enough that a target inside
+## detection range can still sit outside it.
+const SHRUNK_SIGHT: float = 50.0
+## Midpoint between SHRUNK_SIGHT and Unit.DETECTION_RANGE -- inside detection range (so
+## UnitTargeting.nearest_enemy_to still finds it) but outside SHRUNK_SIGHT (so a team whose
+## sight is forced down to SHRUNK_SIGHT does not perceive it): the "detected, not perceived"
+## gap Unit._think()'s auto-advance-on-detect fallback used to skip entirely, marching on
+## anything within detection_range regardless of whether it was actually perceived.
+const DETECTED_NOT_PERCEIVED_POS := WATCHER_POS \
+		- Vector2(0.0, (SHRUNK_SIGHT + Unit.DETECTION_RANGE) * 0.5)
 
 
 func after_each() -> void:
@@ -30,18 +52,75 @@ func after_each() -> void:
 
 # --- the four AI scripts never bypass the caller's perception source -----------------
 #
-# docs/fog-of-war-design.md's own phase-3 regression test: "a grep-based regression test
-# that the four AI scripts contain no direct group lookups." A direct
-# get_tree().get_nodes_in_group(...) call in any of these four files would read the live,
-# unfiltered sim state, bypassing whatever fogged-or-omniscient array Battle handed them.
+# docs/fog-of-war-design.md's own phase-3 invariant (its "How the AI consumes perception
+# without cheating" section): "No AI code path reads get_tree().get_nodes_in_group("units"),
+# or any other unfiltered world state, directly ... a grep over [the four AI scripts] for
+# group lookups and for direct Battle field access is a cheap regression test." Two shapes,
+# both checked by _perception_invariant_violation below:
+#   1. A direct get_nodes_in_group(...) call -- the live, unfiltered sim state, bypassing
+#      whatever fogged-or-omniscient array Battle handed the caller.
+#   2. A `BattleRef` token used for anything other than a static constant/enum read
+#      (`BattleRef.OrderMode.SKIRMISH`, `BattleRef.ORDER_FORMATION_ONLY` -- the established,
+#      legitimate way UnitLeader.gd reaches Battle's own constants today, since Battle.gd has
+#      no class_name and BattleRef -- a preloaded script reference -- is the only handle to
+#      it at all). Anything else attached to that token (`as BattleRef`, `BattleRef.new(`, a
+#      `: BattleRef` type annotation) would mean an actual Battle INSTANCE in scope -- the
+#      direct-field-access door this check exists to keep shut.
 
 
-func test_no_ai_command_script_queries_scene_groups_directly() -> void:
+## Returns a short, non-empty description of the first violation _perception_invariant_
+## violation finds in `src`, or "" when `src` is clean. Pure string/regex logic with no file
+## I/O, so it can be exercised directly against a synthetic snippet (see the "proven to bite"
+## test below) as well as against the four real AI scripts.
+static func _perception_invariant_violation(src: String) -> String:
+	if src.contains("get_nodes_in_group"):
+		return "calls get_nodes_in_group(...) directly"
+	# Strip the one legitimate declaration line before scanning, so `const BattleRef =
+	# preload(...)` itself -- BattleRef followed by " = ", not ".<Uppercase>" -- doesn't
+	# trip the same regex that must catch `BattleRef.new(...)` or an `as BattleRef` cast.
+	var scan: String = src.replace(
+			"const BattleRef = preload(\"res://scripts/Battle.gd\")", "")
+	var rx := RegEx.new()
+	rx.compile("BattleRef(?!\\.[A-Z])")
+	if rx.search(scan) != null:
+		return "uses BattleRef for something other than a static constant/enum read"
+	return ""
+
+
+func test_no_ai_command_script_reads_unfiltered_world_state_directly() -> void:
 	for path in [UnitLeaderSrc, SubcommanderSrc, GeneralSrc, PlayerDelegationSrc]:
 		var src: String = FileAccess.get_file_as_string(path)
 		assert_true(src.length() > 0, "%s should be readable" % path)
-		assert_false(src.contains("get_nodes_in_group"),
-			"%s must read only its caller-supplied perception array, never the live scene groups" % path)
+		var violation: String = _perception_invariant_violation(src)
+		assert_eq(violation, "",
+			"%s must read only its caller-supplied perception array, never the live scene " %
+			path + "groups or a Battle instance's own fields directly")
+
+
+## Proves the guard above actually bites, per CLAUDE.md's "Guard tests must be proven to
+## bite": a check that only ever reports the real files clean is indistinguishable from one
+## that never runs. Each snippet below is a minimal, realistic stand-in for the two violation
+## shapes the invariant forbids, plus the two legitimate shapes (the real declaration line,
+## and a static constant/enum read) that must NOT trip it.
+func test_perception_invariant_violation_detects_both_forbidden_shapes() -> void:
+	assert_eq(_perception_invariant_violation(
+			"static func decide(u, all_units):\n\treturn all_units"), "",
+		"clean source: no violation")
+	assert_eq(_perception_invariant_violation(
+			"const BattleRef = preload(\"res://scripts/Battle.gd\")\n" +
+			"static func f(): return BattleRef.OrderMode.NORMAL"), "",
+		"the real declaration line, plus a static enum read, must not trip the guard")
+	assert_ne(_perception_invariant_violation(
+			"static func decide(u, all_units):\n" +
+			"\tfor e in get_tree().get_nodes_in_group(\"units\"):\n\t\tpass"), "",
+		"a direct get_nodes_in_group call must trip the guard")
+	assert_ne(_perception_invariant_violation(
+			"const BattleRef = preload(\"res://scripts/Battle.gd\")\n" +
+			"static func decide(u, battle):\n" +
+			"\tvar b := battle as BattleRef\n\treturn b.terrain"), "",
+		"an `as BattleRef` cast onto a live instance, then a direct field read, must trip the guard")
+	assert_ne(_perception_invariant_violation("static func decide(): return BattleRef.new()"), "",
+		"instantiating Battle directly must trip the guard too")
 
 
 # --- fog off reproduces today's omniscient set exactly --------------------------------
@@ -157,6 +236,95 @@ func test_team1_ai_ignores_the_same_flanker_when_fog_is_off_too_far_to_reach() -
 		"fog off: the omniscient view names every living enemy regardless of distance")
 	assert_eq(watcher.current_order.target_uid, flanker.uid,
 		"the only enemy on the field is targeted immediately, exactly as before phase 5")
+
+
+# --- a SEPARATE per-tick path: Unit._think()'s auto-advance-on-detect fallback ---------
+#
+# The command-level AI above (_run_enemy_ai, decided once per AI_PERIOD ticks) is not the
+# only thing that can move an idle AI-driven unit toward an enemy.
+# Unit._think()'s auto-advance-on-detect fallback runs every physics
+# tick, independent of _run_enemy_ai, and its own candidate (UnitTargeting.nearest_enemy_to)
+# is a bare-radius scan of the live "units"/"routers" groups within Unit.DETECTION_RANGE (190
+# wu default) with NO line-of-sight or fog test at all. Before the fix, an idle team-1 unit
+# would auto-march every tick toward any enemy within detection range, even one its own side
+# does not currently perceive (forced sight below detection range, below) -- an omniscient
+# backdoor the command-level fog swap never touched, since it is a wholly separate mechanism.
+
+
+## Ticks to hold after staging before checking for movement: comfortably past BOTH
+## Unit.order_response_delay (0.5s = 30 ticks -- an issued order sits idle that long before
+## the unit actually marches) and Battle.AI_PERIOD (60 ticks, the command layer's own next
+## decision), so a negative result (no movement) can't be misread as "hasn't had time yet"
+## from either mechanism.
+const SETTLE_TICKS: int = 90
+
+
+func test_idle_ai_unit_does_not_auto_advance_on_a_detected_but_unperceived_enemy() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var watcher: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	# Force the watcher's sight well below the enemy's distance (still comfortably inside
+	# Unit.DETECTION_RANGE, per DETECTED_NOT_PERCEIVED_POS's own derivation above) so the
+	# enemy is a valid nearest_enemy_to candidate but not a perceived one. Set BEFORE the
+	# first physics tick runs (not after) -- otherwise tick 0's own command-level AI decision
+	# would still see the enemy at the unit's DEFAULT sight range and issue a real ATTACK
+	# order right then, which arms Unit.order_response_delay and freezes _think() entirely
+	# for the next 30 ticks regardless of what this test is actually trying to isolate.
+	watcher.sight_range = SHRUNK_SIGHT
+	assert_false(battle.ai_team_perceives(1, enemy),
+		"sanity check on the staged distances: team 1 does not perceive this enemy")
+	assert_lt(watcher.position.distance_to(enemy.position), Unit.DETECTION_RANGE,
+		"sanity check: the enemy is still a valid nearest_enemy_to candidate")
+	var start_pos: Vector2 = watcher.position
+
+	for _i in range(SETTLE_TICKS):
+		await get_tree().physics_frame
+
+	assert_almost_eq(watcher.position.distance_to(start_pos), 0.0, 0.5,
+		"fog on, enemy detected (within DETECTION_RANGE) but unperceived (outside the forced " +
+		"sight range): the watcher holds position instead of auto-advancing")
+	assert_null(watcher.current_order,
+		"no order was ever issued for this either -- neither the command layer's own AI_PERIOD " +
+		"decision nor the per-tick fallback above ever perceived the enemy")
+
+
+func test_idle_ai_unit_still_auto_advances_on_a_detected_enemy_when_fog_is_off() -> void:
+	# The mirror check for fog OFF: the identical staging (same forced-small sight range, same
+	# "detected but would-be-unperceived-under-fog" distance) still auto-advances, because
+	# ai_team_perceives (and therefore _enemy_is_perceived) is unconditionally true with fog
+	# off -- this branch is byte-for-byte the pre-phase-5 behaviour. Fog off also means the
+	# command-level AI (omniscient regardless of sight_range) issues a real ATTACK order at
+	# tick 0 -- SETTLE_TICKS' own margin past order_response_delay covers that path too, so
+	# this test doesn't need to (and, given the command layer's own unconditional omniscience,
+	# largely can't) isolate the per-tick fallback from the command-level order the way the
+	# fog-on test above does; either mechanism producing movement proves the fog-off claim.
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var watcher: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	watcher.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity with the fog-on test
+	assert_true(battle.ai_team_perceives(1, enemy),
+		"sanity check: fog off means ai_team_perceives is unconditionally true regardless of sight")
+	var start_pos: Vector2 = watcher.position
+
+	for _i in range(SETTLE_TICKS):
+		await get_tree().physics_frame
+
+	assert_gt(watcher.position.distance_to(start_pos), 0.5,
+		"fog off: the watcher still auto-advances on the detected enemy, exactly as before phase 5")
 
 
 # --- determinism: the fogged view is a pure function of serialized sim state ----------
