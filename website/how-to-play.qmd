@@ -1318,7 +1318,7 @@ An idle ranged unit of yours holds its fire rather than loosing a volley at an e
 --- and a unit you put on **Support** won't peel off to fire on, or chase, such an enemy near the ally it's guarding either.
 Your own troops can't newly shoot at, or newly give chase to, what your own fog is hiding from you.
 One disclosed exception: an attack already under way is not re-checked
---- a unit that has already committed to an explicit attack order keeps closing on and fighting that same target's last-known position even if your side's perception of it later lapses.
+--- a unit that has already committed to an explicit attack order keeps closing on and fighting that same target's current live position even if your side's perception of it later lapses.
 A replay reproduces the initial fog state and any mid-battle toggles on playback, exactly as recorded.
 Hills block line of sight completely (terrain occlusion), while forests screen vision and attenuate effective sight range.
 The ground itself carries its own explored/unexplored state, independent of enemy visibility: unexplored ground (never covered by a friendly sight disc) renders as an opaque dark fill, ground your units have explored but can no longer see is dimmed, and ground currently inside a friendly sight disc renders normally.

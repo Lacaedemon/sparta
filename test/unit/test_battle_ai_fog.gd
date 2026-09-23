@@ -1155,3 +1155,48 @@ func _order_signature(u: Unit) -> String:
 	if u.current_order == null:
 		return "NONE"
 	return "%s:%d" % [u.current_order.describe(), u.current_order.target_uid]
+
+
+# --- performance: fog_team's rendering-pass scan is reused by a same-frame gate -----------
+#
+# _tick_fog and _ai_perceptible_units(fog_team) are otherwise the SAME scan (same observer
+# set, same candidate set), so without the reuse in _ai_perceptible_units, a battle where
+# both the rendering pass and a per-unit gate ask about fog_team in one tick would pay for
+# that scan twice. Called directly (no `await` between the two calls, matching this file's
+# own convention of isolating one mechanism at a time): the whole point under test is
+# whether two calls in the SAME physics frame collapse into one scan, and inserting an
+# `await get_tree().physics_frame` between them would move to a LATER frame instead of
+# proving anything about the same one.
+
+
+func test_fog_team_scan_is_reused_by_a_gate_asking_the_same_team_in_the_same_frame() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 1, "type": "Infantry", "x": FAR_FLANKER_POS.x, "y": FAR_FLANKER_POS.y},
+	]
+	add_child_autofree(battle)
+	assert_eq(battle.fog_team, 0, "sanity check: the default scenario renders team 0's view")
+	var enemy: Unit = _team_units(1)[0]
+	assert_eq(battle._fog_scan_calls, 0, "no scan has run yet -- no tick has been processed")
+
+	battle._tick_fog()   # the rendering pass' own scan for fog_team
+
+	assert_eq(battle._fog_scan_calls, 1, "the rendering pass scanned once, as always")
+
+	var perceives_own_team: bool = battle.ai_team_perceives(0, enemy)   # asks about fog_team
+
+	assert_eq(battle._fog_scan_calls, 1,
+		"a gate asking about fog_team in the same frame _tick_fog already scanned for " +
+		"reuses that result rather than paying for a second identical scan")
+	assert_false(perceives_own_team,
+		"sanity check: the enemy is ~1050 wu away, well beyond default sight, so the " +
+		"reused result correctly reports it as unperceived")
+
+	battle.ai_team_perceives(1, enemy)   # asks about a DIFFERENT team
+
+	assert_eq(battle._fog_scan_calls, 2,
+		"a different team's own ask still pays for its own scan -- only the fog_team " +
+		"duplicate is eliminated, not every scan")

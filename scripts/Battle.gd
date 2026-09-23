@@ -435,6 +435,29 @@ var fog_team: int = 0
 # switch-off knows to restore every unit), and the ghost-marker layer.
 var _fog_contacts: Dictionary = {}
 var _fog_seen: Dictionary = {}
+# Which Engine.get_physics_frames() reading _fog_seen's current content actually scanned
+# for -- _ai_perceptible_units(team) reuses it (for team == fog_team) only when a fresh
+# reading matches this exactly, so a call outside the physics frame _tick_fog last ran in
+# (or after a restore whose snapshot predates a fog-config change) falls back to a fresh
+# scan instead of reading a stale one. Deliberately keyed to the GLOBAL physics-frame
+# counter rather than Battle's own `_tick`: `_tick` increments partway through this same
+# frame (_tick_fog runs, then _tick += 1, then each Unit's own _physics_process --
+# including _think()'s own ai_team_perceives calls -- runs against the NEW `_tick` value,
+# all still within the frame _tick_fog's scan is valid for). SpatialHash.rebuild
+# (called from _physics_process below, keyed the same way) already establishes this exact
+# pattern for its own per-frame cache: "Idempotent within a frame, so it is safe to call
+# from more than one place" (its own doc comment). -1 (never scanned) never matches a real
+# frame reading.
+var _fog_seen_frame: int = -1
+# Cumulative count of actual Perception.visible_enemy_uids scans this battle has run (never
+# reset -- a test reads the delta across whatever window it cares about). Incremented at
+# every call site that performs a fresh scan (_tick_fog's own rendering pass, and
+# _ai_perceptible_units' fresh-scan fallback), never when a call reuses _fog_seen instead --
+# see _ai_perceptible_units' own doc comment for why the fog_team case can reuse it. Exists
+# to make the "fog_team scans once per tick even when both rendering and a gate ask" claim a
+# deterministic, testable count rather than a timing-dependent one (see SimOps.gd's own doc
+# comment for the same "count, don't time" reasoning).
+var _fog_scan_calls: int = 0
 var _fog_active: bool = false
 var _fog_ghosts: Node2D = null
 var _sight_path_field: PathField = null
@@ -1587,6 +1610,11 @@ func restore_snapshot(snap: Dictionary) -> void:
 	_recorded_fog_of_war = bool(snap.get("recorded_fog_of_war", snap.get("fog_active", false)))
 	_fog_contacts = (snap.get("fog_contacts", {}) as Dictionary).duplicate(true)
 	_fog_seen = (snap.get("fog_seen", {}) as Dictionary).duplicate(true)
+	# A restore happens outside normal physics processing (a rewind/replay action), so
+	# there is no meaningful "current physics frame" for the restored _fog_seen to already
+	# match -- force a fresh scan on the first ask afterward rather than risk reading a
+	# value _tick_fog computed for a since-passed frame.
+	_fog_seen_frame = -1
 	_fog_active = bool(snap.get("fog_active", false))
 	# A snapshot captured before this feature existed carries no "fog_explored" key --
 	# fall back to an all-unexplored grid of the current size rather than an empty array,
@@ -1901,6 +1929,7 @@ func _tick_fog() -> void:
 		if _fog_active:
 			_fog_active = false
 			_fog_seen = {}
+			_fog_seen_frame = -1
 			for u in _fog_units_in_play():
 				u.visible = true
 			if _fog_ghosts != null:
@@ -1911,6 +1940,8 @@ func _tick_fog() -> void:
 	_fog_active = true
 	var units: Array = _fog_units_in_play()
 	_fog_seen = PerceptionRef.visible_enemy_uids(fog_team, units, terrain, _sight_path_field)
+	_fog_seen_frame = Engine.get_physics_frames()
+	_fog_scan_calls += 1
 	PerceptionRef.record_contacts(_fog_contacts, units, _fog_seen, _tick)
 	for u in units:
 		u.visible = u.team == fog_team or _fog_seen.has(u.uid)
@@ -1971,13 +2002,37 @@ func _fog_observers() -> Array:
 ## reasons only about what `team` currently perceives, matching the acceptance test's own
 ## wording ("cannot react ... until it enters ... perception"). Memory-based reasoning over
 ## a stale contact is a separate, deferred follow-up.
+##
+## Performance: for `team == fog_team` this is the SAME scan (same observer set, same
+## candidate set -- both draw from _fog_units_in_play()) _tick_fog already ran this physics
+## frame for the rendering pass, so reuse its result (_fog_seen) instead of paying for a
+## second identical observer x target x LOS sweep. Only valid when a fresh
+## Engine.get_physics_frames() reading matches _fog_seen_frame -- deliberately NOT keyed to
+## Battle's own `_tick`, which increments partway through the SAME frame `_tick_fog` and
+## every Unit's own _think() share (Battle._physics_process's own comment: "Runs before the
+## Units' own _physics_process ... so orders and AI for this tick are applied before units
+## act" -- by the time a unit's _think() asks, `_tick` has already moved on to the NEXT
+## value, but it is still the SAME physics frame _tick_fog computed _fog_seen in). A call
+## that lands before _tick_fog has run yet this frame (the command-level AI decisions --
+## _run_enemy_ai / _run_player_delegated_ai -- which _physics_process runs before its own
+## call to _tick_fog), or right after a snapshot restore (see restore_snapshot's own
+## comment), falls back to a fresh scan exactly as before this reuse existed -- every
+## per-unit _think() gate, which is the hot-loop cost this exists to cut, runs after
+## _tick_fog within the same frame and does get the reuse. Every other team pays for its
+## own scan, computed once per team per tick via ai_team_perceives' own cache -- unchanged
+## by this.
 func _ai_perceptible_units(team: int) -> Array:
 	if not is_fog_active():
 		var out: Array = get_tree().get_nodes_in_group("units")
 		out.append_array(get_tree().get_nodes_in_group("routers"))
 		return out
 	var candidates: Array = _fog_units_in_play()
-	var seen: Dictionary = PerceptionRef.visible_enemy_uids(team, candidates, terrain, _sight_path_field)
+	var seen: Dictionary
+	if team == fog_team and _fog_seen_frame == Engine.get_physics_frames():
+		seen = _fog_seen
+	else:
+		seen = PerceptionRef.visible_enemy_uids(team, candidates, terrain, _sight_path_field)
+		_fog_scan_calls += 1
 	var out: Array = []
 	for u in candidates:
 		if u.team == team or seen.has(u.uid):

@@ -2390,7 +2390,7 @@ a unit on **Support** stance will not peel off to fire on, or chase down, a thre
 Only ONE reflex stays enemy-side only: an idle unit auto-marching toward a merely-detected foe is exclusively how the AI closes distance on its own (your own units always hold formation and wait for an order, fog or no fog, so this specific reflex never applied to you either way).
 Everything else --- who freshly fires, who freshly gives chase, who enters combat unprompted --- plays by one shared rule: nothing on either side of the field can newly react to what the fog is hiding from it.
 One disclosed exception, on both sides: this gate only ever stops a FRESH pick.
-Once a unit has already committed to an explicit attack order, it keeps closing on and fighting that same target's last-known position even after your side's perception of it lapses --- an attack already under way is not re-checked, tracked as [#1626](https://github.com/Lacaedemon/sparta/issues/1626) for a future last-known-contact model.
+Once a unit has already committed to an explicit attack order, it keeps closing on and fighting that same target's current live position even after your side's perception of it lapses --- an attack already under way is not re-checked, tracked as [#1626](https://github.com/Lacaedemon/sparta/issues/1626) for a future last-known-contact model.
 
 ## Terrain
 
