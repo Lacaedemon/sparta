@@ -467,6 +467,7 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 	var grown: Rect2 = rect.grow(clearance + CORNER_STANDOFF)
 	var heading: Vector2 = to - from
 	var tangent: Vector2 = heading.orthogonal().normalized() if heading.length_squared() > 0.0 else Vector2.ZERO
+	var centre: Vector2 = rect.get_center()
 	# Which way around THIS rect: the side of the rect the A* route squeezes
 	# past on -- which can deliberately be the geometrically-longer way, when
 	# other obstacles block the short one. Measured at the route's closest
@@ -477,54 +478,76 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 	# on the SAME side of each other while the rounding side is still
 	# well-defined about the rect -- a chord-side reading there flips the
 	# funnel to the far corner and oscillates the walker in place.
-	var centre: Vector2 = rect.get_center()
-	# The chord this cross product is measured against must NOT be `heading`
-	# (to - from): `from` is the querying unit's own live position, which
+	#
+	# `heading` (to - from) is deliberately kept as the DEFAULT axis, not
+	# replaced outright: `from` is the querying unit's own live position, and
+	# tracking it is what lets a long multi-corner detour re-aim its corner
+	# choice as the walker makes real progress along the route (verified
+	# against test_funnel_walk_hugs_the_boundary_without_ratcheting_inward,
+	# which a from-independent axis stalls partway through -- it needs the
+	# corner classification to keep pace with the walker, not just the two
+	# endpoints). The hazard is narrower than "heading is unstable": `from`
 	# drifts by a fraction of a world unit most ticks even while the unit is
 	# otherwise stationary (soldier-body coupling, the same routine noise
 	# Unit._move_to's own BEARING_STEER_FREEZE_RADIUS comment describes for a
-	# different call site) and can also cross a routing CELL boundary and back
-	# under a slow, small-amplitude drift near the boundary. Either source of
-	# noise is disproportionately dangerous here: whenever the nearest path
-	# point `p` and the rect centre sit close to collinear with the chord,
-	# `X.cross(p - centre)` is a near-cancellation of two large terms -- its
-	# magnitude can sit within single digits while the terms themselves are in
-	# the tens of thousands -- so a sub-wu (or sub-cell) change in `X` is
-	# enough to flip its SIGN, flipping route_side and therefore which corner
-	# _funnel_corner steers for: a facing whipsaw between two near-opposite
-	# corners, worst for an extreme-aspect-ratio (wide, single-rank) formation
-	# whose `clearance` (Unit.terrain_clearance, itself Unit._pivot_radius()
+	# different call site), and whenever the nearest path point `p` and the
+	# rect centre sit close to collinear with `heading`, that noise is enough
+	# to flip the sign of `heading.cross(p - centre)` -- a near-cancellation
+	# of two large terms whose magnitude can sit within single digits while
+	# the terms themselves are in the tens of thousands. That flip is what
+	# whipsaws the funnel between two near-opposite corners every tick,
+	# worst for an extreme-aspect-ratio (wide, single-rank) formation whose
+	# `clearance` (Unit.terrain_clearance, itself Unit._pivot_radius()
 	# derived) is large enough to make a routing detour reach a rect hundreds
-	# of world units away in the first place.
+	# of world units away in the first place. So: fall back to a
+	# `from`-independent axis (`route_axis` below) ONLY when `heading` is
+	# itself close to collinear with the nearest path point about centre --
+	# the one configuration where `heading` cannot supply a reliable sign --
+	# and use `heading` normally everywhere else, exactly as before.
+	# `HEADING_COLLINEAR_SIN_THRESHOLD` bounds "close to collinear" as
+	# sin(angle) between the two vectors; this bug's own repro measures at
+	# ~0.0002 (a small fraction of a degree), several orders of magnitude
+	# inside the threshold, while an ordinary corner-rounding leg (the walk
+	# test above) never approaches it.
 	#
-	# `path[0]` (the walker's own current routing cell) was tried first as a
-	# less noisy substitute for `from` -- it only changes when the unit
-	# crosses into a new cell rather than every tick -- but a unit whose
-	# equilibrium position sits ON a cell boundary (as this bug's own repro
-	# settles into, chasing a funnel corner right at one) still straddles it
-	# tick to tick, so `path[0]`, and every path point derived from it,
-	# flip-flops between the two adjacent cells' rows/columns wholesale.
+	# `route_axis` = `to - centre`: `to` (the actual destination) and `centre`
+	# (the rect's own static midpoint) are the only quantities in reach here
+	# that carry neither kind of `from` dependency -- unlike `path[0]` (tried
+	# first as a less noisy substitute for `from`; it only changes when the
+	# unit crosses into a new cell, but the whole A* corridor is keyed off
+	# `from`'s current cell, so a unit whose equilibrium position sits ON a
+	# cell boundary -- as this bug's own repro settles into, chasing a
+	# funnel corner right at one -- still straddles it tick to tick, and
+	# every point `find_path` returns flip-flops between the two adjacent
+	# cells' rows/columns wholesale). `route_axis` cannot track the walker's
+	# progress along a detour the way `heading` does, which is exactly why it
+	# is the fallback, not the default.
 	#
-	# The only quantities in reach here that carry NEITHER kind of `from`
-	# dependency are `to` (the actual destination) and `centre` (the rect's
-	# own, static midpoint) -- neither moves when `from` drifts by a fraction
-	# of a world unit or crosses a cell edge. Using `to - centre` as the axis
-	# still measures the same "which side of the rect, about its own centre,
-	# does the route's closest-approach point sit on" the comment above
-	# describes -- it is still centred on the rect exactly as designed, and
-	# still distinct from "the route's deviation from the from->to chord" the
-	# comment above rules out (that reads the corridor's bulge relative to a
-	# from-to line; this reads a fixed point's side relative to a
-	# destination-to-centre line) -- just anchored at the one endpoint (`to`)
-	# that is not the source of either instability.
+	# Whichever axis is picked, `route_side` here and each candidate corner's
+	# own `side` further down MUST use the SAME one: comparing a side
+	# computed on one axis against a route_side computed on another compares
+	# two unrelated quantities, and can point the filter at the wrong
+	# corners entirely rather than merely at an occasionally-unstable one
+	# (measured on this function's own hill-terrain repro: `to=(650,730)`
+	# and `centre=(1275,480)` put `heading` and `route_axis` about 179
+	# degrees apart there, flipping the sign of all four of the rect's
+	# corners relative to each other).
+	const HEADING_COLLINEAR_SIN_THRESHOLD := 0.05   # tuned: ~2.9 degrees from collinear
 	var route_axis: Vector2 = to - centre
-	var route_side: float = 0.0
+	var nearest_p: Vector2 = Vector2.ZERO
 	var nearest_d: float = INF
 	for p in path:
 		var d: float = _distance_to_rect(p, rect)
 		if d < nearest_d:
 			nearest_d = d
-			route_side = signf(route_axis.cross(p - centre))
+			nearest_p = p
+	var nearest_offset: Vector2 = nearest_p - centre
+	var heading_cross: float = heading.cross(nearest_offset)
+	var heading_scale: float = heading.length() * nearest_offset.length()
+	var heading_collinear: bool = heading_scale <= 0.0 \
+			or absf(heading_cross) < HEADING_COLLINEAR_SIN_THRESHOLD * heading_scale
+	var axis: Vector2 = route_axis if heading_collinear else heading
+	var route_side: float = signf(axis.cross(nearest_offset))
 	var best: Vector2 = Vector2.INF
 	var best_cost: float = INF
 	for raw_c in [grown.position, Vector2(grown.end.x, grown.position.y),
@@ -533,11 +556,14 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		if from.distance_squared_to(c) < CORNER_ARRIVE_EPS * CORNER_ARRIVE_EPS:
 			continue
-		# The corner's side about the same centre/axis: a corner strictly on
-		# the other side of the rect from the route is not a candidate. (For a
-		# diagonal heading the entry/exit corners shared by both roundings land
-		# on either sign -- the filter only excludes the strictly-opposite one.)
-		var side: float = signf(heading.cross(raw_c - centre))
+		# The corner's side about the same centre/axis route_side was measured
+		# on (`axis`, NOT necessarily `heading` -- see the comment on `axis`
+		# above for why the two must not be mixed): a corner strictly on the
+		# other side of the rect from the route is not a candidate. (For a
+		# diagonal axis the entry/exit corners shared by both roundings land
+		# on either sign -- the filter only excludes the strictly-opposite
+		# one.)
+		var side: float = signf(axis.cross(raw_c - centre))
 		if route_side != 0.0 and side != 0.0 and side != route_side:
 			continue
 		if _segment_blocked(from, c, clearance, false):

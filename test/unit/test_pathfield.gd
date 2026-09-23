@@ -488,3 +488,23 @@ func test_funnel_corner_route_side_is_stable_under_sub_unit_position_drift() -> 
 	var step_b: Vector2 = pf.next_step(from_b, to, clearance)
 	assert_eq(step_a, step_b,
 		"a sub-world-unit change in the querying unit's own position must not flip which corner the funnel steers for")
+	# Not just consistent -- consistently CORRECT. Both `from` and `to` sit south of
+	# the hill (hill spans y 380-580; from.y and to.y are both well past 580), so the
+	# funnel must steer for a SOUTH corner (y > hill's centre y = 480), never a north
+	# one -- a route_side/side pair measured on two different axes (this bug's actual
+	# defect: _funnel_corner's per-candidate `side` used to classify each corner
+	# against `heading`, a different axis than the one route_side itself now uses)
+	# stays perfectly self-consistent tick to tick while silently picking the WRONG
+	# corner every time, which the equality assert above alone cannot catch. The exact
+	# expected corner (558.0, 1172.0) is hand-derived from the same grown-rect corner
+	# geometry _funnel_corner itself computes: the south-west corner of
+	# hill.grow(clearance + PathField.CORNER_STANDOFF), the cheaper of the two
+	# south-side candidates by straight-line detour cost (from->corner->to) since both
+	# `from` and `to` sit west of the hill.
+	var expected_corner := Vector2(
+		hill.position.x - clearance - PathField.CORNER_STANDOFF,
+		hill.end.y + clearance + PathField.CORNER_STANDOFF)
+	assert_eq(step_a, expected_corner,
+		"the funnel must steer for the south-west corner, not the (side-inverted) north one")
+	assert_gt(step_a.y, hill.get_center().y,
+		"the chosen corner is on the correct (south) side of the rect the route passes on")
