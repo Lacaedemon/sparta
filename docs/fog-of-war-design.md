@@ -96,7 +96,7 @@ The state dump (`tools/demo/DemoState.gd`) exposes a `fog_terrain` summary
 `FogOverlay.terrain_stats()`, the same way `ghosts` already exposes
 `FogGhostLayer.ghost_records()`.
 
-**Update, 2026-09-23: the paragraph above is no longer the whole story ---
+**Update, 2026-09-23: the paragraph above is no longer the whole story --
 [#1624](https://github.com/Lacaedemon/sparta/issues/1624) closed a gap it
 left open.**
 `Perception.perceives` (the unit-visibility test, evaluated at a unit's own
