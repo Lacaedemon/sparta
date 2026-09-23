@@ -1734,6 +1734,57 @@ func test_terrain_clearance_uses_the_true_grid_axis_during_a_folded_quarter_turn
 		"the fold-aware clearance is far larger than the frontage-only value for a column this deep")
 
 
+func test_terrain_clearance_accounts_for_a_standing_frontage_anchor_offset() -> void:
+	# An asymmetric explicatio/duplicatio (or a flank-anchored grip resize) holds one
+	# flank fixed and grows or shrinks the other, so the live grid is not centred on
+	# `position` -- UnitFormation.slots()/apply_frontage_anchor_offset shift every
+	# non-square slot by frontage_anchor_offset along local X (Unit.gd's
+	# formation_slots, and UnitFormation.gd's slots()) before the grid is ever rotated
+	# into world space. A formula that measures half_frontage from `position` alone,
+	# ignoring the standing offset (as an earlier version of this fix did), under-clears
+	# the shifted flank by the full offset -- it cannot pass the assertion below, which
+	# is more than double the offset-blind value for an offset this large relative to
+	# the column's own frontage.
+	var deep := _make_unit()
+	deep.frontage_override = 3   # 3 files x many ranks -- deep and narrow, see the tests above
+	deep.facing = Vector2.DOWN
+	deep.position = Vector2.ZERO
+	deep.frontage_anchor_offset = 50.0   # a standing asymmetric explicatio/duplicatio shift
+	var files: int = maxi(1, deep.formation_files(deep.soldiers))
+	var half_frontage: float = 0.5 * float(maxi(0, files - 1)) * deep.file_pitch_wu()
+	var offset_blind: float = half_frontage + deep.soldier_body_radius()
+	var expected: float = half_frontage + deep.frontage_anchor_offset + deep.soldier_body_radius()
+	assert_almost_eq(deep.terrain_clearance(deep.facing), expected, 0.01,
+		"marching along facing, the anchor offset adds directly to the frontage-based straight-leg clearance")
+	assert_gt(deep.terrain_clearance(deep.facing), offset_blind * 2.0,
+		"the offset-aware clearance is far larger than an offset-blind formula would return")
+
+
+func test_corner_clearance_accounts_for_a_standing_frontage_anchor_offset() -> void:
+	# corner_clearance() must fold the SAME standing offset in, since it is exactly the
+	# maximum terrain_clearance() can return over any travel direction (see its own doc
+	# comment) -- an offset-blind corner_clearance() would no longer bound an
+	# offset-aware terrain_clearance() at every angle, breaking the safe no-direction
+	# fallback the two are meant to satisfy.
+	var deep := _make_unit()
+	deep.frontage_override = 3
+	deep.frontage_anchor_offset = 50.0
+	var files: int = maxi(1, deep.formation_files(deep.soldiers))
+	var ranks: int = UnitFormation.ranks_for(deep.soldiers, files)
+	var half_frontage: float = 0.5 * float(maxi(0, files - 1)) * deep.file_pitch_wu()
+	var half_depth: float = 0.5 * float(maxi(0, ranks - 1)) * deep.rank_pitch_wu()
+	var expected: float = Vector2(half_frontage + deep.frontage_anchor_offset, half_depth).length() \
+			+ deep.soldier_body_radius()
+	assert_almost_eq(deep.corner_clearance(), expected, 0.01,
+		"corner_clearance folds the anchor offset into the file-axis half-extent before recombining with depth")
+	# The offset-aware corner_clearance() must still bound terrain_clearance() at every
+	# angle a real leg could travel, not just along facing.
+	var perpendicular_travel := Vector2.RIGHT
+	assert_true(deep.corner_clearance() >= deep.terrain_clearance(deep.facing) - 0.01
+			and deep.corner_clearance() >= deep.terrain_clearance(perpendicular_travel) - 0.01,
+		"corner_clearance stays an upper bound on terrain_clearance for every travel direction")
+
+
 func test_terrain_clearance_with_no_direction_given_returns_the_safe_pivot_radius_value() -> void:
 	# With no travel direction known, terrain_clearance() must return a value safe for
 	# ANY direction of travel -- corner_clearance()'s worst-case pivot-radius margin,

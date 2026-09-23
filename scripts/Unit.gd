@@ -3880,6 +3880,19 @@ func is_deep_for_formed_turn() -> bool:
 ## below for the margin PathField._funnel_corner itself still uses -- a route can only
 ## actually reorient AT a corner, so the fuller, pivot-radius-based allowance stays
 ## there regardless of the leg's own travel direction.
+##
+## Also accounts for a standing frontage_anchor_offset: an asymmetric explicatio/
+## duplicatio (or a flank-anchored grip resize) holds one flank fixed and grows or
+## shrinks the OTHER, so the live grid is not centred on `position` at all --
+## UnitFormation.slots()/apply_frontage_anchor_offset (Unit.gd's formation_slots, both
+## the file-major and row-major branches) shift every non-square slot by
+## `frontage_anchor_offset` along local X before formation_slots ever rotates them into
+## world space. block_centre_offset() is the same shift already expressed in world
+## space (zero for a centred block, and for square/schiltron, which formation_slots
+## never anchors at all) -- its projection across the leg adds directly to the swept
+## width, the same way the frontage and depth half-extents do, since the true block
+## extends that far past `position` on its shifted side regardless of which way the
+## leg travels.
 func terrain_clearance(travel_dir: Vector2 = Vector2.ZERO) -> float:
 	if travel_dir.length_squared() < 0.0001:
 		return corner_clearance()
@@ -3896,24 +3909,41 @@ func terrain_clearance(travel_dir: Vector2 = Vector2.ZERO) -> float:
 	# cross/dot values are equal up to sign in that case, which absf() erases).
 	var u_axis: Vector2 = Vector2.RIGHT.rotated(soldier_block_world_angle())
 	var swept: float = half_frontage * absf(u_axis.cross(dir)) + half_depth * absf(u_axis.dot(dir))
+	swept += absf(block_centre_offset().cross(dir))
 	return swept + soldier_body_radius()
 
 
 ## The margin PathField._funnel_corner uses when rounding a blocking rect's corner --
-## the corner man's full half-diagonal (_pivot_radius(), which folds in BOTH the
-## block's width and depth) plus his body radius, unlike terrain_clearance()'s
-## direction-aware, travel-perpendicular swept width above. A corner is exactly where
-## the corridor's direction -- and so the block's orientation relative to it -- can
-## change, so the fuller, worst-case-over-any-orientation allowance belongs there
-## regardless of which way the leg into it travels; see terrain_clearance()'s own doc
-## comment for the split this answers. Also the value terrain_clearance() itself falls
-## back to when its own travel direction is unknown, since this margin is exactly the
-## maximum the direction-aware formula can ever return.
-## Passed as PathField.next_step's own `corner_clearance` argument, which only ever
-## reaches _funnel_corner -- never the base blocked-check or corridor-candidate
-## sightline tests, which stay on the smaller, direction-aware terrain_clearance().
+## the corner man's full half-diagonal, PLUS a standing frontage_anchor_offset (see
+## terrain_clearance()'s own doc comment), plus his body radius -- unlike
+## terrain_clearance()'s direction-aware, travel-perpendicular swept width above. A
+## corner is exactly where the corridor's direction -- and so the block's orientation
+## relative to it -- can change, so the fuller, worst-case-over-any-orientation
+## allowance belongs there regardless of which way the leg into it travels; see
+## terrain_clearance()'s own doc comment for the split this answers. Also the value
+## terrain_clearance() itself falls back to when its own travel direction is unknown,
+## since this is exactly the maximum the direction-aware formula can ever return: the
+## anchor offset sits on the SAME file axis as the frontage half-extent (see
+## terrain_clearance()'s own doc comment), so the two combine into one term --
+## (half_frontage + offset) -- before the width/depth recombination below, the same
+## way an un-anchored block's plain half_frontage does.
+##
+## NOT simply _pivot_radius() + block_centre_offset().length(): that would add the
+## offset AFTER collapsing width and depth into one diagonal, understating the true
+## maximum (sqrt((a+b)^2+c^2) is strictly less than sqrt(a^2+c^2)+b whenever c != 0).
+## Recomputes the file/rank geometry directly rather than calling _pivot_radius(),
+## which does not fold the offset in at all -- and, for its OWN callers (the
+## formed-turn pivot-rate pacing in _formed_turn_gait_frac and
+## UnitManeuver.wheel_gait_rate), arguably also should not without separately
+## checking those consumers' own tolerance for a wider corner-man arm; that is
+## tracked rather than folded into this routing-only fix.
 func corner_clearance() -> float:
-	return _pivot_radius() + soldier_body_radius()
+	var files: int = maxi(1, formation_files(soldiers))
+	var ranks: int = UnitFormation.ranks_for(soldiers, files)
+	var frontage_reach: float = 0.5 * float(maxi(0, files - 1)) * file_pitch_wu() \
+			+ block_centre_offset().length()
+	var depth_reach: float = 0.5 * float(maxi(0, ranks - 1)) * rank_pitch_wu()
+	return Vector2(frontage_reach, depth_reach).length() + soldier_body_radius()
 
 
 # How far apart two same-type units' funnel corners land, as a fraction of the
