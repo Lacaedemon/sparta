@@ -1432,6 +1432,16 @@ var _combat_intermixing: float = 0.0
 
 var _flock_color: Color = Color(0, 0, 0, 0)     # last body modulate applied to the marks
 var _block_extent: float = RADIUS       # block half-size; sizes the ring/halo/bars/shadow
+# _formation_local_half_extents()'s own per-physics-frame memo: the O(soldiers)
+# formation_slots() build (a PackedVector2Array allocation, plus trig per soldier on
+# the row-major branch) it reads from is expensive enough that _move_to's own three
+# calls per tick (terrain_clearance, funnel_lane_offset's own terrain_clearance,
+# corner_clearance) -- and _has_congested_same_team_router calling corner_clearance()
+# once per same-team unit in its scan -- would otherwise each pay the full rebuild.
+# See that function's own doc comment for why a physics-frame key (not a dirty flag
+# on every mutation site) is the cache's invalidation trigger.
+var _cached_local_half_extents: Vector2 = Vector2.ZERO
+var _cached_local_half_extents_frame: int = -1
 # Render fast-path bookkeeping. _render_dirty is raised by SoldierBodies.step whenever a
 # body actually moves (and by seed / about-face relabel); _process consumes it so the
 # MultiMeshes are only rewritten when something visible changed, not every idle frame.
@@ -3151,6 +3161,13 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# further down this same function (the soldier-body coupling's own advance
 		# direction, a completely different vector computed after PathField involvement
 		# is already done).
+		#
+		# terrain_clearance(leg_dir) below and funnel_lane_offset(point)'s own internal
+		# terrain_clearance(point - position) call recompute the identical direction --
+		# left as two calls rather than threaded through as a shared argument, since both
+		# already share _formation_local_half_extents()'s per-physics-frame memo: the
+		# expensive O(soldiers) part is paid once regardless, and each terrain_clearance()
+		# call on top of that memo is just a couple of cross/dot products.
 		var leg_dir: Vector2 = point - position
 		step = PathField.active.next_step(position, point, terrain_clearance(leg_dir),
 				funnel_lane_offset(point), corner_clearance())
@@ -3866,14 +3883,34 @@ func is_deep_for_formed_turn() -> bool:
 ## O(soldiers) -- the same cost soldier_block_half_extents() itself already pays on
 ## every call; there is no cached per-axis extent to reuse instead (only the
 ## isotropic circumradius _block_extent is a maintained field, and it discards the
-## per-axis direction this function's callers need). Called once per PathField query.
+## per-axis direction this function's callers need). terrain_clearance()/
+## corner_clearance() each call it, and _move_to calls both of those (plus
+## funnel_lane_offset's own terrain_clearance() call) every tick for every moving
+## unit, and _has_congested_same_team_router calls corner_clearance() once per
+## same-team unit in its scan -- so this function itself memoizes the O(soldiers)
+## rebuild below, keyed on Engine.get_physics_frames(). A physics-frame key, not a
+## dirty flag raised at every site that can change formation_slots() (soldiers,
+## files, formation mode, frontage_anchor_offset, file assignment, reform state):
+## the deterministic sim already advances exactly one physics frame per tick, so
+## "still the same frame" is a cheap, always-correct proxy for "nothing that feeds
+## formation_slots() has changed since the first call this tick" without having to
+## enumerate every mutation site (and risk missing one). The memo is recomputed
+## fresh on the FIRST call of a new frame and reused by every later call that same
+## frame, so a mutation earlier in the SAME tick (e.g. a casualty resolved before
+## movement runs) is still reflected -- only calls within one already-computed
+## frame ever see the cached value.
 func _formation_local_half_extents() -> Vector2:
+	var frame: int = Engine.get_physics_frames()
+	if frame == _cached_local_half_extents_frame:
+		return _cached_local_half_extents
 	var hw: float = 0.0
 	var hd: float = 0.0
 	for s in formation_slots(soldiers, false):
 		hw = maxf(hw, absf(s.x))
 		hd = maxf(hd, absf(s.y))
-	return Vector2(hw, hd)
+	_cached_local_half_extents = Vector2(hw, hd)
+	_cached_local_half_extents_frame = frame
+	return _cached_local_half_extents
 
 
 ## Open ground this regiment needs between its centre and impassable terrain, for a
@@ -3951,6 +3988,17 @@ func terrain_clearance(travel_dir: Vector2 = Vector2.ZERO) -> float:
 ## direction is unknown, since this is exactly the maximum the direction-aware
 ## formula can ever return (both read the identical half-extents; a rotated
 ## rectangle's support function over every direction peaks at its own diagonal).
+##
+## Deliberately NOT the same value as _pivot_radius(): that one is still derived from
+## files/UnitFormation.ranks_for()/pitches (the average-case headcount estimate), used
+## only for the formed-turn pivot-rate pacing in _formed_turn_gait_frac and
+## UnitManeuver.wheel_gait_rate. It can therefore read narrower than this function's
+## live-slot extent -- a standing frontage_anchor_offset, or a file-major block with
+## unevenly distributed survivors, both widen the real footprint past what
+## _pivot_radius() assumes. Left unfixed here: retuning a formed pivot's own footspeed
+## cap needs to check that pacing mechanism's own tolerance for a wider corner-man arm,
+## not just swap in a bigger number, so it stays a separate, tracked question rather
+## than folded into this routing-only fix.
 func corner_clearance() -> float:
 	return _formation_local_half_extents().length() + soldier_body_radius()
 
@@ -4087,18 +4135,23 @@ const FUNNEL_CONGESTION_RANGE_FACTOR := 1.0   # tuned
 ## alone reliably fires with room to spare before the pair is anywhere close
 ## to actual soldier-body contact.
 func _has_congested_same_team_router() -> bool:
+	# corner_clearance(), not terrain_clearance(): the corner this gate is checking
+	# proximity to is itself placed using corner_clearance()'s margin (PathField's
+	# own corner_clearance argument), so the "are we both plausibly funneling onto
+	# the SAME corner" radius has to match that, not the smaller, direction-aware
+	# straight-leg margin -- a deep column travelling along its own facing has a
+	# much smaller terrain_clearance() than the corner it may actually be
+	# converging on with a teammate. Hoisted out of the loop below: this unit's own
+	# corner_clearance() doesn't change across candidates, so computing it once per
+	# candidate made this whole scan O(soldiers x units) instead of O(soldiers +
+	# units) -- the per-candidate cost is now just u.corner_clearance() itself
+	# (cheap regardless, since _formation_local_half_extents() memoizes per frame).
+	var own_corner_clearance: float = corner_clearance()
 	for node in get_tree().get_nodes_in_group("units"):
 		var u: Unit = node as Unit
 		if u == null or u == self or u.team != team or u.state == State.DEAD:
 			continue
-		# corner_clearance(), not terrain_clearance(): the corner this gate is checking
-		# proximity to is itself placed using corner_clearance()'s margin (PathField's
-		# own corner_clearance argument), so the "are we both plausibly funneling onto
-		# the SAME corner" radius has to match that, not the smaller, direction-aware
-		# straight-leg margin -- a deep column travelling along its own facing has a
-		# much smaller terrain_clearance() than the corner it may actually be
-		# converging on with a teammate.
-		var nearby_radius: float = (corner_clearance() + u.corner_clearance()) * FUNNEL_CONGESTION_RANGE_FACTOR
+		var nearby_radius: float = (own_corner_clearance + u.corner_clearance()) * FUNNEL_CONGESTION_RANGE_FACTOR
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		if position.distance_squared_to(u.position) > nearby_radius * nearby_radius:
 			continue

@@ -1850,6 +1850,45 @@ func test_corner_clearance_reads_the_deepest_surviving_file_not_ranks_for() -> v
 		"corner_clearance folds in the deepest surviving file's real depth, not ranks_for()'s estimate")
 
 
+func test_formation_local_half_extents_memoizes_within_the_same_physics_frame_and_invalidates_on_the_next() -> void:
+	# _formation_local_half_extents() memoizes per Engine.get_physics_frames() -- see its
+	# own doc comment. Mirrors the codebase's established same-frame-memoizes pattern
+	# (test_engaged_soldier_indices_memoizes_within_the_same_physics_tick, for the sibling
+	# engaged_soldier_indices() memo), but also proves the OTHER half a same-frame-only
+	# check misses: a same-frame call after a mutation must NOT reflect it (the cache is
+	# genuinely being used, not silently recomputing every call regardless), and a call on
+	# a fresh frame key must pick the mutation up.
+	var u := _make_unit(12)
+	u.frontage_override = 3   # ranks_for(12, 3) == 4 for an EVEN split -- see the tests above
+	var first: Vector2 = u._formation_local_half_extents()
+	assert_eq(u._cached_local_half_extents_frame, Engine.get_physics_frames(),
+		"the cache records the frame the first call ran on")
+	# Force an uneven file-major assignment, same trick the deepest-file tests above use
+	# (bypassing _ensure_file_assignment, which only re-deals on a size/file-count mismatch).
+	var uneven_files := PackedInt32Array()
+	for i in 8:
+		uneven_files.append(0)
+	for i in 2:
+		uneven_files.append(1)
+	for i in 2:
+		uneven_files.append(2)
+	u._sim_soldier_file = uneven_files
+	u._file_assignment_files = 3
+	var still_cached: Vector2 = u._formation_local_half_extents()
+	assert_eq(still_cached, first,
+		"a same-frame call after mutating the file assignment still returns the STALE cached value")
+	# A genuinely later physics frame must recompute and pick up the mutation -- simulated
+	# directly here, since a synchronous test never advances Engine.get_physics_frames() on
+	# its own (the same reason the manual-tick tests elsewhere in this file drive
+	# _physics_process() by hand rather than awaiting a real physics frame).
+	u._cached_local_half_extents_frame = -1
+	var recomputed: Vector2 = u._formation_local_half_extents()
+	assert_ne(recomputed, first,
+		"a fresh-frame call recomputes and reflects the file-assignment mutation")
+	assert_almost_eq(recomputed.y, 0.5 * 7.0 * u.rank_pitch_wu(), 0.01,
+		"the recomputed depth half-extent matches the deepest file's real 8-soldier depth")
+
+
 func test_terrain_clearance_with_no_direction_given_returns_the_safe_pivot_radius_value() -> void:
 	# With no travel direction known, terrain_clearance() must return a value safe for
 	# ANY direction of travel -- corner_clearance()'s worst-case pivot-radius margin,
