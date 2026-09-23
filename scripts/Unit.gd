@@ -3141,7 +3141,8 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	var step: Vector2 = point
 	var terrain_speed: float = 1.0
 	if PathField.active != null:
-		step = PathField.active.next_step(position, point, terrain_clearance(), funnel_lane_offset(point))
+		step = PathField.active.next_step(position, point, terrain_clearance(), funnel_lane_offset(point),
+				corner_clearance())
 		terrain_speed = PathField.active.speed_at(position)
 	var to: Vector2 = step - position
 	if to.length_squared() < 1.0:
@@ -3822,13 +3823,44 @@ func is_deep_for_formed_turn() -> bool:
 	return _formed_turn_gait_frac() < 1.0
 
 
-## Open ground this regiment needs between its centre and impassable terrain: the
-## corner man's half-diagonal plus his body radius, so a route the centre follows
-## keeps every soldier off the drawn rect. Passed to every PathField query —
-## terrain footprints themselves are exact, and the margin around them is the
-## querying unit's real geometry, not a routing-grid artifact: a 10-man squad
-## skims an obstacle a 140-man line must round wide.
+## Open ground this regiment needs between its centre and impassable terrain, for a
+## STRAIGHT march leg: the block's own half-frontage -- half the width its files
+## actually sweep perpendicular to the direction of travel -- plus its soldiers' body
+## radius, so a route the centre follows keeps every soldier off the drawn rect.
+## Passed to every PathField query as the base `clearance` (the initial blocked check,
+## the corridor candidate's own sightline tests) -- terrain footprints themselves are
+## exact, and the margin around them is the querying unit's real geometry, not a
+## routing-grid artifact: a 10-man squad skims an obstacle a 140-man line must round
+## wide.
+##
+## Deliberately NOT _pivot_radius() (the corner man's full half-diagonal, which also
+## folds in the block's DEPTH): a straight, unturning leg only needs the block's own
+## width margin, since its orientation is fixed and known throughout the leg. Issue
+## #1628 -- terrain hundreds of world units away from a straight leg was reading as
+## blocking it for a DEEP, narrow column, because the depth term inflated this value
+## far past the column's own frontage. See corner_clearance() below for the margin
+## PathField._funnel_corner itself still uses -- a route can only actually reorient AT
+## a corner, so the fuller, pivot-radius-based allowance stays there. The two values
+## coincide exactly for a single-rank block anyway, since its depth term is already
+## zero, so a wide single-rank line -- the shape #1616/#1629 reproduced the routing
+## instability on -- keeps its full real half-width of margin everywhere, straight legs
+## and corners alike, unchanged by this fix.
 func terrain_clearance() -> float:
+	var files: int = maxi(1, formation_files(soldiers))
+	return 0.5 * float(maxi(0, files - 1)) * file_pitch_wu() + soldier_body_radius()
+
+
+## The margin PathField._funnel_corner uses when rounding a blocking rect's corner --
+## the corner man's full half-diagonal (_pivot_radius(), which folds in BOTH the
+## block's width and depth) plus his body radius, unlike terrain_clearance()'s
+## straight-leg half-frontage above. A corner is exactly where the corridor's
+## direction -- and so the block's orientation relative to it -- can change, so the
+## fuller, worst-case-over-any-orientation allowance belongs there; see
+## terrain_clearance()'s own doc comment for the split this answers (issue #1628).
+## Passed as PathField.next_step's own `corner_clearance` argument, which only ever
+## reaches _funnel_corner -- never the base blocked-check or corridor-candidate
+## sightline tests, which stay on the smaller terrain_clearance().
+func corner_clearance() -> float:
 	return _pivot_radius() + soldier_body_radius()
 
 

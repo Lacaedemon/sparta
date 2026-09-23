@@ -1585,16 +1585,98 @@ func test_pivot_radius_is_the_footprint_half_diagonal() -> void:
 
 
 func test_terrain_clearance_scales_with_the_live_footprint() -> void:
-	# The margin a block keeps off impassable terrain is its own geometry: the
-	# corner man's half-diagonal plus his body radius, read from the LIVE
-	# formation -- so a bigger block rounds an obstacle wider than a small one.
+	# The margin a block keeps off impassable terrain on a straight leg is its own
+	# half-frontage (see terrain_clearance()'s doc comment -- NOT the full pivot-radius
+	# half-diagonal, which also folds in depth) plus its soldiers' body radius, read
+	# from the LIVE formation -- so a bigger block rounds an obstacle wider than a
+	# small one.
 	var u := _make_unit()
-	assert_almost_eq(u.terrain_clearance(), u._pivot_radius() + u.soldier_body_radius(),
-		0.0001, "clearance is the footprint half-diagonal plus one body radius")
-	var small := _make_unit()
-	small.soldiers = maxi(10, u.soldiers / 4)
+	var files: int = maxi(1, u.formation_files(u.soldiers))
+	var expected: float = 0.5 * float(maxi(0, files - 1)) * u.file_pitch_wu() + u.soldier_body_radius()
+	assert_almost_eq(u.terrain_clearance(), expected, 0.0001,
+		"clearance is the half-frontage plus one body radius")
+	# A smaller MAX-strength block genuinely narrows its own frontage (UnitFormation.frontage
+	# reads max_soldiers), unlike merely reducing live .soldiers on a same-max-strength unit --
+	# which no longer changes terrain_clearance() at all post-fix, since the straight-leg
+	# margin now tracks frontage (unaffected by casualties short of a _ranks_closed narrowing),
+	# not the live-vs-max ranks depth the old pivot-radius formula folded in.
+	var small := _make_unit(maxi(10, u.max_soldiers / 4))
 	assert_lt(small.terrain_clearance(), u.terrain_clearance(),
-		"a smaller block needs less terrain clearance than a bigger one")
+		"a smaller-max-strength block needs less terrain clearance than a bigger one")
+
+
+func test_terrain_clearance_is_less_than_pivot_radius_for_a_deep_narrow_column() -> void:
+	# Issue #1628: a straight march leg only needs the block's own WIDTH margin (the
+	# files it actually sweeps perpendicular to the direction of travel), not the full
+	# corner-man half-diagonal _pivot_radius() folds DEPTH into too -- that fuller
+	# allowance only matters where the route actually turns (PathField._funnel_corner,
+	# which still receives the unchanged _pivot_radius()-based margin via a corner
+	# query, not this function). A deep, narrow column (few files, many ranks) is where
+	# the old diagonal-based clearance overshot the block's own frontage the most.
+	var u := _make_unit()
+	u.frontage_override = 3   # 3 files x many ranks -- deep and narrow
+	var old_pivot_based: float = u._pivot_radius() + u.soldier_body_radius()
+	assert_lt(u.terrain_clearance(), old_pivot_based,
+		"a deep column's straight-leg clearance is strictly less than its full pivot-radius diagonal")
+	# The reduction is substantial for a genuinely deep column, not a rounding
+	# difference -- confirms the fix actually changes behavior for this shape.
+	assert_lt(u.terrain_clearance(), old_pivot_based * 0.5,
+		"the reduction is more than half for a column this deep and narrow")
+
+
+func test_terrain_clearance_fix_unblocks_a_straight_leg_past_distant_terrain_for_a_deep_column() -> void:
+	# End-to-end version of the two tests above: a deep, narrow column's straight leg
+	# passes a rect whose perpendicular gap (150wu) sits strictly between the OLD
+	# pivot-radius-based clearance and the NEW frontage-based one, so this is the exact
+	# "player sees a spurious detour" behavior issue #1628 reports -- and the fix (in
+	# terrain_clearance() alone, not PathField.gd) makes it disappear. FAILS before the
+	# fix (both clearances read as blocked, since the old value never shrinks) and
+	# PASSES after it.
+	var old_pf: PathField = PathField.active
+	var pf := PathField.new(Rect2(0, 0, 4000, 4000))
+	pf.block_rect(Rect2(900, 650, 200, 200))   # gap of 150wu below the straight leg at y=500
+	PathField.active = pf
+	var u := _make_unit()
+	u.frontage_override = 3   # deep, narrow column -- see the pivot-vs-frontage tests above
+	u.position = Vector2(500, 500)
+	var target := Vector2(1500, 500)
+	var old_pivot_based: float = u._pivot_radius() + u.soldier_body_radius()
+	assert_true(pf.is_leg_blocked(u.position, target, old_pivot_based),
+		"sanity check: the old pivot-radius-based clearance really did over-block this leg")
+	assert_false(pf.is_leg_blocked(u.position, target, u.terrain_clearance()),
+		"the fixed, frontage-based clearance no longer reads terrain 150wu away as blocking a straight leg")
+	PathField.active = old_pf
+
+
+func test_terrain_clearance_matches_pivot_radius_for_a_single_rank_line() -> void:
+	# The degenerate case the issue's own reproduction sits in (a wide single-rank
+	# Cavalry line, per #1616/#1629): with only one rank, _pivot_radius()'s depth term
+	# is already zero, so the diagonal reduces to exactly the half-frontage -- this fix
+	# must NOT change terrain_clearance() for a single-rank block, since it was already
+	# using the swept half-width, whether the formula names it "pivot radius" or
+	# "frontage". A wide single-rank line keeps its full real half-width of margin.
+	var u := _make_unit()
+	u.frontage_override = u.soldiers   # one soldier per file -> a single rank
+	assert_almost_eq(u.terrain_clearance(), u._pivot_radius() + u.soldier_body_radius(), 0.0001,
+		"a single-rank line's frontage half-width already equals its pivot radius")
+
+
+func test_corner_clearance_is_always_the_full_pivot_radius_margin() -> void:
+	# corner_clearance() (fed to PathField.next_step's own corner_clearance argument)
+	# is deliberately the ORIGINAL pre-#1628 formula, unconditionally -- a deep column
+	# still needs its full worst-case sweep at a corner, only its straight-leg
+	# terrain_clearance() shrank. True for a deep column AND for the degenerate
+	# single-rank case (where it also equals terrain_clearance(), per the test above).
+	var deep := _make_unit()
+	deep.frontage_override = 3
+	assert_almost_eq(deep.corner_clearance(), deep._pivot_radius() + deep.soldier_body_radius(), 0.0001,
+		"corner_clearance is always the pivot-radius half-diagonal plus one body radius")
+	assert_gt(deep.corner_clearance(), deep.terrain_clearance(),
+		"for a deep column, the corner margin is strictly larger than the straight-leg one")
+	var single_rank := _make_unit()
+	single_rank.frontage_override = single_rank.soldiers
+	assert_almost_eq(single_rank.corner_clearance(), single_rank.terrain_clearance(), 0.0001,
+		"for a single-rank line the two margins still coincide exactly")
 
 
 # --- funnel-corner routing tie-break (same-team congestion gate) -----------

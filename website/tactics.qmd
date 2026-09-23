@@ -2398,14 +2398,20 @@ time. Generally it is faster to push cavalry or fast-moving infantry through rat
 than around a narrow forest.
 
 The obstacle a unit routes around is the terrain you see, plus the unit's own
-footprint: each block keeps a margin equal to its corner man's reach from the
-centre, so a small squad slips through a lane that a wide battle line must
-round with a broad swing. A lane that looks clear of the hill *is* clear ---
-for any unit narrow enough to fit through it. The walked detour hugs that
-margin the whole way around: straight legs run along the obstacle's own
-grown boundary rather than a wider routing-grid lane, so two blocks of
-different widths round the same hill on two visibly different tracks
-(@fig-funnel-lanes).
+footprint --- and that footprint margin is two different sizes depending on whether
+the leg is straight or turning. A straight, unturning leg keeps a margin equal to
+the block's own half-frontage: the width its files actually sweep to either side of
+its line of march, so a small squad slips through a lane that a wide battle line
+must round with a broad swing, and a *deep* column (many ranks, few files) needs no
+more room than its own narrow frontage, regardless of how long it is. Rounding an
+obstacle's actual corner --- where the route's direction changes, and so can the
+block's orientation relative to it --- keeps the fuller margin instead: the corner
+man's reach from the centre, folding in the block's depth as well as its width. A
+lane that looks clear of the hill *is* clear --- for any unit narrow enough to fit
+through it on its own straight-leg margin. The walked detour hugs the corner's own
+margin the whole way around a bend: straight legs run along the obstacle's own
+grown boundary rather than a wider routing-grid lane, so two blocks of different
+widths round the same hill on two visibly different tracks (@fig-funnel-lanes).
 
 ::: {#fig-terrain-exact-footprint .demo}
 

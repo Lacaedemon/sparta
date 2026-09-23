@@ -129,12 +129,24 @@ func speed_at(world: Vector2) -> float:
 ## static geometry — see Unit.funnel_lane_offset for why that determinism
 ## matters and how the offset is derived). Zero by default, so a solo query
 ## still steers for the exact geometric corner.
-func next_step(from: Vector2, to: Vector2, clearance: float = 0.0, lane_offset: float = 0.0) -> Vector2:
+##
+## `corner_clearance`, when >= 0.0, is the margin used ONLY for the funnel-corner
+## computation below — everything else (the initial blocked check, the corridor
+## candidate's own sightline tests) still uses `clearance`. Negative (the
+## default) means "same as clearance", the original single-margin behavior every
+## existing caller keeps. The split exists for Unit.terrain_clearance() (issue
+## #1628): a STRAIGHT leg only needs the block's own swept half-width, but a
+## corner is exactly where the block's orientation relative to the corridor can
+## change, so it keeps the fuller allowance (Unit.corner_clearance(), the old
+## pivot-radius-based value) — see terrain_clearance()'s own doc comment.
+func next_step(from: Vector2, to: Vector2, clearance: float = 0.0, lane_offset: float = 0.0,
+		corner_clearance: float = -1.0) -> Vector2:
 	if not _segment_blocked(from, to, clearance):
 		return to
 	var path := find_path(from, to)
 	if path.size() < 2:
 		return to
+	var margin: float = corner_clearance if corner_clearance >= 0.0 else clearance
 	# Corridor candidate: the farthest A* path point in direct line of sight.
 	# Candidate waypoints are synthetic cell centres, not real destinations,
 	# so the room-available cap must not quietly shrink their sightlines (see
@@ -168,7 +180,7 @@ func next_step(from: Vector2, to: Vector2, clearance: float = 0.0, lane_offset: 
 	# spirals into the obstacle over a long straightaway). The corridor point
 	# stays the fallback whenever no grown corner is cleanly visible (compound
 	# obstacle geometry, or a walker already shoved inside its own margin).
-	var corner: Vector2 = _funnel_corner(from, to, path, clearance, lane_offset)
+	var corner: Vector2 = _funnel_corner(from, to, path, margin, lane_offset)
 	if corner.is_finite():
 		return corner
 	return corridor

@@ -1,0 +1,14 @@
+{
+  "_comment": "Issue #1628: a deep, narrow Infantry column (frontage_override 3 -- 3 files x many ranks) is ordered on a short straight diagonal march centred on its closest approach to the default map's hill block (Battle.TERRAIN rect (1150,380)-(1400,580)) -- a true perpendicular gap of ~226wu, comfortably outside this column's fixed, frontage-based terrain_clearance() (~22.5wu: 0.5*(3-1)*file_pitch_wu()+soldier_body_radius()) but well inside its OLD pivot-radius-based clearance (~356wu, which folded in the column's own depth). Before the fix, PathField read this straight leg as blocked by terrain hundreds of world units away and swung the column ~240wu off its line; after it, the march holds dead straight the whole way. drill mode (no enemy needed -- this demonstrates pathing, not combat).",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 882, "y": 540, "count": 120, "frontage_override": 3, "facing": [0.4229, 0.9062]}
+  ],
+  "camera": [{"tick": 0, "x": 945.0, "y": 675.0, "zoom": 0.8}],
+  "steps": [
+    {"tick": 5, "click": [882, 540]},
+    {"tick": 10, "rmb_click": [1009, 811]}
+  ],
+  "state": [8, 100, 200, 300, 400, 500, 600, 700, 800]
+}

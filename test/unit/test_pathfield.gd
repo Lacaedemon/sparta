@@ -361,6 +361,47 @@ func test_funnel_lane_scales_with_the_units_own_clearance() -> void:
 	assert_ne(narrow.x, wide.x, "the two widths walk two different lanes")
 
 
+func test_next_steps_optional_corner_clearance_only_widens_the_funnel_corner() -> void:
+	# Issue #1628: Unit.terrain_clearance() (the straight-leg `clearance` argument) can
+	# now be smaller than Unit.corner_clearance() (the fuller, pivot-radius-based
+	# margin a corner still needs, since a corridor's direction -- and so the block's
+	# orientation relative to it -- can only change AT a corner). next_step's optional
+	# 5th argument threads that bigger margin to _funnel_corner alone, without
+	# touching _funnel_corner itself: the base blocked check and the corridor
+	# candidate's own sightline tests still run at the smaller `clearance`.
+	var pf := PathField.new(FIELD)
+	var wall := Rect2(300, 100, 64, 400)
+	pf.block_rect(wall)
+	var from := Vector2(240, 300)
+	var to := Vector2(450, 600)
+	var small_clearance := 10.0
+	var big_corner_clearance := 40.0
+	var step: Vector2 = pf.next_step(from, to, small_clearance, 0.0, big_corner_clearance)
+	assert_almost_eq(step.x, wall.position.x - big_corner_clearance - PathField.CORNER_STANDOFF, 0.001,
+		"the corner itself rounds at the bigger corner_clearance, not the smaller straight-leg clearance")
+	# The leg is still detected as blocked from the SMALL clearance alone -- proving the
+	# split actually took effect rather than corner_clearance silently overriding
+	# everything (a leg that only clears at 40.0 would prove nothing about the base
+	# check still using 10.0).
+	assert_true(pf.is_leg_blocked(from, to, small_clearance),
+		"sanity check: the small straight-leg clearance alone already reads this leg as blocked")
+
+
+func test_next_step_defaults_corner_clearance_to_the_same_clearance() -> void:
+	# Backward compatibility: every existing caller that omits corner_clearance (every
+	# PathField test above, is_leg_blocked/has_path/next_step_fleeing, and any future
+	# caller) keeps the original single-margin behavior -- the funnel corner rounds at
+	# the same `clearance` the base check used, exactly as before this parameter existed.
+	var pf := PathField.new(FIELD)
+	var wall := Rect2(300, 100, 64, 400)
+	pf.block_rect(wall)
+	var from := Vector2(240, 300)
+	var to := Vector2(450, 600)
+	var step: Vector2 = pf.next_step(from, to, 40.0)
+	assert_almost_eq(step.x, wall.position.x - 40.0 - PathField.CORNER_STANDOFF, 0.001,
+		"with no corner_clearance given, the corner still rounds at the plain clearance")
+
+
 func test_funnel_walk_hugs_the_boundary_without_ratcheting_inward() -> void:
 	# Walk a whole two-corner detour in small steps, re-querying next_step each leg
 	# like a real mover: over the wall's top-west corner, straight down the west
