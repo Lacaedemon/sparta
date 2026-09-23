@@ -3141,14 +3141,18 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	var step: Vector2 = point
 	var terrain_speed: float = 1.0
 	if PathField.active != null:
-		# The travel direction for THIS leg, not necessarily this block's own facing --
-		# a formed pivot advances while still turning onto a new bearing, a side-step
-		# nudge holds facing fixed and moves perpendicular to it, and a lateral
-		# file-march or drag-to-form-up can point anywhere relative to the current
-		# facing. terrain_clearance() needs the real travel direction to know whether
-		# it is the block's width or its depth being swept across the leg.
-		var travel_dir: Vector2 = point - position
-		step = PathField.active.next_step(position, point, terrain_clearance(travel_dir),
+		# The direction of THIS leg, not necessarily this block's own facing -- a formed
+		# pivot advances while still turning onto a new bearing, a side-step nudge holds
+		# facing fixed and moves perpendicular to it, and a lateral file-march or
+		# drag-to-form-up can point anywhere relative to the current facing.
+		# terrain_clearance() needs the real leg direction to know whether it is the
+		# block's width or its depth being swept across it. Named leg_dir, not
+		# travel_dir, so it doesn't collide with the unrelated travel_dir declared
+		# further down this same function (the soldier-body coupling's own advance
+		# direction, a completely different vector computed after PathField involvement
+		# is already done).
+		var leg_dir: Vector2 = point - position
+		step = PathField.active.next_step(position, point, terrain_clearance(leg_dir),
 				funnel_lane_offset(point), corner_clearance())
 		terrain_speed = PathField.active.speed_at(position)
 	var to: Vector2 = step - position

@@ -131,14 +131,14 @@ func speed_at(world: Vector2) -> float:
 ## still steers for the exact geometric corner.
 ##
 ## `corner_clearance`, when >= 0.0, is the margin used ONLY for the funnel-corner
-## computation below — everything else (the initial blocked check, the corridor
+## computation below -- everything else (the initial blocked check, the corridor
 ## candidate's own sightline tests) still uses `clearance`. Negative (the
 ## default) means "same as clearance", the original single-margin behavior every
 ## existing caller keeps. The split exists because a STRAIGHT leg only needs the
 ## block's own swept width along that specific leg, but a corner is exactly where
 ## the block's orientation relative to the corridor can change, so it keeps the
 ## fuller, worst-case-over-any-orientation allowance instead (Unit.corner_clearance(),
-## distinct from Unit.terrain_clearance()'s direction-aware straight-leg margin —
+## distinct from Unit.terrain_clearance()'s direction-aware straight-leg margin --
 ## see terrain_clearance()'s own doc comment).
 func next_step(from: Vector2, to: Vector2, clearance: float = 0.0, lane_offset: float = 0.0,
 		corner_clearance: float = -1.0) -> Vector2:
