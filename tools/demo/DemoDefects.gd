@@ -740,7 +740,7 @@ static func check_expectations(expects: Array, snapshots: Array) -> Array:
 		var when: String = str(lo) if lo == hi else "%d-%d" % [lo, hi]
 		out.append({"uid": uid, "metric": "expect:%s@%s" % [field, when],
 				"pass": probed and passed,
-				"worst": actual if actual != null else "(no snapshot/unit/field in range)",
+				"worst": actual if probed else "(no snapshot/unit/field in range)",
 				"threshold": expected})
 	return out
 

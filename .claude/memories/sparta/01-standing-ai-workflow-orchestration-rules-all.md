@@ -665,6 +665,48 @@ into a direction calculation needs the same ±PI re-pick, a hinge/anchor
 POSITION assertion in its tests, and edge-case runs at both fold values.
 (`Lacaedemon/sparta` PR #871, 2026-07-15.)
 
+## A hard switch between two estimators reintroduces the flicker it was meant to remove, at its own threshold
+
+Companion to the `_formation_angle` fold entry above -- a different code path,
+the same shape of bug.
+`PathField._funnel_corner` chose which side of a
+blocking rect to round from the sign of a cross product against `to - from`.
+For a wide single-rank block whose `terrain_clearance()` pulled the geometry
+near-collinear, that product sat within single digits of zero, so the
+sub-world-unit position drift a live `Unit` accrues every tick flipped its
+sign -- and therefore the chosen corner, and therefore facing -- every tick
+(issue #1616).
+The first fix attempt switched `route_side` itself to the stable `to -
+centre` axis, but left a separate per-corner `side` test elsewhere in the
+same function still classifying each candidate corner against the unstable
+`to - from` -- the two axes disagreed by about 179 degrees on the repro, so
+the `side != route_side` filter admitted the wrong-side corner, caught by
+review before it shipped.
+A second attempt put both uses back on `to - from`
+by default and switched to `to - centre` only when `sin(angle) < 0.05`,
+which whipsawed across that threshold boundary itself on a shift of about 2
+world units.
+The fix that held (PR #1629)
+derives the side from the A* corridor's own endpoints (`path[last] -
+path[0]`, both routing-cell centres) -- an input that stays constant as long
+as `from`/`to` sit in the same routing cells, so the per-tick position-noise
+flip is gone.
+A narrower, disclosed case remains: a walker whose resting
+position sits exactly on a 64 wu routing-cell boundary can still see the
+corridor change -- a property of the coarse routing grid, not of this fix.
+
+**Do:** when a discrete choice (which side, which branch) is unstable near a
+boundary, derive it from an input that is piecewise-constant/grid-quantized
+relative to the noise (cell centres, not live positions), or keep explicit
+hysteresis (remember the last choice and require a real margin to flip it).
+Test by sweeping the input smoothly across the would-be boundary, not just
+two points deep inside each regime.
+**Don't:** fix a sign-flip bug by adding a second formula and a threshold to
+switch between them -- the switch has its own boundary, and the same
+per-tick noise that found the first boundary finds the second one too.
+
+(`Lacaedemon/sparta` issue #1616, PR #1629, 2026-09-23.)
+
 ## MultiMesh instance transforms don't read back in headless tests
 
 `MultiMesh.set_instance_transform_2d(i, t)` followed immediately by

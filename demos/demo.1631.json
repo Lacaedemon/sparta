@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation-only change: adds a lesson to .claude/memories/sparta/01-standing-ai-workflow-orchestration-rules-all.md about a threshold switch between two estimators reintroducing flicker, drawn from the review of the facing-whipsaw fix. No scripts/ or scenes/ change and no player-visible behaviour to film."
+}
