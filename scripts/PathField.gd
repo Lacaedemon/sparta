@@ -376,6 +376,25 @@ const CORNER_STANDOFF := 2.0   # tuned in wu, solver epsilon
 # the handoff. Solver epsilon, same family as the two above.
 const CORNER_ARRIVE_EPS := CELL * 0.5   # tuned in wu, solver epsilon
 
+# How far off the corridor_axis line (in world units, measured as perpendicular
+# distance -- |cross| / axis.length(), not a raw cross-product magnitude, so
+# this reads on the same length scale as the corridor itself regardless of
+# axis magnitude) a route_side candidate point may sit before it still counts
+# as informative. In EXACT arithmetic a path point that truly lies on the
+# axis line reads a cross of precisely 0.0 -- but float32 doesn't hold that:
+# two independently-rounded subtractions (`p - centre` for two different `p`)
+# can leave one point at exactly 0.0 and a genuinely-collinear sibling at a
+# tiny nonzero float-rounding residual, so an exact `== 0.0` test can let
+# that rounding noise decide a route's side instead of correctly reading "no
+# preference." 0.001 wu sits roughly an order of magnitude above the actual
+# float32 rounding floor at the coordinate magnitudes this file's callers use
+# (a few thousand wu at most -- float32 carries about 7 significant decimal
+# digits, so rounding noise on a ~thousand-wu subtraction is on the order of
+# 1e-4 wu) while staying two to three orders of magnitude below the smallest
+# REAL geometric margin in this file (CLEARANCE_SLACK, 0.5 wu) -- large
+# enough to absorb roundoff, far too small to mask any genuine near-miss.
+const ROUTE_SIDE_COLLINEAR_EPS := 0.001   # tuned in wu, solver epsilon
+
 ## True if the straight segment from..to crosses any terrain rect, each grown by
 ## the sightline's margin on every side. Exact geometry against the drawn rects —
 ## not the routing cells — so a line that merely passes through a cell an
@@ -552,26 +571,48 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 		# fallback, matching this function's behaviour before any of this
 		# axis machinery existed.
 		corridor_axis = heading
-	# The corridor point that FIXES route_side is the nearest one with a
-	# NONZERO cross, not simply the nearest point outright: the nearest
-	# point can itself land exactly on the axis line through `centre` (its
-	# cross reads 0.0, "no preference") purely by coincidence of where that
-	# one point happens to sit, while a farther path point still carries a
-	# real, informative side. Skipping a zero-cross point costs nothing --
-	# it was never going to filter anything on its own -- and can only make
-	# route_side MORE informative, never less. When EVERY path point is
-	# collinear with centre (the corridor's own two endpoints define the
-	# axis, so if they -- or the whole straight-line corridor -- sit on
-	# that line, so does everything else on it), no point can rescue it and
-	# route_side correctly stays 0.0: a fully axis-degenerate corridor has
-	# no side to prefer, the same "no preference" semantics the empty-path
-	# case already pins intentionally.
+	# The corridor point that FIXES route_side is the nearest one whose side
+	# is clearly off the axis line through `centre` -- not simply the
+	# nearest point outright, and not an exact `cross == 0.0` test either.
+	# The nearest point can itself land (near enough to float rounding)
+	# right on the axis line through `centre`, "no preference," purely by
+	# coincidence of where that one point happens to sit, while a farther
+	# path point still carries a real, informative side. Skipping a point
+	# that close to the axis costs nothing -- it was never going to filter
+	# anything reliably on its own -- and can only make route_side MORE
+	# informative, never less. When EVERY path point sits within tolerance
+	# of that line (in EXACT arithmetic the corridor's own two endpoints
+	# always read the identical cross against `centre` -- see
+	# ROUTE_SIDE_COLLINEAR_EPS and this file's test for the identity and why
+	# float32 alone can't be trusted to hold it exactly -- so if they, or
+	# the whole straight-line corridor, sit on that line, so does everything
+	# else on it), no point can rescue it and route_side correctly stays
+	# 0.0: a fully axis-degenerate corridor has no side to prefer, the same
+	# "no preference" semantics the empty-path case already pins
+	# intentionally.
 	var route_side: float = 0.0
 	var nearest_d: float = INF
+	var axis_len: float = corridor_axis.length()
 	for p in path:
-		var side: float = signf(corridor_axis.cross(p - centre))
-		if side == 0.0:
+		# axis_len can still be exactly 0.0 here -- the length_squared()
+		# fallback to `heading` above only replaces a zero corridor_axis,
+		# not a zero `heading` too (from == to). No caller today constructs
+		# that combination, but a zero axis makes EVERY cross 0.0 as well
+		# (cross of the zero vector is always 0), so guard the division
+		# explicitly rather than resting on that being unreachable: a point
+		# with nothing to measure against is exactly the "no preference"
+		# case this whole loop exists to detect.
+		if axis_len <= 0.0:
 			continue
+		var cross: float = corridor_axis.cross(p - centre)
+		# Perpendicular distance from `p` to the axis line, not the raw
+		# cross-product magnitude: dividing by axis_len puts this on the
+		# same world-unit scale ROUTE_SIDE_COLLINEAR_EPS is tuned against,
+		# regardless of how long or short corridor_axis itself happens to
+		# be.
+		if absf(cross) / axis_len < ROUTE_SIDE_COLLINEAR_EPS:
+			continue
+		var side: float = signf(cross)
 		var d: float = _distance_to_rect(p, rect)
 		if d < nearest_d:
 			nearest_d = d

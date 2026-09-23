@@ -598,8 +598,8 @@ func test_funnel_corner_with_empty_path_picks_the_cheaper_corner_from_the_other_
 
 
 func test_funnel_corner_live_corridor_with_a_collinear_nearest_point_still_steers() -> void:
-	# Regression for a Copilot finding on #1629: "a reachable corridor case
-	# can lose its side preference with the new endpoint-axis logic." A LIVE
+	# Regression for a review finding: a reachable corridor case can lose its
+	# side preference under the endpoint-axis design above. A LIVE
 	# next_step() query (not a direct _funnel_corner call with a hand-built
 	# path) can indeed drive route_side's OLD "always use the nearest
 	# point" logic to exactly 0.0 -- this from/to/rect triple is a genuine
@@ -611,19 +611,26 @@ func test_funnel_corner_live_corridor_with_a_collinear_nearest_point_still_steer
 	#   whichever one happens to be nearest.
 	#
 	# That "both points, not just the nearest" is not a coincidence of this
-	# example: for ANY 2-point path, cross(axis, last-centre) MINUS
-	# cross(axis, first-centre) == cross(axis, last-first) == cross(axis,
-	# axis) == 0 -- the two are always numerically identical, whichever one
-	# a "nearest point" search happens to land on. So a 2-point corridor
+	# example: in EXACT arithmetic, for ANY 2-point path, cross(axis,
+	# last-centre) MINUS cross(axis, first-centre) == cross(axis, last-first)
+	# == cross(axis, axis) == 0 -- the two are always numerically identical,
+	# whichever one a "nearest point" search happens to land on. (This
+	# specific example's coordinates are exact powers of two, so float32
+	# actually hits the identity precisely, cross == 0.0 on both points, with
+	# no rounding drift to illustrate -- a less tidy geometry could instead
+	# land the two points a tiny float-rounding residual apart, which is
+	# exactly what PathField.ROUTE_SIDE_COLLINEAR_EPS's world-unit tolerance
+	# is for, not what this identity itself claims.) So a 2-point corridor
 	# (the common case for a short, adjacent-cell detour) can never exhibit
 	# "the nearest point alone is degenerate while another path point still
-	# carries a real side" -- if route_side reads 0.0 here, the corridor's
-	# own two defining endpoints are BOTH exactly axis-aligned with centre,
-	# a fully degenerate corridor with no side to prefer, not a side the
-	# nearest-point search merely failed to find. This test pins that a
-	# live query hitting exactly that case still returns a finite,
-	# deterministic corner (cost alone, matching the empty-path premise's
-	# "no preference" semantics) rather than misbehaving.
+	# carries a real side" -- if route_side reads 0.0 (or below the
+	# tolerance) here, the corridor's own two defining endpoints are BOTH
+	# axis-aligned with centre, a fully degenerate corridor with no side to
+	# prefer, not a side the nearest-point search merely failed to find.
+	# This test pins that a live query hitting exactly that case still
+	# returns a finite, deterministic corner (cost alone, matching the
+	# empty-path premise's "no preference" semantics) rather than
+	# misbehaving.
 	var pf := PathField.new(Rect2(0, 0, 320, 320))
 	var rect := Rect2(150, 150, 20, 20)   # centre (160,160)
 	pf.block_rect(rect)
@@ -661,9 +668,9 @@ func test_funnel_corner_prefers_a_farther_nonzero_side_over_a_degenerate_nearest
 	# corners against below -- test_funnel_corner_route_side_does_not_flip_across_an_axis_switch_boundary
 	# already establishes that _funnel_corner's `path` argument is
 	# independent of its `from`/`to` cost inputs.
-	var corridor_start := Vector2(100, 100)   # path[0]: cross(axis, ·) == -7200 (nonzero)
+	var corridor_start := Vector2(100, 100)   # path[0]: cross(axis, p - centre) == -7200 (nonzero)
 	var corridor_mid := Vector2(282, 260)     # nearest to rect (distance 18); cross == 0
-	var corridor_end := Vector2(600, 500)     # path[2]: cross(axis, ·) == -7200 (nonzero)
+	var corridor_end := Vector2(600, 500)     # path[2]: cross(axis, p - centre) == -7200 (nonzero)
 	var path := PackedVector2Array([corridor_start, corridor_mid, corridor_end])
 	# Straddles the wall close to its south edge (y=480, within the rect's own
 	# 100..500 span) so the south corners are both far cheaper by raw cost
@@ -684,3 +691,110 @@ func test_funnel_corner_prefers_a_farther_nonzero_side_over_a_degenerate_nearest
 	assert_lt(corner.y, rect.get_center().y,
 		"the correct (north) side wins even though a south corner is far cheaper by cost alone, " +
 		"and even though the nearest corridor point is itself degenerate")
+
+
+func test_funnel_corner_near_collinear_two_point_path_reads_no_preference() -> void:
+	# Regression for a review finding: the 2-point endpoint identity
+	# (test_funnel_corner_live_corridor_with_a_collinear_nearest_point_still_steers'
+	# own comment) holds exactly only in real-number arithmetic. Independent
+	# float32 subtractions (`p - centre` computed separately for each of the
+	# two endpoints) do not have to agree: this from/to/centre triple is a
+	# genuinely near-collinear corridor -- found by simulating Godot's own
+	# float32 Vector2 arithmetic (struct.pack('f', ...) round-tripping,
+	# matching real_t's single-precision default build) rather than by hand
+	# -- whose two endpoints read OPPOSITE-SIGN, both-tiny cross values
+	# (0.5 and -2.0) even though the true (real-number) side is a single,
+	# well-defined value near zero for both. An exact `cross == 0.0` test
+	# would have called both endpoints "informative" with contradictory
+	# signs, so whichever one happened to be nearest would set route_side
+	# from pure rounding noise. Both endpoints' perpendicular distance to
+	# the axis line are microscopic (under 3e-5 wu, five orders of
+	# magnitude below PathField.ROUTE_SIDE_COLLINEAR_EPS's 1e-3 wu
+	# tolerance), so both are correctly read as degenerate and route_side
+	# stays 0.0, "no preference" -- not a coin flip between +1 and -1.
+	var pf := PathField.new(Rect2(0, 0, 2000, 100000))
+	# Positioned so its own centre lands exactly on the near-collinear axis
+	# below (within the same float32 rounding this whole test exercises):
+	# centre == Vector2(1053.5672607421875, 13595.935546875).
+	var rect_centre := Vector2(1053.5672607421875, 13595.935546875)
+	var rect := Rect2(rect_centre - Vector2(50.0, 600.0), Vector2(100.0, 1200.0))
+	pf.block_rect(rect)
+	var p0 := Vector2(1000.8522338867188, 360.21466064453125)
+	var p1 := Vector2(1342.4677734375, 86133.2578125)
+	var path := PackedVector2Array([p0, p1])
+	var corner: Vector2 = pf._funnel_corner(p0, p1, path, 20.0)
+	assert_true(corner.is_finite(), "sanity: this leg is expected to detour")
+	# With route_side correctly at 0.0 ("no preference"), the side filter at
+	# _funnel_corner's own comment ("route_side != 0.0 and side != 0.0 and
+	# side != route_side") never trips, so the cheapest corner by cost alone
+	# wins -- the same "no preference" semantics the empty-path tests above
+	# pin intentionally, just reached here through near-collinear rounding
+	# noise instead of an empty path.
+	var expected := Vector2(rect.position.x - 20.0 - PathField.CORNER_STANDOFF,
+			rect.position.y - 20.0 - PathField.CORNER_STANDOFF)
+	assert_eq(corner, expected,
+		"a near-collinear (not exact) 2-point corridor reads no preference, not a side from rounding noise")
+
+
+func test_funnel_corner_a_bulging_nonzero_nearest_point_agrees_with_the_old_logic() -> void:
+	# Review finding on this same round: on a BENDING 3+ point path, "prefer
+	# the nearest point with a nonzero cross" can supposedly pick the wrong
+	# side. Geometry from the review: path [A, B, C] with B bulging out to
+	# the far side of the rect and landing nearest it. Pinned here: B's
+	# cross is already nonzero (-120000), so this is NOT a case the
+	# nearest-nonzero change alters -- the pre-fix code (which used
+	# whichever point was nearest, full stop) and the post-fix code (which
+	# uses the nearest point among those with a NONZERO -- now
+	# above-tolerance -- cross) agree, both reading route_side from B. And
+	# B's side IS the side this corridor actually rounds the rect on: A and
+	# C sit on the near/west face (x=100, both well below the rect's own
+	# x-span), while B swings out past it (x=500, past the rect's far/east
+	# edge) specifically to clear the obstacle -- the path's closest
+	# approach to the rect is exactly the point where it is rounding the
+	# rect, not an arbitrary bulge.
+	var pf := PathField.new(Rect2(0, 0, 640, 640))
+	var rect_centre := Vector2(300.0, 300.0)
+	# Wide and short (not the small square this test first tried), so the
+	# east/west corners the review's vertical axis actually discriminates
+	# between sit far enough apart, and far enough from a vertical from/to
+	# straddling the rect's own vertical centre, for a clean unobstructed
+	# sightline to the correct-side corner to exist at all.
+	var rect := Rect2(rect_centre - Vector2(100.0, 20.0), Vector2(200.0, 40.0))
+	pf.block_rect(rect)
+	var a := Vector2(100.0, 0.0)
+	var b := Vector2(500.0, 300.0)
+	var c := Vector2(100.0, 600.0)
+	var path := PackedVector2Array([a, b, c])
+	var axis: Vector2 = c - a
+	# Sanity-pin the review's own numbers before trusting the behavioural
+	# assertion below: B is nearest the rect, and its cross is a clear,
+	# above-tolerance -120000, not a rounding-noise artifact like the test
+	# above's near-collinear pair.
+	assert_true(pf._distance_to_rect(b, rect) < pf._distance_to_rect(a, rect),
+		"sanity: B is nearer the rect than A, per the review's own geometry")
+	assert_true(pf._distance_to_rect(b, rect) < pf._distance_to_rect(c, rect),
+		"sanity: B is nearer the rect than C, per the review's own geometry")
+	assert_eq(axis.cross(b - rect_centre), -120000.0,
+		"sanity: B's cross matches the review's own -120000")
+	# The corridor (path, above) is deliberately NOT the same from/to the
+	# funnel actually costs the corners against -- same decoupling
+	# test_funnel_corner_prefers_a_farther_nonzero_side_over_a_degenerate_nearest_point
+	# already uses. A straight line from A to C never comes near this rect
+	# at all (both sit at x=100, far west of the rect's own 200..400
+	# x-span), and the review's own path is only for pinning what route_side
+	# reads, not a real leg to detour -- a real detour needs its own from/to
+	# straddling the rect. A vertical line straight through the rect's own
+	# centre keeps both candidate east corners' sightlines clear of the
+	# rect itself (each stays entirely on one side of the rect's y-span
+	# until it reaches the corner), which the review's original small
+	# square rect did not.
+	var from := Vector2(300.0, 150.0)
+	var to := Vector2(300.0, 450.0)
+	var corner: Vector2 = pf._funnel_corner(from, to, path, 20.0)
+	assert_true(corner.is_finite(), "sanity: this leg is expected to detour")
+	# B's side (negative -- east of centre, matching the rect's east/far
+	# edge, its own corner.x > centre.x) is the side that wins; a corner on
+	# A/C's side (west, corner.x < centre.x) would mean the nearest-nonzero
+	# change picked the wrong signal for a bending path.
+	assert_gt(corner.x, rect_centre.x,
+		"the nearest point's (B's) side wins, matching the side the corridor actually rounds the rect on")
