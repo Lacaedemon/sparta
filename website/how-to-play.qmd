@@ -1297,13 +1297,27 @@ Your own units are always visible.
 An enemy you have seen and then lost leaves a **ghost outline** in its team color at the spot and facing it was last seen, fading over the next ten seconds.
 A standing "FOG OF WAR" indicator sits below the order-mode banner while fog is on.
 Fog affects what is drawn and leaves ghost markers.
-It does not alter the retreat boundary.
-Units fight, target, and move under the same AI and physics rules.
-A replay reproduces the initial fog state and any mid-battle toggles on playback, and the enemy AI still sees everything for now.
+It does not alter the retreat boundary, and per-soldier combat resolution is unaffected: a soldier already in reach still strikes whoever is there, fog or no fog.
+The enemy AI's own *decisions* honor the same fog you see, though: an AI side can't react to a unit none of its own units have perceived, and reacts on the first AI decision after one of them does --- the same visibility rules driving your own view, never an omniscient shortcut.
+A replay reproduces the initial fog state and any mid-battle toggles on playback, exactly as recorded.
 Hills block line of sight completely (terrain occlusion), while forests screen vision and attenuate effective sight range.
 The ground itself carries its own explored/unexplored state, independent of enemy visibility: unexplored ground (never covered by a friendly sight disc) renders as an opaque dark fill, ground your units have explored but can no longer see is dimmed, and ground currently inside a friendly sight disc renders normally.
 Explored ground never reverts to unexplored, even if every unit marches away from it.
 For tactical guidance on scouting screens, ghost staleness, and pursuit decisions, see [Tactics](tactics.qmd#fog-of-war).
+
+::: {#fig-ai-honors-fog .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/ai_honors_fog.jpg">
+  <source src="media/ai_honors_fog.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+The enemy AI honors fog of war: a lone enemy unit issues no order while a player unit sits beyond its sight disc, then attacks on the first AI decision after the player marches that unit into view.
+:::
 
 ::: {#fig-fog-terrain-occlusion .demo}
 

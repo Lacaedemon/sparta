@@ -11,11 +11,16 @@ const BattleRef = preload("res://scripts/Battle.gd")
 ## order takes. No direct unit-state writes happen here; a leader's decision is data, not
 ## an action -- Battle._run_enemy_ai is the only thing that acts on it.
 ##
-## Pure function of sim state only (perception is the omniscient placeholder the design
-## doc describes -- every living unit is visible; phase 5 swaps this for a fogged view):
-## no RNG, no wall-clock, no node-iteration-order dependence beyond what the caller
-## already controls. Same seed -> same perception -> same decisions, so replay re-derives
-## AI orders exactly as the old _run_enemy_ai did.
+## Pure function of sim state only, and ONLY of `all_units` for enemy/ally knowledge --
+## the caller's perception source (Battle._ai_perceptible_units): omniscient when fog of
+## war is off, fogged (phase 5) when it is on. No RNG, no wall-clock, no node-iteration-
+## order dependence beyond what the caller already controls. Same seed -> same perception
+## -> same decisions, so replay re-derives AI orders exactly as the old _run_enemy_ai did.
+## The advance/attack fallback (4, below) used to bypass `all_units` and re-query the live
+## "units"/"routers" groups directly through UnitTargeting.nearest_enemy_to -- an
+## omniscient backdoor phase 5 closes by searching `all_units` itself instead
+## (_nearest_enemy_in), so no path in this function can see an enemy the caller didn't
+## already perception-filter into the array.
 ##
 ## Tactical repertoire (first slice, matching docs/battle-ai-design.md's phase-1
 ## acceptance criteria):
@@ -62,9 +67,10 @@ const SQUARE_TRIGGER_RANGE := 160.0
 const FLANK_DOT_THRESHOLD := 0.35
 
 
-## Decide this unit's action for the current AI tick. `all_units` is every live node in
-## the "units" group (the caller's perception source -- see the class doc: omniscient
-## today, fogged in phase 5 without this signature changing). `directive` is this unit's
+## Decide this unit's action for the current AI tick. `all_units` is the caller's
+## perception source (see the class doc: Battle._ai_perceptible_units -- omniscient with
+## fog of war off, fogged when it is on; this signature never changed for the swap).
+## `directive` is this unit's
 ## subcommander directive for the tick (Subcommander.decide_group's output for this uid),
 ## or {} when the unit has none -- existing callers that never pass one see the unchanged
 ## phase-1 behaviour. `pursue_routers` (phase 3) governs the advance/attack fallback's own
@@ -133,7 +139,10 @@ static func decide(u: Unit, all_units: Array, directive: Dictionary = {},
 			return _directive_cmd(u, directive)
 		# include_routing=pursue_routers: press the advantage and chase down a fleeing
 		# enemy too, unless the doctrine says to hold the line instead (phase 3).
-		var nearest: Unit = UnitTargeting.nearest_enemy_to(u, u.position, INF, pursue_routers)
+		# Searches `all_units` (_nearest_enemy_in), NOT UnitTargeting.nearest_enemy_to's
+		# own live "units"/"routers" group query -- see the class doc's phase-5 note for
+		# why an unfiltered group lookup here would be an omniscient backdoor.
+		var nearest: Unit = _nearest_enemy_in(u, all_units, pursue_routers)
 		if nearest != null and u.target_enemy != nearest:
 			return _attack_cmd(u, nearest)
 
@@ -219,6 +228,33 @@ static func _relief_candidate(tired: Unit, all_units: Array) -> Unit:
 		if d_sq < best_d_sq:
 			best_d_sq = d_sq
 			best = a
+	return best
+
+
+## Nearest living enemy to `u` among `candidates` -- the advance/attack fallback's own
+## targeting search, scoped to the caller's perception array (see the class doc's
+## phase-5 note) instead of UnitTargeting.nearest_enemy_to's live "units"/"routers"
+## group query. Mirrors that function's selection rule exactly (nearest by squared
+## distance, no radius cap, first-encountered wins a tie) so a fog-off battle -- where
+## `candidates` is built from the very same groups in the very same order (Battle.
+## _ai_perceptible_units) -- picks the identical target. `include_routing` is
+## pursue_routers threaded straight through: a ROUTING candidate is skipped unless the
+## doctrine wants routers pursued (`candidates` never holds a DEAD one -- a unit is
+## scrubbed from every group the instant it dies, see Unit._remove_from_play).
+static func _nearest_enemy_in(u: Unit, candidates: Array, include_routing: bool) -> Unit:
+	var best: Unit = null
+	var best_d_sq: float = INF
+	for node in candidates:
+		var e := node as Unit
+		if e == null or e.team == u.team or e.state == Unit.State.DEAD:
+			continue
+		if e.state == Unit.State.ROUTING and not include_routing:
+			continue
+		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+		var d_sq: float = u.position.distance_squared_to(e.position)
+		if d_sq < best_d_sq:
+			best_d_sq = d_sq
+			best = e
 	return best
 
 

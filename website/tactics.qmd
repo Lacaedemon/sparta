@@ -2375,6 +2375,15 @@ A broken unit that breaks contact and gains distance can steady its nerve and ra
 Dropping pursuit in the fog risks allowing shattered remnants to reform.
 Fast cavalry must stay in contact, shadowing routers until they shatter or break completely.
 
+### The enemy AI sees the same fog you do
+
+Fog of war is not a player-only handicap.
+Every AI side --- the enemy general down through its unit leaders, and a delegated group under your own command --- reads exactly the same fogged view fog gives you: a unit it can't currently perceive is a unit it can't currently react to.
+There is no separate, easier ruleset behind the enemy's decisions; the same sight discs, the same terrain occlusion and screening, the same "own units always known" rule apply on both sides.
+This cuts both ways tactically.
+An unseen flank march genuinely blindsides the enemy general --- it commits to nothing against a threat none of its own units has sighted, and only reacts once contact is made or a unit's own disc reaches the mover.
+The reverse is just as true: an enemy force you cannot see is reasoning about you exactly as blindly, so a screen that denies it sight of your own dispositions is denying it a basis for a plan, not just denying you information about its.
+
 ## Terrain
 
 Two types of terrain patch appear on the battle field:

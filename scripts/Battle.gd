@@ -1934,6 +1934,53 @@ func _fog_observers() -> Array:
 	return out
 
 
+## Battle AI phase 5 (docs/battle-ai-design.md): every unit an AI decision for `team` may
+## read this tick -- the perception source _run_enemy_ai and _run_player_delegated_ai hand
+## to General.decide_army / Subcommander.decide_group / UnitLeader.decide, and (through
+## UnitLeader's own array-scoped nearest-enemy search) the AI's advance/attack fallback too.
+## `team`'s own units are always included -- own-command knowledge is exempt from fog, per
+## the design doc's perception-interface sketch ("a commander always knows its own units'
+## positions and states"). An enemy unit is included only when fog of war is inactive
+## (reproducing today's omniscient set exactly, so a fog-off battle's AI is unchanged) or
+## when `team` currently perceives it -- Perception.visible_enemy_uids, the SAME test that
+## drives the player's own fog rendering (_tick_fog), so the AI plays by the exact rules the
+## player does: no omniscient fallback, no cheating (docs/fog-of-war-design.md, "Difficulty
+## never comes from perception"). Always includes the "routers" group alongside "units":
+## every enemy-facing scan across General/Subcommander/UnitLeader/SkirmisherScreen already
+## excludes ROUTING state on its own, so a routing candidate being present is harmless to
+## them, and UnitLeader's own routing-pursuit fallback (pursue_routers) needs it present to
+## decide anything at all -- see UnitLeader.gd's class doc. A pure function of already-
+## serialized sim state (position/team/sight/state), exactly like Perception.gd itself, so
+## replay re-derives the identical view -- and therefore the identical AI decisions -- on
+## the same tick.
+##
+## Team-wide, not commander-scoped: every level of team `team`'s chain reads this same set
+## this tick (no narrower subcommander-scoped view, no report-latency model). That is the
+## design doc's own phase-3 sequencing ("team-wide fogged view first; commander-scoped
+## narrowing plus report propagation second") stopping at its first half -- this phase's own
+## acceptance test (an AI general reacts on the first decision tick after a unit CAN see a
+## flanking force) only needs a team ever perceiving the enemy, not which of its own units
+## did. Commander-scoped narrowing and up-the-chain report propagation are deferred as
+## follow-ups.
+##
+## Does not surface last-known/stale contacts (Perception.record_contacts' table): the AI
+## reasons only about what `team` currently perceives, matching the acceptance test's own
+## wording ("cannot react ... until it enters ... perception"). Memory-based reasoning over
+## a stale contact is a separate, deferred follow-up.
+func _ai_perceptible_units(team: int) -> Array:
+	if not is_fog_active():
+		var out: Array = get_tree().get_nodes_in_group("units")
+		out.append_array(get_tree().get_nodes_in_group("routers"))
+		return out
+	var candidates: Array = _fog_units_in_play()
+	var seen: Dictionary = PerceptionRef.visible_enemy_uids(team, candidates, terrain, _sight_path_field)
+	var out: Array = []
+	for u in candidates:
+		if u.team == team or seen.has(u.uid):
+			out.append(u)
+	return out
+
+
 ## Advances the persistent explored grid and returns this tick's currently-visible cell
 ## set (idx -> true; never persisted) -- both derived from `observers`' Perception
 ## coverage exactly like _fog_seen is for enemy units: a cell counts as explored/visible
@@ -3421,30 +3468,38 @@ func _tick_far_tier_combat(units: Array, delta: float) -> void:
 
 
 ## Battle AI phases 1-3 (docs/battle-ai-design.md): every AI-controlled (team 1) unit gets
-## a unit leader (UnitLeader.decide) that reads the current sim state -- the omniscient
-## placeholder perception phase 1 uses -- and returns at most one order-command Dictionary,
-## which is applied through _apply_order_cmd, the SAME single apply site a player order
-## goes through. No unit state is written directly here, in UnitLeader, in Subcommander, or
-## in General -- closing the backdoor the old direct `u.target_enemy = nearest` write left
-## open (see the design doc's "Today's AI is a backdoor" section).
+## a unit leader (UnitLeader.decide) that reads the current sim state -- fogged when
+## Settings.fog_of_war is on (phase 5, see _ai_perceptible_units), omniscient when it is
+## off, exactly reproducing pre-phase-5 behaviour -- and returns at most one order-command
+## Dictionary, which is applied through _apply_order_cmd, the SAME single apply site a
+## player order goes through. No unit state is written directly here, in UnitLeader, in
+## Subcommander, or in General -- closing the backdoor the old direct `u.target_enemy =
+## nearest` write left open (see the design doc's "Today's AI is a backdoor" section).
 ##
 ## Phase 3 adds the general: General.decide_army reads team 1's doctrine profile
-## (ai_doctrine, via DoctrineRegistry) and the same omniscient perception, and returns a plan,
-## a split into one or more Subcommander groups, a reserve pool, and the doctrine's rout-
-## exploitation flag. Subcommander.decide_group runs once PER GROUP (phase 2 ran it once for
-## the whole team); the general's own reserve-hold directives (General.reserve_directives) are
-## folded in alongside them, so a held-back reserve unit gets a directive too, just not a
-## subcommander's. pursue_routers threads down to every UnitLeader.decide call, and the
-## doctrine's skirmisher-screen flag threads down to every Subcommander.decide_group call
-## (SkirmisherScreen; off for a doctrine that does not ask for one). The general
-## reads team 1's whole ROSTER (_team_roster, fightable + routing), not the narrower
-## _team_units, so a unit that temporarily routs doesn't shrink the reserve-fraction
+## (ai_doctrine, via DoctrineRegistry) and the same perception every other level reads, and
+## returns a plan, a split into one or more Subcommander groups, a reserve pool, and the
+## doctrine's rout-exploitation flag. Subcommander.decide_group runs once PER GROUP (phase 2
+## ran it once for the whole team); the general's own reserve-hold directives (General.
+## reserve_directives) are folded in alongside them, so a held-back reserve unit gets a
+## directive too, just not a subcommander's. pursue_routers threads down to every
+## UnitLeader.decide call, and the doctrine's skirmisher-screen flag threads down to every
+## Subcommander.decide_group call (SkirmisherScreen; off for a doctrine that does not ask for
+## one). The general reads team 1's whole ROSTER (_team_roster, fightable + routing), not the
+## narrower _team_units, so a unit that temporarily routs doesn't shrink the reserve-fraction
 ## denominator (see _team_roster's own doc comment) -- but only _team_units actually receives
-## an AI order below, since a routing unit can't act on one regardless.
-## Deterministic: a pure function of already-serialized unit state, decided in uid order, so
-## live play and replay reach identical decisions.
+## an AI order below, since a routing unit can't act on one regardless. _team_roster is team
+## 1's OWN roster (always fully known -- own-command knowledge is exempt from fog), unlike
+## `all_units` below, which is _ai_perceptible_units' fogged-or-omniscient enemy view.
+##
+## Phase 5 adds fog of war (docs/battle-ai-design.md's phase-5 requirement, "the AI honors
+## fog of war"): `all_units` comes from _ai_perceptible_units(1) instead of an unfiltered
+## group query, so every level of the chain -- General, Subcommander, and (through it)
+## UnitLeader's own advance/attack fallback -- sees only what team 1 currently perceives.
+## Deterministic: a pure function of already-serialized unit state (including the fogged
+## view itself), decided in uid order, so live play and replay reach identical decisions.
 func _run_enemy_ai() -> void:
-	var all_units: Array = get_tree().get_nodes_in_group("units")
+	var all_units: Array = _ai_perceptible_units(1)
 	var team1: Array = _team_units(1)
 	var team1_roster: Array = _team_roster(1)
 	var doctrine: Dictionary = DoctrineRegistry.doctrine(ai_doctrine)
@@ -3483,8 +3538,14 @@ func _run_enemy_ai() -> void:
 ## PlayerDelegation's own class doc) -- so this stays at the phase-1/phase-2 default rather
 ## than reading a doctrine-driven decision the design scopes to phase 3's General, which this
 ## phase deliberately does not stand up for team 0.
+##
+## Phase 5 (docs/battle-ai-design.md): `all_units` is team 0's own _ai_perceptible_units
+## view, exactly like team 1's in _run_enemy_ai -- a delegated group reasons about only what
+## the PLAYER's side currently perceives (the same fogged view Settings.fog_of_war gives the
+## player's own rendering), never an omniscient one, with fog off reproducing today's
+## unfiltered behaviour exactly.
 func _run_player_delegated_ai() -> void:
-	var all_units: Array = get_tree().get_nodes_in_group("units")
+	var all_units: Array = _ai_perceptible_units(0)
 	var team0: Array = _team_units(0)
 	var groups: Dictionary = PlayerDelegation.delegated_groups(team0)
 	for group_id in groups:

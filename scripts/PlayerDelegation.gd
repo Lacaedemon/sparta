@@ -28,9 +28,10 @@ const DEFAULT_SUBCOMMANDER_RANK := "Subcommander"
 ## player_group_id. A non-delegated unit (Unit.is_delegated() false) contributes to no group
 ## at all, so it never reaches Subcommander.decide_group / UnitLeader.decide through this
 ## path -- it keeps behaving exactly as an ordinary, undelegated player unit always has.
-## Returns {group_id: Array[Unit]}, iterating `team_units` in the caller's own order (the same
-## omniscient, already-serialized order every other command level reads), so this is
-## deterministic whenever the caller is.
+## Returns {group_id: Array[Unit]}, iterating `team_units` in the caller's own order (the
+## same already-serialized order every other command level reads for a team's own roster --
+## own-command knowledge is exempt from fog of war, per docs/battle-ai-design.md's
+## perception-interface sketch), so this is deterministic whenever the caller is.
 static func delegated_groups(team_units: Array) -> Dictionary:
 	var out: Dictionary = {}
 	for node in team_units:
