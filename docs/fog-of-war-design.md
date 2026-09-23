@@ -140,10 +140,14 @@ fog test at all; the ranged-fire branches were the sharper miss, since
 `missile_range` can reach well past what fog lets a team see, so a unit could
 loose a visible volley at a target the player's own screen still hides. All
 four now consult `Battle.ai_team_perceives` (via `Unit._enemy_is_perceived`,
-whose own doc comment carries the authoritative, currently-four-entry
-call-site list, kept there rather than duplicated in prose that can drift)
-before chasing or firing on an enemy not yet in weapon range, leaving combat
-already in progress untouched.
+whose own doc comment names the four gated branches authoritatively, kept
+there rather than duplicated in prose that can drift) before chasing or
+firing on an enemy not yet in weapon range, leaving combat already in
+progress untouched.
+Only the auto-advance-on-detect fallback is actually AI-exclusive (gated by
+`auto_advance_on_detect`); the other three run identically for a
+player-commanded unit -- see "What the AI can see" above for why that is a
+deliberate symmetric choice, not an omission.
 The grep-based regression test this section's "The invariant" subsection
 calls for -- extended during review to also forbid a direct `Battle`
 instance field access, not just a direct group lookup -- lives in
@@ -291,11 +295,24 @@ status" section's 2026-09-22 update, above) has since replaced with the
 fogged-or-omniscient view for every consumer named below.
 `UnitTargeting.nearest_enemy`/`nearest_routing_enemy`'s own bare-radius
 detection_range scan (last bullet) is unchanged in itself -- it still governs
-soldier-level auto-engagement, which stays unfogged by design -- but the two
-AI-only per-tick callers built on top of it (`Unit._think()`'s
-auto-advance-on-detect fallback, `Unit._support_tick`'s threat-chase branch)
-now gate on perception before treating a detected-but-not-yet-in-range enemy
-as a valid chase target; see that update for the detail.)*
+soldier-level auto-engagement, which stays unfogged by design -- but four
+per-tick branches built on top of it now gate on perception before treating
+a detected-but-not-yet-in-range enemy as a valid chase or fire target:
+`Unit._think()`'s auto-advance-on-detect fallback and its own
+ranged-fire-at-standoff branch, and `Unit._support_tick`'s chase and
+ranged-fire branches.
+Only the first of those four is actually AI-only, gated by
+`auto_advance_on_detect` (true for the AI-driven army, false for a
+player-commanded unit, which always holds formation and waits for an order
+regardless of fog either way).
+The other three run for BOTH teams: a player's own idle ranged unit, or a
+player unit placed on the Support order (selectable from the HUD), is
+gated exactly the same way its AI-controlled counterpart is -- a deliberate,
+player-visible design choice (not an oversight left over from the AI-only
+first pass), settled during review: fog is symmetric, so a player unit that
+could snipe or chase past its own player's fogged screen would itself be a
+fog-breaking exploit, and one shared rule is simpler than carving the AI out
+as a special case. See that "Implementation status" update for the detail.)*
 
 - The chain-of-command AI is implemented through phase 4: `scripts/UnitLeader.gd`, `scripts/Subcommander.gd`, `scripts/General.gd`, `scripts/DoctrineRegistry.gd`, and `scripts/PlayerDelegation.gd`, dispatched from `Battle._run_enemy_ai()` and `Battle._run_player_delegated_ai()` on the `ai_period` cadence (default 60 ticks, once per second at `Replay.PHYSICS_TPS` 60).
 
@@ -1049,13 +1066,18 @@ A saga layer existing.
   Lean: keep the point test through phase 2, and revisit extent or partial visibility only if the ghost-marker UI turns out to need a partial state anyway.
 
 - **Does fog change combat balance?**
-  It should not once two sides are actually in contact, since SOLDIER-level
-  targeting (who a body already fighting strikes) stays unfogged by design --
-  see "Rendering must not feed back into the simulation" above.
-  Getting TO contact is where fog changes things: a screening skirmisher line
-  becomes far more valuable, cavalry's longer sight becomes a real advantage,
-  and (since phase 3's team-wide swap) an AI side can no longer close on a
-  force none of its own units has sighted.
+  It should not once two sides are actually in weapon reach (melee contact OR
+  missile range), since SOLDIER-level targeting (who a body already fighting,
+  or already able to shoot, engages) stays unfogged by design -- see
+  "Rendering must not feed back into the simulation" above.
+  Getting TO that reach is where fog changes things, for BOTH sides, not just
+  the AI: a screening skirmisher line becomes far more valuable, cavalry's
+  longer sight becomes a real advantage, and (since phase 3's team-wide swap)
+  neither side's idle ranged units can loose a volley at, and neither side's
+  AI-driven or Support-stance units can chase or fire on, a target their own
+  side has not sighted -- a player unit is held to the identical rule its
+  AI-controlled counterpart is, a deliberate symmetric choice rather than a
+  player-side exemption.
   That is intended, and worth measuring rather than assuming.
 
 ## Relationship to existing issues

@@ -98,9 +98,15 @@ by the AI decision cadence at all) and picked a target from a bare
 test; the ranged-fire branches were the sharper miss, since firing is a
 visible tell (a volley loosed at a unit the player's own screen still
 hides) and `missile_range` can reach well past what fog actually lets a
-team see. All four now consult `Battle.ai_team_perceives` (`Unit.
-_enemy_is_perceived`, which carries the authoritative, currently-four-entry
-call-site list in its own doc comment) before chasing or firing on an
+team see. Despite this document's own AI framing, three of those four
+branches are not AI-exclusive: only the auto-advance-on-detect fallback is
+actually gated to the AI-driven army (`auto_advance_on_detect`); the
+ranged-fire and `_support_tick` branches run identically for a
+player-commanded unit, a deliberate symmetric choice (see
+`docs/fog-of-war-design.md`'s own "What the AI can see" update for why).
+All four now consult `Battle.ai_team_perceives` (`Unit.
+_enemy_is_perceived`, which lists the four gated branches in its own doc
+comment) before chasing or firing on an
 enemy not yet in weapon range, leaving combat already in progress
 untouched (soldier-level combat stays unfogged, per
 `docs/fog-of-war-design.md`).

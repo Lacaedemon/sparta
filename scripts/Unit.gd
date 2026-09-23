@@ -2469,13 +2469,24 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ## Duck-typed via has_method rather than a static Battle type -- see _owning_battle's own
 ## doc comment for why Unit.gd cannot safely preload Battle.gd.
 ##
-## THE authoritative call-site list (Battle.ai_team_perceives' own doc comment points back
-## here rather than duplicating it, to avoid the two drifting apart the way this comment
-## itself once did when it named only one caller):
+## THE authoritative list of the four branches this gates (Battle.ai_team_perceives' own doc
+## comment points back here rather than duplicating it, to avoid the two drifting apart the
+## way this comment itself once did when it named only one caller). Three call expressions,
+## not four -- _support_tick's one call gates both of its own sub-branches below:
 ## - _think()'s ranged-fire-at-standoff branch (loose a volley at a not-yet-melee target).
+##   Runs for BOTH teams -- not AI-exclusive.
 ## - _think()'s auto-advance-on-detect fallback (march on a merely-detected target).
+##   The ONE AI-exclusive branch here: gated on auto_advance_on_detect, which is false for a
+##   player-commanded unit (it always holds formation and waits for an order instead).
 ## - _support_tick's ranged-fire branch (a SUPPORT-stance unit firing on its ward's threat).
-## - _support_tick's chase branch (closing on that threat to melee).
+##   Runs for BOTH teams -- SUPPORT is a player-selectable order stance (HUD), not AI-only.
+## - _support_tick's chase branch (closing on that threat to melee). Runs for BOTH teams, same
+##   reason as its sibling ranged-fire branch above.
+## The three both-team branches are a deliberate symmetric design choice made during review,
+## not an oversight carried over from an AI-only first pass: a player unit that could snipe or
+## chase past its own player's fogged screen would itself be a fog-breaking exploit, and one
+## shared rule is simpler than special-casing which side asked. See
+## docs/fog-of-war-design.md's "What the AI can see" update for the fuller rationale.
 ## Deliberately NOT a caller: every in-contact/in-weapon-range combat resolution branch in
 ## this file (soldier-level combat stays unfogged, per docs/fog-of-war-design.md). Sweep any
 ## NEW not-yet-engaged targeting decision added to this file against this same list -- and
@@ -3098,11 +3109,14 @@ func _support_tick(delta: float) -> void:
 		# melee), but only when this unit's own side currently perceives it
 		# (_enemy_is_perceived) -- the same fog-of-war gate Unit._think()'s
 		# auto-advance-on-detect fallback uses, and for the same reason: nearest_enemy_to
-		# above is a bare-radius scan of the live groups with no LOS or fog test at all, so an
-		# AI-driven supporter (a SUPPORT stance an AI subcommander can issue) would otherwise
-		# fire VISIBLE volleys at, or peel off to chase, a threat none of its own side has
-		# actually sighted -- a starker tell for the ranged case specifically, since
-		# missile_range can reach well past what the team's fog-restricted sight covers. In
+		# above is a bare-radius scan of the live groups with no LOS or fog test at all, so a
+		# supporter -- AI-driven (an AI subcommander can issue SUPPORT) or player-commanded
+		# (SUPPORT is a player-selectable order stance, key G) alike -- would otherwise fire
+		# VISIBLE volleys at, or peel off to chase, a threat none of its own side has actually
+		# sighted -- a starker tell for the ranged case specifically, since missile_range can
+		# reach well past what the team's fog-restricted sight covers. Applies uniformly to
+		# both teams by design, not an AI-only carve-out: a player unit that could snipe or
+		# chase past its own player's fogged screen would itself be a fog-breaking exploit. In
 		# contact above is unaffected -- soldier-level combat stays unfogged once bodies are
 		# actually touching, matching every other in-range branch in this file. With fog off,
 		# _enemy_is_perceived is unconditionally true, so this whole block is unchanged from

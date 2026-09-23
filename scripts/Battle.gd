@@ -2013,6 +2013,12 @@ var _ai_perceives_cache_tick: int = -1
 ## independently of that cadence. Combat already in progress is never gated: melee/missile
 ## resolution against a target already in weapon range stays soldier-level and unfogged, per
 ## docs/fog-of-war-design.md's own "soldier-level combat stays unfogged" rule.
+##
+## Despite the name, `team` is not "the AI's team" -- this takes any team int, including the
+## player's own (0), and most of its callers deliberately gate a PLAYER-commanded unit too: a
+## unit that could snipe or chase past its own player's fogged screen would itself be a
+## fog-breaking exploit, so fog is symmetric here by design. See _enemy_is_perceived's own doc
+## comment for exactly which of its four gated branches are AI-exclusive versus shared.
 func ai_team_perceives(team: int, enemy: UnitRef) -> bool:
 	if enemy == null:
 		return false
