@@ -130,15 +130,25 @@ unfiltered group query, and `UnitLeader.decide`'s advance/attack fallback --
 which used to bypass its own caller-supplied array entirely and re-query the
 live groups directly through `UnitTargeting.nearest_enemy_to` -- now searches
 only that array (`UnitLeader._nearest_enemy_in`).
-Two independent per-unit paths outside the command layer were found to have
-the same gap during review and closed the same way: `Unit._think()`'s
-auto-advance-on-detect fallback and `Unit._support_tick`'s threat-chase
-branch each ran every physics tick, picking a target from a bare
-`detection_range`/`SUPPORT_GUARD_RADIUS` scan with no line-of-sight or fog
-test at all; both now consult `Battle.ai_team_perceives` before chasing an
-enemy not yet in weapon range, leaving combat already in progress untouched.
+Four independent per-unit paths outside the command layer were found to have
+the same gap during review, across two rounds, and closed the same way:
+`Unit._think()`'s auto-advance-on-detect fallback and its
+ranged-fire-at-standoff branch, and `Unit._support_tick`'s own chase and
+ranged-fire branches, each ran every physics tick, picking a target from a
+bare `detection_range`/`SUPPORT_GUARD_RADIUS` scan with no line-of-sight or
+fog test at all; the ranged-fire branches were the sharper miss, since
+`missile_range` can reach well past what fog lets a team see, so a unit could
+loose a visible volley at a target the player's own screen still hides. All
+four now consult `Battle.ai_team_perceives` (via `Unit._enemy_is_perceived`,
+whose own doc comment carries the authoritative, currently-four-entry
+call-site list, kept there rather than duplicated in prose that can drift)
+before chasing or firing on an enemy not yet in weapon range, leaving combat
+already in progress untouched.
 The grep-based regression test this section's "The invariant" subsection
-calls for lives in `test/unit/test_battle_ai_fog.gd`.
+calls for -- extended during review to also forbid a direct `Battle`
+instance field access, not just a direct group lookup -- lives in
+`test/unit/test_battle_ai_fog.gd`, alongside fog-on/fog-off coverage for
+each of the four per-unit paths above.
 Team-wide, not commander-scoped: every level of one team's chain reads the
 same set this AI tick, matching this document's own "Phase 3 below
 implements the team-wide view first and the commander-scoped narrowing
@@ -913,11 +923,12 @@ unit's perception, and reacts on the first decision tick after it does; no AI
 code path reads unfogged state; determinism on replay is preserved with fog
 active.
 **Met** -- `test/unit/test_battle_ai_fog.gd`, including a fixed-seed
-replay-determinism check under fog and coverage for two independent per-unit
-paths found during review to bypass the command layer's own fog gate
-entirely (`Unit._think()`'s auto-advance-on-detect fallback and
-`Unit._support_tick`'s threat-chase branch, both closed the same way -- see
-the "Implementation status" update above).
+replay-determinism check under fog and fog-on/fog-off coverage for each of
+four independent per-unit paths found during review, across two rounds, to
+bypass the command layer's own fog gate entirely (`Unit._think()`'s
+auto-advance-on-detect fallback and ranged-fire-at-standoff branch, and
+`Unit._support_tick`'s own chase and ranged-fire branches -- all four closed
+the same way; see the "Implementation status" update above).
 Add a grep-based regression test that the four AI scripts contain no direct
 group lookups, and an interposition test that inserting the still-omniscient
 `CommanderView` leaves a fixed-seed replay byte-identical.

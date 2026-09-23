@@ -1998,17 +1998,21 @@ var _ai_perceives_cache_tick: int = -1
 ## _ai_perceptible_units(team)'s own enemy subset (see that function's doc comment for the
 ## exact rule -- the SAME Perception.visible_enemy_uids test either way).
 ##
-## The one caller is Unit._think()'s auto-advance-on-detect fallback (scripts/Unit.gd): that
-## per-unit, every-physics-tick branch marches an idle AI-driven unit toward the nearest
-## enemy within its own bare detection_range (UnitTargeting.nearest_enemy_to, no LOS or fog
-## test at all) whenever nothing is already in weapon range. _ai_perceptible_units above
-## closes the command-level AI's own omniscient reads (General/Subcommander/UnitLeader,
-## decided once per ai_period), but this per-unit fallback runs independently, every tick, and
-## was a real remaining omniscient backdoor phase 5 otherwise left open. Routing it through
-## the same perception test here closes it without touching combat already in progress
-## (melee resolution stays soldier-level and unfogged, per docs/fog-of-war-design.md's own
-## "soldier-level combat stays unfogged" rule -- this function is never consulted once an
-## enemy is already in contact range, only for the not-yet-engaged chase decision).
+## The direct caller is Unit._enemy_is_perceived (scripts/Unit.gd), a thin duck-typed wrapper
+## Unit reaches this through since Battle.gd has no class_name (see Unit._owning_battle's own
+## doc comment for why Unit.gd cannot preload Battle.gd back). Read that wrapper's own doc
+## comment and its OWN call sites for the current, authoritative list of what it gates --
+## deliberately not enumerated here, so this comment can't go stale the way it already has
+## once: it previously named a single caller (the auto-advance-on-detect fallback) and silently
+## went wrong the moment a second one (a ranged-fire branch) was added beside it.
+## In general: every per-unit, every-physics-tick decision that would otherwise pick a target
+## from an unfogged bare-radius scan (UnitTargeting.nearest_enemy_to or similar, no LOS or fog
+## test at all) BEFORE that target is actually in weapon range -- closing the same class of
+## omniscient backdoor _ai_perceptible_units above closes at the command level
+## (General/Subcommander/UnitLeader, decided once per ai_period), but for paths that run
+## independently of that cadence. Combat already in progress is never gated: melee/missile
+## resolution against a target already in weapon range stays soldier-level and unfogged, per
+## docs/fog-of-war-design.md's own "soldier-level combat stays unfogged" rule.
 func ai_team_perceives(team: int, enemy: UnitRef) -> bool:
 	if enemy == null:
 		return false

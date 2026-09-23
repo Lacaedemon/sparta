@@ -89,15 +89,21 @@ it instead of an unfiltered group query, and `UnitLeader.decide`'s own
 advance/attack fallback (which used to bypass `all_units` entirely and
 re-query the live groups directly through `UnitTargeting.nearest_enemy_to`)
 now searches only the caller's own array (`UnitLeader._nearest_enemy_in`).
-A second, independent unfogged path was found and closed the same way during
-review: `Unit._think()`'s auto-advance-on-detect fallback and
-`Unit._support_tick`'s threat-chase branch each ran every physics tick
-(not gated by the AI decision cadence at all) and picked a target from a
-bare `detection_range`/`SUPPORT_GUARD_RADIUS` scan with no line-of-sight or
-fog test; both now consult `Battle.ai_team_perceives` (`Unit.
-_enemy_is_perceived`) before chasing an enemy not yet in weapon range,
-leaving combat already in progress untouched (soldier-level combat stays
-unfogged, per `docs/fog-of-war-design.md`).
+Independent unfogged paths were found and closed the same way during
+review, across two rounds: `Unit._think()`'s auto-advance-on-detect
+fallback and ranged-fire-at-standoff branch, and `Unit._support_tick`'s
+own chase and ranged-fire branches, each ran every physics tick (not gated
+by the AI decision cadence at all) and picked a target from a bare
+`detection_range`/`SUPPORT_GUARD_RADIUS` scan with no line-of-sight or fog
+test; the ranged-fire branches were the sharper miss, since firing is a
+visible tell (a volley loosed at a unit the player's own screen still
+hides) and `missile_range` can reach well past what fog actually lets a
+team see. All four now consult `Battle.ai_team_perceives` (`Unit.
+_enemy_is_perceived`, which carries the authoritative, currently-four-entry
+call-site list in its own doc comment) before chasing or firing on an
+enemy not yet in weapon range, leaving combat already in progress
+untouched (soldier-level combat stays unfogged, per
+`docs/fog-of-war-design.md`).
 Deliberately still no formal `CommanderView` type -- the caller's array
 remains the interface, exactly as it was for the omniscient implementation,
 so this phase really is the swap-not-a-retrofit the design intended.
@@ -602,11 +608,14 @@ friendly unit's perception, and reacts on the first decision tick after it
 does -- met, `test/unit/test_battle_ai_fog.gd`.
 No AI code path reads unfogged state (enforced by the interface being
 the only door) -- met for the four command scripts (a grep-based regression
-test) and, discovered and closed during review, for two independent per-unit
-paths that ran outside the command layer entirely
-(`Unit._think()`'s auto-advance-on-detect fallback and
-`Unit._support_tick`'s threat-chase branch, both gated through
-`Battle.ai_team_perceives` now).
+test that also forbids a direct `Battle` instance field access) and,
+discovered and closed during review across two rounds, for four independent
+per-unit paths that ran outside the command layer entirely: `Unit._think()`'s
+auto-advance-on-detect fallback and ranged-fire-at-standoff branch, and
+`Unit._support_tick`'s own chase and ranged-fire branches -- all four gated
+through `Battle.ai_team_perceives` now, whose caller list is enumerated (and
+kept current) in `Unit._enemy_is_perceived`'s own doc comment rather than
+here, to avoid this description drifting out of sync with the code again.
 Determinism on replay is preserved with fog active -- met,
 `test_ai_decisions_replay_identically_with_fog_active`.
 

@@ -2458,16 +2458,28 @@ func _start_attack_cd(baseline_interval: float) -> void:
 		_attack_cd = baseline_interval
 
 
-## Whether `enemy` is a valid target for the auto-advance-on-detect fallback below: true
+## Whether `enemy` is a valid target for a not-yet-engaged per-unit decision: true
 ## unconditionally when there is no owning battle to ask (a bare unit built outside a battle
 ## scene, or an owner that predates ai_team_perceives -- both treated as "no gate", matching
 ## the historical unfogged behaviour) or when the owning battle itself is unfogged (its own
 ## ai_team_perceives already returns true for that case); otherwise delegates to the owning
 ## Battle's ai_team_perceives(team, enemy) -- the SAME Perception-based test Battle.
 ## _ai_perceptible_units uses for the command-level AI (General/Subcommander/UnitLeader), so
-## this per-unit fallback can no longer see an enemy the command layer itself couldn't.
+## none of this function's own callers can see an enemy the command layer itself couldn't.
 ## Duck-typed via has_method rather than a static Battle type -- see _owning_battle's own
 ## doc comment for why Unit.gd cannot safely preload Battle.gd.
+##
+## THE authoritative call-site list (Battle.ai_team_perceives' own doc comment points back
+## here rather than duplicating it, to avoid the two drifting apart the way this comment
+## itself once did when it named only one caller):
+## - _think()'s ranged-fire-at-standoff branch (loose a volley at a not-yet-melee target).
+## - _think()'s auto-advance-on-detect fallback (march on a merely-detected target).
+## - _support_tick's ranged-fire branch (a SUPPORT-stance unit firing on its ward's threat).
+## - _support_tick's chase branch (closing on that threat to melee).
+## Deliberately NOT a caller: every in-contact/in-weapon-range combat resolution branch in
+## this file (soldier-level combat stays unfogged, per docs/fog-of-war-design.md). Sweep any
+## NEW not-yet-engaged targeting decision added to this file against this same list -- and
+## add it here -- rather than assuming _enemy_is_perceived's existence alone covers it.
 func _enemy_is_perceived(enemy: Unit) -> bool:
 	if _owning_battle == null or not _owning_battle.has_method("ai_team_perceives"):
 		return true
@@ -2739,9 +2751,22 @@ func _think(delta: float) -> void:
 		# to fire under a plain move order -- see ORDER_MARCH_TO_CONTACT's own doc comment
 		# for why has_move_target is deliberately left untouched (the march resumes on its
 		# own once the fight ends).
+		# Also gated by _enemy_is_perceived(enemy): `enemy` (current_target/nearest_enemy,
+		# above) is a bare detection_range scan with no LOS or fog test, and missile_range
+		# can reach past what this unit's own side currently perceives under fog -- without
+		# this, an idle unit would loose VISIBLE volleys at (and enter FIGHTING against) a
+		# target none of its side has sighted, the same tell Unit._support_tick's own ranged
+		# branch closes (see that function's doc comment). Melee-in-contact below is
+		# unaffected -- soldier-level combat stays unfogged once bodies are touching. With
+		# fog off, _enemy_is_perceived is unconditionally true, so this branch is unchanged
+		# from before phase 5; applies uniformly to both teams (a player-controlled ranged
+		# unit gets the identical treatment, so it cannot snipe blind past its own player's
+		# fog-restricted screen either -- the check is symmetric by construction, not an
+		# AI-only carve-out).
 		if is_ranged and has_missile_ammo() and not in_contact and dist_sq <= missile_range * missile_range \
 				and (target_enemy != null or not has_move_target or chasing \
-					or order_mode == ORDER_MARCH_TO_CONTACT):
+					or order_mode == ORDER_MARCH_TO_CONTACT) \
+				and _enemy_is_perceived(enemy):
 			state = State.FIGHTING
 			# Commit the auto-acquired foe so next tick's current_target() returns it
 			# instead of re-running nearest_enemy() from scratch -- see the melee branch's
@@ -3063,31 +3088,33 @@ func _support_tick(delta: float) -> void:
 		var dist_sq: float = position.distance_squared_to(threat.position)
 		var contact_dist: float = attack_range + RADIUS + threat.RADIUS
 		var in_contact: bool = dist_sq <= contact_dist * contact_dist
-		if is_ranged and has_missile_ammo() and not in_contact and dist_sq <= missile_range * missile_range:
-			state = State.FIGHTING
-			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
-				_attack_cd = missile_interval
-				UnitCombat.shoot(self, threat)
-			return
 		if in_contact:
 			state = State.FIGHTING
 			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
 				_attack_cd = melee_attack_interval()
 				UnitCombat.strike(self, threat)
 			return
-		# Threat out of weapon range: chase it, but only when this unit's own side
-		# currently perceives it (_enemy_is_perceived) -- the same fog-of-war gate
-		# Unit._think()'s auto-advance-on-detect fallback uses, and for the same reason:
-		# nearest_enemy_to above is a bare-radius scan of the live groups with no LOS or
-		# fog test at all, so an AI-driven supporter (a SUPPORT stance an AI subcommander
-		# can issue) would otherwise peel off toward a threat none of its own side has
-		# actually sighted. A threat already in weapon range above is unaffected --
-		# soldier-level combat stays unfogged either way, matching every other in-range
-		# branch in this file. With fog off, _enemy_is_perceived is unconditionally true,
-		# so this branch is unchanged from before phase 5. An unperceived threat falls
-		# through to the "shadow the ward" behaviour below instead, exactly as if none had
-		# been detected at all.
+		# Threat not yet in melee contact: fire at standoff (ranged) or chase it (closing to
+		# melee), but only when this unit's own side currently perceives it
+		# (_enemy_is_perceived) -- the same fog-of-war gate Unit._think()'s
+		# auto-advance-on-detect fallback uses, and for the same reason: nearest_enemy_to
+		# above is a bare-radius scan of the live groups with no LOS or fog test at all, so an
+		# AI-driven supporter (a SUPPORT stance an AI subcommander can issue) would otherwise
+		# fire VISIBLE volleys at, or peel off to chase, a threat none of its own side has
+		# actually sighted -- a starker tell for the ranged case specifically, since
+		# missile_range can reach well past what the team's fog-restricted sight covers. In
+		# contact above is unaffected -- soldier-level combat stays unfogged once bodies are
+		# actually touching, matching every other in-range branch in this file. With fog off,
+		# _enemy_is_perceived is unconditionally true, so this whole block is unchanged from
+		# before phase 5. An unperceived threat falls through to the "shadow the ward"
+		# behaviour below instead, exactly as if none had been detected at all.
 		if _enemy_is_perceived(threat):
+			if is_ranged and has_missile_ammo() and dist_sq <= missile_range * missile_range:
+				state = State.FIGHTING
+				if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
+					_attack_cd = missile_interval
+					UnitCombat.shoot(self, threat)
+				return
 			# Settle a dangling re-face first so the frozen body arrival releases before
 			# the march (the turn re-arms on the next contact).
 			if _engage_turn_target != Vector2.ZERO:

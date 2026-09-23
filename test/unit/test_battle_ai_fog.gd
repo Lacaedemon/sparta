@@ -327,6 +327,149 @@ func test_idle_ai_unit_still_auto_advances_on_a_detected_enemy_when_fog_is_off()
 		"fog off: the watcher still auto-advances on the detected enemy, exactly as before phase 5")
 
 
+# --- the same gate also covers RANGED FIRE, not just chase/movement --------------------
+#
+# Coordinator review: Unit._think()'s own ranged-fire-at-standoff branch, and
+# Unit._support_tick's ranged branch, each pick a missile target from the same unfogged,
+# bare-radius scan (detection_range / SUPPORT_GUARD_RADIUS respectively) the chase branches
+# above use -- and firing is a STARKER tell than marching, since missile_range can reach
+# well past what the team's fog-restricted sight covers: a visible volley at a unit the
+# player's own screen still hides. Both are now gated by _enemy_is_perceived exactly like
+# the chase branches.
+
+
+func test_idle_ranged_ai_unit_does_not_fire_on_a_detected_but_unperceived_enemy() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var watcher: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	# Set BEFORE the first physics tick, same reasoning as the auto-advance test above.
+	watcher.sight_range = SHRUNK_SIGHT
+	assert_false(battle.ai_team_perceives(1, enemy),
+		"sanity check on the staged distances: team 1 does not perceive this enemy")
+	assert_lt(watcher.position.distance_to(enemy.position), watcher.missile_range,
+		"sanity check: the enemy is still within the archer's own missile_range")
+	var start_pos: Vector2 = watcher.position
+
+	for _i in range(SETTLE_TICKS):
+		await get_tree().physics_frame
+
+	assert_almost_eq(watcher.position.distance_to(start_pos), 0.0, 0.5,
+		"fog on: the archer holds position instead of chasing (the chase branch's own gate)")
+	assert_ne(watcher.state, Unit.State.FIGHTING,
+		"fog on, enemy within missile_range but unperceived: the archer never enters FIGHTING, " +
+		"so it never fires (UnitCombat.shoot is only reached from inside the FIGHTING branch)")
+	assert_null(watcher.current_order,
+		"no command-level order was issued for this either -- team 1's own fog-restricted " +
+		"sight never covered this enemy at any AI decision tick")
+
+
+func test_idle_ranged_ai_unit_still_fires_on_a_detected_enemy_when_fog_is_off() -> void:
+	# The mirror check for fog OFF: the identical staging still fires, because
+	# ai_team_perceives is unconditionally true with fog off -- this branch is byte-for-byte
+	# the pre-phase-5 behaviour.
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var watcher: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	watcher.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+	assert_true(battle.ai_team_perceives(1, enemy),
+		"sanity check: fog off means ai_team_perceives is unconditionally true regardless of sight")
+
+	for _i in range(SETTLE_TICKS):
+		await get_tree().physics_frame
+
+	assert_eq(watcher.state, Unit.State.FIGHTING,
+		"fog off: the archer still fires on the detected enemy, exactly as before phase 5")
+
+
+## _support_tick is called directly here (bypassing the live command-level AI loop
+## entirely) so the test isolates the SUPPORT-stance ranged branch itself: a real command-
+## level AI tick for this unit would freely reissue an ordinary attack/chase order over top
+## of a directly-set order_mode/support_target, which the queue-driven SUPPORT order path
+## (Battle._apply_order_cmd's SUPPORT branch, exercised elsewhere) does not have to contend
+## with in the same way. Matches this file's own convention of calling a private tick
+## function directly (see test_fog_of_war.gd's battle._tick_fog() calls).
+func test_support_stance_ranged_unit_does_not_fire_on_a_detected_but_unperceived_threat() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},   # ward
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x + 30.0, "y": WATCHER_POS.y, "ammo": 5},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var team1: Array = _team_units(1)
+	var ward: Unit = team1[0]
+	var supporter: Unit = team1[1]
+	var threat: Unit = _team_units(0)[0]
+	for u in team1:
+		u.sight_range = SHRUNK_SIGHT
+	assert_false(battle.ai_team_perceives(1, threat),
+		"sanity check on the staged distances: team 1 does not perceive this threat")
+	assert_lt(ward.position.distance_to(threat.position), Unit.SUPPORT_GUARD_RADIUS,
+		"sanity check: the threat is still within SUPPORT_GUARD_RADIUS of the ward")
+	assert_lt(supporter.position.distance_to(threat.position), supporter.missile_range,
+		"sanity check: the threat is still within the supporter's own missile_range")
+	supporter.order_mode = Unit.ORDER_SUPPORT
+	supporter.support_target = ward
+	var start_ammo: int = supporter.missile_ammo
+	var start_pos: Vector2 = supporter.position
+
+	for _i in range(30):
+		supporter._support_tick(1.0 / 60.0)
+
+	assert_eq(supporter.missile_ammo, start_ammo,
+		"fog on, threat within SUPPORT_GUARD_RADIUS but unperceived: the supporter never fires")
+	assert_ne(supporter.state, Unit.State.FIGHTING,
+		"fog on: the supporter never enters FIGHTING against the unperceived threat")
+	assert_lt(supporter.position.distance_to(start_pos), Unit.SUPPORT_FOLLOW_DISTANCE,
+		"fog on: the supporter shadows its ward (already within follow distance) rather than " +
+		"chasing the threat -- it does not close on the threat's own position")
+
+
+func test_support_stance_ranged_unit_still_fires_on_a_detected_threat_when_fog_is_off() -> void:
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},   # ward
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x + 30.0, "y": WATCHER_POS.y, "ammo": 5},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var team1: Array = _team_units(1)
+	var ward: Unit = team1[0]
+	var supporter: Unit = team1[1]
+	var threat: Unit = _team_units(0)[0]
+	for u in team1:
+		u.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+	assert_true(battle.ai_team_perceives(1, threat),
+		"sanity check: fog off means ai_team_perceives is unconditionally true regardless of sight")
+	supporter.order_mode = Unit.ORDER_SUPPORT
+	supporter.support_target = ward
+	var start_ammo: int = supporter.missile_ammo
+
+	for _i in range(30):
+		supporter._support_tick(1.0 / 60.0)
+
+	assert_lt(supporter.missile_ammo, start_ammo,
+		"fog off: the supporter still fires on the detected threat, exactly as before phase 5")
+
+
 # --- determinism: the fogged view is a pure function of serialized sim state ----------
 
 
