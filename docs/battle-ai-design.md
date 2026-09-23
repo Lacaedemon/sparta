@@ -1,9 +1,11 @@
 # Design note: chain-of-command battle AI
 
-Status: **historical design note -- phases 1-5 shipped. Phase 5 shipped its
-team-wide half only (see "Implementation status" below); commander-scoped
-narrowing, up-the-chain report propagation, and last-known-contact memory
-for the AI are deferred, tracked as their own follow-ups.**
+Status: **historical design note -- phases 1-5 shipped.
+Phase 5 shipped its team-wide half only
+(see "Implementation status" below);
+commander-scoped narrowing, up-the-chain report propagation,
+and last-known-contact memory for the AI are deferred,
+tracked as their own follow-ups.**
 
 Every date in this document is Pacific, including ones translated from a
 GitHub timestamp, which the API reports in UTC.
@@ -89,37 +91,42 @@ it instead of an unfiltered group query, and `UnitLeader.decide`'s own
 advance/attack fallback (which used to bypass `all_units` entirely and
 re-query the live groups directly through `UnitTargeting.nearest_enemy_to`)
 now searches only the caller's own array (`UnitLeader._nearest_enemy_in`).
-Independent unfogged paths were found and closed the same way during
-review, across two rounds: `Unit._think()`'s auto-advance-on-detect
-fallback and ranged-fire-at-standoff branch, and `Unit._support_tick`'s
-own chase and ranged-fire branches, each ran every physics tick (not gated
-by the AI decision cadence at all) and picked a target from a bare
-`detection_range`/`SUPPORT_GUARD_RADIUS` scan with no line-of-sight or fog
-test; the ranged-fire branches were the sharper miss, since firing is a
-visible tell (a volley loosed at a unit the player's own screen still
-hides) and `missile_range` can reach well past what fog actually lets a
-team see. Despite this document's own AI framing, three of those four
-branches are not AI-exclusive: only the auto-advance-on-detect fallback is
-actually gated to the AI-driven army (`auto_advance_on_detect`); the
-ranged-fire and `_support_tick` branches run identically for a
-player-commanded unit, a deliberate symmetric choice (see
-`docs/fog-of-war-design.md`'s own "What the AI can see" update for why).
-All four now consult `Battle.ai_team_perceives` (`Unit.
-_enemy_is_perceived`, which lists the four gated branches in its own doc
-comment) before chasing, or firing a standoff volley, on an
-enemy not yet in MELEE contact -- leaving combat already in melee contact
-untouched (soldier-level melee-contact combat stays unfogged, per
-`docs/fog-of-war-design.md`; missile fire at standoff is itself one of the
-four gated branches, not exempt the same way).
-Deliberately still no formal `CommanderView` type -- the caller's array
-remains the interface, exactly as it was for the omniscient implementation,
+Independent unfogged paths were found and closed the same way during review,
+across two rounds:
+`Unit._think()`'s auto-advance-on-detect fallback and ranged-fire-at-standoff branch,
+and `Unit._support_tick`'s own chase and ranged-fire branches,
+each ran every physics tick (not gated by the AI decision cadence at all)
+and picked a target from a bare `detection_range`/`SUPPORT_GUARD_RADIUS` scan
+with no line-of-sight or fog test;
+the ranged-fire branches were the sharper miss,
+since firing is a visible tell
+(a volley loosed at a unit the player's own screen still hides)
+and `missile_range` can reach well past what fog actually lets a team see.
+Despite this document's own AI framing,
+three of those four branches are not AI-exclusive:
+only the auto-advance-on-detect fallback is actually gated to the AI-driven army
+(`auto_advance_on_detect`);
+the ranged-fire and `_support_tick` branches run identically for a player-commanded unit,
+a deliberate symmetric choice
+(see `docs/fog-of-war-design.md`'s own "What the AI can see" update for why).
+All four now consult `Battle.ai_team_perceives`
+(`Unit._enemy_is_perceived`, which lists the four gated branches in its own doc comment)
+before chasing, or firing a standoff volley,
+on an enemy not yet in MELEE contact --
+leaving combat already in melee contact untouched
+(soldier-level melee-contact combat stays unfogged, per `docs/fog-of-war-design.md`;
+missile fire at standoff is itself one of the four gated branches,
+not exempt the same way).
+Deliberately still no formal `CommanderView` type --
+the caller's array remains the interface,
+exactly as it was for the omniscient implementation,
 so this phase really is the swap-not-a-retrofit the design intended.
-Two pieces of the original design sketch remain unbuilt and are tracked as
-follow-ups rather than blocking #588's own acceptance test: commander-scoped
-narrowing and up-the-chain report propagation
-([#1625](https://github.com/Lacaedemon/sparta/issues/1625)), and AI
-reasoning over a `last_known` stale contact rather than only current
-perception ([#1626](https://github.com/Lacaedemon/sparta/issues/1626)).
+Two pieces of the original design sketch remain unbuilt
+and are tracked as follow-ups rather than blocking #588's own acceptance test:
+commander-scoped narrowing and up-the-chain report propagation
+([#1625](https://github.com/Lacaedemon/sparta/issues/1625)),
+and AI reasoning over a `last_known` stale contact rather than only current perception
+([#1626](https://github.com/Lacaedemon/sparta/issues/1626)).
 
 **Why #588 spent over two weeks closed:** it was closed mechanically, not
 because anything shipped. #588 closed at the same moment
@@ -590,54 +597,66 @@ delegated group in a replay behaves identically on re-run.
 2026-09-02 and reopened on 2026-09-19 -- see "Implementation status" above
 for why, and for what shipped.
 
-**Scope.** Swap the omniscient placeholder implementation of the perception
-interface for the fogged view, when fog of war (#414, battle side) lands.
+**Scope.**
+Swap the omniscient placeholder implementation of the perception interface
+for the fogged view,
+when fog of war (#414, battle side) lands.
 Every command level reads the same fogged information the player gets.
-**As shipped:** every level of one team's chain reads the SAME team-wide
-fogged view this AI tick (`Battle._ai_perceptible_units`) -- the acceptance
-criteria below only need a team ever perceiving the enemy, not which of its
-own units did. **Deferred, per the original design's own sequencing ("team-
-wide fogged view first; commander-scoped narrowing plus report propagation
-second," `docs/fog-of-war-design.md`):** subordinate reports as the way
-information legitimately travels up the chain (a general reacting to a
-flanking force *because a unit saw it*, rather than because the team overall
-perceives it) is [#1625](https://github.com/Lacaedemon/sparta/issues/1625);
-AI reasoning over a stale `last_known` contact once it drops out of current
-perception is [#1626](https://github.com/Lacaedemon/sparta/issues/1626).
+**As shipped:** every level of one team's chain reads the SAME team-wide fogged view this AI tick
+(`Battle._ai_perceptible_units`) --
+the acceptance criteria below only need a team ever perceiving the enemy,
+not which of its own units did.
+**Deferred, per the original design's own sequencing
+("team-wide fogged view first;
+commander-scoped narrowing plus report propagation second,"
+`docs/fog-of-war-design.md`):**
+subordinate reports as the way information legitimately travels up the chain
+(a general reacting to a flanking force *because a unit saw it*,
+rather than because the team overall perceives it)
+is [#1625](https://github.com/Lacaedemon/sparta/issues/1625);
+AI reasoning over a stale `last_known` contact once it drops out of current perception
+is [#1626](https://github.com/Lacaedemon/sparta/issues/1626).
 
 **Dependencies.** Phase 1 (#584) for the interface; #414 for fog of war
 itself. (Phases 2-4 don't gate this -- the swap covers whatever levels exist
 when it lands.)
 
-**Acceptance criteria.** An explicit "AI honors fog of war" test: an AI
-general cannot react to an unseen flanking force until it enters some
-friendly unit's perception, and reacts on the first decision tick after it
-does -- met, `test/unit/test_battle_ai_fog.gd`.
-No AI code path reads unfogged state (enforced by the interface being
-the only door) -- met for the four command scripts (a grep-based regression
-test that also forbids a direct `Battle` instance field access) and,
-discovered and closed during review across two rounds, for four independent
-per-unit paths that ran outside the command layer entirely: `Unit._think()`'s
-auto-advance-on-detect fallback and ranged-fire-at-standoff branch, and
-`Unit._support_tick`'s own chase and ranged-fire branches -- all four gated
-through `Battle.ai_team_perceives` now, whose caller list is enumerated (and
-kept current) in `Unit._enemy_is_perceived`'s own doc comment rather than
-here, to avoid this description drifting out of sync with the code again.
-**One disclosed exception, left deliberately ungated:** once a unit
-commits to an explicit attack order (`target_enemy` set, whether by a
-player click or an AI-issued command that was itself correctly fogged at
-the moment it was decided), `Unit._think()`'s own chase-an-explicit-target
-branch keeps closing on that target's current live position every tick
-with no further perception re-check, so a unit can keep chasing a target
-that has since slipped out of its side's own current perception. Gating
-this naively would also break off a player's own already-issued attack
-order the instant perception lapses -- a real design question (recall the
-order, or trust the last position reported?) that needs the same
-last-known-contact memory this design's perception layer does not yet
-have, tracked as [#1626](https://github.com/Lacaedemon/sparta/issues/1626)
+**Acceptance criteria.**
+An explicit "AI honors fog of war" test:
+an AI general cannot react to an unseen flanking force
+until it enters some friendly unit's perception,
+and reacts on the first decision tick after it does --
+met, `test/unit/test_battle_ai_fog.gd`.
+No AI code path reads unfogged state
+(enforced by the interface being the only door) --
+met for the four command scripts
+(a grep-based regression test that also forbids a direct `Battle` instance field access)
+and, discovered and closed during review across two rounds,
+for four independent per-unit paths that ran outside the command layer entirely:
+`Unit._think()`'s auto-advance-on-detect fallback and ranged-fire-at-standoff branch,
+and `Unit._support_tick`'s own chase and ranged-fire branches --
+all four gated through `Battle.ai_team_perceives` now,
+whose caller list is enumerated (and kept current) in `Unit._enemy_is_perceived`'s own doc comment
+rather than here,
+to avoid this description drifting out of sync with the code again.
+**One disclosed exception, left deliberately ungated:**
+once a unit commits to an explicit attack order
+(`target_enemy` set, whether by a player click
+or an AI-issued command that was itself correctly fogged at the moment it was decided),
+`Unit._think()`'s own chase-an-explicit-target branch
+keeps closing on that target's current live position every tick
+with no further perception re-check,
+so a unit can keep chasing a target
+that has since slipped out of its side's own current perception.
+Gating this naively would also break off a player's own already-issued attack order
+the instant perception lapses --
+a real design question
+(recall the order, or trust the last position reported?)
+that needs the same last-known-contact memory this design's perception layer does not yet have,
+tracked as [#1626](https://github.com/Lacaedemon/sparta/issues/1626)
 alongside commander-scoped narrowing.
-Determinism on replay is preserved with fog active -- met,
-`test_ai_decisions_replay_identically_with_fog_active`.
+Determinism on replay is preserved with fog active --
+met, `test_ai_decisions_replay_identically_with_fog_active`.
 
 ## Non-goals
 

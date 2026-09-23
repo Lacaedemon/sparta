@@ -2378,13 +2378,15 @@ Fast cavalry must stay in contact, shadowing routers until they shatter or break
 
 Fog of war is not a player-only handicap, and it is not only about the enemy general's own plans.
 Every AI side --- the enemy general down through its unit leaders, and a delegated group under your own command --- reads exactly the same fogged view fog gives you: a unit it can't currently perceive is a unit it can't currently react to.
-There is no separate, easier ruleset behind the enemy's decisions; the same sight discs, the same terrain occlusion and screening, the same "own units always known" rule apply on both sides.
+There is no separate, easier ruleset behind the enemy's decisions;
+the same sight discs, the same terrain occlusion and screening, the same "own units always known" rule apply on both sides.
 This cuts both ways tactically.
 An unseen flank march genuinely blindsides the enemy general --- it commits to nothing against a threat none of its own units has sighted, and only reacts once contact is made or a unit's own disc reaches the mover.
 The reverse is just as true: an enemy force you cannot see is reasoning about you exactly as blindly, so a screen that denies it sight of your own dispositions is denying it a basis for a plan, not just denying you information about its.
 
 The same rule reaches all the way down to individual units, on **both** sides, not just command-level decisions.
-An idle ranged unit --- yours or the enemy's --- will not loose a volley at a target its own side has not sighted, even one already within its bow's reach; a unit on **Support** stance will not peel off to fire on, or chase down, a threat near its ward until its own side actually perceives that threat.
+An idle ranged unit --- yours or the enemy's --- will not loose a volley at a target its own side has not sighted, even one already within its bow's reach;
+a unit on **Support** stance will not peel off to fire on, or chase down, a threat near its ward until its own side actually perceives that threat.
 Only ONE reflex stays enemy-side only: an idle unit auto-marching toward a merely-detected foe is exclusively how the AI closes distance on its own (your own units always hold formation and wait for an order, fog or no fog, so this specific reflex never applied to you either way).
 Everything else --- who fires, who chases, who enters combat unprompted --- plays by one shared rule: nothing on either side of the field can react to what the fog is hiding from it.
 
