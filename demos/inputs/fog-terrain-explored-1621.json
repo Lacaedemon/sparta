@@ -1,0 +1,16 @@
+{
+  "_comment": "Issue #1621: the terrain explored/unexplored overlay. A lone infantryman marches a long diagonal sweep across open ground (south of the default forest/hill patches, so occlusion never enters into it -- this demo is about explored terrain, not sightlines). At tick 0 the whole field reads dark (unexplored). As the unit advances, the ground directly around it renders normally (currently visible) while the ground it has already left behind stays lit but dimmed (explored, not currently visible) -- never reverting back to dark.",
+  "seed": "1621",
+  "drill": true,
+  "fog_of_war": true,
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 250.0, "y": 1000.0, "facing": [1.0, -0.4] }
+  ],
+  "camera": [
+    { "tick": 0, "x": 800.0, "y": 850.0, "zoom": 0.5 }
+  ],
+  "steps": [
+    { "tick": 8, "click": [250.0, 1000.0] },
+    { "tick": 20, "rmb_click": [1350.0, 700.0] }
+  ]
+}

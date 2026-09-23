@@ -307,3 +307,22 @@ func test_build_snapshot_captures_ghosts_when_present() -> void:
 	assert_eq(snap["ghosts"].size(), 1, "contains one ghost record")
 	assert_eq(snap["ghosts"][0]["uid"], 42, "records the enemy uid")
 
+
+func test_build_snapshot_captures_fog_terrain_when_present() -> void:
+	var overlay = preload("res://scripts/FogOverlay.gd").new()
+	add_child_autofree(overlay)
+	overlay.grid_w = 3
+	overlay.grid_h = 2
+	overlay.cell_size = 40.0
+	overlay.update(PackedByteArray([1, 1, 0, 0, 0, 0]), {0: true})
+	var snap: Dictionary = DemoState.build_snapshot(
+		get_tree(), 50, {}, 1.0, false
+	)
+	assert_true(snap.has("fog_terrain"), "snapshot includes fog_terrain when FogOverlay is present")
+	assert_eq(snap["fog_terrain"]["grid_w"], 3, "records grid_w")
+	assert_eq(snap["fog_terrain"]["grid_h"], 2, "records grid_h")
+	assert_eq(snap["fog_terrain"]["explored_count"], 2, "records the explored cell count")
+	assert_eq(snap["fog_terrain"]["total_cells"], 6, "records the total cell count")
+	assert_eq(snap["fog_terrain"]["visible_now_count"], 1, "records the currently-visible count")
+	assert_true(snap["fog_terrain"]["active"], "records the overlay's active flag")
+

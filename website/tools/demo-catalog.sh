@@ -117,6 +117,7 @@ DEMOS=(
   "trajectory_lob|demos/inputs/trajectory-lob-1567.json|30|60|640|input"
   "far_tier_missile|demos/inputs/far-tier-missile-1567.json|30|60|640|input"
   "fog_terrain_occlusion|demos/inputs/fog-terrain-occlusion-1565.json|30|180|640|input"
+  "fog_terrain_explored|demos/inputs/fog-terrain-explored-1621.json|30|500|720|input"
 )
 
 # The SPARTA_DUMP_CLIPS narrowing helpers (demo_catalog_selected,

@@ -268,6 +268,11 @@ static func build_snapshot(tree: SceneTree, tick: int, order_mode_names: Diction
 		var gl: Node = ghost_nodes[0]
 		if gl != null and is_instance_valid(gl) and gl.has_method("ghost_records"):
 			snap["ghosts"] = gl.ghost_records()
+	var fog_overlay_nodes: Array = tree.get_nodes_in_group("fog_overlay")
+	if not fog_overlay_nodes.is_empty():
+		var fo: Node = fog_overlay_nodes[0]
+		if fo != null and is_instance_valid(fo) and fo.has_method("terrain_stats"):
+			snap["fog_terrain"] = fo.terrain_stats()
 	return snap
 
 

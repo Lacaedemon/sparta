@@ -8,6 +8,7 @@ extends GutTest
 
 const Perception = preload("res://scripts/Perception.gd")
 const FogGhostLayer = preload("res://scripts/FogGhostLayer.gd")
+const FogOverlay = preload("res://scripts/FogOverlay.gd")
 const WorldScale = preload("res://scripts/WorldScale.gd")
 const HUDScript = preload("res://scripts/HUD.gd")
 const BattleScript = preload("res://scripts/Battle.gd")
@@ -1016,3 +1017,225 @@ func test_battle_fog_terrain_occlusion_and_screening() -> void:
 	assert_false(forest_screened.visible, "enemy across forest beyond attenuated sight range is hidden")
 	assert_true(forest_close.visible, "enemy across forest within attenuated sight range is visible")
 	Settings.set_fog_of_war_session(prev_fog)
+
+
+# --- Perception.visible_cells (terrain exploration) -----------------------------------
+
+
+func test_visible_cells_marks_the_observers_own_cell_and_not_a_far_corner() -> void:
+	var o := Vector2(100.0, 100.0)
+	var observer := _unit(1, 0, o, 200.0)
+	var field := Rect2(0.0, 0.0, 400.0, 400.0)
+	var cell_size := 40.0
+	var grid_w := int(ceil(field.size.x / cell_size))
+	var grid_h := int(ceil(field.size.y / cell_size))
+	var seen: Dictionary = Perception.visible_cells([observer], field, cell_size, grid_w, grid_h)
+	var own_cx := int((o.x - field.position.x) / cell_size)
+	var own_cy := int((o.y - field.position.y) / cell_size)
+	assert_true(seen.has(own_cy * grid_w + own_cx), "the observer's own cell is seen")
+	var far_idx := (grid_h - 1) * grid_w + (grid_w - 1)
+	assert_false(seen.has(far_idx), "the far corner, well outside the 200 wu disc, is not marked")
+
+
+func test_visible_cells_respects_occlusion_and_zero_sight_range() -> void:
+	var o := Vector2(100.0, 100.0)
+	var observer := _unit(1, 0, o, 200.0)
+	var field := Rect2(0.0, 0.0, 400.0, 400.0)
+	var hill_patch := {"rect": Rect2(50.0, 150.0, 300.0, 20.0), "type": "hill", "kind": "block", "sight": "block"}
+	var cell_size := 40.0
+	var grid_w := int(ceil(field.size.x / cell_size))
+	var grid_h := int(ceil(field.size.y / cell_size))
+	var seen: Dictionary = Perception.visible_cells([observer], field, cell_size, grid_w, grid_h, [hill_patch])
+	var blocked_idx := int((250.0 - field.position.y) / cell_size) * grid_w + int((100.0 - field.position.x) / cell_size)
+	assert_false(seen.has(blocked_idx), "a cell behind occluding terrain is not marked, even inside range")
+
+	var blind := _unit(2, 0, o, 0.0)
+	assert_true(Perception.visible_cells([blind], field, cell_size, grid_w, grid_h).is_empty(),
+		"an observer with zero sight range marks no cell")
+
+
+func test_visible_cells_returns_empty_for_a_degenerate_grid() -> void:
+	var observer := _unit(1, 0, Vector2(100.0, 100.0), 200.0)
+	var field := Rect2(0.0, 0.0, 400.0, 400.0)
+	assert_true(Perception.visible_cells([observer], field, 0.0, 10, 10).is_empty(),
+		"a zero cell_size marks no cell")
+	assert_true(Perception.visible_cells([observer], field, -5.0, 10, 10).is_empty(),
+		"a negative cell_size marks no cell")
+	assert_true(Perception.visible_cells([observer], field, 40.0, 0, 10).is_empty(),
+		"a zero grid_w marks no cell")
+	assert_true(Perception.visible_cells([observer], field, 40.0, 10, 0).is_empty(),
+		"a zero grid_h marks no cell")
+
+
+# --- FogOverlay draw --------------------------------------------------------------------
+
+
+func test_fog_overlay_update_activates_and_clear_deactivates() -> void:
+	var overlay: FogOverlay = FogOverlay.new()
+	add_child_autofree(overlay)
+	overlay.field = Rect2(0.0, 0.0, 80.0, 80.0)
+	overlay.cell_size = 40.0
+	overlay.grid_w = 2
+	overlay.grid_h = 2
+	overlay.update(PackedByteArray([1, 0, 1, 1]), {0: true})
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_true(overlay._active, "update() activates the overlay")
+	overlay.clear()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_false(overlay._active, "clear() deactivates the overlay")
+	assert_true(overlay._visible_now.is_empty(), "and drops the currently-visible set")
+
+
+func test_fog_overlay_draws_with_no_grid_without_error() -> void:
+	var overlay: FogOverlay = FogOverlay.new()
+	add_child_autofree(overlay)
+	overlay.update(PackedByteArray(), {})
+	await get_tree().process_frame
+	await get_tree().process_frame
+	pass_test("a zero-size grid draws nothing rather than erroring")
+
+
+## terrain_stats() is the state-dump-facing summary (tools/demo/DemoState.gd's
+## "fog_terrain" key, mirroring FogGhostLayer.ghost_records()'s "ghosts" key) --
+## verify it reports the grid shape, the right explored/visible counts, and the active
+## flag, both while active and after clear().
+func test_fog_overlay_terrain_stats_reports_counts_and_active_flag() -> void:
+	var overlay: FogOverlay = FogOverlay.new()
+	add_child_autofree(overlay)
+	overlay.grid_w = 2
+	overlay.grid_h = 2
+	overlay.cell_size = 40.0
+	overlay.update(PackedByteArray([1, 0, 1, 1]), {0: true, 2: true})
+	var stats: Dictionary = overlay.terrain_stats()
+	assert_true(stats["active"], "active while the overlay is drawing")
+	assert_eq(stats["grid_w"], 2, "grid_w passes through")
+	assert_eq(stats["grid_h"], 2, "grid_h passes through")
+	assert_almost_eq(float(stats["cell_size"]), 40.0, 0.001, "cell_size passes through")
+	assert_eq(stats["explored_count"], 3, "counts the three set bytes in the explored array")
+	assert_eq(stats["total_cells"], 4, "total_cells is grid_w * grid_h")
+	assert_eq(stats["visible_now_count"], 2, "counts the currently-visible set's entries")
+
+	overlay.clear()
+	var cleared_stats: Dictionary = overlay.terrain_stats()
+	assert_false(cleared_stats["active"], "inactive after clear()")
+	assert_eq(cleared_stats["visible_now_count"], 0, "clear() drops the currently-visible set")
+	assert_eq(cleared_stats["explored_count"], 3, "clear() does not touch the explored grid itself")
+
+
+# --- Battle's persistent explored terrain grid ------------------------------------------
+
+
+func test_battle_fog_grid_dims_derive_from_field_and_fog_cell() -> void:
+	var b: Node = load("res://scenes/Battle.tscn").instantiate()
+	add_child_autofree(b)
+	assert_almost_eq(b.fog_cell, BattleScript.DEFAULT_FOG_CELL, 0.001, "fog_cell defaults to DEFAULT_FOG_CELL")
+	assert_eq(b._fog_grid_w, int(ceil(b.field.size.x / b.fog_cell)), "grid width derives from field/fog_cell")
+	assert_eq(b._fog_grid_h, int(ceil(b.field.size.y / b.fog_cell)), "grid height derives from field/fog_cell")
+	assert_eq(b._fog_explored.size(), b._fog_grid_w * b._fog_grid_h, "explored grid sized to grid_w * grid_h")
+	assert_eq(b._fog_explored_remaining, b._fog_grid_w * b._fog_grid_h, "every cell starts unexplored")
+
+
+func test_battle_fog_cell_rejects_nan_and_non_positive() -> void:
+	var b1: Node = load("res://scenes/Battle.tscn").instantiate()
+	b1.fog_cell = NAN
+	add_child_autofree(b1)
+	assert_almost_eq(b1.fog_cell, BattleScript.DEFAULT_FOG_CELL, 0.001, "NAN fog_cell falls back to the default")
+
+	var b2: Node = load("res://scenes/Battle.tscn").instantiate()
+	b2.fog_cell = -5.0
+	add_child_autofree(b2)
+	assert_almost_eq(b2.fog_cell, BattleScript.DEFAULT_FOG_CELL, 0.001,
+		"a non-positive fog_cell falls back to the default")
+
+
+func test_battle_explored_grid_stays_all_unexplored_while_fog_is_off() -> void:
+	var battle := _staged_battle(false)
+	for _k in range(5):
+		await get_tree().physics_frame
+	assert_eq(battle._fog_explored_remaining, battle._fog_grid_w * battle._fog_grid_h,
+		"no cell becomes explored while fog is off")
+	assert_false(battle._fog_overlay._active, "the overlay stays inert (no draw) while fog is off")
+
+
+func test_battle_explored_grid_marks_the_friendlys_own_cell_when_fog_is_on() -> void:
+	var battle := _staged_battle(true)
+	for _k in range(5):
+		await get_tree().physics_frame
+	var cx := int((FRIENDLY_POS.x - battle.field.position.x) / battle.fog_cell)
+	var cy := int((FRIENDLY_POS.y - battle.field.position.y) / battle.fog_cell)
+	var idx: int = cy * battle._fog_grid_w + cx
+	assert_eq(battle._fog_explored[idx], 1, "the cell under the friendly unit is explored")
+	assert_lt(battle._fog_explored_remaining, battle._fog_grid_w * battle._fog_grid_h,
+		"at least one cell has been explored")
+	assert_true(battle._fog_overlay._active, "the overlay becomes active once fog is on")
+
+
+func test_explored_cells_never_revert_and_toggling_fog_off_pauses_rather_than_clears() -> void:
+	var battle := _staged_battle(true)
+	for _k in range(5):
+		await get_tree().physics_frame
+	var cx := int((FRIENDLY_POS.x - battle.field.position.x) / battle.fog_cell)
+	var cy := int((FRIENDLY_POS.y - battle.field.position.y) / battle.fog_cell)
+	var idx: int = cy * battle._fog_grid_w + cx
+	assert_eq(battle._fog_explored[idx], 1, "explored before toggling fog off")
+	var remaining_before: int = battle._fog_explored_remaining
+
+	Settings.set_fog_of_war_session(false)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	assert_eq(battle._fog_explored[idx], 1, "an already-explored cell is never un-explored")
+	assert_eq(battle._fog_explored_remaining, remaining_before,
+		"exploration pauses (does not reset) while fog is off")
+
+	Settings.set_fog_of_war_session(true)
+	await get_tree().physics_frame
+	assert_eq(battle._fog_explored[idx], 1, "still explored once fog is switched back on")
+
+
+func test_capture_and_restore_snapshot_round_trips_the_explored_grid() -> void:
+	var battle := _staged_battle(true)
+	for _k in range(5):
+		await get_tree().physics_frame
+	var cx := int((FRIENDLY_POS.x - battle.field.position.x) / battle.fog_cell)
+	var cy := int((FRIENDLY_POS.y - battle.field.position.y) / battle.fog_cell)
+	var idx: int = cy * battle._fog_grid_w + cx
+	assert_eq(battle._fog_explored[idx], 1, "explored before capture")
+
+	var snap: Dictionary = battle.capture_snapshot()
+	assert_true(snap.has("fog_explored"), "snapshot records the explored grid")
+	assert_true(snap.has("fog_explored_remaining"), "snapshot records the remaining-unexplored count")
+
+	# Corrupt the live grid so restore is proven to actually overwrite it, not merely leave it alone.
+	battle._fog_explored[idx] = 0
+	battle._fog_explored_remaining += 1
+
+	battle.restore_snapshot(snap)
+	assert_eq(battle._fog_explored[idx], 1, "restoring the snapshot re-marks the cell explored")
+	assert_eq(battle._fog_explored_remaining, int(snap["fog_explored_remaining"]),
+		"restoring the snapshot restores the remaining-unexplored count")
+	assert_true(battle._fog_overlay._active, "the overlay is reactivated immediately on restore")
+
+
+## A snapshot whose "fog_explored" array is the wrong SIZE for this battle's live grid
+## (not just missing, which the test above already covers) must never be adopted verbatim
+## -- restore_snapshot reconciles against the live grid dims instead of trusting the
+## snapshot's own size, since _tick_explored's writes index by the live _fog_grid_w/
+## _fog_grid_h with no resize path of their own.
+func test_restore_snapshot_rejects_a_wrong_sized_explored_grid() -> void:
+	var battle := _staged_battle(true)
+	for _k in range(5):
+		await get_tree().physics_frame
+	var snap: Dictionary = battle.capture_snapshot()
+	var mismatched: PackedByteArray = PackedByteArray([1, 1, 1])
+	assert_ne(mismatched.size(), battle._fog_grid_w * battle._fog_grid_h,
+		"the test fixture itself must be the wrong size to prove anything")
+	snap["fog_explored"] = mismatched
+	snap["fog_explored_remaining"] = 0
+
+	battle.restore_snapshot(snap)
+	assert_eq(battle._fog_explored.size(), battle._fog_grid_w * battle._fog_grid_h,
+		"a mismatched snapshot array is replaced by one sized to the live grid")
+	assert_eq(battle._fog_explored_remaining, battle._fog_grid_w * battle._fog_grid_h,
+		"and the remaining-unexplored count falls back to every cell, not the snapshot's stale 0")
