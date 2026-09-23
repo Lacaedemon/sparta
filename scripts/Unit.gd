@@ -2487,10 +2487,24 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ## chase past its own player's fogged screen would itself be a fog-breaking exploit, and one
 ## shared rule is simpler than special-casing which side asked. See
 ## docs/fog-of-war-design.md's "What the AI can see" update for the fuller rationale.
-## Deliberately NOT a caller: every in-contact/in-weapon-range combat resolution branch in
-## this file (soldier-level combat stays unfogged, per docs/fog-of-war-design.md). Sweep any
-## NEW not-yet-engaged targeting decision added to this file against this same list -- and
-## add it here -- rather than assuming _enemy_is_perceived's existence alone covers it.
+## Deliberately NOT a caller: every MELEE-CONTACT combat resolution branch in this file
+## (soldier-level combat already in melee stays unfogged, per docs/fog-of-war-design.md).
+## This is narrower than "in weapon range" -- missile fire at standoff (the ranged-fire
+## branches above) is itself gated even though the target is already within the shooter's
+## own missile_range, precisely because it is not yet in melee contact.
+##
+## Also deliberately not a caller, but for a different reason -- a disclosed exception, not
+## an in-scope combat-resolution branch: _think()'s chase-an-explicit-attack-order branch
+## (target_enemy != null / chasing) closes on a target's CURRENT position every tick once
+## that target has already been committed to, with no re-check of whether it is still
+## perceived. That commitment WAS made through a perception-gated decision at the time (an
+## explicit attack order, player- or AI-issued); this branch just doesn't re-verify it every
+## tick afterward. See that branch's own comment for why (a genuine design question about
+## whether an order should self-cancel on lost perception, not an oversight).
+##
+## Sweep any NEW not-yet-engaged targeting decision added to this file against this same
+## list -- and add it here -- rather than assuming _enemy_is_perceived's existence alone
+## covers it.
 func _enemy_is_perceived(enemy: Unit) -> bool:
 	if _owning_battle == null or not _owning_battle.has_method("ai_team_perceives"):
 		return true
@@ -2882,6 +2896,19 @@ func _think(delta: float) -> void:
 			# contact: chase past any move target. A flank/rear stance closes on the
 			# enemy's side or back instead of head-on, so the strike on arrival lands with
 			# the flank/rear bonus.
+			# A DISCLOSED, deliberately-not-gated exception to _enemy_is_perceived's own
+			# invariant: target_enemy was already committed by an earlier decision that WAS
+			# perception-gated at the time it was made (an explicit attack order, whether
+			# player- or AI-issued), but this branch then keeps closing on that same
+			# target's CURRENT live position every tick with no re-check -- so a unit can
+			# keep chasing a target that has since dropped out of its side's own current
+			# perception (it slipped behind occluding terrain, or the ally that was
+			# granting sight died or moved off). Gating this branch naively would also
+			# break off a player's own already-issued attack order the moment perception
+			# lapses, which is a genuine design question (does a commander recall an order
+			# already given, or trust the last position reported?) rather than a bug to
+			# silently patch here -- it wants the same last-known-contact memory model this
+			# code's own perception layer does not yet have.
 			# If the enemy broke contact mid-turn, settle the re-face first — the unit is
 			# marching after it now, so the frozen arrival must release (the turn resumes on
 			# the next contact when _face_for_action runs again).

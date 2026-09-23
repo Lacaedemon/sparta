@@ -2007,12 +2007,15 @@ var _ai_perceives_cache_tick: int = -1
 ## went wrong the moment a second one (a ranged-fire branch) was added beside it.
 ## In general: every per-unit, every-physics-tick decision that would otherwise pick a target
 ## from an unfogged bare-radius scan (UnitTargeting.nearest_enemy_to or similar, no LOS or fog
-## test at all) BEFORE that target is actually in weapon range -- closing the same class of
+## test at all) BEFORE that target is actually in MELEE contact -- closing the same class of
 ## omniscient backdoor _ai_perceptible_units above closes at the command level
 ## (General/Subcommander/UnitLeader, decided once per ai_period), but for paths that run
-## independently of that cadence. Combat already in progress is never gated: melee/missile
-## resolution against a target already in weapon range stays soldier-level and unfogged, per
-## docs/fog-of-war-design.md's own "soldier-level combat stays unfogged" rule.
+## independently of that cadence. Only melee-contact combat already in progress is exempt:
+## a body already fighting in melee stays soldier-level and unfogged, per docs/fog-of-war-
+## design.md's own "soldier-level combat stays unfogged" rule. Missile fire at STANDOFF is
+## NOT exempt the same way, even against a target already well within the shooter's own
+## missile_range -- if that target is not yet in melee contact, firing on it is itself one of
+## the gated decisions, exactly like a chase.
 ##
 ## Despite the name, `team` is not "the AI's team" -- this takes any team int, including the
 ## player's own (0), and most of its callers deliberately gate a PLAYER-commanded unit too: a

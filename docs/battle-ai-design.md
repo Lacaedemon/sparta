@@ -106,10 +106,11 @@ player-commanded unit, a deliberate symmetric choice (see
 `docs/fog-of-war-design.md`'s own "What the AI can see" update for why).
 All four now consult `Battle.ai_team_perceives` (`Unit.
 _enemy_is_perceived`, which lists the four gated branches in its own doc
-comment) before chasing or firing on an
-enemy not yet in weapon range, leaving combat already in progress
-untouched (soldier-level combat stays unfogged, per
-`docs/fog-of-war-design.md`).
+comment) before chasing, or firing a standoff volley, on an
+enemy not yet in MELEE contact -- leaving combat already in melee contact
+untouched (soldier-level melee-contact combat stays unfogged, per
+`docs/fog-of-war-design.md`; missile fire at standoff is itself one of the
+four gated branches, not exempt the same way).
 Deliberately still no formal `CommanderView` type -- the caller's array
 remains the interface, exactly as it was for the omniscient implementation,
 so this phase really is the swap-not-a-retrofit the design intended.
@@ -622,6 +623,19 @@ auto-advance-on-detect fallback and ranged-fire-at-standoff branch, and
 through `Battle.ai_team_perceives` now, whose caller list is enumerated (and
 kept current) in `Unit._enemy_is_perceived`'s own doc comment rather than
 here, to avoid this description drifting out of sync with the code again.
+**One disclosed exception, left deliberately ungated:** once a unit
+commits to an explicit attack order (`target_enemy` set, whether by a
+player click or an AI-issued command that was itself correctly fogged at
+the moment it was decided), `Unit._think()`'s own chase-an-explicit-target
+branch keeps closing on that target's current live position every tick
+with no further perception re-check, so a unit can keep chasing a target
+that has since slipped out of its side's own current perception. Gating
+this naively would also break off a player's own already-issued attack
+order the instant perception lapses -- a real design question (recall the
+order, or trust the last position reported?) that needs the same
+last-known-contact memory this design's perception layer does not yet
+have, tracked as [#1626](https://github.com/Lacaedemon/sparta/issues/1626)
+alongside commander-scoped narrowing.
 Determinism on replay is preserved with fog active -- met,
 `test_ai_decisions_replay_identically_with_fog_active`.
 
