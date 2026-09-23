@@ -552,13 +552,30 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 		# fallback, matching this function's behaviour before any of this
 		# axis machinery existed.
 		corridor_axis = heading
+	# The corridor point that FIXES route_side is the nearest one with a
+	# NONZERO cross, not simply the nearest point outright: the nearest
+	# point can itself land exactly on the axis line through `centre` (its
+	# cross reads 0.0, "no preference") purely by coincidence of where that
+	# one point happens to sit, while a farther path point still carries a
+	# real, informative side. Skipping a zero-cross point costs nothing --
+	# it was never going to filter anything on its own -- and can only make
+	# route_side MORE informative, never less. When EVERY path point is
+	# collinear with centre (the corridor's own two endpoints define the
+	# axis, so if they -- or the whole straight-line corridor -- sit on
+	# that line, so does everything else on it), no point can rescue it and
+	# route_side correctly stays 0.0: a fully axis-degenerate corridor has
+	# no side to prefer, the same "no preference" semantics the empty-path
+	# case already pins intentionally.
 	var route_side: float = 0.0
 	var nearest_d: float = INF
 	for p in path:
+		var side: float = signf(corridor_axis.cross(p - centre))
+		if side == 0.0:
+			continue
 		var d: float = _distance_to_rect(p, rect)
 		if d < nearest_d:
 			nearest_d = d
-			route_side = signf(corridor_axis.cross(p - centre))
+			route_side = side
 	var best: Vector2 = Vector2.INF
 	var best_cost: float = INF
 	for raw_c in [grown.position, Vector2(grown.end.x, grown.position.y),
