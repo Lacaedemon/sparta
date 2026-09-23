@@ -508,3 +508,66 @@ func test_funnel_corner_route_side_is_stable_under_sub_unit_position_drift() -> 
 		"the funnel must steer for the south-west corner, not the (side-inverted) north one")
 	assert_gt(step_a.y, hill.get_center().y,
 		"the chosen corner is on the correct (south) side of the rect the route passes on")
+
+
+func test_funnel_corner_route_side_does_not_flip_across_an_axis_switch_boundary() -> void:
+	# Regression for the fix that immediately preceded this one: an intermediate design
+	# (introduced to fix the bug above, then found by review to break
+	# test_funnel_walk_hugs_the_boundary_without_ratcheting_inward) switched between
+	# `heading` (to - from) and a fixed `to - centre` axis once `heading` grew close
+	# enough to collinear with the nearest path point (a sin-of-angle threshold). The
+	# two axes can classify a corner on OPPOSITE sides, so a `from` value crossing that
+	# threshold -- itself just a couple of world units, well under one tick of real
+	# movement -- flipped the chosen corner exactly like the original whipsaw, just
+	# relocated to wherever the threshold happened to sit.
+	#
+	# Geometry below reconstructs that failure exactly: a rect centred at (500,500), a
+	# hand-supplied corridor whose nearest-to-rect point is (500,300), and
+	# `to=(750,900)` -- verified by hand against the old (heading-vs-fixed-axis)
+	# formula: from.x=789 lands at sin=0.04869 (just inside the old 0.05 threshold, so
+	# it used the fixed axis), from.x=791 at sin=0.05118 (just outside it, so it used
+	# `heading`) -- the exact straddle the review that requested this test measured.
+	var pf := PathField.new(Rect2(0, 0, 2000, 2000))
+	# A wide rect (not the earlier tests' narrow wall) so the near-vertical
+	# from->to leg actually crosses its clearance-grown margin -- get_center()
+	# is still (500, 500).
+	var rect := Rect2(200, 400, 600, 200)
+	pf.block_rect(rect)
+	var to := Vector2(750.0, 900.0)
+	var clearance := 20.0
+	# Farther from the rect than (500, 300), so it never contests "nearest" --
+	# only its DIRECTION from (500, 300) matters, fixing corridor_axis.
+	var path := PackedVector2Array([Vector2(100, 300), Vector2(500, 300)])
+	var first_corner: Vector2 = pf._funnel_corner(Vector2(785.0, 100.0), to, path, clearance)
+	assert_true(first_corner.is_finite(), "sanity: this leg is expected to detour")
+	var from_x := 785.0
+	while from_x <= 795.0:
+		var corner: Vector2 = pf._funnel_corner(Vector2(from_x, 100.0), to, path, clearance)
+		assert_eq(corner, first_corner,
+			("a `from` value (x=%.1f) swept smoothly across the old axis-switch boundary " +
+					"must not flip the chosen corner") % from_x)
+		from_x += 0.5
+
+
+func test_funnel_corner_with_empty_path_has_no_side_preference() -> void:
+	# An empty `path` (today's only caller, next_step, never passes one -- its own
+	# `path.size() < 2` guard returns before calling _funnel_corner at all -- but a
+	# direct call, as every test in this file makes, still can) must not read an
+	# arbitrary corner's side as though it were a real corridor point. route_side stays
+	# at its initialised 0.0 ("no preference": the `for p in path` search never runs),
+	# so every corner clears the side filter and the cheapest one by straight-line
+	# detour cost wins on cost alone -- deterministically, not from a stray sentinel
+	# value's own position.
+	var pf := PathField.new(Rect2(0, 0, 640, 640))
+	var wall := Rect2(300, 100, 64, 400)
+	pf.block_rect(wall)
+	var corner: Vector2 = pf._funnel_corner(Vector2(240, 300), Vector2(450, 300),
+			PackedVector2Array(), 20.0)
+	assert_true(corner.is_finite(), "every corner clears an unset (0.0) route_side's filter")
+	# The closer corner by straight-line cost from this from/to pair -- same
+	# expectation test_funnel_steers_for_the_grown_corner_not_the_cell_lane's sibling
+	# tests already pin for a real (non-empty) corridor through this same wall.
+	var expected := Vector2(wall.position.x - 20.0 - PathField.CORNER_STANDOFF,
+			wall.position.y - 20.0 - PathField.CORNER_STANDOFF)
+	assert_eq(corner, expected,
+		"with no corridor to prefer a side, the cheapest corner by cost wins, not an arbitrary one")
