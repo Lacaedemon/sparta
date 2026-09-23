@@ -1,0 +1,9 @@
+{
+  "_comment": "Fix demo for #1616 (wide single-rank formations show a facing whipsaw while pivoting onto a new bearing). Before the fix, this exact scenario made the 30-wide single-rank Cavalry block's facing snap back and forth between near-opposite headings every tick as it approached the map's hill terrain, instead of settling -- PathField._funnel_corner's route_side flipped sign under sub-world-unit position noise. Watch the block pivot smoothly around the hill onto its ordered bearing with no snapping.",
+  "input": "demos/inputs/wide-single-rank-pathing-1616.json",
+  "caption": "#1616: a 30-wide single-rank Cavalry block pivots smoothly around the hill terrain onto its ordered bearing -- no facing whipsaw.",
+  "fixed_fps": 30,
+  "max_frames": 200,
+  "fps": 15,
+  "width": 720
+}

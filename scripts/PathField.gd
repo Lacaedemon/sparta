@@ -478,13 +478,53 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 	# well-defined about the rect -- a chord-side reading there flips the
 	# funnel to the far corner and oscillates the walker in place.
 	var centre: Vector2 = rect.get_center()
+	# The chord this cross product is measured against must NOT be `heading`
+	# (to - from): `from` is the querying unit's own live position, which
+	# drifts by a fraction of a world unit most ticks even while the unit is
+	# otherwise stationary (soldier-body coupling, the same routine noise
+	# Unit._move_to's own BEARING_STEER_FREEZE_RADIUS comment describes for a
+	# different call site) and can also cross a routing CELL boundary and back
+	# under a slow, small-amplitude drift near the boundary. Either source of
+	# noise is disproportionately dangerous here: whenever the nearest path
+	# point `p` and the rect centre sit close to collinear with the chord,
+	# `X.cross(p - centre)` is a near-cancellation of two large terms -- its
+	# magnitude can sit within single digits while the terms themselves are in
+	# the tens of thousands -- so a sub-wu (or sub-cell) change in `X` is
+	# enough to flip its SIGN, flipping route_side and therefore which corner
+	# _funnel_corner steers for: a facing whipsaw between two near-opposite
+	# corners, worst for an extreme-aspect-ratio (wide, single-rank) formation
+	# whose `clearance` (Unit.terrain_clearance, itself Unit._pivot_radius()
+	# derived) is large enough to make a routing detour reach a rect hundreds
+	# of world units away in the first place.
+	#
+	# `path[0]` (the walker's own current routing cell) was tried first as a
+	# less noisy substitute for `from` -- it only changes when the unit
+	# crosses into a new cell rather than every tick -- but a unit whose
+	# equilibrium position sits ON a cell boundary (as this bug's own repro
+	# settles into, chasing a funnel corner right at one) still straddles it
+	# tick to tick, so `path[0]`, and every path point derived from it,
+	# flip-flops between the two adjacent cells' rows/columns wholesale.
+	#
+	# The only quantities in reach here that carry NEITHER kind of `from`
+	# dependency are `to` (the actual destination) and `centre` (the rect's
+	# own, static midpoint) -- neither moves when `from` drifts by a fraction
+	# of a world unit or crosses a cell edge. Using `to - centre` as the axis
+	# still measures the same "which side of the rect, about its own centre,
+	# does the route's closest-approach point sit on" the comment above
+	# describes -- it is still centred on the rect exactly as designed, and
+	# still distinct from "the route's deviation from the from->to chord" the
+	# comment above rules out (that reads the corridor's bulge relative to a
+	# from-to line; this reads a fixed point's side relative to a
+	# destination-to-centre line) -- just anchored at the one endpoint (`to`)
+	# that is not the source of either instability.
+	var route_axis: Vector2 = to - centre
 	var route_side: float = 0.0
 	var nearest_d: float = INF
 	for p in path:
 		var d: float = _distance_to_rect(p, rect)
 		if d < nearest_d:
 			nearest_d = d
-			route_side = signf(heading.cross(p - centre))
+			route_side = signf(route_axis.cross(p - centre))
 	var best: Vector2 = Vector2.INF
 	var best_cost: float = INF
 	for raw_c in [grown.position, Vector2(grown.end.x, grown.position.y),

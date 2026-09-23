@@ -458,3 +458,33 @@ func test_funnel_corner_with_no_blocking_rect_returns_inf() -> void:
 	# grown-rect corner computation with no rect to grow.
 	var corner: Vector2 = pf._funnel_corner(Vector2(50, 50), Vector2(200, 50), PackedVector2Array(), 10.0)
 	assert_false(corner.is_finite(), "no blocking rect on this leg -- INF, not a rect-derived corner")
+
+
+func test_funnel_corner_route_side_is_stable_under_sub_unit_position_drift() -> void:
+	# Regression for #1616 (a wide single-rank formation's facing whipsaws while
+	# pivoting onto a new bearing). Root cause: an extreme-aspect-ratio formation's
+	# Unit.terrain_clearance() (Unit._pivot_radius() derived) can be large enough that
+	# a routing rect hundreds of world units away still "blocks" a from->to leg once
+	# room-capped -- and _funnel_corner's route_side used to read the sign of
+	# (to - from).cross(nearest_path_point - rect_centre). When `from`, the rect
+	# centre, and the nearest path point sit close to collinear, that cross product is
+	# a near-cancellation of two large terms, so the routine sub-world-unit position
+	# drift every live Unit accrues tick to tick (soldier-body coupling) flips its
+	# sign -- flipping which corner of the rect the funnel steers for, and therefore
+	# the unit's facing, every tick. Geometry below is the exact repro: the game's own
+	# default-map hill terrain, and two `from` values differing by a fraction of a
+	# world unit -- one live tick's worth of drift, captured from a real run of
+	# demos/inputs/wide-single-rank-pathing-1616.json.
+	var pf := PathField.new(Rect2(0, 0, 1600, 1200))
+	var hill := Rect2(1150, 380, 250, 200)   # Battle.TERRAIN's hill patch
+	pf.block_rect(hill)
+	var to := Vector2(650.0, 730.0)
+	var clearance := 590.0   # Unit._pivot_radius() + soldier_body_radius() for a 30-file single-rank Cavalry
+	var from_a := Vector2(510.2562, 789.3583)
+	var from_b := Vector2(510.2556, 789.3166)   # one physics tick's worth of position drift from from_a
+	assert_lt(from_a.distance_to(from_b), 0.1,
+		"sanity: the two `from` values differ by well under one world unit")
+	var step_a: Vector2 = pf.next_step(from_a, to, clearance)
+	var step_b: Vector2 = pf.next_step(from_b, to, clearance)
+	assert_eq(step_a, step_b,
+		"a sub-world-unit change in the querying unit's own position must not flip which corner the funnel steers for")

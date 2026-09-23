@@ -1,0 +1,19 @@
+{
+  "_comment": "Isolated close-tier reproduction #3 for #1616, drill mode, no combat. Places a 30-wide single-rank Cavalry block (frontage_override 30, so Unit._pivot_radius() -- and therefore Unit.terrain_clearance() = _pivot_radius() + soldier_body_radius() -- is huge) close enough to the default map's forest patch (Battle.TERRAIN rect (200,380)-(450,580)) that PathField._segment_blocked's clearance-grown margin around the forest swallows BOTH the unit's own position and its move-order destination, marking the direct leg spuriously 'blocked' even though neither point nor the direct line is anywhere near the drawn terrain. Ordered via a plain rmb_click move (no enemy, no far tier) to isolate PathField.next_step's funnel-corner computation as the mechanism, per the 'construct scenarios to isolate the phenomenon' rule.",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 510, "y": 787, "count": 30, "frontage_override": 30, "facing": [1.0, 0.0]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 550.0, "y": 650.0, "zoom": 0.6}
+  ],
+  "steps": [
+    {"tick": 8, "click": [510, 787]},
+    {"tick": 20, "rmb_click": [650, 730]}
+  ],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [510.0, 787.0]},
+    {"tick": 8, "uid": 0, "field": "soldiers", "value": 30}
+  ]
+}
