@@ -386,13 +386,15 @@ const CORNER_ARRIVE_EPS := CELL * 0.5   # tuned in wu, solver epsilon
 # can leave one point at exactly 0.0 and a genuinely-collinear sibling at a
 # tiny nonzero float-rounding residual, so an exact `== 0.0` test can let
 # that rounding noise decide a route's side instead of correctly reading "no
-# preference." 0.001 wu sits roughly an order of magnitude above the actual
-# float32 rounding floor at the coordinate magnitudes this file's callers use
-# (a few thousand wu at most -- float32 carries about 7 significant decimal
-# digits, so rounding noise on a ~thousand-wu subtraction is on the order of
-# 1e-4 wu) while staying two to three orders of magnitude below the smallest
-# REAL geometric margin in this file (CLEARANCE_SLACK, 0.5 wu) -- large
-# enough to absorb roundoff, far too small to mask any genuine near-miss.
+# preference." 0.001 wu sits roughly 4x above a measured worst-case float32
+# rounding artifact across this map's own coordinate range (Battle.FIELD is
+# 1600x1200 wu; a measured worst case there is about 2.44e-4 wu -- well
+# under one order of magnitude, not the order-of-magnitude margin an
+# ULP-scale back-of-envelope estimate would suggest) while staying two to
+# three orders of magnitude below the smallest REAL geometric margin in this
+# file (CLEARANCE_SLACK, 0.5 wu) -- enough headroom to absorb roundoff
+# without mistaking it for a real near-miss, far too small to mask any
+# genuine one.
 const ROUTE_SIDE_COLLINEAR_EPS := 0.001   # tuned in wu, solver epsilon
 
 ## True if the straight segment from..to crosses any terrain rect, each grown by

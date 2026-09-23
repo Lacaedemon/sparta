@@ -708,10 +708,11 @@ func test_funnel_corner_near_collinear_two_point_path_reads_no_preference() -> v
 	# would have called both endpoints "informative" with contradictory
 	# signs, so whichever one happened to be nearest would set route_side
 	# from pure rounding noise. Both endpoints' perpendicular distance to
-	# the axis line are microscopic (under 3e-5 wu, five orders of
-	# magnitude below PathField.ROUTE_SIDE_COLLINEAR_EPS's 1e-3 wu
-	# tolerance), so both are correctly read as degenerate and route_side
-	# stays 0.0, "no preference" -- not a coin flip between +1 and -1.
+	# the axis line are microscopic (under 3e-5 wu, roughly 40x -- about
+	# one and a half orders of magnitude, not five -- below
+	# PathField.ROUTE_SIDE_COLLINEAR_EPS's 1e-3 wu tolerance), so both are
+	# correctly read as degenerate and route_side stays 0.0, "no
+	# preference" -- not a coin flip between +1 and -1.
 	var pf := PathField.new(Rect2(0, 0, 2000, 100000))
 	# Positioned so its own centre lands exactly on the near-collinear axis
 	# below (within the same float32 rounding this whole test exercises):
