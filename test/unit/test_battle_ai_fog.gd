@@ -1159,12 +1159,16 @@ func _order_signature(u: Unit) -> String:
 
 # --- performance: fog_team's rendering-pass scan is reused by a same-frame gate -----------
 #
-# _tick_fog and _ai_perceptible_units(fog_team) are otherwise the SAME scan (same observer
-# set, same candidate set), so without the reuse in _ai_perceptible_units, a battle where
-# both the rendering pass and a per-unit gate ask about fog_team in one tick would pay for
-# that scan twice. Called directly (no `await` between the two calls, matching this file's
-# own convention of isolating one mechanism at a time): the whole point under test is
-# whether two calls in the SAME physics frame collapse into one scan, and inserting an
+# _tick_fog's own rendering-pass scan and _ai_perceptible_units(fog_team)'s own scan read
+# the identical observer set and candidate set, so without the reuse in
+# _ai_perceptible_units, a battle where both the rendering pass and a per-unit gate ask
+# about fog_team in one tick would pay for that scan twice. The reused value is a
+# start-of-frame SNAPSHOT, not a live re-derivation -- see Battle._ai_perceptible_units'
+# own doc comment for the one-frame staleness window a mid-frame death/rout can open, and
+# why that is a deliberate, order-independent design choice rather than an approximation.
+# Called directly (no `await` between the two calls, matching this file's own convention of
+# isolating one mechanism at a time): the whole point under test is whether two calls in
+# the SAME physics frame collapse into one scan, and inserting an
 # `await get_tree().physics_frame` between them would move to a LATER frame instead of
 # proving anything about the same one.
 

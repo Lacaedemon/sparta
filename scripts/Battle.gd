@@ -2003,24 +2003,39 @@ func _fog_observers() -> Array:
 ## wording ("cannot react ... until it enters ... perception"). Memory-based reasoning over
 ## a stale contact is a separate, deferred follow-up.
 ##
-## Performance: for `team == fog_team` this is the SAME scan (same observer set, same
-## candidate set -- both draw from _fog_units_in_play()) _tick_fog already ran this physics
-## frame for the rendering pass, so reuse its result (_fog_seen) instead of paying for a
-## second identical observer x target x LOS sweep. Only valid when a fresh
-## Engine.get_physics_frames() reading matches _fog_seen_frame -- deliberately NOT keyed to
-## Battle's own `_tick`, which increments partway through the SAME frame `_tick_fog` and
-## every Unit's own _think() share (Battle._physics_process's own comment: "Runs before the
-## Units' own _physics_process ... so orders and AI for this tick are applied before units
-## act" -- by the time a unit's _think() asks, `_tick` has already moved on to the NEXT
-## value, but it is still the SAME physics frame _tick_fog computed _fog_seen in). A call
-## that lands before _tick_fog has run yet this frame (the command-level AI decisions --
-## _run_enemy_ai / _run_player_delegated_ai -- which _physics_process runs before its own
-## call to _tick_fog), or right after a snapshot restore (see restore_snapshot's own
-## comment), falls back to a fresh scan exactly as before this reuse existed -- every
-## per-unit _think() gate, which is the hot-loop cost this exists to cut, runs after
-## _tick_fog within the same frame and does get the reuse. Every other team pays for its
-## own scan, computed once per team per tick via ai_team_perceives' own cache -- unchanged
-## by this.
+## Performance: for `team == fog_team`, every per-unit gate this physics frame reads a
+## PER-FRAME SNAPSHOT of fog_team's perception (_fog_seen) instead of each paying for its
+## own observer x target x LOS sweep -- the snapshot is taken once, by _tick_fog, before any
+## unit acts this frame, and reused for the rest of it, rather than recomputed per caller.
+## Only valid when a fresh Engine.get_physics_frames() reading matches _fog_seen_frame --
+## deliberately NOT keyed to Battle's own `_tick`, which increments partway through the SAME
+## frame `_tick_fog` and every Unit's own _think() share (Battle._physics_process's own
+## comment: "Runs before the Units' own _physics_process ... so orders and AI for this tick
+## are applied before units act" -- by the time a unit's _think() asks, `_tick` has already
+## moved on to the NEXT value, but it is still the SAME physics frame _tick_fog computed
+## _fog_seen in). A call that lands before _tick_fog has run yet this frame (the
+## command-level AI decisions -- _run_enemy_ai / _run_player_delegated_ai -- which
+## _physics_process runs before its own call to _tick_fog), or right after a snapshot
+## restore (see restore_snapshot's own comment), falls back to a fresh scan exactly as
+## before this reuse existed -- every per-unit _think() gate, which is the hot-loop cost
+## this exists to cut, runs after _tick_fog within the same frame and does get the reuse.
+## Every other team pays for its own scan, computed once per team per tick via
+## ai_team_perceives' own cache -- unchanged by this.
+##
+## The snapshot can go stale WITHIN the frame it was taken: Unit._die()/_rout() leave the
+## "units"/"routers" groups synchronously, mid-_think(), so a fog_team observer that dies or
+## routs partway through this frame is not reflected in _fog_seen for the REST of that same
+## frame -- a later unit's gate this frame still sees whatever fog_team could perceive at
+## the START of the frame, stale by at most one frame. This is not new: the pre-existing
+## _ai_perceives_cache (below) already has the identical one-snapshot-per-(team, tick)
+## granularity, so this reuse changes WHEN the snapshot is taken, not whether one is used at
+## all. Taking it at _tick_fog specifically, before any unit acts, is a deliberate choice
+## over the alternative (each team's first asker that frame implicitly sets it, as
+## _ai_perceives_cache's own timing already does): a fixed start-of-frame snapshot gives
+## every unit in the frame the SAME perception regardless of tree-processing order, where a
+## first-asker-sets-it snapshot would make the result depend on which unit happened to ask
+## first -- order-independence and determinism, not merely an incidental side effect of
+## reusing _tick_fog's own work.
 func _ai_perceptible_units(team: int) -> Array:
 	if not is_fog_active():
 		var out: Array = get_tree().get_nodes_in_group("units")
@@ -2048,6 +2063,14 @@ func _ai_perceptible_units(team: int) -> Array:
 ## calling _ai_perceptible_units directly. Purely derived from already-serialized state
 ## (nothing here is itself simulation state), so it needs no snapshot/restore handling: a
 ## restored battle just recomputes it fresh on the next query, same as any other tick.
+##
+## One snapshot per (team, tick), same granularity as _fog_seen_frame's own per-frame
+## snapshot above (_ai_perceptible_units' own doc comment covers that one's staleness
+## window in detail). This cache's own snapshot is taken lazily, by whichever unit on
+## `team` happens to ask first that tick, rather than at a fixed point like _tick_fog --
+## so a mid-tick death/rout among `team`'s OWN observers can already change what a LATER
+## asker on the same team would have computed fresh, and this cache papers over that by
+## freezing the FIRST asker's answer for the rest of the tick regardless.
 var _ai_perceives_cache: Dictionary = {}
 var _ai_perceives_cache_tick: int = -1
 
