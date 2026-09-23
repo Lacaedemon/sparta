@@ -689,8 +689,11 @@ world units.
 The fix that held (PR #1629)
 derives the side from the A* corridor's own endpoints (`path[last] -
 path[0]`, both routing-cell centres) -- an input that stays constant as long
-as `from`/`to` sit in the same routing cells, so there is no boundary left to
-flip across.
+as `from`/`to` sit in the same routing cells, so the per-tick position-noise
+flip is gone.
+A narrower, disclosed case remains: a walker whose resting
+position sits exactly on a 64 wu routing-cell boundary can still see the
+corridor change -- a property of the coarse routing grid, not of this fix.
 
 **Do:** when a discrete choice (which side, which branch) is unstable near a
 boundary, derive it from an input that is piecewise-constant/grid-quantized
