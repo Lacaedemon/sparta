@@ -1762,6 +1762,16 @@ func _start_promoted_move() -> void:
 ## ATTACK order (target_uid >= 0, the ordinary player-issued case) is untouched here --
 ## Battle._apply_order_cmd already set target_enemy at issue time. No-op for every other
 ## order kind or an ATTACK that's already carrying a live target.
+## Gated by _enemy_is_perceived, same as every other fresh acquisition in this file: the
+## candidate comes from UnitTargeting.current_target, whose own fresh-pick fallback
+## (nearest_enemy) is a bare, unfogged detection_range scan -- reachable from _think() via
+## retire_current_order(), so an ungated commit here could silently launder an unsighted
+## enemy into target_enemy, which every downstream branch then trusts as "already
+## committed." A candidate already in MELEE CONTACT is exempt (matching the melee invariant
+## everywhere else, and keeping the intended "advance until contact" case unaffected --
+## the guard that promotes this order only fires the instant contact is made, so the
+## intended candidate is normally already in contact when this runs); a candidate not yet
+## in contact is gated the same way a fresh standoff pick is elsewhere.
 func _start_promoted_attack() -> void:
 	if current_order == null or current_order.type != Order.Type.ATTACK:
 		return
@@ -1769,7 +1779,14 @@ func _start_promoted_attack() -> void:
 		return
 	if target_enemy != null and is_instance_valid(target_enemy):
 		return
-	target_enemy = UnitTargeting.current_target(self)
+	var candidate: Unit = UnitTargeting.current_target(self)
+	if candidate == null:
+		return
+	var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, candidate)
+	var in_contact: bool = position.distance_squared_to(candidate.position) <= contact_dist * contact_dist
+	if not in_contact and not _enemy_is_perceived(candidate):
+		return
+	target_enemy = candidate
 
 
 ## Destinations of the queued (not-yet-current) MOVE legs, in queue order -- the route the
@@ -2471,8 +2488,8 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ##
 ## THE authoritative list of the branches this gates (Battle.ai_team_perceives' own doc
 ## comment points back here rather than duplicating it, to avoid the two drifting apart the
-## way this comment itself once did when it named only one caller). Eight call expressions
-## across seven branches -- _support_tick's one call gates both of its own sub-branches:
+## way this comment itself once did when it named only one caller). Nine call expressions
+## across eight branches -- _support_tick's one call gates both of its own sub-branches:
 ## - _think()'s ranged-fire-at-standoff branch (loose a volley at a not-yet-melee target).
 ##   Runs for BOTH teams -- not AI-exclusive.
 ## - _think()'s auto-advance-on-detect fallback (march on a merely-detected target).
@@ -2486,6 +2503,10 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ##   read of it, so a fresh unperceived pick can't silently pass as an already-gated
 ##   commitment once it lands in target_enemy.
 ## - _think()'s ORDER_ROLL_THE_LINE acquisition, same reason as SWEEP_ROUTERS just above.
+## - _start_promoted_attack's target_enemy commit (a just-promoted, unresolved ATTACK order
+##   resolving to whatever current_target() returns) -- reachable from _think() via
+##   retire_current_order(). Exempt when the candidate is already in MELEE CONTACT (the
+##   intended "advance until contact" case this promotion exists for); gated otherwise.
 ## - _think()'s chase-an-explicit-attack-order branch's OWN `chasing` half (see below --
 ##   this one call expression covers only the auto-acquired-quarry case, not the
 ##   already-committed-target_enemy case, which stays the disclosed exception it always was).
@@ -2522,10 +2543,11 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ## covers it.
 ##
 ## One caller lives OUTSIDE this file: FarTierCombat.engaged_target (scripts/FarTierCombat.gd)
-## calls this externally (u._enemy_is_perceived(target)), gating only the FRESH-reacquisition
-## fallback UnitTargeting.current_target falls into when a far-tier unit's committed
-## target_enemy has died mid-fight -- an already-committed, still-live target_enemy is exempt
-## there too, for the same already-in-progress-fight reason as the chase exception above.
+## calls this externally (u._enemy_is_perceived(target)), matching the near tier's OWN
+## melee-vs-ranged split rather than the chase branch's committed-vs-fresh one: a MELEE
+## engagement is unconditionally exempt (committed or fresh alike, same as the melee branch
+## above), but a RANGED/standoff exchange re-checks every tick regardless of commitment
+## (same as the ranged-fire branch above) -- see that function's own doc comment.
 func _enemy_is_perceived(enemy: Unit) -> bool:
 	if _owning_battle == null or not _owning_battle.has_method("ai_team_perceives"):
 		return true

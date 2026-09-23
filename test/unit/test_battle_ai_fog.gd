@@ -703,12 +703,20 @@ func test_ai_decisions_replay_identically_with_fog_active() -> void:
 		"omniscient determinism test in test_battle_ai_leaders.gd")
 
 
-# --- far-tier attrition: FarTierCombat.engaged_target gates a FRESH re-acquisition too ----
+# --- far-tier attrition: FarTierCombat.engaged_target matches the near tier's melee/ranged
+# --- split, not a blanket "committed is always exempt" rule -----------------------------
 #
 # UnitTargeting.current_target(u) falls through to a bare, unfogged nearest_enemy() scan
 # whenever u.target_enemy has died or gone invalid, and never persists that pick back to
 # target_enemy -- so a FIGHTING far-tier unit whose committed target just died could
 # otherwise keep attriting a fresh, never-perceived target every tick with no gate at all.
+# That much is true for both melee and ranged.
+# But the exemption for an ALREADY-committed target_enemy is melee-only, matching the near
+# tier exactly: Unit._think's melee-in-contact branch has no perception check at all
+# (committed or fresh), while its ranged-fire-at-standoff branch re-checks
+# _enemy_is_perceived every tick with no "already committed" carve-out -- only the
+# melee/chase branch's `target_enemy != null` half is the disclosed exception. So a ranged
+# far-tier exchange must keep re-checking too, even for a target it was already fighting.
 # FarTierCombat.engaged_target is called DIRECTLY here (no physics ticks): the fields under
 # test (tier, state, target_enemy) are set immediately after the battle spawns, so nothing
 # AI-driven runs in between to disturb them, matching this file's own convention of calling
@@ -768,13 +776,52 @@ func test_far_tier_engaged_target_still_picks_a_fresh_enemy_when_fog_is_off() ->
 		"this gate existed")
 
 
-func test_far_tier_engaged_target_keeps_an_already_committed_target_even_if_unperceived() -> void:
-	# The mirror of the two tests above: an ALREADY-committed, still-live target_enemy is the
-	# disclosed exception documented on _enemy_is_perceived's own doc comment (this pass only
-	# ever continues a fight _think() already started -- and already perception-gated --
-	# earlier this same tick), so it must NOT be re-gated here even when the team's current
-	# perception no longer covers it (e.g. the ally that was granting sight died or moved off
-	# since the target was first committed).
+func test_far_tier_engaged_target_keeps_an_already_committed_melee_target_even_if_unperceived() -> void:
+	# The MELEE half of the invariant: combat already in contact is unconditionally exempt,
+	# matching every other melee branch in this codebase (soldier-level combat stays unfogged
+	# once bodies are touching) -- the near tier's own melee-in-contact branch has no
+	# perception check at all, fresh pick or already committed. See the sibling test below
+	# for the RANGED half, which re-checks every tick even for an already-committed target.
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y - 400.0},
+	]
+	add_child_autofree(battle)
+	var watcher: Unit = _team_units(1)[0]
+	var committed_enemy: Unit = _team_units(0)[0]
+	# Melee contact distance is itself small, so SHRUNK_SIGHT (50 wu, tuned for the standoff
+	# tests elsewhere in this file) would still trivially cover it -- shrink sight_range well
+	# below contact distance specifically, so "in melee contact" and "unperceived" can both
+	# be staged at once.
+	var contact: float = UnitTargeting.melee_contact_distance(watcher.attack_range, Unit.RADIUS, committed_enemy)
+	watcher.sight_range = contact * 0.25
+	# Teleport into melee contact -- a scripted position write, the same technique this file
+	# already uses elsewhere to control exactly which staging applies.
+	committed_enemy.position = watcher.position + Vector2(0.0, contact - 1.0)
+	assert_false(battle.ai_team_perceives(1, committed_enemy),
+		"sanity check on the staged distance: team 1 does not perceive this enemy")
+	assert_false(FarTierRates.resolves_as_ranged(watcher, committed_enemy),
+		"sanity check: in melee contact, this resolves as melee, not a volley")
+	watcher.tier = FormationTier.FAR
+	watcher.state = Unit.State.FIGHTING
+	watcher.target_enemy = committed_enemy
+
+	var engaged: Unit = FarTierCombat.engaged_target(watcher)
+
+	assert_eq(engaged, committed_enemy,
+		"melee combat already in contact is unconditionally exempt, even though this team's " +
+		"current perception no longer covers it")
+
+
+func test_far_tier_engaged_target_drops_an_already_committed_ranged_target_once_unperceived() -> void:
+	# The RANGED/standoff half of the same invariant: unlike melee, a standoff exchange
+	# re-checks perception every tick regardless of commitment, matching the near tier's own
+	# ranged-fire-at-standoff branch (Unit._think, ~line 2832), whose _enemy_is_perceived
+	# check carries no "already committed" carve-out at all -- only the melee/chase branch's
+	# `target_enemy != null` half is the disclosed exception.
 	Settings.set_fog_of_war_session(true)
 	Replay.forced_seed = 588
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
@@ -787,16 +834,42 @@ func test_far_tier_engaged_target_keeps_an_already_committed_target_even_if_unpe
 	var committed_enemy: Unit = _team_units(0)[0]
 	watcher.sight_range = SHRUNK_SIGHT
 	assert_false(battle.ai_team_perceives(1, committed_enemy),
-		"sanity check on the staged distances: team 1 does not perceive this enemy")
+		"sanity check on the staged distance: team 1 does not perceive this enemy")
+	assert_true(FarTierRates.resolves_as_ranged(watcher, committed_enemy),
+		"sanity check: not in melee contact, so this resolves as a volley")
 	watcher.tier = FormationTier.FAR
 	watcher.state = Unit.State.FIGHTING
-	watcher.target_enemy = committed_enemy   # already committed, unlike the two tests above
+	watcher.target_enemy = committed_enemy   # already committed, unlike a fresh pick
+
+	var engaged: Unit = FarTierCombat.engaged_target(watcher)
+
+	assert_null(engaged,
+		"a ranged/standoff exchange re-checks perception every tick, so an already-committed " +
+		"target this team no longer perceives is dropped, not kept -- unlike the melee case " +
+		"above")
+
+
+func test_far_tier_engaged_target_keeps_a_ranged_target_when_fog_is_off() -> void:
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var watcher: Unit = _team_units(1)[0]
+	var committed_enemy: Unit = _team_units(0)[0]
+	watcher.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+	watcher.tier = FormationTier.FAR
+	watcher.state = Unit.State.FIGHTING
+	watcher.target_enemy = committed_enemy
 
 	var engaged: Unit = FarTierCombat.engaged_target(watcher)
 
 	assert_eq(engaged, committed_enemy,
-		"an already-committed target_enemy is exempt from the FRESH-reacquisition gate, even " +
-		"though this team's current perception no longer covers it")
+		"fog off: the ranged re-check is unconditionally true, so the committed target is " +
+		"kept, exactly as before this gate existed")
 
 
 # --- four more fresh-acquisition gaps: SKIRMISH kite, SWEEP_ROUTERS, ROLL_THE_LINE, CHASE -
@@ -989,6 +1062,93 @@ func test_chase_still_closes_on_a_fresh_enemy_when_fog_is_off() -> void:
 	assert_gt(u.position.distance_to(start_pos), 0.05,
 		"fog off: the CHASE unit still closes on the fresh enemy, exactly as before this " +
 		"gate existed")
+
+
+# --- _start_promoted_attack: a just-promoted, unresolved ATTACK order (target_uid < 0) -----
+#
+# Reachable from _think() via retire_current_order() -- the "advance UNTIL contact THEN
+# attack" macro's own promotion path (phase 4): the guard retires a MOVE order the instant
+# contact is made, and the queued ATTACK order it appended names no specific enemy
+# (target_uid stays -1), so _start_promoted_attack must resolve target_enemy itself, from
+# UnitTargeting.current_target -- whose own fresh-pick fallback is a bare, unfogged
+# detection_range scan, same shape as every other fresh acquisition this file already
+# covers. Called directly here (matching this file's own convention), with current_order
+# set directly rather than routed through the real order queue.
+
+
+func test_start_promoted_attack_does_not_resolve_to_a_fresh_unperceived_standoff_enemy() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var u: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	u.sight_range = SHRUNK_SIGHT
+	u.current_order = Order.new_attack(-1)   # unresolved: target_uid stays -1
+	assert_false(battle.ai_team_perceives(1, enemy),
+		"sanity check on the staged distance: team 1 does not perceive this enemy")
+	var contact: float = UnitTargeting.melee_contact_distance(u.attack_range, Unit.RADIUS, enemy)
+	assert_gt(u.position.distance_to(enemy.position), contact,
+		"sanity check: the enemy is not in melee contact, so this is the standoff case")
+
+	u._start_promoted_attack()
+
+	assert_null(u.target_enemy,
+		"a fresh, unperceived, not-yet-in-contact enemy must not resolve an unrestricted " +
+		"ATTACK order's target_enemy")
+
+
+func test_start_promoted_attack_still_resolves_a_fresh_enemy_when_fog_is_off() -> void:
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var u: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	u.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+	u.current_order = Order.new_attack(-1)
+
+	u._start_promoted_attack()
+
+	assert_eq(u.target_enemy, enemy,
+		"fog off: the fresh pick resolves target_enemy, exactly as before this gate existed")
+
+
+func test_start_promoted_attack_resolves_to_an_unperceived_enemy_already_in_melee_contact() -> void:
+	# The "keep the contacting-enemy case working" half: the guard that promotes this order
+	# only fires the instant contact is made, so the intended candidate is normally already
+	# in melee contact when this runs -- unconditionally exempt, same as every other melee
+	# branch in this codebase, regardless of whether this team currently perceives it.
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y - 400.0},
+	]
+	add_child_autofree(battle)
+	var u: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	u.sight_range = SHRUNK_SIGHT
+	var contact: float = UnitTargeting.melee_contact_distance(u.attack_range, Unit.RADIUS, enemy)
+	enemy.position = u.position + Vector2(0.0, contact - 1.0)
+	u.current_order = Order.new_attack(-1)
+	assert_false(battle.ai_team_perceives(1, enemy),
+		"sanity check on the staged distance: team 1 does not perceive this enemy")
+
+	u._start_promoted_attack()
+
+	assert_eq(u.target_enemy, enemy,
+		"an enemy already in melee contact resolves the order even when this team's own " +
+		"perception does not currently cover it")
 
 
 func _order_signature(u: Unit) -> String:

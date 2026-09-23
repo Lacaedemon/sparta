@@ -40,8 +40,9 @@ const FIELD := Rect2(0, 0, 1600, 1200)
 # detection alone, not the missile reach: a router does not have to outrun the longest
 # missile profile on the field to be gone, and the reach is per unit now anyway. Reads the
 # class constant, not any one unit's own detection_range field, since
-# this margin is a single battle-wide strip, not sized per unit. Fog of war is render-only
-# and does not alter the rout margin or retreat bounds.
+# this margin is a single battle-wide strip, not sized per unit. Fog of war does not alter
+# the rout margin or retreat bounds -- unlike AI/order targeting elsewhere (see
+# ai_team_perceives' own doc comment), this specific value is untouched by it either way.
 const ROUT_MARGIN: float = UnitRef.DETECTION_RANGE
 var rout_margin: float = ROUT_MARGIN
 var field_with_margin: Rect2 = FIELD.grow(ROUT_MARGIN)
@@ -1997,12 +1998,18 @@ var _ai_perceives_cache_tick: int = -1
 
 
 ## Whether team `team` currently perceives `enemy`: false when `enemy` is null (nothing to
-## perceive -- every real caller already guards on `enemy != null` before asking, so this is
-## a defensive default rather than a path any current call site exercises), true
-## unconditionally when fog of war is inactive (today's omniscient behaviour, unchanged),
-## else membership in _ai_perceptible_units(team)'s own enemy subset (see that function's
-## own doc comment for the exact rule -- the SAME Perception.visible_enemy_uids test either
-## way).
+## perceive), true unconditionally when fog of war is inactive (today's omniscient behaviour,
+## unchanged), else membership in _ai_perceptible_units(team)'s own enemy subset (see that
+## function's own doc comment for the exact rule -- the SAME Perception.visible_enemy_uids
+## test either way).
+## Most callers guard on `enemy != null` before asking (short-circuited into the same `and`
+## as the call itself, or via an enclosing `if enemy != null:`/`if threat != null:` block),
+## but not all: Unit._think()'s ORDER_SWEEP_ROUTERS fallback
+## (`if _enemy_is_perceived(swept):`, `swept` from UnitTargeting.current_target) CAN pass
+## null, since current_target returns null with nothing in detection range. That is safe by
+## construction -- null routes straight to the false branch above, so the caller's own `if`
+## simply doesn't fire, exactly as if an unperceived enemy had been found -- not a path
+## that needs its own guard.
 ##
 ## The direct caller is Unit._enemy_is_perceived (scripts/Unit.gd), a thin duck-typed wrapper
 ## Unit reaches this through since Battle.gd has no class_name (see Unit._owning_battle's own

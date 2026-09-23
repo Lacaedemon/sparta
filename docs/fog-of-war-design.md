@@ -823,12 +823,19 @@ playback if the two ever differed in render state.
 
 So the rule is explicit.
 Fog affects `CanvasItem.visible` and ghost markers.
-The retreat margin is unaffected because fog is render-only.
+The retreat margin is unaffected either way.
 The recorded replay map value drives playback.
-A replay reproduces the fog state the battle started with, and a mid-battle toggle is not reproduced on playback.
-A dedicated fog-transition track is planned as a follow-up (sparta#1579).
-Group membership, `_physics_process`, targeting, and collision are untouched.
 A headless run with no rendering at all and a rendered run must produce byte-identical replays under the recorded fog state.
+**Update, 2026-09-23: two claims in this paragraph no longer hold.**
+`sparta#1579` shipped (`ReplayFogTrack.gd`, `Replay.record_fog_change` /
+`Replay.fog_for_tick`), so a mid-battle toggle IS now reproduced on playback --
+`Battle._on_settings_changed` records every RECORD-mode toggle at the tick it happened, and
+`Battle._physics_process` re-applies it at the identical tick during playback, the same way
+a queued order is replayed.
+And "targeting... untouched" is no longer accurate at all: `Battle.ai_team_perceives` /
+`Unit._enemy_is_perceived` (this PR, phase 5) gate AI/order targeting on the SAME perception
+this section describes -- group membership, `_physics_process`, and collision remain
+untouched, but targeting does not.
 
 The corollary is that **soldier-level combat stays unfogged**: a soldier
 strikes whoever is in reach whether or not the commander can see the unit.
