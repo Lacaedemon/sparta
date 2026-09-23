@@ -2298,9 +2298,11 @@ Every friendly regiment projects a circular sight disc around its center.
 An enemy unit whose center lies outside every friendly sight disc is hidden.
 Friendly units are always visible to you.
 Terrain actively shapes line of sight: impassable features (like hills) block sight lines completely, while wooded ground screens vision and attenuates observation range.
-The field itself carries its own persistent explored/unexplored state, independent of enemy visibility.
+The field itself carries its own persistent explored/unexplored state, normally driven by your own units' sight discs rather than by enemy visibility.
 Ground your side has never covered with a sight disc renders as an opaque dark fill; ground it has explored but does not currently see is dimmed rather than hidden outright; ground currently inside a friendly sight disc renders normally.
+Ground under an enemy you currently see also renders normally and becomes explored, so once that enemy moves on the ground stays dimmed rather than going dark again.
 Once explored, ground never reverts to unexplored --- marching your army away from a stretch of terrain dims it but never re-hides it.
+See [How to play: Fog of war](how-to-play.qmd#fog-of-war) for the full render-state breakdown.
 Units keep fighting, pathing, and shooting under the same rules.
 
 ::: {#tbl-sight-ranges}
