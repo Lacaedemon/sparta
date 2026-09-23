@@ -586,13 +586,23 @@ Three layers, drawn above the battlefield and below the HUD.
 3. **Visible.**
    Normal rendering, exactly as today.
 
-Proposed implementation: a `FogOverlay` `Node2D` (proposed path
-`scripts/FogOverlay.gd`) at a z-index above the battlefield, drawing a coarse
-visibility grid.
-Proposed `Battle.fog_cell`, default `2.0 * WorldScaleRef.WU_PER_M` = 40 wu,
-giving a 40 by 30 cell grid on the default field -- small enough to be cheap,
-coarse enough that the overlay needs smoothing, which a bilinear-filtered
-`ImageTexture` supplies for free.
+Proposed implementation, as originally designed: a `FogOverlay` `Node2D`
+(shipped at `scripts/FogOverlay.gd`, [#1621](https://github.com/Lacaedemon/sparta/issues/1621))
+at a z-index above the battlefield, drawing a coarse visibility grid --
+built substantially as proposed, with two divergences from this original
+paragraph's own numbers.
+First, `Battle.fog_cell` shipped with a default of 40 wu, giving a 40 by 30
+cell grid on the default field, but not as this paragraph originally
+proposed authoring it (`2.0 * WorldScaleRef.WU_PER_M`): `fog_cell` has no
+physical derivation, so the shipped constant keeps a bare wu literal marked
+`# tuned in wu` instead, per `docs/units-convention.md`'s "Deliberately NOT
+metric" section (see the "Update, 2026-09-22" note above).
+Second, this paragraph originally expected the coarse grid to need
+smoothing, supplied by a bilinear-filtered `ImageTexture`; the shipped
+`FogOverlay._draw()` instead draws hard-edged `draw_rect()` cells with no
+texture and no smoothing, so the grid's cell boundaries are visible at
+normal zoom rather than blended.
+A smoothing pass remains a possible follow-up, not something #1621 built.
 Enemy unit nodes are hidden by setting `CanvasItem.visible`, never by removing
 them from the `units` group; see the determinism section for why that
 distinction is load-bearing.
