@@ -304,7 +304,7 @@ Verified against the tree at the time of writing.
   A router that leaves it is removed from play by `Unit._escape()`.
   The comment above it states an invariant this design has to honour: the margin is sized to "the game's maximum visual range", with `DETECTION_RANGE` standing in for "a fog-of-war vision range, which this game doesn't have yet", "so a fleeing unit stays a plausible target for as long as it's still visible, rather than vanishing early".
   Phase 2 equips pilum units with 300-wu detection while intentionally keeping `Battle.ROUT_MARGIN` battle-wide and fixed at 190 wu to prevent per-unit boundary drift.
-  Fog of war is render-only, so `Battle.ROUT_MARGIN` remains fixed at 190 wu.
+  `Battle.ROUT_MARGIN` remains fixed at 190 wu regardless of fog, not because fog is render-only overall (it is not: see "Implementation status" above), but because this specific value never reads fog state at all -- it is a compile-time `const`, and `Battle._sync_rout_margin` (its only recompute path, called once at battle setup from the live map's own geometry) has no fog-state input, nor is it ever called from `Battle._on_settings_changed`'s own fog-toggle handler.
 
 ### What the AI can see
 
@@ -560,7 +560,7 @@ Proposed parameters:
 | `Unit.sight_range` | resolved from `is_cavalry` and `is_ranged` at spawn, overridable before `_ready` | The same set-before-tree contract `detection_range`, `drill_mode`, and `ai_doctrine` already follow |
 | `Unit.SIGHT_SCREEN_FACTOR` | 0.5 | Remaining range through one screening patch |
 | `Unit.SIGHT_ROUTING_PENALTY` | 0.6 | A routing unit is not observing; multiplies its own sight range while its state is ROUTING |
-| `Battle.ROUT_MARGIN` | 190 wu | Unaffected by fog, staying fixed at `DETECTION_RANGE` (render-only) |
+| `Battle.ROUT_MARGIN` | 190 wu | Unaffected by fog: a compile-time const, never recomputed from fog state (see "The rout margin is decoupled from fog of war" below) |
 
 The multipliers are gameplay tuning and are labelled as such; only
 `sight_scale`'s tie to field size is a structural claim.
@@ -597,10 +597,16 @@ under the open questions below.
 
 **The rout margin is decoupled from fog of war.**
 `Battle.ROUT_MARGIN` remains fixed at `DETECTION_RANGE` = 190 wu.
-Fog is render-only.
-It sets `CanvasItem.visible` and draws ghost markers, but does not alter `rout_margin` or `field_with_margin`.
+This is not because fog is render-only overall (it is not: it also gates AI/order
+targeting, see "Implementation status" above) -- it is because `rout_margin` and
+`field_with_margin` are recomputed only from the live map's own geometry
+(`Battle._sync_rout_margin`, called once at battle setup), with no fog-state input
+anywhere in that computation, and `Battle._on_settings_changed`'s own fog-toggle handler
+never calls it.
 A routing enemy crosses `Unit.retreat_bounds` and escapes at the same tick whether fog of war is enabled or disabled.
-This decoupling ensures that mid-battle fog toggles cannot cause replay determinism divergence between recording and playback.
+A mid-battle fog toggle cannot desync `rout_margin` between recording and playback for this
+reason alone; the fog state itself also replays deterministically now, via the
+per-tick fog track (`sparta#1579`, `Replay.record_fog_change` / `Replay.fog_for_tick`).
 `Battle.rout_margin` remains an instance property initialized to `ROUT_MARGIN` for compatibility, but its value is constant.
 
 ### Last-known contact
@@ -874,10 +880,12 @@ The `sight` axis on terrain patches in `BattleMap.parse` and
 `BattleMap.serialize`.
 Sightline tests reuse the existing public `PathField.is_leg_blocked` with
 `clearance` 0.0; no new `PathField` entry point is added.
-`Battle.ROUT_MARGIN` remains fixed at `DETECTION_RANGE` (190 wu).
-Fog is render-only and does not alter the rout margin or retreat bounds.
-No rendering and no AI consumption: the sim runs exactly as today and the new
-state is computed alongside it.
+`Battle.ROUT_MARGIN` remains fixed at `DETECTION_RANGE` (190 wu), unaffected by fog for the
+reason given in "The rout margin is decoupled from fog of war" above (not because fog is
+render-only overall, which by the time of implementation it no longer was).
+This original scope proposed no AI consumption: the sim would run exactly as today and the
+new state would be computed alongside it -- see "Implementation status" above for what
+actually shipped.
 
 **Parameters.**
 `Battle.sight_scale` (default `0.25 * min(field.size.x, field.size.y)`),

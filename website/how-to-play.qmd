@@ -1303,7 +1303,11 @@ a soldier already in melee contact keeps fighting whoever is there, fog or no fo
 whether the fight is close enough to resolve soldier by soldier or has zoomed out to a
 [far-tier](tactics.qmd#fig-far-tier-missile) exchange between the two formations as a whole
 --- but that exemption is melee only, not "in weapon range" generally;
-a unit still at standoff distance, even one well within its own missile range, is a separate case (see below) regardless of tier: a volley re-checks whether the target is still sighted on every exchange, even one it was already trading fire with.
+a unit still at standoff distance,
+even one well within its own missile range,
+is a separate case (see below) regardless of tier:
+a volley re-checks whether the target is still sighted on every exchange,
+even one it was already trading fire with.
 The enemy AI's own *decisions* honor the same fog you see when picking a FRESH target, though:
 an AI side can't engage, or auto-march toward, an enemy none of its own units currently perceives,
 and reacts on the first AI decision after one of them does
