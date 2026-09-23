@@ -556,18 +556,42 @@ func test_funnel_corner_with_empty_path_has_no_side_preference() -> void:
 	# arbitrary corner's side as though it were a real corridor point. route_side stays
 	# at its initialised 0.0 ("no preference": the `for p in path` search never runs),
 	# so every corner clears the side filter and the cheapest one by straight-line
-	# detour cost wins on cost alone -- deterministically, not from a stray sentinel
-	# value's own position.
+	# detour cost wins on cost alone.
+	#
+	# `from`/`to` sit off-centre (y=220, 80 above the wall's y=300 centre-line, not
+	# on it) so the north (top) corner is STRICTLY cheaper than the south (bottom)
+	# one by straight-line detour cost -- at y=300 (this wall spans y 100..500, so
+	# y=300 is exactly its vertical centre) both corners cost exactly the same, which
+	# pins whichever corner an implementation's tie-break happens to favour rather
+	# than actually exercising cost comparison (the earlier, since-fixed version of
+	# this test made exactly that mistake -- see the mirrored companion test below,
+	# which catches an implementation that always returns that same fixed corner
+	# regardless of which side is actually cheaper).
 	var pf := PathField.new(Rect2(0, 0, 640, 640))
 	var wall := Rect2(300, 100, 64, 400)
 	pf.block_rect(wall)
-	var corner: Vector2 = pf._funnel_corner(Vector2(240, 300), Vector2(450, 300),
+	var corner: Vector2 = pf._funnel_corner(Vector2(240, 220), Vector2(450, 220),
 			PackedVector2Array(), 20.0)
 	assert_true(corner.is_finite(), "every corner clears an unset (0.0) route_side's filter")
-	# The closer corner by straight-line cost from this from/to pair -- same
-	# expectation test_funnel_steers_for_the_grown_corner_not_the_cell_lane's sibling
-	# tests already pin for a real (non-empty) corridor through this same wall.
 	var expected := Vector2(wall.position.x - 20.0 - PathField.CORNER_STANDOFF,
 			wall.position.y - 20.0 - PathField.CORNER_STANDOFF)
 	assert_eq(corner, expected,
-		"with no corridor to prefer a side, the cheapest corner by cost wins, not an arbitrary one")
+		"with no corridor to prefer a side, the cheapest (here: north/top) corner by cost wins")
+
+
+func test_funnel_corner_with_empty_path_picks_the_cheaper_corner_from_the_other_side() -> void:
+	# Mirror of the test above, `from`/`to` moved to y=380 (80 below the wall's y=300
+	# centre-line) so the south (bottom) corner is now the strictly cheaper one. An
+	# implementation that always returns a fixed corner (e.g. always north, as the
+	# unmirrored test alone could not tell apart from a genuine cost comparison) fails
+	# exactly one of this pair; only a real per-call cost comparison passes both.
+	var pf := PathField.new(Rect2(0, 0, 640, 640))
+	var wall := Rect2(300, 100, 64, 400)
+	pf.block_rect(wall)
+	var corner: Vector2 = pf._funnel_corner(Vector2(240, 380), Vector2(450, 380),
+			PackedVector2Array(), 20.0)
+	assert_true(corner.is_finite(), "every corner clears an unset (0.0) route_side's filter")
+	var expected := Vector2(wall.position.x - 20.0 - PathField.CORNER_STANDOFF,
+			wall.end.y + 20.0 + PathField.CORNER_STANDOFF)
+	assert_eq(corner, expected,
+		"with no corridor to prefer a side, the cheapest (here: south/bottom) corner by cost wins")
