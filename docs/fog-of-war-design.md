@@ -142,27 +142,34 @@ with no line-of-sight or fog test at all;
 the ranged-fire branches were the sharper miss,
 since `missile_range` can reach well past what fog lets a team see,
 so a unit could loose a visible volley at a target the player's own screen still hides.
-All four now consult `Battle.ai_team_perceives`
+Every one of these branches now consults `Battle.ai_team_perceives`
 (via `Unit._enemy_is_perceived`,
-whose own doc comment names the four gated branches authoritatively,
+whose own doc comment names the currently-gated branches authoritatively,
 kept there rather than duplicated in prose that can drift)
 before chasing, or firing a standoff volley,
 on an enemy not yet in MELEE contact --
 leaving combat already in melee contact untouched.
-Missile fire at standoff is itself one of the four gated branches,
+Missile fire at standoff is itself one of the gated branches,
 not exempt the way in-contact melee is:
 a target already well within a unit's own `missile_range`
 is still gated if it is not yet in melee contact and its side has not sighted it.
 Only the auto-advance-on-detect fallback is actually AI-exclusive
 (gated by `auto_advance_on_detect`);
-the other three run identically for a player-commanded unit --
+the rest run identically for a player-commanded unit --
 see "What the AI can see" above for why that is a deliberate symmetric choice,
 not an omission.
 The grep-based regression test this section's "The invariant" subsection calls for --
 extended during review to also forbid a direct `Battle` instance field access,
 not just a direct group lookup --
 lives in `test/unit/test_battle_ai_fog.gd`,
-alongside fog-on/fog-off coverage for each of the four per-unit paths above.
+alongside fog-on/fog-off coverage for each of the per-unit paths above.
+**Update, 2026-09-23: three more fresh-acquisition gaps found and closed during a later
+review round -- the ORDER_SKIRMISH kite branch, the ORDER_SWEEP_ROUTERS and
+ORDER_ROLL_THE_LINE target acquisitions, and the `chasing`-with-no-committed-`target_enemy`
+half of the chase branch (its `target_enemy != null` half stays the disclosed exception) --
+plus the same FRESH-reacquisition gap in far-tier attrition (`FarTierCombat.
+engaged_target`). See `Unit._enemy_is_perceived`'s own doc comment for the complete,
+current list.**
 Team-wide, not commander-scoped:
 every level of one team's chain reads the same set this AI tick,
 matching this document's own "Phase 3 below implements the team-wide view first
@@ -962,20 +969,25 @@ determinism on replay is preserved with fog active.
 **Met, with one disclosed exception** --
 `test/unit/test_battle_ai_fog.gd`,
 including a fixed-seed replay-determinism check under fog
-and fog-on/fog-off coverage for each of four independent per-unit paths found during review,
-across two rounds,
-to bypass the command layer's own fog gate entirely
-(`Unit._think()`'s auto-advance-on-detect fallback and ranged-fire-at-standoff branch,
-and `Unit._support_tick`'s own chase and ranged-fire branches --
-all four closed the same way;
-see the "Implementation status" update above).
+and fog-on/fog-off coverage for each independent per-unit path found during review
+(across three rounds so far)
+to bypass the command layer's own fog gate entirely --
+`Unit._think()`'s and `Unit._support_tick`'s own not-yet-engaged targeting decisions, plus
+far-tier attrition's own re-acquisition fallback, all closed the same way; see
+`Unit._enemy_is_perceived`'s own doc comment for the complete, current list rather than
+re-enumerating it here.
 Left deliberately ungated:
-once a unit commits to an explicit attack order,
+once a unit commits to an explicit attack order
+(or `Unit._think()`'s own SWEEP_ROUTERS/ROLL_THE_LINE stances commit one through their own,
+now-gated fresh-pick paths above),
 `Unit._think()`'s own chase-an-explicit-target branch
 keeps closing on that target's current live position
 with no further perception re-check,
 so a unit can keep chasing a target
 that has since dropped out of its side's own current perception.
+An `ORDER_CHASE` unit with no such prior commitment (target_enemy still null, a purely
+auto-acquired quarry) does NOT share this exception -- that half of the same branch is
+itself gated now.
 This needs the same last-known-contact memory the perception layer does not yet have,
 tracked as [#1626](https://github.com/Lacaedemon/sparta/issues/1626).
 Add a grep-based regression test that the four AI scripts contain no direct group lookups,

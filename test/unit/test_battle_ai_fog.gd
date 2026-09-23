@@ -7,10 +7,10 @@ extends GutTest
 ## player's own fog rendering uses). With fog off, the view is exactly today's omniscient
 ## one and AI behaviour is unchanged.
 
-const UnitLeaderSrc := "res://scripts/UnitLeader.gd"
-const SubcommanderSrc := "res://scripts/Subcommander.gd"
-const GeneralSrc := "res://scripts/General.gd"
-const PlayerDelegationSrc := "res://scripts/PlayerDelegation.gd"
+const UNIT_LEADER_PATH := "res://scripts/UnitLeader.gd"
+const SUBCOMMANDER_PATH := "res://scripts/Subcommander.gd"
+const GENERAL_PATH := "res://scripts/General.gd"
+const PLAYER_DELEGATION_PATH := "res://scripts/PlayerDelegation.gd"
 
 const WorldScale = preload("res://scripts/WorldScale.gd")
 
@@ -88,7 +88,7 @@ static func _perception_invariant_violation(src: String) -> String:
 
 
 func test_no_ai_command_script_reads_unfiltered_world_state_directly() -> void:
-	for path in [UnitLeaderSrc, SubcommanderSrc, GeneralSrc, PlayerDelegationSrc]:
+	for path in [UNIT_LEADER_PATH, SUBCOMMANDER_PATH, GENERAL_PATH, PLAYER_DELEGATION_PATH]:
 		var src: String = FileAccess.get_file_as_string(path)
 		assert_true(src.length() > 0, "%s should be readable" % path)
 		var violation: String = _perception_invariant_violation(src)
@@ -236,6 +236,72 @@ func test_team1_ai_ignores_the_same_flanker_when_fog_is_off_too_far_to_reach() -
 		"fog off: the omniscient view names every living enemy regardless of distance")
 	assert_eq(watcher.current_order.target_uid, flanker.uid,
 		"the only enemy on the field is targeted immediately, exactly as before phase 5")
+
+
+# --- a delegated team-0 group reads the SAME fogged command-level view -----------------
+#
+# _run_player_delegated_ai (Battle.gd) reads _ai_perceptible_units(0), the identical
+# fogged-or-omniscient source _run_enemy_ai reads for team 1 above -- but every existing
+# delegation test (test_battle_ai_player_delegation.gd) sets all_teams_control = true to
+# keep team 1's own AI from also moving, and Battle.is_fog_active() returns false
+# unconditionally whenever all_teams_control is on. So the delegated-group path has never
+# actually been exercised under real fog before this test: a real battle, all_teams_control
+# left at its default (false), fog on.
+
+
+const DELEGATE_GROUP: int = 5
+
+
+func test_delegated_team0_group_ignores_an_unperceived_enemy_until_it_is_sighted() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	# Two team-0 units close together (so Subcommander sees a real 2-unit group, matching
+	# test_battle_ai_player_delegation.gd's own staging convention) and one team-1 enemy
+	# far off, beyond sight -- symmetric fog, so team 1's own (undelegated) AI has nothing
+	# to react to either and stays passive.
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x + 40.0, "y": WATCHER_POS.y},
+		{"team": 1, "type": "Infantry", "x": FAR_FLANKER_POS.x, "y": FAR_FLANKER_POS.y},
+	]
+	add_child_autofree(battle)
+	var group: Array = _team_units(0)
+	var uids: Array = []
+	for u in group:
+		uids.append(u.uid)
+	battle.enqueue_delegation(uids, DELEGATE_GROUP)
+	for u in group:
+		assert_true(u.is_delegated(), "sanity check: delegation actually took")
+
+	while battle.current_tick() < 1:
+		await get_tree().physics_frame
+
+	var enemy: Unit = _team_units(1)[0]
+	for u in group:
+		assert_null(u.current_order,
+			"the enemy is ~1050 wu away, well beyond sight: the delegated group's own " +
+			"AI decides nothing, exactly like an undelegated team's would")
+	assert_false(battle._ai_perceptible_units(0).has(enemy),
+		"the fogged view the delegated group's AI reads does not name the unperceived enemy")
+
+	# Teleport the enemy into a delegated unit's sight disc -- same technique as the
+	# team-1 flanker test above. NEAR_FLANKER_POS is already staged relative to WATCHER_POS,
+	# which the first delegated unit spawns at.
+	enemy.position = NEAR_FLANKER_POS
+	while battle.current_tick() <= AI_PERIOD:
+		await get_tree().physics_frame
+
+	assert_true(battle._ai_perceptible_units(0).has(enemy),
+		"now inside a delegated unit's sight disc: the fogged view includes it")
+	var reacted: bool = false
+	for u in group:
+		if u.current_order != null and u.current_order.type == Order.Type.ATTACK \
+				and u.current_order.target_uid == enemy.uid:
+			reacted = true
+	assert_true(reacted,
+		"the delegated group reacts on the first decision tick after the enemy enters " +
+		"perception, exactly like team 1's own AI does")
 
 
 # --- a SEPARATE per-tick path: Unit._think()'s auto-advance-on-detect fallback ---------
@@ -635,6 +701,294 @@ func test_ai_decisions_replay_identically_with_fog_active() -> void:
 	assert_eq(snapshot_a, snapshot_b,
 		"same seed + fog active -> identical per-unit AI order, exactly like the pre-phase-5 " +
 		"omniscient determinism test in test_battle_ai_leaders.gd")
+
+
+# --- far-tier attrition: FarTierCombat.engaged_target gates a FRESH re-acquisition too ----
+#
+# UnitTargeting.current_target(u) falls through to a bare, unfogged nearest_enemy() scan
+# whenever u.target_enemy has died or gone invalid, and never persists that pick back to
+# target_enemy -- so a FIGHTING far-tier unit whose committed target just died could
+# otherwise keep attriting a fresh, never-perceived target every tick with no gate at all.
+# FarTierCombat.engaged_target is called DIRECTLY here (no physics ticks): the fields under
+# test (tier, state, target_enemy) are set immediately after the battle spawns, so nothing
+# AI-driven runs in between to disturb them, matching this file's own convention of calling
+# a private/static function directly to isolate one branch (see the SUPPORT-stance tests
+# above).
+
+
+func test_far_tier_engaged_target_does_not_pick_a_fresh_unperceived_target() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var watcher: Unit = _team_units(1)[0]
+	var fresh_enemy: Unit = _team_units(0)[0]
+	watcher.sight_range = SHRUNK_SIGHT
+	assert_false(battle.ai_team_perceives(1, fresh_enemy),
+		"sanity check on the staged distances: team 1 does not perceive this enemy")
+	assert_true(FarTierRates.in_striking_range(watcher, fresh_enemy),
+		"sanity check: the enemy is still within the archer's own missile_range")
+	watcher.tier = FormationTier.FAR
+	watcher.state = Unit.State.FIGHTING
+	watcher.target_enemy = null   # simulates the committed target having just died mid-fight
+
+	var engaged: Unit = FarTierCombat.engaged_target(watcher)
+
+	assert_null(engaged,
+		"a FRESH re-acquisition (target_enemy was null, so current_target() fell through to " +
+		"the unfogged nearest_enemy() scan) must not attrit an enemy this team hasn't sighted")
+
+
+func test_far_tier_engaged_target_still_picks_a_fresh_enemy_when_fog_is_off() -> void:
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var watcher: Unit = _team_units(1)[0]
+	var fresh_enemy: Unit = _team_units(0)[0]
+	watcher.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+	assert_true(battle.ai_team_perceives(1, fresh_enemy),
+		"sanity check: fog off means ai_team_perceives is unconditionally true regardless of sight")
+	watcher.tier = FormationTier.FAR
+	watcher.state = Unit.State.FIGHTING
+	watcher.target_enemy = null
+
+	var engaged: Unit = FarTierCombat.engaged_target(watcher)
+
+	assert_eq(engaged, fresh_enemy,
+		"fog off: the fresh re-acquisition is unconditionally allowed, exactly as before " +
+		"this gate existed")
+
+
+func test_far_tier_engaged_target_keeps_an_already_committed_target_even_if_unperceived() -> void:
+	# The mirror of the two tests above: an ALREADY-committed, still-live target_enemy is the
+	# disclosed exception documented on _enemy_is_perceived's own doc comment (this pass only
+	# ever continues a fight _think() already started -- and already perception-gated --
+	# earlier this same tick), so it must NOT be re-gated here even when the team's current
+	# perception no longer covers it (e.g. the ally that was granting sight died or moved off
+	# since the target was first committed).
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var watcher: Unit = _team_units(1)[0]
+	var committed_enemy: Unit = _team_units(0)[0]
+	watcher.sight_range = SHRUNK_SIGHT
+	assert_false(battle.ai_team_perceives(1, committed_enemy),
+		"sanity check on the staged distances: team 1 does not perceive this enemy")
+	watcher.tier = FormationTier.FAR
+	watcher.state = Unit.State.FIGHTING
+	watcher.target_enemy = committed_enemy   # already committed, unlike the two tests above
+
+	var engaged: Unit = FarTierCombat.engaged_target(watcher)
+
+	assert_eq(engaged, committed_enemy,
+		"an already-committed target_enemy is exempt from the FRESH-reacquisition gate, even " +
+		"though this team's current perception no longer covers it")
+
+
+# --- four more fresh-acquisition gaps: SKIRMISH kite, SWEEP_ROUTERS, ROLL_THE_LINE, CHASE -
+#
+# Each of these calls Unit._think() directly (matching test_unit.gd's own convention for
+# isolating one order-mode branch) rather than running physics ticks, since the battle only
+# needs to exist to wire a real, fogged _owning_battle -- a bare unit's _owning_battle is
+# null, which makes _enemy_is_perceived unconditionally true regardless of fog.
+
+
+func test_skirmish_kite_does_not_react_to_an_unperceived_close_enemy() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		# Inside skirmish_kite_distance (missile_range * 0.625 -- 100 wu for the default
+		# Archers missile_range of 160 wu) but outside SHRUNK_SIGHT (50 wu): a close-in
+		# threat the skirmisher's own side has not sighted.
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y - 80.0},
+	]
+	add_child_autofree(battle)
+	var skirmisher: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	skirmisher.sight_range = SHRUNK_SIGHT
+	skirmisher.order_mode = Unit.ORDER_SKIRMISH
+	assert_false(battle.ai_team_perceives(1, enemy),
+		"sanity check on the staged distance: team 1 does not perceive this enemy")
+	assert_lt(skirmisher.position.distance_to(enemy.position), skirmisher.skirmish_kite_distance,
+		"sanity check: the enemy is still inside the skirmisher's own kite distance")
+	var start_pos: Vector2 = skirmisher.position
+
+	skirmisher._think(0.1)
+
+	assert_almost_eq(skirmisher.position.distance_to(start_pos), 0.0, 0.5,
+		"fog on: a skirmisher does not kite away from a close threat its own side hasn't " +
+		"sighted -- reacting to it would itself be the tell")
+
+
+func test_skirmish_kite_still_reacts_when_fog_is_off() -> void:
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y - 80.0},
+	]
+	add_child_autofree(battle)
+	var skirmisher: Unit = _team_units(1)[0]
+	skirmisher.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+	skirmisher.order_mode = Unit.ORDER_SKIRMISH
+	var start_pos: Vector2 = skirmisher.position
+
+	skirmisher._think(0.1)
+
+	assert_gt(skirmisher.position.distance_to(start_pos), 0.05,
+		"fog off: the skirmisher still kites away, exactly as before this gate existed")
+
+
+func test_sweep_routers_fallback_does_not_commit_to_a_fresh_unperceived_enemy() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var sweeper: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	sweeper.sight_range = SHRUNK_SIGHT
+	sweeper.order_mode = Unit.ORDER_SWEEP_ROUTERS
+	assert_false(battle.ai_team_perceives(1, enemy),
+		"sanity check on the staged distance: team 1 does not perceive this enemy")
+	assert_null(sweeper.target_enemy, "no target committed before thinking")
+
+	sweeper._think(0.1)
+
+	assert_null(sweeper.target_enemy,
+		"fog on: SWEEP_ROUTERS's own current_target() fallback does not commit a fresh, " +
+		"unperceived enemy to target_enemy (no live router in range, so this exercises the " +
+		"elif fallback, not the routing-specific scan)")
+
+
+func test_sweep_routers_fallback_still_commits_when_fog_is_off() -> void:
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var sweeper: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	sweeper.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+	sweeper.order_mode = Unit.ORDER_SWEEP_ROUTERS
+
+	sweeper._think(0.1)
+
+	assert_eq(sweeper.target_enemy, enemy,
+		"fog off: the fresh pick is committed, exactly as before this gate existed")
+
+
+func test_roll_the_line_does_not_commit_to_a_fresh_unperceived_enemy() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var u: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	u.sight_range = SHRUNK_SIGHT
+	u.order_mode = Unit.ORDER_ROLL_THE_LINE
+	assert_false(battle.ai_team_perceives(1, enemy),
+		"sanity check on the staged distance: team 1 does not perceive this enemy")
+
+	u._think(0.1)
+
+	assert_null(u.target_enemy,
+		"fog on: ROLL_THE_LINE does not commit a fresh, unperceived enemy to target_enemy")
+
+
+func test_roll_the_line_still_commits_when_fog_is_off() -> void:
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var u: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	u.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+	u.order_mode = Unit.ORDER_ROLL_THE_LINE
+
+	u._think(0.1)
+
+	assert_eq(u.target_enemy, enemy,
+		"fog off: the fresh pick is committed, exactly as before this gate existed")
+
+
+func test_chase_does_not_close_on_a_fresh_unperceived_enemy_with_no_committed_target() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var u: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	u.sight_range = SHRUNK_SIGHT
+	u.order_mode = Unit.ORDER_CHASE
+	assert_null(u.target_enemy,
+		"no committed target before thinking -- a bare ORDER_CHASE stance alone must not " +
+		"gain the disclosed already-committed exception")
+	assert_false(battle.ai_team_perceives(1, enemy),
+		"sanity check on the staged distance: team 1 does not perceive this enemy")
+	var start_pos: Vector2 = u.position
+
+	u._think(0.1)
+
+	assert_almost_eq(u.position.distance_to(start_pos), 0.0, 0.5,
+		"fog on: a CHASE unit with no prior committed target_enemy does not close on a " +
+		"fresh, unperceived enemy")
+
+
+func test_chase_still_closes_on_a_fresh_enemy_when_fog_is_off() -> void:
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var u: Unit = _team_units(1)[0]
+	u.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+	u.order_mode = Unit.ORDER_CHASE
+	var start_pos: Vector2 = u.position
+
+	u._think(0.1)
+
+	assert_gt(u.position.distance_to(start_pos), 0.05,
+		"fog off: the CHASE unit still closes on the fresh enemy, exactly as before this " +
+		"gate existed")
 
 
 func _order_signature(u: Unit) -> String:

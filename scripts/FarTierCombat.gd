@@ -45,12 +45,24 @@ static func can_be_struck(target: Unit) -> bool:
 ## _engage_turn_target still armed; is_maneuver_turning() holds through the whole arc, and
 ## through order turns and wheels _think never consults. That and reading last tick's state
 ## (Battle resolves this first) err alike: attrition is UNDER-booked, never double-booked.
+##
+## Perception-gated FRESH re-acquisition only: UnitTargeting.current_target falls through to
+## a bare, unfogged nearest_enemy() scan when u.target_enemy has died or gone invalid --
+## and never persists that pick back to target_enemy, so every tick would otherwise re-run
+## the same ungated scan. An ALREADY-committed, still-live target_enemy is exempt (matching
+## the disclosed committed-attack exception on Unit._enemy_is_perceived's own doc comment):
+## this pass only ever continues a fight _think() already started -- and already
+## perception-gated -- earlier this same tick.
 static func engaged_target(u: Unit) -> Unit:
 	if not can_fight(u) or not u.is_inside_tree():
 		return null
 	if u.state != Unit.State.FIGHTING or u.is_maneuver_turning():
 		return null
+	var had_committed_target: bool = u.target_enemy != null and is_instance_valid(u.target_enemy) \
+			and u.target_enemy.state != Unit.State.DEAD
 	var target: Unit = UnitTargeting.current_target(u)
+	if not had_committed_target and not u._enemy_is_perceived(target):
+		return null
 	if not can_be_struck(target) or not FarTierRates.in_striking_range(u, target):
 		return null
 	return target

@@ -179,9 +179,11 @@ var show_combat_state_rings: bool = true:
 # Hide every enemy unit outside all of your own units' sight radii and draw a
 # fading ghost marker where each was last seen (Battle._tick_fog / Perception.gd).
 # Fog affects unit visibility and ghost markers, with the recorded replay map value
-# driving playback. Fog is render-only and does not affect retreat bounds or simulation
-# state. Default off, so every existing demo, replay, and test renders and routes
-# exactly as before.
+# driving playback, and does not affect retreat bounds or collision. It DOES affect
+# simulation state beyond rendering, though: AI/order targeting decisions are gated on
+# perception too (Battle.ai_team_perceives / Unit._enemy_is_perceived), so a unit cannot
+# fire on or chase an enemy its own side has not sighted. Default off, so every existing
+# demo, replay, and test renders and routes exactly as before.
 var fog_of_war: bool = false:
 	set(value):
 		if value == fog_of_war:

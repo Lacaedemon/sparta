@@ -1884,9 +1884,12 @@ func _physics_process(delta: float) -> void:
 ## Fog of war. With Settings.fog_of_war on, the fog team's units each perceive a
 ## disc, every enemy outside all of them is hidden by CanvasItem.visible, and each enemy's
 ## last sighting is kept for the ghost layer. (Disabled under all-teams control.)
-## Fog affects unit visibility and ghost markers, with the recorded replay map value
-## driving playback. Fog is render-only and does not affect the retreat margin.
-## Group membership, unit-level AI targeting, and collision are untouched.
+## This rendering pass itself affects unit visibility and ghost markers, with the recorded
+## replay map value driving playback. It does not affect the retreat margin, group
+## membership, or collision.
+## Unit-level AI/order targeting is NOT untouched by fog overall, though: it is gated
+## separately, at decision time, by ai_team_perceives / Unit._enemy_is_perceived (see that
+## function's own doc comment for the currently-gated branches) -- not by this rendering pass.
 ## Player-side order targeting in SelectionManager filters on visibility so a click in
 ## empty fog cannot target an unseen enemy. Switching fog off restores every unit
 ## and clears the markers.
@@ -1993,10 +1996,13 @@ var _ai_perceives_cache: Dictionary = {}
 var _ai_perceives_cache_tick: int = -1
 
 
-## Whether team `team` currently perceives `enemy`: true unconditionally when `enemy` is null
-## or fog of war is inactive (today's omniscient behaviour, unchanged), else membership in
-## _ai_perceptible_units(team)'s own enemy subset (see that function's doc comment for the
-## exact rule -- the SAME Perception.visible_enemy_uids test either way).
+## Whether team `team` currently perceives `enemy`: false when `enemy` is null (nothing to
+## perceive -- every real caller already guards on `enemy != null` before asking, so this is
+## a defensive default rather than a path any current call site exercises), true
+## unconditionally when fog of war is inactive (today's omniscient behaviour, unchanged),
+## else membership in _ai_perceptible_units(team)'s own enemy subset (see that function's
+## own doc comment for the exact rule -- the SAME Perception.visible_enemy_uids test either
+## way).
 ##
 ## The direct caller is Unit._enemy_is_perceived (scripts/Unit.gd), a thin duck-typed wrapper
 ## Unit reaches this through since Battle.gd has no class_name (see Unit._owning_battle's own
@@ -2021,7 +2027,7 @@ var _ai_perceives_cache_tick: int = -1
 ## player's own (0), and most of its callers deliberately gate a PLAYER-commanded unit too: a
 ## unit that could snipe or chase past its own player's fogged screen would itself be a
 ## fog-breaking exploit, so fog is symmetric here by design. See _enemy_is_perceived's own doc
-## comment for exactly which of its four gated branches are AI-exclusive versus shared.
+## comment for exactly which of its gated branches are AI-exclusive versus shared.
 func ai_team_perceives(team: int, enemy: UnitRef) -> bool:
 	if enemy == null:
 		return false

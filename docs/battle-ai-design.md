@@ -67,7 +67,7 @@ shipped in [#1560](https://github.com/Lacaedemon/sparta/pull/1560) and
 2026-09-11 and 2026-09-12, Pacific).
 Campaign- and saga-side fog have not shipped.
 Separately, and this is the part phase 5 below actually needed: as of
-2026-09-19, **no `CommanderView` class exist[ed]**, and `scripts/UnitLeader.gd`,
+2026-09-19, **no `CommanderView` class existed**, and `scripts/UnitLeader.gd`,
 `scripts/Subcommander.gd`, `scripts/General.gd`, and
 `scripts/PlayerDelegation.gd` still each documented their perception source
 as omniscient: `UnitLeader.gd` called it "the omniscient placeholder" in
@@ -103,20 +103,28 @@ since firing is a visible tell
 (a volley loosed at a unit the player's own screen still hides)
 and `missile_range` can reach well past what fog actually lets a team see.
 Despite this document's own AI framing,
-three of those four branches are not AI-exclusive:
+most of those branches are not AI-exclusive:
 only the auto-advance-on-detect fallback is actually gated to the AI-driven army
 (`auto_advance_on_detect`);
 the ranged-fire and `_support_tick` branches run identically for a player-commanded unit,
 a deliberate symmetric choice
 (see `docs/fog-of-war-design.md`'s own "What the AI can see" update for why).
-All four now consult `Battle.ai_team_perceives`
-(`Unit._enemy_is_perceived`, which lists the four gated branches in its own doc comment)
+Every one of them now consults `Battle.ai_team_perceives`
+(`Unit._enemy_is_perceived`, which lists the currently-gated branches in its own doc comment
+rather than a bare count here, so this prose can't drift out of sync with the code again)
 before chasing, or firing a standoff volley,
 on an enemy not yet in MELEE contact --
 leaving combat already in melee contact untouched
 (soldier-level melee-contact combat stays unfogged, per `docs/fog-of-war-design.md`;
-missile fire at standoff is itself one of the four gated branches,
+missile fire at standoff is itself one of the gated branches,
 not exempt the same way).
+**Update, 2026-09-23: three more fresh-acquisition gaps found and closed during a later
+review round -- `_think()`'s ORDER_SKIRMISH kite branch, its ORDER_SWEEP_ROUTERS and
+ORDER_ROLL_THE_LINE target acquisitions, and the `chasing`-with-no-committed-`target_enemy`
+half of the chase branch below (its `target_enemy != null` half stays the disclosed
+exception it always was) -- plus the same FRESH-reacquisition gap in `FarTierCombat.
+engaged_target` (far-tier attrition). See `Unit._enemy_is_perceived`'s own doc comment for
+the complete, current list.**
 Deliberately still no formal `CommanderView` type --
 the caller's array remains the interface,
 exactly as it was for the omniscient implementation,
@@ -631,11 +639,11 @@ No AI code path reads unfogged state
 (enforced by the interface being the only door) --
 met for the four command scripts
 (a grep-based regression test that also forbids a direct `Battle` instance field access)
-and, discovered and closed during review across two rounds,
-for four independent per-unit paths that ran outside the command layer entirely:
-`Unit._think()`'s auto-advance-on-detect fallback and ranged-fire-at-standoff branch,
-and `Unit._support_tick`'s own chase and ranged-fire branches --
-all four gated through `Battle.ai_team_perceives` now,
+and, discovered and closed during review across three rounds so far,
+for the independent per-unit paths that ran outside the command layer entirely
+(`Unit._think()`'s and `Unit._support_tick`'s own not-yet-engaged targeting decisions, plus
+far-tier attrition's own re-acquisition fallback) --
+all now gated through `Battle.ai_team_perceives`,
 whose caller list is enumerated (and kept current) in `Unit._enemy_is_perceived`'s own doc comment
 rather than here,
 to avoid this description drifting out of sync with the code again.
