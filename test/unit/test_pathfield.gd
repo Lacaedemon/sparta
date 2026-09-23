@@ -461,8 +461,8 @@ func test_funnel_corner_with_no_blocking_rect_returns_inf() -> void:
 
 
 func test_funnel_corner_route_side_is_stable_under_sub_unit_position_drift() -> void:
-	# Regression for #1616 (a wide single-rank formation's facing whipsaws while
-	# pivoting onto a new bearing). Root cause: an extreme-aspect-ratio formation's
+	# Regression for a wide single-rank formation's facing whipsawing while
+	# pivoting onto a new bearing. Root cause: an extreme-aspect-ratio formation's
 	# Unit.terrain_clearance() (Unit._pivot_radius() derived) can be large enough that
 	# a routing rect hundreds of world units away still "blocks" a from->to leg once
 	# room-capped -- and _funnel_corner's route_side used to read the sign of
