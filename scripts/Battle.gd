@@ -448,7 +448,7 @@ var _recorded_fog_of_war: bool = false
 # gameplay-legibility knob like sight_scale, with no physical derivation -- kept as a
 # bare wu literal per docs/units-convention.md's "Deliberately NOT metric" section
 # rather than dressed in a metres expression. Settable BEFORE the node enters the tree.
-const DEFAULT_FOG_CELL: float = 40.0   # tuned in wu (roughly 2 m at the default WU_PER_M)
+const DEFAULT_FOG_CELL: float = 40.0   # tuned in wu: grid legibility vs. per-tick scan cost
 var fog_cell: float = DEFAULT_FOG_CELL
 # Unexplored fill color (alpha 1.0 hides ground/terrain entirely) and the alpha the same
 # color is drawn at over an explored-but-not-currently-visible cell. Caller-configurable,
