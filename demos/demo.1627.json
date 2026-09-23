@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Tooling-only fix inside DemoDefects.gd's check_expectations: corrects the 'worst' text a passed null-value expectation reports (it no longer misreports as '(no snapshot/unit/field in range)'). Pure demo-verification reporting/debuggability change with no player-visible effect and no verdict-logic change; covered by a new GUT unit test instead of a recorded clip."
+}
