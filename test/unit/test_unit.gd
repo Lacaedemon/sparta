@@ -1691,6 +1691,49 @@ func test_terrain_clearance_for_travel_perpendicular_to_facing_keeps_the_depth_b
 		"the perpendicular-travel clearance is far larger than the along-facing one for a column this deep")
 
 
+func test_terrain_clearance_uses_the_true_grid_axis_during_a_folded_quarter_turn() -> void:
+	# terrain_clearance() must project against the block's TRUE world-space file axis
+	# (soldier_block_world_angle() -- facing.angle() + PI*0.5 + _formation_angle, the
+	# exact rotation soldier_world_slots() applies to every local slot), not raw
+	# `facing`. _formation_angle folds a quarter-turn's own rotation into the render
+	# without moving the slot grid or facing itself (see soldier_world_slots' doc
+	# comment) -- a countermarch or an about-face reform still settling can leave
+	# _formation_angle at +/-PI/2 while facing has not changed at all. At that fold the
+	# file and depth axes are swapped relative to facing: marching straight along
+	# facing now sweeps the block's DEPTH, not its frontage, exactly the reverse of the
+	# unfolded (_formation_angle == 0) case above. A formula that reads raw facing
+	# (as an earlier version of this fix did) returns the frontage-based value here --
+	# it cannot pass the first assertion below, which is an order of magnitude off.
+	var deep := _make_unit()
+	deep.frontage_override = 3   # 3 files x many ranks -- deep and narrow, see the tests above
+	deep.facing = Vector2.DOWN
+	deep.position = Vector2.ZERO
+	deep._formation_angle = PI * 0.5   # a folded quarter-turn
+	var files: int = maxi(1, deep.formation_files(deep.soldiers))
+	var ranks: int = UnitFormation.ranks_for(deep.soldiers, files)
+	var half_frontage: float = 0.5 * float(maxi(0, files - 1)) * deep.file_pitch_wu()
+	var half_depth: float = 0.5 * float(maxi(0, ranks - 1)) * deep.rank_pitch_wu()
+	# Marching straight along facing, mid-fold, sweeps the TRUE depth axis (the file
+	# and depth axes have swapped relative to facing), so the clearance must be close
+	# to the depth-based margin -- not the much smaller frontage-based one.
+	assert_almost_eq(deep.terrain_clearance(deep.facing), half_depth + deep.soldier_body_radius(), 0.01,
+		"mid-fold, travel along facing sweeps the block's TRUE depth axis, not its frontage")
+	# Cross-check directly against soldier_world_slots' own rotation: unfolded
+	# (_formation_angle == 0) the TRUE file axis is PERPENDICULAR to facing (a soldier
+	# at the file-axis extreme sits off to the side, per the earlier along-facing
+	# tests), but mid-fold it swings onto the SAME line as facing instead -- a soldier
+	# at that same file-axis extreme now sits straight ahead of (or behind) the block's
+	# centre, which is exactly the swap that makes marching along facing sweep depth.
+	var file_axis_world: Vector2 = Vector2.RIGHT.rotated(deep.soldier_block_world_angle())
+	assert_almost_eq(absf(file_axis_world.cross(deep.facing)), 0.0, 0.001,
+		"soldier_block_world_angle's own file axis lies along the SAME line as facing mid-fold, confirming the swap")
+	# Sanity check the fold is genuinely large enough to matter: the depth-based
+	# clearance here is far bigger than the frontage-based value a formula ignoring
+	# the fold would return for the identical along-facing leg.
+	assert_gt(deep.terrain_clearance(deep.facing), (half_frontage + deep.soldier_body_radius()) * 5.0,
+		"the fold-aware clearance is far larger than the frontage-only value for a column this deep")
+
+
 func test_terrain_clearance_with_no_direction_given_returns_the_safe_pivot_radius_value() -> void:
 	# With no travel direction known, terrain_clearance() must return a value safe for
 	# ANY direction of travel -- corner_clearance()'s worst-case pivot-radius margin,
@@ -1869,12 +1912,12 @@ func test_funnel_lane_offset_is_nonzero_when_a_same_team_unit_is_congested_nearb
 	# scheme's full -1/+1 magnitude for this specific pair.
 	var expected_a: float = (2.0 * float(posmod(a.uid, Unit.FUNNEL_LANE_COUNT)) / float(Unit.FUNNEL_LANE_COUNT - 1)) - 1.0
 	var expected_b: float = (2.0 * float(posmod(b.uid, Unit.FUNNEL_LANE_COUNT)) / float(Unit.FUNNEL_LANE_COUNT - 1)) - 1.0
-	# Both units march straight along their own facing here (RIGHT, toward (1500,500)
-	# from x=500/520), so terrain_clearance's travel-direction argument can just be
-	# `facing` -- matching the actual travel_dir funnel_lane_offset() itself derives.
-	assert_almost_eq(offset_a, expected_a * a.terrain_clearance(a.facing) * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
+	# Scaled from corner_clearance(), not terrain_clearance(): the offset perturbs the
+	# shared FUNNEL CORNER waypoint, which is grown by corner_clearance() (see
+	# funnel_lane_offset's own doc comment).
+	assert_almost_eq(offset_a, expected_a * a.corner_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
 		0.0001, "a genuinely congested pair still gets the deterministic per-uid tie-break offset")
-	assert_almost_eq(offset_b, expected_b * b.terrain_clearance(b.facing) * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
+	assert_almost_eq(offset_b, expected_b * b.corner_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
 		0.0001, "a genuinely congested pair still gets the deterministic per-uid tie-break offset")
 	assert_ne(offset_a, offset_b, "a genuinely congested pair never shares a lane")
 	PathField.active = old_pf

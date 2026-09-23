@@ -3862,6 +3862,17 @@ func is_deep_for_formed_turn() -> bool:
 ## `travel_dir` (as an earlier version of this fix did) under-clears a deep, narrow
 ## column moving off its own facing.
 ##
+## The projection axis is the block's TRUE world-space file axis -- `facing.rotated(PI *
+## 0.5 + _formation_angle)`, the same rotation soldier_world_slots() applies to every
+## local slot (see soldier_block_world_angle(), which returns exactly this angle) --
+## NOT raw `facing`. A folded quarter-turn (_formation_angle == +/-PI/2, a countermarch or
+## about-face reform still settling) rotates the live grid 90 degrees without moving
+## facing at all, so the file and depth axes swap relative to facing: reading raw facing
+## (as an earlier version of this fix did) silently returns the WRONG one of the two
+## half-extents while a fold is in progress -- under-clearing exactly the deep column
+## this whole fix exists to protect, in precisely the maneuver where the block is
+## already at its most vulnerable to a routing mistake.
+##
 ## Deliberately NOT the flat _pivot_radius() (the corner man's full half-diagonal,
 ## folding in BOTH width and depth unconditionally) for a KNOWN travel direction: a
 ## straight, unturning leg only needs the width actually swept along that specific
@@ -3877,7 +3888,14 @@ func terrain_clearance(travel_dir: Vector2 = Vector2.ZERO) -> float:
 	var ranks: int = UnitFormation.ranks_for(soldiers, files)
 	var half_frontage: float = 0.5 * float(maxi(0, files - 1)) * file_pitch_wu()
 	var half_depth: float = 0.5 * float(maxi(0, ranks - 1)) * rank_pitch_wu()
-	var swept: float = absf(facing.dot(dir)) * half_frontage + absf(facing.cross(dir)) * half_depth
+	# The block's true world-space file-axis direction -- see the doc comment above for
+	# why this can't be raw `facing` once a fold (_formation_angle != 0) is in progress.
+	# u_axis.cross(dir) / u_axis.dot(dir) play the same role facing.cross(dir) /
+	# facing.dot(dir) did before a fold was accounted for (u_axis reduces to
+	# facing.rotated(PI*0.5) when _formation_angle == 0, and the two pairs of
+	# cross/dot values are equal up to sign in that case, which absf() erases).
+	var u_axis: Vector2 = Vector2.RIGHT.rotated(soldier_block_world_angle())
+	var swept: float = half_frontage * absf(u_axis.cross(dir)) + half_depth * absf(u_axis.dot(dir))
 	return swept + soldier_body_radius()
 
 
@@ -3988,7 +4006,16 @@ func funnel_lane_offset(point: Vector2) -> float:
 	if not _has_congested_same_team_router():
 		return 0.0
 	var lane: float = (2.0 * float(posmod(uid, FUNNEL_LANE_COUNT)) / float(FUNNEL_LANE_COUNT - 1)) - 1.0
-	return lane * terrain_clearance(travel_dir) * FUNNEL_LANE_SEPARATION_FRACTION
+	# corner_clearance(), not terrain_clearance(): the waypoint this offset perturbs is
+	# the shared FUNNEL CORNER itself (PathField._funnel_corner, grown by
+	# corner_clearance() -- see _move_to's next_step call), not the straight-leg
+	# sightline. Scaling from the smaller, direction-aware terrain_clearance() instead
+	# under-separates two contesting units: for a deep, narrow column the two can differ
+	# by more than an order of magnitude (~22.5wu of straight-leg clearance against a
+	# ~356wu corner grow for the same 3-file column), so the tie-break lane would be a
+	# few world units wide against a corner over a hundred wu wide -- nowhere near
+	# enough to break a same-corner deadlock between two such columns.
+	return lane * corner_clearance() * FUNNEL_LANE_SEPARATION_FRACTION
 
 
 # How far apart two same-team units' own corner clearances may sum to (as a

@@ -2455,6 +2455,25 @@ tight along the face --- instead of both converging onto one wide
 routing-grid lane.
 :::
 
+::: {#fig-deep-column-swept-width .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/deep_column_swept_width.jpg">
+  <source src="media/deep_column_swept_width.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A deep, narrow column (three files, many ranks) marches a straight leg that
+passes well clear of the hill -- clear of the width it actually sweeps, even
+though the hill sits inside the wider margin a depth-blind reading of the
+block's footprint would have used. The column holds a dead-straight line the
+whole way instead of swinging wide to round terrain that was never really in
+its path.
+:::
+
 A [routing](#morale-routing) unit paths around a hill the same way while fleeing ---
 it's no longer a straight sprint toward the back edge. If a router is boxed in with
 every escape direction blocked, it gives up fleeing and stands to fight rather than
