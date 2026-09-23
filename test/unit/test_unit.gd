@@ -1785,6 +1785,71 @@ func test_corner_clearance_accounts_for_a_standing_frontage_anchor_offset() -> v
 		"corner_clearance stays an upper bound on terrain_clearance for every travel direction")
 
 
+func test_terrain_clearance_reads_the_deepest_surviving_file_not_ranks_for() -> void:
+	# UnitFormation.file_major_block_slots' casualty reflow only shortens its OWN
+	# file's rear (rank_counts[file] increments independently per file, and
+	# max_rank -- what actually sets the grid's depth -- is the MAX over files, not
+	# the average), so a file-major block with unevenly distributed survivors can be
+	# deeper than UnitFormation.ranks_for()'s ceil(soldiers/files) estimate. Travel
+	# PERPENDICULAR to facing sweeps this depth (see the along-facing-vs-perpendicular
+	# tests above -- marching straight ahead sweeps frontage, not depth), so a formula
+	# that derives half_depth from ranks_for() alone (as an earlier version of this fix
+	# did) reads a much shallower depth than the block's real deepest file there,
+	# under-clearing it on a sideways leg -- it cannot pass the assertion below, which
+	# is more than double the ranks_for()-based value.
+	var deep := _make_unit(12)
+	deep.frontage_override = 3   # 3 files -- ranks_for(12, 3) == 4 for an EVEN split
+	deep.facing = Vector2.DOWN
+	deep.position = Vector2.ZERO
+	# Force an uneven file-major assignment directly (bypassing _ensure_file_assignment,
+	# which only re-deals when the array's size or file count doesn't already match):
+	# file 0 keeps all 8 of its original survivors, files 1 and 2 keep 2 each.
+	var uneven_files := PackedInt32Array()
+	for i in 8:
+		uneven_files.append(0)
+	for i in 2:
+		uneven_files.append(1)
+	for i in 2:
+		uneven_files.append(2)
+	deep._sim_soldier_file = uneven_files
+	deep._file_assignment_files = 3
+	var deepest_file_ranks: int = 8   # file 0's real survivor count
+	var ranks_for_estimate: int = UnitFormation.ranks_for(deep.soldiers, 3)
+	assert_lt(ranks_for_estimate, deepest_file_ranks,
+		"sanity check: ranks_for()'s even-split estimate really is shallower than the deepest file")
+	var perpendicular_travel := Vector2.RIGHT   # 90 degrees off facing -- sweeps depth
+	var half_depth_real: float = 0.5 * float(deepest_file_ranks - 1) * deep.rank_pitch_wu()
+	var half_depth_ranks_for: float = 0.5 * float(ranks_for_estimate - 1) * deep.rank_pitch_wu()
+	assert_almost_eq(deep.terrain_clearance(perpendicular_travel), half_depth_real + deep.soldier_body_radius(), 0.01,
+		"perpendicular travel sweeps the block's TRUE deepest-file depth, not ranks_for()'s average estimate")
+	assert_gt(deep.terrain_clearance(perpendicular_travel), (half_depth_ranks_for + deep.soldier_body_radius()) * 2.0,
+		"the slot-derived clearance is far larger than the ranks_for()-based value for a file this uneven")
+
+
+func test_corner_clearance_reads_the_deepest_surviving_file_not_ranks_for() -> void:
+	# corner_clearance() must fold in the same deepest-surviving-file depth, since it
+	# is exactly the maximum terrain_clearance() can return over any travel direction
+	# (see terrain_clearance()'s own doc comment) -- a ranks_for()-based
+	# corner_clearance() would no longer bound an accurately-derived
+	# terrain_clearance() at every angle.
+	var deep := _make_unit(12)
+	deep.frontage_override = 3
+	var uneven_files := PackedInt32Array()
+	for i in 8:
+		uneven_files.append(0)
+	for i in 2:
+		uneven_files.append(1)
+	for i in 2:
+		uneven_files.append(2)
+	deep._sim_soldier_file = uneven_files
+	deep._file_assignment_files = 3
+	var half_frontage: float = 0.5 * float(maxi(0, deep.formation_files(deep.soldiers) - 1)) * deep.file_pitch_wu()
+	var half_depth_real: float = 0.5 * 7.0 * deep.rank_pitch_wu()   # 8 ranks in file 0 -> 7 gaps
+	var expected: float = Vector2(half_frontage, half_depth_real).length() + deep.soldier_body_radius()
+	assert_almost_eq(deep.corner_clearance(), expected, 0.01,
+		"corner_clearance folds in the deepest surviving file's real depth, not ranks_for()'s estimate")
+
+
 func test_terrain_clearance_with_no_direction_given_returns_the_safe_pivot_radius_value() -> void:
 	# With no travel direction known, terrain_clearance() must return a value safe for
 	# ANY direction of travel -- corner_clearance()'s worst-case pivot-radius margin,
