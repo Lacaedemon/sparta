@@ -668,17 +668,20 @@ POSITION assertion in its tests, and edge-case runs at both fold values.
 ## A hard switch between two estimators reintroduces the flicker it was meant to remove, at its own threshold
 
 Companion to the `_formation_angle` fold entry above -- a different code path,
-the same shape of bug. `PathField._funnel_corner` chose which side of a
+the same shape of bug.
+`PathField._funnel_corner` chose which side of a
 blocking rect to round from the sign of a cross product against `to - from`.
 For a wide single-rank block whose `terrain_clearance()` pulled the geometry
 near-collinear, that product sat within single digits of zero, so the
 sub-world-unit position drift a live `Unit` accrues every tick flipped its
 sign -- and therefore the chosen corner, and therefore facing -- every tick
-(issue #1616). The first fix attempt swapped the unstable axis (`to - from`)
+(issue #1616).
+The first fix attempt swapped the unstable axis (`to - from`)
 for a stable one (`to - centre`) only in the per-corner side test, inverting
 its sign against `route_side`'s own still-old-axis use; a second attempt
 switched between the two axes at `sin(angle) < 0.05`, which whipsawed across
-that threshold boundary itself on a 2 wu nudge. The fix that held (PR #1629)
+that threshold boundary itself on a 2 wu nudge.
+The fix that held (PR #1629)
 derives the side from the A* corridor's own endpoints (`path[last] -
 path[0]`, both routing-cell centres) -- an input that stays constant as long
 as `from`/`to` sit in the same routing cells, so there is no boundary left to

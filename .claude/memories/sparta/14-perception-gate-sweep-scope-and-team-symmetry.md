@@ -2,10 +2,12 @@
 
 A perception/fog gate on AI decision-making is easy to sweep incompletely by
 grouping "AI decides where to go" and "AI decides to shoot" as one thing when
-they are separate call sites. Battle-AI phase 5 (issue #588) swapped the
+they are separate call sites.
+Battle-AI phase 5 (issue #588) swapped the
 omniscient placeholder for a fogged view command-level, then gated
 `Unit._think()`'s auto-advance-on-detect fallback and `Unit._support_tick`'s
-threat-chase branch -- both movement. Review of that round then found
+threat-chase branch -- both movement.
+Review of that round then found
 `_support_tick`'s and `_think()`'s ranged-fire-at-standoff branches still
 ungated three lines away from the now-gated chase branch, sharing the exact
 same unfogged `nearest_enemy_to(...)` candidate: an AI unit could loose a
@@ -31,7 +33,8 @@ The same #588 work: the fire and chase gates above live in `Unit`, which both
 teams share, so with fog on the PLAYER's own idle ranged units and
 Support-stance units also hold fire on an enemy their side hasn't sighted --
 `Battle.ai_team_perceives(team, enemy)` is team-agnostic by construction, not
-an AI-only check bolted on top. The website's first description of the
+an AI-only check bolted on top.
+The website's first description of the
 mechanic (and the design docs' own prose) framed all of it as enemy-AI-only,
 which was wrong for three of the four gated branches -- only the
 auto-advance-on-detect fallback is genuinely AI-exclusive, because it is
