@@ -1297,7 +1297,7 @@ Your own units are always visible.
 An enemy you have seen and then lost leaves a **ghost outline** in its team color at the spot and facing it was last seen, fading over the next ten seconds.
 A standing "FOG OF WAR" indicator sits below the order-mode banner while fog is on.
 Fog affects what is drawn and leaves ghost markers.
-It does not alter the retreat boundary, and per-soldier combat resolution is unaffected: a soldier already in reach still strikes whoever is there, fog or no fog.
+It does not alter the retreat boundary, and melee combat already underway is unaffected: a soldier already in melee contact keeps fighting whoever is there, fog or no fog --- but that exemption is melee only, not "in weapon range" generally; a unit still at standoff distance, even one well within its own missile range, is a separate case (see below).
 The enemy AI's own *decisions* honor the same fog you see, though: an AI side can't react to a unit none of its own units have perceived, and reacts on the first AI decision after one of them does --- the same visibility rules driving your own view, never an omniscient shortcut.
 This is not only an enemy-AI rule: it applies to YOUR OWN units too, wherever the game would otherwise auto-engage on your behalf.
 An idle ranged unit of yours holds its fire rather than loosing a volley at an enemy your side has not sighted, even one well within its bow's reach --- and a unit you put on **Support** won't peel off to fire on, or chase, such an enemy near the ally it's guarding either.

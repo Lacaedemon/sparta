@@ -1524,8 +1524,8 @@ func _ready() -> void:
 	separation_radius = _type_separation_radius()
 	_base_separation_radius = separation_radius
 	add_to_group("units")
-	var grandparent := get_parent()
-	_owning_battle = grandparent.get_parent() if grandparent != null else null
+	var units_container := get_parent()
+	_owning_battle = units_container.get_parent() if units_container != null else null
 	# Layer budget: field=0, then this unit's cosmetic stack sits 1..3 — shadow (eff 1),
 	# marks (eff 2), chrome (this _draw, eff 3) — all below the z=4 rout shockwave / z=5
 	# volley trails / z=100 selection box. The marks/shadow are child nodes (MultiMeshes /
