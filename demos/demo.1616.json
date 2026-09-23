@@ -3,7 +3,7 @@
   "input": "demos/inputs/wide-single-rank-chase-whipsaw-1616.json",
   "caption": "#1616: a 30-wide single-rank Cavalry regiment chasing a detected enemy near the hill takes one clean turn onto its bearing and holds it -- no facing whipsaw.",
   "fixed_fps": 30,
-  "max_frames": 90,
+  "max_frames": 60,
   "fps": 15,
   "width": 720
 }
