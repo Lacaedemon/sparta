@@ -473,8 +473,8 @@ func test_funnel_corner_route_side_is_stable_under_sub_unit_position_drift() -> 
 	# sign -- flipping which corner of the rect the funnel steers for, and therefore
 	# the unit's facing, every tick. Geometry below is the exact repro: the game's own
 	# default-map hill terrain, and two `from` values differing by a fraction of a
-	# world unit -- one live tick's worth of drift, captured from a real run of
-	# demos/inputs/wide-single-rank-pathing-1616.json.
+	# world unit -- one live tick's worth of drift, captured from a per-tick dump of
+	# a 30-file single-rank Cavalry block marching near the default hill.
 	var pf := PathField.new(Rect2(0, 0, 1600, 1200))
 	var hill := Rect2(1150, 380, 250, 200)   # Battle.TERRAIN's hill patch
 	pf.block_rect(hill)
