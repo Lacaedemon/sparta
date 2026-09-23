@@ -1654,16 +1654,21 @@ func _reapply_fog_after_restore() -> void:
 			_fog_overlay.clear()
 		return
 	_fog_active = true
-	for u in _fog_units_in_play():
+	var units: Array = _fog_units_in_play()
+	for u in units:
 		u.visible = u.team == fog_team or _fog_seen.has(u.uid)
 	if _fog_ghosts != null:
 		_fog_ghosts.update(_fog_contacts, _fog_seen, _tick)
 	if _fog_overlay != null:
-		# Read-only: the restored tick's currently-visible set is recomputed for display,
-		# exactly like the ghost layer redraw above, but never advances _fog_explored --
-		# that was already restored verbatim from the snapshot just above.
+		# The restored tick's currently-visible set is recomputed for display, exactly
+		# like the ghost layer redraw above. _mark_seen_enemy_cells_visible can still
+		# write newly-explored bits into _fog_explored here (normally restored verbatim
+		# from the snapshot just above): it is idempotent against an already-explored
+		# cell, and deterministically reproduces whatever the live tick that produced
+		# the snapshot would have written, so it never diverges from a live run.
 		var visible_now: Dictionary = PerceptionRef.visible_cells(
 				_fog_observers(), field, fog_cell, _fog_grid_w, _fog_grid_h, terrain, _sight_path_field)
+		_mark_seen_enemy_cells_visible(visible_now, units)
 		_fog_overlay.update(_fog_explored, visible_now)
 
 
@@ -1921,6 +1926,7 @@ func _tick_fog() -> void:
 			if u.team == fog_team:
 				fog_observers.append(u)
 		var visible_now: Dictionary = _tick_explored(fog_observers)
+		_mark_seen_enemy_cells_visible(visible_now, units)
 		_fog_overlay.update(_fog_explored, visible_now)
 
 
@@ -1957,6 +1963,41 @@ func _tick_explored(observers: Array) -> Dictionary:
 				_fog_explored[idx] = 1
 				_fog_explored_remaining -= 1
 	return visible_now
+
+
+## Closes the point-vs-cell-center visibility gap between unit fog and terrain fog:
+## Perception.perceives (unit visibility, tested at the target's own
+## position) and Perception.visible_cells (terrain visibility, tested at each cell's
+## CENTER, up to ~28 wu -- half a 40 wu cell diagonal -- from a unit standing in that
+## cell) are two independent evaluations of the same range/occlusion test, taken at
+## different points. Near a sight boundary or an occluder edge they can disagree: an
+## enemy renders (visible = true) standing on ground FogOverlay would otherwise still
+## paint unexplored or dimmed underneath it. Scans `units` for every currently-seen
+## enemy (team != fog_team, uid in _fog_seen) and forces that unit's own cell into
+## `visible_now` -- and, if not already known, into the persistent _fog_explored grid
+## too, since a cell holding a visible enemy is by definition ground the fog team is
+## looking at right now. Mutates both in place; `visible_now` is this tick's transient
+## display set (the caller's own local), _fog_explored is the persistent battle state.
+## A unit whose position falls outside the grid (a routing unit can be up to
+## Battle.ROUT_MARGIN, ~190 wu, past the field edge before Unit._escape() removes it) is
+## SKIPPED rather than clamped onto the nearest edge cell -- there is no ground cell
+## under a position the grid doesn't cover, so clamping would light a cell the unit
+## isn't actually standing on.
+func _mark_seen_enemy_cells_visible(visible_now: Dictionary, units: Array) -> void:
+	if _fog_grid_w <= 0 or _fog_grid_h <= 0 or fog_cell <= 0.0:
+		return
+	for u in units:
+		if u.team == fog_team or not _fog_seen.has(u.uid):
+			continue
+		var cx: int = int(floor((u.position.x - field.position.x) / fog_cell))
+		var cy: int = int(floor((u.position.y - field.position.y) / fog_cell))
+		if cx < 0 or cx >= _fog_grid_w or cy < 0 or cy >= _fog_grid_h:
+			continue
+		var idx: int = cy * _fog_grid_w + cx
+		visible_now[idx] = true
+		if idx < _fog_explored.size() and _fog_explored[idx] == 0:
+			_fog_explored[idx] = 1
+			_fog_explored_remaining -= 1
 
 
 ## Every unit fog can hide or observe from: the live "units" plus the fleeing "routers"

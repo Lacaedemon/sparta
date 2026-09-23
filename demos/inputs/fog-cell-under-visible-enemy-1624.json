@@ -1,0 +1,14 @@
+{
+  "_comment": "Issue #1624: a spotted enemy stands in a cell whose CENTER the terrain overlay's own per-cell scan reads as outside the friendly's sight disc, even though the enemy's own position is inside it (283.55 wu from the friendly vs. its 300 wu foot sight radius; the enemy's 40 wu cell centers at 311.13 wu -- just past the boundary). No other unit is in play, so before the fix that cell is never covered by any per-cell scan and stays the opaque unexplored fill under a unit that visibly renders; after the fix the enemy's own cell is forced into both the currently-visible set and the persistent explored grid. Camera holds tight on that one cell so the boundary is legible.",
+  "seed": "1624",
+  "fog_of_war": true,
+  "scenario": [
+    { "team": 0, "type": "Infantry", "x": 680.0, "y": 680.0, "facing": [1.0, 1.0] },
+    { "team": 1, "type": "Infantry", "x": 880.5, "y": 880.5 }
+  ],
+  "camera": [
+    { "tick": 0, "x": 900.0, "y": 900.0, "zoom": 2.4 }
+  ],
+  "steps": [],
+  "state": [5, 15, 30]
+}
