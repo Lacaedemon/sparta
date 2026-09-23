@@ -676,11 +676,16 @@ near-collinear, that product sat within single digits of zero, so the
 sub-world-unit position drift a live `Unit` accrues every tick flipped its
 sign -- and therefore the chosen corner, and therefore facing -- every tick
 (issue #1616).
-The first fix attempt swapped the unstable axis (`to - from`)
-for a stable one (`to - centre`) only in the per-corner side test, inverting
-its sign against `route_side`'s own still-old-axis use; a second attempt
-switched between the two axes at `sin(angle) < 0.05`, which whipsawed across
-that threshold boundary itself on a 2 wu nudge.
+The first fix attempt switched `route_side` itself to the stable `to -
+centre` axis, but left a separate per-corner `side` test elsewhere in the
+same function still classifying each candidate corner against the unstable
+`to - from` -- the two axes disagreed by about 179 degrees on the repro, so
+the `side != route_side` filter admitted the wrong-side corner, caught by
+review before it shipped.
+A second attempt put both uses back on `to - from`
+by default and switched to `to - centre` only when `sin(angle) < 0.05`,
+which whipsawed across that threshold boundary itself on a shift of about 2
+world units.
 The fix that held (PR #1629)
 derives the side from the A* corridor's own endpoints (`path[last] -
 path[0]`, both routing-cell centres) -- an input that stays constant as long
