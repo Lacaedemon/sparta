@@ -1615,6 +1615,16 @@ func restore_snapshot(snap: Dictionary) -> void:
 	# match -- force a fresh scan on the first ask afterward rather than risk reading a
 	# value _tick_fog computed for a since-passed frame.
 	_fog_seen_frame = -1
+	# ai_team_perceives' own cache is keyed by `_tick` alone, not by which timeline that
+	# tick belongs to -- if the rewind lands on the SAME `_tick` value the cache already
+	# holds an entry for (a forward-then-rewind, or simply scrubbing back across a tick
+	# already visited this session), `_ai_perceives_cache_tick != _tick` would read false
+	# and the stale, pre-restore UID set would be reused against the freshly restored
+	# positions/states (UIDs themselves survive the restore, so a stale entry doesn't even
+	# fail an existence check -- it just answers wrong). Clear both fields so the first ask
+	# after any restore always recomputes.
+	_ai_perceives_cache = {}
+	_ai_perceives_cache_tick = -1
 	_fog_active = bool(snap.get("fog_active", false))
 	# A snapshot captured before this feature existed carries no "fog_explored" key --
 	# fall back to an all-unexplored grid of the current size rather than an empty array,

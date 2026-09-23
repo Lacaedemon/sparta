@@ -56,16 +56,30 @@ func after_each() -> void:
 # without cheating" section): "No AI code path reads get_tree().get_nodes_in_group("units"),
 # or any other unfiltered world state, directly ... a grep over [the four AI scripts] for
 # group lookups and for direct Battle field access is a cheap regression test." Two shapes,
-# both checked by _perception_invariant_violation below:
+# both checked by _perception_invariant_violation below -- and ONLY these two: this is a
+# grep-based check, not real type tracking, so its own claim is scoped to exactly what it
+# mechanically recognizes, not to the invariant's full intent.
 #   1. A direct get_nodes_in_group(...) call -- the live, unfiltered sim state, bypassing
 #      whatever fogged-or-omniscient array Battle handed the caller.
-#   2. A `BattleRef` token used for anything other than a static constant/enum read
-#      (`BattleRef.OrderMode.SKIRMISH`, `BattleRef.ORDER_FORMATION_ONLY` -- the established,
-#      legitimate way UnitLeader.gd reaches Battle's own constants today, since Battle.gd has
-#      no class_name and BattleRef -- a preloaded script reference -- is the only handle to
-#      it at all). Anything else attached to that token (`as BattleRef`, `BattleRef.new(`, a
-#      `: BattleRef` type annotation) would mean an actual Battle INSTANCE in scope -- the
-#      direct-field-access door this check exists to keep shut.
+#   2. The literal token `BattleRef` used for anything other than a static constant/enum
+#      read (`BattleRef.OrderMode.SKIRMISH`, `BattleRef.ORDER_FORMATION_ONLY` -- the
+#      established, legitimate way UnitLeader.gd reaches Battle's own constants today,
+#      since Battle.gd has no class_name and BattleRef -- a preloaded script reference --
+#      is the only handle to it at all). Anything else attached to that SPECIFIC token
+#      (`as BattleRef`, `BattleRef.new(`, a `: BattleRef` type annotation) would mean an
+#      actual Battle INSTANCE in scope under that name.
+#
+# KNOWN GAP, not extended here: this only recognizes the literal identifier `BattleRef`.
+# A script that reached a live Battle instance through some OTHER untyped variable --
+# `var b = get_parent()` then `b.terrain`, or any other name/path -- would read straight
+# past this check with neither shape triggering, since nothing here tracks what a variable
+# actually HOLDS, only whether the specific token `BattleRef` appears misused. Catching
+# that reliably needs real static type analysis, not a grep; a keyword list of Battle's own
+# field names would be both fragile (breaks the moment a new forbidden field is added and
+# nobody updates the list) and false-positive-prone (any of those names could legitimately
+# appear in an unrelated string, comment, or local variable elsewhere). This check's own
+# claim is scoped to the two shapes it mechanically recognizes, not to "no untyped Battle
+# access exists anywhere in these four files" -- see the test's own assertion message below.
 
 
 ## Returns a short, non-empty description of the first violation _perception_invariant_
@@ -87,14 +101,20 @@ static func _perception_invariant_violation(src: String) -> String:
 	return ""
 
 
-func test_no_ai_command_script_reads_unfiltered_world_state_directly() -> void:
+## Narrowly scoped to what _perception_invariant_violation mechanically recognizes (its own
+## "KNOWN GAP" note above): a direct get_nodes_in_group(...) call, or the literal token
+## `BattleRef` used for anything but a static constant/enum read. Does NOT prove the four
+## scripts hold no live Battle instance at all -- one reached through a different variable
+## name would not trip either shape. See that note for why extending this to catch that
+## reliably would need real type analysis rather than a grep.
+func test_no_ai_command_script_never_calls_get_nodes_in_group_or_misuses_battleref() -> void:
 	for path in [UNIT_LEADER_PATH, SUBCOMMANDER_PATH, GENERAL_PATH, PLAYER_DELEGATION_PATH]:
 		var src: String = FileAccess.get_file_as_string(path)
 		assert_true(src.length() > 0, "%s should be readable" % path)
 		var violation: String = _perception_invariant_violation(src)
 		assert_eq(violation, "",
-			"%s must read only its caller-supplied perception array, never the live scene " %
-			path + "groups or a Battle instance's own fields directly")
+			"%s must never call get_nodes_in_group(...) directly, nor use a `BattleRef` " %
+			path + "token for anything but a static constant/enum read")
 
 
 ## Proves the guard above actually bites, per CLAUDE.md's "Guard tests must be proven to
@@ -1204,3 +1224,53 @@ func test_fog_team_scan_is_reused_by_a_gate_asking_the_same_team_in_the_same_fra
 	assert_eq(battle._fog_scan_calls, 2,
 		"a different team's own ask still pays for its own scan -- only the fog_team " +
 		"duplicate is eliminated, not every scan")
+
+
+# --- BUG: restore_snapshot must also clear ai_team_perceives' own cache -------------------
+#
+# ai_team_perceives caches its answer keyed by _tick alone (_ai_perceives_cache /
+# _ai_perceives_cache_tick, above _ai_perceptible_units in this file). restore_snapshot
+# already resets _fog_seen_frame (this file's own reuse tests above), but a rewind that
+# lands on the SAME _tick value an earlier ask already cached a result for would otherwise
+# skip _ai_perceptible_units entirely and return the PRE-restore answer against the
+# freshly-restored (potentially very different) positions -- UIDs themselves survive a
+# restore, so a stale cache entry does not even fail an existence check, it just answers
+# wrong. No `await` anywhere below: the whole point is landing the restore on the EXACT
+# same _tick the earlier ask cached, which physics-frame-based waiting cannot reliably
+# guarantee (natural per-tick AI activity would keep re-populating
+# _ai_perceives_cache_tick to whatever tick is currently live).
+
+
+func test_restore_snapshot_clears_the_stale_ai_perceives_cache() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y - 50.0},
+	]
+	add_child_autofree(battle)
+	var enemy: Unit = _team_units(1)[0]
+	battle._tick_fog()
+
+	assert_true(battle.ai_team_perceives(0, enemy),
+		"sanity check: the enemy starts close enough to be perceived")
+	var captured_tick: int = battle.current_tick()
+
+	# Teleport the enemy well beyond sight -- a scripted position write, the same
+	# technique this file already uses elsewhere -- simulating the world having moved on
+	# by the time a later restore lands back on this same tick.
+	enemy.position = FAR_FLANKER_POS
+	battle._tick_fog()
+	var snap: Dictionary = battle.capture_snapshot()
+	assert_eq(battle.current_tick(), captured_tick,
+		"sanity check: capturing a snapshot does not itself advance the tick")
+
+	battle.restore_snapshot(snap)
+
+	assert_eq(battle.current_tick(), captured_tick,
+		"sanity check: the restore lands on the SAME tick the earlier ask cached a " +
+		"result for -- the exact condition the bug needs")
+	assert_false(battle.ai_team_perceives(0, enemy),
+		"the restored world has the enemy far away: the cache must not leak the earlier, " +
+		"now-stale 'perceived' answer just because the tick number matches")
