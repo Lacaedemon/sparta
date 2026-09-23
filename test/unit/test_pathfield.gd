@@ -362,10 +362,10 @@ func test_funnel_lane_scales_with_the_units_own_clearance() -> void:
 
 
 func test_next_steps_optional_corner_clearance_only_widens_the_funnel_corner() -> void:
-	# Issue #1628: Unit.terrain_clearance() (the straight-leg `clearance` argument) can
-	# now be smaller than Unit.corner_clearance() (the fuller, pivot-radius-based
-	# margin a corner still needs, since a corridor's direction -- and so the block's
-	# orientation relative to it -- can only change AT a corner). next_step's optional
+	# Unit.terrain_clearance() (the straight-leg `clearance` argument) can be smaller
+	# than Unit.corner_clearance() (the fuller, pivot-radius-based margin a corner
+	# still needs, since a corridor's direction -- and so the block's orientation
+	# relative to it -- can only change AT a corner). next_step's optional
 	# 5th argument threads that bigger margin to _funnel_corner alone, without
 	# touching _funnel_corner itself: the base blocked check and the corridor
 	# candidate's own sightline tests still run at the smaller `clearance`.

@@ -3141,8 +3141,15 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	var step: Vector2 = point
 	var terrain_speed: float = 1.0
 	if PathField.active != null:
-		step = PathField.active.next_step(position, point, terrain_clearance(), funnel_lane_offset(point),
-				corner_clearance())
+		# The travel direction for THIS leg, not necessarily this block's own facing --
+		# a formed pivot advances while still turning onto a new bearing, a side-step
+		# nudge holds facing fixed and moves perpendicular to it, and a lateral
+		# file-march or drag-to-form-up can point anywhere relative to the current
+		# facing. terrain_clearance() needs the real travel direction to know whether
+		# it is the block's width or its depth being swept across the leg.
+		var travel_dir: Vector2 = point - position
+		step = PathField.active.next_step(position, point, terrain_clearance(travel_dir),
+				funnel_lane_offset(point), corner_clearance())
 		terrain_speed = PathField.active.speed_at(position)
 	var to: Vector2 = step - position
 	if to.length_squared() < 1.0:
@@ -3824,42 +3831,65 @@ func is_deep_for_formed_turn() -> bool:
 
 
 ## Open ground this regiment needs between its centre and impassable terrain, for a
-## STRAIGHT march leg: the block's own half-frontage -- half the width its files
-## actually sweep perpendicular to the direction of travel -- plus its soldiers' body
-## radius, so a route the centre follows keeps every soldier off the drawn rect.
-## Passed to every PathField query as the base `clearance` (the initial blocked check,
-## the corridor candidate's own sightline tests) -- terrain footprints themselves are
-## exact, and the margin around them is the querying unit's real geometry, not a
-## routing-grid artifact: a 10-man squad skims an obstacle a 140-man line must round
-## wide.
+## STRAIGHT march leg travelling in `travel_dir`: the block's own footprint rectangle
+## (half-frontage along its file axis, half-depth along its rank axis) projected onto
+## the axis PERPENDICULAR to travel -- the width the block actually sweeps sideways as
+## its centre follows that leg -- plus its soldiers' body radius. Passed to every
+## PathField query as the base `clearance` (the initial blocked check, the corridor
+## candidate's own sightline tests) -- terrain footprints themselves are exact, and the
+## margin around them is the querying unit's real geometry, not a routing-grid
+## artifact: a 10-man squad skims an obstacle a 140-man line must round wide.
 ##
-## Deliberately NOT _pivot_radius() (the corner man's full half-diagonal, which also
-## folds in the block's DEPTH): a straight, unturning leg only needs the block's own
-## width margin, since its orientation is fixed and known throughout the leg. Issue
-## #1628 -- terrain hundreds of world units away from a straight leg was reading as
-## blocking it for a DEEP, narrow column, because the depth term inflated this value
-## far past the column's own frontage. See corner_clearance() below for the margin
-## PathField._funnel_corner itself still uses -- a route can only actually reorient AT
-## a corner, so the fuller, pivot-radius-based allowance stays there. The two values
-## coincide exactly for a single-rank block anyway, since its depth term is already
-## zero, so a wide single-rank line -- the shape #1616/#1629 reproduced the routing
-## instability on -- keeps its full real half-width of margin everywhere, straight legs
-## and corners alike, unchanged by this fix.
-func terrain_clearance() -> float:
+## `travel_dir` need not be normalized (only its direction matters) and defaults to
+## ZERO, meaning "direction unknown" -- every caller that doesn't yet know which way it
+## is about to move (or is querying in the abstract) gets corner_clearance()'s full
+## pivot-radius margin back, the SAFE value for any direction: the projection formula
+## below is a weighted sum of |cos| and |sin| against the block's own facing, which
+## peaks at exactly sqrt(half_frontage^2 + half_depth^2) -- _pivot_radius() itself --
+## when the travel angle threads the two terms evenly, so the pivot radius already
+## bounds every direction-aware answer this function can give.
+##
+## A regiment does not always travel along its own facing: Unit._move_to's
+## pivot_as_formation branch advances at speed while still turning onto a new bearing,
+## a NUDGE_LEFT/RIGHT side-step holds facing fixed and moves perpendicular to it, and a
+## lateral file-march or a drag-to-form-up can point `point - position` anywhere
+## relative to the current facing. A block moving SIDEWAYS sweeps its DEPTH across the
+## direction of travel, not its frontage, so reading the frontage alone regardless of
+## `travel_dir` (as an earlier version of this fix did) under-clears a deep, narrow
+## column moving off its own facing.
+##
+## Deliberately NOT the flat _pivot_radius() (the corner man's full half-diagonal,
+## folding in BOTH width and depth unconditionally) for a KNOWN travel direction: a
+## straight, unturning leg only needs the width actually swept along that specific
+## leg, not the worst case over every possible orientation. See corner_clearance()
+## below for the margin PathField._funnel_corner itself still uses -- a route can only
+## actually reorient AT a corner, so the fuller, pivot-radius-based allowance stays
+## there regardless of the leg's own travel direction.
+func terrain_clearance(travel_dir: Vector2 = Vector2.ZERO) -> float:
+	if travel_dir.length_squared() < 0.0001:
+		return corner_clearance()
+	var dir: Vector2 = travel_dir.normalized()
 	var files: int = maxi(1, formation_files(soldiers))
-	return 0.5 * float(maxi(0, files - 1)) * file_pitch_wu() + soldier_body_radius()
+	var ranks: int = UnitFormation.ranks_for(soldiers, files)
+	var half_frontage: float = 0.5 * float(maxi(0, files - 1)) * file_pitch_wu()
+	var half_depth: float = 0.5 * float(maxi(0, ranks - 1)) * rank_pitch_wu()
+	var swept: float = absf(facing.dot(dir)) * half_frontage + absf(facing.cross(dir)) * half_depth
+	return swept + soldier_body_radius()
 
 
 ## The margin PathField._funnel_corner uses when rounding a blocking rect's corner --
 ## the corner man's full half-diagonal (_pivot_radius(), which folds in BOTH the
 ## block's width and depth) plus his body radius, unlike terrain_clearance()'s
-## straight-leg half-frontage above. A corner is exactly where the corridor's
-## direction -- and so the block's orientation relative to it -- can change, so the
-## fuller, worst-case-over-any-orientation allowance belongs there; see
-## terrain_clearance()'s own doc comment for the split this answers (issue #1628).
+## direction-aware, travel-perpendicular swept width above. A corner is exactly where
+## the corridor's direction -- and so the block's orientation relative to it -- can
+## change, so the fuller, worst-case-over-any-orientation allowance belongs there
+## regardless of which way the leg into it travels; see terrain_clearance()'s own doc
+## comment for the split this answers. Also the value terrain_clearance() itself falls
+## back to when its own travel direction is unknown, since this margin is exactly the
+## maximum the direction-aware formula can ever return.
 ## Passed as PathField.next_step's own `corner_clearance` argument, which only ever
 ## reaches _funnel_corner -- never the base blocked-check or corridor-candidate
-## sightline tests, which stay on the smaller terrain_clearance().
+## sightline tests, which stay on the smaller, direction-aware terrain_clearance().
 func corner_clearance() -> float:
 	return _pivot_radius() + soldier_body_radius()
 
@@ -3948,24 +3978,25 @@ const FUNNEL_LANE_COUNT := 3   # tuned: see the doc comment above funnel_lane_of
 
 
 func funnel_lane_offset(point: Vector2) -> float:
-	if PathField.active == null or not PathField.active.is_leg_blocked(position, point, terrain_clearance()):
+	var travel_dir: Vector2 = point - position
+	if PathField.active == null or not PathField.active.is_leg_blocked(position, point, terrain_clearance(travel_dir)):
 		return 0.0
 	if not _has_congested_same_team_router():
 		return 0.0
 	var lane: float = (2.0 * float(posmod(uid, FUNNEL_LANE_COUNT)) / float(FUNNEL_LANE_COUNT - 1)) - 1.0
-	return lane * terrain_clearance() * FUNNEL_LANE_SEPARATION_FRACTION
+	return lane * terrain_clearance(travel_dir) * FUNNEL_LANE_SEPARATION_FRACTION
 
 
-# How far apart two same-team units' own terrain clearances may sum to (as a
+# How far apart two same-team units' own corner clearances may sum to (as a
 # multiple) and still count as "close enough to plausibly be funneling onto
 # the same corner" -- see _has_congested_same_team_router. Scales with each
-# pair's own footprint (terrain_clearance already does, per-unit) rather than
+# pair's own footprint (corner_clearance already does, per-unit) rather than
 # a flat world-unit distance, so a pair of small skirmishers doesn't inherit
 # a cavalry pair's much wider "nearby" radius. A tuned fraction, the same
 # family as FUNNEL_LANE_SEPARATION_FRACTION above: it exists purely to decide
 # when the tie-break is worth paying for, not a gameplay parameter. Verified
 # against a repro of two Cavalry regiments spawned 229 wu apart, each carrying
-# ~219 wu of terrain_clearance -- comfortably inside this radius at every tick
+# ~219 wu of corner clearance -- comfortably inside this radius at every tick
 # of the march -- and the site's wider demo catalog.
 const FUNNEL_CONGESTION_RANGE_FACTOR := 1.0   # tuned
 
@@ -3990,7 +4021,14 @@ func _has_congested_same_team_router() -> bool:
 		var u: Unit = node as Unit
 		if u == null or u == self or u.team != team or u.state == State.DEAD:
 			continue
-		var nearby_radius: float = (terrain_clearance() + u.terrain_clearance()) * FUNNEL_CONGESTION_RANGE_FACTOR
+		# corner_clearance(), not terrain_clearance(): the corner this gate is checking
+		# proximity to is itself placed using corner_clearance()'s margin (PathField's
+		# own corner_clearance argument), so the "are we both plausibly funneling onto
+		# the SAME corner" radius has to match that, not the smaller, direction-aware
+		# straight-leg margin -- a deep column travelling along its own facing has a
+		# much smaller terrain_clearance() than the corner it may actually be
+		# converging on with a teammate.
+		var nearby_radius: float = (corner_clearance() + u.corner_clearance()) * FUNNEL_CONGESTION_RANGE_FACTOR
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		if position.distance_squared_to(u.position) > nearby_radius * nearby_radius:
 			continue
