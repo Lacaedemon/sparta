@@ -650,6 +650,14 @@ all now gated through `Battle.ai_team_perceives`,
 whose caller list is enumerated (and kept current) in `Unit._enemy_is_perceived`'s own doc comment
 rather than here,
 to avoid this description drifting out of sync with the code again.
+**One known gap, tracked separately, not covered by the above:**
+`OrderGuards.enemy_in_range`, backing `Order.Guard.ENEMY_IN_RANGE`,
+calls `UnitTargeting.nearest_enemy_to` directly with no perception gate --
+a scripted order's wait condition can be satisfied
+by an enemy its own side has not perceived.
+It decides an order-queue transition, not a not-yet-engaged targeting commit,
+so it sits outside this phase's own scope;
+tracked as [#1641](https://github.com/Lacaedemon/sparta/issues/1641).
 **One disclosed exception, left deliberately ungated:**
 once a unit commits to an explicit attack order
 (`target_enemy` set, whether by a player click

@@ -2526,6 +2526,24 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ## branches above) is itself gated even though the target is already within the shooter's
 ## own missile_range, precisely because it is not yet in melee contact.
 ##
+## Also deliberately not a caller, for a related but distinct reason -- proximity rather than
+## a targeting commit: _can_rally's broken-contact check (UnitTargeting.nearest_enemy_to
+## within RALLY_CONTACT_RADIUS) decides only whether a routed unit rallies or shatters; there
+## is no target_enemy assignment downstream of it at all. It is also not a genuine
+## melee-contact-distance check the way the combat-resolution exemption above is
+## (RALLY_CONTACT_RADIUS is a fixed proximity radius, not attack_range + both radii): at 8 m
+## it sits close in scale to DETECTION_RANGE (9.5 m), not to an actual melee contact distance,
+## so this reads as a looser "contact is unconditionally exempt" than the case above -- exempt
+## nonetheless, since rallying asks whether the fight is still physically pressing, not
+## whether to engage a not-yet-perceived target.
+##
+## Known ungated, tracked separately: OrderGuards.enemy_in_range (scripts/OrderGuards.gd),
+## which backs Order.Guard.ENEMY_IN_RANGE, calls UnitTargeting.nearest_enemy_to directly with
+## no _enemy_is_perceived check -- a real fog leak (a scripted order's wait condition can be
+## satisfied by an enemy its own side has not perceived). It decides whether a QUEUED order's
+## guard is satisfied, not a not-yet-engaged targeting commit, so it falls outside this
+## function's own scope; left as a known gap rather than folded in here.
+##
 ## Also deliberately not a caller, but for a different reason -- a disclosed exception, not
 ## an in-scope combat-resolution branch: _think()'s chase-an-explicit-attack-order branch's
 ## `target_enemy != null` half closes on a target's CURRENT position every tick once that
