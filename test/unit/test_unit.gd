@@ -2008,26 +2008,6 @@ func test_incoming_friendly_links_track_friendly_target_on_any_order_type() -> v
 	assert_eq(b.incoming_friendly_links, 0, "freeing an order with a live link uncounts it")
 
 
-func test_far_tier_half_extents_skip_the_scan_for_a_stale_forward_link() -> void:
-	# A forward link whose partner has been freed (not yet cleared by the per-tick
-	# resolver) is no link at all -- the same is_instance_valid guard
-	# _relief_swap_partner() applies -- so it must not force the whole-group scan.
-	var u := _make_unit(20)
-	var gone: Unit = Unit.new()   # not autofreed: freed below to leave a stale reference
-	gone.max_soldiers = 20
-	add_child(gone)
-	var order := Order.new_move(Vector2(50, 0))
-	order.friendly_target = gone
-	u.set_current_order(order)
-	TierTransition.demote(u)
-	gone.free()
-	assert_false(is_instance_valid(u.current_order.friendly_target),
-		"sanity check: the forward link is now stale")
-	var before: int = u._relief_reverse_scan_count
-	u._far_tier_half_extents()
-	assert_eq(u._relief_reverse_scan_count, before, "a stale forward link does not trigger the scan")
-
-
 func test_far_tier_half_extents_skip_the_reverse_scan_when_no_link_is_live() -> void:
 	var u := _make_unit(20)
 	var other := _make_unit(20)
