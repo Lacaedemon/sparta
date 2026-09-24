@@ -826,12 +826,18 @@ func test_funnel_corner_zero_length_axis_does_not_divide_by_zero() -> void:
 	# grown margin) already makes every corner's own sightline blocked
 	# (the same "walker inside the rect" case
 	# test_funnel_from_inside_the_rect_falls_back_to_the_corridor pins), so
-	# the function is expected to return INF regardless of route_side -- and
-	# does, without hanging, crashing, or propagating a NaN into the return
-	# value (Vector2.is_finite() reads false for both INF and NAN alike, so
-	# a NaN leak here would still read as "not finite," but a leaked NaN and
-	# a clean INF are not the same failure, which is exactly why this test
-	# exists rather than trusting the coincidence above by inspection alone).
+	# the function is expected to return the exact Vector2.INF sentinel
+	# regardless of route_side, not merely "some non-finite value" --
+	# Vector2.is_finite() reads false for both INF and a leaked NAN alike,
+	# so an assert_false(corner.is_finite()) check here would still pass if
+	# the zero-axis division leaked NAN into the return value instead of
+	# falling back to the caller's own Vector2.INF "no corner" sentinel.
+	# Asserting the exact sentinel (assert_eq(corner, Vector2.INF) below)
+	# is what actually distinguishes a clean INF fallback from a NaN leak
+	# -- verified directly: temporarily forcing this exact code path to
+	# return Vector2(NAN, NAN) instead of falling through to the corner
+	# loop makes this assertion fail (assert_false(corner.is_finite())
+	# would not have caught it), and reverting makes it pass again.
 	var pf := PathField.new(Rect2(0, 0, 640, 640))
 	var rect := Rect2(100, 100, 50, 50)
 	pf.block_rect(rect)
@@ -843,5 +849,5 @@ func test_funnel_corner_zero_length_axis_does_not_divide_by_zero() -> void:
 	# path point.
 	var path := PackedVector2Array([Vector2(500, 500)])
 	var corner: Vector2 = pf._funnel_corner(from, to, path, 10.0)
-	assert_false(corner.is_finite(),
-		"from == to sitting inside the rect has no corner with a clear sightline, same as any other walker-inside-the-rect case -- INF, not a NaN leak")
+	assert_eq(corner, Vector2.INF,
+		"from == to sitting inside the rect has no corner with a clear sightline, same as any other walker-inside-the-rect case -- the exact INF sentinel, not a NaN leak that merely happens to also read as not-finite")
