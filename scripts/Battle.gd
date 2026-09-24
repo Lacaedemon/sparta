@@ -2707,6 +2707,10 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				u.reform_before_move = false
 			if file_major_mode_toggle != REFORM_MODE_TOGGLE_LEAVE:
 				u.file_major_reform_mode = file_major_mode_toggle
+				# A direct field write, not through a Unit.gd mutator -- see
+				# Unit._formation_local_half_extents()'s doc comment for why this needs its
+				# own invalidation call.
+				u.invalidate_formation_extent_cache()
 			if cmd_line != LINE_INDEX_UNCHANGED:
 				u.line_index = cmd_line
 		return

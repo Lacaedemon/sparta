@@ -68,12 +68,10 @@ static func commit(reserve: Unit, host: Unit) -> void:
 	# frontage to the interleaved width, and the reshape bookkeeping keys on the change.
 	host.install_file_assignment(layout["file_ids"], layout["ranks"], int(layout["files"]), files)
 	host.position -= ReinforceApproach.depth_axis(host) * ReinforceLayoutRef.rear_anchor_shift(old_ranks, new_ranks, host.rank_pitch_wu())
-	# All of the above runs from the RESERVE's own tick, not the host's, so
-	# host._formation_local_half_extents()'s per-frame cache -- if some unit's congestion
-	# scan already filled it earlier this frame -- would otherwise keep reading the
-	# smaller pre-reinforcement extent for the rest of the tick (see that function's own
-	# doc comment).
-	host.invalidate_formation_extent_cache()
+	# No explicit host.invalidate_formation_extent_cache() call needed here: every write
+	# above that changes a formation_slots() input goes through a Unit.gd mutator
+	# (append_soldier_bodies, pool_strength, install_file_assignment) that now invalidates
+	# host's cache itself -- see Unit._formation_local_half_extents()'s doc comment.
 	host.hold_position_anchor(host._reshape_timeout(files))
 	if axis == ReinforceGuard.AXIS_RANKS:
 		host._last_reshape_tick = Engine.get_physics_frames()

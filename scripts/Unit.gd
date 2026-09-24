@@ -1438,7 +1438,8 @@ var _block_extent: float = RADIUS       # block half-size; sizes the ring/halo/b
 # calls per tick (terrain_clearance, funnel_lane_offset's own terrain_clearance,
 # corner_clearance) -- and _has_congested_same_team_router calling corner_clearance()
 # once per same-team unit in its scan -- would otherwise each pay the full rebuild.
-# See that function's own doc comment for why a physics-frame key alone is correct.
+# See that function's own doc comment for the physics-frame key plus the explicit
+# invalidate_formation_extent_cache() calls that keep it correct across mutators.
 var _cached_local_half_extents: Vector2 = Vector2.ZERO
 var _cached_local_half_extents_frame: int = -1
 # Render fast-path bookkeeping. _render_dirty is raised by SoldierBodies.step whenever a
@@ -1595,6 +1596,11 @@ func _physics_process(delta: float) -> void:
 	# flip re-slots nothing there and arms nothing.
 	if _ranks_closed != was_ranks_closed and frontage_override == 0 and not in_square():
 		_arm_standoff_settle_window(_reshape_timeout(pre_flip_files))
+		# The exact condition under which the flip changes UnitFormation.frontage()'s
+		# result (see that function's own frontage_override/in_square short-circuits): it
+		# can WIDEN as well as narrow depth -- crossing the close-ranks threshold halves
+		# the files, which doubles the deepest file's rank count.
+		invalidate_formation_extent_cache()
 
 	# A stationary, non-fighting unit's momentum bleeds off under the same friction as an
 	# orderly arrival (arrival_brake_rate(), the rate _move_to's own braking branch uses) —
@@ -1690,6 +1696,7 @@ func set_current_order(order: Order) -> void:
 	# right after this for every dispatched order): a stale countermarch mirror must not
 	# compound with whatever fold the new order's own maneuver applies to _formation_angle.
 	_formation_mirror_x = false
+	invalidate_formation_extent_cache()
 
 
 ## Append `order` to the queue tail (a shift-click waypoint leg). If the unit is currently idle
@@ -1700,6 +1707,7 @@ func append_order(order: Order) -> void:
 	if current_order == null:
 		current_order = orders[0]
 		_apply_promoted_stance()
+		invalidate_formation_extent_cache()
 
 
 ## Drop the queue head (it finished, or was interrupted) and promote the next queued order, if
@@ -1713,6 +1721,7 @@ func retire_current_order() -> void:
 	_apply_promoted_stance()
 	_start_promoted_move()
 	_start_promoted_attack()
+	invalidate_formation_extent_cache()
 
 
 ## A fresh (non-queued) order's stance is written directly by Battle._apply_order_cmd before
@@ -1793,6 +1802,7 @@ func clear_orders() -> void:
 	_interrupt_current_order()
 	orders.clear()
 	current_order = null
+	invalidate_formation_extent_cache()
 
 
 ## Cancel an order from the queue by index. If cancelling index 0 (current_order),
@@ -3903,43 +3913,44 @@ func is_deep_for_formed_turn() -> bool:
 ## same-team unit in its scan -- so this function itself memoizes the O(soldiers)
 ## rebuild below.
 ##
-## A bare Engine.get_physics_frames() key IS sufficient for a unit's OWN writes, and
-## deliberately not paired with a dirty flag or an input fingerprint for those. Within
-## one unit's own _physics_process, _think() (which calls _move_to(), the cache's usual
-## first filler, via a formed march/charge/skirmish branch) always runs BEFORE that same
-## call's UnitRelief.update / UnitReinforce.update / ranks-closed flip -- confirmed by
-## reading _physics_process and _think() themselves: nothing between the top of
-## _physics_process and the _think() call mutates a formation_slots() input except
-## a rearguard unit's own soldiers-to-zero timeout, which lands BEFORE _think() and
-## so is already reflected the first time _think() fills the cache; and _think()'s
-## own body never touches _ranks_closed, frontage/reform state, or the relief/
-## reinforce systems. So a unit's own routing this tick always reads its formation
-## as of the END of the PREVIOUS frame, whichever unit's call first filled the
-## cache that later mutates it -- exactly the same one-frame lag every cross-unit
-## read in the sim already has (Godot runs each node's _physics_process to
-## completion before the next node's begins, so no other unit's code can observe
-## this one mid-way through its own tick). _has_congested_same_team_router()'s own
-## read of another unit's corner_clearance() is a congestion-radius heuristic, not
-## an exact collision test, and is already order-dependent on which units the
-## scene tree happens to process first each frame -- reading a same-tier one-frame
-## staleness here adds nothing new to reason about.
+## The key pairs Engine.get_physics_frames() with an explicit invalidation, not an
+## input fingerprint: every Unit.gd mutator that writes a formation_slots() input --
+## set_formation, set_frontage, set_current_order/append_order/retire_current_order/
+## clear_orders (current_order, via _reform_holding()), _rout(), reform_ranks(),
+## pool_strength(), install_file_assignment(), append_soldier_bodies(),
+## _ensure_file_assignment()/_ensure_square_slot_assignment() (when they actually
+## re-deal), the _ranks_closed flip in _physics_process, and apply_snapshot_dict() --
+## calls invalidate_formation_extent_cache() itself, near the end of the write, however
+## it was reached: from this unit's own tick, from ANOTHER unit's tick (UnitReinforce.
+## commit() on its host, UnitRelief.begin() on the tired partner), from Battle's
+## order-application (set_formation/set_frontage/set_current_order/reform-mode toggle
+## are all reachable that way, including while paused), or from a bulk snapshot
+## restore. Earlier revisions of this cache tried to reason about ORDERING instead --
+## whether a unit's own self-writes always land after that tick's cache fill -- and
+## that reasoning kept finding one more caller it did not cover (UnitReinforce.commit,
+## then UnitRelief.begin, then Battle's own direct writes); wrapping the write paths
+## themselves is what converges, since it needs no assumption about who calls a
+## mutator or when. A direct field write outside Unit.gd that bypasses every mutator
+## (Battle.gd's file_major_reform_mode toggle is the one such site) carries its own
+## invalidate_formation_extent_cache() call at the write site instead.
 ##
-## A handful of sites write a formation_slots() input onto a DIFFERENT unit than the
-## one whose _physics_process is running, so the self-write ordering above does not
-## cover them -- each calls invalidate_formation_extent_cache() on the unit it writes
-## to, explicitly: UnitReinforce.commit() on the HOST (soldiers/max_soldiers/frontage
-## grow when a reserve files in, from the RESERVE's own tick) and UnitRelief.begin() on
-## the TIRED partner (its current_order is replaced with a retreat order, from
-## Battle's order-application, as a side effect of the RELIEVER's own order). A pure
-## casualty (UnitCombat.take_casualties/register_casualties, SoldierMelee's per-soldier
-## reap, ProjectileField, FarTierAttrition -- all landing on the DEFENDER from the
-## attacker's resolution) needs none: it only ever DECREASES soldiers, never
-## max_soldiers, and UnitFormation.frontage()'s file count is driven by max_soldiers,
-## not live soldiers, so hw never shrinks from a casualty; depth is the deepest
-## SURVIVING file's real rank count, which a removal can only hold or shrink (never
-## grow) since nothing here ever adds a soldier. So a stale casualty-side reading is
-## always the SAME OR LARGER than truth -- conservative for terrain clearance -- never
-## smaller, and needs no invalidation.
+## The remaining unwrapped writes are the plain `soldiers -= n` / `soldiers = maxi(0,
+## soldiers - n)` casualty applications (UnitCombat.take_casualties/register_casualties'
+## own soldiers line, SoldierMelee's per-soldier reap, ProjectileField, FarTierAttrition
+## -- all landing on the DEFENDER from the attacker's resolution), and they rely on
+## being conservative rather than on an invalidation call. A casualty alone can only
+## ever DECREASE soldiers, never max_soldiers, and UnitFormation.frontage()'s file
+## count is driven by max_soldiers, not live soldiers, so hw never shrinks from one;
+## depth is the deepest SURVIVING file's real rank count, which a removal can only
+## hold or shrink (never grow) since nothing on these specific lines ever adds a
+## soldier. So a stale reading from JUST a soldiers decrement is always the same size
+## or larger than truth -- conservative for terrain clearance, never smaller -- and
+## needs no invalidation. A casualty CAN still grow the reported depth, but only
+## through a SEPARATE write this cache does invalidate on: crossing the close-ranks
+## threshold flips _ranks_closed (self-write, wrapped above), which halves the files
+## and doubles the deepest file's rank count; and a casualty that breaks morale calls
+## _rout() (also wrapped above, and reachable from the attacker's own tick exactly
+## like the soldiers decrement is).
 func _formation_local_half_extents() -> Vector2:
 	var frame: int = Engine.get_physics_frames()
 	if frame == _cached_local_half_extents_frame:
@@ -3955,10 +3966,11 @@ func _formation_local_half_extents() -> Vector2:
 
 
 ## Force _formation_local_half_extents()'s next call this same frame to rebuild rather
-## than reuse the cached value. Call this on a unit immediately after writing one of its
-## formation_slots() inputs from OUTSIDE that unit's own _physics_process -- see the
-## cache's own doc comment above for the full list of call sites and why a unit's own
-## self-writes need no such call.
+## than reuse the cached value. Every Unit.gd mutator that writes a formation_slots()
+## input calls this on `self` near the end of its own write, whoever ends up calling
+## that mutator and from wherever -- see the cache's own doc comment above for the
+## full list of wrapped mutators and the (small, explicitly named) set of writes that
+## rely on being conservative instead.
 func invalidate_formation_extent_cache() -> void:
 	_cached_local_half_extents_frame = -1
 
@@ -4297,6 +4309,7 @@ func set_formation(mode: int) -> void:
 		separation_radius = base
 	spacing_scale = spacing_scale_for_mode(mode)
 	_reset_shield_hold_angles()
+	invalidate_formation_extent_cache()
 
 
 ## Penalize mid-move formation density, stance, or frontage changes when moving
@@ -4361,6 +4374,7 @@ func set_frontage(files: int, anchor_offset: float = 0.0) -> void:
 	var old_files: int = UnitFormation.frontage(self)
 	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
 	frontage_anchor_offset = anchor_offset
+	invalidate_formation_extent_cache()
 	if frontage_override != old_files:
 		_last_reshape_tick = Engine.get_physics_frames()
 		_last_reshape_widened = frontage_override > old_files
@@ -5182,6 +5196,12 @@ func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVe
 func _ensure_file_assignment(count: int, files: int) -> void:
 	if _sim_soldier_file.size() == count and _file_assignment_files == files:
 		return
+	# A re-deal alone can't change formation_slots()'s hw/hd (UnitFormation.file_capacities
+	# is a pure function of (count, files), so the shape is unchanged; only WHICH soldier
+	# holds which cell differs), but invalidating unconditionally here -- rather than
+	# proving that per call site -- is what lets this cache converge regardless of who
+	# calls this function and why.
+	invalidate_formation_extent_cache()
 	var capacities: PackedInt32Array = UnitFormation.file_capacities(count, files)
 	# Only a genuine RESHAPE -- the file count itself changing -- re-chooses which man stands
 	# where. The other way into this function is a size mismatch with the frontage unchanged
@@ -5278,6 +5298,9 @@ func append_soldier_bodies(other: Unit) -> void:
 	_sim_soldier_shield_id.append_array(other._sim_soldier_shield_id)
 	_sim_soldier_shield_hold_angle.append_array(other._sim_soldier_shield_hold_angle)
 	_sim_soldier_facing.append_array(other._sim_soldier_facing)
+	# _sim_soldier_pos's new SIZE (not just its contents) gates the _reform_holding()
+	# traverse-flank-arc branch in formation_slots() (`_sim_soldier_pos.size() == count`).
+	invalidate_formation_extent_cache()
 
 
 ## Install an explicit file-major assignment -- `file_ids` and `ranks` index-aligned with the
@@ -5311,6 +5334,7 @@ func install_file_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array
 		_last_reshape_widened = frontage_override > old_files
 		_apply_moving_reshape_penalty()
 		_arm_standoff_settle_window(_reshape_timeout(old_files))
+	invalidate_formation_extent_cache()
 
 
 ## Rebuild the square slot pairing (_sim_soldier_square_slot) whenever it is out of sync
@@ -5340,6 +5364,11 @@ func install_file_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array
 func _ensure_square_slot_assignment(count: int, files: int, slots: PackedVector2Array) -> void:
 	if _sim_soldier_square_slot.size() == count and _square_slot_files == files:
 		return
+	# Same reasoning as _ensure_file_assignment's own invalidate call above: a re-pairing
+	# alone can't change the square grid's own extent (a permutation of a fixed point set
+	# has the same bounding box), but unconditional invalidation is what lets this
+	# converge without proving that per call site.
+	invalidate_formation_extent_cache()
 	var live: PackedVector2Array = _slot_frame_positions(count)
 	if live.is_empty():
 		_sim_soldier_square_slot = UnitFormation.identity_assignment(count)
@@ -5953,6 +5982,10 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 		_arm_standoff_settle_window(_reform_timeout())
 	_formation_angle = 0.0
 	_formation_mirror_x = is_about_face_fold
+	# Reachable outside this unit's own tick: start_order_response() (Battle's
+	# order-application) and _rally() (this unit's own routing recovery) both call this,
+	# and the former runs from Battle's context, not this unit's _physics_process.
+	invalidate_formation_extent_cache()
 	# The mirror reflects the grid in depth, which negates every man's slot depth while
 	# leaving his lateral position alone. Reversing each file's own rank order cancels that
 	# reflection, so a hold-ground reform re-squares to the same footprint without marching
@@ -7815,6 +7848,7 @@ func pool_strength(other: Unit, cohesion_floor: float) -> bool:
 	separation_radius = minf(maxf(separation_radius, other.separation_radius) + 2.0,
 		SEPARATION_RADIUS_MAX)
 	_base_separation_radius = separation_radius
+	invalidate_formation_extent_cache()
 	return true
 
 
@@ -7864,6 +7898,10 @@ func _rout() -> void:
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
 	_formation_mirror_x = false
 	_rout_timer = rout_time
+	# Reachable from another unit's own tick (UnitCombat.register_casualties calls this on
+	# the DEFENDER when a casualty it just applied breaks morale), so this cannot rely on
+	# the self-write ordering _formation_local_half_extents()'s own doc comment describes.
+	invalidate_formation_extent_cache()
 	# Deliberately no `_shattered = false` here: a fresh rout starts "broken"
 	# (recoverable) only when it wasn't already permanently shattered by a
 	# prior _stop_rout_and_fight(). That call returns the unit to State.IDLE
@@ -9052,4 +9090,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_sim_soldier_broken = (d.get("sim_soldier_broken",
 			PackedByteArray()) as PackedByteArray).duplicate()
 	update_combat_profile()
+	# A bulk restore writes soldiers/max_soldiers/formation_mode/frontage_override/
+	# _ranks_closed/file assignment etc. directly, bypassing every mutator above.
+	invalidate_formation_extent_cache()
 

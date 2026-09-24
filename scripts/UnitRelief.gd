@@ -47,16 +47,12 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 	# whatever the tired unit was doing, including a stale relief of its own.
 	tired.target_enemy = null
 	var retreat := Order.new_move(_rear_point(tired))
+	# No explicit tired.invalidate_formation_extent_cache() call needed here:
+	# set_current_order() now invalidates tired's own cache itself -- see
+	# Unit._formation_local_half_extents()'s doc comment.
 	tired.set_current_order(retreat)
 	tired.move_target = retreat.target_pos
 	tired.has_move_target = true
-	# Runs from Battle's order-application, as a side effect of the RELIEVER's own
-	# order -- not from `tired`'s own tick -- so replacing its order (which can end an
-	# in-progress reform hold, changing _reform_holding() and so the traverse-flank-arc
-	# term formation_slots() applies) needs an explicit invalidation the same way
-	# UnitReinforce.commit() needs one on its host; see
-	# Unit._formation_local_half_extents()'s own doc comment.
-	tired.invalidate_formation_extent_cache()
 	# Back out of the line facing the enemy rather than turning tail: a relieved regiment
 	# withdraws as a fighting body, the same drill Unit.disengage uses for a step back. The
 	# mechanism is the held facing itself -- a non-zero ordered_facing puts the retreat in

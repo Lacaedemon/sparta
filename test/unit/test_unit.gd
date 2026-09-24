@@ -1889,25 +1889,54 @@ func test_formation_local_half_extents_memoizes_within_the_same_physics_frame_an
 		"the recomputed depth half-extent matches the deepest file's real 8-soldier depth")
 
 
-func test_formation_local_half_extents_reflects_a_ranks_closed_flip_on_the_next_frame() -> void:
-	# The cache's frame-only key is correct BY DESIGN, not just cheap: Unit._physics_process
-	# only ever mutates _ranks_closed (and the relief/reinforce systems) AFTER its own
-	# _think() -> _move_to() call has already filled this cache for the tick -- see this
-	# function's own doc comment for the full ordering argument. So a SAME-frame re-read
-	# after such a mutation is expected to still return the pre-mutation value; the
-	# mutation only takes effect starting this unit's NEXT physics frame. Simulated
-	# directly, like the sibling memoization test above, since a synchronous test never
-	# advances Engine.get_physics_frames() on its own.
+func test_formation_local_half_extents_invalidates_on_a_same_frame_ranks_closed_flip() -> void:
+	# _physics_process's own ranks-closed flip (the "if _ranks_closed != was_ranks_closed
+	# ..." block right after _think()) now calls invalidate_formation_extent_cache()
+	# itself -- see this function's own doc comment. Drive the flip for real, through
+	# _physics_process, rather than a raw field write (which would bypass that wrapped
+	# call site entirely and prove nothing about it): drop soldiers below the
+	# close-ranks contraction threshold and confirm the SAME-frame re-read already
+	# reflects the narrower frontage, with no frame advance. Must fail without the
+	# invalidate call in that flip block.
+	var u := _make_unit(60)
+	assert_false(u._ranks_closed, "sanity check: starts open")
+	var before: Vector2 = u._formation_local_half_extents()
+	u.soldiers = 20   # 20/60 is under UnitFormation.CLOSE_RANKS_CONTRACT_FRAC (0.5)
+	u._physics_process(0.016)
+	assert_true(u._ranks_closed, "sanity check: the flip actually happened")
+	var after: Vector2 = u._formation_local_half_extents()
+	assert_lt(after.x, before.x,
+		"the same-frame post-flip query reflects the narrower frontage immediately")
+
+
+func test_formation_local_half_extents_reflects_a_ranks_closed_flip_on_the_next_frame_too() -> void:
+	# The next-frame path still works too -- the invalidate above only forces an early
+	# rebuild; it does not somehow suppress the ordinary frame-boundary one.
 	var u := _make_unit(60)
 	var before: Vector2 = u._formation_local_half_extents()
-	u._ranks_closed = true   # narrowed_files() halves the default frontage's file count
-	var same_frame: Vector2 = u._formation_local_half_extents()
-	assert_eq(same_frame, before,
-		"a same-frame ranks-closed flip is not reflected until the next physics frame")
-	u._cached_local_half_extents_frame = -1
+	u.soldiers = 20
+	u._physics_process(0.016)
+	u._cached_local_half_extents_frame = -1   # simulate a fresh physics frame, as above
 	var next_frame: Vector2 = u._formation_local_half_extents()
 	assert_lt(next_frame.x, before.x,
 		"a fresh-frame call recomputes and reflects the ranks-closed narrowing")
+
+
+func test_set_frontage_invalidates_a_same_frame_widen() -> void:
+	# set_frontage() is reachable from Battle's order-application -- from outside this
+	# unit's own tick, including while paused -- so it cannot rely on the self-write
+	# ordering _ranks_closed's own flip depends on; it calls
+	# invalidate_formation_extent_cache() itself instead (see this function's own doc
+	# comment). Fill the cache, widen via set_frontage in the same frame with no frame
+	# advance, and confirm the immediate next query reflects the wider frontage. Must
+	# fail without that call in set_frontage.
+	var u := _make_unit(60)
+	u.frontage_override = 3
+	var before: Vector2 = u._formation_local_half_extents()
+	u.set_frontage(6)
+	var after: Vector2 = u._formation_local_half_extents()
+	assert_gt(after.x, before.x,
+		"the same-frame post-widen query reflects the wider frontage immediately")
 
 
 func test_formation_local_half_extents_includes_an_active_relief_corridors_widening() -> void:
