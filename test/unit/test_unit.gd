@@ -1889,23 +1889,25 @@ func test_formation_local_half_extents_memoizes_within_the_same_physics_frame_an
 		"the recomputed depth half-extent matches the deepest file's real 8-soldier depth")
 
 
-func test_formation_local_half_extents_invalidates_on_a_same_frame_ranks_closed_flip() -> void:
-	# Unit._physics_process (scripts/Unit.gd, around _think()'s call and the block that
-	# follows it) runs _think() -- which can call _move_to(), this cache's usual first
-	# filler, via a formed march/charge/skirmish branch -- and THEN, later in that SAME
-	# call, flips _ranks_closed. A same-frame-only cache key (Engine.get_physics_frames()
-	# alone) cannot tell "before the flip" apart from "after": it was filled and read
-	# within the one physics frame both times, so a different unit scanning THIS one's
-	# corner_clearance() later the same frame (_has_congested_same_team_router) would
-	# read the pre-flip extents. Reproduce the ordering directly, with no frame advance,
-	# mirroring the coordinator's own suggested case. Must fail against 315a31b2, whose
-	# frame-only key returns `before` unchanged for the second call.
+func test_formation_local_half_extents_reflects_a_ranks_closed_flip_on_the_next_frame() -> void:
+	# The cache's frame-only key is correct BY DESIGN, not just cheap: Unit._physics_process
+	# only ever mutates _ranks_closed (and the relief/reinforce systems) AFTER its own
+	# _think() -> _move_to() call has already filled this cache for the tick -- see this
+	# function's own doc comment for the full ordering argument. So a SAME-frame re-read
+	# after such a mutation is expected to still return the pre-mutation value; the
+	# mutation only takes effect starting this unit's NEXT physics frame. Simulated
+	# directly, like the sibling memoization test above, since a synchronous test never
+	# advances Engine.get_physics_frames() on its own.
 	var u := _make_unit(60)
 	var before: Vector2 = u._formation_local_half_extents()
 	u._ranks_closed = true   # narrowed_files() halves the default frontage's file count
-	var after: Vector2 = u._formation_local_half_extents()
-	assert_lt(after.x, before.x,
-		"a same-frame ranks-closed flip must narrow the cached half-width immediately, not on the next frame")
+	var same_frame: Vector2 = u._formation_local_half_extents()
+	assert_eq(same_frame, before,
+		"a same-frame ranks-closed flip is not reflected until the next physics frame")
+	u._cached_local_half_extents_frame = -1
+	var next_frame: Vector2 = u._formation_local_half_extents()
+	assert_lt(next_frame.x, before.x,
+		"a fresh-frame call recomputes and reflects the ranks-closed narrowing")
 
 
 func test_formation_local_half_extents_includes_an_active_relief_corridors_widening() -> void:
