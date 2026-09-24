@@ -3933,8 +3933,7 @@ func _formation_local_half_extents() -> Vector2:
 
 ## O(1) half-extents for a FAR-tier block, derived from the headcount instead of read
 ## off the slots -- what _move_to() uses for a far-tier mover, which otherwise would pay
-## _formation_local_half_extents()'s O(soldiers) slot rebuild on every physics tick and
-## defeat the far tier's point (its hot movement path allocates nothing per tick).
+## _formation_local_half_extents()'s O(soldiers) slot rebuild on every physics tick.
 ##
 ## Of the three live-slot effects _formation_local_half_extents() exists to capture,
 ## two cannot apply to a far block, and the third is handed back to it:

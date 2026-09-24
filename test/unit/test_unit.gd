@@ -2017,8 +2017,9 @@ func test_terrain_clearance_with_no_direction_given_returns_corner_clearance() -
 	# ANY direction of travel -- corner_clearance(), the footprint's full half-diagonal
 	# (which equals _pivot_radius() only for a centred, even block; the separate
 	# centred-even test below pins that case), and which the projection formula above
-	# peaks at exactly when the travel angle threads the width and depth terms evenly. True for a deep column and (trivially,
-	# since the two margins already coincide along facing) for a single-rank line.
+	# peaks at exactly when the travel angle threads the width and depth terms evenly.
+	# True for a deep column and (trivially, since the two margins already coincide
+	# along facing) for a single-rank line.
 	var deep := _make_unit()
 	deep.frontage_override = 3
 	assert_almost_eq(deep.terrain_clearance(), deep.corner_clearance(), 0.0001,
