@@ -804,6 +804,10 @@ func test_commit_invalidates_the_hosts_same_frame_extent_cache() -> void:
 	await get_tree().physics_frame
 	var host: Unit = _unit_at(HOST_POS)
 	var reserve: Unit = _unit_at(RESERVE_POS)
+	# Arms reserve.current_order.friendly_target (which commit() itself clears at the
+	# end) -- commit() only checks _bodies_aligned, not rendezvous position, so it can
+	# run immediately without waiting for the march.
+	_order_reinforce(reserve, host)
 	var before: Vector2 = host._formation_local_half_extents()
 	UnitReinforce.commit(reserve, host)
 	assert_eq(host.soldiers, 80, "sanity check: the commit actually ran")
