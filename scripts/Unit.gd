@@ -3973,7 +3973,8 @@ func _far_tier_half_extents() -> Vector2:
 		return Vector2.ZERO
 	# _relief_swap_partner()'s reverse lookup scans every unit; skip it unless this unit
 	# holds a forward link (checked in O(1)) or some order links to it.
-	var own_link: bool = current_order != null and current_order.friendly_target != null
+	var own_link: bool = current_order != null and current_order.friendly_target != null \
+			and is_instance_valid(current_order.friendly_target)
 	if (own_link or incoming_friendly_links > 0) and _relief_swap_partner() != null:
 		return _formation_local_half_extents()
 	var files: int = maxi(1, formation_files(soldiers))

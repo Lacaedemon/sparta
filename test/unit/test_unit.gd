@@ -2008,10 +2008,6 @@ func test_incoming_friendly_links_track_friendly_target_on_any_order_type() -> v
 	assert_eq(b.incoming_friendly_links, 0, "freeing an order with a live link uncounts it")
 
 
-
-
-
-
 func test_far_tier_half_extents_skip_the_reverse_scan_when_no_link_is_live() -> void:
 	var u := _make_unit(20)
 	var other := _make_unit(20)
