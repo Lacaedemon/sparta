@@ -1889,6 +1889,25 @@ func test_formation_local_half_extents_memoizes_within_the_same_physics_frame_an
 		"the recomputed depth half-extent matches the deepest file's real 8-soldier depth")
 
 
+func test_formation_local_half_extents_invalidates_on_a_same_frame_ranks_closed_flip() -> void:
+	# Unit._physics_process (scripts/Unit.gd, around _think()'s call and the block that
+	# follows it) runs _think() -- which can call _move_to(), this cache's usual first
+	# filler, via a formed march/charge/skirmish branch -- and THEN, later in that SAME
+	# call, flips _ranks_closed. A same-frame-only cache key (Engine.get_physics_frames()
+	# alone) cannot tell "before the flip" apart from "after": it was filled and read
+	# within the one physics frame both times, so a different unit scanning THIS one's
+	# corner_clearance() later the same frame (_has_congested_same_team_router) would
+	# read the pre-flip extents. Reproduce the ordering directly, with no frame advance,
+	# mirroring the coordinator's own suggested case. Must fail against 315a31b2, whose
+	# frame-only key returns `before` unchanged for the second call.
+	var u := _make_unit(60)
+	var before: Vector2 = u._formation_local_half_extents()
+	u._ranks_closed = true   # narrowed_files() halves the default frontage's file count
+	var after: Vector2 = u._formation_local_half_extents()
+	assert_lt(after.x, before.x,
+		"a same-frame ranks-closed flip must narrow the cached half-width immediately, not on the next frame")
+
+
 func test_formation_local_half_extents_includes_an_active_relief_corridors_widening() -> void:
 	# _apply_relief_corridor_to_slots pushes back-rank flank bodies OUTWARD along the
 	# corridor-perpendicular axis while a live relief swap is under way (its own doc
@@ -1941,16 +1960,22 @@ func test_terrain_clearance_with_no_direction_given_returns_the_safe_pivot_radiu
 		"the no-argument call returns the safe, direction-independent pivot-radius value")
 
 
-func test_corner_clearance_is_always_the_full_pivot_radius_margin() -> void:
-	# corner_clearance() (fed to PathField.next_step's own corner_clearance argument)
-	# is deliberately the flat pivot-radius formula, unconditionally -- a deep column
-	# still needs its full worst-case sweep at a corner, only its direction-aware
-	# terrain_clearance() can shrink, and only for travel closer to its own facing than
-	# perpendicular to it.
+func test_corner_clearance_matches_pivot_radius_for_a_centred_even_block() -> void:
+	# corner_clearance() (fed to PathField.next_step's own corner_clearance argument) is
+	# the flat _formation_local_half_extents().length() + body-radius formula -- see its
+	# own doc comment. That coincides with the pivot-radius formula ONLY for a centred,
+	# even block: an anchored offset (test_corner_clearance_accounts_for_a_standing_
+	# frontage_anchor_offset), an uneven file-major depth (test_corner_clearance_reads_
+	# the_deepest_surviving_file_not_ranks_for), or an active relief corridor
+	# (test_formation_local_half_extents_includes_an_active_relief_corridors_widening)
+	# each correctly read LARGER than _pivot_radius() + body_radius, since none of those
+	# is reflected in _pivot_radius() itself (see corner_clearance()'s own divergence
+	# caveat). This fixture -- default frontage_override, no anchor offset, an even
+	# split, no relief -- is the one case where the two formulas still agree exactly.
 	var deep := _make_unit()
 	deep.frontage_override = 3
 	assert_almost_eq(deep.corner_clearance(), deep._pivot_radius() + deep.soldier_body_radius(), 0.0001,
-		"corner_clearance is always the pivot-radius half-diagonal plus one body radius")
+		"for this centred, even-split fixture corner_clearance matches the pivot-radius half-diagonal plus one body radius")
 	assert_gt(deep.corner_clearance(), deep.terrain_clearance(deep.facing),
 		"for a deep column marching along facing, the corner margin is strictly larger than the straight-leg one")
 	var single_rank := _make_unit()

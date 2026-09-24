@@ -1438,10 +1438,13 @@ var _block_extent: float = RADIUS       # block half-size; sizes the ring/halo/b
 # calls per tick (terrain_clearance, funnel_lane_offset's own terrain_clearance,
 # corner_clearance) -- and _has_congested_same_team_router calling corner_clearance()
 # once per same-team unit in its scan -- would otherwise each pay the full rebuild.
-# See that function's own doc comment for why a physics-frame key (not a dirty flag
-# on every mutation site) is the cache's invalidation trigger.
+# See that function's own doc comment for why the frame key alone is not sufficient
+# and _cached_local_half_extents_sig exists alongside it.
 var _cached_local_half_extents: Vector2 = Vector2.ZERO
 var _cached_local_half_extents_frame: int = -1
+# Fingerprint of every input formation_slots(soldiers, true) read on the call that
+# produced _cached_local_half_extents -- see _formation_local_half_extents_signature().
+var _cached_local_half_extents_sig: Array = []
 # Render fast-path bookkeeping. _render_dirty is raised by SoldierBodies.step whenever a
 # body actually moves (and by seed / about-face relabel); _process consumes it so the
 # MultiMeshes are only rewritten when something visible changed, not every idle frame.
@@ -3902,23 +3905,30 @@ func is_deep_for_formed_turn() -> bool:
 ## funnel_lane_offset's own terrain_clearance() call) every tick for every moving
 ## unit, and _has_congested_same_team_router calls corner_clearance() once per
 ## same-team unit in its scan -- so this function itself memoizes the O(soldiers)
-## rebuild below, keyed on Engine.get_physics_frames(). A physics-frame key, not a
-## dirty flag raised at every site that can change formation_slots() (soldiers,
-## files, formation mode, frontage_anchor_offset, file assignment, reform state, or
-## an active relief pass starting/ending/moving its partner): the deterministic sim
-## already advances exactly one physics frame per tick, so "still the same frame" is
-## a cheap, always-correct proxy for "nothing that feeds formation_slots() has
-## changed since the first call this tick" without having to enumerate every
-## mutation site (and risk missing one) -- relief state is read fresh from the live
-## partner every call inside formation_slots() itself, never cached there, so it
-## cannot go stale WITHIN a tick either. The memo is recomputed fresh on the FIRST
-## call of a new frame and reused by every later call that same frame, so a mutation
-## earlier in the SAME tick (e.g. a casualty resolved before movement runs, or a
-## relief swap starting) is still reflected -- only calls within one already-computed
-## frame ever see the cached value.
+## rebuild below.
+##
+## A bare Engine.get_physics_frames() key is NOT sufficient on its own: this unit's
+## OWN _physics_process can call _think() (which calls _move_to(), the cache's usual
+## first filler, via a formed march/charge/skirmish branch) and THEN, later in the
+## very same call, run UnitRelief.update / UnitReinforce.update / the ranks-closed
+## flip -- all of which change inputs formation_slots(soldiers, true) reads. A
+## DIFFERENT unit processed later that same physics frame can then read this unit's
+## STALE pre-mutation extents through _has_congested_same_team_router() ->
+## corner_clearance(), since "still the same frame" alone can no longer distinguish
+## "before" from "after" those mutations once they happen inside this unit's own
+## tick. So the key pairs the frame number with a cheap fingerprint
+## (_formation_local_half_extents_signature(), below) of every input
+## formation_slots(soldiers, true) actually reads, INCLUDING a live relief partner's
+## own geometry -- built fresh every call (O(1) field reads; the two array-shaped
+## per-soldier assignments, _sim_soldier_file and _sim_soldier_row_slot, are already
+## gated by (count, files) staying unchanged per _ensure_file_assignment's own doc
+## comment, so their CONTENTS need no separate tracking here) rather than a dirty
+## flag raised at every mutation site, which risks missing one exactly the way the
+## frame-only key did.
 func _formation_local_half_extents() -> Vector2:
 	var frame: int = Engine.get_physics_frames()
-	if frame == _cached_local_half_extents_frame:
+	var sig: Array = _formation_local_half_extents_signature()
+	if frame == _cached_local_half_extents_frame and sig == _cached_local_half_extents_sig:
 		return _cached_local_half_extents
 	var hw: float = 0.0
 	var hd: float = 0.0
@@ -3927,7 +3937,45 @@ func _formation_local_half_extents() -> Vector2:
 		hd = maxf(hd, absf(s.y))
 	_cached_local_half_extents = Vector2(hw, hd)
 	_cached_local_half_extents_frame = frame
+	_cached_local_half_extents_sig = sig
 	return _cached_local_half_extents
+
+
+## The fingerprint _formation_local_half_extents() keys its cache on, alongside the
+## physics frame. Enumerated directly from formation_slots(soldiers, true)'s own
+## body (scripts/Unit.gd) rather than guessed: `count` is `soldiers`;
+## formation_files()/in_square() read formation_mode and, via UnitFormation.frontage,
+## frontage_override, subunit_structure, subunit_size, is_cavalry, max_soldiers, and
+## _ranks_closed; _effective_file_major_reform() reads is_cavalry,
+## file_major_reform_mode, and disciplined; file_pitch_wu()/rank_pitch_wu() read
+## spacing_scale; the file-major branch reads frontage_anchor_offset;
+## apply_traverse_flank_arcs (both branches) reads facing, _formation_angle,
+## position, and _reform_holding(); and -- since this is always called with
+## apply_relief_corridor = true -- _apply_relief_corridor_to_slots reads a live
+## relief partner's position, separation_radius, soldier_block_extent(),
+## soldier_block_half_extents(), and soldier_block_world_angle(), plus this unit's
+## own position, separation_radius, and soldier_block_extent(). Those partner
+## accessors (like this function's own final loop) always rebuild fresh from
+## formation_slots(soldiers, false) -- no caching of their own -- so reading them
+## here is exact, not an approximation of the partner's state.
+func _formation_local_half_extents_signature() -> Array:
+	var sig: Array = [
+		soldiers, max_soldiers, formation_mode, frontage_override,
+		subunit_structure, subunit_size, is_cavalry, _ranks_closed,
+		file_major_reform_mode, disciplined, spacing_scale,
+		frontage_anchor_offset, facing, _formation_angle, _reform_holding(),
+		position,
+	]
+	var partner: Unit = _relief_swap_partner()
+	if partner == null or not is_instance_valid(partner):
+		sig.append(null)
+	else:
+		sig.append([
+			partner.get_instance_id(), partner.position, partner.separation_radius,
+			partner.soldier_block_extent(), partner.soldier_block_half_extents(),
+			partner.soldier_block_world_angle(), separation_radius, soldier_block_extent(),
+		])
+	return sig
 
 
 ## Open ground this regiment needs between its centre and impassable terrain, for a
