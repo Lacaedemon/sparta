@@ -2577,8 +2577,8 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ##   target_enemy, when non-null, is taken over WITHOUT re-gating -- it was set one of three
 ##   ways: an explicit order, one of this file's own now-gated fresh-pick commits (both
 ##   perception-gated at the time), or _think()'s melee-contact branch (target_enemy = enemy,
-##   set unconditionally whenever in_contact), which is deliberately NOT a caller of this
-##   function: contact-exempt rather than perception-gated, benign because
+##   set when in contact outside HOLD/MARCH_TO_CONTACT/BRACE), which is deliberately NOT a
+##   caller of this function: contact-exempt rather than perception-gated, benign because
 ##   melee_contact_distance is far below any realistic sight range. Same already-committed
 ##   exemption the chase branch's target_enemy != null half relies on. See UnitRelief.begin's
 ##   own doc comment.
@@ -2998,9 +2998,9 @@ func _think(delta: float) -> void:
 			# set one of three ways -- an explicit attack order (player- or AI-issued) or
 			# SWEEP_ROUTERS/ROLL_THE_LINE's own now-gated fresh-pick commits above, both
 			# perception-gated at the time, or this same function's own melee-contact branch
-			# above (target_enemy = enemy, set unconditionally whenever in_contact on some
-			# earlier tick), which is deliberately NOT a caller of _enemy_is_perceived:
-			# contact-exempt rather than perception-gated, benign because
+			# above (target_enemy = enemy, set when in contact outside HOLD/MARCH_TO_CONTACT/
+			# BRACE, on some earlier tick), which is deliberately NOT a caller of
+			# _enemy_is_perceived: contact-exempt rather than perception-gated, benign because
 			# melee_contact_distance is far below any realistic sight range. Either way, this
 			# branch then keeps closing on that same target's CURRENT live position every
 			# tick with no re-check -- so a unit can keep chasing a target that has since
