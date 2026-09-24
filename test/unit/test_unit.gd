@@ -1922,11 +1922,16 @@ func test_far_tier_half_extents_match_the_live_slots_for_every_far_layout() -> v
 		{"max": 20, "n": 3, "files": 8, "anchor": 0.0, "square": false, "row": false, "exact": false},    # under one rank
 		{"max": 61, "n": 61, "files": 8, "anchor": 30.0, "square": false, "row": true, "exact": true},    # row-major, anchored
 		{"max": 20, "n": 3, "files": 8, "anchor": 0.0, "square": false, "row": true, "exact": false},     # row-major, under one rank
-		{"max": 50, "n": 50, "files": 0, "anchor": 0.0, "square": true, "row": false, "exact": false},    # square
+		{"max": 49, "n": 49, "files": 0, "anchor": 0.0, "square": true, "row": false, "exact": true},     # square, full ranks
+		{"max": 50, "n": 50, "files": 0, "anchor": 0.0, "square": true, "row": false, "exact": true},     # square, partial rear rank
 	]
 	for c in cases:
 		var u := _make_unit(c["max"])
 		u.soldiers = c["n"]
+		# Distinct pitches, so a depth read at the wrong pitch (a square's depth runs at
+		# file pitch, every other layout's at rank pitch) changes the answer.
+		u.file_pitch = 20.0
+		u.rank_pitch = 60.0
 		if c["files"] > 0:
 			u.frontage_override = c["files"]
 		u.frontage_anchor_offset = c["anchor"]
