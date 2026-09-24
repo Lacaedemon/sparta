@@ -47,9 +47,6 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 	# whatever the tired unit was doing, including a stale relief of its own.
 	tired.target_enemy = null
 	var retreat := Order.new_move(_rear_point(tired))
-	# No explicit tired.invalidate_formation_extent_cache() call needed here:
-	# set_current_order() now invalidates tired's own cache itself -- see
-	# Unit._formation_local_half_extents()'s doc comment.
 	tired.set_current_order(retreat)
 	tired.move_target = retreat.target_pos
 	tired.has_move_target = true

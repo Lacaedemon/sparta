@@ -1850,54 +1850,14 @@ func test_corner_clearance_reads_the_deepest_surviving_file_not_ranks_for() -> v
 		"corner_clearance folds in the deepest surviving file's real depth, not ranks_for()'s estimate")
 
 
-func test_formation_local_half_extents_memoizes_within_the_same_physics_frame_and_invalidates_on_the_next() -> void:
-	# _formation_local_half_extents() memoizes per Engine.get_physics_frames() -- see its
-	# own doc comment. Mirrors the codebase's established same-frame-memoizes pattern
-	# (test_engaged_soldier_indices_memoizes_within_the_same_physics_tick, for the sibling
-	# engaged_soldier_indices() memo), but also proves the OTHER half a same-frame-only
-	# check misses: a same-frame call after a mutation must NOT reflect it (the cache is
-	# genuinely being used, not silently recomputing every call regardless), and a call on
-	# a fresh frame key must pick the mutation up.
-	var u := _make_unit(12)
-	u.frontage_override = 3   # ranks_for(12, 3) == 4 for an EVEN split -- see the tests above
-	var first: Vector2 = u._formation_local_half_extents()
-	assert_eq(u._cached_local_half_extents_frame, Engine.get_physics_frames(),
-		"the cache records the frame the first call ran on")
-	# Force an uneven file-major assignment, same trick the deepest-file tests above use
-	# (bypassing _ensure_file_assignment, which only re-deals on a size/file-count mismatch).
-	var uneven_files := PackedInt32Array()
-	for i in 8:
-		uneven_files.append(0)
-	for i in 2:
-		uneven_files.append(1)
-	for i in 2:
-		uneven_files.append(2)
-	u._sim_soldier_file = uneven_files
-	u._file_assignment_files = 3
-	var still_cached: Vector2 = u._formation_local_half_extents()
-	assert_eq(still_cached, first,
-		"a same-frame call after mutating the file assignment still returns the STALE cached value")
-	# A genuinely later physics frame must recompute and pick up the mutation -- simulated
-	# directly here, since a synchronous test never advances Engine.get_physics_frames() on
-	# its own (the same reason the manual-tick tests elsewhere in this file drive
-	# _physics_process() by hand rather than awaiting a real physics frame).
-	u._cached_local_half_extents_frame = -1
-	var recomputed: Vector2 = u._formation_local_half_extents()
-	assert_ne(recomputed, first,
-		"a fresh-frame call recomputes and reflects the file-assignment mutation")
-	assert_almost_eq(recomputed.y, 0.5 * 7.0 * u.rank_pitch_wu(), 0.01,
-		"the recomputed depth half-extent matches the deepest file's real 8-soldier depth")
-
-
-func test_formation_local_half_extents_invalidates_on_a_same_frame_ranks_closed_flip() -> void:
-	# _physics_process's own ranks-closed flip (the "if _ranks_closed != was_ranks_closed
-	# ..." block right after _think()) now calls invalidate_formation_extent_cache()
-	# itself -- see this function's own doc comment. Drive the flip for real, through
-	# _physics_process, rather than a raw field write (which would bypass that wrapped
-	# call site entirely and prove nothing about it): drop soldiers below the
-	# close-ranks contraction threshold and confirm the SAME-frame re-read already
-	# reflects the narrower frontage, with no frame advance. Must fail without the
-	# invalidate call in that flip block.
+func test_formation_local_half_extents_is_never_stale_after_a_ranks_closed_flip() -> void:
+	# _formation_local_half_extents() is deliberately UNCACHED (see its own doc comment):
+	# every call rebuilds from the live slots, so a mutation -- however it happens, in
+	# whatever order relative to any other call -- is reflected on the very next query,
+	# with no frame-boundary or invalidation-call bookkeeping to get right. Drive a real
+	# ranks-closed flip through _physics_process (not a raw field write, which would
+	# bypass the actual mutation site and prove nothing) and confirm the immediate next
+	# query already reflects the narrower frontage.
 	var u := _make_unit(60)
 	assert_false(u._ranks_closed, "sanity check: starts open")
 	var before: Vector2 = u._formation_local_half_extents()
@@ -1906,37 +1866,27 @@ func test_formation_local_half_extents_invalidates_on_a_same_frame_ranks_closed_
 	assert_true(u._ranks_closed, "sanity check: the flip actually happened")
 	var after: Vector2 = u._formation_local_half_extents()
 	assert_lt(after.x, before.x,
-		"the same-frame post-flip query reflects the narrower frontage immediately")
+		"the very next query reflects the narrower frontage; nothing was ever cached to go stale")
 
 
-func test_formation_local_half_extents_reflects_a_ranks_closed_flip_on_the_next_frame_too() -> void:
-	# The next-frame path still works too -- the invalidate above only forces an early
-	# rebuild; it does not somehow suppress the ordinary frame-boundary one.
-	var u := _make_unit(60)
-	var before: Vector2 = u._formation_local_half_extents()
-	u.soldiers = 20
-	u._physics_process(0.016)
-	u._cached_local_half_extents_frame = -1   # simulate a fresh physics frame, as above
-	var next_frame: Vector2 = u._formation_local_half_extents()
-	assert_lt(next_frame.x, before.x,
-		"a fresh-frame call recomputes and reflects the ranks-closed narrowing")
-
-
-func test_set_frontage_invalidates_a_same_frame_widen() -> void:
-	# set_frontage() is reachable from Battle's order-application -- from outside this
-	# unit's own tick, including while paused -- so it cannot rely on the self-write
-	# ordering _ranks_closed's own flip depends on; it calls
-	# invalidate_formation_extent_cache() itself instead (see this function's own doc
-	# comment). Fill the cache, widen via set_frontage in the same frame with no frame
-	# advance, and confirm the immediate next query reflects the wider frontage. Must
-	# fail without that call in set_frontage.
+func test_move_to_builds_the_slot_layout_exactly_once_per_call() -> void:
+	# _move_to() computes _formation_local_half_extents() ONCE and threads the result
+	# through terrain_clearance(), funnel_lane_offset() (whose own internal
+	# terrain_clearance()/corner_clearance() calls also take it), and corner_clearance()
+	# -- see _move_to's own doc comment. formation_slots() is the O(soldiers) builder all
+	# of those ultimately call when no extents are supplied, so counting ITS calls
+	# across one _move_to() is the direct measurement; _formation_slots_call_count is
+	# test-only instrumentation kept for exactly this (see its own doc comment).
 	var u := _make_unit(60)
 	u.frontage_override = 3
-	var before: Vector2 = u._formation_local_half_extents()
-	u.set_frontage(6)
-	var after: Vector2 = u._formation_local_half_extents()
-	assert_gt(after.x, before.x,
-		"the same-frame post-widen query reflects the wider frontage immediately")
+	u.position = Vector2(500, 500)
+	var old_pf: PathField = PathField.active
+	PathField.active = PathField.new(Rect2(0, 0, 4000, 4000))   # no obstacles registered
+	var before: int = u._formation_slots_call_count
+	u._move_to(Vector2(1500, 500), 0.016)
+	var calls: int = u._formation_slots_call_count - before
+	PathField.active = old_pf
+	assert_eq(calls, 1, "_move_to rebuilds the slot layout exactly once per call, not three times")
 
 
 func test_formation_local_half_extents_includes_an_active_relief_corridors_widening() -> void:
@@ -2091,6 +2041,14 @@ func test_congested_same_team_router_uses_corner_clearance_not_the_smaller_strai
 	# its own facing has a terrain_clearance() far smaller than its corner_clearance() --
 	# far enough apart here that reading the smaller value would call this pair NOT
 	# congested, while the correct, corner-sized radius calls it congested.
+	#
+	# Own corner_clearance() (exact, live-slot) versus the scanned unit's cheap
+	# _pivot_radius() + soldier_body_radius() estimate (see
+	# _has_congested_same_team_router()'s own doc comment for why a congestion scan
+	# doesn't need the exact value) coincide for THIS fixture -- default frontage_override,
+	# no anchor offset, no relief, an even split -- so the sanity checks below, expressed
+	# in corner_clearance() for both units, hold regardless of which formula the
+	# implementation actually uses for the candidate side.
 	var a := _make_unit()
 	a.frontage_override = 3   # deep, narrow column -- see the terrain_clearance tests above
 	a.team = 0
@@ -2107,6 +2065,44 @@ func test_congested_same_team_router_uses_corner_clearance_not_the_smaller_strai
 		"sanity check: the pair sits OUTSIDE the smaller, straight-leg-sized radius")
 	assert_true(a._has_congested_same_team_router(),
 		"reads congested at the corner-sized radius, which a straight-leg-sized radius would miss")
+
+
+func test_congested_same_team_router_uses_the_scanned_units_cheap_estimate_not_its_exact_extent() -> void:
+	# _has_congested_same_team_router()'s own doc comment: the SCANNED unit's radius is
+	# the cheap _pivot_radius() + soldier_body_radius() estimate, not its exact
+	# corner_clearance() -- computing the exact value for every candidate would force an
+	# O(soldiers) formation_slots() rebuild per scanned unit, every tick, for every
+	# moving unit doing the scanning. Prove the estimate is actually what drives the
+	# gate (not merely that it coincides with the exact value for a centred fixture, as
+	# the sibling test above does) by giving the CANDIDATE the same uneven file-major
+	# depth test_corner_clearance_reads_the_deepest_surviving_file_not_ranks_for uses,
+	# so its corner_clearance() is real and large while its _pivot_radius() (the
+	# ranks_for() average-case estimate) stays small -- then place `a` between the two
+	# resulting radii: congested only if the gate were still reading the exact value.
+	var a := _make_unit()
+	a.team = 0
+	a.position = Vector2(0, 0)
+	a.facing = Vector2.DOWN
+	var b := _make_unit(12)
+	b.team = 0
+	b.frontage_override = 3
+	var uneven_files := PackedInt32Array()
+	for i in 8:
+		uneven_files.append(0)
+	for i in 2:
+		uneven_files.append(1)
+	for i in 2:
+		uneven_files.append(2)
+	b._sim_soldier_file = uneven_files
+	b._file_assignment_files = 3
+	var exact_radius: float = a.corner_clearance() + b.corner_clearance()
+	var cheap_radius: float = a.corner_clearance() + b._pivot_radius() + b.soldier_body_radius()
+	assert_gt(exact_radius, cheap_radius + 10.0,
+		"sanity check: the uneven depth genuinely widens b's exact extent past its cheap estimate")
+	b.position = Vector2(0.5 * (exact_radius + cheap_radius), 0)   # strictly between the two radii
+	b.facing = Vector2.DOWN
+	assert_false(a._has_congested_same_team_router(),
+		"the gate reads false at a distance only the CHEAP pivot-radius estimate would exclude")
 
 
 func test_funnel_lane_offset_is_zero_with_no_pathfield_active() -> void:
