@@ -1988,34 +1988,44 @@ func test_far_tier_half_extents_defer_for_the_relieved_side_too() -> void:
 		"a far tired block reads the live, corridor-widened extents via the reverse link")
 
 
-func test_live_friendly_link_order_count_tracks_every_current_order_write() -> void:
-	# Not autofreed: this test frees the unit itself to check the PREDELETE decrement.
-	var u: Unit = Unit.new()
-	u.max_soldiers = 20
-	add_child(u)
-	var base: int = Unit._live_friendly_link_orders
-	u.set_current_order(Order.new_relief(999))
-	assert_eq(Unit._live_friendly_link_orders, base + 1, "a RELIEF order counts")
-	u.set_current_order(Order.new_reinforce(999, 0))
-	assert_eq(Unit._live_friendly_link_orders, base + 1, "RELIEF -> REINFORCE stays one link")
-	u.set_current_order(Order.new_move(Vector2(100, 0)))
-	assert_eq(Unit._live_friendly_link_orders, base, "a MOVE order does not count")
-	u.set_current_order(Order.new_relief(999))
-	u.free()
-	assert_eq(Unit._live_friendly_link_orders, base, "freeing a unit drops its count")
+func test_armed_link_count_tracks_friendly_target_on_any_order_type() -> void:
+	# friendly_target is generic by design (any order type may arm it -- see its doc
+	# comment), so arm one on a plain MOVE order.
+	var b := _make_unit(20)
+	var base: int = Order.armed_links
+	var order := Order.new_move(Vector2(50, 0))
+	order.friendly_target = b
+	assert_eq(Order.armed_links, base + 1, "arming a link on a MOVE order counts")
+	order.friendly_target = b
+	assert_eq(Order.armed_links, base + 1, "re-arming the same link does not double-count")
+	order.friendly_target = null
+	assert_eq(Order.armed_links, base, "clearing the link uncounts it")
+	order.friendly_target = b
+	order = null   # the last reference: the RefCounted Order is freed here
+	assert_eq(Order.armed_links, base, "freeing an order with a live link uncounts it")
+
+
 
 
 func test_far_tier_half_extents_skip_the_reverse_scan_when_no_link_is_live() -> void:
 	var u := _make_unit(20)
 	var other := _make_unit(20)
 	TierTransition.demote(u)
-	assert_eq(Unit._live_friendly_link_orders, 0, "sanity check: no link-arming order is live")
+	# armed_links is process-wide static state: skip rather than fail if another test
+	# leaked a live link, since the scan-skip claim is only testable at zero.
+	if Order.armed_links != 0:
+		pending("a friendly_target link from another test is still live; skip-path untestable")
+		return
 	var before: int = u._relief_reverse_scan_count
 	u._far_tier_half_extents()
 	assert_eq(u._relief_reverse_scan_count, before, "no live link: the whole-group scan is skipped")
-	other.set_current_order(Order.new_relief(999))
+	var link := Order.new_relief(999)
+	other.set_current_order(link)
+	link.friendly_target = u
 	u._far_tier_half_extents()
-	assert_eq(u._relief_reverse_scan_count, before + 1, "a live link elsewhere: the scan runs")
+	# (More than once: finding the partner falls back to the live slots, whose corridor
+	# step looks the partner up again.)
+	assert_gt(u._relief_reverse_scan_count, before, "a live link elsewhere: the scan runs")
 	other.set_current_order(null)
 
 

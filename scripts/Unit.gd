@@ -270,20 +270,7 @@ var selected: bool = false
 # they are execution state the queue reads -- _update_current_order retires
 # ATTACK/RELIEF/SUPPORT orders by reading them.
 var orders: Array[Order] = []
-## How many live units currently hold a RELIEF or REINFORCE order as their current order
-## -- the only order types that arm a friendly_target link. Maintained exactly by
-## current_order's own setter (every write, in this file or outside it, goes through it)
-## and by _notification's PREDELETE decrement, so a zero reading proves no unit anywhere
-## can name this one as its friendly target. _far_tier_half_extents() reads it to skip
-## _relief_swap_partner()'s whole-group reverse scan in the common no-link case.
-static var _live_friendly_link_orders: int = 0
-var current_order: Order = null:
-	set(value):
-		if _order_can_link(current_order):
-			_live_friendly_link_orders -= 1
-		if _order_can_link(value):
-			_live_friendly_link_orders += 1
-		current_order = value
+var current_order: Order = null
 # Order stance, set by Battle._apply_order_cmd from the order's mode.
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
 # The smart-order behaviours read this; NORMAL is current behaviour.
@@ -1692,21 +1679,6 @@ func _physics_process(delta: float) -> void:
 ## whatever maneuver the outgoing order had in flight, clears any queued continuation, and
 ## makes `order` current immediately. Mirrors the legacy "a fresh order discards the queued
 ## route" rule (see Battle._apply_order_cmd).
-## True for the order types that arm a friendly_target link (see
-## _live_friendly_link_orders). Keyed on the TYPE, which an Order never changes after
-## construction, not on friendly_target itself, which is armed after the order is
-## already current -- so the counter cannot miss a link armed later.
-static func _order_can_link(order: Order) -> bool:
-	return order != null and (order.type == Order.Type.RELIEF or order.type == Order.Type.REINFORCE)
-
-
-func _notification(what: int) -> void:
-	# A freed unit's current order stops counting. Assigning null runs current_order's
-	# setter, which does the decrement.
-	if what == NOTIFICATION_PREDELETE:
-		current_order = null
-
-
 func set_current_order(order: Order) -> void:
 	_interrupt_current_order()
 	var q: Array[Order] = []
@@ -3976,9 +3948,9 @@ func _formation_local_half_extents() -> Vector2:
 ## - no traverse flank arcs: they need live bodies;
 ## - a relief corridor is NOT tier-gated (nothing keeps a far block out of a relief
 ##   swap), so while a relief partner exists this defers to the live-slot reading.
-##   The partner lookup's whole-group reverse scan runs only while some unit holds a
-##   link-arming order (_live_friendly_link_orders), so the common no-link tick stays
-##   O(1); a relief swap is short, so the O(soldiers) rebuild is paid only then.
+##   The partner lookup's whole-group reverse scan runs only while some order holds an
+##   armed friendly_target (Order.armed_links), so the common no-link tick stays O(1);
+##   a relief swap is short, so the O(soldiers) rebuild is paid only then.
 ## What is left -- files, ranks, the two pitches (a square's depth runs at file pitch,
 ## UnitFormation.block_slots' own default), and the standing frontage_anchor_offset,
 ## which formation_slots() applies to every non-square layout -- is all read here. A
@@ -3988,10 +3960,10 @@ func _formation_local_half_extents() -> Vector2:
 func _far_tier_half_extents() -> Vector2:
 	if soldiers <= 0:
 		return Vector2.ZERO
-	# _relief_swap_partner()'s reverse lookup scans every unit; skip it when no unit
-	# anywhere holds a link-arming order (the forward link on our own order is O(1)).
-	var own_link: bool = current_order != null and current_order.friendly_target != null
-	if (own_link or _live_friendly_link_orders > 0) and _relief_swap_partner() != null:
+	# _relief_swap_partner()'s reverse lookup scans every unit; skip it when no order
+	# anywhere holds an armed friendly_target. Order.armed_links is 0 then, and a forward
+	# link on our own order would already have made it nonzero.
+	if Order.armed_links > 0 and _relief_swap_partner() != null:
 		return _formation_local_half_extents()
 	var files: int = maxi(1, formation_files(soldiers))
 	var ranks: int = UnitFormation.ranks_for(soldiers, files)

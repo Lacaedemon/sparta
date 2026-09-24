@@ -388,7 +388,22 @@ var reinforce_axis: int = 0
 ## field and gets the exemption and resolution for free, with no Unit.gd changes.
 ## (target_uid still carries a RELIEF order's ally uid for the transcript; this is the
 ## resolved node the exemption compares.)
-var friendly_target: Unit = null
+var friendly_target: Unit = null:
+	set(value):
+		if friendly_target == null and value != null:
+			armed_links += 1
+		elif friendly_target != null and value == null:
+			armed_links -= 1
+		friendly_target = value
+## How many Order objects currently hold a non-null friendly_target, of any order type.
+## Kept by friendly_target's own setter and by _notification's PREDELETE decrement (an
+## Order is RefCounted, so a dropped order is uncounted when it is freed). It includes
+## links on queued and child orders and on orders whose partner has since been freed, so
+## it can over-count -- which only costs the caller an extra scan -- but it never
+## under-counts: a zero reading proves no order anywhere names a friendly unit.
+## Unit._far_tier_half_extents() reads it to skip _relief_swap_partner()'s whole-group
+## reverse scan in the common no-link case.
+static var armed_links: int = 0
 ## UID of friendly_target captured across snapshot serialize/deserialize; -1 when none.
 var friendly_target_uid: int = -1
 
@@ -732,3 +747,9 @@ static func new_form_up() -> Order:
 	var o := Order.new()
 	o.type = Type.FORM_UP
 	return o
+
+
+## A freed Order with a live link stops counting toward armed_links.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and friendly_target != null:
+		armed_links -= 1
