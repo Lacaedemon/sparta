@@ -1274,3 +1274,90 @@ func test_restore_snapshot_clears_the_stale_ai_perceives_cache() -> void:
 	assert_false(battle.ai_team_perceives(0, enemy),
 		"the restored world has the enemy far away: the cache must not leak the earlier, " +
 		"now-stale 'perceived' answer just because the tick number matches")
+
+
+# --- BUG: UnitRelief.begin's fresh fallback pick was not perception-gated -----------------
+#
+# UnitRelief.begin takes over a relieved unit's fight: when the tired unit's OWN
+# target_enemy is null (e.g. HOLD/BRACE standoff fire with no committed target), it falls
+# back to UnitTargeting.nearest_enemy(tired) -- a bare, unfogged detection_range scan -- and
+# used to assign the result straight to the reliever's target_enemy with no gate. That lands
+# the reliever on _think()'s exempt target_enemy != null chase path with no perception check
+# ever having run, so a foe its own side has not sighted gets engaged. Now gated the same way
+# _start_promoted_attack gates its own fresh pick: exempt only when already in melee contact,
+# perception-checked otherwise. See Unit._enemy_is_perceived's own doc comment (the
+# authoritative caller list) and UnitRelief.begin's own doc comment.
+
+func test_unit_relief_begin_does_not_commit_a_fresh_unperceived_fallback_target() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x + 80.0, "y": WATCHER_POS.y},
+		{"team": 1, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	# Identify by position rather than group-iteration order -- robust regardless of how
+	# get_tree().get_nodes_in_group happens to order two same-team spawns.
+	var tired: Unit = null
+	var reliever: Unit = null
+	for u in _team_units(0):
+		if is_equal_approx(u.position.x, WATCHER_POS.x):
+			tired = u
+		else:
+			reliever = u
+	assert_not_null(tired, "sanity: the tired unit spawned at WATCHER_POS")
+	assert_not_null(reliever, "sanity: the reliever unit spawned away from WATCHER_POS")
+	var enemy: Unit = _team_units(1)[0]
+	tired.sight_range = SHRUNK_SIGHT
+	reliever.sight_range = SHRUNK_SIGHT
+	tired.target_enemy = null   # exercise the fallback branch, not the inherit branch
+	battle._tick_fog()
+	assert_false(battle.ai_team_perceives(0, enemy),
+		"sanity check on the staged distance: team 0 does not perceive this enemy")
+	assert_null(reliever.target_enemy, "no target committed before the relief swap")
+
+	var order: Order = Order.new_relief(tired.uid)
+	UnitRelief.begin(reliever, tired, order)
+
+	assert_null(reliever.target_enemy,
+		"the fresh fallback pick (UnitTargeting.nearest_enemy(tired)) must not land in the " +
+		"reliever's target_enemy when it is not perceived -- an unperceived foe assigned " +
+		"there would be reached through _think()'s exempt target_enemy != null chase path " +
+		"with no perception check ever having run")
+	assert_true(reliever.has_move_target,
+		"with no gate-passing foe, the reliever falls back to the 'truly no foe: advance " +
+		"onto its slot' branch instead")
+	assert_eq(reliever.move_target, tired.position,
+		"and that advance target is the tired unit's own slot")
+
+
+func test_unit_relief_begin_still_commits_the_fallback_target_when_fog_is_off() -> void:
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x + 80.0, "y": WATCHER_POS.y},
+		{"team": 1, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var tired: Unit = null
+	var reliever: Unit = null
+	for u in _team_units(0):
+		if is_equal_approx(u.position.x, WATCHER_POS.x):
+			tired = u
+		else:
+			reliever = u
+	var enemy: Unit = _team_units(1)[0]
+	tired.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+	reliever.sight_range = SHRUNK_SIGHT
+	tired.target_enemy = null
+
+	var order: Order = Order.new_relief(tired.uid)
+	UnitRelief.begin(reliever, tired, order)
+
+	assert_eq(reliever.target_enemy, enemy,
+		"fog off: ai_team_perceives is unconditionally true, so the fallback pick commits " +
+		"exactly as it always did")

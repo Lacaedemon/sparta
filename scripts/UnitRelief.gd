@@ -31,11 +31,33 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 		return   # a unit can't relieve itself
 	order.friendly_target = tired
 	# Take over the tired unit's fight so the front isn't left open. A unit can be
-	# FIGHTING an auto-acquired foe with target_enemy still null, so fall back to its
-	# nearest enemy rather than just walking onto an empty slot.
+	# FIGHTING an auto-acquired foe with target_enemy still null (e.g. HOLD/BRACE standoff
+	# fire with no committed target), so fall back to its nearest enemy rather than just
+	# walking onto an empty slot. tired.target_enemy itself needs no re-gating here: when
+	# non-null it was already perception-gated at the moment tired acquired it (an explicit
+	# order, or one of this file's own now-gated fresh-pick commits), the same
+	# already-committed exemption _think()'s own chase branch relies on.
 	var foe: Unit = tired.target_enemy
 	if foe == null:
-		foe = UnitTargeting.nearest_enemy(tired)
+		# A FRESH acquisition, same as _start_promoted_attack's own candidate pick:
+		# UnitTargeting.nearest_enemy is a bare, unfogged detection_range scan, so an
+		# ungated assignment here would let the reliever inherit a hidden foe straight into
+		# target_enemy below -- landing it in _think()'s exempt target_enemy != null chase
+		# path with no perception check ever having run. Exempt only when the candidate is
+		# already in melee contact with the reliever (mirrors the melee invariant
+		# everywhere else); gated by _enemy_is_perceived otherwise. See
+		# Unit._enemy_is_perceived's own doc comment for the authoritative caller list this
+		# belongs to.
+		var candidate: Unit = UnitTargeting.nearest_enemy(tired)
+		if candidate != null:
+			var contact_dist: float = UnitTargeting.melee_contact_distance(
+				u.attack_range, Unit.RADIUS, candidate
+			)
+			var in_contact: bool = (
+				u.position.distance_squared_to(candidate.position) <= contact_dist * contact_dist
+			)
+			if in_contact or u._enemy_is_perceived(candidate):
+				foe = candidate
 	u.target_enemy = foe
 	if foe != null:
 		u.has_move_target = false

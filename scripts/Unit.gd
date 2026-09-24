@@ -2542,12 +2542,24 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ## list -- and add it here -- rather than assuming _enemy_is_perceived's existence alone
 ## covers it.
 ##
-## One caller lives OUTSIDE this file: FarTierCombat.engaged_target (scripts/FarTierCombat.gd)
-## calls this externally (u._enemy_is_perceived(target)), matching the near tier's OWN
-## melee-vs-ranged split rather than the chase branch's committed-vs-fresh one: a MELEE
-## engagement is unconditionally exempt (committed or fresh alike, same as the melee branch
-## above), but a RANGED/standoff exchange re-checks every tick regardless of commitment
-## (same as the ranged-fire branch above) -- see that function's own doc comment.
+## Two callers live OUTSIDE this file:
+## - FarTierCombat.engaged_target (scripts/FarTierCombat.gd) calls this externally
+##   (u._enemy_is_perceived(target)), matching the near tier's OWN melee-vs-ranged split
+##   rather than the chase branch's committed-vs-fresh one: a MELEE engagement is
+##   unconditionally exempt (committed or fresh alike, same as the melee branch above), but
+##   a RANGED/standoff exchange re-checks every tick regardless of commitment (same as the
+##   ranged-fire branch above) -- see that function's own doc comment.
+## - UnitRelief.begin (scripts/UnitRelief.gd) calls this externally
+##   (u._enemy_is_perceived(candidate)) to gate the FRESH fallback pick a relieving unit
+##   takes over when the tired unit it's relieving has target_enemy == null (e.g. HOLD/BRACE
+##   standoff fire with no committed target): the fallback is UnitTargeting.nearest_enemy, a
+##   bare, unfogged detection_range scan, so it needs the same gate as every other fresh pick
+##   in this list -- exempt only when the candidate is already in melee contact with the
+##   reliever (mirrors _start_promoted_attack's own pattern), gated otherwise. tired's OWN
+##   target_enemy, when non-null, is taken over WITHOUT re-gating -- it was already
+##   perception-gated at the moment tired acquired it, the same already-committed exemption
+##   the chase branch's target_enemy != null half relies on. See UnitRelief.begin's own doc
+##   comment.
 func _enemy_is_perceived(enemy: Unit) -> bool:
 	if _owning_battle == null or not _owning_battle.has_method("ai_team_perceives"):
 		return true
