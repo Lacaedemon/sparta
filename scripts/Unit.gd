@@ -3163,9 +3163,9 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# funnel_lane_offset() (which needs it for its own internal terrain_clearance()
 		# and corner_clearance() calls), and corner_clearance() below -- one O(soldiers)
 		# rebuild per _move_to() call instead of three independent ones. A far-tier
-		# block skips even that one rebuild: _far_tier_half_extents() reads the same
-		# bounds off the headcount in O(1) (see its own doc comment for why nothing the
-		# live slots add can apply to a far block).
+		# block usually skips even that one rebuild: _far_tier_half_extents() reads the
+		# same bounds off the headcount in O(1), falling back to the live slots only
+		# during a relief swap (see its own doc comment).
 		var leg_dir: Vector2 = point - position
 		var extents: Vector2 = _far_tier_half_extents() if tier == FormationTier.FAR \
 				else _formation_local_half_extents()
@@ -3934,9 +3934,7 @@ func _formation_local_half_extents() -> Vector2:
 ## O(1) half-extents for a FAR-tier block, derived from the headcount instead of read
 ## off the slots -- what _move_to() uses for a far-tier mover, which otherwise would pay
 ## _formation_local_half_extents()'s O(soldiers) slot rebuild on every physics tick and
-## defeat the far tier's whole point (hot movement costs O(1) per unit). Measured on a
-## 1000-man block: about 170 us per _formation_local_half_extents() call against under
-## 2 us for this.
+## defeat the far tier's point (its hot movement path allocates nothing per tick).
 ##
 ## Of the three live-slot effects _formation_local_half_extents() exists to capture,
 ## two cannot apply to a far block, and the third is handed back to it:
