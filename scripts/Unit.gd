@@ -2574,10 +2574,14 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ##   bare, unfogged detection_range scan, so it needs the same gate as every other fresh pick
 ##   in this list -- exempt only when the candidate is already in melee contact with the
 ##   reliever (mirrors _start_promoted_attack's own pattern), gated otherwise. tired's OWN
-##   target_enemy, when non-null, is taken over WITHOUT re-gating -- it was already
-##   perception-gated at the moment tired acquired it, the same already-committed exemption
-##   the chase branch's target_enemy != null half relies on. See UnitRelief.begin's own doc
-##   comment.
+##   target_enemy, when non-null, is taken over WITHOUT re-gating -- it was set one of three
+##   ways: an explicit order, one of this file's own now-gated fresh-pick commits (both
+##   perception-gated at the time), or _think()'s melee-contact branch (target_enemy = enemy,
+##   set unconditionally whenever in_contact), which is deliberately NOT a caller of this
+##   function: contact-exempt rather than perception-gated, benign because
+##   melee_contact_distance is far below any realistic sight range. Same already-committed
+##   exemption the chase branch's target_enemy != null half relies on. See UnitRelief.begin's
+##   own doc comment.
 func _enemy_is_perceived(enemy: Unit) -> bool:
 	if _owning_battle == null or not _owning_battle.has_method("ai_team_perceives"):
 		return true
@@ -2991,18 +2995,22 @@ func _think(delta: float) -> void:
 			# the flank/rear bonus.
 			# The `target_enemy != null` half is a DISCLOSED, deliberately-not-gated
 			# exception to _enemy_is_perceived's own invariant: target_enemy was already
-			# committed by an earlier decision that WAS perception-gated at the time it was
-			# made (an explicit attack order, whether player- or AI-issued, or SWEEP_ROUTERS/
-			# ROLL_THE_LINE's own now-gated fresh-pick commits above), but this branch then
-			# keeps closing on that same target's CURRENT live position every tick with no
-			# re-check -- so a unit can keep chasing a target that has since dropped out of
-			# its side's own current perception (it slipped behind occluding terrain, or the
-			# ally that was granting sight died or moved off). Gating this half naively would
-			# also break off a player's own already-issued attack order the moment perception
-			# lapses, which is a genuine design question (does a commander recall an order
-			# already given, or trust the last position reported?) rather than a bug to
-			# silently patch here -- it wants the same last-known-contact memory model this
-			# code's own perception layer does not yet have.
+			# set one of three ways -- an explicit attack order (player- or AI-issued) or
+			# SWEEP_ROUTERS/ROLL_THE_LINE's own now-gated fresh-pick commits above, both
+			# perception-gated at the time, or this same function's own melee-contact branch
+			# above (target_enemy = enemy, set unconditionally whenever in_contact on some
+			# earlier tick), which is deliberately NOT a caller of _enemy_is_perceived:
+			# contact-exempt rather than perception-gated, benign because
+			# melee_contact_distance is far below any realistic sight range. Either way, this
+			# branch then keeps closing on that same target's CURRENT live position every
+			# tick with no re-check -- so a unit can keep chasing a target that has since
+			# dropped out of its side's own current perception (it slipped behind occluding
+			# terrain, or the ally that was granting sight died or moved off). Gating this
+			# half naively would also break off a player's own already-issued attack order
+			# the moment perception lapses, which is a genuine design question (does a
+			# commander recall an order already given, or trust the last position reported?)
+			# rather than a bug to silently patch here -- it wants the same last-known-contact
+			# memory model this code's own perception layer does not yet have.
 			# The `chasing and ...` half has NO such prior gated commitment behind it --
 			# ORDER_CHASE alone can reach this branch with target_enemy still null (a purely
 			# auto-acquired quarry, from current_target's own bare, unfogged fallback above),

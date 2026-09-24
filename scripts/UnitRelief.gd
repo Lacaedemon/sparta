@@ -34,9 +34,12 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 	# FIGHTING an auto-acquired foe with target_enemy still null (e.g. HOLD/BRACE standoff
 	# fire with no committed target), so fall back to its nearest enemy rather than just
 	# walking onto an empty slot. tired.target_enemy itself needs no re-gating here: when
-	# non-null it was already perception-gated at the moment tired acquired it (an explicit
-	# order, or one of this file's own now-gated fresh-pick commits), the same
-	# already-committed exemption _think()'s own chase branch relies on.
+	# non-null it was set one of three ways -- an explicit order, one of this file's own
+	# now-gated fresh-pick commits (both perception-gated at the time), or Unit._think()'s
+	# melee-contact branch (target_enemy = enemy, set unconditionally whenever in_contact),
+	# which is deliberately NOT a caller of _enemy_is_perceived: contact-exempt rather than
+	# perception-gated, benign because melee_contact_distance is far below any realistic
+	# sight range. Same already-committed exemption _think()'s own chase branch relies on.
 	var foe: Unit = tired.target_enemy
 	if foe == null:
 		# A FRESH acquisition, same as _start_promoted_attack's own candidate pick:
