@@ -4162,15 +4162,15 @@ const FUNNEL_CONGESTION_RANGE_FACTOR := 1.0   # tuned
 ## `extents` -- see terrain_clearance()'s own doc comment for the sentinel convention;
 ## used only for THIS unit's own corner_clearance(). Every SCANNED unit `u` instead
 ## gets a cheap O(1) estimate, `u._pivot_radius() + u.soldier_body_radius()` -- the
-## pre-#1628 clearance formula, not `u.corner_clearance()`'s exact live-slot value.
-## This is deliberately the one place in the #1628 fix that keeps the coarser
-## estimate: the property #1628 exists to fix (a live-slot extent narrower than
-## _pivot_radius() assumes, in an anchored/uneven/relief-widened block) matters for a
-## unit's OWN terrain/corner queries, which directly bound how close IT routes to
-## solid terrain -- but here `u` is a candidate in a same-team congestion HEURISTIC,
-## compared only against a squared-distance threshold to decide whether a tie-break
-## nudge is worth computing at all. Under- or over-estimating that gate by the same
-## margin #1628 corrects for changes nothing about whether either unit's own routing
+## old pivot-radius clearance formula, not `u.corner_clearance()`'s exact live-slot
+## value. This is deliberately the one place this fix keeps the coarser estimate: the
+## property this fix corrects (a live-slot extent narrower than _pivot_radius()
+## assumes, in an anchored/uneven/relief-widened block) matters for a unit's OWN
+## terrain/corner queries, which directly bound how close IT routes to solid terrain
+## -- but here `u` is a candidate in a same-team congestion HEURISTIC, compared only
+## against a squared-distance threshold to decide whether a tie-break nudge is worth
+## computing at all. Under- or over-estimating that gate by the same margin this fix
+## corrects for elsewhere changes nothing about whether either unit's own routing
 ## stays clear of terrain; it only shifts, by a small margin, which ticks two
 ## contesting units' funnel corners get nudged apart on. Calling u.corner_clearance()
 ## here instead would force an O(soldiers) formation_slots() rebuild on every
