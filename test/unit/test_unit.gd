@@ -1972,6 +1972,53 @@ func test_far_tier_half_extents_defer_to_the_live_slots_during_a_relief_swap() -
 		"sanity check: without the partner the headcount form is narrower, so the deferral matters")
 
 
+func test_far_tier_half_extents_defer_for_the_relieved_side_too() -> void:
+	# The corridor also widens the TIRED unit's ranks, found only by the reverse lookup
+	# (the fresh unit's order names it; its own retreat order names nobody).
+	var fresh := _make_unit(20)
+	var tired := _make_unit(20)
+	tired.frontage_override = 4
+	_begin_relief(fresh, tired)
+	TierTransition.demote(tired)
+	assert_true(tired.current_order == null or tired.current_order.friendly_target == null,
+		"sanity check: the tired side holds no forward link of its own")
+	assert_gt(tired._relief_corridor_spread_strength(fresh), 0.0,
+		"sanity check: the corridor is open for the tired far block")
+	assert_eq(tired._far_tier_half_extents(), tired._formation_local_half_extents(),
+		"a far tired block reads the live, corridor-widened extents via the reverse link")
+
+
+func test_live_friendly_link_order_count_tracks_every_current_order_write() -> void:
+	# Not autofreed: this test frees the unit itself to check the PREDELETE decrement.
+	var u: Unit = Unit.new()
+	u.max_soldiers = 20
+	add_child(u)
+	var base: int = Unit._live_friendly_link_orders
+	u.set_current_order(Order.new_relief(999))
+	assert_eq(Unit._live_friendly_link_orders, base + 1, "a RELIEF order counts")
+	u.set_current_order(Order.new_reinforce(999, 0))
+	assert_eq(Unit._live_friendly_link_orders, base + 1, "RELIEF -> REINFORCE stays one link")
+	u.set_current_order(Order.new_move(Vector2(100, 0)))
+	assert_eq(Unit._live_friendly_link_orders, base, "a MOVE order does not count")
+	u.set_current_order(Order.new_relief(999))
+	u.free()
+	assert_eq(Unit._live_friendly_link_orders, base, "freeing a unit drops its count")
+
+
+func test_far_tier_half_extents_skip_the_reverse_scan_when_no_link_is_live() -> void:
+	var u := _make_unit(20)
+	var other := _make_unit(20)
+	TierTransition.demote(u)
+	assert_eq(Unit._live_friendly_link_orders, 0, "sanity check: no link-arming order is live")
+	var before: int = u._relief_reverse_scan_count
+	u._far_tier_half_extents()
+	assert_eq(u._relief_reverse_scan_count, before, "no live link: the whole-group scan is skipped")
+	other.set_current_order(Order.new_relief(999))
+	u._far_tier_half_extents()
+	assert_eq(u._relief_reverse_scan_count, before + 1, "a live link elsewhere: the scan runs")
+	other.set_current_order(null)
+
+
 func test_formation_local_half_extents_includes_an_active_relief_corridors_widening() -> void:
 	# _apply_relief_corridor_to_slots pushes back-rank flank bodies OUTWARD along the
 	# corridor-perpendicular axis while a live relief swap is under way (its own doc
