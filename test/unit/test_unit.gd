@@ -1889,6 +1889,46 @@ func test_formation_local_half_extents_memoizes_within_the_same_physics_frame_an
 		"the recomputed depth half-extent matches the deepest file's real 8-soldier depth")
 
 
+func test_formation_local_half_extents_includes_an_active_relief_corridors_widening() -> void:
+	# _apply_relief_corridor_to_slots pushes back-rank flank bodies OUTWARD along the
+	# corridor-perpendicular axis while a live relief swap is under way (its own doc
+	# comment: "Widen slot spacing in the ranks a live relief partner is passing
+	# through"), so a relieving unit's real footprint is wider than its base grid for
+	# as long as the swap lasts. formation_slots(soldiers, false) -- what
+	# _formation_local_half_extents() used before this fix -- deliberately EXCLUDES that
+	# widening (soldier_block_half_extents()'s own doc comment: "so extent queries that
+	# feed the corridor's own spread gate cannot recurse"), so a formula reading only the
+	# base grid under-clears a relieving unit exactly while it is at its widest. This
+	# cannot pass against a version that always reads formation_slots(soldiers, false):
+	# the with-relief and without-relief extents would be identical.
+	var fresh := _make_unit(20)
+	fresh.frontage_override = 4   # a real formation, not a degenerate 1-soldier block
+	var tired := _make_unit(20)
+	# _make_unit() already positions both at Vector2.ZERO -- full overlap, the same
+	# "partner sits exactly on top" setup test_relief_corridor.gd's own corridor tests
+	# use, which peaks _relief_corridor_spread_strength() at RELIEF_CORRIDOR_SPREAD_MAX.
+	_begin_relief(fresh, tired)
+	assert_eq(fresh.current_order.friendly_target, tired, "sanity check: the relief swap armed")
+	assert_gt(fresh._relief_corridor_spread_strength(tired), 0.0,
+		"sanity check: full overlap gives a genuinely positive spread strength")
+	# Check the OVERALL footprint, not one named axis: with a degenerate (coincident)
+	# approach direction the corridor falls back to a fixed axis (_apply_relief_corridor_
+	# to_slots' own "blocks sitting on top of each other: pick an axis" comment), and
+	# WHICH local axis that fallback lands on depends on facing -- for this fixture's
+	# default facing it widens depth, not frontage. The claim under test is "the live
+	# extent is bigger than the base grid," not "specifically hw grows," so compare the
+	# two half-extent VECTORS' lengths rather than assuming which component moved.
+	var base_hw: float = 0.0
+	var base_hd: float = 0.0
+	for s in fresh.formation_slots(fresh.soldiers, false):
+		base_hw = maxf(base_hw, absf(s.x))
+		base_hd = maxf(base_hd, absf(s.y))
+	var base_extents := Vector2(base_hw, base_hd)
+	var live_extents: Vector2 = fresh._formation_local_half_extents()
+	assert_gt(live_extents.length(), base_extents.length(),
+		"the relief-aware extent is wider than the base grid while the swap is active")
+
+
 func test_terrain_clearance_with_no_direction_given_returns_the_safe_pivot_radius_value() -> void:
 	# With no travel direction known, terrain_clearance() must return a value safe for
 	# ANY direction of travel -- corner_clearance()'s worst-case pivot-radius margin,

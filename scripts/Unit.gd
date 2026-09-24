@@ -3870,34 +3870,51 @@ func is_deep_for_formed_turn() -> bool:
 ##   both branches before rotation), so the farthest file can sit farther from
 ##   `position` than half the frontage alone -- reading the slots directly captures
 ##   that automatically, in `hw`, with no separate offset term needed.
+## - An active RELIEF pass widens the ranks a live partner is passing through
+##   (_apply_relief_corridor_to_slots: `out[i] = slot + ...relief_corridor_slot_offset(
+##   slot, rank, ranks, corridor_perp, spread * gate)`, pushing back-rank flank bodies
+##   OUTWARD along the corridor-perpendicular axis), so a relieving unit's real
+##   footprint is wider than its base grid while the swap is under way.
+##
+## Passes `true` for formation_slots()'s own `apply_relief_corridor` argument (unlike
+## soldier_block_half_extents()/SoldierFlock.compute_half_extents, which pass `false`
+## deliberately: _apply_relief_corridor_to_slots calls `partner.soldier_block_half_
+## extents()` to size the corridor gate, so if THAT call also asked for the relief-
+## widened grid it would recurse into the partner's own corridor computation. This
+## function is never called from inside that chain (it feeds PathField routing, not
+## the corridor's own geometry), so it can safely read the fully relief-expanded
+## slots with no such cycle.
 ##
 ## Deliberately the RAW, unpadded extent (no mark radius baked in, unlike
 ## soldier_block_half_extents()/SoldierFlock.compute_half_extents, which exist for a
-## different job -- sizing render/relief-corridor reach -- and share only the same
-## slot source): terrain_clearance() and corner_clearance() add soldier_body_radius()
-## flat, AFTER their own direction-weighted recombination, the correct support-
-## function treatment for a uniform disk padding on a rotated rectangle (baking it in
-## per axis first, the way the render helper does, would under-add it at any oblique
-## travel angle).
+## different job -- sizing render/relief-corridor reach): terrain_clearance() and
+## corner_clearance() add soldier_body_radius() flat, AFTER their own direction-
+## weighted recombination, the correct support-function treatment for a uniform disk
+## padding on a rotated rectangle (baking it in per axis first, the way the render
+## helper does, would under-add it at any oblique travel angle).
 ##
 ## O(soldiers) -- the same cost soldier_block_half_extents() itself already pays on
-## every call; there is no cached per-axis extent to reuse instead (only the
-## isotropic circumradius _block_extent is a maintained field, and it discards the
-## per-axis direction this function's callers need). terrain_clearance()/
+## every call (more, during an active relief pass, for the corridor widening's own
+## extra O(soldiers) pass); there is no cached per-axis extent to reuse instead (only
+## the isotropic circumradius _block_extent is a maintained field, and it discards
+## the per-axis direction this function's callers need). terrain_clearance()/
 ## corner_clearance() each call it, and _move_to calls both of those (plus
 ## funnel_lane_offset's own terrain_clearance() call) every tick for every moving
 ## unit, and _has_congested_same_team_router calls corner_clearance() once per
 ## same-team unit in its scan -- so this function itself memoizes the O(soldiers)
 ## rebuild below, keyed on Engine.get_physics_frames(). A physics-frame key, not a
 ## dirty flag raised at every site that can change formation_slots() (soldiers,
-## files, formation mode, frontage_anchor_offset, file assignment, reform state):
-## the deterministic sim already advances exactly one physics frame per tick, so
-## "still the same frame" is a cheap, always-correct proxy for "nothing that feeds
-## formation_slots() has changed since the first call this tick" without having to
-## enumerate every mutation site (and risk missing one). The memo is recomputed
-## fresh on the FIRST call of a new frame and reused by every later call that same
-## frame, so a mutation earlier in the SAME tick (e.g. a casualty resolved before
-## movement runs) is still reflected -- only calls within one already-computed
+## files, formation mode, frontage_anchor_offset, file assignment, reform state, or
+## an active relief pass starting/ending/moving its partner): the deterministic sim
+## already advances exactly one physics frame per tick, so "still the same frame" is
+## a cheap, always-correct proxy for "nothing that feeds formation_slots() has
+## changed since the first call this tick" without having to enumerate every
+## mutation site (and risk missing one) -- relief state is read fresh from the live
+## partner every call inside formation_slots() itself, never cached there, so it
+## cannot go stale WITHIN a tick either. The memo is recomputed fresh on the FIRST
+## call of a new frame and reused by every later call that same frame, so a mutation
+## earlier in the SAME tick (e.g. a casualty resolved before movement runs, or a
+## relief swap starting) is still reflected -- only calls within one already-computed
 ## frame ever see the cached value.
 func _formation_local_half_extents() -> Vector2:
 	var frame: int = Engine.get_physics_frames()
@@ -3905,7 +3922,7 @@ func _formation_local_half_extents() -> Vector2:
 		return _cached_local_half_extents
 	var hw: float = 0.0
 	var hd: float = 0.0
-	for s in formation_slots(soldiers, false):
+	for s in formation_slots(soldiers, true):
 		hw = maxf(hw, absf(s.x))
 		hd = maxf(hd, absf(s.y))
 	_cached_local_half_extents = Vector2(hw, hd)
