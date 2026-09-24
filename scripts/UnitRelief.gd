@@ -43,25 +43,17 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 	# chase branch relies on.
 	var foe: Unit = tired.target_enemy
 	if foe == null:
-		# A FRESH acquisition, same as _start_promoted_attack's own candidate pick:
+		# A FRESH acquisition, gated by Unit.fresh_pick_allowed -- the same helper
+		# _start_promoted_attack uses for its own fresh candidate pick, so this file and
+		# Unit.gd don't each carry their own copy of the melee-contact/perception test.
 		# UnitTargeting.nearest_enemy is a bare, unfogged detection_range scan, so an
 		# ungated assignment here would let the reliever inherit a hidden foe straight into
 		# target_enemy below -- landing it in _think()'s exempt target_enemy != null chase
-		# path with no perception check ever having run. Exempt only when the candidate is
-		# already in melee contact with the reliever (mirrors the melee invariant
-		# everywhere else); gated by _enemy_is_perceived otherwise. See
-		# Unit._enemy_is_perceived's own doc comment for the authoritative caller list this
-		# belongs to.
+		# path with no perception check ever having run. See Unit._enemy_is_perceived's own
+		# doc comment for the authoritative caller list this belongs to.
 		var candidate: Unit = UnitTargeting.nearest_enemy(tired)
-		if candidate != null:
-			var contact_dist: float = UnitTargeting.melee_contact_distance(
-				u.attack_range, Unit.RADIUS, candidate
-			)
-			var in_contact: bool = (
-				u.position.distance_squared_to(candidate.position) <= contact_dist * contact_dist
-			)
-			if in_contact or u._enemy_is_perceived(candidate):
-				foe = candidate
+		if candidate != null and u.fresh_pick_allowed(candidate):
+			foe = candidate
 	u.target_enemy = foe
 	if foe != null:
 		u.has_move_target = false

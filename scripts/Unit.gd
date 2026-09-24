@@ -1762,16 +1762,15 @@ func _start_promoted_move() -> void:
 ## ATTACK order (target_uid >= 0, the ordinary player-issued case) is untouched here --
 ## Battle._apply_order_cmd already set target_enemy at issue time. No-op for every other
 ## order kind or an ATTACK that's already carrying a live target.
-## Gated by _enemy_is_perceived, same as every other fresh acquisition in this file: the
-## candidate comes from UnitTargeting.current_target, whose own fresh-pick fallback
-## (nearest_enemy) is a bare, unfogged detection_range scan -- reachable from _think() via
-## retire_current_order(), so an ungated commit here could silently launder an unsighted
-## enemy into target_enemy, which every downstream branch then trusts as "already
-## committed." A candidate already in MELEE CONTACT is exempt (matching the melee invariant
-## everywhere else, and keeping the intended "advance until contact" case unaffected --
-## the guard that promotes this order only fires the instant contact is made, so the
-## intended candidate is normally already in contact when this runs); a candidate not yet
-## in contact is gated the same way a fresh standoff pick is elsewhere.
+## Gated by fresh_pick_allowed (melee-contact exempt, _enemy_is_perceived otherwise), same
+## as every other fresh acquisition in this file: the candidate comes from
+## UnitTargeting.current_target, whose own fresh-pick fallback (nearest_enemy) is a bare,
+## unfogged detection_range scan -- reachable from _think() via retire_current_order(), so
+## an ungated commit here could silently launder an unsighted enemy into target_enemy,
+## which every downstream branch then trusts as "already committed." The melee-contact
+## exemption keeps the intended "advance until contact" case unaffected -- the guard that
+## promotes this order only fires the instant contact is made, so the intended candidate is
+## normally already in contact when this runs.
 func _start_promoted_attack() -> void:
 	if current_order == null or current_order.type != Order.Type.ATTACK:
 		return
@@ -1782,9 +1781,7 @@ func _start_promoted_attack() -> void:
 	var candidate: Unit = UnitTargeting.current_target(self)
 	if candidate == null:
 		return
-	var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, candidate)
-	var in_contact: bool = position.distance_squared_to(candidate.position) <= contact_dist * contact_dist
-	if not in_contact and not _enemy_is_perceived(candidate):
+	if not fresh_pick_allowed(candidate):
 		return
 	target_enemy = candidate
 
@@ -2489,7 +2486,12 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ## THE authoritative list of the branches this gates (Battle.ai_team_perceives' own doc
 ## comment points back here rather than duplicating it, to avoid the two drifting apart the
 ## way this comment itself once did when it named only one caller). Nine call expressions
-## across eight branches -- _support_tick's one call gates both of its own sub-branches:
+## across eight branches -- _support_tick's one call gates both of its own sub-branches. One
+## of the nine, _start_promoted_attack's, is a call to fresh_pick_allowed rather than a
+## direct call to this function (fresh_pick_allowed's own single _enemy_is_perceived call is
+## what's actually counted); that same call is also how UnitRelief.begin reaches this gate
+## externally, so it is shared by two branches rather than duplicated -- see
+## fresh_pick_allowed's own doc comment, right after this function:
 ## - _think()'s ranged-fire-at-standoff branch (loose a volley at a not-yet-melee target).
 ##   Runs for BOTH teams -- not AI-exclusive.
 ## - _think()'s auto-advance-on-detect fallback (march on a merely-detected target).
@@ -2505,7 +2507,8 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ## - _think()'s ORDER_ROLL_THE_LINE acquisition, same reason as SWEEP_ROUTERS just above.
 ## - _start_promoted_attack's target_enemy commit (a just-promoted, unresolved ATTACK order
 ##   resolving to whatever current_target() returns) -- reachable from _think() via
-##   retire_current_order(). Exempt when the candidate is already in MELEE CONTACT (the
+##   retire_current_order(). Goes through fresh_pick_allowed (own doc comment, right after
+##   _enemy_is_perceived below): exempt when the candidate is already in MELEE CONTACT (the
 ##   intended "advance until contact" case this promotion exists for); gated otherwise.
 ## - _think()'s chase-an-explicit-attack-order branch's OWN `chasing` half (see below --
 ##   this one call expression covers only the auto-acquired-quarry case, not the
@@ -2567,13 +2570,13 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ##   unconditionally exempt (committed or fresh alike, same as the melee branch above), but
 ##   a RANGED/standoff exchange re-checks every tick regardless of commitment (same as the
 ##   ranged-fire branch above) -- see that function's own doc comment.
-## - UnitRelief.begin (scripts/UnitRelief.gd) calls this externally
-##   (u._enemy_is_perceived(candidate)) to gate the FRESH fallback pick a relieving unit
-##   takes over when the tired unit it's relieving has target_enemy == null (e.g. HOLD/BRACE
-##   standoff fire with no committed target): the fallback is UnitTargeting.nearest_enemy, a
-##   bare, unfogged detection_range scan, so it needs the same gate as every other fresh pick
-##   in this list -- exempt only when the candidate is already in melee contact with the
-##   reliever (mirrors _start_promoted_attack's own pattern), gated otherwise. tired's OWN
+## - UnitRelief.begin (scripts/UnitRelief.gd) calls this externally via
+##   u.fresh_pick_allowed(candidate) -- the same helper _start_promoted_attack uses, so the
+##   two sites share one melee-contact/perception test rather than each carrying its own copy
+##   -- to gate the FRESH fallback pick a relieving unit takes over when the tired unit it's
+##   relieving has target_enemy == null (e.g. HOLD/BRACE standoff fire with no committed
+##   target): the fallback is UnitTargeting.nearest_enemy, a bare, unfogged detection_range
+##   scan, so it needs the same gate as every other fresh pick in this list. tired's OWN
 ##   target_enemy, when non-null, is taken over WITHOUT re-gating -- it was set one of three
 ##   ways: an explicit order, one of this file's own now-gated fresh-pick commits (both
 ##   perception-gated at the time), or _think()'s melee-contact branch (target_enemy = enemy,
@@ -2586,6 +2589,22 @@ func _enemy_is_perceived(enemy: Unit) -> bool:
 	if _owning_battle == null or not _owning_battle.has_method("ai_team_perceives"):
 		return true
 	return _owning_battle.ai_team_perceives(team, enemy)
+
+
+## Whether a not-yet-committed `candidate` may be assigned to target_enemy right now: true
+## when it is already in melee contact with this unit (the "advance until contact" case is
+## meant to land on its target the instant contact is made, so contact itself always
+## clears the gate -- matching the melee invariant everywhere else), or when this unit's
+## own side actually perceives it (_enemy_is_perceived). Factored out so
+## _start_promoted_attack (below) and UnitRelief.begin (scripts/UnitRelief.gd, called
+## externally as u.fresh_pick_allowed(candidate)) share one test for their own freshly-picked
+## candidate rather than each carrying its own copy of the melee-contact-distance math. See
+## _enemy_is_perceived's own doc comment (the authoritative caller list) for how each of
+## those two sites fits in.
+func fresh_pick_allowed(candidate: Unit) -> bool:
+	var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, candidate)
+	var in_contact: bool = position.distance_squared_to(candidate.position) <= contact_dist * contact_dist
+	return in_contact or _enemy_is_perceived(candidate)
 
 
 ## Decide what to do this frame: fight if in contact, otherwise move.
