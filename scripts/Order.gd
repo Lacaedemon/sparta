@@ -390,20 +390,13 @@ var reinforce_axis: int = 0
 ## resolved node the exemption compares.)
 var friendly_target: Unit = null:
 	set(value):
-		if friendly_target == null and value != null:
-			armed_links += 1
-		elif friendly_target != null and value == null:
-			armed_links -= 1
+		if value == friendly_target:
+			return
+		if friendly_target != null and is_instance_valid(friendly_target):
+			friendly_target.incoming_friendly_links -= 1
+		if value != null and is_instance_valid(value):
+			value.incoming_friendly_links += 1
 		friendly_target = value
-## How many Order objects currently hold a non-null friendly_target, of any order type.
-## Kept by friendly_target's own setter and by _notification's PREDELETE decrement (an
-## Order is RefCounted, so a dropped order is uncounted when it is freed). It includes
-## links on queued and child orders and on orders whose partner has since been freed, so
-## it can over-count -- which only costs the caller an extra scan -- but it never
-## under-counts: a zero reading proves no order anywhere names a friendly unit.
-## Unit._far_tier_half_extents() reads it to skip _relief_swap_partner()'s whole-group
-## reverse scan in the common no-link case.
-static var armed_links: int = 0
 ## UID of friendly_target captured across snapshot serialize/deserialize; -1 when none.
 var friendly_target_uid: int = -1
 
@@ -749,7 +742,12 @@ static func new_form_up() -> Order:
 	return o
 
 
-## A freed Order with a live link stops counting toward armed_links.
+
+## A freed Order stops counting toward its target's Unit.incoming_friendly_links. (An
+## order caught in a parent/children reference cycle is never freed, so its link keeps
+## counting; that only costs its one target unit extra reverse scans, see
+## Unit.incoming_friendly_links.)
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE and friendly_target != null:
-		armed_links -= 1
+	if what == NOTIFICATION_PREDELETE and friendly_target != null \
+			and is_instance_valid(friendly_target):
+		friendly_target.incoming_friendly_links -= 1

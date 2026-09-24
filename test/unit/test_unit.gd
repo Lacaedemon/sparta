@@ -1988,21 +1988,26 @@ func test_far_tier_half_extents_defer_for_the_relieved_side_too() -> void:
 		"a far tired block reads the live, corridor-widened extents via the reverse link")
 
 
-func test_armed_link_count_tracks_friendly_target_on_any_order_type() -> void:
+func test_incoming_friendly_links_track_friendly_target_on_any_order_type() -> void:
 	# friendly_target is generic by design (any order type may arm it -- see its doc
 	# comment), so arm one on a plain MOVE order.
 	var b := _make_unit(20)
-	var base: int = Order.armed_links
+	var c := _make_unit(20)
 	var order := Order.new_move(Vector2(50, 0))
 	order.friendly_target = b
-	assert_eq(Order.armed_links, base + 1, "arming a link on a MOVE order counts")
+	assert_eq(b.incoming_friendly_links, 1, "arming a link on a MOVE order counts on its target")
 	order.friendly_target = b
-	assert_eq(Order.armed_links, base + 1, "re-arming the same link does not double-count")
+	assert_eq(b.incoming_friendly_links, 1, "re-arming the same link does not double-count")
+	order.friendly_target = c
+	assert_eq(b.incoming_friendly_links, 0, "retargeting uncounts the old target")
+	assert_eq(c.incoming_friendly_links, 1, "retargeting counts the new target")
 	order.friendly_target = null
-	assert_eq(Order.armed_links, base, "clearing the link uncounts it")
+	assert_eq(c.incoming_friendly_links, 0, "clearing the link uncounts it")
 	order.friendly_target = b
 	order = null   # the last reference: the RefCounted Order is freed here
-	assert_eq(Order.armed_links, base, "freeing an order with a live link uncounts it")
+	assert_eq(b.incoming_friendly_links, 0, "freeing an order with a live link uncounts it")
+
+
 
 
 
@@ -2011,11 +2016,6 @@ func test_far_tier_half_extents_skip_the_reverse_scan_when_no_link_is_live() -> 
 	var u := _make_unit(20)
 	var other := _make_unit(20)
 	TierTransition.demote(u)
-	# armed_links is process-wide static state: skip rather than fail if another test
-	# leaked a live link, since the scan-skip claim is only testable at zero.
-	if Order.armed_links != 0:
-		pending("a friendly_target link from another test is still live; skip-path untestable")
-		return
 	var before: int = u._relief_reverse_scan_count
 	u._far_tier_half_extents()
 	assert_eq(u._relief_reverse_scan_count, before, "no live link: the whole-group scan is skipped")

@@ -271,6 +271,16 @@ var selected: bool = false
 # ATTACK/RELIEF/SUPPORT orders by reading them.
 var orders: Array[Order] = []
 var current_order: Order = null
+## How many Order objects, on any unit and of any order type, currently name this unit as
+## their friendly_target (the reverse side of the pass-through link). Kept by
+## Order.friendly_target's own setter and by Order's PREDELETE decrement, so it never
+## under-counts: zero proves no order anywhere links to this unit, and
+## _far_tier_half_extents() then skips _relief_swap_partner()'s whole-group reverse scan.
+## It can over-count -- a dropped order still referenced elsewhere (a queued or child
+## order, or one caught in a parent/children reference cycle, which RefCounted never
+## frees) keeps counting -- but only ever for its own target unit, which just pays the
+## scan it would have paid anyway.
+var incoming_friendly_links: int = 0
 # Order stance, set by Battle._apply_order_cmd from the order's mode.
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
 # The smart-order behaviours read this; NORMAL is current behaviour.
@@ -3948,9 +3958,10 @@ func _formation_local_half_extents() -> Vector2:
 ## - no traverse flank arcs: they need live bodies;
 ## - a relief corridor is NOT tier-gated (nothing keeps a far block out of a relief
 ##   swap), so while a relief partner exists this defers to the live-slot reading.
-##   The partner lookup's whole-group reverse scan runs only while some order holds an
-##   armed friendly_target (Order.armed_links), so the common no-link tick stays O(1);
-##   a relief swap is short, so the O(soldiers) rebuild is paid only then.
+##   The partner lookup's whole-group reverse scan runs only while this unit holds a
+##   forward link or some order links to it (incoming_friendly_links), so the common
+##   no-link tick stays O(1); a relief swap is short, so the O(soldiers) rebuild is paid
+##   only then.
 ## What is left -- files, ranks, the two pitches (a square's depth runs at file pitch,
 ## UnitFormation.block_slots' own default), and the standing frontage_anchor_offset,
 ## which formation_slots() applies to every non-square layout -- is all read here. A
@@ -3960,10 +3971,10 @@ func _formation_local_half_extents() -> Vector2:
 func _far_tier_half_extents() -> Vector2:
 	if soldiers <= 0:
 		return Vector2.ZERO
-	# _relief_swap_partner()'s reverse lookup scans every unit; skip it when no order
-	# anywhere holds an armed friendly_target. Order.armed_links is 0 then, and a forward
-	# link on our own order would already have made it nonzero.
-	if Order.armed_links > 0 and _relief_swap_partner() != null:
+	# _relief_swap_partner()'s reverse lookup scans every unit; skip it unless this unit
+	# holds a forward link (checked in O(1)) or some order links to it.
+	var own_link: bool = current_order != null and current_order.friendly_target != null
+	if (own_link or incoming_friendly_links > 0) and _relief_swap_partner() != null:
 		return _formation_local_half_extents()
 	var files: int = maxi(1, formation_files(soldiers))
 	var ranks: int = UnitFormation.ranks_for(soldiers, files)
