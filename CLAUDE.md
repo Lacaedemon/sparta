@@ -376,6 +376,19 @@ routed through `DistanceLegend`.
   only one component misses bugs where the vector is `(1.0, epsilon)` instead of
   `(1.0, 0.0)`. Always pair the two asserts.
 
+- **A freed Node or plain Object compares `== null`.**
+  After `x.free()`, a variable still holding `x` reads `x == null` as `true`,
+  `x != null` as `false`, and `is_instance_valid(x)` as `false`
+  (measured on this repo's Godot 4.7 build).
+  So a plain `!= null` check already treats a freed reference as absent,
+  and an extra `is_instance_valid` after it never changes the result.
+  A test that builds a "stale but non-null" reference to exercise such a guard cannot fail:
+  run it against the code without the guard before trusting it.
+  This covers what `free()` can free.
+  A `RefCounted` (such as `Order`) refuses `free()`
+  and is only deallocated when its last reference drops,
+  so a live variable holding one never goes stale this way.
+
 - **Movie Maker mode: drop `--headless`, use `xvfb-run` alone.** Running
   `godot --headless --write-movie` crashes with a null-texture error (dummy
   renderer). Use `xvfb-run -a godot --rendering-driver opengl3 --write-movie`
