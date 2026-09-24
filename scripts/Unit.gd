@@ -3938,13 +3938,17 @@ func _formation_local_half_extents() -> Vector2:
 ## 1000-man block: about 170 us per _formation_local_half_extents() call against under
 ## 2 us for this.
 ##
-## Safe for the far tier specifically, because none of the three live-slot effects
-## _formation_local_half_extents() exists to capture can apply there:
+## Of the three live-slot effects _formation_local_half_extents() exists to capture,
+## two cannot apply to a far block, and the third is handed back to it:
 ## - no casualty reflow: TierTransition.demote drops the persistent file/rank
 ##   assignment with the bodies, so a far block's file-major layout is the fresh
-##   full-ranks-then-centred-partial fill, whose depth is exactly ranks_for();
-## - no relief corridor: ReinforceGuard refuses a relief with a far-tier host or reserve;
-## - no traverse flank arcs or depth-reflection pairing: both need live bodies.
+##   full-ranks-then-centred-partial fill, whose depth is exactly ranks_for(); a
+##   row-major layout's held cell pairing only permutes the same grid cells;
+## - no traverse flank arcs: they need live bodies;
+## - a relief corridor is NOT tier-gated (nothing keeps a far block out of a relief
+##   swap), so while a relief partner exists this defers to the live-slot reading.
+##   The partner lookup is the same one formation_slots() already pays every call,
+##   and a relief swap is short, so the O(soldiers) rebuild is paid only then.
 ## What is left -- files, ranks, the two pitches (a square's depth runs at file pitch,
 ## UnitFormation.block_slots' own default), and the standing frontage_anchor_offset,
 ## which formation_slots() applies to every non-square layout -- is all read here. A
@@ -3954,6 +3958,8 @@ func _formation_local_half_extents() -> Vector2:
 func _far_tier_half_extents() -> Vector2:
 	if soldiers <= 0:
 		return Vector2.ZERO
+	if _relief_swap_partner() != null:
+		return _formation_local_half_extents()
 	var files: int = maxi(1, formation_files(soldiers))
 	var ranks: int = UnitFormation.ranks_for(soldiers, files)
 	var squared: bool = in_square()

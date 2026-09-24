@@ -1910,30 +1910,61 @@ func test_far_tier_half_extents_match_the_live_slots_for_every_far_layout() -> v
 	# block, so it must never read smaller (under-clearing terrain) and, for the
 	# ordinary full-rank shapes, should read exactly the same. Each case is demoted
 	# first, so the live-slot reading sees the far tier's own fresh layout.
+	# `max` is the fixture's max_soldiers and `n` the live headcount: frontage() clamps
+	# frontage_override to max_soldiers, so an under-one-rank case needs max >= files
+	# with the headcount cut separately. `row` forces the row-major branch
+	# (UnitFormation.slots) instead of the fixture's default file-major one.
 	var cases: Array = [
-		{"n": 60, "files": 6, "anchor": 0.0, "square": false, "exact": true},    # full ranks
-		{"n": 61, "files": 8, "anchor": 0.0, "square": false, "exact": true},    # partial rear rank
-		{"n": 40, "files": 5, "anchor": 30.0, "square": false, "exact": true},   # anchored
-		{"n": 40, "files": 5, "anchor": -30.0, "square": false, "exact": true},  # anchored, other side
-		{"n": 3, "files": 8, "anchor": 0.0, "square": false, "exact": false},    # under one rank
-		{"n": 50, "files": 0, "anchor": 0.0, "square": true, "exact": false},    # square
+		{"max": 60, "n": 60, "files": 6, "anchor": 0.0, "square": false, "row": false, "exact": true},    # full ranks
+		{"max": 61, "n": 61, "files": 8, "anchor": 0.0, "square": false, "row": false, "exact": true},    # partial rear rank
+		{"max": 40, "n": 40, "files": 5, "anchor": 30.0, "square": false, "row": false, "exact": true},   # anchored
+		{"max": 40, "n": 40, "files": 5, "anchor": -30.0, "square": false, "row": false, "exact": true},  # anchored, other side
+		{"max": 20, "n": 3, "files": 8, "anchor": 0.0, "square": false, "row": false, "exact": false},    # under one rank
+		{"max": 61, "n": 61, "files": 8, "anchor": 30.0, "square": false, "row": true, "exact": true},    # row-major, anchored
+		{"max": 20, "n": 3, "files": 8, "anchor": 0.0, "square": false, "row": true, "exact": false},     # row-major, under one rank
+		{"max": 50, "n": 50, "files": 0, "anchor": 0.0, "square": true, "row": false, "exact": false},    # square
 	]
 	for c in cases:
-		var u := _make_unit(c["n"])
+		var u := _make_unit(c["max"])
+		u.soldiers = c["n"]
 		if c["files"] > 0:
 			u.frontage_override = c["files"]
 		u.frontage_anchor_offset = c["anchor"]
+		if c["row"]:
+			u.file_major_reform_mode = Unit.ReformMode.ROW_MAJOR
 		if c["square"]:
 			u.formation_mode = Unit.FORMATION_SQUARE
 		TierTransition.demote(u)
+		# (A square takes formation_slots()' square branch before this flag is read.)
+		assert_eq(u._effective_file_major_reform(), not c["row"],
+			"sanity check: the intended reflow branch is the one under test")
 		var far: Vector2 = u._far_tier_half_extents()
 		var live: Vector2 = u._formation_local_half_extents()
-		var label: String = "n=%d files=%d anchor=%.0f square=%s" % [c["n"], c["files"], c["anchor"], c["square"]]
+		var label: String = "n=%d files=%d anchor=%.0f square=%s row=%s" % [c["n"], c["files"], c["anchor"], c["square"], c["row"]]
 		assert_true(far.x >= live.x - 0.001 and far.y >= live.y - 0.001,
 			"%s: far %s never under-reads live %s" % [label, far, live])
 		if c["exact"]:
 			assert_almost_eq(far.x, live.x, 0.001, "%s: half-width matches" % label)
 			assert_almost_eq(far.y, live.y, 0.001, "%s: half-depth matches" % label)
+
+
+func test_far_tier_half_extents_defer_to_the_live_slots_during_a_relief_swap() -> void:
+	# A relief corridor widens the ranks and is not tier-gated, so a far block in a
+	# relief swap must read the live, widened slots -- the headcount form would
+	# under-clear. Same full-overlap setup as the relief-corridor extents test above.
+	var fresh := _make_unit(20)
+	fresh.frontage_override = 4
+	var tired := _make_unit(20)
+	_begin_relief(fresh, tired)
+	TierTransition.demote(fresh)
+	assert_gt(fresh._relief_corridor_spread_strength(tired), 0.0,
+		"sanity check: the corridor is genuinely open for the far block")
+	var live: Vector2 = fresh._formation_local_half_extents()
+	assert_eq(fresh._far_tier_half_extents(), live,
+		"a far block in a relief swap reads the live, corridor-widened extents")
+	fresh.set_current_order(null)
+	assert_lt(fresh._far_tier_half_extents().length(), live.length(),
+		"sanity check: without the partner the headcount form is narrower, so the deferral matters")
 
 
 func test_formation_local_half_extents_includes_an_active_relief_corridors_widening() -> void:
