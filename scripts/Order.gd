@@ -742,7 +742,6 @@ static func new_form_up() -> Order:
 	return o
 
 
-
 ## A freed Order stops counting toward its target's Unit.incoming_friendly_links. (An
 ## order caught in a parent/children reference cycle is never freed, so its link keeps
 ## counting; that only costs its one target unit extra reverse scans, see
