@@ -1889,6 +1889,53 @@ func test_move_to_builds_the_slot_layout_exactly_once_per_call() -> void:
 	assert_eq(calls, 1, "_move_to rebuilds the slot layout exactly once per call, not three times")
 
 
+func test_move_to_builds_no_slot_layout_for_a_far_tier_block() -> void:
+	# A far-tier mover must not pay the O(soldiers) slot rebuild every physics tick --
+	# _move_to() reads _far_tier_half_extents() instead. Same counter as the test above.
+	var u := _make_unit(60)
+	u.frontage_override = 3
+	u.position = Vector2(500, 500)
+	TierTransition.demote(u)
+	var old_pf: PathField = PathField.active
+	PathField.active = PathField.new(Rect2(0, 0, 4000, 4000))   # no obstacles registered
+	var before: int = u._formation_slots_call_count
+	u._move_to(Vector2(1500, 500), 0.016)
+	var calls: int = u._formation_slots_call_count - before
+	PathField.active = old_pf
+	assert_eq(calls, 0, "a far-tier _move_to builds no slot layout at all")
+
+
+func test_far_tier_half_extents_match_the_live_slots_for_every_far_layout() -> void:
+	# _far_tier_half_extents() stands in for _formation_local_half_extents() on a far
+	# block, so it must never read smaller (under-clearing terrain) and, for the
+	# ordinary full-rank shapes, should read exactly the same. Each case is demoted
+	# first, so the live-slot reading sees the far tier's own fresh layout.
+	var cases: Array = [
+		{"n": 60, "files": 6, "anchor": 0.0, "square": false, "exact": true},    # full ranks
+		{"n": 61, "files": 8, "anchor": 0.0, "square": false, "exact": true},    # partial rear rank
+		{"n": 40, "files": 5, "anchor": 30.0, "square": false, "exact": true},   # anchored
+		{"n": 40, "files": 5, "anchor": -30.0, "square": false, "exact": true},  # anchored, other side
+		{"n": 3, "files": 8, "anchor": 0.0, "square": false, "exact": false},    # under one rank
+		{"n": 50, "files": 0, "anchor": 0.0, "square": true, "exact": false},    # square
+	]
+	for c in cases:
+		var u := _make_unit(c["n"])
+		if c["files"] > 0:
+			u.frontage_override = c["files"]
+		u.frontage_anchor_offset = c["anchor"]
+		if c["square"]:
+			u.formation_mode = Unit.FORMATION_SQUARE
+		TierTransition.demote(u)
+		var far: Vector2 = u._far_tier_half_extents()
+		var live: Vector2 = u._formation_local_half_extents()
+		var label: String = "n=%d files=%d anchor=%.0f square=%s" % [c["n"], c["files"], c["anchor"], c["square"]]
+		assert_true(far.x >= live.x - 0.001 and far.y >= live.y - 0.001,
+			"%s: far %s never under-reads live %s" % [label, far, live])
+		if c["exact"]:
+			assert_almost_eq(far.x, live.x, 0.001, "%s: half-width matches" % label)
+			assert_almost_eq(far.y, live.y, 0.001, "%s: half-depth matches" % label)
+
+
 func test_formation_local_half_extents_includes_an_active_relief_corridors_widening() -> void:
 	# _apply_relief_corridor_to_slots pushes back-rank flank bodies OUTWARD along the
 	# corridor-perpendicular axis while a live relief swap is under way (its own doc
@@ -1929,11 +1976,12 @@ func test_formation_local_half_extents_includes_an_active_relief_corridors_widen
 		"the relief-aware extent is wider than the base grid while the swap is active")
 
 
-func test_terrain_clearance_with_no_direction_given_returns_the_safe_pivot_radius_value() -> void:
+func test_terrain_clearance_with_no_direction_given_returns_corner_clearance() -> void:
 	# With no travel direction known, terrain_clearance() must return a value safe for
-	# ANY direction of travel -- corner_clearance()'s worst-case pivot-radius margin,
-	# which the projection formula above peaks at exactly when the travel angle
-	# threads the width and depth terms evenly. True for a deep column and (trivially,
+	# ANY direction of travel -- corner_clearance(), the footprint's full half-diagonal
+	# (which equals _pivot_radius() only for a centred, even block; the separate
+	# centred-even test below pins that case), and which the projection formula above
+	# peaks at exactly when the travel angle threads the width and depth terms evenly. True for a deep column and (trivially,
 	# since the two margins already coincide along facing) for a single-rank line.
 	var deep := _make_unit()
 	deep.frontage_override = 3

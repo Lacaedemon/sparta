@@ -3162,9 +3162,13 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# PathField query and threads the result through terrain_clearance(),
 		# funnel_lane_offset() (which needs it for its own internal terrain_clearance()
 		# and corner_clearance() calls), and corner_clearance() below -- one O(soldiers)
-		# rebuild per _move_to() call instead of three independent ones.
+		# rebuild per _move_to() call instead of three independent ones. A far-tier
+		# block skips even that one rebuild: _far_tier_half_extents() reads the same
+		# bounds off the headcount in O(1) (see its own doc comment for why nothing the
+		# live slots add can apply to a far block).
 		var leg_dir: Vector2 = point - position
-		var extents: Vector2 = _formation_local_half_extents()
+		var extents: Vector2 = _far_tier_half_extents() if tier == FormationTier.FAR \
+				else _formation_local_half_extents()
 		step = PathField.active.next_step(position, point, terrain_clearance(leg_dir, extents),
 				funnel_lane_offset(point, extents), corner_clearance(extents))
 		terrain_speed = PathField.active.speed_at(position)
@@ -3925,6 +3929,38 @@ func _formation_local_half_extents() -> Vector2:
 		hw = maxf(hw, absf(s.x))
 		hd = maxf(hd, absf(s.y))
 	return Vector2(hw, hd)
+
+
+## O(1) half-extents for a FAR-tier block, derived from the headcount instead of read
+## off the slots -- what _move_to() uses for a far-tier mover, which otherwise would pay
+## _formation_local_half_extents()'s O(soldiers) slot rebuild on every physics tick and
+## defeat the far tier's whole point (hot movement costs O(1) per unit). Measured on a
+## 1000-man block: about 170 us per _formation_local_half_extents() call against under
+## 2 us for this.
+##
+## Safe for the far tier specifically, because none of the three live-slot effects
+## _formation_local_half_extents() exists to capture can apply there:
+## - no casualty reflow: TierTransition.demote drops the persistent file/rank
+##   assignment with the bodies, so a far block's file-major layout is the fresh
+##   full-ranks-then-centred-partial fill, whose depth is exactly ranks_for();
+## - no relief corridor: ReinforceGuard refuses a relief with a far-tier host or reserve;
+## - no traverse flank arcs or depth-reflection pairing: both need live bodies.
+## What is left -- files, ranks, the two pitches (a square's depth runs at file pitch,
+## UnitFormation.block_slots' own default), and the standing frontage_anchor_offset,
+## which formation_slots() applies to every non-square layout -- is all read here. A
+## partial rear rank or a headcount under one full rank only ever sits INSIDE these
+## bounds, so the result never under-clears. A test pins it against the live-slot
+## reading for each far-tier layout.
+func _far_tier_half_extents() -> Vector2:
+	if soldiers <= 0:
+		return Vector2.ZERO
+	var files: int = maxi(1, formation_files(soldiers))
+	var ranks: int = UnitFormation.ranks_for(soldiers, files)
+	var squared: bool = in_square()
+	var depth_pitch: float = file_pitch_wu() if squared else rank_pitch_wu()
+	var anchor: float = 0.0 if squared else absf(frontage_anchor_offset)
+	return Vector2(float(files - 1) * file_pitch_wu() * 0.5 + anchor,
+			float(maxi(0, ranks - 1)) * depth_pitch * 0.5)
 
 
 ## Open ground this regiment needs between its centre and impassable terrain, for a
