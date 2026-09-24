@@ -3903,11 +3903,11 @@ func is_deep_for_formed_turn() -> bool:
 ## same-team unit in its scan -- so this function itself memoizes the O(soldiers)
 ## rebuild below.
 ##
-## A bare Engine.get_physics_frames() key IS sufficient, and deliberately not paired
-## with a dirty flag or an input fingerprint. Within one unit's own _physics_process,
-## _think() (which calls _move_to(), the cache's usual first filler, via a formed
-## march/charge/skirmish branch) always runs BEFORE that same call's
-## UnitRelief.update / UnitReinforce.update / ranks-closed flip -- confirmed by
+## A bare Engine.get_physics_frames() key IS sufficient for a unit's OWN writes, and
+## deliberately not paired with a dirty flag or an input fingerprint for those. Within
+## one unit's own _physics_process, _think() (which calls _move_to(), the cache's usual
+## first filler, via a formed march/charge/skirmish branch) always runs BEFORE that same
+## call's UnitRelief.update / UnitReinforce.update / ranks-closed flip -- confirmed by
 ## reading _physics_process and _think() themselves: nothing between the top of
 ## _physics_process and the _think() call mutates a formation_slots() input except
 ## a rearguard unit's own soldiers-to-zero timeout, which lands BEFORE _think() and
@@ -3923,6 +3923,23 @@ func is_deep_for_formed_turn() -> bool:
 ## an exact collision test, and is already order-dependent on which units the
 ## scene tree happens to process first each frame -- reading a same-tier one-frame
 ## staleness here adds nothing new to reason about.
+##
+## A handful of sites write a formation_slots() input onto a DIFFERENT unit than the
+## one whose _physics_process is running, so the self-write ordering above does not
+## cover them -- each calls invalidate_formation_extent_cache() on the unit it writes
+## to, explicitly: UnitReinforce.commit() on the HOST (soldiers/max_soldiers/frontage
+## grow when a reserve files in, from the RESERVE's own tick) and UnitRelief.begin() on
+## the TIRED partner (its current_order is replaced with a retreat order, from
+## Battle's order-application, as a side effect of the RELIEVER's own order). A pure
+## casualty (UnitCombat.take_casualties/register_casualties, SoldierMelee's per-soldier
+## reap, ProjectileField, FarTierAttrition -- all landing on the DEFENDER from the
+## attacker's resolution) needs none: it only ever DECREASES soldiers, never
+## max_soldiers, and UnitFormation.frontage()'s file count is driven by max_soldiers,
+## not live soldiers, so hw never shrinks from a casualty; depth is the deepest
+## SURVIVING file's real rank count, which a removal can only hold or shrink (never
+## grow) since nothing here ever adds a soldier. So a stale casualty-side reading is
+## always the SAME OR LARGER than truth -- conservative for terrain clearance -- never
+## smaller, and needs no invalidation.
 func _formation_local_half_extents() -> Vector2:
 	var frame: int = Engine.get_physics_frames()
 	if frame == _cached_local_half_extents_frame:
@@ -3935,6 +3952,15 @@ func _formation_local_half_extents() -> Vector2:
 	_cached_local_half_extents = Vector2(hw, hd)
 	_cached_local_half_extents_frame = frame
 	return _cached_local_half_extents
+
+
+## Force _formation_local_half_extents()'s next call this same frame to rebuild rather
+## than reuse the cached value. Call this on a unit immediately after writing one of its
+## formation_slots() inputs from OUTSIDE that unit's own _physics_process -- see the
+## cache's own doc comment above for the full list of call sites and why a unit's own
+## self-writes need no such call.
+func invalidate_formation_extent_cache() -> void:
+	_cached_local_half_extents_frame = -1
 
 
 ## Open ground this regiment needs between its centre and impassable terrain, for a

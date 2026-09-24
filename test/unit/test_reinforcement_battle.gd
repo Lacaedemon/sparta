@@ -790,6 +790,28 @@ func test_commit_is_refused_when_per_soldier_array_is_short() -> void:
 			"commit is refused when host per-soldier array is out of sync")
 
 
+func test_commit_invalidates_the_hosts_same_frame_extent_cache() -> void:
+	# UnitReinforce.commit runs from the RESERVE's own _physics_process (via
+	# UnitReinforce.update(reserve)), not the host's, mutating the host's soldiers/
+	# max_soldiers/frontage/file-assignment fields from outside the host's own tick --
+	# see Unit._formation_local_half_extents()'s doc comment for why that needs an
+	# explicit invalidation the host's own self-writes do not. Fill the host's cache,
+	# commit in the same frame with no frame advance, and confirm the very next query
+	# already reflects the doubled frontage rather than the stale pre-commit extent.
+	# Must fail without host.invalidate_formation_extent_cache() in
+	# UnitReinforce.commit.
+	_spawn()
+	await get_tree().physics_frame
+	var host: Unit = _unit_at(HOST_POS)
+	var reserve: Unit = _unit_at(RESERVE_POS)
+	var before: Vector2 = host._formation_local_half_extents()
+	UnitReinforce.commit(reserve, host)
+	assert_eq(host.soldiers, 80, "sanity check: the commit actually ran")
+	var after: Vector2 = host._formation_local_half_extents()
+	assert_gt(after.x, before.x,
+			"the same-frame post-commit query reflects the doubled frontage immediately")
+
+
 func test_snapshot_restore_mid_approach_preserves_friendly_target_and_commits() -> void:
 	_spawn()
 	await get_tree().physics_frame
