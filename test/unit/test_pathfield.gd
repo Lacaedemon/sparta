@@ -851,3 +851,70 @@ func test_funnel_corner_zero_length_axis_does_not_divide_by_zero() -> void:
 	var corner: Vector2 = pf._funnel_corner(from, to, path, 10.0)
 	assert_eq(corner, Vector2.INF,
 		"from == to sitting inside the rect has no corner with a clear sightline, same as any other walker-inside-the-rect case -- the exact INF sentinel, not a NaN leak that merely happens to also read as not-finite")
+
+
+func test_funnel_corner_anchors_on_the_rects_own_approach_not_the_whole_corridor() -> void:
+	# Regression for a review finding on the fix immediately preceding this one
+	# (corridor_axis replacing heading as the side-classification axis):
+	# anchoring corridor_axis on the corridor's global endpoints (`path[-1] -
+	# path[0]`) can point in a meaningfully different direction than the
+	# corridor's actual local approach to THIS rect, once the corridor has a
+	# later leg the route only takes after already rounding it. `path` below
+	# is the exact 12-point A* corridor a live query produced for a wide
+	# single-rank Cavalry unit charging past this file's own default-map hill
+	# terrain (Battle.TERRAIN's hill patch): its first leg runs due north
+	# alongside the hill's east face, then turns west only once past it. The
+	# global start-to-end axis (path[-1] - path[0]) averages both legs into
+	# one exact 45-degree grid diagonal, which misclassifies the entry/exit
+	# corner PAIR on the OPPOSITE sides from where `heading` puts them: the
+	# near, correct-direction north-east corner reads as excluded, and the
+	# far, wrong-direction south-east corner reads as included and, being
+	# cheaper, wins the cost tie-break outright. Before this fix, this exact
+	# geometry made a real unit's facing snap roughly 130 degrees in two
+	# ticks and visibly sidle away from its target for dozens of ticks before
+	# finding its way back -- while the unchanged (heading-based) code, given
+	# the identical position, target, and per-unit lane offset, picked the
+	# north-east corner and only drifted its facing gently.
+	var pf := PathField.new(Rect2(0, 0, 1600, 1200))
+	var hill := Rect2(1150, 380, 250, 200)   # Battle.TERRAIN's hill patch
+	pf.block_rect(hill)
+	# The unit's own live position/target at the tick this defect first
+	# diverted it, and the per-unit lateral lane offset (Unit.funnel_lane_offset)
+	# live at that same tick -- both taken verbatim from the recorded repro.
+	var from := Vector2(1439.58, 585.7558)
+	var to := Vector2(1064.235, 241.9299)
+	var lane_offset := -77.3946624755859
+	# Unit._pivot_radius() + soldier_body_radius() for an 80-mount, frontage-9
+	# single-rank Cavalry block (the same shape as test_unit.gd's own
+	# _make_deep_cavalry_unit fixture).
+	var clearance := 515.964416503906
+	# The live A* corridor itself.
+	var path := PackedVector2Array([
+			Vector2(1440.0, 608.0), Vector2(1440.0, 544.0), Vector2(1440.0, 480.0),
+			Vector2(1440.0, 416.0), Vector2(1440.0, 352.0), Vector2(1440.0, 288.0),
+			Vector2(1376.0, 288.0), Vector2(1312.0, 288.0), Vector2(1248.0, 288.0),
+			Vector2(1184.0, 288.0), Vector2(1120.0, 288.0), Vector2(1056.0, 224.0)])
+	# Sanity: the point nearest the hill is an INTERMEDIATE path point, not
+	# path[0] or path[-1] -- exactly the shape this fix's anchor change
+	# matters for. Confirms the global start-to-end axis really does land on
+	# the exact 45-degree diagonal the comment above describes.
+	var global_axis: Vector2 = path[path.size() - 1] - path[0]
+	assert_eq(global_axis, Vector2(-384.0, -384.0),
+		"sanity: the global start-to-end axis is the exact 45-degree grid diagonal")
+	var corner: Vector2 = pf._funnel_corner(from, to, path, clearance, lane_offset)
+	assert_true(corner.is_finite(), "sanity: this leg is expected to detour")
+	# The correct corner is north of the hill's centre -- matching what the
+	# unchanged heading-based code picks for this exact position/target/lane
+	# offset -- never the south-east corner the misanchored global axis used
+	# to force.
+	assert_lt(corner.y, hill.get_center().y,
+		"the funnel must steer for the north-east corner, matching heading -- " +
+		"not the far south-east corner the misanchored global axis used to force")
+	# The north-east grown corner, offset by this unit's own lane tangent --
+	# taken verbatim from the same live repro (both the base, heading-based
+	# code and this fix converge on it for this exact query).
+	var expected_corner := Vector2(1970.242, -195.0344)
+	assert_almost_eq(corner.x, expected_corner.x, 0.5,
+		"the rescued north-east corner matches the live base-code repro")
+	assert_almost_eq(corner.y, expected_corner.y, 0.5,
+		"the rescued north-east corner matches the live base-code repro")

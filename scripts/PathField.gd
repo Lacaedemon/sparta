@@ -535,43 +535,67 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 	#   `from` value.
 	#
 	# The fix is to stop deriving the axis from `from`/`to` at all.
-	# `corridor_axis` (the A* path's LAST point minus its FIRST) is a
-	# function of the corridor itself: both path points are CELL centres
-	# (find_path's own start/goal nodes), so this axis stays exactly
-	# constant for as long as `from` and `to` occupy the same pair of
-	# routing cells -- no per-tick, sub-world-unit noise reaches it, and no
-	# continuous threshold sits between two disagreeing formulas. It still
-	# tracks real progress along a long detour the way `heading` did:
-	# `path[0]` advances (in CELL-sized steps, not continuously) as the
-	# walker's own cell changes while it walks a multi-corner route, which
-	# is what the walk test above needs. The one instability left is a
-	# walker whose EQUILIBRIUM position sits exactly ON a cell boundary and
-	# straddles it tick to tick -- a much narrower target (a 64-world-unit
-	# grid line, not every position everywhere) than the whipsaw this axis
-	# removes, and a limitation of routing off a coarse cell grid this file
-	# already carries (see `find_path` and the CELL const) rather than a new
-	# one this fix introduces.
+	# `corridor_axis` is a function of the corridor itself -- both endpoints
+	# are CELL centres (find_path's own nodes), so this axis only changes in
+	# CELL-sized steps as `from`/`to` cross routing cells: no per-tick,
+	# sub-world-unit noise reaches it, and no continuous threshold sits
+	# between two disagreeing formulas.
 	#
-	# Whichever pair of path points supplies it, `route_side` here and each
-	# candidate corner's own `side` further down MUST read the SAME axis:
-	# comparing a side computed on one axis against a route_side computed on
-	# another compares two unrelated quantities, and can point the filter at
-	# the wrong corners entirely rather than merely at an
-	# occasionally-unstable one (measured on this function's own
-	# hill-terrain repro: `to=(650,730)` and `centre=(1275,480)` put
-	# `heading` and `to - centre` about 179 degrees apart there, flipping
-	# the sign of all four of the rect's corners relative to each other).
+	# One endpoint is always `path`'s own LAST point (the cell nearest `to`):
+	# `path[path.size() - 1]` advances in CELL-sized steps as the walker's
+	# own cell changes while it walks a multi-corner route, which is what
+	# the walk test above needs (a fixed axis can't distinguish "still
+	# approaching" from "already rounded" -- see the rejected fixed-axis
+	# attempt above). The OTHER endpoint is deliberately NOT always
+	# `path[0]` (the cell nearest `from`): it's the path point CLOSEST to
+	# the rect being rounded -- `nearest_point` below, found by plain
+	# distance, no axis needed -- falling back to `path[0]` whenever that
+	# nearest point turns out to BE the last point (the rect sits right at
+	# the corridor's own far end, so there's no "middle" to anchor on; using
+	# `path[0]` there reproduces this fix's very first version exactly,
+	# which every one of this file's simpler tests already exercises).
+	#
+	# Anchoring on the nearest point rather than `path[0]` matters because a
+	# LONG, multi-leg corridor's own start-to-end chord can point in a
+	# meaningfully different direction than the corridor's actual approach
+	# to THIS rect: `path[0]` sits back at the querying unit's own cell,
+	# `path[-1]` sits past a later leg the route takes only after it has
+	# already rounded the rect, and averaging the two into one straight-line
+	# axis can land near neither. Measured repro: a wide single-rank Cavalry
+	# formation's funnel query against this file's own default-map hill
+	# terrain, where the full start-to-end axis lands on an EXACT
+	# 45-degree grid diagonal through the rect's own centre -- both
+	# components identical multiples of CELL -- misclassifying the
+	# entry/exit corner PAIR on opposite sides of where `heading` (and the
+	# nearest-point axis below) put them: the near, correct-direction corner
+	# reads as excluded, and the far, wrong-direction one reads as
+	# included and, being cheaper, wins the tie-break outright. Anchoring
+	# on the path point nearest the rect instead of `path[0]` fixes this
+	# because that point is exactly where the corridor actually interacts
+	# with the rect, the same locality `route_side` below already keys off
+	# of -- so the axis and the route_side it measures describe the same
+	# approach, not two different legs of a longer corridor stitched
+	# together.
+	var nearest_point: Vector2 = Vector2.ZERO
+	var nearest_point_d: float = INF
+	for p in path:
+		var d: float = _distance_to_rect(p, rect)
+		if d < nearest_point_d:
+			nearest_point_d = d
+			nearest_point = p
 	var corridor_axis: Vector2 = Vector2.ZERO
 	if path.size() >= 2:
-		corridor_axis = path[path.size() - 1] - path[0]
+		corridor_axis = path[path.size() - 1] - nearest_point
+		if corridor_axis.length_squared() <= 0.0:
+			corridor_axis = path[path.size() - 1] - path[0]
 	if corridor_axis.length_squared() <= 0.0:
-		# A degenerate corridor (its first and last cell centres coincide,
-		# or an empty/single-point `path` -- reachable only from a direct
-		# call in tests; next_step's own `path.size() < 2` guard never lets
-		# a live query reach this function with such a `path`) has no axis
-		# of its own to measure against. `heading` is the least surprising
-		# fallback, matching this function's behaviour before any of this
-		# axis machinery existed.
+		# A degenerate corridor (its last cell centre coincides with both
+		# `path[0]` and the point nearest the rect, or an empty/single-point
+		# `path` -- reachable only from a direct call in tests; next_step's
+		# own `path.size() < 2` guard never lets a live query reach this
+		# function with such a `path`) has no axis of its own to measure
+		# against. `heading` is the least surprising fallback, matching this
+		# function's behaviour before any of this axis machinery existed.
 		corridor_axis = heading
 	# The corridor point that FIXES route_side is the nearest one whose side
 	# is clearly off the axis line through `centre` -- not simply the
