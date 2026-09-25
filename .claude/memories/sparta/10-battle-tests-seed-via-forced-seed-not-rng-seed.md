@@ -231,3 +231,29 @@ or copy an existing demo's `scenario`/`steps` block as a shortcut template.
   Reserve `"skip": true` solely for changes that have no battlefield manifestation at all
   (such as pure documentation or CI-only tooling changes),
   with an honest `"reason"` specified in the manifest.
+
+## Unit test fixtures: four ways a layout case tests less than it claims
+
+Each of these made a far-tier extents test on PR #1638 pass while not testing its named case.
+All four were caught only in review.
+
+- **`frontage_override` is clamped to `max_soldiers`.**
+  `UnitFormation.frontage()` returns `clampi(u.frontage_override, 1, maxi(1, u.max_soldiers))`.
+  So `_make_unit(3)` plus `frontage_override = 8` is a single full rank of 3, not three men on an 8-file frontage.
+  For an under-one-rank case, build with `max_soldiers >= files` and cut `u.soldiers` afterwards.
+
+- **`_effective_file_major_reform()` ignores square mode.**
+  `formation_slots()` takes its square branch before it reads that flag, so a square unit can report `true` while laying out no file-major grid.
+  Assert on the branch `formation_slots()` actually takes, not on the flag alone.
+
+- **The relief corridor is not tier-gated.**
+  `_apply_relief_corridor_to_slots` widens a unit's OWN ranks where a live relief partner is passing through, at any tier.
+  `ReinforceGuard` refuses a far-tier host or reserve for REINFORCE orders only, and no tier check refuses a RELIEF order.
+  Don't assume a far block has its base footprint.
+
+- **`_make_unit()` leaves `file_pitch == rank_pitch`.**
+  A depth read at the wrong pitch then gives the same number, so no test can see it.
+  Set distinct pitches (e.g. `file_pitch = 20.0`, `rank_pitch = 60.0`) whenever the code picks between them.
+
+A case marked as a bound (`>=`) rather than exact hides any mutation that moves the value in the allowed direction.
+Make a case exact wherever the layout allows it, and check which way a plausible mutation would move the value.

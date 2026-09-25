@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Documentation-only: adds a section to the AI working-notes memory file (.claude/memories/sparta/). No game code, scene, or asset changes, so there is nothing a recorded battle could show."
+}
