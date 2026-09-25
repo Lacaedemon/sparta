@@ -2029,6 +2029,24 @@ func test_far_tier_half_extents_skip_the_reverse_scan_when_no_link_is_live() -> 
 	other.set_current_order(null)
 
 
+func test_close_tier_extents_skip_the_reverse_scan_when_no_link_is_live() -> void:
+	# The close tier reads the live slots with the relief corridor applied, which asks
+	# _relief_swap_partner() on every call; with no order linking to this unit that must
+	# not fall back to the whole-group scan.
+	var u := _make_unit(20)
+	var other := _make_unit(20)
+	assert_eq(u.incoming_friendly_links, 0, "sanity check: nothing links to this unit yet")
+	var before: int = u._relief_reverse_scan_count
+	u._formation_local_half_extents()
+	assert_eq(u._relief_reverse_scan_count, before, "no live link: the whole-group scan is skipped")
+	var link := Order.new_relief(999)
+	other.set_current_order(link)
+	link.friendly_target = u
+	assert_eq(u._relief_swap_partner(), other, "a live link elsewhere: the scan finds the partner")
+	assert_gt(u._relief_reverse_scan_count, before, "a live link elsewhere: the scan runs")
+	other.set_current_order(null)
+
+
 func test_formation_local_half_extents_includes_an_active_relief_corridors_widening() -> void:
 	# _apply_relief_corridor_to_slots pushes back-rank flank bodies OUTWARD along the
 	# corridor-perpendicular axis while a live relief swap is under way (its own doc

@@ -275,7 +275,7 @@ var current_order: Order = null
 ## their friendly_target (the reverse side of the pass-through link). Kept by
 ## Order.friendly_target's own setter and by Order's PREDELETE decrement, so it never
 ## under-counts: zero proves no order anywhere links to this unit, and
-## _far_tier_half_extents() then skips _relief_swap_partner()'s whole-group reverse scan.
+## _relief_swap_partner() then skips its whole-group reverse scan.
 ## It can over-count -- a dropped order still referenced elsewhere (a queued or child
 ## order, or one caught in a parent/children reference cycle, which RefCounted never
 ## frees) keeps counting -- but only ever for its own target unit, which just pays the
@@ -1448,8 +1448,8 @@ var _block_extent: float = RADIUS       # block half-size; sizes the ring/halo/b
 # an int is cheap enough to leave live rather than gate behind a build flag.
 var _formation_slots_call_count: int = 0
 # Test-only instrumentation, same contract as _formation_slots_call_count above: counts
-# _relief_swap_partner()'s whole-group reverse scans, so a test can check that
-# _far_tier_half_extents() skips the scan when no link-arming order is live.
+# _relief_swap_partner()'s whole-group reverse scans, so a test can check that the
+# scan is skipped when no link-arming order is live.
 var _relief_reverse_scan_count: int = 0
 # Render fast-path bookkeeping. _render_dirty is raised by SoldierBodies.step whenever a
 # body actually moves (and by seed / about-face relabel); _process consumes it so the
@@ -3958,10 +3958,9 @@ func _formation_local_half_extents() -> Vector2:
 ## - no traverse flank arcs: they need live bodies;
 ## - a relief corridor is NOT tier-gated (nothing keeps a far block out of a relief
 ##   swap), so while a relief partner exists this defers to the live-slot reading.
-##   The partner lookup's whole-group reverse scan runs only while this unit holds a
-##   forward link or some order links to it (incoming_friendly_links), so the common
-##   no-link tick stays O(1); a relief swap is short, so the O(soldiers) rebuild is paid
-##   only then.
+##   The partner lookup is O(1) unless some order links to this unit (see
+##   _relief_swap_partner()), so the common no-link tick stays O(1); a relief swap is
+##   short, so the O(soldiers) rebuild is paid only then.
 ## What is left -- files, ranks, the two pitches (a square's depth runs at file pitch,
 ## UnitFormation.block_slots' own default), and the standing frontage_anchor_offset,
 ## which formation_slots() applies to every non-square layout -- is all read here. A
@@ -3977,11 +3976,7 @@ func _formation_local_half_extents() -> Vector2:
 func _far_tier_half_extents() -> Vector2:
 	if soldiers <= 0:
 		return Vector2.ZERO
-	# _relief_swap_partner()'s reverse lookup scans every unit; skip it unless this unit
-	# holds a forward link (checked in O(1)) or some order links to it.
-	var own_link: bool = current_order != null and current_order.friendly_target != null \
-			and is_instance_valid(current_order.friendly_target)
-	if (own_link or incoming_friendly_links > 0) and _relief_swap_partner() != null:
+	if _relief_swap_partner() != null:
 		return _formation_local_half_extents()
 	var files: int = maxi(1, formation_files(soldiers))
 	var ranks: int = UnitFormation.ranks_for(soldiers, files)
@@ -7605,11 +7600,16 @@ static func formation_interval_label(mode: int, pitch_wu: float, rank_wu: float 
 
 ## The other unit in a live line-relief pass-through swap, if any. The link normally
 ## lives on the reliever's RELIEF order; the tired side discovers it by reverse lookup.
+## That lookup scans every unit, and it runs on every formation_slots() call with the
+## corridor applied -- every frame per unit, plus each close-tier _move_to()'s extents
+## query -- so it is skipped whenever incoming_friendly_links is zero: the scan can only
+## find a unit whose current order names this one, and every such link is counted there
+## (it never under-counts; see its own doc comment). The common no-link case is O(1).
 func _relief_swap_partner() -> Unit:
 	if current_order != null and current_order.friendly_target != null \
 			and is_instance_valid(current_order.friendly_target):
 		return current_order.friendly_target
-	if not is_inside_tree():
+	if incoming_friendly_links <= 0 or not is_inside_tree():
 		return null
 	_relief_reverse_scan_count += 1   # test-only instrumentation; see its own doc comment
 	for node in get_tree().get_nodes_in_group("units"):
