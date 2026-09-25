@@ -2374,7 +2374,7 @@ A broken unit that breaks contact and gains distance can steady its nerve and ra
 Dropping pursuit in the fog risks allowing shattered remnants to reform.
 Fast cavalry must stay in contact, shadowing routers until they shatter or break completely.
 
-### Fog of war is symmetric --- it holds your own troops back too
+### Fog of war binds both sides --- it holds your own troops back too
 
 Fog of war is not a player-only handicap, and it is not only about the enemy general's own plans.
 Every AI side --- the enemy general down through its unit leaders, and a delegated group under your own command --- reads exactly the same fogged view fog gives you: a unit it can't currently perceive is a unit it can't newly engage or newly react to.
