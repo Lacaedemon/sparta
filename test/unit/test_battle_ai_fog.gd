@@ -456,6 +456,54 @@ func test_idle_ranged_ai_unit_does_not_fire_on_a_detected_but_unperceived_enemy(
 		"sight never covered this enemy at any AI decision tick")
 
 
+func test_an_unperceived_archer_does_not_put_its_target_under_fire() -> void:
+	# The archer's fire is withheld (previous test), so its target must not be flagged
+	# _under_fire either: that flag jogs an AUTO-pace unit and erodes its morale, which
+	# would let a volley fog suppressed still land its effects.
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var archer: Unit = _team_units(1)[0]
+	var target: Unit = _team_units(0)[0]
+	archer.sight_range = SHRUNK_SIGHT
+	assert_lt(target.position.distance_to(archer.position), archer.missile_range,
+		"sanity check: the target is inside the archer's own missile_range")
+
+	for _i in range(2):
+		await get_tree().physics_frame
+
+	assert_false(battle.ai_team_perceives(1, target),
+		"sanity check: team 1 still does not perceive the target when it is read")
+	assert_false(target._under_fire,
+		"fog on: an archer whose side cannot see the target does not put it under fire")
+
+
+func test_an_archer_puts_its_target_under_fire_when_fog_is_off() -> void:
+	# Mirror of the test above with fog off: the identical staging flags the target.
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var archer: Unit = _team_units(1)[0]
+	var target: Unit = _team_units(0)[0]
+	archer.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+
+	for _i in range(2):
+		await get_tree().physics_frame
+
+	assert_true(target._under_fire,
+		"fog off: the target inside the archer's missile_range is under fire, as before")
+
+
 func test_idle_ranged_ai_unit_still_fires_on_a_detected_enemy_when_fog_is_off() -> void:
 	# The mirror check for fog OFF: the identical staging still fires, because
 	# ai_team_perceives is unconditionally true with fog off -- this branch is byte-for-byte

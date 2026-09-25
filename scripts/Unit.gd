@@ -2754,7 +2754,10 @@ func _think(delta: float) -> void:
 			return
 
 	# Under-fire detection for AUTO pace and suppression morale (docs/longer-range-missile-design.md, phase 3):
-	# true when any alive enemy ranged unit with ammunition has this unit inside ITS OWN missile range.
+	# true when any alive enemy ranged unit with ammunition has this unit inside ITS OWN missile range
+	# and that shooter's own side perceives this unit -- the same u._enemy_is_perceived gate the
+	# shooter's fire decision passes (see the ranged branch below), so a volley fog withholds can't
+	# still jog this unit or erode its morale. With fog off the gate is unconditionally true.
 	# _under_fire_can_reply is true only when under fire AND this unit has ranged capability, ammo,
 	# and sufficient reach to reply to every enemy threatening it.
 	# Must run before the ORDER_SUPPORT early return so _support_tick's _move_to
@@ -2767,7 +2770,7 @@ func _think(delta: float) -> void:
 		if u is Unit and u.team != team and u.is_ranged and u.has_missile_ammo() \
 				and u.state != State.DEAD and u.state != State.ROUTING:
 			var d_sq: float = position.distance_squared_to(u.position)
-			if d_sq <= u.missile_range * u.missile_range:
+			if d_sq <= u.missile_range * u.missile_range and u._enemy_is_perceived(self):
 				had_threat = true
 				var can_reply_to_u: bool = is_ranged and has_missile_ammo() \
 						and d_sq <= missile_range * missile_range
