@@ -2485,9 +2485,9 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ##
 ## THE authoritative list of the branches this gates (Battle.ai_team_perceives' own doc
 ## comment points back here rather than duplicating it, to avoid the two drifting apart the
-## way this comment itself once did when it named only one caller). Nine call expressions
-## across eight branches -- _support_tick's one call gates both of its own sub-branches. One
-## of the nine, _start_promoted_attack's, is a call to fresh_pick_allowed rather than a
+## way this comment itself once did when it named only one caller). Ten call expressions
+## across nine branches -- _support_tick's one call gates both of its own sub-branches. One
+## of the ten, _start_promoted_attack's, is a call to fresh_pick_allowed rather than a
 ## direct call to this function (fresh_pick_allowed's own single _enemy_is_perceived call is
 ## what's actually counted); that same call is also how UnitRelief.begin reaches this gate
 ## externally, so it is shared by two branches rather than duplicated -- see
@@ -2517,6 +2517,10 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ##   Runs for BOTH teams -- SUPPORT is a player-selectable order stance (HUD), not AI-only.
 ## - _support_tick's chase branch (closing on that threat to melee). Runs for BOTH teams, same
 ##   reason as its sibling ranged-fire branch above.
+## - _think()'s under-fire scan, called on each enemy SHOOTER as u._enemy_is_perceived(self)
+##   rather than on this unit: a shooter whose own side does not perceive this unit is not
+##   counted as firing on it, mirroring the ranged-fire branches above, so a volley fog
+##   withholds can't still jog this unit on AUTO or erode its morale. Runs for BOTH teams.
 ## Every branch above except auto-advance-on-detect runs for BOTH teams -- a deliberate
 ## symmetric design choice made during review, not an oversight carried over from an
 ## AI-only first pass: a player unit that could snipe or chase past its own player's fogged
