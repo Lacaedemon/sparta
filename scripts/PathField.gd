@@ -576,6 +576,25 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 	# of -- so the axis and the route_side it measures describe the same
 	# approach, not two different legs of a longer corridor stitched
 	# together.
+	#
+	# The one instability left is a walker whose EQUILIBRIUM position sits
+	# exactly ON a cell boundary and straddles it tick to tick, so the path
+	# (and with it either endpoint) flips between two cells -- a much
+	# narrower target (a 64-world-unit grid line, not every position
+	# everywhere) than the whipsaw this axis removes, and a limitation of
+	# routing off a coarse cell grid this file already carries (see
+	# `find_path` and the CELL const) rather than a new one this axis
+	# introduces.
+	#
+	# Whichever pair of path points supplies it, `route_side` here and each
+	# candidate corner's own `side` further down MUST read the SAME axis:
+	# comparing a side computed on one axis against a route_side computed on
+	# another compares two unrelated quantities, and can point the filter at
+	# the wrong corners entirely rather than merely at an
+	# occasionally-unstable one (measured on this function's own
+	# hill-terrain repro: `to=(650,730)` and `centre=(1275,480)` put
+	# `heading` and `to - centre` about 179 degrees apart there, flipping
+	# the sign of all four of the rect's corners relative to each other).
 	var nearest_point: Vector2 = Vector2.ZERO
 	var nearest_point_d: float = INF
 	for p in path:
