@@ -2071,8 +2071,12 @@ func _ai_perceptible_units(team: int) -> Array:
 ## tick costs one _ai_perceptible_units recompute, not one per unit -- see ai_team_perceives'
 ## own doc comment for why a per-unit, every-physics-tick caller needs this rather than
 ## calling _ai_perceptible_units directly. Purely derived from already-serialized state
-## (nothing here is itself simulation state), so it needs no snapshot/restore handling: a
-## restored battle just recomputes it fresh on the next query, same as any other tick.
+## (nothing here is itself simulation state), so neither field is itself part of the
+## snapshot payload -- but restore_snapshot() must still explicitly clear both
+## (_ai_perceives_cache = {}, _ai_perceives_cache_tick = -1): a rewind that lands back on
+## the SAME _tick value the cache already holds an entry for would otherwise be read as
+## still valid, and the stale pre-restore UID set would be reused against the freshly
+## restored positions and states rather than recomputed.
 ##
 ## One snapshot per (team, tick), same granularity as _fog_seen_frame's own per-frame
 ## snapshot above (_ai_perceptible_units' own doc comment covers that one's staleness

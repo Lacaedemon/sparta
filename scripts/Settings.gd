@@ -182,8 +182,12 @@ var show_combat_state_rings: bool = true:
 # driving playback, and does not affect retreat bounds or collision. It DOES affect
 # simulation state beyond rendering, though: AI/order targeting decisions are gated on
 # perception too (Battle.ai_team_perceives / Unit._enemy_is_perceived), so a unit cannot
-# fire on or chase an enemy its own side has not sighted. Default off, so every existing
-# demo, replay, and test renders and routes exactly as before.
+# open fire on, or start chasing, an enemy its own side has not sighted. That gate only
+# covers a FRESH pick: once a unit is already committed to a target (target_enemy != null,
+# from an explicit attack order or an earlier melee contact), Unit._think()'s chase branch
+# keeps closing on that target's live position every tick with no re-check, so an
+# already-engaged unit does not break off mid-pursuit just because perception later lapses.
+# Default off, so every existing demo, replay, and test renders and routes exactly as before.
 var fog_of_war: bool = false:
 	set(value):
 		if value == fog_of_war:
