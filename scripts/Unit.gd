@@ -3991,8 +3991,9 @@ func _far_tier_half_extents() -> Vector2:
 ## (per _formation_local_half_extents() above) projected onto the axis PERPENDICULAR
 ## to travel -- the width the block actually sweeps sideways as its centre follows
 ## that leg -- plus its soldiers' body radius. Passed to every PathField query as the
-## base `clearance` (the initial blocked check, the corridor candidate's own
-## sightline tests) -- terrain footprints themselves are exact, and the margin around
+## base `clearance` (the initial blocked check, and which rect a detour rounds; the
+## detour legs themselves run at corner_clearance()) -- terrain footprints themselves
+## are exact, and the margin around
 ## them is the querying unit's real geometry, not a routing-grid artifact: a 10-man
 ## squad skims an obstacle a 140-man line must round wide.
 ##
@@ -4029,9 +4030,11 @@ func _far_tier_half_extents() -> Vector2:
 ## folding in BOTH width and depth unconditionally) for a KNOWN travel direction: a
 ## straight, unturning leg only needs the width actually swept along that specific
 ## leg, not the worst case over every possible orientation. See corner_clearance()
-## below for the margin PathField._funnel_corner itself still uses -- a route can only
-## actually reorient AT a corner, so the fuller, pivot-radius-based allowance stays
-## there regardless of the leg's own travel direction.
+## below for the margin PathField.next_step() still uses for every detour leg (the
+## funnel corner, or the corridor waypoint it falls back to) -- a route can only
+## reorient where a detour leg turns off the straight leg's bearing, so the fuller,
+## pivot-radius-based allowance stays there regardless of the leg's own travel
+## direction.
 ##
 ## `extents` lets a caller that already paid for _formation_local_half_extents() this
 ## tick (_move_to()) pass the value straight through instead of rebuilding it; UNKNOWN_
@@ -4053,14 +4056,15 @@ func terrain_clearance(travel_dir: Vector2 = Vector2.ZERO, extents: Vector2 = UN
 	return swept + soldier_body_radius()
 
 
-## The margin PathField._funnel_corner uses when rounding a blocking rect's corner --
+## The margin PathField.next_step() uses for every detour leg -- rounding a blocking
+## rect's corner in _funnel_corner, or the corridor waypoint it falls back to --
 ## the corner man's full half-diagonal (per _formation_local_half_extents() above,
 ## which already folds in a standing frontage_anchor_offset and any file-major
 ## depth imbalance -- see that function's own doc comment) plus his body radius,
 ## unlike terrain_clearance()'s direction-aware, travel-perpendicular swept width
-## above. A corner is exactly where the corridor's direction -- and so the block's
+## above. A detour leg is exactly where the route's direction -- and so the block's
 ## orientation relative to it -- can change, so the fuller, worst-case-over-any-
-## orientation allowance belongs there regardless of which way the leg into it
+## orientation allowance belongs there regardless of which way the straight leg
 ## travels; see terrain_clearance()'s own doc comment for the split this answers.
 ## Also the value terrain_clearance() itself falls back to when its own travel
 ## direction is unknown, since this is exactly the maximum the direction-aware

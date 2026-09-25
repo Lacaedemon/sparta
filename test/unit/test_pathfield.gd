@@ -361,14 +361,14 @@ func test_funnel_lane_scales_with_the_units_own_clearance() -> void:
 	assert_ne(narrow.x, wide.x, "the two widths walk two different lanes")
 
 
-func test_next_steps_optional_corner_clearance_only_widens_the_funnel_corner() -> void:
+func test_next_steps_optional_corner_clearance_widens_the_funnel_corner() -> void:
 	# Unit.terrain_clearance() (the straight-leg `clearance` argument) can be smaller
-	# than Unit.corner_clearance() (the fuller, pivot-radius-based margin a corner
-	# still needs, since a corridor's direction -- and so the block's orientation
-	# relative to it -- can only change AT a corner). next_step's optional
-	# 5th argument threads that bigger margin to _funnel_corner alone, without
-	# touching _funnel_corner itself: the base blocked check and the corridor
-	# candidate's own sightline tests still run at the smaller `clearance`.
+	# than Unit.corner_clearance() (the fuller, pivot-radius-based margin a detour
+	# still needs, since a detour leg is where the route's direction -- and so the
+	# block's orientation relative to it -- can change). next_step's optional 5th
+	# argument threads that bigger margin to the detour legs (the funnel corner here;
+	# test_corridor_fallback_clears_the_corner_margin covers the corridor fallback),
+	# while the base blocked check still runs at the smaller `clearance`.
 	var pf := PathField.new(FIELD)
 	var wall := Rect2(300, 100, 64, 400)
 	pf.block_rect(wall)
@@ -388,8 +388,8 @@ func test_next_steps_optional_corner_clearance_only_widens_the_funnel_corner() -
 
 
 func test_corner_clearance_does_not_pick_a_rect_the_leg_never_touches() -> void:
-	# corner_clearance only grows and validates the corner of the rect that actually
-	# blocks the leg at the straight-leg clearance. A nearer rect that sits beside the
+	# In the funnel, corner_clearance only grows and validates the corner of the rect
+	# that actually blocks the leg at the straight-leg clearance. A nearer rect that sits beside the
 	# leg -- outside the small clearance, inside the bigger corner margin -- must not
 	# be chosen as the one to round.
 	var pf := PathField.new(FIELD)

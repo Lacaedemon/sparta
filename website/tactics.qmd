@@ -2409,9 +2409,11 @@ that direction. A small squad slips through a lane that a wide battle line march
 straight ahead must round with a broad swing, and a *deep* column (many ranks, few
 files) needs no more room than its own narrow frontage on a straight march, regardless
 of how long it is --- but the same column stepping sideways needs its full depth of
-room instead. Rounding an obstacle's actual corner --- where the route's direction
-changes, and so can the block's orientation relative to it --- keeps the fuller
-margin regardless of travel direction: the corner man's reach from the centre,
+room instead. Every detour leg --- rounding an obstacle's actual corner, or the
+coarser waypoint the route falls back to when no corner is in clear view --- is
+where the route's direction changes, and so can the block's orientation relative to
+it, so it keeps the fuller margin wherever the ground leaves room for it,
+regardless of travel direction: the corner man's reach from the centre,
 folding in the block's depth as well as its width. A lane that looks clear of the
 hill *is* clear --- for any unit narrow enough to fit through it on its own
 straight-leg margin. The walked detour hugs the corner's own margin the whole way
