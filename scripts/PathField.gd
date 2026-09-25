@@ -541,13 +541,15 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 	# sub-world-unit noise reaches it, and no continuous threshold sits
 	# between two disagreeing formulas.
 	#
-	# One endpoint is always `path`'s own LAST point (the cell nearest `to`):
-	# `path[path.size() - 1]` advances in CELL-sized steps as the walker's
-	# own cell changes while it walks a multi-corner route, which is what
-	# the walk test above needs (a fixed axis can't distinguish "still
-	# approaching" from "already rounded" -- see the rejected fixed-axis
-	# attempt above). The OTHER endpoint is deliberately NOT always
-	# `path[0]` (the cell nearest `from`): it's the path point CLOSEST to
+	# One endpoint is always `path`'s own LAST point, the goal cell nearest
+	# `to`: it moves only when the TARGET changes cell, not as the walker
+	# advances. The axis still re-aims as the walker walks a multi-corner
+	# route -- which the walk test above needs, since a fixed axis can't
+	# distinguish "still approaching" from "already rounded" (see the
+	# rejected fixed-axis attempt above) -- because `path` is recomputed from
+	# the walker's current cell every query, and with it the OTHER endpoint.
+	# That endpoint is deliberately NOT always `path[0]` (the cell nearest
+	# `from`): it's the path point CLOSEST to
 	# the rect being rounded -- `nearest_point` below, found by plain
 	# distance, no axis needed -- falling back to `path[0]` whenever that
 	# nearest point turns out to BE the last point (the rect sits right at
