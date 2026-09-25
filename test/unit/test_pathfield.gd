@@ -387,6 +387,34 @@ func test_next_steps_optional_corner_clearance_only_widens_the_funnel_corner() -
 		"sanity check: the small straight-leg clearance alone already reads this leg as blocked")
 
 
+func test_corner_clearance_does_not_pick_a_rect_the_leg_never_touches() -> void:
+	# corner_clearance only grows and validates the corner of the rect that actually
+	# blocks the leg at the straight-leg clearance. A nearer rect that sits beside the
+	# leg -- outside the small clearance, inside the bigger corner margin -- must not
+	# be chosen as the one to round.
+	var pf := PathField.new(FIELD)
+	var beside := Rect2(200, 320, 60, 80)    # 20 below the leg: clear at 10, not at 40
+	var blocker := Rect2(400, 250, 60, 100)  # straddles the leg
+	pf.block_rect(beside)
+	pf.block_rect(blocker)
+	var from := Vector2(100, 300)
+	var to := Vector2(600, 300)
+	var small_clearance := 10.0
+	var big_corner_clearance := 40.0
+	assert_false(pf.is_leg_blocked(from, Vector2(330, 300), small_clearance),
+		"sanity check: the leg passes the nearer rect at the small clearance")
+	var step: Vector2 = pf.next_step(from, to, small_clearance, 0.0, big_corner_clearance)
+	var blocker_grown := blocker.grow(big_corner_clearance + PathField.CORNER_STANDOFF)
+	var corners := [blocker_grown.position, Vector2(blocker_grown.end.x, blocker_grown.position.y),
+			blocker_grown.end, Vector2(blocker_grown.position.x, blocker_grown.end.y)]
+	var on_blocker: bool = false
+	for c in corners:
+		if step.distance_to(c) < 0.001:
+			on_blocker = true
+	assert_true(on_blocker,
+		"the funnel rounds the rect the leg actually hits, at the corner margin: got %s" % step)
+
+
 func test_next_step_defaults_corner_clearance_to_the_same_clearance() -> void:
 	# Backward compatibility: every existing caller that omits corner_clearance (every
 	# PathField test above, is_leg_blocked/has_path/next_step_fleeing, and any future

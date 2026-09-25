@@ -2468,7 +2468,7 @@ routing-grid lane.
 
 A deep, narrow column (three files, many ranks) marches a straight leg that
 passes well clear of the hill -- clear of the width it actually sweeps, even
-though the hill sits inside the wider margin a depth-blind reading of the
+though the hill sits inside the wider margin a direction-blind reading of the
 block's footprint would have used. The column holds a dead-straight line the
 whole way instead of swinging wide to round terrain that was never really in
 its path.

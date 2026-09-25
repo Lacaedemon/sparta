@@ -147,7 +147,6 @@ func next_step(from: Vector2, to: Vector2, clearance: float = 0.0, lane_offset: 
 	var path := find_path(from, to)
 	if path.size() < 2:
 		return to
-	var margin: float = corner_clearance if corner_clearance >= 0.0 else clearance
 	# Corridor candidate: the farthest A* path point in direct line of sight.
 	# Candidate waypoints are synthetic cell centres, not real destinations,
 	# so the room-available cap must not quietly shrink their sightlines (see
@@ -181,7 +180,7 @@ func next_step(from: Vector2, to: Vector2, clearance: float = 0.0, lane_offset: 
 	# spirals into the obstacle over a long straightaway). The corridor point
 	# stays the fallback whenever no grown corner is cleanly visible (compound
 	# obstacle geometry, or a walker already shoved inside its own margin).
-	var corner: Vector2 = _funnel_corner(from, to, path, margin, lane_offset)
+	var corner: Vector2 = _funnel_corner(from, to, path, clearance, lane_offset, corner_clearance)
 	if corner.is_finite():
 		return corner
 	return corridor
@@ -471,13 +470,20 @@ func _first_blocking_rect_index(from: Vector2, to: Vector2, clearance: float) ->
 ## `lane_offset` (it's baked into the candidate before any sightline test
 ## runs, not derived from one), so it doesn't reopen the ratcheting hazard
 ## the paragraph above rules out.
+##
+## `clearance` picks WHICH rect blocks the leg -- the straight leg's own swept
+## margin, the same one next_step()'s blocked check used -- and `corner_clearance`
+## (when >= 0.0; negative means "same as clearance") only grows and validates the
+## corner of that rect. Choosing the blocker at the bigger corner margin instead
+## could pick an earlier rect the leg itself never touches, and detour around it.
 func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, clearance: float,
-		lane_offset: float = 0.0) -> Vector2:
+		lane_offset: float = 0.0, corner_clearance: float = -1.0) -> Vector2:
 	var idx: int = _first_blocking_rect_index(from, to, clearance)
 	if idx < 0:
 		return Vector2.INF
+	var margin: float = corner_clearance if corner_clearance >= 0.0 else clearance
 	var rect: Rect2 = _block_rects[idx]
-	var grown: Rect2 = rect.grow(clearance + CORNER_STANDOFF)
+	var grown: Rect2 = rect.grow(margin + CORNER_STANDOFF)
 	var heading: Vector2 = to - from
 	var tangent: Vector2 = heading.orthogonal().normalized() if heading.length_squared() > 0.0 else Vector2.ZERO
 	# Which way around THIS rect: the side of the rect the A* route squeezes
@@ -513,7 +519,7 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 		var side: float = signf(heading.cross(raw_c - centre))
 		if route_side != 0.0 and side != 0.0 and side != route_side:
 			continue
-		if _segment_blocked(from, c, clearance, false):
+		if _segment_blocked(from, c, margin, false):
 			continue
 		var cost: float = from.distance_to(c) + c.distance_to(to)
 		if cost < best_cost:

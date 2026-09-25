@@ -3874,9 +3874,9 @@ const UNKNOWN_EXTENTS := Vector2(-1.0, -1.0)
 
 ## The formation block's half-extents -- (half-width along its own file axis,
 ## half-depth along its own rank axis), in the block's LOCAL frame -- read directly
-## off the LIVE slot layout instead of derived from the headcount. Two effects a
+## off the LIVE slot layout instead of derived from the headcount. Three effects a
 ## headcount-only formula (files/ranks_for()/file_pitch_wu()/rank_pitch_wu()) misses,
-## both fixed for free by reading the slots the layout actually produced:
+## all fixed for free by reading the slots the layout actually produced:
 ##
 ## - A file-major reform's casualty reflow only shortens its OWN file's rear
 ##   (UnitFormation.file_major_block_slots: `rank_counts[file]` increments
