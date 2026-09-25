@@ -1319,7 +1319,8 @@ An idle ranged unit of yours holds its fire rather than loosing a volley at an e
 Your own troops can't newly shoot at, or newly give chase to, what your own fog is hiding from you.
 The same rule holds from the receiving end:
 enemy archers whose side has not sighted your unit are not loosing at it,
-so it neither jogs clear of that fire nor loses nerve to it.
+so it doesn't jog to get clear of that fire,
+or suffer the morale drain of missile fire it can't answer.
 One disclosed exception: an attack already under way is not re-checked
 --- a unit that has already committed to an explicit attack order keeps closing on and fighting that same target's current live position even if your side's perception of it later lapses.
 A replay reproduces the initial fog state and any mid-battle toggles on playback, exactly as recorded.
