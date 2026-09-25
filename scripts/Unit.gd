@@ -3993,9 +3993,9 @@ func _far_tier_half_extents() -> Vector2:
 ## that leg -- plus its soldiers' body radius. Passed to every PathField query as the
 ## base `clearance` (the initial blocked check, and which rect a detour rounds; the
 ## detour legs themselves run at corner_clearance()) -- terrain footprints themselves
-## are exact, and the margin around
-## them is the querying unit's real geometry, not a routing-grid artifact: a 10-man
-## squad skims an obstacle a 140-man line must round wide.
+## are exact, and the margin around them is the querying unit's real geometry, not a
+## routing-grid artifact: a 10-man squad skims an obstacle a 140-man line must round
+## wide.
 ##
 ## `travel_dir` need not be normalized (only its direction matters) and defaults to
 ## ZERO, meaning "direction unknown" -- every caller that doesn't yet know which way it
