@@ -565,17 +565,23 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 	# formation's funnel query against this file's own default-map hill
 	# terrain, where the full start-to-end axis lands on an EXACT
 	# 45-degree grid diagonal through the rect's own centre -- both
-	# components identical multiples of CELL -- misclassifying the
-	# entry/exit corner PAIR on opposite sides of where `heading` (and the
-	# nearest-point axis below) put them: the near, correct-direction corner
-	# reads as excluded, and the far, wrong-direction one reads as
-	# included and, being cheaper, wins the tie-break outright. Anchoring
-	# on the path point nearest the rect instead of `path[0]` fixes this
-	# because that point is exactly where the corridor actually interacts
-	# with the rect, the same locality `route_side` below already keys off
-	# of -- so the axis and the route_side it measures describe the same
-	# approach, not two different legs of a longer corridor stitched
-	# together.
+	# components identical multiples of CELL. On that axis the far,
+	# wrong-direction south-east corner lands on the route's side instead
+	# of the opposite one, so the side filter below (which only excludes a
+	# strictly-opposite corner) no longer removes it; the near,
+	# correct-direction north-east corner stays eligible either way, but
+	# the far one is cheaper by straight-line cost and wins outright.
+	# `heading` and the nearest-point axis below both put the far corner on
+	# the opposite side, where the filter drops it. Anchoring on the path
+	# point nearest the rect instead of `path[0]` fixes this because that
+	# point is where the corridor comes closest to the rect, the same
+	# locality `route_side` below already keys off of -- so the axis and the
+	# route_side it measures describe the same approach, not two different
+	# legs of a longer corridor stitched together. The scan takes the FIRST
+	# path point at the minimum distance, so a tie resolves the same way
+	# every tick for a given path. Untested: a corridor that comes close to
+	# the same rect twice, on two separate legs, anchors on whichever pass is
+	# nearer, which need not be the one this rounding is for.
 	#
 	# The one instability left is a walker whose EQUILIBRIUM position sits
 	# exactly ON a cell boundary and straddles it tick to tick, so the path

@@ -865,11 +865,11 @@ func test_funnel_corner_anchors_on_the_rects_own_approach_not_the_whole_corridor
 	# terrain (Battle.TERRAIN's hill patch): its first leg runs due north
 	# alongside the hill's east face, then turns west only once past it. The
 	# global start-to-end axis (path[-1] - path[0]) averages both legs into
-	# one exact 45-degree grid diagonal, which misclassifies the entry/exit
-	# corner PAIR on the OPPOSITE sides from where `heading` puts them: the
-	# near, correct-direction north-east corner reads as excluded, and the
-	# far, wrong-direction south-east corner reads as included and, being
-	# cheaper, wins the cost tie-break outright. Before this fix, this exact
+	# one exact 45-degree grid diagonal. On that axis the far,
+	# wrong-direction south-east corner lands on the route's side, so the
+	# side filter no longer excludes it; the near, correct-direction
+	# north-east corner stays eligible, but the far one is cheaper by
+	# straight-line cost and wins outright. Before this fix, this exact
 	# geometry made a real unit's facing snap roughly 130 degrees in two
 	# ticks and visibly sidle away from its target for dozens of ticks before
 	# finding its way back -- while the unchanged (heading-based) code, given
