@@ -1609,9 +1609,9 @@ func test_terrain_clearance_is_less_than_pivot_radius_for_a_deep_narrow_column()
 	# A straight march leg along a block's own facing only needs the block's own WIDTH
 	# margin (the files it actually sweeps perpendicular to the direction of travel),
 	# not the full corner-man half-diagonal _pivot_radius() folds DEPTH into too -- that
-	# fuller allowance only matters where the route actually turns
-	# (PathField._funnel_corner, which still receives the unchanged
-	# _pivot_radius()-based margin via a corner query, not this function). A deep,
+	# fuller allowance only matters where the route actually turns (the detour legs
+	# PathField.next_step() returns -- the funnel corner or its corridor fallback --
+	# which run at corner_clearance() instead, not this function). A deep,
 	# narrow column (few files, many ranks) is where the flat diagonal-based clearance
 	# overshoots the block's own frontage the most.
 	var u := _make_unit()

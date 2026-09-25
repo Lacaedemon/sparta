@@ -389,9 +389,9 @@ func test_next_steps_optional_corner_clearance_widens_the_funnel_corner() -> voi
 
 func test_corner_clearance_does_not_pick_a_rect_the_leg_never_touches() -> void:
 	# In the funnel, corner_clearance only grows and validates the corner of the rect
-	# that actually blocks the leg at the straight-leg clearance. A nearer rect that sits beside the
-	# leg -- outside the small clearance, inside the bigger corner margin -- must not
-	# be chosen as the one to round.
+	# that actually blocks the leg at the straight-leg clearance. A nearer rect that
+	# sits beside the leg -- outside the small clearance, inside the bigger corner
+	# margin -- must not be chosen as the one to round.
 	var pf := PathField.new(FIELD)
 	var beside := Rect2(200, 320, 60, 80)    # 20 below the leg: clear at 10, not at 40
 	var blocker := Rect2(400, 250, 60, 100)  # straddles the leg
