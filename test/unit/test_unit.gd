@@ -1907,8 +1907,8 @@ func test_move_to_builds_no_slot_layout_for_a_far_tier_block() -> void:
 
 func test_far_tier_half_extents_match_the_live_slots_for_every_far_layout() -> void:
 	# _far_tier_half_extents() stands in for _formation_local_half_extents() on a far
-	# block, so it must never read smaller (under-clearing terrain) and, for the
-	# ordinary full-rank shapes, should read exactly the same. Each case is demoted
+	# block, so it must never read smaller (under-clearing terrain), and for every
+	# layout below -- under one full rank included -- it reads exactly the same. Each case is demoted
 	# first, so the live-slot reading sees the far tier's own fresh layout.
 	# `max` is the fixture's max_soldiers and `n` the live headcount: frontage() clamps
 	# frontage_override to max_soldiers, so an under-one-rank case needs max >= files
@@ -1919,9 +1919,12 @@ func test_far_tier_half_extents_match_the_live_slots_for_every_far_layout() -> v
 		{"max": 61, "n": 61, "files": 8, "anchor": 0.0, "square": false, "row": false, "exact": true},    # partial rear rank
 		{"max": 40, "n": 40, "files": 5, "anchor": 30.0, "square": false, "row": false, "exact": true},   # anchored
 		{"max": 40, "n": 40, "files": 5, "anchor": -30.0, "square": false, "row": false, "exact": true},  # anchored, other side
-		{"max": 20, "n": 3, "files": 8, "anchor": 0.0, "square": false, "row": false, "exact": false},    # under one rank
+		{"max": 20, "n": 3, "files": 8, "anchor": 0.0, "square": false, "row": false, "exact": true},     # under one rank
+		{"max": 20, "n": 4, "files": 9, "anchor": 0.0, "square": false, "row": false, "exact": true},     # under one rank, other parity
+		{"max": 20, "n": 3, "files": 8, "anchor": 30.0, "square": false, "row": false, "exact": true},    # under one rank, anchored
 		{"max": 61, "n": 61, "files": 8, "anchor": 30.0, "square": false, "row": true, "exact": true},    # row-major, anchored
-		{"max": 20, "n": 3, "files": 8, "anchor": 0.0, "square": false, "row": true, "exact": false},     # row-major, under one rank
+		{"max": 20, "n": 3, "files": 8, "anchor": 0.0, "square": false, "row": true, "exact": true},      # row-major, under one rank
+		{"max": 20, "n": 4, "files": 9, "anchor": 30.0, "square": false, "row": true, "exact": true},     # row-major, under one rank, anchored
 		{"max": 49, "n": 49, "files": 0, "anchor": 0.0, "square": true, "row": false, "exact": true},     # square, full ranks
 		{"max": 50, "n": 50, "files": 0, "anchor": 0.0, "square": true, "row": false, "exact": true},     # square, partial rear rank
 	]

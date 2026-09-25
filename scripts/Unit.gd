@@ -3965,9 +3965,14 @@ func _formation_local_half_extents() -> Vector2:
 ## What is left -- files, ranks, the two pitches (a square's depth runs at file pitch,
 ## UnitFormation.block_slots' own default), and the standing frontage_anchor_offset,
 ## which formation_slots() applies to every non-square layout -- is all read here. A
-## partial rear rank or a headcount under one full rank only ever sits INSIDE these
-## bounds, so the result never under-clears. A test pins it against the live-slot
-## reading for each far-tier layout.
+## partial rear rank only ever sits INSIDE these bounds, so it never under-clears. A
+## headcount under one full rank is measured exactly instead, since reading the whole
+## declared frontage there would re-create the oversized detour this margin exists to
+## avoid: a row-major (or square) rank closes onto the centre and spans soldiers - 1
+## gaps, while a file-major block keeps the full frontage's columns and fills the
+## centred run UnitFormation.file_capacities() starts at (files - soldiers) / 2, so its
+## half-width is that run's farther end from the centre. A test pins every far-tier
+## layout against the live-slot reading.
 func _far_tier_half_extents() -> Vector2:
 	if soldiers <= 0:
 		return Vector2.ZERO
@@ -3982,7 +3987,16 @@ func _far_tier_half_extents() -> Vector2:
 	var squared: bool = in_square()
 	var depth_pitch: float = file_pitch_wu() if squared else rank_pitch_wu()
 	var anchor: float = 0.0 if squared else absf(frontage_anchor_offset)
-	return Vector2(float(files - 1) * file_pitch_wu() * 0.5 + anchor,
+	var half_span: float = float(files - 1) * 0.5   # in file gaps
+	if soldiers < files:
+		if not squared and _effective_file_major_reform():
+			var first: int = (files - soldiers) / 2
+			var centre: float = float(files - 1) * 0.5
+			half_span = maxf(absf(float(first) - centre),
+					absf(float(first + soldiers - 1) - centre))
+		else:
+			half_span = float(soldiers - 1) * 0.5
+	return Vector2(half_span * file_pitch_wu() + anchor,
 			float(maxi(0, ranks - 1)) * depth_pitch * 0.5)
 
 
@@ -4227,8 +4241,9 @@ const FUNNEL_CONGESTION_RANGE_FACTOR := 1.0   # tuned
 ## gets a cheap O(1) estimate, `u._pivot_radius() + u.soldier_body_radius()` -- the
 ## old pivot-radius clearance formula, not `u.corner_clearance()`'s exact live-slot
 ## value. This is deliberately the one place this fix keeps the coarser estimate: the
-## property this fix corrects (a live-slot extent narrower than _pivot_radius()
-## assumes, in an anchored/uneven/relief-widened block) matters for a unit's OWN
+## property this fix corrects (an anchored, uneven file-major, or relief-widened block's
+## live-slot corner extent can be WIDER than _pivot_radius() assumes, so that estimate
+## is not an upper bound and must not be relied on as one) matters for a unit's OWN
 ## terrain/corner queries, which directly bound how close IT routes to solid terrain
 ## -- but here `u` is a candidate in a same-team congestion HEURISTIC, compared only
 ## against a squared-distance threshold to decide whether a tie-break nudge is worth
