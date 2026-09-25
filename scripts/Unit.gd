@@ -3970,9 +3970,10 @@ func _formation_local_half_extents() -> Vector2:
 ## declared frontage there would re-create the oversized detour this margin exists to
 ## avoid: a row-major (or square) rank closes onto the centre and spans soldiers - 1
 ## gaps, while a file-major block keeps the full frontage's columns and fills the
-## centred run UnitFormation.file_capacities() starts at (files - soldiers) / 2, so its
-## half-width is that run's farther end from the centre. A test pins every far-tier
-## layout against the live-slot reading.
+## centred run UnitFormation.file_capacities() starts at (files - soldiers) / 2. Either
+## way the half-width is the farther end of that occupied span from the unit centre
+## once the signed anchor shift is applied. A test pins every far-tier layout against
+## the live-slot reading.
 func _far_tier_half_extents() -> Vector2:
 	if soldiers <= 0:
 		return Vector2.ZERO
@@ -3986,17 +3987,21 @@ func _far_tier_half_extents() -> Vector2:
 	var ranks: int = UnitFormation.ranks_for(soldiers, files)
 	var squared: bool = in_square()
 	var depth_pitch: float = file_pitch_wu() if squared else rank_pitch_wu()
-	var anchor: float = 0.0 if squared else absf(frontage_anchor_offset)
-	var half_span: float = float(files - 1) * 0.5   # in file gaps
+	# The front rank's occupied span, in file gaps either side of the frontage centre.
+	var hi: float = float(files - 1) * 0.5
+	var lo: float = -hi
 	if soldiers < files:
 		if not squared and _effective_file_major_reform():
-			var first: int = (files - soldiers) / 2
-			var centre: float = float(files - 1) * 0.5
-			half_span = maxf(absf(float(first) - centre),
-					absf(float(first + soldiers - 1) - centre))
+			lo = float((files - soldiers) / 2) - hi
+			hi = lo + float(soldiers - 1)
 		else:
-			half_span = float(soldiers - 1) * 0.5
-	return Vector2(half_span * file_pitch_wu() + anchor,
+			hi = float(soldiers - 1) * 0.5
+			lo = -hi
+	# formation_slots() shifts every non-square slot by the SIGNED anchor offset, so the
+	# half-width is whichever end of that shifted span lies farther from the unit centre.
+	var anchor: float = 0.0 if squared else frontage_anchor_offset
+	var pitch: float = file_pitch_wu()
+	return Vector2(maxf(absf(lo * pitch + anchor), absf(hi * pitch + anchor)),
 			float(maxi(0, ranks - 1)) * depth_pitch * 0.5)
 
 

@@ -1922,6 +1922,7 @@ func test_far_tier_half_extents_match_the_live_slots_for_every_far_layout() -> v
 		{"max": 20, "n": 3, "files": 8, "anchor": 0.0, "square": false, "row": false, "exact": true},     # under one rank
 		{"max": 20, "n": 4, "files": 9, "anchor": 0.0, "square": false, "row": false, "exact": true},     # under one rank, other parity
 		{"max": 20, "n": 3, "files": 8, "anchor": 30.0, "square": false, "row": false, "exact": true},    # under one rank, anchored
+		{"max": 20, "n": 3, "files": 8, "anchor": -30.0, "square": false, "row": false, "exact": true},   # under one rank, anchored other side
 		{"max": 61, "n": 61, "files": 8, "anchor": 30.0, "square": false, "row": true, "exact": true},    # row-major, anchored
 		{"max": 20, "n": 3, "files": 8, "anchor": 0.0, "square": false, "row": true, "exact": true},      # row-major, under one rank
 		{"max": 20, "n": 4, "files": 9, "anchor": 30.0, "square": false, "row": true, "exact": true},     # row-major, under one rank, anchored
