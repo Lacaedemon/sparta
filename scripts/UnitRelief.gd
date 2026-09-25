@@ -51,8 +51,20 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 		# target_enemy below -- landing it in _think()'s exempt target_enemy != null chase
 		# path with no perception check ever having run. See Unit._enemy_is_perceived's own
 		# doc comment for the authoritative caller list this belongs to.
-		var candidate: Unit = UnitTargeting.nearest_enemy(tired)
-		if candidate != null and u.fresh_pick_allowed(candidate):
+		# fresh_pick_allowed is passed to nearest_enemy as a RANKING predicate too (not just
+		# checked afterward, below): without it, an enemy closer to `tired` that this gate
+		# would reject (out of contact with the RELIEVER `u`, not perceived) wins the
+		# nearest-of-any ranking around tired's own position and blocks a farther enemy the
+		# reliever CAN engage from ever being considered -- the same fog-of-war shadowing gap
+		# UnitTargeting.nearest_enemy_to's own `predicate` parameter closes (see its doc
+		# comment). Bound to `u` (the reliever), not `tired` (the search center/team) --
+		# fresh_pick_allowed is checked against whichever unit will actually inherit the
+		# pick, matching the un-gated check this replaces. No separate post-selection
+		# fresh_pick_allowed check remains: any non-null `candidate` already passed that
+		# exact call as the predicate, on the same u/candidate pair, with nothing mutating
+		# either in between -- a second call would just repeat it.
+		var candidate: Unit = UnitTargeting.nearest_enemy(tired, Callable(u, "fresh_pick_allowed"))
+		if candidate != null:
 			foe = candidate
 	u.target_enemy = foe
 	if foe != null:

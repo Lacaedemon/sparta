@@ -1409,3 +1409,507 @@ func test_unit_relief_begin_still_commits_the_fallback_target_when_fog_is_off() 
 	assert_eq(reliever.target_enemy, enemy,
 		"fog off: ai_team_perceives is unconditionally true, so the fallback pick commits " +
 		"exactly as it always did")
+
+
+# --- BUG: a closer unperceived enemy shadowed a farther, perceived one out of ranking -----
+#
+# Copilot review finding: current_target()/nearest_enemy_to() (and the other
+# UnitTargeting ranking functions) picked the geometrically nearest candidate from the
+# omniscient live groups FIRST, then let a caller's own _enemy_is_perceived/
+# fresh_pick_allowed check reject that pick afterward. When an unperceived enemy sits
+# closer than a perceived one, the unperceived candidate won the nearest-of-any ranking,
+# failed the post-hoc gate, and the caller came up empty -- even though a farther, fully
+# engageable enemy was sitting right there and the caller never even looked at it. Fixed by
+# threading a `predicate` parameter through UnitTargeting's ranking functions (see
+# nearest_enemy_to's own doc comment) so ranking itself skips a candidate the predicate
+# rejects, letting a farther ELIGIBLE candidate win instead of the caller coming back empty.
+#
+# Each test below stages TWO enemies: one CLOSER and hidden (outside a forced sight range),
+# one FARTHER and perceived (via a second team-1 "spotter" unit with just enough sight to
+# see only the farther one -- not the closer one). Team perception is a per-team union
+# across all of that team's own units (ai_team_perceives), so the spotter's own sighting is
+# enough to make the farther enemy perceived without the acting unit itself needing to see
+# it directly.
+
+
+# A second, farther candidate than DETECTED_NOT_PERCEIVED_POS's own 120 wu from WATCHER_POS
+# (see that constant's own derivation above): 150 wu, still inside both Unit.DETECTION_RANGE
+# (190 wu) and the default Archers' missile_range (160 wu, RANGED_RANGE = 8 m *
+# WorldScale.WU_PER_M), and inside Unit.SUPPORT_GUARD_RADIUS (180 wu) too, so one position
+# serves every fixed site exercised below.
+const FARTHER_VISIBLE_POS := WATCHER_POS + Vector2(150.0, 0.0)
+
+# A spotter positioned close enough to FARTHER_VISIBLE_POS (30 wu away) to perceive it at
+# SPOTTER_SIGHT, but far enough from DETECTED_NOT_PERCEIVED_POS (the closer, hidden enemy's
+# own position -- ~212 wu from here) that the same forced sight does NOT also reveal it --
+# see each test's own sanity checks below.
+const SPOTTER_POS := FARTHER_VISIBLE_POS + Vector2(0.0, 30.0)
+const SPOTTER_SIGHT: float = SHRUNK_SIGHT
+
+
+func test_idle_ranged_ai_unit_fires_on_a_farther_perceived_enemy_past_a_closer_hidden_one() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x, "y": WATCHER_POS.y, "ammo": 5},
+		{"team": 1, "type": "Infantry", "x": SPOTTER_POS.x, "y": SPOTTER_POS.y},   # spotter
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x,
+				"y": DETECTED_NOT_PERCEIVED_POS.y},   # closer, hidden
+		{"team": 0, "type": "Infantry", "x": FARTHER_VISIBLE_POS.x,
+				"y": FARTHER_VISIBLE_POS.y},   # farther, perceived
+	]
+	add_child_autofree(battle)
+	# Identify by position rather than group-iteration order, matching this file's own
+	# UnitRelief convention above.
+	var watcher: Unit = null
+	var spotter: Unit = null
+	for u in _team_units(1):
+		if is_equal_approx(u.position.x, WATCHER_POS.x):
+			watcher = u
+		else:
+			spotter = u
+	assert_not_null(watcher, "sanity: the archer spawned at WATCHER_POS")
+	assert_not_null(spotter, "sanity: the spotter spawned at SPOTTER_POS")
+	var hidden_enemy: Unit = null
+	var visible_enemy: Unit = null
+	for u in _team_units(0):
+		if is_equal_approx(u.position.y, DETECTED_NOT_PERCEIVED_POS.y):
+			hidden_enemy = u
+		else:
+			visible_enemy = u
+	assert_not_null(hidden_enemy, "sanity: the closer enemy spawned at DETECTED_NOT_PERCEIVED_POS")
+	assert_not_null(visible_enemy, "sanity: the farther enemy spawned at FARTHER_VISIBLE_POS")
+
+	# Set BEFORE the first physics tick, same reasoning as the standoff tests above.
+	watcher.sight_range = SHRUNK_SIGHT
+	spotter.sight_range = SPOTTER_SIGHT
+
+	assert_lt(watcher.position.distance_to(hidden_enemy.position),
+			watcher.position.distance_to(visible_enemy.position),
+			"sanity check: the hidden enemy really is CLOSER to the archer than the visible one")
+	assert_false(battle.ai_team_perceives(1, hidden_enemy),
+			"sanity check: team 1 does not perceive the closer enemy")
+	assert_true(battle.ai_team_perceives(1, visible_enemy),
+			"sanity check: the spotter's own sighting makes team 1 perceive the farther enemy")
+	assert_lt(watcher.position.distance_to(visible_enemy.position), watcher.missile_range,
+			"sanity check: the farther, perceived enemy is still within the archer's own " +
+			"missile_range")
+
+	# _think() called directly (matching the SWEEP_ROUTERS/ROLL_THE_LINE/CHASE tests' own
+	# convention above), NOT a physics-frame loop: looping past Battle.AI_PERIOD would let
+	# the command-level AI (_run_enemy_ai, already correctly fogged since an earlier phase)
+	# issue its own ATTACK order targeting the perceived enemy, masking whatever this
+	# specific per-tick fresh-pick branch does on its own -- this test isolates THAT branch.
+	watcher._think(0.1)
+
+	assert_eq(watcher.state, Unit.State.FIGHTING,
+			"a closer hidden enemy must not block the archer from firing on a farther, " +
+			"perceived enemy still within missile_range")
+	assert_eq(watcher.target_enemy, visible_enemy,
+			"the archer commits to the farther, PERCEIVED enemy, not the closer hidden one " +
+			"that used to win the nearest-of-any ranking and get rejected with nothing to " +
+			"fall back to")
+
+
+func test_idle_ranged_ai_unit_still_fires_on_the_nearest_enemy_when_fog_is_off() -> void:
+	# The mirror check for fog OFF: with perception unconditionally true, the archer engages
+	# whichever enemy is actually NEAREST (the hidden-under-fog one, here) -- exactly the
+	# pre-existing, byte-for-byte-unchanged omniscient behaviour this fix must not disturb.
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x, "y": WATCHER_POS.y, "ammo": 5},
+		{"team": 1, "type": "Infantry", "x": SPOTTER_POS.x, "y": SPOTTER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x,
+				"y": DETECTED_NOT_PERCEIVED_POS.y},   # nearer
+		{"team": 0, "type": "Infantry", "x": FARTHER_VISIBLE_POS.x,
+				"y": FARTHER_VISIBLE_POS.y},   # farther
+	]
+	add_child_autofree(battle)
+	var watcher: Unit = null
+	for u in _team_units(1):
+		if is_equal_approx(u.position.x, WATCHER_POS.x):
+			watcher = u
+	var nearer_enemy: Unit = null
+	for u in _team_units(0):
+		if is_equal_approx(u.position.y, DETECTED_NOT_PERCEIVED_POS.y):
+			nearer_enemy = u
+	watcher.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+
+	watcher._think(0.1)   # direct call -- see the fog-on test's own comment above
+
+	assert_eq(watcher.state, Unit.State.FIGHTING,
+			"fog off: the archer still fires, exactly as before phase 5")
+	assert_eq(watcher.target_enemy, nearer_enemy,
+			"fog off: with no perception gate at all, the NEAREST enemy wins, unchanged " +
+			"from before this fix")
+
+
+func test_support_stance_ranged_unit_fires_on_a_farther_perceived_threat_past_a_closer_hidden_one() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},   # ward
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x + 30.0, "y": WATCHER_POS.y,
+				"ammo": 5},   # supporter
+		{"team": 1, "type": "Infantry", "x": SPOTTER_POS.x, "y": SPOTTER_POS.y},   # spotter
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x,
+				"y": DETECTED_NOT_PERCEIVED_POS.y},   # closer, hidden threat
+		{"team": 0, "type": "Infantry", "x": FARTHER_VISIBLE_POS.x,
+				"y": FARTHER_VISIBLE_POS.y},   # farther, perceived threat
+	]
+	add_child_autofree(battle)
+	var team1: Array = _team_units(1)
+	var ward: Unit = null
+	var supporter: Unit = null
+	var spotter: Unit = null
+	for u in team1:
+		if is_equal_approx(u.position.x, WATCHER_POS.x) and is_equal_approx(u.position.y, WATCHER_POS.y):
+			ward = u
+		elif is_equal_approx(u.position.y, WATCHER_POS.y):
+			supporter = u
+		else:
+			spotter = u
+	assert_not_null(ward, "sanity: the ward spawned at WATCHER_POS")
+	assert_not_null(supporter, "sanity: the supporter spawned 30 wu from the ward")
+	assert_not_null(spotter, "sanity: the spotter spawned at SPOTTER_POS")
+	var hidden_threat: Unit = null
+	var visible_threat: Unit = null
+	for u in _team_units(0):
+		if is_equal_approx(u.position.y, DETECTED_NOT_PERCEIVED_POS.y):
+			hidden_threat = u
+		else:
+			visible_threat = u
+	assert_not_null(hidden_threat, "sanity: the closer threat spawned at DETECTED_NOT_PERCEIVED_POS")
+	assert_not_null(visible_threat, "sanity: the farther threat spawned at FARTHER_VISIBLE_POS")
+
+	for u in [ward, supporter]:
+		u.sight_range = SHRUNK_SIGHT
+	spotter.sight_range = SPOTTER_SIGHT
+	supporter.order_mode = Unit.ORDER_SUPPORT
+	supporter.support_target = ward
+
+	assert_lt(ward.position.distance_to(hidden_threat.position),
+			ward.position.distance_to(visible_threat.position),
+			"sanity check: the hidden threat really is CLOSER to the ward than the visible one")
+	assert_false(battle.ai_team_perceives(1, hidden_threat),
+			"sanity check: team 1 does not perceive the closer threat")
+	assert_true(battle.ai_team_perceives(1, visible_threat),
+			"sanity check: the spotter's own sighting makes team 1 perceive the farther threat")
+	assert_lt(ward.position.distance_to(visible_threat.position), Unit.SUPPORT_GUARD_RADIUS,
+			"sanity check: the farther, perceived threat is still within SUPPORT_GUARD_RADIUS " +
+			"of the ward")
+	assert_lt(supporter.position.distance_to(visible_threat.position), supporter.missile_range,
+			"sanity check: the farther, perceived threat is still within the supporter's own " +
+			"missile_range")
+	var start_ammo: int = supporter.missile_ammo
+
+	for _i in range(30):
+		supporter._support_tick(1.0 / 60.0)
+
+	assert_lt(supporter.missile_ammo, start_ammo,
+			"a closer hidden threat must not block the supporter from firing on a farther, " +
+			"perceived threat still within missile_range and SUPPORT_GUARD_RADIUS")
+	assert_eq(supporter.state, Unit.State.FIGHTING,
+			"the supporter enters FIGHTING against the farther, perceived threat")
+
+
+func test_support_stance_ranged_unit_still_fires_on_the_nearest_threat_when_fog_is_off() -> void:
+	# The mirror check for fog OFF: with perception unconditionally true, the supporter
+	# engages whichever threat is actually NEAREST the ward -- unchanged from before this fix.
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x + 30.0, "y": WATCHER_POS.y,
+				"ammo": 5},
+		{"team": 1, "type": "Infantry", "x": SPOTTER_POS.x, "y": SPOTTER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x,
+				"y": DETECTED_NOT_PERCEIVED_POS.y},
+		{"team": 0, "type": "Infantry", "x": FARTHER_VISIBLE_POS.x, "y": FARTHER_VISIBLE_POS.y},
+	]
+	add_child_autofree(battle)
+	var team1: Array = _team_units(1)
+	var ward: Unit = null
+	var supporter: Unit = null
+	for u in team1:
+		if is_equal_approx(u.position.x, WATCHER_POS.x) and is_equal_approx(u.position.y, WATCHER_POS.y):
+			ward = u
+		elif is_equal_approx(u.position.y, WATCHER_POS.y):
+			supporter = u
+	for u in team1:
+		u.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+	supporter.order_mode = Unit.ORDER_SUPPORT
+	supporter.support_target = ward
+	var start_ammo: int = supporter.missile_ammo
+
+	for _i in range(30):
+		supporter._support_tick(1.0 / 60.0)
+
+	assert_lt(supporter.missile_ammo, start_ammo,
+			"fog off: the supporter still fires, exactly as before phase 5")
+
+
+func test_idle_ai_unit_auto_advances_on_a_farther_perceived_enemy_past_a_closer_hidden_one() -> void:
+	# A third fixed site, exercising the general current_target() fallback that feeds
+	# _think()'s auto-advance-on-detect branch (Unit._think, ~line 3153) -- distinct code
+	# from the ranged-fire and SUPPORT sites above, sharing the same UnitTargeting.
+	# current_target() call the melee/chase branches use too.
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 1, "type": "Infantry", "x": SPOTTER_POS.x, "y": SPOTTER_POS.y},   # spotter
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x,
+				"y": DETECTED_NOT_PERCEIVED_POS.y},   # closer, hidden
+		{"team": 0, "type": "Infantry", "x": FARTHER_VISIBLE_POS.x,
+				"y": FARTHER_VISIBLE_POS.y},   # farther, perceived
+	]
+	add_child_autofree(battle)
+	var watcher: Unit = null
+	var spotter: Unit = null
+	for u in _team_units(1):
+		if is_equal_approx(u.position.x, WATCHER_POS.x):
+			watcher = u
+		else:
+			spotter = u
+	var hidden_enemy: Unit = null
+	var visible_enemy: Unit = null
+	for u in _team_units(0):
+		if is_equal_approx(u.position.y, DETECTED_NOT_PERCEIVED_POS.y):
+			hidden_enemy = u
+		else:
+			visible_enemy = u
+	watcher.sight_range = SHRUNK_SIGHT
+	spotter.sight_range = SPOTTER_SIGHT
+	assert_false(battle.ai_team_perceives(1, hidden_enemy),
+			"sanity check: team 1 does not perceive the closer enemy")
+	assert_true(battle.ai_team_perceives(1, visible_enemy),
+			"sanity check: the spotter's own sighting makes team 1 perceive the farther enemy")
+	var start_pos: Vector2 = watcher.position
+	var start_dist_to_visible: float = start_pos.distance_to(visible_enemy.position)
+	var start_dist_to_hidden: float = start_pos.distance_to(hidden_enemy.position)
+
+	watcher._think(0.1)
+
+	assert_lt(watcher.position.distance_to(visible_enemy.position), start_dist_to_visible,
+			"the unit advances toward the farther, PERCEIVED enemy instead of standing idle")
+	assert_almost_eq(watcher.position.distance_to(hidden_enemy.position), start_dist_to_hidden,
+			1.0, "the unit does not advance toward the closer, hidden enemy at all")
+
+
+# --- the same closer-hidden-shadows-farther-visible bug, at the two sites the review's own
+# --- summary named alongside SUPPORT: relief, and far-tier reacquisition -----------------
+#
+# Both UnitRelief.begin and FarTierCombat.engaged_target already had a SINGLE-enemy
+# regression above (the "BUG: UnitRelief.begin's fresh fallback pick was not
+# perception-gated" and "far-tier attrition" sections). A single candidate cannot tell
+# ranking-time exclusion (this fix) apart from a post-hoc rejection that merely returns
+# nothing -- both produce the identical "no target" result when there is only one enemy to
+# reject. Only a second, farther, ELIGIBLE candidate can distinguish the two: reverting the
+# predicate wiring at just one of these two call sites, with the post-selection gate left
+# alone, still passes every single-enemy test but drops straight back into the bug these two
+# tests exist to catch.
+
+
+func test_unit_relief_begin_commits_a_farther_perceived_fallback_past_a_closer_hidden_one() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},   # tired
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x + 80.0, "y": WATCHER_POS.y},   # reliever
+		{"team": 0, "type": "Infantry", "x": SPOTTER_POS.x, "y": SPOTTER_POS.y},   # spotter
+		{"team": 1, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x,
+				"y": DETECTED_NOT_PERCEIVED_POS.y},   # closer to tired, hidden
+		{"team": 1, "type": "Infantry", "x": FARTHER_VISIBLE_POS.x,
+				"y": FARTHER_VISIBLE_POS.y},   # farther from tired, perceived
+	]
+	add_child_autofree(battle)
+	# Identify by position, matching this file's own UnitRelief convention above.
+	var tired: Unit = null
+	var reliever: Unit = null
+	var spotter: Unit = null
+	for u in _team_units(0):
+		if is_equal_approx(u.position.x, WATCHER_POS.x):
+			tired = u
+		elif is_equal_approx(u.position.x, WATCHER_POS.x + 80.0):
+			reliever = u
+		else:
+			spotter = u
+	assert_not_null(tired, "sanity: the tired unit spawned at WATCHER_POS")
+	assert_not_null(reliever, "sanity: the reliever unit spawned 80 wu from the tired unit")
+	assert_not_null(spotter, "sanity: the spotter spawned at SPOTTER_POS")
+	var hidden_enemy: Unit = null
+	var visible_enemy: Unit = null
+	for u in _team_units(1):
+		if is_equal_approx(u.position.y, DETECTED_NOT_PERCEIVED_POS.y):
+			hidden_enemy = u
+		else:
+			visible_enemy = u
+	assert_not_null(hidden_enemy, "sanity: the closer enemy spawned at DETECTED_NOT_PERCEIVED_POS")
+	assert_not_null(visible_enemy, "sanity: the farther enemy spawned at FARTHER_VISIBLE_POS")
+
+	tired.sight_range = SHRUNK_SIGHT
+	reliever.sight_range = SHRUNK_SIGHT
+	spotter.sight_range = SPOTTER_SIGHT
+	tired.target_enemy = null   # exercise the fallback branch, not the inherit branch
+	battle._tick_fog()
+
+	assert_lt(tired.position.distance_to(hidden_enemy.position),
+			tired.position.distance_to(visible_enemy.position),
+			"sanity check: the hidden enemy really is CLOSER to tired (the fallback pick's " +
+			"own search center) than the visible one")
+	assert_false(battle.ai_team_perceives(0, hidden_enemy),
+			"sanity check: team 0 does not perceive the closer enemy")
+	assert_true(battle.ai_team_perceives(0, visible_enemy),
+			"sanity check: the spotter's own sighting makes team 0 perceive the farther enemy")
+	assert_null(reliever.target_enemy, "no target committed before the relief swap")
+
+	var order: Order = Order.new_relief(tired.uid)
+	UnitRelief.begin(reliever, tired, order)
+
+	assert_eq(reliever.target_enemy, visible_enemy,
+			"a closer hidden enemy at tired's own position must not block the reliever's " +
+			"fresh fallback pick (UnitTargeting.nearest_enemy(tired)) from landing on a " +
+			"farther, perceived enemy the reliever CAN engage")
+	assert_false(reliever.has_move_target,
+			"with a gate-passing foe found, the reliever takes over the fight instead of " +
+			"falling back to the 'truly no foe: advance onto its slot' branch")
+
+
+func test_unit_relief_begin_still_commits_the_nearest_fallback_target_when_fog_is_off() -> void:
+	# The mirror check for fog OFF: with perception unconditionally true, the fallback pick
+	# lands on whichever enemy is actually NEAREST to tired (the hidden-under-fog one, here)
+	# -- exactly the pre-existing, byte-for-byte-unchanged omniscient behaviour this fix must
+	# not disturb.
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": WATCHER_POS.x + 80.0, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": SPOTTER_POS.x, "y": SPOTTER_POS.y},
+		{"team": 1, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x,
+				"y": DETECTED_NOT_PERCEIVED_POS.y},   # nearer to tired
+		{"team": 1, "type": "Infantry", "x": FARTHER_VISIBLE_POS.x, "y": FARTHER_VISIBLE_POS.y},
+	]
+	add_child_autofree(battle)
+	var tired: Unit = null
+	var reliever: Unit = null
+	for u in _team_units(0):
+		if is_equal_approx(u.position.x, WATCHER_POS.x):
+			tired = u
+		elif is_equal_approx(u.position.x, WATCHER_POS.x + 80.0):
+			reliever = u
+	var nearer_enemy: Unit = null
+	for u in _team_units(1):
+		if is_equal_approx(u.position.y, DETECTED_NOT_PERCEIVED_POS.y):
+			nearer_enemy = u
+	tired.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+	reliever.sight_range = SHRUNK_SIGHT
+	tired.target_enemy = null
+
+	var order: Order = Order.new_relief(tired.uid)
+	UnitRelief.begin(reliever, tired, order)
+
+	assert_eq(reliever.target_enemy, nearer_enemy,
+			"fog off: with no perception gate at all, the fallback pick lands on whichever " +
+			"enemy is NEAREST to tired, unchanged from before this fix")
+
+
+func test_far_tier_engaged_target_picks_a_farther_perceived_enemy_past_a_closer_hidden_one() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 1, "type": "Infantry", "x": SPOTTER_POS.x, "y": SPOTTER_POS.y},   # spotter
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x,
+				"y": DETECTED_NOT_PERCEIVED_POS.y},   # closer, hidden
+		{"team": 0, "type": "Infantry", "x": FARTHER_VISIBLE_POS.x,
+				"y": FARTHER_VISIBLE_POS.y},   # farther, perceived
+	]
+	add_child_autofree(battle)
+	var watcher: Unit = null
+	var spotter: Unit = null
+	for u in _team_units(1):
+		if is_equal_approx(u.position.x, WATCHER_POS.x):
+			watcher = u
+		else:
+			spotter = u
+	assert_not_null(watcher, "sanity: the archer spawned at WATCHER_POS")
+	assert_not_null(spotter, "sanity: the spotter spawned at SPOTTER_POS")
+	var hidden_enemy: Unit = null
+	var visible_enemy: Unit = null
+	for u in _team_units(0):
+		if is_equal_approx(u.position.y, DETECTED_NOT_PERCEIVED_POS.y):
+			hidden_enemy = u
+		else:
+			visible_enemy = u
+	assert_not_null(hidden_enemy, "sanity: the closer enemy spawned at DETECTED_NOT_PERCEIVED_POS")
+	assert_not_null(visible_enemy, "sanity: the farther enemy spawned at FARTHER_VISIBLE_POS")
+
+	watcher.sight_range = SHRUNK_SIGHT
+	spotter.sight_range = SPOTTER_SIGHT
+	assert_lt(watcher.position.distance_to(hidden_enemy.position),
+			watcher.position.distance_to(visible_enemy.position),
+			"sanity check: the hidden enemy really is CLOSER to the archer than the visible one")
+	assert_false(battle.ai_team_perceives(1, hidden_enemy),
+			"sanity check: team 1 does not perceive the closer enemy")
+	assert_true(battle.ai_team_perceives(1, visible_enemy),
+			"sanity check: the spotter's own sighting makes team 1 perceive the farther enemy")
+	assert_true(FarTierRates.in_striking_range(watcher, visible_enemy),
+			"sanity check: the farther, perceived enemy is still within the archer's own " +
+			"striking range")
+	watcher.tier = FormationTier.FAR
+	watcher.state = Unit.State.FIGHTING
+	watcher.target_enemy = null   # simulates the committed target having just died mid-fight
+
+	var engaged: Unit = FarTierCombat.engaged_target(watcher)
+
+	assert_eq(engaged, visible_enemy,
+			"a closer hidden enemy must not block the far-tier re-acquisition " +
+			"(UnitTargeting.current_target's own fresh-pick fallback) from picking a farther, " +
+			"perceived enemy still in striking range")
+
+
+func test_far_tier_engaged_target_still_picks_the_nearest_enemy_when_fog_is_off() -> void:
+	# The mirror check for fog OFF: with perception unconditionally true, the far-tier
+	# re-acquisition picks whichever enemy is actually NEAREST the watcher (the
+	# hidden-under-fog one, here) -- exactly the pre-existing, byte-for-byte-unchanged
+	# omniscient behaviour this fix must not disturb.
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Archers", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 1, "type": "Infantry", "x": SPOTTER_POS.x, "y": SPOTTER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x,
+				"y": DETECTED_NOT_PERCEIVED_POS.y},   # nearer
+		{"team": 0, "type": "Infantry", "x": FARTHER_VISIBLE_POS.x, "y": FARTHER_VISIBLE_POS.y},
+	]
+	add_child_autofree(battle)
+	var watcher: Unit = null
+	for u in _team_units(1):
+		if is_equal_approx(u.position.x, WATCHER_POS.x):
+			watcher = u
+	var nearer_enemy: Unit = null
+	for u in _team_units(0):
+		if is_equal_approx(u.position.y, DETECTED_NOT_PERCEIVED_POS.y):
+			nearer_enemy = u
+	watcher.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+	watcher.tier = FormationTier.FAR
+	watcher.state = Unit.State.FIGHTING
+	watcher.target_enemy = null
+
+	var engaged: Unit = FarTierCombat.engaged_target(watcher)
+
+	assert_eq(engaged, nearer_enemy,
+			"fog off: with no perception gate at all, the NEAREST enemy wins, unchanged " +
+			"from before this fix")

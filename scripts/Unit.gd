@@ -1771,6 +1771,17 @@ func _start_promoted_move() -> void:
 ## exemption keeps the intended "advance until contact" case unaffected -- the guard that
 ## promotes this order only fires the instant contact is made, so the intended candidate is
 ## normally already in contact when this runs.
+## fresh_pick_allowed is passed to current_target as a RANKING predicate, not just applied
+## after the pick: without it, a closer enemy this gate would reject (out of contact, not
+## perceived) wins the nearest-of-any ranking and blocks a farther enemy that IS already in
+## contact (or perceived) from ever being considered at all -- the still-open fog-of-war gap
+## UnitTargeting.nearest_enemy_to's own `predicate` parameter closes (see its doc comment).
+## No separate post-selection fresh_pick_allowed check remains below: target_enemy is
+## confirmed null just above (the early return right before this call), so current_target
+## always takes its fresh-pick fallback here, never its already-committed-live-target
+## return -- meaning any non-null `candidate` already passed the SAME fresh_pick_allowed
+## call as the predicate, on the same self/candidate pair, with nothing mutating either
+## between the two -- a second call would just repeat it.
 func _start_promoted_attack() -> void:
 	if current_order == null or current_order.type != Order.Type.ATTACK:
 		return
@@ -1778,10 +1789,8 @@ func _start_promoted_attack() -> void:
 		return
 	if target_enemy != null and is_instance_valid(target_enemy):
 		return
-	var candidate: Unit = UnitTargeting.current_target(self)
+	var candidate: Unit = UnitTargeting.current_target(self, Callable(self, "fresh_pick_allowed"))
 	if candidate == null:
-		return
-	if not fresh_pick_allowed(candidate):
 		return
 	target_enemy = candidate
 
@@ -2567,6 +2576,25 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ## list -- and add it here -- rather than assuming _enemy_is_perceived's existence alone
 ## covers it.
 ##
+## Every fresh-pick site above ranks its candidate through UnitTargeting's own `predicate`
+## parameter (nearest_enemy/nearest_enemy_to/nearest_routing_enemy/roll_the_line_target/
+## current_target all take one, forwarded to nearest_enemy_to's candidate loop -- see its
+## own doc comment), passing either this function or fresh_pick_allowed as the predicate to
+## match whichever exemption that site's own post-selection gate already granted. This is
+## NOT the same as ranking unfiltered and rejecting the winner afterward: a closer candidate
+## the gate would reject (out of contact, unperceived) must not be able to shadow a farther
+## candidate it would have accepted out of consideration entirely, which a purely post-hoc
+## gate cannot prevent -- if the nearest-of-any pick is rejected, a post-hoc gate has nothing
+## left to fall back to, and the fresh acquisition comes up empty even though a farther,
+## engageable candidate was sitting right there. Every post-selection gate in this file's own
+## list above is KEPT regardless (most still catch a genuinely different case -- an
+## ALREADY-committed target_enemy, returned by current_target/roll_the_line_target without
+## ever consulting the predicate, whose perception can still lapse tick to tick after
+## commitment); only _start_promoted_attack's and UnitRelief.begin's own post-selection
+## fresh_pick_allowed re-checks were removable, because both sites confirm target_enemy is
+## null immediately beforehand, so their fallback pick can only ever take the
+## predicate-filtered path, never the already-committed one.
+##
 ## Two callers live OUTSIDE this file:
 ## - FarTierCombat.engaged_target (scripts/FarTierCombat.gd) calls this externally
 ##   (u._enemy_is_perceived(target)), matching the near tier's OWN melee-vs-ranged split
@@ -2811,13 +2839,23 @@ func _think(delta: float) -> void:
 	# current_target's own fresh-pick fallback are bare, unfogged detection_range scans --
 	# without this, SWEEP_ROUTERS could commit target_enemy to a fresh, unsighted router,
 	# which would then silently pass the chase branch's own "target_enemy != null" exemption
-	# below as if it had been a genuinely perception-gated commitment.
+	# below as if it had been a genuinely perception-gated commitment. Passed to BOTH calls
+	# as a RANKING predicate (not just applied after the pick): without it, a closer router
+	# (or closer fallback candidate) this gate would reject wins the nearest-of-any ranking
+	# and blocks a farther, perceived one from ever being considered -- the "closer hidden
+	# enemy shadows a farther perceived one" fog-of-war gap UnitTargeting.nearest_enemy_to's
+	# own `predicate` parameter closes (see its doc comment). Neither call passes
+	# fresh_pick_allowed here (unlike the general current_target() call further below): a
+	# router or a swept fallback candidate is not itself melee-contact-exempt at this commit
+	# point, matching this branch's own strict _enemy_is_perceived re-check that follows each
+	# pick.
 	if order_mode == ORDER_SWEEP_ROUTERS:
-		var routing_enemy: Unit = UnitTargeting.nearest_routing_enemy(self)
+		var routing_enemy: Unit = \
+			UnitTargeting.nearest_routing_enemy(self, Callable(self, "_enemy_is_perceived"))
 		if routing_enemy != null and _enemy_is_perceived(routing_enemy):
 			target_enemy = routing_enemy
 		elif target_enemy != null or not has_move_target:
-			var swept: Unit = UnitTargeting.current_target(self)
+			var swept: Unit = UnitTargeting.current_target(self, Callable(self, "_enemy_is_perceived"))
 			if _enemy_is_perceived(swept):
 				target_enemy = swept
 
@@ -2833,15 +2871,25 @@ func _think(delta: float) -> void:
 	# roll_the_line_target's own fresh-pick fallback is a bare, unfogged scan, and this
 	# branch persists its result to target_enemy, which would otherwise silently pass the
 	# chase branch's "already committed" exemption with no perception check ever having run.
+	# Passed to roll_the_line_target as a RANKING predicate for the same reason as
+	# SWEEP_ROUTERS just above: a closer unperceived enemy must not be able to shadow a
+	# farther perceived one out of consideration during ranking itself. The redundant
+	# `not _enemy_is_perceived(rolled)` re-check below stays: it also covers the OTHER
+	# return path through roll_the_line_target -- an already-live, non-routing committed
+	# target_enemy, returned unfiltered without consulting the predicate at all (see that
+	# function's own doc comment) -- which this re-check still needs to drop the instant this
+	# team's perception of it lapses, the same standing invariant the general current_target()
+	# call further below re-applies to its own committed-and-chasing case.
 	var enemy: Unit
 	if order_mode == ORDER_ROLL_THE_LINE:
-		var rolled: Unit = UnitTargeting.roll_the_line_target(self)
+		var rolled: Unit = \
+			UnitTargeting.roll_the_line_target(self, Callable(self, "_enemy_is_perceived"))
 		if rolled != null and not _enemy_is_perceived(rolled):
 			rolled = null
 		enemy = rolled
 		target_enemy = enemy
 	else:
-		enemy = UnitTargeting.current_target(self)
+		enemy = UnitTargeting.current_target(self, Callable(self, "fresh_pick_allowed"))
 	if enemy != null:
 		var dist_sq: float = position.distance_squared_to(enemy.position)
 		# Melee contact distance: for two standing lines facing each other, the
@@ -3255,7 +3303,19 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 ## in lockstep.
 func _support_tick(delta: float) -> void:
 	var ward: Unit = support_target
-	var threat: Unit = UnitTargeting.nearest_enemy_to(self, ward.position, SUPPORT_GUARD_RADIUS)
+	# Ranked with fresh_pick_allowed as a candidate predicate (not just checked after the
+	# pick, below): without it, a threat closer to the ward that this team hasn't perceived
+	# wins the nearest-of-any ranking and blocks a farther, perceived (or already-in-contact)
+	# threat from ever being considered at all -- the closer-hidden-shadows-farther-visible
+	# fog-of-war gap UnitTargeting.nearest_enemy_to's own `predicate` parameter closes (see
+	# its doc comment). fresh_pick_allowed's own contact math (attack_range + RADIUS +
+	# candidate.RADIUS, against THIS unit's own position) is exactly this function's own
+	# `contact_dist`/`in_contact` check just below -- identical because nearest_enemy_to's
+	# default include_routing (false, unchanged here) means a candidate reaching this
+	# predicate is never ROUTING, so fresh_pick_allowed's own ROUTING special case never
+	# triggers either.
+	var threat: Unit = UnitTargeting.nearest_enemy_to(self, ward.position, SUPPORT_GUARD_RADIUS,
+			false, false, Callable(self, "fresh_pick_allowed"))
 	if threat != null:
 		var dist_sq: float = position.distance_squared_to(threat.position)
 		var contact_dist: float = attack_range + RADIUS + threat.RADIUS

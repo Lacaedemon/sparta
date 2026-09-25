@@ -57,13 +57,27 @@ static func can_be_struck(target: Unit) -> bool:
 ## when u.target_enemy has died or gone invalid, and never persists that pick back to
 ## target_enemy -- so a FRESH melee pick is still exempt (mirrors the near-tier melee branch,
 ## which has no perception check at all, fresh or committed), while a FRESH ranged pick is
-## covered by the same re-check every ranged tick already gets.
+## covered by the same re-check every ranged tick already gets. That fresh pick is now RANKED
+## with Unit.fresh_pick_allowed as current_target's own predicate (see the call below and
+## UnitTargeting.nearest_enemy_to's doc comment): a closer enemy out of contact and
+## unperceived no longer shadows a farther one already in contact (or perceived) out of
+## consideration entirely -- it used to win the nearest-of-any pick regardless, leaving this
+## function's own perception re-check just below to null it out even when a farther,
+## engageable formation existed.
 static func engaged_target(u: Unit) -> Unit:
 	if not can_fight(u) or not u.is_inside_tree():
 		return null
 	if u.state != Unit.State.FIGHTING or u.is_maneuver_turning():
 		return null
-	var target: Unit = UnitTargeting.current_target(u)
+	# fresh_pick_allowed passed as a RANKING predicate (mirroring the near tier's own
+	# current_target() call in Unit._think, ~line 2844): without it, a closer enemy this
+	# gate would reject (out of contact, not perceived) wins the nearest-of-any ranking and
+	# blocks a farther enemy already in contact (or perceived) from ever being considered --
+	# the closer-hidden-shadows-farther-visible fog-of-war gap UnitTargeting.nearest_enemy_to's
+	# own `predicate` parameter closes (see its doc comment). An ALREADY-live committed
+	# target_enemy is unaffected either way (current_target returns it unfiltered, before
+	# ever consulting the predicate).
+	var target: Unit = UnitTargeting.current_target(u, Callable(u, "fresh_pick_allowed"))
 	if target == null:
 		return null
 	if FarTierRates.resolves_as_ranged(u, target) and not u._enemy_is_perceived(target):
