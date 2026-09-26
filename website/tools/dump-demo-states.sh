@@ -24,6 +24,13 @@
 #   GODOT_BIN                Godot 4.7 binary (default: godot).
 #   SPARTA_DUMP_STATE_TIMEOUT   Hard per-clip timeout in seconds (default 300).
 #   SPARTA_STATE_TICK_STEP   Tick sampling cadence (default 60 -- once per sim second).
+#   SPARTA_STATE_DENSE_FROM  When set, also sample every SPARTA_STATE_DENSE_STEP ticks
+#                            (default 2) from this tick through the clip's end, on top of
+#                            the regular cadence. The demo diff sets it to a changed clip's
+#                            first divergent tick, so a facing snap that starts and ends
+#                            between two regular samples is still seen by DemoDefects.
+#                            Applies to every selected clip, so pair it with a one-clip
+#                            SPARTA_DUMP_CLIPS.
 #   SPARTA_DUMP_CLIPS        Comma-separated catalog clip names to dump (default: empty,
 #                            the whole catalog). A one-clip dump is the cheap way to
 #                            reproduce a single sweep row, or to get one platform's
@@ -50,6 +57,21 @@ OUT_DIR="${1:-$PROJECT_DIR/website/state-transcripts}"
 GODOT_BIN="${GODOT_BIN:-godot}"
 DUMP_TIMEOUT="${SPARTA_DUMP_STATE_TIMEOUT:-300}"
 TICK_STEP="${SPARTA_STATE_TICK_STEP:-60}"
+DENSE_FROM="${SPARTA_STATE_DENSE_FROM:-}"
+DENSE_STEP="${SPARTA_STATE_DENSE_STEP:-2}"
+case "$DENSE_FROM" in
+  *[!0-9]*) echo "SPARTA_STATE_DENSE_FROM must be a tick number, got '$DENSE_FROM'" >&2; exit 2 ;;
+esac
+# Digits only, then read as base 10: a zero-padded value would otherwise be octal, so
+# "08" aborts the arithmetic and "00" is a zero step that never advances the loop.
+case "$DENSE_STEP" in
+  ''|*[!0-9]*) echo "SPARTA_STATE_DENSE_STEP must be a positive tick count, got '$DENSE_STEP'" >&2; exit 2 ;;
+esac
+if [ $(( 10#$DENSE_STEP )) -le 0 ]; then
+  echo "SPARTA_STATE_DENSE_STEP must be a positive tick count, got '$DENSE_STEP'" >&2
+  exit 2
+fi
+DENSE_STEP=$(( 10#$DENSE_STEP ))
 ONLY_CLIPS="${SPARTA_DUMP_CLIPS:-}"
 
 # shellcheck source=../../tools/lib/run-bounded.sh
@@ -82,11 +104,16 @@ GODOT_VERSION="$("$GODOT_BIN" --version 2>/dev/null | tail -n1 || true)"
   printf 'os=%s\n' "$(uname -s)"
   printf 'godot=%s\n' "${GODOT_VERSION:-unknown}"
   printf 'tick_step=%s\n' "$TICK_STEP"
+  if [ -n "$DENSE_FROM" ]; then
+    printf 'dense_from=%s\ndense_step=%s\n' "$DENSE_FROM" "$DENSE_STEP"
+  fi
   printf 'clips=%s\n' "${ONLY_CLIPS:-all}"
 } > "$OUT_DIR/platform.txt"
 
 # The tick list for a clip: 8 (an early sanity sample, past spawn), then every TICK_STEP
-# ticks through the covered range, always including the final covered tick.
+# ticks through the covered range, always including the final covered tick. With
+# DENSE_FROM set, every DENSE_STEP ticks from there through the covered range are added,
+# and the merged list is sorted and de-duplicated.
 tick_list() {
   local fixed_fps="$1" max_frames="$2"
   local covered=$(( max_frames * 60 / fixed_fps ))
@@ -95,7 +122,16 @@ tick_list() {
     ticks="$ticks,$t"
     t=$(( t + TICK_STEP ))
   done
-  echo "$ticks,$covered"
+  ticks="$ticks,$covered"
+  if [ -n "$DENSE_FROM" ]; then
+    t=$(( 10#$DENSE_FROM ))
+    while [ "$t" -lt "$covered" ]; do
+      ticks="$ticks,$t"
+      t=$(( t + DENSE_STEP ))
+    done
+    ticks="$(printf '%s\n' "$ticks" | tr ',' '\n' | sort -n -u | paste -sd, -)"
+  fi
+  echo "$ticks"
 }
 
 for spec in "${DEMOS[@]}"; do
