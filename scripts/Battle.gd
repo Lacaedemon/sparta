@@ -3054,6 +3054,20 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 	var attack_targets: Array = []
 	if cmd.get("group_attack", GroupAttackMode.FOCUSED) == GroupAttackMode.DISTRIBUTED \
 			and target_unit != null and not is_move:
+		# The ordering team's own perception gates every candidate here EXCEPT target_unit
+		# itself, which is exempt: it was explicitly selected (a player click SelectionManager
+		# already filtered to a visible enemy, or an AI decision that resolved its own target
+		# through ai_team_perceives), so it is visible by construction. Without this filter, a
+		# hidden enemy nearer to the click than target_unit would still take an earlier slot in
+		# the proximity sort below and be handed to one of the other ordered units as a fresh,
+		# committed ATTACK target -- exactly the fresh-pick-must-be-perceived rule
+		# Unit._enemy_is_perceived's own doc comment lists for every other per-unit acquisition
+		# site, reached here through the group command layer instead.
+		var ordering_team: int = -1
+		if not cmd["units"].is_empty():
+			var first_ordered: Unit = _unit_by_uid(int(cmd["units"][0]))
+			if first_ordered != null:
+				ordering_team = first_ordered.team
 		# Scan both "units" and "routers" --- a routing (broken or shattered) enemy is
 		# still a live, fightable candidate (see UnitTargeting.nearest_enemy's
 		# include_routing); it just lives in the other group while fleeing.
@@ -3062,6 +3076,8 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				var candidate: Unit = node as Unit
 				if candidate == null or candidate.team != target_unit.team \
 						or candidate.state == Unit.State.DEAD:
+					continue
+				if candidate != target_unit and not ai_team_perceives(ordering_team, candidate):
 					continue
 				attack_targets.append(candidate)
 		var ref_pos: Vector2 = target_unit.position

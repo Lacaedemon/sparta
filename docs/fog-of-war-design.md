@@ -988,10 +988,14 @@ determinism on replay is preserved with fog active.
 `test/unit/test_battle_ai_fog.gd`,
 including a fixed-seed replay-determinism check under fog
 and fog-on/fog-off coverage for each independent per-unit path found during review
-(across three rounds so far)
+(across four rounds so far)
 to bypass the command layer's own fog gate entirely --
 `Unit._think()`'s and `Unit._support_tick`'s own not-yet-engaged targeting decisions, plus
-far-tier attrition's own re-acquisition fallback, all closed the same way; see
+far-tier attrition's own re-acquisition fallback, all closed the same way -- plus a gap in the
+command layer's OWN candidate pool: `Battle._apply_order_cmd`'s DISTRIBUTED-attack branch
+pre-sorted every live enemy by proximity to the clicked target with no perception filter at
+all, so an ordered unit other than the one whose target was explicitly clicked could still be
+handed a fresh, committed attack on an enemy its own side does not perceive; see
 `Unit._enemy_is_perceived`'s own doc comment for the complete, current list rather than
 re-enumerating it here.
 **One known gap, outside this phase's own scope, not covered by "met" above:**

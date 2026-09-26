@@ -13,6 +13,7 @@ const GENERAL_PATH := "res://scripts/General.gd"
 const PLAYER_DELEGATION_PATH := "res://scripts/PlayerDelegation.gd"
 
 const WorldScale = preload("res://scripts/WorldScale.gd")
+const BattleScript = preload("res://scripts/Battle.gd")
 
 const AI_PERIOD: int = 60   # Battle.AI_PERIOD -- the first _run_enemy_ai() decision is at tick 0.
 
@@ -1968,3 +1969,155 @@ func test_far_tier_engaged_target_still_picks_the_nearest_enemy_when_fog_is_off(
 	assert_eq(engaged, nearer_enemy,
 			"fog off: with no perception gate at all, the NEAREST enemy wins, unchanged " +
 			"from before this fix")
+
+
+# --- distributed group ATTACK: the fresh-pick sweep at the command layer ---------------
+#
+# Battle._apply_order_cmd's own DISTRIBUTED-attack branch pre-sorts every live enemy by
+# proximity to the CLICKED target and hands each ORDERED unit its own slot from that list
+# (docs/fog-of-war-design.md's own enumeration of the gated fresh-pick sites). The clicked
+# target itself is exempt -- it is visible by construction (a player click, or an AI
+# decision, already resolved it through perception before this command was built) -- but
+# every OTHER candidate in that list is a fresh pick exactly like the ones
+# Unit._enemy_is_perceived's own doc comment already gates, just reached through the group
+# command layer instead of a per-unit acquisition. Before the fix, a hidden enemy nearer to
+# the click than a farther, perceived one would still win an earlier slot in the proximity
+# sort and be handed to one of the OTHER ordered units as a fresh, committed ATTACK target --
+# reaching an enemy the ordering team's own perception says it cannot see.
+#
+# Two team-0 attackers are ordered onto a team-1 "clicked" target with GroupAttackMode.
+# DISTRIBUTED. A team-1 "hidden" enemy sits 120 wu from the click (nearer) and a team-1
+# "visible" enemy sits 150 wu from the click (farther); team 0's OWN perception (via a
+# spotter reusing SPOTTER_POS/SPOTTER_SIGHT's already-verified geometry above -- perceives
+# the farther enemy at 30 wu, not the nearer one at ~212 wu) sees only the farther one. The
+# two attackers' own sight_range is forced down too, so neither can independently perceive
+# either enemy and confound the isolation -- only the spotter's own sighting decides what
+# team 0 perceives, exactly like the delegated-group test above relies on team perception
+# being a union across a team's own units.
+
+
+func test_distributed_attack_does_not_assign_a_hidden_enemy_to_another_ordered_unit() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": 900.0, "y": 1100.0},   # attacker 1
+		{"team": 0, "type": "Infantry", "x": 940.0, "y": 1100.0},   # attacker 2
+		{"team": 0, "type": "Infantry", "x": SPOTTER_POS.x, "y": SPOTTER_POS.y},   # spotter
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},   # clicked target
+		{"team": 1, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x,
+				"y": DETECTED_NOT_PERCEIVED_POS.y},   # hidden, nearer to the click
+		{"team": 1, "type": "Infantry", "x": FARTHER_VISIBLE_POS.x,
+				"y": FARTHER_VISIBLE_POS.y},   # visible, farther from the click
+	]
+	add_child_autofree(battle)
+	while battle.current_tick() < 1:
+		await get_tree().physics_frame
+
+	var attacker1: Unit = null
+	var attacker2: Unit = null
+	var spotter: Unit = null
+	for u in _team_units(0):
+		if is_equal_approx(u.position.x, 900.0):
+			attacker1 = u
+		elif is_equal_approx(u.position.x, 940.0):
+			attacker2 = u
+		else:
+			spotter = u
+	assert_not_null(attacker1, "sanity: attacker 1 spawned")
+	assert_not_null(attacker2, "sanity: attacker 2 spawned")
+	assert_not_null(spotter, "sanity: the spotter spawned at SPOTTER_POS")
+	var clicked_target: Unit = null
+	var hidden_enemy: Unit = null
+	var visible_enemy: Unit = null
+	for u in _team_units(1):
+		if is_equal_approx(u.position.x, WATCHER_POS.x) and is_equal_approx(u.position.y, WATCHER_POS.y):
+			clicked_target = u
+		elif is_equal_approx(u.position.y, DETECTED_NOT_PERCEIVED_POS.y):
+			hidden_enemy = u
+		else:
+			visible_enemy = u
+	assert_not_null(clicked_target, "sanity: the clicked target spawned at WATCHER_POS")
+	assert_not_null(hidden_enemy, "sanity: the hidden enemy spawned at DETECTED_NOT_PERCEIVED_POS")
+	assert_not_null(visible_enemy, "sanity: the visible enemy spawned at FARTHER_VISIBLE_POS")
+
+	attacker1.sight_range = SHRUNK_SIGHT
+	attacker2.sight_range = SHRUNK_SIGHT
+	spotter.sight_range = SPOTTER_SIGHT
+
+	assert_lt(clicked_target.position.distance_to(hidden_enemy.position),
+			clicked_target.position.distance_to(visible_enemy.position),
+			"sanity check: the hidden enemy really is CLOSER to the click than the visible one")
+	assert_false(battle.ai_team_perceives(0, hidden_enemy),
+			"sanity check: team 0 does not perceive the closer, hidden enemy")
+	assert_true(battle.ai_team_perceives(0, visible_enemy),
+			"sanity check: the spotter's own sighting makes team 0 perceive the farther enemy")
+
+	battle._apply_order_cmd({
+		"units": [attacker1.uid, attacker2.uid],
+		"x": clicked_target.position.x, "y": clicked_target.position.y,
+		"target": clicked_target.uid,
+		"group_attack": BattleScript.GroupAttackMode.DISTRIBUTED,
+	})
+
+	assert_eq(attacker1.target_enemy, clicked_target,
+			"the first ordered unit still gets the explicitly clicked target -- visible by " +
+			"construction, exempt from the perception filter")
+	assert_eq(attacker2.target_enemy, visible_enemy,
+			"a closer HIDDEN enemy must not take the second ordered unit's slot ahead of a " +
+			"farther enemy the ordering team can actually perceive")
+	assert_ne(attacker2.target_enemy, hidden_enemy,
+			"the hidden enemy must never receive a committed ATTACK assignment its own " +
+			"perception gate would refuse everywhere else in this file")
+
+
+func test_distributed_attack_still_assigns_the_nearest_enemy_when_fog_is_off() -> void:
+	# The mirror check for fog OFF: with perception unconditionally true, the second ordered
+	# unit's slot goes to whichever enemy is actually NEAREST the click (the hidden-under-fog
+	# one, here) -- exactly the pre-existing, byte-for-byte-unchanged omniscient behaviour
+	# this fix must not disturb.
+	Settings.set_fog_of_war_session(false)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": 900.0, "y": 1100.0},   # attacker 1
+		{"team": 0, "type": "Infantry", "x": 940.0, "y": 1100.0},   # attacker 2
+		{"team": 0, "type": "Infantry", "x": SPOTTER_POS.x, "y": SPOTTER_POS.y},   # spotter
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},   # clicked target
+		{"team": 1, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x,
+				"y": DETECTED_NOT_PERCEIVED_POS.y},   # nearer to the click
+		{"team": 1, "type": "Infantry", "x": FARTHER_VISIBLE_POS.x, "y": FARTHER_VISIBLE_POS.y},
+	]
+	add_child_autofree(battle)
+	while battle.current_tick() < 1:
+		await get_tree().physics_frame
+
+	var attacker1: Unit = null
+	var attacker2: Unit = null
+	for u in _team_units(0):
+		if is_equal_approx(u.position.x, 900.0):
+			attacker1 = u
+		elif is_equal_approx(u.position.x, 940.0):
+			attacker2 = u
+	var clicked_target: Unit = null
+	var nearer_enemy: Unit = null
+	for u in _team_units(1):
+		if is_equal_approx(u.position.x, WATCHER_POS.x) and is_equal_approx(u.position.y, WATCHER_POS.y):
+			clicked_target = u
+		elif is_equal_approx(u.position.y, DETECTED_NOT_PERCEIVED_POS.y):
+			nearer_enemy = u
+	attacker1.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+	attacker2.sight_range = SHRUNK_SIGHT
+
+	battle._apply_order_cmd({
+		"units": [attacker1.uid, attacker2.uid],
+		"x": clicked_target.position.x, "y": clicked_target.position.y,
+		"target": clicked_target.uid,
+		"group_attack": BattleScript.GroupAttackMode.DISTRIBUTED,
+	})
+
+	assert_eq(attacker1.target_enemy, clicked_target,
+			"fog off: the first ordered unit still gets the explicitly clicked target")
+	assert_eq(attacker2.target_enemy, nearer_enemy,
+			"fog off: with no perception gate at all, the second ordered unit gets whichever " +
+			"enemy is NEAREST the click, unchanged from before this fix")

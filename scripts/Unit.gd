@@ -2641,6 +2641,16 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ##   melee_contact_distance is far below any realistic sight range. Same already-committed
 ##   exemption the chase branch's target_enemy != null half relies on. See UnitRelief.begin's
 ##   own doc comment.
+##
+## One more site reaches the SAME ai_team_perceives test directly rather than through this
+## wrapper, because it already lives inside Battle.gd: Battle._apply_order_cmd's own
+## DISTRIBUTED-attack candidate-pool scan. A distributed group ATTACK order pre-sorts every
+## live enemy by proximity to the clicked/resolved target_unit and hands each OTHER ordered
+## unit its own slot from that list -- a fresh pick at the group command layer, gated the same
+## way every per-unit fresh pick above is. target_unit itself is exempt (visible by
+## construction -- a player click SelectionManager already filtered to a visible enemy, or an
+## AI decision that resolved it through perception), the same already-committed-target
+## exemption every site in this list relies on. See that branch's own comment in Battle.gd.
 func _enemy_is_perceived(enemy: Unit) -> bool:
 	if _owning_battle == null or not _owning_battle.has_method("ai_team_perceives"):
 		return true
