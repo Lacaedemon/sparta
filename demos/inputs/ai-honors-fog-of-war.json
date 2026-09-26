@@ -15,7 +15,7 @@
     {"tick": 16, "rmb_click": [600, 650]}
   ],
   "frames": [0, 10, 60, 120, 180, 181, 210, 240],
-  "state": [0, 10, 30, 60, 90, 120, 150, 180, 181, 210, 240],
+  "state": [0, 10, 30, 60, 90, 120, 150, 180, 181, 210, 240, 270],
   "expect": [
     {"tick": 0, "uid": 0, "field": "current_order", "value": null},
     {"tick": 60, "uid": 0, "field": "current_order", "value": null},
