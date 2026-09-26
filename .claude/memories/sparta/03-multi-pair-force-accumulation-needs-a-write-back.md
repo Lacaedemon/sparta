@@ -800,9 +800,10 @@ tier drop its now-redundant copy of the same check.
 The gate is sound because the counter cannot under-count: the reverse scan can only ever match a
 unit whose `current_order.friendly_target` is this one, and every write to `friendly_target` goes
 through its own setter, which keeps the target's counter exact.
-Zero therefore really does prove no live order anywhere links to this unit -- an over-count from a
-leaked, still-referenced order is possible and merely costs that unit an unneeded scan; it can
-never hide a real link.
+Zero therefore really does prove no live order anywhere links to this unit.
+An over-count from a leaked, still-referenced order is possible and merely costs that unit an
+unneeded scan;
+it can never hide a real link.
 
 **Do:** when several call sites share one expensive lookup, put the O(1) skip condition inside
 the lookup itself, so any new caller inherits the gate for free.
