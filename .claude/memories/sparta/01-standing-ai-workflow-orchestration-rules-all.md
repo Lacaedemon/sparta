@@ -707,6 +707,35 @@ per-tick noise that found the first boundary finds the second one too.
 
 (`Lacaedemon/sparta` issue #1616, PR #1629, 2026-09-23.)
 
+## A margin projected for one travel bearing must only validate legs on that bearing
+
+Companion to the funnel-corner flicker entry above -- the same PathField/terrain_clearance()
+surface, a different bug shape, from PR #1638.
+`Unit.terrain_clearance(travel_dir)` is only the block's swept half-width across one specific
+`from -> to` bearing, not a general "how wide is this block" margin.
+`PathField.next_step()` can return a step on a DIFFERENT bearing whenever it detours: both the
+funnel corner (`_funnel_corner`) and the A* corridor fallback (the loop over `path` inside
+`next_step` itself) turn off the original `from..to` line.
+A leg validated at the straight-leg `terrain_clearance()` margin can therefore under-clear a
+deep column turned sideways on either fallback.
+
+`Unit.corner_clearance()` is the fix: the worst-case half-diagonal over every travel angle,
+independent of bearing.
+On #1638 the funnel corner was switched to it first, and the corridor fallback was initially left
+on the straight-leg margin -- Copilot caught that a deep column turned sideways could still be
+routed into terrain there.
+`next_step()`'s optional `corner_clearance` argument now reaches both call sites, and a regression
+test forces the corridor fallback path specifically (commit 7e6d0f89) so the two sightline checks
+cannot drift apart again silently.
+
+**Do:** validate every leg a routing function can return at the margin computed for that leg's
+own bearing, or the worst case over any bearing if the bearing can change mid-route.
+**Don't:** assume one "this leg is clear" check covers every fallback path inside the same
+function -- a corridor fallback and a corner refinement can each pick a bearing different from
+the caller's original `from..to` line.
+
+(`Lacaedemon/sparta` PR #1638, 2026-09-25.)
+
 ## MultiMesh instance transforms don't read back in headless tests
 
 `MultiMesh.set_instance_transform_2d(i, t)` followed immediately by
