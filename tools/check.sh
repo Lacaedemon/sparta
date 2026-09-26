@@ -1489,9 +1489,27 @@ check_markdown() {
       return 0
     fi
   fi
+  # A base that resolves can still share no history with HEAD (a shallow checkout
+  # whose graft cuts it off), and `git diff base...HEAD` then fails with nothing on
+  # stdout -- which the change gate below would misread as "no Markdown changed".
+  # Find the merge-base explicitly, as the other diff-scoped checks do, and treat
+  # none the same as no base at all.
+  local merge_base=""
+  if [ -n "$base" ]; then
+    merge_base="$(cd "$PROJECT_ROOT" && git merge-base HEAD "$base" 2>/dev/null)" || true
+    if [ -z "$merge_base" ]; then
+      warn "No common history with '$base' (shallow checkout?)."
+      base=""
+      if [ -z "$MARKDOWN_REQUESTED" ]; then
+        warn "Skipping; fetch full history (git fetch --unshallow) or run 'tools/check.sh markdown'."
+        set_result markdown skip
+        return 0
+      fi
+    fi
+  fi
   if [ -z "$MARKDOWN_REQUESTED" ]; then
     local changed
-    changed="$(cd "$PROJECT_ROOT" && git diff --name-only "$base...HEAD" -- '*.md')"
+    changed="$(cd "$PROJECT_ROOT" && git diff --name-only "$merge_base" HEAD -- '*.md')"
     if [ -z "$changed" ]; then
       info "No committed Markdown changes since $base -- skipping (run 'tools/check.sh markdown' to force)."
       set_result markdown skip
