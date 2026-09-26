@@ -44,6 +44,20 @@
 #                          re-dumping locally.
 #   GITHUB_RUN_ID          When set (GitHub Actions), the fragment ends with a pointer to
 #                          the run artifact carrying the transcripts and analyzer JSON.
+#   DEMO_DEFECT_DENSE_BASE_TREE
+#                          Merge-base checkout. When set, each changed clip with a known
+#                          divergence tick is re-dumped on both trees with extra samples
+#                          from that tick to the clip's end, and judged on those (see
+#                          densify_clip below). Unset, every row uses the regular samples.
+#   DEMO_DEFECT_DENSE_STEP Sample spacing in ticks inside that window (default 2).
+#   DEMO_DEFECT_DENSE_MAX_CLIPS
+#                          Most clips densified per run (default 12).
+#   DEMO_DEFECT_DENSE_BUDGET_SEC
+#                          Wall-clock seconds the dense re-dumps may use in total (default
+#                          480). A re-dump simulates the whole clip on both trees, and clip
+#                          lengths vary about 40x across the catalog, so the clip cap alone
+#                          does not bound the cost. Once either limit is hit, the remaining
+#                          rows use the regular samples and say so.
 #
 # A side whose transcripts lack the FULL-dump fields (a merge-base predating them)
 # reports "n/a" rather than failing -- absence of data is not a defect, and the
@@ -73,6 +87,7 @@ fi
 # work to do.
 if [ -z "${DEMO_DEFECT_JSON_DIR:-}" ]; then
   DEMO_DEFECT_JSON_DIR="$(mktemp -d)"
+  DEMO_DEFECT_JSON_DIR_OWNED=1
   trap 'rm -rf "$DEMO_DEFECT_JSON_DIR"' EXIT
 fi
 export DEMO_DEFECT_JSON_DIR
@@ -213,15 +228,78 @@ annotate_metric() {
   printf '%s)' "$out"
 }
 
+# Dense re-dump of each changed clip's divergent window. The regular transcripts sample
+# every 60 ticks, and DemoDefects' facing metrics compare consecutive SAMPLES, so a facing
+# snap that starts and ends between two samples is invisible to them. When
+# DEMO_DEFECT_DENSE_BASE_TREE names the merge-base checkout, a changed clip with a known
+# divergence tick is re-dumped on both trees with extra samples every
+# DEMO_DEFECT_DENSE_STEP ticks from that tick to the clip's end, and its row is judged on
+# those dumps instead. Only the window is dense and only changed clips are re-dumped, but
+# a full dump at that density runs to ~100 MB for an 800-tick clip, so each clip's dense
+# dumps are deleted once its row is built. Densifying stops at DEMO_DEFECT_DENSE_MAX_CLIPS
+# clips or DEMO_DEFECT_DENSE_BUDGET_SEC seconds, whichever comes first; rows past either
+# limit stay on the regular samples and say so.
+DENSE_BASE_TREE="${DEMO_DEFECT_DENSE_BASE_TREE:-}"
+DENSE_STEP="${DEMO_DEFECT_DENSE_STEP:-2}"
+DENSE_MAX="${DEMO_DEFECT_DENSE_MAX_CLIPS:-12}"
+DENSE_BUDGET="${DEMO_DEFECT_DENSE_BUDGET_SEC:-480}"
+DENSE_START=$SECONDS
+DENSE_COUNT=0
+DENSE_SKIPPED=0
+DENSE_ROOT=""
+if [ -n "$DENSE_BASE_TREE" ]; then
+  DENSE_ROOT="$(mktemp -d)"
+  trap 'rm -rf "$DENSE_ROOT"; [ -z "${DEMO_DEFECT_JSON_DIR_OWNED:-}" ] || rm -rf "$DEMO_DEFECT_JSON_DIR"' EXIT
+fi
+
+# densify_clip <name> <divergence-tick> -- dense-dump <name> on both trees into
+# $DENSE_ROOT/dense-base and $DENSE_ROOT/dense-pr. The PR tree's dumper runs against both
+# checkouts, as the regular dump step does. On failure the dumper's log is printed and
+# the caller falls back to the regular samples.
+densify_clip() {
+  local name="$1" div="$2" side tree log
+  for side in base pr; do
+    if [ "$side" = base ]; then tree="$DENSE_BASE_TREE"; else tree="$PR_TREE"; fi
+    log="$DENSE_ROOT/$side-$name.log"
+    if ! SPARTA_DUMP_CLIPS="$name" SPARTA_STATE_DENSE_FROM="$div" SPARTA_STATE_DENSE_STEP="$DENSE_STEP" \
+        GODOT_BIN="$GODOT_BIN" "$PR_TREE/website/tools/dump-demo-states.sh" \
+        "$DENSE_ROOT/dense-$side" "$tree" > "$log" 2>&1; then
+      echo "::warning::dense re-dump of '$name' ($side) failed; judging it on the regular samples. Dumper log:" >&2
+      cat "$log" >&2
+      return 1
+    fi
+  done
+}
+
 ROWS=""
 REGRESSION_COUNT=0
 while IFS= read -r name; do
   [ -n "$name" ] || continue
   [ -d "$BASELINE_DIR/$name" ] && [ -d "$PR_DIR/$name" ] || continue
   script_src="$(demo_clip_script_source "$name" "$PR_TREE")"
-  base_fail="$(failing_metrics "$BASELINE_DIR/$name" "$script_src")"
-  pr_fail="$(failing_metrics "$PR_DIR/$name" "$script_src")"
-  div_label="$(divergence_label "$(divergence_tick "$name")" "$(last_snapshot_tick "$PR_DIR/$name")")"
+  base_dir="$BASELINE_DIR/$name"
+  pr_dir="$PR_DIR/$name"
+  div="$(divergence_tick "$name")"
+  sampling=""
+  if [ -n "$DENSE_BASE_TREE" ] && [ -n "$div" ]; then
+    if [ "$DENSE_COUNT" -ge "$DENSE_MAX" ]; then
+      DENSE_SKIPPED=$((DENSE_SKIPPED + 1))
+      sampling="; 60-tick samples (densify clip cap reached)"
+    elif [ $((SECONDS - DENSE_START)) -ge "$DENSE_BUDGET" ]; then
+      DENSE_SKIPPED=$((DENSE_SKIPPED + 1))
+      sampling="; 60-tick samples (densify time budget spent)"
+    elif densify_clip "$name" "$div"; then
+      base_dir="$DENSE_ROOT/dense-base/$name"
+      pr_dir="$DENSE_ROOT/dense-pr/$name"
+      DENSE_COUNT=$((DENSE_COUNT + 1))
+      sampling="; ${DENSE_STEP}-tick samples after it"
+    else
+      sampling="; 60-tick samples (dense re-dump failed)"
+    fi
+  fi
+  base_fail="$(failing_metrics "$base_dir" "$script_src")"
+  pr_fail="$(failing_metrics "$pr_dir" "$script_src")"
+  div_label="$(divergence_label "$div" "$(last_snapshot_tick "$PR_DIR/$name")")$sampling"
 
   verdict="no new defects"
   if [ "$pr_fail" = "n/a" ] || [ "$base_fail" = "n/a" ]; then
@@ -232,7 +310,7 @@ while IFS= read -r name; do
       annotated=""
       while IFS= read -r entry; do
         [ -n "$entry" ] || continue
-        annotated="$annotated$(annotate_metric "$entry" "$BASELINE_DIR/$name" "$PR_DIR/$name"), "
+        annotated="$annotated$(annotate_metric "$entry" "$base_dir" "$pr_dir"), "
       done <<<"$new_in_pr"
       verdict="**candidate regression**: ${annotated%, }"
       REGRESSION_COUNT=$((REGRESSION_COUNT + 1))
@@ -242,6 +320,10 @@ while IFS= read -r name; do
   fi
   ROWS="$ROWS| \`$name\` | $div_label | $base_fail | $pr_fail | $verdict |
 "
+  # Dense dumps are only needed for this row; free the disk before the next clip.
+  if [ -n "$DENSE_ROOT" ]; then
+    rm -rf "$DENSE_ROOT/dense-base/$name" "$DENSE_ROOT/dense-pr/$name"
+  fi
 done < "$CHANGED_LIST"
 
 if [ -z "$ROWS" ]; then
@@ -255,6 +337,13 @@ fi
   printf '| Demo | Diverges | Merge-base failing | PR failing | Delta |\n|---|---|---|---|---|\n%s' "$ROWS"
   if [ "$REGRESSION_COUNT" -gt 0 ]; then
     printf '\n**%d candidate regression clip(s)** -- review those rows first, weighting each by its Diverges column.\n' "$REGRESSION_COUNT"
+  fi
+  if [ -n "$DENSE_BASE_TREE" ]; then
+    printf '\nThe Diverges column also says how each row was sampled. The transcripts above sample every 60 ticks, which can step over a facing snap that starts and ends between two samples, so %d changed clip(s) were re-dumped on both sides with a sample every %d ticks from the divergence to the clip end and judged on that.' "$DENSE_COUNT" "$DENSE_STEP"
+    if [ "$DENSE_SKIPPED" -gt 0 ]; then
+      printf ' %d more were past the limit (%d clips or %d s of re-dumping) and use the 60-tick samples.' "$DENSE_SKIPPED" "$DENSE_MAX" "$DENSE_BUDGET"
+    fi
+    printf '\n'
   fi
   if [ -n "${GITHUB_RUN_ID:-}" ]; then
     printf '\n<sub>A candidate row quotes the PR side'\''s worst value against the metric'\''s threshold (a floor for overlap and blob, a ceiling for shape residual, misslotted and the rest, in the analyzer'\''s own direction per metric), then the merge-base'\''s value, so an exemption reason can cite CI'\''s own numbers. The changed clips'\'' transcripts on both sides and every analyzer JSON are attached to this run as the artifact `website-demo-diff-%s`.</sub>\n' "$GITHUB_RUN_ID"
