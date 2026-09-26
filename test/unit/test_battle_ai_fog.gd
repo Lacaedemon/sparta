@@ -2121,3 +2121,106 @@ func test_distributed_attack_still_assigns_the_nearest_enemy_when_fog_is_off() -
 	assert_eq(attacker2.target_enemy, nearer_enemy,
 			"fog off: with no perception gate at all, the second ordered unit gets whichever " +
 			"enemy is NEAREST the click, unchanged from before this fix")
+
+
+# --- ORDER GUARDS: ENEMY_IN_RANGE honours fog too ---------------------------------------
+#
+# OrderGuards.enemy_in_range decides when a queued order's "enemy in range" wait condition
+# is met. It commits no target, but firing on a hidden enemy would leak that enemy's
+# position through the order's timing, so it filters candidates through the same
+# Unit.fresh_pick_allowed test every fresh target pick uses.
+
+## Guard radius wide enough to cover every enemy staged below, so a false result can only
+## come from the perception filter, never from distance.
+const GUARD_RANGE: float = 800.0
+
+
+func _stage_guard_battle(fog: bool, extra: Array = []) -> Node:
+	Settings.set_fog_of_war_session(fog)
+	Replay.forced_seed = 1641
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	] + extra
+	add_child_autofree(battle)
+	return battle
+
+
+func test_enemy_in_range_guard_ignores_an_unperceived_enemy_under_fog() -> void:
+	var battle: Node = _stage_guard_battle(true)
+	var u: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	u.sight_range = SHRUNK_SIGHT
+	assert_false(battle.ai_team_perceives(1, enemy),
+		"sanity check on the staged distance: team 1 does not perceive this enemy")
+	var contact: float = UnitTargeting.melee_contact_distance(u.attack_range, Unit.RADIUS, enemy)
+	assert_gt(u.position.distance_to(enemy.position), contact,
+		"sanity check: the enemy is not in melee contact")
+	assert_false(OrderGuards.enemy_in_range(u, GUARD_RANGE),
+		"fog on: an enemy inside the guard radius that this side does not perceive does not " +
+		"satisfy ENEMY_IN_RANGE")
+	assert_false(OrderGuards.enemy_in_range(u, 0.0),
+		"fog on: same result through the detection_range fallback radius")
+
+
+func test_enemy_in_range_guard_still_fires_on_the_same_enemy_when_fog_is_off() -> void:
+	var battle: Node = _stage_guard_battle(false)
+	var u: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	u.sight_range = SHRUNK_SIGHT   # irrelevant with fog off; set for parity
+	assert_true(battle.ai_team_perceives(1, enemy),
+		"sanity check: fog off means ai_team_perceives is unconditionally true")
+	assert_true(OrderGuards.enemy_in_range(u, GUARD_RANGE),
+		"fog off: the enemy satisfies ENEMY_IN_RANGE, exactly as before this gate existed")
+
+
+func test_enemy_in_range_guard_fires_on_an_unperceived_enemy_in_melee_contact() -> void:
+	# Contact is exempt, as in every other melee path: an enemy pressing on the unit is not
+	# hidden information. Spawned far away so the per-tick perception cache is built before
+	# the teleport, then moved into contact without a physics tick in between.
+	var battle: Node = _stage_guard_battle(true)
+	var u: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	u.sight_range = SHRUNK_SIGHT
+	assert_false(battle.ai_team_perceives(1, enemy),
+		"sanity check: team 1 does not perceive this enemy before the teleport")
+	var contact: float = UnitTargeting.melee_contact_distance(u.attack_range, Unit.RADIUS, enemy)
+	enemy.position = u.position + Vector2(0.0, contact - 1.0)
+	assert_false(battle.ai_team_perceives(1, enemy),
+		"sanity check: still unperceived after the teleport (same-frame perception cache)")
+	assert_true(OrderGuards.enemy_in_range(u, GUARD_RANGE),
+		"an unperceived enemy already in melee contact satisfies ENEMY_IN_RANGE")
+
+
+func test_enemy_in_range_guard_is_not_masked_by_a_closer_unperceived_enemy() -> void:
+	# The filter runs inside the scan, so a nearer hidden enemy must not shadow a farther one
+	# this side does perceive (spotted by a second team-1 unit standing next to it).
+	var far_enemy_pos := WATCHER_POS + Vector2(700.0, 0.0)
+	var spotter_pos := far_enemy_pos - Vector2(0.0, 100.0)
+	var battle: Node = _stage_guard_battle(true, [
+		{"team": 0, "type": "Infantry", "x": far_enemy_pos.x, "y": far_enemy_pos.y},
+		{"team": 1, "type": "Infantry", "x": spotter_pos.x, "y": spotter_pos.y},
+	])
+	var u: Unit = null
+	for t in _team_units(1):
+		if (t as Unit).position.distance_to(WATCHER_POS) < 1.0:
+			u = t
+	var near_enemy: Unit = null
+	var far_enemy: Unit = null
+	for e in _team_units(0):
+		if (e as Unit).position.distance_to(far_enemy_pos) < 1.0:
+			far_enemy = e
+		else:
+			near_enemy = e
+	assert_not_null(u, "sanity check: found the watcher")
+	u.sight_range = SHRUNK_SIGHT
+	assert_false(battle.ai_team_perceives(1, near_enemy),
+		"sanity check: the nearer enemy is hidden from team 1")
+	assert_true(battle.ai_team_perceives(1, far_enemy),
+		"sanity check: the farther enemy is perceived, via the spotter")
+	assert_lt(u.position.distance_to(near_enemy.position), u.position.distance_to(far_enemy.position),
+		"sanity check: the hidden enemy is the nearer of the two")
+	assert_true(OrderGuards.enemy_in_range(u, GUARD_RANGE),
+		"a perceived enemy inside the radius satisfies the guard even when a nearer, hidden " +
+		"one would have won an unfiltered nearest pick")
