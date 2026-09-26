@@ -1585,16 +1585,544 @@ func test_pivot_radius_is_the_footprint_half_diagonal() -> void:
 
 
 func test_terrain_clearance_scales_with_the_live_footprint() -> void:
-	# The margin a block keeps off impassable terrain is its own geometry: the
-	# corner man's half-diagonal plus his body radius, read from the LIVE
-	# formation -- so a bigger block rounds an obstacle wider than a small one.
+	# The margin a block keeps off impassable terrain on a straight leg travelling
+	# along its own facing is its own half-frontage (see terrain_clearance()'s doc
+	# comment -- NOT the full pivot-radius half-diagonal, which also folds in depth)
+	# plus its soldiers' body radius, read from the LIVE formation -- so a bigger block
+	# rounds an obstacle wider than a small one.
 	var u := _make_unit()
-	assert_almost_eq(u.terrain_clearance(), u._pivot_radius() + u.soldier_body_radius(),
-		0.0001, "clearance is the footprint half-diagonal plus one body radius")
-	var small := _make_unit()
-	small.soldiers = maxi(10, u.soldiers / 4)
-	assert_lt(small.terrain_clearance(), u.terrain_clearance(),
-		"a smaller block needs less terrain clearance than a bigger one")
+	var files: int = maxi(1, u.formation_files(u.soldiers))
+	var expected: float = 0.5 * float(maxi(0, files - 1)) * u.file_pitch_wu() + u.soldier_body_radius()
+	assert_almost_eq(u.terrain_clearance(u.facing), expected, 0.0001,
+		"clearance for travel along facing is the half-frontage plus one body radius")
+	# A smaller MAX-strength block genuinely narrows its own frontage (UnitFormation.frontage
+	# reads max_soldiers), unlike merely reducing live .soldiers on a same-max-strength unit --
+	# which no longer changes terrain_clearance() at all, since the straight-leg margin now
+	# tracks frontage (unaffected by casualties short of a _ranks_closed narrowing), not the
+	# live-vs-max ranks depth the flat pivot-radius formula folded in.
+	var small := _make_unit(maxi(10, u.max_soldiers / 4))
+	assert_lt(small.terrain_clearance(small.facing), u.terrain_clearance(u.facing),
+		"a smaller-max-strength block needs less terrain clearance than a bigger one")
+
+
+func test_terrain_clearance_is_less_than_pivot_radius_for_a_deep_narrow_column() -> void:
+	# A straight march leg along a block's own facing only needs the block's own WIDTH
+	# margin (the files it actually sweeps perpendicular to the direction of travel),
+	# not the full corner-man half-diagonal _pivot_radius() folds DEPTH into too -- that
+	# fuller allowance only matters where the route actually turns (the detour legs
+	# PathField.next_step() returns -- the funnel corner or its corridor fallback --
+	# which run at corner_clearance() instead, not this function). A deep,
+	# narrow column (few files, many ranks) is where the flat diagonal-based clearance
+	# overshoots the block's own frontage the most.
+	var u := _make_unit()
+	u.frontage_override = 3   # 3 files x many ranks -- deep and narrow
+	var old_pivot_based: float = u._pivot_radius() + u.soldier_body_radius()
+	assert_lt(u.terrain_clearance(u.facing), old_pivot_based,
+		"a deep column marching along its own facing needs strictly less than its full pivot-radius diagonal")
+	# The reduction is substantial for a genuinely deep column, not a rounding
+	# difference -- confirms the fix actually changes behavior for this shape.
+	assert_lt(u.terrain_clearance(u.facing), old_pivot_based * 0.5,
+		"the reduction is more than half for a column this deep and narrow")
+
+
+func test_terrain_clearance_fix_unblocks_a_straight_leg_past_distant_terrain_for_a_deep_column() -> void:
+	# End-to-end version of the two tests above: a deep, narrow column faces its own
+	# march direction, and that leg passes a rect whose perpendicular gap (150wu) sits
+	# strictly between the OLD pivot-radius-based clearance and the NEW frontage-based
+	# one -- exactly the "terrain far from the leg still reads as blocking it" behavior
+	# a flat pivot-radius clearance produces, which the direction-aware fix removes for
+	# travel along facing. FAILS against a flat, direction-blind clearance (both read
+	# as blocked, since that value never shrinks) and PASSES against the fix.
+	var old_pf: PathField = PathField.active
+	var pf := PathField.new(Rect2(0, 0, 4000, 4000))
+	pf.block_rect(Rect2(900, 650, 200, 200))   # gap of 150wu below the straight leg at y=500
+	PathField.active = pf
+	var u := _make_unit()
+	u.frontage_override = 3   # deep, narrow column -- see the pivot-vs-frontage tests above
+	u.position = Vector2(500, 500)
+	var target := Vector2(1500, 500)
+	u.facing = (target - u.position).normalized()   # marching straight along its own facing
+	var old_pivot_based: float = u._pivot_radius() + u.soldier_body_radius()
+	assert_true(pf.is_leg_blocked(u.position, target, old_pivot_based),
+		"sanity check: the old pivot-radius-based clearance really did over-block this leg")
+	assert_false(pf.is_leg_blocked(u.position, target, u.terrain_clearance(target - u.position)),
+		"the fixed, frontage-based clearance no longer reads terrain 150wu away as blocking a straight leg")
+	PathField.active = old_pf
+
+
+func test_terrain_clearance_matches_pivot_radius_for_a_single_rank_line_along_facing() -> void:
+	# The degenerate case a wide single-rank formation sits in: with only one rank,
+	# _pivot_radius()'s depth term is already zero, so the diagonal reduces to exactly
+	# the half-frontage -- when travelling ALONG its own facing, this fix does not
+	# change terrain_clearance() for a single-rank block at all, since it was already
+	# using the swept half-width, whether the formula names it "pivot radius" or
+	# "frontage". A wide single-rank line keeps its full real half-width of margin on
+	# that leg. (Travelling OFF its own facing is a different story -- see the
+	# perpendicular-travel test below, where a single-rank line's swept width shrinks
+	# toward zero instead, since its whole rank then lies along the direction of
+	# travel rather than across it.)
+	var u := _make_unit()
+	u.frontage_override = u.soldiers   # one soldier per file -> a single rank
+	assert_almost_eq(u.terrain_clearance(u.facing), u._pivot_radius() + u.soldier_body_radius(), 0.0001,
+		"a single-rank line's frontage half-width, for travel along facing, already equals its pivot radius")
+
+
+func test_terrain_clearance_for_travel_perpendicular_to_facing_keeps_the_depth_based_margin() -> void:
+	# terrain_clearance() must account for the ACTUAL direction of travel, not assume a
+	# unit always marches along its own facing. Unit._move_to's pivot_as_formation
+	# branch advances at speed while still turning onto a new bearing, a
+	# NUDGE_LEFT/RIGHT side-step holds facing fixed and moves perpendicular to it, and
+	# a lateral file-march or drag-to-form-up can point travel anywhere relative to the
+	# current facing. A deep, narrow column moving SIDEWAYS sweeps its DEPTH across the
+	# direction of travel, not its frontage, so it needs the depth-based margin, not
+	# the (much smaller) frontage-based one -- a formula that always returns the
+	# frontage-based value regardless of travel direction cannot pass this: it would
+	# assert a clearance an order of magnitude too small for a column this deep.
+	var deep := _make_unit()
+	deep.frontage_override = 3   # 3 files x many ranks -- deep and narrow, see the tests above
+	deep.facing = Vector2.DOWN
+	var perpendicular_travel := Vector2.RIGHT   # 90 degrees off facing
+	var files: int = maxi(1, deep.formation_files(deep.soldiers))
+	var ranks: int = UnitFormation.ranks_for(deep.soldiers, files)
+	var half_depth: float = 0.5 * float(maxi(0, ranks - 1)) * deep.rank_pitch_wu()
+	assert_almost_eq(deep.terrain_clearance(perpendicular_travel), half_depth + deep.soldier_body_radius(), 0.01,
+		"travel perpendicular to facing sweeps the block's DEPTH, not its frontage")
+	assert_gt(deep.terrain_clearance(perpendicular_travel), deep.terrain_clearance(deep.facing) * 5.0,
+		"the perpendicular-travel clearance is far larger than the along-facing one for a column this deep")
+
+
+func test_terrain_clearance_uses_the_true_grid_axis_during_a_folded_quarter_turn() -> void:
+	# terrain_clearance() must project against the block's TRUE world-space file axis
+	# (soldier_block_world_angle() -- facing.angle() + PI*0.5 + _formation_angle, the
+	# exact rotation soldier_world_slots() applies to every local slot), not raw
+	# `facing`. _formation_angle folds a quarter-turn's own rotation into the render
+	# without moving the slot grid or facing itself (see soldier_world_slots' doc
+	# comment) -- a countermarch or an about-face reform still settling can leave
+	# _formation_angle at +/-PI/2 while facing has not changed at all. At that fold the
+	# file and depth axes are swapped relative to facing: marching straight along
+	# facing now sweeps the block's DEPTH, not its frontage, exactly the reverse of the
+	# unfolded (_formation_angle == 0) case above. A formula that reads raw facing
+	# (as an earlier version of this fix did) returns the frontage-based value here --
+	# it cannot pass the first assertion below, which is an order of magnitude off.
+	var deep := _make_unit()
+	deep.frontage_override = 3   # 3 files x many ranks -- deep and narrow, see the tests above
+	deep.facing = Vector2.DOWN
+	deep.position = Vector2.ZERO
+	deep._formation_angle = PI * 0.5   # a folded quarter-turn
+	var files: int = maxi(1, deep.formation_files(deep.soldiers))
+	var ranks: int = UnitFormation.ranks_for(deep.soldiers, files)
+	var half_frontage: float = 0.5 * float(maxi(0, files - 1)) * deep.file_pitch_wu()
+	var half_depth: float = 0.5 * float(maxi(0, ranks - 1)) * deep.rank_pitch_wu()
+	# Marching straight along facing, mid-fold, sweeps the TRUE depth axis (the file
+	# and depth axes have swapped relative to facing), so the clearance must be close
+	# to the depth-based margin -- not the much smaller frontage-based one.
+	assert_almost_eq(deep.terrain_clearance(deep.facing), half_depth + deep.soldier_body_radius(), 0.01,
+		"mid-fold, travel along facing sweeps the block's TRUE depth axis, not its frontage")
+	# Cross-check directly against soldier_world_slots' own rotation: unfolded
+	# (_formation_angle == 0) the TRUE file axis is PERPENDICULAR to facing (a soldier
+	# at the file-axis extreme sits off to the side, per the earlier along-facing
+	# tests), but mid-fold it swings onto the SAME line as facing instead -- a soldier
+	# at that same file-axis extreme now sits straight ahead of (or behind) the block's
+	# centre, which is exactly the swap that makes marching along facing sweep depth.
+	var file_axis_world: Vector2 = Vector2.RIGHT.rotated(deep.soldier_block_world_angle())
+	assert_almost_eq(absf(file_axis_world.cross(deep.facing)), 0.0, 0.001,
+		"soldier_block_world_angle's own file axis lies along the SAME line as facing mid-fold, confirming the swap")
+	# Sanity check the fold is genuinely large enough to matter: the depth-based
+	# clearance here is far bigger than the frontage-based value a formula ignoring
+	# the fold would return for the identical along-facing leg.
+	assert_gt(deep.terrain_clearance(deep.facing), (half_frontage + deep.soldier_body_radius()) * 5.0,
+		"the fold-aware clearance is far larger than the frontage-only value for a column this deep")
+
+
+func test_terrain_clearance_accounts_for_a_standing_frontage_anchor_offset() -> void:
+	# An asymmetric explicatio/duplicatio (or a flank-anchored grip resize) holds one
+	# flank fixed and grows or shrinks the other, so the live grid is not centred on
+	# `position` -- UnitFormation.slots()/apply_frontage_anchor_offset shift every
+	# non-square slot by frontage_anchor_offset along local X (Unit.gd's
+	# formation_slots, and UnitFormation.gd's slots()) before the grid is ever rotated
+	# into world space. A formula that measures half_frontage from `position` alone,
+	# ignoring the standing offset (as an earlier version of this fix did), under-clears
+	# the shifted flank by the full offset -- it cannot pass the assertion below, which
+	# is more than double the offset-blind value for an offset this large relative to
+	# the column's own frontage.
+	var deep := _make_unit()
+	deep.frontage_override = 3   # 3 files x many ranks -- deep and narrow, see the tests above
+	deep.facing = Vector2.DOWN
+	deep.position = Vector2.ZERO
+	deep.frontage_anchor_offset = 50.0   # a standing asymmetric explicatio/duplicatio shift
+	var files: int = maxi(1, deep.formation_files(deep.soldiers))
+	var half_frontage: float = 0.5 * float(maxi(0, files - 1)) * deep.file_pitch_wu()
+	var offset_blind: float = half_frontage + deep.soldier_body_radius()
+	var expected: float = half_frontage + deep.frontage_anchor_offset + deep.soldier_body_radius()
+	assert_almost_eq(deep.terrain_clearance(deep.facing), expected, 0.01,
+		"marching along facing, the anchor offset adds directly to the frontage-based straight-leg clearance")
+	assert_gt(deep.terrain_clearance(deep.facing), offset_blind * 2.0,
+		"the offset-aware clearance is far larger than an offset-blind formula would return")
+
+
+func test_corner_clearance_accounts_for_a_standing_frontage_anchor_offset() -> void:
+	# corner_clearance() must fold the SAME standing offset in, since it is exactly the
+	# maximum terrain_clearance() can return over any travel direction (see its own doc
+	# comment) -- an offset-blind corner_clearance() would no longer bound an
+	# offset-aware terrain_clearance() at every angle, breaking the safe no-direction
+	# fallback the two are meant to satisfy.
+	var deep := _make_unit()
+	deep.frontage_override = 3
+	deep.frontage_anchor_offset = 50.0
+	var files: int = maxi(1, deep.formation_files(deep.soldiers))
+	var ranks: int = UnitFormation.ranks_for(deep.soldiers, files)
+	var half_frontage: float = 0.5 * float(maxi(0, files - 1)) * deep.file_pitch_wu()
+	var half_depth: float = 0.5 * float(maxi(0, ranks - 1)) * deep.rank_pitch_wu()
+	var expected: float = Vector2(half_frontage + deep.frontage_anchor_offset, half_depth).length() \
+			+ deep.soldier_body_radius()
+	assert_almost_eq(deep.corner_clearance(), expected, 0.01,
+		"corner_clearance folds the anchor offset into the file-axis half-extent before recombining with depth")
+	# The offset-aware corner_clearance() must still bound terrain_clearance() at every
+	# angle a real leg could travel, not just along facing.
+	var perpendicular_travel := Vector2.RIGHT
+	assert_true(deep.corner_clearance() >= deep.terrain_clearance(deep.facing) - 0.01
+			and deep.corner_clearance() >= deep.terrain_clearance(perpendicular_travel) - 0.01,
+		"corner_clearance stays an upper bound on terrain_clearance for every travel direction")
+
+
+func test_terrain_clearance_reads_the_deepest_surviving_file_not_ranks_for() -> void:
+	# UnitFormation.file_major_block_slots' casualty reflow only shortens its OWN
+	# file's rear (rank_counts[file] increments independently per file, and
+	# max_rank -- what actually sets the grid's depth -- is the MAX over files, not
+	# the average), so a file-major block with unevenly distributed survivors can be
+	# deeper than UnitFormation.ranks_for()'s ceil(soldiers/files) estimate. Travel
+	# PERPENDICULAR to facing sweeps this depth (see the along-facing-vs-perpendicular
+	# tests above -- marching straight ahead sweeps frontage, not depth), so a formula
+	# that derives half_depth from ranks_for() alone (as an earlier version of this fix
+	# did) reads a much shallower depth than the block's real deepest file there,
+	# under-clearing it on a sideways leg -- it cannot pass the assertion below, which
+	# is more than double the ranks_for()-based value.
+	var deep := _make_unit(12)
+	deep.frontage_override = 3   # 3 files -- ranks_for(12, 3) == 4 for an EVEN split
+	deep.facing = Vector2.DOWN
+	deep.position = Vector2.ZERO
+	# Force an uneven file-major assignment directly (bypassing _ensure_file_assignment,
+	# which only re-deals when the array's size or file count doesn't already match):
+	# file 0 keeps all 8 of its original survivors, files 1 and 2 keep 2 each.
+	var uneven_files := PackedInt32Array()
+	for i in 8:
+		uneven_files.append(0)
+	for i in 2:
+		uneven_files.append(1)
+	for i in 2:
+		uneven_files.append(2)
+	deep._sim_soldier_file = uneven_files
+	deep._file_assignment_files = 3
+	var deepest_file_ranks: int = 8   # file 0's real survivor count
+	var ranks_for_estimate: int = UnitFormation.ranks_for(deep.soldiers, 3)
+	assert_lt(ranks_for_estimate, deepest_file_ranks,
+		"sanity check: ranks_for()'s even-split estimate really is shallower than the deepest file")
+	var perpendicular_travel := Vector2.RIGHT   # 90 degrees off facing -- sweeps depth
+	var half_depth_real: float = 0.5 * float(deepest_file_ranks - 1) * deep.rank_pitch_wu()
+	var half_depth_ranks_for: float = 0.5 * float(ranks_for_estimate - 1) * deep.rank_pitch_wu()
+	assert_almost_eq(deep.terrain_clearance(perpendicular_travel), half_depth_real + deep.soldier_body_radius(), 0.01,
+		"perpendicular travel sweeps the block's TRUE deepest-file depth, not ranks_for()'s average estimate")
+	assert_gt(deep.terrain_clearance(perpendicular_travel), (half_depth_ranks_for + deep.soldier_body_radius()) * 2.0,
+		"the slot-derived clearance is far larger than the ranks_for()-based value for a file this uneven")
+
+
+func test_corner_clearance_reads_the_deepest_surviving_file_not_ranks_for() -> void:
+	# corner_clearance() must fold in the same deepest-surviving-file depth, since it
+	# is exactly the maximum terrain_clearance() can return over any travel direction
+	# (see terrain_clearance()'s own doc comment) -- a ranks_for()-based
+	# corner_clearance() would no longer bound an accurately-derived
+	# terrain_clearance() at every angle.
+	var deep := _make_unit(12)
+	deep.frontage_override = 3
+	var uneven_files := PackedInt32Array()
+	for i in 8:
+		uneven_files.append(0)
+	for i in 2:
+		uneven_files.append(1)
+	for i in 2:
+		uneven_files.append(2)
+	deep._sim_soldier_file = uneven_files
+	deep._file_assignment_files = 3
+	var half_frontage: float = 0.5 * float(maxi(0, deep.formation_files(deep.soldiers) - 1)) * deep.file_pitch_wu()
+	var half_depth_real: float = 0.5 * 7.0 * deep.rank_pitch_wu()   # 8 ranks in file 0 -> 7 gaps
+	var expected: float = Vector2(half_frontage, half_depth_real).length() + deep.soldier_body_radius()
+	assert_almost_eq(deep.corner_clearance(), expected, 0.01,
+		"corner_clearance folds in the deepest surviving file's real depth, not ranks_for()'s estimate")
+
+
+func test_formation_local_half_extents_is_never_stale_after_a_ranks_closed_flip() -> void:
+	# _formation_local_half_extents() is deliberately UNCACHED (see its own doc comment):
+	# every call rebuilds from the live slots, so a mutation -- however it happens, in
+	# whatever order relative to any other call -- is reflected on the very next query,
+	# with no frame-boundary or invalidation-call bookkeeping to get right. Drive a real
+	# ranks-closed flip through _physics_process (not a raw field write, which would
+	# bypass the actual mutation site and prove nothing) and confirm the immediate next
+	# query already reflects the narrower frontage.
+	var u := _make_unit(60)
+	assert_false(u._ranks_closed, "sanity check: starts open")
+	var before: Vector2 = u._formation_local_half_extents()
+	u.soldiers = 20   # 20/60 is under UnitFormation.CLOSE_RANKS_CONTRACT_FRAC (0.5)
+	u._physics_process(0.016)
+	assert_true(u._ranks_closed, "sanity check: the flip actually happened")
+	var after: Vector2 = u._formation_local_half_extents()
+	assert_lt(after.x, before.x,
+		"the very next query reflects the narrower frontage; nothing was ever cached to go stale")
+
+
+func test_move_to_builds_the_slot_layout_exactly_once_per_call() -> void:
+	# _move_to() computes _formation_local_half_extents() ONCE and threads the result
+	# through terrain_clearance(), funnel_lane_offset() (whose own internal
+	# terrain_clearance()/corner_clearance() calls also take it), and corner_clearance()
+	# -- see _move_to's own doc comment. formation_slots() is the O(soldiers) builder all
+	# of those ultimately call when no extents are supplied, so counting ITS calls
+	# across one _move_to() is the direct measurement; _formation_slots_call_count is
+	# test-only instrumentation kept for exactly this (see its own doc comment).
+	var u := _make_unit(60)
+	u.frontage_override = 3
+	u.position = Vector2(500, 500)
+	var old_pf: PathField = PathField.active
+	PathField.active = PathField.new(Rect2(0, 0, 4000, 4000))   # no obstacles registered
+	var before: int = u._formation_slots_call_count
+	u._move_to(Vector2(1500, 500), 0.016)
+	var calls: int = u._formation_slots_call_count - before
+	PathField.active = old_pf
+	assert_eq(calls, 1, "_move_to rebuilds the slot layout exactly once per call, not three times")
+
+
+func test_move_to_builds_no_slot_layout_for_a_far_tier_block() -> void:
+	# A far-tier mover must not pay the O(soldiers) slot rebuild every physics tick --
+	# _move_to() reads _far_tier_half_extents() instead. Same counter as the test above.
+	var u := _make_unit(60)
+	u.frontage_override = 3
+	u.position = Vector2(500, 500)
+	TierTransition.demote(u)
+	var old_pf: PathField = PathField.active
+	PathField.active = PathField.new(Rect2(0, 0, 4000, 4000))   # no obstacles registered
+	var before: int = u._formation_slots_call_count
+	u._move_to(Vector2(1500, 500), 0.016)
+	var calls: int = u._formation_slots_call_count - before
+	PathField.active = old_pf
+	assert_eq(calls, 0, "a far-tier _move_to builds no slot layout at all")
+
+
+func test_far_tier_half_extents_match_the_live_slots_for_every_far_layout() -> void:
+	# _far_tier_half_extents() stands in for _formation_local_half_extents() on a far
+	# block, so it must never read smaller (under-clearing terrain), and for every
+	# layout below -- under one full rank included -- it reads exactly the same. Each case is demoted
+	# first, so the live-slot reading sees the far tier's own fresh layout.
+	# `max` is the fixture's max_soldiers and `n` the live headcount: frontage() clamps
+	# frontage_override to max_soldiers, so an under-one-rank case needs max >= files
+	# with the headcount cut separately. `row` forces the row-major branch
+	# (UnitFormation.slots) instead of the fixture's default file-major one.
+	var cases: Array = [
+		{"max": 60, "n": 60, "files": 6, "anchor": 0.0, "square": false, "row": false, "exact": true},    # full ranks
+		{"max": 61, "n": 61, "files": 8, "anchor": 0.0, "square": false, "row": false, "exact": true},    # partial rear rank
+		{"max": 40, "n": 40, "files": 5, "anchor": 30.0, "square": false, "row": false, "exact": true},   # anchored
+		{"max": 40, "n": 40, "files": 5, "anchor": -30.0, "square": false, "row": false, "exact": true},  # anchored, other side
+		{"max": 20, "n": 3, "files": 8, "anchor": 0.0, "square": false, "row": false, "exact": true},     # under one rank
+		{"max": 20, "n": 4, "files": 9, "anchor": 0.0, "square": false, "row": false, "exact": true},     # under one rank, other parity
+		{"max": 20, "n": 3, "files": 8, "anchor": 30.0, "square": false, "row": false, "exact": true},    # under one rank, anchored
+		{"max": 20, "n": 3, "files": 8, "anchor": -30.0, "square": false, "row": false, "exact": true},   # under one rank, anchored other side
+		{"max": 61, "n": 61, "files": 8, "anchor": 30.0, "square": false, "row": true, "exact": true},    # row-major, anchored
+		{"max": 20, "n": 3, "files": 8, "anchor": 0.0, "square": false, "row": true, "exact": true},      # row-major, under one rank
+		{"max": 20, "n": 4, "files": 9, "anchor": 30.0, "square": false, "row": true, "exact": true},     # row-major, under one rank, anchored
+		{"max": 49, "n": 49, "files": 0, "anchor": 0.0, "square": true, "row": false, "exact": true},     # square, full ranks
+		{"max": 50, "n": 50, "files": 0, "anchor": 0.0, "square": true, "row": false, "exact": true},     # square, partial rear rank
+	]
+	for c in cases:
+		var u := _make_unit(c["max"])
+		u.soldiers = c["n"]
+		# Distinct pitches, so a depth read at the wrong pitch (a square's depth runs at
+		# file pitch, every other layout's at rank pitch) changes the answer.
+		u.file_pitch = 20.0
+		u.rank_pitch = 60.0
+		if c["files"] > 0:
+			u.frontage_override = c["files"]
+		u.frontage_anchor_offset = c["anchor"]
+		if c["row"]:
+			u.file_major_reform_mode = Unit.ReformMode.ROW_MAJOR
+		if c["square"]:
+			u.formation_mode = Unit.FORMATION_SQUARE
+		TierTransition.demote(u)
+		# (A square takes formation_slots()' square branch before this flag is read.)
+		assert_eq(u._effective_file_major_reform(), not c["row"],
+			"sanity check: the intended reflow branch is the one under test")
+		var far: Vector2 = u._far_tier_half_extents()
+		var live: Vector2 = u._formation_local_half_extents()
+		var label: String = "n=%d files=%d anchor=%.0f square=%s row=%s" % [c["n"], c["files"], c["anchor"], c["square"], c["row"]]
+		assert_true(far.x >= live.x - 0.001 and far.y >= live.y - 0.001,
+			"%s: far %s never under-reads live %s" % [label, far, live])
+		if c["exact"]:
+			assert_almost_eq(far.x, live.x, 0.001, "%s: half-width matches" % label)
+			assert_almost_eq(far.y, live.y, 0.001, "%s: half-depth matches" % label)
+
+
+func test_far_tier_half_extents_defer_to_the_live_slots_during_a_relief_swap() -> void:
+	# A relief corridor widens the ranks and is not tier-gated, so a far block in a
+	# relief swap must read the live, widened slots -- the headcount form would
+	# under-clear. Same full-overlap setup as the relief-corridor extents test above.
+	var fresh := _make_unit(20)
+	fresh.frontage_override = 4
+	var tired := _make_unit(20)
+	_begin_relief(fresh, tired)
+	TierTransition.demote(fresh)
+	assert_gt(fresh._relief_corridor_spread_strength(tired), 0.0,
+		"sanity check: the corridor is genuinely open for the far block")
+	var live: Vector2 = fresh._formation_local_half_extents()
+	assert_eq(fresh._far_tier_half_extents(), live,
+		"a far block in a relief swap reads the live, corridor-widened extents")
+	fresh.set_current_order(null)
+	assert_lt(fresh._far_tier_half_extents().length(), live.length(),
+		"sanity check: without the partner the headcount form is narrower, so the deferral matters")
+
+
+func test_far_tier_half_extents_defer_for_the_relieved_side_too() -> void:
+	# The corridor also widens the TIRED unit's ranks, found only by the reverse lookup
+	# (the fresh unit's order names it; its own retreat order names nobody).
+	var fresh := _make_unit(20)
+	var tired := _make_unit(20)
+	tired.frontage_override = 4
+	_begin_relief(fresh, tired)
+	TierTransition.demote(tired)
+	assert_true(tired.current_order == null or tired.current_order.friendly_target == null,
+		"sanity check: the tired side holds no forward link of its own")
+	assert_gt(tired._relief_corridor_spread_strength(fresh), 0.0,
+		"sanity check: the corridor is open for the tired far block")
+	assert_eq(tired._far_tier_half_extents(), tired._formation_local_half_extents(),
+		"a far tired block reads the live, corridor-widened extents via the reverse link")
+
+
+func test_incoming_friendly_links_track_friendly_target_on_any_order_type() -> void:
+	# friendly_target is generic by design (any order type may arm it -- see its doc
+	# comment), so arm one on a plain MOVE order.
+	var b := _make_unit(20)
+	var c := _make_unit(20)
+	var order := Order.new_move(Vector2(50, 0))
+	order.friendly_target = b
+	assert_eq(b.incoming_friendly_links, 1, "arming a link on a MOVE order counts on its target")
+	order.friendly_target = b
+	assert_eq(b.incoming_friendly_links, 1, "re-arming the same link does not double-count")
+	order.friendly_target = c
+	assert_eq(b.incoming_friendly_links, 0, "retargeting uncounts the old target")
+	assert_eq(c.incoming_friendly_links, 1, "retargeting counts the new target")
+	order.friendly_target = null
+	assert_eq(c.incoming_friendly_links, 0, "clearing the link uncounts it")
+	order.friendly_target = b
+	order = null   # the last reference: the RefCounted Order is freed here
+	assert_eq(b.incoming_friendly_links, 0, "freeing an order with a live link uncounts it")
+
+
+func test_far_tier_half_extents_skip_the_reverse_scan_when_no_link_is_live() -> void:
+	var u := _make_unit(20)
+	var other := _make_unit(20)
+	TierTransition.demote(u)
+	var before: int = u._relief_reverse_scan_count
+	u._far_tier_half_extents()
+	assert_eq(u._relief_reverse_scan_count, before, "no live link: the whole-group scan is skipped")
+	var link := Order.new_relief(999)
+	other.set_current_order(link)
+	link.friendly_target = u
+	u._far_tier_half_extents()
+	# (More than once: finding the partner falls back to the live slots, whose corridor
+	# step looks the partner up again.)
+	assert_gt(u._relief_reverse_scan_count, before, "a live link elsewhere: the scan runs")
+	other.set_current_order(null)
+
+
+func test_close_tier_extents_skip_the_reverse_scan_when_no_link_is_live() -> void:
+	# The close tier reads the live slots with the relief corridor applied, which asks
+	# _relief_swap_partner() on every call; with no order linking to this unit that must
+	# not fall back to the whole-group scan.
+	var u := _make_unit(20)
+	var other := _make_unit(20)
+	assert_eq(u.incoming_friendly_links, 0, "sanity check: nothing links to this unit yet")
+	var before: int = u._relief_reverse_scan_count
+	u._formation_local_half_extents()
+	assert_eq(u._relief_reverse_scan_count, before, "no live link: the whole-group scan is skipped")
+	var link := Order.new_relief(999)
+	other.set_current_order(link)
+	link.friendly_target = u
+	assert_eq(u._relief_swap_partner(), other, "a live link elsewhere: the scan finds the partner")
+	assert_gt(u._relief_reverse_scan_count, before, "a live link elsewhere: the scan runs")
+	other.set_current_order(null)
+
+
+func test_formation_local_half_extents_includes_an_active_relief_corridors_widening() -> void:
+	# _apply_relief_corridor_to_slots pushes back-rank flank bodies OUTWARD along the
+	# corridor-perpendicular axis while a live relief swap is under way (its own doc
+	# comment: "Widen slot spacing in the ranks a live relief partner is passing
+	# through"), so a relieving unit's real footprint is wider than its base grid for
+	# as long as the swap lasts. formation_slots(soldiers, false) -- what
+	# _formation_local_half_extents() used before this fix -- deliberately EXCLUDES that
+	# widening (soldier_block_half_extents()'s own doc comment: "so extent queries that
+	# feed the corridor's own spread gate cannot recurse"), so a formula reading only the
+	# base grid under-clears a relieving unit exactly while it is at its widest. This
+	# cannot pass against a version that always reads formation_slots(soldiers, false):
+	# the with-relief and without-relief extents would be identical.
+	var fresh := _make_unit(20)
+	fresh.frontage_override = 4   # a real formation, not a degenerate 1-soldier block
+	var tired := _make_unit(20)
+	# _make_unit() already positions both at Vector2.ZERO -- full overlap, the same
+	# "partner sits exactly on top" setup test_relief_corridor.gd's own corridor tests
+	# use, which peaks _relief_corridor_spread_strength() at RELIEF_CORRIDOR_SPREAD_MAX.
+	_begin_relief(fresh, tired)
+	assert_eq(fresh.current_order.friendly_target, tired, "sanity check: the relief swap armed")
+	assert_gt(fresh._relief_corridor_spread_strength(tired), 0.0,
+		"sanity check: full overlap gives a genuinely positive spread strength")
+	# Check the OVERALL footprint, not one named axis: with a degenerate (coincident)
+	# approach direction the corridor falls back to a fixed axis (_apply_relief_corridor_
+	# to_slots' own "blocks sitting on top of each other: pick an axis" comment), and
+	# WHICH local axis that fallback lands on depends on facing -- for this fixture's
+	# default facing it widens depth, not frontage. The claim under test is "the live
+	# extent is bigger than the base grid," not "specifically hw grows," so compare the
+	# two half-extent VECTORS' lengths rather than assuming which component moved.
+	var base_hw: float = 0.0
+	var base_hd: float = 0.0
+	for s in fresh.formation_slots(fresh.soldiers, false):
+		base_hw = maxf(base_hw, absf(s.x))
+		base_hd = maxf(base_hd, absf(s.y))
+	var base_extents := Vector2(base_hw, base_hd)
+	var live_extents: Vector2 = fresh._formation_local_half_extents()
+	assert_gt(live_extents.length(), base_extents.length(),
+		"the relief-aware extent is wider than the base grid while the swap is active")
+
+
+func test_terrain_clearance_with_no_direction_given_returns_corner_clearance() -> void:
+	# With no travel direction known, terrain_clearance() must return a value safe for
+	# ANY direction of travel -- corner_clearance(), the footprint's full half-diagonal
+	# (which equals _pivot_radius() only for a centred, even block; the separate
+	# centred-even test below pins that case), and which the projection formula above
+	# peaks at exactly when the travel angle threads the width and depth terms evenly.
+	# True for a deep column and (trivially, since the two margins already coincide
+	# along facing) for a single-rank line.
+	var deep := _make_unit()
+	deep.frontage_override = 3
+	assert_almost_eq(deep.terrain_clearance(), deep.corner_clearance(), 0.0001,
+		"the no-argument call returns the safe, direction-independent pivot-radius value")
+
+
+func test_corner_clearance_matches_pivot_radius_for_a_centred_even_block() -> void:
+	# corner_clearance() (fed to PathField.next_step's own corner_clearance argument) is
+	# the flat _formation_local_half_extents().length() + body-radius formula -- see its
+	# own doc comment. That coincides with the pivot-radius formula ONLY for a centred,
+	# even block: an anchored offset (test_corner_clearance_accounts_for_a_standing_
+	# frontage_anchor_offset), an uneven file-major depth (test_corner_clearance_reads_
+	# the_deepest_surviving_file_not_ranks_for), or an active relief corridor
+	# (test_formation_local_half_extents_includes_an_active_relief_corridors_widening)
+	# each correctly read LARGER than _pivot_radius() + body_radius, since none of those
+	# is reflected in _pivot_radius() itself (see corner_clearance()'s own divergence
+	# caveat). This fixture -- default frontage_override, no anchor offset, an even
+	# split, no relief -- is the one case where the two formulas still agree exactly.
+	var deep := _make_unit()
+	deep.frontage_override = 3
+	assert_almost_eq(deep.corner_clearance(), deep._pivot_radius() + deep.soldier_body_radius(), 0.0001,
+		"for this centred, even-split fixture corner_clearance matches the pivot-radius half-diagonal plus one body radius")
+	assert_gt(deep.corner_clearance(), deep.terrain_clearance(deep.facing),
+		"for a deep column marching along facing, the corner margin is strictly larger than the straight-leg one")
+	var single_rank := _make_unit()
+	single_rank.frontage_override = single_rank.soldiers
+	assert_almost_eq(single_rank.corner_clearance(), single_rank.terrain_clearance(single_rank.facing), 0.0001,
+		"for a single-rank line marching along facing, the two margins still coincide exactly")
 
 
 # --- funnel-corner routing tie-break (same-team congestion gate) -----------
@@ -1665,6 +2193,78 @@ func test_congested_same_team_router_false_when_heading_opposite() -> void:
 		"a same-team unit heading the opposite way isn't plausibly funneling onto the same corner")
 
 
+func test_congested_same_team_router_uses_corner_clearance_not_the_smaller_straight_leg_one() -> void:
+	# The corner this gate is checking proximity to is placed using corner_clearance()'s
+	# margin (PathField's own corner_clearance argument passed alongside terrain_clearance()),
+	# so the "close enough to plausibly share a corner" radius has to match THAT, not the
+	# smaller, direction-aware straight-leg margin. A deep, narrow column travelling along
+	# its own facing has a terrain_clearance() far smaller than its corner_clearance() --
+	# far enough apart here that reading the smaller value would call this pair NOT
+	# congested, while the correct, corner-sized radius calls it congested.
+	#
+	# Own corner_clearance() (exact, live-slot) versus the scanned unit's cheap
+	# _pivot_radius() + soldier_body_radius() estimate (see
+	# _has_congested_same_team_router()'s own doc comment for why a congestion scan
+	# doesn't need the exact value) coincide for THIS fixture -- default frontage_override,
+	# no anchor offset, no relief, an even split -- so the sanity checks below, expressed
+	# in corner_clearance() for both units, hold regardless of which formula the
+	# implementation actually uses for the candidate side.
+	var a := _make_unit()
+	a.frontage_override = 3   # deep, narrow column -- see the terrain_clearance tests above
+	a.team = 0
+	a.position = Vector2(0, 0)
+	a.facing = Vector2.DOWN
+	var b := _make_unit()
+	b.frontage_override = 3
+	b.team = 0
+	b.position = Vector2(300, 0)
+	b.facing = Vector2.DOWN
+	assert_lt(300.0, a.corner_clearance() + b.corner_clearance(),
+		"sanity check: the pair sits inside the CORNER-sized radius")
+	assert_gt(300.0, a.terrain_clearance(a.facing) + b.terrain_clearance(b.facing),
+		"sanity check: the pair sits OUTSIDE the smaller, straight-leg-sized radius")
+	assert_true(a._has_congested_same_team_router(),
+		"reads congested at the corner-sized radius, which a straight-leg-sized radius would miss")
+
+
+func test_congested_same_team_router_uses_the_scanned_units_cheap_estimate_not_its_exact_extent() -> void:
+	# _has_congested_same_team_router()'s own doc comment: the SCANNED unit's radius is
+	# the cheap _pivot_radius() + soldier_body_radius() estimate, not its exact
+	# corner_clearance() -- computing the exact value for every candidate would force an
+	# O(soldiers) formation_slots() rebuild per scanned unit, every tick, for every
+	# moving unit doing the scanning. Prove the estimate is actually what drives the
+	# gate (not merely that it coincides with the exact value for a centred fixture, as
+	# the sibling test above does) by giving the CANDIDATE the same uneven file-major
+	# depth test_corner_clearance_reads_the_deepest_surviving_file_not_ranks_for uses,
+	# so its corner_clearance() is real and large while its _pivot_radius() (the
+	# ranks_for() average-case estimate) stays small -- then place `a` between the two
+	# resulting radii: congested only if the gate were still reading the exact value.
+	var a := _make_unit()
+	a.team = 0
+	a.position = Vector2(0, 0)
+	a.facing = Vector2.DOWN
+	var b := _make_unit(12)
+	b.team = 0
+	b.frontage_override = 3
+	var uneven_files := PackedInt32Array()
+	for i in 8:
+		uneven_files.append(0)
+	for i in 2:
+		uneven_files.append(1)
+	for i in 2:
+		uneven_files.append(2)
+	b._sim_soldier_file = uneven_files
+	b._file_assignment_files = 3
+	var exact_radius: float = a.corner_clearance() + b.corner_clearance()
+	var cheap_radius: float = a.corner_clearance() + b._pivot_radius() + b.soldier_body_radius()
+	assert_gt(exact_radius, cheap_radius + 10.0,
+		"sanity check: the uneven depth genuinely widens b's exact extent past its cheap estimate")
+	b.position = Vector2(0.5 * (exact_radius + cheap_radius), 0)   # strictly between the two radii
+	b.facing = Vector2.DOWN
+	assert_false(a._has_congested_same_team_router(),
+		"the gate reads false at a distance only the CHEAP pivot-radius estimate would exclude")
+
+
 func test_funnel_lane_offset_is_zero_with_no_pathfield_active() -> void:
 	var old_pf: PathField = PathField.active
 	PathField.active = null
@@ -1719,9 +2319,12 @@ func test_funnel_lane_offset_is_nonzero_when_a_same_team_unit_is_congested_nearb
 	# scheme's full -1/+1 magnitude for this specific pair.
 	var expected_a: float = (2.0 * float(posmod(a.uid, Unit.FUNNEL_LANE_COUNT)) / float(Unit.FUNNEL_LANE_COUNT - 1)) - 1.0
 	var expected_b: float = (2.0 * float(posmod(b.uid, Unit.FUNNEL_LANE_COUNT)) / float(Unit.FUNNEL_LANE_COUNT - 1)) - 1.0
-	assert_almost_eq(offset_a, expected_a * a.terrain_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
+	# Scaled from corner_clearance(), not terrain_clearance(): the offset perturbs the
+	# shared FUNNEL CORNER waypoint, which is grown by corner_clearance() (see
+	# funnel_lane_offset's own doc comment).
+	assert_almost_eq(offset_a, expected_a * a.corner_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
 		0.0001, "a genuinely congested pair still gets the deterministic per-uid tie-break offset")
-	assert_almost_eq(offset_b, expected_b * b.terrain_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
+	assert_almost_eq(offset_b, expected_b * b.corner_clearance() * Unit.FUNNEL_LANE_SEPARATION_FRACTION,
 		0.0001, "a genuinely congested pair still gets the deterministic per-uid tie-break offset")
 	assert_ne(offset_a, offset_b, "a genuinely congested pair never shares a lane")
 	PathField.active = old_pf
