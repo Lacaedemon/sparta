@@ -91,8 +91,9 @@ const POINT_EPSILON := 12.0
 
 ## Decide this AI tick's directives for one team's group. `group` is the team's own living,
 ## non-routing units (Battle._team_units(team) -- the caller's group-assignment choice, see
-## the class doc); `all_units` is every living node in the "units" group, the same
-## omniscient perception source UnitLeader.decide reads; `plan` is the current army plan
+## the class doc); `all_units` is the caller's perception source (Battle.
+## _ai_perceptible_units -- omniscient with fog of war off, fogged when it is on), the
+## same one UnitLeader.decide reads; `plan` is the current army plan
 ## (defaults to General.PLAN_ADVANCE_LINE). `screen` is the general's own doctrine-driven
 ## skirmisher-screen flag (General.decide_army's "skirmisher_screen" output), off by default
 ## so a doctrine that does not ask for a screen keeps the exact prior behaviour. Returns

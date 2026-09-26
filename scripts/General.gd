@@ -1,7 +1,8 @@
 class_name General
 ## Phase 3 of the chain-of-command battle AI (docs/battle-ai-design.md): the general. Reads a
-## doctrine profile (DoctrineRegistry) plus the same omniscient perception every other command
-## level uses, and produces:
+## doctrine profile (DoctrineRegistry) plus the same perception every other command level
+## uses (Battle._ai_perceptible_units -- omniscient with fog of war off, fogged when it is
+## on, per phase 5), and produces:
 ##   - an army PLAN (which of the doctrine's known plans applies this tick);
 ##   - a GROUP split of the team's own (non-reserve) units, one array per Subcommander group;
 ##   - a RESERVE pool, held back until a legible serialized-state condition releases it;
@@ -60,9 +61,9 @@ const PLAN_DO_NOTHING := "do_nothing"
 ## the "units" + "routers" union, mirroring _team_in_play/_team_survivors' own convention) --
 ## deliberately not the narrower "units"-only set: see _reserve_uids' doc comment for why a
 ## routing unit must still count toward the reserve-fraction denominator even though it can't
-## itself be assigned to a group. `all_units` is every living node in the "units" group, the
-## same omniscient perception source every other command level reads; `doctrine` is the parsed
-## profile (DoctrineRegistry.doctrine(id)). Returns:
+## itself be assigned to a group. `all_units` is the caller's perception source (Battle.
+## _ai_perceptible_units), the same one every other command level reads; `doctrine` is the
+## parsed profile (DoctrineRegistry.doctrine(id)). Returns:
 ##   {"plan": String, "groups": Array[Array], "active_units": Array, "reserve_units": Array,
 ##    "pursue_routers": bool, "skirmisher_screen": bool}
 ## `groups` is an array of unit arrays, one per Subcommander group (Subcommander itself decides

@@ -45,14 +45,22 @@ and the battle presentation:
   real-geography ingestion will author against ships alongside it. Continuous army
   movement on that substrate, and retiring turn order in favour of the clock, are
   the rest of the phase.
-- **Battle AI** --- subcommanders, the general's doctrine/reserves layer, and
-  player delegation to AI subcommanders (phases 2--4) have shipped; see
-  [Tactics](tactics.qmd#enemy-coordination) for what's live.
-  [Phase 5](https://github.com/Lacaedemon/sparta/issues/588), fog-of-war-aware
-  perception, is what's left of the chain-of-command build-out. That issue
-  spent over two weeks closed in error and was reopened on 2026-09-19,
-  Pacific (see
+- **Battle AI** --- subcommanders, the general's doctrine/reserves layer,
+  player delegation to AI subcommanders, and fog-of-war-aware perception
+  (phases 2--5) have all shipped; see
+  [Tactics](tactics.qmd#enemy-coordination) for what's live and
+  [Tactics](tactics.qmd#fog-of-war) for how fog now shapes both sides'
+  decisions, closing out the chain-of-command build-out.
+  [Phase 5](https://github.com/Lacaedemon/sparta/issues/588) --- the
+  fog-of-war-aware perception swap --- spent over two weeks closed in error
+  and was reopened on 2026-09-19, Pacific (see
   `docs/battle-ai-design.md`'s "Implementation status" section for why).
+  Commander-scoped narrowing (a subcommander's own view, rather than a
+  team-wide one) and up-the-chain report propagation are still open, tracked as
+  [#1625](https://github.com/Lacaedemon/sparta/issues/1625); AI reasoning over
+  a lost contact's last-known position (the same memory the player's own ghost
+  markers already show) is tracked separately as
+  [#1626](https://github.com/Lacaedemon/sparta/issues/1626).
 - **3D battlefield** --- a planned conversion of the battle view from 2D
   top-down to a Total War-style 3D presentation with a rotatable camera
   ([#69](https://github.com/Lacaedemon/sparta/issues/69)); the deterministic

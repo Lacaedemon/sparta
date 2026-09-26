@@ -302,6 +302,17 @@ var line_index: int = 0
 # too but closes via its leader's explicit attack order, never this fallback. ORDER_HOLD
 # and ORDER_BRACE already suppress the same advance regardless of this flag.
 var auto_advance_on_detect: bool = true
+# The owning Battle node, cached once in _ready() as Battle -> $Units -> Unit (Battle.
+# _spawn_unit adds every unit through the $Units container, never directly), or null for a
+# bare unit built outside a battle scene (most GUT tests do this, e.g. test_unit_leader.gd's
+# _unit() helper). Deliberately untyped rather than `as BattleRef` -- Battle.gd already
+# preloads Unit.gd (its own `const UnitRef`), so Unit.gd preloading Battle.gd back would be a
+# genuine circular preload, unlike HUD.gd/SelectionManager.gd/UnitLeader.gd's own `BattleRef`
+# aliases (safe one-directional preloads, since Battle.gd never preloads any of those back).
+# Every call site duck-types via has_method() and treats a null or method-less owner as "no
+# battle to ask" rather than failing -- see _enemy_is_perceived's own doc comment, the one
+# consumer today.
+var _owning_battle: Node = null
 # KNOCKBACK_FOCUS's own per-order parameter: how far a struck enemy body should be shoved.
 # false (default) -- just clear the battle line -- is the common case; true pushes it much
 # further. A genuine per-ORDER setting, not a global Settings toggle: Battle._apply_order_cmd
@@ -1532,6 +1543,8 @@ func _ready() -> void:
 	separation_radius = _type_separation_radius()
 	_base_separation_radius = separation_radius
 	add_to_group("units")
+	var units_container := get_parent()
+	_owning_battle = units_container.get_parent() if units_container != null else null
 	# Layer budget: field=0, then this unit's cosmetic stack sits 1..3 — shadow (eff 1),
 	# marks (eff 2), chrome (this _draw, eff 3) — all below the z=4 rout shockwave / z=5
 	# volley trails / z=100 selection box. The marks/shadow are child nodes (MultiMeshes /
@@ -1768,6 +1781,26 @@ func _start_promoted_move() -> void:
 ## ATTACK order (target_uid >= 0, the ordinary player-issued case) is untouched here --
 ## Battle._apply_order_cmd already set target_enemy at issue time. No-op for every other
 ## order kind or an ATTACK that's already carrying a live target.
+## Gated by fresh_pick_allowed (melee-contact exempt, _enemy_is_perceived otherwise), same
+## as every other fresh acquisition in this file: the candidate comes from
+## UnitTargeting.current_target, whose own fresh-pick fallback (nearest_enemy) is a bare,
+## unfogged detection_range scan -- reachable from _think() via retire_current_order(), so
+## an ungated commit here could silently launder an unsighted enemy into target_enemy,
+## which every downstream branch then trusts as "already committed." The melee-contact
+## exemption keeps the intended "advance until contact" case unaffected -- the guard that
+## promotes this order only fires the instant contact is made, so the intended candidate is
+## normally already in contact when this runs.
+## fresh_pick_allowed is passed to current_target as a RANKING predicate, not just applied
+## after the pick: without it, a closer enemy this gate would reject (out of contact, not
+## perceived) wins the nearest-of-any ranking and blocks a farther enemy that IS already in
+## contact (or perceived) from ever being considered at all -- the still-open fog-of-war gap
+## UnitTargeting.nearest_enemy_to's own `predicate` parameter closes (see its doc comment).
+## No separate post-selection fresh_pick_allowed check remains below: target_enemy is
+## confirmed null just above (the early return right before this call), so current_target
+## always takes its fresh-pick fallback here, never its already-committed-live-target
+## return -- meaning any non-null `candidate` already passed the SAME fresh_pick_allowed
+## call as the predicate, on the same self/candidate pair, with nothing mutating either
+## between the two -- a second call would just repeat it.
 func _start_promoted_attack() -> void:
 	if current_order == null or current_order.type != Order.Type.ATTACK:
 		return
@@ -1775,7 +1808,10 @@ func _start_promoted_attack() -> void:
 		return
 	if target_enemy != null and is_instance_valid(target_enemy):
 		return
-	target_enemy = UnitTargeting.current_target(self)
+	var candidate: Unit = UnitTargeting.current_target(self, Callable(self, "fresh_pick_allowed"))
+	if candidate == null:
+		return
+	target_enemy = candidate
 
 
 ## Destinations of the queued (not-yet-current) MOVE legs, in queue order -- the route the
@@ -2464,6 +2500,179 @@ func _start_attack_cd(baseline_interval: float) -> void:
 		_attack_cd = baseline_interval
 
 
+## Whether `enemy` is a valid target for a not-yet-engaged per-unit decision: true
+## unconditionally when there is no owning battle to ask (a bare unit built outside a battle
+## scene, or an owner that predates ai_team_perceives -- both treated as "no gate", matching
+## the historical unfogged behaviour) or when the owning battle itself is unfogged (its own
+## ai_team_perceives already returns true for that case); otherwise delegates to the owning
+## Battle's ai_team_perceives(team, enemy) -- the SAME Perception-based test Battle.
+## _ai_perceptible_units uses for the command-level AI (General/Subcommander/UnitLeader), so
+## none of this function's own callers can see an enemy the command layer itself couldn't.
+## Duck-typed via has_method rather than a static Battle type -- see _owning_battle's own
+## doc comment for why Unit.gd cannot safely preload Battle.gd.
+##
+## THE authoritative list of the branches this gates (Battle.ai_team_perceives' own doc
+## comment points back here rather than duplicating it, to avoid the two drifting apart the
+## way this comment itself once did when it named only one caller). Each branch below
+## applies it either as a direct call or by handing it -- or fresh_pick_allowed, which wraps
+## it with a melee-contact exemption -- to a UnitTargeting ranking function as the
+## `predicate` that filters fresh candidates BEFORE ranking. No count is kept here: counts
+## in this list went stale twice, so derive the sites with
+## `grep -n "_enemy_is_perceived\|fresh_pick_allowed" scripts/*.gd`. UnitRelief.begin and
+## FarTierCombat.engaged_target reach this gate externally -- see fresh_pick_allowed's own
+## doc comment, right after this function:
+## - _think()'s ranged-fire-at-standoff branch (loose a volley at a not-yet-melee target).
+##   Runs for BOTH teams -- not AI-exclusive.
+## - _think()'s auto-advance-on-detect fallback (march on a merely-detected target).
+##   The ONE AI-exclusive branch here: gated on auto_advance_on_detect, which is false for a
+##   player-commanded unit (it always holds formation and waits for an order instead).
+## - _think()'s ORDER_SKIRMISH kite branch (a ranged unit backing off from a not-yet-melee
+##   threat within skirmish_kite_distance, ~5 m). Runs for BOTH teams; not melee contact, so
+##   not exempt the way the melee branch below is, even at that short a standoff.
+## - _think()'s ORDER_SWEEP_ROUTERS acquisition, both call sites (the routing-enemy pick and
+##   its current_target() fallback) -- gates the COMMIT to target_enemy, not just a later
+##   read of it, so a fresh unperceived pick can't silently pass as an already-gated
+##   commitment once it lands in target_enemy.
+## - _think()'s ORDER_ROLL_THE_LINE acquisition: the fresh pick is filtered by the ranking
+##   predicate, for the same reason as SWEEP_ROUTERS just above. An already-committed live
+##   target_enemy is returned unfiltered and KEPT after perception of it lapses -- the same
+##   disclosed exception as the chase branch's committed half below.
+## - _start_promoted_attack's target_enemy commit (a just-promoted, unresolved ATTACK order
+##   resolving to whatever current_target() returns) -- reachable from _think() via
+##   retire_current_order(). Passes fresh_pick_allowed as the ranking predicate (own doc
+##   comment, right after _enemy_is_perceived below): exempt when the candidate is already in
+##   MELEE CONTACT (the intended "advance until contact" case this promotion exists for);
+##   gated otherwise.
+## - _think()'s chase-an-explicit-attack-order branch's OWN `chasing` half (see below --
+##   this one call expression covers only the auto-acquired-quarry case, not the
+##   already-committed-target_enemy case, which stays the disclosed exception it always was).
+## - _support_tick's ranged-fire branch (a SUPPORT-stance unit firing on its ward's threat).
+##   Runs for BOTH teams -- SUPPORT is a player-selectable order stance (HUD), not AI-only.
+## - _support_tick's chase branch (closing on that threat to melee). Runs for BOTH teams, same
+##   reason as its sibling ranged-fire branch above.
+## - _think()'s under-fire scan, called on each enemy SHOOTER as u._enemy_is_perceived(self)
+##   rather than on this unit: a shooter whose own side does not perceive this unit is not
+##   counted as firing on it, mirroring the ranged-fire branches above, so a volley fog
+##   withholds can't still jog this unit on AUTO or erode its morale. Runs for BOTH teams.
+## Every branch above except auto-advance-on-detect runs for BOTH teams -- a deliberate
+## symmetric design choice made during review, not an oversight carried over from an
+## AI-only first pass: a player unit that could snipe or chase past its own player's fogged
+## screen would itself be a fog-breaking exploit, and one shared rule is simpler than
+## special-casing which side asked. See docs/fog-of-war-design.md's "What the AI can see"
+## update for the fuller rationale.
+## Deliberately NOT a caller: every MELEE-CONTACT combat resolution branch in this file
+## (soldier-level combat already in melee stays unfogged, per docs/fog-of-war-design.md).
+## This is narrower than "in weapon range" -- missile fire at standoff (the ranged-fire
+## branches above) is itself gated even though the target is already within the shooter's
+## own missile_range, precisely because it is not yet in melee contact.
+##
+## Also deliberately not a caller, for a related but distinct reason -- proximity rather than
+## a targeting commit: _can_rally's broken-contact check (UnitTargeting.nearest_enemy_to
+## within RALLY_CONTACT_RADIUS) decides only whether a routed unit rallies or shatters; there
+## is no target_enemy assignment downstream of it at all. It is also not a genuine
+## melee-contact-distance check the way the combat-resolution exemption above is
+## (RALLY_CONTACT_RADIUS is a fixed proximity radius, not attack_range + both radii): at 8 m
+## it sits close in scale to DETECTION_RANGE (9.5 m), not to an actual melee contact distance,
+## so this reads as a looser "contact is unconditionally exempt" than the case above -- exempt
+## nonetheless, since rallying asks whether the fight is still physically pressing, not
+## whether to engage a not-yet-perceived target.
+##
+## Known ungated, tracked separately: OrderGuards.enemy_in_range (scripts/OrderGuards.gd),
+## which backs Order.Guard.ENEMY_IN_RANGE, calls UnitTargeting.nearest_enemy_to directly with
+## no _enemy_is_perceived check -- a real fog leak (a scripted order's wait condition can be
+## satisfied by an enemy its own side has not perceived). It decides whether a QUEUED order's
+## guard is satisfied, not a not-yet-engaged targeting commit, so it falls outside this
+## function's own scope; left as a known gap rather than folded in here.
+##
+## Also deliberately not a caller, but for a different reason -- a disclosed exception, not
+## an in-scope combat-resolution branch: _think()'s chase-an-explicit-attack-order branch's
+## `target_enemy != null` half closes on a target's CURRENT position every tick once that
+## target has already been committed to, with no re-check of whether it is still perceived.
+## That commitment WAS made through a perception-gated decision at the time (an explicit
+## attack order, player- or AI-issued, or SWEEP_ROUTERS/ROLL_THE_LINE's own now-gated
+## fresh-pick commits above); this half just doesn't re-verify it every tick afterward. See
+## that branch's own comment for why (a genuine design question about whether an order
+## should self-cancel on lost perception, not an oversight). The branch's OTHER half
+## (`chasing and ...`) has no such prior commitment behind it and IS a caller -- see the
+## list above.
+##
+## Sweep any NEW not-yet-engaged targeting decision added to this file against this same
+## list -- and add it here -- rather than assuming _enemy_is_perceived's existence alone
+## covers it.
+##
+## Every fresh-pick site above ranks its candidate through UnitTargeting's own `predicate`
+## parameter (nearest_enemy/nearest_enemy_to/nearest_routing_enemy/roll_the_line_target/
+## current_target all take one, forwarded to nearest_enemy_to's candidate loop -- see its
+## own doc comment), passing either this function or fresh_pick_allowed as the predicate to
+## match whichever exemption that site's own post-selection gate already granted. This is
+## NOT the same as ranking unfiltered and rejecting the winner afterward: a closer candidate
+## the gate would reject (out of contact, unperceived) must not be able to shadow a farther
+## candidate it would have accepted out of consideration entirely, which a purely post-hoc
+## gate cannot prevent -- if the nearest-of-any pick is rejected, a post-hoc gate has nothing
+## left to fall back to, and the fresh acquisition comes up empty even though a farther,
+## engageable candidate was sitting right there. Every post-selection gate in this file's own
+## list above is KEPT regardless (most still catch a genuinely different case -- an
+## ALREADY-committed target_enemy, returned by current_target/roll_the_line_target without
+## ever consulting the predicate, whose perception can still lapse tick to tick after
+## commitment); only _start_promoted_attack's and UnitRelief.begin's own post-selection
+## fresh_pick_allowed re-checks were removable, because both sites confirm target_enemy is
+## null immediately beforehand, so their fallback pick can only ever take the
+## predicate-filtered path, never the already-committed one.
+##
+## Two callers live OUTSIDE this file:
+## - FarTierCombat.engaged_target (scripts/FarTierCombat.gd) calls this externally
+##   (u._enemy_is_perceived(target)), matching the near tier's OWN melee-vs-ranged split
+##   rather than the chase branch's committed-vs-fresh one: a MELEE engagement is
+##   unconditionally exempt (committed or fresh alike, same as the melee branch above), but
+##   a RANGED/standoff exchange re-checks every tick regardless of commitment (same as the
+##   ranged-fire branch above) -- see that function's own doc comment.
+## - UnitRelief.begin (scripts/UnitRelief.gd) calls this externally via
+##   u.fresh_pick_allowed(candidate) -- the same helper _start_promoted_attack uses, so the
+##   two sites share one melee-contact/perception test rather than each carrying its own copy
+##   -- to gate the FRESH fallback pick a relieving unit takes over when the tired unit it's
+##   relieving has target_enemy == null (e.g. HOLD/BRACE standoff fire with no committed
+##   target): the fallback is UnitTargeting.nearest_enemy, a bare, unfogged detection_range
+##   scan, so it needs the same gate as every other fresh pick in this list. tired's OWN
+##   target_enemy, when non-null, is taken over WITHOUT re-gating -- it was set one of three
+##   ways: an explicit order, one of this file's own now-gated fresh-pick commits (both
+##   perception-gated at the time), or _think()'s melee-contact branch (target_enemy = enemy,
+##   set when in contact outside HOLD/MARCH_TO_CONTACT/BRACE), which is deliberately NOT a
+##   caller of this function: contact-exempt rather than perception-gated, benign because
+##   melee_contact_distance is far below any realistic sight range. Same already-committed
+##   exemption the chase branch's target_enemy != null half relies on. See UnitRelief.begin's
+##   own doc comment.
+##
+## One more site reaches the SAME ai_team_perceives test directly rather than through this
+## wrapper, because it already lives inside Battle.gd: Battle._apply_order_cmd's own
+## DISTRIBUTED-attack candidate-pool scan. A distributed group ATTACK order pre-sorts every
+## live enemy by proximity to the clicked/resolved target_unit and hands each OTHER ordered
+## unit its own slot from that list -- a fresh pick at the group command layer, gated the same
+## way every per-unit fresh pick above is. target_unit itself is exempt (visible by
+## construction -- a player click SelectionManager already filtered to a visible enemy, or an
+## AI decision that resolved it through perception), the same already-committed-target
+## exemption every site in this list relies on. See that branch's own comment in Battle.gd.
+func _enemy_is_perceived(enemy: Unit) -> bool:
+	if _owning_battle == null or not _owning_battle.has_method("ai_team_perceives"):
+		return true
+	return _owning_battle.ai_team_perceives(team, enemy)
+
+
+## Whether a not-yet-committed `candidate` may be assigned to target_enemy right now: true
+## when it is already in melee contact with this unit (the "advance until contact" case is
+## meant to land on its target the instant contact is made, so contact itself always
+## clears the gate -- matching the melee invariant everywhere else), or when this unit's
+## own side actually perceives it (_enemy_is_perceived). Factored out so
+## _start_promoted_attack (below) and UnitRelief.begin (scripts/UnitRelief.gd, called
+## externally as u.fresh_pick_allowed(candidate)) share one test for their own freshly-picked
+## candidate rather than each carrying its own copy of the melee-contact-distance math. See
+## _enemy_is_perceived's own doc comment (the authoritative caller list) for how each of
+## those two sites fits in.
+func fresh_pick_allowed(candidate: Unit) -> bool:
+	var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, candidate)
+	var in_contact: bool = position.distance_squared_to(candidate.position) <= contact_dist * contact_dist
+	return in_contact or _enemy_is_perceived(candidate)
+
+
 ## Decide what to do this frame: fight if in contact, otherwise move.
 func _think(delta: float) -> void:
 	# Physical contact: true when ANY live-or-routing enemy regiment is within melee
@@ -2611,7 +2820,10 @@ func _think(delta: float) -> void:
 			return
 
 	# Under-fire detection for AUTO pace and suppression morale (docs/longer-range-missile-design.md, phase 3):
-	# true when any alive enemy ranged unit with ammunition has this unit inside ITS OWN missile range.
+	# true when any alive enemy ranged unit with ammunition has this unit inside ITS OWN missile range
+	# and that shooter's own side perceives this unit -- the same u._enemy_is_perceived gate the
+	# shooter's fire decision passes (see the ranged branch below), so a volley fog withholds can't
+	# still jog this unit or erode its morale. With fog off the gate is unconditionally true.
 	# _under_fire_can_reply is true only when under fire AND this unit has ranged capability, ammo,
 	# and sufficient reach to reply to every enemy threatening it.
 	# Must run before the ORDER_SUPPORT early return so _support_tick's _move_to
@@ -2624,7 +2836,7 @@ func _think(delta: float) -> void:
 		if u is Unit and u.team != team and u.is_ranged and u.has_missile_ammo() \
 				and u.state != State.DEAD and u.state != State.ROUTING:
 			var d_sq: float = position.distance_squared_to(u.position)
-			if d_sq <= u.missile_range * u.missile_range:
+			if d_sq <= u.missile_range * u.missile_range and u._enemy_is_perceived(self):
 				had_threat = true
 				var can_reply_to_u: bool = is_ranged and has_missile_ammo() \
 						and d_sq <= missile_range * missile_range
@@ -2657,12 +2869,29 @@ func _think(delta: float) -> void:
 	# and sets has_move_target to signal disengage, and committing an auto-acquired target
 	# here unconditionally would silently override that signal one tick early, re-engaging
 	# a fight the player just tried to break off from.
+	# Also gated by _enemy_is_perceived: both UnitTargeting.nearest_routing_enemy and
+	# current_target's own fresh-pick fallback are bare, unfogged detection_range scans --
+	# without this, SWEEP_ROUTERS could commit target_enemy to a fresh, unsighted router,
+	# which would then silently pass the chase branch's own "target_enemy != null" exemption
+	# below as if it had been a genuinely perception-gated commitment. Passed to BOTH calls
+	# as a RANKING predicate (not just applied after the pick): without it, a closer router
+	# (or closer fallback candidate) this gate would reject wins the nearest-of-any ranking
+	# and blocks a farther, perceived one from ever being considered -- the "closer hidden
+	# enemy shadows a farther perceived one" fog-of-war gap UnitTargeting.nearest_enemy_to's
+	# own `predicate` parameter closes (see its doc comment). Neither call passes
+	# fresh_pick_allowed here (unlike the general current_target() call further below): a
+	# router or a swept fallback candidate is not itself melee-contact-exempt at this commit
+	# point, matching this branch's own strict _enemy_is_perceived re-check that follows each
+	# pick.
 	if order_mode == ORDER_SWEEP_ROUTERS:
-		var routing_enemy: Unit = UnitTargeting.nearest_routing_enemy(self)
-		if routing_enemy != null:
+		var routing_enemy: Unit = \
+			UnitTargeting.nearest_routing_enemy(self, Callable(self, "_enemy_is_perceived"))
+		if routing_enemy != null and _enemy_is_perceived(routing_enemy):
 			target_enemy = routing_enemy
 		elif target_enemy != null or not has_move_target:
-			target_enemy = UnitTargeting.current_target(self)
+			var swept: Unit = UnitTargeting.current_target(self, Callable(self, "_enemy_is_perceived"))
+			if _enemy_is_perceived(swept):
+				target_enemy = swept
 
 	# Roll the line: a beaten (dead or routed) foe no longer holds this unit's attention --
 	# it moves straight on to the next-closest enemy still actually fighting, instead of
@@ -2672,12 +2901,24 @@ func _think(delta: float) -> void:
 	# an explicit order) -- ROLL_THE_LINE's whole point is to keep committing to a new foe
 	# with no fresh player/AI order behind it, so the not-yet-in-contact chase branch below
 	# (which reads the target_enemy field, not this local) needs it set too.
+	# Also gated by _enemy_is_perceived, for the same reason as SWEEP_ROUTERS just above:
+	# roll_the_line_target's own fresh-pick fallback is a bare, unfogged scan, and this
+	# branch persists its result to target_enemy, which would otherwise silently pass the
+	# chase branch's "already committed" exemption with no perception check ever having run.
+	# Passed to roll_the_line_target as a RANKING predicate for the same reason as
+	# SWEEP_ROUTERS just above: a closer unperceived enemy must not be able to shadow a
+	# farther perceived one out of consideration during ranking itself. That predicate
+	# already filters every fresh pick, so there is no second check here: the only other
+	# thing roll_the_line_target returns is an already-live, non-routing committed
+	# target_enemy (unfiltered -- see its own doc comment), and a committed target is kept
+	# after perception of it lapses, the same disclosed exception the chase branch below
+	# makes for its committed half.
 	var enemy: Unit
 	if order_mode == ORDER_ROLL_THE_LINE:
-		enemy = UnitTargeting.roll_the_line_target(self)
+		enemy = UnitTargeting.roll_the_line_target(self, Callable(self, "_enemy_is_perceived"))
 		target_enemy = enemy
 	else:
-		enemy = UnitTargeting.current_target(self)
+		enemy = UnitTargeting.current_target(self, Callable(self, "fresh_pick_allowed"))
 	if enemy != null:
 		var dist_sq: float = position.distance_squared_to(enemy.position)
 		# Melee contact distance: for two standing lines facing each other, the
@@ -2708,8 +2949,14 @@ func _think(delta: float) -> void:
 		# than standing to fire or being caught in melee; beyond it, it falls through
 		# to the normal ranged fire below. Gated by the same "not disengaging" rule
 		# as firing, so a plain move order still marches it off instead of kiting.
+		# Also gated by _enemy_is_perceived: `enemy` (current_target, above) can be a bare,
+		# unfogged detection_range pick, and kite_distance (~5 m) is standoff, not melee
+		# contact -- so without this a skirmisher would visibly react to (and thereby
+		# reveal) a threat its own side has never sighted, the same class of tell the
+		# ranged-fire-at-standoff branch below already closes.
 		if is_ranged and order_mode == ORDER_SKIRMISH and dist_sq < skirmish_kite_distance * skirmish_kite_distance \
-				and (target_enemy != null or not has_move_target):
+				and (target_enemy != null or not has_move_target) \
+				and _enemy_is_perceived(enemy):
 			var away: Vector2 = position - enemy.position
 			if away.length_squared() < 0.000001:
 				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
@@ -2729,9 +2976,22 @@ func _think(delta: float) -> void:
 		# to fire under a plain move order -- see ORDER_MARCH_TO_CONTACT's own doc comment
 		# for why has_move_target is deliberately left untouched (the march resumes on its
 		# own once the fight ends).
+		# Also gated by _enemy_is_perceived(enemy): `enemy` (current_target/nearest_enemy,
+		# above) is a bare detection_range scan with no LOS or fog test, and missile_range
+		# can reach past what this unit's own side currently perceives under fog -- without
+		# this, an idle unit would loose VISIBLE volleys at (and enter FIGHTING against) a
+		# target none of its side has sighted, the same tell Unit._support_tick's own ranged
+		# branch closes (see that function's doc comment). Melee-in-contact below is
+		# unaffected -- soldier-level combat stays unfogged once bodies are touching. With
+		# fog off, _enemy_is_perceived is unconditionally true, so this branch is unchanged
+		# from before phase 5; applies uniformly to both teams (a player-controlled ranged
+		# unit gets the identical treatment, so it cannot snipe blind past its own player's
+		# fog-restricted screen either -- the check is symmetric by construction, not an
+		# AI-only carve-out).
 		if is_ranged and has_missile_ammo() and not in_contact and dist_sq <= missile_range * missile_range \
 				and (target_enemy != null or not has_move_target or chasing \
-					or order_mode == ORDER_MARCH_TO_CONTACT):
+					or order_mode == ORDER_MARCH_TO_CONTACT) \
+				and _enemy_is_perceived(enemy):
 			state = State.FIGHTING
 			# Commit the auto-acquired foe so next tick's current_target() returns it
 			# instead of re-running nearest_enemy() from scratch -- see the melee branch's
@@ -2831,11 +3091,35 @@ func _think(delta: float) -> void:
 					and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
 				_press_into(enemy.position, delta, enemy.state == State.ROUTING)
 			return
-		elif target_enemy != null or (chasing and not in_contact):
+		elif target_enemy != null or (chasing and not in_contact and _enemy_is_perceived(enemy)):
 			# Explicit attack order (or a CHASE unit's auto-acquired quarry), not yet in
 			# contact: chase past any move target. A flank/rear stance closes on the
 			# enemy's side or back instead of head-on, so the strike on arrival lands with
 			# the flank/rear bonus.
+			# The `target_enemy != null` half is a DISCLOSED, deliberately-not-gated
+			# exception to _enemy_is_perceived's own invariant: target_enemy was already
+			# set one of three ways -- an explicit attack order (player- or AI-issued) or
+			# SWEEP_ROUTERS/ROLL_THE_LINE's own now-gated fresh-pick commits above, both
+			# perception-gated at the time, or this same function's own melee-contact branch
+			# above (target_enemy = enemy, set when in contact outside HOLD/MARCH_TO_CONTACT/
+			# BRACE, on some earlier tick), which is deliberately NOT a caller of
+			# _enemy_is_perceived: contact-exempt rather than perception-gated, benign because
+			# melee_contact_distance is far below any realistic sight range. Either way, this
+			# branch then keeps closing on that same target's CURRENT live position every
+			# tick with no re-check -- so a unit can keep chasing a target that has since
+			# dropped out of its side's own current perception (it slipped behind occluding
+			# terrain, or the ally that was granting sight died or moved off). Gating this
+			# half naively would also break off a player's own already-issued attack order
+			# the moment perception lapses, which is a genuine design question (does a
+			# commander recall an order already given, or trust the last position reported?)
+			# rather than a bug to silently patch here -- it wants the same last-known-contact
+			# memory model this code's own perception layer does not yet have.
+			# The `chasing and ...` half has NO such prior gated commitment behind it --
+			# ORDER_CHASE alone can reach this branch with target_enemy still null (a purely
+			# auto-acquired quarry, from current_target's own bare, unfogged fallback above),
+			# so it gets its own _enemy_is_perceived(enemy) check rather than inheriting the
+			# exemption the `target_enemy != null` half earned through an actual gated
+			# commitment.
 			# If the enemy broke contact mid-turn, settle the re-face first — the unit is
 			# marching after it now, so the frozen arrival must release (the turn resumes on
 			# the next contact when _face_for_action runs again).
@@ -2944,12 +3228,22 @@ func _think(delta: float) -> void:
 				# (has_move_target false, active_leaf().turn_target still zero), leaving
 				# the unit facing the pivoted heading instead of turning back.
 	elif enemy != null and auto_advance_on_detect \
-			and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
+			and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE \
+			and _enemy_is_perceived(enemy):
 		# Auto-advance on a near enemy the combat branches didn't engage this tick (out of
 		# range/contact). Gated by auto_advance_on_detect: a directly player-commanded unit
 		# leaves this false and holds formation instead (the else branch below), waiting for
 		# an order rather than closing on a foe still outside weapon range; the AI-driven
-		# enemy keeps it true so it still closes. If a re-face turn was in progress, settle it
+		# enemy keeps it true so it still closes -- but only onto an enemy its own side
+		# currently perceives (_enemy_is_perceived, below). `enemy` itself comes from
+		# UnitTargeting.current_target()/nearest_enemy() above, a bare detection_range scan
+		# of the live groups with no LOS or fog test at all -- without this extra gate, an
+		# idle AI-driven unit under fog of war would keep marching, every physics tick, toward
+		# any foe within detection_range regardless of whether its own side has actually
+		# sighted it: an omniscient backdoor phase 5 (docs/battle-ai-design.md) exists to
+		# close everywhere, not just in the command-level AI (_run_enemy_ai). With fog off,
+		# _enemy_is_perceived is unconditionally true, so this branch is byte-for-byte
+		# unchanged from before that phase. If a re-face turn was in progress, settle it
 		# first: the unit is marching now, so the frozen arrival must release (folding the
 		# partial rotation into _formation_angle) or the bodies would stay pinned and never
 		# keep up with the march.
@@ -3030,39 +3324,72 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 
 ## Support stance: guard the ward. If an enemy has closed within
 ## SUPPORT_GUARD_RADIUS of the ward, peel off and engage it (firing at standoff if
-## ranged, melee in contact, else closing on it); otherwise shadow the ward,
-## holding a short standoff so the supporter doesn't pile onto the unit it guards.
-## Targeting keys off the WARD's position, so the supporter returns to its charge
-## once a threat is dealt with. Deterministic (no RNG / wall-clock), matching the
-## normal fire/melee cadence so live and replayed battles stay in lockstep.
+## ranged, melee in contact, else closing on it, when perceived -- see the chase branch's
+## own comment); otherwise shadow the ward, holding a short standoff so the supporter
+## doesn't pile onto the unit it guards. Targeting keys off the WARD's position, so the
+## supporter returns to its charge once a threat is dealt with. Deterministic (no RNG /
+## wall-clock), matching the normal fire/melee cadence so live and replayed battles stay
+## in lockstep.
 func _support_tick(delta: float) -> void:
 	var ward: Unit = support_target
-	var threat: Unit = UnitTargeting.nearest_enemy_to(self, ward.position, SUPPORT_GUARD_RADIUS)
+	# Ranked with fresh_pick_allowed as a candidate predicate (not just checked after the
+	# pick, below): without it, a threat closer to the ward that this team hasn't perceived
+	# wins the nearest-of-any ranking and blocks a farther, perceived (or already-in-contact)
+	# threat from ever being considered at all -- the closer-hidden-shadows-farther-visible
+	# fog-of-war gap UnitTargeting.nearest_enemy_to's own `predicate` parameter closes (see
+	# its doc comment). fresh_pick_allowed's own contact math (attack_range + RADIUS +
+	# candidate.RADIUS, against THIS unit's own position) is exactly this function's own
+	# `contact_dist`/`in_contact` check just below -- identical because nearest_enemy_to's
+	# default include_routing (false, unchanged here) means a candidate reaching this
+	# predicate is never ROUTING, so fresh_pick_allowed's own ROUTING special case never
+	# triggers either.
+	var threat: Unit = UnitTargeting.nearest_enemy_to(self, ward.position, SUPPORT_GUARD_RADIUS,
+			false, false, Callable(self, "fresh_pick_allowed"))
 	if threat != null:
 		var dist_sq: float = position.distance_squared_to(threat.position)
 		var contact_dist: float = attack_range + RADIUS + threat.RADIUS
 		var in_contact: bool = dist_sq <= contact_dist * contact_dist
-		if is_ranged and has_missile_ammo() and not in_contact and dist_sq <= missile_range * missile_range:
-			state = State.FIGHTING
-			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
-				_attack_cd = missile_interval
-				UnitCombat.shoot(self, threat)
-		elif in_contact:
+		if in_contact:
 			state = State.FIGHTING
 			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
 				_attack_cd = melee_attack_interval()
 				UnitCombat.strike(self, threat)
-		else:
-			# Threat out of range: chase it. Settle a dangling re-face first so the frozen
-			# body arrival releases before the march (the turn re-arms on the next contact).
+			return
+		# Threat not yet in melee contact: fire at standoff (ranged) or chase it (closing to
+		# melee), but only when this unit's own side currently perceives it
+		# (_enemy_is_perceived) -- the same fog-of-war gate Unit._think()'s
+		# auto-advance-on-detect fallback uses, and for the same reason: nearest_enemy_to
+		# above is a bare-radius scan of the live groups with no LOS or fog test at all, so a
+		# supporter -- AI-driven (an AI subcommander can issue SUPPORT) or player-commanded
+		# (SUPPORT is a player-selectable order stance, key G) alike -- would otherwise fire
+		# VISIBLE volleys at, or peel off to chase, a threat none of its own side has actually
+		# sighted -- a starker tell for the ranged case specifically, since missile_range can
+		# reach well past what the team's fog-restricted sight covers. Applies uniformly to
+		# both teams by design, not an AI-only carve-out: a player unit that could snipe or
+		# chase past its own player's fogged screen would itself be a fog-breaking exploit. In
+		# contact above is unaffected -- soldier-level combat stays unfogged once bodies are
+		# actually touching, matching every other in-range branch in this file. With fog off,
+		# _enemy_is_perceived is unconditionally true, so this whole block is unchanged from
+		# before phase 5. An unperceived threat falls through to the "shadow the ward"
+		# behaviour below instead, exactly as if none had been detected at all.
+		if _enemy_is_perceived(threat):
+			if is_ranged and has_missile_ammo() and dist_sq <= missile_range * missile_range:
+				state = State.FIGHTING
+				if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
+					_attack_cd = missile_interval
+					UnitCombat.shoot(self, threat)
+				return
+			# Settle a dangling re-face first so the frozen body arrival releases before
+			# the march (the turn re-arms on the next contact).
 			if _engage_turn_target != Vector2.ZERO:
 				_settle_engage_turn()
 			_move_to(threat.position, delta, false, true)
-		return
-	# No threat near the ward: shadow it, holding station a short distance off so
-	# the supporter doesn't crowd the unit it's guarding. If a re-face turn was still
-	# running when the threat left (died/routed/cleared the guard radius), settle it here
-	# so the body arrival isn't left frozen indefinitely.
+			return
+	# No threat near the ward (none detected, or one out of weapon range that this unit's
+	# side does not yet perceive): shadow it, holding station a short distance off so the
+	# supporter doesn't crowd the unit it's guarding. If a re-face turn was still running
+	# when the threat left (died/routed/cleared the guard radius, or dropped out of
+	# perception), settle it here so the body arrival isn't left frozen indefinitely.
 	if _engage_turn_target != Vector2.ZERO:
 		_settle_engage_turn()
 	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
