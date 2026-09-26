@@ -2494,13 +2494,14 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ##
 ## THE authoritative list of the branches this gates (Battle.ai_team_perceives' own doc
 ## comment points back here rather than duplicating it, to avoid the two drifting apart the
-## way this comment itself once did when it named only one caller). Ten call expressions
-## across nine branches -- _support_tick's one call gates both of its own sub-branches. One
-## of the ten, _start_promoted_attack's, is a call to fresh_pick_allowed rather than a
-## direct call to this function (fresh_pick_allowed's own single _enemy_is_perceived call is
-## what's actually counted); that same call is also how UnitRelief.begin reaches this gate
-## externally, so it is shared by two branches rather than duplicated -- see
-## fresh_pick_allowed's own doc comment, right after this function:
+## way this comment itself once did when it named only one caller). Each branch below
+## applies it either as a direct call or by handing it -- or fresh_pick_allowed, which wraps
+## it with a melee-contact exemption -- to a UnitTargeting ranking function as the
+## `predicate` that filters fresh candidates BEFORE ranking. No count is kept here: counts
+## in this list went stale twice, so derive the sites with
+## `grep -n "_enemy_is_perceived\|fresh_pick_allowed" scripts/*.gd`. UnitRelief.begin and
+## FarTierCombat.engaged_target reach this gate externally -- see fresh_pick_allowed's own
+## doc comment, right after this function:
 ## - _think()'s ranged-fire-at-standoff branch (loose a volley at a not-yet-melee target).
 ##   Runs for BOTH teams -- not AI-exclusive.
 ## - _think()'s auto-advance-on-detect fallback (march on a merely-detected target).
@@ -2513,11 +2514,15 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ##   its current_target() fallback) -- gates the COMMIT to target_enemy, not just a later
 ##   read of it, so a fresh unperceived pick can't silently pass as an already-gated
 ##   commitment once it lands in target_enemy.
-## - _think()'s ORDER_ROLL_THE_LINE acquisition, same reason as SWEEP_ROUTERS just above.
+## - _think()'s ORDER_ROLL_THE_LINE acquisition: the fresh pick is filtered by the ranking
+##   predicate, for the same reason as SWEEP_ROUTERS just above. An already-committed live
+##   target_enemy is returned unfiltered and KEPT after perception of it lapses -- the same
+##   disclosed exception as the chase branch's committed half below.
 ## - _start_promoted_attack's target_enemy commit (a just-promoted, unresolved ATTACK order
 ##   resolving to whatever current_target() returns) -- reachable from _think() via
-##   retire_current_order(). Goes through fresh_pick_allowed (own doc comment, right after
-##   _enemy_is_perceived below): exempt when the candidate is already in MELEE CONTACT (the
+##   retire_current_order(). Passes fresh_pick_allowed as the ranking predicate (own doc
+##   comment, right after _enemy_is_perceived below): exempt when the candidate is already in
+##   MELEE CONTACT (the
 ##   intended "advance until contact" case this promotion exists for); gated otherwise.
 ## - _think()'s chase-an-explicit-attack-order branch's OWN `chasing` half (see below --
 ##   this one call expression covers only the auto-acquired-quarry case, not the
@@ -2873,20 +2878,15 @@ func _think(delta: float) -> void:
 	# chase branch's "already committed" exemption with no perception check ever having run.
 	# Passed to roll_the_line_target as a RANKING predicate for the same reason as
 	# SWEEP_ROUTERS just above: a closer unperceived enemy must not be able to shadow a
-	# farther perceived one out of consideration during ranking itself. The redundant
-	# `not _enemy_is_perceived(rolled)` re-check below stays: it also covers the OTHER
-	# return path through roll_the_line_target -- an already-live, non-routing committed
-	# target_enemy, returned unfiltered without consulting the predicate at all (see that
-	# function's own doc comment) -- which this re-check still needs to drop the instant this
-	# team's perception of it lapses, the same standing invariant the general current_target()
-	# call further below re-applies to its own committed-and-chasing case.
+	# farther perceived one out of consideration during ranking itself. That predicate
+	# already filters every fresh pick, so there is no second check here: the only other
+	# thing roll_the_line_target returns is an already-live, non-routing committed
+	# target_enemy (unfiltered -- see its own doc comment), and a committed target is kept
+	# after perception of it lapses, the same disclosed exception the chase branch below
+	# makes for its committed half.
 	var enemy: Unit
 	if order_mode == ORDER_ROLL_THE_LINE:
-		var rolled: Unit = \
-			UnitTargeting.roll_the_line_target(self, Callable(self, "_enemy_is_perceived"))
-		if rolled != null and not _enemy_is_perceived(rolled):
-			rolled = null
-		enemy = rolled
+		enemy = UnitTargeting.roll_the_line_target(self, Callable(self, "_enemy_is_perceived"))
 		target_enemy = enemy
 	else:
 		enemy = UnitTargeting.current_target(self, Callable(self, "fresh_pick_allowed"))

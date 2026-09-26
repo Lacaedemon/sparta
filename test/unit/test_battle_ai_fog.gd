@@ -1064,6 +1064,32 @@ func test_roll_the_line_does_not_commit_to_a_fresh_unperceived_enemy() -> void:
 		"fog on: ROLL_THE_LINE does not commit a fresh, unperceived enemy to target_enemy")
 
 
+func test_roll_the_line_keeps_a_committed_target_after_perception_lapses() -> void:
+	# The committed-target exception: a target ROLL_THE_LINE already committed to (through
+	# a perception-gated pick, or an explicit order) is kept when this side stops seeing it,
+	# the same as the chase branch's committed half. Only FRESH picks are filtered.
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+	]
+	add_child_autofree(battle)
+	var u: Unit = _team_units(1)[0]
+	var enemy: Unit = _team_units(0)[0]
+	u.sight_range = SHRUNK_SIGHT
+	u.order_mode = Unit.ORDER_ROLL_THE_LINE
+	u.target_enemy = enemy   # committed earlier, while it was still in sight
+	assert_false(battle.ai_team_perceives(1, enemy),
+		"sanity check on the staged distance: team 1 no longer perceives the committed enemy")
+
+	u._think(0.1)
+
+	assert_eq(u.target_enemy, enemy,
+		"fog on: ROLL_THE_LINE keeps its committed target after perception of it lapses")
+
+
 func test_roll_the_line_still_commits_when_fog_is_off() -> void:
 	Settings.set_fog_of_war_session(false)
 	Replay.forced_seed = 588
