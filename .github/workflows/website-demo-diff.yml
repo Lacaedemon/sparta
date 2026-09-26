@@ -170,8 +170,13 @@ jobs:
         # candidate rows quote the PR side's worst value against the metric's threshold
         # (a floor or a ceiling, per metric) and the merge-base's value from the same
         # files, so an exemption reason can cite CI's own numbers.
+        # DEMO_DEFECT_DENSE_BASE_TREE turns on the dense re-dump of each changed clip's
+        # divergent window (a sample every 2 ticks from the first divergent tick to the
+        # clip end, on both trees), because the 60-tick transcripts can step over a facing
+        # snap entirely. Capped at DEMO_DEFECT_DENSE_MAX_CLIPS (default 12) clips per run.
         env:
           DEMO_DEFECT_JSON_DIR: /tmp/defect-json
+          DEMO_DEFECT_DENSE_BASE_TREE: /tmp/base-tree
         run: |
           set -euo pipefail
           GODOT_BIN=godot tools/ci/website-demo-defect-delta.sh \
