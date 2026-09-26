@@ -1239,5 +1239,119 @@ func test_restore_snapshot_rejects_a_wrong_sized_explored_grid() -> void:
 	battle.restore_snapshot(snap)
 	assert_eq(battle._fog_explored.size(), battle._fog_grid_w * battle._fog_grid_h,
 		"a mismatched snapshot array is replaced by one sized to the live grid")
-	assert_eq(battle._fog_explored_remaining, battle._fog_grid_w * battle._fog_grid_h,
-		"and the remaining-unexplored count falls back to every cell, not the snapshot's stale 0")
+	# One short of the full grid, not the snapshot's stale 0: restore_snapshot's own
+	# _reapply_fog_after_restore pass runs on the freshly-reset grid, and the near enemy
+	# is currently visible in this staged battle, so its own cell is force-marked
+	# explored immediately (the ground under a currently-visible enemy is never left
+	# unexplored, even right after a fresh reset).
+	assert_eq(battle._fog_explored_remaining, battle._fog_grid_w * battle._fog_grid_h - 1,
+		"and the remaining-unexplored count falls back to every cell but the currently-visible near enemy's own cell")
+
+
+# --- Enemy cell under a visible enemy is never left unexplored/dimmed --------------
+
+
+## Perception.perceives (unit visibility, tested at the enemy's own
+## position) and Perception.visible_cells (terrain visibility, tested at each cell's
+## CENTER, up to ~28 wu -- half a 40 wu cell diagonal -- away) are two independent
+## evaluations of the same range test, so near a sight boundary they can disagree. This
+## friendly/enemy pair is constructed so the enemy's own position (283.55 wu from the
+## friendly) is well inside the 300 wu foot sight radius, while its containing 40 wu
+## grid cell's center (900,900 for a friendly at 680,680) sits at 311.13 wu -- just
+## outside it. Before Battle._mark_seen_enemy_cells_visible, that cell is never covered
+## by the friendly's own per-cell scan at all (no other observer exists in this 1v1
+## scenario), so it stays permanently unexplored under a unit that visibly renders.
+func test_visible_enemy_cell_is_never_left_unexplored_or_dimmed() -> void:
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 1624
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": 680.0, "y": 680.0},
+		{"team": 1, "type": "Infantry", "x": 880.5, "y": 880.5},
+	]
+	_staged_battles.append(battle)
+	add_child_autofree(battle)
+	for _k in range(5):
+		await get_tree().physics_frame
+
+	var enemy := _enemy_nearest(Vector2(880.5, 880.5))
+	assert_almost_eq(battle.sight_scale, 300.0, 0.001,
+		"the scenario's math assumes the default 300 wu foot sight radius")
+	assert_lt(enemy.position.distance_to(Vector2(680.0, 680.0)), battle.sight_scale,
+		"the enemy's own position is inside the friendly's sight disc")
+	assert_true(enemy.visible, "so the enemy renders under fog")
+	assert_true(battle.fog_visible_uids().has(enemy.uid), "and the unit-fog pass agrees it is seen")
+
+	var cx: int = int(floor((enemy.position.x - battle.field.position.x) / battle.fog_cell))
+	var cy: int = int(floor((enemy.position.y - battle.field.position.y) / battle.fog_cell))
+	var idx: int = cy * battle._fog_grid_w + cx
+	var cell_center: Vector2 = battle.field.position + Vector2((cx + 0.5) * battle.fog_cell, (cy + 0.5) * battle.fog_cell)
+	assert_gt(cell_center.distance_to(Vector2(680.0, 680.0)), battle.sight_scale,
+		"and the scenario's math assumes the enemy's cell CENTER is just outside that same disc")
+
+	assert_true(battle._fog_overlay._visible_now.has(idx),
+		"the ground cell under a currently-visible enemy is never left off the currently-visible set")
+	assert_eq(battle._fog_explored[idx], 1,
+		"and is marked explored, so it never renders as the opaque unexplored layer either")
+	Settings.set_fog_of_war_session(false)
+
+
+## A routing unit can be up to Battle.ROUT_MARGIN (~190 wu) past the field edge before
+## Unit._escape() removes it, so a fog team that still perceives one (a fast pursuer, or
+## a long sight radius) must not have _mark_seen_enemy_cells_visible clamp its position
+## onto the nearest edge cell -- there is no ground cell under a position the grid
+## doesn't cover, so clamping would light a cell the unit isn't actually standing on.
+## Calls the function directly (bypassing the live Perception scan): staging a unit that
+## is simultaneously off-grid AND not already covered by some friendly's own sight disc
+## isn't reachable through a normal battle scenario, since a friendly close enough to
+## perceive an off-grid unit has its own sight disc over the same edge cells a clamp
+## would have lit anyway.
+func test_mark_seen_enemy_cells_visible_skips_a_unit_outside_the_grid() -> void:
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	_staged_battles.append(battle)
+	add_child_autofree(battle)
+	await get_tree().physics_frame
+	assert_gt(battle._fog_grid_w, 0, "the grid is sized once the battle enters the tree")
+
+	var below_origin: Unit = autofree(Unit.new())
+	below_origin.uid = 9001
+	below_origin.team = 1
+	below_origin.position = Vector2(-500.0, -500.0)
+
+	var past_the_far_edge: Unit = autofree(Unit.new())
+	past_the_far_edge.uid = 9002
+	past_the_far_edge.team = 1
+	past_the_far_edge.position = Vector2(
+		battle.field.position.x + battle.field.size.x + 500.0,
+		battle.field.position.y + battle.field.size.y + 500.0)
+
+	battle._fog_seen = {below_origin.uid: true, past_the_far_edge.uid: true}
+	var remaining_before: int = battle._fog_explored_remaining
+	var visible_now: Dictionary = {}
+	battle._mark_seen_enemy_cells_visible(visible_now, [below_origin, past_the_far_edge])
+
+	assert_true(visible_now.is_empty(),
+		"an off-grid unit has no ground cell under it, so nothing is marked currently-visible")
+	assert_eq(battle._fog_explored_remaining, remaining_before,
+		"and nothing is marked explored either -- not clamped onto the nearest edge cell")
+
+
+## _mark_seen_enemy_cells_visible's own grid-not-ready guard (_fog_grid_w/_fog_grid_h
+## still their declared-default 0, as they are before Battle._ready sizes the grid)
+## returns without error rather than dividing by a zero-size grid or indexing an empty
+## _fog_explored array.
+func test_mark_seen_enemy_cells_visible_guards_an_unready_grid() -> void:
+	var battle: Node = autofree(BattleScript.new())
+	assert_eq(battle._fog_grid_w, 0, "a battle not yet added to the tree has no grid sized yet")
+	assert_eq(battle._fog_grid_h, 0, "in either dimension")
+
+	var enemy: Unit = autofree(Unit.new())
+	enemy.uid = 9003
+	enemy.team = 1
+	enemy.position = Vector2(100.0, 100.0)
+	battle._fog_seen = {enemy.uid: true}
+	var visible_now: Dictionary = {}
+
+	battle._mark_seen_enemy_cells_visible(visible_now, [enemy])
+
+	assert_true(visible_now.is_empty(), "the guard returns before marking anything")
