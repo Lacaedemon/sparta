@@ -51,8 +51,13 @@
 #                          densify_clip below). Unset, every row uses the regular samples.
 #   DEMO_DEFECT_DENSE_STEP Sample spacing in ticks inside that window (default 2).
 #   DEMO_DEFECT_DENSE_MAX_CLIPS
-#                          Most clips densified per run (default 12); the rest use the
-#                          regular samples and their rows say so.
+#                          Most clips densified per run (default 12).
+#   DEMO_DEFECT_DENSE_BUDGET_SEC
+#                          Wall-clock seconds the dense re-dumps may use in total (default
+#                          480). A re-dump simulates the whole clip on both trees, and clip
+#                          lengths vary about 40x across the catalog, so the clip cap alone
+#                          does not bound the cost. Once either limit is hit, the remaining
+#                          rows use the regular samples and say so.
 #
 # A side whose transcripts lack the FULL-dump fields (a merge-base predating them)
 # reports "n/a" rather than failing -- absence of data is not a defect, and the
@@ -231,11 +236,14 @@ annotate_metric() {
 # DEMO_DEFECT_DENSE_STEP ticks from that tick to the clip's end, and its row is judged on
 # those dumps instead. Only the window is dense and only changed clips are re-dumped, but
 # a full dump at that density runs to ~100 MB for an 800-tick clip, so each clip's dense
-# dumps are deleted once its row is built and at most DEMO_DEFECT_DENSE_MAX_CLIPS clips
-# are densified per run; rows beyond the cap stay on the regular samples and say so.
+# dumps are deleted once its row is built. Densifying stops at DEMO_DEFECT_DENSE_MAX_CLIPS
+# clips or DEMO_DEFECT_DENSE_BUDGET_SEC seconds, whichever comes first; rows past either
+# limit stay on the regular samples and say so.
 DENSE_BASE_TREE="${DEMO_DEFECT_DENSE_BASE_TREE:-}"
 DENSE_STEP="${DEMO_DEFECT_DENSE_STEP:-2}"
 DENSE_MAX="${DEMO_DEFECT_DENSE_MAX_CLIPS:-12}"
+DENSE_BUDGET="${DEMO_DEFECT_DENSE_BUDGET_SEC:-480}"
+DENSE_START=$SECONDS
 DENSE_COUNT=0
 DENSE_SKIPPED=0
 DENSE_ROOT=""
@@ -276,7 +284,10 @@ while IFS= read -r name; do
   if [ -n "$DENSE_BASE_TREE" ] && [ -n "$div" ]; then
     if [ "$DENSE_COUNT" -ge "$DENSE_MAX" ]; then
       DENSE_SKIPPED=$((DENSE_SKIPPED + 1))
-      sampling="; 60-tick samples (densify cap reached)"
+      sampling="; 60-tick samples (densify clip cap reached)"
+    elif [ $((SECONDS - DENSE_START)) -ge "$DENSE_BUDGET" ]; then
+      DENSE_SKIPPED=$((DENSE_SKIPPED + 1))
+      sampling="; 60-tick samples (densify time budget spent)"
     elif densify_clip "$name" "$div"; then
       base_dir="$DENSE_ROOT/dense-base/$name"
       pr_dir="$DENSE_ROOT/dense-pr/$name"
@@ -330,7 +341,7 @@ fi
   if [ -n "$DENSE_BASE_TREE" ]; then
     printf '\nThe Diverges column also says how each row was sampled. The transcripts above sample every 60 ticks, which can step over a facing snap that starts and ends between two samples, so %d changed clip(s) were re-dumped on both sides with a sample every %d ticks from the divergence to the clip end and judged on that.' "$DENSE_COUNT" "$DENSE_STEP"
     if [ "$DENSE_SKIPPED" -gt 0 ]; then
-      printf ' %d more were past the cap of %d and use the 60-tick samples.' "$DENSE_SKIPPED" "$DENSE_MAX"
+      printf ' %d more were past the limit (%d clips or %d s of re-dumping) and use the 60-tick samples.' "$DENSE_SKIPPED" "$DENSE_MAX" "$DENSE_BUDGET"
     fi
     printf '\n'
   fi

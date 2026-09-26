@@ -62,9 +62,16 @@ DENSE_STEP="${SPARTA_STATE_DENSE_STEP:-2}"
 case "$DENSE_FROM" in
   *[!0-9]*) echo "SPARTA_STATE_DENSE_FROM must be a tick number, got '$DENSE_FROM'" >&2; exit 2 ;;
 esac
+# Digits only, then read as base 10: a zero-padded value would otherwise be octal, so
+# "08" aborts the arithmetic and "00" is a zero step that never advances the loop.
 case "$DENSE_STEP" in
-  ''|0|*[!0-9]*) echo "SPARTA_STATE_DENSE_STEP must be a positive tick count, got '$DENSE_STEP'" >&2; exit 2 ;;
+  ''|*[!0-9]*) echo "SPARTA_STATE_DENSE_STEP must be a positive tick count, got '$DENSE_STEP'" >&2; exit 2 ;;
 esac
+if [ $(( 10#$DENSE_STEP )) -le 0 ]; then
+  echo "SPARTA_STATE_DENSE_STEP must be a positive tick count, got '$DENSE_STEP'" >&2
+  exit 2
+fi
+DENSE_STEP=$(( 10#$DENSE_STEP ))
 ONLY_CLIPS="${SPARTA_DUMP_CLIPS:-}"
 
 # shellcheck source=../../tools/lib/run-bounded.sh
