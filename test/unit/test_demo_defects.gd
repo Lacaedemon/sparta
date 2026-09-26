@@ -748,6 +748,23 @@ func test_check_expectations_range_passes_on_any_snapshot_inside_it() -> void:
 			"a drift-tolerant range claim passes when any snapshot in range matches")
 
 
+func test_check_expectations_reports_a_passed_null_match_as_null_not_no_data() -> void:
+	# A "this field is currently null" claim can legitimately pass -- the probe found the
+	# unit and field, and its value MATCHES the expected null. The reported worst text
+	# must not read as if nothing were found at all: that message is reserved for a
+	# genuinely unprobed expectation, and reusing it for a passed null match makes a
+	# real "field not found" failure harder to triage.
+	var snaps: Array = [
+		{"tick": 60, "units": [{"uid": 0, "current_order": null}]},
+	]
+	var verdicts: Array = DemoDefects.check_expectations([
+		{"tick": 60, "uid": 0, "field": "current_order", "value": null},
+	], snaps)
+	assert_true(bool(verdicts[0]["pass"]), "a probed-and-matched null value passes")
+	assert_ne(str(verdicts[0]["worst"]), "(no snapshot/unit/field in range)",
+			"a passing null match must not read as an unprobed expectation")
+
+
 func test_malformed_expect_entries_are_named_errors_not_crashes() -> void:
 	# A [480] range typo (missing upper bound) must surface as a shape error under the
 	# tool's own contract -- never an out-of-bounds abort mid-evaluation.
