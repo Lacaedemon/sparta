@@ -546,7 +546,7 @@ window.Quarto = {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Last updated: 2026-09-25</p>
+      <p class="date">Last updated: 2026-09-26</p>
     </div>
   </div>
   
@@ -1896,7 +1896,7 @@ Table&nbsp;5: Terrain patches and their movement effects.
 </figure>
 </div>
 <p>Units automatically path around impassable terrain when ordered to move. A formed regiment takes the detour in good order: it steers by the corridor’s long-run direction and pivots onto it no faster than its corner man can run, so the block holds rank-and-file around the turn instead of smearing into a crowd. The forest is a different trade-off: going <em>around</em> it costs distance; going <em>through</em> it costs time. Generally it is faster to push cavalry or fast-moving infantry through rather than around a narrow forest.</p>
-<p>The obstacle a unit routes around is the terrain you see, plus the unit’s own footprint: each block keeps a margin equal to its corner man’s reach from the centre, so a small squad slips through a lane that a wide battle line must round with a broad swing. A lane that looks clear of the hill <em>is</em> clear — for any unit narrow enough to fit through it. The walked detour hugs that margin the whole way around: straight legs run along the obstacle’s own grown boundary rather than a wider routing-grid lane, so two blocks of different widths round the same hill on two visibly different tracks (<a href="#fig-funnel-lanes" class="quarto-xref">Figure&nbsp;54</a>).</p>
+<p>The obstacle a unit routes around is the terrain you see, plus the unit’s own footprint — and that footprint margin is two different sizes depending on whether the leg is straight or turning. A straight, unturning leg keeps a margin equal to the width the block actually sweeps sideways as its centre follows that exact leg: its half-frontage when marching straight ahead (files to either side of the line of march), widening toward its fuller half-depth the more that leg cuts across its own facing instead of along it — a side-step or a formed turn still under way sweeps close to the block’s full depth even though the block itself never turns to face that direction. A small squad slips through a lane that a wide battle line marching straight ahead must round with a broad swing, and a <em>deep</em> column (many ranks, few files) needs no more room than its own narrow frontage on a straight march, regardless of how long it is — but the same column stepping sideways needs its full depth of room instead. Every detour leg — rounding an obstacle’s actual corner, or the coarser waypoint the route falls back to when no corner is in clear view — is where the route’s direction changes, and so can the block’s orientation relative to it, so it keeps the fuller margin wherever the ground leaves room for it, regardless of travel direction: the corner man’s reach from the centre, folding in the block’s depth as well as its width. A lane that looks clear of the hill <em>is</em> clear — for any unit narrow enough to fit through it on its own straight-leg margin. The walked detour hugs the corner’s own margin the whole way around a bend: straight legs run along the obstacle’s own grown boundary rather than a wider routing-grid lane, so two blocks of different widths round the same hill on two visibly different tracks (<a href="#fig-funnel-lanes" class="quarto-xref">Figure&nbsp;54</a>).</p>
 <div id="fig-terrain-exact-footprint" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-terrain-exact-footprint-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1922,6 +1922,20 @@ Figure&nbsp;53: A 30-man squad ordered straight down the lane just west of the h
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-funnel-lanes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;54: Two widths, two lanes: a wide battle line and a narrow squad round the same hillside, and each walks the drawn terrain plus exactly its own footprint margin — the line swinging out around the shoulder, the squad tucking in tight along the face — instead of both converging onto one wide routing-grid lane.
+</figcaption>
+</figure>
+</div>
+<div id="fig-deep-column-swept-width" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-deep-column-swept-width-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/deep_column_swept_width.jpg">
+  <source src="media/deep_column_swept_width.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-deep-column-swept-width-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;55: A deep, narrow column (three files, many ranks) marches a straight leg that passes well clear of the hill – clear of the width it actually sweeps, even though the hill sits inside the wider margin a direction-blind reading of the block’s footprint would have used. The column holds a dead-straight line the whole way instead of swinging wide to round terrain that was never really in its path.
 </figcaption>
 </figure>
 </div>
@@ -1978,7 +1992,7 @@ Figure&nbsp;54: Two widths, two lanes: a wide battle line and a narrow squad rou
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-disengaged-march-through-contact-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;55: A player Infantry regiment is ordered straight through a held enemy line. The front arrests at contact and the rear ranks stay dressed instead of compressing into the held men.
+Figure&nbsp;56: A player Infantry regiment is ordered straight through a held enemy line. The front arrests at contact and the rear ranks stay dressed instead of compressing into the held men.
 </figcaption>
 </figure>
 </div>
@@ -1993,11 +2007,11 @@ Figure&nbsp;55: A player Infantry regiment is ordered straight through a held en
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-move-cancel-on-engagement-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;56: Redirecting an engaged unit: a mid-fight move order marches the unit off right away, but once its engagement with the enemy dies down the destination is checked one last time — if the enemy still holds that ground, the order cancels outright and the unit falls back into the fight instead of marching into occupied territory.
+Figure&nbsp;57: Redirecting an engaged unit: a mid-fight move order marches the unit off right away, but once its engagement with the enemy dies down the destination is checked one last time — if the enemy still holds that ground, the order cancels outright and the unit falls back into the fight instead of marching into occupied territory.
 </figcaption>
 </figure>
 </div>
-<p>When that mid-fight destination lies <strong>behind</strong> the regiment — a genuine pull-back out of the fight — a well-drilled unit doesn’t pivot in place under pressure. It backs straight out instead, shields still toward the line it just left, ranks square the whole way, and only once it is clear of the grapple does it drill its about-face and march the rest of the way (<a href="#fig-plain-move-withdrawal" class="quarto-xref">Figure&nbsp;57</a>). The same drill the relieved regiment uses during a line relief, available on demand: order any disciplined, non-hasting unit rearward while it is engaged and it withdraws as a fighting body rather than turning tail. Undisciplined units, and any move ordered at the run, still break off the old way — pace over poise.</p>
+<p>When that mid-fight destination lies <strong>behind</strong> the regiment — a genuine pull-back out of the fight — a well-drilled unit doesn’t pivot in place under pressure. It backs straight out instead, shields still toward the line it just left, ranks square the whole way, and only once it is clear of the grapple does it drill its about-face and march the rest of the way (<a href="#fig-plain-move-withdrawal" class="quarto-xref">Figure&nbsp;58</a>). The same drill the relieved regiment uses during a line relief, available on demand: order any disciplined, non-hasting unit rearward while it is engaged and it withdraws as a fighting body rather than turning tail. Undisciplined units, and any move ordered at the run, still break off the old way — pace over poise.</p>
 <div id="fig-plain-move-withdrawal" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-plain-move-withdrawal-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -2008,7 +2022,7 @@ Figure&nbsp;56: Redirecting an engaged unit: a mid-fight move order marches the 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-plain-move-withdrawal-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;57: A fighting regiment ordered to a destination behind it backs out facing-held first — no mid-press pivot — then turns about and marches on once clear of the fight.
+Figure&nbsp;58: A fighting regiment ordered to a destination behind it backs out facing-held first — no mid-press pivot — then turns about and marches on once clear of the fight.
 </figcaption>
 </figure>
 </div>
@@ -2016,7 +2030,7 @@ Figure&nbsp;57: A fighting regiment ordered to a destination behind it backs out
 <section id="facing-a-skirmisher-screen" class="level2">
 <h2 class="anchored" data-anchor-id="facing-a-skirmisher-screen">Facing a skirmisher screen</h2>
 <p><strong>Not in play yet.</strong> Screening is a property of a general’s doctrine profile, and nothing in the game selects a profile yet — every battle runs the aggressive doctrine, which does not screen. The behaviour below is built, tested, and shown in the clip; what it is waiting on is a scenario or campaign that can hand a general a different profile. It is described here so the tactics are on the page when that lands.</p>
-<p>A screening general opens the battle by pushing its light troops out in front of the heavy line rather than keeping them in it. The archers move out to a contest line about eight metres ahead of that line — one ranged reach, so their fire covers the ground immediately in front of it — hold there in the skirmish stance, and shoot at whatever comes into range. Their own heavy blocks do not break formation to rescue them. Once the opposing line closes to within about six metres of the screen, the same subcommander pulls it back — the archers break off the exchange, turn about, and fall back on a diagonal aimed at a gap <strong>between</strong> two of their own blocks rather than straight back through one (<a href="#fig-skirmisher-screen" class="quarto-xref">Figure&nbsp;58</a>).</p>
+<p>A screening general opens the battle by pushing its light troops out in front of the heavy line rather than keeping them in it. The archers move out to a contest line about eight metres ahead of that line — one ranged reach, so their fire covers the ground immediately in front of it — hold there in the skirmish stance, and shoot at whatever comes into range. Their own heavy blocks do not break formation to rescue them. Once the opposing line closes to within about six metres of the screen, the same subcommander pulls it back — the archers break off the exchange, turn about, and fall back on a diagonal aimed at a gap <strong>between</strong> two of their own blocks rather than straight back through one (<a href="#fig-skirmisher-screen" class="quarto-xref">Figure&nbsp;59</a>).</p>
 <p>Two things will follow for you. Chasing the screen with your own heavy line pulls that line forward out of dressing and hands the enemy blocks a ragged target, so it is usually better to walk up steadily and let the screen retire. And the moment the screen turns is the moment it is most exposed: cavalry sent wide, or a unit already on that flank, can catch it in the open before it reaches the interval, because its own line will not come out to save it.</p>
 <div id="fig-skirmisher-screen" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
@@ -2028,7 +2042,7 @@ Figure&nbsp;57: A fighting regiment ordered to a destination behind it backs out
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-skirmisher-screen-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;58: An enemy archer unit walks out ahead of its own heavy line, holds the ground between the armies as the player line advances, then breaks off and falls back toward the interval between two blocks while the line behind it holds its ground.
+Figure&nbsp;59: An enemy archer unit walks out ahead of its own heavy line, holds the ground between the armies as the player line advances, then breaks off and falls back toward the interval between two blocks while the line behind it holds its ground.
 </figcaption>
 </figure>
 </div>
