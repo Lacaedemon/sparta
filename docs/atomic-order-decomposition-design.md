@@ -94,14 +94,23 @@ this design has to actually address them rather than wave them away:
 # On Order (scripts/Order.gd):
 var children: Array[Order] = []   # nested sub-orders; empty = a genuine leaf/atomic order
 var _active_child: int = 0        # index into children of the currently-executing sub-order
-var parent: Order = null          # back-reference; null for the top-level order (Unit.current_order)
+var parent: Order                 # WEAK back-reference; null for the top-level order (Unit.current_order)
 ```
 
 `parent` is set once, when a composite order builds its `children` array (each
-child's `parent` points back at the composite), so it costs nothing dynamic to
-maintain -- it's assigned alongside `children` at construction time, not
-re-derived per tick. It exists purely so completion (below) can walk upward
-without re-walking `current_order` from the top on every leaf completion.
+child's `parent` points back at the composite). It's assigned alongside `children`
+at construction time, not re-derived per tick. It exists purely so completion
+(below) can walk upward without re-walking `current_order` from the top on every
+leaf completion.
+
+It is held **weakly**: a property backed by a `WeakRef`, which reads and writes like
+a plain field. The composite already holds each child strongly through `children`,
+and Godot's `RefCounted` has no cycle collector. So a strong back-reference would
+make every composite tree a cycle that is never freed. With the back-reference weak,
+a tree frees top-down once nothing holds its top. The flip side: a parent that
+nothing else holds reads back as `null` once freed. In practice every live parent is
+held elsewhere: a composite by its unit's `current_order`, a FORM_UP group node by
+`Battle._form_up_groups`.
 
 A **leaf** order (`children.is_empty()`) is what "atomic" means concretely: it
 has no further decomposition, and it's the thing that actually drives
