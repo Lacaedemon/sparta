@@ -207,7 +207,22 @@ var _active_child: int = 0
 ## Back-reference to the composite this order is a child of; null for a top-level order
 ## (Unit.current_order) or any other leaf order that was never installed as a child. Set
 ## once, alongside `children`, when a composite builds its steps -- never re-derived.
-var parent: Order = null
+##
+## Held WEAKLY (a WeakRef behind this property), because the parent already holds this
+## order strongly through `children`. Two strong references would form a RefCounted cycle,
+## which Godot never collects, so every dropped composite and its children would leak for
+## the life of the process. With the back-reference weak, dropping the top of a tree frees
+## it top-down. Reads and writes look exactly like a plain field. A parent nothing else
+## holds reads back as null once it is freed: a composite is held by its Unit's
+## current_order, and a FORM_UP group node by Battle._form_up_groups.
+var parent: Order:
+	get:
+		if _parent_ref == null:
+			return null
+		return _parent_ref.get_ref() as Order
+	set(value):
+		_parent_ref = weakref(value) if value != null else null
+var _parent_ref: WeakRef = null
 
 ## The genuinely atomic order actually driving this tick's movement/turn logic: walks
 ## children[_active_child] recursively until it finds a leaf (empty children). Called on
@@ -742,10 +757,9 @@ static func new_form_up() -> Order:
 	return o
 
 
-## A freed Order stops counting toward its target's Unit.incoming_friendly_links. (An
-## order caught in a parent/children reference cycle is never freed, so its link keeps
-## counting; that only costs its one target unit extra reverse scans, see
-## Unit.incoming_friendly_links.)
+## A freed Order stops counting toward its target's Unit.incoming_friendly_links. A
+## composite's children free with it, since `parent` is a weak back-reference (see that
+## property), so a dropped tree releases every link it held.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE and friendly_target != null \
 			and is_instance_valid(friendly_target):

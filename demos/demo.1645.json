@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Memory-lifetime fix: Order.parent is now a weak back-reference so dropped composite orders are freed. Battles play out identically (the website demo diff checks every clip tick by tick), so there is nothing new for a clip to show."
+}
