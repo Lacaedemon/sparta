@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/fog-cell-under-visible-enemy-1624.json",
+  "caption": "Fog: an enemy near the sight boundary stood on a cell the terrain overlay's own per-cell scan reads as just outside the friendly's sight disc (283.55 wu vs. the cell CENTER's 311.13 wu). Before the fix that cell stayed the opaque unexplored fill under a unit that visibly renders; after, the ground under a currently-visible enemy is never unexplored or dimmed.",
+  "fixed_fps": 30,
+  "max_frames": 30,
+  "fps": 15,
+  "width": 480
+}

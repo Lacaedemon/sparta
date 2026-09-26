@@ -96,6 +96,21 @@ The state dump (`tools/demo/DemoState.gd`) exposes a `fog_terrain` summary
 `FogOverlay.terrain_stats()`, the same way `ghosts` already exposes
 `FogGhostLayer.ghost_records()`.
 
+**Update, 2026-09-23: the paragraph above is no longer the whole story --
+[#1624](https://github.com/Lacaedemon/sparta/issues/1624) closed a gap it
+left open.**
+`Perception.perceives` (the unit-visibility test, evaluated at a unit's own
+position) and `Perception.visible_cells` (the cell-visibility test, evaluated
+at each cell's CENTER) are two independent evaluations of the same range
+test, so near a sight boundary they can disagree: a visibly-rendering enemy
+could stand in a cell its own center-test read as still unexplored or merely
+dimmed.
+`Battle._mark_seen_enemy_cells_visible` now forces the cell under every
+currently-seen enemy into both the tick's currently-visible set and the
+persistent explored grid, so seeing an enemy also marks the ground under it
+explored -- the ground stays dimmed rather than reverting to unexplored once
+that enemy moves on.
+
 Phase 3 has **not** shipped: no `CommanderView` class exists in
 `scripts/`, and `scripts/UnitLeader.gd`, `scripts/Subcommander.gd`,
 `scripts/General.gd`, and `scripts/PlayerDelegation.gd` each still document

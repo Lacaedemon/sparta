@@ -1301,7 +1301,13 @@ It does not alter the retreat boundary.
 Units fight, target, and move under the same AI and physics rules.
 A replay reproduces the initial fog state and any mid-battle toggles on playback, and the enemy AI still sees everything for now.
 Hills block line of sight completely (terrain occlusion), while forests screen vision and attenuate effective sight range.
-The ground itself carries its own explored/unexplored state, independent of enemy visibility: unexplored ground (never covered by a friendly sight disc) renders as an opaque dark fill, ground your units have explored but can no longer see is dimmed, and ground currently inside a friendly sight disc renders normally.
+The ground itself carries its own explored/unexplored state, normally driven by your own units' sight discs and independent of where enemies stand.
+Unexplored ground (never covered by a friendly sight disc) renders as an opaque dark fill.
+Ground your units have explored but can no longer see is dimmed.
+Ground currently inside a friendly sight disc renders normally.
+The one exception:
+ground under an enemy you currently see also renders normally, even where it falls just outside every friendly's own sight-disc test.
+Seeing that enemy also marks the ground under it explored, so once the enemy moves on that patch stays dimmed rather than going back to the dark unexplored fill.
 Explored ground never reverts to unexplored, even if every unit marches away from it.
 For tactical guidance on scouting screens, ghost staleness, and pursuit decisions, see [Tactics](tactics.qmd#fog-of-war).
 
