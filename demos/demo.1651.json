@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "CI tooling fix: upsert-pr-body-section.sh now normalises CRLF PR descriptions before replacing its marked section. Nothing in a battle changes, so there is no gameplay clip to record."
+}
