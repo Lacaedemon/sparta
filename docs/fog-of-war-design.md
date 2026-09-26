@@ -1014,12 +1014,14 @@ all, so an ordered unit other than the one whose target was explicitly clicked c
 handed a fresh, committed attack on an enemy its own side does not perceive.
 See `Unit._enemy_is_perceived`'s own doc comment for the complete, current list rather than
 re-enumerating it here.
-**One known gap, outside this phase's own scope, not covered by "met" above:**
+**Order guards are gated too:**
 `OrderGuards.enemy_in_range` (backing `Order.Guard.ENEMY_IN_RANGE`)
-calls `UnitTargeting.nearest_enemy_to` directly with no perception gate --
-a queued order's wait condition can be satisfied by an enemy its own side has not perceived.
-It decides an order-queue transition rather than a not-yet-engaged targeting commit,
-tracked as [#1641](https://github.com/Lacaedemon/sparta/issues/1641).
+counts only an enemy the unit's own side perceives,
+or one already in melee contact with it,
+through the same `Unit.fresh_pick_allowed` test every fresh target pick uses,
+so a queued order's "enemy in range" wait condition cannot fire on a hidden enemy
+and leak its position through the order's timing
+([#1641](https://github.com/Lacaedemon/sparta/issues/1641)).
 Left deliberately ungated:
 once a unit commits to an explicit attack order
 (or `Unit._think()`'s own SWEEP_ROUTERS/ROLL_THE_LINE stances commit one through their own,

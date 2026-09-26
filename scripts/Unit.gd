@@ -2577,13 +2577,6 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ## nonetheless, since rallying asks whether the fight is still physically pressing, not
 ## whether to engage a not-yet-perceived target.
 ##
-## Known ungated, tracked separately: OrderGuards.enemy_in_range (scripts/OrderGuards.gd),
-## which backs Order.Guard.ENEMY_IN_RANGE, calls UnitTargeting.nearest_enemy_to directly with
-## no _enemy_is_perceived check -- a real fog leak (a scripted order's wait condition can be
-## satisfied by an enemy its own side has not perceived). It decides whether a QUEUED order's
-## guard is satisfied, not a not-yet-engaged targeting commit, so it falls outside this
-## function's own scope; left as a known gap rather than folded in here.
-##
 ## Also deliberately not a caller, but for a different reason -- a disclosed exception, not
 ## an in-scope combat-resolution branch: _think()'s chase-an-explicit-attack-order branch's
 ## `target_enemy != null` half closes on a target's CURRENT position every tick once that
@@ -2619,7 +2612,7 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ## null immediately beforehand, so their fallback pick can only ever take the
 ## predicate-filtered path, never the already-committed one.
 ##
-## Two callers live OUTSIDE this file:
+## Three callers live OUTSIDE this file:
 ## - FarTierCombat.engaged_target (scripts/FarTierCombat.gd) calls this externally
 ##   (u._enemy_is_perceived(target)), matching the near tier's OWN melee-vs-ranged split
 ##   rather than the chase branch's committed-vs-fresh one: a MELEE engagement is
@@ -2641,6 +2634,12 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ##   melee_contact_distance is far below any realistic sight range. Same already-committed
 ##   exemption the chase branch's target_enemy != null half relies on. See UnitRelief.begin's
 ##   own doc comment.
+## - OrderGuards.enemy_in_range (scripts/OrderGuards.gd), which backs
+##   Order.Guard.ENEMY_IN_RANGE, passes u.fresh_pick_allowed as nearest_enemy_to's ranking
+##   predicate: a queued order's "enemy in range" wait condition counts only an enemy its
+##   side perceives or one already in melee contact. It commits no target_enemy -- it decides
+##   when a queued order advances -- but firing on a hidden enemy would leak that enemy's
+##   position through the order's timing, the same leak a fresh targeting pick would.
 ##
 ## One more site reaches the SAME ai_team_perceives test directly rather than through this
 ## wrapper, because it already lives inside Battle.gd: Battle._apply_order_cmd's own
@@ -2662,11 +2661,11 @@ func _enemy_is_perceived(enemy: Unit) -> bool:
 ## meant to land on its target the instant contact is made, so contact itself always
 ## clears the gate -- matching the melee invariant everywhere else), or when this unit's
 ## own side actually perceives it (_enemy_is_perceived). Factored out so
-## _start_promoted_attack (below) and UnitRelief.begin (scripts/UnitRelief.gd, called
-## externally as u.fresh_pick_allowed(candidate)) share one test for their own freshly-picked
-## candidate rather than each carrying its own copy of the melee-contact-distance math. See
-## _enemy_is_perceived's own doc comment (the authoritative caller list) for how each of
-## those two sites fits in.
+## _start_promoted_attack (below), UnitRelief.begin (scripts/UnitRelief.gd, called
+## externally as u.fresh_pick_allowed(candidate)) and OrderGuards.enemy_in_range (passed as a
+## ranking predicate) share one test rather than each carrying its own copy of the
+## melee-contact-distance math. See _enemy_is_perceived's own doc comment (the authoritative
+## caller list) for how each of those three sites fits in.
 func fresh_pick_allowed(candidate: Unit) -> bool:
 	var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, candidate)
 	var in_contact: bool = position.distance_squared_to(candidate.position) <= contact_dist * contact_dist

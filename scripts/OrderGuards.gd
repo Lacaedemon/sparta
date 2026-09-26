@@ -45,9 +45,18 @@ static func satisfied(u: Unit, order: Order) -> bool:
 ## Unlike combat auto-acquisition (UnitTargeting.nearest_enemy), this guard does NOT count a
 ## routing enemy --- it gates order transitions ("enemy sighted"), where a fleeing regiment
 ## isn't the kind of threat that should re-trigger a scripted order.
+##
+## Under fog of war only an enemy u's own side perceives counts, or one already in melee
+## contact with u: the candidate filter is Unit.fresh_pick_allowed, the same test every
+## fresh target pick uses, so a queued "advance when an enemy comes in range" order can't
+## fire on an enemy hidden from its side and leak that enemy's position through the order's
+## timing. The filter runs during the scan, not on its result, so a closer hidden enemy
+## can't mask a farther perceived one. With fog off every enemy is perceived and this reads
+## exactly as an unfiltered scan.
 static func enemy_in_range(u: Unit, range_units: float) -> bool:
 	var radius: float = range_units if range_units > 0.0 else u.detection_range
-	return UnitTargeting.nearest_enemy_to(u, u.position, radius) != null
+	return UnitTargeting.nearest_enemy_to(u, u.position, radius, false, false,
+		Callable(u, "fresh_pick_allowed")) != null
 
 
 ## A live, non-routing enemy is within melee contact distance: u's attack_range plus both

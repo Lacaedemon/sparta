@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Nothing in live play issues an ENEMY_IN_RANGE order guard yet (the only guard issued in a battle is ENGAGED_FRACTION_ABOVE), so no recorded battle can reach the changed code. The fog gate is covered by fog-on/fog-off/contact/masking unit tests in test/unit/test_battle_ai_fog.gd."
+}
