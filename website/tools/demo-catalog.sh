@@ -118,6 +118,7 @@ DEMOS=(
   "far_tier_missile|demos/inputs/far-tier-missile-1567.json|30|60|640|input"
   "fog_terrain_occlusion|demos/inputs/fog-terrain-occlusion-1565.json|30|180|640|input"
   "fog_terrain_explored|demos/inputs/fog-terrain-explored-1621.json|30|500|720|input"
+  "deep_column_swept_width|demos/inputs/deep-column-straight-march-1628.json|30|420|720|input"
   "ai_honors_fog|demos/inputs/ai-honors-fog-of-war.json|30|280|640|input"
 )
 

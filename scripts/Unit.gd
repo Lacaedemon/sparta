@@ -271,6 +271,16 @@ var selected: bool = false
 # ATTACK/RELIEF/SUPPORT orders by reading them.
 var orders: Array[Order] = []
 var current_order: Order = null
+## How many Order objects, on any unit and of any order type, currently name this unit as
+## their friendly_target (the reverse side of the pass-through link). Kept by
+## Order.friendly_target's own setter and by Order's PREDELETE decrement, so it never
+## under-counts: zero proves no order anywhere links to this unit, and
+## _relief_swap_partner() then skips its whole-group reverse scan.
+## It can over-count -- a dropped order still referenced elsewhere (a queued or child
+## order, or one caught in a parent/children reference cycle, which RefCounted never
+## frees) keeps counting -- but only ever for its own target unit, which just pays the
+## scan it would have paid anyway.
+var incoming_friendly_links: int = 0
 # Order stance, set by Battle._apply_order_cmd from the order's mode.
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
 # The smart-order behaviours read this; NORMAL is current behaviour.
@@ -1443,6 +1453,15 @@ var _combat_intermixing: float = 0.0
 
 var _flock_color: Color = Color(0, 0, 0, 0)     # last body modulate applied to the marks
 var _block_extent: float = RADIUS       # block half-size; sizes the ring/halo/bars/shadow
+# Test-only instrumentation: counts formation_slots() calls, so a test can measure how
+# many O(soldiers) slot-layout builds one _move_to() call performs (it should be exactly
+# one -- see _move_to()'s own doc comment). Never read by production code; incrementing
+# an int is cheap enough to leave live rather than gate behind a build flag.
+var _formation_slots_call_count: int = 0
+# Test-only instrumentation, same contract as _formation_slots_call_count above: counts
+# _relief_swap_partner()'s whole-group reverse scans, so a test can check that the
+# scan is skipped when no link-arming order is live.
+var _relief_reverse_scan_count: int = 0
 # Render fast-path bookkeeping. _render_dirty is raised by SoldierBodies.step whenever a
 # body actually moves (and by seed / about-face relabel); _process consumes it so the
 # MultiMeshes are only rewritten when something visible changed, not every idle frame.
@@ -3458,7 +3477,31 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	var step: Vector2 = point
 	var terrain_speed: float = 1.0
 	if PathField.active != null:
-		step = PathField.active.next_step(position, point, terrain_clearance(), funnel_lane_offset(point))
+		# The direction of THIS leg, not necessarily this block's own facing -- a formed
+		# pivot advances while still turning onto a new bearing, a side-step nudge holds
+		# facing fixed and moves perpendicular to it, and a lateral file-march or
+		# drag-to-form-up can point anywhere relative to the current facing.
+		# terrain_clearance() needs the real leg direction to know whether it is the
+		# block's width or its depth being swept across it. Named leg_dir, not
+		# travel_dir, so it doesn't collide with the unrelated travel_dir declared
+		# further down this same function (the soldier-body coupling's own advance
+		# direction, a completely different vector computed after PathField involvement
+		# is already done).
+		#
+		# _formation_local_half_extents() is deliberately UNCACHED (see its own doc
+		# comment), so this call computes the live slot layout ONCE for the whole
+		# PathField query and threads the result through terrain_clearance(),
+		# funnel_lane_offset() (which needs it for its own internal terrain_clearance()
+		# and corner_clearance() calls), and corner_clearance() below -- one O(soldiers)
+		# rebuild per _move_to() call instead of three independent ones. A far-tier
+		# block usually skips even that one rebuild: _far_tier_half_extents() reads the
+		# same bounds off the headcount in O(1), falling back to the live slots only
+		# during a relief swap (see its own doc comment).
+		var leg_dir: Vector2 = point - position
+		var extents: Vector2 = _far_tier_half_extents() if tier == FormationTier.FAR \
+				else _formation_local_half_extents()
+		step = PathField.active.next_step(position, point, terrain_clearance(leg_dir, extents),
+				funnel_lane_offset(point, extents), corner_clearance(extents))
 		terrain_speed = PathField.active.speed_at(position)
 	var to: Vector2 = step - position
 	if to.length_squared() < 1.0:
@@ -4139,14 +4182,241 @@ func is_deep_for_formed_turn() -> bool:
 	return _formed_turn_gait_frac() < 1.0
 
 
-## Open ground this regiment needs between its centre and impassable terrain: the
-## corner man's half-diagonal plus his body radius, so a route the centre follows
-## keeps every soldier off the drawn rect. Passed to every PathField query —
-## terrain footprints themselves are exact, and the margin around them is the
-## querying unit's real geometry, not a routing-grid artifact: a 10-man squad
-## skims an obstacle a 140-man line must round wide.
-func terrain_clearance() -> float:
-	return _pivot_radius() + soldier_body_radius()
+## Sentinel "not supplied" default for the optional `extents` parameter on
+## terrain_clearance()/corner_clearance()/funnel_lane_offset()/
+## _has_congested_same_team_router() below: a real _formation_local_half_extents()
+## result is never negative on either axis, so a negative-coordinate Vector2 can
+## never collide with a genuine value.
+const UNKNOWN_EXTENTS := Vector2(-1.0, -1.0)
+
+## The formation block's half-extents -- (half-width along its own file axis,
+## half-depth along its own rank axis), in the block's LOCAL frame -- read directly
+## off the LIVE slot layout instead of derived from the headcount. Three effects a
+## headcount-only formula (files/ranks_for()/file_pitch_wu()/rank_pitch_wu()) misses,
+## all fixed for free by reading the slots the layout actually produced:
+##
+## - A file-major reform's casualty reflow only shortens its OWN file's rear
+##   (UnitFormation.file_major_block_slots: `rank_counts[file]` increments
+##   independently per file, and `max_rank` -- what actually sets the grid's depth --
+##   is the MAX over files, not the average), so the deepest SURVIVING file can be
+##   deeper than UnitFormation.ranks_for()'s ceil(soldiers/files) estimate. See
+##   _apply_relief_corridor_to_slots' own identical fix and its doc comment ("Rank geometry
+##   is read OFF THE SLOTS, never recomputed from the headcount... a thinned
+##   file-major block can be deeper than ceil(count / files)"), which this mirrors.
+## - A standing frontage_anchor_offset shifts every non-square slot off centre
+##   (UnitFormation.apply_frontage_anchor_offset, applied inside formation_slots'
+##   both branches before rotation), so the farthest file can sit farther from
+##   `position` than half the frontage alone -- reading the slots directly captures
+##   that automatically, in `hw`, with no separate offset term needed.
+## - An active RELIEF pass widens the ranks a live partner is passing through
+##   (_apply_relief_corridor_to_slots: `out[i] = slot + ...relief_corridor_slot_offset(
+##   slot, rank, ranks, corridor_perp, spread * gate)`, pushing back-rank flank bodies
+##   OUTWARD along the corridor-perpendicular axis), so a relieving unit's real
+##   footprint is wider than its base grid while the swap is under way.
+##
+## Passes `true` for formation_slots()'s own `apply_relief_corridor` argument (unlike
+## soldier_block_half_extents()/SoldierFlock.compute_half_extents, which pass `false`
+## deliberately: _apply_relief_corridor_to_slots calls `partner.soldier_block_half_
+## extents()` to size the corridor gate, so if THAT call also asked for the relief-
+## widened grid it would recurse into the partner's own corridor computation. This
+## function is never called from inside that chain (it feeds PathField routing, not
+## the corridor's own geometry), so it can safely read the fully relief-expanded
+## slots with no such cycle.
+##
+## Deliberately the RAW, unpadded extent (no mark radius baked in, unlike
+## soldier_block_half_extents()/SoldierFlock.compute_half_extents, which exist for a
+## different job -- sizing render/relief-corridor reach): terrain_clearance() and
+## corner_clearance() add soldier_body_radius() flat, AFTER their own direction-
+## weighted recombination, the correct support-function treatment for a uniform disk
+## padding on a rotated rectangle (baking it in per axis first, the way the render
+## helper does, would under-add it at any oblique travel angle).
+##
+## O(soldiers) -- the same cost soldier_block_half_extents() itself already pays on
+## every call (more, during an active relief pass, for the corridor widening's own
+## extra O(soldiers) pass); there is no cached per-axis extent to reuse instead (only
+## the isotropic circumradius _block_extent is a maintained field, and it discards
+## the per-axis direction this function's callers need). Deliberately UNCACHED: an
+## earlier revision memoized this per physics frame, invalidated either by reasoning
+## about call ORDERING (a unit's self-writes always land after that tick's cache
+## fill) or, when that stopped converging, by wrapping every Unit.gd mutator that
+## writes a formation_slots() input with an explicit invalidation call -- and THAT
+## kept finding one more write path it missed (a relief partner's own position/
+## extents moving mid-frame with no write to this unit at all, the direct
+## `host.position -=` line in UnitReinforce.commit, _settle_order_turn/
+## _settle_engage_turn writing _formation_angle, the file_major_reform bool-proxy
+## setter, the square-formation live-count path...). Enumerating every writer of a
+## multi-field input, transitively through another unit's geometry, does not
+## converge; storing nothing is what removes the question. Callers instead avoid
+## redundant rebuilds by computing this ONCE and threading the result through --
+## see _move_to()'s own doc comment for the specific case (terrain_clearance(),
+## funnel_lane_offset(), and corner_clearance() all accept the already-computed
+## extents as an optional argument) and _has_congested_same_team_router()'s for why
+## a congestion SCAN over other units uses a cheap O(1) estimate instead of forcing
+## an O(soldiers) rebuild on every scanned unit.
+func _formation_local_half_extents() -> Vector2:
+	var hw: float = 0.0
+	var hd: float = 0.0
+	for s in formation_slots(soldiers, true):
+		hw = maxf(hw, absf(s.x))
+		hd = maxf(hd, absf(s.y))
+	return Vector2(hw, hd)
+
+
+## O(1) half-extents for a FAR-tier block, derived from the headcount instead of read
+## off the slots -- what _move_to() uses for a far-tier mover, which otherwise would pay
+## _formation_local_half_extents()'s O(soldiers) slot rebuild on every physics tick.
+##
+## Of the three live-slot effects _formation_local_half_extents() exists to capture,
+## two cannot apply to a far block, and the third is handed back to it:
+## - no casualty reflow: TierTransition.demote drops the persistent file/rank
+##   assignment with the bodies, so a far block's file-major layout is the fresh
+##   full-ranks-then-centred-partial fill, whose depth is exactly ranks_for(); a
+##   row-major layout's held cell pairing only permutes the same grid cells;
+## - no traverse flank arcs: they need live bodies;
+## - a relief corridor is NOT tier-gated (nothing keeps a far block out of a relief
+##   swap), so while a relief partner exists this defers to the live-slot reading.
+##   The partner lookup is O(1) unless some order links to this unit (see
+##   _relief_swap_partner()), so the common no-link tick stays O(1); a relief swap is
+##   short, so the O(soldiers) rebuild is paid only then.
+## What is left -- files, ranks, the two pitches (a square's depth runs at file pitch,
+## UnitFormation.block_slots' own default), and the standing frontage_anchor_offset,
+## which formation_slots() applies to every non-square layout -- is all read here. A
+## partial rear rank only ever sits INSIDE these bounds, so it never under-clears. A
+## headcount under one full rank is measured exactly instead, since reading the whole
+## declared frontage there would re-create the oversized detour this margin exists to
+## avoid: a row-major (or square) rank closes onto the centre and spans soldiers - 1
+## gaps, while a file-major block keeps the full frontage's columns and fills the
+## centred run UnitFormation.file_capacities() starts at (files - soldiers) / 2. Either
+## way the half-width is the farther end of that occupied span from the unit centre
+## once the signed anchor shift is applied. A test pins every far-tier layout against
+## the live-slot reading.
+func _far_tier_half_extents() -> Vector2:
+	if soldiers <= 0:
+		return Vector2.ZERO
+	if _relief_swap_partner() != null:
+		return _formation_local_half_extents()
+	var files: int = maxi(1, formation_files(soldiers))
+	var ranks: int = UnitFormation.ranks_for(soldiers, files)
+	var squared: bool = in_square()
+	var depth_pitch: float = file_pitch_wu() if squared else rank_pitch_wu()
+	# The front rank's occupied span, in file gaps either side of the frontage centre.
+	var hi: float = float(files - 1) * 0.5
+	var lo: float = -hi
+	if soldiers < files:
+		if not squared and _effective_file_major_reform():
+			lo = float((files - soldiers) / 2) - hi
+			hi = lo + float(soldiers - 1)
+		else:
+			hi = float(soldiers - 1) * 0.5
+			lo = -hi
+	# formation_slots() shifts every non-square slot by the SIGNED anchor offset, so the
+	# half-width is whichever end of that shifted span lies farther from the unit centre.
+	var anchor: float = 0.0 if squared else frontage_anchor_offset
+	var pitch: float = file_pitch_wu()
+	return Vector2(maxf(absf(lo * pitch + anchor), absf(hi * pitch + anchor)),
+			float(maxi(0, ranks - 1)) * depth_pitch * 0.5)
+
+
+## Open ground this regiment needs between its centre and impassable terrain, for a
+## STRAIGHT march leg travelling in `travel_dir`: the block's own footprint rectangle
+## (per _formation_local_half_extents() above) projected onto the axis PERPENDICULAR
+## to travel -- the width the block actually sweeps sideways as its centre follows
+## that leg -- plus its soldiers' body radius. Passed to every PathField query as the
+## base `clearance` (the initial blocked check, and which rect a detour rounds; the
+## detour legs themselves run at corner_clearance()) -- terrain footprints themselves
+## are exact, and the margin around them is the querying unit's real geometry, not a
+## routing-grid artifact: a 10-man squad skims an obstacle a 140-man line must round
+## wide.
+##
+## `travel_dir` need not be normalized (only its direction matters) and defaults to
+## ZERO, meaning "direction unknown" -- every caller that doesn't yet know which way it
+## is about to move (or is querying in the abstract) gets corner_clearance()'s full
+## pivot-radius margin back, the SAFE value for any direction: the projection formula
+## below is a weighted sum of |cos| and |sin| against the block's own facing, which
+## peaks at exactly sqrt(hw^2 + hd^2) -- corner_clearance()'s own diagonal -- when the
+## travel angle threads the two terms evenly, so corner_clearance() already bounds
+## every direction-aware answer this function can give.
+##
+## A regiment does not always travel along its own facing: Unit._move_to's
+## pivot_as_formation branch advances at speed while still turning onto a new bearing,
+## a NUDGE_LEFT/RIGHT side-step holds facing fixed and moves perpendicular to it, and a
+## lateral file-march or a drag-to-form-up can point `point - position` anywhere
+## relative to the current facing. A block moving SIDEWAYS sweeps its DEPTH across the
+## direction of travel, not its frontage, so reading the frontage alone regardless of
+## `travel_dir` (as an earlier version of this fix did) under-clears a deep, narrow
+## column moving off its own facing.
+##
+## The projection axis is the block's TRUE world-space file axis -- `facing.rotated(PI *
+## 0.5 + _formation_angle)`, the same rotation soldier_world_slots() applies to every
+## local slot (see soldier_block_world_angle(), which returns exactly this angle) --
+## NOT raw `facing`. A folded quarter-turn (_formation_angle == +/-PI/2, a countermarch or
+## about-face reform still settling) rotates the live grid 90 degrees without moving
+## facing at all, so the file and depth axes swap relative to facing: reading raw facing
+## (as an earlier version of this fix did) silently returns the WRONG one of the two
+## half-extents while a fold is in progress -- under-clearing exactly the deep column
+## this whole fix exists to protect, in precisely the maneuver where the block is
+## already at its most vulnerable to a routing mistake.
+##
+## Deliberately NOT the flat corner_clearance() (the corner man's full half-diagonal,
+## folding in BOTH width and depth unconditionally) for a KNOWN travel direction: a
+## straight, unturning leg only needs the width actually swept along that specific
+## leg, not the worst case over every possible orientation. See corner_clearance()
+## below for the margin PathField.next_step() still uses for every detour leg (the
+## funnel corner, or the corridor waypoint it falls back to) -- a route can only
+## reorient where a detour leg turns off the straight leg's bearing, so the fuller,
+## pivot-radius-based allowance stays there regardless of the leg's own travel
+## direction.
+##
+## `extents` lets a caller that already paid for _formation_local_half_extents() this
+## tick (_move_to()) pass the value straight through instead of rebuilding it; UNKNOWN_
+## EXTENTS (the default) means "not supplied," and this recomputes fresh -- every
+## coordinate-negative sentinel works since a real half-extent is never negative.
+func terrain_clearance(travel_dir: Vector2 = Vector2.ZERO, extents: Vector2 = UNKNOWN_EXTENTS) -> float:
+	var half_extents: Vector2 = extents if extents.x >= 0.0 else _formation_local_half_extents()
+	if travel_dir.length_squared() < 0.0001:
+		return corner_clearance(half_extents)
+	var dir: Vector2 = travel_dir.normalized()
+	# The block's true world-space file-axis direction -- see the doc comment above for
+	# why this can't be raw `facing` once a fold (_formation_angle != 0) is in progress.
+	# u_axis.cross(dir) / u_axis.dot(dir) play the same role facing.cross(dir) /
+	# facing.dot(dir) did before a fold was accounted for (u_axis reduces to
+	# facing.rotated(PI*0.5) when _formation_angle == 0, and the two pairs of
+	# cross/dot values are equal up to sign in that case, which absf() erases).
+	var u_axis: Vector2 = Vector2.RIGHT.rotated(soldier_block_world_angle())
+	var swept: float = half_extents.x * absf(u_axis.cross(dir)) + half_extents.y * absf(u_axis.dot(dir))
+	return swept + soldier_body_radius()
+
+
+## The margin PathField.next_step() uses for every detour leg -- rounding a blocking
+## rect's corner in _funnel_corner, or the corridor waypoint it falls back to --
+## the corner man's full half-diagonal (per _formation_local_half_extents() above,
+## which already folds in a standing frontage_anchor_offset and any file-major
+## depth imbalance -- see that function's own doc comment) plus his body radius,
+## unlike terrain_clearance()'s direction-aware, travel-perpendicular swept width
+## above. A detour leg is exactly where the route's direction -- and so the block's
+## orientation relative to it -- can change, so the fuller, worst-case-over-any-
+## orientation allowance belongs there regardless of which way the straight leg
+## travels; see terrain_clearance()'s own doc comment for the split this answers.
+## Also the value terrain_clearance() itself falls back to when its own travel
+## direction is unknown, since this is exactly the maximum the direction-aware
+## formula can ever return (both read the identical half-extents; a rotated
+## rectangle's support function over every direction peaks at its own diagonal).
+##
+## Deliberately NOT the same value as _pivot_radius(): that one is still derived from
+## files/UnitFormation.ranks_for()/pitches (the average-case headcount estimate), used
+## only for the formed-turn pivot-rate pacing in _formed_turn_gait_frac and
+## UnitManeuver.wheel_gait_rate. It can therefore read narrower than this function's
+## live-slot extent -- a standing frontage_anchor_offset, or a file-major block with
+## unevenly distributed survivors, both widen the real footprint past what
+## _pivot_radius() assumes. Left unfixed here: retuning a formed pivot's own footspeed
+## cap needs to check that pacing mechanism's own tolerance for a wider corner-man arm,
+## not just swap in a bigger number, so it stays a separate, tracked question rather
+## than folded into this routing-only fix.
+##
+## `extents` -- see terrain_clearance()'s own doc comment for the sentinel convention.
+func corner_clearance(extents: Vector2 = UNKNOWN_EXTENTS) -> float:
+	var half_extents: Vector2 = extents if extents.x >= 0.0 else _formation_local_half_extents()
+	return half_extents.length() + soldier_body_radius()
 
 
 # How far apart two same-type units' funnel corners land, as a fraction of the
@@ -4232,25 +4502,37 @@ const FUNNEL_LANE_SEPARATION_FRACTION := 0.15   # tuned
 const FUNNEL_LANE_COUNT := 3   # tuned: see the doc comment above funnel_lane_offset()
 
 
-func funnel_lane_offset(point: Vector2) -> float:
-	if PathField.active == null or not PathField.active.is_leg_blocked(position, point, terrain_clearance()):
+## `extents` -- see terrain_clearance()'s own doc comment for the sentinel convention;
+## _move_to() passes the extents it already computed this call through.
+func funnel_lane_offset(point: Vector2, extents: Vector2 = UNKNOWN_EXTENTS) -> float:
+	var travel_dir: Vector2 = point - position
+	if PathField.active == null or not PathField.active.is_leg_blocked(position, point, terrain_clearance(travel_dir, extents)):
 		return 0.0
-	if not _has_congested_same_team_router():
+	if not _has_congested_same_team_router(extents):
 		return 0.0
 	var lane: float = (2.0 * float(posmod(uid, FUNNEL_LANE_COUNT)) / float(FUNNEL_LANE_COUNT - 1)) - 1.0
-	return lane * terrain_clearance() * FUNNEL_LANE_SEPARATION_FRACTION
+	# corner_clearance(), not terrain_clearance(): the waypoint this offset perturbs is
+	# the shared FUNNEL CORNER itself (PathField._funnel_corner, grown by
+	# corner_clearance() -- see _move_to's next_step call), not the straight-leg
+	# sightline. Scaling from the smaller, direction-aware terrain_clearance() instead
+	# under-separates two contesting units: for a deep, narrow column the two can differ
+	# by more than an order of magnitude (~22.5wu of straight-leg clearance against a
+	# ~356wu corner grow for the same 3-file column), so the tie-break lane would be a
+	# few world units wide against a corner over a hundred wu wide -- nowhere near
+	# enough to break a same-corner deadlock between two such columns.
+	return lane * corner_clearance(extents) * FUNNEL_LANE_SEPARATION_FRACTION
 
 
-# How far apart two same-team units' own terrain clearances may sum to (as a
+# How far apart two same-team units' own corner clearances may sum to (as a
 # multiple) and still count as "close enough to plausibly be funneling onto
 # the same corner" -- see _has_congested_same_team_router. Scales with each
-# pair's own footprint (terrain_clearance already does, per-unit) rather than
+# pair's own footprint (corner_clearance already does, per-unit) rather than
 # a flat world-unit distance, so a pair of small skirmishers doesn't inherit
 # a cavalry pair's much wider "nearby" radius. A tuned fraction, the same
 # family as FUNNEL_LANE_SEPARATION_FRACTION above: it exists purely to decide
 # when the tie-break is worth paying for, not a gameplay parameter. Verified
 # against a repro of two Cavalry regiments spawned 229 wu apart, each carrying
-# ~219 wu of terrain_clearance -- comfortably inside this radius at every tick
+# ~219 wu of corner clearance -- comfortably inside this radius at every tick
 # of the march -- and the site's wider demo catalog.
 const FUNNEL_CONGESTION_RANGE_FACTOR := 1.0   # tuned
 
@@ -4270,12 +4552,41 @@ const FUNNEL_CONGESTION_RANGE_FACTOR := 1.0   # tuned
 ## so marching toward it is marching toward each other too -- so proximity
 ## alone reliably fires with room to spare before the pair is anywhere close
 ## to actual soldier-body contact.
-func _has_congested_same_team_router() -> bool:
+##
+## `extents` -- see terrain_clearance()'s own doc comment for the sentinel convention;
+## used only for THIS unit's own corner_clearance(). Every SCANNED unit `u` instead
+## gets a cheap O(1) estimate, `u._pivot_radius() + u.soldier_body_radius()` -- the
+## old pivot-radius clearance formula, not `u.corner_clearance()`'s exact live-slot
+## value. This is deliberately the one place this fix keeps the coarser estimate: the
+## property this fix corrects (an anchored, uneven file-major, or relief-widened block's
+## live-slot corner extent can be WIDER than _pivot_radius() assumes, so that estimate
+## is not an upper bound and must not be relied on as one) matters for a unit's OWN
+## terrain/corner queries, which directly bound how close IT routes to solid terrain
+## -- but here `u` is a candidate in a same-team congestion HEURISTIC, compared only
+## against a squared-distance threshold to decide whether a tie-break nudge is worth
+## computing at all. Under- or over-estimating that gate by the same margin this fix
+## corrects for elsewhere changes nothing about whether either unit's own routing
+## stays clear of terrain; it only shifts, by a small margin, which ticks two
+## contesting units' funnel corners get nudged apart on. Calling u.corner_clearance()
+## here instead would force an O(soldiers) formation_slots() rebuild on every
+## same-team unit in the scene, every tick, for every moving unit doing the
+## scanning -- O(units^2 x soldiers) in the worst case -- to refine a value this
+## function only ever compares to a squared distance.
+func _has_congested_same_team_router(extents: Vector2 = UNKNOWN_EXTENTS) -> bool:
+	# corner_clearance(), not terrain_clearance(): the corner this gate is checking
+	# proximity to is itself placed using corner_clearance()'s margin (PathField's
+	# own corner_clearance argument), so the "are we both plausibly funneling onto
+	# the SAME corner" radius has to match that, not the smaller, direction-aware
+	# straight-leg margin -- a deep column travelling along its own facing has a
+	# much smaller terrain_clearance() than the corner it may actually be
+	# converging on with a teammate.
+	var own_corner_clearance: float = corner_clearance(extents)
 	for node in get_tree().get_nodes_in_group("units"):
 		var u: Unit = node as Unit
 		if u == null or u == self or u.team != team or u.state == State.DEAD:
 			continue
-		var nearby_radius: float = (terrain_clearance() + u.terrain_clearance()) * FUNNEL_CONGESTION_RANGE_FACTOR
+		var u_radius: float = u._pivot_radius() + u.soldier_body_radius()
+		var nearby_radius: float = (own_corner_clearance + u_radius) * FUNNEL_CONGESTION_RANGE_FACTOR
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		if position.distance_squared_to(u.position) > nearby_radius * nearby_radius:
 			continue
@@ -5172,6 +5483,7 @@ func _effective_file_major_reform() -> bool:
 ## formation_slots(true) from there would recurse forever through
 ## _relief_corridor_spread_strength / soldier_block_half_extents -> formation_slots.
 func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVector2Array:
+	_formation_slots_call_count += 1   # test-only instrumentation; see its own doc comment
 	if in_square():
 		var square_file_count: int = formation_files(count)
 		var square_grid: PackedVector2Array = UnitFormation.block_slots(
@@ -7605,12 +7917,18 @@ static func formation_interval_label(mode: int, pitch_wu: float, rank_wu: float 
 
 ## The other unit in a live line-relief pass-through swap, if any. The link normally
 ## lives on the reliever's RELIEF order; the tired side discovers it by reverse lookup.
+## That lookup scans every unit, and it runs on every formation_slots() call with the
+## corridor applied -- every frame per unit, plus each close-tier _move_to()'s extents
+## query -- so it is skipped whenever incoming_friendly_links is zero: the scan can only
+## find a unit whose current order names this one, and every such link is counted there
+## (it never under-counts; see its own doc comment). The common no-link case is O(1).
 func _relief_swap_partner() -> Unit:
 	if current_order != null and current_order.friendly_target != null \
 			and is_instance_valid(current_order.friendly_target):
 		return current_order.friendly_target
-	if not is_inside_tree():
+	if incoming_friendly_links <= 0 or not is_inside_tree():
 		return null
+	_relief_reverse_scan_count += 1   # test-only instrumentation; see its own doc comment
 	for node in get_tree().get_nodes_in_group("units"):
 		var u: Unit = node as Unit
 		if u != null and u != self and _friendly_target_names(u, self):

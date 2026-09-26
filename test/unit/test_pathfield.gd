@@ -361,6 +361,98 @@ func test_funnel_lane_scales_with_the_units_own_clearance() -> void:
 	assert_ne(narrow.x, wide.x, "the two widths walk two different lanes")
 
 
+func test_next_steps_optional_corner_clearance_widens_the_funnel_corner() -> void:
+	# Unit.terrain_clearance() (the straight-leg `clearance` argument) can be smaller
+	# than Unit.corner_clearance() (the fuller, pivot-radius-based margin a detour
+	# still needs, since a detour leg is where the route's direction -- and so the
+	# block's orientation relative to it -- can change). next_step's optional 5th
+	# argument threads that bigger margin to the detour legs (the funnel corner here;
+	# test_corridor_fallback_clears_the_corner_margin covers the corridor fallback),
+	# while the base blocked check still runs at the smaller `clearance`.
+	var pf := PathField.new(FIELD)
+	var wall := Rect2(300, 100, 64, 400)
+	pf.block_rect(wall)
+	var from := Vector2(240, 300)
+	var to := Vector2(450, 600)
+	var small_clearance := 10.0
+	var big_corner_clearance := 40.0
+	var step: Vector2 = pf.next_step(from, to, small_clearance, 0.0, big_corner_clearance)
+	assert_almost_eq(step.x, wall.position.x - big_corner_clearance - PathField.CORNER_STANDOFF, 0.001,
+		"the corner itself rounds at the bigger corner_clearance, not the smaller straight-leg clearance")
+	# The leg is still detected as blocked from the SMALL clearance alone -- proving the
+	# split actually took effect rather than corner_clearance silently overriding
+	# everything (a leg that only clears at 40.0 would prove nothing about the base
+	# check still using 10.0).
+	assert_true(pf.is_leg_blocked(from, to, small_clearance),
+		"sanity check: the small straight-leg clearance alone already reads this leg as blocked")
+
+
+func test_corner_clearance_does_not_pick_a_rect_the_leg_never_touches() -> void:
+	# In the funnel, corner_clearance only grows and validates the corner of the rect
+	# that actually blocks the leg at the straight-leg clearance. A nearer rect that
+	# sits beside the leg -- outside the small clearance, inside the bigger corner
+	# margin -- must not be chosen as the one to round.
+	var pf := PathField.new(FIELD)
+	var beside := Rect2(200, 320, 60, 80)    # 20 below the leg: clear at 10, not at 40
+	var blocker := Rect2(400, 250, 60, 100)  # straddles the leg
+	pf.block_rect(beside)
+	pf.block_rect(blocker)
+	var from := Vector2(100, 300)
+	var to := Vector2(600, 300)
+	var small_clearance := 10.0
+	var big_corner_clearance := 40.0
+	assert_false(pf.is_leg_blocked(from, Vector2(330, 300), small_clearance),
+		"sanity check: the leg passes the nearer rect at the small clearance")
+	var step: Vector2 = pf.next_step(from, to, small_clearance, 0.0, big_corner_clearance)
+	var blocker_grown := blocker.grow(big_corner_clearance + PathField.CORNER_STANDOFF)
+	var corners := [blocker_grown.position, Vector2(blocker_grown.end.x, blocker_grown.position.y),
+			blocker_grown.end, Vector2(blocker_grown.position.x, blocker_grown.end.y)]
+	var on_blocker: bool = false
+	for c in corners:
+		if step.distance_to(c) < 0.001:
+			on_blocker = true
+	assert_true(on_blocker,
+		"the funnel rounds the rect the leg actually hits, at the corner margin: got %s" % step)
+
+
+func test_corridor_fallback_clears_the_corner_margin() -> void:
+	# When no funnel corner is cleanly visible, next_step falls back to an A*
+	# corridor point. That leg turns off the from..to bearing just like a corner
+	# does, so its sightline must clear the corner margin -- the straight-leg
+	# clearance was sized for the original bearing only. Two flank rects hide
+	# every grown corner of the blocker at the corner margin, forcing the fallback.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 200, 64, 200))   # straddles the leg
+	pf.block_rect(Rect2(180, 130, 40, 60))    # hides the upper-left corner
+	pf.block_rect(Rect2(180, 410, 40, 60))    # hides the lower-left corner
+	var from := Vector2(100, 300)
+	var to := Vector2(600, 300)
+	var small_clearance := 10.0
+	var big_corner_clearance := 40.0
+	var corner: Vector2 = pf._funnel_corner(from, to, pf.find_path(from, to),
+			small_clearance, 0.0, big_corner_clearance)
+	assert_false(corner.is_finite(), "sanity check: no grown corner is visible, so the corridor is used")
+	var step: Vector2 = pf.next_step(from, to, small_clearance, 0.0, big_corner_clearance)
+	assert_ne(step, to, "the leg is blocked, so next_step detours")
+	assert_false(pf._segment_blocked(from, step, big_corner_clearance, false),
+		"the corridor leg clears the corner margin: got %s" % step)
+
+
+func test_next_step_defaults_corner_clearance_to_the_same_clearance() -> void:
+	# Backward compatibility: every existing caller that omits corner_clearance (every
+	# PathField test above, is_leg_blocked/has_path/next_step_fleeing, and any future
+	# caller) keeps the original single-margin behavior -- the funnel corner rounds at
+	# the same `clearance` the base check used, exactly as before this parameter existed.
+	var pf := PathField.new(FIELD)
+	var wall := Rect2(300, 100, 64, 400)
+	pf.block_rect(wall)
+	var from := Vector2(240, 300)
+	var to := Vector2(450, 600)
+	var step: Vector2 = pf.next_step(from, to, 40.0)
+	assert_almost_eq(step.x, wall.position.x - 40.0 - PathField.CORNER_STANDOFF, 0.001,
+		"with no corner_clearance given, the corner still rounds at the plain clearance")
+
+
 func test_funnel_walk_hugs_the_boundary_without_ratcheting_inward() -> void:
 	# Walk a whole two-corner detour in small steps, re-querying next_step each leg
 	# like a real mover: over the wall's top-west corner, straight down the west

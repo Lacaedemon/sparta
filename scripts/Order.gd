@@ -388,7 +388,15 @@ var reinforce_axis: int = 0
 ## field and gets the exemption and resolution for free, with no Unit.gd changes.
 ## (target_uid still carries a RELIEF order's ally uid for the transcript; this is the
 ## resolved node the exemption compares.)
-var friendly_target: Unit = null
+var friendly_target: Unit = null:
+	set(value):
+		if value == friendly_target:
+			return
+		if friendly_target != null and is_instance_valid(friendly_target):
+			friendly_target.incoming_friendly_links -= 1
+		if value != null and is_instance_valid(value):
+			value.incoming_friendly_links += 1
+		friendly_target = value
 ## UID of friendly_target captured across snapshot serialize/deserialize; -1 when none.
 var friendly_target_uid: int = -1
 
@@ -732,3 +740,13 @@ static func new_form_up() -> Order:
 	var o := Order.new()
 	o.type = Type.FORM_UP
 	return o
+
+
+## A freed Order stops counting toward its target's Unit.incoming_friendly_links. (An
+## order caught in a parent/children reference cycle is never freed, so its link keeps
+## counting; that only costs its one target unit extra reverse scans, see
+## Unit.incoming_friendly_links.)
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and friendly_target != null \
+			and is_instance_valid(friendly_target):
+		friendly_target.incoming_friendly_links -= 1

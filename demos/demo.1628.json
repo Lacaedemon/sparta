@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/deep-column-straight-march-1628.json",
+  "caption": "#1628: a deep, narrow Infantry column (3 files, 40 ranks) marches a straight diagonal leg that passes ~226wu clear of the hill -- inside its old pivot-radius-based clearance (~356wu, which folded in the column's own depth) but outside its new frontage-based one (~22.5wu). It now holds a dead-straight line and constant facing the whole way (perpendicular deviation stays under 0.01wu) instead of swinging ~240wu off course to round terrain that was never actually in its path.",
+  "fixed_fps": 30,
+  "max_frames": 420,
+  "fps": 15,
+  "width": 720
+}
