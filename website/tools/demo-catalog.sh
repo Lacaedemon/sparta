@@ -83,6 +83,7 @@ DEMOS=(
   "reversal_march|demos/inputs/reversal-march.json|30|380|640|input"
   "chase_canter|demos/inputs/stern-chase-canter.json|30|260|640|input"
   "funnel_lanes|demos/inputs/funnel-hug-lanes.json|60|1080|640|input"
+  "wide_rank_pivot_settle|demos/inputs/wide-single-rank-chase-whipsaw-1616.json|30|60|720|input"
   "spear_standoff|demos/inputs/spear-standoff.json|30|720|720|input"
   "small_unit_melee|demos/inputs/small-unit-melee.json|30|300|640|input"
   "give_ground|demos/inputs/give-ground.json|30|660|640|input"
