@@ -122,13 +122,20 @@ jobs:
           # on the base branch after this merge-base can't leak in either.
           git fetch -q origin "$BASE_REF" || true
           MERGE_BASE=$(git merge-base "origin/$BASE_REF" "$HEAD_SHA" 2>/dev/null || echo "$HEAD_SHA")
-          TOUCHED=$(git diff --name-only --diff-filter=AM \
+          # Manifests this PR ADDS come before ones it only MODIFIES: a PR that also
+          # corrects an older, already-merged manifest (say, a caption its change made
+          # stale) must still record its own new demo, not the older one.
+          ADDED=$(git diff --name-only --diff-filter=A \
               "$MERGE_BASE"..."$HEAD_SHA" -- 'demos/demo.*.json' \
               2>/dev/null | sort || true)
+          MODIFIED=$(git diff --name-only --diff-filter=M \
+              "$MERGE_BASE"..."$HEAD_SHA" -- 'demos/demo.*.json' \
+              2>/dev/null | sort || true)
+          TOUCHED=$(printf '%s\n%s\n' "$ADDED" "$MODIFIED" | sed '/^$/d')
           if [ -n "$TOUCHED" ]; then
             M=$(echo "$TOUCHED" | head -n1)
             if [ "$(echo "$TOUCHED" | wc -l)" -gt 1 ]; then
-              echo "::warning::Multiple demos/demo.*.json manifests touched in this PR; using $M (first alphabetically)."
+              echo "::warning::Multiple demos/demo.*.json manifests touched in this PR; using $M (added before modified, then alphabetical)."
             fi
             echo "Using per-PR demo manifest: $M"
           elif [ -f demos/demo.json ]; then

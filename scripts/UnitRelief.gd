@@ -31,11 +31,41 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 		return   # a unit can't relieve itself
 	order.friendly_target = tired
 	# Take over the tired unit's fight so the front isn't left open. A unit can be
-	# FIGHTING an auto-acquired foe with target_enemy still null, so fall back to its
-	# nearest enemy rather than just walking onto an empty slot.
+	# FIGHTING an auto-acquired foe with target_enemy still null (e.g. HOLD/BRACE standoff
+	# fire with no committed target), so fall back to its nearest enemy rather than just
+	# walking onto an empty slot. tired.target_enemy itself needs no re-gating here: when
+	# non-null it was set one of three ways -- an explicit order, one of this file's own
+	# now-gated fresh-pick commits (both perception-gated at the time), or Unit._think()'s
+	# melee-contact branch (target_enemy = enemy, set when in contact outside HOLD/
+	# MARCH_TO_CONTACT/BRACE), which is deliberately NOT a caller of _enemy_is_perceived:
+	# contact-exempt rather than perception-gated, benign because melee_contact_distance is
+	# far below any realistic sight range. Same already-committed exemption _think()'s own
+	# chase branch relies on.
 	var foe: Unit = tired.target_enemy
 	if foe == null:
-		foe = UnitTargeting.nearest_enemy(tired)
+		# A FRESH acquisition, gated by Unit.fresh_pick_allowed -- the same helper
+		# _start_promoted_attack uses for its own fresh candidate pick, so this file and
+		# Unit.gd don't each carry their own copy of the melee-contact/perception test.
+		# UnitTargeting.nearest_enemy is a bare, unfogged detection_range scan, so an
+		# ungated assignment here would let the reliever inherit a hidden foe straight into
+		# target_enemy below -- landing it in _think()'s exempt target_enemy != null chase
+		# path with no perception check ever having run. See Unit._enemy_is_perceived's own
+		# doc comment for the authoritative caller list this belongs to.
+		# fresh_pick_allowed is passed to nearest_enemy as a RANKING predicate too (not just
+		# checked afterward, below): without it, an enemy closer to `tired` that this gate
+		# would reject (out of contact with the RELIEVER `u`, not perceived) wins the
+		# nearest-of-any ranking around tired's own position and blocks a farther enemy the
+		# reliever CAN engage from ever being considered -- the same fog-of-war shadowing gap
+		# UnitTargeting.nearest_enemy_to's own `predicate` parameter closes (see its doc
+		# comment). Bound to `u` (the reliever), not `tired` (the search center/team) --
+		# fresh_pick_allowed is checked against whichever unit will actually inherit the
+		# pick, matching the un-gated check this replaces. No separate post-selection
+		# fresh_pick_allowed check remains: any non-null `candidate` already passed that
+		# exact call as the predicate, on the same u/candidate pair, with nothing mutating
+		# either in between -- a second call would just repeat it.
+		var candidate: Unit = UnitTargeting.nearest_enemy(tired, Callable(u, "fresh_pick_allowed"))
+		if candidate != null:
+			foe = candidate
 	u.target_enemy = foe
 	if foe != null:
 		u.has_move_target = false

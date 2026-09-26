@@ -40,8 +40,9 @@ const FIELD := Rect2(0, 0, 1600, 1200)
 # detection alone, not the missile reach: a router does not have to outrun the longest
 # missile profile on the field to be gone, and the reach is per unit now anyway. Reads the
 # class constant, not any one unit's own detection_range field, since
-# this margin is a single battle-wide strip, not sized per unit. Fog of war is render-only
-# and does not alter the rout margin or retreat bounds.
+# this margin is a single battle-wide strip, not sized per unit. Fog of war does not alter
+# the rout margin or retreat bounds -- unlike AI/order targeting elsewhere (see
+# ai_team_perceives' own doc comment), this specific value is untouched by it either way.
 const ROUT_MARGIN: float = UnitRef.DETECTION_RANGE
 var rout_margin: float = ROUT_MARGIN
 var field_with_margin: Rect2 = FIELD.grow(ROUT_MARGIN)
@@ -434,6 +435,29 @@ var fog_team: int = 0
 # switch-off knows to restore every unit), and the ghost-marker layer.
 var _fog_contacts: Dictionary = {}
 var _fog_seen: Dictionary = {}
+# Which Engine.get_physics_frames() reading _fog_seen's current content actually scanned
+# for -- _ai_perceptible_units(team) reuses it (for team == fog_team) only when a fresh
+# reading matches this exactly, so a call outside the physics frame _tick_fog last ran in
+# (or after a restore whose snapshot predates a fog-config change) falls back to a fresh
+# scan instead of reading a stale one. Deliberately keyed to the GLOBAL physics-frame
+# counter rather than Battle's own `_tick`: `_tick` increments partway through this same
+# frame (_tick_fog runs, then _tick += 1, then each Unit's own _physics_process --
+# including _think()'s own ai_team_perceives calls -- runs against the NEW `_tick` value,
+# all still within the frame _tick_fog's scan is valid for). SpatialHash.rebuild
+# (called from _physics_process below, keyed the same way) already establishes this exact
+# pattern for its own per-frame cache: "Idempotent within a frame, so it is safe to call
+# from more than one place" (its own doc comment). -1 (never scanned) never matches a real
+# frame reading.
+var _fog_seen_frame: int = -1
+# Cumulative count of actual Perception.visible_enemy_uids scans this battle has run (never
+# reset -- a test reads the delta across whatever window it cares about). Incremented at
+# every call site that performs a fresh scan (_tick_fog's own rendering pass, and
+# _ai_perceptible_units' fresh-scan fallback), never when a call reuses _fog_seen instead --
+# see _ai_perceptible_units' own doc comment for why the fog_team case can reuse it. Exists
+# to make the "fog_team scans once per tick even when both rendering and a gate ask" claim a
+# deterministic, testable count rather than a timing-dependent one (see SimOps.gd's own doc
+# comment for the same "count, don't time" reasoning).
+var _fog_scan_calls: int = 0
 var _fog_active: bool = false
 var _fog_ghosts: Node2D = null
 var _sight_path_field: PathField = null
@@ -1586,6 +1610,19 @@ func restore_snapshot(snap: Dictionary) -> void:
 	_recorded_fog_of_war = bool(snap.get("recorded_fog_of_war", snap.get("fog_active", false)))
 	_fog_contacts = (snap.get("fog_contacts", {}) as Dictionary).duplicate(true)
 	_fog_seen = (snap.get("fog_seen", {}) as Dictionary).duplicate(true)
+	# A restore happens outside normal physics processing (a rewind/replay action), so
+	# there is no meaningful "current physics frame" for the restored _fog_seen to already
+	# match -- force a fresh scan on the first ask afterward rather than risk reading a
+	# value _tick_fog computed for a since-passed frame.
+	_fog_seen_frame = -1
+	# ai_team_perceives' own cache is keyed by the physics frame, which a restore does not
+	# advance -- a restore run inside a frame whose cache is already filled would otherwise
+	# reuse the stale, pre-restore UID set against the freshly restored positions/states
+	# (UIDs themselves survive the restore, so a stale entry doesn't even fail an existence
+	# check -- it just answers wrong). Clear both fields so the first ask after any restore
+	# always recomputes.
+	_ai_perceives_cache = {}
+	_ai_perceives_cache_frame = -1
 	_fog_active = bool(snap.get("fog_active", false))
 	# A snapshot captured before this feature existed carries no "fog_explored" key --
 	# fall back to an all-unexplored grid of the current size rather than an empty array,
@@ -1889,9 +1926,12 @@ func _physics_process(delta: float) -> void:
 ## Fog of war. With Settings.fog_of_war on, the fog team's units each perceive a
 ## disc, every enemy outside all of them is hidden by CanvasItem.visible, and each enemy's
 ## last sighting is kept for the ghost layer. (Disabled under all-teams control.)
-## Fog affects unit visibility and ghost markers, with the recorded replay map value
-## driving playback. Fog is render-only and does not affect the retreat margin.
-## Group membership, unit-level AI targeting, and collision are untouched.
+## This rendering pass itself affects unit visibility and ghost markers, with the recorded
+## replay map value driving playback. It does not affect the retreat margin, group
+## membership, or collision.
+## Unit-level AI/order targeting is NOT untouched by fog overall, though: it is gated
+## separately, at decision time, by ai_team_perceives / Unit._enemy_is_perceived (see that
+## function's own doc comment for the currently-gated branches) -- not by this rendering pass.
 ## Player-side order targeting in SelectionManager filters on visibility so a click in
 ## empty fog cannot target an unseen enemy. Switching fog off restores every unit
 ## and clears the markers.
@@ -1902,6 +1942,7 @@ func _tick_fog() -> void:
 		if _fog_active:
 			_fog_active = false
 			_fog_seen = {}
+			_fog_seen_frame = -1
 			for u in _fog_units_in_play():
 				u.visible = true
 			if _fog_ghosts != null:
@@ -1912,6 +1953,8 @@ func _tick_fog() -> void:
 	_fog_active = true
 	var units: Array = _fog_units_in_play()
 	_fog_seen = PerceptionRef.visible_enemy_uids(fog_team, units, terrain, _sight_path_field)
+	_fog_seen_frame = Engine.get_physics_frames()
+	_fog_scan_calls += 1
 	PerceptionRef.record_contacts(_fog_contacts, units, _fog_seen, _tick)
 	for u in units:
 		u.visible = u.team == fog_team or _fog_seen.has(u.uid)
@@ -1938,6 +1981,177 @@ func _fog_observers() -> Array:
 		if u.team == fog_team:
 			out.append(u)
 	return out
+
+
+## Battle AI phase 5 (docs/battle-ai-design.md): every unit an AI decision for `team` may
+## read this tick -- the perception source _run_enemy_ai and _run_player_delegated_ai hand
+## to General.decide_army / Subcommander.decide_group / UnitLeader.decide, and (through
+## UnitLeader's own array-scoped nearest-enemy search) the AI's advance/attack fallback too.
+## `team`'s own units are always included -- own-command knowledge is exempt from fog, per
+## the design doc's perception-interface sketch ("a commander always knows its own units'
+## positions and states"). An enemy unit is included only when fog of war is inactive
+## (reproducing today's omniscient set exactly, so a fog-off battle's AI is unchanged) or
+## when `team` currently perceives it -- Perception.visible_enemy_uids, the SAME test that
+## drives the player's own fog rendering (_tick_fog), so the AI plays by the exact rules the
+## player does: no omniscient fallback, no cheating (docs/fog-of-war-design.md, "Difficulty
+## never comes from perception"). Always includes the "routers" group alongside "units":
+## every enemy-facing scan across General/Subcommander/UnitLeader/SkirmisherScreen already
+## excludes ROUTING state on its own, so a routing candidate being present is harmless to
+## them, and UnitLeader's own routing-pursuit fallback (pursue_routers) needs it present to
+## decide anything at all -- see UnitLeader.gd's class doc. A pure function of already-
+## serialized sim state (position/team/sight/state), exactly like Perception.gd itself, so
+## replay re-derives the identical view -- and therefore the identical AI decisions -- on
+## the same tick.
+##
+## Team-wide, not commander-scoped: every level of team `team`'s chain reads this same set
+## this tick (no narrower subcommander-scoped view, no report-latency model). That is the
+## design doc's own phase-3 sequencing ("team-wide fogged view first; commander-scoped
+## narrowing plus report propagation second") stopping at its first half -- this phase's own
+## acceptance test (an AI general reacts on the first decision tick after a unit CAN see a
+## flanking force) only needs a team ever perceiving the enemy, not which of its own units
+## did. Commander-scoped narrowing and up-the-chain report propagation are deferred as
+## follow-ups.
+##
+## Does not surface last-known/stale contacts (Perception.record_contacts' table): the AI
+## reasons only about what `team` currently perceives, matching the acceptance test's own
+## wording ("cannot react ... until it enters ... perception"). Memory-based reasoning over
+## a stale contact is a separate, deferred follow-up.
+##
+## Performance: for `team == fog_team`, every per-unit gate this physics frame reads a
+## PER-FRAME SNAPSHOT of fog_team's perception (_fog_seen) instead of each paying for its
+## own observer x target x LOS sweep -- the snapshot is taken once, by _tick_fog, before any
+## unit acts this frame, and reused for the rest of it, rather than recomputed per caller.
+## Only valid when a fresh Engine.get_physics_frames() reading matches _fog_seen_frame --
+## deliberately NOT keyed to Battle's own `_tick`, which increments partway through the SAME
+## frame `_tick_fog` and every Unit's own _think() share (Battle._physics_process's own
+## comment: "Runs before the Units' own _physics_process ... so orders and AI for this tick
+## are applied before units act" -- by the time a unit's _think() asks, `_tick` has already
+## moved on to the NEXT value, but it is still the SAME physics frame _tick_fog computed
+## _fog_seen in). A call that lands before _tick_fog has run yet this frame (the
+## command-level AI decisions -- _run_enemy_ai / _run_player_delegated_ai -- which
+## _physics_process runs before its own call to _tick_fog), or right after a snapshot
+## restore (see restore_snapshot's own comment), falls back to a fresh scan exactly as
+## before this reuse existed -- every per-unit _think() gate, which is the hot-loop cost
+## this exists to cut, runs after _tick_fog within the same frame and does get the reuse.
+## Every other team pays for its own scan, computed once per team per tick via
+## ai_team_perceives' own cache -- unchanged by this.
+##
+## The snapshot can go stale WITHIN the frame it was taken: Unit._die()/_rout() leave the
+## "units"/"routers" groups synchronously, mid-_think(), so a fog_team observer that dies or
+## routs partway through this frame is not reflected in _fog_seen for the REST of that same
+## frame -- a later unit's gate this frame still sees whatever fog_team could perceive at
+## the START of the frame, stale by at most one frame. This is not new: the pre-existing
+## _ai_perceives_cache (below) already has the identical one-snapshot-per-(team, tick)
+## granularity, so this reuse changes WHEN the snapshot is taken, not whether one is used at
+## all. Taking it at _tick_fog specifically, before any unit acts, is a deliberate choice
+## over the alternative (each team's first asker that frame implicitly sets it, as
+## _ai_perceives_cache's own timing already does): a fixed start-of-frame snapshot gives
+## every unit in the frame the SAME perception regardless of tree-processing order, where a
+## first-asker-sets-it snapshot would make the result depend on which unit happened to ask
+## first -- order-independence and determinism, not merely an incidental side effect of
+## reusing _tick_fog's own work.
+func _ai_perceptible_units(team: int) -> Array:
+	if not is_fog_active():
+		var out: Array = get_tree().get_nodes_in_group("units")
+		out.append_array(get_tree().get_nodes_in_group("routers"))
+		return out
+	var candidates: Array = _fog_units_in_play()
+	var seen: Dictionary
+	if team == fog_team and _fog_seen_frame == Engine.get_physics_frames():
+		seen = _fog_seen
+	else:
+		seen = PerceptionRef.visible_enemy_uids(team, candidates, terrain, _sight_path_field)
+		_fog_scan_calls += 1
+	var out: Array = []
+	for u in candidates:
+		if u.team == team or seen.has(u.uid):
+			out.append(u)
+	return out
+
+
+## Per-frame cache backing ai_team_perceives: team -> Dictionary(enemy_uid -> true), the
+## enemy subset of _ai_perceptible_units(team) for whichever teams asked this physics frame.
+## Keyed by the physics-frame counter (Engine.get_physics_frames()), NOT by `_tick`, the
+## same way _fog_seen_frame is: `_tick` increments partway through Battle._physics_process,
+## before the Unit children process, so one `_tick` value spans the END of one frame (the
+## units' own asks) and the START of the next (Battle's pre-unit phase, e.g.
+## _tick_far_tier_combat). A `_tick` key let that next frame's pre-unit phase reuse a
+## snapshot taken before the units moved; the frame key gives each frame its own. Every unit
+## on the same team asking in the same frame still costs one _ai_perceptible_units
+## recompute, not one per unit -- see ai_team_perceives' own doc comment for why a per-unit,
+## every-physics-tick caller needs this rather than calling _ai_perceptible_units directly. Purely derived from already-serialized state
+## (nothing here is itself simulation state), so neither field is itself part of the
+## snapshot payload -- but restore_snapshot() must still explicitly clear both
+## (_ai_perceives_cache = {}, _ai_perceives_cache_frame = -1): a restore does not advance
+## the physics frame, so a cache already filled this frame would otherwise be read as still
+## valid, and the stale pre-restore UID set would be reused against the freshly restored
+## positions and states rather than recomputed.
+##
+## One snapshot per (team, frame), same granularity as _fog_seen_frame's own per-frame
+## snapshot above (_ai_perceptible_units' own doc comment covers that one's staleness
+## window in detail). This cache's own snapshot is taken lazily, by whichever unit on
+## `team` happens to ask first that frame, rather than at a fixed point like _tick_fog --
+## so a mid-tick death/rout among `team`'s OWN observers can already change what a LATER
+## asker on the same team would have computed fresh, and this cache papers over that by
+## freezing the FIRST asker's answer for the rest of the frame regardless.
+var _ai_perceives_cache: Dictionary = {}
+var _ai_perceives_cache_frame: int = -1
+
+
+## Whether team `team` currently perceives `enemy`: false when `enemy` is null (nothing to
+## perceive), true unconditionally when fog of war is inactive (today's omniscient behaviour,
+## unchanged), else membership in _ai_perceptible_units(team)'s own enemy subset (see that
+## function's own doc comment for the exact rule -- the SAME Perception.visible_enemy_uids
+## test either way).
+## Most callers guard on `enemy != null` before asking (short-circuited into the same `and`
+## as the call itself, or via an enclosing `if enemy != null:`/`if threat != null:` block),
+## but not all: Unit._think()'s ORDER_SWEEP_ROUTERS fallback
+## (`if _enemy_is_perceived(swept):`, `swept` from UnitTargeting.current_target) CAN pass
+## null, since current_target returns null with nothing in detection range. That is safe by
+## construction -- null routes straight to the false branch above, so the caller's own `if`
+## simply doesn't fire, exactly as if an unperceived enemy had been found -- not a path
+## that needs its own guard.
+##
+## The direct caller is Unit._enemy_is_perceived (scripts/Unit.gd), a thin duck-typed wrapper
+## Unit reaches this through since Battle.gd has no class_name (see Unit._owning_battle's own
+## doc comment for why Unit.gd cannot preload Battle.gd back). Read that wrapper's own doc
+## comment and its OWN call sites for the current, authoritative list of what it gates --
+## deliberately not enumerated here, so this comment can't go stale the way it already has
+## once: it previously named a single caller (the auto-advance-on-detect fallback) and silently
+## went wrong the moment a second one (a ranged-fire branch) was added beside it.
+## In general: every per-unit, every-physics-tick decision that would otherwise pick a target
+## from an unfogged bare-radius scan (UnitTargeting.nearest_enemy_to or similar, no LOS or fog
+## test at all) BEFORE that target is actually in MELEE contact -- closing the same class of
+## omniscient backdoor _ai_perceptible_units above closes at the command level
+## (General/Subcommander/UnitLeader, decided once per ai_period), but for paths that run
+## independently of that cadence. Only melee-contact combat already in progress is exempt:
+## a body already fighting in melee stays soldier-level and unfogged, per docs/fog-of-war-
+## design.md's own "soldier-level combat stays unfogged" rule. Missile fire at STANDOFF is
+## NOT exempt the same way, even against a target already well within the shooter's own
+## missile_range -- if that target is not yet in melee contact, firing on it is itself one of
+## the gated decisions, exactly like a chase.
+##
+## Despite the name, `team` is not "the AI's team" -- this takes any team int, including the
+## player's own (0), and most of its callers deliberately gate a PLAYER-commanded unit too: a
+## unit that could snipe or chase past its own player's fogged screen would itself be a
+## fog-breaking exploit, so fog is symmetric here by design. See _enemy_is_perceived's own doc
+## comment for exactly which of its gated branches are AI-exclusive versus shared.
+func ai_team_perceives(team: int, enemy: UnitRef) -> bool:
+	if enemy == null:
+		return false
+	if not is_fog_active():
+		return true
+	var frame: int = Engine.get_physics_frames()
+	if _ai_perceives_cache_frame != frame:
+		_ai_perceives_cache = {}
+		_ai_perceives_cache_frame = frame
+	if not _ai_perceives_cache.has(team):
+		var seen: Dictionary = {}
+		for u in _ai_perceptible_units(team):
+			if u.team != team:
+				seen[u.uid] = true
+		_ai_perceives_cache[team] = seen
+	return (_ai_perceives_cache[team] as Dictionary).has(enemy.uid)
 
 
 ## Advances the persistent explored grid and returns this tick's currently-visible cell
@@ -2881,6 +3095,20 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 	var attack_targets: Array = []
 	if cmd.get("group_attack", GroupAttackMode.FOCUSED) == GroupAttackMode.DISTRIBUTED \
 			and target_unit != null and not is_move:
+		# The ordering team's own perception gates every candidate here EXCEPT target_unit
+		# itself, which is exempt: it was explicitly selected (a player click SelectionManager
+		# already filtered to a visible enemy, or an AI decision that resolved its own target
+		# through ai_team_perceives), so it is visible by construction. Without this filter, a
+		# hidden enemy nearer to the click than target_unit would still take an earlier slot in
+		# the proximity sort below and be handed to one of the other ordered units as a fresh,
+		# committed ATTACK target -- exactly the fresh-pick-must-be-perceived rule
+		# Unit._enemy_is_perceived's own doc comment lists for every other per-unit acquisition
+		# site, reached here through the group command layer instead.
+		var ordering_team: int = -1
+		if not cmd["units"].is_empty():
+			var first_ordered: Unit = _unit_by_uid(int(cmd["units"][0]))
+			if first_ordered != null:
+				ordering_team = first_ordered.team
 		# Scan both "units" and "routers" --- a routing (broken or shattered) enemy is
 		# still a live, fightable candidate (see UnitTargeting.nearest_enemy's
 		# include_routing); it just lives in the other group while fleeing.
@@ -2889,6 +3117,8 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				var candidate: Unit = node as Unit
 				if candidate == null or candidate.team != target_unit.team \
 						or candidate.state == Unit.State.DEAD:
+					continue
+				if candidate != target_unit and not ai_team_perceives(ordering_team, candidate):
 					continue
 				attack_targets.append(candidate)
 		var ref_pos: Vector2 = target_unit.position
@@ -3462,30 +3692,38 @@ func _tick_far_tier_combat(units: Array, delta: float) -> void:
 
 
 ## Battle AI phases 1-3 (docs/battle-ai-design.md): every AI-controlled (team 1) unit gets
-## a unit leader (UnitLeader.decide) that reads the current sim state -- the omniscient
-## placeholder perception phase 1 uses -- and returns at most one order-command Dictionary,
-## which is applied through _apply_order_cmd, the SAME single apply site a player order
-## goes through. No unit state is written directly here, in UnitLeader, in Subcommander, or
-## in General -- closing the backdoor the old direct `u.target_enemy = nearest` write left
-## open (see the design doc's "Today's AI is a backdoor" section).
+## a unit leader (UnitLeader.decide) that reads the current sim state -- fogged when
+## Settings.fog_of_war is on (phase 5, see _ai_perceptible_units), omniscient when it is
+## off, exactly reproducing pre-phase-5 behaviour -- and returns at most one order-command
+## Dictionary, which is applied through _apply_order_cmd, the SAME single apply site a
+## player order goes through. No unit state is written directly here, in UnitLeader, in
+## Subcommander, or in General -- closing the backdoor the old direct `u.target_enemy =
+## nearest` write left open (see the design doc's "Today's AI is a backdoor" section).
 ##
 ## Phase 3 adds the general: General.decide_army reads team 1's doctrine profile
-## (ai_doctrine, via DoctrineRegistry) and the same omniscient perception, and returns a plan,
-## a split into one or more Subcommander groups, a reserve pool, and the doctrine's rout-
-## exploitation flag. Subcommander.decide_group runs once PER GROUP (phase 2 ran it once for
-## the whole team); the general's own reserve-hold directives (General.reserve_directives) are
-## folded in alongside them, so a held-back reserve unit gets a directive too, just not a
-## subcommander's. pursue_routers threads down to every UnitLeader.decide call, and the
-## doctrine's skirmisher-screen flag threads down to every Subcommander.decide_group call
-## (SkirmisherScreen; off for a doctrine that does not ask for one). The general
-## reads team 1's whole ROSTER (_team_roster, fightable + routing), not the narrower
-## _team_units, so a unit that temporarily routs doesn't shrink the reserve-fraction
+## (ai_doctrine, via DoctrineRegistry) and the same perception every other level reads, and
+## returns a plan, a split into one or more Subcommander groups, a reserve pool, and the
+## doctrine's rout-exploitation flag. Subcommander.decide_group runs once PER GROUP (phase 2
+## ran it once for the whole team); the general's own reserve-hold directives (General.
+## reserve_directives) are folded in alongside them, so a held-back reserve unit gets a
+## directive too, just not a subcommander's. pursue_routers threads down to every
+## UnitLeader.decide call, and the doctrine's skirmisher-screen flag threads down to every
+## Subcommander.decide_group call (SkirmisherScreen; off for a doctrine that does not ask for
+## one). The general reads team 1's whole ROSTER (_team_roster, fightable + routing), not the
+## narrower _team_units, so a unit that temporarily routs doesn't shrink the reserve-fraction
 ## denominator (see _team_roster's own doc comment) -- but only _team_units actually receives
-## an AI order below, since a routing unit can't act on one regardless.
-## Deterministic: a pure function of already-serialized unit state, decided in uid order, so
-## live play and replay reach identical decisions.
+## an AI order below, since a routing unit can't act on one regardless. _team_roster is team
+## 1's OWN roster (always fully known -- own-command knowledge is exempt from fog), unlike
+## `all_units` below, which is _ai_perceptible_units' fogged-or-omniscient enemy view.
+##
+## Phase 5 adds fog of war (docs/battle-ai-design.md's phase-5 requirement, "the AI honors
+## fog of war"): `all_units` comes from _ai_perceptible_units(1) instead of an unfiltered
+## group query, so every level of the chain -- General, Subcommander, and (through it)
+## UnitLeader's own advance/attack fallback -- sees only what team 1 currently perceives.
+## Deterministic: a pure function of already-serialized unit state (including the fogged
+## view itself), decided in uid order, so live play and replay reach identical decisions.
 func _run_enemy_ai() -> void:
-	var all_units: Array = get_tree().get_nodes_in_group("units")
+	var all_units: Array = _ai_perceptible_units(1)
 	var team1: Array = _team_units(1)
 	var team1_roster: Array = _team_roster(1)
 	var doctrine: Dictionary = DoctrineRegistry.doctrine(ai_doctrine)
@@ -3524,8 +3762,14 @@ func _run_enemy_ai() -> void:
 ## PlayerDelegation's own class doc) -- so this stays at the phase-1/phase-2 default rather
 ## than reading a doctrine-driven decision the design scopes to phase 3's General, which this
 ## phase deliberately does not stand up for team 0.
+##
+## Phase 5 (docs/battle-ai-design.md): `all_units` is team 0's own _ai_perceptible_units
+## view, exactly like team 1's in _run_enemy_ai -- a delegated group reasons about only what
+## the PLAYER's side currently perceives (the same fogged view Settings.fog_of_war gives the
+## player's own rendering), never an omniscient one, with fog off reproducing today's
+## unfiltered behaviour exactly.
 func _run_player_delegated_ai() -> void:
-	var all_units: Array = get_tree().get_nodes_in_group("units")
+	var all_units: Array = _ai_perceptible_units(0)
 	var team0: Array = _team_units(0)
 	var groups: Dictionary = PlayerDelegation.delegated_groups(team0)
 	for group_id in groups:

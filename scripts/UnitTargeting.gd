@@ -16,21 +16,33 @@ class_name UnitTargeting
 ## UnitCombat.register_casualties) faster than _process_rout's baseline recovery, so it
 ## never crosses RALLY_MORALE_THRESHOLD. A router that actually breaks free (outruns its
 ## pursuer, or the pursuer disengages) stops taking hits and recovers normally.
-static func current_target(u: Unit) -> Unit:
+##
+## `predicate`, forwarded unchanged to nearest_enemy's own fresh-pick fallback (see its own
+## doc comment) -- an ALREADY-live committed target above is returned as-is, unfiltered,
+## regardless of `predicate`: it was perception-gated at the time it was first committed
+## (see Unit._enemy_is_perceived's own doc comment, the authoritative caller list), so
+## re-filtering it here would re-litigate a decision this function has no new information
+## to revisit.
+static func current_target(u: Unit, predicate: Callable = Callable()) -> Unit:
 	var t: Unit = u.target_enemy
 	if t != null and is_instance_valid(t) and t.state != Unit.State.DEAD:
 		return t
 	u.target_enemy = null
-	return nearest_enemy(u)
+	return nearest_enemy(u, predicate)
 
 
 ## Nearest threat for normal auto-acquisition: centred on the unit, within its own
 ## detection_range (a caller-configurable field, default Unit.DETECTION_RANGE).
 ## Includes routing enemies --- see nearest_enemy_to's include_routing.
-static func nearest_enemy(u: Unit) -> Unit:
+##
+## `predicate`, forwarded to nearest_enemy_to: when valid, RANKS only candidates it
+## accepts, rather than picking the nearest-of-any and leaving a caller to reject it
+## afterward -- see nearest_enemy_to's own doc comment for why ranking must filter rather
+## than a post-hoc gate re-checking whatever ranking already committed to.
+static func nearest_enemy(u: Unit, predicate: Callable = Callable()) -> Unit:
 	var inclusive: bool = \
 		u != null and u.carries_non_default_missile_profile()
-	return nearest_enemy_to(u, u.position, u.detection_range, true, inclusive)
+	return nearest_enemy_to(u, u.position, u.detection_range, true, inclusive, predicate)
 
 
 ## Nearest routing enemy for SWEEP_ROUTERS stance: the closest routing (broken/shattered)
@@ -40,7 +52,14 @@ static func nearest_enemy(u: Unit) -> Unit:
 ## result leaves current_target()/nearest_enemy() to own the ordinary no-router targeting,
 ## preserving the "relentless pursuit" persistence invariant when the stance has nothing to
 ## prioritize.
-static func nearest_routing_enemy(u: Unit) -> Unit:
+##
+## `predicate` (default an invalid Callable, meaning "no filter" -- every existing caller is
+## unaffected): when valid, a candidate the predicate rejects is skipped during ranking
+## itself rather than being allowed to win the nearest-of-any pick and only get discarded
+## afterward -- see nearest_enemy_to's own doc comment for why that distinction matters (a
+## closer rejected candidate must not be able to shadow a farther accepted one out of
+## consideration).
+static func nearest_routing_enemy(u: Unit, predicate: Callable = Callable()) -> Unit:
 	var best_router: Unit = null
 	var best_router_d_sq: float = u.detection_range * u.detection_range
 	var inclusive: bool = \
@@ -51,6 +70,8 @@ static func nearest_routing_enemy(u: Unit) -> Unit:
 		if other == null or other.team == u.team:
 			continue
 		if other.state != Unit.State.ROUTING:
+			continue
+		if predicate.is_valid() and not predicate.call(other):
 			continue
 
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
@@ -68,7 +89,12 @@ static func nearest_routing_enemy(u: Unit) -> Unit:
 ## behaviour would. This is what "rolls" a unit down an enemy line: it keeps engaging
 ## whoever is closest among the enemies still actually fighting, rather than idling once a
 ## beaten foe finally goes down or grinding out a chase against one that's already broken.
-static func roll_the_line_target(u: Unit) -> Unit:
+##
+## `predicate`, forwarded to nearest_enemy_to for the same reason as nearest_routing_enemy's
+## own `predicate` above: an ALREADY-live, non-routing committed target is returned as-is
+## above without consulting it (same already-gated-at-commit-time reasoning as
+## current_target's own doc comment).
+static func roll_the_line_target(u: Unit, predicate: Callable = Callable()) -> Unit:
 	var t: Unit = u.target_enemy
 	if t != null and is_instance_valid(t) and t.state != Unit.State.DEAD \
 			and t.state != Unit.State.ROUTING:
@@ -76,7 +102,7 @@ static func roll_the_line_target(u: Unit) -> Unit:
 	u.target_enemy = null
 	var inclusive: bool = \
 		u != null and u.carries_non_default_missile_profile()
-	return nearest_enemy_to(u, u.position, u.detection_range, false, inclusive)
+	return nearest_enemy_to(u, u.position, u.detection_range, false, inclusive, predicate)
 
 
 ## Nearest living enemy within `radius` of `center`. Backs both normal auto-acquisition
@@ -94,9 +120,24 @@ static func roll_the_line_target(u: Unit) -> Unit:
 ##
 ## `inclusive` (default false) allows candidates sitting at exact boundary radius to
 ## be acquired, scoped to non-default missile profile auto-acquisition.
+##
+## `predicate` (default an invalid Callable, meaning "no filter" --- every caller that omits
+## it ranks exactly as before): when valid, called once per surviving candidate
+## (`predicate.call(other)`) and a candidate it rejects is excluded from ranking itself,
+## not merely from the return value. This is deliberately NOT the same as ranking
+## unconditionally and having the caller reject the winner afterward: a closer candidate the
+## predicate rejects must not be able to shadow a farther candidate it would have accepted
+## out of consideration entirely -- that shadowing (a hidden-under-fog enemy sitting closer
+## than a perceived one, so the perceived one is never even reached) is the fog-of-war bug
+## this parameter exists to close. See Unit._enemy_is_perceived's own doc comment (the
+## authoritative caller list) for which callers pass Unit._enemy_is_perceived itself
+## (perception with no melee-contact exemption) versus Unit.fresh_pick_allowed (perception
+## OR already-in-melee-contact) as this predicate, matching whichever exemption that
+## specific call site's own post-selection gate already granted.
 static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 		include_routing: bool = false,
-		inclusive: bool = false) -> Unit:
+		inclusive: bool = false,
+		predicate: Callable = Callable()) -> Unit:
 	var best: Unit = null
 	var best_d_sq: float = radius * radius
 	var groups: Array = ["units", "routers"] if include_routing else ["units"]
@@ -106,6 +147,8 @@ static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 			if other == null or other.team == u.team:
 				continue
 			if other.state == Unit.State.DEAD:
+				continue
+			if predicate.is_valid() and not predicate.call(other):
 				continue
 			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 			var d_sq: float = center.distance_squared_to(other.position)
