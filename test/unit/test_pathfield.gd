@@ -653,13 +653,17 @@ func test_funnel_corner_prefers_a_farther_nonzero_side_over_a_degenerate_nearest
 	# path (direct _funnel_corner call, same pattern
 	# test_funnel_corner_route_side_does_not_flip_across_an_axis_switch_boundary
 	# already uses) where the NEAREST point to the rect is a coincidental fluke
-	# -- collinear with centre, cross == 0 -- while the path's own endpoints
-	# (which fix corridor_axis) are NOT, and carry a real, informative side.
+	# -- collinear with centre ON the corridor axis, cross == 0 -- while a
+	# farther path point is not, and carries a real, informative side.
+	# corridor_axis runs from that nearest point to the path's last point, so
+	# a degenerate nearest point needs the last point on the same line through
+	# the rect's centre (below: centre, corridor_mid and corridor_end are
+	# collinear), leaving corridor_start as the one informative point.
 	# Before the fix, route_side read from "whichever point is nearest" alone,
 	# so this exact geometry zeroed it and dropped the side filter entirely
 	# (every corner became a candidate). After the fix, route_side skips the
-	# degenerate nearest point and reads the correct side from the path's own
-	# endpoint instead.
+	# degenerate nearest point and reads the correct side from the nearest
+	# point that is off the axis line instead -- corridor_start here.
 	var pf := PathField.new(Rect2(0, 0, 640, 640))
 	var rect := Rect2(300, 100, 64, 400)   # centre (332,300)
 	pf.block_rect(rect)
@@ -668,9 +672,11 @@ func test_funnel_corner_prefers_a_farther_nonzero_side_over_a_degenerate_nearest
 	# corners against below -- test_funnel_corner_route_side_does_not_flip_across_an_axis_switch_boundary
 	# already establishes that _funnel_corner's `path` argument is
 	# independent of its `from`/`to` cost inputs.
-	var corridor_start := Vector2(100, 100)   # path[0]: cross(axis, p - centre) == -7200 (nonzero)
-	var corridor_mid := Vector2(282, 260)     # nearest to rect (distance 18); cross == 0
-	var corridor_end := Vector2(600, 500)     # path[2]: cross(axis, p - centre) == -7200 (nonzero)
+	# corridor_axis = corridor_end - corridor_mid = (300, 240); crosses below are
+	# cross(axis, p - centre).
+	var corridor_start := Vector2(100, 100)   # distance 200 from the rect; cross == -4320 (north side)
+	var corridor_mid := Vector2(282, 260)     # nearest to the rect (distance 18); cross == 0
+	var corridor_end := Vector2(582, 500)     # distance 218 from the rect; cross == 0 (on the axis line)
 	var path := PackedVector2Array([corridor_start, corridor_mid, corridor_end])
 	# Straddles the wall close to its south edge (y=480, within the rect's own
 	# 100..500 span) so the south corners are both far cheaper by raw cost
@@ -681,13 +687,12 @@ func test_funnel_corner_prefers_a_farther_nonzero_side_over_a_degenerate_nearest
 	var clearance := 20.0
 	var corner: Vector2 = pf._funnel_corner(from, to, path, clearance)
 	assert_true(corner.is_finite(), "sanity: this leg is expected to detour")
-	# The correct side (from the corridor endpoints' shared, nonzero cross
-	# sign) keeps only the north corners (NW/NE) as candidates, even though
-	# a south corner is far cheaper by raw cost alone. Before the fix, the
-	# degenerate nearest corridor point (corridor_mid, cross == 0) zeroed
-	# route_side and let that south corner win regardless; after the fix,
-	# route_side reads the correct (north) side from a farther, nonzero
-	# corridor point instead.
+	# The correct side (corridor_start's nonzero cross sign, shared by the
+	# grown NW and NE corners, -53640 and -79560) keeps only the north corners
+	# as candidates, even though a south corner is far cheaper by raw cost
+	# alone. Reading the degenerate nearest point (corridor_mid, cross == 0)
+	# would zero route_side and let that south corner win; route_side instead
+	# reads the correct (north) side from the farther, nonzero corridor_start.
 	assert_lt(corner.y, rect.get_center().y,
 		"the correct (north) side wins even though a south corner is far cheaper by cost alone, " +
 		"and even though the nearest corridor point is itself degenerate")
