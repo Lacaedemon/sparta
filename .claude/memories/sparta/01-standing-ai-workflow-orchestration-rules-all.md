@@ -713,13 +713,15 @@ Companion to the funnel-corner flicker entry above -- the same PathField/terrain
 surface, a different bug shape, from PR #1638.
 `Unit.terrain_clearance(travel_dir)` is only the block's swept half-width across one specific
 `from -> to` bearing, not a general "how wide is this block" margin.
-`PathField.next_step()` can return a step on a DIFFERENT bearing whenever it detours: both the
+`PathField.next_step()` can return a step on a DIFFERENT bearing whenever it detours:
+both the
 funnel corner (`_funnel_corner`) and the A* corridor fallback (the loop over `path` inside
 `next_step` itself) turn off the original `from..to` line.
 A leg validated at the straight-leg `terrain_clearance()` margin can therefore under-clear a
 deep column turned sideways on either fallback.
 
-`Unit.corner_clearance()` is the fix: the worst-case half-diagonal over every travel angle,
+`Unit.corner_clearance()` is the fix:
+the worst-case half-diagonal over every travel angle,
 independent of bearing.
 On #1638 the funnel corner was switched to it first, and the corridor fallback was initially left
 on the straight-leg margin -- Copilot's review caught that a deep column turned sideways could
@@ -728,9 +730,11 @@ still be routed into terrain there (review comment 4101192498 on #1638, fixed in
 test forces the corridor fallback path specifically (commit 7e6d0f89) so the two sightline checks
 cannot drift apart again silently.
 
-**Do:** validate every leg a routing function can return at the margin computed for that leg's
+**Do:**
+validate every leg a routing function can return at the margin computed for that leg's
 own bearing, or the worst case over any bearing if the bearing can change mid-route.
-**Don't:** assume one "this leg is clear" check covers every fallback path inside the same
+**Don't:**
+assume one "this leg is clear" check covers every fallback path inside the same
 function -- a corridor fallback and a corner refinement can each pick a bearing different from
 the caller's original `from..to` line.
 

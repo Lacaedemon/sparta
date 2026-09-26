@@ -797,7 +797,8 @@ on every no-link tick, an O(units^2) cost per tick across the close-tier populat
 Moving the gate into `_relief_swap_partner()` itself fixed every caller at once and let the far
 tier drop its now-redundant copy of the same check.
 
-The gate is sound because the counter cannot under-count: the reverse scan can only ever match a
+The gate is sound because the counter cannot under-count:
+the reverse scan can only ever match a
 unit whose `current_order.friendly_target` is this one, and every write to `friendly_target` goes
 through its own setter, which keeps the target's counter exact.
 Zero therefore really does prove no live order anywhere links to this unit.
@@ -805,9 +806,11 @@ An over-count from a leaked, still-referenced order is possible and merely costs
 unneeded scan;
 it can never hide a real link.
 
-**Do:** when several call sites share one expensive lookup, put the O(1) skip condition inside
+**Do:**
+when several call sites share one expensive lookup, put the O(1) skip condition inside
 the lookup itself, so any new caller inherits the gate for free.
-**Don't:** gate an expensive shared function at just the one caller you happened to be optimizing
+**Don't:**
+gate an expensive shared function at just the one caller you happened to be optimizing
 -- every other existing or future caller keeps paying the full cost, and a later reader can
 mistake the narrow gate for a complete fix.
 
