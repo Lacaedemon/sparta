@@ -2522,8 +2522,8 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ##   resolving to whatever current_target() returns) -- reachable from _think() via
 ##   retire_current_order(). Passes fresh_pick_allowed as the ranking predicate (own doc
 ##   comment, right after _enemy_is_perceived below): exempt when the candidate is already in
-##   MELEE CONTACT (the
-##   intended "advance until contact" case this promotion exists for); gated otherwise.
+##   MELEE CONTACT (the intended "advance until contact" case this promotion exists for);
+##   gated otherwise.
 ## - _think()'s chase-an-explicit-attack-order branch's OWN `chasing` half (see below --
 ##   this one call expression covers only the auto-acquired-quarry case, not the
 ##   already-committed-target_enemy case, which stays the disclosed exception it always was).
