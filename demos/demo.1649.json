@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "CI tooling only: the website demo diff now judges changed clips on a dense divergent window. No battle behaviour changes."
+}
