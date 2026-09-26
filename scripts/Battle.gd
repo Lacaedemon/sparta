@@ -1615,16 +1615,14 @@ func restore_snapshot(snap: Dictionary) -> void:
 	# match -- force a fresh scan on the first ask afterward rather than risk reading a
 	# value _tick_fog computed for a since-passed frame.
 	_fog_seen_frame = -1
-	# ai_team_perceives' own cache is keyed by `_tick` alone, not by which timeline that
-	# tick belongs to -- if the rewind lands on the SAME `_tick` value the cache already
-	# holds an entry for (a forward-then-rewind, or simply scrubbing back across a tick
-	# already visited this session), `_ai_perceives_cache_tick != _tick` would read false
-	# and the stale, pre-restore UID set would be reused against the freshly restored
-	# positions/states (UIDs themselves survive the restore, so a stale entry doesn't even
-	# fail an existence check -- it just answers wrong). Clear both fields so the first ask
-	# after any restore always recomputes.
+	# ai_team_perceives' own cache is keyed by the physics frame, which a restore does not
+	# advance -- a restore run inside a frame whose cache is already filled would otherwise
+	# reuse the stale, pre-restore UID set against the freshly restored positions/states
+	# (UIDs themselves survive the restore, so a stale entry doesn't even fail an existence
+	# check -- it just answers wrong). Clear both fields so the first ask after any restore
+	# always recomputes.
 	_ai_perceives_cache = {}
-	_ai_perceives_cache_tick = -1
+	_ai_perceives_cache_frame = -1
 	_fog_active = bool(snap.get("fog_active", false))
 	# A snapshot captured before this feature existed carries no "fog_explored" key --
 	# fall back to an all-unexplored grid of the current size rather than an empty array,
@@ -2065,28 +2063,33 @@ func _ai_perceptible_units(team: int) -> Array:
 	return out
 
 
-## Per-tick cache backing ai_team_perceives: team -> Dictionary(enemy_uid -> true), the
-## enemy subset of _ai_perceptible_units(team) for whichever teams asked this tick. Keyed by
-## _tick (never read across a tick boundary), so every unit on the same team asking the same
-## tick costs one _ai_perceptible_units recompute, not one per unit -- see ai_team_perceives'
-## own doc comment for why a per-unit, every-physics-tick caller needs this rather than
-## calling _ai_perceptible_units directly. Purely derived from already-serialized state
+## Per-frame cache backing ai_team_perceives: team -> Dictionary(enemy_uid -> true), the
+## enemy subset of _ai_perceptible_units(team) for whichever teams asked this physics frame.
+## Keyed by the physics-frame counter (Engine.get_physics_frames()), NOT by `_tick`, the
+## same way _fog_seen_frame is: `_tick` increments partway through Battle._physics_process,
+## before the Unit children process, so one `_tick` value spans the END of one frame (the
+## units' own asks) and the START of the next (Battle's pre-unit phase, e.g.
+## _tick_far_tier_combat). A `_tick` key let that next frame's pre-unit phase reuse a
+## snapshot taken before the units moved; the frame key gives each frame its own. Every unit
+## on the same team asking in the same frame still costs one _ai_perceptible_units
+## recompute, not one per unit -- see ai_team_perceives' own doc comment for why a per-unit,
+## every-physics-tick caller needs this rather than calling _ai_perceptible_units directly. Purely derived from already-serialized state
 ## (nothing here is itself simulation state), so neither field is itself part of the
 ## snapshot payload -- but restore_snapshot() must still explicitly clear both
-## (_ai_perceives_cache = {}, _ai_perceives_cache_tick = -1): a rewind that lands back on
-## the SAME _tick value the cache already holds an entry for would otherwise be read as
-## still valid, and the stale pre-restore UID set would be reused against the freshly
-## restored positions and states rather than recomputed.
+## (_ai_perceives_cache = {}, _ai_perceives_cache_frame = -1): a restore does not advance
+## the physics frame, so a cache already filled this frame would otherwise be read as still
+## valid, and the stale pre-restore UID set would be reused against the freshly restored
+## positions and states rather than recomputed.
 ##
-## One snapshot per (team, tick), same granularity as _fog_seen_frame's own per-frame
+## One snapshot per (team, frame), same granularity as _fog_seen_frame's own per-frame
 ## snapshot above (_ai_perceptible_units' own doc comment covers that one's staleness
 ## window in detail). This cache's own snapshot is taken lazily, by whichever unit on
-## `team` happens to ask first that tick, rather than at a fixed point like _tick_fog --
+## `team` happens to ask first that frame, rather than at a fixed point like _tick_fog --
 ## so a mid-tick death/rout among `team`'s OWN observers can already change what a LATER
 ## asker on the same team would have computed fresh, and this cache papers over that by
-## freezing the FIRST asker's answer for the rest of the tick regardless.
+## freezing the FIRST asker's answer for the rest of the frame regardless.
 var _ai_perceives_cache: Dictionary = {}
-var _ai_perceives_cache_tick: int = -1
+var _ai_perceives_cache_frame: int = -1
 
 
 ## Whether team `team` currently perceives `enemy`: false when `enemy` is null (nothing to
@@ -2132,9 +2135,10 @@ func ai_team_perceives(team: int, enemy: UnitRef) -> bool:
 		return false
 	if not is_fog_active():
 		return true
-	if _ai_perceives_cache_tick != _tick:
+	var frame: int = Engine.get_physics_frames()
+	if _ai_perceives_cache_frame != frame:
 		_ai_perceives_cache = {}
-		_ai_perceives_cache_tick = _tick
+		_ai_perceives_cache_frame = frame
 	if not _ai_perceives_cache.has(team):
 		var seen: Dictionary = {}
 		for u in _ai_perceptible_units(team):

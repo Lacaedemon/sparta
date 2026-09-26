@@ -1302,17 +1302,14 @@ func test_fog_team_scan_is_reused_by_a_gate_asking_the_same_team_in_the_same_fra
 
 # --- BUG: restore_snapshot must also clear ai_team_perceives' own cache -------------------
 #
-# ai_team_perceives caches its answer keyed by _tick alone (_ai_perceives_cache /
-# _ai_perceives_cache_tick, above _ai_perceptible_units in this file). restore_snapshot
-# already resets _fog_seen_frame (this file's own reuse tests above), but a rewind that
-# lands on the SAME _tick value an earlier ask already cached a result for would otherwise
-# skip _ai_perceptible_units entirely and return the PRE-restore answer against the
-# freshly-restored (potentially very different) positions -- UIDs themselves survive a
-# restore, so a stale cache entry does not even fail an existence check, it just answers
-# wrong. No `await` anywhere below: the whole point is landing the restore on the EXACT
-# same _tick the earlier ask cached, which physics-frame-based waiting cannot reliably
-# guarantee (natural per-tick AI activity would keep re-populating
-# _ai_perceives_cache_tick to whatever tick is currently live).
+# ai_team_perceives caches its answer per physics frame (_ai_perceives_cache /
+# _ai_perceives_cache_frame, above _ai_perceptible_units in this file). restore_snapshot
+# already resets _fog_seen_frame (this file's own reuse tests above), but a restore run
+# inside a frame whose cache is already filled would otherwise skip _ai_perceptible_units
+# entirely and return the PRE-restore answer against the freshly-restored (potentially
+# very different) positions -- UIDs themselves survive a restore, so a stale cache entry
+# does not even fail an existence check, it just answers wrong. No `await` anywhere below:
+# the whole point is landing the restore in the SAME frame the earlier ask cached.
 
 
 func test_restore_snapshot_clears_the_stale_ai_perceives_cache() -> void:
@@ -1348,6 +1345,38 @@ func test_restore_snapshot_clears_the_stale_ai_perceives_cache() -> void:
 	assert_false(battle.ai_team_perceives(0, enemy),
 		"the restored world has the enemy far away: the cache must not leak the earlier, " +
 		"now-stale 'perceived' answer just because the tick number matches")
+
+
+func test_ai_team_perceives_recomputes_in_a_new_frame_at_the_same_tick() -> void:
+	# Battle._physics_process increments _tick BEFORE the Unit children process, so one
+	# _tick value spans the end of one frame and the start of the next (Battle's pre-unit
+	# phase, e.g. far-tier combat). A cache keyed on _tick let that next frame reuse the
+	# previous frame's snapshot after units had moved. Freeze the battle and its units so a
+	# physics frame passes with _tick unchanged, move the enemy out of sight in between, and
+	# the answer must be recomputed.
+	Settings.set_fog_of_war_session(true)
+	Replay.forced_seed = 588
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.scenario = [
+		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
+		{"team": 0, "type": "Infantry", "x": NEAR_FLANKER_POS.x, "y": NEAR_FLANKER_POS.y},
+	]
+	add_child_autofree(battle)
+	var enemy: Unit = _team_units(0)[0]
+	battle.set_physics_process(false)
+	for u in _team_units(0) + _team_units(1):
+		u.set_physics_process(false)
+	assert_true(battle.ai_team_perceives(1, enemy),
+		"sanity check: the enemy starts inside team 1's sight")
+	var tick: int = battle.current_tick()
+
+	await get_tree().physics_frame
+	enemy.position = FAR_FLANKER_POS
+
+	assert_eq(battle.current_tick(), tick,
+		"sanity check: the battle is frozen, so _tick did not move across the frame")
+	assert_false(battle.ai_team_perceives(1, enemy),
+		"a new physics frame at the same _tick recomputes rather than reusing the old snapshot")
 
 
 # --- BUG: UnitRelief.begin's fresh fallback pick was not perception-gated -----------------
