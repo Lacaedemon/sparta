@@ -778,6 +778,44 @@ rule out entire populations from ever needing the expensive lookup, the way "my 
 dominates the max opposing reach" does here. Measure before adding machinery, per (a) alone often
 being enough -- verified here by benchmarking after each stacked fix rather than assuming.
 
+## Put an O(1) gate inside the expensive lookup, not at one caller
+
+Companion to the reach-based query-side pruning above -- the same "cheap pre-filter before the
+expensive per-entity scan" idea, but about WHERE the gate lives rather than what it tests.
+`Unit._relief_swap_partner()`'s fallback path is a whole-group reverse scan
+(`get_tree().get_nodes_in_group("units")`) to find whichever unit's live order names this one as
+its `friendly_target`.
+Gating that scan on `incoming_friendly_links <= 0` (a per-unit counter kept exact by
+`Order.friendly_target`'s own setter and its PREDELETE decrement) is only a win if the gate sits
+where every caller actually goes through it.
+
+On #1638 the gate first landed only inside `_far_tier_half_extents()`, the one caller it was
+written for.
+That left `formation_slots(..., true)` -- called every frame per unit for the close tier's relief
+corridor, plus each close-tier `_move_to()` extents query -- still paying the full O(units) scan
+on every no-link tick, an O(units^2) cost per tick across the close-tier population.
+Moving the gate into `_relief_swap_partner()` itself fixed every caller at once and let the far
+tier drop its now-redundant copy of the same check.
+
+The gate is sound because the counter cannot under-count:
+the reverse scan can only ever match a
+unit whose `current_order.friendly_target` is this one, and every write to `friendly_target` goes
+through its own setter, which keeps the target's counter exact.
+Zero therefore really does prove no live order anywhere links to this unit.
+An over-count from a leaked, still-referenced order is possible and merely costs that unit an
+unneeded scan;
+it can never hide a real link.
+
+**Do:**
+when several call sites share one expensive lookup, put the O(1) skip condition inside
+the lookup itself, so any new caller inherits the gate for free.
+**Don't:**
+gate an expensive shared function at just the one caller you happened to be optimizing
+-- every other existing or future caller keeps paying the full cost, and a later reader can
+mistake the narrow gate for a complete fix.
+
+(`Lacaedemon/sparta` PR #1638, 2026-09-25.)
+
 ## CI workflows render AUTHOR-controlled data -- keep it as data, never let it reach a shell as code
 
 `demo-video.yml` and its siblings run against author-controlled input: a PR author writes the demo
