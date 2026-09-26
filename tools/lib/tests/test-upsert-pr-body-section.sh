@@ -5,6 +5,8 @@
 #      leaving exactly one section
 #   2. a CRLF body that already holds the marker pair also has its section
 #      replaced (not a second section appended), and is written back LF-only
+#   2b. only line-ending \r bytes are removed: a bare \r inside the author's
+#       text survives
 #   3. a body with no marker pair gets exactly one section appended after the
 #      author's text
 #
@@ -129,6 +131,20 @@ assert_eq "crlf: old content gone" 0 "$(count_lines "old clip")"
 assert_eq "crlf: new content present" 1 "$(count_lines "new clip")"
 assert_eq "crlf: author text kept" 1 "$(count_lines "Outro line")"
 assert_eq "crlf: written back LF-only" no "$(has_cr)"
+
+# 2b. CRLF body whose last line also ends in \r\n, plus a bare \r inside the
+#     author's text: line-ending \r bytes go, the bare one stays.
+printf 'Progress 50%%\rdone\r\n%s\r\nold clip\r\n%s\r\n' "$OPEN" "$CLOSE" > "$BODY_FILE"
+run_upsert "new clip" crlf-bare-cr
+assert_eq "crlf-bare-cr: one open marker" 1 "$(count_lines "$OPEN")"
+assert_eq "crlf-bare-cr: new content present" 1 "$(count_lines "new clip")"
+# Both counts use awk regexes over the file rather than a \r-bearing shell
+# string: a Windows bash can drop \r from command-substitution output, so a
+# string round-tripped through the shell is not a reliable operand.
+assert_eq "crlf-bare-cr: bare \\r in author text kept" 1 \
+  "$(awk '/\r[^\r]/ { n++ } END { print n + 0 }' "$BODY_FILE")"
+assert_eq "crlf-bare-cr: no line-ending \\r left" 0 \
+  "$(awk '/\r$/ { n++ } END { print n + 0 }' "$BODY_FILE")"
 
 # 3. Body with no section: append exactly one.
 printf 'Just the author text' > "$BODY_FILE"
