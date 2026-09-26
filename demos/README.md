@@ -70,8 +70,9 @@ CI's "Resolve demo source" step picks the most specific manifest available:
    exactly this reason -- prefer the per-PR filename to avoid it).
 3. The default `showcase.json` battle (generic, honestly labelled).
 
-If your PR adds more than one `demos/demo.*.json` file, CI warns and picks the
-first alphabetically -- stick to one manifest per PR.
+If your PR touches more than one `demos/demo.*.json` file, CI warns and picks a
+manifest the PR added before one it only modified, then the first
+alphabetically -- stick to one new manifest per PR.
 
 ## Scripted-input demos
 

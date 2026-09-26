@@ -107,8 +107,8 @@ so CI records a short clip and inserts it into the PR **description**
   reviewer wade through noise to find the point -- or worse, mistakes an unrelated
   transient (e.g. the spawn-facing churn tracked in #631) for a bug in the change
   being reviewed. CI's demo-video workflow only auto-posts **one** clip per PR
-  (`demos/demo.*.json` -- if several exist, it warns and picks the first
-  alphabetically), so when a PR genuinely has multiple features worth showing
+  (`demos/demo.*.json` -- if several exist, it warns and picks one the PR
+  added before one it only modified, then the first alphabetically), so when a PR genuinely has multiple features worth showing
   separately: pick the most complete/representative one as the primary
   `demos/demo.<slug>.json`, and record any others as supplementary GIFs committed under
   `demos/shots/` and embedded directly in the PR description (same raw-URL/commit-SHA
