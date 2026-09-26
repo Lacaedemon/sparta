@@ -129,7 +129,21 @@ func speed_at(world: Vector2) -> float:
 ## static geometry — see Unit.funnel_lane_offset for why that determinism
 ## matters and how the offset is derived). Zero by default, so a solo query
 ## still steers for the exact geometric corner.
-func next_step(from: Vector2, to: Vector2, clearance: float = 0.0, lane_offset: float = 0.0) -> Vector2:
+##
+## `corner_clearance`, when >= 0.0, is the margin for every leg that turns off
+## the from..to bearing -- the funnel corner and the corridor candidates' own
+## sightlines. Only the initial blocked check (and which rect the funnel rounds)
+## uses `clearance`, since that is the one test run along the from..to bearing
+## itself. Negative (the default) means "same as clearance", the original
+## single-margin behavior every existing caller keeps. The split exists because a
+## STRAIGHT leg only needs the block's own swept width along that specific leg,
+## but a detour leg can run on a very different bearing -- a deep column turned
+## sideways needs its depth, not its half-frontage -- so it keeps the fuller,
+## worst-case-over-any-orientation allowance instead (Unit.corner_clearance(),
+## distinct from Unit.terrain_clearance()'s direction-aware straight-leg margin --
+## see terrain_clearance()'s own doc comment).
+func next_step(from: Vector2, to: Vector2, clearance: float = 0.0, lane_offset: float = 0.0,
+		corner_clearance: float = -1.0) -> Vector2:
 	if not _segment_blocked(from, to, clearance):
 		return to
 	var path := find_path(from, to)
@@ -144,16 +158,17 @@ func next_step(from: Vector2, to: Vector2, clearance: float = 0.0, lane_offset: 
 	# rounding this field's obstacles) — fall back to the farthest candidate
 	# at the room actually available, which degrades the margin smoothly
 	# rather than collapsing steering to the adjacent cell's coarse bearing.
+	var detour_margin: float = corner_clearance if corner_clearance >= 0.0 else clearance
 	var corridor: Vector2 = path[1]
 	var full_margin_candidate: bool = false
 	for i in range(path.size() - 1, 1, -1):
-		if not _segment_blocked(from, path[i], clearance, false):
+		if not _segment_blocked(from, path[i], detour_margin, false):
 			corridor = path[i]
 			full_margin_candidate = true
 			break
 	if not full_margin_candidate:
 		for i in range(path.size() - 1, 1, -1):
-			if not _segment_blocked(from, path[i], clearance, true):
+			if not _segment_blocked(from, path[i], detour_margin, true):
 				corridor = path[i]
 				break
 	# Funnel refinement: the corridor candidate is a cell centre ON the coarse
@@ -168,7 +183,7 @@ func next_step(from: Vector2, to: Vector2, clearance: float = 0.0, lane_offset: 
 	# spirals into the obstacle over a long straightaway). The corridor point
 	# stays the fallback whenever no grown corner is cleanly visible (compound
 	# obstacle geometry, or a walker already shoved inside its own margin).
-	var corner: Vector2 = _funnel_corner(from, to, path, clearance, lane_offset)
+	var corner: Vector2 = _funnel_corner(from, to, path, clearance, lane_offset, corner_clearance)
 	if corner.is_finite():
 		return corner
 	return corridor
@@ -458,13 +473,20 @@ func _first_blocking_rect_index(from: Vector2, to: Vector2, clearance: float) ->
 ## `lane_offset` (it's baked into the candidate before any sightline test
 ## runs, not derived from one), so it doesn't reopen the ratcheting hazard
 ## the paragraph above rules out.
+##
+## `clearance` picks WHICH rect blocks the leg -- the straight leg's own swept
+## margin, the same one next_step()'s blocked check used -- and `corner_clearance`
+## (when >= 0.0; negative means "same as clearance") only grows and validates the
+## corner of that rect. Choosing the blocker at the bigger corner margin instead
+## could pick an earlier rect the leg itself never touches, and detour around it.
 func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, clearance: float,
-		lane_offset: float = 0.0) -> Vector2:
+		lane_offset: float = 0.0, corner_clearance: float = -1.0) -> Vector2:
 	var idx: int = _first_blocking_rect_index(from, to, clearance)
 	if idx < 0:
 		return Vector2.INF
+	var margin: float = corner_clearance if corner_clearance >= 0.0 else clearance
 	var rect: Rect2 = _block_rects[idx]
-	var grown: Rect2 = rect.grow(clearance + CORNER_STANDOFF)
+	var grown: Rect2 = rect.grow(margin + CORNER_STANDOFF)
 	var heading: Vector2 = to - from
 	var tangent: Vector2 = heading.orthogonal().normalized() if heading.length_squared() > 0.0 else Vector2.ZERO
 	# Which way around THIS rect: the side of the rect the A* route squeezes
@@ -500,7 +522,7 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 		var side: float = signf(heading.cross(raw_c - centre))
 		if route_side != 0.0 and side != 0.0 and side != route_side:
 			continue
-		if _segment_blocked(from, c, clearance, false):
+		if _segment_blocked(from, c, margin, false):
 			continue
 		var cost: float = from.distance_to(c) + c.distance_to(to)
 		if cost < best_cost:
