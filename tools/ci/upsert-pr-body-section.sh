@@ -47,6 +47,12 @@ SECTION_BODY="$5"
 LABEL="${6:-PR body section}"
 
 CURRENT_BODY=$(gh api "repos/${REPO}/pulls/${PR}" --jq '.body // ""')
+# Normalise CRLF to LF before matching. A description saved from Windows (or
+# written back by a tool that opened it in text mode) ends every line in \r, so
+# the whole-line marker comparison below would never match and every run would
+# append another copy of the section instead of replacing the existing one.
+# Writing the body back LF-only also repairs it for the next run.
+CURRENT_BODY="${CURRENT_BODY//$'\r'/}"
 
 # Build the full replacement section (markers + content) once, so both the
 # replace and append paths below insert byte-identical text.
