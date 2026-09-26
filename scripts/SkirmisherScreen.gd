@@ -40,9 +40,11 @@ const SCREEN_STATION_RADIUS := 7.0 * WorldScaleRef.WU_PER_M
 ## directive table: Subcommander.decide_group runs this first (so mutual support and flank
 ## coverage can read the screen's membership), then merges `out` in behind whatever those two
 ## already assigned -- priority belongs there, since this class cannot know what else claimed
-## a unit. `axis` is the group's advance axis (Subcommander._advance_axis); `all_units` is the
-## usual omniscient perception. No-ops without an axis, without light troops, or without a
-## heavy line to screen for -- a screen with nothing behind it has no intervals to fall through.
+## a unit. `axis` is the group's advance axis (Subcommander._advance_axis); `all_units` is
+## the usual caller-supplied perception source (Battle._ai_perceptible_units -- omniscient
+## with fog of war off, fogged when it is on). No-ops without an axis, without light troops,
+## or without a heavy line to screen for -- a screen with nothing behind it has no intervals
+## to fall through.
 static func directives(group: Array, all_units: Array, axis: Vector2, out: Dictionary,
 		lead: float = SCREEN_LEAD_DISTANCE, trigger: float = WITHDRAW_TRIGGER_RANGE,
 		rally: float = RALLY_DEPTH, station: float = SCREEN_STATION_RADIUS) -> void:

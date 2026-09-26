@@ -1,0 +1,33 @@
+{
+  "_comment": "Battle AI phase 5 (docs/battle-ai-design.md, #588): perception honors fog of war. A lone team-1 watcher (uid 0, Infantry, (600,900)) is the only observer whose own perception decides team 1's AI view. A lone team-0 flanker (uid 1, Infantry, (600,580)) starts 320 wu north of the watcher -- just beyond its ~300 wu foot sight disc -- so team 1's AI decides nothing at the first AI decision (tick 0) even though a living enemy is on the field, and still decides nothing at the next two (ticks 60, 120, 180), all captured while the flanker's slow march has not yet closed inside sight. Empirically verified (tools/demo/dump-state.sh, dense sweep): current_order stays null on every dumped tick through 180 (flanker still ~270-310 wu out over that window, straddling the sight boundary as it approaches), then reads ATTACK against uid 1 on every dumped tick from 181 onward -- the decision made at tick 180 (flanker now ~270 wu away, inside the disc) is the one that lands, and it's the first decision after the flanker entered perception. The player orders the flanker's short march (600,580) -> (600,650) with a single select + move-click pair. This is exactly the design's own acceptance test for #588: an AI general (here, a lone unit leader) cannot react to an unseen force until it enters some friendly unit's perception, and reacts on the first decision tick after it does. fog_of_war is on for the whole recording, so the team-1 watcher also renders faded/hidden from the player's team-0 view until the flanker's sight disc reaches it -- the flanker itself, as the player's own team-0 unit, is always visible -- the same Perception.gd rules govern both the player's rendering and the AI's decisions. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "seed": "588",
+  "fog_of_war": true,
+  "scenario": [
+    {"team": 1, "type": "Infantry", "x": 600, "y": 900},
+    {"team": 0, "type": "Infantry", "x": 600, "y": 580}
+  ],
+  "camera": [
+    {"tick": 0, "x": 600.0, "y": 740.0, "zoom": 1.1}
+  ],
+  "steps": [
+    {"tick": 5,  "click": [600, 580]},
+    {"tick": 10, "rmb_click": [600, 650]},
+    {"tick": 16, "rmb_click": [600, 650]}
+  ],
+  "frames": [0, 10, 60, 120, 180, 181, 210, 240],
+  "state": [0, 10, 30, 60, 90, 120, 150, 180, 181, 210, 240, 270],
+  "expect": [
+    {"tick": 0, "uid": 0, "field": "current_order", "value": null},
+    {"tick": 60, "uid": 0, "field": "current_order", "value": null},
+    {"tick": 120, "uid": 0, "field": "current_order", "value": null},
+    {"tick": 180, "uid": 0, "field": "current_order", "value": null},
+    {"tick": 181, "uid": 0, "field": "current_order", "value": "ATTACK"},
+    {"tick": 181, "uid": 0, "field": "target_enemy_uid", "value": 1},
+    {"tick": 240, "uid": 0, "field": "current_order", "value": "ATTACK"},
+    {"tick": 240, "uid": 0, "field": "target_enemy_uid", "value": 1}
+  ],
+  "fixed_fps": 30,
+  "max_frames": 280,
+  "fps": 15,
+  "width": 640
+}

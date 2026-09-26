@@ -4,8 +4,11 @@ extends RefCounted
 ##
 ## A pure query over unit state.
 ## It reads positions, teams, sight ranges, and states and writes nothing back into
-## any unit. Perception output feeds unit visibility and ghost markers in Battle.
-## Fog is render-only and does not affect retreat bounds or simulation state.
+## any unit. Perception output feeds unit visibility and ghost markers in Battle, AND
+## (via Battle.ai_team_perceives / Unit._enemy_is_perceived, both layered on top of this
+## module's own visible_enemy_uids) gates AI/order targeting decisions -- fog is NOT
+## purely render-only overall, though this module's own read-only nature is unchanged.
+## It does not affect retreat bounds or collision.
 const PathFieldRef = preload("res://scripts/PathField.gd")
 const UnitRef = preload("res://scripts/Unit.gd")
 

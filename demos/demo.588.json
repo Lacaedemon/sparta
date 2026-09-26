@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/ai-honors-fog-of-war.json",
+  "caption": "Battle AI phase 5 (#588): with fog of war on, team 1's lone watcher issues no order while an enemy sits beyond its sight disc -- then reacts with a real ATTACK order on the first AI decision tick after the player marches that enemy into view.",
+  "fixed_fps": 30,
+  "max_frames": 280,
+  "fps": 15,
+  "width": 640
+}

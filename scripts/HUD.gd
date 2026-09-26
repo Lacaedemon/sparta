@@ -952,8 +952,13 @@ func _is_fog_toggle_keypress(event: InputEvent) -> bool:
 ## off because the tester drives both armies. Flipping the setting in either case
 ## changes nothing on screen while the toast claims it did, and the flip persists into
 ## the next ordinary battle.
-## Fog of war is render-only, so a toggle cannot change a replay's outcome.
-## Playback still answers from the recorded value.
+## Fog now affects AI/order targeting too (Battle.ai_team_perceives), not just rendering, so
+## a mid-battle toggle genuinely can change what the sim does next. A replay still stays
+## deterministic despite that: Battle._on_settings_changed records every RECORD-mode toggle
+## into Replay's own per-tick fog track (Replay.record_fog_change), and playback re-applies
+## it at the identical tick (Battle._physics_process reads Replay.fog_for_tick(_tick) and
+## writes _recorded_fog_of_war, which is_fog_active() then answers from during playback) --
+## so the toggle itself is part of the recorded input, the same way an order is.
 ## Returns true if applied, false if refused.
 func _toggle_fog() -> bool:
 	if Replay.mode == Replay.Mode.PLAYBACK:

@@ -74,6 +74,53 @@ func test_fighting_unit_with_no_flank_threat_decides_nothing() -> void:
 	assert_true(cmd.is_empty(), "already fighting head-on: nothing new to decide")
 
 
+# --- fallback honors the caller's perception array (phase 5: fog of war) -------
+#
+# The fallback used to bypass `all_units` entirely and re-query the live "units"/
+# "routers" groups directly through UnitTargeting.nearest_enemy_to -- an omniscient
+# backdoor that made a caller's own perception filtering (Battle._ai_perceptible_units)
+# meaningless for this one branch. These tests build both units directly (so they're
+# real members of the live "units"/"routers" groups, exactly like the backdoor would
+# read) but hand decide() a SMALLER array than `_all()` -- simulating what a fogged
+# caller passes -- and assert the decision reflects the smaller array, not the live
+# groups. Before the fix, every one of these would still see the enemy through the
+# bypass and fail.
+
+
+func test_fallback_does_not_attack_a_living_enemy_missing_from_the_perception_array() -> void:
+	var u := _unit(1, Vector2(0, 0), 1)
+	_unit(2, Vector2(0, 50), 0)   # a real, living enemy -- but NOT in the array below
+	var cmd: Dictionary = UnitLeaderScript.decide(u, [u])
+	assert_true(cmd.is_empty(),
+		"the enemy exists in the live 'units' group but was perception-filtered out")
+
+
+func test_fallback_attacks_an_enemy_present_in_the_perception_array() -> void:
+	var u := _unit(1, Vector2(0, 0), 1)
+	var near := _unit(2, Vector2(0, 50), 0)
+	_unit(3, Vector2(0, 500), 0)   # a farther living enemy, also filtered out below
+	var cmd: Dictionary = UnitLeaderScript.decide(u, [u, near])
+	assert_eq(int(cmd["target"]), near.uid,
+		"attacks the one enemy the caller's array actually names")
+
+
+func test_fallback_pursue_routers_only_considers_routers_present_in_the_array() -> void:
+	var u := _unit(1, Vector2(0, 0), 1)
+	var router := _unit(2, Vector2(0, 30), 0)
+	router.state = Unit.State.ROUTING   # a real, live routing enemy (matches the file's own
+			# test_dead_or_routing_leaders_decide_nothing idiom: _nearest_enemy_in reads
+			# .state, not which GDScript group a node happens to sit in)
+	var cmd_excluded: Dictionary = UnitLeaderScript.decide(u, [u], {}, true)
+	assert_true(cmd_excluded.is_empty(),
+		"pursue_routers=true still finds nothing when the router isn't in the array")
+	var cmd_included: Dictionary = UnitLeaderScript.decide(u, [u, router], {}, true)
+	assert_eq(int(cmd_included["target"]), router.uid,
+		"present in the array and pursue_routers=true: the router is a valid target")
+	var cmd_no_pursue: Dictionary = UnitLeaderScript.decide(u, [u, router], {}, false)
+	assert_true(cmd_no_pursue.is_empty(),
+		"present in the array but pursue_routers=false: routers are never picked")
+
+
 # --- face a flank threat ------------------------------------------------------
 
 func test_flank_contact_retargets_to_the_flanker() -> void:

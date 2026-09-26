@@ -3,8 +3,10 @@ extends GutTest
 ## sight defaults, the off-by-default Settings toggle, and Battle's fog pass -- which
 ## hides unseen enemies by CanvasItem.visible, syncs ghost markers with the recorded
 ## value driving playback, restores everything when switched off,
-## and stays off under all-teams control. Fog is render-only and does not alter the
-## retreat margin.
+## and stays off under all-teams control. This visibility/ghost-marker pass itself does
+## not alter the retreat margin. Fog is NOT purely render-only overall, though -- it also
+## gates AI/order targeting decisions (Battle.ai_team_perceives), covered separately in
+## test_battle_ai_fog.gd rather than here.
 
 const Perception = preload("res://scripts/Perception.gd")
 const FogGhostLayer = preload("res://scripts/FogGhostLayer.gd")
