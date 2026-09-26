@@ -722,8 +722,8 @@ deep column turned sideways on either fallback.
 `Unit.corner_clearance()` is the fix: the worst-case half-diagonal over every travel angle,
 independent of bearing.
 On #1638 the funnel corner was switched to it first, and the corridor fallback was initially left
-on the straight-leg margin -- Copilot caught that a deep column turned sideways could still be
-routed into terrain there.
+on the straight-leg margin -- Copilot's review caught that a deep column turned sideways could
+still be routed into terrain there (review comment 4101192498 on #1638, fixed in 7e6d0f89).
 `next_step()`'s optional `corner_clearance` argument now reaches both call sites, and a regression
 test forces the corridor fallback path specifically (commit 7e6d0f89) so the two sightline checks
 cannot drift apart again silently.
