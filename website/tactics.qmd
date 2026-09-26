@@ -2476,6 +2476,22 @@ whole way instead of swinging wide to round terrain that was never really in
 its path.
 :::
 
+::: {#fig-wide-rank-pivot-settle .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/wide_rank_pivot_settle.jpg">
+  <source src="media/wide_rank_pivot_settle.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A wide single-rank line turns once onto its bearing near the hill and
+holds it --- no back-and-forth snapping between headings while the regiment
+settles onto its new course.
+:::
+
 A [routing](#morale-routing) unit paths around a hill the same way while fleeing ---
 it's no longer a straight sprint toward the back edge. If a router is boxed in with
 every escape direction blocked, it gives up fleeing and stands to fight rather than
