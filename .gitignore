@@ -52,3 +52,6 @@ tools/study/relief-balance/_generated/
 
 # Conductor workspace directory
 /conductor/
+
+# tools/check.sh caches fetched third-party checkers here (see its `markdown` check)
+/.check-cache/

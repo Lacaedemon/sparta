@@ -76,9 +76,17 @@
 #   shell_tests
 #             Runs every tools/lib/tests/test-*.sh with bash and fails if any exits
 #             non-zero. No Godot needed, so it's fast and in the default set.
+#   markdown  The two BLOCKING checks of lint-markdown.yml (Morrison-Lab/gha's
+#             lint-markdown, whose markdownlint pass itself is advisory here): list-item
+#             merge splices on lines added since the base (diff-scoped, committed changes
+#             only, like CI) and blank lines splitting a table (whole tracked tree). Runs
+#             gha's own Node scripts, fetched on first use into .check-cache/ at the
+#             commit SPARTA_CHECK_GHA_REF (default v2) resolves to. In the default set,
+#             but skips unless this diff touches *.md; name it to run it regardless.
+#             Skips when node is missing.
 #
 # Usage:
-#   tools/check.sh                 # default set: validate, test, chars, comments, units, file_length, shell_tests
+#   tools/check.sh                 # default set: validate, test, chars, comments, units, file_length, shell_tests, markdown
 #   tools/check.sh test chars      # only the named checks, in the given order
 #   tools/check.sh all             # every check (links included if lychee is present)
 #   tools/check.sh -l | --list     # list the available checks
@@ -111,11 +119,15 @@
 #                running before the checks start (default 5) — the early signal
 #                of an orphan leak building up.
 #   SPARTA_CHECK_COMMENTS_BASE
-#                Commit-ish the `comments`, `units`, and `file_length` checks diff HEAD
+#                Commit-ish the `comments`, `units`, `file_length`, and `markdown` checks diff HEAD
 #                against to find *new* lines/files to scan (default: tries origin/main,
 #                then main; CI sets this per-event — see check-comment-citations.yml). When no
 #                base can be resolved, the check skips rather than scanning the
 #                whole tree.
+#   SPARTA_CHECK_GHA_REF
+#                Morrison-Lab/gha ref whose lint-markdown checkers the `markdown`
+#                check runs (default: v2, matching lint-markdown.yml's pin). Its
+#                diff base is SPARTA_CHECK_COMMENTS_BASE's.
 #   SPARTA_CHECK_MAX_NEW_FILE_LINES
 #                Line-count cap for the `file_length` check (default: 100).
 #   SPARTA_CHECK_PATCH_COVERAGE_BASE
@@ -153,8 +165,8 @@ DUMP_TIMEOUT="${SPARTA_DUMP_STATE_TIMEOUT:-300}"
 # shellcheck source=lib/demo-defect-metrics.sh
 . "$SCRIPT_DIR/lib/demo-defect-metrics.sh"
 
-DEFAULT_CHECKS=(validate test chars comments units file_length shell_tests)
-ALL_CHECKS=(validate test chars comments units file_length shell_tests coverage patch_coverage lint links demo_defects)
+DEFAULT_CHECKS=(validate test chars comments units file_length shell_tests markdown)
+ALL_CHECKS=(validate test chars comments units file_length shell_tests markdown coverage patch_coverage lint links demo_defects)
 
 # --- pretty output ---------------------------------------------------------
 # Colour only when stdout is a terminal and NO_COLOR isn't set. Per the NO_COLOR
@@ -218,6 +230,7 @@ list_checks() {
   info "  units      units-convention lint on NEW GDScript lines (docs/units-convention.md)"
   info "  file_length  caps NEW scripts/*.gd files at 100 lines (see tools/README.md's file_length entry)"
   info "  shell_tests  runs every tools/lib/tests/test-*.sh with bash"
+  info "  markdown   gha lint-markdown's blocking list-item-splice and table-split checks (lint-markdown.yml)"
   info "  coverage   instrumented GUT suite -> coverage/lcov.info (test-coverage.yml)"
   info "  patch_coverage  local codecov/patch gate for this diff's scripts/*.gd changes (fails below the effective target)"
   info "  lint       GDScript style lint via gdlint (see .gdlintrc), whole tracked *.gd tree"
@@ -1355,6 +1368,186 @@ check_links() {
   ( cd "$PROJECT_ROOT" && lychee --no-progress "${files[@]}" )
 }
 
+# Set by main when `markdown` is named on the command line, so check_markdown runs
+# even when this diff touches no Markdown (it only auto-skips as part of the
+# default set).
+MARKDOWN_REQUESTED=""
+
+# The lint-markdown files check_markdown runs, as fetched into one cache directory.
+GHA_MARKDOWN_FILES=(_pathspec.mjs check_list_item_splices.mjs check_table_splits.mjs)
+
+# gha_markdown_cache_complete <dir> -- true when <dir> holds every checker file,
+# each non-empty. The one completeness test both the fetch and the offline
+# fallback use, so a half-written directory never counts as a cache hit.
+gha_markdown_cache_complete() {
+  local f
+  for f in "${GHA_MARKDOWN_FILES[@]}"; do
+    [ -s "$1/$f" ] || return 1
+  done
+  return 0
+}
+
+# fetch_gha_markdown_checkers -- print a directory holding Morrison-Lab/gha's
+# lint-markdown companion checkers at SPARTA_CHECK_GHA_REF (default v2, the tag
+# .github/workflows/lint-markdown.yml pins), fetching them on first use. The cache
+# is keyed by the commit the tag resolves to, so a moved tag fetches the new
+# scripts instead of reusing stale ones. A ref gha does not have is an error; only
+# a failed lookup (offline) falls back to the newest complete cached copy. Its
+# progress and warnings go to stderr, since stdout is the directory the caller
+# captures.
+fetch_gha_markdown_checkers() {
+  local ref="${SPARTA_CHECK_GHA_REF:-v2}"
+  local cache_root="$PROJECT_ROOT/.check-cache/gha-lint-markdown"
+  local listing ls_err ls_rc
+  ls_err="$(mktemp)"
+  listing="$(git ls-remote https://github.com/Morrison-Lab/gha \
+      "refs/tags/$ref" "refs/tags/$ref^{}" "refs/heads/$ref" 2>"$ls_err")"
+  ls_rc=$?
+  if [ "$ls_rc" -ne 0 ]; then
+    warn "git ls-remote could not reach Morrison-Lab/gha (exit $ls_rc):" >&2
+    sed 's/^/  /' "$ls_err" >&2
+    rm -f "$ls_err"
+    # Newest complete cache entry; staging directories (*.tmp.*) never qualify.
+    local entry
+    while IFS= read -r entry; do
+      case "$entry" in *.tmp.*) continue ;; esac
+      if gha_markdown_cache_complete "$cache_root/$entry"; then
+        warn "Using cached checkers $entry instead." >&2
+        printf '%s' "$cache_root/$entry"
+        return 0
+      fi
+    done < <(ls -1t "$cache_root" 2>/dev/null)
+    err "No complete cached checkers under $cache_root to fall back on."
+    return 1
+  fi
+  rm -f "$ls_err"
+  local sha="" line
+  while IFS= read -r line; do
+    # An annotated tag lists its peeled commit as a second, ^{} line; prefer it.
+    case "$line" in
+      *"refs/tags/$ref^{}") sha="${line%%[[:space:]]*}" ;;
+      *"refs/tags/$ref"|*"refs/heads/$ref") [ -n "$sha" ] || sha="${line%%[[:space:]]*}" ;;
+    esac
+  done <<< "$listing"
+  if [ -z "$sha" ]; then
+    err "Morrison-Lab/gha has no tag or branch '$ref' (check SPARTA_CHECK_GHA_REF)."
+    return 1
+  fi
+  local dir="$cache_root/$sha"
+  if ! gha_markdown_cache_complete "$dir"; then
+    info "Fetching gha lint-markdown checkers at $ref ($sha)..." >&2
+    local staging="$dir.tmp.$$" f
+    rm -rf "$staging"
+    mkdir -p "$staging"
+    for f in "${GHA_MARKDOWN_FILES[@]}"; do
+      if ! curl -fsSL "https://raw.githubusercontent.com/Morrison-Lab/gha/$sha/lint-markdown/$f" \
+          -o "$staging/$f"; then
+        err "Failed to download lint-markdown/$f from Morrison-Lab/gha@$sha."
+        rm -rf "$staging"
+        return 1
+      fi
+    done
+    # Never delete a complete directory another run may be reading from: if one
+    # appeared while this run was downloading, keep it and drop this copy. Only an
+    # incomplete leftover is replaced.
+    if gha_markdown_cache_complete "$dir"; then
+      rm -rf "$staging"
+    else
+      rm -rf "$dir"
+      if ! mv "$staging" "$dir" && ! gha_markdown_cache_complete "$dir"; then
+        err "Could not install the fetched checkers into $dir."
+        rm -rf "$staging"
+        return 1
+      fi
+      rm -rf "$staging"
+    fi
+  fi
+  printf '%s' "$dir"
+}
+
+check_markdown() {
+  # The two BLOCKING companions of Morrison-Lab/gha's lint-markdown workflow
+  # (.github/workflows/lint-markdown.yml keeps markdownlint itself advisory):
+  #   - list-item merge splices, on lines ADDED since the base (diff-scoped, as in CI);
+  #   - blank lines splitting a GFM table, over the whole tracked tree (as in CI).
+  # Both are plain Node scripts, fetched from gha rather than vendored so they stay
+  # identical to what CI runs. In the default set this skips unless the diff
+  # touches *.md; name it explicitly to run it regardless. Only the splice check
+  # needs a base, so without one an explicit run still checks tables.
+  if ! have node; then
+    warn "node not installed -- skipping the Markdown checks (CI still runs them)."
+    set_result markdown skip
+    return 0
+  fi
+  local base=""
+  if ! base="$(resolve_comments_base)"; then
+    base=""
+    if [ -z "$MARKDOWN_REQUESTED" ]; then
+      warn "No base ref to diff against (shallow checkout, no 'main'/'origin/main') -- skipping."
+      warn "Set SPARTA_CHECK_COMMENTS_BASE, or fetch full history (git fetch --unshallow)."
+      set_result markdown skip
+      return 0
+    fi
+  fi
+  # A base that resolves can still share no history with HEAD (a shallow checkout
+  # whose graft cuts it off), and `git diff base...HEAD` then fails with nothing on
+  # stdout -- which the change gate below would misread as "no Markdown changed".
+  # Find the merge-base explicitly, as the other diff-scoped checks do, and treat
+  # none the same as no base at all.
+  local merge_base=""
+  if [ -n "$base" ]; then
+    merge_base="$(cd "$PROJECT_ROOT" && git merge-base HEAD "$base" 2>/dev/null)" || true
+    if [ -z "$merge_base" ]; then
+      warn "No common history with '$base' (shallow checkout?)."
+      base=""
+      if [ -z "$MARKDOWN_REQUESTED" ]; then
+        warn "Skipping; fetch full history (git fetch --unshallow) or run 'tools/check.sh markdown'."
+        set_result markdown skip
+        return 0
+      fi
+    fi
+  fi
+  if [ -z "$MARKDOWN_REQUESTED" ]; then
+    local changed
+    changed="$(cd "$PROJECT_ROOT" && git diff --name-only "$merge_base" HEAD -- '*.md')"
+    if [ -z "$changed" ]; then
+      info "No committed Markdown changes since $base -- skipping (run 'tools/check.sh markdown' to force)."
+      set_result markdown skip
+      return 0
+    fi
+  fi
+  local dir
+  if ! dir="$(fetch_gha_markdown_checkers)"; then
+    set_result markdown fail
+    return 1
+  fi
+  # A native Windows node can't open a Git Bash /c/... path; hand it C:/... instead.
+  if have cygpath; then
+    dir="$(cygpath -m "$dir")"
+  fi
+  local failed=0
+  if [ -n "$base" ]; then
+    info "List-item merge splices on lines added since $base:"
+    if ! ( cd "$PROJECT_ROOT" && MARKDOWNLINT_GLOBS='*.md' LIST_ITEM_SPLICE_BASE_REF="$base" \
+        LIST_ITEM_SPLICE_FAIL=true node "$dir/check_list_item_splices.mjs" ); then
+      failed=1
+    fi
+  else
+    warn "No base ref to diff against -- skipping the diff-scoped list-item splice check."
+    warn "Set SPARTA_CHECK_COMMENTS_BASE, or fetch full history (git fetch --unshallow)."
+  fi
+  info "Blank lines splitting a table, whole tracked tree:"
+  if ! ( cd "$PROJECT_ROOT" && MARKDOWNLINT_GLOBS='*.md' TABLE_SPLIT_FAIL=true \
+      node "$dir/check_table_splits.mjs" ); then
+    failed=1
+  fi
+  if [ "$failed" -ne 0 ]; then
+    set_result markdown fail
+    return 1
+  fi
+  return 0
+}
+
 # --- driver ----------------------------------------------------------------
 
 check_shell_tests() {
@@ -1612,6 +1805,7 @@ main() {
       -h|--help) usage; exit 0 ;;
       -l|--list) list_checks; exit 0 ;;
       all)       checks+=("${ALL_CHECKS[@]}") ;;
+      markdown)  checks+=("$arg"); MARKDOWN_REQUESTED=1 ;;
       validate|test|chars|comments|units|file_length|shell_tests|coverage|patch_coverage|lint|links|demo_defects) checks+=("$arg") ;;
       *) err "Unknown argument: $arg"; usage; exit 2 ;;
     esac
