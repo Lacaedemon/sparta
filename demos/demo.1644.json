@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Developer tooling only: a new tools/check.sh target that runs the lint-markdown checks locally. Nothing in a battle changes."
+}
