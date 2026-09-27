@@ -276,10 +276,11 @@ var current_order: Order = null
 ## Order.friendly_target's own setter and by Order's PREDELETE decrement, so it never
 ## under-counts: zero proves no order anywhere links to this unit, and
 ## _relief_swap_partner() then skips its whole-group reverse scan.
-## It can over-count -- a dropped order still referenced elsewhere (a queued or child
-## order, or one caught in a parent/children reference cycle, which RefCounted never
-## frees) keeps counting -- but only ever for its own target unit, which just pays the
-## scan it would have paid anyway.
+## It can over-count -- a dropped order still referenced elsewhere (a queued order, or a
+## child still held by its composite's `children`) keeps counting until that last
+## reference goes -- but only ever for its own target unit, which just pays the scan it
+## would have paid anyway. (A child's `parent` back-reference is weak, so a composite
+## tree forms no reference cycle and frees once nothing holds its top.)
 var incoming_friendly_links: int = 0
 # Order stance, set by Battle._apply_order_cmd from the order's mode.
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
