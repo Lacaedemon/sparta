@@ -243,3 +243,68 @@ func test_combo_round_trips_through_the_snapshot_dict() -> void:
 	assert_eq(rebuilt.children[1].type, Order.Type.FRONTAGE)
 	assert_eq(rebuilt.children[1].dir, 1, "the relative file-double marker survives too")
 	assert_eq(rebuilt.children[1].parent, rebuilt, "children re-link to the rebuilt composite")
+
+
+# --- a dropped composite frees its whole tree ------------------------------------
+#
+# A child's `parent` back-reference is weak, so a composite and its children form no
+# RefCounted cycle: once the last outside reference to the top goes, the whole tree frees
+# at once (RefCounted frees synchronously, no frame wait needed).
+
+func test_a_dropped_combo_frees_its_steps() -> void:
+	var turn := Order.new_quarter_turn(1)
+	var widen := Order.new_file_double(1)
+	var steps: Array[Order] = [turn, widen]
+	var combo := Order.new_combo(steps)
+	var combo_ref: WeakRef = weakref(combo)
+	var turn_ref: WeakRef = weakref(turn)
+	var widen_ref: WeakRef = weakref(widen)
+	turn = null
+	widen = null
+	steps = []
+	assert_not_null(turn_ref.get_ref(), "sanity check: the combo's children still hold the step")
+	combo = null
+	assert_null(combo_ref.get_ref(), "the combo itself is freed once nothing holds it")
+	assert_null(turn_ref.get_ref(), "its first step is freed with it")
+	assert_null(widen_ref.get_ref(), "its second step is freed with it")
+
+
+func test_a_dropped_tree_rebuilt_by_from_dict_frees_every_level() -> void:
+	var steps: Array[Order] = [Order.new_quarter_turn(1), Order.new_file_double(1)]
+	var inner := Order.new_combo(steps)
+	var outer_steps: Array[Order] = [inner]
+	var outer := Order.new_combo(outer_steps)
+	var rebuilt := Order.from_dict(outer.to_dict())
+	var inner_ref: WeakRef = weakref(rebuilt.children[0])
+	var leaf_ref: WeakRef = weakref(rebuilt.children[0].children[1])
+	assert_eq(rebuilt.children[0].parent, rebuilt, "sanity check: from_dict re-links parent")
+	rebuilt = null
+	assert_null(inner_ref.get_ref(), "the rebuilt middle level is freed with its top")
+	assert_null(leaf_ref.get_ref(), "the rebuilt leaf is freed with its top")
+
+
+func test_a_child_outliving_its_composite_reads_a_null_parent() -> void:
+	var turn := Order.new_quarter_turn(1)
+	var steps: Array[Order] = [turn]
+	var combo := Order.new_combo(steps)
+	assert_eq(turn.parent, combo, "sanity check: linked while the composite lives")
+	steps = []
+	combo = null
+	assert_null(turn.parent,
+		"with its composite freed, the weak back-reference reads null, never a dangling order")
+
+
+func test_dropping_a_composite_releases_a_childs_friendly_link() -> void:
+	var target_u := Unit.new()
+	var relief := Order.new_relief(3)
+	relief.friendly_target = target_u
+	assert_eq(target_u.incoming_friendly_links, 1, "sanity check: the child's link is counted")
+	var steps: Array[Order] = [relief]
+	var combo := Order.new_combo(steps)
+	relief = null
+	steps = []
+	assert_eq(target_u.incoming_friendly_links, 1, "still held through the composite's children")
+	combo = null
+	assert_eq(target_u.incoming_friendly_links, 0,
+		"freeing the composite frees the child, whose PREDELETE releases the link")
+	target_u.free()
