@@ -26,3 +26,4 @@ imports below.
 @.claude/memories/sparta/12-pr-ci-gotchas-lint-splice-link-timeout-review-vocabulary.md
 @.claude/memories/sparta/13-agy-mistake-ledger.md
 @.claude/memories/sparta/14-perception-gate-sweep-scope-and-team-symmetry.md
+@.claude/memories/sparta/15-windows-shell-tooling-cr-and-paths.md
