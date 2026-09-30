@@ -419,7 +419,7 @@ jobs:
           godot --headless --path . -s tools/demo/analyze_transcript.gd -- \
             "$FULL_DIR" --script "$SOURCE" | tee /tmp/defects.txt || rc=$?
           # Fold the verdict table into the transcript comment when one is being posted,
-          # so reviewers see the machine verdicts next to the per-tick tables.
+          # so reviewers see the machine verdicts next to the per-tick table.
           if [ -s /tmp/transcript.md ] && [ -s /tmp/defects.txt ]; then
             {
               printf '\n**Defect scan** (deterministic verdicts -- see demos/README.md):\n\n```\n'
