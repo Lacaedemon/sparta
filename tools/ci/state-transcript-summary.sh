@@ -68,8 +68,9 @@ fi
 # GitHub's 65,536-character cap after the wrapper and the defect-scan block are added.
 # A dense `state` list (per-tick sampling, which the consecutive-sample defect detectors
 # sometimes need) would otherwise overflow it and fail the whole Demo video job with a
-# 422. Over budget, the first and last rows are kept and the middle is replaced by one
-# marker row naming what was omitted; the full JSON artifact always holds every tick.
+# 422. Over budget, a head block and a tail block of rows are kept, each about half the
+# budget, and the middle is replaced by one marker row naming the omitted ticks (a budget
+# too small for any row keeps only the marker); the full JSON artifact holds every tick.
 # Bytes over-count characters, so a byte budget is conservative.
 TABLE_ROWS="$SUMMARY_OUT.rows"
 jq -r '

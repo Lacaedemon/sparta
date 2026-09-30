@@ -827,8 +827,9 @@ ticks the script already cares about (its `state` list, else its `frames` list, 
   one table holding a row per unit per dumped tick (tick / State / formation / order mode / morale /
   soldier count / centroid), and a link to the full JSON.
   The table is capped at a byte budget so the comment stays under GitHub's 65,536-character limit.
-  When a dense `state` list (per-tick sampling, say) would overflow it, the first and last rows are kept and one marker row names the omitted ticks.
-  The linked JSON always holds every tick. It's a **comment**, not part of the description, because
+  When a dense `state` list (per-tick sampling, say) would overflow it, a head block and a tail block of rows are kept, each about half the budget, and one marker row between them names the omitted ticks.
+  The linked JSON always holds every tick.
+  It's a **comment**, not part of the description, because
   it's large technical detail most reviewers don't need at a glance; the description (where the
   GIF lives) links to it. Both a human reviewer and the `@claude` review bot read PR comments
   directly -- the bot reviews the PR thread and diff, not the media branch, so this is what makes
