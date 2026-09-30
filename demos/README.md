@@ -824,8 +824,11 @@ ticks the script already cares about (its `state` list, else its `frames` list, 
 `8,60,140`), then posts two things:
 
 - **A compact per-tick table in a PR comment** -- a `🔬 Per-tick state transcript` heading with
-  one row per unit per dumped tick (State / formation / order mode / morale / soldier count /
-  centroid), and a link to the full JSON. It's a **comment**, not part of the description, because
+  one table holding a row per unit per dumped tick (tick / State / formation / order mode / morale /
+  soldier count / centroid), and a link to the full JSON.
+  The table is capped at a byte budget so the comment stays under GitHub's 65,536-character limit.
+  When a dense `state` list (per-tick sampling, say) would overflow it, the first and last rows are kept and one marker row names the omitted ticks.
+  The linked JSON always holds every tick. It's a **comment**, not part of the description, because
   it's large technical detail most reviewers don't need at a glance; the description (where the
   GIF lives) links to it. Both a human reviewer and the `@claude` review bot read PR comments
   directly -- the bot reviews the PR thread and diff, not the media branch, so this is what makes
@@ -844,6 +847,7 @@ those post the clip alone. A `"skip": true` manifest posts neither clip nor tran
 
 The summary block is built by [`../tools/ci/state-transcript-summary.sh`](../tools/ci/state-transcript-summary.sh),
 which merges the per-tick `state_<tick>.json` files into one JSON and renders the markdown table.
+Its optional fourth argument sets the table's byte budget (default 45000).
 
 ## Getting a replay that shows your change
 
