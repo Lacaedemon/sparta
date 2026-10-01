@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/anchored-explicatio-pivot.json",
-  "caption": "Two identical blocks double their frontage: the left one about its centre (B), the right one anchored on its left flank (Shift+B), so its grid stands offset from its centre. Both are then ordered on the same 60-degree turn. The anchored block's outer man swings on a longer arm, so its pivot is now paced from that arm: it turns more slowly but smoothly, where it used to turn as fast as the centred block, outrun its men, and stall part-way before jerking on.",
+  "caption": "Two identical blocks double their frontage: the left one about its centre (B), the right one anchored on its right flank (Shift+B), so its grid stands offset from its centre. Both are then ordered on the same 60-degree turn. The anchored block's outer man swings on a longer arm, so its pivot is now paced from that arm: it turns more slowly but smoothly, where it used to turn as fast as the centred block, outrun its men, and stall part-way before jerking on.",
   "fixed_fps": 30,
   "max_frames": 520,
   "fps": 15,
