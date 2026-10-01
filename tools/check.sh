@@ -1614,8 +1614,10 @@ check_markdown_line_breaks() {
   fi
   # On Windows a file path at or past MAX_PATH makes the checker's is_file() read
   # return False, so it silently skips the file and can report a clean pass. Refuse
-  # to run rather than trust that pass. Only files that still exist are read, so
-  # deletions are filtered out; NUL-delimited names keep non-ASCII paths unquoted.
+  # to run rather than trust that pass. The list is the working tree against the
+  # merge-base, a superset of what the checker reads in either scope; only files that
+  # still exist are read, so deletions are filtered out; NUL-delimited names keep
+  # non-ASCII paths unquoted.
   local max_path="${SPARTA_CHECK_WINDOWS_MAX_PATH:-$WINDOWS_MAX_PATH}"
   case "$max_path" in
     ''|*[!0-9]*)
@@ -1625,7 +1627,7 @@ check_markdown_line_breaks() {
   if have cygpath && [ "$max_path" -gt 0 ]; then
     local names f win
     names="$(mktemp)"
-    if ! ( cd "$PROJECT_ROOT" && git diff -z --name-only --diff-filter=d "$merge_base" HEAD -- '*.md' ) > "$names"; then
+    if ! ( cd "$PROJECT_ROOT" && git diff -z --name-only --diff-filter=d "$merge_base" -- '*.md' ) > "$names"; then
       err "Could not list the Markdown files changed since $merge_base."
       rm -f "$names"
       return 1
