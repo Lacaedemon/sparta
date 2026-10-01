@@ -122,3 +122,55 @@ func test_a_plain_march_is_validated_in_its_travel_facing() -> void:
 	var limit: float = _clear_x(u, u._formation_local_half_extents().y)
 	assert_lte(u.move_target.x, limit, "the deep block's front stops at the hill edge")
 	assert_gte(u.move_target.x, limit - OrderFootprint.SEARCH_TOLERANCE, "and not short of it")
+
+
+func test_a_form_up_is_validated_in_its_deployed_facing() -> void:
+	# A form-up holds deploy_facing, not its travel direction: marching east but deployed
+	# facing north, the block's narrow width (not its 342 wu depth) runs along x.
+	var u := _make_deep_block(Vector2(600, 480))
+	u.deploy_facing = Vector2.UP
+	u.move_target = Vector2(1140, 480)
+	var limit: float = _clear_x(u, u._formation_local_half_extents().x)
+	assert_lte(u.move_target.x, limit, "the deployed block's right file stops at the hill edge")
+	assert_gte(u.move_target.x, limit - OrderFootprint.SEARCH_TOLERANCE,
+		"and no farther back than its half-width needs")
+
+
+func test_a_repeated_write_of_the_same_point_reuses_the_validated_destination() -> void:
+	# A reinforcing reserve re-aims every tick; re-writing an unchanged point must not
+	# rebuild the footprint.
+	var u := _make_deep_block(Vector2(1110, 330))
+	_nudge(u, BattleScript.NudgeDir.RIGHT)
+	var first: Vector2 = u.move_target
+	var before: int = u._formation_slots_call_count
+	u.move_target = Vector2(1140, 330)
+	assert_eq(u._formation_slots_call_count - before, 0, "the repeat write builds no slot layout")
+	assert_eq(u.move_target, first, "and keeps the destination already validated")
+
+
+func test_a_non_positive_search_step_holds_position_loudly() -> void:
+	var field: PathField = PathField.active
+	var held: Vector2 = OrderFootprint.clamp_destination(field, Vector2(1100, 330),
+			Vector2(1200, 450), Vector2.RIGHT, Vector2(20, 20), 0.0, 1.0)
+	assert_push_error("step and tolerance must be positive")
+	assert_eq(held, Vector2(1100, 330), "a bad search parameter holds rather than loops")
+
+
+func test_a_blocked_move_that_goes_nowhere_holds() -> void:
+	var p := Vector2(1200, 450)   # inside the hill
+	var held: Vector2 = OrderFootprint.clamp_destination(PathField.active, p, p,
+			Vector2.RIGHT, Vector2(20, 20))
+	assert_eq(held, p, "zero-length move into terrain: hold where it stands")
+
+
+func test_footprint_separated_only_along_its_own_file_axis_is_clear() -> void:
+	# A thin footprint turned 45 degrees across the hill's north-west corner: its
+	# projections overlap the rect on both world axes, but along its own file axis it
+	# sits clear of the corner -- only that axis separates them.
+	var u_axis := Vector2(1, 1).normalized()
+	var corner := HILL.position
+	var centre := corner - u_axis * 85.0
+	assert_false(PathField.active.footprint_blocked(centre, u_axis, Vector2(1, 160)),
+		"separated along the file axis alone: clear")
+	assert_true(PathField.active.footprint_blocked(corner + u_axis * 5.0, u_axis, Vector2(1, 160)),
+		"moved onto the corner: blocked")

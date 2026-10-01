@@ -232,7 +232,15 @@ var facing: Vector2 = Vector2.DOWN
 ## impassable terrain is pulled back along the move before the unit ever marches on it.
 var move_target: Vector2 = Vector2.ZERO:
 	set(value):
+		if value == _move_target_requested:
+			return
+		_move_target_requested = value
 		move_target = clamp_order_destination(value)
+## The last point written to move_target, before validation. A repeat write of the same
+## point (a reinforcing reserve re-aims at its host every tick, and a stationary host
+## gives the same rendezvous) keeps the destination already validated for it instead of
+## rebuilding the footprint.
+var _move_target_requested: Vector2 = Vector2.ZERO
 var has_move_target: bool = false
 ## The pull-back search clamp_order_destination() runs: its coarse probe stride and the
 ## precision it narrows the clear point to (see OrderFootprint).
