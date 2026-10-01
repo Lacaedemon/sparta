@@ -319,3 +319,61 @@ func test_overlap_area_counts_ground_two_rects_share_once() -> void:
 	field.block_rect(Rect2(50, 0, 100, 100))
 	var area: float = field.footprint_overlap_area(Vector2(75, 50), Vector2.RIGHT, Vector2(75, 50))
 	assert_almost_eq(area, 15000.0, 0.01, "the union (150 x 100), not the sum of both rects (20000)")
+
+
+# --- Write-site ordering --------------------------------------------------------------
+# The clamp reads the held facing, frontage, tier and fold at the moment move_target is
+# written, so every writer must set those first. Each test below drives a real writer from
+# a clear start and then re-checks the destination against the unit's FINAL state: a
+# writer that sets a field after the write leaves a destination the final grid overlaps.
+
+## Whether `u`'s footprint at its committed destination, laid out from the unit's final
+## state exactly as clamp_order_destination() would lay it out now, is clear of the hill.
+func _clear_in_final_grid(u: Unit) -> bool:
+	var r: float = u.soldier_body_radius()
+	var axis: Vector2 = u._order_held_facing(u.move_target).rotated(PI * 0.5 + u._formation_angle)
+	return not PathField.active.footprint_blocked(u.move_target, axis,
+			u._formation_local_half_extents() + Vector2(r, r))
+
+
+func test_a_relief_retreat_is_validated_in_the_facing_it_holds() -> void:
+	# A tired deep column facing east (342 wu deep along x) west of the hill retreats north
+	# toward its back edge. It holds its east facing, so at the destination its depth
+	# reaches into the hill and the retreat is pulled back; laid out in the north bearing
+	# instead it would look 36 wu wide and pass unclamped.
+	var tired := _make_deep_block(Vector2(1000, 700))
+	tired.facing = Vector2.RIGHT
+	var reliever := _make_deep_block(Vector2(600, 900))
+	UnitRelief.begin(reliever, tired, Order.new_relief(tired.uid))
+	assert_eq(tired.ordered_facing, Vector2.RIGHT, "sanity check: the retreat holds the east facing")
+	assert_true(_clear_in_final_grid(tired), "the retreat destination is clear in the facing held")
+	var limit: float = HILL.end.y + tired._formation_local_half_extents().x + tired.soldier_body_radius()
+	assert_gte(tired.move_target.y, limit, "stops south of the hill")
+	assert_lte(tired.move_target.y, limit + OrderFootprint.SEARCH_TOLERANCE, "and no farther south")
+
+
+func test_a_disengage_step_is_validated_in_its_final_grid() -> void:
+	var u := _make_deep_block(Vector2(1250, 200))
+	u.state = Unit.State.FIGHTING
+	u.disengage()
+	assert_ne(u.move_target, Vector2(1250, 270), "sanity check: the full step would enter the hill")
+	assert_true(_clear_in_final_grid(u), "clear in the grid the disengage holds")
+
+
+func test_a_disengage_with_sacrifice_is_validated_in_its_final_grid() -> void:
+	# The sacrifice drops the headcount (and so the depth) before the step is written.
+	var u := _make_deep_block(Vector2(1250, 200))
+	u.state = Unit.State.FIGHTING
+	u.disengage_with_sacrifice()
+	assert_ne(u.move_target, Vector2(1250, 270), "sanity check: the full step would enter the hill")
+	assert_true(_clear_in_final_grid(u), "clear in the grid the shrunken block holds")
+
+
+func test_a_promoted_queued_leg_is_validated_in_its_final_grid() -> void:
+	var u := _make_deep_block(Vector2(1000, 480))
+	u.set_current_order(Order.new_move(Vector2(1000, 470)))
+	u.append_order(Order.new_move(Vector2(1120, 480)))
+	u.retire_current_order()
+	assert_true(u.has_move_target, "sanity check: the queued leg committed its march")
+	assert_ne(u.move_target, Vector2(1120, 480), "sanity check: the leg as queued would enter the hill")
+	assert_true(_clear_in_final_grid(u), "the promoted leg is clear in its final grid")
