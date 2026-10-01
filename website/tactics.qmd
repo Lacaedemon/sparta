@@ -2421,7 +2421,9 @@ footprint at the destination would overlap impassable terrain is pulled back alo
 the move to the nearest spot where the whole formation fits, laid out in the facing
 it will hold there. A deep column side-stepping toward a hill stops with its rear ranks
 at the hill's edge rather than among the rocks. If no spot along the move is clear,
-the unit stays where it is.
+the unit stays where it is. A block that already overlaps the terrain where it stands,
+such as a deep cavalry block deployed against a hill, can still move, as long as the
+order would not push it deeper into the terrain than it already is.
 
 The obstacle a unit routes around is the terrain you see, plus the unit's own
 footprint --- and that footprint margin is two different sizes depending on whether

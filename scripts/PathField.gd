@@ -106,6 +106,32 @@ func footprint_blocked(centre: Vector2, file_axis: Vector2, half: Vector2) -> bo
 	return false
 
 
+## Total area (square world units) of impassable terrain the same rectangular footprint
+## footprint_blocked() tests covers: the exact polygon intersection with each drawn rect,
+## summed. 0 for a clear footprint.
+func footprint_overlap_area(centre: Vector2, file_axis: Vector2, half: Vector2) -> float:
+	var u: Vector2 = file_axis * half.x
+	var v: Vector2 = file_axis.orthogonal() * half.y
+	var poly := PackedVector2Array([centre - u - v, centre + u - v, centre + u + v, centre - u + v])
+	var area: float = 0.0
+	for r in _block_rects:
+		var rect_poly := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y),
+				r.end, Vector2(r.position.x, r.end.y)])
+		for piece in Geometry2D.intersect_polygons(poly, rect_poly):
+			area += absf(_polygon_area(piece))
+	return area
+
+
+## Signed shoelace area of a simple polygon.
+static func _polygon_area(poly: PackedVector2Array) -> float:
+	var twice: float = 0.0
+	for i in poly.size():
+		var a: Vector2 = poly[i]
+		var b: Vector2 = poly[(i + 1) % poly.size()]
+		twice += a.cross(b)
+	return twice * 0.5
+
+
 ## Speed zone (not obstacle): units slow on entry but A* never detours around it — penalty applies on traversal only.
 func set_speed_rect(rect: Rect2, scale: float) -> void:
 	_speed_rects.append(rect)

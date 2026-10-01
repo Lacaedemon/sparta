@@ -204,3 +204,70 @@ func test_footprint_separated_only_along_its_own_file_axis_is_clear() -> void:
 		"separated along the file axis alone: clear")
 	assert_true(PathField.active.footprint_blocked(corner + u_axis * 5.0, u_axis, Vector2(1, 160)),
 		"moved onto the corner: blocked")
+
+
+func test_a_unit_already_overlapping_terrain_can_still_move_along_it() -> void:
+	# Centred at x 1250 the deep block's rear ranks already stand inside the hill. A
+	# side-step east keeps exactly the same overlap, so it goes through: a unit already in
+	# the terrain is not frozen there, only kept from going deeper.
+	var u := _make_deep_block(Vector2(1250, 330))
+	assert_gt(_slots_inside_hill(u, u.position, u.facing), 0, "sanity check: starts overlapping")
+	_nudge(u, BattleScript.NudgeDir.RIGHT)
+	assert_eq(u.move_target, Vector2(1280, 330), "a move that overlaps no more than the start is untouched")
+
+
+func test_a_unit_already_overlapping_terrain_is_kept_from_going_deeper() -> void:
+	# The same block stepping back (south) would push more of its rear ranks into the hill.
+	var u := _make_deep_block(Vector2(1250, 330))
+	_nudge(u, BattleScript.NudgeDir.BACK)
+	assert_eq(u.move_target, Vector2(1250, 330), "no deeper than it already stands: it holds")
+
+
+func test_an_undisciplined_march_is_validated_in_the_grid_it_keeps() -> void:
+	# An undisciplined unit snaps facing onto a 90-degree turn and folds the snap into its
+	# formation angle, so its 15-file frontage keeps running along x as it marches east.
+	# The footprint must be that wide along x, not its shallow depth.
+	var u: Unit = Unit.new()
+	u.max_soldiers = 120
+	u.disciplined = false
+	add_child_autofree(u)
+	u.facing = Vector2.DOWN
+	u.position = Vector2(1000, 400)
+	u.move_target = Vector2(1120, 400)
+	var half: Vector2 = u._formation_local_half_extents()
+	assert_gt(half.x, half.y, "sanity check: wider than deep")
+	var limit: float = _clear_x(u, half.x)
+	assert_lte(u.move_target.x, limit, "the kept frontage stops at the hill edge")
+	assert_gte(u.move_target.x, limit - OrderFootprint.SEARCH_TOLERANCE, "and no farther back")
+
+
+func test_a_zero_length_move_keeps_the_current_facing() -> void:
+	var u := _make_deep_block(Vector2(1250, 330))
+	assert_eq(u._order_held_facing(u.position), Vector2.UP, "nowhere to travel: the current facing")
+	u.move_target = u.position
+	assert_eq(u.move_target, Vector2(1250, 330), "an order to stand where it is stands")
+
+
+func test_overlap_area_is_the_exact_clipped_area() -> void:
+	# A 20 x 20 square centred on the hill's north-west corner covers a 10 x 10 quarter.
+	var area: float = PathField.active.footprint_overlap_area(HILL.position, Vector2.RIGHT, Vector2(10, 10))
+	assert_almost_eq(area, 100.0, 0.001, "a quarter of the square lies inside the hill")
+	assert_almost_eq(PathField.active.footprint_overlap_area(Vector2(100, 100), Vector2.RIGHT, Vector2(10, 10)),
+		0.0, 0.001, "clear ground overlaps nothing")
+
+
+func test_a_folded_grid_is_validated_as_it_stands() -> void:
+	# Mid-march an undisciplined block can face east while a quarter fold keeps its
+	# frontage running along x (the slot grid soldier_world_slots lays out). A leg
+	# committed in that state must be validated in that grid, not a squared one.
+	var u: Unit = Unit.new()
+	u.max_soldiers = 120
+	add_child_autofree(u)
+	u.facing = Vector2.RIGHT
+	u._formation_angle = -PI * 0.5
+	u.position = Vector2(1000, 400)
+	u.move_target = Vector2(1120, 400)
+	var half: Vector2 = u._formation_local_half_extents()
+	var limit: float = _clear_x(u, half.x)
+	assert_lte(u.move_target.x, limit, "the folded frontage stops at the hill edge")
+	assert_gte(u.move_target.x, limit - OrderFootprint.SEARCH_TOLERANCE, "and no farther back")

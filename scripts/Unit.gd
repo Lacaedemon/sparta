@@ -4316,10 +4316,13 @@ func _formation_local_half_extents() -> Vector2:
 ## clear point nearest it back along the move from the current position, or the current
 ## position (hold) when nothing along the move is clear. The footprint is the block's
 ## half-extents (the far tier's O(1) reading for a far block, as _move_to() uses), grown
-## by the soldiers' body radius, laid out in the facing the unit will hold on arrival
-## (see _order_held_facing()). It is the squared layout: a fresh order re-squares a
-## quarter-turned block (start_order_response), and a half-turn fold maps the rectangle
-## onto itself. `step` and `tolerance` default to this unit's order_clear_step and
+## by the soldiers' body radius, laid out in the grid the men will stand in on arrival:
+## the facing the unit will hold there (see _order_held_facing()) turned by the standing
+## _formation_angle fold, which a march carries along -- the same rotation
+## soldier_world_slots() applies. A half-turn fold maps the rectangle onto itself. One
+## known approximation: a fresh order is validated before start_order_response()
+## re-squares a quarter-folded block, so for that order the footprint is laid out in the
+## pre-reform grid. `step` and `tolerance` default to this unit's order_clear_step and
 ## order_clear_tolerance.
 func clamp_order_destination(dest: Vector2, step: float = -1.0, tolerance: float = -1.0) -> Vector2:
 	var field: PathField = PathField.active
@@ -4328,25 +4331,34 @@ func clamp_order_destination(dest: Vector2, step: float = -1.0, tolerance: float
 	var extents: Vector2 = _far_tier_half_extents() if tier == FormationTier.FAR \
 			else _formation_local_half_extents()
 	var body: float = soldier_body_radius()
-	var file_axis: Vector2 = _order_held_facing(dest).rotated(PI * 0.5)
+	var file_axis: Vector2 = _order_held_facing(dest).rotated(PI * 0.5 + _formation_angle)
 	return OrderFootprint.clamp_destination(field, position, dest, file_axis,
 			extents + Vector2(body, body), step if step > 0.0 else order_clear_step,
 			tolerance if tolerance > 0.0 else order_clear_tolerance)
 
 
-## The facing this unit will hold at a move's destination `dest`: a maneuver's held
-## facing (a side-step, back-step, or disengage holds ordered_facing; a form-up holds
-## deploy_facing), otherwise the direction of travel, which an ordinary march pivots onto.
-## A move that goes nowhere keeps the current facing.
+## The facing this unit will hold at a move's destination
+## `dest`: a maneuver's held facing (a side-step, back-step, or disengage holds
+## ordered_facing; a form-up holds deploy_facing), otherwise the direction of travel,
+## which a formed march pivots onto. An undisciplined or hasty march does not pivot: it
+## snaps facing onto its bearing, and past FACING_SNAP_ABSORB_THRESHOLD _face_dir() folds
+## that snap into _formation_angle, so the grid keeps its current orientation -- returned
+## here as the current facing, which the caller turns by the same standing fold. A move
+## that goes nowhere keeps the current facing.
 func _order_held_facing(dest: Vector2) -> Vector2:
 	if ordered_facing != Vector2.ZERO:
 		return ordered_facing.normalized()
 	if deploy_facing != Vector2.ZERO:
 		return deploy_facing.normalized()
+	var current: Vector2 = facing.normalized() if facing != Vector2.ZERO else Vector2.DOWN
 	var travel: Vector2 = dest - position
-	if travel.length_squared() > 0.0001:   # tuned in wu, solver epsilon
-		return travel.normalized()
-	return facing.normalized() if facing != Vector2.ZERO else Vector2.DOWN
+	if travel.length_squared() <= 0.0001:   # tuned in wu, solver epsilon
+		return current
+	var bearing: Vector2 = travel.normalized()
+	var pivots: bool = disciplined and not _is_move_order_in_haste()
+	if not pivots and absf(angle_difference(current.angle(), bearing.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
+		return current
+	return bearing
 
 
 ## O(1) half-extents for a FAR-tier block, derived from the headcount instead of read

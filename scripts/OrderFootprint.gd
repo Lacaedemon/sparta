@@ -6,6 +6,9 @@ class_name OrderFootprint
 ## footprint at the destination, in the facing it will hold there, and pulls an
 ## overlapping destination back along the move toward the unit's start until the
 ## footprint is clear. When no point along the move is clear, the unit holds where it is.
+## A unit whose footprint already overlaps terrain where it stands (a deep block spawned
+## against a hill) is not frozen there: its order is pulled back only as far as needed to
+## overlap the terrain no more than it already does, so it can still step out or along.
 ##
 ## Static and deterministic (no RNG, a pure function of the obstacle set and the
 ## arguments), so live play and replay validate alike.
@@ -20,6 +23,10 @@ const SEARCH_STEP := 8.0   # tuned in wu
 ## the nearest clear point.
 const SEARCH_TOLERANCE := 1.0   # tuned in wu
 
+## How much more terrain area (square wu) a probe may overlap than the start already does
+## before it counts as deeper -- absorbs float noise in the polygon clip, nothing more.
+const OVERLAP_AREA_EPS := 0.01   # tuned in wu, solver epsilon
+
 
 ## The destination a move from `origin` toward `dest` should actually be given. `field`
 ## supplies the impassable terrain; `file_axis` (a unit vector) and `half_extents`
@@ -27,9 +34,10 @@ const SEARCH_TOLERANCE := 1.0   # tuned in wu
 ## footprint the formation will occupy at the destination. Returns `dest` unchanged when
 ## its footprint is clear, the clear point nearest `dest` on the segment back to `origin`
 ## otherwise, and `origin` itself (hold position) when nothing along the move is clear.
-## `step` and `tolerance` are the search's coarse stride and final precision; both must
-## be positive, and a non-positive one fails loudly and holds position rather than
-## looping forever.
+## From a start that already overlaps terrain, "clear" means overlapping no more terrain
+## area than the start does. `step` and `tolerance` are the search's coarse stride and
+## final precision; both must be positive, and a non-positive one fails loudly and holds
+## position rather than looping forever.
 static func clamp_destination(field: PathField, origin: Vector2, dest: Vector2,
 		file_axis: Vector2, half_extents: Vector2, step: float = SEARCH_STEP,
 		tolerance: float = SEARCH_TOLERANCE) -> Vector2:
@@ -38,24 +46,33 @@ static func clamp_destination(field: PathField, origin: Vector2, dest: Vector2,
 	if step <= 0.0 or tolerance <= 0.0:
 		push_error("OrderFootprint.clamp_destination: step and tolerance must be positive")
 		return origin
+	var start_overlap: float = 0.0
+	if field.footprint_blocked(origin, file_axis, half_extents):
+		start_overlap = field.footprint_overlap_area(origin, file_axis, half_extents)
+	var too_deep := func(p: Vector2) -> bool:
+		if start_overlap <= 0.0:
+			return field.footprint_blocked(p, file_axis, half_extents)
+		return field.footprint_overlap_area(p, file_axis, half_extents) > start_overlap + OVERLAP_AREA_EPS
+	if not too_deep.call(dest):
+		return dest
 	var back: Vector2 = origin - dest
 	var span: float = back.length()
 	if span <= 0.0:
 		return origin
 	var dir: Vector2 = back / span
-	# Coarse pass: walk back from the destination until a probe's footprint is clear.
+	# Coarse pass: walk back from the destination until a probe is acceptable. The start
+	# always is (clear, or exactly as deep as it already stands), so the walk ends there
+	# at the latest.
 	var blocked_at: float = 0.0
 	var clear_at: float = minf(step, span)
-	while field.footprint_blocked(dest + dir * clear_at, file_axis, half_extents):
-		if clear_at >= span:
-			return origin
+	while clear_at < span and too_deep.call(dest + dir * clear_at):
 		blocked_at = clear_at
 		clear_at = minf(clear_at + step, span)
-	# Fine pass: bisect the bracket down to `tolerance`, keeping the clear end.
+	# Fine pass: bisect the bracket down to `tolerance`, keeping the acceptable end.
 	while clear_at - blocked_at > tolerance:
 		var mid: float = (blocked_at + clear_at) * 0.5
-		if field.footprint_blocked(dest + dir * mid, file_axis, half_extents):
+		if too_deep.call(dest + dir * mid):
 			blocked_at = mid
 		else:
 			clear_at = mid
-	return dest + dir * clear_at
+	return origin if clear_at >= span else dest + dir * clear_at
