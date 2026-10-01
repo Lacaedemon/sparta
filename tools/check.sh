@@ -1536,20 +1536,22 @@ check_markdown() {
       return 0
     fi
   fi
-  # A checker that could not run for want of its runtime makes the result `skip`,
-  # not `pass`: a pass has to mean every blocking check ran and passed.
-  local failed=0 missing_runtime=0
+  # A checker that could not run, for want of its runtime or of a diff base, makes
+  # the result `skip`, not `pass`: a pass has to mean every blocking check ran and
+  # passed.
+  local failed=0 incomplete=0
   if [ "$have_node" -eq 1 ]; then
     check_markdown_node "$base" || failed=1
   else
     warn "node not installed -- skipping the list-item splice and table-split checks."
-    missing_runtime=1
+    incomplete=1
   fi
   if [ "$have_python" -eq 0 ]; then
     warn "python3 not installed -- skipping the semantic line-break check."
-    missing_runtime=1
+    incomplete=1
   elif [ -z "$merge_base" ]; then
     warn "No base ref to diff against -- skipping the diff-scoped semantic line-break check."
+    incomplete=1
   else
     check_markdown_line_breaks "$merge_base" || failed=1
   fi
@@ -1557,7 +1559,7 @@ check_markdown() {
     set_result markdown fail
     return 1
   fi
-  if [ "$missing_runtime" -ne 0 ]; then
+  if [ "$incomplete" -ne 0 ]; then
     warn "Not every Markdown check ran -- reporting skip (CI still runs them all)."
     set_result markdown skip
   fi
@@ -1597,9 +1599,11 @@ check_markdown_node() {
 
 # check_markdown_line_breaks <merge-base> -- check-new-line-breaks.yml's check on the
 # Markdown lines added since <merge-base>. The NLB_* inputs mirror the reusable
-# workflow's defaults, since this repo's caller overrides none of them; NLB_SCOPE is
-# pinned to committed changes so the result matches CI and the other diff-scoped
-# checks here, which read HEAD rather than the working tree.
+# workflow's defaults, since this repo's caller overrides none of them. NLB_SCOPE is
+# left at the checker's own default, as in CI: on a clean tree it reads the
+# committed lines, and on a dirty one the working tree, which keeps line numbers and
+# line text in step (pinning committed scope on a dirty tree reads one from HEAD and
+# the other from the working tree).
 check_markdown_line_breaks() {
   local merge_base="$1" dir
   if ! dir="$(fetch_gha_checkers check-new-line-breaks "${GHA_LINE_BREAK_FILES[@]}")"; then
@@ -1642,7 +1646,7 @@ check_markdown_line_breaks() {
   # PYTHONUTF8 keeps a Windows Python from decoding the Markdown as cp1252.
   ( cd "$PROJECT_ROOT" && PYTHONUTF8=1 NLB_BASE_REF="$merge_base" NLB_GLOBS='*.md' \
       NLB_PATHS_IGNORE='' NLB_FAIL=true NLB_CLAUSE_BREAKS=true NLB_CLAUSE_MIN_LENGTH=80 \
-      NLB_SCOPE=committed python3 "$dir/check-new-line-breaks.py" )
+      python3 "$dir/check-new-line-breaks.py" )
 }
 
 # --- driver ----------------------------------------------------------------
