@@ -1379,6 +1379,10 @@ MARKDOWN_REQUESTED=""
 GHA_MARKDOWN_FILES=(_pathspec.mjs check_list_item_splices.mjs check_table_splits.mjs)
 GHA_LINE_BREAK_FILES=(check-new-line-breaks.py)
 
+# Windows' MAX_PATH: a full path this long or longer is unreadable to an API that
+# does not opt into long paths, as the line-break checker's Python does not.
+WINDOWS_MAX_PATH=260
+
 # gha_cache_complete <dir> <file>... -- true when <dir> holds every named file,
 # each non-empty. The one completeness test both the fetch and the offline
 # fallback use, so a half-written directory never counts as a cache hit.
@@ -1590,6 +1594,21 @@ check_markdown_line_breaks() {
   fi
   if have cygpath; then
     dir="$(cygpath -m "$dir")"
+  fi
+  # On Windows a file path at or past MAX_PATH makes the checker's is_file() read
+  # return False, so it silently skips the file and can report a clean pass. Refuse
+  # to run rather than trust that pass.
+  if have cygpath; then
+    local f win
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      win="$(cygpath -w "$PROJECT_ROOT/$f")"
+      if [ "${#win}" -ge "$WINDOWS_MAX_PATH" ]; then
+        err "$f is ${#win} characters as a Windows path, past the $WINDOWS_MAX_PATH limit;"
+        err "the line-break checker would skip it unread. Run from a shorter checkout path."
+        return 1
+      fi
+    done < <(cd "$PROJECT_ROOT" && git diff --name-only "$merge_base" HEAD -- '*.md')
   fi
   info "Missing semantic line breaks on lines added since $merge_base:"
   # PYTHONUTF8 keeps a Windows Python from decoding the Markdown as cp1252.
