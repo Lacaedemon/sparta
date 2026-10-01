@@ -345,3 +345,8 @@ Small helpers invoked by GitHub Actions workflows.
   `.github/workflows/demo-video.yml` so its recorded-clip and "no clip applies"
   paths share one comment-upsert implementation. Needs `gh` authenticated via
   `GH_TOKEN`.
+  Refuses a body over GitHub's 65,536-character comment limit with an error naming its size, rather than letting the API return a bare 422.
+
+- `state-transcript-summary.sh <state-dir> <merged-json-out> <summary-md-out> [table-max-bytes]` --
+  merge a demo's per-tick state snapshots into one JSON and render the PR comment's transcript table.
+  Over the byte budget (default 45000), it keeps a head block and a tail block of rows, each about half the budget, and replaces the middle with one marker row.
