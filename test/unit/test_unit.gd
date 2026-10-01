@@ -1808,6 +1808,35 @@ func test_pivot_arm_folds_in_a_standing_frontage_anchor_offset() -> void:
 		"the offset lengthens the arm well past the even-split pivot radius")
 
 
+func test_pivot_arm_far_tier_reads_the_same_anchored_arm_as_the_live_slots() -> void:
+	# A far-tier block takes its half-extents from the O(1) headcount bounds rather than
+	# rebuilding the slots; for an anchored block those bounds must still fold the offset
+	# in, or a far-tier pivot would lose the fix the near tier gets.
+	var near := _make_unit()
+	near.frontage_override = 20
+	near.frontage_anchor_offset = 100.0
+	var far := _make_unit()
+	far.frontage_override = 20
+	far.frontage_anchor_offset = 100.0
+	far.tier = FormationTier.FAR
+	assert_almost_eq(far._pivot_arm(), near._pivot_arm(), 0.01,
+		"the far-tier arm matches the live-slot arm for the same anchored block")
+	assert_gt(far._pivot_arm(), far._pivot_radius() * 1.2,
+		"and still exceeds the even-split pivot radius")
+
+
+func test_pivot_arm_uses_extents_passed_in() -> void:
+	# A caller that already holds the half-extents (as _move_to does) passes them in;
+	# the arm is then read from them instead of from a fresh slot rebuild.
+	var u := _make_unit()
+	u.frontage_override = 20
+	var wide := Vector2(500.0, 300.0)
+	assert_almost_eq(u._pivot_arm(wide), wide.length(), 0.01,
+		"passed-in extents set the arm when they exceed the pivot radius")
+	assert_almost_eq(u._pivot_arm(Vector2.ZERO), u._pivot_radius(), 0.01,
+		"and the pivot radius still floors it")
+
+
 func test_anchored_block_formed_pivot_turns_slower_by_its_longer_arm() -> void:
 	# The angular-rate cap (UnitManeuver.wheel_gait_rate) keeps the corner man's
 	# tangential pace within his budget, rate x arm. Paced from _pivot_radius(), an

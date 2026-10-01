@@ -3486,6 +3486,9 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	# obstacles registered the next step is the target itself (straight line).
 	var step: Vector2 = point
 	var terrain_speed: float = 1.0
+	# The live half-extents, computed once below when routing needs them and reused by
+	# the formed pivot's arm (_pivot_arm), so one call never rebuilds them twice.
+	var extents: Vector2 = UNKNOWN_EXTENTS
 	if PathField.active != null:
 		# The direction of THIS leg, not necessarily this block's own facing -- a formed
 		# pivot advances while still turning onto a new bearing, a side-step nudge holds
@@ -3508,7 +3511,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# same bounds off the headcount in O(1), falling back to the live slots only
 		# during a relief swap (see its own doc comment).
 		var leg_dir: Vector2 = point - position
-		var extents: Vector2 = _far_tier_half_extents() if tier == FormationTier.FAR \
+		extents = _far_tier_half_extents() if tier == FormationTier.FAR \
 				else _formation_local_half_extents()
 		step = PathField.active.next_step(position, point, terrain_clearance(leg_dir, extents),
 				funnel_lane_offset(point, extents), corner_clearance(extents))
@@ -3681,7 +3684,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# still produces a slow, real pivot -- never a stalled one, and never one that lets
 		# the corner slot outrun the jog arrival cap the derate exists to stay under.
 		pivot_rate = UnitManeuver.wheel_gait_rate(
-				pivot_rate, jog_speed * _formed_turn_gait_frac(), _pivot_arm())
+				pivot_rate, jog_speed * _formed_turn_gait_frac(), _pivot_arm(extents))
 		# wheel_gait_rate alone only bounds the corner man's TANGENTIAL footspeed -- a
 		# purely geometric limit that says nothing about whether a body actually
 		# CRUISING at speed could physically achieve that turn. Redirecting a body's own
@@ -4128,11 +4131,12 @@ func _front_depth() -> float:
 	return minf(depth, attack_range * 0.5)
 
 
-## Distance from the block's centre to its farthest formation slot -- the corner man's
-## half-diagonal, in world units. A centre pivot rotates the slot grid rigidly about the
-## centre, so this is the arm that corner man actually walks: the pacing radius
-## _move_to's formed pivot feeds UnitManeuver.wheel_gait_rate, exactly as the flank
-## wheel feeds it the hinge-to-far-flank arm.
+## The corner man's half-diagonal of an even, centred slot grid, in world units, from
+## the headcount alone (files and UnitFormation.ranks_for()). The formed pivot's actual
+## pacing arm is _pivot_arm(), which takes the larger of this and the live slot grid's
+## half-diagonal, since a standing anchor offset or an uneven file-major depth puts the
+## farthest man further out than this even-split estimate. This value still sets
+## _formed_turn_gait_frac's depth ratio and the O(1) congestion estimate.
 func _pivot_radius() -> float:
 	var files: int = maxi(1, formation_files(soldiers))
 	var ranks: int = UnitFormation.ranks_for(soldiers, files)
@@ -4149,10 +4153,14 @@ func _pivot_radius() -> float:
 ## within the footspeed they budget. _formed_turn_gait_frac's depth ratio still reads
 ## _pivot_radius(): an anchor offset lengthens the arm without making the block deeper.
 ## A far-tier block uses the same O(1) headcount bounds _move_to's routing does.
-func _pivot_arm() -> float:
-	var extents: Vector2 = _far_tier_half_extents() if tier == FormationTier.FAR \
-			else _formation_local_half_extents()
-	return maxf(_pivot_radius(), extents.length())
+## `extents` lets a caller that already holds the live half-extents pass them in, as
+## corner_clearance() does, instead of paying for a second O(soldiers) rebuild.
+func _pivot_arm(extents: Vector2 = UNKNOWN_EXTENTS) -> float:
+	var half_extents: Vector2 = extents
+	if half_extents.x < 0.0:
+		half_extents = _far_tier_half_extents() if tier == FormationTier.FAR \
+				else _formation_local_half_extents()
+	return maxf(_pivot_radius(), half_extents.length())
 
 
 ## Depth-scoped corner-slot tracking fraction for a formed march turn (see
@@ -4428,15 +4436,12 @@ func terrain_clearance(travel_dir: Vector2 = Vector2.ZERO, extents: Vector2 = UN
 ## rectangle's support function over every direction peaks at its own diagonal).
 ##
 ## Deliberately NOT the same value as _pivot_radius(): that one is still derived from
-## files/UnitFormation.ranks_for()/pitches (the average-case headcount estimate), used
-## only for the formed-turn pivot-rate pacing in _formed_turn_gait_frac and
-## UnitManeuver.wheel_gait_rate. It can therefore read narrower than this function's
-## live-slot extent -- a standing frontage_anchor_offset, or a file-major block with
-## unevenly distributed survivors, both widen the real footprint past what
-## _pivot_radius() assumes. Left unfixed here: retuning a formed pivot's own footspeed
-## cap needs to check that pacing mechanism's own tolerance for a wider corner-man arm,
-## not just swap in a bigger number, so it stays a separate, tracked question rather
-## than folded into this routing-only fix.
+## files/UnitFormation.ranks_for()/pitches (the average-case headcount estimate), and
+## can therefore read narrower than this function's live-slot extent -- a standing
+## frontage_anchor_offset, or a file-major block with unevenly distributed survivors,
+## both widen the real footprint past what _pivot_radius() assumes. The formed pivot's
+## footspeed cap (UnitManeuver.wheel_gait_rate) reads _pivot_arm(), which takes the
+## larger of the two; _formed_turn_gait_frac's depth ratio keeps _pivot_radius().
 ##
 ## `extents` -- see terrain_clearance()'s own doc comment for the sentinel convention.
 func corner_clearance(extents: Vector2 = UNKNOWN_EXTENTS) -> float:
