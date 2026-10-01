@@ -2765,7 +2765,7 @@ func _think(delta: float) -> void:
 						# it un-derated at raw jog_speed footspeed preserves prompt
 						# pre-march alignment.
 						_rotate_facing_toward(reform_dir, delta,
-								UnitManeuver.wheel_gait_rate(TURN_RATE, jog_speed, _pivot_radius()))
+								UnitManeuver.wheel_gait_rate(TURN_RATE, jog_speed, _pivot_arm()))
 					else:
 						_face_dir(reform_dir)
 				return
@@ -3681,7 +3681,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# still produces a slow, real pivot -- never a stalled one, and never one that lets
 		# the corner slot outrun the jog arrival cap the derate exists to stay under.
 		pivot_rate = UnitManeuver.wheel_gait_rate(
-				pivot_rate, jog_speed * _formed_turn_gait_frac(), _pivot_radius())
+				pivot_rate, jog_speed * _formed_turn_gait_frac(), _pivot_arm())
 		# wheel_gait_rate alone only bounds the corner man's TANGENTIAL footspeed -- a
 		# purely geometric limit that says nothing about whether a body actually
 		# CRUISING at speed could physically achieve that turn. Redirecting a body's own
@@ -4138,6 +4138,21 @@ func _pivot_radius() -> float:
 	var ranks: int = UnitFormation.ranks_for(soldiers, files)
 	return Vector2(float(maxi(0, files - 1)) * file_pitch_wu(),
 			float(maxi(0, ranks - 1)) * rank_pitch_wu()).length() * 0.5
+
+
+## The arm a formed pivot's corner man actually swings on: the larger of _pivot_radius()
+## and the live slot grid's half-diagonal about `position`. A pivot rotates the WHOLE
+## local slot vector rigidly about `position`, so a standing frontage_anchor_offset (or
+## a file-major block whose deepest surviving file outruns ranks_for()'s even split)
+## puts the farthest man further out than _pivot_radius() assumes. The angular-rate
+## caps (UnitManeuver.wheel_gait_rate) read this, so that man's tangential pace stays
+## within the footspeed they budget. _formed_turn_gait_frac's depth ratio still reads
+## _pivot_radius(): an anchor offset lengthens the arm without making the block deeper.
+## A far-tier block uses the same O(1) headcount bounds _move_to's routing does.
+func _pivot_arm() -> float:
+	var extents: Vector2 = _far_tier_half_extents() if tier == FormationTier.FAR \
+			else _formation_local_half_extents()
+	return maxf(_pivot_radius(), extents.length())
 
 
 ## Depth-scoped corner-slot tracking fraction for a formed march turn (see

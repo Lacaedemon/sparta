@@ -1243,6 +1243,27 @@ func test_reform_hold_pivot_is_corner_man_paced() -> void:
 	assert_gt(step, 0.0, "while still actually turning")
 
 
+func test_reform_hold_pivot_paces_an_anchored_block_from_its_longer_arm() -> void:
+	# The hold's pivot rotates the offset-shifted slot grid about `position` too, so an
+	# anchored block's corner man swings on _pivot_arm(), not _pivot_radius(); paced
+	# from the shorter radius he would outrun the jog budget by the arm ratio.
+	var u := _make_unit()
+	u.frontage_override = 20
+	u.frontage_anchor_offset = 100.0
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u.jog_speed = 10.0
+	_stage_reform_hold(u, Vector2(0, 1000), 0.8)   # pending march is 90 deg off facing
+	var before: float = u.facing.angle()
+	u._think(0.016)
+	var step: float = absf(angle_difference(before, u.facing.angle()))
+	var arm_cap: float = UnitManeuver.wheel_gait_rate(Unit.TURN_RATE, u.jog_speed, u._pivot_arm()) * 0.016
+	var radius_cap: float = UnitManeuver.wheel_gait_rate(Unit.TURN_RATE, u.jog_speed, u._pivot_radius()) * 0.016
+	assert_lt(arm_cap, radius_cap * 0.9, "the offset makes the arm-paced cap meaningfully tighter")
+	assert_lte(step, arm_cap + 0.0001, "the hold pivot steps no faster than the live-arm bound")
+	assert_gt(step, 0.0, "while still actually turning")
+
+
 func test_current_speed_still_ramps_from_zero_for_a_fresh_order_from_idle() -> void:
 	# Regression guard (#454): a genuinely idle unit (never moving, speed already zero)
 	# given a brand-new order must still ramp up from zero, not snap or inherit some
@@ -1758,6 +1779,55 @@ func test_terrain_clearance_accounts_for_a_standing_frontage_anchor_offset() -> 
 		"marching along facing, the anchor offset adds directly to the frontage-based straight-leg clearance")
 	assert_gt(deep.terrain_clearance(deep.facing), offset_blind * 2.0,
 		"the offset-aware clearance is far larger than an offset-blind formula would return")
+
+
+func test_pivot_arm_matches_pivot_radius_for_a_centred_block() -> void:
+	# With no anchor offset and a full last rank, the live slot grid's half-diagonal is
+	# exactly the even-split estimate _pivot_radius() makes, so pacing is unchanged.
+	var u := _make_unit()
+	u.frontage_override = 20
+	assert_almost_eq(u._pivot_arm(), u._pivot_radius(), 0.01,
+		"a centred block's pivot arm is its pivot radius")
+
+
+func test_pivot_arm_folds_in_a_standing_frontage_anchor_offset() -> void:
+	# A pivot rotates the whole local slot vector, offset included, rigidly about
+	# `position`, so the farthest man swings on the offset-shifted corner, not on the
+	# centred grid _pivot_radius() assumes.
+	var u := _make_unit()
+	u.frontage_override = 20
+	u.frontage_anchor_offset = 100.0
+	var files: int = maxi(1, u.formation_files(u.soldiers))
+	var ranks: int = UnitFormation.ranks_for(u.soldiers, files)
+	var half_frontage: float = 0.5 * float(maxi(0, files - 1)) * u.file_pitch_wu()
+	var half_depth: float = 0.5 * float(maxi(0, ranks - 1)) * u.rank_pitch_wu()
+	var expected: float = Vector2(half_frontage + u.frontage_anchor_offset, half_depth).length()
+	assert_almost_eq(u._pivot_arm(), expected, 0.01,
+		"the pivot arm reaches the offset-shifted corner")
+	assert_gt(u._pivot_arm(), u._pivot_radius() * 1.2,
+		"the offset lengthens the arm well past the even-split pivot radius")
+
+
+func test_anchored_block_formed_pivot_turns_slower_by_its_longer_arm() -> void:
+	# The angular-rate cap (UnitManeuver.wheel_gait_rate) keeps the corner man's
+	# tangential pace within his budget, rate x arm. Paced from _pivot_radius(), an
+	# anchored block turned exactly as fast as a centred one while its outer man
+	# swung on a longer arm and ran past that budget. Paced from the live arm, the
+	# anchored block turns slower by about the arm ratio.
+	var centred := _make_unit()
+	centred.frontage_override = 20
+	var anchored := _make_unit()
+	anchored.frontage_override = 20
+	anchored.frontage_anchor_offset = 100.0
+	var target := Vector2(100000.0, 0.0)   # far, 90 degrees off a DOWN facing
+	centred._move_to(target, 0.1, true)    # orderly: the disciplined centre-pivot path
+	anchored._move_to(target, 0.1, true)
+	var centred_turn: float = absf(angle_difference(Vector2.DOWN.angle(), centred.facing.angle()))
+	var anchored_turn: float = absf(angle_difference(Vector2.DOWN.angle(), anchored.facing.angle()))
+	assert_gt(centred_turn, 0.0, "the centred block does start its pivot")
+	assert_gt(anchored_turn, 0.0, "the anchored block does start its pivot")
+	assert_lt(anchored_turn, centred_turn * 0.9,
+		"the anchored block's pivot is paced down for its longer outer arm")
 
 
 func test_corner_clearance_accounts_for_a_standing_frontage_anchor_offset() -> void:
