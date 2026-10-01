@@ -28,6 +28,18 @@ MARKER="$3"
 BODY="$4"
 LABEL="${5:-comment}"
 
+# GitHub rejects a comment body over 65,536 characters with a bare HTTP 422. Refuse it
+# here with a message that names the size, so a caller that forgot to bound its body
+# fails with the reason instead. ${#BODY} counts characters under a UTF-8 locale (the
+# Actions runners' default) and bytes otherwise, which only over-counts, so the check
+# never lets an oversized body by.
+MAX_COMMENT_CHARS=65536
+BODY_CHARS=${#BODY}
+if [ "$BODY_CHARS" -gt "$MAX_COMMENT_CHARS" ]; then
+  echo "::error::${LABEL} body is ${BODY_CHARS} characters, over GitHub's ${MAX_COMMENT_CHARS}-character comment limit; bound it before posting." >&2
+  exit 1
+fi
+
 # Find our existing comment by its marker. The marker is passed to jq via --arg
 # (not interpolated into the filter) so a marker containing quotes can't break the
 # filter. `|| true` so "no match" (and the resulting non-zero from the pipeline)

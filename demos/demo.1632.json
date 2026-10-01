@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/dense-transcript-march.json",
+  "caption": "Four small drill blocks march north in open ground, ordered 6 ticks apart. The input script samples state on every tick 0-239 (960 unit rows), so the state-transcript comment now shows one table whose middle rows are replaced by a marker naming the omitted ticks. Rendered the old way (one table per tick), the same transcript's table alone is about 117,000 characters, past GitHub's 65,536-character comment cap, which GitHub rejects, failing the whole Demo video job.",
+  "fixed_fps": 30,
+  "max_frames": 120,
+  "fps": 15,
+  "width": 720
+}
