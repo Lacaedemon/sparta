@@ -55,10 +55,10 @@ static func clamp_destination(field: PathField, origin: Vector2, dest: Vector2,
 		return field.footprint_overlap_area(p, file_axis, half_extents) > start_overlap + OVERLAP_AREA_EPS
 	if not too_deep.call(dest):
 		return dest
+	# Past this point dest != origin: the start is never too deep (it is clear, or exactly
+	# as deep as it already stands), so a destination that is must lie elsewhere.
 	var back: Vector2 = origin - dest
 	var span: float = back.length()
-	if span <= 0.0:
-		return origin
 	var dir: Vector2 = back / span
 	# Coarse pass: walk back from the destination until a probe is acceptable. The start
 	# always is (clear, or exactly as deep as it already stands), so the walk ends there
