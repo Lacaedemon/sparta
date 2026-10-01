@@ -79,6 +79,87 @@ func is_blocked(world: Vector2, clearance: float = 0.0) -> bool:
 	return false
 
 
+## Whether any impassable terrain is registered at all -- lets a caller skip building a
+## footprint it would only test against nothing.
+func has_block_terrain() -> bool:
+	return not _block_rects.is_empty()
+
+
+## Whether a rectangular footprint overlaps impassable terrain: centred on `centre`, its
+## width running along the unit vector `file_axis` and its depth perpendicular to it,
+## with half-extents `half` (half-width, half-depth). An exact separating-axis test
+## against each drawn rect, so a footprint that only touches an edge counts as clear.
+func footprint_blocked(centre: Vector2, file_axis: Vector2, half: Vector2) -> bool:
+	var depth_axis: Vector2 = file_axis.orthogonal()
+	for r in _block_rects:
+		var rh: Vector2 = r.size * 0.5
+		var d: Vector2 = r.get_center() - centre
+		if absf(d.x) >= rh.x + half.x * absf(file_axis.x) + half.y * absf(depth_axis.x):
+			continue
+		if absf(d.y) >= rh.y + half.x * absf(file_axis.y) + half.y * absf(depth_axis.y):
+			continue
+		if absf(d.dot(file_axis)) >= half.x + rh.x * absf(file_axis.x) + rh.y * absf(file_axis.y):
+			continue
+		if absf(d.dot(depth_axis)) >= half.y + rh.x * absf(depth_axis.x) + rh.y * absf(depth_axis.y):
+			continue
+		return true
+	return false
+
+
+## Total area (square world units) of impassable terrain the same rectangular footprint
+## footprint_blocked() tests covers: the exact polygon intersection with the UNION of the
+## drawn rects, so ground where two rects overlap counts once. The union is split into
+## the cells of the grid every relevant rect edge draws (coordinate compression), each
+## cell is kept when any rect covers it, and the footprint is clipped against each kept
+## cell. 0 for a clear footprint.
+func footprint_overlap_area(centre: Vector2, file_axis: Vector2, half: Vector2) -> float:
+	var u: Vector2 = file_axis * half.x
+	var v: Vector2 = file_axis.orthogonal() * half.y
+	var poly := PackedVector2Array([centre - u - v, centre + u - v, centre + u + v, centre - u + v])
+	var reach := Rect2(poly[0], Vector2.ZERO)
+	for corner in poly:
+		reach = reach.expand(corner)
+	var rects: Array[Rect2] = []
+	var xs: Array[float] = []
+	var ys: Array[float] = []
+	for r in _block_rects:
+		if r.intersects(reach):
+			rects.append(r)
+			xs.append_array([r.position.x, r.end.x])
+			ys.append_array([r.position.y, r.end.y])
+	xs.sort()
+	ys.sort()
+	var area: float = 0.0
+	for i in range(xs.size() - 1):
+		for j in range(ys.size() - 1):
+			var cell := Rect2(xs[i], ys[j], xs[i + 1] - xs[i], ys[j + 1] - ys[j])
+			if cell.size.x <= 0.0 or cell.size.y <= 0.0 or not _covered(rects, cell.get_center()):
+				continue
+			var cell_poly := PackedVector2Array([cell.position, Vector2(cell.end.x, cell.position.y),
+					cell.end, Vector2(cell.position.x, cell.end.y)])
+			for piece in Geometry2D.intersect_polygons(poly, cell_poly):
+				area += absf(_polygon_area(piece))
+	return area
+
+
+## Whether any of `rects` contains `p`.
+static func _covered(rects: Array[Rect2], p: Vector2) -> bool:
+	for r in rects:
+		if r.has_point(p):
+			return true
+	return false
+
+
+## Signed shoelace area of a simple polygon.
+static func _polygon_area(poly: PackedVector2Array) -> float:
+	var twice: float = 0.0
+	for i in poly.size():
+		var a: Vector2 = poly[i]
+		var b: Vector2 = poly[(i + 1) % poly.size()]
+		twice += a.cross(b)
+	return twice * 0.5
+
+
 ## Speed zone (not obstacle): units slow on entry but A* never detours around it — penalty applies on traversal only.
 func set_speed_rect(rect: Rect2, scale: float) -> void:
 	_speed_rects.append(rect)

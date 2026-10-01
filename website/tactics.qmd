@@ -2416,6 +2416,32 @@ is a different trade-off: going *around* it costs distance; going *through* it c
 time. Generally it is faster to push cavalry or fast-moving infantry through rather
 than around a narrow forest.
 
+A move order (a click, an arrow-key side-step, or an AI order) whose formation
+footprint at the destination would overlap impassable terrain is pulled back along
+the move to the nearest spot where the whole formation fits, laid out in the facing
+it will hold there. A deep column side-stepping toward a hill stops with its rear ranks
+at the hill's edge rather than among the rocks. If no spot along the move is clear,
+the unit stays where it is. A block that already overlaps the terrain where it stands,
+such as a deep cavalry block deployed against a hill, can still move, as long as the
+order would not push it deeper into the terrain than it already is.
+
+::: {#fig-side-step-hill-footprint .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/side_step_hill_footprint.jpg">
+  <source src="media/side_step_hill_footprint.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A deep column (three files, twenty ranks) facing north beside the hill is
+side-stepped east six times. The first two steps go the full distance; the third
+stops with the right file's rear ranks at the hill's edge; the last three leave the
+block where it stands. No soldier ends up on the hill.
+:::
+
 The obstacle a unit routes around is the terrain you see, plus the unit's own
 footprint --- and that footprint margin is two different sizes depending on whether
 the leg is straight or turning. A straight, unturning leg keeps a margin equal to

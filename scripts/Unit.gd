@@ -226,8 +226,24 @@ var far_stamina: float = -1.0
 var cohesion: float = 1.0   # 1.0 gelled; drops on a merge, then ramps back
 var state: int = State.IDLE
 var facing: Vector2 = Vector2.DOWN
-var move_target: Vector2 = Vector2.ZERO
+## The current march leg's destination. Every write -- a click, a keyboard nudge, an AI
+## order, a queued leg promoted, a disengage step -- passes through
+## clamp_order_destination(), so a point whose formation footprint would overlap
+## impassable terrain is pulled back along the move before the unit ever marches on it.
+## Restoring a saved snapshot writes the backing _move_target directly instead: the saved
+## value was validated when it was first written, and re-validating it against a
+## half-restored unit could move it.
+var move_target: Vector2:
+	get:
+		return _move_target
+	set(value):
+		_move_target = clamp_order_destination(value)
+var _move_target: Vector2 = Vector2.ZERO
 var has_move_target: bool = false
+## The pull-back search clamp_order_destination() runs: its coarse probe stride and the
+## precision it narrows the clear point to (see OrderFootprint).
+var order_clear_step: float = OrderFootprint.SEARCH_STEP
+var order_clear_tolerance: float = OrderFootprint.SEARCH_TOLERANCE
 ## Peak OrderGuards.current_engaged_fraction() reading since a currently-pending
 ## Order.Guard.ENGAGED_FRACTION_ABOVE move was issued -- Battle._apply_order_cmd resets this to
 ## 0.0 for a fresh move (always immediately current) and for an appended waypoint leg ONLY when
@@ -1862,7 +1878,7 @@ func cancel_order_at(index: int) -> void:
 		# requires a fight counted while the leg was still QUEUED to survive promotion, or the
 		# promoted leg's ENGAGED_FRACTION_ABOVE disengage guard is defeated.
 		has_move_target = false
-		move_target = Vector2.ZERO
+		_move_target = Vector2.ZERO   # a clear needs no footprint check
 		target_enemy = null
 		support_target = null
 		# The maneuver-hold state a cancelled order parked, matching what every other
@@ -4293,6 +4309,63 @@ func _formation_local_half_extents() -> Vector2:
 		hw = maxf(hw, absf(s.x))
 		hd = maxf(hd, absf(s.y))
 	return Vector2(hw, hd)
+
+
+## The destination a move order toward `dest` should actually be given: `dest` itself
+## when this formation's footprint there is clear of impassable terrain, otherwise the
+## clear point nearest it back along the move from the current position, or the current
+## position (hold) when nothing along the move is clear. The footprint is the block's
+## half-extents (the far tier's O(1) reading for a far block, as _move_to() uses), grown
+## by the soldiers' body radius, laid out in the grid the men will stand in on arrival:
+## the facing the unit will hold there (see _order_held_facing()) turned by the standing
+## _formation_angle fold, which a march carries along -- the same rotation
+## soldier_world_slots() applies. A half-turn fold maps the rectangle onto itself. One
+## known approximation: a fresh order is validated before start_order_response()
+## re-squares a quarter-folded block, so for that order the footprint is laid out in the
+## pre-reform grid. `step` and `tolerance` default to this unit's order_clear_step and
+## order_clear_tolerance.
+func clamp_order_destination(dest: Vector2, step: float = -1.0, tolerance: float = -1.0) -> Vector2:
+	var field: PathField = PathField.active
+	if field == null or not field.has_block_terrain():
+		return dest
+	var extents: Vector2 = _far_tier_half_extents() if tier == FormationTier.FAR \
+			else _formation_local_half_extents()
+	var body: float = soldier_body_radius()
+	var file_axis: Vector2 = _order_held_facing(dest).rotated(PI * 0.5 + _formation_angle)
+	return OrderFootprint.clamp_destination(field, position, dest, file_axis,
+			extents + Vector2(body, body), step if step > 0.0 else order_clear_step,
+			tolerance if tolerance > 0.0 else order_clear_tolerance)
+
+
+## The facing this unit will hold at a move's destination `dest`, which the caller turns
+## by the standing _formation_angle fold into the grid the men stand in. The target facing
+## is a maneuver's held facing (a side-step, back-step, disengage, or reinforcing reserve
+## holds ordered_facing; a form-up holds deploy_facing) or otherwise the bearing to `dest`.
+## A formed march (disciplined, not hasty) pivots its grid onto that bearing. Every other
+## turn goes through _face_dir(), which snaps facing and, past FACING_SNAP_ABSORB_THRESHOLD,
+## folds the snap into _formation_angle so the grid keeps its current orientation: a held
+## facing or an undisciplined/hasty bearing that far off the current facing returns the
+## current facing. The bearing is the straight line to `dest`; a routed path may bend on
+## the way, and the march facing follows the route, so the grid can arrive turned by a
+## detour's last leg. Together with the quarter-fold note on clamp_order_destination()
+## these are the known approximations. A move that goes nowhere keeps the current facing.
+func _order_held_facing(dest: Vector2) -> Vector2:
+	var current: Vector2 = facing.normalized() if facing != Vector2.ZERO else Vector2.DOWN
+	var target: Vector2
+	var snaps: bool = true
+	if ordered_facing != Vector2.ZERO:
+		target = ordered_facing.normalized()
+	elif deploy_facing != Vector2.ZERO:
+		target = deploy_facing.normalized()
+	else:
+		var travel: Vector2 = dest - position
+		if travel.length_squared() <= 0.0001:   # tuned in wu, solver epsilon
+			return current
+		target = travel.normalized()
+		snaps = not disciplined or _is_move_order_in_haste()
+	if snaps and absf(angle_difference(current.angle(), target.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
+		return current
+	return target
 
 
 ## O(1) half-extents for a FAR-tier block, derived from the headcount instead of read
@@ -9376,7 +9449,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	state = int(d["state"])
 	facing = d["facing"]
 	position = d["position"]
-	move_target = d["move_target"]
+	_move_target = d["move_target"]   # already validated; see move_target
 	has_move_target = bool(d["has_move_target"])
 	order_mode = int(d["order_mode"])
 	knockback_push_indefinite = bool(d["knockback_push_indefinite"])

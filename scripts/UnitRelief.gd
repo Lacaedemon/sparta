@@ -78,8 +78,6 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 	tired.target_enemy = null
 	var retreat := Order.new_move(_rear_point(tired))
 	tired.set_current_order(retreat)
-	tired.move_target = retreat.target_pos
-	tired.has_move_target = true
 	# Back out of the line facing the enemy rather than turning tail: a relieved regiment
 	# withdraws as a fighting body, the same drill Unit.disengage uses for a step back. The
 	# mechanism is the held facing itself -- a non-zero ordered_facing puts the retreat in
@@ -91,6 +89,10 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 	# rest of the retreat. Arrival clears the hold (Unit._think's move bookkeeping, where
 	# every other maneuver hold is dropped too), so it lives exactly as long as this leg.
 	tired.ordered_facing = tired.facing
+	# Destination after facing: the move_target write validates the retreat's footprint
+	# in the facing the tired unit will hold there.
+	tired.move_target = retreat.target_pos
+	tired.has_move_target = true
 
 
 ## A point toward `u`'s own back edge -- where a relieved unit retreats to.

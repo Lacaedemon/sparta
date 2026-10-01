@@ -148,6 +148,14 @@ func test_soldier_summary_centroid_and_bbox() -> void:
 	assert_almost_eq(s["bbox"][1], 4.0, 0.0001)
 
 
+func test_soldiers_in_block_terrain_counts_only_men_inside_a_block_rect() -> void:
+	var field := PathField.new(Rect2(0, 0, 400, 400))
+	field.block_rect(Rect2(100, 100, 50, 50))
+	var pos := PackedVector2Array([Vector2(120, 120), Vector2(99, 120), Vector2(149, 149), Vector2(10, 10)])
+	assert_eq(DemoState.soldiers_in_block_terrain(pos, field), 2, "counts the two men inside the rect")
+	assert_eq(DemoState.soldiers_in_block_terrain(pos, null), 0, "no active field reads as none inside")
+
+
 func test_soldier_summary_counts_prone() -> void:
 	var pos := PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(2, 0)])
 	# prone > 0 means down: index 0 and 2 prone, index 1 standing.

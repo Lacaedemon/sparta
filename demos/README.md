@@ -488,6 +488,7 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | `tier` | The formation's **simulation tier** -- `CLOSE` (full per-soldier arrays) or `FAR` (aggregate record, no individual bodies). See `docs/large-scale-simulation-design.md`. |
 | `soldier_summary` | Per-soldier `{count, centroid:[x,y], bbox:[w,h], prone_count, broken_count}` -- a compact digest, **not** the full per-soldier arrays. `broken_count` is how many soldiers have individually broken from a SHIELD_WALL/TESTUDO stance under encirclement (`Unit._sim_soldier_broken` / `SoldierEncirclement`) -- always 0 for a formation that can't break (`NORMAL`/`TIGHT`/`LOOSE`/`SQUARE`/`SCHILTRON`). **Close-tier units only.** |
 | `soldier_summary_m` | The summary's `{centroid_m, bbox_m}` mirrored in metres, derived from the same positions so the two can never disagree. Close-tier only, like its wu sibling. |
+| `soldiers_in_block_terrain` | How many of the unit's soldiers stand inside impassable (`block`) terrain, such as the default hill. Pin it with `expect` to claim no man ends up inside the terrain. Close-tier only. |
 
 A `tier: "FAR"` record carries **no per-soldier payload at all** -- no `soldier_summary`, no
 `soldiers_full` -- because a far-tier formation has no individual bodies to derive them from.
