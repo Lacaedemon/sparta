@@ -1380,7 +1380,8 @@ GHA_MARKDOWN_FILES=(_pathspec.mjs check_list_item_splices.mjs check_table_splits
 GHA_LINE_BREAK_FILES=(check-new-line-breaks.py)
 
 # Windows' MAX_PATH: a full path this long or longer is unreadable to an API that
-# does not opt into long paths, as the line-break checker's Python does not.
+# does not opt into long paths, as the line-break checker's Python does not. The
+# default for SPARTA_CHECK_WINDOWS_MAX_PATH (0 disables the guard).
 WINDOWS_MAX_PATH=260
 
 # gha_cache_complete <dir> <file>... -- true when <dir> holds every named file,
@@ -1531,14 +1532,18 @@ check_markdown() {
       return 0
     fi
   fi
-  local failed=0
+  # A checker that could not run for want of its runtime makes the result `skip`,
+  # not `pass`: a pass has to mean every blocking check ran and passed.
+  local failed=0 missing_runtime=0
   if [ "$have_node" -eq 1 ]; then
     check_markdown_node "$base" || failed=1
   else
     warn "node not installed -- skipping the list-item splice and table-split checks."
+    missing_runtime=1
   fi
   if [ "$have_python" -eq 0 ]; then
     warn "python3 not installed -- skipping the semantic line-break check."
+    missing_runtime=1
   elif [ -z "$merge_base" ]; then
     warn "No base ref to diff against -- skipping the diff-scoped semantic line-break check."
   else
@@ -1547,6 +1552,10 @@ check_markdown() {
   if [ "$failed" -ne 0 ]; then
     set_result markdown fail
     return 1
+  fi
+  if [ "$missing_runtime" -ne 0 ]; then
+    warn "Not every Markdown check ran -- reporting skip (CI still runs them all)."
+    set_result markdown skip
   fi
   return 0
 }
@@ -1597,18 +1606,33 @@ check_markdown_line_breaks() {
   fi
   # On Windows a file path at or past MAX_PATH makes the checker's is_file() read
   # return False, so it silently skips the file and can report a clean pass. Refuse
-  # to run rather than trust that pass.
-  if have cygpath; then
-    local f win
-    while IFS= read -r f; do
-      [ -n "$f" ] || continue
+  # to run rather than trust that pass. Only files that still exist are read, so
+  # deletions are filtered out; NUL-delimited names keep non-ASCII paths unquoted.
+  local max_path="${SPARTA_CHECK_WINDOWS_MAX_PATH:-$WINDOWS_MAX_PATH}"
+  case "$max_path" in
+    ''|*[!0-9]*)
+      err "SPARTA_CHECK_WINDOWS_MAX_PATH must be a non-negative integer, got '$max_path'."
+      return 1 ;;
+  esac
+  if have cygpath && [ "$max_path" -gt 0 ]; then
+    local names f win
+    names="$(mktemp)"
+    if ! ( cd "$PROJECT_ROOT" && git diff -z --name-only --diff-filter=d "$merge_base" HEAD -- '*.md' ) > "$names"; then
+      err "Could not list the Markdown files changed since $merge_base."
+      rm -f "$names"
+      return 1
+    fi
+    while IFS= read -r -d '' f; do
       win="$(cygpath -w "$PROJECT_ROOT/$f")"
-      if [ "${#win}" -ge "$WINDOWS_MAX_PATH" ]; then
-        err "$f is ${#win} characters as a Windows path, past the $WINDOWS_MAX_PATH limit;"
-        err "the line-break checker would skip it unread. Run from a shorter checkout path."
+      if [ "${#win}" -ge "$max_path" ]; then
+        err "$f is ${#win} characters as a Windows path, past the $max_path limit;"
+        err "the line-break checker would skip it unread. Run from a shorter checkout path,"
+        err "or set SPARTA_CHECK_WINDOWS_MAX_PATH=0 if Windows long paths are enabled."
+        rm -f "$names"
         return 1
       fi
-    done < <(cd "$PROJECT_ROOT" && git diff --name-only "$merge_base" HEAD -- '*.md')
+    done < "$names"
+    rm -f "$names"
   fi
   info "Missing semantic line breaks on lines added since $merge_base:"
   # PYTHONUTF8 keeps a Windows Python from decoding the Markdown as cp1252.
