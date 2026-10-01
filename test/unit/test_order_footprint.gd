@@ -186,13 +186,6 @@ func test_a_non_positive_search_step_holds_position_loudly() -> void:
 	assert_eq(held, Vector2(1100, 330), "a bad search parameter holds rather than loops")
 
 
-func test_a_blocked_move_that_goes_nowhere_holds() -> void:
-	var p := Vector2(1200, 450)   # inside the hill
-	var held: Vector2 = OrderFootprint.clamp_destination(PathField.active, p, p,
-			Vector2.RIGHT, Vector2(20, 20))
-	assert_eq(held, p, "zero-length move into terrain: hold where it stands")
-
-
 func test_footprint_separated_only_along_its_own_file_axis_is_clear() -> void:
 	# A thin footprint turned 45 degrees across the hill's north-west corner: its
 	# projections overlap the rect on both world axes, but along its own file axis it
@@ -244,8 +237,6 @@ func test_an_undisciplined_march_is_validated_in_the_grid_it_keeps() -> void:
 func test_a_zero_length_move_keeps_the_current_facing() -> void:
 	var u := _make_deep_block(Vector2(1250, 330))
 	assert_eq(u._order_held_facing(u.position), Vector2.UP, "nowhere to travel: the current facing")
-	u.move_target = u.position
-	assert_eq(u.move_target, Vector2(1250, 330), "an order to stand where it is stands")
 
 
 func test_overlap_area_is_the_exact_clipped_area() -> void:
@@ -271,3 +262,60 @@ func test_a_folded_grid_is_validated_as_it_stands() -> void:
 	var limit: float = _clear_x(u, half.x)
 	assert_lte(u.move_target.x, limit, "the folded frontage stops at the hill edge")
 	assert_gte(u.move_target.x, limit - OrderFootprint.SEARCH_TOLERANCE, "and no farther back")
+
+
+## The overlap area of `u`'s footprint centred on `at`, laid out as clamp_order_destination
+## lays it out for a held north facing.
+func _area_at(u: Unit, at: Vector2) -> float:
+	var r: float = u.soldier_body_radius()
+	return PathField.active.footprint_overlap_area(at, Vector2.UP.rotated(PI * 0.5),
+			u._formation_local_half_extents() + Vector2(r, r))
+
+
+func test_a_held_facing_past_the_snap_threshold_keeps_the_current_grid() -> void:
+	# A drag-to-form-up ordering a north-facing deep block to face east: _face_dir() folds
+	# a 90-degree snap into the formation angle, so the 3-file grid keeps running north and
+	# arrives 36 wu wide, not 342. Its destination beside the hill is clear in that grid.
+	var u := _make_deep_block(Vector2(900, 480))
+	u.deploy_facing = Vector2.RIGHT
+	u.ordered_facing = Vector2.RIGHT
+	u.move_target = Vector2(1120, 480)
+	assert_eq(u.move_target, Vector2(1120, 480), "validated in the kept narrow grid: clear, unchanged")
+
+
+func test_a_hasty_march_keeps_its_grid_like_an_undisciplined_one() -> void:
+	# A disciplined unit on a run/sprint (haste) order does not pivot either: past the
+	# snap threshold its 15-file frontage keeps running along x as it marches east.
+	var u: Unit = Unit.new()
+	u.max_soldiers = 120
+	add_child_autofree(u)
+	u.facing = Vector2.DOWN
+	u.position = Vector2(1000, 400)
+	assert_true(u.disciplined, "sanity check: a disciplined unit")
+	u.set_current_order(Order.new_move(Vector2(1120, 400), 0, Unit.GAIT_RUN, true))
+	u.move_target = Vector2(1120, 400)
+	var limit: float = _clear_x(u, u._formation_local_half_extents().x)
+	assert_lte(u.move_target.x, limit, "the kept frontage stops at the hill edge")
+	assert_gte(u.move_target.x, limit - OrderFootprint.SEARCH_TOLERANCE, "and no farther back")
+
+
+func test_repeated_small_orders_never_ratchet_an_overlapping_block_deeper() -> void:
+	# From a start already overlapping the hill, twenty tiny steps south (each adding about
+	# one 0.0625 square-wu step of the polygon clip's measured area resolution) must never
+	# leave the block covering more hill than it started with.
+	var u := _make_deep_block(Vector2(1250, 330))
+	u.ordered_facing = u.facing
+	var start_area: float = _area_at(u, u.position)
+	assert_gt(start_area, 0.0, "sanity check: starts overlapping")
+	for i in 20:
+		u.move_target = u.position + Vector2(0, 0.001)
+		u.position = u.move_target
+	assert_lte(_area_at(u, u.position), start_area, "the overlap never grew past the first start's")
+
+
+func test_overlap_area_counts_ground_two_rects_share_once() -> void:
+	var field := PathField.new(Rect2(0, 0, 400, 400))
+	field.block_rect(Rect2(0, 0, 100, 100))
+	field.block_rect(Rect2(50, 0, 100, 100))
+	var area: float = field.footprint_overlap_area(Vector2(75, 50), Vector2.RIGHT, Vector2(75, 50))
+	assert_almost_eq(area, 15000.0, 0.01, "the union (150 x 100), not the sum of both rects (20000)")

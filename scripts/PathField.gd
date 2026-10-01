@@ -107,19 +107,47 @@ func footprint_blocked(centre: Vector2, file_axis: Vector2, half: Vector2) -> bo
 
 
 ## Total area (square world units) of impassable terrain the same rectangular footprint
-## footprint_blocked() tests covers: the exact polygon intersection with each drawn rect,
-## summed. 0 for a clear footprint.
+## footprint_blocked() tests covers: the exact polygon intersection with the UNION of the
+## drawn rects, so ground where two rects overlap counts once. The union is split into
+## the cells of the grid every relevant rect edge draws (coordinate compression), each
+## cell is kept when any rect covers it, and the footprint is clipped against each kept
+## cell. 0 for a clear footprint.
 func footprint_overlap_area(centre: Vector2, file_axis: Vector2, half: Vector2) -> float:
 	var u: Vector2 = file_axis * half.x
 	var v: Vector2 = file_axis.orthogonal() * half.y
 	var poly := PackedVector2Array([centre - u - v, centre + u - v, centre + u + v, centre - u + v])
-	var area: float = 0.0
+	var reach := Rect2(poly[0], Vector2.ZERO)
+	for corner in poly:
+		reach = reach.expand(corner)
+	var rects: Array[Rect2] = []
+	var xs: Array[float] = []
+	var ys: Array[float] = []
 	for r in _block_rects:
-		var rect_poly := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y),
-				r.end, Vector2(r.position.x, r.end.y)])
-		for piece in Geometry2D.intersect_polygons(poly, rect_poly):
-			area += absf(_polygon_area(piece))
+		if r.intersects(reach):
+			rects.append(r)
+			xs.append_array([r.position.x, r.end.x])
+			ys.append_array([r.position.y, r.end.y])
+	xs.sort()
+	ys.sort()
+	var area: float = 0.0
+	for i in range(xs.size() - 1):
+		for j in range(ys.size() - 1):
+			var cell := Rect2(xs[i], ys[j], xs[i + 1] - xs[i], ys[j + 1] - ys[j])
+			if cell.size.x <= 0.0 or cell.size.y <= 0.0 or not _covered(rects, cell.get_center()):
+				continue
+			var cell_poly := PackedVector2Array([cell.position, Vector2(cell.end.x, cell.position.y),
+					cell.end, Vector2(cell.position.x, cell.end.y)])
+			for piece in Geometry2D.intersect_polygons(poly, cell_poly):
+				area += absf(_polygon_area(piece))
 	return area
+
+
+## Whether any of `rects` contains `p`.
+static func _covered(rects: Array[Rect2], p: Vector2) -> bool:
+	for r in rects:
+		if r.has_point(p):
+			return true
+	return false
 
 
 ## Signed shoelace area of a simple polygon.

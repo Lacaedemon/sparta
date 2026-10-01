@@ -9,6 +9,9 @@ class_name OrderFootprint
 ## A unit whose footprint already overlaps terrain where it stands (a deep block spawned
 ## against a hill) is not frozen there: its order is pulled back only as far as needed to
 ## overlap the terrain no more than it already does, so it can still step out or along.
+## The rule bounds the overlapping AREA, with no slack, so successive orders can never
+## ratchet a block deeper by area; it does not bound penetration depth, so a block may
+## trade overlap along one edge for the same area reaching farther in along another.
 ##
 ## Static and deterministic (no RNG, a pure function of the obstacle set and the
 ## arguments), so live play and replay validate alike.
@@ -22,10 +25,6 @@ const SEARCH_STEP := 8.0   # tuned in wu
 ## bracketed the terrain edge: the returned destination sits at most this far short of
 ## the nearest clear point.
 const SEARCH_TOLERANCE := 1.0   # tuned in wu
-
-## How much more terrain area (square wu) a probe may overlap than the start already does
-## before it counts as deeper -- absorbs float noise in the polygon clip, nothing more.
-const OVERLAP_AREA_EPS := 0.01   # tuned in wu, solver epsilon
 
 
 ## The destination a move from `origin` toward `dest` should actually be given. `field`
@@ -52,7 +51,7 @@ static func clamp_destination(field: PathField, origin: Vector2, dest: Vector2,
 	var too_deep := func(p: Vector2) -> bool:
 		if start_overlap <= 0.0:
 			return field.footprint_blocked(p, file_axis, half_extents)
-		return field.footprint_overlap_area(p, file_axis, half_extents) > start_overlap + OVERLAP_AREA_EPS
+		return field.footprint_overlap_area(p, file_axis, half_extents) > start_overlap
 	if not too_deep.call(dest):
 		return dest
 	# Past this point dest != origin: the start is never too deep (it is clear, or exactly

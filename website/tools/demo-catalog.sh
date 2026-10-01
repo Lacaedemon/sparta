@@ -121,6 +121,7 @@ DEMOS=(
   "fog_terrain_explored|demos/inputs/fog-terrain-explored-1621.json|30|500|720|input"
   "deep_column_swept_width|demos/inputs/deep-column-straight-march-1628.json|30|420|720|input"
   "ai_honors_fog|demos/inputs/ai-honors-fog-of-war.json|30|280|640|input"
+  "side_step_hill_footprint|demos/inputs/side-step-hill-footprint-1667.json|30|300|720|input"
 )
 
 # The SPARTA_DUMP_CLIPS narrowing helpers (demo_catalog_selected,

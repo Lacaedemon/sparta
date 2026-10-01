@@ -1878,7 +1878,7 @@ func cancel_order_at(index: int) -> void:
 		# requires a fight counted while the leg was still QUEUED to survive promotion, or the
 		# promoted leg's ENGAGED_FRACTION_ABOVE disengage guard is defeated.
 		has_move_target = false
-		move_target = Vector2.ZERO
+		_move_target = Vector2.ZERO   # a clear needs no footprint check
 		target_enemy = null
 		support_target = null
 		# The maneuver-hold state a cancelled order parked, matching what every other
@@ -4337,28 +4337,35 @@ func clamp_order_destination(dest: Vector2, step: float = -1.0, tolerance: float
 			tolerance if tolerance > 0.0 else order_clear_tolerance)
 
 
-## The facing this unit will hold at a move's destination
-## `dest`: a maneuver's held facing (a side-step, back-step, or disengage holds
-## ordered_facing; a form-up holds deploy_facing), otherwise the direction of travel,
-## which a formed march pivots onto. An undisciplined or hasty march does not pivot: it
-## snaps facing onto its bearing, and past FACING_SNAP_ABSORB_THRESHOLD _face_dir() folds
-## that snap into _formation_angle, so the grid keeps its current orientation -- returned
-## here as the current facing, which the caller turns by the same standing fold. A move
-## that goes nowhere keeps the current facing.
+## The facing this unit will hold at a move's destination `dest`, which the caller turns
+## by the standing _formation_angle fold into the grid the men stand in. The target facing
+## is a maneuver's held facing (a side-step, back-step, disengage, or reinforcing reserve
+## holds ordered_facing; a form-up holds deploy_facing) or otherwise the bearing to `dest`.
+## A formed march (disciplined, not hasty) pivots its grid onto that bearing. Every other
+## turn goes through _face_dir(), which snaps facing and, past FACING_SNAP_ABSORB_THRESHOLD,
+## folds the snap into _formation_angle so the grid keeps its current orientation: a held
+## facing or an undisciplined/hasty bearing that far off the current facing returns the
+## current facing. The bearing is the straight line to `dest`; a routed path may bend on
+## the way, and the march facing follows the route, so the grid can arrive turned by a
+## detour's last leg. Together with the quarter-fold note on clamp_order_destination()
+## these are the known approximations. A move that goes nowhere keeps the current facing.
 func _order_held_facing(dest: Vector2) -> Vector2:
-	if ordered_facing != Vector2.ZERO:
-		return ordered_facing.normalized()
-	if deploy_facing != Vector2.ZERO:
-		return deploy_facing.normalized()
 	var current: Vector2 = facing.normalized() if facing != Vector2.ZERO else Vector2.DOWN
-	var travel: Vector2 = dest - position
-	if travel.length_squared() <= 0.0001:   # tuned in wu, solver epsilon
+	var target: Vector2
+	var snaps: bool = true
+	if ordered_facing != Vector2.ZERO:
+		target = ordered_facing.normalized()
+	elif deploy_facing != Vector2.ZERO:
+		target = deploy_facing.normalized()
+	else:
+		var travel: Vector2 = dest - position
+		if travel.length_squared() <= 0.0001:   # tuned in wu, solver epsilon
+			return current
+		target = travel.normalized()
+		snaps = not disciplined or _is_move_order_in_haste()
+	if snaps and absf(angle_difference(current.angle(), target.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
 		return current
-	var bearing: Vector2 = travel.normalized()
-	var pivots: bool = disciplined and not _is_move_order_in_haste()
-	if not pivots and absf(angle_difference(current.angle(), bearing.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
-		return current
-	return bearing
+	return target
 
 
 ## O(1) half-extents for a FAR-tier block, derived from the headcount instead of read
