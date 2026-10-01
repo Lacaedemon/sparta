@@ -129,6 +129,10 @@
 #                Morrison-Lab/gha ref whose lint-markdown and check-new-line-breaks
 #                checkers the `markdown` check runs (default: v2, matching both
 #                workflows' pin). Its diff base is SPARTA_CHECK_COMMENTS_BASE's.
+#   SPARTA_CHECK_WINDOWS_MAX_PATH
+#                On Windows, the Windows-path length (default: 260) at which the
+#                `markdown` check refuses to run the line-break checker on a changed
+#                file it could not read. 0 disables the guard (long paths enabled).
 #   SPARTA_CHECK_MAX_NEW_FILE_LINES
 #                Line-count cap for the `file_length` check (default: 100).
 #   SPARTA_CHECK_PATCH_COVERAGE_BASE
