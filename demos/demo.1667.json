@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/side-step-hill-footprint-1667.json",
+  "caption": "#1667: a deep Infantry block (3 files x 20 ranks) facing north beside the hill is side-stepped east six times. The first two steps are clear; the third is pulled back so the block's rear ranks stop at the hill's edge instead of entering it; the last three have no clear point and the block holds. No soldier ends up inside the hill (before the fix, 21 did).",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}

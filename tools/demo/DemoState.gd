@@ -201,6 +201,19 @@ static func soldier_summary(positions: PackedVector2Array, prone: PackedFloat32A
 	}
 
 
+## How many of `positions` stand inside impassable terrain registered on `field` -- the
+## direct reading of "did any man end up inside a hill", so a demo can pin it with a
+## plain `expect` entry. 0 when no field is active. Pure: reads only its arguments.
+static func soldiers_in_block_terrain(positions: PackedVector2Array, field: PathField) -> int:
+	if field == null:
+		return 0
+	var inside: int = 0
+	for p in positions:
+		if field.is_blocked(p):
+			inside += 1
+	return inside
+
+
 ## Metric mirrors for the dev-facing dump: every user-facing number already displays in
 ## metric (DistanceLegend), and these carry the same convention onto the state dump so a
 ## reviewer reads metres/m-per-s without dividing by the world scale by hand. Additive --
@@ -406,6 +419,7 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 	if u.tier != FormationTier.FAR:
 		rec["soldier_summary"] = soldier_summary(u._sim_soldier_pos, u._sim_prone, u._sim_soldier_broken)
 		rec["soldier_summary_m"] = soldier_summary_m(u._sim_soldier_pos, WorldScaleRef.WU_PER_M)
+		rec["soldiers_in_block_terrain"] = soldiers_in_block_terrain(u._sim_soldier_pos, PathField.active)
 		if full:
 			rec["soldiers_full"] = soldier_arrays(u)
 			rec["motion_ref"] = motion_ref(u)

@@ -1,0 +1,184 @@
+{
+  "_comment": "Unit-level move-order validation against block terrain. One 60-man Infantry block, 3 files x 20 ranks (about 36 x 342 wu), faces north at (1080, 330) just west of the default hill rect (1150,380)-(1400,580); its rear ranks run past the hill's top edge. It is selected at tick 10, then side-stepped east with six Right nudges at ticks 30, 120, 210, 300, 390 and 480. Each nudge steps 30 wu from wherever the block stands when it is issued. The first two are clear and go the full distance. The third (tick 210, from about x 1123) would put the right file's rear ranks inside the hill, so the order is pulled back to the nearest point where the footprint is clear (centre about x 1127). The last three have no clear point along the move, so the block holds at the hill edge. Before the fix the block walked on into the hill (21 men inside it by tick 390). drill mode: no enemy is needed. `state` samples every 8 ticks from 8 to 600; `expect` pins soldiers_in_block_terrain at 0 across every nudge window and at the end.",
+  "seed": "1637",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 1080,
+      "y": 330,
+      "count": 60,
+      "frontage_override": 3,
+      "facing": [
+        0,
+        -1
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 1180.0,
+      "y": 420.0,
+      "zoom": 1.1
+    }
+  ],
+  "steps": [
+    {
+      "tick": 10,
+      "click": [
+        1080,
+        330
+      ]
+    },
+    {
+      "tick": 30,
+      "key": "Right"
+    },
+    {
+      "tick": 120,
+      "key": "Right"
+    },
+    {
+      "tick": 210,
+      "key": "Right"
+    },
+    {
+      "tick": 300,
+      "key": "Right"
+    },
+    {
+      "tick": 390,
+      "key": "Right"
+    },
+    {
+      "tick": 480,
+      "key": "Right"
+    }
+  ],
+  "state": [
+    8,
+    16,
+    24,
+    32,
+    40,
+    48,
+    56,
+    64,
+    72,
+    80,
+    88,
+    96,
+    104,
+    112,
+    120,
+    128,
+    136,
+    144,
+    152,
+    160,
+    168,
+    176,
+    184,
+    192,
+    200,
+    208,
+    216,
+    224,
+    232,
+    240,
+    248,
+    256,
+    264,
+    272,
+    280,
+    288,
+    296,
+    304,
+    312,
+    320,
+    328,
+    336,
+    344,
+    352,
+    360,
+    368,
+    376,
+    384,
+    392,
+    400,
+    408,
+    416,
+    424,
+    432,
+    440,
+    448,
+    456,
+    464,
+    472,
+    480,
+    488,
+    496,
+    504,
+    512,
+    520,
+    528,
+    536,
+    544,
+    552,
+    560,
+    568,
+    576,
+    584,
+    592,
+    600
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        1080.0,
+        330.0
+      ]
+    },
+    {
+      "tick": 104,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 200,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 296,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 392,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 480,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 600,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    }
+  ]
+}
