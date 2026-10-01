@@ -230,17 +230,15 @@ var facing: Vector2 = Vector2.DOWN
 ## order, a queued leg promoted, a disengage step -- passes through
 ## clamp_order_destination(), so a point whose formation footprint would overlap
 ## impassable terrain is pulled back along the move before the unit ever marches on it.
-var move_target: Vector2 = Vector2.ZERO:
+## Restoring a saved snapshot writes the backing _move_target directly instead: the saved
+## value was validated when it was first written, and re-validating it against a
+## half-restored unit could move it.
+var move_target: Vector2:
+	get:
+		return _move_target
 	set(value):
-		if value == _move_target_requested:
-			return
-		_move_target_requested = value
-		move_target = clamp_order_destination(value)
-## The last point written to move_target, before validation. A repeat write of the same
-## point (a reinforcing reserve re-aims at its host every tick, and a stationary host
-## gives the same rendezvous) keeps the destination already validated for it instead of
-## rebuilding the footprint.
-var _move_target_requested: Vector2 = Vector2.ZERO
+		_move_target = clamp_order_destination(value)
+var _move_target: Vector2 = Vector2.ZERO
 var has_move_target: bool = false
 ## The pull-back search clamp_order_destination() runs: its coarse probe stride and the
 ## precision it narrows the clear point to (see OrderFootprint).
@@ -9432,7 +9430,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	state = int(d["state"])
 	facing = d["facing"]
 	position = d["position"]
-	move_target = d["move_target"]
+	_move_target = d["move_target"]   # already validated; see move_target
 	has_move_target = bool(d["has_move_target"])
 	order_mode = int(d["order_mode"])
 	knockback_push_indefinite = bool(d["knockback_push_indefinite"])

@@ -2416,11 +2416,10 @@ is a different trade-off: going *around* it costs distance; going *through* it c
 time. Generally it is faster to push cavalry or fast-moving infantry through rather
 than around a narrow forest.
 
-A unit will not take up a position that puts any of its men inside impassable
-terrain. When a move order (a click, an arrow-key side-step, or an AI order) would
-leave part of the block standing on a hill, the destination is pulled back along the
-move to the nearest spot where the whole formation fits, laid out in the facing it
-will hold there. A deep column side-stepping toward a hill stops with its rear ranks
+A move order (a click, an arrow-key side-step, or an AI order) whose formation
+footprint at the destination would overlap impassable terrain is pulled back along
+the move to the nearest spot where the whole formation fits, laid out in the facing
+it will hold there. A deep column side-stepping toward a hill stops with its rear ranks
 at the hill's edge rather than among the rocks. If no spot along the move is clear,
 the unit stays where it is.
 

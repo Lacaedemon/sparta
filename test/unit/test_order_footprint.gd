@@ -136,16 +136,46 @@ func test_a_form_up_is_validated_in_its_deployed_facing() -> void:
 		"and no farther back than its half-width needs")
 
 
-func test_a_repeated_write_of_the_same_point_reuses_the_validated_destination() -> void:
-	# A reinforcing reserve re-aims every tick; re-writing an unchanged point must not
-	# rebuild the footprint.
+func test_the_same_point_reissued_after_moving_is_revalidated_from_the_new_position() -> void:
+	# The clamp depends on where the unit stands, not only on the point ordered: the same
+	# point issued again from farther west pulls back from the new start.
 	var u := _make_deep_block(Vector2(1110, 330))
-	_nudge(u, BattleScript.NudgeDir.RIGHT)
-	var first: Vector2 = u.move_target
+	u.ordered_facing = u.facing
+	u.move_target = Vector2(1140, 330)
+	var limit: float = _clear_x(u, u._formation_local_half_extents().x)
+	assert_gte(u.move_target.x, limit - OrderFootprint.SEARCH_TOLERANCE, "sanity check: first clamp")
+	u.position = Vector2(900, 330)
+	u.move_target = Vector2(1140, 330)
+	assert_lte(u.move_target.x, limit, "still clear of the hill from the new start")
+	assert_gte(u.move_target.x, limit - OrderFootprint.SEARCH_TOLERANCE,
+		"and pulled back only as far as the footprint needs")
+	assert_ne(u.move_target, Vector2(1140, 330), "the reissued point was validated, not taken as is")
 	var before: int = u._formation_slots_call_count
 	u.move_target = Vector2(1140, 330)
-	assert_eq(u._formation_slots_call_count - before, 0, "the repeat write builds no slot layout")
-	assert_eq(u.move_target, first, "and keeps the destination already validated")
+	assert_eq(u._formation_slots_call_count - before, 1, "every write rebuilds the footprint")
+	# Widened to 5 files, the same point must stop farther west than the 3-file clamp did.
+	u.frontage_override = 5
+	u.move_target = Vector2(1140, 330)
+	var wide_limit: float = _clear_x(u, u._formation_local_half_extents().x)
+	assert_lt(wide_limit, limit - OrderFootprint.SEARCH_TOLERANCE, "sanity check: the wider block needs more room")
+	assert_lte(u.move_target.x, wide_limit, "the reshaped block is re-validated with its new width")
+
+
+func test_a_snapshot_round_trip_restores_a_clamped_destination_exactly() -> void:
+	# A side-stepped deep block's destination was clamped in its held north facing. A fresh
+	# unit restored from the snapshot must get that exact value back: re-validating it
+	# while the restore is only half done (facing held, frontage, tier not yet written)
+	# would lay the footprint out differently and move it.
+	var u := _make_deep_block(Vector2(1110, 330))
+	_nudge(u, BattleScript.NudgeDir.RIGHT)
+	var saved: Vector2 = u.move_target
+	assert_ne(saved, Vector2(1140, 330), "sanity check: the saved destination was clamped")
+	var snap: Dictionary = u.to_snapshot_dict()
+	var fresh: Unit = Unit.new()
+	fresh.max_soldiers = 60
+	add_child_autofree(fresh)
+	fresh.apply_snapshot_dict(snap)
+	assert_eq(fresh.move_target, saved, "the restored destination is bit-exact")
 
 
 func test_a_non_positive_search_step_holds_position_loudly() -> void:
