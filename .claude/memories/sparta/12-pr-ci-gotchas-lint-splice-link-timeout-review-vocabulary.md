@@ -56,6 +56,7 @@ by their actual gate name:
 
 All four are fetchable from a `Morrison-Lab/gha@v2` checkout and runnable
 locally before pushing, which is much cheaper than a CI round trip.
+`tools/check.sh markdown` now runs the three blocking ones (all but the advisory markdownlint), so reach for it before fetching any by hand.
 Both `.mjs` gates -- `check_list_item_splices.mjs` and
 `check_table_splits.mjs` -- import `_pathspec.mjs` from the same
 `lint-markdown/` directory, so fetching either one alone fails with
