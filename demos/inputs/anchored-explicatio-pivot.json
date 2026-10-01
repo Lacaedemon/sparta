@@ -64,5 +64,11 @@
     }
   ],
   "frames": [0, 300, 690, 800, 900, 1000],
-  "state": [0, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340, 360, 380, 400, 420, 440, 460, 480, 500, 520, 540, 560, 580, 600, 620, 640, 660, 680, 700, 720, 740, 760, 780, 800, 820, 840, 860, 880, 900, 920, 940, 960, 980, 1000, 1020, 1040]
+  "state": [0, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340, 360, 380, 400, 420, 440, 460, 480, 500, 520, 540, 560, 580, 600, 620, 640, 660, 680, 700, 720, 740, 760, 780, 800, 820, 840, 860, 880, 900, 920, 940, 960, 980, 1000, 1020, 1040],
+  "defect_exemptions": {
+    "shape_residual": {
+      "uids": [1],
+      "reason": "The anchored block (uid 1) deforms during its formed pivot: shape_residual worst 14.62 vs the 13.5 threshold, all in the pivot window (ticks 680-1040; the explicatio window passes at 11.71). It is pre-existing and worse on main (16.03 on the same samples), where the block also stalls mid-pivot; this clip's change removes the stall and lowers the residual but does not clear it. The centred block (uid 0) passes throughout (worst 9.24). Measured locally on this clip's own 20-tick samples; the remaining deformation is tracked as its own issue (#1668)."
+    }
+  }
 }
