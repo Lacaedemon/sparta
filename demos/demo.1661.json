@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Local developer tooling only: tools/check.sh now runs the check-new-line-breaks Markdown check. No game code, scene, or asset changes, so a recorded battle has nothing to show."
+}
