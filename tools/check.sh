@@ -76,14 +76,15 @@
 #   shell_tests
 #             Runs every tools/lib/tests/test-*.sh with bash and fails if any exits
 #             non-zero. No Godot needed, so it's fast and in the default set.
-#   markdown  The two BLOCKING checks of lint-markdown.yml (Morrison-Lab/gha's
-#             lint-markdown, whose markdownlint pass itself is advisory here): list-item
-#             merge splices on lines added since the base (diff-scoped, committed changes
-#             only, like CI) and blank lines splitting a table (whole tracked tree). Runs
-#             gha's own Node scripts, fetched on first use into .check-cache/ at the
-#             commit SPARTA_CHECK_GHA_REF (default v2) resolves to. In the default set,
-#             but skips unless this diff touches *.md; name it to run it regardless.
-#             Skips when node is missing.
+#   markdown  The BLOCKING Markdown checks CI runs from Morrison-Lab/gha: lint-markdown.yml's
+#             list-item merge splices on lines added since the base (diff-scoped, committed
+#             changes only, like CI) and blank lines splitting a table (whole tracked tree),
+#             plus check-new-line-breaks.yml's missing semantic line breaks on the same
+#             added lines. Runs gha's own Node and Python scripts, fetched on first use
+#             into .check-cache/ at the commit SPARTA_CHECK_GHA_REF (default v2) resolves
+#             to. In the default set, but skips unless this diff touches *.md; name it to
+#             run it regardless. The Node checks skip when node is missing, the line-break
+#             check when python3 is.
 #
 # Usage:
 #   tools/check.sh                 # default set: validate, test, chars, comments, units, file_length, shell_tests, markdown
@@ -125,9 +126,13 @@
 #                base can be resolved, the check skips rather than scanning the
 #                whole tree.
 #   SPARTA_CHECK_GHA_REF
-#                Morrison-Lab/gha ref whose lint-markdown checkers the `markdown`
-#                check runs (default: v2, matching lint-markdown.yml's pin). Its
-#                diff base is SPARTA_CHECK_COMMENTS_BASE's.
+#                Morrison-Lab/gha ref whose lint-markdown and check-new-line-breaks
+#                checkers the `markdown` check runs (default: v2, matching both
+#                workflows' pin). Its diff base is SPARTA_CHECK_COMMENTS_BASE's.
+#   SPARTA_CHECK_WINDOWS_MAX_PATH
+#                On Windows, the Windows-path length (default: 260) at which the
+#                `markdown` check refuses to run the line-break checker on a changed
+#                file it could not read. 0 disables the guard (long paths enabled).
 #   SPARTA_CHECK_MAX_NEW_FILE_LINES
 #                Line-count cap for the `file_length` check (default: 100).
 #   SPARTA_CHECK_PATCH_COVERAGE_BASE
@@ -230,7 +235,7 @@ list_checks() {
   info "  units      units-convention lint on NEW GDScript lines (docs/units-convention.md)"
   info "  file_length  caps NEW scripts/*.gd files at 100 lines (see tools/README.md's file_length entry)"
   info "  shell_tests  runs every tools/lib/tests/test-*.sh with bash"
-  info "  markdown   gha lint-markdown's blocking list-item-splice and table-split checks (lint-markdown.yml)"
+  info "  markdown   gha's blocking Markdown checks: list-item splices, table splits, semantic line breaks"
   info "  coverage   instrumented GUT suite -> coverage/lcov.info (test-coverage.yml)"
   info "  patch_coverage  local codecov/patch gate for this diff's scripts/*.gd changes (fails below the effective target)"
   info "  lint       GDScript style lint via gdlint (see .gdlintrc), whole tracked *.gd tree"
@@ -1373,31 +1378,41 @@ check_links() {
 # default set).
 MARKDOWN_REQUESTED=""
 
-# The lint-markdown files check_markdown runs, as fetched into one cache directory.
+# The gha files check_markdown runs, per gha subdirectory; each set is fetched into
+# its own cache directory.
 GHA_MARKDOWN_FILES=(_pathspec.mjs check_list_item_splices.mjs check_table_splits.mjs)
+GHA_LINE_BREAK_FILES=(check-new-line-breaks.py)
 
-# gha_markdown_cache_complete <dir> -- true when <dir> holds every checker file,
+# Windows' MAX_PATH: a full path this long or longer is unreadable to an API that
+# does not opt into long paths, as the line-break checker's Python does not. The
+# default for SPARTA_CHECK_WINDOWS_MAX_PATH (0 disables the guard).
+WINDOWS_MAX_PATH=260
+
+# gha_cache_complete <dir> <file>... -- true when <dir> holds every named file,
 # each non-empty. The one completeness test both the fetch and the offline
 # fallback use, so a half-written directory never counts as a cache hit.
-gha_markdown_cache_complete() {
-  local f
-  for f in "${GHA_MARKDOWN_FILES[@]}"; do
-    [ -s "$1/$f" ] || return 1
+gha_cache_complete() {
+  local dir="$1" f
+  shift
+  for f in "$@"; do
+    [ -s "$dir/$f" ] || return 1
   done
   return 0
 }
 
-# fetch_gha_markdown_checkers -- print a directory holding Morrison-Lab/gha's
-# lint-markdown companion checkers at SPARTA_CHECK_GHA_REF (default v2, the tag
-# .github/workflows/lint-markdown.yml pins), fetching them on first use. The cache
-# is keyed by the commit the tag resolves to, so a moved tag fetches the new
-# scripts instead of reusing stale ones. A ref gha does not have is an error; only
-# a failed lookup (offline) falls back to the newest complete cached copy. Its
-# progress and warnings go to stderr, since stdout is the directory the caller
-# captures.
-fetch_gha_markdown_checkers() {
+# fetch_gha_checkers <subdir> <file>... -- print a directory holding the named
+# files from Morrison-Lab/gha's <subdir> at SPARTA_CHECK_GHA_REF (default v2, the
+# tag lint-markdown.yml and check-new-line-breaks.yml pin), fetching them on first
+# use. The cache is keyed by the commit the tag resolves to, so a moved tag fetches
+# the new scripts instead of reusing stale ones. A ref gha does not have is an
+# error; only a failed lookup (offline) falls back to the newest complete cached
+# copy. Its progress and warnings go to stderr, since stdout is the directory the
+# caller captures.
+fetch_gha_checkers() {
+  local subdir="$1"
+  shift
   local ref="${SPARTA_CHECK_GHA_REF:-v2}"
-  local cache_root="$PROJECT_ROOT/.check-cache/gha-lint-markdown"
+  local cache_root="$PROJECT_ROOT/.check-cache/gha-$subdir"
   local listing ls_err ls_rc
   ls_err="$(mktemp)"
   listing="$(git ls-remote https://github.com/Morrison-Lab/gha \
@@ -1411,7 +1426,7 @@ fetch_gha_markdown_checkers() {
     local entry
     while IFS= read -r entry; do
       case "$entry" in *.tmp.*) continue ;; esac
-      if gha_markdown_cache_complete "$cache_root/$entry"; then
+      if gha_cache_complete "$cache_root/$entry" "$@"; then
         warn "Using cached checkers $entry instead." >&2
         printf '%s' "$cache_root/$entry"
         return 0
@@ -1434,15 +1449,15 @@ fetch_gha_markdown_checkers() {
     return 1
   fi
   local dir="$cache_root/$sha"
-  if ! gha_markdown_cache_complete "$dir"; then
-    info "Fetching gha lint-markdown checkers at $ref ($sha)..." >&2
+  if ! gha_cache_complete "$dir" "$@"; then
+    info "Fetching gha $subdir checkers at $ref ($sha)..." >&2
     local staging="$dir.tmp.$$" f
     rm -rf "$staging"
     mkdir -p "$staging"
-    for f in "${GHA_MARKDOWN_FILES[@]}"; do
-      if ! curl -fsSL "https://raw.githubusercontent.com/Morrison-Lab/gha/$sha/lint-markdown/$f" \
+    for f in "$@"; do
+      if ! curl -fsSL "https://raw.githubusercontent.com/Morrison-Lab/gha/$sha/$subdir/$f" \
           -o "$staging/$f"; then
-        err "Failed to download lint-markdown/$f from Morrison-Lab/gha@$sha."
+        err "Failed to download $subdir/$f from Morrison-Lab/gha@$sha."
         rm -rf "$staging"
         return 1
       fi
@@ -1450,11 +1465,11 @@ fetch_gha_markdown_checkers() {
     # Never delete a complete directory another run may be reading from: if one
     # appeared while this run was downloading, keep it and drop this copy. Only an
     # incomplete leftover is replaced.
-    if gha_markdown_cache_complete "$dir"; then
+    if gha_cache_complete "$dir" "$@"; then
       rm -rf "$staging"
     else
       rm -rf "$dir"
-      if ! mv "$staging" "$dir" && ! gha_markdown_cache_complete "$dir"; then
+      if ! mv "$staging" "$dir" && ! gha_cache_complete "$dir" "$@"; then
         err "Could not install the fetched checkers into $dir."
         rm -rf "$staging"
         return 1
@@ -1466,16 +1481,21 @@ fetch_gha_markdown_checkers() {
 }
 
 check_markdown() {
-  # The two BLOCKING companions of Morrison-Lab/gha's lint-markdown workflow
-  # (.github/workflows/lint-markdown.yml keeps markdownlint itself advisory):
+  # The BLOCKING Markdown checks CI runs from Morrison-Lab/gha:
   #   - list-item merge splices, on lines ADDED since the base (diff-scoped, as in CI);
-  #   - blank lines splitting a GFM table, over the whole tracked tree (as in CI).
-  # Both are plain Node scripts, fetched from gha rather than vendored so they stay
-  # identical to what CI runs. In the default set this skips unless the diff
-  # touches *.md; name it explicitly to run it regardless. Only the splice check
-  # needs a base, so without one an explicit run still checks tables.
-  if ! have node; then
-    warn "node not installed -- skipping the Markdown checks (CI still runs them)."
+  #   - blank lines splitting a GFM table, over the whole tracked tree (as in CI);
+  #     both from lint-markdown.yml, which keeps markdownlint itself advisory;
+  #   - missing semantic line breaks on the same added lines (check-new-line-breaks.yml).
+  # The first two are Node scripts and the third a Python one, all fetched from gha
+  # rather than vendored so they stay identical to what CI runs. In the default set
+  # this skips unless the diff touches *.md; name it explicitly to run it regardless.
+  # Only the table check needs no base, so without one an explicit run checks just
+  # that. Each runtime is optional on its own: a missing one skips only its checks.
+  local have_node=1 have_python=1
+  have node || have_node=0
+  have python3 || have_python=0
+  if [ "$have_node" -eq 0 ] && [ "$have_python" -eq 0 ]; then
+    warn "node and python3 not installed -- skipping the Markdown checks (CI still runs them)."
     set_result markdown skip
     return 0
   fi
@@ -1516,16 +1536,49 @@ check_markdown() {
       return 0
     fi
   fi
-  local dir
-  if ! dir="$(fetch_gha_markdown_checkers)"; then
+  # A checker that could not run, for want of its runtime or of a diff base, makes
+  # the result `skip`, not `pass`: a pass has to mean every blocking check ran and
+  # passed.
+  local failed=0 incomplete=0
+  if [ "$have_node" -eq 1 ]; then
+    check_markdown_node "$base" || failed=1
+  else
+    warn "node not installed -- skipping the list-item splice and table-split checks."
+    incomplete=1
+  fi
+  if [ "$have_python" -eq 0 ]; then
+    warn "python3 not installed -- skipping the semantic line-break check."
+    incomplete=1
+  elif [ -z "$merge_base" ]; then
+    warn "No base ref to diff against -- skipping the diff-scoped semantic line-break check."
+    incomplete=1
+  else
+    check_markdown_line_breaks "$merge_base" || failed=1
+  fi
+  if [ "$failed" -ne 0 ]; then
     set_result markdown fail
+    return 1
+  fi
+  if [ "$incomplete" -ne 0 ]; then
+    warn "Not every Markdown check ran -- reporting skip (CI still runs them all)."
+    set_result markdown skip
+  fi
+  return 0
+}
+
+# check_markdown_node <base> -- lint-markdown.yml's two blocking checks: list-item
+# splices on lines added since <base> (skipped when <base> is empty) and table splits
+# over the whole tracked tree. Returns non-zero when either fails or the checkers
+# cannot be fetched.
+check_markdown_node() {
+  local base="$1" dir failed=0
+  if ! dir="$(fetch_gha_checkers lint-markdown "${GHA_MARKDOWN_FILES[@]}")"; then
     return 1
   fi
   # A native Windows node can't open a Git Bash /c/... path; hand it C:/... instead.
   if have cygpath; then
     dir="$(cygpath -m "$dir")"
   fi
-  local failed=0
   if [ -n "$base" ]; then
     info "List-item merge splices on lines added since $base:"
     if ! ( cd "$PROJECT_ROOT" && MARKDOWNLINT_GLOBS='*.md' LIST_ITEM_SPLICE_BASE_REF="$base" \
@@ -1541,11 +1594,61 @@ check_markdown() {
       node "$dir/check_table_splits.mjs" ); then
     failed=1
   fi
-  if [ "$failed" -ne 0 ]; then
-    set_result markdown fail
+  return "$failed"
+}
+
+# check_markdown_line_breaks <merge-base> -- check-new-line-breaks.yml's check on the
+# Markdown lines added since <merge-base>. The NLB_* inputs mirror the reusable
+# workflow's defaults, since this repo's caller overrides none of them. NLB_SCOPE is
+# left at the checker's own default, as in CI: on a clean tree it reads the
+# committed lines, and on a dirty one the working tree, which keeps line numbers and
+# line text in step (pinning committed scope on a dirty tree reads one from HEAD and
+# the other from the working tree).
+check_markdown_line_breaks() {
+  local merge_base="$1" dir
+  if ! dir="$(fetch_gha_checkers check-new-line-breaks "${GHA_LINE_BREAK_FILES[@]}")"; then
     return 1
   fi
-  return 0
+  if have cygpath; then
+    dir="$(cygpath -m "$dir")"
+  fi
+  # On Windows a file path at or past MAX_PATH makes the checker's is_file() read
+  # return False, so it silently skips the file and can report a clean pass. Refuse
+  # to run rather than trust that pass. The list is the working tree against the
+  # merge-base, a superset of what the checker reads in either scope; only files that
+  # still exist are read, so deletions are filtered out; NUL-delimited names keep
+  # non-ASCII paths unquoted.
+  local max_path="${SPARTA_CHECK_WINDOWS_MAX_PATH:-$WINDOWS_MAX_PATH}"
+  case "$max_path" in
+    ''|*[!0-9]*)
+      err "SPARTA_CHECK_WINDOWS_MAX_PATH must be a non-negative integer, got '$max_path'."
+      return 1 ;;
+  esac
+  if have cygpath && [ "$max_path" -gt 0 ]; then
+    local names f win
+    names="$(mktemp)"
+    if ! ( cd "$PROJECT_ROOT" && git diff -z --name-only --diff-filter=d "$merge_base" -- '*.md' ) > "$names"; then
+      err "Could not list the Markdown files changed since $merge_base."
+      rm -f "$names"
+      return 1
+    fi
+    while IFS= read -r -d '' f; do
+      win="$(cygpath -w "$PROJECT_ROOT/$f")"
+      if [ "${#win}" -ge "$max_path" ]; then
+        err "$f is ${#win} characters as a Windows path, past the $max_path limit;"
+        err "the line-break checker would skip it unread. Run from a shorter checkout path,"
+        err "or set SPARTA_CHECK_WINDOWS_MAX_PATH=0 if Windows long paths are enabled."
+        rm -f "$names"
+        return 1
+      fi
+    done < "$names"
+    rm -f "$names"
+  fi
+  info "Missing semantic line breaks on lines added since $merge_base:"
+  # PYTHONUTF8 keeps a Windows Python from decoding the Markdown as cp1252.
+  ( cd "$PROJECT_ROOT" && PYTHONUTF8=1 NLB_BASE_REF="$merge_base" NLB_GLOBS='*.md' \
+      NLB_PATHS_IGNORE='' NLB_FAIL=true NLB_CLAUSE_BREAKS=true NLB_CLAUSE_MIN_LENGTH=80 \
+      python3 "$dir/check-new-line-breaks.py" )
 }
 
 # --- driver ----------------------------------------------------------------
