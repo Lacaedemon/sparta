@@ -1,0 +1,68 @@
+{
+  "_comment": "Anchored vs centred explicatio, then the same formed pivot. Two identical 30-man Infantry blocks (8 files x 4 ranks) stand side by side facing south in open ground (drill, no opponent). The left one is clicked and given a centred explicatio (B), doubling to 16 files about its own centre; the right one an anchored explicatio (Shift+B), holding its left flank fixed so the new files step out to one side and the grid stands offset from the block's centre. Once both have settled (the anchored reflow takes until about tick 660), each is ordered at tick 690-700 on a march 60 degrees off its facing, which runs the disciplined centre pivot. A pivot swings the whole slot grid about the block's centre, so the anchored block's outer man is on a longer arm; its pivot is now paced from that live arm, so it turns more slowly and smoothly (measured locally: 90 to 149 degrees by about tick 990) where the centred block finishes by about tick 900. Before this change the anchored block turned as fast as the centred one, outran its men, and stalled at about 135 degrees for some 90 ticks before jerking on. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "7140",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 520,
+      "y": 160,
+      "count": 30,
+      "facing": [0, 1]
+    },
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 1000,
+      "y": 160,
+      "count": 30,
+      "facing": [0, 1]
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 660.0,
+      "y": 250.0,
+      "zoom": 0.95
+    }
+  ],
+  "steps": [
+    {
+      "tick": 10,
+      "click": [520, 160]
+    },
+    {
+      "tick": 20,
+      "key": "B"
+    },
+    {
+      "tick": 40,
+      "click": [1000, 160]
+    },
+    {
+      "tick": 50,
+      "key": "B",
+      "shift": true
+    },
+    {
+      "tick": 690,
+      "click": [516, 159]
+    },
+    {
+      "tick": 692,
+      "rmb_click": [170, 359]
+    },
+    {
+      "tick": 698,
+      "click": [1000, 160]
+    },
+    {
+      "tick": 700,
+      "rmb_click": [654, 360]
+    }
+  ],
+  "frames": [0, 300, 690, 800, 900, 1000],
+  "state": [0, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340, 360, 380, 400, 420, 440, 460, 480, 500, 520, 540, 560, 580, 600, 620, 640, 660, 680, 700, 720, 740, 760, 780, 800, 820, 840, 860, 880, 900, 920, 940, 960, 980, 1000, 1020, 1040]
+}
