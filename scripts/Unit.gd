@@ -226,8 +226,18 @@ var far_stamina: float = -1.0
 var cohesion: float = 1.0   # 1.0 gelled; drops on a merge, then ramps back
 var state: int = State.IDLE
 var facing: Vector2 = Vector2.DOWN
-var move_target: Vector2 = Vector2.ZERO
+## The current march leg's destination. Every write -- a click, a keyboard nudge, an AI
+## order, a queued leg promoted, a disengage step -- passes through
+## clamp_order_destination(), so a point whose formation footprint would overlap
+## impassable terrain is pulled back along the move before the unit ever marches on it.
+var move_target: Vector2 = Vector2.ZERO:
+	set(value):
+		move_target = clamp_order_destination(value)
 var has_move_target: bool = false
+## The pull-back search clamp_order_destination() runs: its coarse probe stride and the
+## precision it narrows the clear point to (see OrderFootprint).
+var order_clear_step: float = OrderFootprint.SEARCH_STEP
+var order_clear_tolerance: float = OrderFootprint.SEARCH_TOLERANCE
 ## Peak OrderGuards.current_engaged_fraction() reading since a currently-pending
 ## Order.Guard.ENGAGED_FRACTION_ABOVE move was issued -- Battle._apply_order_cmd resets this to
 ## 0.0 for a fresh move (always immediately current) and for an appended waypoint leg ONLY when
@@ -4293,6 +4303,44 @@ func _formation_local_half_extents() -> Vector2:
 		hw = maxf(hw, absf(s.x))
 		hd = maxf(hd, absf(s.y))
 	return Vector2(hw, hd)
+
+
+## The destination a move order toward `dest` should actually be given: `dest` itself
+## when this formation's footprint there is clear of impassable terrain, otherwise the
+## clear point nearest it back along the move from the current position, or the current
+## position (hold) when nothing along the move is clear. The footprint is the block's
+## half-extents (the far tier's O(1) reading for a far block, as _move_to() uses), grown
+## by the soldiers' body radius, laid out in the facing the unit will hold on arrival
+## (see _order_held_facing()). It is the squared layout: a fresh order re-squares a
+## quarter-turned block (start_order_response), and a half-turn fold maps the rectangle
+## onto itself. `step` and `tolerance` default to this unit's order_clear_step and
+## order_clear_tolerance.
+func clamp_order_destination(dest: Vector2, step: float = -1.0, tolerance: float = -1.0) -> Vector2:
+	var field: PathField = PathField.active
+	if field == null or not field.has_block_terrain():
+		return dest
+	var extents: Vector2 = _far_tier_half_extents() if tier == FormationTier.FAR \
+			else _formation_local_half_extents()
+	var body: float = soldier_body_radius()
+	var file_axis: Vector2 = _order_held_facing(dest).rotated(PI * 0.5)
+	return OrderFootprint.clamp_destination(field, position, dest, file_axis,
+			extents + Vector2(body, body), step if step > 0.0 else order_clear_step,
+			tolerance if tolerance > 0.0 else order_clear_tolerance)
+
+
+## The facing this unit will hold at a move's destination `dest`: a maneuver's held
+## facing (a side-step, back-step, or disengage holds ordered_facing; a form-up holds
+## deploy_facing), otherwise the direction of travel, which an ordinary march pivots onto.
+## A move that goes nowhere keeps the current facing.
+func _order_held_facing(dest: Vector2) -> Vector2:
+	if ordered_facing != Vector2.ZERO:
+		return ordered_facing.normalized()
+	if deploy_facing != Vector2.ZERO:
+		return deploy_facing.normalized()
+	var travel: Vector2 = dest - position
+	if travel.length_squared() > 0.0001:   # tuned in wu, solver epsilon
+		return travel.normalized()
+	return facing.normalized() if facing != Vector2.ZERO else Vector2.DOWN
 
 
 ## O(1) half-extents for a FAR-tier block, derived from the headcount instead of read

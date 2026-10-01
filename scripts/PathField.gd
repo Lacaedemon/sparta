@@ -79,6 +79,33 @@ func is_blocked(world: Vector2, clearance: float = 0.0) -> bool:
 	return false
 
 
+## Whether any impassable terrain is registered at all -- lets a caller skip building a
+## footprint it would only test against nothing.
+func has_block_terrain() -> bool:
+	return not _block_rects.is_empty()
+
+
+## Whether a rectangular footprint overlaps impassable terrain: centred on `centre`, its
+## width running along the unit vector `file_axis` and its depth perpendicular to it,
+## with half-extents `half` (half-width, half-depth). An exact separating-axis test
+## against each drawn rect, so a footprint that only touches an edge counts as clear.
+func footprint_blocked(centre: Vector2, file_axis: Vector2, half: Vector2) -> bool:
+	var depth_axis: Vector2 = file_axis.orthogonal()
+	for r in _block_rects:
+		var rh: Vector2 = r.size * 0.5
+		var d: Vector2 = r.get_center() - centre
+		if absf(d.x) >= rh.x + half.x * absf(file_axis.x) + half.y * absf(depth_axis.x):
+			continue
+		if absf(d.y) >= rh.y + half.x * absf(file_axis.y) + half.y * absf(depth_axis.y):
+			continue
+		if absf(d.dot(file_axis)) >= half.x + rh.x * absf(file_axis.x) + rh.y * absf(file_axis.y):
+			continue
+		if absf(d.dot(depth_axis)) >= half.y + rh.x * absf(depth_axis.x) + rh.y * absf(depth_axis.y):
+			continue
+		return true
+	return false
+
+
 ## Speed zone (not obstacle): units slow on entry but A* never detours around it — penalty applies on traversal only.
 func set_speed_rect(rect: Rect2, scale: float) -> void:
 	_speed_rects.append(rect)

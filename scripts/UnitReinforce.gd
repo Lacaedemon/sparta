@@ -79,9 +79,11 @@ static func commit(reserve: Unit, host: Unit) -> void:
 	host.queue_redraw()
 
 static func _aim(reserve: Unit, host: Unit) -> void:
+	# Facing first: the move_target write validates the destination footprint in the
+	# facing the reserve will hold there.
+	reserve.ordered_facing = host.facing
 	reserve.move_target = ReinforceApproach.rendezvous_point(host, reserve)
 	reserve.has_move_target = true
-	reserve.ordered_facing = host.facing
 
 ## Drop the pass-through link and stop the reserve where it stands -- no march, no enemy
 ## left over from a previous order for targeting to resume on -- so that with no link and
