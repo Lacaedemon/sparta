@@ -47,22 +47,6 @@ static func tier_name(value: int) -> String:
 	return TIER_NAMES.get(value, "TIER(%d)" % value)
 
 
-## Placeholder promote trigger: a far-tier formation at `formation_pos` becomes close-tier
-## when the nearest enemy (contact point, or nearest enemy formation before any contact)
-## closes within PROMOTE_RANGE. Deliberately a pure predicate over two already-serialized
-## positions — no camera/attention signal — so replay determinism can't depend on rendering.
-## `range_wu` is the trigger distance, defaulting to PROMOTE_RANGE. It is a parameter
-## because the default sits far outside every combat reach (400 wu against a 62 wu melee
-## contact and a 160 wu RANGED_RANGE), so at the default a formation always promotes back
-## to the close tier before it can be struck -- which makes live far-tier combat
-## unreachable, and unstageable for a test or a demo, unless the caller can tighten the
-## band. Battle.promote_range/demote_range carry the per-battle values.
-static func should_promote(formation_pos: Vector2, nearest_enemy_pos: Vector2,
-		range_wu: float = PROMOTE_RANGE) -> bool:
-	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-	return formation_pos.distance_squared_to(nearest_enemy_pos) < range_wu * range_wu
-
-
 ## The gap the tier pass judges two formations by: their centre distance less each
 ## block's reach toward the other (support_reach), never below zero. A deep block -- a
 ## cavalry squadron reaches 480 wu from its centre to its front -- is judged by where its
@@ -87,7 +71,13 @@ static func support_reach(half: Vector2, angle: float, dir: Vector2) -> float:
 
 
 ## The tier pass's promote test on an edge gap: a far-tier formation whose nearest enemy
-## is within `range_wu` of it, edge to edge, becomes close-tier.
+## is within `range_wu` of it, edge to edge, becomes close-tier. A pure predicate over
+## already-serialized sim state -- no camera/attention signal -- so replay determinism
+## can't depend on rendering. `range_wu` is a parameter (Battle.promote_range carries the
+## per-battle value) because the default sits far outside every combat reach, so at the
+## default a formation always promotes back to the close tier before it can be struck;
+## a test or demo staging far-tier combat tightens it, and 0 never promotes, since two
+## blocks in contact sit at a gap of exactly 0.
 static func gap_promotes(gap: float, range_wu: float = PROMOTE_RANGE) -> bool:
 	return gap < range_wu
 
@@ -98,9 +88,3 @@ static func gap_demotes(gap: float, range_wu: float = DEMOTE_RANGE) -> bool:
 	return gap > range_wu
 
 
-## Placeholder demote trigger: the mirror check against the farther DEMOTE_RANGE. Between
-## the two thresholds neither predicate fires, so the formation keeps its current tier.
-static func should_demote(formation_pos: Vector2, nearest_enemy_pos: Vector2,
-		range_wu: float = DEMOTE_RANGE) -> bool:
-	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-	return formation_pos.distance_squared_to(nearest_enemy_pos) > range_wu * range_wu

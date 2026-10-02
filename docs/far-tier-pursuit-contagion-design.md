@@ -35,7 +35,7 @@ What *is* live, wired through `Battle._tick_tier_transitions` (`scripts/Battle.g
 
 - **Nothing resolves combat for a far-tier formation.**
   `TierTransition.can_demote` refuses to demote an engaged unit, so a formation only ever *enters* the far tier already out of contact -- and once there, `FarTierRules.tick_pair`/`tick_attrition` are never called live at all.
-  A far-tier formation cannot take a casualty, cannot lose morale from combat, and therefore cannot rout, until `FormationTier.should_promote` fires and hands it back to the close tier's real combat.
+  A far-tier formation cannot take a casualty, cannot lose morale from combat, and therefore cannot rout, until the tier pass promotes it (`FormationTier.gap_promotes`) and hands it back to the close tier's real combat.
 
   > **Correction, measured while implementing phase 0 (2026-09-02).**
   > This bullet originally gave the reason as "no code path ever calls `UnitCombat.strike`/`shoot` (they run off the per-soldier arrays this tier has none of)".
@@ -148,7 +148,7 @@ Deviations from the sketch above, and the open questions it settled:
   `FarTierCombat.engaged_target` then *reads* that state rather than reimplementing its gates:
   it books nothing unless the unit is already `FIGHTING` and not `is_maneuver_turning()`, which inherits `_think`'s disengage rule (a plain move order past a broken enemy marches by instead of grinding it down) and its `_face_for_action` hold (no attrition while the men are mid-arc).
 
-- **`Battle.promote_range` / `demote_range` are now instance fields** (defaulting to `FormationTier.PROMOTE_RANGE`/`DEMOTE_RANGE`), with the trigger distance a parameter on `FormationTier.should_promote`/`should_demote`.
+- **`Battle.promote_range` / `demote_range` are now instance fields** (defaulting to `FormationTier.PROMOTE_RANGE`/`DEMOTE_RANGE`), with the trigger distance a parameter on the tier predicates (today `FormationTier.gap_promotes`/`gap_demotes`).
   Without this the feature is untestable and undemonstrable:
   at the shipped band no formation can be both far-tier and in reach.
   `demos/inputs/far-tier-contact-1485.json` sets `"tier_ranges": {"promote": 0.0, "demote": 95.0}` through the recorder's new field of the same name.

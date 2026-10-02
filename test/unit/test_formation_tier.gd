@@ -25,50 +25,46 @@ func test_demote_range_exceeds_promote_range() -> void:
 
 
 func test_promotes_inside_promote_range() -> void:
-	var pos := Vector2(100.0, 200.0)
-	var enemy := pos + Vector2(FormationTier.PROMOTE_RANGE - 1.0, 0.0)
-	assert_true(FormationTier.should_promote(pos, enemy))
+	assert_true(FormationTier.gap_promotes(FormationTier.PROMOTE_RANGE - 1.0))
+	assert_true(FormationTier.gap_promotes(0.0), "blocks in contact promote at the default range")
 
 
 func test_does_not_promote_at_or_beyond_promote_range() -> void:
-	var pos := Vector2(100.0, 200.0)
-	var at_threshold := pos + Vector2(0.0, FormationTier.PROMOTE_RANGE)
-	var beyond := pos + Vector2(0.0, FormationTier.PROMOTE_RANGE + 1.0)
-	assert_false(FormationTier.should_promote(pos, at_threshold))
-	assert_false(FormationTier.should_promote(pos, beyond))
+	assert_false(FormationTier.gap_promotes(FormationTier.PROMOTE_RANGE))
+	assert_false(FormationTier.gap_promotes(FormationTier.PROMOTE_RANGE + 1.0))
+
+
+func test_a_zero_promote_range_never_promotes() -> void:
+	# Two blocks in contact sit at an edge gap of exactly 0, so a zero range is the one
+	# value that keeps a staged far-tier fight far.
+	assert_false(FormationTier.gap_promotes(0.0, 0.0))
 
 
 func test_demotes_beyond_demote_range() -> void:
-	var pos := Vector2(-300.0, 50.0)
-	var enemy := pos + Vector2(0.0, FormationTier.DEMOTE_RANGE + 1.0)
-	assert_true(FormationTier.should_demote(pos, enemy))
+	assert_true(FormationTier.gap_demotes(FormationTier.DEMOTE_RANGE + 1.0))
 
 
 func test_does_not_demote_at_or_inside_demote_range() -> void:
-	var pos := Vector2(-300.0, 50.0)
-	var at_threshold := pos + Vector2(FormationTier.DEMOTE_RANGE, 0.0)
-	var inside := pos + Vector2(FormationTier.DEMOTE_RANGE - 1.0, 0.0)
-	assert_false(FormationTier.should_demote(pos, at_threshold))
-	assert_false(FormationTier.should_demote(pos, inside))
+	assert_false(FormationTier.gap_demotes(FormationTier.DEMOTE_RANGE))
+	assert_false(FormationTier.gap_demotes(FormationTier.DEMOTE_RANGE - 1.0))
 
 
 func test_hysteresis_band_fires_neither_predicate() -> void:
 	# A formation between the two thresholds keeps whatever tier it already has.
-	var pos := Vector2(400.0, -120.0)
 	var mid: float = (FormationTier.PROMOTE_RANGE + FormationTier.DEMOTE_RANGE) * 0.5
-	var enemy := pos + Vector2(mid, 0.0)
-	assert_false(FormationTier.should_promote(pos, enemy))
-	assert_false(FormationTier.should_demote(pos, enemy))
+	assert_false(FormationTier.gap_promotes(mid))
+	assert_false(FormationTier.gap_demotes(mid))
 
 
-func test_predicates_depend_on_distance_not_direction() -> void:
-	# Same separation along different axes and quadrants must decide identically — the
-	# trigger is a pure function of the scalar distance between the two positions.
-	var pos := Vector2(1000.0, 1000.0)
-	var d: float = FormationTier.PROMOTE_RANGE - 1.0
-	for dir: Vector2 in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN, Vector2(1, 1).normalized()]:
-		assert_true(FormationTier.should_promote(pos, pos + dir * d))
-		assert_false(FormationTier.should_demote(pos, pos + dir * d))
+func test_edge_gap_depends_on_distance_not_direction() -> void:
+	# A square block reaches the same distance along either axis, so the same separation
+	# along different axes and quadrants must give the same gap.
+	var half := Vector2(50.0, 50.0)
+	var d: float = 700.0
+	for dir: Vector2 in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
+		var gap: float = FormationTier.edge_gap(d, FormationTier.support_reach(half, 0.0, dir),
+				FormationTier.support_reach(half, 0.0, -dir))
+		assert_almost_eq(gap, 600.0, 0.001, "gap along %s" % dir)
 
 
 func test_unit_defaults_to_close_tier() -> void:
@@ -94,9 +90,9 @@ func test_edge_gap_subtracts_both_reaches_and_never_goes_negative() -> void:
 	assert_eq(FormationTier.edge_gap(100.0, 480.0, 70.0), 0.0, "overlapping blocks read as touching")
 
 
-func test_tier_reach_matches_the_formation_slots_reach() -> void:
+func test_support_reach_matches_the_formation_slots_reach() -> void:
 	# Checked against the slots the soldiers actually stand in, not against the headcount
-	# half-extents tier_reach is built from: face on and to the flank the rectangle's
+	# half-extents the reach is built from: face on and to the flank the rectangle's
 	# reach is exactly the farthest slot's; obliquely it is never less.
 	var u := Unit.new()
 	u.max_soldiers = 80
@@ -107,14 +103,14 @@ func test_tier_reach_matches_the_formation_slots_reach() -> void:
 	add_child_autofree(u)
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	for dir in [Vector2.DOWN, Vector2.UP, Vector2.RIGHT * 5.0, Vector2.LEFT]:
-		assert_almost_eq(u.tier_reach(dir), _slot_reach(u, slots, dir), 0.01,
+		assert_almost_eq(_reach(u, dir), _slot_reach(u, slots, dir), 0.01,
 				"face-on or flank reach toward %s is the farthest slot's" % dir)
 	var diag: Vector2 = Vector2(1, 1)
-	assert_true(u.tier_reach(diag) >= _slot_reach(u, slots, diag) - 0.01,
+	assert_true(_reach(u, diag) >= _slot_reach(u, slots, diag) - 0.01,
 			"an oblique reach never falls short of the farthest slot")
-	assert_gt(u.tier_reach(Vector2.DOWN), u.tier_reach(Vector2.RIGHT),
+	assert_gt(_reach(u, Vector2.DOWN), _reach(u, Vector2.RIGHT),
 			"a cavalry squadron reaches farther to its front than to its flank")
-	assert_eq(u.tier_reach(Vector2.ZERO), 0.0, "no direction, no reach")
+	assert_eq(_reach(u, Vector2.ZERO), 0.0, "no direction, no reach")
 
 
 func _slot_reach(u: Unit, slots: PackedVector2Array, dir: Vector2) -> float:
@@ -122,3 +118,8 @@ func _slot_reach(u: Unit, slots: PackedVector2Array, dir: Vector2) -> float:
 	for p in slots:
 		best = maxf(best, (p - u.position).dot(dir.normalized()))
 	return best
+
+
+## The reach the tier pass reads for `u` toward `dir`.
+func _reach(u: Unit, dir: Vector2) -> float:
+	return FormationTier.support_reach(u.tier_half_extents(), u.soldier_block_world_angle(), dir)

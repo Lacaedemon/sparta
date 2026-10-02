@@ -194,6 +194,8 @@ func test_non_default_map_is_published_to_the_replay_and_restored_on_playback() 
 	assert_false(restored.has("error"), "the published map parses clean")
 	assert_eq(restored["field"], Rect2(0, 0, 900, 1500), "the published field matches the live one")
 	assert_eq(restored["spawn_lines"], [200.0, 1300.0], "the published spawn lines match")
+	assert_almost_eq(float(restored.get("sight_scale", -1.0)), Unit.DEFAULT_SIGHT_SCALE, 0.001,
+			"a published map carries the default sight scale it ran at")
 
 
 func test_playback_restores_the_recorded_map_before_rebuilding_the_battlefield() -> void:
@@ -215,6 +217,8 @@ func test_playback_restores_the_recorded_map_before_rebuilding_the_battlefield()
 	assert_eq(battle.spawn_line_ys, [150.0, 750.0], "playback rebuilds the recorded spawn lines")
 	assert_eq(battle.field_with_margin, Rect2(0, 0, 700, 900).grow(battle.ROUT_MARGIN),
 			"the rout margin tracks the restored field")
+	assert_almost_eq(battle.sight_scale, 0.25 * 700.0, 0.001,
+			"a recorded map without a sight scale replays at the old quarter-short-side sight")
 	Replay.mode = old_mode
 	Replay.map = old_map
 

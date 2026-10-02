@@ -150,6 +150,8 @@ func test_custom_matchup_scenario_assigns_correct_team_and_facing() -> void:
 	assert_eq(by_team[1]["facing"], [0.0, -1.0], "team 1 faces up toward the enemy half")
 	assert_almost_eq(float(by_team[0]["y"]), float(b.spawn_line_ys[0]), 0.0001)
 	assert_almost_eq(float(by_team[1]["y"]), float(b.spawn_line_ys[1]), 0.0001)
+	assert_true(bool(by_team[0].get("front_on_line", false)), "a roster lines up front-on-line")
+	assert_true(bool(by_team[1].get("front_on_line", false)), "a roster lines up front-on-line")
 
 
 func test_custom_matchup_scenario_skips_an_unrecognized_roster_name() -> void:
@@ -248,3 +250,24 @@ func test_a_staged_faction_survives_a_pending_matchup() -> void:
 	var hud: Node = battle.get_node("HUD")
 	assert_eq(hud.faction_for_team(0), FactionScript.Type.CARTHAGE)
 	assert_eq(hud.faction_for_team(1), FactionScript.Type.MACEDON)
+
+
+func test_a_custom_matchup_block_dresses_its_front_rank_on_its_line() -> void:
+	# A deep cavalry squadron centred on the line would reach half its depth toward the
+	# enemy; the live block's front rank must stand on the line instead.
+	CustomMatchupScript.pending_team_0 = ["Hippeis Cavalry"]
+	CustomMatchupScript.pending_team_1 = ["Equites Cavalry"]
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	add_child_autofree(battle)
+	await get_tree().physics_frame
+	var units: Array = get_tree().get_nodes_in_group("units")
+	assert_eq(units.size(), 2, "one block per side")
+	for node in units:
+		var u: Unit = node as Unit
+		var front: float = -INF
+		for p in u.soldier_world_slots(u.soldiers):
+			front = maxf(front, (p - u.position).dot(u.facing))
+		assert_gt(front, 100.0, "a cavalry squadron is deep, so dressing moves it")
+		var line_y: float = float(battle.spawn_line_ys[u.team])
+		assert_almost_eq(u.position.y + u.facing.y * front, line_y, 0.01,
+				"%s's front rank stands on its line" % u.unit_name)

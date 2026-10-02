@@ -4373,14 +4373,6 @@ func tier_half_extents() -> Vector2:
 	return _far_tier_half_extents()
 
 
-## How far this block reaches from its centre toward world direction `dir` (any length;
-## zero reads as no reach): FormationTier.support_reach of tier_half_extents() in the
-## grid's current world rotation. The tier pass subtracts it from a centre distance
-## (FormationTier.edge_gap) so it judges an enemy by the block's edge, not its centre.
-func tier_reach(dir: Vector2) -> float:
-	return FormationTier.support_reach(tier_half_extents(), soldier_block_world_angle(), dir)
-
-
 ## O(1) half-extents for a FAR-tier block, derived from the headcount instead of read
 ## off the slots -- what _move_to() uses for a far-tier mover, which otherwise would pay
 ## _formation_local_half_extents()'s O(soldiers) slot rebuild on every physics tick.

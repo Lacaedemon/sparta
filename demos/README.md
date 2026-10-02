@@ -143,7 +143,7 @@ script under `demos/inputs/`:
   battlefield (`demos/inputs/custom-map-defile.json` is the worked example).
 
 - `deployment_gap_m` (optional) -- **open the battle at a chosen deployment distance**:
-  the distance in metres between the two spawn lines (the default map's is 29 m).
+  the distance in metres between the two spawn lines, which is where the two armies' front ranks stand (the default map's is 18 m).
   Team 0's line stays put,
   team 1's line moves to that distance below it,
   and the field grows downward with it so team 1 keeps its ground behind the line.
@@ -270,7 +270,10 @@ script under `demos/inputs/`:
   - `team` -- `0` (player, deploys facing down by default) or `1` (enemy, facing up).
   - `type` -- one of `"Spearmen"`, `"Infantry"`, `"Archers"`, `"Cavalry"` (uses that type's
     full stat block from the default loadout).
-  - `x`, `y` -- world-space spawn position.
+  - `x`, `y` -- world-space spawn position: the block's centre.
+  - `front_on_line` (optional bool) -- when true, `x`, `y` is where the block's FRONT rank
+    stands instead, and the block's depth runs back from it, the way the default line
+    spawn deploys (a custom matchup's roster sets it).
   - `facing` (optional `[x, y]`) -- an explicit heading; defaults to facing the enemy half.
   - `count` (optional) -- soldier-count override (a smaller unit routs sooner; a bigger one
     holds longer).
@@ -934,7 +937,7 @@ each stamped with the physics `tick` it fires on.
 To get the timing right you need the default battle's layout. A standard 5v5
 (seed `"12345"`, no campaign) spawns these units, by `uid`:
 
-| Unit | Team 0 (player, top, `y=300`) | Team 1 (enemy, bottom, `y=880`) |
+| Unit | Team 0 (player, top, front rank on `y=300`) | Team 1 (enemy, bottom, front rank on `y=660`) |
 | --- | --- | --- |
 | Spearmen | 0 | 5 |
 | Infantry | 1 | 6 |
@@ -942,9 +945,12 @@ To get the timing right you need the default battle's layout. A standard 5v5
 | Cavalry | 3 | 8 |
 | Cavalry | 4 | 9 |
 
-The field is `1600 x 1200`, and the lines start **580 px** apart vertically --
-the deepest deployment that keeps both armies inside the close-tier band
-(`FormationTier.DEMOTE_RANGE`) from the first tick. The horizontal spacing is no longer a flat 150 px per unit (issue
+The field is `Rect2(0, -720, 1600, 2440)`, and each block's front rank stands on its
+line, so the fronts start **360 wu** apart and every block's depth runs back from
+its line; unit centres therefore sit behind the lines (team 0: Spearmen y=232.5,
+Infantry 237, Archers 192, Cavalry -180; team 1 mirrored about y=660: 727.5, 723,
+768, 1140). Every block opens inside the close-tier band
+(`FormationTier.DEMOTE_RANGE`, measured edge to edge) from the first tick. The horizontal spacing is no longer a flat 150 px per unit (issue
 #677: a flat spacing let a wide LOOSE-order Archers regiment overlap its
 Infantry neighbour) -- each adjacent pair's gap widens to fit their actual
 formation widths, so the standard 5v5's `x` positions are:

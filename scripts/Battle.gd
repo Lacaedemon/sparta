@@ -25,14 +25,14 @@ signal general_killed_or_routed(team: int, general_unit: Node, cause: String)
 # 80 x 122 m at 20 wu/m, running from y = -720 to y = 1720. Each line-spawned block
 # dresses its FRONT rank on its spawn line and stands back from it (see
 # _dress_front_on_line), so the field holds the deepest default block -- a cavalry
-# squadron, 9 ranks at 6 m, 960 wu from front to rear -- behind each line with 60 wu
-# to spare. The field grew upward and downward from its earlier 1600x1200, keeping
+# squadron, 9 ranks at 6 m, 960 wu from front to rear -- behind each line, with 60 wu
+# to spare behind team 0 and 100 behind team 1. The field grew upward and downward from its earlier 1600x1200, keeping
 # team 0's line and the terrain band at their long-standing coordinates so custom
 # scenarios placed around them stay valid; the negative top edge is the ground behind
 # team 0. The two fronts stand 360 wu (18 m) apart, the band the terrain sits in with
-# 80 wu either side, which keeps every foot block's centre within
-# FormationTier.DEMOTE_RANGE of the block facing it, so the default battle still
-# opens at close-tier fidelity; deploying at genuinely historical distances means
+# 80 wu either side. The tier pass measures the gap between block edges, so that
+# 360 wu front gap, below both FormationTier.PROMOTE_RANGE and DEMOTE_RANGE, is what
+# opens every block, cavalry included, at close-tier fidelity; deploying at genuinely historical distances means
 # far-tier openings and a paced advance, a separate design step.
 const FIELD := Rect2(0, -720, 1600, 2440)
 
@@ -827,9 +827,9 @@ func _ready() -> void:
 		# Enemy army (team 1) deploys along the bottom, facing up — skipped in drill mode,
 		# where the player army rehearses alone. Each line is where that army's front rank
 		# stands, 360 wu (18 m) apart front to front: deep enough to hold the terrain band
-		# between the armies, and shallow enough that every foot block's centre stays
-		# inside FormationTier.DEMOTE_RANGE of the block facing it, so both armies keep
-		# individual-soldier fidelity from the first tick (see FIELD).
+		# between the armies, and, measured edge to edge as the tier pass does, inside
+		# FormationTier.PROMOTE_RANGE, so both armies keep individual-soldier fidelity
+		# from the first tick (see FIELD).
 		if not drill_mode:
 			_spawn_line(1, Vector2.UP, float(spawn_line_ys[1]), dfn_count)
 
@@ -3682,7 +3682,7 @@ func _tick_tier_transitions() -> Array:
 	# rebuild. A promotion or demotion inside this pass keeps the headcount and the grid,
 	# so the snapshot stays exact for the rest of the pass.
 	var halves: Array[Vector2] = []
-	var angles: PackedFloat32Array = PackedFloat32Array()
+	var angles: PackedFloat64Array = PackedFloat64Array()
 	halves.resize(all_units.size())
 	angles.resize(all_units.size())
 	for i in all_units.size():
