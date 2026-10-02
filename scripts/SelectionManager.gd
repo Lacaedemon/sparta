@@ -1803,11 +1803,13 @@ func _resize_handle_at(world_pos: Vector2):
 	return null
 
 
-## The flank grip a left press at `world_pos` grabs, or null. A grip sits just past its
-## block's edge, so it can lie over a neighbouring unit; a press on another of the
-## player's units there is a click on that unit, not a grab. Otherwise a selected wide
+## The flank grip a left press at `world_pos` grabs, or null. A grip sits at its block's
+## circumscribed extent plus a gap (see _resize_handle_positions), which for a deep block
+## lies far past its flank, so it can lie over a neighbouring unit; a press on another of
+## the player's units there is a click on that unit, not a grab. Otherwise the selected
 ## block's grip swallowed the click on the unit beside it: that unit was never selected,
-## and the next order went to the block that still was.
+## and the next order went to the block that still was. The grip's own block under the
+## cursor does not stop the grab.
 func _grip_for_press(world_pos: Vector2):
 	var grip: Variant = _resize_handle_at(world_pos)
 	if grip == null:
