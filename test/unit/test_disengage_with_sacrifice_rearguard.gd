@@ -306,3 +306,17 @@ func test_rearguard_detachment_inherits_parent_missile_profile() -> void:
 	assert_almost_eq(rearguard.skirmish_kite_distance, main_body.skirmish_kite_distance, 0.001,
 			"rearguard preserves parent's kite distance")
 
+
+
+func test_a_generals_rearguard_is_not_a_general() -> void:
+	# The rearguard is cloned from the parent's snapshot and left behind to die; inheriting
+	# the role would report the general killed while the real general escapes.
+	var battle := _spawn(_clash_scenario())
+	while battle.current_tick() < 5:
+		await get_tree().physics_frame
+	var main_body: Unit = _units_by_uid(battle).values()[0]
+	main_body.is_general = true
+	var rearguard: Unit = battle._spawn_rearguard_detachment(main_body, 10, 0.2)
+	assert_true(is_instance_valid(rearguard), "spawned rearguard")
+	assert_true(main_body.is_general, "the general stays with the main body")
+	assert_false(rearguard.is_general, "the rearguard is not a general")

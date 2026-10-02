@@ -9342,6 +9342,29 @@ func to_snapshot_dict() -> Dictionary:
 		"move_order_peak_engaged_fraction": _move_order_peak_engaged_fraction,
 		"is_rearguard_detachment": is_rearguard_detachment,
 		"rearguard_lifetime_timer": _rearguard_lifetime_timer,
+		"line_index": line_index,
+		"withdrawal_peeling": _withdrawal_peeling,
+		"separation_velocity": _separation_velocity,
+		"moved_while_routing": _moved_while_routing,
+		# Not reset before a routing unit's early return, so a router keeps reading it.
+		"is_facing_turning": _is_facing_turning,
+
+		# Spawn-time role and per-unit tunables a caller may have set before spawn. A restore
+		# respawns a fresh node, so without these a rewound general stops being the general
+		# and a tuned unit reverts to the shared defaults.
+		"is_general": is_general,
+		"order_clear_step": order_clear_step, "order_clear_tolerance": order_clear_tolerance,
+		"formed_turn_tracking_frac": formed_turn_tracking_frac,
+		"melee_press_fraction": melee_press_fraction,
+		"routing_melee_press_fraction": routing_melee_press_fraction,
+		"disengage_step_distance": disengage_step_distance,
+		"rearguard_sacrifice_frac": rearguard_sacrifice_frac,
+		"rearguard_delay_sec": rearguard_delay_sec,
+		"rout_time": rout_time, "shatter_strength_frac": shatter_strength_frac,
+		"rally_morale_threshold": rally_morale_threshold,
+		"flanking_maneuver_wrap_files": flanking_maneuver_wrap_files,
+		"flanking_maneuver_cooldown_ticks": flanking_maneuver_cooldown_ticks,
+		"flanking_maneuver_hysteresis": flanking_maneuver_hysteresis,
 
 		# Unit references, resolved by uid after every unit in the snapshot is restored.
 		"target_enemy_uid": target_enemy.uid if is_instance_valid(target_enemy) else -1,
@@ -9525,6 +9548,29 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_move_order_peak_engaged_fraction = float(d["move_order_peak_engaged_fraction"])
 	is_rearguard_detachment = bool(d["is_rearguard_detachment"])
 	_rearguard_lifetime_timer = float(d["rearguard_lifetime_timer"])
+	# Defaulted rather than required: a snapshot written before these fields were captured
+	# still applies. This runs on a freshly spawned node, so each field's current value is
+	# the default a fresh unit starts with.
+	line_index = int(d.get("line_index", line_index))
+	_withdrawal_peeling = bool(d.get("withdrawal_peeling", _withdrawal_peeling))
+	_separation_velocity = d.get("separation_velocity", _separation_velocity)
+	_moved_while_routing = bool(d.get("moved_while_routing", _moved_while_routing))
+	_is_facing_turning = bool(d.get("is_facing_turning", _is_facing_turning))
+	is_general = bool(d.get("is_general", is_general))
+	order_clear_step = float(d.get("order_clear_step", order_clear_step))
+	order_clear_tolerance = float(d.get("order_clear_tolerance", order_clear_tolerance))
+	formed_turn_tracking_frac = float(d.get("formed_turn_tracking_frac", formed_turn_tracking_frac))
+	melee_press_fraction = float(d.get("melee_press_fraction", melee_press_fraction))
+	routing_melee_press_fraction = float(d.get("routing_melee_press_fraction", routing_melee_press_fraction))
+	disengage_step_distance = float(d.get("disengage_step_distance", disengage_step_distance))
+	rearguard_sacrifice_frac = float(d.get("rearguard_sacrifice_frac", rearguard_sacrifice_frac))
+	rearguard_delay_sec = float(d.get("rearguard_delay_sec", rearguard_delay_sec))
+	rout_time = float(d.get("rout_time", rout_time))
+	shatter_strength_frac = float(d.get("shatter_strength_frac", shatter_strength_frac))
+	rally_morale_threshold = float(d.get("rally_morale_threshold", rally_morale_threshold))
+	flanking_maneuver_wrap_files = int(d.get("flanking_maneuver_wrap_files", flanking_maneuver_wrap_files))
+	flanking_maneuver_cooldown_ticks = int(d.get("flanking_maneuver_cooldown_ticks", flanking_maneuver_cooldown_ticks))
+	flanking_maneuver_hysteresis = int(d.get("flanking_maneuver_hysteresis", flanking_maneuver_hysteresis))
 
 	var restored: Array[Order] = []
 	for od in d.get("orders", []):
