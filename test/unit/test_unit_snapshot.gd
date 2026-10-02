@@ -408,3 +408,32 @@ func test_snapshot_restore_defaults_legacy_missile_and_range_fields() -> void:
 	assert_false(restored._under_fire_can_reply)
 	assert_almost_eq(restored.detection_range, Unit.DETECTION_RANGE, 0.001)
 	assert_almost_eq(restored.skirmish_kite_distance, Unit.SKIRMISH_KITE_DISTANCE, 0.001)
+
+
+func test_spawn_role_tunables_and_late_state_round_trip() -> void:
+	# A restore respawns a fresh node, so anything not in the snapshot reverts to its
+	# default: a rewound general stopped being the general, and a tuned unit lost its
+	# tuning. Every value below differs from the field's default.
+	var values := {
+		"is_general": true, "line_index": 2,
+		"_withdrawal_peeling": true, "_separation_velocity": Vector2(3.5, -1.25),
+		"_moved_while_routing": true,
+		"order_clear_step": 12.0, "order_clear_tolerance": 2.5,
+		"formed_turn_tracking_frac": 0.4, "melee_press_fraction": 0.33,
+		"routing_melee_press_fraction": 0.21, "disengage_step_distance": 77.0,
+		"rearguard_sacrifice_frac": 0.15, "rearguard_delay_sec": 6.5,
+		"rout_time": 9.0, "shatter_strength_frac": 0.11, "rally_morale_threshold": 33.0,
+		"flanking_maneuver_wrap_files": 6, "flanking_maneuver_cooldown_ticks": 90,
+		"flanking_maneuver_hysteresis": 3,
+	}
+	var original := _sample_unit()
+	var fresh := Unit.new()
+	for field in values:
+		assert_ne(fresh.get(field), values[field], "%s: the test value must differ from the default" % field)
+		original.set(field, values[field])
+	fresh.free()
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(original.to_snapshot_dict())
+	for field in values:
+		assert_eq(restored.get(field), values[field], "%s survives a snapshot round trip" % field)
+	restored.free()
