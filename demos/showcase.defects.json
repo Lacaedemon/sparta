@@ -1,0 +1,11 @@
+{
+  "_comment": "Defect declarations for the showcase replay clip (demos/showcase.json); see demos/README.md, Sidecar declarations.",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        8
+      ],
+      "reason": "Team 1's cavalry squadron (uid 8, 9 ranks, 960 wu deep) now deploys with its front rank on its line and marches toward its ATTACK target (uid 2) for the whole clip without reaching it: state MOVING, engaged false, at every sampled tick through 1300. As the deep column turns onto its bearing its bounding box widens from about 320 wu to about 700 wu and its own files close up mid-turn, the deep-block mid-turn mechanism #1546 tracks. CI website demo-diff on PR #1677 (81718f4e): nnd_min 2.996 wu against the 5.0 wu floor, merge-base 9.615. Self-compression of a turning block, not interpenetration with another unit."
+    }
+  }
+}
