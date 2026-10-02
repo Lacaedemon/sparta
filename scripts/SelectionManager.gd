@@ -292,7 +292,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if event.pressed:
 				# A press on a selected unit's flank grip starts a frontage resize;
 				# anywhere else begins the usual box-select drag.
-				var grip = _resize_handle_at(_cursor_world())
+				var grip = _grip_for_press(_cursor_world())
 				if grip != null:
 					_begin_resize(grip["unit"], int(grip["side"]))
 				else:
@@ -1801,6 +1801,21 @@ func _resize_handle_at(world_pos: Vector2):
 			var side: int = UnitFormation.Anchor.RIGHT if i == 0 else UnitFormation.Anchor.LEFT
 			return {"unit": u, "side": side}
 	return null
+
+
+## The flank grip a left press at `world_pos` grabs, or null. A grip sits just past its
+## block's edge, so it can lie over a neighbouring unit; a press on another of the
+## player's units there is a click on that unit, not a grab. Otherwise a selected wide
+## block's grip swallowed the click on the unit beside it: that unit was never selected,
+## and the next order went to the block that still was.
+func _grip_for_press(world_pos: Vector2):
+	var grip: Variant = _resize_handle_at(world_pos)
+	if grip == null:
+		return null
+	var body = _unit_at(world_pos, TEAM_ANY_OWN)
+	if body != null and body != (grip as Dictionary)["unit"]:
+		return null
+	return grip
 
 
 ## Local-X (file-axis) coordinate of a flank's edge at the unit's CURRENT committed

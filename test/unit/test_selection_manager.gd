@@ -283,6 +283,26 @@ func test_resize_handle_at_grabs_a_grip_and_ignores_empty_space() -> void:
 			"a cursor far from any grip grabs nothing")
 
 
+func test_a_press_on_another_unit_over_a_grip_selects_that_unit() -> void:
+	# A selected block's flank grip sits just past its edge, so it can lie over the unit
+	# beside it. A press there is a click on that unit: grabbing the grip instead left the
+	# block selected, and the next order went to it rather than the unit clicked.
+	var sm := _sm()
+	var block := _unit()
+	block.facing = Vector2.UP
+	block.position = Vector2(50, 50)
+	sm._select(block)
+	var grip: Vector2 = sm._resize_handle_positions(block)[0]
+	var neighbour := _unit()
+	neighbour.facing = Vector2.UP
+	neighbour.position = grip
+	assert_not_null(sm._resize_handle_at(grip), "the grip itself is under the cursor")
+	assert_eq(sm._unit_at(grip, sm.TEAM_ANY_OWN), neighbour, "and so is the neighbour's body")
+	assert_null(sm._grip_for_press(grip), "the press goes to the neighbour, not the grip")
+	neighbour.position = grip + Vector2(9999, 0)
+	assert_not_null(sm._grip_for_press(grip), "with nothing else under it, the grip still grabs")
+
+
 func test_resize_handle_at_reports_the_grabbed_flank() -> void:
 	# The grip list is [+file-axis, -file-axis]; the first is the block's local +X
 	# flank (Anchor.RIGHT), the second its mirror. The drag anchors the OPPOSITE
