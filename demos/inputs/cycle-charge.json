@@ -112,9 +112,9 @@
     "overlap": {
       "uids": [
         1,
-        9
+        8
       ],
-      "reason": "The default line now stands each block front-on-line, so the deep cavalry reach back 960 wu and the catalog-cadence samples meet the enemy in a different phase than the old layout did. Measured at the catalog cadence on this tree: uid1 (the player Infantry, pressed by the enemy foot) dips to nnd_min 2.14 wu against its 2.25 wu floor, and uid9 (team 1 cavalry, under a continuous AI ATTACK order that retargets mid-clip) to 3.96 wu against the 5.0 wu floor. Transient press / retarget compression, not standing interpenetration; uid8 no longer needs the exemption (5.91 wu)."
+      "reason": "Measured by tools/check.sh demo_defects on this tree, front-on-line deployment. uid1 (the player Infantry, pressed by the enemy foot) dips to nnd_min 1.56 wu against its 2.25 wu floor: transient press compression. uid8 (team 1's deep cavalry, 9 ranks) is under a continuous AI ATTACK order whose target re-selects mid-clip, and each retarget re-rotates the block before it has re-squared, compressing its own files: 2.97 wu against the 5.0 wu floor, the mechanism main already exempted for uid8 and #1546 tracks. uid9 (14.5 wu) no longer needs the exemption."
     },
     "path_crossing": {
       "uids": [
