@@ -330,21 +330,6 @@ func test_a_real_press_and_release_over_a_covered_grip_selects_the_unit_under_it
 	assert_eq(sm.get_selected_units(), [neighbour], "the neighbour is now the selection")
 
 
-func test_a_grip_covered_by_another_unit_is_not_drawn() -> void:
-	var sm := _sm()
-	var block := _unit()
-	block.facing = Vector2.UP
-	block.position = Vector2(50, 50)
-	sm._select(block)
-	var hs: Array = sm._resize_handle_positions(block)
-	assert_false(sm._grip_covered_by_other(hs[0], block), "an open grip is shown")
-	var neighbour := _unit()
-	neighbour.position = hs[0]
-	assert_true(sm._grip_covered_by_other(hs[0], block), "a grip over the neighbour is not")
-	assert_false(sm._grip_covered_by_other(hs[1], block), "and the other flank's grip still is")
-	assert_false(sm._grip_covered_by_other(block.position, block), "the block's own body never hides its grip")
-
-
 func test_resize_handle_at_reports_the_grabbed_flank() -> void:
 	# The grip list is [+file-axis, -file-axis]; the first is the block's local +X
 	# flank (Anchor.RIGHT), the second its mirror. The drag anchors the OPPOSITE

@@ -965,7 +965,7 @@ resizing a window by its edge, so you can extend a line toward the flank you car
 about while the other edge holds its ground (the <kbd>[</kbd> / <kbd>]</kbd> keys
 stay symmetric about the centre). The width holds as the unit takes casualties, and
 shows in the info panel.
-Where a grip would lie over another of your units that a click could select, it is not shown, and clicking there selects that unit.
+Where a grip lies over another of your units that a click could select, clicking there selects that unit rather than grabbing the grip.
 
 **File-major reform (default File-major).** By default, each soldier keeps a persistent
 file (column) assignment: when a file-mate falls, only the survivors deeper in that SAME
