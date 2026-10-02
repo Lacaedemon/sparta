@@ -168,3 +168,10 @@ func test_every_written_key_is_read_back() -> void:
 	assert_eq(unread, [] as Array[String],
 			"read these back in apply_snapshot_dict() or list them in NOT_READ_BY_APPLY: %s"
 			% ", ".join(PackedStringArray(unread)))
+	# And the reverse, so the list cannot drift: every listed key is still written, and
+	# apply_snapshot_dict() still does not read it.
+	var written: Array = u.to_snapshot_dict().keys()
+	for k in NOT_READ_BY_APPLY:
+		assert_true(written.has(k), "%s is listed but to_snapshot_dict() no longer writes it" % k)
+		assert_true(body.find('d["%s"]' % k) == -1 and body.find('d.get("%s"' % k) == -1,
+				"%s is listed but apply_snapshot_dict() reads it" % k)

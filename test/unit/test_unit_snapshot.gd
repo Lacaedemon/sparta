@@ -447,9 +447,13 @@ func test_newly_captured_fields_default_for_older_snapshots() -> void:
 		"is_general": "is_general", "line_index": "line_index",
 		"withdrawal_peeling": "_withdrawal_peeling", "separation_velocity": "_separation_velocity",
 		"moved_while_routing": "_moved_while_routing", "is_facing_turning": "_is_facing_turning",
-		"order_clear_step": "order_clear_step", "rout_time": "rout_time",
-		"flanking_maneuver_hysteresis": "flanking_maneuver_hysteresis",
 	}
+	for tunable in ["order_clear_step", "order_clear_tolerance", "formed_turn_tracking_frac",
+			"melee_press_fraction", "routing_melee_press_fraction", "disengage_step_distance",
+			"rearguard_sacrifice_frac", "rearguard_delay_sec", "rout_time", "shatter_strength_frac",
+			"rally_morale_threshold", "flanking_maneuver_wrap_files",
+			"flanking_maneuver_cooldown_ticks", "flanking_maneuver_hysteresis"]:
+		fields[tunable] = tunable
 	for key in fields:
 		d.erase(key)
 	var fresh := Unit.new()
