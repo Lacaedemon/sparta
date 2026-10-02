@@ -1,11 +1,11 @@
 {
-  "_comment": "Scripted-input demo: box-select three regiments (uids 0/1/2 — Spearmen 140, Infantry 120, Archers 90, spawned in a row at y=300 on seed 12345), then one right-drag deploys them along a flank line, split to equal depth. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "_comment": "Scripted-input demo: box-select three regiments (uids 0/1/2 — Spearmen 140, Infantry 120, Archers 90, spawned in a row in a row on the y=300 line on seed 12345), then one right-drag deploys them along a flank line, split to equal depth. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
   "seed": "12345",
   "camera": [
     {
       "tick": 0,
       "x": 740.0,
-      "y": 380.0,
+      "y": 320.0,
       "zoom": 0.85
     }
   ],
@@ -15,11 +15,11 @@
       "box": {
         "from": [
           80,
-          270
+          170
         ],
         "to": [
           700,
-          330
+          280
         ]
       }
     },
@@ -28,16 +28,16 @@
       "rmb_drag": {
         "from": [
           1400,
-          470
+          405.0
         ],
         "to": [
           160,
-          470
+          405.0
         ]
       }
     }
   ],
-  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
+  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9",
   "defect_exemptions": {
     "overlap": {
       "uids": [

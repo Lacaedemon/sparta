@@ -6,7 +6,7 @@
     {
       "tick": 0,
       "x": 500.0,
-      "y": 300.0,
+      "y": 235.0,
       "zoom": 1.6
     }
   ],
@@ -39,5 +39,5 @@
     135,
     175
   ],
-  "spawn_fingerprint": "4f0be0e39aea931f238c2e4952b3f6e0"
+  "spawn_fingerprint": "392ad332293ee14efe684f3f5b524116"
 }

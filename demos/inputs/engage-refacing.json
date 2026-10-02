@@ -1,11 +1,11 @@
 {
-  "_comment": "Engage re-facing demo (issue 402): the player Archers (seed 12345, uid 2 at ~642,300) are formed up IN PLACE facing WEST via a short vertical right-drag (the men just re-orient where they stand). The enemy Archers (uid 7) then advance into shooting range directly below. Auto-engaging a foe a quarter-turn off its front, the block does NOT snap its facing round (which would spin the slot grid 90 degrees in one tick and surge the men). Instead the whole line TURNS IN PLACE to bring its front to bear, the men holding their ground as it pivots, and it withholds its volley until it has come about. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "_comment": "Engage re-facing demo (issue 402): the player Archers (seed 12345, uid 2 at ~642,192) are formed up IN PLACE facing WEST via a short vertical right-drag (the men just re-orient where they stand). The enemy Archers (uid 7) then advance into shooting range directly below. Auto-engaging a foe a quarter-turn off its front, the block does NOT snap its facing round (which would spin the slot grid 90 degrees in one tick and surge the men). Instead the whole line TURNS IN PLACE to bring its front to bear, the men holding their ground as it pivots, and it withholds its volley until it has come about. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
   "seed": "12345",
   "camera": [
     {
       "tick": 0,
       "x": 660.0,
-      "y": 400.0,
+      "y": 480.0,
       "zoom": 0.75
     }
   ],
@@ -14,7 +14,7 @@
       "tick": 415,
       "click": [
         660.0,
-        300
+        192
       ]
     },
     {
@@ -22,14 +22,14 @@
       "rmb_drag": {
         "from": [
           660,
-          220
+          112
         ],
         "to": [
           660,
-          380
+          272
         ]
       }
     }
   ],
-  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181"
+  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9"
 }

@@ -1,5 +1,5 @@
 {
-  "_comment": "Cycle-charge stance demo (seed 12345): box-select the player's two cavalry regiments (right of the line, ~x 1027 and 1356, y 300), press J to arm the Cycle charge stance, then right-click the enemy Infantry regiment at (291,880). The horse charges in, lands its momentum hit, then peels back to a standoff and charges AGAIN -- the caracole loop -- instead of grinding in melee once the charge bonus is spent. The HUD flashes 'Cycle charge' when J is pressed and the order cursor turns violet.",
+  "_comment": "Cycle-charge stance demo (seed 12345): box-select the player's two cavalry regiments (right of the line, ~x 1027 and 1356, front ranks on the y=300 line, cavalry centres at y -180), press J to arm the Cycle charge stance, then right-click the enemy Infantry regiment at (291,723). The horse charges in, lands its momentum hit, then peels back to a standoff and charges AGAIN -- the caracole loop -- instead of grinding in melee once the charge bonus is spent. The HUD flashes 'Cycle charge' when J is pressed and the order cursor turns violet.",
   "seed": "12345",
   "state": [
     8,
@@ -30,14 +30,26 @@
     {
       "tick": 0,
       "x": 900.0,
-      "y": 520.0,
-      "zoom": 1.05
+      "y": 0.0,
+      "zoom": 0.7
     },
     {
       "tick": 120,
       "x": 720.0,
-      "y": 560.0,
-      "zoom": 1.1
+      "y": 250.0,
+      "zoom": 0.7
+    },
+    {
+      "tick": 700,
+      "x": 650.0,
+      "y": 250.0,
+      "zoom": 0.7
+    },
+    {
+      "tick": 1000,
+      "x": 450.0,
+      "y": 380.0,
+      "zoom": 0.9
     }
   ],
   "steps": [
@@ -46,11 +58,11 @@
       "box": {
         "from": [
           950,
-          260
+          -260
         ],
         "to": [
           1450,
-          345
+          -100
         ]
       }
     },
@@ -62,7 +74,7 @@
       "tick": 48,
       "rmb_click": [
         291.0,
-        880
+        723
       ]
     }
   ],
@@ -73,7 +85,7 @@
       "field": "position",
       "value": [
         1026.94,
-        300.0
+        -180.0
       ]
     },
     {
@@ -82,7 +94,7 @@
       "field": "position",
       "value": [
         1356.07,
-        300.0
+        -180.0
       ]
     },
     {
@@ -95,7 +107,7 @@
       "value": "Cycle charge"
     }
   ],
-  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
+  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9",
   "defect_exemptions": {
     "overlap": {
       "uids": [

@@ -1,11 +1,11 @@
 {
-  "_comment": "Scripted-input demo: click-select the Spearmen (uid 0, spawned at ~120,300 on seed 12345), then right-drag a flank line to deploy them. Driven through the real SelectionManager by tools/demo/DemoInputRecorder.gd. Coordinates are world-space; ticks are physics ticks (60/s).",
+  "_comment": "Scripted-input demo: click-select the Spearmen (uid 0, spawned at ~120,232.5 on seed 12345), then right-drag a flank line to deploy them. Driven through the real SelectionManager by tools/demo/DemoInputRecorder.gd. Coordinates are world-space; ticks are physics ticks (60/s).",
   "seed": "12345",
   "camera": [
     {
       "tick": 0,
       "x": 280.0,
-      "y": 380.0,
+      "y": 312.5,
       "zoom": 1.6
     }
   ],
@@ -14,7 +14,7 @@
       "tick": 8,
       "click": [
         120,
-        300
+        232.5
       ]
     },
     {
@@ -22,16 +22,16 @@
       "rmb_drag": {
         "from": [
           275,
-          460
+          392.5
         ],
         "to": [
           40,
-          460
+          392.5
         ]
       }
     }
   ],
-  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
+  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9",
   "defect_exemptions": {
     "overlap": {
       "uids": [

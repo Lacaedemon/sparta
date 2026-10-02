@@ -5,7 +5,7 @@
     {
       "tick": 0,
       "x": 291.0,
-      "y": 560.0,
+      "y": 480.0,
       "zoom": 1.6
     }
   ],
@@ -14,35 +14,35 @@
       "tick": 5,
       "click": [
         291.0,
-        300
+        237.0
       ]
     },
     {
       "tick": 10,
       "rmb_click": [
         291.0,
-        880
+        723
       ]
     },
     {
       "tick": 12,
       "rmb_click": [
         291.0,
-        880
+        723
       ]
     },
     {
       "tick": 14,
       "rmb_click": [
         291.0,
-        880
+        723
       ]
     },
     {
       "tick": 16,
       "rmb_click": [
         291.0,
-        880
+        723
       ]
     },
     {
@@ -72,7 +72,7 @@
       "field": "position",
       "value": [
         291.0,
-        300.0
+        237.0
       ]
     },
     {
@@ -85,7 +85,7 @@
       "value": "Knockback focus"
     }
   ],
-  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
+  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9",
   "defect_exemptions": {
     "overlap": {
       "uids": [
