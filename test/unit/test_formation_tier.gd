@@ -123,3 +123,13 @@ func _slot_reach(u: Unit, slots: PackedVector2Array, dir: Vector2) -> float:
 ## The reach the tier pass reads for `u` toward `dir`.
 func _reach(u: Unit, dir: Vector2) -> float:
 	return FormationTier.support_reach(u.tier_half_extents(), u.soldier_block_world_angle(), dir)
+
+
+func test_only_blocks_at_or_under_the_edge_gap_headcount_are_edge_judged() -> void:
+	# Tier is per formation, so a huge line judged by its front would promote every man
+	# in it; the tier pass judges any pair with such a block in it centre to centre.
+	assert_true(FormationTier.judged_by_edge(80, 500), "a default-roster block is edge-judged")
+	assert_true(FormationTier.judged_by_edge(500, 500), "the threshold is inclusive")
+	assert_false(FormationTier.judged_by_edge(501, 500), "a larger block is not")
+	assert_true(FormationTier.EDGE_GAP_MAX_SOLDIERS >= 140,
+			"every default-roster block is edge-judged at the default threshold")

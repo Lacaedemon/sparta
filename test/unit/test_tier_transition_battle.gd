@@ -137,3 +137,27 @@ func test_two_runs_from_the_same_seed_transition_and_reconstruct_identically() -
 		"the idle formation reconstructs one body per living soldier")
 	assert_eq(first_mover_pos.size(), int(first["mover_soldiers"]),
 		"the marching formation reconstructs one body per living soldier")
+
+
+func test_a_pair_with_a_block_over_the_edge_gap_headcount_is_judged_centre_to_centre() -> void:
+	# Cannae-scale's reserve corps sit 830 wu behind a front of small blocks. Judged by the
+	# small enemy cavalry's edge, a reserve would read about 350 wu away and stay close-tier
+	# with every man in it; any pair with a block over the headcount threshold is judged
+	# centre to centre instead, so it demotes like it did before the edge gap.
+	Replay.forced_seed = BATTLE_SEED
+	var battle: Node2D = load("res://scenes/Battle.tscn").instantiate()
+	battle.drill_mode = true
+	battle.terrain = []
+	battle.tier_edge_gap_max_soldiers = 500
+	battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": 800.0, "y": -320.0, "count": 600},
+		{"team": 1, "type": "Cavalry", "x": 800.0, "y": 510.0, "count": 80},
+	]
+	add_child_autofree(battle)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var reserve: Unit = _team_unit(0)
+	var cavalry: Unit = _team_unit(1)
+	assert_gt(cavalry.tier_half_extents().y, 300.0, "the cavalry squadron is deep enough to matter")
+	assert_eq(reserve.tier, FormationTier.FAR, "the 600-man block 830 wu away demotes")
+	Replay.forced_seed = -1

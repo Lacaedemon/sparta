@@ -59,6 +59,24 @@ static func edge_gap(centre_distance: float, reach_a: float, reach_b: float) -> 
 	return maxf(0.0, centre_distance - reach_a - reach_b)
 
 
+## Default for Battle.tier_edge_gap_max_soldiers: the largest block, by deployed headcount,
+## the tier pass judges by its edge. A pair with a larger block in it is judged centre to
+## centre, as before the edge gap existed. Tier is decided per formation, so judging a
+## 4,000-8,000-man line by its front promotes every man in it: on cannae-scale, judging
+## every pair by its edges took the close-tier bubble from 1,656 to 43,656 of 43,720
+## soldiers, about 30x the tick cost; letting only the small enemy's reach count still
+## left 29,656. The default roster's blocks (80-140 men, a cavalry squadron among them)
+## sit well under it.
+const EDGE_GAP_MAX_SOLDIERS: int = 500
+
+
+## Whether the tier pass judges a block of `max_soldiers` deployed men by its edge:
+## true at or under `edge_gap_max_soldiers`. A pair is edge-judged only when both of its
+## blocks are; otherwise its gap is the centre distance.
+static func judged_by_edge(max_soldiers: int, edge_gap_max_soldiers: int) -> bool:
+	return max_soldiers <= edge_gap_max_soldiers
+
+
 ## How far a rectangular block with half-extents `half` (half-width along its files,
 ## half-depth along its ranks), turned to world angle `angle`, reaches from its centre
 ## toward world direction `dir`: the rectangle's support distance |x| * w + |y| * d, with

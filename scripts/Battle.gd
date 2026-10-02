@@ -528,6 +528,10 @@ var team_factions: Array[int] = [FactionRef.NONE, FactionRef.NONE]
 # leaves both at FormationTier's tuned defaults, byte-for-byte.
 var promote_range: float = FormationTier.PROMOTE_RANGE
 var demote_range: float = FormationTier.DEMOTE_RANGE
+# The largest block, by deployed headcount, the tier pass judges by its edge rather than
+# its centre (see FormationTier.judged_by_edge). Settable before the node enters the
+# tree like the two ranges above.
+var tier_edge_gap_max_soldiers: int = FormationTier.EDGE_GAP_MAX_SOLDIERS
 # Far-tier formations counted by this tick's tier pass, so _tick_far_tier_combat can skip
 # its whole scan when there are none -- the case for every tick of an ordinary battle at the
 # shipped band. Recomputed each tick rather than maintained incrementally: the tier pass
@@ -3681,15 +3685,21 @@ func _tick_tier_transitions() -> Array:
 	# pair: a block in a relief swap reads its extents off the live slots, an O(soldiers)
 	# rebuild. A promotion or demotion inside this pass keeps the headcount and the grid,
 	# so the snapshot stays exact for the rest of the pass.
+	# A block above tier_edge_gap_max_soldiers is not edge-judged, and any pair it is in
+	# is judged centre to centre (see FormationTier.judged_by_edge).
 	var halves: Array[Vector2] = []
 	var angles: PackedFloat64Array = PackedFloat64Array()
+	var by_edge: Array[bool] = []
 	halves.resize(all_units.size())
 	angles.resize(all_units.size())
+	by_edge.resize(all_units.size())
 	for i in all_units.size():
 		var w = all_units[i] as UnitRef
 		if w != null and w.state != UnitRef.State.DEAD:
-			halves[i] = w.tier_half_extents()
-			angles[i] = w.soldier_block_world_angle()
+			by_edge[i] = FormationTier.judged_by_edge(w.max_soldiers, tier_edge_gap_max_soldiers)
+			if by_edge[i]:
+				halves[i] = w.tier_half_extents()
+				angles[i] = w.soldier_block_world_angle()
 	for i in all_units.size():
 		var u = all_units[i] as UnitRef
 		if u == null or u.state == UnitRef.State.DEAD:
@@ -3702,9 +3712,11 @@ func _tick_tier_transitions() -> Array:
 			if e == null or e.team == u.team or e.state == UnitRef.State.DEAD:
 				continue
 			var between: Vector2 = e.position - u.position
-			var gap: float = FormationTier.edge_gap(between.length(),
-					FormationTier.support_reach(halves[i], angles[i], between),
-					FormationTier.support_reach(halves[j], angles[j], -between))
+			var gap: float = between.length()
+			if by_edge[i] and by_edge[j]:
+				gap = FormationTier.edge_gap(gap,
+						FormationTier.support_reach(halves[i], angles[i], between),
+						FormationTier.support_reach(halves[j], angles[j], -between))
 			if gap < nearest_gap:
 				nearest_gap = gap
 		if nearest_gap == INF:
