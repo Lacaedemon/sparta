@@ -270,11 +270,9 @@ script under `demos/inputs/`:
   - `team` -- `0` (player, deploys facing down by default) or `1` (enemy, facing up).
   - `type` -- one of `"Spearmen"`, `"Infantry"`, `"Archers"`, `"Cavalry"` (uses that type's
     full stat block from the default loadout).
-  - `x`, `y` -- world-space spawn position: the block's centre.
-  - `front_on_line` (optional bool) -- when true, `x`, `y` is where the block's FRONT rank
-    stands instead, and the block's depth runs back from it, the way the default line
-    spawn deploys (a custom matchup's roster sets it).
+  - `x`, `y` -- world-space spawn position.
   - `facing` (optional `[x, y]`) -- an explicit heading; defaults to facing the enemy half.
+  - `front_on_line` (optional bool) -- `x`, `y` is then where the block's front rank stands, not its centre, as in the default line spawn.
   - `count` (optional) -- soldier-count override (a smaller unit routs sooner; a bigger one
     holds longer).
   - `morale` (optional) -- starting morale (default 100; set low to stage a quick rout).
@@ -945,11 +943,13 @@ To get the timing right you need the default battle's layout. A standard 5v5
 | Cavalry | 3 | 8 |
 | Cavalry | 4 | 9 |
 
-The field is `Rect2(0, -720, 1600, 2440)`, and each block's front rank stands on its
-line, so the fronts start **360 wu** apart and every block's depth runs back from
-its line; unit centres therefore sit behind the lines (team 0: Spearmen y=232.5,
-Infantry 237, Archers 192, Cavalry -180; team 1 mirrored about y=660: 727.5, 723,
-768, 1140). Every block opens inside the close-tier band
+The field is `Rect2(0, -720, 1600, 2440)`,
+and each block's front rank stands on its line,
+so the fronts start **360 wu** apart and every block's depth runs back from its line.
+Unit centres therefore sit behind the lines:
+team 0's Spearmen, Infantry, Archers and Cavalry at y = 232.5, 237, 192 and -180,
+and team 1's mirrored about y = 660, at 727.5, 723, 768 and 1140.
+Every block opens inside the close-tier band
 (`FormationTier.DEMOTE_RANGE`, measured edge to edge) from the first tick. The horizontal spacing is no longer a flat 150 px per unit (issue
 #677: a flat spacing let a wide LOOSE-order Archers regiment overlap its
 Infantry neighbour) -- each adjacent pair's gap widens to fit their actual

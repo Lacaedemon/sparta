@@ -190,7 +190,6 @@ A setup preset decides how far apart the armies start, fast-forward decides how 
 
 - **Three presets**:
   1. *Close* (the default, unchanged): the 580-wu (29 m) gap, close-tier from the first tick.
-     (Since 2026-10-02 the default is 360 wu front to front; see the update note above.)
   2. *Far-tier opening*: a 1200-wu (60 m) gap, so both armies open far-tier and promote after each has closed about 400 wu, roughly 15-20 s of far-tier march when both advance.
   3. *Historical*: a 4000-wu (200 m) gap, the full approach.
 
