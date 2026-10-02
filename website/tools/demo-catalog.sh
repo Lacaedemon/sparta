@@ -12,7 +12,7 @@
 DEMOS=(
   "showcase|demos/showcase.json|30|650|800|replay"
   "clash|demos/clash.json|30|240|640|replay"
-  "charge|demos/charge_demo.json|30|400|640|replay"
+  "charge|demos/charge_demo.json|30|750|640|replay"
   "support|demos/support_demo.json|30|400|640|replay"
   "group_attack|demos/inputs/group-attack-distributed.json|30|400|640|input"
   "pace_modes|demos/inputs/pace-modes.json|30|720|640|input"

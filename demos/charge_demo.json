@@ -4,7 +4,7 @@
   "physics_tps": 60,
   "created": 0,
   "result": "",
-  "duration_ticks": 900,
+  "duration_ticks": 1500,
   "orders": [
     {
       "tick": 12,
@@ -13,7 +13,7 @@
         4
       ],
       "x": 650.0,
-      "y": 880.0,
+      "y": 723.0,
       "target": 6,
       "mode": 0
     }

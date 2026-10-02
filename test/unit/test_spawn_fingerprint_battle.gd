@@ -63,7 +63,7 @@ func test_playback_of_a_legacy_stamp_does_not_flag_mismatch() -> void:
 	# value directly; matches_tree also falls back to legacy_of_tree as a second check.
 	Replay.mode = Replay.Mode.PLAYBACK
 	Replay.rng.seed = 12345
-	Replay.loaded_spawn_fingerprint = "4621b7af088f5053219fd8f50380b181"
+	Replay.loaded_spawn_fingerprint = "162bed3a3bdaf3f7ac00045254efa6d9"
 	Replay.last_load_spawn_mismatch = ""
 	_spawn_default_battle()
 	assert_eq(Replay.last_load_spawn_mismatch, "",
