@@ -1,0 +1,118 @@
+{
+  "_comment": "Default two-army deployment on the deeper field: every block dresses its front rank on its army's line (team 0 at y 300, team 1 at y 660) and its depth runs back from there. The two 960 wu deep cavalry squadrons on each side's right stand behind their line, clear of the hill (Rect2(1150, 380, 250, 200)) and of the enemy's cavalry, which they used to reach into when centred on the line. The camera opens wide on the whole field, then team 0's three foot blocks (uids 0-2) are box-selected and marched into the gap beside the forest while the cavalry hold. Default spawn, seed 1674, AI on team 1. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "1674",
+  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9",
+  "camera": [
+    {
+      "tick": 0,
+      "x": 780.0,
+      "y": 480.0,
+      "zoom": 0.32
+    },
+    {
+      "tick": 150,
+      "x": 780.0,
+      "y": 480.0,
+      "zoom": 0.32
+    },
+    {
+      "tick": 240,
+      "x": 640.0,
+      "y": 420.0,
+      "zoom": 0.55
+    }
+  ],
+  "steps": [
+    {
+      "tick": 160,
+      "box": {
+        "from": [
+          60,
+          150
+        ],
+        "to": [
+          880,
+          280
+        ]
+      }
+    },
+    {
+      "tick": 180,
+      "rmb_click": [
+        480,
+        470
+      ]
+    }
+  ],
+  "state": [
+    8,
+    150,
+    300,
+    420
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 3,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 8,
+      "uid": 4,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 8,
+      "uid": 8,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 8,
+      "uid": 9,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        120.0,
+        232.5
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 3,
+      "field": "position",
+      "value": [
+        1027.0,
+        -180.0
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 8,
+      "field": "position",
+      "value": [
+        1027.0,
+        1140.0
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 3,
+      "field": "tier",
+      "value": "CLOSE"
+    },
+    {
+      "tick": 8,
+      "uid": 8,
+      "field": "tier",
+      "value": "CLOSE"
+    }
+  ]
+}
