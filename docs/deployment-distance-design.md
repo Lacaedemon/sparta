@@ -42,6 +42,7 @@ World scale is 20 wu per metre (`WorldScale.WU_PER_M`).
   `Battle.FIELD` is 1600 x 1200 wu (80 x 60 m), with the two default spawn lines at y = 300 and y = 880 (`Battle.SPAWN_LINE_YS`):
   a 580-wu (29 m) gap between line anchors, about 20 m front to front at today's block depths.
   The gap is deliberately capped just inside `FormationTier.DEMOTE_RANGE` so the default battle opens at close-tier fidelity.
+  *Update, 2026-10-02:* the default field is now `Rect2(0, -720, 1600, 2440)` (80 x 122 m) and the lines are y = 300 and y = 660, where each army's front rank stands; blocks run back from their line, so the fronts are 360 wu (18 m) apart, and the tier pass measures the gap between block edges rather than centres.
   Both values are already caller-configurable instance fields (`Battle.field`, `Battle.spawn_line_ys`):
   the demo recorder sets them from an input script's `map` block, and `BattleMap.serialize` records a non-default map into the replay header so playback rebuilds the same battlefield.
 

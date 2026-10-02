@@ -1613,7 +1613,7 @@ units the battlefield's scale bar uses.
 
 **Deployment distance.** A province's data may declare how far apart the two armies deploy
 when a fight over it is fought out in the tactical battle.
-A clash over an open plain can open wider than the standard 29 m,
+A clash over an open plain can open wider than the standard 18 m between the front ranks,
 so both armies start as far-tier marks and march before they fight.
 A province that declares nothing opens at the standard distance.
 See [Deployment distance](tactics.qmd#deployment-distance) in the tactics guide.

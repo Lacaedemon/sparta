@@ -2254,11 +2254,14 @@ a different nearby enemy instead of all piling onto one.
 
 ## Deployment distance
 
-The standard battle opens with the two lines 29 m apart, anchor to anchor:
-close enough that every unit keeps individual-soldier fidelity from the first tick.
+The standard battle opens with the two armies' front ranks 18 m apart.
+Each block dresses its front rank on its army's line and its depth runs back from there,
+so even a deep cavalry squadron starts on its own ground,
+clear of the hill and of the enemy's cavalry.
+18 m is close enough that every unit keeps individual-soldier fidelity from the first tick.
 A campaign clash can open wider.
 Each province in a campaign's data (`data/campaigns/*.json`) may declare a `deployment_gap_m`,
-the distance in metres between the two armies' lines
+the distance in metres between the two armies' front lines
 when a fight over that province is fought out in the tactical battle;
 an open plain deploys wider than a defile.
 The attacker's line and the terrain band stay where they are,
@@ -2268,7 +2271,7 @@ A province that declares nothing fights at the standard distance,
 so the campaigns you already know play exactly as before until their data says otherwise.
 
 Beyond 30 m both armies open in the far simulation tier (grid marks instead of bodies)
-and promote back to individual soldiers as they close inside 20 m,
+and promote back to individual soldiers once the gap between the blocks closes inside 20 m,
 so a wide deployment is a march before it is a fight.
 Dress the line and pick your ground before stepping off:
 a formation that arrives ragged after a long walk meets a line that had the same time to prepare.
@@ -2329,7 +2332,7 @@ a fleeing unit suffers a 0.6x penalty to its sight radius.
 ### Why a cavalry screen is worth more
 
 On an open field with fog active, blind marching is dangerous.
-A standard deployment gap of 29 m means opposing foot lines deploy out of sight.
+Even at the standard 18 m between the front ranks, opposing foot lines deploy out of sight.
 Heavy infantry marching forward without reconnaissance risks blundering into spears.
 This gives cavalry a decisive tactical purpose before the lines meet.
 With a 21 m sight radius (a 40% reach advantage over foot) and superior speed,
