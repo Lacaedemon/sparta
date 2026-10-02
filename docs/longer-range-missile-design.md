@@ -76,7 +76,7 @@ Per [`docs/units-convention.md`](units-convention.md) any constant derived from 
 
 The scale problem is visible directly in that column.
 `Battle.FIELD` was 1600 x 1200 wu, 80 x 60 m, when this was written
-(it is now 1600 x 2440 wu, 80 x 122 m, with the lines 18 m apart front to front, in `scripts/Battle.gd`),
+(it is now 1600 x 2680 wu, 80 x 134 m, with the lines 18 m apart front to front, in `scripts/Battle.gd`),
 so a sling at 3600 wu outranges the default battlefield along its long axis twice over, and a bolt-shooter outranges it between three and five times over.
 Even the deployment design's *Historical* preset, a 4000-wu (200 m) line gap in a 4620-wu (231 m) field, is a battlefield on which artillery reaches the enemy line from the moment of deployment and shoots well past it, while a sling or composite bow reaches that line only at the very top of its band.
 A longer-range missile model is therefore not a retune of one constant;

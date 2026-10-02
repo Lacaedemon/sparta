@@ -1,0 +1,17 @@
+{
+  "_comment": "Defect declarations for the support replay clip (demos/support_demo.json); see demos/README.md, Sidecar declarations.",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        6
+      ],
+      "reason": "Team 1's Infantry (uid 6) reaches melee contact at the end of the clip (its count drops 120 -> 117 by tick 780) and compresses into the press: CI website demo-diff on PR #1677 measured a minimum neighbour distance of 1.318 wu against the 2.25 wu floor, merge-base 6.89, where contact came earlier and the sampled ticks missed it. Press-adjacent compression at contact, not standing interpenetration."
+    },
+    "shape_residual": {
+      "uids": [
+        8
+      ],
+      "reason": "Team 1's cavalry squadron (uid 8, 9 ranks, 960 wu deep) now deploys with its front rank on its line and marches a long diagonal toward its target, so the deep block spends the clip mid-turn and its rear ranks trail its grid: the same deep-block mid-turn mechanism declared for uid 8 in cycle-charge.json (#1546). CI website demo-diff on PR #1677: worst 77.78 wu against the 30 wu floor, merge-base 3.199."
+    }
+  }
+}

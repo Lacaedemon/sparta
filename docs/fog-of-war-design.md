@@ -315,7 +315,7 @@ Verified against the tree at the time of writing.
 
 - `Battle.FIELD` is `Rect2(0, 0, 1600, 1200)`, which at `WorldScale.WU_PER_M` = 20.0 is an 80 m by 60 m field (`docs/world-scale-rebase-plan.md` states the same figure).
   The default spawn lines (`Battle.SPAWN_LINE_YS`) are y = 300 and y = 880, so the two armies start 580 wu = 29 m apart.
-  *Update, 2026-10-02:* the default field is now `Rect2(0, -720, 1600, 2440)` (80 x 122 m),
+  *Update, 2026-10-02:* the default field is now `Rect2(0, -960, 1600, 2680)` (80 x 134 m),
   and the lines are y = 300 and y = 660, where each army's front rank stands.
   Blocks run back from their line, so the fronts are 360 wu (18 m) apart,
   and the tier pass measures the gap between block edges rather than centres.

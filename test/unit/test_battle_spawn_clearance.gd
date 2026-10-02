@@ -75,3 +75,13 @@ func test_default_sight_scale_is_independent_of_the_field_size() -> void:
 	add_child_autofree(battle)
 	await get_tree().physics_frame
 	assert_eq(battle.sight_scale, Unit.DEFAULT_SIGHT_SCALE, "default sight is the fixed 15 m")
+
+
+func test_the_field_corner_keeps_the_terrain_grids_aligned() -> void:
+	# PathField's routing cells and the fog cells are laid out from the field's corner. A
+	# corner off their pitch shifts every cell against the terrain and changes routing near
+	# it, even in a scenario whose own coordinates never moved.
+	var corner: Vector2 = BattleScript.FIELD.position
+	for pitch in [PathField.CELL, BattleScript.DEFAULT_FOG_CELL]:
+		assert_almost_eq(fposmod(corner.x, pitch), 0.0, 0.001, "corner x on the %s wu grid" % pitch)
+		assert_almost_eq(fposmod(corner.y, pitch), 0.0, 0.001, "corner y on the %s wu grid" % pitch)

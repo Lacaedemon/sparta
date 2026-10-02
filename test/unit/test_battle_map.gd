@@ -276,8 +276,8 @@ func test_deployment_gap_m_moves_the_spawn_lines_with_the_parameter() -> void:
 	battle.deployment_gap_m = 60.0
 	add_child_autofree(battle)
 	assert_eq(battle.spawn_line_ys, [300.0, 1500.0], "60 m = 1200 wu below team 0's line")
-	assert_eq(battle.field, Rect2(0, -720, 1600, 3280), "the live field grew with the gap")
-	assert_eq(battle.field_with_margin, Rect2(0, -720, 1600, 3280).grow(battle.ROUT_MARGIN),
+	assert_eq(battle.field, Rect2(0, -960, 1600, 3520), "the live field grew with the gap")
+	assert_eq(battle.field_with_margin, Rect2(0, -960, 1600, 3520).grow(battle.ROUT_MARGIN),
 			"the rout margin tracks the widened field")
 	var team_0_ys: Array = []
 	var team_1_ys: Array = []
@@ -321,7 +321,7 @@ func test_campaign_clash_deployment_gap_widens_the_battle() -> void:
 	add_child_autofree(battle)
 	assert_almost_eq(battle.deployment_gap_m, 45.0, 0.001, "the clash's gap fills the battle's field")
 	assert_eq(battle.spawn_line_ys, [300.0, 1200.0], "45 m = 900 wu below team 0's line")
-	assert_eq(battle.field, Rect2(0, -720, 1600, 2980), "and the field grew with it")
+	assert_eq(battle.field, Rect2(0, -960, 1600, 3220), "and the field grew with it")
 
 
 func test_campaign_clash_without_a_gap_keeps_the_default_lines() -> void:

@@ -945,7 +945,7 @@ To get the timing right you need the default battle's layout. A standard 5v5
 | Cavalry | 3 | 8 |
 | Cavalry | 4 | 9 |
 
-The field is `Rect2(0, -720, 1600, 2440)`,
+The field is `Rect2(0, -960, 1600, 2680)`,
 and each block's front rank stands on its line,
 so the fronts start **360 wu** apart and every block's depth runs back from its line.
 Unit centres therefore sit behind the lines:
