@@ -8,7 +8,8 @@ const WU_PER_M := 20.0
 ```
 
 `Battle.WORLD_UNITS_PER_METER` re-exports it, so either name reads the same
-value. At 20 wu/m, the 1600 wu wide default field is an 80 m engagement frontage.
+value.
+At 20 wu/m, the 1600 wu wide default field is an 80 m engagement frontage.
 
 ## The three rules
 
