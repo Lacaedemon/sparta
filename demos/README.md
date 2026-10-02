@@ -950,7 +950,8 @@ Unit centres therefore sit behind the lines:
 team 0's Spearmen, Infantry, Archers and Cavalry at y = 232.5, 237, 192 and -180,
 and team 1's mirrored about y = 660, at 727.5, 723, 768 and 1140.
 Every block opens inside the close-tier band
-(`FormationTier.DEMOTE_RANGE`, measured edge to edge) from the first tick. The horizontal spacing is no longer a flat 150 px per unit (issue
+(`FormationTier.DEMOTE_RANGE`, measured edge to edge) from the first tick.
+The horizontal spacing is no longer a flat 150 px per unit (issue
 #677: a flat spacing let a wide LOOSE-order Archers regiment overlap its
 Infantry neighbour) -- each adjacent pair's gap widens to fit their actual
 formation widths, so the standard 5v5's `x` positions are:
