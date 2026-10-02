@@ -1812,10 +1812,17 @@ func _grip_for_press(world_pos: Vector2):
 	var grip: Variant = _resize_handle_at(world_pos)
 	if grip == null:
 		return null
-	var body = _unit_at(world_pos, TEAM_ANY_OWN)
-	if body != null and body != (grip as Dictionary)["unit"]:
+	if _grip_covered_by_other(world_pos, (grip as Dictionary)["unit"]):
 		return null
 	return grip
+
+
+## Whether a click at `world_pos` would select one of the player's units other than
+## `owner` -- the test both a press on `owner`'s grip and the grip's own drawing use, so a
+## grip that a click there would not grab is not drawn either.
+func _grip_covered_by_other(world_pos: Vector2, owner) -> bool:
+	var body = _unit_at(world_pos, TEAM_ANY_OWN)
+	return body != null and body != owner
 
 
 ## Local-X (file-axis) coordinate of a flank's edge at the unit's CURRENT committed
@@ -2492,6 +2499,8 @@ func _draw_resize_handles() -> void:
 	if u == null:
 		return
 	for hp in _resize_handle_positions(u):
+		if _grip_covered_by_other(hp, u):
+			continue   # a click there selects that unit, so there is no grip to show
 		var box := Rect2(hp - Vector2.ONE * RESIZE_HANDLE_SIZE, Vector2.ONE * RESIZE_HANDLE_SIZE * 2.0)
 		draw_rect(box, RESIZE_HANDLE_COLOR)
 		draw_rect(box, Color.BLACK, false, 1.0)   # rim for contrast on any background

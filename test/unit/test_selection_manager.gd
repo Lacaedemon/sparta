@@ -303,6 +303,48 @@ func test_a_press_on_another_unit_over_a_grip_selects_that_unit() -> void:
 	assert_not_null(sm._grip_for_press(grip), "with nothing else under it, the grip still grabs")
 
 
+func test_a_real_press_and_release_over_a_covered_grip_selects_the_unit_under_it() -> void:
+	# Through the actual input path, not just the helper: a press and release on the
+	# neighbour that the selected block's grip lies over selects the neighbour and starts
+	# no resize.
+	var sm := _sm()
+	var block := _unit()
+	block.facing = Vector2.UP
+	block.position = Vector2(50, 50)
+	sm._select(block)
+	var grip: Vector2 = sm._resize_handle_positions(block)[0]
+	var neighbour := _unit()
+	neighbour.facing = Vector2.UP
+	neighbour.position = grip
+	sm.set_cursor_override(grip)
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	sm._unhandled_input(press)
+	assert_false(sm._resizing, "the press starts no resize")
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	sm._unhandled_input(release)
+	sm.set_cursor_override(null)
+	assert_eq(sm.get_selected_units(), [neighbour], "the neighbour is now the selection")
+
+
+func test_a_grip_covered_by_another_unit_is_not_drawn() -> void:
+	var sm := _sm()
+	var block := _unit()
+	block.facing = Vector2.UP
+	block.position = Vector2(50, 50)
+	sm._select(block)
+	var hs: Array = sm._resize_handle_positions(block)
+	assert_false(sm._grip_covered_by_other(hs[0], block), "an open grip is shown")
+	var neighbour := _unit()
+	neighbour.position = hs[0]
+	assert_true(sm._grip_covered_by_other(hs[0], block), "a grip over the neighbour is not")
+	assert_false(sm._grip_covered_by_other(hs[1], block), "and the other flank's grip still is")
+	assert_false(sm._grip_covered_by_other(block.position, block), "the block's own body never hides its grip")
+
+
 func test_resize_handle_at_reports_the_grabbed_flank() -> void:
 	# The grip list is [+file-axis, -file-axis]; the first is the block's local +X
 	# flank (Anchor.RIGHT), the second its mirror. The drag anchors the OPPOSITE
