@@ -130,17 +130,22 @@ tactically-relevant zone. Proposed trigger, to be tuned empirically (see
 
 The gap, not the centre distance, because a deep block's front can stand
 hundreds of world units ahead of its centre (a cavalry squadron reaches 480 wu
-from centre to front), so a centre-to-centre distance judged a block close or
-far by where its middle was rather than where its front was. Each reach is the
+from centre to front),
+so a centre-to-centre distance judged a block close or
+far by where its middle was rather than where its front was.
+Each reach is the
 block's support distance toward the other block (`FormationTier.support_reach`
-over `Unit.tier_half_extents()` in the block's grid rotation); the pass reads
-them once per tick (`Battle._tick_tier_transitions`). The thresholds are
+over `Unit.tier_half_extents()` in the block's grid rotation);
+the pass reads
+them once per tick (`Battle._tick_tier_transitions`).
+The thresholds are
 unchanged by the switch, and two blocks in contact sit at a gap of exactly 0.
 
 This is deliberately the simplest trigger that could work -- a single scalar
 distance check, no camera-frustum or player-attention signal, so it stays a
 pure function of already-serialized sim state (positions and block extents),
-which the determinism section below requires. It is also a small, composable
+which the determinism section below requires.
+It is also a small, composable
 piece in its own right (`PLAN.md` pillar 3): a standalone predicate over two
 blocks' positions and extents, not a new subsystem entangled with rendering, orders, or combat --
 it can be tuned or swapped without touching either tier's internals. Camera/attention-based triggers (only
