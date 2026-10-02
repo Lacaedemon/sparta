@@ -19,5 +19,15 @@
     {"tick": 54, "rmb_click": [760, 480]}
   ],
   "state": [8, 60, 100, 140, 170, 200, 230, 260, 300],
-  "frames": [8, 140, 210, 280]
+  "frames": [8, 140, 210, 280],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "tier", "value": "FAR"},
+    {"tick": 8, "uid": 1, "field": "tier", "value": "FAR"},
+    {"tick": 170, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 170, "uid": 1, "field": "state", "value": "FIGHTING"},
+    {"tick": 170, "uid": 0, "field": "tier", "value": "FAR"},
+    {"tick": 170, "uid": 1, "field": "tier", "value": "FAR"},
+    {"tick": 200, "uid": 1, "field": "state", "value": "ROUTING"},
+    {"tick": 230, "uid": 0, "field": "tier", "value": "FAR"}
+  ]
 }
