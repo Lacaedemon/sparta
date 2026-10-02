@@ -9346,6 +9346,8 @@ func to_snapshot_dict() -> Dictionary:
 		"withdrawal_peeling": _withdrawal_peeling,
 		"separation_velocity": _separation_velocity,
 		"moved_while_routing": _moved_while_routing,
+		# Not reset before a routing unit's early return, so a router keeps reading it.
+		"is_facing_turning": _is_facing_turning,
 
 		# Spawn-time role and per-unit tunables a caller may have set before spawn. A restore
 		# respawns a fresh node, so without these a rewound general stops being the general
@@ -9553,6 +9555,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_withdrawal_peeling = bool(d.get("withdrawal_peeling", _withdrawal_peeling))
 	_separation_velocity = d.get("separation_velocity", _separation_velocity)
 	_moved_while_routing = bool(d.get("moved_while_routing", _moved_while_routing))
+	_is_facing_turning = bool(d.get("is_facing_turning", _is_facing_turning))
 	is_general = bool(d.get("is_general", is_general))
 	order_clear_step = float(d.get("order_clear_step", order_clear_step))
 	order_clear_tolerance = float(d.get("order_clear_tolerance", order_clear_tolerance))

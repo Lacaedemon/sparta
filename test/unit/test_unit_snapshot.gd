@@ -417,7 +417,7 @@ func test_spawn_role_tunables_and_late_state_round_trip() -> void:
 	var values := {
 		"is_general": true, "line_index": 2,
 		"_withdrawal_peeling": true, "_separation_velocity": Vector2(3.5, -1.25),
-		"_moved_while_routing": true,
+		"_moved_while_routing": true, "_is_facing_turning": true,
 		"order_clear_step": 12.0, "order_clear_tolerance": 2.5,
 		"formed_turn_tracking_frac": 0.4, "melee_press_fraction": 0.33,
 		"routing_melee_press_fraction": 0.21, "disengage_step_distance": 77.0,
@@ -436,4 +436,26 @@ func test_spawn_role_tunables_and_late_state_round_trip() -> void:
 	restored.apply_snapshot_dict(original.to_snapshot_dict())
 	for field in values:
 		assert_eq(restored.get(field), values[field], "%s survives a snapshot round trip" % field)
+	restored.free()
+
+
+func test_newly_captured_fields_default_for_older_snapshots() -> void:
+	# A snapshot cached before these fields were captured still applies, and each field
+	# keeps the value a freshly spawned unit starts with.
+	var d := _sample_unit().to_snapshot_dict()
+	var fields := {
+		"is_general": "is_general", "line_index": "line_index",
+		"withdrawal_peeling": "_withdrawal_peeling", "separation_velocity": "_separation_velocity",
+		"moved_while_routing": "_moved_while_routing", "is_facing_turning": "_is_facing_turning",
+		"order_clear_step": "order_clear_step", "rout_time": "rout_time",
+		"flanking_maneuver_hysteresis": "flanking_maneuver_hysteresis",
+	}
+	for key in fields:
+		d.erase(key)
+	var fresh := Unit.new()
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(d)
+	for key in fields:
+		assert_eq(restored.get(fields[key]), fresh.get(fields[key]), "%s falls back to the default" % key)
+	fresh.free()
 	restored.free()

@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "No visible change in a recorded battle: this adds a test that every Unit member is snapshotted or explicitly excluded, and captures the role, tunables and late state the test found missing (a rewound general now stays the general). It only changes what a replay seek or rearguard clone restores, which a straight-through clip never exercises."
+  "reason": "No visible change in a recorded battle: this adds a test that every Unit member is snapshotted or explicitly excluded, and captures the role, tunables and late state the test found missing (a rewound general now stays the general). It changes what a replay seek restores, which a straight-through clip never exercises, and makes a general's rearguard (cloned from the same snapshot) stop inheriting the general's role, which no catalog clip stages."
 }

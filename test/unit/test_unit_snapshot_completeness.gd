@@ -14,7 +14,6 @@ extends GutTest
 const RENDER := "render-only state, rebuilt on the next draw like a freshly spawned unit's"
 const CACHE := "a cache keyed to the current physics frame or slot layout, rebuilt on the next tick"
 const COUNTER := "an instrumentation counter read only by tests and benchmarks"
-const TRANSIENT := "reset at the start of every tick before anything reads it"
 const DERIVED := "re-derived on restore from fields the snapshot does carry"
 const LINK := "a scene or UI link, not simulation state"
 
@@ -26,7 +25,6 @@ const EXCLUDED := {
 	"max_stamina": DERIVED + " (update_combat_profile reads it off the combat profile)",
 	"auto_advance_on_detect": DERIVED + " (Battle._spawn_from_snapshot recomputes it from the team)",
 	"incoming_friendly_links": DERIVED + " (each restored order's friendly_target setter recounts it)",
-	"_is_facing_turning": TRANSIENT,
 	"selected": LINK,
 	"_owning_battle": LINK,
 	"_formation_slots_call_count": COUNTER,
@@ -134,3 +132,39 @@ func test_captured_names_resolve_without_the_underscore_or_as_a_uid() -> void:
 	assert_true(_captured({"rout_timer": 0.0}, "_rout_timer"), "a private member saved without its underscore")
 	assert_true(_captured({"target_enemy_uid": 3}, "target_enemy"), "a Unit reference saved as a uid")
 	assert_false(_captured({"rout_timer": 0.0}, "_attack_cd"), "an unrelated key does not count")
+
+
+## Keys to_snapshot_dict() writes that apply_snapshot_dict() does not read, with the reason;
+## every other key it writes must be read back there, or the field is captured in name only.
+const NOT_READ_BY_APPLY := {
+	"morale_ladder": "a readable label for transcripts; morale itself is restored",
+	"combat_status": "a readable label for transcripts; derived from restored state",
+	"target_enemy_uid": "resolved by Battle.restore_snapshot once every unit is respawned",
+	"support_target_uid": "resolved by Battle.restore_snapshot once every unit is respawned",
+	"engage_turn_enemy_uid": "resolved by Battle.restore_snapshot once every unit is respawned",
+}
+
+
+func test_every_written_key_is_read_back() -> void:
+	# The write side alone is not enough: a field added to to_snapshot_dict() but forgotten
+	# in apply_snapshot_dict() still reverts on restore. Checked against the apply function's
+	# own source, since a value-level round trip would need a non-default value per field.
+	var u: Unit = _spawned_unit()
+	await get_tree().physics_frame
+	var src: String = u.get_script().source_code
+	var start: int = src.find("func apply_snapshot_dict(")
+	var stop: int = src.find("\nfunc ", start + 1)
+	if stop == -1:
+		stop = src.length()   # apply_snapshot_dict is the script's last function
+	assert_gt(start, -1, "found apply_snapshot_dict")
+	var body: String = src.substr(start, stop - start)
+	var unread: Array[String] = []
+	for key in u.to_snapshot_dict().keys():
+		var k := String(key)
+		if NOT_READ_BY_APPLY.has(k):
+			continue
+		if body.find('d["%s"]' % k) == -1 and body.find('d.get("%s"' % k) == -1:
+			unread.append(k)
+	assert_eq(unread, [] as Array[String],
+			"read these back in apply_snapshot_dict() or list them in NOT_READ_BY_APPLY: %s"
+			% ", ".join(PackedStringArray(unread)))
