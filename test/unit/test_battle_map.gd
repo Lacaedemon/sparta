@@ -491,3 +491,16 @@ func test_serialize_terrain_screen_factor_omits_default_and_keeps_overrides() ->
 	var back: Dictionary = BattleMap.parse(blob)
 	assert_almost_eq(float(back["terrain"][1]["screen_factor"]), 0.25, 0.001, "custom screen_factor survives round-trip")
 
+
+
+func test_parse_and_serialize_carry_a_field_origin() -> void:
+	# A field grown behind team 0's line has a negative top edge; the four-element form
+	# keeps it, and a zero origin still serializes to the two-element form.
+	var out: Dictionary = BattleMap.parse({"field": [0, -720, 1600, 2440]})
+	assert_eq(out.get("field"), Rect2(0, -720, 1600, 2440), "[x, y, w, h] keeps the origin")
+	var back: Dictionary = BattleMap.parse(BattleMap.serialize(Rect2(0, -720, 1600, 2440), [], [300.0, 660.0]))
+	assert_eq(back["field"], Rect2(0, -720, 1600, 2440), "an off-origin field survives the round trip")
+	assert_eq(BattleMap.serialize(Rect2(0, 0, 800, 600), [], [1.0, 2.0])["field"], [800.0, 600.0],
+			"a zero-origin field keeps the two-element form")
+	assert_true(BattleMap.parse({"field": [0, 0, 0, 100]}).has("error"), "zero width is an error in the four-element form")
+	assert_true(BattleMap.parse({"field": [0, 0, 100]}).has("error"), "a three-element field is an error")

@@ -60,6 +60,15 @@ static func should_promote(formation_pos: Vector2, nearest_enemy_pos: Vector2,
 	return formation_pos.distance_squared_to(nearest_enemy_pos) < range_wu * range_wu
 
 
+## Distance between two formations' near edges along the line joining their centres:
+## the centre distance less each block's reach toward the other (Unit.tier_reach), never
+## below zero. The tier pass feeds this to should_promote/should_demote as the distance
+## from a zero-reach point, so a deep block -- a cavalry squadron reaches 480 wu from its
+## centre to its front -- is judged by where its front is, not by where its centre is.
+static func edge_gap(centre_distance: float, reach_a: float, reach_b: float) -> float:
+	return maxf(0.0, centre_distance - reach_a - reach_b)
+
+
 ## Placeholder demote trigger: the mirror check against the farther DEMOTE_RANGE. Between
 ## the two thresholds neither predicate fires, so the formation keeps its current tier.
 static func should_demote(formation_pos: Vector2, nearest_enemy_pos: Vector2,

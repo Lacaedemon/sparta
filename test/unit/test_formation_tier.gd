@@ -87,3 +87,26 @@ func test_unit_can_be_constructed_in_the_far_tier() -> void:
 	add_child_autofree(u)
 	assert_eq(u.tier, FormationTier.FAR)
 	assert_eq(u.soldiers, 4)   # the close-tier per-soldier path still ran regardless
+
+
+func test_edge_gap_subtracts_both_reaches_and_never_goes_negative() -> void:
+	assert_eq(FormationTier.edge_gap(1000.0, 480.0, 70.0), 450.0, "centre distance less both reaches")
+	assert_eq(FormationTier.edge_gap(100.0, 480.0, 70.0), 0.0, "overlapping blocks read as touching")
+
+
+func test_tier_reach_is_the_block_support_distance_along_a_direction() -> void:
+	var u := Unit.new()
+	u.max_soldiers = 80
+	u.is_cavalry = true
+	u.file_pitch = 20.0
+	u.rank_pitch = 60.0
+	u.facing = Vector2.DOWN
+	add_child_autofree(u)
+	var half: Vector2 = u._far_tier_half_extents()
+	assert_gt(half.y, half.x, "a cavalry squadron is deeper than it is wide")
+	assert_almost_eq(u.tier_reach(Vector2.DOWN), half.y, 0.001, "reach toward the front is the half-depth")
+	assert_almost_eq(u.tier_reach(Vector2.RIGHT * 5.0), half.x, 0.001, "reach to the flank is the half-width")
+	var diag: Vector2 = Vector2(1, 1).normalized()
+	assert_almost_eq(u.tier_reach(diag), diag.x * half.x + diag.y * half.y, 0.001,
+			"an oblique reach is the rectangle's support distance")
+	assert_eq(u.tier_reach(Vector2.ZERO), 0.0, "no direction, no reach")

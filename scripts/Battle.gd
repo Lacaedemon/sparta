@@ -22,15 +22,19 @@ signal army_half_destroyed(team: int)
 signal army_tired(team: int)
 signal general_killed_or_routed(team: int, general_unit: Node, cause: String)
 
-# 80 x 60 m at 20 wu/m. Deep enough that the two default lines deploy with real
-# ground between them (see _spawn_line's y anchors below): the field grew downward
-# from its original 1600x1000, keeping the origin, team 0's line, and the terrain
-# band at their long-standing coordinates so custom scenarios stay valid. The
-# line gap is deliberately capped just inside FormationTier.DEMOTE_RANGE so the
-# default battle still opens at close-tier fidelity; deploying at genuinely
-# historical distances means far-tier openings and a paced advance, a separate
-# design step.
-const FIELD := Rect2(0, 0, 1600, 1200)
+# 80 x 122 m at 20 wu/m, running from y = -720 to y = 1720. Each line-spawned block
+# dresses its FRONT rank on its spawn line and stands back from it (see
+# _dress_front_on_line), so the field holds the deepest default block -- a cavalry
+# squadron, 9 ranks at 6 m, 960 wu from front to rear -- behind each line with 60 wu
+# to spare. The field grew upward and downward from its earlier 1600x1200, keeping
+# team 0's line and the terrain band at their long-standing coordinates so custom
+# scenarios placed around them stay valid; the negative top edge is the ground behind
+# team 0. The two fronts stand 360 wu (18 m) apart, the band the terrain sits in with
+# 80 wu either side, which keeps every foot block's centre within
+# FormationTier.DEMOTE_RANGE of the block facing it, so the default battle still
+# opens at close-tier fidelity; deploying at genuinely historical distances means
+# far-tier openings and a paced advance, a separate design step.
+const FIELD := Rect2(0, -720, 1600, 2440)
 
 # Extra room beyond the field that a ROUTING unit may flee into before it's removed from
 # play (see Unit._escape()). Fixed and known up front (not sized per unit) since it's drawn
@@ -53,8 +57,9 @@ const TERRAIN: Array = [
 	{"rect": Rect2(1150, 380, 250, 200), "type": "hill",   "kind": "block"},
 ]
 # Default spawn-line anchors for the standard two-army battle: team 0's line and team 1's.
-# See _spawn_line's call sites for the deployment-gap reasoning behind the values.
-const SPAWN_LINE_YS: Array = [300.0, 880.0]
+# Each is where that army's front rank stands (see _dress_front_on_line). See FIELD above
+# and _spawn_line's call sites for the deployment-gap reasoning behind the values.
+const SPAWN_LINE_YS: Array = [300.0, 660.0]
 
 # The live per-battle MAP: battlefield rect, terrain patches, and spawn-line anchors, as
 # instance data a caller may override BEFORE the node enters the tree (the same
@@ -417,12 +422,12 @@ var drill_mode: bool = false
 var all_teams_control: bool = false
 
 # Fog of war (Settings.fog_of_war; Perception.gd). Per-battle sight scale every unit's
-# type multiplier applies to (Unit.sight_multiplier): a quarter of the field's short
-# side, so a foot unit sees a quarter of the way across the field. A gameplay
-# legibility parameter, not an eyesight claim. Settable BEFORE the node enters the tree.
-# Set <= 0 for unset (derives scale from DEFAULT_SIGHT_SCALE_FRACTION x short side).
-# _spawn_unit reads it when it sizes each unit's sight_range in _ready.
-const DEFAULT_SIGHT_SCALE_FRACTION: float = 0.25
+# type multiplier applies to (Unit.sight_multiplier). A gameplay legibility parameter,
+# not an eyesight claim, and independent of the map's size: a bigger field does not let
+# a man see farther. Settable BEFORE the node enters the tree. Set <= 0 for unset, which
+# takes Unit.DEFAULT_SIGHT_SCALE (15 m, a quarter of the 1200 wu short side the field
+# had when sight first derived from it). _spawn_unit reads it when it sizes each unit's
+# sight_range in _ready.
 var sight_scale: float = -1.0
 # Ticks after which a remembered enemy contact counts as stale: the ghost marker has
 # fully faded by then (FogGhostLayer.stale_ticks). 10 s of sim time; settable before
@@ -696,10 +701,9 @@ func _ready() -> void:
 				if parsed.has("fog_of_war"):
 					_recorded_fog_of_war = bool(parsed["fog_of_war"])
 
-	# Sight scale derives from the final field's short side unless explicitly overridden
-	# before _ready.
+	# Sight scale takes the fixed default unless explicitly overridden before _ready.
 	if sight_scale <= 0.0 or not is_finite(sight_scale):
-		sight_scale = DEFAULT_SIGHT_SCALE_FRACTION * minf(field.size.x, field.size.y)
+		sight_scale = UnitRef.DEFAULT_SIGHT_SCALE
 
 	# Terrain fog grid, sized from the now-final field and fog_cell -- never resized again
 	# this battle. A non-finite or non-positive fog_cell falls back to the default, the
@@ -809,10 +813,11 @@ func _ready() -> void:
 		# Player army (team 0) deploys along the top, facing down.
 		_spawn_line(0, Vector2.DOWN, float(spawn_line_ys[0]), atk_count)
 		# Enemy army (team 1) deploys along the bottom, facing up — skipped in drill mode,
-		# where the player army rehearses alone. The 580-wu line gap (29 m, ~20 m front
-		# to front with today's block depths) is the deepest deployment that stays
-		# inside FormationTier.DEMOTE_RANGE, so both armies keep individual-soldier
-		# fidelity from the first tick while no longer starting at spitting distance.
+		# where the player army rehearses alone. Each line is where that army's front rank
+		# stands, 360 wu (18 m) apart front to front: deep enough to hold the terrain band
+		# between the armies, and shallow enough that every foot block's centre stays
+		# inside FormationTier.DEMOTE_RANGE of the block facing it, so both armies keep
+		# individual-soldier fidelity from the first tick (see FIELD).
 		if not drill_mode:
 			_spawn_line(1, Vector2.UP, float(spawn_line_ys[1]), dfn_count)
 
@@ -899,7 +904,8 @@ func _draw() -> void:
 	else:
 		draw_rect(field, FIELD_COLOR)
 	draw_rect(field, Color(0.2, 0.25, 0.16), false, 4.0)
-	draw_line(Vector2(0, field.size.y * 0.5), Vector2(field.size.x, field.size.y * 0.5),
+	var mid_y: float = field.get_center().y
+	draw_line(Vector2(field.position.x, mid_y), Vector2(field.end.x, mid_y),
 		Color(1, 1, 1, 0.08), 2.0)
 	# Terrain patches — drawn over the field, under units (Battle is the parent). Each
 	# patch keeps its outline so the boundary (the part the sim actually enforces) stays
@@ -975,7 +981,22 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	for i in range(count):
 		var d: Dictionary = loadout[i % loadout.size()]
 		var pos := Vector2(start_x + xs[i], y)
-		_spawn_unit(d, team, facing, pos, "%s %d" % [d["name"], i + 1])
+		_dress_front_on_line(_spawn_unit(d, team, facing, pos, "%s %d" % [d["name"], i + 1]))
+
+
+## Steps a unit just spawned centred on a point of its spawn line back, against its facing,
+## until its front rank stands on the line: an army dresses its front on the line, and each
+## block's depth runs back from there. Centring the blocks on the line instead let a deep
+## block reach half its depth toward the enemy -- a default cavalry squadron, 960 wu deep,
+## reached past the terrain between the lines and into the enemy's own cavalry. The front
+## rank is the farthest formation slot along the facing, so a partial rear rank never moves
+## the front.
+func _dress_front_on_line(u: Unit) -> void:
+	var front: float = -INF
+	for slot in u.soldier_world_slots(u.soldiers):
+		front = maxf(front, (slot - u.position).dot(u.facing))
+	if is_finite(front):
+		u.position -= u.facing * front
 
 
 ## A loadout entry's own half-width in a spawn line: its per-type FILE pitch (metres to wu;
@@ -1340,7 +1361,9 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 
 
 ## Spawn a custom demo matchup from a scenario list (see demos/README.md, "Scenario
-## staging"). Each spec: {team, type, x, y, facing?, count?, morale?, formation?}. Tooling
+## staging"). Each spec: {team, type, x, y, facing?, count?, morale?, formation?}; x/y is
+## the block's centre unless the spec sets front_on_line, which puts its front rank there
+## instead (see _dress_front_on_line). Tooling
 ## only — reached solely when DemoInputRecorder sets `scenario` before the battle enters the
 ## tree; a normal battle leaves `scenario` empty and never calls this. `type` names one of
 ## the default-loadout entries (Spearmen / Infantry / Archers / Cavalry).
@@ -1413,7 +1436,7 @@ func _spawn_scenario(specs: Array) -> void:
 		elif spec.has("frontage"):
 			d["frontage_override"] = int(spec["frontage"])
 		var team := int(spec.get("team", 0))
-		var pos := Vector2(float(spec.get("x", field.size.x * 0.5)), float(spec.get("y", field.size.y * 0.5)))
+		var pos := Vector2(float(spec.get("x", field.get_center().x)), float(spec.get("y", field.get_center().y)))
 		# Default facing: toward the enemy half (team 0 faces down, team 1 up), matching the
 		# line spawn, unless the spec pins an explicit non-degenerate facing vector [x, y].
 		var facing := Vector2.DOWN if team == 0 else Vector2.UP
@@ -1425,7 +1448,11 @@ func _spawn_scenario(specs: Array) -> void:
 				push_warning("[battle] scenario 'facing' must be a non-zero [x, y]; using the team default.")
 		var type_name: String = str(d["name"])
 		count_by_type[type_name] = int(count_by_type.get(type_name, 0)) + 1
-		_spawn_unit(d, team, facing, pos, "%s %d" % [type_name, count_by_type[type_name]])
+		var u: Unit = _spawn_unit(d, team, facing, pos, "%s %d" % [type_name, count_by_type[type_name]])
+		# A spec lined up on a spawn line (a custom matchup's roster) dresses its front rank
+		# on that line like the default line does; any other spec's x/y is the block's centre.
+		if bool(spec.get("front_on_line", false)):
+			_dress_front_on_line(u)
 
 
 ## First default-loadout entry whose "name" matches `type_name` (case-sensitive), or an empty
@@ -1491,6 +1518,7 @@ func _custom_matchup_scenario(team_0_names: Array, team_1_names: Array) -> Array
 				"x": start_x + xs[i],
 				"y": y,
 				"facing": [facing.x, facing.y],
+				"front_on_line": true,
 			}
 			# merge() WITH overwrite: the roster's keys are new to this spec today, so true and
 			# false agree right now, but a false here would let a later change to the literal
@@ -3621,7 +3649,9 @@ func unit_by_uid(uid: int) -> UnitRef:
 
 ## Evaluate the per-formation simulation-tier triggers and perform any transitions
 ## (docs/large-scale-simulation-design.md, phase 3). Each fightable unit's distance to the
-## nearest enemy formation feeds the phase-1 hysteresis predicates: a far-tier unit whose
+## nearest enemy formation -- the gap between the two blocks' near edges
+## (FormationTier.edge_gap), so a deep block is judged by its front rather than its
+## centre -- feeds the phase-1 hysteresis predicates: a far-tier unit whose
 ## nearest enemy closes inside PROMOTE_RANGE reconstructs its per-soldier state
 ## (TierTransition.promote, seeded off uid/tick/battle seed); a close-tier unit whose
 ## nearest enemy recedes past DEMOTE_RANGE — and that holds no in-flight per-soldier
@@ -3639,27 +3669,29 @@ func _tick_tier_transitions() -> Array:
 		var u = node as UnitRef
 		if u == null or u.state == UnitRef.State.DEAD:
 			continue
-		var nearest_pos := Vector2.ZERO
-		var nearest_dist_sq: float = INF
+		# Nearest enemy by the gap between the two blocks' near edges, not between their
+		# centres: a deep block's front can stand hundreds of wu ahead of its centre.
+		var nearest_gap: float = INF
 		for other in all_units:
 			var e = other as UnitRef
 			if e == null or e.team == u.team or e.state == UnitRef.State.DEAD:
 				continue
-			var d_sq: float = u.position.distance_squared_to(e.position)
-			if d_sq < nearest_dist_sq:
-				nearest_dist_sq = d_sq
-				nearest_pos = e.position
-		if nearest_dist_sq == INF:
+			var between: Vector2 = e.position - u.position
+			var gap: float = FormationTier.edge_gap(between.length(),
+					u.tier_reach(between), e.tier_reach(-between))
+			if gap < nearest_gap:
+				nearest_gap = gap
+		if nearest_gap == INF:
 			# No enemy in play: hold the current tier (the victory check ends the battle).
 			# Still counted, since it keeps whatever tier it is already on.
 			if u.tier == FormationTier.FAR:
 				_far_tier_count += 1
 			continue
 		if u.tier == FormationTier.FAR:
-			if FormationTier.should_promote(u.position, nearest_pos, promote_range):
+			if FormationTier.should_promote(Vector2.ZERO, Vector2(nearest_gap, 0.0), promote_range):
 				TierTransition.promote(u, _tick, Replay.seed_value)
 		elif TierTransition.can_demote(u, reinforce_targets.has(u)) \
-				and FormationTier.should_demote(u.position, nearest_pos, demote_range):
+				and FormationTier.should_demote(Vector2.ZERO, Vector2(nearest_gap, 0.0), demote_range):
 			TierTransition.demote(u)
 		# Counted AFTER the transition, so the tally is this tick's tiers, not last tick's.
 		if u.tier == FormationTier.FAR:

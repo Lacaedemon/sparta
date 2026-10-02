@@ -21,12 +21,20 @@ extends RefCounted
 static func parse(block: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
 	if block.has("field"):
+		# [width, height] puts the field's origin at (0, 0); [x, y, width, height] places it
+		# anywhere, which a field grown behind team 0's line (a negative top edge) needs.
 		var f = block["field"]
-		if not (f is Array) or (f as Array).size() != 2 \
-				or not _num(f[0]) or not _num(f[1]) \
-				or float(f[0]) <= 0.0 or float(f[1]) <= 0.0:
-			return {"error": "map.field must be a [width, height] pair of positive numbers"}
-		out["field"] = Rect2(0, 0, float(f[0]), float(f[1]))
+		var n: int = (f as Array).size() if f is Array else 0
+		var ok: bool = n == 2 or n == 4
+		if ok:
+			for v in f:
+				ok = ok and _num(v)
+		if ok and (float(f[n - 2]) <= 0.0 or float(f[n - 1]) <= 0.0):
+			ok = false
+		if not ok:
+			return {"error": "map.field must be [width, height] or [x, y, width, height] with a positive width and height"}
+		var origin := Vector2(float(f[0]), float(f[1])) if n == 4 else Vector2.ZERO
+		out["field"] = Rect2(origin, Vector2(float(f[n - 2]), float(f[n - 1])))
 	if block.has("terrain"):
 		var patches = block["terrain"]
 		if not (patches is Array):
@@ -107,7 +115,8 @@ static func serialize(field: Rect2, terrain: Array, spawn_lines: Array,
 				patch["screen_factor"] = sf
 		patches.append(patch)
 	var out: Dictionary = {
-		"field": [field.size.x, field.size.y],
+		"field": [field.size.x, field.size.y] if field.position == Vector2.ZERO
+				else [field.position.x, field.position.y, field.size.x, field.size.y],
 		"terrain": patches,
 		"spawn_lines": [float(spawn_lines[0]), float(spawn_lines[1])],
 	}

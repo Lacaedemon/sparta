@@ -4368,6 +4368,20 @@ func _order_held_facing(dest: Vector2) -> Vector2:
 	return target
 
 
+## How far this block reaches from its centre toward world direction `dir` (any length;
+## zero reads as no reach): the support distance of its formation rectangle along `dir`,
+## from the O(1) headcount half-extents in the grid's current world rotation. The tier
+## pass subtracts it from a centre distance (FormationTier.edge_gap) so it judges how near
+## an enemy is to the block's edge rather than to its centre. Uses the headcount reading
+## at either tier, so the pass stays O(1) per pair instead of rebuilding slots.
+func tier_reach(dir: Vector2) -> float:
+	if dir == Vector2.ZERO:
+		return 0.0
+	var half: Vector2 = _far_tier_half_extents()
+	var local: Vector2 = dir.normalized().rotated(-soldier_block_world_angle())
+	return absf(local.x) * half.x + absf(local.y) * half.y
+
+
 ## O(1) half-extents for a FAR-tier block, derived from the headcount instead of read
 ## off the slots -- what _move_to() uses for a far-tier mover, which otherwise would pay
 ## _formation_local_half_extents()'s O(soldiers) slot rebuild on every physics tick.
