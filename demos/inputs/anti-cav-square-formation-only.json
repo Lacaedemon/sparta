@@ -29,13 +29,5 @@
     60,
     90
   ],
-  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9",
-  "defect_exemptions": {
-    "shape_residual": {
-      "uids": [
-        1
-      ],
-      "reason": "The clip films the Infantry packing from the 2x Normal default onto the Tight-floor grid; the default dense sampling catches the block mid-transition (residual 52.3 wu vs the 13.5 threshold reads distance-to-destination in transit). Measured on the new-density re-pin; the settled formation is the clip's claim and its final samples show it."
-    }
-  }
+  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9"
 }
