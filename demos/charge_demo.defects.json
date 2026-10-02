@@ -1,0 +1,12 @@
+{
+  "_comment": "Defect declarations for the charge replay clip (demos/charge_demo.json); see demos/README.md, Sidecar declarations.",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        5,
+        8
+      ],
+      "reason": "On the deeper field the cavalry reach contact only at the end of the clip (about tick 1499), and the sampled ticks now land in that press: CI website demo-diff on PR #1677 (2-tick samples) measured uid 5 at 2.243 wu against its 2.25 wu floor and uid 8 at 4.851 wu against its 5 wu floor, merge-base 8.99 and 13.31. Both sit within 0.15 wu of their floors at contact: press-adjacent compression, not standing interpenetration."
+    }
+  }
+}

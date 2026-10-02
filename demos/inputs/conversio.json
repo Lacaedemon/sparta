@@ -1,17 +1,17 @@
 {
-  "_comment": "Conversio demo: start zoomed out (mark LOD) so the directional pointer marks are visible, select the Spearmen (~120,300), press V, and watch the pointer marks rotate 180° in place. The camera zooms in mid-maneuver to show the figure-LOD squash animation as each soldier silhouette goes edge-on during the turn.",
+  "_comment": "Conversio demo: start zoomed out (mark LOD) so the directional pointer marks are visible, select the Spearmen (~120,232.5), press V, and watch the pointer marks rotate 180° in place. The camera zooms in mid-maneuver to show the figure-LOD squash animation as each soldier silhouette goes edge-on during the turn.",
   "seed": "12345",
   "camera": [
     {
       "tick": 0,
       "x": 500.0,
-      "y": 300.0,
+      "y": 232.5,
       "zoom": 0.8
     },
     {
       "tick": 60,
       "x": 500.0,
-      "y": 270.0,
+      "y": 202.5,
       "zoom": 1.8
     }
   ],
@@ -20,7 +20,7 @@
       "tick": 10,
       "click": [
         120,
-        300
+        232.5
       ]
     },
     {
@@ -28,5 +28,5 @@
       "key": "V"
     }
   ],
-  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181"
+  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9"
 }

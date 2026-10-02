@@ -5,7 +5,7 @@
     {
       "tick": 0,
       "x": 450.0,
-      "y": 390.0,
+      "y": 322.5,
       "zoom": 1.4
     }
   ],
@@ -18,7 +18,7 @@
       "tick": 8,
       "click": [
         120,
-        300
+        232.5
       ]
     },
     {
@@ -26,16 +26,16 @@
       "rmb_drag": {
         "from": [
           40,
-          570
+          502.5
         ],
         "to": [
           200,
-          570
+          502.5
         ]
       }
     }
   ],
-  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
+  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9",
   "defect_exemptions": {
     "overlap": {
       "uids": [

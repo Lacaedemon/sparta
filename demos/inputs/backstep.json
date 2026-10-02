@@ -1,11 +1,11 @@
 {
-  "_comment": "Back-step maneuver demo: zoom in on the lone Spearmen (seed 12345, ~120,300, facing south toward the enemy), select it, then right-click a short step straight behind it. The click target (120, 270) is a ~30-unit move directly into the rear sector, comfortably under UnitManeuver.SIDESTEP_MAX_DISTANCE (40.0), so the regiment BACK-STEPS -- it shuffles backward at a walk while holding its south-facing line, instead of about-facing (conversio) in place and marching forward facing the new spot. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "_comment": "Back-step maneuver demo: zoom in on the lone Spearmen (seed 12345, ~120,232.5, facing south toward the enemy), select it, then right-click a short step straight behind it. The click target (120, 202.5) is a ~30-unit move directly into the rear sector, comfortably under UnitManeuver.SIDESTEP_MAX_DISTANCE (40.0), so the regiment BACK-STEPS -- it shuffles backward at a walk while holding its south-facing line, instead of about-facing (conversio) in place and marching forward facing the new spot. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
   "seed": "12345",
   "camera": [
     {
       "tick": 0,
       "x": 120.0,
-      "y": 300.0,
+      "y": 232.5,
       "zoom": 2.0
     }
   ],
@@ -14,14 +14,14 @@
       "tick": 10,
       "click": [
         120.0,
-        300
+        232.5
       ]
     },
     {
       "tick": 28,
       "rmb_click": [
         120.0,
-        270
+        202.5
       ]
     }
   ],
@@ -38,7 +38,7 @@
       "field": "position",
       "value": [
         120.0,
-        300.0
+        232.5
       ]
     },
     {
@@ -51,7 +51,7 @@
       "value": "MOVING"
     }
   ],
-  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
+  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9",
   "defect_exemptions": {
     "overlap": {
       "uids": [

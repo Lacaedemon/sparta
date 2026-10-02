@@ -42,6 +42,10 @@ World scale is 20 wu per metre (`WorldScale.WU_PER_M`).
   `Battle.FIELD` is 1600 x 1200 wu (80 x 60 m), with the two default spawn lines at y = 300 and y = 880 (`Battle.SPAWN_LINE_YS`):
   a 580-wu (29 m) gap between line anchors, about 20 m front to front at today's block depths.
   The gap is deliberately capped just inside `FormationTier.DEMOTE_RANGE` so the default battle opens at close-tier fidelity.
+  *Update, 2026-10-02:* the default field is now `Rect2(0, -960, 1600, 2680)` (80 x 134 m),
+  and the lines are y = 300 and y = 660, where each army's front rank stands.
+  Blocks run back from their line, so the fronts are 360 wu (18 m) apart,
+  and the tier pass measures the gap between block edges rather than centres for every block of up to 500 men.
   Both values are already caller-configurable instance fields (`Battle.field`, `Battle.spawn_line_ys`):
   the demo recorder sets them from an input script's `map` block, and `BattleMap.serialize` records a non-default map into the replay header so playback rebuilds the same battlefield.
 
@@ -185,7 +189,7 @@ A setup preset decides how far apart the armies start, fast-forward decides how 
   Because a non-default map is already serialized into the replay header, a preset battle replays correctly with no format change.
 
 - **Three presets**:
-  1. *Close* (the default, unchanged): the 580-wu (29 m) gap, close-tier from the first tick.
+  1. *Close* (the default when this was written, now 360 wu front to front as the update note above says): the 580-wu (29 m) gap, close-tier from the first tick.
   2. *Far-tier opening*: a 1200-wu (60 m) gap, so both armies open far-tier and promote after each has closed about 400 wu, roughly 15-20 s of far-tier march when both advance.
   3. *Historical*: a 4000-wu (200 m) gap, the full approach.
 

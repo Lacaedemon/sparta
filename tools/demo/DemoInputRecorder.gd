@@ -104,8 +104,8 @@ static func parse_tier_band(band) -> Dictionary:
 	var demote: float = float(band["demote"])
 	if not is_finite(promote) or not is_finite(demote):
 		return {"error": "tier_ranges promote/demote must be finite numbers."}
-	if promote <= 0.0 or demote <= promote:
-		return {"error": "tier_ranges needs 0 < promote < demote (the hysteresis gap)."}
+	if promote < 0.0 or demote <= promote:
+		return {"error": "tier_ranges needs 0 <= promote < demote (the hysteresis gap)."}
 	return {"promote": promote, "demote": demote}
 
 
@@ -285,7 +285,7 @@ func _start_battle() -> void:
 		_battle.ai_doctrine = _doctrine   # likewise: overrides Battle's own default doctrine
 	if not _team_factions.is_empty():
 		_battle.team_factions = _team_factions   # likewise: Battle._ready hands these to the HUD
-	if _promote_range > 0.0:
+	if _promote_range >= 0.0:
 		# Likewise before add_child: Battle's first tier pass runs on the first tick.
 		_battle.promote_range = _promote_range
 		_battle.demote_range = _demote_range

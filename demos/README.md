@@ -143,7 +143,7 @@ script under `demos/inputs/`:
   battlefield (`demos/inputs/custom-map-defile.json` is the worked example).
 
 - `deployment_gap_m` (optional) -- **open the battle at a chosen deployment distance**:
-  the distance in metres between the two spawn lines (the default map's is 29 m).
+  the distance in metres between the two spawn lines, which is where the two armies' front ranks stand (the default map's is 18 m).
   Team 0's line stays put,
   team 1's line moves to that distance below it,
   and the field grows downward with it so team 1 keeps its ground behind the line.
@@ -196,7 +196,13 @@ script under `demos/inputs/`:
   Applied before the battle spawns, like `drill`/`scenario` above.
   Strict like `scenario`/`map` (it decides which tier the demo simulates, so a
   malformed block fails the recording loudly): the block must carry both keys, with
-  `0 < promote < demote` so the hysteresis gap survives.
+  `0 <= promote < demote` so the hysteresis gap survives.
+  For a block of at most 500 men (`Battle.tier_edge_gap_max_soldiers`),
+  both distances are measured as the **edge gap** between the two blocks
+  (centre distance less each block's reach toward the other, never below zero),
+  and a larger block is judged centre to centre.
+  Two blocks in melee sit at a gap of exactly 0: a melee demo that must stay far-tier through contact sets
+  `"promote": 0` (never promote), and its blocks must start with an edge gap above `demote`.
   `demos/inputs/far-tier-contact-1485.json` is the worked example.
 
 - `all_teams_control` (optional bool, default `false`) -- debug/testing mode: the player
@@ -268,6 +274,7 @@ script under `demos/inputs/`:
     full stat block from the default loadout).
   - `x`, `y` -- world-space spawn position.
   - `facing` (optional `[x, y]`) -- an explicit heading; defaults to facing the enemy half.
+  - `front_on_line` (optional bool) -- `x`, `y` is then where the block's front rank stands, not its centre, as in the default line spawn.
   - `count` (optional) -- soldier-count override (a smaller unit routs sooner; a bigger one
     holds longer).
   - `morale` (optional) -- starting morale (default 100; set low to stage a quick rout).
@@ -930,7 +937,7 @@ each stamped with the physics `tick` it fires on.
 To get the timing right you need the default battle's layout. A standard 5v5
 (seed `"12345"`, no campaign) spawns these units, by `uid`:
 
-| Unit | Team 0 (player, top, `y=300`) | Team 1 (enemy, bottom, `y=880`) |
+| Unit | Team 0 (player, top, front rank on `y=300`) | Team 1 (enemy, bottom, front rank on `y=660`) |
 | --- | --- | --- |
 | Spearmen | 0 | 5 |
 | Infantry | 1 | 6 |
@@ -938,9 +945,15 @@ To get the timing right you need the default battle's layout. A standard 5v5
 | Cavalry | 3 | 8 |
 | Cavalry | 4 | 9 |
 
-The field is `1600 x 1200`, and the lines start **580 px** apart vertically --
-the deepest deployment that keeps both armies inside the close-tier band
-(`FormationTier.DEMOTE_RANGE`) from the first tick. The horizontal spacing is no longer a flat 150 px per unit (issue
+The field is `Rect2(0, -960, 1600, 2680)`,
+and each block's front rank stands on its line,
+so the fronts start **360 wu** apart and every block's depth runs back from its line.
+Unit centres therefore sit behind the lines:
+team 0's Spearmen, Infantry, Archers and Cavalry at y = 232.5, 237, 192 and -180,
+and team 1's mirrored about y = 660, at 727.5, 723, 768 and 1140.
+Every block opens inside the close-tier band
+(`FormationTier.DEMOTE_RANGE`, measured edge to edge) from the first tick.
+The horizontal spacing is no longer a flat 150 px per unit (issue
 #677: a flat spacing let a wide LOOSE-order Archers regiment overlap its
 Infantry neighbour) -- each adjacent pair's gap widens to fit their actual
 formation widths, so the standard 5v5's `x` positions are:

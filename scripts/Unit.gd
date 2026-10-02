@@ -1102,8 +1102,7 @@ const SIGHT_ROUTING_PENALTY: float = 0.6
 ## Sight range multiplier per screening terrain patch crossed.
 const SIGHT_SCREEN_FACTOR: float = 0.5
 # The sight scale a unit falls back to when no Battle sets one (a bare Unit in a test or a
-# tool): 15 m, which is 0.25 x the default field's short side, Battle.sight_scale's own
-# default.
+# tool), and Battle.sight_scale's own default: 15 m, fixed whatever the field's size.
 const DEFAULT_SIGHT_SCALE: float = 15.0 * WorldScaleRef.WU_PER_M
 # Caller-configurable per unit, world units. Set BEFORE the node enters the tree to
 # override; a non-positive value at _ready resolves to the type default
@@ -4366,6 +4365,12 @@ func _order_held_facing(dest: Vector2) -> Vector2:
 	if snaps and absf(angle_difference(current.angle(), target.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
 		return current
 	return target
+
+
+## The half-extents the tier pass reads for this block at either tier: the headcount
+## reading _far_tier_half_extents() gives, which is O(1) except during a relief swap.
+func tier_half_extents() -> Vector2:
+	return _far_tier_half_extents()
 
 
 ## O(1) half-extents for a FAR-tier block, derived from the headcount instead of read

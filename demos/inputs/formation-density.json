@@ -1,11 +1,11 @@
 {
-  "_comment": "Formation-density demo: select the Spearmen (seed 12345, ~120,300), zoomed in close enough to see individual mark spacing. Press T twice to cycle Normal -> Tight -> Loose. Tight leaves the marks at the same spacing as Normal (the historical close-order floor); Loose visibly spreads them apart.",
+  "_comment": "Formation-density demo: select the Spearmen (seed 12345, ~120,232.5), zoomed in close enough to see individual mark spacing. Press T twice to cycle Normal -> Tight -> Loose. Tight leaves the marks at the same spacing as Normal (the historical close-order floor); Loose visibly spreads them apart.",
   "seed": "12345",
   "camera": [
     {
       "tick": 0,
       "x": 350.0,
-      "y": 300.0,
+      "y": 232.5,
       "zoom": 1.1
     }
   ],
@@ -14,7 +14,7 @@
       "tick": 10,
       "click": [
         120,
-        300
+        232.5
       ]
     },
     {
@@ -26,7 +26,7 @@
       "key": "T"
     }
   ],
-  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
+  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9",
   "defect_exemptions": {
     "overlap": {
       "uids": [

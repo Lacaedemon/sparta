@@ -120,19 +120,44 @@ A formation transitions between tiers as it enters or leaves the
 tactically-relevant zone. Proposed trigger, to be tuned empirically (see
 "Validating tier thresholds" below):
 
-> **Promote** a far-tier formation to close tier when its distance to the
-> nearest enemy contact point (or, before any contact exists, the nearest
-> enemy formation) drops below a threshold distance `PROMOTE_RANGE`.
-> **Demote** a close-tier formation to far tier when that same distance rises
+> **Promote** a far-tier formation to close tier when its **edge gap** to the
+> nearest enemy formation -- the centre-to-centre distance less each block's
+> reach toward the other, never below zero -- drops below a threshold distance
+> `PROMOTE_RANGE`.
+> **Demote** a close-tier formation to far tier when that same gap rises
 > above a threshold `DEMOTE_RANGE > PROMOTE_RANGE` (a hysteresis gap, so a
 > formation sitting exactly at the boundary doesn't thrash tiers every tick).
 
+The gap, not the centre distance, because a deep block's front can stand
+hundreds of world units ahead of its centre (a cavalry squadron reaches 480 wu
+from centre to front),
+so a centre-to-centre distance judged a block close or
+far by where its middle was rather than where its front was.
+Each reach is the
+block's support distance toward the other block (`FormationTier.support_reach`
+over `Unit.tier_half_extents()` in the block's grid rotation);
+the pass reads
+them once per tick (`Battle._tick_tier_transitions`).
+The thresholds are
+unchanged by the switch, and two blocks in contact sit at a gap of exactly 0.
+
+The edge gap decides a block's tier only when that block has at most
+`Battle.tier_edge_gap_max_soldiers` men (`FormationTier.EDGE_GAP_MAX_SOLDIERS`, 500);
+a larger block's tier is decided by the centre distance, as before.
+Tier is decided per formation, so judging a 4,000-8,000-man line by its front
+promotes every man in it:
+on cannae-scale, edge-judging every block took the close-tier bubble from 1,656 to
+43,656 of 43,720 soldiers, about 30x the tick cost.
+A small block still counts a big enemy's reach,
+so a cavalry squadron charging a huge line promotes before its front meets it.
+
 This is deliberately the simplest trigger that could work -- a single scalar
 distance check, no camera-frustum or player-attention signal, so it stays a
-pure function of already-serialized sim state (positions), which the
-determinism section below requires. It is also a small, composable piece in
-its own right (`PLAN.md` pillar 3): a standalone predicate over two
-positions, not a new subsystem entangled with rendering, orders, or combat --
+pure function of already-serialized sim state (positions and block extents),
+which the determinism section below requires.
+It is also a small, composable
+piece in its own right (`PLAN.md` pillar 3): a standalone predicate over two
+blocks' positions and extents, not a new subsystem entangled with rendering, orders, or combat --
 it can be tuned or swapped without touching either tier's internals. Camera/attention-based triggers (only
 promote what the player can currently see) are a plausible refinement but are
 explicitly **not** the phase-1 mechanism: they would make simulation fidelity

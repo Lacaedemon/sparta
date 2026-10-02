@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/front-rank-deployment-1674.json",
+  "caption": "#1674: the default battle on its deeper field. Every block now stands with its front rank on its army's line and its depth behind it, so the two 960 wu deep cavalry squadrons on each right flank start clear of the hill and of each other (before, centred on the line, they reached into the hill and into the enemy's cavalry, and hung off the north edge). The fronts open 18 m apart and every block starts at individual-soldier fidelity. Team 0's foot is then marched forward while the AI advances.",
+  "fixed_fps": 30,
+  "max_frames": 210,
+  "fps": 15,
+  "width": 720
+}

@@ -158,11 +158,20 @@ func test_a_malformed_tier_band_is_rejected() -> void:
 			"a band that is not a dict with both keys is rejected: %s" % [bad])
 
 
-func test_a_tier_band_out_of_order_or_non_positive_is_rejected() -> void:
+func test_a_tier_band_out_of_order_or_negative_is_rejected() -> void:
 	for bad in [{"promote": 95.0, "demote": 6.0}, {"promote": 6.0, "demote": 6.0},
-			{"promote": 0.0, "demote": 95.0}, {"promote": -5.0, "demote": 95.0}]:
+			{"promote": 0.0, "demote": 0.0}, {"promote": -5.0, "demote": 95.0}]:
 		assert_true(RecorderScript.parse_tier_band(bad).has("error"),
-			"0 < promote < demote is enforced: %s" % [bad])
+			"0 <= promote < demote is enforced: %s" % [bad])
+
+
+func test_a_zero_promote_range_is_a_valid_never_promote_band() -> void:
+	# The tier pass judges the gap between block edges, which is exactly 0 once two blocks
+	# touch or overlap, so no positive promote range can hold a melee fight at the far tier;
+	# 0 (a gap is never below it) is the only value that does.
+	var band: Dictionary = RecorderScript.parse_tier_band({"promote": 0.0, "demote": 20.0})
+	assert_false(band.has("error"), "a zero promote range parses")
+	assert_almost_eq(band["promote"], 0.0, 0.0001, "and carries through")
 
 
 func test_a_non_finite_tier_band_is_rejected() -> void:

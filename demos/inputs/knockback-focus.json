@@ -5,7 +5,7 @@
     {
       "tick": 0,
       "x": 291.0,
-      "y": 560.0,
+      "y": 480.0,
       "zoom": 1.6
     }
   ],
@@ -14,35 +14,35 @@
       "tick": 5,
       "click": [
         291.0,
-        300
+        237.0
       ]
     },
     {
       "tick": 10,
       "rmb_click": [
         291.0,
-        880
+        723
       ]
     },
     {
       "tick": 12,
       "rmb_click": [
         291.0,
-        880
+        723
       ]
     },
     {
       "tick": 14,
       "rmb_click": [
         291.0,
-        880
+        723
       ]
     },
     {
       "tick": 16,
       "rmb_click": [
         291.0,
-        880
+        723
       ]
     },
     {
@@ -72,7 +72,7 @@
       "field": "position",
       "value": [
         291.0,
-        300.0
+        237.0
       ]
     },
     {
@@ -85,13 +85,19 @@
       "value": "Knockback focus"
     }
   ],
-  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181",
+  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9",
   "defect_exemptions": {
     "overlap": {
       "uids": [
         5
       ],
       "reason": "Focused knockback drives uid5 into a compressed knot around the strike target; measured min neighbour 0.63 wu on the re-pinned 2x-default layout (was cited lower pre-repin). Transient press compression at the focal point, not standing interpenetration."
+    },
+    "shape_residual": {
+      "uids": [
+        8
+      ],
+      "reason": "Team 1's cavalry squadron (uid 8, 9 ranks, 960 wu deep) now deploys with its front rank on its line and marches a long diagonal toward its target, so the deep block spends the clip mid-turn and its rear ranks trail its grid: the same deep-block mid-turn mechanism declared for uid 8 in cycle-charge.json (#1546). CI website demo-diff on PR #1677: worst 87.45 wu against the 30 wu floor, merge-base 3.193."
     }
   }
 }

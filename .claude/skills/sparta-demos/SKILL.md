@@ -185,10 +185,12 @@ etc.) -- don't reflexively `skip` them.
 
 **Standard 5v5 (`seed "12345"`):** player uids 0-4 =
 Spearmen(140)/Infantry(120)/Archers(90)/Cavalry(80)/Cavalry(80) at
-x=120/291/641.99/1026.92/1356.09, y=300;
-enemies 5-9 at y=880 (the battlefield-depth
-change moved the enemy line down from its long-standing y=700 -- another silent
-breaker for any older script that clicked the enemy band). The x's re-space
+x=120/291/641.99/1026.94/1356.07, with each block's FRONT rank on y=300, so the
+centres sit at y=232.5/237/192/-180/-180; enemies 5-9 have their front rank on
+y=660, centres y=727.5/723/768/1140/1140 (front-on-line deployment moved every
+centre off the line, and the enemy line from y=880 to y=660 -- another silent
+breaker for any older script that clicked the old bands).
+The x's re-space
 whenever a type's formation footprint changes -- `Battle._spawn_line` widens
 each adjacent pair's gap to fit their actual formation widths (issue #677), and
 the cavalry grid-pitch change (issue #926) re-spaced the whole line around the

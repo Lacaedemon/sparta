@@ -1,11 +1,11 @@
 {
-  "_comment": "Forward-nudge demo: zoom in on the lone Spearmen (seed 12345, ~120,300, facing south toward the enemy), select it, then tap Up once. Up orders a small fixed FORWARD step that HOLDS the unit's south-facing line -- the regiment steps forward without turning to face the move, mirroring how Down back-steps. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "_comment": "Forward-nudge demo: zoom in on the lone Spearmen (seed 12345, ~120,232.5, facing south toward the enemy), select it, then tap Up once. Up orders a small fixed FORWARD step that HOLDS the unit's south-facing line -- the regiment steps forward without turning to face the move, mirroring how Down back-steps. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
   "seed": "12345",
   "camera": [
     {
       "tick": 0,
       "x": 250.0,
-      "y": 318.0,
+      "y": 250.5,
       "zoom": 2.0
     }
   ],
@@ -14,7 +14,7 @@
       "tick": 10,
       "click": [
         120,
-        300
+        232.5
       ]
     },
     {
@@ -28,5 +28,5 @@
     155,
     200
   ],
-  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181"
+  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9"
 }

@@ -1,11 +1,11 @@
 {
-  "_comment": "Arrow-key nudge demo: zoom in on the lone Spearmen (seed 12345, ~120,300, facing south toward the enemy), select it, then tap Left, Right, Down, and Up. Each arrow orders a small fixed step that HOLDS the unit's south-facing line -- Left/Right side-step, Down back-steps, Up forward-steps -- so the regiment shuffles into place without turning. Because a unit is selected, the arrows nudge rather than pan the camera. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "_comment": "Arrow-key nudge demo: zoom in on the lone Spearmen (seed 12345, ~120,232.5, facing south toward the enemy), select it, then tap Left, Right, Down, and Up. Each arrow orders a small fixed step that HOLDS the unit's south-facing line -- Left/Right side-step, Down back-steps, Up forward-steps -- so the regiment shuffles into place without turning. Because a unit is selected, the arrows nudge rather than pan the camera. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
   "seed": "12345",
   "camera": [
     {
       "tick": 0,
       "x": 120.0,
-      "y": 318.0,
+      "y": 250.5,
       "zoom": 2.0
     }
   ],
@@ -14,7 +14,7 @@
       "tick": 10,
       "click": [
         120.0,
-        300
+        232.5
       ]
     },
     {
@@ -53,9 +53,9 @@
       "field": "position",
       "value": [
         120.0,
-        300.0
+        232.5
       ]
     }
   ],
-  "spawn_fingerprint": "4621b7af088f5053219fd8f50380b181"
+  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9"
 }
