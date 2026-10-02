@@ -3665,9 +3665,10 @@ func unit_by_uid(uid: int) -> UnitRef:
 
 ## Evaluate the per-formation simulation-tier triggers and perform any transitions
 ## (docs/large-scale-simulation-design.md, phase 3). Each fightable unit's distance to the
-## nearest enemy formation -- the gap between the two blocks' near edges
-## (FormationTier.edge_gap), so a deep block is judged by its front rather than its
-## centre -- feeds the phase-1 hysteresis predicates: a far-tier unit whose
+## nearest enemy formation -- for a block of at most tier_edge_gap_max_soldiers men, the
+## gap between the two blocks' near edges (FormationTier.edge_gap), so a deep block is
+## judged by its front rather than its centre; for a larger block, the centre distance --
+## feeds the phase-1 hysteresis predicates: a far-tier unit whose
 ## nearest enemy closes inside PROMOTE_RANGE reconstructs its per-soldier state
 ## (TierTransition.promote, seeded off uid/tick/battle seed); a close-tier unit whose
 ## nearest enemy recedes past DEMOTE_RANGE — and that holds no in-flight per-soldier
@@ -3685,8 +3686,9 @@ func _tick_tier_transitions() -> Array:
 	# pair: a block in a relief swap reads its extents off the live slots, an O(soldiers)
 	# rebuild. A promotion or demotion inside this pass keeps the headcount and the grid,
 	# so the snapshot stays exact for the rest of the pass.
-	# A block above tier_edge_gap_max_soldiers is not edge-judged, and any pair it is in
-	# is judged centre to centre (see FormationTier.judged_by_edge).
+	# A block above tier_edge_gap_max_soldiers is judged by its centre for its own tier
+	# decision; every other block by the edge gap, the big enemy's reach included (see
+	# FormationTier.judged_by_edge).
 	var halves: Array[Vector2] = []
 	var angles: PackedFloat64Array = PackedFloat64Array()
 	var by_edge: Array[bool] = []
@@ -3697,15 +3699,15 @@ func _tick_tier_transitions() -> Array:
 		var w = all_units[i] as UnitRef
 		if w != null and w.state != UnitRef.State.DEAD:
 			by_edge[i] = FormationTier.judged_by_edge(w.max_soldiers, tier_edge_gap_max_soldiers)
-			if by_edge[i]:
-				halves[i] = w.tier_half_extents()
-				angles[i] = w.soldier_block_world_angle()
+			halves[i] = w.tier_half_extents()
+			angles[i] = w.soldier_block_world_angle()
 	for i in all_units.size():
 		var u = all_units[i] as UnitRef
 		if u == null or u.state == UnitRef.State.DEAD:
 			continue
-		# Nearest enemy by the gap between the two blocks' edges, not between their
-		# centres: a deep block's front can stand hundreds of wu ahead of its centre.
+		# Nearest enemy by the gap between the two blocks' edges when this block is
+		# edge-judged (a deep block's front can stand hundreds of wu ahead of its centre),
+		# by the centre distance when it is not.
 		var nearest_gap: float = INF
 		for j in all_units.size():
 			var e = all_units[j] as UnitRef
@@ -3713,7 +3715,7 @@ func _tick_tier_transitions() -> Array:
 				continue
 			var between: Vector2 = e.position - u.position
 			var gap: float = between.length()
-			if by_edge[i] and by_edge[j]:
+			if by_edge[i]:
 				gap = FormationTier.edge_gap(gap,
 						FormationTier.support_reach(halves[i], angles[i], between),
 						FormationTier.support_reach(halves[j], angles[j], -between))

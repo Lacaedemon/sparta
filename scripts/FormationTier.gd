@@ -18,10 +18,11 @@ const TIER_NAMES := {
 	FAR: "FAR",
 }
 
-# Promotion/demotion thresholds, in world units, applied to the EDGE GAP between two
-# blocks (edge_gap: centre distance less each block's reach toward the other), which is
-# what Battle's tier pass measures, not the centre-to-centre distance. TUNED against the
-# tools/benchmark/
+# Promotion/demotion thresholds, in world units, applied to the distance Battle's tier
+# pass measures: the EDGE GAP between two blocks (edge_gap: centre distance less each
+# block's reach toward the other) when the block whose tier is decided has at most
+# EDGE_GAP_MAX_SOLDIERS men, the centre-to-centre distance otherwise. Originally TUNED,
+# on centre distance, against the tools/benchmark/
 # measurements (the recorded numbers live in docs/large-scale-simulation-design.md,
 # "Validating tier thresholds"). Two constraints pin PROMOTE_RANGE from both sides:
 # - Floor (correctness): it must exceed auto-acquisition (Unit.DETECTION_RANGE, 190 --
@@ -60,19 +61,20 @@ static func edge_gap(centre_distance: float, reach_a: float, reach_b: float) -> 
 
 
 ## Default for Battle.tier_edge_gap_max_soldiers: the largest block, by deployed headcount,
-## the tier pass judges by its edge. A pair with a larger block in it is judged centre to
-## centre, as before the edge gap existed. Tier is decided per formation, so judging a
-## 4,000-8,000-man line by its front promotes every man in it: on cannae-scale, judging
-## every pair by its edges took the close-tier bubble from 1,656 to 43,656 of 43,720
-## soldiers, about 30x the tick cost; letting only the small enemy's reach count still
-## left 29,656. The default roster's blocks (80-140 men, a cavalry squadron among them)
-## sit well under it.
+## whose own tier the pass decides by the edge gap. A larger block's tier is decided by the
+## centre distance, as before the edge gap existed. Tier is decided per formation, so
+## judging a 4,000-8,000-man line by its front promotes every man in it: on cannae-scale,
+## judging every block by edges took the close-tier bubble from 1,656 to 43,656 of 43,720
+## soldiers, about 30x the tick cost, because its reserve corps read the small enemy
+## cavalry's front within range. A small block still counts a big enemy's reach, so a
+## cavalry squadron charging a huge line promotes before its front meets it; only small
+## blocks promote that way, which keeps the cost bounded. The default roster's blocks
+## (80-140 men, a cavalry squadron among them) sit well under it.
 const EDGE_GAP_MAX_SOLDIERS: int = 500
 
 
-## Whether the tier pass judges a block of `max_soldiers` deployed men by its edge:
-## true at or under `edge_gap_max_soldiers`. A pair is edge-judged only when both of its
-## blocks are; otherwise its gap is the centre distance.
+## Whether the tier pass decides a block of `max_soldiers` deployed men's own tier by the
+## edge gap (true, at or under `edge_gap_max_soldiers`) or by the centre distance.
 static func judged_by_edge(max_soldiers: int, edge_gap_max_soldiers: int) -> bool:
 	return max_soldiers <= edge_gap_max_soldiers
 

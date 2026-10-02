@@ -141,6 +141,16 @@ them once per tick (`Battle._tick_tier_transitions`).
 The thresholds are
 unchanged by the switch, and two blocks in contact sit at a gap of exactly 0.
 
+The edge gap decides a block's tier only when that block has at most
+`Battle.tier_edge_gap_max_soldiers` men (`FormationTier.EDGE_GAP_MAX_SOLDIERS`, 500);
+a larger block's tier is decided by the centre distance, as before.
+Tier is decided per formation, so judging a 4,000-8,000-man line by its front
+promotes every man in it:
+on cannae-scale, edge-judging every block took the close-tier bubble from 1,656 to
+43,656 of 43,720 soldiers, about 30x the tick cost.
+A small block still counts a big enemy's reach,
+so a cavalry squadron charging a huge line promotes before its front meets it.
+
 This is deliberately the simplest trigger that could work -- a single scalar
 distance check, no camera-frustum or player-attention signal, so it stays a
 pure function of already-serialized sim state (positions and block extents),
