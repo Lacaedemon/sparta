@@ -196,7 +196,11 @@ script under `demos/inputs/`:
   Applied before the battle spawns, like `drill`/`scenario` above.
   Strict like `scenario`/`map` (it decides which tier the demo simulates, so a
   malformed block fails the recording loudly): the block must carry both keys, with
-  `0 < promote < demote` so the hysteresis gap survives.
+  `0 <= promote < demote` so the hysteresis gap survives.
+  Both distances are measured as the **edge gap** between the two blocks (centre distance
+  less each block's reach toward the other, never below zero), so two blocks in melee sit at
+  a gap of exactly 0: a melee demo that must stay far-tier through contact sets
+  `"promote": 0` (never promote), and its blocks must start with an edge gap above `demote`.
   `demos/inputs/far-tier-contact-1485.json` is the worked example.
 
 - `all_teams_control` (optional bool, default `false`) -- debug/testing mode: the player

@@ -18,7 +18,10 @@ const TIER_NAMES := {
 	FAR: "FAR",
 }
 
-# Promotion/demotion thresholds, in world units — TUNED against the tools/benchmark/
+# Promotion/demotion thresholds, in world units, applied to the EDGE GAP between two
+# blocks (edge_gap: centre distance less each block's reach toward the other), which is
+# what Battle's tier pass measures, not the centre-to-centre distance. TUNED against the
+# tools/benchmark/
 # measurements (the recorded numbers live in docs/large-scale-simulation-design.md,
 # "Validating tier thresholds"). Two constraints pin PROMOTE_RANGE from both sides:
 # - Floor (correctness): it must exceed auto-acquisition (Unit.DETECTION_RANGE, 190 --

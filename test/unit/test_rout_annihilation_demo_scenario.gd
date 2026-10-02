@@ -46,6 +46,7 @@ extends GutTest
 const ROUT_ONSET_BUDGET := 2200  # ticks allowed for the block to break and start routing
 const CHASE_MARGIN := 3600       # slack past ROUT_TIME for the pursuit to catch and finish it
 
+const BattleScript = preload("res://scripts/Battle.gd")
 
 var _battle: Node = null
 # Set by _on_infantry_escaped: the tracked router crossed the retreat margin and left
@@ -170,9 +171,11 @@ func test_shattered_router_escapes_and_reports_it() -> void:
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	battle.drill_mode = true   # the sim must not auto-end when the last router leaves
 	battle.terrain = []
-	# Spawned near the north field edge so the flight to the margin is short.
+	# Spawned near the north field edge (the default field's own top edge, not a fixed
+	# y) so the flight to the margin is short.
 	battle.scenario = [
-		{"team": 0, "type": "Infantry", "x": 800, "y": 120, "count": 12},
+		{"team": 0, "type": "Infantry", "x": 800,
+			"y": BattleScript.FIELD.position.y + 120.0, "count": 12},
 	]
 	_battle = battle
 	add_child_autofree(battle)

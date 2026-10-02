@@ -10,10 +10,10 @@ extends GutTest
 ## the seeded hash. Captures are anchored to the sim's own tick counter, never wall-clock.
 
 const BATTLE_SEED := 12345
-# Spawn separation: beyond DEMOTE_RANGE (with a buffer against the exact threshold), so
+# Spawn separation: the edge gap (centre distance less both blocks' reaches) is beyond DEMOTE_RANGE, so
 # both formations demote immediately; the enemy then closes the gap to PROMOTE_RANGE.
-const SPAWN_X_PLAYER := 300.0
-const SPAWN_X_ENEMY := 950.0
+const SPAWN_X_PLAYER := 200.0
+const SPAWN_X_ENEMY := 1100.0
 const SPAWN_Y := 500.0
 
 

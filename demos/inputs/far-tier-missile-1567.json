@@ -1,5 +1,5 @@
 {
-  "_comment": "Long ranges at the far tier (phase 5 of docs/longer-range-missile-design.md): Rhodian slingers (team 0, range 180 m / 3600 wu) posted at (600, 250) engage an advancing enemy infantry block (team 1, 120 soldiers) deployed at (600, 1100), an 850-wu opening gap. Because the initial separation exceeds DEMOTE_RANGE (600 wu), both formations open in the far tier (flock marks, no individual bodies). The slingers' 3600-wu reach spans the gap, opening fire at long range and inflicting continuous far-tier attrition and suppression on the advancing column before the lines ever close to close-tier promotion range.",
+  "_comment": "Long ranges at the far tier (phase 5 of docs/longer-range-missile-design.md): Rhodian slingers (team 0, range 180 m / 3600 wu) posted at (600, 250) engage an advancing enemy infantry block (team 1, 120 soldiers) deployed at (600, 1100), an 850-wu opening gap. Because the initial edge gap (the 850-wu centre separation less both blocks' reaches toward each other) still exceeds DEMOTE_RANGE (600 wu), both formations open in the far tier (flock marks, no individual bodies). The slingers' 3600-wu reach spans the gap, opening fire at long range and inflicting continuous far-tier attrition and suppression on the advancing column before the lines ever close to close-tier promotion range.",
   "seed": "1567",
   "scenario": [
     {

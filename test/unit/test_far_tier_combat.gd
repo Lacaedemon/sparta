@@ -17,14 +17,16 @@ extends GutTest
 
 const TOL: float = 1e-5
 const BATTLE_SEED := 4242
-# Staging band for the battle cases: both formations spawn beyond DEMOTE_STAGE (so the
-# first tier pass collapses them to the far tier) and never close inside PROMOTE_STAGE (so
-# they stay there while they fight). Deliberately far tighter than FormationTier's tuned
-# defaults, which sit outside every combat reach -- see Battle.promote_range's own comment.
-const PROMOTE_STAGE: float = 40.0
-const DEMOTE_STAGE: float = 100.0
+# Staging band for the battle cases, as fractions of the duel's measured edge gap (the tier
+# pass judges the gap between the two blocks' edges, not between their centres): the gap
+# sits beyond the demote stage (so the first tier pass collapses both formations to the far
+# tier) and never closes inside the promote stage (so they stay there while they fight).
+# Deliberately far tighter than FormationTier's tuned defaults, which sit outside every
+# combat reach -- see Battle.promote_range's own comment.
+const PROMOTE_STAGE_FRACTION: float = 0.25
+const DEMOTE_STAGE_FRACTION: float = 0.5
 # Archer duel geometry: inside Unit.RANGED_RANGE (160) so both sides loose, outside melee
-# contact so neither presses in, and wider than DEMOTE_STAGE so both demote on tick 1.
+# contact so neither presses in, and beyond the staged demote range (edge gap) so both demote on tick 1.
 const DUEL_GAP: float = 150.0
 const DUEL_X: float = 600.0
 const DUEL_Y: float = 300.0
@@ -503,8 +505,6 @@ func _spawn_duel() -> Node2D:
 	Replay.forced_seed = BATTLE_SEED
 	var battle: Node2D = load("res://scenes/Battle.tscn").instantiate()
 	battle.all_teams_control = true   # no team-1 AI: neither side is ordered to close
-	battle.promote_range = PROMOTE_STAGE
-	battle.demote_range = DEMOTE_STAGE
 	battle.scenario = [
 		{"team": 0, "type": "Archers", "x": DUEL_X, "y": DUEL_Y,
 			"count": 60, "facing": [0.0, 1.0]},
@@ -512,7 +512,30 @@ func _spawn_duel() -> Node2D:
 			"count": 30, "morale": 6.0, "facing": [0.0, -1.0]},
 	]
 	add_child(battle)
+	_stage_tier_band(battle)
 	return battle
+
+
+## Set the battle's tier band from the duel's measured edge gap, exactly as the tier pass
+## measures it, so the stage tracks the units' reaches instead of a hand-tuned distance.
+func _stage_tier_band(battle: Node2D) -> void:
+	var a: Unit = null
+	var b: Unit = null
+	for node in get_tree().get_nodes_in_group("units"):
+		var u: Unit = node as Unit
+		if u == null:
+			continue
+		if u.team == 0:
+			a = u
+		else:
+			b = u
+	var between: Vector2 = b.position - a.position
+	var gap: float = FormationTier.edge_gap(between.length(),
+			FormationTier.support_reach(a.tier_half_extents(), a.soldier_block_world_angle(), between),
+			FormationTier.support_reach(b.tier_half_extents(), b.soldier_block_world_angle(), -between))
+	assert_gt(gap, 0.0, "the duel staged with a real edge gap to tighten the band against")
+	battle.promote_range = gap * PROMOTE_STAGE_FRACTION
+	battle.demote_range = gap * DEMOTE_STAGE_FRACTION
 
 
 func _duel_unit(team: int) -> Unit:
