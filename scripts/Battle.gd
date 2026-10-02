@@ -349,8 +349,8 @@ const SPEED_SCALE := 1.0
 # convert them to the world units the sim runs in. These are WORLD units, not
 # screen pixels: Godot renders the fixed FIELD onto any window via the viewport
 # stretch (canvas_items / expand) and the Camera2D zoom, so the display
-# resolution is independent of this scale. At 20 u/m the 1600x1200 field is an
-# 80 m x 60 m engagement frontage. It's a single named knob, so the world's
+# resolution is independent of this scale. At 20 u/m the 1600 wu wide field is an
+# 80 m engagement frontage. It's a single named knob, so the world's
 # unit scale can be rebased here without hunting down hard-coded distances --
 # WorldScale.gd is that knob's single home; this name is a re-export so the many
 # existing consumers (HUD, SelectionManager, tests, docs) compile unmodified.
@@ -429,6 +429,9 @@ var all_teams_control: bool = false
 # had when sight first derived from it). _spawn_unit reads it when it sizes each unit's
 # sight_range in _ready.
 var sight_scale: float = -1.0
+# The sight-scale rule a replay recorded on a custom map before published maps carried
+# their sight scale was made with: this fraction of the field's short side. Playback only.
+const LEGACY_SIGHT_SCALE_FRACTION: float = 0.25
 # Ticks after which a remembered enemy contact counts as stale: the ghost marker has
 # fully faded by then (FogGhostLayer.stale_ticks). 10 s of sim time; settable before
 # _ready.
@@ -681,8 +684,12 @@ func _ready() -> void:
 		var recording_fog: bool = is_fog_active()
 		if BattleMapRef.differs_from_default(field, terrain, spawn_line_ys,
 				FIELD, TERRAIN, SPAWN_LINE_YS, custom_sight, recording_fog):
+			# A published map always carries the sight scale the battle runs at, the
+			# default included, so playback never has to derive one: a map block without
+			# it is a recording from before sight stopped scaling with the field.
 			Replay.map = BattleMapRef.serialize(field, terrain, spawn_line_ys,
-					custom_sight, recording_fog)
+					custom_sight if custom_sight > 0.0 else UnitRef.DEFAULT_SIGHT_SCALE,
+					recording_fog)
 		Replay.init_fog(recording_fog)
 	else:
 		# Playback: restore the recorded map (empty = the default map) BEFORE any
@@ -698,6 +705,11 @@ func _ready() -> void:
 				spawn_line_ys = parsed.get("spawn_lines", spawn_line_ys)
 				if parsed.has("sight_scale"):
 					sight_scale = float(parsed["sight_scale"])
+				else:
+					# Recorded before a published map always carried its sight scale, when
+					# the default was a quarter of the field's short side: reproduce it, or
+					# fog-gated decisions would diverge from the recording.
+					sight_scale = LEGACY_SIGHT_SCALE_FRACTION * minf(field.size.x, field.size.y)
 				if parsed.has("fog_of_war"):
 					_recorded_fog_of_war = bool(parsed["fog_of_war"])
 
@@ -976,7 +988,7 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 		var d: Dictionary = loadout[i % loadout.size()]
 		half_widths.append(_line_half_width(d))
 	var xs: Array[float] = _line_x_offsets(half_widths, field.size.x)
-	var start_x: float = _line_start_x(half_widths, xs, field.size.x)
+	var start_x: float = field.position.x + _line_start_x(half_widths, xs, field.size.x)
 
 	for i in range(count):
 		var d: Dictionary = loadout[i % loadout.size()]
@@ -1510,7 +1522,7 @@ func _custom_matchup_scenario(team_0_names: Array, team_1_names: Array) -> Array
 				d_eff.merge(overrides[i], true)
 			half_widths.append(_line_half_width(d_eff))
 		var xs: Array[float] = _line_x_offsets(half_widths, field.size.x)
-		var start_x: float = _line_start_x(half_widths, xs, field.size.x)
+		var start_x: float = field.position.x + _line_start_x(half_widths, xs, field.size.x)
 		for i in range(dicts.size()):
 			var spec: Dictionary = {
 				"team": team,
@@ -3665,20 +3677,34 @@ func _tick_tier_transitions() -> Array:
 	_far_tier_count = 0
 	var reinforce_targets: Dictionary = \
 			TierTransition.live_reinforcement_targets(all_units)
-	for node in all_units:
-		var u = node as UnitRef
+	# Each block's half-extents and grid rotation, read once per tick rather than once per
+	# pair: a block in a relief swap reads its extents off the live slots, an O(soldiers)
+	# rebuild. A promotion or demotion inside this pass keeps the headcount and the grid,
+	# so the snapshot stays exact for the rest of the pass.
+	var halves: Array[Vector2] = []
+	var angles: PackedFloat32Array = PackedFloat32Array()
+	halves.resize(all_units.size())
+	angles.resize(all_units.size())
+	for i in all_units.size():
+		var w = all_units[i] as UnitRef
+		if w != null and w.state != UnitRef.State.DEAD:
+			halves[i] = w.tier_half_extents()
+			angles[i] = w.soldier_block_world_angle()
+	for i in all_units.size():
+		var u = all_units[i] as UnitRef
 		if u == null or u.state == UnitRef.State.DEAD:
 			continue
-		# Nearest enemy by the gap between the two blocks' near edges, not between their
+		# Nearest enemy by the gap between the two blocks' edges, not between their
 		# centres: a deep block's front can stand hundreds of wu ahead of its centre.
 		var nearest_gap: float = INF
-		for other in all_units:
-			var e = other as UnitRef
+		for j in all_units.size():
+			var e = all_units[j] as UnitRef
 			if e == null or e.team == u.team or e.state == UnitRef.State.DEAD:
 				continue
 			var between: Vector2 = e.position - u.position
 			var gap: float = FormationTier.edge_gap(between.length(),
-					u.tier_reach(between), e.tier_reach(-between))
+					FormationTier.support_reach(halves[i], angles[i], between),
+					FormationTier.support_reach(halves[j], angles[j], -between))
 			if gap < nearest_gap:
 				nearest_gap = gap
 		if nearest_gap == INF:
@@ -3688,10 +3714,10 @@ func _tick_tier_transitions() -> Array:
 				_far_tier_count += 1
 			continue
 		if u.tier == FormationTier.FAR:
-			if FormationTier.should_promote(Vector2.ZERO, Vector2(nearest_gap, 0.0), promote_range):
+			if FormationTier.gap_promotes(nearest_gap, promote_range):
 				TierTransition.promote(u, _tick, Replay.seed_value)
 		elif TierTransition.can_demote(u, reinforce_targets.has(u)) \
-				and FormationTier.should_demote(Vector2.ZERO, Vector2(nearest_gap, 0.0), demote_range):
+				and FormationTier.gap_demotes(nearest_gap, demote_range):
 			TierTransition.demote(u)
 		# Counted AFTER the transition, so the tally is this tick's tiers, not last tick's.
 		if u.tier == FormationTier.FAR:

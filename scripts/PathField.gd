@@ -483,8 +483,10 @@ const CORNER_ARRIVE_EPS := CELL * 0.5   # tuned in wu, solver epsilon
 # tiny nonzero float-rounding residual, so an exact `== 0.0` test can let
 # that rounding noise decide a route's side instead of correctly reading "no
 # preference." 0.001 wu sits roughly 4x above a measured worst-case float32
-# rounding artifact across this map's own coordinate range (Battle.FIELD is
-# 1600x1200 wu; a measured worst case there is about 2.44e-4 wu -- well
+# rounding artifact across this map's own coordinate range (measured on the
+# 1600x1200 wu field Battle.FIELD was then; today's spans y -720..1720, the same
+# float32 exponent band as 1600, so the bound carries over; a measured worst
+# case there is about 2.44e-4 wu -- well
 # under one order of magnitude, not the order-of-magnitude margin an
 # ULP-scale back-of-envelope estimate would suggest) while staying two to
 # three orders of magnitude below the smallest REAL geometric margin in this

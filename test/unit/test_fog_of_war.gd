@@ -469,25 +469,23 @@ func test_fog_menu_checkmark_reflects_effective_battle_state() -> void:
 
 
 ## A non-finite sight_scale (NAN or INF) assigned before _ready is rejected
-## and falls back to the default fraction of the short field dimension.
+## and falls back to the fixed default.
 func test_battle_sight_scale_rejects_nan_and_inf() -> void:
 	var scene := load("res://scenes/Battle.tscn") as PackedScene
 	var battle_nan: Node = scene.instantiate()
 	battle_nan.sight_scale = NAN
 	add_child_autofree(battle_nan)
 	assert_true(is_finite(battle_nan.sight_scale), "NAN sight_scale resolves to finite value")
-	var expected_default: float = (
-		BattleScript.DEFAULT_SIGHT_SCALE_FRACTION * minf(battle_nan.field.size.x, battle_nan.field.size.y)
-	)
+	var expected_default: float = Unit.DEFAULT_SIGHT_SCALE
 	assert_almost_eq(battle_nan.sight_scale, expected_default, 0.001,
-		"NAN sight_scale falls back to default field-derived scale")
+		"NAN sight_scale falls back to the fixed default")
 
 	var battle_inf: Node = scene.instantiate()
 	battle_inf.sight_scale = INF
 	add_child_autofree(battle_inf)
 	assert_true(is_finite(battle_inf.sight_scale), "INF sight_scale resolves to finite value")
 	assert_almost_eq(battle_inf.sight_scale, expected_default, 0.001,
-		"INF sight_scale falls back to default field-derived scale")
+		"INF sight_scale falls back to the fixed default")
 
 
 func test_all_teams_control_disables_fog() -> void:
@@ -654,12 +652,12 @@ func test_selection_manager_unit_at_ignores_hidden_enemy() -> void:
 		"hidden enemy is ignored by _unit_at")
 
 
-func test_sight_scale_derives_from_final_field_or_preserves_override() -> void:
+func test_sight_scale_ignores_the_field_size_or_preserves_override() -> void:
 	var b1: Node = load("res://scenes/Battle.tscn").instantiate()
 	b1.field = Rect2(0, 0, 800, 600)
 	add_child_autofree(b1)
-	assert_almost_eq(b1.sight_scale, BattleScript.DEFAULT_SIGHT_SCALE_FRACTION * 600.0, 0.001,
-		"sight_scale derives from non-default field short side in _ready")
+	assert_almost_eq(b1.sight_scale, Unit.DEFAULT_SIGHT_SCALE, 0.001,
+		"a smaller field leaves the default sight scale unchanged")
 
 	var b2: Node = load("res://scenes/Battle.tscn").instantiate()
 	b2.sight_scale = 450.0
@@ -939,7 +937,7 @@ func _measure_rout_escape(fog_on: bool) -> Dictionary:
 	battle.drill_mode = true
 	battle.terrain = []
 	battle.scenario = [
-		{"team": 0, "type": "Infantry", "x": 800, "y": 10, "count": 12},
+		{"team": 0, "type": "Infantry", "x": 800, "y": BattleScript.FIELD.position.y + 10.0, "count": 12},
 	]
 	_staged_battles.append(battle)
 	add_child(battle)

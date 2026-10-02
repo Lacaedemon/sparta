@@ -25,8 +25,8 @@ wins is a coin flip by construction, and that is the point -- the arm isolates w
 relief *costs* rather than who it favours.
 
 Both arms emit their own `map` block rather than running on the default battlefield,
-because the default is not symmetric in the two ways that matter here. Its field is
-`Rect2(0, 0, 1600, 1200)`, so mirroring about any line but `y = 600` hands one side
+because the default is not symmetric in the two ways that matter here. When the study
+ran, its field was `Rect2(0, 0, 1600, 1200)`, so mirroring about any line but `y = 600` handed one side
 more ground; and both default `TERRAIN` patches sit at `y` 380-580 -- a forest that
 halves speed and an impassable hill -- which is one team's half whatever midline is
 chosen. The arms mirror about the field centre and run on empty terrain.

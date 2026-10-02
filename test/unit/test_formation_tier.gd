@@ -94,7 +94,10 @@ func test_edge_gap_subtracts_both_reaches_and_never_goes_negative() -> void:
 	assert_eq(FormationTier.edge_gap(100.0, 480.0, 70.0), 0.0, "overlapping blocks read as touching")
 
 
-func test_tier_reach_is_the_block_support_distance_along_a_direction() -> void:
+func test_tier_reach_matches_the_formation_slots_reach() -> void:
+	# Checked against the slots the soldiers actually stand in, not against the headcount
+	# half-extents tier_reach is built from: face on and to the flank the rectangle's
+	# reach is exactly the farthest slot's; obliquely it is never less.
 	var u := Unit.new()
 	u.max_soldiers = 80
 	u.is_cavalry = true
@@ -102,11 +105,20 @@ func test_tier_reach_is_the_block_support_distance_along_a_direction() -> void:
 	u.rank_pitch = 60.0
 	u.facing = Vector2.DOWN
 	add_child_autofree(u)
-	var half: Vector2 = u._far_tier_half_extents()
-	assert_gt(half.y, half.x, "a cavalry squadron is deeper than it is wide")
-	assert_almost_eq(u.tier_reach(Vector2.DOWN), half.y, 0.001, "reach toward the front is the half-depth")
-	assert_almost_eq(u.tier_reach(Vector2.RIGHT * 5.0), half.x, 0.001, "reach to the flank is the half-width")
-	var diag: Vector2 = Vector2(1, 1).normalized()
-	assert_almost_eq(u.tier_reach(diag), diag.x * half.x + diag.y * half.y, 0.001,
-			"an oblique reach is the rectangle's support distance")
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for dir in [Vector2.DOWN, Vector2.UP, Vector2.RIGHT * 5.0, Vector2.LEFT]:
+		assert_almost_eq(u.tier_reach(dir), _slot_reach(u, slots, dir), 0.01,
+				"face-on or flank reach toward %s is the farthest slot's" % dir)
+	var diag: Vector2 = Vector2(1, 1)
+	assert_true(u.tier_reach(diag) >= _slot_reach(u, slots, diag) - 0.01,
+			"an oblique reach never falls short of the farthest slot")
+	assert_gt(u.tier_reach(Vector2.DOWN), u.tier_reach(Vector2.RIGHT),
+			"a cavalry squadron reaches farther to its front than to its flank")
 	assert_eq(u.tier_reach(Vector2.ZERO), 0.0, "no direction, no reach")
+
+
+func _slot_reach(u: Unit, slots: PackedVector2Array, dir: Vector2) -> float:
+	var best: float = -INF
+	for p in slots:
+		best = maxf(best, (p - u.position).dot(dir.normalized()))
+	return best

@@ -174,15 +174,15 @@ func test_custom_spawn_lines_place_the_default_armies() -> void:
 		if u == null:
 			continue
 		if u.team == 0:
-			top_ys.append(u.position.y)
+			top_ys.append(_front_y(u))
 		else:
-			bottom_ys.append(u.position.y)
+			bottom_ys.append(_front_y(u))
 	assert_gt(top_ys.size(), 0, "team 0 spawned")
 	assert_gt(bottom_ys.size(), 0, "team 1 spawned")
 	for y in top_ys:
-		assert_almost_eq(float(y), 250.0, 0.001, "team 0 deploys on the custom attacker line")
+		assert_almost_eq(float(y), 250.0, 0.001, "team 0's front rank stands on the custom attacker line")
 	for y in bottom_ys:
-		assert_almost_eq(float(y), 1350.0, 0.001, "team 1 deploys on the custom defender line")
+		assert_almost_eq(float(y), 1350.0, 0.001, "team 1's front rank stands on the custom defender line")
 
 
 func test_non_default_map_is_published_to_the_replay_and_restored_on_playback() -> void:
@@ -272,8 +272,8 @@ func test_deployment_gap_m_moves_the_spawn_lines_with_the_parameter() -> void:
 	battle.deployment_gap_m = 60.0
 	add_child_autofree(battle)
 	assert_eq(battle.spawn_line_ys, [300.0, 1500.0], "60 m = 1200 wu below team 0's line")
-	assert_eq(battle.field, Rect2(0, 0, 1600, 1820), "the live field grew with the gap")
-	assert_eq(battle.field_with_margin, Rect2(0, 0, 1600, 1820).grow(battle.ROUT_MARGIN),
+	assert_eq(battle.field, Rect2(0, -720, 1600, 3280), "the live field grew with the gap")
+	assert_eq(battle.field_with_margin, Rect2(0, -720, 1600, 3280).grow(battle.ROUT_MARGIN),
 			"the rout margin tracks the widened field")
 	var team_0_ys: Array = []
 	var team_1_ys: Array = []
@@ -282,15 +282,15 @@ func test_deployment_gap_m_moves_the_spawn_lines_with_the_parameter() -> void:
 		if u == null:
 			continue
 		if u.team == 0:
-			team_0_ys.append(u.position.y)
+			team_0_ys.append(_front_y(u))
 		else:
-			team_1_ys.append(u.position.y)
+			team_1_ys.append(_front_y(u))
 	assert_gt(team_0_ys.size(), 0, "team 0 spawned")
 	assert_gt(team_1_ys.size(), 0, "team 1 spawned")
 	for y in team_0_ys:
-		assert_almost_eq(float(y), 300.0, 0.001, "team 0 stays on the default line")
+		assert_almost_eq(float(y), 300.0, 0.001, "team 0's front rank stays on the default line")
 	for y in team_1_ys:
-		assert_almost_eq(float(y), 1500.0, 0.001, "team 1 deploys on the moved line")
+		assert_almost_eq(float(y), 1500.0, 0.001, "team 1's front rank stands on the moved line")
 	assert_false(Replay.map.is_empty(), "the widened map is published to the recording")
 	assert_eq(BattleMap.parse(Replay.map)["spawn_lines"], [300.0, 1500.0],
 			"so a replay rebuilds the same deployment")
@@ -317,7 +317,7 @@ func test_campaign_clash_deployment_gap_widens_the_battle() -> void:
 	add_child_autofree(battle)
 	assert_almost_eq(battle.deployment_gap_m, 45.0, 0.001, "the clash's gap fills the battle's field")
 	assert_eq(battle.spawn_line_ys, [300.0, 1200.0], "45 m = 900 wu below team 0's line")
-	assert_eq(battle.field, Rect2(0, 0, 1600, 1520), "and the field grew with it")
+	assert_eq(battle.field, Rect2(0, -720, 1600, 2980), "and the field grew with it")
 
 
 func test_campaign_clash_without_a_gap_keeps_the_default_lines() -> void:
@@ -504,3 +504,11 @@ func test_parse_and_serialize_carry_a_field_origin() -> void:
 			"a zero-origin field keeps the two-element form")
 	assert_true(BattleMap.parse({"field": [0, 0, 0, 100]}).has("error"), "zero width is an error in the four-element form")
 	assert_true(BattleMap.parse({"field": [0, 0, 100]}).has("error"), "a three-element field is an error")
+
+
+## The y of a line-spawned unit's front rank: the slot farthest along its facing.
+func _front_y(u: Unit) -> float:
+	var front: float = -INF
+	for p in u.soldier_world_slots(u.soldiers):
+		front = maxf(front, p.y * u.facing.y)
+	return front * u.facing.y

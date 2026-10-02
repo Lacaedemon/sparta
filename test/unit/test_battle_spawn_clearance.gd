@@ -1,4 +1,5 @@
 extends GutTest
+const BattleScript = preload("res://scripts/Battle.gd")
 ## The default battle's line spawn puts every block where it can stand: its front rank on
 ## its spawn line, its whole footprint on the field, clear of block terrain, and clear of
 ## every enemy block. A deep cavalry squadron centred on its line used to reach half its
@@ -30,7 +31,7 @@ func test_every_line_block_dresses_its_front_rank_on_its_line() -> void:
 	var units: Array[Unit] = await _spawn_default_battle()
 	assert_eq(units.size(), 10, "the default 5v5 spawns")
 	for u in units:
-		var line_y: float = float(Battle.SPAWN_LINE_YS[u.team])
+		var line_y: float = float(BattleScript.SPAWN_LINE_YS[u.team])
 		var front: float = -INF
 		for p in u.soldier_world_slots(u.soldiers):
 			front = maxf(front, p.y * u.facing.y)
@@ -42,9 +43,9 @@ func test_every_line_block_is_on_the_field_and_clear_of_block_terrain() -> void:
 	var units: Array[Unit] = await _spawn_default_battle()
 	for u in units:
 		var box: Rect2 = _slot_bounds(u)
-		assert_true(Battle.FIELD.encloses(box),
-				"%s's footprint %s is on the field %s" % [u.unit_name, box, Battle.FIELD])
-		for patch in Battle.TERRAIN:
+		assert_true(BattleScript.FIELD.encloses(box),
+				"%s's footprint %s is on the field %s" % [u.unit_name, box, BattleScript.FIELD])
+		for patch in BattleScript.TERRAIN:
 			if patch["kind"] == "block":
 				assert_false(box.intersects(patch["rect"]),
 						"%s's footprint %s is clear of the %s" % [u.unit_name, box, patch["type"]])
@@ -60,8 +61,9 @@ func test_no_line_block_overlaps_an_enemy_block() -> void:
 
 
 func test_every_line_block_opens_at_the_close_tier() -> void:
-	# The fronts stand 360 wu apart, inside PROMOTE_RANGE measured edge to edge, so a deep
-	# cavalry squadron whose centre is 480 wu behind its front still opens close-tier.
+	# Units spawn close-tier, and the fronts stand 360 wu apart, inside DEMOTE_RANGE measured
+	# edge to edge, so a deep cavalry squadron whose centre is 480 wu behind its front is not
+	# demoted on the first tier pass.
 	var units: Array[Unit] = await _spawn_default_battle()
 	await get_tree().physics_frame
 	for u in units:

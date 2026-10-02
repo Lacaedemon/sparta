@@ -60,13 +60,39 @@ static func should_promote(formation_pos: Vector2, nearest_enemy_pos: Vector2,
 	return formation_pos.distance_squared_to(nearest_enemy_pos) < range_wu * range_wu
 
 
-## Distance between two formations' near edges along the line joining their centres:
-## the centre distance less each block's reach toward the other (Unit.tier_reach), never
-## below zero. The tier pass feeds this to should_promote/should_demote as the distance
-## from a zero-reach point, so a deep block -- a cavalry squadron reaches 480 wu from its
-## centre to its front -- is judged by where its front is, not by where its centre is.
+## The gap the tier pass judges two formations by: their centre distance less each
+## block's reach toward the other (support_reach), never below zero. A deep block -- a
+## cavalry squadron reaches 480 wu from its centre to its front -- is judged by where its
+## front is, not by where its centre is. Face to face, the reaches are exactly the two
+## half-depths and this is the true front-to-front distance. Obliquely, a reach is the
+## rectangle's support distance, which is never less than where the line of centres
+## leaves the block, so the gap can read shorter than the true edge distance: the error
+## only ever promotes a block early or keeps it close-tier longer, never late.
 static func edge_gap(centre_distance: float, reach_a: float, reach_b: float) -> float:
 	return maxf(0.0, centre_distance - reach_a - reach_b)
+
+
+## How far a rectangular block with half-extents `half` (half-width along its files,
+## half-depth along its ranks), turned to world angle `angle`, reaches from its centre
+## toward world direction `dir`: the rectangle's support distance |x| * w + |y| * d, with
+## (x, y) the unit direction in the block's own frame. Zero for a zero direction.
+static func support_reach(half: Vector2, angle: float, dir: Vector2) -> float:
+	if dir == Vector2.ZERO:
+		return 0.0
+	var local: Vector2 = dir.normalized().rotated(-angle)
+	return absf(local.x) * half.x + absf(local.y) * half.y
+
+
+## The tier pass's promote test on an edge gap: a far-tier formation whose nearest enemy
+## is within `range_wu` of it, edge to edge, becomes close-tier.
+static func gap_promotes(gap: float, range_wu: float = PROMOTE_RANGE) -> bool:
+	return gap < range_wu
+
+
+## The tier pass's demote test on an edge gap: the mirror check against the farther
+## DEMOTE_RANGE. Between the two thresholds neither fires.
+static func gap_demotes(gap: float, range_wu: float = DEMOTE_RANGE) -> bool:
+	return gap > range_wu
 
 
 ## Placeholder demote trigger: the mirror check against the farther DEMOTE_RANGE. Between

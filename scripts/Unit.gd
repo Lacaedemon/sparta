@@ -1102,8 +1102,7 @@ const SIGHT_ROUTING_PENALTY: float = 0.6
 ## Sight range multiplier per screening terrain patch crossed.
 const SIGHT_SCREEN_FACTOR: float = 0.5
 # The sight scale a unit falls back to when no Battle sets one (a bare Unit in a test or a
-# tool): 15 m, which is 0.25 x the default field's short side, Battle.sight_scale's own
-# default.
+# tool), and Battle.sight_scale's own default: 15 m, fixed whatever the field's size.
 const DEFAULT_SIGHT_SCALE: float = 15.0 * WorldScaleRef.WU_PER_M
 # Caller-configurable per unit, world units. Set BEFORE the node enters the tree to
 # override; a non-positive value at _ready resolves to the type default
@@ -4368,18 +4367,18 @@ func _order_held_facing(dest: Vector2) -> Vector2:
 	return target
 
 
+## The half-extents the tier pass reads for this block at either tier: the headcount
+## reading _far_tier_half_extents() gives, which is O(1) except during a relief swap.
+func tier_half_extents() -> Vector2:
+	return _far_tier_half_extents()
+
+
 ## How far this block reaches from its centre toward world direction `dir` (any length;
-## zero reads as no reach): the support distance of its formation rectangle along `dir`,
-## from the O(1) headcount half-extents in the grid's current world rotation. The tier
-## pass subtracts it from a centre distance (FormationTier.edge_gap) so it judges how near
-## an enemy is to the block's edge rather than to its centre. Uses the headcount reading
-## at either tier, so the pass stays O(1) per pair instead of rebuilding slots.
+## zero reads as no reach): FormationTier.support_reach of tier_half_extents() in the
+## grid's current world rotation. The tier pass subtracts it from a centre distance
+## (FormationTier.edge_gap) so it judges an enemy by the block's edge, not its centre.
 func tier_reach(dir: Vector2) -> float:
-	if dir == Vector2.ZERO:
-		return 0.0
-	var half: Vector2 = _far_tier_half_extents()
-	var local: Vector2 = dir.normalized().rotated(-soldier_block_world_angle())
-	return absf(local.x) * half.x + absf(local.y) * half.y
+	return FormationTier.support_reach(tier_half_extents(), soldier_block_world_angle(), dir)
 
 
 ## O(1) half-extents for a FAR-tier block, derived from the headcount instead of read
