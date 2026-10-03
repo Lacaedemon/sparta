@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/terrain-backstop-push-1670.json",
+  "caption": "A held Infantry block stands with its back to the hill's west edge while an enemy Cavalry troop charges it along the hill's flank. Unit routing only steers the troop's centre, so before this change its outer riders rode onto the hill (5 inside at tick 480, 10 at tick 600). The soldier body pass now keeps every body out of impassable terrain, so the outer riders are held on the hill's edge and no man stands inside it.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}

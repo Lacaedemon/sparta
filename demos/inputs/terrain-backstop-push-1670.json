@@ -1,0 +1,84 @@
+{
+  "_comment": "A 48-man Infantry block holds (Ctrl+H) with its back to the default hill's west edge (Rect2(1150, 380, 250, 200)), facing west, and an enemy Cavalry troop charges it from the west. The troop's deep column runs along the hill's flank as it closes, and unit-level routing only steers its centre, so on main 5 of its riders stand inside the hill at tick 480 and 10 at tick 600. The soldier body pass now keeps every body out of the hill: the outer riders are held on its edge (the expect pins on uid 1's soldiers_in_block_terrain fail on main).",
+  "seed": "51670",
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 1110,
+      "y": 480,
+      "facing": [
+        -1,
+        0
+      ],
+      "count": 48
+    },
+    {
+      "team": 1,
+      "type": "Cavalry",
+      "x": 700,
+      "y": 480,
+      "facing": [
+        1,
+        0
+      ],
+      "count": 30
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 1000,
+      "y": 480,
+      "zoom": 1.4
+    }
+  ],
+  "steps": [
+    {
+      "tick": 8,
+      "click": [
+        1110,
+        480
+      ]
+    },
+    {
+      "tick": 14,
+      "key": "H",
+      "ctrl": true
+    }
+  ],
+  "state": [
+    8,
+    120,
+    240,
+    360,
+    480,
+    600
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    },
+    {
+      "tick": 480,
+      "uid": 1,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 600,
+      "uid": 1,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 600,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    }
+  ]
+}

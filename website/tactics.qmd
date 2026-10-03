@@ -2430,6 +2430,9 @@ order would not push it deeper into the terrain than it already is.
 The edge of the field works the same way: an order is pulled back until the whole
 formation fits on the field, so a deep column sent to the edge halts with its front
 rank on it rather than half off the map.
+No soldier ever stands inside a hill, whatever moves him there: a man shoved against
+it in melee, a rider on the outside of a column brushing past it, or the corner man of
+a wheel is held at the hill's edge.
 
 ::: {#fig-side-step-hill-footprint .demo}
 
