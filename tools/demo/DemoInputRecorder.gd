@@ -131,7 +131,7 @@ func _ready() -> void:
 	# Only when this scene is the run's root (a real tool run): a GUT test that
 	# instantiates the recorder as a child must not install a process-wide kill
 	# timer in the test run.
-	if get_parent() == get_tree().root:
+	if _is_standalone():
 		get_tree().root.add_child.call_deferred(RunWatchdog.create("scripted-input recording"))
 	# A recording carries the game's sound (SFX default off); session-only, like DemoRunner.
 	Settings.set_sfx_enabled_session(true)
@@ -838,16 +838,23 @@ func _vec(a) -> Vector2:
 	return Vector2(float(a[0]), float(a[1]))
 
 
-## Stop the recording with exit `code` and `message`. A standalone tool run (the recorder is
-## the scene tree's root child) quits the process with the code, the loud signal CI reads; a
-## recorder hosted inside another scene -- a GUT test playing a demo in-process -- only records
-## the failure in failure_code/failure_message, since quitting there would end every other
-## test in the run with it.
+## Whether this recorder is the run's own scene (a tool run launched with the recorder scene
+## on the command line, making it the root's child) rather than hosted inside another scene,
+## such as a GUT test playing a demo in-process.
+func _is_standalone() -> bool:
+	return get_parent() == get_tree().root
+
+
+## Stop the recording with exit `code` and `message`. A standalone tool run quits the process
+## with the code, the loud signal CI reads; a hosted recorder only records the failure in
+## failure_code/failure_message, since quitting there would end every other test in the run
+## with it. A failure in _start_battle leaves the spawned Battle in the tree, undriven, until
+## the host frees the recorder.
 func _fail(code: int, message: String) -> void:
 	push_error(message)
 	failure_code = code
 	failure_message = message
-	if get_parent() == get_tree().root:
+	if _is_standalone():
 		get_tree().quit(code)
 
 
