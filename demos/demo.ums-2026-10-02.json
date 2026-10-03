@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "No behaviour change. This adds a note to the sparta-demos skill and two frontage expect entries to the existing deep-column-flank-grips-1685 input; the clip it records is unchanged, so the #1689 demo already shows it."
+}
