@@ -316,3 +316,50 @@ func test_recorder_f7_step_toggles_fog_session_only() -> void:
 
 
 
+
+
+# --- Failing without ending a hosting test run --------------------------------------------
+# A standalone recording quits the process with exit 2 or 4 on a malformed script or a stale
+# spawn stamp. Hosted inside a test it must only record the failure, or the quit would end
+# every later test in the GUT run. Reaching the assertions below is itself the proof that the
+# process kept running.
+
+## Write `script` as a temporary demo input and point SPARTA_DEMO_INPUT at it.
+func _use_temp_script(script: Dictionary) -> String:
+	var path := "user://test_hosted_demo_input.json"
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_string(JSON.stringify(script))
+	f.close()
+	OS.set_environment("SPARTA_DEMO_INPUT", path)
+	return path
+
+
+## Undo _use_temp_script, and the seed the recorder's _ready set without a battle consuming it.
+func _drop_temp_script(path: String) -> void:
+	OS.set_environment("SPARTA_DEMO_INPUT", "")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	Replay.forced_seed = -1
+
+
+func test_a_stale_spawn_stamp_in_a_hosted_recorder_fails_without_quitting() -> void:
+	var path := _use_temp_script({"seed": "1", "drill": true,
+			"spawn_fingerprint": "not-this-build's-layout"})
+	var recorder: Node = load("res://tools/demo/DemoInputRecorder.tscn").instantiate()
+	add_child_autofree(recorder)
+	await get_tree().physics_frame   # the recorder starts its battle deferred
+	_drop_temp_script(path)
+	assert_push_error("spawn-layout mismatch")
+	assert_eq(recorder.failure_code, 4, "the stale stamp is recorded with the tool's exit code")
+	assert_string_contains(recorder.failure_message, "spawn-layout mismatch")
+	assert_null(recorder._sel, "the recording stopped before wiring up the controls")
+
+
+func test_a_malformed_script_in_a_hosted_recorder_fails_without_quitting() -> void:
+	var path := _use_temp_script({"seed": "1", "drill": true,
+			"tier_ranges": {"promote": 500.0, "demote": 100.0}})
+	var recorder: Node = load("res://tools/demo/DemoInputRecorder.tscn").instantiate()
+	add_child_autofree(recorder)
+	_drop_temp_script(path)
+	assert_push_error("tier_ranges")
+	assert_eq(recorder.failure_code, 2, "a malformed script is recorded with the tool's exit code")
+	assert_string_contains(recorder.failure_message, "tier_ranges")
