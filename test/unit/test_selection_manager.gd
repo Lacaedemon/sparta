@@ -419,6 +419,29 @@ func test_a_real_press_and_release_over_a_covered_grip_selects_the_unit_under_it
 	assert_eq(sm.get_selected_units(), [neighbour], "the neighbour is now the selection")
 
 
+func test_a_real_press_on_a_grip_measures_the_drag_from_the_press() -> void:
+	# Through the actual input path: a press on an uncovered grip starts the resize with
+	# the press's offset past the flank slot recorded, so the next nudge keeps the width.
+	var sm := _sm()
+	var block := _unit()
+	block.facing = Vector2.UP
+	block.position = Vector2(50, 50)
+	sm._select(block)
+	var start: int = UnitFormation.frontage(block)
+	var grip: Vector2 = sm._resize_handle_positions(block)[0]
+	sm.set_cursor_override(grip)
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	sm._unhandled_input(press)
+	sm.set_cursor_override(null)
+	assert_true(sm._resizing, "the press on the grip starts a resize")
+	assert_almost_eq(sm._resize_grab_offset, block.soldier_body_radius() + sm.RESIZE_HANDLE_GAP, 0.01,
+			"the grab offset is the grip's distance past the flank slot")
+	sm._update_resize(grip + sm._file_axis(block) * 1.0)
+	assert_eq(sm._resize_files, start, "a 1 wu nudge after a real press keeps the frontage")
+
+
 func test_resize_handle_at_reports_the_grabbed_flank() -> void:
 	# The grip list is [+file-axis, -file-axis]; the first is the block's local +X
 	# flank (Anchor.RIGHT), the second its mirror. The drag anchors the OPPOSITE
@@ -598,6 +621,102 @@ func test_drag_resize_composes_with_a_standing_anchor_offset() -> void:
 			- float(UnitFormation.frontage(u) - 1) * 0.5 * spacing
 	assert_almost_eq(new_left_edge, left_edge, 0.001,
 			"the held edge stays at its actual (shifted) place, not a recomputed centre")
+
+
+func test_a_grip_grab_does_not_change_the_frontage_until_the_cursor_moves_half_a_pitch() -> void:
+	# The grip sits a body radius and a gap past the flank slot -- for cavalry exactly
+	# half a file pitch -- so a drag measured straight to the cursor added a file on the
+	# first pixel of motion. Measured from the grab point, it waits for a real move.
+	for cavalry in [false, true]:
+		var sm := _sm()
+		var u := _unit()
+		u.max_soldiers = 80
+		u.is_cavalry = cavalry
+		if cavalry:
+			u.file_pitch = 40.0
+		u.facing = Vector2.UP   # file axis = world +X
+		u.position = Vector2(300, 300)
+		u.soldiers = 80
+		var start: int = UnitFormation.frontage(u)
+		var pitch: float = u.file_pitch_wu()
+		var grip: Vector2 = sm._resize_handle_positions(u)[0]
+		var along: Vector2 = sm._file_axis(u)
+		var side: int = UnitFormation.Anchor.RIGHT
+		if (grip - u.global_position).dot(along) < 0.0:
+			side = UnitFormation.Anchor.LEFT
+		var outward: Vector2 = along * float(side)
+		sm._begin_resize(u, side, grip)
+		sm._update_resize(grip + outward * 1.0)
+		assert_eq(sm._resize_files, start, "cavalry=%s: a 1 wu nudge keeps the frontage" % cavalry)
+		sm._update_resize(grip - outward * 1.0)
+		assert_eq(sm._resize_files, start, "cavalry=%s: so does a 1 wu nudge inward" % cavalry)
+		sm._update_resize(grip + outward * (0.5 * pitch + 1.0))
+		assert_eq(sm._resize_files, start + 1, "cavalry=%s: half a pitch out adds one file" % cavalry)
+		sm._update_resize(grip - outward * (0.5 * pitch + 1.0))
+		assert_eq(sm._resize_files, start - 1, "cavalry=%s: half a pitch in drops one" % cavalry)
+
+
+func test_a_grab_anywhere_on_either_grip_starts_at_the_committed_frontage() -> void:
+	# Whatever separates the grab point from the nominal flank edge -- an off-centre press
+	# inside the hit disc, the other grip, a standing anchor shift, a depleted rank, a
+	# quarter fold -- the offset absorbs it, so the drag starts at the committed width.
+	var cases := [
+		{"label": "plain"},
+		{"label": "anchor shift", "shift": 2},
+		{"label": "depleted", "soldiers": 3},
+		{"label": "quarter fold", "fold": true},
+	]
+	for c in cases:
+		for grip_index in [0, 1]:
+			for press_shift in [-9.0, 0.0, 9.0]:
+				var sm := _sm()
+				var u := _unit()
+				u.max_soldiers = 80
+				u.facing = Vector2.UP
+				u.position = Vector2(300, 300)
+				u.soldiers = int(c.get("soldiers", 80))
+				if c.has("shift"):
+					u.set_frontage(UnitFormation.frontage(u), float(c["shift"]) * u.file_pitch_wu())
+				if c.has("fold"):
+					u._formation_angle = PI * 0.5
+				var start: int = UnitFormation.frontage(u)
+				var grip: Vector2 = sm._resize_handle_positions(u)[grip_index]
+				var along: Vector2 = sm._file_axis(u)
+				var side: int = UnitFormation.Anchor.RIGHT if grip_index == 0 \
+						else UnitFormation.Anchor.LEFT
+				var press: Vector2 = grip + along * press_shift
+				sm._begin_resize(u, side, press)
+				sm._update_resize(press)
+				assert_eq(sm._resize_files, start, "%s, grip %d, press %+.0f: no change at the press"
+						% [c["label"], grip_index, press_shift])
+				sm._finish_resize()
+				assert_eq(sm._resize_grab_offset, 0.0, "%s: the offset resets on release" % c["label"])
+
+
+func test_a_grip_drag_blocks_keyboard_width_changes_until_release() -> void:
+	# The drag's grab offset was measured against the frontage at the press, so the [ / ]
+	# resize and file doubling wait for the release rather than shifting the drag.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 31
+	u.max_soldiers = 80
+	u.facing = Vector2.UP
+	u.position = Vector2(300, 300)
+	b._by_uid[31] = u
+	sm._select(u)
+	var start: int = UnitFormation.frontage(u)
+	sm._begin_resize(u, UnitFormation.Anchor.RIGHT, sm._resize_handle_positions(u)[0])
+	sm._resize_frontage(1)
+	sm._issue_file_double(1)
+	assert_eq(UnitFormation.frontage(u), start, "neither key changes the width while the drag is live")
+	sm._finish_resize()
+	sm._resize_frontage(1)
+	assert_eq(UnitFormation.frontage(u), start + 1, "after the release the [ / ] resize works again")
+	sm._resize_frontage(-1)
+	assert_eq(UnitFormation.frontage(u), start, "a drag released in place commits no change")
 
 
 func test_keyboard_resize_recentres_a_standing_anchor_offset() -> void:

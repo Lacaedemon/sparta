@@ -1,5 +1,5 @@
 {
-  "_comment": "Selection chrome centres on the block's true footprint while a standing anchor offset holds it off the regiment point: a lone Spearmen regiment (drill mode, no opponent) is selected, then widened by dragging its EAST flank grip further east -- the anchored drag holds the WEST edge fixed, leaving the block standing east of `Unit.position`. The point under review is the chrome after the drag settles: the selection ring hugs the shifted block (not an inflated circle about the old centre), and both resize grips sit just past the block's actual edges instead of the anchored-side grip floating ~2x the offset out west. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "_comment": "Selection chrome centres on the block's true footprint while a standing anchor offset holds it off the regiment point: a lone Spearmen regiment (drill mode, no opponent) is selected, then widened by dragging its EAST flank grip further east (60 Spearmen draw up 4 files at a 9 wu, 0.45 m pitch, so that grip sits at x = 740 + 13.5 half-width + 4.5 body radius + 10 handle gap = 768; the drag widens the block to 12 files) -- the anchored drag holds the WEST edge fixed, leaving the block standing east of `Unit.position`. The point under review is the chrome after the drag settles: the selection ring hugs the shifted block (not an inflated circle about the old centre), and both resize grips sit just past the block's actual edges instead of the anchored-side grip floating ~2x the offset out west. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
   "seed": "911",
   "drill": true,
   "scenario": [
@@ -10,8 +10,12 @@
   ],
   "steps": [
     {"tick": 12, "click": [740, 480]},
-    {"tick": 30, "box": {"from": [806, 480], "to": [886, 480]}}
+    {"tick": 30, "box": {"from": [768, 480], "to": [848, 480]}}
   ],
   "state": [12, 29, 60, 150, 380],
+  "expect": [
+    {"tick": 29, "uid": 0, "field": "frontage", "value": 4},
+    {"tick": 150, "uid": 0, "field": "frontage", "value": 12}
+  ],
   "frames": [12, 60, 380]
 }

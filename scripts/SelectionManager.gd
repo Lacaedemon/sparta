@@ -163,6 +163,11 @@ var _resizing: bool = false
 var _resize_unit = null
 var _resize_files: int = 0
 var _resize_anchor: int = UnitFormation.Anchor.CENTRE
+# How far past the dragged flank's outermost slot the press landed, along the drag. The
+# grip sits a body radius and a gap beyond that slot, so measuring the width straight to
+# the cursor would start the drag that much wide; subtracting this keeps the frontage
+# unchanged until the cursor has moved half a pitch from where it grabbed.
+var _resize_grab_offset: float = 0.0
 # Snapshot of the grip geometry's inputs as of the last redraw request, so _process
 # can spot the selected unit moving out from under its grips (see _track_grip_motion).
 var _grip_state: Array = []
@@ -294,7 +299,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				# anywhere else begins the usual box-select drag.
 				var grip = _grip_for_press(_cursor_world())
 				if grip != null:
-					_begin_resize(grip["unit"], int(grip["side"]))
+					_begin_resize(grip["unit"], int(grip["side"]), _cursor_world())
 				else:
 					_dragging = true
 					_drag_start = _cursor_world()
@@ -1707,7 +1712,9 @@ func _cycle_formation(reverse: bool = false) -> void:
 ## files. Routed through Battle so the resize is recorded and replays exactly. Each
 ## unit steps from its own current width, so a mixed selection keeps its proportions.
 func _resize_frontage(delta: int) -> void:
-	if Replay.mode == Replay.Mode.PLAYBACK:
+	# A live grip drag owns the width until release: its grab offset was measured against
+	# the frontage at the press, so a width change under it would shift the drag.
+	if Replay.mode == Replay.Mode.PLAYBACK or _resizing:
 		return
 	var uids: Array = _selected_uids()
 	if uids.is_empty():
@@ -1724,9 +1731,9 @@ func _resize_frontage(delta: int) -> void:
 ## CENTRE (default) is the plain symmetric maneuver. Routed through Battle so it reshapes
 ## each unit from its own current width, is recorded, and replays exactly -- the same path
 ## as the [ / ] single-file resize, one whole factor instead of one file. Blocked during
-## playback.
+## playback, and while a grip drag owns the width (see _resize_frontage).
 func _issue_file_double(direction: int, anchor: int = UnitFormation.Anchor.CENTRE) -> void:
-	if Replay.mode == Replay.Mode.PLAYBACK:
+	if Replay.mode == Replay.Mode.PLAYBACK or _resizing:
 		return
 	var uids: Array = _selected_uids()
 	if uids.is_empty():
@@ -1739,29 +1746,41 @@ func _issue_file_double(direction: int, anchor: int = UnitFormation.Anchor.CENTR
 ## Begin a drag-resize from a flank grip: seed the live target with the unit's
 ## current frontage so a click without movement is a no-op. `grab_side` is the
 ## grabbed grip's own flank (UnitFormation.Anchor.LEFT/RIGHT); the OPPOSITE flank
-## becomes the drag's anchor, so only the grabbed edge moves.
-func _begin_resize(u, grab_side: int) -> void:
+## becomes the drag's anchor, so only the grabbed edge moves. `grab_pos` is where the
+## press landed; the drag measures relative to it (see _resize_grab_offset). Without
+## one the drag measures straight from the anchored edge.
+func _begin_resize(u, grab_side: int, grab_pos: Variant = null) -> void:
 	_resizing = true
 	_resize_unit = u
 	_resize_files = UnitFormation.frontage(u)
 	_resize_anchor = -grab_side   # Anchor.LEFT/RIGHT are -1/+1, so the far flank is the negation
+	_resize_grab_offset = 0.0
+	if grab_pos != null:
+		_resize_grab_offset = _resize_cursor_span(u, _resize_anchor, grab_pos) \
+				- 2.0 * _resize_preview_half_width(u, _resize_files)
 	queue_redraw()
 
 
+## Signed distance along `u`'s file axis from its `anchor` flank's fixed edge to
+## `world_pos`, positive toward the dragged flank.
+func _resize_cursor_span(u, anchor: int, world_pos: Vector2) -> float:
+	var cursor_x: float = (world_pos - u.global_position).dot(_file_axis(u))
+	return (cursor_x - _resize_anchored_edge_x(u, anchor)) * -float(anchor)
+
+
 ## Update the live resize target as the cursor drags: measure from the ANCHORED
-## flank's fixed edge to the cursor along the file axis for the new full width, then
-## map it to a file count (shared helper). Measuring from the far edge rather than
-## the centre is what makes the drag one-sided: the anchored edge never moves, so
-## the whole width change lands on the dragged flank.
+## flank's fixed edge to the cursor along the file axis for the new full width, less
+## the grab offset, then map it to a file count (shared helper). Measuring from the
+## far edge rather than the centre is what makes the drag one-sided: the anchored edge
+## never moves, so the whole width change lands on the dragged flank.
 func _update_resize(world_pos: Vector2) -> void:
 	if not is_instance_valid(_resize_unit):
 		_resizing = false
 		return
-	var cursor_x: float = (world_pos - _resize_unit.global_position).dot(_file_axis(_resize_unit))
-	var edge_x: float = _resize_anchored_edge_x(_resize_unit, _resize_anchor)
-	# Signed distance from the fixed edge toward the dragged flank, floored at zero
-	# when the cursor crosses behind the anchor (a line can't have negative width).
-	var width: float = maxf(0.0, (cursor_x - edge_x) * -float(_resize_anchor))
+	# Floored at zero when the cursor crosses behind the anchor (a line can't have
+	# negative width).
+	var width: float = maxf(0.0,
+			_resize_cursor_span(_resize_unit, _resize_anchor, world_pos) - _resize_grab_offset)
 	_resize_files = UnitFormation.files_for_halfwidth(width * 0.5, _resize_unit.max_soldiers,
 			_resize_unit.file_pitch_wu())
 
@@ -1776,6 +1795,7 @@ func _finish_resize() -> void:
 	_resizing = false
 	_resize_unit = null
 	_resize_anchor = UnitFormation.Anchor.CENTRE
+	_resize_grab_offset = 0.0
 	if not is_instance_valid(u) or Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var delta: int = _resize_files - UnitFormation.frontage(u)
