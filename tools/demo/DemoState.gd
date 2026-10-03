@@ -307,6 +307,10 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		# metres like every user-facing surface already does. The wu field above stays.
 		"position_m": vec2_pair_m(u.position, WorldScaleRef.WU_PER_M),
 		"facing": vec2_pair(u.facing),
+		# Where the unit is actually heading, after any order clamp: a unit that stops short
+		# of the point it was ordered to reads as a clamp when this sits short of it too,
+		# and as a stall when it does not. Null while it has no move target.
+		"move_target": vec2_pair(u.move_target) if u.has_move_target else null,
 		"morale": round_to(u.morale, 1),
 		"state": state_name(u.state),
 		"formation": formation_name(u.formation_mode),

@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "No gameplay change: this adds a move_target field to the demo state dump. With it, both behaviours #1680 asked about read as correct rather than defects -- the deep cavalry that 'stalled' had reached its group slot or been held off the hill by the order-footprint clamp, and multi-unit-form-up's longer REFORM hold is the clip now genuinely forming up (on the old deployment its drag started on the enemy's cavalry, so it was refused as a form-up and ran as a plain group move)."
+}

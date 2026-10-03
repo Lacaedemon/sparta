@@ -473,6 +473,7 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | `uid`, `name`, `team` | Stable unit id, display name, side (0 player / 1 enemy). |
 | `position`, `facing` | World-space `[x, y]` pairs (rounded). |
 | `position_m` | `position` mirrored in metres (`WorldScale.WU_PER_M`), so a reviewer reads real distances without dividing by the world scale by hand. |
+| `move_target` | Where the unit is heading, `[x, y]`, after any order clamp, or `null` with no move target. A unit that stops short of the point it was ordered to reads as clamped when this sits short of it too. |
 | `morale` | Current morale (100 = fresh; a rout triggers at 0). |
 | `state` | Readable `State` name -- `IDLE` / `MOVING` / `FIGHTING` / `ROUTING` / `DEAD`. |
 | `formation` | Readable formation -- `NORMAL` / `TIGHT` / `LOOSE` / `SQUARE` / `SHIELD_WALL` / `TESTUDO` / `SCHILTRON`. |
