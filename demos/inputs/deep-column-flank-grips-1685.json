@@ -13,5 +13,9 @@
     {"tick": 70, "box": {"from": [980, 400], "to": [1260, 400]}}
   ],
   "state": [0, 20, 40, 69, 80, 140, 240, 360],
+  "expect": [
+    {"tick": 69, "uid": 0, "field": "frontage", "value": 9},
+    {"tick": 240, "uid": 0, "field": "frontage", "value": 16}
+  ],
   "frames": [40, 69, 80, 240, 360]
 }
