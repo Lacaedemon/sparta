@@ -10,8 +10,12 @@
   ],
   "steps": [
     {"tick": 12, "click": [740, 480]},
-    {"tick": 30, "box": {"from": [806, 480], "to": [886, 480]}}
+    {"tick": 30, "box": {"from": [768, 480], "to": [848, 480]}}
   ],
   "state": [12, 29, 60, 150, 380],
+  "expect": [
+    {"tick": 29, "uid": 0, "field": "frontage", "value": 4},
+    {"tick": 150, "uid": 0, "field": "frontage", "value": 12}
+  ],
   "frames": [12, 60, 380]
 }
