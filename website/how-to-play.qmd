@@ -1433,7 +1433,11 @@ and accelerate to full speed on contact.
    (slows movement to 60%) on the left flank, and a **tan hill** (impassable) on the
    right. Units route around the hill automatically, whether under your orders or
    fleeing a rout --- and a routing unit boxed in with no way around stands to fight
-   instead. See [Tactics → Terrain](tactics.qmd#terrain).
+   instead. A move order that would leave part of the block standing on the hill, or
+   off the edge of the field, is cut short along the move so the whole block halts
+   clear of it, laid out in the formation it will actually march in. A block that
+   already overlaps the hill or the edge may still move, but not further onto it.
+   See [Tactics → Terrain](tactics.qmd#terrain).
 5. **Exploit the break** --- when a unit **routs**, it flees (its flag fading) and stops
    fighting for now. Routs spread to nearby allies, so a single break can cascade. A
    fugitive that breaks contact can **rally** and reform back under your control at low
