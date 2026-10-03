@@ -242,10 +242,12 @@ var move_target: Vector2:
 		has_requested_move_target = true
 		_move_target = clamp_order_destination(value)
 var _move_target: Vector2 = Vector2.ZERO
-## The point the latest move_target write asked for, before clamp_order_destination()
-## pulled it back: beside move_target it tells a clamped order from one reached as given.
-## It keeps the last request after the unit arrives (when has_move_target clears), and
-## has_requested_move_target is false only until the first move is ordered.
+## The point the latest write to move_target asked for, before clamp_order_destination()
+## pulled it back: beside move_target it tells a clamped write from one kept as given. Any
+## writer counts -- a player or AI order, a promoted queued leg, a disengage, relief or
+## reinforcement step -- since every one of them goes through that clamp. It keeps the
+## last request after the unit arrives or its order is cancelled (when has_move_target
+## clears), and has_requested_move_target is false only until the first write.
 var requested_move_target: Vector2 = Vector2.ZERO
 var has_requested_move_target: bool = false
 var has_move_target: bool = false
@@ -9493,7 +9495,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_move_target = d["move_target"]   # already validated; see move_target
 	has_move_target = bool(d["has_move_target"])
 	requested_move_target = d.get("requested_move_target", _move_target)
-	has_requested_move_target = bool(d.get("has_requested_move_target", false))
+	has_requested_move_target = bool(d.get("has_requested_move_target", has_move_target))
 	order_mode = int(d["order_mode"])
 	knockback_push_indefinite = bool(d["knockback_push_indefinite"])
 	formation_mode = int(d["formation_mode"])

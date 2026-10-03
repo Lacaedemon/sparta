@@ -305,6 +305,24 @@ func test_requested_move_target_survives_a_snapshot_round_trip() -> void:
 	assert_eq(v.move_target, u.move_target, "the clamped target is restored as it was")
 
 
+func test_an_older_snapshot_without_the_request_restores_a_coherent_one() -> void:
+	# A snapshot saved before the request was recorded: a unit mid-march restores with its
+	# target as the request, so the dump never shows a live target beside a null request.
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u.position = Vector2(300, 300)
+	u.move_target = Vector2(500, 300)
+	u.has_move_target = true
+	var d: Dictionary = u.to_snapshot_dict()
+	d.erase("requested_move_target")
+	d.erase("has_requested_move_target")
+	var v: Unit = Unit.new()
+	add_child_autofree(v)
+	v.apply_snapshot_dict(d)
+	assert_true(v.has_requested_move_target, "a unit with a live target has a request")
+	assert_eq(v.requested_move_target, v.move_target, "and it is the restored target")
+
+
 func test_unit_record_dumps_stamina_mean_zero_valued() -> void:
 	var u: Unit = Unit.new()
 	add_child_autofree(u)
