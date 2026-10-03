@@ -1,5 +1,5 @@
 {
-  "_comment": "A 48-man Infantry block holds (Ctrl+H) with its back to the default hill's west edge (Rect2(1150, 380, 250, 200)), facing west, and an enemy Cavalry troop charges it from the west. The troop's deep column runs along the hill's flank as it closes, and unit-level routing only steers its centre, so on main 5 of its riders stand inside the hill at tick 480 and 10 at tick 600. The soldier body pass now keeps every body out of the hill: the outer riders are held on its edge (the expect pins on uid 1's soldiers_in_block_terrain fail on main).",
+  "_comment": "A 48-man Infantry block holds (Ctrl+H) with its back to the default hill's west edge (Rect2(1150, 380, 250, 200)), facing west, and an enemy Cavalry troop charges it from the west. The troop's deep column runs along the hill's flank as it closes, and unit-level routing only steers its centre, so with main's SoldierBodies.gd swapped into this branch (tools/demo/dump-state.sh at ticks 480 and 600) 5 of its riders stand inside the hill at tick 480 and 10 at tick 600, counted by soldiers_in_block_terrain (a body's centre inside the rect; the backstop also keeps the body radius clear). The soldier body pass now keeps every body out of the hill: the outer riders are held on its edge (the expect pins on uid 1's soldiers_in_block_terrain fail on main).",
   "seed": "51670",
   "scenario": [
     {

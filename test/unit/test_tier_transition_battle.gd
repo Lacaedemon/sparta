@@ -57,6 +57,8 @@ func _run_and_capture() -> Dictionary:
 	# Otherwise the first run (spawned from the test's idle start) gets a close-tier soldier
 	# tick before the first tier pass that a run spawned after a physics frame does not, and
 	# the cavalry block spawned against the hill is pushed off it on that tick in one run only.
+	# That snap itself is expected: a body spawned inside the terrain margin is placed on its
+	# edge on its first close-tier soldier tick.
 	await get_tree().physics_frame
 	var battle: Node2D = _spawn_battle()
 	var player: Unit = _team_unit(0)

@@ -58,11 +58,10 @@ func test_a_clear_point_and_a_point_on_the_edge_are_left_alone() -> void:
 
 
 func test_overlapping_rects_push_a_point_clear_of_both() -> void:
-	# Pushed out of A's nearest (east) edge lands inside B; the second pass clears B too.
 	# A's nearest exit (its east edge, 3 wu away) lands inside B, and B's nearest exit (its
 	# west edge) lands back inside A; the push takes the nearest exit clear of both instead.
 	var f := _field_with([Rect2(0, 0, 100, 100), Rect2(95, 0, 100, 100)])
-	var got: Vector2 = f.push_out_of_block(Vector2(97, 50))
+	var got: Vector2 = f.push_out_of_block(Vector2(97, 40))
 	assert_eq(got, Vector2(97, 0), "out through the shared top edge, clear of both rects")
 
 
@@ -87,19 +86,18 @@ func test_a_body_driven_into_the_hill_keeps_no_inward_velocity() -> void:
 	assert_lte(u._sim_body_vel[0].x, 0.0, "the eastward (into-terrain) part is gone")
 
 
-func test_no_block_terrain_leaves_every_body_where_the_step_put_it() -> void:
-	# The same body inside the hill's rect, on a map with no block terrain: nothing to keep it
-	# out of, so it is integrated exactly as it would be with no terrain field at all.
-	PathField.active = null
-	var a := _make_unit(Vector2(1100, 480))
-	a._sim_soldier_pos[0] = Vector2(1160, 480)
-	SoldierBodies.step(a, TICK)
+func test_a_map_with_no_block_terrain_skips_the_pass() -> void:
+	# The same body where the hill would be, on a map whose field has no block terrain: the
+	# pass does no terrain work at all and the body stays where the integration put it.
 	PathField.active = _field_with([])
-	var b := _make_unit(Vector2(1100, 480))
-	b._sim_soldier_pos[0] = Vector2(1160, 480)
-	SoldierBodies.step(b, TICK)
-	assert_eq(b._sim_soldier_pos, a._sim_soldier_pos, "an empty terrain field changes nothing")
-	assert_gt(b._sim_soldier_pos[0].x, HILL.position.x, "sanity check: the body is in the rect")
+	var u := _make_unit(Vector2(1100, 480))
+	u._sim_soldier_pos[0] = Vector2(1160, 480)
+	SimOps.enabled = true
+	SimOps.reset()
+	SoldierBodies.step(u, TICK)
+	var tick: Dictionary = SimOps.take_tick()
+	assert_eq(tick["terrain_project"], 0, "no terrain tests on a map with no block terrain")
+	assert_gt(u._sim_soldier_pos[0].x, HILL.position.x, "and the body is left in place")
 
 
 func test_the_pass_is_counted_once_per_body() -> void:
@@ -110,4 +108,4 @@ func test_the_pass_is_counted_once_per_body() -> void:
 	SoldierBodies.step(u, TICK)
 	var tick: Dictionary = SimOps.take_tick()
 	SimOps.enabled = false
-	assert_eq(tick["terrain_project"], u._sim_soldier_pos.size(), "one terrain test per body")
+	assert_eq(tick["terrain_project"], u._sim_soldier_pos.size(), "one rect test per body (one rect)")

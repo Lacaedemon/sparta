@@ -34,6 +34,8 @@ const MELEE_CHECK := 5
 const REGIMENT_CHECK := 6
 const UNIT_THINK := 7
 const SQRT_EVAL := 8
+## Body-versus-terrain-rect containment tests in the soldier body pass's terrain backstop
+## (SoldierBodies._keep_out_of_terrain): bodies times block rects, counted on the first sweep.
 const TERRAIN_PROJECT := 9
 
 ## Report keys, indexed by the bucket ids above -- the names a recorded series and its graph

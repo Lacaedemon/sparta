@@ -91,11 +91,23 @@ func has_block_terrain() -> bool:
 ## rect, in which case the next-nearest edge that lands clear of every rect is taken. A
 ## pocket no exit clears (rects packed tighter than the clearance) gets the nearest edge
 ## and another sweep, up to `max_passes`; a point still inside after that is returned where
-## the last pass left it. `point` itself when it is already clear.
+## the last pass left it. `point` itself when it is already clear. The field's own bounds are
+## not consulted, so a hill flush against the edge of the field can push a point off it.
 func push_out_of_block(point: Vector2, clearance: float = 0.0, max_passes: int = 4) -> Vector2:
+	return push_out_of_rects(point, grown_block_rects(clearance), max_passes)
+
+
+## The impassable rects grown by `clearance` on every side: computed once per caller and
+## passed to push_out_of_rects for every point that shares the clearance.
+func grown_block_rects(clearance: float) -> Array[Rect2]:
 	var grown: Array[Rect2] = []
 	for r in _block_rects:
 		grown.append(r.grow(clearance))
+	return grown
+
+
+## push_out_of_block against rects already grown (see grown_block_rects).
+static func push_out_of_rects(point: Vector2, grown: Array[Rect2], max_passes: int = 4) -> Vector2:
 	var q: Vector2 = point
 	for _pass in range(max_passes):
 		var moved := false

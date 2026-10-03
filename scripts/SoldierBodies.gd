@@ -559,11 +559,11 @@ static func _keep_out_of_terrain(unit: Unit, n: int) -> void:
 	var field: PathField = PathField.active
 	if field == null or not field.has_block_terrain():
 		return
-	var clearance: float = unit.soldier_body_radius()
+	var grown: Array[Rect2] = field.grown_block_rects(unit.soldier_body_radius())
 	var pushed: int = 0
 	for i in range(n):
 		var p: Vector2 = unit._sim_soldier_pos[i]
-		var q: Vector2 = field.push_out_of_block(p, clearance)
+		var q: Vector2 = PathField.push_out_of_rects(p, grown)
 		if q == p:
 			continue
 		unit._sim_soldier_pos[i] = q
@@ -575,8 +575,8 @@ static func _keep_out_of_terrain(unit: Unit, n: int) -> void:
 		pushed += 1
 	if pushed > 0:
 		unit._render_dirty = true
-	# One terrain test per body; one normalization per body actually moved.
-	SimOps.add(SimOps.TERRAIN_PROJECT, n)
+	# One rect test per body per rect on a body's first sweep; one normalization per body moved.
+	SimOps.add(SimOps.TERRAIN_PROJECT, n * grown.size())
 	SimOps.add(SimOps.SQRT_EVAL, pushed)
 
 
