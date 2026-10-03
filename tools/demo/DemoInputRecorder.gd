@@ -87,6 +87,12 @@ var _hash_last_tick: int = -1          # last tick hashed, so a frozen tick writ
 var _bit_ticks: Array = []             # ticks to dump raw bits at (SPARTA_DEMO_BITDUMP; empty = off)
 var _bit_dump: FileAccess = null       # raw-bit position dump, opened only when armed
 var _bit_dumped: Dictionary = {}       # tick -> true, mirroring _state_dumped for the bit dump
+# Why the recording stopped, when a malformed script or a stale spawn stamp stopped it: the
+# exit code a standalone tool run quits with (2 or 4) and the error message. 0 and "" while
+# the recording runs normally. A host that instantiates the recorder (a GUT test) reads these
+# instead of losing the whole process to the quit.
+var failure_code: int = 0
+var failure_message: String = ""
 
 
 ## Parse an input script's "tier_ranges" block into {"promote": float, "demote": float}, or
@@ -174,8 +180,7 @@ func _ready() -> void:
 	_all_teams_control = bool(script.get("all_teams_control", false))
 	var factions_result: Dictionary = parse_factions(script.get("factions", []), _drill)
 	if factions_result.has("error"):
-		push_error("[demo-input] %s" % factions_result["error"])
-		get_tree().quit(2)
+		_fail(2, "[demo-input] %s" % factions_result["error"])
 		return
 	_team_factions = factions_result["factions"]
 	# Tier band, strict like scenario/map: it decides WHICH SIMULATION TIER the demo's
@@ -184,8 +189,7 @@ func _ready() -> void:
 	if script.has("tier_ranges"):
 		var band: Dictionary = parse_tier_band(script["tier_ranges"])
 		if band.has("error"):
-			push_error("[demo-input] %s" % band["error"])
-			get_tree().quit(2)
+			_fail(2, "[demo-input] %s" % band["error"])
 			return
 		_promote_range = band["promote"]
 		_demote_range = band["demote"]
@@ -196,8 +200,7 @@ func _ready() -> void:
 	if script.has("map"):
 		_map = BattleMap.parse(script["map"])
 		if _map.has("error"):
-			push_error("[demo-input] bad map block: %s" % _map["error"])
-			get_tree().quit(2)
+			_fail(2, "[demo-input] bad map block: %s" % _map["error"])
 			return
 	# The optional deployment distance, strict like map: it decides how far apart the
 	# armies open, so a malformed value must fail the recording loudly rather than
@@ -205,8 +208,7 @@ func _ready() -> void:
 	if script.has("deployment_gap_m"):
 		var gap: Dictionary = parse_deployment_gap_m(script["deployment_gap_m"])
 		if gap.has("error"):
-			push_error("[demo-input] %s" % gap["error"])
-			get_tree().quit(2)
+			_fail(2, "[demo-input] %s" % gap["error"])
 			return
 		_deployment_gap_m = gap["gap_m"]
 	_form_up_dist = int(script.get("form_up_dist", -1))
@@ -297,12 +299,11 @@ func _start_battle() -> void:
 	var live_fingerprint: String = SpawnFingerprint.of_tree(get_tree())
 	print("[demo-input] spawn fingerprint: %s" % live_fingerprint)
 	if _spawn_fingerprint != "" and not SpawnFingerprint.matches_tree(_spawn_fingerprint, get_tree()):
-		push_error(("[demo-input] spawn-layout mismatch: script declares spawn_fingerprint %s " +
+		_fail(4, ("[demo-input] spawn-layout mismatch: script declares spawn_fingerprint %s " +
 				"but this build spawns %s. The spawn table changed since this script was authored, " +
 				"so its scripted clicks may no longer land on the intended units. Re-verify the " +
 				"coordinates and update (or drop) the spawn_fingerprint field.") %
 				[_spawn_fingerprint, live_fingerprint])
-		get_tree().quit(4)
 		return
 	_sel = _battle.get_node("SelectionManager")
 	_hud = _battle.get_node("HUD")
@@ -835,6 +836,19 @@ static func parse_factions(raw, is_drill: bool) -> Dictionary:
 
 func _vec(a) -> Vector2:
 	return Vector2(float(a[0]), float(a[1]))
+
+
+## Stop the recording with exit `code` and `message`. A standalone tool run (the recorder is
+## the scene tree's root child) quits the process with the code, the loud signal CI reads; a
+## recorder hosted inside another scene -- a GUT test playing a demo in-process -- only records
+## the failure in failure_code/failure_message, since quitting there would end every other
+## test in the run with it.
+func _fail(code: int, message: String) -> void:
+	push_error(message)
+	failure_code = code
+	failure_message = message
+	if get_parent() == get_tree().root:
+		get_tree().quit(code)
 
 
 func _load_script(path: String) -> Dictionary:

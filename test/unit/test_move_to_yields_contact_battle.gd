@@ -32,6 +32,7 @@ func test_disengaged_march_through_contact_does_not_over_compress_after_arrest()
 	var recorder: Node = load("res://tools/demo/DemoInputRecorder.tscn").instantiate()
 	add_child_autofree(recorder)
 	await get_tree().physics_frame
+	assert_eq(recorder.failure_code, 0, "the demo script played: %s" % recorder.failure_message)
 	var battle: Node = recorder.get_node("Battle")
 
 	# Arrest is already clear by ~340 on this seed (see the demo input's own _comment).

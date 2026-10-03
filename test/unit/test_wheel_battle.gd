@@ -115,6 +115,7 @@ func test_wheel_demo_input_drives_a_wheel() -> void:
 	# The recorder defers spawning Battle (_start_battle.call_deferred()), so it isn't a child
 	# yet on this frame; wait for it before reading its tick.
 	await get_tree().physics_frame
+	assert_eq(recorder.failure_code, 0, "the demo script played: %s" % recorder.failure_message)
 	var battle: Node = recorder.get_node("Battle")
 	# Step past every scripted input (the last is Z at _LAST_SCRIPTED_KEY_TICK) so both
 	# wheels have been issued before we start looking for a target or polling for settle.

@@ -316,3 +316,38 @@ func test_recorder_f7_step_toggles_fog_session_only() -> void:
 
 
 
+
+
+# --- Failing without ending a hosting test run --------------------------------------------
+# A standalone recording quits the process with exit 2 or 4 on a malformed script or a stale
+# spawn stamp. Hosted inside a test it must only record the failure, or the quit would end
+# every later test in the GUT run. Reaching the assertions below is itself the proof that the
+# process kept running.
+
+func test_a_stale_spawn_stamp_in_a_hosted_recorder_fails_without_quitting() -> void:
+	OS.set_environment("SPARTA_DEMO_INPUT", "")
+	var recorder: Node = load("res://tools/demo/DemoInputRecorder.tscn").instantiate()
+	add_child_autofree(recorder)
+	recorder._drill = true
+	recorder._spawn_fingerprint = "not-this-build's-layout"
+	recorder._start_battle()
+	assert_push_error("spawn-layout mismatch")
+	assert_eq(recorder.failure_code, 4, "the stale stamp is recorded with the tool's exit code")
+	assert_string_contains(recorder.failure_message, "spawn-layout mismatch")
+	assert_null(recorder._sel, "the recording stopped before wiring up the controls")
+
+
+func test_a_malformed_script_in_a_hosted_recorder_fails_without_quitting() -> void:
+	var path := "user://test_malformed_demo_input.json"
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_string(JSON.stringify({"seed": "1", "drill": true,
+			"tier_ranges": {"promote": 500.0, "demote": 100.0}}))
+	f.close()
+	OS.set_environment("SPARTA_DEMO_INPUT", path)
+	var recorder: Node = load("res://tools/demo/DemoInputRecorder.tscn").instantiate()
+	add_child_autofree(recorder)
+	OS.set_environment("SPARTA_DEMO_INPUT", "")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	assert_push_error("tier_ranges")
+	assert_eq(recorder.failure_code, 2, "a malformed script is recorded with the tool's exit code")
+	assert_string_contains(recorder.failure_message, "tier_ranges")
