@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/grip-beside-close-neighbour-1691.json",
+  "caption": "#1691: two Infantry regiments stand side by side, their flank men only 24 wu apart. The left one is selected, and its east grip, which lies in the gap just inside the right regiment's click padding, is grabbed and dragged west: the left regiment narrows to 9 files. Before this fix any neighbour's padding under the press took the click, so the grip could not be grabbed there. A click on the right regiment's men still selects it.",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 15,
+  "width": 720
+}
