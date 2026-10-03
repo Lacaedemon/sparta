@@ -53,6 +53,11 @@ func _budget_ticks(mover: Unit) -> int:
 ## physics tick; the captured tick values then pin, across runs, that the sim itself — not
 ## the observer — transitioned at the same points.
 func _run_and_capture() -> Dictionary:
+	# Spawn at the same point of the frame cycle every run: right after a physics frame.
+	# Otherwise the first run (spawned from the test's idle start) gets a close-tier soldier
+	# tick before the first tier pass that a run spawned after a physics frame does not, and
+	# the cavalry block spawned against the hill is pushed off it on that tick in one run only.
+	await get_tree().physics_frame
 	var battle: Node2D = _spawn_battle()
 	var player: Unit = _team_unit(0)
 	var mover: Unit = _team_unit(1)
