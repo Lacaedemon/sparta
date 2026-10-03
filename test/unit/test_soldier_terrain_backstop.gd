@@ -1,9 +1,9 @@
 extends GutTest
 ## The soldier body pass keeps bodies out of impassable (`block`) terrain as a hard
-## constraint: no body ends a tick deeper inside a block rect (grown by its own body radius)
-## than it began it. A body that was clear is placed back on the nearest edge; one already
-## inside may move along or out but not deeper. See PathField.push_out_of_block,
-## PathField.nearest_exit and SoldierBodies._keep_out_of_terrain.
+## constraint: a body that ends a tick within its own body radius of a block rect is placed
+## back on the edge of that margin, dropping the part of its velocity still heading in. A
+## body that began the tick inside the terrain itself (a spawn overlapping a hill) is left
+## alone. See PathField.push_out_of_block and SoldierBodies._keep_out_of_terrain.
 
 const HILL := Rect2(1150, 380, 250, 200)
 const TICK := 1.0 / 60.0
@@ -104,14 +104,16 @@ func test_a_body_already_inside_the_hill_is_left_to_walk_out() -> void:
 	assert_gt(u._sim_soldier_pos[0].x, HILL.position.x + 40.0, "not snapped to the edge")
 
 
-func test_a_body_already_inside_the_hill_is_not_driven_deeper() -> void:
+func test_a_body_in_the_margin_but_not_the_hill_is_held_at_the_margin_edge() -> void:
+	# A rear rank spawned within a body radius of the hill is not exempt: it is placed on the
+	# margin's edge (a move of at most one body radius) and can then never be shoved in.
 	PathField.active = _field_with([HILL])
 	var u := _make_unit(Vector2(900, 480))
-	u._sim_soldier_pos[0] = Vector2(1200, 480)   # nearest exit: the west edge
-	u._sim_body_vel[0] = Vector2(600, 0)          # heading east, deeper in
+	var r: float = u.soldier_body_radius()
+	u._sim_soldier_pos[0] = Vector2(HILL.position.x - r * 0.5, 480)
+	u._sim_body_vel[0] = Vector2(300, 0)
 	SoldierBodies.step(u, TICK)
-	assert_almost_eq(u._sim_soldier_pos[0].x, 1200.0, 0.01, "held at the depth it started at")
-	assert_lte(u._sim_body_vel[0].x, 0.0, "and its deeper-heading velocity is gone")
+	assert_lte(u._sim_soldier_pos[0].x, HILL.position.x - r + 0.001, "held a body radius clear")
 
 
 func test_a_map_with_no_block_terrain_skips_the_pass() -> void:

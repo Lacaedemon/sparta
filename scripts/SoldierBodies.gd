@@ -547,32 +547,32 @@ static func step(unit: Unit, delta: float) -> void:
 	_keep_out_of_terrain(unit, n, terrain_guard)
 
 
-## How deep each body already stands inside impassable terrain (grown by the body radius)
-## before this tick's integration: {"grown": the grown rects, "depth": one depth per body,
-## 0 for a clear one}. Empty on a map with no block terrain, which turns the backstop off.
+## Which bodies already stand inside impassable terrain itself (the rects as drawn, not
+## grown) before this tick's integration: {"grown": the rects grown by the body radius,
+## "inside": one flag per body}. Empty on a map with no block terrain, which turns the
+## backstop off.
 static func _terrain_entry_guard(unit: Unit, n: int) -> Dictionary:
 	var field: PathField = PathField.active
 	if field == null or not field.has_block_terrain():
 		return {}
-	var grown: Array[Rect2] = field.grown_block_rects(unit.soldier_body_radius())
-	var depth := PackedFloat32Array()
-	depth.resize(n)
+	var drawn: Array[Rect2] = field.block_rects()
+	var inside := PackedByteArray()
+	inside.resize(n)
 	for i in range(n):
-		depth[i] = PathField.nearest_exit(unit._sim_soldier_pos[i], grown).length()
-	SimOps.add(SimOps.TERRAIN_PROJECT, n * grown.size())
-	return {"grown": grown, "depth": depth}
+		inside[i] = 1 if PathField.inside_any_rect(unit._sim_soldier_pos[i], drawn) else 0
+	SimOps.add(SimOps.TERRAIN_PROJECT, n * drawn.size())
+	return {"grown": field.grown_block_rects(unit.soldier_body_radius()), "inside": inside}
 
 
 ## Hard backstop against impassable terrain, applied after the integration above so it has
-## the last word on every body this tick: no body ends a tick deeper inside `block` terrain
-## (grown by its own body radius) than it began it. A body that was clear and has ended up
-## inside is placed back on the terrain's edge; one already inside (a block spawned
-## overlapping a hill) may move along or out but is pushed back to its starting depth if it
-## went deeper -- ejecting it outright would stack every body of an overlapping block that
-## differs only along the ejection axis onto one point. Either way the part of its velocity
-## still heading in is dropped so it does not press straight back. Order validation keeps a
-## destination's footprint clear, but contact forces, casualty reflow and a wheel's sweep
-## move bodies without an order, and this catches all of them.
+## the last word on every body this tick: a body that ends the tick within its own body
+## radius of `block` terrain is placed back on the edge of that margin, and the part of its
+## velocity still heading in is dropped so it does not press straight back. Order validation
+## keeps a destination's footprint clear, but contact forces, casualty reflow and a wheel's
+## sweep move bodies without an order, and this catches all of them. A body that began the
+## tick inside the terrain itself (a block spawned overlapping a hill) is left alone: ejecting
+## a whole overlapping block at once would stack every body that differs only along the
+## ejection axis onto one point, and holding it in place would pin the block to the rock.
 ## Body positions are parent-local while the terrain rects are in the Battle's frame; the
 ## two coincide while the Battle sits at the origin, as every other terrain query assumes.
 ## `guard` is _terrain_entry_guard's result; empty (no block terrain) makes this a no-op.
@@ -580,18 +580,15 @@ static func _keep_out_of_terrain(unit: Unit, n: int, guard: Dictionary) -> void:
 	if guard.is_empty():
 		return
 	var grown: Array[Rect2] = guard["grown"]
-	var depth: PackedFloat32Array = guard["depth"]
+	var inside: PackedByteArray = guard["inside"]
 	var pushed: int = 0
+	var checked: int = 0
 	for i in range(n):
+		if inside[i] != 0:
+			continue
+		checked += 1
 		var p: Vector2 = unit._sim_soldier_pos[i]
-		var q: Vector2 = p
-		if depth[i] <= 0.0:
-			q = PathField.push_out_of_rects(p, grown)
-		else:
-			var exit: Vector2 = PathField.nearest_exit(p, grown)
-			var deeper: float = exit.length() - depth[i]
-			if deeper > 0.0:
-				q = p + exit.normalized() * deeper
+		var q: Vector2 = PathField.push_out_of_rects(p, grown)
 		if q == p:
 			continue
 		unit._sim_soldier_pos[i] = q
@@ -603,8 +600,8 @@ static func _keep_out_of_terrain(unit: Unit, n: int, guard: Dictionary) -> void:
 		pushed += 1
 	if pushed > 0:
 		unit._render_dirty = true
-	# One rect test per body per rect (first sweep); one normalization per body moved.
-	SimOps.add(SimOps.TERRAIN_PROJECT, n * grown.size())
+	# One rect test per checked body per rect (first sweep); one normalization per body moved.
+	SimOps.add(SimOps.TERRAIN_PROJECT, checked * grown.size())
 	SimOps.add(SimOps.SQRT_EVAL, pushed)
 
 

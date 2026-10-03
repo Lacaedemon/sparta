@@ -106,6 +106,11 @@ func grown_block_rects(clearance: float) -> Array[Rect2]:
 	return grown
 
 
+## The impassable rects exactly as drawn (no clearance). The live array: read it, never modify it.
+func block_rects() -> Array[Rect2]:
+	return _block_rects
+
+
 ## push_out_of_block against rects already grown (see grown_block_rects).
 static func push_out_of_rects(point: Vector2, grown: Array[Rect2], max_passes: int = 4) -> Vector2:
 	var q: Vector2 = point
@@ -131,30 +136,6 @@ static func push_out_of_rects(point: Vector2, grown: Array[Rect2], max_passes: i
 		if not moved:
 			break
 	return q
-
-
-## How far `point` stands inside the grown rects and which way is out: the vector from
-## `point` to the nearest edge of the rect it is deepest inside (its length is that depth).
-## Vector2.ZERO for a point clear of every rect.
-static func nearest_exit(point: Vector2, grown: Array[Rect2]) -> Vector2:
-	var best := Vector2.ZERO
-	var best_depth: float = 0.0
-	for g in grown:
-		if not _strictly_inside(point, g):
-			continue
-		var exits: Array[Vector2] = [
-			Vector2(g.position.x - point.x, 0.0), Vector2(g.end.x - point.x, 0.0),
-			Vector2(0.0, g.position.y - point.y), Vector2(0.0, g.end.y - point.y),
-		]
-		var exit: Vector2 = exits[0]
-		for e in exits:
-			if e.length_squared() < exit.length_squared():
-				exit = e
-		var depth: float = exit.length()
-		if depth > best_depth:
-			best_depth = depth
-			best = exit
-	return best
 
 
 ## Whether `p` lies strictly inside `r` (on an edge counts as outside).
