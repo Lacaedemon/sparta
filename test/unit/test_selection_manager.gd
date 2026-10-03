@@ -398,6 +398,25 @@ func test_a_grip_beside_a_close_neighbour_grabs_and_its_man_still_selects() -> v
 	assert_null(sm._grip_for_press(man), "a press on the neighbour's man selects the neighbour")
 
 
+func test_a_press_on_a_neighbours_standard_over_a_grip_selects_that_neighbour() -> void:
+	# A unit's standard is clickable like its body. When a neighbour's flag hangs over the
+	# selected block's grip, a press on the flag selects the neighbour, not the grip.
+	var sm := _sm()
+	var block := _unit()
+	block.facing = Vector2.UP
+	block.position = Vector2(50, 50)
+	sm._select(block)
+	var grip: Vector2 = sm._resize_handle_positions(block)[0]
+	var neighbour := _unit()
+	neighbour.facing = Vector2.UP
+	var flag_box: Rect2 = UnitSprites.standard_bounds(neighbour.render_block_extent(),
+			neighbour.block_centre_offset())
+	neighbour.position = grip - flag_box.get_center()
+	assert_lt(neighbour.pick_distance_squared(grip, 0.0), 0.0, "the neighbour's body is not under the press")
+	assert_gte(sm._flag_pick_distance_squared(neighbour, grip), 0.0, "its standard is")
+	assert_null(sm._grip_for_press(grip), "the press on the standard selects the neighbour")
+
+
 func test_a_press_on_a_grip_over_its_own_block_still_grabs() -> void:
 	# A single-rank block's extent is about its half-width, so the inner side of a grip's
 	# hit disc lies over the block's own padded body. Only ANOTHER unit there makes the

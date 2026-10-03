@@ -965,7 +965,7 @@ resizing a window by its edge, so you can extend a line toward the flank you car
 about while the other edge holds its ground (the <kbd>[</kbd> / <kbd>]</kbd> keys
 stay symmetric about the centre). The width holds as the unit takes casualties, and
 shows in the info panel.
-Where a grip lies over another of your units drawn up close beside it, clicking on that unit's men or block selects that unit; clicking the grip in the gap just outside them still grabs it.
+Where a grip lies over another of your units drawn up close beside it, clicking on that unit's men, block or standard selects that unit; clicking the grip in the gap just outside them still grabs it.
 The width keys and file doubling wait while you hold a grip, and a grip nudged and let go leaves the width as it was.
 
 **File-major reform (default File-major).** By default, each soldier keeps a persistent
