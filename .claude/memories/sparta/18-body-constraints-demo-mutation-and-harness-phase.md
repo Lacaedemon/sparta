@@ -1,15 +1,18 @@
 ## A per-body hard terrain constraint: only the narrowest rule survived the demo diff
 
 PR #1703 (issue #1670) added a hard per-body terrain constraint.
-Three plausible rules were tried, and the website demo diff rejected the first three.
+Four rules were tried in turn.
+The website demo diff rejected the first, and local scans of the clips it flagged rejected the next two.
 
 - (a) Eject every body inside block terrain (grown by the body radius) to the nearest edge.
   Clips whose scenarios spawn blocks overlapping the hill (cannae_scale, trapped_routing, fog_terrain_occlusion, funnel_lanes) broke.
   Bodies that differed only along the ejection axis were stacked onto one point (overlap verdict worst=0).
   Units were shifted off pinned positions.
+
 - (b) "No new entry": exempt any body inside the GROWN rect at tick start.
   A rear rank spawned within a body radius of the hill counted as already inside, so a charge shoved it in.
   The PR's own demo had 4 men inside the hill at tick 600.
+
 - (c) "Never deeper": an inside body may not end a tick deeper than it began.
   It held units a scenario spawned inside the hill, which changed two published clips' stories (fog_terrain_occlusion's scout reveal, trapped_routing's rout).
 
