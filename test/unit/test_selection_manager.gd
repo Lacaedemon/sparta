@@ -419,6 +419,29 @@ func test_a_real_press_and_release_over_a_covered_grip_selects_the_unit_under_it
 	assert_eq(sm.get_selected_units(), [neighbour], "the neighbour is now the selection")
 
 
+func test_a_real_press_on_a_grip_measures_the_drag_from_the_press() -> void:
+	# Through the actual input path: a press on an uncovered grip starts the resize with
+	# the press's offset past the flank slot recorded, so the next nudge keeps the width.
+	var sm := _sm()
+	var block := _unit()
+	block.facing = Vector2.UP
+	block.position = Vector2(50, 50)
+	sm._select(block)
+	var start: int = UnitFormation.frontage(block)
+	var grip: Vector2 = sm._resize_handle_positions(block)[0]
+	sm.set_cursor_override(grip)
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	sm._unhandled_input(press)
+	sm.set_cursor_override(null)
+	assert_true(sm._resizing, "the press on the grip starts a resize")
+	assert_almost_eq(sm._resize_grab_offset, block.soldier_body_radius() + sm.RESIZE_HANDLE_GAP, 0.01,
+			"the grab offset is the grip's distance past the flank slot")
+	sm._update_resize(grip + sm._file_axis(block) * 1.0)
+	assert_eq(sm._resize_files, start, "a 1 wu nudge after a real press keeps the frontage")
+
+
 func test_resize_handle_at_reports_the_grabbed_flank() -> void:
 	# The grip list is [+file-axis, -file-axis]; the first is the block's local +X
 	# flank (Anchor.RIGHT), the second its mirror. The drag anchors the OPPOSITE
