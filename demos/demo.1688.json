@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "No gameplay change: this records the point each move order asked for, before the footprint clamp, and adds it to the demo state dump as requested_move_target beside move_target. Nothing a battle does or draws changes, so there is no behaviour for a clip to show."
+}
