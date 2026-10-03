@@ -254,6 +254,19 @@ func test_unit_record_dumps_stamina_mean_close_tier() -> void:
 		"stamina_mean computes mean over living soldiers and rounds to one decimal place")
 
 
+func test_unit_record_dumps_the_move_target_or_null() -> void:
+	# Where the unit is actually heading, so a unit stopping short of its ordered point can
+	# be told apart as clamped (the target sits short too) or stalled (it does not).
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u.has_move_target = false
+	assert_eq(DemoState.unit_record(u, {}, 1.0, false)["move_target"], null, "no target reads null")
+	u._move_target = Vector2(123.456, -78.9)
+	u.has_move_target = true
+	assert_eq(DemoState.unit_record(u, {}, 1.0, false)["move_target"],
+			DemoState.vec2_pair(Vector2(123.456, -78.9)), "a live target reads as its pair")
+
+
 func test_unit_record_dumps_stamina_mean_zero_valued() -> void:
 	var u: Unit = Unit.new()
 	add_child_autofree(u)
