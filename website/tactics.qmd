@@ -2427,6 +2427,9 @@ at the hill's edge rather than among the rocks. If no spot along the move is cle
 the unit stays where it is. A block that already overlaps the terrain where it stands,
 such as a deep cavalry block deployed against a hill, can still move, as long as the
 order would not push it deeper into the terrain than it already is.
+The edge of the field works the same way: an order is pulled back until the whole
+formation fits on the field, so a deep column sent to the edge halts with its front
+rank on it rather than half off the map.
 
 ::: {#fig-side-step-hill-footprint .demo}
 
