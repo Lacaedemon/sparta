@@ -259,9 +259,9 @@ func test_resize_handles_straddle_the_unit_along_the_file_axis() -> void:
 
 
 func test_a_deep_block_grips_sit_just_past_its_flank() -> void:
-	# A 960 wu deep squadron used to get grips at its circumscribed extent, about 315 wu
-	# past each flank. Now each sits at the grid's half-width plus a body radius and the
-	# gap, on both sides of the footprint centre.
+	# A deep squadron used to get grips at its circumscribed extent, well past each flank.
+	# Now each sits at the grid's half-width plus a body radius and the gap, on both sides
+	# of the footprint centre.
 	var sm := _sm()
 	var u := _unit()
 	u.max_soldiers = 80
@@ -303,6 +303,25 @@ func test_a_quarter_folded_block_grips_follow_its_turned_grid() -> void:
 	assert_almost_eq(folded, half_depth + u.soldier_body_radius() + sm.RESIZE_HANDLE_GAP, 0.01,
 			"the folded grip clears the half-depth now lying along the file axis")
 	assert_gt(folded, unfolded, "a deep block reaches farther along its file axis once folded")
+
+
+func test_a_unit_cut_below_one_rank_grips_its_remaining_men() -> void:
+	# Three horses left of a nine-file squadron stand two pitches wide, not eight, so
+	# the grips hug those three rather than the frontage they no longer fill.
+	var sm := _sm()
+	var u := _unit()
+	u.max_soldiers = 80
+	u.is_cavalry = true
+	u.file_pitch = 20.0
+	u.rank_pitch = 60.0
+	u.facing = Vector2.UP
+	u.soldiers = 3
+	assert_gt(u.formation_files(u.soldiers), 3, "the nominal frontage is wider than the men left")
+	var expected: float = 2.0 * 0.5 * u.file_pitch_wu() + u.soldier_body_radius() + sm.RESIZE_HANDLE_GAP
+	assert_almost_eq(sm._grip_reach(u), expected, 0.01, "the grips sit just past the three that remain")
+	u.soldiers = 1
+	assert_almost_eq(sm._grip_reach(u), u.soldier_body_radius() + sm.RESIZE_HANDLE_GAP, 0.01,
+			"a lone survivor's grips sit just past his own body")
 
 
 func test_single_selected_unit_requires_exactly_one() -> void:
@@ -446,7 +465,7 @@ func test_track_grip_motion_redraws_once_when_the_selection_empties() -> void:
 
 func test_current_grip_state_reads_exactly_what_the_grip_geometry_reads() -> void:
 	# The snapshot must cover every input _resize_handle_positions consumes —
-	# position, facing, the grips' reach and the centre offset — or a change to the
+	# position, facing, the grips' reach and the centre offset -- or a change to the
 	# missed one goes stale.
 	var sm := _sm()
 	var u := _unit()
