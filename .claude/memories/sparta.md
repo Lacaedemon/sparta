@@ -28,3 +28,4 @@ imports below.
 @.claude/memories/sparta/14-perception-gate-sweep-scope-and-team-symmetry.md
 @.claude/memories/sparta/15-windows-shell-tooling-cr-and-paths.md
 @.claude/memories/sparta/16-tier-rule-changes-benchmark-the-huge-scenarios.md
+@.claude/memories/sparta/17-float32-geometry-and-invariant-tolerances.md
