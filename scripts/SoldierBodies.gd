@@ -543,6 +543,41 @@ static func step(unit: Unit, delta: float) -> void:
 	# One arrival integration per body, each with exactly one `to_slot.length()`.
 	SimOps.add(SimOps.BODY_STEP, n)
 	SimOps.add(SimOps.SQRT_EVAL, n)
+	_keep_out_of_terrain(unit, n)
+
+
+## Hard backstop against impassable terrain, applied after the integration above so it has
+## the last word on every body this tick: a body that has ended up inside `block` terrain
+## (grown by its own body radius) is placed back on the terrain's edge, and the part of its
+## velocity still heading into the terrain is dropped so it does not press straight back in.
+## Order validation keeps a destination's footprint clear, but contact forces, casualty
+## reflow and a wheel's sweep move bodies without an order, and this catches all of them.
+## Body positions are parent-local while the terrain rects are in the Battle's frame; the
+## two coincide while the Battle sits at the origin, as every other terrain query assumes.
+## A no-op, and uncounted, on a map with no block terrain.
+static func _keep_out_of_terrain(unit: Unit, n: int) -> void:
+	var field: PathField = PathField.active
+	if field == null or not field.has_block_terrain():
+		return
+	var clearance: float = unit.soldier_body_radius()
+	var pushed: int = 0
+	for i in range(n):
+		var p: Vector2 = unit._sim_soldier_pos[i]
+		var q: Vector2 = field.push_out_of_block(p, clearance)
+		if q == p:
+			continue
+		unit._sim_soldier_pos[i] = q
+		var outward: Vector2 = (q - p).normalized()
+		var v: Vector2 = unit._sim_body_vel[i]
+		var into: float = v.dot(outward)
+		if into < 0.0:
+			unit._sim_body_vel[i] = v - outward * into
+		pushed += 1
+	if pushed > 0:
+		unit._render_dirty = true
+	# One terrain test per body; one normalization per body actually moved.
+	SimOps.add(SimOps.TERRAIN_PROJECT, n)
+	SimOps.add(SimOps.SQRT_EVAL, pushed)
 
 
 ## Cap a stationary/reforming body's velocity to its unit's jog pace, but to the slower

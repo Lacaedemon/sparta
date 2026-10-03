@@ -1,0 +1,113 @@
+extends GutTest
+## The soldier body pass keeps every body out of impassable (`block`) terrain as a hard
+## constraint: SoldierBodies.step ends by placing any body inside a block rect (grown by its
+## own body radius) on that rect's nearest edge and dropping the part of its velocity still
+## heading in. See PathField.push_out_of_block and SoldierBodies._keep_out_of_terrain.
+
+const HILL := Rect2(1150, 380, 250, 200)
+const TICK := 1.0 / 60.0
+
+var _old_field: PathField = null
+
+
+func before_each() -> void:
+	_old_field = PathField.active
+
+
+func after_each() -> void:
+	PathField.active = _old_field
+	SimOps.enabled = false
+
+
+func _field_with(rects: Array) -> PathField:
+	var f := PathField.new(Rect2(0, 0, 4000, 4000))
+	for r in rects:
+		f.block_rect(r)
+	return f
+
+
+## A small idle Infantry block centred at `pos`, its bodies seeded on their slots.
+func _make_unit(pos: Vector2) -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 12
+	add_child_autofree(u)
+	u.facing = Vector2.UP
+	u.position = pos
+	u.seed_sim_soldiers()
+	return u
+
+
+# --- PathField.push_out_of_block ------------------------------------------------------
+
+func test_a_point_inside_a_rect_moves_to_its_nearest_edge() -> void:
+	var f := _field_with([HILL])
+	var got: Vector2 = f.push_out_of_block(Vector2(1160, 480))
+	assert_eq(got, Vector2(1150, 480), "10 wu in from the west edge: out through the west edge")
+
+
+func test_the_clearance_grows_the_rect() -> void:
+	var f := _field_with([HILL])
+	var got: Vector2 = f.push_out_of_block(Vector2(1275, 375), 7.0)
+	assert_eq(got, Vector2(1275, 373), "5 wu above the top edge, inside the 7 wu margin: pushed to it")
+
+
+func test_a_clear_point_and_a_point_on_the_edge_are_left_alone() -> void:
+	var f := _field_with([HILL])
+	assert_eq(f.push_out_of_block(Vector2(1000, 480)), Vector2(1000, 480), "clear ground")
+	assert_eq(f.push_out_of_block(Vector2(1150, 480)), Vector2(1150, 480), "on the edge counts as out")
+
+
+func test_overlapping_rects_push_a_point_clear_of_both() -> void:
+	# Pushed out of A's nearest (east) edge lands inside B; the second pass clears B too.
+	# A's nearest exit (its east edge, 3 wu away) lands inside B, and B's nearest exit (its
+	# west edge) lands back inside A; the push takes the nearest exit clear of both instead.
+	var f := _field_with([Rect2(0, 0, 100, 100), Rect2(95, 0, 100, 100)])
+	var got: Vector2 = f.push_out_of_block(Vector2(97, 50))
+	assert_eq(got, Vector2(97, 0), "out through the shared top edge, clear of both rects")
+
+
+# --- SoldierBodies.step ---------------------------------------------------------------
+
+func test_a_body_inside_the_hill_is_put_back_on_its_edge() -> void:
+	PathField.active = _field_with([HILL])
+	var u := _make_unit(Vector2(1100, 480))
+	var r: float = u.soldier_body_radius()
+	u._sim_soldier_pos[0] = Vector2(1160, 480)   # 10 wu inside the hill's west edge
+	SoldierBodies.step(u, TICK)
+	assert_lte(u._sim_soldier_pos[0].x, HILL.position.x - r + 0.001,
+			"the body stands at least its own radius clear of the hill")
+
+
+func test_a_body_driven_into_the_hill_keeps_no_inward_velocity() -> void:
+	PathField.active = _field_with([HILL])
+	var u := _make_unit(Vector2(1100, 480))
+	u._sim_soldier_pos[0] = Vector2(1160, 480)
+	u._sim_body_vel[0] = Vector2(300, 40)   # heading east, into the hill, and a little south
+	SoldierBodies.step(u, TICK)
+	assert_lte(u._sim_body_vel[0].x, 0.0, "the eastward (into-terrain) part is gone")
+
+
+func test_no_block_terrain_leaves_every_body_where_the_step_put_it() -> void:
+	# The same body inside the hill's rect, on a map with no block terrain: nothing to keep it
+	# out of, so it is integrated exactly as it would be with no terrain field at all.
+	PathField.active = null
+	var a := _make_unit(Vector2(1100, 480))
+	a._sim_soldier_pos[0] = Vector2(1160, 480)
+	SoldierBodies.step(a, TICK)
+	PathField.active = _field_with([])
+	var b := _make_unit(Vector2(1100, 480))
+	b._sim_soldier_pos[0] = Vector2(1160, 480)
+	SoldierBodies.step(b, TICK)
+	assert_eq(b._sim_soldier_pos, a._sim_soldier_pos, "an empty terrain field changes nothing")
+	assert_gt(b._sim_soldier_pos[0].x, HILL.position.x, "sanity check: the body is in the rect")
+
+
+func test_the_pass_is_counted_once_per_body() -> void:
+	PathField.active = _field_with([HILL])
+	var u := _make_unit(Vector2(1100, 480))
+	SimOps.enabled = true
+	SimOps.reset()
+	SoldierBodies.step(u, TICK)
+	var tick: Dictionary = SimOps.take_tick()
+	SimOps.enabled = false
+	assert_eq(tick["terrain_project"], u._sim_soldier_pos.size(), "one terrain test per body")
