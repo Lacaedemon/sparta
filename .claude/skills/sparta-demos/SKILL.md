@@ -203,6 +203,19 @@ tick-8 state dump, and pin your script's subject with a
 any future spawn re-spacing fails `tools/check.sh demo_defects` loudly, naming
 the clip, instead of recording a silent no-op.
 The catalog's remaining default-line scripts were retargeted in the #1178 sweep.
+
+**A resize-grip drag that misses its grip is the same silent no-op.**
+Derive the grip's world position from the code, not from memory or a probe of a different unit:
+`SelectionManager._grip_reach` puts it at the slot grid's half-width
+(`(files - 1) / 2` file pitches, where a pitch in metres becomes wu at `WorldScale.WU_PER_M`, 20)
+plus the soldier's body radius plus `RESIZE_HANDLE_GAP`,
+out from the block's footprint centre along the file axis.
+Then pin the outcome with a `frontage` expect entry before and after the drag,
+so a press that grabbed nothing fails `demo_defects` instead of recording a clip in which nothing changes.
+When the number is in doubt, a `capture-frames.sh` frame with the camera zoomed on the grip shows exactly where it sits.
+(`Lacaedemon/sparta` PR #1689, 2026-10-02: the first two drafts of `deep-column-flank-grips-1685.json`
+pressed 70-90 wu short of a cavalry grip, because cavalry's 2 m file pitch is 40 wu, not 20,
+and both rendered without error.)
 Older non-catalog scripts can still predate the convention,
 so add the pin whenever you edit one.
 Spawn positions are seed-independent, so clicks land regardless of seed. For a
