@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/deep-column-halts-at-field-edge-1687.json",
+  "caption": "#1687: a deep cavalry column, about 960 wu from front to rear rank, is ordered south to a point 70 wu short of the field's south edge. Before this fix only its centre was kept on the field, so it would have marched there with about 420 wu of its depth off the map. Now the order is pulled back until the whole column fits: it marches south and halts with its front rank on the edge.",
+  "fixed_fps": 30,
+  "max_frames": 460,
+  "fps": 15,
+  "width": 720
+}

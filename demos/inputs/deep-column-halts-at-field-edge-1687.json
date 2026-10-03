@@ -1,0 +1,17 @@
+{
+  "_comment": "PLACEHOLDER",
+  "seed": "7731",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 900, "y": 750, "count": 80, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 900.0, "y": 1150.0, "zoom": 0.32}
+  ],
+  "steps": [
+    {"tick": 15, "click": [900, 750]},
+    {"tick": 30, "rmb_click": [900, 1650]}
+  ],
+  "state": [0, 29, 31, 400, 900],
+  "frames": [31, 400, 900]
+}
