@@ -335,3 +335,84 @@ func test_restore_snapshot_preserves_and_rewinds_in_flight_projectiles() -> void
 
 	_leave_playback(prev_mode)
 
+
+## Age in ticks of `u`'s cached engaged-target pairing, or -1 with none.
+func _pairing_age(u: Unit) -> int:
+	if u._engaged_target_reassign_frame < 0:
+		return -1
+	return Engine.get_physics_frames() - u._engaged_target_reassign_frame
+
+
+func test_a_rewind_into_a_melee_keeps_the_engaged_target_pairing() -> void:
+	# The pairing is held for SoldierBodies.ENGAGED_TARGET_REASSIGN_TICKS between recomputes.
+	# A rewind into the middle of that interval must resume it as the uninterrupted run
+	# kept it -- the same pairing, at the same age -- rather than re-pairing on its first
+	# tick, or the replay diverges from there.
+	var prev_mode := _enter_playback()
+	var battle := _spawn_battle(_clash_scenario())
+	var interval: int = SoldierBodies.ENGAGED_TARGET_REASSIGN_TICKS
+	var subject: Unit = null
+	for _i in range(600):
+		await get_tree().physics_frame
+		for u in _units_by_uid(battle).values():
+			var age: int = _pairing_age(u)
+			if not u._engaged_target_pairing_engaged.is_empty() and age >= 3 and age <= interval / 2:
+				subject = u
+		if subject != null:
+			break
+	assert_not_null(subject, "a unit holds a pairing partway through its interval")
+	if subject == null:
+		_leave_playback(prev_mode)
+		return
+	var uid: int = subject.uid
+	var snap: Dictionary = battle.capture_snapshot()
+	var steps: int = 5
+	for _i in range(steps):
+		await get_tree().physics_frame
+	var live_units := _units_by_uid(battle)
+	assert_true(live_units.has(uid), "the subject is still on the field after the steps")
+	if not live_units.has(uid):
+		_leave_playback(prev_mode)
+		return
+	var live: Unit = live_units[uid]
+	var expect_engaged: PackedInt32Array = live._engaged_target_pairing_engaged.duplicate()
+	var expect_canonical: PackedInt32Array = live._engaged_target_pairing_canonical.duplicate()
+	var expect_age: int = _pairing_age(live)
+
+	battle.restore_snapshot(snap)
+	for _i in range(steps):
+		await get_tree().physics_frame
+	var restored_units := _units_by_uid(battle)
+	assert_true(restored_units.has(uid), "the subject is back after the rewind")
+	if not restored_units.has(uid):
+		_leave_playback(prev_mode)
+		return
+	var restored: Unit = restored_units[uid]
+	assert_eq(_pairing_age(restored), expect_age, "the pairing keeps its age across the rewind")
+	assert_eq(restored._engaged_target_pairing_engaged, expect_engaged, "the same bodies are paired")
+	assert_eq(restored._engaged_target_pairing_canonical, expect_canonical, "to the same slots")
+
+	_leave_playback(prev_mode)
+
+
+func test_an_older_snapshot_without_the_pairing_restores_none() -> void:
+	# A snapshot saved before the pairing was captured restores no pairing, so the unit's
+	# first step pairs afresh rather than reading arrays that are not there.
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u._engaged_target_pairing_engaged = PackedInt32Array([0, 1])
+	u._engaged_target_pairing_canonical = PackedInt32Array([1, 0])
+	u._engaged_target_reassign_frame = Engine.get_physics_frames()
+	u._engaged_target_soldier_count = 2
+	var d: Dictionary = u.to_snapshot_dict()
+	for key in ["engaged_target_pairing_engaged", "engaged_target_pairing_canonical",
+			"engaged_target_soldier_count", "engaged_target_pairing_age_ticks"]:
+		assert_true(d.has(key), "%s is captured" % key)
+		d.erase(key)
+	var v: Unit = Unit.new()
+	add_child_autofree(v)
+	v.apply_snapshot_dict(d)
+	assert_true(v._engaged_target_pairing_engaged.is_empty(), "no body list")
+	assert_true(v._engaged_target_pairing_canonical.is_empty(), "no slot list")
+	assert_eq(v._engaged_target_reassign_frame, -1, "no pairing age, so the first step re-pairs")
+	assert_eq(v._engaged_target_soldier_count, -1, "no soldier count")

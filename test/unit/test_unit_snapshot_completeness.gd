@@ -69,15 +69,12 @@ const EXCLUDED := {
 	"_figure_faces_left": RENDER,
 }
 
-# TODO(#1683): capture the engaged-target pairing cache (its frame as remaining ticks, like
-# the standoff and anchor-hold timers), then delete this list. Until then a restore re-pairs
-# engaged bodies on its first tick instead of keeping the cached pairing.
-const KNOWN_GAPS := [
-	"_engaged_target_pairing_engaged",
-	"_engaged_target_pairing_canonical",
-	"_engaged_target_reassign_frame",
-	"_engaged_target_soldier_count",
-]
+# Members the snapshot carries under a different key, because their raw value means
+# nothing to a restore into another battle: an absolute engine frame travels as an age
+# in ticks, the way the standoff and anchor-hold timers travel as remaining ticks.
+const RENAMED := {
+	"_engaged_target_reassign_frame": "engaged_target_pairing_age_ticks",
+}
 
 
 ## The Unit script's own member variables (not Node's built-ins).
@@ -92,6 +89,8 @@ func _members(u: Unit) -> Array[String]:
 ## Whether the snapshot carries `member` under one of the names it may be saved as.
 func _captured(snapshot: Dictionary, member: String) -> bool:
 	var bare: String = member.trim_prefix("_")
+	if RENAMED.has(member) and snapshot.has(RENAMED[member]):
+		return true
 	return snapshot.has(member) or snapshot.has(bare) \
 			or snapshot.has(member + "_uid") or snapshot.has(bare + "_uid")
 
@@ -109,7 +108,7 @@ func test_every_member_is_captured_or_excluded_with_a_reason() -> void:
 	var snapshot: Dictionary = u.to_snapshot_dict()
 	var unaccounted: Array[String] = []
 	for m in _members(u):
-		if not _captured(snapshot, m) and not EXCLUDED.has(m) and not KNOWN_GAPS.has(m):
+		if not _captured(snapshot, m) and not EXCLUDED.has(m):
 			unaccounted.append(m)
 	assert_eq(unaccounted, [] as Array[String],
 			"capture these in to_snapshot_dict() or add them to EXCLUDED with a reason: %s"
@@ -123,9 +122,20 @@ func test_every_exclusion_names_a_real_uncaptured_member() -> void:
 	await get_tree().physics_frame
 	var snapshot: Dictionary = u.to_snapshot_dict()
 	var members: Array[String] = _members(u)
-	for m in EXCLUDED.keys() + KNOWN_GAPS:
+	for m in EXCLUDED.keys():
 		assert_true(members.has(m), "%s is listed but is not a Unit member" % m)
 		assert_false(_captured(snapshot, m), "%s is listed but the snapshot captures it" % m)
+	for m in RENAMED.keys():
+		assert_true(members.has(m), "%s is renamed but is not a Unit member" % m)
+		assert_true(snapshot.has(RENAMED[m]), "%s's renamed key %s is in the snapshot" % [m, RENAMED[m]])
+		# A renamed key must be the member's own, not another member's saved name, or an
+		# uncaptured member could be waved through by pointing it at any existing key.
+		for other in members:
+			if other == m:
+				continue
+			var other_bare: String = other.trim_prefix("_")
+			assert_false(RENAMED[m] in [other, other_bare, other + "_uid", other_bare + "_uid"],
+					"%s's renamed key %s is %s's own saved name" % [m, RENAMED[m], other])
 
 
 func test_captured_names_resolve_without_the_underscore_or_as_a_uid() -> void:

@@ -95,6 +95,37 @@ func test_disengage_with_sacrifice_spawns_a_real_rearguard_unit() -> void:
 	assert_eq(rearguard.state, Unit.State.FIGHTING, "spawns already fighting, not idle")
 
 
+func test_a_rearguard_does_not_inherit_its_parents_engaged_target_pairing() -> void:
+	# The parent's pairing indexes the parent's whole soldier arrays, which the rearguard
+	# gets only a slice of: the rearguard must start with none and pair afresh.
+	var battle := _spawn(_clash_scenario())
+	var main_body: Unit = null
+	for _i in range(300):
+		await get_tree().physics_frame
+		for u in _units_by_uid(battle).values():
+			if u.team == 0 and u.state == Unit.State.FIGHTING \
+					and not u._engaged_target_pairing_engaged.is_empty():
+				main_body = u
+		if main_body != null:
+			break
+	assert_not_null(main_body, "the team-0 unit is fighting with a cached pairing")
+	if main_body == null:
+		return
+	var before := _units_by_uid(battle)
+	battle.enqueue_disengage_with_sacrifice([main_body.uid])
+	var rearguard: Unit = null
+	for uid in _units_by_uid(battle):
+		if not before.has(uid):
+			rearguard = _units_by_uid(battle)[uid]
+	assert_not_null(rearguard, "a rearguard spawned")
+	if rearguard == null:
+		return
+	assert_true(rearguard._engaged_target_pairing_engaged.is_empty(), "no inherited body list")
+	assert_true(rearguard._engaged_target_pairing_canonical.is_empty(), "no inherited slot list")
+	assert_eq(rearguard._engaged_target_reassign_frame, -1, "no inherited pairing age")
+	assert_eq(rearguard._engaged_target_soldier_count, -1, "no inherited soldier count")
+
+
 func test_rearguard_is_removed_after_its_lifetime_if_not_destroyed_first() -> void:
 	# A lone rearguard with no enemy nearby: nothing kills it in real combat, so only the
 	# timeout should remove it.

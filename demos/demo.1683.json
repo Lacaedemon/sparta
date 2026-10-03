@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "No visible change: this saves the engaged-target pairing cache in the replay snapshot, so a rewind into the middle of a melee resumes the pairing the uninterrupted run kept instead of re-pairing on its first tick. A live battle plays exactly as before; only a replay rewind is affected, which a recorded clip does not exercise."
+}
