@@ -539,10 +539,11 @@ where a flee was staged) turns into a red exit code instead of an eyeball catch.
 `tools/demo/DemoDefects.gd` turns a FULL dump into deterministic defect verdicts -- the
 machine-checkable core of the demo-review checklist (blob/compression, soldier overlap,
 shape scramble via an ordered-vs-actual best-fit decomposition, facing whipsaw, facing
-flutter, sustained super-physical speed, and crossing routes). Facing flutter is the
-small-amplitude counterpart of whipsaw: a facing that flips back and forth sample after
-sample, however small each swing, and it only reads samples a few ticks apart, so it needs
-a dense dump to see anything. Run it headless over a dump directory:
+flutter, sustained super-physical speed, and crossing routes).
+Facing flutter is the small-amplitude counterpart of whipsaw: a facing that flips back and
+forth sample after sample, however small each swing.
+It only reads samples a few ticks apart, so it needs a dense dump to see anything.
+Run it headless over a dump directory:
 
 ```sh
 "$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir> [--json]
