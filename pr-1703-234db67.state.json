@@ -49,11 +49,11 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            1109.93,
+            1110.0,
             480.0
           ],
           "position_m": [
-            55.496,
+            55.5,
             24.0
           ],
           "queue_tail": [],
@@ -62,12 +62,12 @@
           "requested_move_target": null,
           "soldier_summary": {
             "bbox": [
-              71.56,
+              72.0,
               162.0
             ],
             "broken_count": 0,
             "centroid": [
-              1108.36,
+              1108.5,
               480.0
             ],
             "count": 48,
@@ -75,11 +75,11 @@
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.578,
+              3.6,
               8.1
             ],
             "centroid_m": [
-              55.418,
+              55.425,
               24.0
             ]
           },
@@ -227,11 +227,11 @@
           "order_mode": "Hold",
           "order_phase": null,
           "position": [
-            1109.57,
+            1110.0,
             480.0
           ],
           "position_m": [
-            55.478,
+            55.5,
             24.0
           ],
           "queue_tail": [],
@@ -240,12 +240,12 @@
           "requested_move_target": null,
           "soldier_summary": {
             "bbox": [
-              71.93,
+              72.0,
               162.0
             ],
             "broken_count": 0,
             "centroid": [
-              1108.06,
+              1108.5,
               480.0
             ],
             "count": 48,
@@ -253,11 +253,11 @@
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.597,
+              3.6,
               8.1
             ],
             "centroid_m": [
-              55.403,
+              55.425,
               24.0
             ]
           },
@@ -405,11 +405,11 @@
           "order_mode": "Hold",
           "order_phase": null,
           "position": [
-            1109.51,
+            1110.0,
             480.0
           ],
           "position_m": [
-            55.475,
+            55.5,
             24.0
           ],
           "queue_tail": [],
@@ -418,12 +418,12 @@
           "requested_move_target": null,
           "soldier_summary": {
             "bbox": [
-              71.99,
+              72.0,
               162.0
             ],
             "broken_count": 0,
             "centroid": [
-              1108.01,
+              1108.5,
               480.0
             ],
             "count": 48,
@@ -435,7 +435,7 @@
               8.1
             ],
             "centroid_m": [
-              55.4,
+              55.425,
               24.0
             ]
           },
@@ -583,11 +583,11 @@
           "order_mode": "Hold",
           "order_phase": null,
           "position": [
-            1109.5,
+            1110.0,
             480.0
           ],
           "position_m": [
-            55.475,
+            55.5,
             24.0
           ],
           "queue_tail": [],
@@ -601,7 +601,7 @@
             ],
             "broken_count": 0,
             "centroid": [
-              1108.0,
+              1108.5,
               480.0
             ],
             "count": 48,
@@ -613,7 +613,7 @@
               8.1
             ],
             "centroid_m": [
-              55.4,
+              55.425,
               24.0
             ]
           },
@@ -761,11 +761,11 @@
           "order_mode": "Hold",
           "order_phase": null,
           "position": [
-            1109.5,
+            1110.0,
             480.0
           ],
           "position_m": [
-            55.475,
+            55.5,
             24.0
           ],
           "queue_tail": [],
@@ -779,7 +779,7 @@
             ],
             "broken_count": 0,
             "centroid": [
-              1108.0,
+              1108.5,
               480.0
             ],
             "count": 48,
@@ -791,7 +791,7 @@
               8.1
             ],
             "centroid_m": [
-              55.4,
+              55.425,
               24.0
             ]
           },
@@ -815,8 +815,8 @@
           "anchor_held": false,
           "countermarch_variant": null,
           "current_order": "ATTACK",
-          "current_speed": 94.7,
-          "current_speed_mps": 4.733,
+          "current_speed": 94.0,
+          "current_speed_mps": 4.7,
           "delegated_group_id": null,
           "engaged": false,
           "facing": [
@@ -838,11 +838,11 @@
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            972.7,
+            971.97,
             480.0
           ],
           "position_m": [
-            48.635,
+            48.599,
             24.0
           ],
           "queue_tail": [],
@@ -851,12 +851,12 @@
           "requested_move_target": null,
           "soldier_summary": {
             "bbox": [
-              396.23,
+              397.08,
               200.0
             ],
             "broken_count": 0,
             "centroid": [
-              967.02,
+              966.33,
               480.0
             ],
             "count": 30,
@@ -864,11 +864,11 @@
           },
           "soldier_summary_m": {
             "bbox_m": [
-              19.811,
+              19.854,
               10.0
             ],
             "centroid_m": [
-              48.351,
+              48.317,
               24.0
             ]
           },
@@ -904,7 +904,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "0.9 m",
-        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 48 / 48\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 10 files\nOrder: Holding position\nHP per man: 104 ±13 of 110\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.2 m/s\nAccel: +0.7 m/s²",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 48 / 48\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m\nWidth: 10 files\nOrder: Holding position\nHP per man: 105 ±11 of 110\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.3 m/s\nAccel: -1.5 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 0,
@@ -939,12 +939,12 @@
           "order_mode": "Hold",
           "order_phase": null,
           "position": [
-            1109.29,
-            480.31
+            1111.6,
+            480.27
           ],
           "position_m": [
-            55.465,
-            24.015
+            55.58,
+            24.013
           ],
           "queue_tail": [],
           "rank_pitch": 18.0,
@@ -952,29 +952,29 @@
           "requested_move_target": null,
           "soldier_summary": {
             "bbox": [
-              72.2,
+              82.09,
               162.0
             ],
             "broken_count": 0,
             "centroid": [
-              1107.72,
-              480.37
+              1110.6,
+              480.28
             ],
             "count": 48,
             "prone_count": 3
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.61,
+              4.104,
               8.1
             ],
             "centroid_m": [
-              55.386,
-              24.019
+              55.53,
+              24.014
             ]
           },
           "soldiers": 48,
-          "soldiers_in_block_terrain": 0,
+          "soldiers_in_block_terrain": 4,
           "stamina_mean": 100.0,
           "state": "IDLE",
           "subcommander_rank": null,
@@ -1009,19 +1009,19 @@
           "last_reshape_tick": -1,
           "maneuver": "MARCHING",
           "missile_ammo": null,
-          "morale": 98.9,
+          "morale": 99.0,
           "move_target": null,
           "name": "Cavalry 1",
           "order_guard": null,
           "order_mode": "Normal",
           "order_phase": "NONE",
           "position": [
-            1036.38,
-            479.65
+            1038.69,
+            479.72
           ],
           "position_m": [
-            51.819,
-            23.982
+            51.935,
+            23.986
           ],
           "queue_tail": [],
           "rank_pitch": 120.0,
@@ -1029,30 +1029,30 @@
           "requested_move_target": null,
           "soldier_summary": {
             "bbox": [
-              228.06,
-              204.33
+              229.52,
+              204.26
             ],
             "broken_count": 0,
             "centroid": [
-              1062.78,
-              479.96
+              1062.28,
+              479.98
             ],
             "count": 30,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              11.403,
-              10.217
+              11.476,
+              10.213
             ],
             "centroid_m": [
-              53.139,
-              23.998
+              53.114,
+              23.999
             ]
           },
           "soldiers": 30,
           "soldiers_in_block_terrain": 0,
-          "stamina_mean": 111.0,
+          "stamina_mean": 111.1,
           "state": "MOVING",
           "subcommander_rank": null,
           "subunit_size": 0,
