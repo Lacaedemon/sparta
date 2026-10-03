@@ -229,7 +229,8 @@ var facing: Vector2 = Vector2.DOWN
 ## The current march leg's destination. Every write -- a click, a keyboard nudge, an AI
 ## order, a queued leg promoted, a disengage step -- passes through
 ## clamp_order_destination(), so a point whose formation footprint would overlap
-## impassable terrain is pulled back along the move before the unit ever marches on it.
+## impassable terrain or reach off the field is pulled back along the move before the
+## unit ever marches on it.
 ## Restoring a saved snapshot writes the backing _move_target directly instead: the saved
 ## value was validated when it was first written, and re-validating it against a
 ## half-restored unit could move it.
@@ -4311,8 +4312,9 @@ func _formation_local_half_extents() -> Vector2:
 
 
 ## The destination a move order toward `dest` should actually be given: `dest` itself
-## when this formation's footprint there is clear of impassable terrain, otherwise the
-## clear point nearest it back along the move from the current position, or the current
+## when this formation's footprint there is clear of impassable terrain and lies wholly
+## on the field (field_bounds, or retreat_bounds while routing), otherwise the clear
+## point nearest it back along the move from the current position, or the current
 ## position (hold) when nothing along the move is clear. The footprint is the block's
 ## half-extents (the far tier's O(1) reading for a far block, as _move_to() uses), grown
 ## by the soldiers' body radius, laid out in the grid the men will stand in on arrival:
@@ -4325,15 +4327,16 @@ func _formation_local_half_extents() -> Vector2:
 ## order_clear_tolerance.
 func clamp_order_destination(dest: Vector2, step: float = -1.0, tolerance: float = -1.0) -> Vector2:
 	var field: PathField = PathField.active
-	if field == null or not field.has_block_terrain():
-		return dest
+	if field != null and not field.has_block_terrain():
+		field = null
+	var bounds: Rect2 = retreat_bounds if state == State.ROUTING else field_bounds
 	var extents: Vector2 = _far_tier_half_extents() if tier == FormationTier.FAR \
 			else _formation_local_half_extents()
 	var body: float = soldier_body_radius()
 	var file_axis: Vector2 = _order_held_facing(dest).rotated(PI * 0.5 + _formation_angle)
 	return OrderFootprint.clamp_destination(field, position, dest, file_axis,
 			extents + Vector2(body, body), step if step > 0.0 else order_clear_step,
-			tolerance if tolerance > 0.0 else order_clear_tolerance)
+			tolerance if tolerance > 0.0 else order_clear_tolerance, bounds)
 
 
 ## The facing this unit will hold at a move's destination `dest`, which the caller turns

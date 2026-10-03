@@ -36,22 +36,33 @@ const SEARCH_TOLERANCE := 1.0   # tuned in wu
 ## From a start that already overlaps terrain, "clear" means overlapping no more terrain
 ## area than the start does. `step` and `tolerance` are the search's coarse stride and
 ## final precision; both must be positive, and a non-positive one fails loudly and holds
-## position rather than looping forever.
+## position rather than looping forever. `bounds`, when it has an area, is the ground the
+## formation must stay on: everything outside it counts as impassable, so an order is
+## pulled back until the whole footprint fits inside, as it is off a hill. `field` may be
+## null when there is no terrain to test.
 static func clamp_destination(field: PathField, origin: Vector2, dest: Vector2,
 		file_axis: Vector2, half_extents: Vector2, step: float = SEARCH_STEP,
-		tolerance: float = SEARCH_TOLERANCE) -> Vector2:
-	if not field.footprint_blocked(dest, file_axis, half_extents):
+		tolerance: float = SEARCH_TOLERANCE, bounds: Rect2 = Rect2()) -> Vector2:
+	var blocked := func(p: Vector2) -> bool:
+		return (field != null and field.footprint_blocked(p, file_axis, half_extents)) \
+				or _leaves_bounds(p, file_axis, half_extents, bounds)
+	var overlap := func(p: Vector2) -> float:
+		var area: float = _outside_area(p, file_axis, half_extents, bounds)
+		if field != null:
+			area += field.footprint_overlap_area(p, file_axis, half_extents)
+		return area
+	if not blocked.call(dest):
 		return dest
 	if step <= 0.0 or tolerance <= 0.0:
 		push_error("OrderFootprint.clamp_destination: step and tolerance must be positive")
 		return origin
 	var start_overlap: float = 0.0
-	if field.footprint_blocked(origin, file_axis, half_extents):
-		start_overlap = field.footprint_overlap_area(origin, file_axis, half_extents)
+	if blocked.call(origin):
+		start_overlap = overlap.call(origin)
 	var too_deep := func(p: Vector2) -> bool:
 		if start_overlap <= 0.0:
-			return field.footprint_blocked(p, file_axis, half_extents)
-		return field.footprint_overlap_area(p, file_axis, half_extents) > start_overlap
+			return blocked.call(p)
+		return overlap.call(p) > start_overlap
 	if not too_deep.call(dest):
 		return dest
 	# Past this point dest != origin: the start is never too deep (it is clear, or exactly
@@ -75,3 +86,40 @@ static func clamp_destination(field: PathField, origin: Vector2, dest: Vector2,
 		else:
 			clear_at = mid
 	return origin if clear_at >= span else dest + dir * clear_at
+
+
+## The four corners of the rectangular footprint centred on `centre`, its width along the
+## unit vector `file_axis` and its depth perpendicular to it.
+static func _corners(centre: Vector2, file_axis: Vector2, half: Vector2) -> PackedVector2Array:
+	var u: Vector2 = file_axis * half.x
+	var v: Vector2 = file_axis.orthogonal() * half.y
+	return PackedVector2Array([centre - u - v, centre + u - v, centre + u + v, centre - u + v])
+
+
+## Whether the footprint reaches outside `bounds`. A footprint is convex and `bounds` is a
+## rect, so it lies inside exactly when every corner does. A `bounds` with no area means
+## no bounds.
+static func _leaves_bounds(centre: Vector2, file_axis: Vector2, half: Vector2,
+		bounds: Rect2) -> bool:
+	if not bounds.has_area():
+		return false
+	for corner in _corners(centre, file_axis, half):
+		if corner.x < bounds.position.x or corner.x > bounds.end.x \
+				or corner.y < bounds.position.y or corner.y > bounds.end.y:
+			return true
+	return false
+
+
+## Area (square world units) of the footprint that lies outside `bounds`: its whole area
+## less the part clipped inside. 0 when it lies wholly inside, or `bounds` has no area.
+static func _outside_area(centre: Vector2, file_axis: Vector2, half: Vector2,
+		bounds: Rect2) -> float:
+	if not _leaves_bounds(centre, file_axis, half, bounds):
+		return 0.0
+	var poly := _corners(centre, file_axis, half)
+	var box := PackedVector2Array([bounds.position, Vector2(bounds.end.x, bounds.position.y),
+			bounds.end, Vector2(bounds.position.x, bounds.end.y)])
+	var inside: float = 0.0
+	for piece in Geometry2D.intersect_polygons(poly, box):
+		inside += absf(PathField._polygon_area(piece))
+	return maxf(0.0, 4.0 * half.x * half.y - inside)

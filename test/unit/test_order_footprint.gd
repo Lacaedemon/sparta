@@ -377,3 +377,64 @@ func test_a_promoted_queued_leg_is_validated_in_its_final_grid() -> void:
 	assert_true(u.has_move_target, "sanity check: the queued leg committed its march")
 	assert_ne(u.move_target, Vector2(1120, 480), "sanity check: the leg as queued would enter the hill")
 	assert_true(_clear_in_final_grid(u), "the promoted leg is clear in its final grid")
+
+
+func test_a_destination_reaching_off_the_field_is_pulled_back_onto_it() -> void:
+	# The field's outside counts as impassable: a block ordered to the east edge stops
+	# where its whole footprint still fits, as it would short of a hill.
+	var bounds := Rect2(0, 0, 1600, 1000)
+	var got: Vector2 = OrderFootprint.clamp_destination(null, Vector2(800, 500),
+			Vector2(1590, 500), Vector2.RIGHT, Vector2(100, 50),
+			OrderFootprint.SEARCH_STEP, OrderFootprint.SEARCH_TOLERANCE, bounds)
+	assert_lte(got.x + 100.0, 1600.0, "the footprint's east edge stays on the field")
+	assert_gte(got.x + 100.0, 1600.0 - OrderFootprint.SEARCH_TOLERANCE,
+			"and the block stops no further short than the search tolerance")
+	assert_almost_eq(got.y, 500.0, 0.001, "the pull-back runs along the move")
+
+
+func test_a_block_already_overhanging_the_edge_may_move_but_not_further_off() -> void:
+	var bounds := Rect2(0, 0, 1600, 1000)
+	var half := Vector2(100, 50)
+	var origin := Vector2(1550, 500)   # 50 wu of its width already off the east edge
+	var along: Vector2 = OrderFootprint.clamp_destination(null, origin, Vector2(1550, 300),
+			Vector2.RIGHT, half, OrderFootprint.SEARCH_STEP, OrderFootprint.SEARCH_TOLERANCE, bounds)
+	assert_eq(along, Vector2(1550, 300), "a move along the edge, no further off, is allowed")
+	var out: Vector2 = OrderFootprint.clamp_destination(null, origin, Vector2(1590, 500),
+			Vector2.RIGHT, half, OrderFootprint.SEARCH_STEP, OrderFootprint.SEARCH_TOLERANCE, bounds)
+	assert_lte(out.x, origin.x, "a move further off the field is held at the start's overhang")
+
+
+func test_bounds_with_no_area_leave_a_destination_alone() -> void:
+	var got: Vector2 = OrderFootprint.clamp_destination(null, Vector2(800, 500),
+			Vector2(99999, 500), Vector2.RIGHT, Vector2(100, 50))
+	assert_eq(got, Vector2(99999, 500), "no bounds and no terrain: nothing to clamp against")
+
+
+func test_outside_area_is_the_exact_clipped_area() -> void:
+	# A 200 x 100 footprint centred 50 wu inside the east edge has 50 x 100 off the field.
+	var area: float = OrderFootprint._outside_area(Vector2(1550, 500), Vector2.RIGHT,
+			Vector2(100, 50), Rect2(0, 0, 1600, 1000))
+	assert_almost_eq(area, 5000.0, 0.01, "half the overhanging width times the depth")
+
+
+func test_a_unit_ordered_off_the_field_edge_stops_with_its_block_on_it() -> void:
+	# Through the move_target write: a deep block marching east to the field's edge is
+	# held short so its rear and front ranks both stay on the field.
+	var u := _make_deep_block(Vector2(300, 300))
+	u.field_bounds = Rect2(0, 0, 1000, 1000)
+	u.move_target = Vector2(995, 300)
+	u.has_move_target = true
+	var extents: Vector2 = u._formation_local_half_extents()
+	var reach: float = maxf(extents.x, extents.y) + u.soldier_body_radius()
+	assert_lt(u.move_target.x, 995.0, "the order is pulled back from the edge")
+	assert_lte(u.move_target.x + reach, 1000.0 + OrderFootprint.SEARCH_TOLERANCE,
+			"the block's long side, now along the march, ends on the field")
+
+
+func test_a_routing_unit_is_bounded_by_its_retreat_bounds_not_the_field() -> void:
+	var u := _make_deep_block(Vector2(300, 300))
+	u.field_bounds = Rect2(0, 0, 1000, 1000)
+	u.retreat_bounds = Rect2(-2000, -2000, 6000, 6000)
+	u.state = Unit.State.ROUTING
+	u.move_target = Vector2(995, 300)
+	assert_eq(u.move_target, Vector2(995, 300), "a router may run past the field's edge")
