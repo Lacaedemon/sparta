@@ -128,6 +128,14 @@ func test_every_exclusion_names_a_real_uncaptured_member() -> void:
 	for m in RENAMED.keys():
 		assert_true(members.has(m), "%s is renamed but is not a Unit member" % m)
 		assert_true(snapshot.has(RENAMED[m]), "%s's renamed key %s is in the snapshot" % [m, RENAMED[m]])
+		# A renamed key must be the member's own, not another member's saved name, or an
+		# uncaptured member could be waved through by pointing it at any existing key.
+		for other in members:
+			if other == m:
+				continue
+			var other_bare: String = other.trim_prefix("_")
+			assert_false(RENAMED[m] in [other, other_bare, other + "_uid", other_bare + "_uid"],
+					"%s's renamed key %s is %s's own saved name" % [m, RENAMED[m], other])
 
 
 func test_captured_names_resolve_without_the_underscore_or_as_a_uid() -> void:

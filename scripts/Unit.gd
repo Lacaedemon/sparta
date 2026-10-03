@@ -9619,7 +9619,9 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_sim_soldier_facing = (d["sim_soldier_facing"] as PackedVector2Array).duplicate()
 	_sim_soldier_file = (d["sim_soldier_file"] as PackedInt32Array).duplicate()
 	_sim_soldier_rank = (d["sim_soldier_rank"] as PackedInt32Array).duplicate()
-	# An older snapshot without the pairing restores none, and the first step re-pairs.
+	# An older snapshot without the pairing restores none, and the first step re-pairs. So
+	# does a restore into an engine younger than the pairing's age (the frame would be
+	# negative, which SoldierBodies reads as no pairing): a fresh pairing, not a crash.
 	_engaged_target_pairing_engaged = PackedInt32Array(
 			d.get("engaged_target_pairing_engaged", PackedInt32Array()))
 	_engaged_target_pairing_canonical = PackedInt32Array(
@@ -9627,7 +9629,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_engaged_target_soldier_count = int(d.get("engaged_target_soldier_count", -1))
 	var pairing_age: int = int(d.get("engaged_target_pairing_age_ticks", -1))
 	_engaged_target_reassign_frame = (
-			Engine.get_physics_frames() - pairing_age if pairing_age >= 0 else -1
+			maxi(-1, Engine.get_physics_frames() - pairing_age) if pairing_age >= 0 else -1
 	)
 	_sim_soldier_square_slot = \
 			(d["sim_soldier_square_slot"] as PackedInt32Array).duplicate()
