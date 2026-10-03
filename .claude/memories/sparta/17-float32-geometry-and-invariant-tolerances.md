@@ -6,11 +6,14 @@ square wu.
 In PR #1695 (issue #1687) a block turned 30 degrees and overhanging the field edge slid
 37 wu straight along it, read more off-field area than it started with, and was pulled
 back 1 wu.
-Translating the polygon and the clip rect so the footprint centre is the origin made the
-area exact (`OrderFootprint._outside_area`).
+Translating the polygon and the clip rect so the footprint centre is the origin fixed it
+(`OrderFootprint._outside_area`): a slide straight along an edge leaves every coordinate
+the clip sees unchanged, so the area reads bit-identically.
 Godot's `Geometry2D.intersect_polygons` was not the cause.
-The terrain half (`PathField.footprint_overlap_area`) still has the same precision loss
-(issue #1696).
+PR #1700 (issue #1696) did the same for the terrain half
+(`PathField.footprint_overlap_area`), which needed a 17-degree turn to show the drift --
+a 30-degree slide happened to read equal areas, so one passing angle proves nothing.
+Both now share `PathField._clip_to_rect`.
 
 - **Do:** translate a polygon and whatever it is clipped against so its centre is the origin before summing a shoelace area or any product of coordinates.
 

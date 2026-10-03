@@ -300,9 +300,9 @@ func test_a_hasty_march_keeps_its_grid_like_an_undisciplined_one() -> void:
 
 
 func test_repeated_small_orders_never_ratchet_an_overlapping_block_deeper() -> void:
-	# From a start already overlapping the hill, twenty tiny steps south (each adding a few
-	# hundredths of a square wu of hill, well above AREA_SLACK) must never leave the block
-	# covering more hill than it started with.
+	# From a start already overlapping the hill, twenty tiny 0.001 wu steps south (each
+	# adding the block's overlapping width times 0.001 square wu of hill) must never leave
+	# the block covering more hill than it started with.
 	var u := _make_deep_block(Vector2(1250, 330))
 	u.ordered_facing = u.facing
 	var start_area: float = _area_at(u, u.position)
@@ -471,6 +471,22 @@ func test_a_turned_block_overlapping_a_hill_can_slide_along_its_edge() -> void:
 			var got: Vector2 = OrderFootprint.clamp_destination(field, origin, dest, axis, half)
 			assert_eq(got, dest, "a slide of %.0f wu along the hill edge from %s is not pulled back"
 					% [dy, origin])
+
+
+func test_a_block_overlapping_a_hill_from_the_south_can_slide_along_its_edge() -> void:
+	# The same along a horizontal edge, from positions off the integer grid as a real
+	# unit's are.
+	var field := PathField.new(Rect2(0, 0, 4000, 4000))
+	field.block_rect(Rect2(0, 1000, 4000, 400))
+	var half := Vector2(100, 50)
+	var axis := Vector2.RIGHT.rotated(deg_to_rad(23.0))
+	for origin in [Vector2(2000.37, 1407.81), Vector2(3011.5, 1395.25), Vector2(1234.56, 1410.0)]:
+		assert_gt(field.footprint_overlap_area(origin, axis, half), 0.0, "the start overlaps the hill")
+		for dx in [-713.3, -37.0, 113.9, 521.0]:
+			var dest: Vector2 = origin + Vector2(dx, 0)
+			var got: Vector2 = OrderFootprint.clamp_destination(field, origin, dest, axis, half)
+			assert_eq(got, dest, "a slide of %.1f wu along the hill edge from %s is not pulled back"
+					% [dx, origin])
 
 
 func test_a_unit_on_a_map_with_no_terrain_is_still_kept_on_the_field() -> void:

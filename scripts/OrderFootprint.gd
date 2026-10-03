@@ -35,8 +35,9 @@ const SEARCH_TOLERANCE := 1.0   # tuned in wu
 ## Overlap area (square wu) an order from an already-overlapping start may add before it
 ## counts as deeper: float rounding only. The off-field and terrain areas are both clipped
 ## in the footprint's own centre-relative frame (see _outside_area and
-## PathField.footprint_overlap_area), so a block sliding along an edge reads the same area
-## to within this; it is far too small for successive orders to ratchet a block anywhere.
+## PathField.footprint_overlap_area), so a block sliding straight along an edge reads
+## exactly the area it started with; this is far too small for successive orders to
+## ratchet a block anywhere.
 const AREA_SLACK := 0.001   # tuned in wu
 
 

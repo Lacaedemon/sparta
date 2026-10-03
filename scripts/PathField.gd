@@ -112,11 +112,12 @@ func footprint_blocked(centre: Vector2, file_axis: Vector2, half: Vector2) -> bo
 ## the cells of the grid every relevant rect edge draws (coordinate compression), each
 ## cell is kept when any rect covers it, and the footprint is clipped against each kept
 ## cell. 0 for a clear footprint.
-## Everything is clipped in coordinates relative to the footprint's own centre: Vector2
-## holds 32-bit floats, and a shoelace sum over field-sized coordinates rounds by a large
-## fraction of a square wu, while one over the footprint's own half-extents stays exact to
-## far below OrderFootprint.AREA_SLACK. A footprint slid along a hill's edge must read the
-## same area it started with, or the overlapping-start rule would pull it back.
+## Everything is clipped in coordinates relative to the footprint's own centre. Vector2
+## holds 32-bit floats, and in field coordinates the clip and shoelace sum round
+## differently at every position, by up to a square wu. Relative to the centre, a slide
+## straight along a hill's edge leaves every coordinate the clip sees unchanged, so it
+## reads exactly the area it started with -- as the overlapping-start rule in
+## OrderFootprint.clamp_destination needs, or it would pull the block back.
 func footprint_overlap_area(centre: Vector2, file_axis: Vector2, half: Vector2) -> float:
 	var u: Vector2 = file_axis * half.x
 	var v: Vector2 = file_axis.orthogonal() * half.y
@@ -145,8 +146,9 @@ func footprint_overlap_area(centre: Vector2, file_axis: Vector2, half: Vector2) 
 	return area
 
 
-## The convex polygon `poly` clipped to `rect` (Sutherland-Hodgman, one edge at a time).
-## Empty when they do not overlap.
+## `poly` clipped to `rect` (Sutherland-Hodgman, one edge at a time). Exact for a convex
+## `poly`, the only kind its callers pass; a concave one can come back with degenerate
+## bridging edges. Empty when they do not overlap.
 static func _clip_to_rect(poly: PackedVector2Array, rect: Rect2) -> PackedVector2Array:
 	poly = _clip_half_plane(poly, 0, rect.position.x, 1.0)
 	poly = _clip_half_plane(poly, 0, rect.end.x, -1.0)
