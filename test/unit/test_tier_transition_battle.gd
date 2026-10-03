@@ -55,10 +55,8 @@ func _budget_ticks(mover: Unit) -> int:
 func _run_and_capture() -> Dictionary:
 	# Spawn at the same point of the frame cycle every run: right after a physics frame.
 	# Otherwise the first run (spawned from the test's idle start) gets a close-tier soldier
-	# tick before the first tier pass that a run spawned after a physics frame does not, and
-	# the cavalry block spawned against the hill is pushed off it on that tick in one run only.
-	# That snap itself is expected: a body spawned inside the terrain margin is placed on its
-	# edge on its first close-tier soldier tick.
+	# tick before the first tier pass that a run spawned after a physics frame does not, so
+	# the two runs are not stepped identically even with the same seed.
 	await get_tree().physics_frame
 	var battle: Node2D = _spawn_battle()
 	var player: Unit = _team_unit(0)

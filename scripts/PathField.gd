@@ -123,7 +123,7 @@ static func push_out_of_rects(point: Vector2, grown: Array[Rect2], max_passes: i
 			exits.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 			var chosen: Vector2 = exits[0][1]
 			for e in exits:
-				if not _inside_any(e[1], grown):
+				if not inside_any_rect(e[1], grown):
 					chosen = e[1]
 					break
 			q = chosen
@@ -139,7 +139,7 @@ static func _strictly_inside(p: Vector2, r: Rect2) -> bool:
 
 
 ## Whether `p` lies strictly inside any of `rects`.
-static func _inside_any(p: Vector2, rects: Array[Rect2]) -> bool:
+static func inside_any_rect(p: Vector2, rects: Array[Rect2]) -> bool:
 	for r in rects:
 		if _strictly_inside(p, r):
 			return true

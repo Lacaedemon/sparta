@@ -1,8 +1,9 @@
 extends GutTest
-## The soldier body pass keeps every body out of impassable (`block`) terrain as a hard
-## constraint: SoldierBodies.step ends by placing any body inside a block rect (grown by its
-## own body radius) on that rect's nearest edge and dropping the part of its velocity still
-## heading in. See PathField.push_out_of_block and SoldierBodies._keep_out_of_terrain.
+## The soldier body pass keeps bodies from entering impassable (`block`) terrain as a hard
+## constraint: SoldierBodies.step ends by placing any body that was clear of a block rect
+## (grown by its own body radius) before the tick and is inside it after on that rect's
+## nearest edge, dropping the part of its velocity still heading in. A body already inside
+## is left to walk out. See PathField.push_out_of_block and SoldierBodies._keep_out_of_terrain.
 
 const HILL := Rect2(1150, 380, 250, 200)
 const TICK := 1.0 / 60.0
@@ -67,11 +68,18 @@ func test_overlapping_rects_push_a_point_clear_of_both() -> void:
 
 # --- SoldierBodies.step ---------------------------------------------------------------
 
-func test_a_body_inside_the_hill_is_put_back_on_its_edge() -> void:
-	PathField.active = _field_with([HILL])
-	var u := _make_unit(Vector2(1100, 480))
+## Body 0 of `u` placed 1 wu clear of the hill's grown west edge, driven east at `speed`.
+func _drive_into_hill(u: Unit, speed: Vector2) -> void:
 	var r: float = u.soldier_body_radius()
-	u._sim_soldier_pos[0] = Vector2(1160, 480)   # 10 wu inside the hill's west edge
+	u._sim_soldier_pos[0] = Vector2(HILL.position.x - r - 1.0, 480)
+	u._sim_body_vel[0] = speed
+
+
+func test_a_body_driven_into_the_hill_is_put_back_on_its_edge() -> void:
+	PathField.active = _field_with([HILL])
+	var u := _make_unit(Vector2(900, 480))
+	var r: float = u.soldier_body_radius()
+	_drive_into_hill(u, Vector2(600, 0))   # 10 wu per tick: well past the edge unchecked
 	SoldierBodies.step(u, TICK)
 	assert_lte(u._sim_soldier_pos[0].x, HILL.position.x - r + 0.001,
 			"the body stands at least its own radius clear of the hill")
@@ -79,11 +87,21 @@ func test_a_body_inside_the_hill_is_put_back_on_its_edge() -> void:
 
 func test_a_body_driven_into_the_hill_keeps_no_inward_velocity() -> void:
 	PathField.active = _field_with([HILL])
-	var u := _make_unit(Vector2(1100, 480))
-	u._sim_soldier_pos[0] = Vector2(1160, 480)
-	u._sim_body_vel[0] = Vector2(300, 40)   # heading east, into the hill, and a little south
+	var u := _make_unit(Vector2(900, 480))
+	_drive_into_hill(u, Vector2(600, 40))   # heading east, into the hill, and a little south
 	SoldierBodies.step(u, TICK)
 	assert_lte(u._sim_body_vel[0].x, 0.0, "the eastward (into-terrain) part is gone")
+
+
+func test_a_body_already_inside_the_hill_is_left_to_walk_out() -> void:
+	# A block spawned overlapping a hill is not ejected wholesale: ejecting every body at once
+	# would stack those that differ only along the ejection axis onto one point.
+	PathField.active = _field_with([HILL])
+	var u := _make_unit(Vector2(900, 480))
+	u._sim_soldier_pos[0] = Vector2(1200, 480)   # 50 wu inside the hill
+	u._sim_body_vel[0] = Vector2.ZERO
+	SoldierBodies.step(u, TICK)
+	assert_gt(u._sim_soldier_pos[0].x, HILL.position.x + 40.0, "not snapped to the edge")
 
 
 func test_a_map_with_no_block_terrain_skips_the_pass() -> void:
@@ -102,10 +120,11 @@ func test_a_map_with_no_block_terrain_skips_the_pass() -> void:
 
 func test_the_pass_is_counted_once_per_body() -> void:
 	PathField.active = _field_with([HILL])
-	var u := _make_unit(Vector2(1100, 480))
+	var u := _make_unit(Vector2(900, 480))   # every body clear of the hill
 	SimOps.enabled = true
 	SimOps.reset()
 	SoldierBodies.step(u, TICK)
 	var tick: Dictionary = SimOps.take_tick()
 	SimOps.enabled = false
-	assert_eq(tick["terrain_project"], u._sim_soldier_pos.size(), "one rect test per body (one rect)")
+	assert_eq(tick["terrain_project"], 2 * u._sim_soldier_pos.size(),
+			"one rect test per body before the step and one after (one rect)")
