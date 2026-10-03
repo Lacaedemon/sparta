@@ -267,6 +267,62 @@ func test_unit_record_dumps_the_move_target_or_null() -> void:
 			DemoState.vec2_pair(Vector2(123.456, -78.9)), "a live target reads as its pair")
 
 
+func test_unit_record_dumps_the_requested_point_beside_the_clamped_target() -> void:
+	# A move order whose footprint would leave the field is pulled back: the dump shows both
+	# the point asked for and where the unit is actually going, and keeps the request after
+	# arrival clears move_target.
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u.position = Vector2(300, 300)
+	u.field_bounds = Rect2(0, 0, 1000, 1000)
+	assert_eq(DemoState.unit_record(u, {}, 1.0, false)["requested_move_target"], null,
+			"nothing ordered yet reads null")
+	u.move_target = Vector2(995, 300)
+	u.has_move_target = true
+	var rec: Dictionary = DemoState.unit_record(u, {}, 1.0, false)
+	assert_eq(rec["requested_move_target"], DemoState.vec2_pair(Vector2(995, 300)),
+			"the request is the point ordered")
+	assert_ne(rec["move_target"], rec["requested_move_target"], "the clamp pulled the target back")
+	u.has_move_target = false   # arrived
+	rec = DemoState.unit_record(u, {}, 1.0, false)
+	assert_eq(rec["move_target"], null, "move_target clears on arrival")
+	assert_eq(rec["requested_move_target"], DemoState.vec2_pair(Vector2(995, 300)),
+			"the last request is still there")
+
+
+func test_requested_move_target_survives_a_snapshot_round_trip() -> void:
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u.position = Vector2(300, 300)
+	u.field_bounds = Rect2(0, 0, 1000, 1000)
+	u.move_target = Vector2(995, 300)
+	var d: Dictionary = u.to_snapshot_dict()
+	var v: Unit = Unit.new()
+	add_child_autofree(v)
+	v.apply_snapshot_dict(d)
+	assert_eq(v.requested_move_target, Vector2(995, 300), "the request is restored")
+	assert_true(v.has_requested_move_target, "and so is the flag")
+	assert_eq(v.move_target, u.move_target, "the clamped target is restored as it was")
+
+
+func test_an_older_snapshot_without_the_request_restores_a_coherent_one() -> void:
+	# A snapshot saved before the request was recorded: a unit mid-march restores with its
+	# target as the request, so the dump never shows a live target beside a null request.
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u.position = Vector2(300, 300)
+	u.move_target = Vector2(500, 300)
+	u.has_move_target = true
+	var d: Dictionary = u.to_snapshot_dict()
+	d.erase("requested_move_target")
+	d.erase("has_requested_move_target")
+	var v: Unit = Unit.new()
+	add_child_autofree(v)
+	v.apply_snapshot_dict(d)
+	assert_true(v.has_requested_move_target, "a unit with a live target has a request")
+	assert_eq(v.requested_move_target, v.move_target, "and it is the restored target")
+
+
 func test_unit_record_dumps_stamina_mean_zero_valued() -> void:
 	var u: Unit = Unit.new()
 	add_child_autofree(u)
