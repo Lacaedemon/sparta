@@ -9408,6 +9408,17 @@ func to_snapshot_dict() -> Dictionary:
 		"sim_soldier_square_slot": _sim_soldier_square_slot.duplicate(),
 		"sim_soldier_row_slot": _sim_soldier_row_slot.duplicate(),
 		"sim_soldier_broken": _sim_soldier_broken.duplicate(),
+		# The engaged-target pairing SoldierBodies.step() keeps between reassignments: its
+		# body and slot index lists (aligned to the soldier arrays above), the soldier count
+		# it was built for, and its age in ticks -- the absolute frame it was built on means
+		# nothing to a restore into another battle, so it travels as an age like the timers.
+		"engaged_target_pairing_engaged": _engaged_target_pairing_engaged.duplicate(),
+		"engaged_target_pairing_canonical": _engaged_target_pairing_canonical.duplicate(),
+		"engaged_target_soldier_count": _engaged_target_soldier_count,
+		"engaged_target_pairing_age_ticks": (
+				Engine.get_physics_frames() - _engaged_target_reassign_frame
+				if _engaged_target_reassign_frame >= 0 else -1
+		),
 	}
 
 
@@ -9608,6 +9619,16 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_sim_soldier_facing = (d["sim_soldier_facing"] as PackedVector2Array).duplicate()
 	_sim_soldier_file = (d["sim_soldier_file"] as PackedInt32Array).duplicate()
 	_sim_soldier_rank = (d["sim_soldier_rank"] as PackedInt32Array).duplicate()
+	# An older snapshot without the pairing restores none, and the first step re-pairs.
+	_engaged_target_pairing_engaged = PackedInt32Array(
+			d.get("engaged_target_pairing_engaged", PackedInt32Array()))
+	_engaged_target_pairing_canonical = PackedInt32Array(
+			d.get("engaged_target_pairing_canonical", PackedInt32Array()))
+	_engaged_target_soldier_count = int(d.get("engaged_target_soldier_count", -1))
+	var pairing_age: int = int(d.get("engaged_target_pairing_age_ticks", -1))
+	_engaged_target_reassign_frame = (
+			Engine.get_physics_frames() - pairing_age if pairing_age >= 0 else -1
+	)
 	_sim_soldier_square_slot = \
 			(d["sim_soldier_square_slot"] as PackedInt32Array).duplicate()
 	_sim_soldier_row_slot = \

@@ -1819,6 +1819,12 @@ func _spawn_rearguard_detachment(parent: Unit, soldier_count: int, delay_sec: fl
 	# The general stays with the main body. A rearguard is left behind to die, and one that
 	# inherited the role would report the general killed or routed while the real one lives.
 	ud["is_general"] = false
+	# The parent's engaged-target pairing indexes the parent's whole soldier arrays, which
+	# the truncation below cuts short; the rearguard pairs afresh on its first step.
+	ud["engaged_target_pairing_engaged"] = PackedInt32Array()
+	ud["engaged_target_pairing_canonical"] = PackedInt32Array()
+	ud["engaged_target_soldier_count"] = -1
+	ud["engaged_target_pairing_age_ticks"] = -1
 	# Truncate every per-soldier body array to the first `soldier_count` entries -- the
 	# front-most, already-engaged soldiers are the ones staying; the rest belong to the
 	# retreating main body.

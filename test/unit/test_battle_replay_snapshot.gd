@@ -335,3 +335,52 @@ func test_restore_snapshot_preserves_and_rewinds_in_flight_projectiles() -> void
 
 	_leave_playback(prev_mode)
 
+
+
+## Age in ticks of `u`'s cached engaged-target pairing, or -1 with none.
+func _pairing_age(u: Unit) -> int:
+	if u._engaged_target_reassign_frame < 0:
+		return -1
+	return Engine.get_physics_frames() - u._engaged_target_reassign_frame
+
+
+func test_a_rewind_into_a_melee_keeps_the_engaged_target_pairing() -> void:
+	# The pairing is held for SoldierBodies.ENGAGED_TARGET_REASSIGN_TICKS between recomputes.
+	# A rewind into the middle of that interval must resume it as the uninterrupted run
+	# kept it -- the same pairing, at the same age -- rather than re-pairing on its first
+	# tick, or the replay diverges from there.
+	var prev_mode := _enter_playback()
+	var battle := _spawn_battle(_clash_scenario())
+	var interval: int = SoldierBodies.ENGAGED_TARGET_REASSIGN_TICKS
+	var subject: Unit = null
+	for _i in range(600):
+		await get_tree().physics_frame
+		for u in _units_by_uid(battle).values():
+			var age: int = _pairing_age(u)
+			if not u._engaged_target_pairing_engaged.is_empty() and age >= 3 and age <= interval / 2:
+				subject = u
+		if subject != null:
+			break
+	assert_not_null(subject, "a unit holds a pairing partway through its interval")
+	if subject == null:
+		_leave_playback(prev_mode)
+		return
+	var uid: int = subject.uid
+	var snap: Dictionary = battle.capture_snapshot()
+	var steps: int = 5
+	for _i in range(steps):
+		await get_tree().physics_frame
+	var live: Unit = _units_by_uid(battle)[uid]
+	var expect_engaged: PackedInt32Array = live._engaged_target_pairing_engaged.duplicate()
+	var expect_canonical: PackedInt32Array = live._engaged_target_pairing_canonical.duplicate()
+	var expect_age: int = _pairing_age(live)
+
+	battle.restore_snapshot(snap)
+	for _i in range(steps):
+		await get_tree().physics_frame
+	var restored: Unit = _units_by_uid(battle)[uid]
+	assert_eq(_pairing_age(restored), expect_age, "the pairing keeps its age across the rewind")
+	assert_eq(restored._engaged_target_pairing_engaged, expect_engaged, "the same bodies are paired")
+	assert_eq(restored._engaged_target_pairing_canonical, expect_canonical, "to the same slots")
+
+	_leave_playback(prev_mode)
