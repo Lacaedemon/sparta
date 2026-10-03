@@ -1,6 +1,7 @@
 class_name OrderFootprint
-## Unit-level validation of a move order's destination against impassable terrain: an
-## officer does not order his block into a cliff. Routing (PathField.next_step) only steers
+## Unit-level validation of a move order's destination against impassable terrain and
+## the edge of the field: an officer does not order his block into a cliff, or off the
+## map. Routing (PathField.next_step) only steers
 ## the unit's CENTRE to the ordered point, so a point just outside a hill was accepted and
 ## a deep block's rear ranks ended up standing inside it. This tests the whole formation
 ## footprint at the destination, in the facing it will hold there, and pulls an
@@ -9,9 +10,14 @@ class_name OrderFootprint
 ## A unit whose footprint already overlaps terrain where it stands (a deep block spawned
 ## against a hill) is not frozen there: its order is pulled back only as far as needed to
 ## overlap the terrain no more than it already does, so it can still step out or along.
-## The rule bounds the overlapping AREA, with no slack, so successive orders can never
-## ratchet a block deeper by area; it does not bound penetration depth, so a block may
-## trade overlap along one edge for the same area reaching farther in along another.
+## Ground outside the field counts as impassable in the same way: a block is pulled back
+## until it fits on the field, and one already overhanging the edge may move but not
+## further off. Terrain and off-field ground share one overlap budget, so a block may
+## trade one for the other, and a hill reaching past the edge counts twice where it does.
+## The rule bounds the overlapping AREA, up to AREA_SLACK, so successive orders can never
+## ratchet a block deeper by more than that; it does not bound penetration depth, so a
+## block may trade overlap along one edge for the same area reaching farther in along
+## another.
 ##
 ## Static and deterministic (no RNG, a pure function of the obstacle set and the
 ## arguments), so live play and replay validate alike.
@@ -25,6 +31,12 @@ const SEARCH_STEP := 8.0   # tuned in wu
 ## bracketed the terrain edge: the returned destination sits at most this far short of
 ## the nearest clear point.
 const SEARCH_TOLERANCE := 1.0   # tuned in wu
+
+## Overlap area (square wu) an order from an already-overlapping start may add before it
+## counts as deeper: float rounding only. The off-field area is clipped exactly in floats
+## (see _outside_area), so a block sliding along the edge reads the same area to within
+## this; it is far too small for successive orders to ratchet a block anywhere.
+const AREA_SLACK := 0.001   # tuned in wu
 
 
 ## The destination a move from `origin` toward `dest` should actually be given. `field`
@@ -62,7 +74,7 @@ static func clamp_destination(field: PathField, origin: Vector2, dest: Vector2,
 	var too_deep := func(p: Vector2) -> bool:
 		if start_overlap <= 0.0:
 			return blocked.call(p)
-		return overlap.call(p) > start_overlap
+		return overlap.call(p) > start_overlap + AREA_SLACK
 	if not too_deep.call(dest):
 		return dest
 	# Past this point dest != origin: the start is never too deep (it is clear, or exactly
@@ -112,14 +124,36 @@ static func _leaves_bounds(centre: Vector2, file_axis: Vector2, half: Vector2,
 
 ## Area (square world units) of the footprint that lies outside `bounds`: its whole area
 ## less the part clipped inside. 0 when it lies wholly inside, or `bounds` has no area.
+## Clipped against the four edges in turn (Sutherland-Hodgman), in coordinates relative
+## to the footprint's own centre: Vector2 holds 32-bit floats, and a shoelace sum over
+## field-sized coordinates rounds by most of a square wu, while one over the footprint's
+## own half-extents stays exact to far below AREA_SLACK. A footprint slid along an edge
+## must read the same area it started with, or the overhang rule would hold it in place.
 static func _outside_area(centre: Vector2, file_axis: Vector2, half: Vector2,
 		bounds: Rect2) -> float:
 	if not _leaves_bounds(centre, file_axis, half, bounds):
 		return 0.0
-	var poly := _corners(centre, file_axis, half)
-	var box := PackedVector2Array([bounds.position, Vector2(bounds.end.x, bounds.position.y),
-			bounds.end, Vector2(bounds.position.x, bounds.end.y)])
-	var inside: float = 0.0
-	for piece in Geometry2D.intersect_polygons(poly, box):
-		inside += absf(PathField._polygon_area(piece))
-	return maxf(0.0, 4.0 * half.x * half.y - inside)
+	var poly := _corners(Vector2.ZERO, file_axis, half)
+	var local := Rect2(bounds.position - centre, bounds.size)
+	poly = _clip_half_plane(poly, 0, local.position.x, 1.0)
+	poly = _clip_half_plane(poly, 0, local.end.x, -1.0)
+	poly = _clip_half_plane(poly, 1, local.position.y, 1.0)
+	poly = _clip_half_plane(poly, 1, local.end.y, -1.0)
+	return maxf(0.0, 4.0 * half.x * half.y - absf(PathField._polygon_area(poly)))
+
+
+## `poly` clipped to the half-plane where `sign * (p[axis] - limit) >= 0`: axis 0 is x, 1 is y.
+static func _clip_half_plane(poly: PackedVector2Array, axis: int, limit: float,
+		sign: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var n: int = poly.size()
+	for i in range(n):
+		var a: Vector2 = poly[i]
+		var b: Vector2 = poly[(i + 1) % n]
+		var da: float = sign * (a[axis] - limit)
+		var db: float = sign * (b[axis] - limit)
+		if da >= 0.0:
+			out.push_back(a)
+		if (da >= 0.0) != (db >= 0.0):
+			out.push_back(a.lerp(b, da / (da - db)))
+	return out

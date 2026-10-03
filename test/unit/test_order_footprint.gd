@@ -401,7 +401,8 @@ func test_a_block_already_overhanging_the_edge_may_move_but_not_further_off() ->
 	assert_eq(along, Vector2(1550, 300), "a move along the edge, no further off, is allowed")
 	var out: Vector2 = OrderFootprint.clamp_destination(null, origin, Vector2(1590, 500),
 			Vector2.RIGHT, half, OrderFootprint.SEARCH_STEP, OrderFootprint.SEARCH_TOLERANCE, bounds)
-	assert_lte(out.x, origin.x, "a move further off the field is held at the start's overhang")
+	assert_almost_eq(out.x, origin.x, OrderFootprint.SEARCH_TOLERANCE + 0.001,
+			"a move further off the field stops at the start's overhang, no deeper and no shorter")
 
 
 func test_bounds_with_no_area_leave_a_destination_alone() -> void:
@@ -438,3 +439,26 @@ func test_a_routing_unit_is_bounded_by_its_retreat_bounds_not_the_field() -> voi
 	u.state = Unit.State.ROUTING
 	u.move_target = Vector2(995, 300)
 	assert_eq(u.move_target, Vector2(995, 300), "a router may run past the field's edge")
+
+
+func test_a_turned_block_overhanging_the_edge_can_slide_along_it() -> void:
+	# A footprint at an angle to the edge, overhanging it, moved straight along the edge
+	# keeps exactly the same area off the field, so the move is allowed as ordered.
+	var bounds := Rect2(0, 0, 1600, 1000)
+	var half := Vector2(100, 50)
+	var axis := Vector2.RIGHT.rotated(deg_to_rad(30.0))
+	var origin := Vector2(1560, 500)
+	assert_gt(OrderFootprint._outside_area(origin, axis, half, bounds), 0.0, "the start overhangs")
+	for dy in [-200.0, -37.0, 113.0]:
+		var dest := origin + Vector2(0, dy)
+		var got: Vector2 = OrderFootprint.clamp_destination(null, origin, dest, axis, half,
+				OrderFootprint.SEARCH_STEP, OrderFootprint.SEARCH_TOLERANCE, bounds)
+		assert_eq(got, dest, "a slide of %.0f wu along the edge is not pulled back" % dy)
+
+
+func test_a_unit_on_a_map_with_no_terrain_is_still_kept_on_the_field() -> void:
+	PathField.active = PathField.new(Rect2(0, 0, 4000, 4000))   # no block terrain at all
+	var u := _make_deep_block(Vector2(300, 300))
+	u.field_bounds = Rect2(0, 0, 1000, 1000)
+	u.move_target = Vector2(995, 300)
+	assert_lt(u.move_target.x, 995.0, "the field edge still clamps without any terrain")
