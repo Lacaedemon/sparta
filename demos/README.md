@@ -541,8 +541,9 @@ machine-checkable core of the demo-review checklist (blob/compression, soldier o
 shape scramble via an ordered-vs-actual best-fit decomposition, facing whipsaw, facing
 flutter, sustained super-physical speed, and crossing routes).
 Facing flutter is the small-amplitude counterpart of whipsaw: a facing that flips back and
-forth sample after sample, however small each swing.
-It only reads samples a few ticks apart, so it needs a dense dump to see anything.
+forth sample after sample, however small each swing, while marching out of contact.
+It fails on more than three reversals in a row over samples at most four ticks apart.
+A period-2 flip only shows on per-tick samples, so it needs a per-tick dump to see that.
 Run it headless over a dump directory:
 
 ```sh

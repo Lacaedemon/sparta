@@ -577,6 +577,48 @@ func test_flutter_run_ignores_sparse_samples_and_sub_floor_noise() -> void:
 			"alternation below the floor is float noise, not a facing defect")
 
 
+func test_flutter_run_handles_the_wrap_gap_boundary_and_held_ticks() -> void:
+	var half_degree: float = deg_to_rad(0.5)
+	# Flipping across the +/-pi seam: plain subtraction would read each step as ~2 pi.
+	var seam: Array = []
+	for i in range(8):
+		seam.append(PI - half_degree * 0.5 if i % 2 == 0 else -PI + half_degree * 0.5)
+	assert_eq(DemoDefects.longest_flutter_run([0, 1, 2, 3, 4, 5, 6, 7], seam, deg_to_rad(0.1), 4),
+			6, "a flip across the seam is a half-degree swing, not a full turn")
+	var steady: Array = []
+	for i in range(8):
+		steady.append(wrapf(PI - 3.0 * half_degree + i * half_degree, -PI, PI))
+	assert_eq(DemoDefects.longest_flutter_run([0, 1, 2, 3, 4, 5, 6, 7], steady, deg_to_rad(0.1), 4),
+			0, "a steady turn through the seam never reverses")
+	var flip: Array = [0.0, half_degree, 0.0, half_degree, 0.0]
+	assert_eq(DemoDefects.longest_flutter_run([0, 4, 8, 12, 16], flip, deg_to_rad(0.1), 4), 3,
+			"samples exactly max_gap apart still chain")
+	assert_eq(DemoDefects.longest_flutter_run([0, 5, 10, 15, 20], flip, deg_to_rad(0.1), 4), 0,
+			"one tick past max_gap breaks every link")
+	var held: Array = [0.0, half_degree, 0.0, 0.0, half_degree, 0.0, half_degree]
+	assert_eq(DemoDefects.longest_flutter_run([0, 1, 2, 3, 4, 5, 6], held, deg_to_rad(0.1), 4), 4,
+			"a held tick pauses the alternation without ending it")
+
+
+func test_flutter_verdict_skips_contact_and_non_moving_samples() -> void:
+	var slots: Array = _grid(6, 4, SPACING)
+	var half_degree: float = deg_to_rad(0.5)
+	for state in ["IDLE", "FIGHTING"]:
+		var snaps: Array = []
+		for i in range(10):
+			var a: float = half_degree if i % 2 == 1 else 0.0
+			snaps.append(_snapshot(i * 2, slots.duplicate(), slots, state == "FIGHTING", state,
+					[cos(a), sin(a)]))
+		assert_true(bool(_verdict(DemoDefects.analyze(snaps), "facing_flutter")["pass"]),
+				"a flip while %s is not a marching flutter" % state)
+	var engaged: Array = []
+	for i in range(10):
+		var a: float = half_degree if i % 2 == 1 else 0.0
+		engaged.append(_snapshot(i * 2, slots.duplicate(), slots, true, "MOVING", [cos(a), sin(a)]))
+	assert_true(bool(_verdict(DemoDefects.analyze(engaged), "facing_flutter")["pass"]),
+			"a flip while marching in contact is contact jitter, not a steering defect")
+
+
 func test_flutter_verdict_fails_a_small_amplitude_flip_the_whipsaw_misses() -> void:
 	var slots: Array = _grid(6, 4, SPACING)
 	var snaps: Array = []

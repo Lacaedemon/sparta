@@ -27,7 +27,8 @@ extends RefCounted
 ##      compression (blobbing) and body overlap.
 ##
 ## plus per-series checks that need no reference geometry: facing whipsaw (direction
-## reversals while marching), sustained super-physical per-soldier speed vs the unit's
+## reversals while marching), facing flutter (back-to-back small reversals on dense
+## samples while marching out of contact), sustained super-physical per-soldier speed vs the unit's
 ## own gait caps, and slot misassignment (soldiers standing on each other's slots).
 ##
 ## Thresholds are expressed as fractions of the unit's OWN dumped constants (body
@@ -77,10 +78,13 @@ const WHIPSAW_MIN_SWING_DEG := 10.0
 ## Facing flutter: the small-amplitude counterpart of whipsaw. A defect can flip the facing
 ## back and forth every tick by well under WHIPSAW_MIN_SWING_DEG (a wide block's throttled
 ## pivot caps each swing near half a degree), which the whipsaw count never sees. Over
-## MOVING samples no more than FLUTTER_MAX_GAP_TICKS apart, a run of more than
-## FLUTTER_MAX_RUN back-to-back reversals, each step at least FLUTTER_MIN_SWING_DEG, is a
-## flutter verdict: a real turn, or an S-curve's few genuine direction changes, never
-## alternates sample after sample. Sparse transcripts (60-tick samples) never qualify.
+## MOVING samples out of contact (engaged or in enemy contact samples are skipped, as
+## contact jitter is not a steering defect) no more than FLUTTER_MAX_GAP_TICKS apart, more
+## than FLUTTER_MAX_RUN reversals in a row, each step at least FLUTTER_MIN_SWING_DEG, is a
+## flutter verdict. A turn, or an S-curve's few direction changes, rarely reverses on
+## consecutive samples; calibrated on the dense (per-tick) march transcripts the demo
+## inputs carry. A sub-floor step pauses a run rather than ending it. Sparse transcripts
+## (60-tick samples) never qualify, and a period-2 flip only shows on per-tick samples.
 const FLUTTER_MIN_SWING_DEG := 0.1
 const FLUTTER_MAX_GAP_TICKS := 4
 const FLUTTER_MAX_RUN := 3
@@ -245,8 +249,9 @@ static func facing_reversals(angles: Array, min_swing: float) -> int:
 
 
 ## Longest run of back-to-back facing reversals (each rotation step at least `min_swing`,
-## alternating sign with the step before it) across consecutive samples no more than
-## `max_gap` ticks apart. A sub-floor step, or a gap wider than `max_gap`, ends a run.
+## alternating sign with the last step that cleared the floor) across consecutive samples
+## no more than `max_gap` ticks apart. A gap wider than `max_gap` ends a run; a sub-floor
+## step is skipped without ending it.
 ## `ticks` and `angles` are index-aligned.
 static func longest_flutter_run(ticks: Array, angles: Array, min_swing: float, max_gap: int) -> int:
 	var best := 0
@@ -259,9 +264,7 @@ static func longest_flutter_run(ticks: Array, angles: Array, min_swing: float, m
 			continue
 		var step: float = angle_difference(float(angles[i - 1]), float(angles[i]))
 		if absf(step) < min_swing:
-			run = 0
-			prev_step = 0.0
-			continue
+			continue   # a held or sub-floor step pauses the run; it does not end it
 		if prev_step != 0.0 and signf(step) != signf(prev_step):
 			run += 1
 			best = maxi(best, run)
@@ -590,15 +593,18 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 
 	# Facing whipsaw while marching.
 	var moving_angles: Array = []
-	var moving_ticks: Array = []
+	var flutter_angles: Array = []
+	var flutter_ticks: Array = []
 	for i in range(n):
 		if s["moving"][i]:
 			moving_angles.append(s["facing_angle"][i])
-			moving_ticks.append(s["ticks"][i])
+			if not (bool(s["engaged"][i]) or bool(s["in_enemy_contact"][i])):
+				flutter_angles.append(s["facing_angle"][i])
+				flutter_ticks.append(s["ticks"][i])
 	var reversals: int = facing_reversals(moving_angles, deg_to_rad(WHIPSAW_MIN_SWING_DEG))
 	out.append({"uid": uid, "metric": "facing_whipsaw", "pass": reversals <= WHIPSAW_MAX_REVERSALS,
 			"worst": reversals, "threshold": WHIPSAW_MAX_REVERSALS})
-	var flutter: int = longest_flutter_run(moving_ticks, moving_angles,
+	var flutter: int = longest_flutter_run(flutter_ticks, flutter_angles,
 			deg_to_rad(FLUTTER_MIN_SWING_DEG), FLUTTER_MAX_GAP_TICKS)
 	out.append({"uid": uid, "metric": "facing_flutter", "pass": flutter <= FLUTTER_MAX_RUN,
 			"worst": flutter, "threshold": FLUTTER_MAX_RUN})
