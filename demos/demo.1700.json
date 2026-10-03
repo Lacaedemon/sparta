@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Numerical-precision fix with no visible change at play scale: the terrain overlap area is now clipped in a frame centred on the footprint, so a turned block already overlapping a hill and ordered straight along its edge is no longer pulled back a few wu (1 to 16 wu in the measured cases) by float32 rounding. The behaviour the player sees is the one already documented; the unit test test_a_turned_block_overlapping_a_hill_can_slide_along_its_edge pins it."
+}

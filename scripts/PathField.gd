@@ -112,10 +112,15 @@ func footprint_blocked(centre: Vector2, file_axis: Vector2, half: Vector2) -> bo
 ## the cells of the grid every relevant rect edge draws (coordinate compression), each
 ## cell is kept when any rect covers it, and the footprint is clipped against each kept
 ## cell. 0 for a clear footprint.
+## Everything is clipped in coordinates relative to the footprint's own centre: Vector2
+## holds 32-bit floats, and a shoelace sum over field-sized coordinates rounds by a large
+## fraction of a square wu, while one over the footprint's own half-extents stays exact to
+## far below OrderFootprint.AREA_SLACK. A footprint slid along a hill's edge must read the
+## same area it started with, or the overlapping-start rule would pull it back.
 func footprint_overlap_area(centre: Vector2, file_axis: Vector2, half: Vector2) -> float:
 	var u: Vector2 = file_axis * half.x
 	var v: Vector2 = file_axis.orthogonal() * half.y
-	var poly := PackedVector2Array([centre - u - v, centre + u - v, centre + u + v, centre - u + v])
+	var poly := PackedVector2Array([-u - v, u - v, u + v, -u + v])
 	var reach := Rect2(poly[0], Vector2.ZERO)
 	for corner in poly:
 		reach = reach.expand(corner)
@@ -123,10 +128,11 @@ func footprint_overlap_area(centre: Vector2, file_axis: Vector2, half: Vector2) 
 	var xs: Array[float] = []
 	var ys: Array[float] = []
 	for r in _block_rects:
-		if r.intersects(reach):
-			rects.append(r)
-			xs.append_array([r.position.x, r.end.x])
-			ys.append_array([r.position.y, r.end.y])
+		var local := Rect2(r.position - centre, r.size)
+		if local.intersects(reach):
+			rects.append(local)
+			xs.append_array([local.position.x, local.end.x])
+			ys.append_array([local.position.y, local.end.y])
 	xs.sort()
 	ys.sort()
 	var area: float = 0.0
@@ -135,11 +141,34 @@ func footprint_overlap_area(centre: Vector2, file_axis: Vector2, half: Vector2) 
 			var cell := Rect2(xs[i], ys[j], xs[i + 1] - xs[i], ys[j + 1] - ys[j])
 			if cell.size.x <= 0.0 or cell.size.y <= 0.0 or not _covered(rects, cell.get_center()):
 				continue
-			var cell_poly := PackedVector2Array([cell.position, Vector2(cell.end.x, cell.position.y),
-					cell.end, Vector2(cell.position.x, cell.end.y)])
-			for piece in Geometry2D.intersect_polygons(poly, cell_poly):
-				area += absf(_polygon_area(piece))
+			area += absf(_polygon_area(_clip_to_rect(poly, cell)))
 	return area
+
+
+## The convex polygon `poly` clipped to `rect` (Sutherland-Hodgman, one edge at a time).
+## Empty when they do not overlap.
+static func _clip_to_rect(poly: PackedVector2Array, rect: Rect2) -> PackedVector2Array:
+	poly = _clip_half_plane(poly, 0, rect.position.x, 1.0)
+	poly = _clip_half_plane(poly, 0, rect.end.x, -1.0)
+	poly = _clip_half_plane(poly, 1, rect.position.y, 1.0)
+	return _clip_half_plane(poly, 1, rect.end.y, -1.0)
+
+
+## `poly` clipped to the half-plane where `sign * (p[axis] - limit) >= 0`: axis 0 is x, 1 is y.
+static func _clip_half_plane(poly: PackedVector2Array, axis: int, limit: float,
+		sign: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var n: int = poly.size()
+	for i in range(n):
+		var a: Vector2 = poly[i]
+		var b: Vector2 = poly[(i + 1) % n]
+		var da: float = sign * (a[axis] - limit)
+		var db: float = sign * (b[axis] - limit)
+		if da >= 0.0:
+			out.push_back(a)
+		if (da >= 0.0) != (db >= 0.0):
+			out.push_back(a.lerp(b, da / (da - db)))
+	return out
 
 
 ## Whether any of `rects` contains `p`.
