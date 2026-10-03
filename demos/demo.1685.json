@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/deep-column-flank-grips-1685.json",
+  "caption": "#1685: a lone 80-horse cavalry column, 9 files wide and 9 ranks deep, is clicked to select it. Its two resize grips (the small yellow squares) now sit just past its east and west flanks, 180 wu either side of its centre, instead of out on the selection circle about 520 wu away in open ground. The east grip is then dragged further east, and the column widens to 16 files, reforming into a broader, shallower block from its fixed west edge, with the grips following its new flanks.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}

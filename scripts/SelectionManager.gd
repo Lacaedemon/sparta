@@ -28,7 +28,7 @@ const FLAG_HIT_PAD: float = 4.0
 
 # Frontage resize grips: small squares on a singly-selected unit's flanks. Drag one
 # to widen/narrow the line; the bracket keys do the same in single-file steps.
-const RESIZE_HANDLE_GAP: float = 10.0     # px the grip sits outside the block extent
+const RESIZE_HANDLE_GAP: float = 10.0     # px the grip sits past the flank soldier's body
 const RESIZE_HANDLE_SIZE: float = 6.0     # grip half-size (px)
 const RESIZE_HANDLE_HIT: float = 13.0     # cursor radius that grabs a grip (px)
 const RESIZE_HANDLE_COLOR: Color = Color(0.95, 0.95, 0.3, 0.9)   # match selection yellow
@@ -1803,9 +1803,9 @@ func _resize_handle_at(world_pos: Vector2):
 	return null
 
 
-## The flank grip a left press at `world_pos` grabs, or null. A grip sits at its block's
-## circumscribed extent plus a gap (see _resize_handle_positions), which for a deep block
-## lies far past its flank, so it can lie over a neighbouring unit; a press on another of
+## The flank grip a left press at `world_pos` grabs, or null. A grip sits just past its
+## block's flank (see _resize_handle_positions), so beside a neighbouring unit drawn up
+## close it can lie over that unit; a press on another of
 ## the player's units there is a click on that unit, not a grab. Otherwise the selected
 ## block's grip swallowed the click on the unit beside it: that unit was never selected,
 ## and the next order went to the block that still was. The grip's own block under the
@@ -1841,13 +1841,32 @@ func _single_selected_unit():
 
 
 ## World positions of a unit's two flank resize grips: out along its file axis, just
-## past the block extent, on each side -- of the block's actual footprint centre,
+## past the block's flank, on each side -- of the block's actual footprint centre,
 ## which a standing anchor offset shifts off the regiment point.
 func _resize_handle_positions(u) -> Array:
 	var right: Vector2 = _file_axis(u)
 	var block_centre: Vector2 = u.global_position + u.block_centre_offset()
-	var reach: float = u.render_block_extent() + RESIZE_HANDLE_GAP
+	var reach: float = _grip_reach(u)
 	return [block_centre + right * reach, block_centre - right * reach]
+
+
+## How far each grip sits from the block's footprint centre along the file axis: the
+## live slot grid's reach that way (the half-width and half-depth UnitFormation lays its
+## slots out on, turned by the grid's rotation, so a quarter-folded block still reads its
+## true width) plus a soldier's body radius and RESIZE_HANDLE_GAP. The block's isotropic
+## extent used to stand in for this, which put a deep block's grips hundreds of wu past
+## its flanks, out over open ground or the next unit. A unit cut below one full rank
+## stands only as wide as the men it has left, so the width counts those, not its
+## nominal frontage.
+func _grip_reach(u) -> float:
+	var files: int = maxi(1, u.formation_files(u.soldiers))
+	var ranks: int = UnitFormation.ranks_for(u.soldiers, files)
+	var standing_files: int = maxi(1, mini(files, u.soldiers))
+	var depth_pitch: float = u.file_pitch_wu() if u.in_square() else u.rank_pitch_wu()
+	var half := Vector2(float(standing_files - 1) * 0.5 * u.file_pitch_wu(),
+			float(maxi(0, ranks - 1)) * 0.5 * depth_pitch)
+	return FormationTier.support_reach(half, u.soldier_block_world_angle(), _file_axis(u)) \
+			+ u.soldier_body_radius() + RESIZE_HANDLE_GAP
 
 
 ## Unit vector along a regiment's file (width) axis in world space: its facing turned
@@ -2033,14 +2052,15 @@ func _track_grip_motion() -> bool:
 
 
 ## The grip geometry's current inputs: everything _resize_handle_positions reads
-## (position, facing, block extent, and the block's centre offset -- which moves
-## when an anchored drag commits or a standing offset swings with the heading),
-## or empty when no grips are showing.
+## (position, facing, the grips' reach -- which moves with the frontage, the headcount,
+## the pitches and a fold -- and the block's centre offset, which moves when an anchored
+## drag commits or a standing offset swings with the heading), or empty when no grips
+## are showing.
 func _current_grip_state() -> Array:
 	var u = _single_selected_unit()
 	if u == null:
 		return []
-	return [u.global_position, u.facing, u.render_block_extent(), u.block_centre_offset()]
+	return [u.global_position, u.facing, _grip_reach(u), u.block_centre_offset()]
 
 
 # --- control groups --------------------------------------------------------
@@ -2505,7 +2525,7 @@ func _draw_resize_handles() -> void:
 ## grid pitch -- `u.file_pitch_wu()`-aware, matching UnitFormation.files_for_halfwidth's
 ## inverse mapping (and UnitFormation.slots' actual layout) so a LOOSE unit's preview
 ## line spans its real formed-up width instead of the plain NORMAL-order spacing. Pure,
-## so the drag-start "no jump" invariant (matches _resize_handle_positions' extent when
+## so the drag-start "no jump" invariant (the line spans the committed frontage when
 ## `files` hasn't changed yet) is directly testable.
 func _resize_preview_half_width(u, files: int) -> float:
 	return float(files - 1) * 0.5 * u.file_pitch_wu()
