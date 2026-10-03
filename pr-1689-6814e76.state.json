@@ -1,0 +1,804 @@
+{
+  "ticks": [
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 0,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.0,
+            400.0
+          ],
+          "position_m": [
+            40.0,
+            20.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              320.0,
+              960.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.0,
+              406.0
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              16.0,
+              48.0
+            ],
+            "centroid_m": [
+              40.0,
+              20.3
+            ]
+          },
+          "soldiers": 80,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 120.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Holding position\nHP per man: 140 ±0 of 140\nStamina per man: 120 ±0 of 120\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 20,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.0,
+            400.0
+          ],
+          "position_m": [
+            40.0,
+            20.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              320.0,
+              960.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.0,
+              406.0
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              16.0,
+              48.0
+            ],
+            "centroid_m": [
+              40.0,
+              20.3
+            ]
+          },
+          "soldiers": 80,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 120.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Holding position\nHP per man: 140 ±0 of 140\nStamina per man: 120 ±0 of 120\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 40,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.0,
+            400.0
+          ],
+          "position_m": [
+            40.0,
+            20.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              320.0,
+              960.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.0,
+              406.0
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              16.0,
+              48.0
+            ],
+            "centroid_m": [
+              40.0,
+              20.3
+            ]
+          },
+          "soldiers": 80,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 120.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Holding position\nHP per man: 140 ±0 of 140\nStamina per man: 120 ±0 of 120\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 69,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.0,
+            400.0
+          ],
+          "position_m": [
+            40.0,
+            20.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              320.0,
+              960.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.0,
+              406.0
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              16.0,
+              48.0
+            ],
+            "centroid_m": [
+              40.0,
+              20.3
+            ]
+          },
+          "soldiers": 80,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 120.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 9 files\nOrder: Holding position\nHP per man: 140 ±0 of 140\nStamina per man: 120 ±0 of 120\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 80,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.0,
+            400.0
+          ],
+          "position_m": [
+            40.0,
+            20.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              320.0,
+              960.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.0,
+              406.0
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              16.0,
+              48.0
+            ],
+            "centroid_m": [
+              40.0,
+              20.3
+            ]
+          },
+          "soldiers": 80,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 120.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 16 files\nOrder: Holding position\nHP per man: 140 ±0 of 140\nStamina per man: 120 ±0 of 120\nGait: Auto\nSpeed: 1.5 m/s\nAccel: +1.3 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 140,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 16,
+          "in_enemy_contact": false,
+          "last_reshape_tick": 88,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.0,
+            400.0
+          ],
+          "position_m": [
+            40.0,
+            20.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              350.09,
+              941.86
+            ],
+            "broken_count": 0,
+            "centroid": [
+              803.11,
+              403.05
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              17.505,
+              47.093
+            ],
+            "centroid_m": [
+              40.155,
+              20.152
+            ]
+          },
+          "soldiers": 80,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 120.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 16 files\nOrder: Holding position\nHP per man: 140 ±0 of 140\nStamina per man: 120 ±0 of 120\nGait: Auto\nSpeed: 2.5 m/s\nAccel: -0.3 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 240,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 16,
+          "in_enemy_contact": false,
+          "last_reshape_tick": 88,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.0,
+            400.0
+          ],
+          "position_m": [
+            40.0,
+            20.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              522.34,
+              875.63
+            ],
+            "broken_count": 0,
+            "centroid": [
+              817.93,
+              404.32
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              26.117,
+              43.781
+            ],
+            "centroid_m": [
+              40.896,
+              20.216
+            ]
+          },
+          "soldiers": 80,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 120.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "2 x 6 m",
+        "info_text": "Cavalry 1\nType: Cavalry\nCommander: Decurion\nSoldiers: 80 / 80\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 60%\nFormation: 2 x 6 m\nWidth: 16 files\nOrder: Holding position\nHP per man: 140 ±0 of 140\nStamina per man: 120 ±0 of 120\nGait: Auto\nSpeed: 1.7 m/s\nAccel: +0.1 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 360,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 16,
+          "in_enemy_contact": false,
+          "last_reshape_tick": 88,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.0,
+            400.0
+          ],
+          "position_m": [
+            40.0,
+            20.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              627.69,
+              791.58
+            ],
+            "broken_count": 0,
+            "centroid": [
+              835.02,
+              404.67
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              31.385,
+              39.579
+            ],
+            "centroid_m": [
+              41.751,
+              20.233
+            ]
+          },
+          "soldiers": 80,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 120.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,3388 @@
+{
+  "ticks": [
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m (pyknosis)",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.9 m (pyknosis)\nWidth: 9 files (16/file)\nOrder: Holding position\nFaction: Sparta (Laconian)\nDoctrine: Phalanx Shock Push (othismos)\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 16,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            260.0
+          ],
+          "position_m": [
+            28.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              144.0,
+              270.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              263.86
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.2,
+              13.5
+            ],
+            "centroid_m": [
+              28.0,
+              13.193
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            260.0
+          ],
+          "position_m": [
+            47.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              101.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              261.45
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              5.063
+            ],
+            "centroid_m": [
+              47.0,
+              13.072
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            700.0
+          ],
+          "position_m": [
+            28.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.6,
+              6.3
+            ],
+            "centroid_m": [
+              28.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            700.0
+          ],
+          "position_m": [
+            47.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              94.5,
+              47.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.725,
+              2.363
+            ],
+            "centroid_m": [
+              47.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m (pyknosis)",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.9 m (pyknosis)\nWidth: 9 files (16/file)\nOrder: Holding position\nFaction: Sparta (Laconian)\nDoctrine: Phalanx Shock Push (othismos)\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 50,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            260.0
+          ],
+          "position_m": [
+            28.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              144.0,
+              270.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              263.86
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.2,
+              13.5
+            ],
+            "centroid_m": [
+              28.0,
+              13.193
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            260.0
+          ],
+          "position_m": [
+            47.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              101.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              261.45
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              5.063
+            ],
+            "centroid_m": [
+              47.0,
+              13.072
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            700.0
+          ],
+          "position_m": [
+            28.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.6,
+              6.3
+            ],
+            "centroid_m": [
+              28.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            700.0
+          ],
+          "position_m": [
+            47.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              94.5,
+              47.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.725,
+              2.363
+            ],
+            "centroid_m": [
+              47.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m (pyknosis)",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.9 m (pyknosis)\nWidth: 9 files (16/file)\nOrder: Holding position\nFaction: Sparta (Laconian)\nDoctrine: Phalanx Shock Push (othismos)\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 80,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            260.0
+          ],
+          "position_m": [
+            28.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              144.0,
+              270.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              263.86
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.2,
+              13.5
+            ],
+            "centroid_m": [
+              28.0,
+              13.193
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            260.0
+          ],
+          "position_m": [
+            47.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              101.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              261.45
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              5.063
+            ],
+            "centroid_m": [
+              47.0,
+              13.072
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            700.0
+          ],
+          "position_m": [
+            28.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.6,
+              6.3
+            ],
+            "centroid_m": [
+              28.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            700.0
+          ],
+          "position_m": [
+            47.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              94.5,
+              47.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.725,
+              2.363
+            ],
+            "centroid_m": [
+              47.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.34 m Shield Wall (phalanx)",
+        "info_text": "Spearmen 2\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.34 m Shield Wall (phalanx)\nWidth: 9 files (16/file)\nOrder: Holding position\nFaction: Sparta (Laconian)\nDoctrine: Phalanx Shock Push (othismos)\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 1,
+        "stance_text": "Normal"
+      },
+      "tick": 94,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            260.0
+          ],
+          "position_m": [
+            28.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              144.0,
+              270.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              263.86
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.2,
+              13.5
+            ],
+            "centroid_m": [
+              28.0,
+              13.193
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            260.0
+          ],
+          "position_m": [
+            47.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              101.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              261.45
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              5.063
+            ],
+            "centroid_m": [
+              47.0,
+              13.072
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            700.0
+          ],
+          "position_m": [
+            28.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.6,
+              6.3
+            ],
+            "centroid_m": [
+              28.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            700.0
+          ],
+          "position_m": [
+            47.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              94.5,
+              47.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.725,
+              2.363
+            ],
+            "centroid_m": [
+              47.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.34 m Shield Wall (phalanx)",
+        "info_text": "Spearmen 2\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.34 m Shield Wall (phalanx)\nWidth: 9 files (16/file)\nOrder: Holding position\nFaction: Sparta (Laconian)\nDoctrine: Phalanx Shock Push (othismos)\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 1,
+        "stance_text": "Normal"
+      },
+      "tick": 130,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            260.0
+          ],
+          "position_m": [
+            28.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              144.0,
+              270.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              263.86
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.2,
+              13.5
+            ],
+            "centroid_m": [
+              28.0,
+              13.193
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            260.0
+          ],
+          "position_m": [
+            47.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              101.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              261.45
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              5.063
+            ],
+            "centroid_m": [
+              47.0,
+              13.072
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            700.0
+          ],
+          "position_m": [
+            28.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.6,
+              6.3
+            ],
+            "centroid_m": [
+              28.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            700.0
+          ],
+          "position_m": [
+            47.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              94.5,
+              47.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.725,
+              2.363
+            ],
+            "centroid_m": [
+              47.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.34 m Shield Wall (phalanx)",
+        "info_text": "Spearmen 2\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.34 m Shield Wall (phalanx)\nWidth: 9 files (16/file)\nOrder: Holding position\nFaction: Sparta (Laconian)\nDoctrine: Phalanx Shock Push (othismos)\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 1,
+        "stance_text": "Normal"
+      },
+      "tick": 160,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            260.0
+          ],
+          "position_m": [
+            28.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              144.0,
+              270.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              263.86
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.2,
+              13.5
+            ],
+            "centroid_m": [
+              28.0,
+              13.193
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            260.0
+          ],
+          "position_m": [
+            47.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              101.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              261.45
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              5.063
+            ],
+            "centroid_m": [
+              47.0,
+              13.072
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            700.0
+          ],
+          "position_m": [
+            28.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.6,
+              6.3
+            ],
+            "centroid_m": [
+              28.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            700.0
+          ],
+          "position_m": [
+            47.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              94.5,
+              47.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.725,
+              2.363
+            ],
+            "centroid_m": [
+              47.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m (acies)",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m (acies)\nWidth: 15 files\nOrder: Holding position\nFaction: Rome (Latin / Roman)\nDoctrine: Manipular Line Rotation (acies triplex)\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 2,
+        "stance_text": "Normal"
+      },
+      "tick": 174,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            260.0
+          ],
+          "position_m": [
+            28.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              144.0,
+              270.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              263.86
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.2,
+              13.5
+            ],
+            "centroid_m": [
+              28.0,
+              13.193
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            260.0
+          ],
+          "position_m": [
+            47.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              101.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              261.45
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              5.063
+            ],
+            "centroid_m": [
+              47.0,
+              13.072
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            700.0
+          ],
+          "position_m": [
+            28.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.6,
+              6.3
+            ],
+            "centroid_m": [
+              28.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            700.0
+          ],
+          "position_m": [
+            47.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              94.5,
+              47.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.725,
+              2.363
+            ],
+            "centroid_m": [
+              47.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m (acies)",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m (acies)\nWidth: 15 files\nOrder: Holding position\nFaction: Rome (Latin / Roman)\nDoctrine: Manipular Line Rotation (acies triplex)\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 2,
+        "stance_text": "Normal"
+      },
+      "tick": 210,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            260.0
+          ],
+          "position_m": [
+            28.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              144.0,
+              270.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              263.86
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.2,
+              13.5
+            ],
+            "centroid_m": [
+              28.0,
+              13.193
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            260.0
+          ],
+          "position_m": [
+            47.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              101.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              261.45
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              5.063
+            ],
+            "centroid_m": [
+              47.0,
+              13.072
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            700.0
+          ],
+          "position_m": [
+            28.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.6,
+              6.3
+            ],
+            "centroid_m": [
+              28.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            700.0
+          ],
+          "position_m": [
+            47.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              94.5,
+              47.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.725,
+              2.363
+            ],
+            "centroid_m": [
+              47.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.9 m (acies)",
+        "info_text": "Infantry 1\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.9 m (acies)\nWidth: 15 files\nOrder: Holding position\nFaction: Rome (Latin / Roman)\nDoctrine: Manipular Line Rotation (acies triplex)\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 2,
+        "stance_text": "Normal"
+      },
+      "tick": 240,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            260.0
+          ],
+          "position_m": [
+            28.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              144.0,
+              270.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              263.86
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.2,
+              13.5
+            ],
+            "centroid_m": [
+              28.0,
+              13.193
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            260.0
+          ],
+          "position_m": [
+            47.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              101.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              261.45
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              5.063
+            ],
+            "centroid_m": [
+              47.0,
+              13.072
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            700.0
+          ],
+          "position_m": [
+            28.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.6,
+              6.3
+            ],
+            "centroid_m": [
+              28.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            700.0
+          ],
+          "position_m": [
+            47.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              94.5,
+              47.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.725,
+              2.363
+            ],
+            "centroid_m": [
+              47.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.34 m Shield Wall (scuta undique)",
+        "info_text": "Infantry 2\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.34 m Shield Wall (scuta undique)\nWidth: 15 files\nOrder: Holding position\nFaction: Rome (Latin / Roman)\nDoctrine: Manipular Line Rotation (acies triplex)\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 3,
+        "stance_text": "Normal"
+      },
+      "tick": 254,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            260.0
+          ],
+          "position_m": [
+            28.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              144.0,
+              270.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              263.86
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.2,
+              13.5
+            ],
+            "centroid_m": [
+              28.0,
+              13.193
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            260.0
+          ],
+          "position_m": [
+            47.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              101.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              261.45
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              5.063
+            ],
+            "centroid_m": [
+              47.0,
+              13.072
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            700.0
+          ],
+          "position_m": [
+            28.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.6,
+              6.3
+            ],
+            "centroid_m": [
+              28.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            700.0
+          ],
+          "position_m": [
+            47.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              94.5,
+              47.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.725,
+              2.363
+            ],
+            "centroid_m": [
+              47.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.34 m Shield Wall (scuta undique)",
+        "info_text": "Infantry 2\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.34 m Shield Wall (scuta undique)\nWidth: 15 files\nOrder: Holding position\nFaction: Rome (Latin / Roman)\nDoctrine: Manipular Line Rotation (acies triplex)\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 3,
+        "stance_text": "Normal"
+      },
+      "tick": 290,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            260.0
+          ],
+          "position_m": [
+            28.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              144.0,
+              270.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              263.86
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.2,
+              13.5
+            ],
+            "centroid_m": [
+              28.0,
+              13.193
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            260.0
+          ],
+          "position_m": [
+            47.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              101.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              261.45
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              5.063
+            ],
+            "centroid_m": [
+              47.0,
+              13.072
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            700.0
+          ],
+          "position_m": [
+            28.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.6,
+              6.3
+            ],
+            "centroid_m": [
+              28.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            700.0
+          ],
+          "position_m": [
+            47.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              94.5,
+              47.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.725,
+              2.363
+            ],
+            "centroid_m": [
+              47.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.34 m Shield Wall (scuta undique)",
+        "info_text": "Infantry 2\nType: Infantry\nCommander: Centurion\nSoldiers: 120 / 120\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 50%\nFormation: 0.34 m Shield Wall (scuta undique)\nWidth: 15 files\nOrder: Holding position\nFaction: Rome (Latin / Roman)\nDoctrine: Manipular Line Rotation (acies triplex)\nHP per man: 110 ±0 of 110\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 3,
+        "stance_text": "Normal"
+      },
+      "tick": 320,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            260.0
+          ],
+          "position_m": [
+            28.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              144.0,
+              270.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              263.86
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.2,
+              13.5
+            ],
+            "centroid_m": [
+              28.0,
+              13.193
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            260.0
+          ],
+          "position_m": [
+            47.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              101.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              261.45
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              5.063
+            ],
+            "centroid_m": [
+              47.0,
+              13.072
+            ]
+          },
+          "soldiers": 140,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            560.0,
+            700.0
+          ],
+          "position_m": [
+            28.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              560.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.6,
+              6.3
+            ],
+            "centroid_m": [
+              28.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 6.75,
+          "formation": "SHIELD_WALL",
+          "formation_label": "0.34 m Shield Wall",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            940.0,
+            700.0
+          ],
+          "position_m": [
+            47.0,
+            35.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 6.75,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              94.5,
+              47.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              940.0,
+              700.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.725,
+              2.363
+            ],
+            "centroid_m": [
+              47.0,
+              35.0
+            ]
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    }
+  ]
+}

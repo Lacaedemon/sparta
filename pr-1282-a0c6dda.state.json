@@ -1,0 +1,1309 @@
+{
+  "ticks": [
+    {
+      "tick": 30,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "SQUARE",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 9.7,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.07,
+            683.37
+          ],
+          "position_m": [
+            40.003,
+            34.168
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              62.16
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.1,
+              699.09
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.108
+            ],
+            "centroid_m": [
+              40.005,
+              34.954
+            ]
+          },
+          "soldiers": 60,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            260.0,
+            260.0
+          ],
+          "position_m": [
+            13.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 12,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.0,
+            1150.0
+          ],
+          "position_m": [
+            40.0,
+            57.5
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 80,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 2,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "tick": 120,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "SQUARE",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 20.8,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.26,
+            647.9
+          ],
+          "position_m": [
+            40.013,
+            32.395
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              61.19
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.27,
+              661.41
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.06
+            ],
+            "centroid_m": [
+              40.013,
+              33.07
+            ]
+          },
+          "soldiers": 60,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            260.0,
+            260.0
+          ],
+          "position_m": [
+            13.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 12,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.01,
+            1128.92
+          ],
+          "position_m": [
+            40.001,
+            56.446
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 80,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 2,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "tick": 240,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "SQUARE",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 30.3,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.27,
+            591.82
+          ],
+          "position_m": [
+            40.013,
+            29.591
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              62.78
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.27,
+              605.31
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.139
+            ],
+            "centroid_m": [
+              40.013,
+              30.266
+            ]
+          },
+          "soldiers": 60,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            260.0,
+            260.0
+          ],
+          "position_m": [
+            13.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 12,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.03,
+            1084.91
+          ],
+          "position_m": [
+            40.002,
+            54.246
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 80,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 2,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "tick": 300,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "SQUARE",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 33.6,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.27,
+            563.76
+          ],
+          "position_m": [
+            40.013,
+            28.188
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              62.93
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.27,
+              577.25
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.146
+            ],
+            "centroid_m": [
+              40.013,
+              28.863
+            ]
+          },
+          "soldiers": 60,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            260.0,
+            260.0
+          ],
+          "position_m": [
+            13.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 12,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.04,
+            1062.91
+          ],
+          "position_m": [
+            40.002,
+            53.145
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 80,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 2,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "tick": 330,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "SQUARE",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 34.9,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.27,
+            549.73
+          ],
+          "position_m": [
+            40.013,
+            27.487
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              62.96
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.27,
+              563.22
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.148
+            ],
+            "centroid_m": [
+              40.013,
+              28.161
+            ]
+          },
+          "soldiers": 60,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            260.0,
+            260.0
+          ],
+          "position_m": [
+            13.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 12,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.05,
+            1051.91
+          ],
+          "position_m": [
+            40.002,
+            52.595
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 80,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 2,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "tick": 345,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "SQUARE",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 35.4,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.27,
+            557.46
+          ],
+          "position_m": [
+            40.013,
+            27.873
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              63.83
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.26,
+              557.64
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.191
+            ],
+            "centroid_m": [
+              40.013,
+              27.882
+            ]
+          },
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            260.0,
+            260.0
+          ],
+          "position_m": [
+            13.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 12,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.05,
+            1046.41
+          ],
+          "position_m": [
+            40.003,
+            52.32
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 80,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 2,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "tick": 375,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "SQUARE",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 36.4,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.26,
+            557.9
+          ],
+          "position_m": [
+            40.013,
+            27.895
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              63.01,
+              66.7
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.26,
+              555.79
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.151,
+              3.335
+            ],
+            "centroid_m": [
+              40.013,
+              27.789
+            ]
+          },
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            260.0,
+            260.0
+          ],
+          "position_m": [
+            13.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 12,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.06,
+            1035.41
+          ],
+          "position_m": [
+            40.003,
+            51.77
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 80,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 2,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "tick": 405,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "SQUARE",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 37.4,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.26,
+            559.13
+          ],
+          "position_m": [
+            40.013,
+            27.957
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              65.7
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.26,
+              557.48
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.285
+            ],
+            "centroid_m": [
+              40.013,
+              27.874
+            ]
+          },
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            260.0,
+            260.0
+          ],
+          "position_m": [
+            13.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 12,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.06,
+            1024.41
+          ],
+          "position_m": [
+            40.003,
+            51.22
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 80,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 2,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "tick": 450,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "SQUARE",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 38.9,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.26,
+            560.36
+          ],
+          "position_m": [
+            40.013,
+            28.018
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              63.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.26,
+              558.3
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.15
+            ],
+            "centroid_m": [
+              40.013,
+              27.915
+            ]
+          },
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            260.0,
+            260.0
+          ],
+          "position_m": [
+            13.0,
+            13.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "FAR",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 12,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.07,
+            1007.91
+          ],
+          "position_m": [
+            40.004,
+            50.395
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldiers": 80,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "FAR",
+          "uid": 2,
+          "weapon": "Spear"
+        }
+      ]
+    }
+  ]
+}

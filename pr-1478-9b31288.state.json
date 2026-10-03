@@ -1,0 +1,3106 @@
+{
+  "ticks": [
+    {
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 10,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 7,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            480.0,
+            480.0
+          ],
+          "position_m": [
+            24.0,
+            24.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              480.09,
+              483.15
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              6.3
+            ],
+            "centroid_m": [
+              24.004,
+              24.157
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 7,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            600.0,
+            480.0
+          ],
+          "position_m": [
+            30.0,
+            24.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              600.09,
+              483.15
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              6.3
+            ],
+            "centroid_m": [
+              30.005,
+              24.157
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 7,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            720.0,
+            480.0
+          ],
+          "position_m": [
+            36.0,
+            24.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              720.09,
+              483.15
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              6.3
+            ],
+            "centroid_m": [
+              36.005,
+              24.157
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 7,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 4",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            840.0,
+            480.0
+          ],
+          "position_m": [
+            42.0,
+            24.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              840.09,
+              483.15
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              6.3
+            ],
+            "centroid_m": [
+              42.005,
+              24.157
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1  (+3 more)\nType: Spearmen\nCommander: Centurion\nSoldiers: 100 / 100\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 15 files\nOrder: Re-forming\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.1 m/s\nAccel: +1.5 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 40,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            479.87,
+            480.61
+          ],
+          "position_m": [
+            23.993,
+            24.031
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.16,
+              125.91
+            ],
+            "broken_count": 0,
+            "centroid": [
+              480.06,
+              483.13
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.708,
+              6.295
+            ],
+            "centroid_m": [
+              24.003,
+              24.156
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            599.87,
+            480.61
+          ],
+          "position_m": [
+            29.993,
+            24.031
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.16,
+              125.91
+            ],
+            "broken_count": 0,
+            "centroid": [
+              600.06,
+              483.13
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.708,
+              6.295
+            ],
+            "centroid_m": [
+              30.003,
+              24.156
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 3",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            719.87,
+            480.61
+          ],
+          "position_m": [
+            35.993,
+            24.031
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.16,
+              125.91
+            ],
+            "broken_count": 0,
+            "centroid": [
+              720.06,
+              483.13
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.708,
+              6.295
+            ],
+            "centroid_m": [
+              36.003,
+              24.156
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 4",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            839.87,
+            480.61
+          ],
+          "position_m": [
+            41.994,
+            24.031
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              54.16,
+              125.91
+            ],
+            "broken_count": 0,
+            "centroid": [
+              840.06,
+              483.13
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.708,
+              6.295
+            ],
+            "centroid_m": [
+              42.003,
+              24.156
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1  (+3 more)\nType: Spearmen\nCommander: Centurion\nSoldiers: 100 / 100\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 15 files\nOrder: Re-forming\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 1.4 m/s\nAccel: -0.2 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 120,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            469.94,
+            477.55
+          ],
+          "position_m": [
+            23.497,
+            23.877
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              107.72,
+              103.87
+            ],
+            "broken_count": 0,
+            "centroid": [
+              468.23,
+              478.31
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.386,
+              5.194
+            ],
+            "centroid_m": [
+              23.411,
+              23.915
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            589.94,
+            477.55
+          ],
+          "position_m": [
+            29.497,
+            23.877
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              107.72,
+              103.87
+            ],
+            "broken_count": 0,
+            "centroid": [
+              588.23,
+              478.31
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.386,
+              5.194
+            ],
+            "centroid_m": [
+              29.411,
+              23.915
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 3",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            709.94,
+            477.55
+          ],
+          "position_m": [
+            35.497,
+            23.877
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              107.72,
+              103.87
+            ],
+            "broken_count": 0,
+            "centroid": [
+              708.23,
+              478.31
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.386,
+              5.194
+            ],
+            "centroid_m": [
+              35.411,
+              23.915
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 4",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            829.94,
+            477.55
+          ],
+          "position_m": [
+            41.497,
+            23.877
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              107.72,
+              103.87
+            ],
+            "broken_count": 0,
+            "centroid": [
+              828.23,
+              478.31
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              5.386,
+              5.194
+            ],
+            "centroid_m": [
+              41.411,
+              23.915
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1  (+3 more)\nType: Spearmen\nCommander: Centurion\nSoldiers: 100 / 100\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 15 files\nOrder: Re-forming\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 1.0 m/s\nAccel: +0.1 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 240,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            443.01,
+            469.28
+          ],
+          "position_m": [
+            22.15,
+            23.464
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              161.06,
+              60.43
+            ],
+            "broken_count": 0,
+            "centroid": [
+              441.55,
+              470.19
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.053,
+              3.021
+            ],
+            "centroid_m": [
+              22.077,
+              23.509
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            564.13,
+            469.29
+          ],
+          "position_m": [
+            28.206,
+            23.465
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              160.99,
+              60.86
+            ],
+            "broken_count": 0,
+            "centroid": [
+              562.96,
+              470.18
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.05,
+              3.043
+            ],
+            "centroid_m": [
+              28.148,
+              23.509
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 3",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            684.13,
+            469.29
+          ],
+          "position_m": [
+            34.207,
+            23.465
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              160.98,
+              60.9
+            ],
+            "broken_count": 0,
+            "centroid": [
+              682.96,
+              470.18
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.049,
+              3.045
+            ],
+            "centroid_m": [
+              34.148,
+              23.509
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 4",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            804.64,
+            469.18
+          ],
+          "position_m": [
+            40.232,
+            23.459
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              162.22,
+              60.88
+            ],
+            "broken_count": 0,
+            "centroid": [
+              803.58,
+              470.08
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.111,
+              3.044
+            ],
+            "centroid_m": [
+              40.179,
+              23.504
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1  (+3 more)\nType: Spearmen\nCommander: Centurion\nSoldiers: 100 / 100\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 15 files\nOrder: Re-forming\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.9 m/s\nAccel: -0.1 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 360,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            416.19,
+            464.67
+          ],
+          "position_m": [
+            20.81,
+            23.233
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              171.28,
+              62.62
+            ],
+            "broken_count": 0,
+            "centroid": [
+              415.48,
+              465.89
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.564,
+              3.131
+            ],
+            "centroid_m": [
+              20.774,
+              23.295
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            543.31,
+            464.63
+          ],
+          "position_m": [
+            27.166,
+            23.231
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              174.99,
+              65.86
+            ],
+            "broken_count": 0,
+            "centroid": [
+              542.8,
+              465.95
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.75,
+              3.293
+            ],
+            "centroid_m": [
+              27.14,
+              23.297
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 3",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            663.44,
+            464.6
+          ],
+          "position_m": [
+            33.172,
+            23.23
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              173.17,
+              63.07
+            ],
+            "broken_count": 0,
+            "centroid": [
+              662.93,
+              465.93
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.659,
+              3.153
+            ],
+            "centroid_m": [
+              33.147,
+              23.296
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 4",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            783.47,
+            464.73
+          ],
+          "position_m": [
+            39.174,
+            23.237
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              139.21,
+              61.47
+            ],
+            "broken_count": 0,
+            "centroid": [
+              782.6,
+              466.09
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.961,
+              3.073
+            ],
+            "centroid_m": [
+              39.13,
+              23.305
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1  (+3 more)\nType: Spearmen\nCommander: Centurion\nSoldiers: 100 / 100\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 15 files\nOrder: Re-forming\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.3 m/s\nAccel: -0.1 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 480,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            412.76,
+            463.95
+          ],
+          "position_m": [
+            20.638,
+            23.197
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              136.0,
+              66.49
+            ],
+            "broken_count": 0,
+            "centroid": [
+              413.58,
+              465.25
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.8,
+              3.325
+            ],
+            "centroid_m": [
+              20.679,
+              23.262
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            536.68,
+            463.92
+          ],
+          "position_m": [
+            26.834,
+            23.196
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              154.91,
+              64.54
+            ],
+            "broken_count": 0,
+            "centroid": [
+              537.04,
+              465.21
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.746,
+              3.227
+            ],
+            "centroid_m": [
+              26.852,
+              23.26
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 3",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            656.45,
+            464.56
+          ],
+          "position_m": [
+            32.823,
+            23.228
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              143.99,
+              66.88
+            ],
+            "broken_count": 0,
+            "centroid": [
+              656.75,
+              465.86
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.199,
+              3.344
+            ],
+            "centroid_m": [
+              32.837,
+              23.293
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 4",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            773.31,
+            464.84
+          ],
+          "position_m": [
+            38.665,
+            23.242
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              140.3,
+              57.83
+            ],
+            "broken_count": 0,
+            "centroid": [
+              773.34,
+              466.18
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.015,
+              2.891
+            ],
+            "centroid_m": [
+              38.667,
+              23.309
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1  (+3 more)\nType: Spearmen\nCommander: Centurion\nSoldiers: 100 / 100\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 15 files\nOrder: Re-forming\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.1 m/s\nAccel: +1.1 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 600,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            418.54,
+            464.17
+          ],
+          "position_m": [
+            20.927,
+            23.208
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              125.45,
+              54.36
+            ],
+            "broken_count": 0,
+            "centroid": [
+              419.1,
+              465.49
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.273,
+              2.718
+            ],
+            "centroid_m": [
+              20.955,
+              23.275
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            534.58,
+            464.21
+          ],
+          "position_m": [
+            26.729,
+            23.21
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              127.58,
+              56.88
+            ],
+            "broken_count": 0,
+            "centroid": [
+              534.66,
+              465.58
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.379,
+              2.844
+            ],
+            "centroid_m": [
+              26.733,
+              23.279
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 3",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            654.81,
+            464.72
+          ],
+          "position_m": [
+            32.74,
+            23.236
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              127.14,
+              59.52
+            ],
+            "broken_count": 0,
+            "centroid": [
+              655.01,
+              466.11
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.357,
+              2.976
+            ],
+            "centroid_m": [
+              32.75,
+              23.305
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 4",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            768.9,
+            465.73
+          ],
+          "position_m": [
+            38.445,
+            23.287
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              126.45,
+              57.39
+            ],
+            "broken_count": 0,
+            "centroid": [
+              769.11,
+              467.14
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.323,
+              2.87
+            ],
+            "centroid_m": [
+              38.455,
+              23.357
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1  (+3 more)\nType: Spearmen\nCommander: Centurion\nSoldiers: 100 / 100\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 15 files\nOrder: Moving to (386, 596)\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.7 m/s\nAccel: +0.8 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 750,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            415.42,
+            475.63
+          ],
+          "position_m": [
+            20.771,
+            23.781
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              126.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              415.82,
+              477.15
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.3,
+              2.7
+            ],
+            "centroid_m": [
+              20.791,
+              23.858
+            ]
+          },
+          "soldiers": 100,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            529.85,
+            464.03
+          ],
+          "position_m": [
+            26.493,
+            23.202
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              126.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              530.23,
+              465.39
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.3,
+              2.7
+            ],
+            "centroid_m": [
+              26.512,
+              23.269
+            ]
+          },
+          "soldiers": 100,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 13.7,
+          "current_speed_mps": 0.683,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 3",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            652.94,
+            468.95
+          ],
+          "position_m": [
+            32.647,
+            23.447
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              132.04,
+              54.66
+            ],
+            "broken_count": 0,
+            "centroid": [
+              653.52,
+              470.07
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.602,
+              2.733
+            ],
+            "centroid_m": [
+              32.676,
+              23.504
+            ]
+          },
+          "soldiers": 100,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 4",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            768.59,
+            479.79
+          ],
+          "position_m": [
+            38.429,
+            23.989
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              128.52,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              768.96,
+              481.19
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.426,
+              2.7
+            ],
+            "centroid_m": [
+              38.448,
+              24.059
+            ]
+          },
+          "soldiers": 100,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1  (+3 more)\nType: Spearmen\nCommander: Centurion\nSoldiers: 100 / 100\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 15 files\nOrder: Moving to (386, 596)\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.7 m/s\nAccel: -3.8 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 900,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            408.29,
+            509.21
+          ],
+          "position_m": [
+            20.414,
+            25.46
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              128.84,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              408.76,
+              510.8
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.442,
+              2.7
+            ],
+            "centroid_m": [
+              20.438,
+              25.54
+            ]
+          },
+          "soldiers": 100,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            526.76,
+            501.48
+          ],
+          "position_m": [
+            26.338,
+            25.074
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              130.7,
+              54.01
+            ],
+            "broken_count": 0,
+            "centroid": [
+              527.19,
+              502.93
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.535,
+              2.7
+            ],
+            "centroid_m": [
+              26.359,
+              25.147
+            ]
+          },
+          "soldiers": 100,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 3",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            652.4,
+            523.31
+          ],
+          "position_m": [
+            32.62,
+            26.166
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              131.11,
+              54.28
+            ],
+            "broken_count": 0,
+            "centroid": [
+              652.82,
+              524.96
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.556,
+              2.714
+            ],
+            "centroid_m": [
+              32.641,
+              26.248
+            ]
+          },
+          "soldiers": 100,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 4",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            772.46,
+            538.5
+          ],
+          "position_m": [
+            38.623,
+            26.925
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              126.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              772.95,
+              540.11
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.3,
+              2.7
+            ],
+            "centroid_m": [
+              38.647,
+              27.005
+            ]
+          },
+          "soldiers": 100,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1  (+3 more)\nType: Spearmen\nCommander: Centurion\nSoldiers: 100 / 100\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 15 files\nOrder: Moving to (386, 596)\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.7 m/s\nAccel: +1.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 1000,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            402.95,
+            532.5
+          ],
+          "position_m": [
+            20.147,
+            26.625
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              129.05,
+              54.54
+            ],
+            "broken_count": 0,
+            "centroid": [
+              403.41,
+              533.98
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.452,
+              2.727
+            ],
+            "centroid_m": [
+              20.171,
+              26.699
+            ]
+          },
+          "soldiers": 100,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            524.37,
+            539.19
+          ],
+          "position_m": [
+            26.219,
+            26.959
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              133.04,
+              54.45
+            ],
+            "broken_count": 0,
+            "centroid": [
+              524.83,
+              540.71
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.652,
+              2.723
+            ],
+            "centroid_m": [
+              26.242,
+              27.036
+            ]
+          },
+          "soldiers": 100,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 3",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            650.83,
+            563.22
+          ],
+          "position_m": [
+            32.541,
+            28.161
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              129.72,
+              54.23
+            ],
+            "broken_count": 0,
+            "centroid": [
+              651.26,
+              564.86
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.486,
+              2.712
+            ],
+            "centroid_m": [
+              32.563,
+              28.243
+            ]
+          },
+          "soldiers": 100,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 4",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            775.93,
+            578.05
+          ],
+          "position_m": [
+            38.797,
+            28.902
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              127.45,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              776.37,
+              579.68
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.372,
+              2.7
+            ],
+            "centroid_m": [
+              38.819,
+              28.984
+            ]
+          },
+          "soldiers": 100,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1  (+3 more)\nType: Spearmen\nCommander: Centurion\nSoldiers: 100 / 100\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 15 files\nOrder: Moving to (386, 596)\nHP per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.7 m/s\nAccel: +0.5 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 1100,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            397.09,
+            555.63
+          ],
+          "position_m": [
+            19.855,
+            27.782
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              127.79,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              397.53,
+              557.14
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.39,
+              2.7
+            ],
+            "centroid_m": [
+              19.877,
+              27.857
+            ]
+          },
+          "soldiers": 100,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            522.07,
+            578.08
+          ],
+          "position_m": [
+            26.103,
+            28.904
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              131.21,
+              54.01
+            ],
+            "broken_count": 0,
+            "centroid": [
+              522.49,
+              579.62
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.56,
+              2.701
+            ],
+            "centroid_m": [
+              26.124,
+              28.981
+            ]
+          },
+          "soldiers": 100,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 2.8,
+          "current_speed_mps": 0.141,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 3",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            650.02,
+            595.46
+          ],
+          "position_m": [
+            32.501,
+            29.773
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              132.65,
+              55.98
+            ],
+            "broken_count": 0,
+            "centroid": [
+              650.45,
+              597.33
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.633,
+              2.799
+            ],
+            "centroid_m": [
+              32.523,
+              29.867
+            ]
+          },
+          "soldiers": 100,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Spear"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 15,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 4",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            778.93,
+            617.65
+          ],
+          "position_m": [
+            38.947,
+            30.883
+          ],
+          "queue_tail": [],
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              129.51,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              779.39,
+              619.28
+            ],
+            "count": 100,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.475,
+              2.7
+            ],
+            "centroid_m": [
+              38.97,
+              30.964
+            ]
+          },
+          "soldiers": 100,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Spear"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,488 @@
+{
+  "ticks": [
+    {
+      "tick": 10,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 6.7,
+          "current_speed_mps": 0.333,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 11,
+          "maneuver": "MARCHING",
+          "morale": 3.3,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1249.39,
+            620.0
+          ],
+          "position_m": [
+            62.469,
+            31.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              200.0,
+              300.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1249.39,
+              635.0
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.0,
+              15.0
+            ],
+            "centroid_m": [
+              62.47,
+              31.75
+            ]
+          },
+          "soldiers": 60,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Cavalry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1080.0,
+            620.0
+          ],
+          "position_m": [
+            54.0,
+            31.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              220.0,
+              360.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1080.0,
+              611.0
+            ],
+            "count": 80,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              11.0,
+              18.0
+            ],
+            "centroid_m": [
+              54.0,
+              30.55
+            ]
+          },
+          "soldiers": 80,
+          "state": "IDLE",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 120,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 70.7,
+          "current_speed_mps": 3.533,
+          "engaged": true,
+          "facing": [
+            -0.92,
+            0.4
+          ],
+          "formation": "NORMAL",
+          "frontage": 11,
+          "maneuver": "IDLE",
+          "morale": -8.5,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1181.55,
+            662.11
+          ],
+          "position_m": [
+            59.078,
+            33.105
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              200.58,
+              240.49
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1178.8,
+              667.57
+            ],
+            "count": 48,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              10.029,
+              12.024
+            ],
+            "centroid_m": [
+              58.94,
+              33.378
+            ]
+          },
+          "soldiers": 48,
+          "state": "ROUTING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 66.0,
+          "current_speed_mps": 3.3,
+          "engaged": true,
+          "facing": [
+            0.94,
+            0.33
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 90.3,
+          "name": "Cavalry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1113.23,
+            600.35
+          ],
+          "position_m": [
+            55.662,
+            30.017
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              220.63,
+              300.71
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1133.79,
+              588.62
+            ],
+            "count": 71,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              11.031,
+              15.035
+            ],
+            "centroid_m": [
+              56.689,
+              29.431
+            ]
+          },
+          "soldiers": 71,
+          "state": "MOVING",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 240,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 70.7,
+          "current_speed_mps": 3.533,
+          "engaged": true,
+          "facing": [
+            -0.79,
+            -0.61
+          ],
+          "formation": "NORMAL",
+          "frontage": 11,
+          "maneuver": "IDLE",
+          "morale": 12.6,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1091.25,
+            699.94
+          ],
+          "position_m": [
+            54.562,
+            34.997
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              225.54,
+              199.43
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1088.51,
+              681.67
+            ],
+            "count": 48,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              11.277,
+              9.971
+            ],
+            "centroid_m": [
+              54.426,
+              34.084
+            ]
+          },
+          "soldiers": 48,
+          "state": "ROUTING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 146.0,
+          "current_speed_mps": 7.3,
+          "engaged": false,
+          "facing": [
+            -0.64,
+            0.77
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "MARCHING",
+          "morale": 94.3,
+          "name": "Cavalry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1162.12,
+            655.42
+          ],
+          "position_m": [
+            58.106,
+            32.771
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              274.31,
+              311.62
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1179.39,
+              647.87
+            ],
+            "count": 71,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              13.715,
+              15.581
+            ],
+            "centroid_m": [
+              58.969,
+              32.393
+            ]
+          },
+          "soldiers": 71,
+          "state": "MOVING",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 680,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 70.7,
+          "current_speed_mps": 3.533,
+          "engaged": true,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 11,
+          "maneuver": "IDLE",
+          "morale": 11.5,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            982.75,
+            357.98
+          ],
+          "position_m": [
+            49.137,
+            17.899
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              199.75,
+              187.03
+            ],
+            "broken_count": 0,
+            "centroid": [
+              983.3,
+              354.09
+            ],
+            "count": 34,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.987,
+              9.351
+            ],
+            "centroid_m": [
+              49.165,
+              17.705
+            ]
+          },
+          "soldiers": 34,
+          "state": "ROUTING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 170.0,
+          "current_speed_mps": 8.5,
+          "engaged": true,
+          "facing": [
+            -0.53,
+            -0.85
+          ],
+          "formation": "NORMAL",
+          "frontage": 12,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Cavalry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1014.27,
+            403.74
+          ],
+          "position_m": [
+            50.714,
+            20.187
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              413.87,
+              317.09
+            ],
+            "broken_count": 0,
+            "centroid": [
+              995.21,
+              404.3
+            ],
+            "count": 71,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              20.693,
+              15.855
+            ],
+            "centroid_m": [
+              49.76,
+              20.215
+            ]
+          },
+          "soldiers": 71,
+          "state": "FIGHTING",
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    }
+  ]
+}
