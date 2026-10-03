@@ -300,9 +300,9 @@ func test_a_hasty_march_keeps_its_grid_like_an_undisciplined_one() -> void:
 
 
 func test_repeated_small_orders_never_ratchet_an_overlapping_block_deeper() -> void:
-	# From a start already overlapping the hill, twenty tiny steps south (each adding about
-	# one 0.0625 square-wu step of the polygon clip's measured area resolution) must never
-	# leave the block covering more hill than it started with.
+	# From a start already overlapping the hill, twenty tiny 0.001 wu steps south, each
+	# reaching a little further into it, must never leave the block covering more hill
+	# than it started with.
 	var u := _make_deep_block(Vector2(1250, 330))
 	u.ordered_facing = u.facing
 	var start_area: float = _area_at(u, u.position)
@@ -541,6 +541,39 @@ func test_a_turned_block_overhanging_the_edge_can_slide_along_it() -> void:
 		var got: Vector2 = OrderFootprint.clamp_destination(null, origin, dest, axis, half,
 				OrderFootprint.SEARCH_STEP, OrderFootprint.SEARCH_TOLERANCE, bounds)
 		assert_eq(got, dest, "a slide of %.0f wu along the edge is not pulled back" % dy)
+
+
+func test_a_turned_block_overlapping_a_hill_can_slide_along_its_edge() -> void:
+	# The terrain counterpart of the field-edge slide above: a footprint at an angle to a
+	# hill's east edge, overlapping it, moved straight along that edge keeps exactly the
+	# same area inside the hill, so the move is allowed as ordered.
+	var field := PathField.new(Rect2(0, 0, 4000, 4000))
+	field.block_rect(Rect2(1000, 0, 400, 4000))
+	var half := Vector2(100, 50)
+	var axis := Vector2.RIGHT.rotated(deg_to_rad(17.0))
+	for origin in [Vector2(1405, 1000), Vector2(1410, 1000), Vector2(1405, 2913)]:
+		assert_gt(field.footprint_overlap_area(origin, axis, half), 0.0, "the start overlaps the hill")
+		for dy in [-200.0, -37.0, 113.0]:
+			var dest: Vector2 = origin + Vector2(0, dy)
+			var got: Vector2 = OrderFootprint.clamp_destination(field, origin, dest, axis, half)
+			assert_eq(got, dest, "a slide of %.0f wu along the hill edge from %s is not pulled back"
+					% [dy, origin])
+
+
+func test_a_block_overlapping_a_hill_from_the_south_can_slide_along_its_edge() -> void:
+	# The same along a horizontal edge, from positions off the integer grid as a real
+	# unit's are.
+	var field := PathField.new(Rect2(0, 0, 4000, 4000))
+	field.block_rect(Rect2(0, 1000, 4000, 400))
+	var half := Vector2(100, 50)
+	var axis := Vector2.RIGHT.rotated(deg_to_rad(23.0))
+	for origin in [Vector2(2000.37, 1407.81), Vector2(3011.5, 1395.25), Vector2(1234.56, 1410.0)]:
+		assert_gt(field.footprint_overlap_area(origin, axis, half), 0.0, "the start overlaps the hill")
+		for dx in [-713.3, -37.0, 113.9, 521.0]:
+			var dest: Vector2 = origin + Vector2(dx, 0)
+			var got: Vector2 = OrderFootprint.clamp_destination(field, origin, dest, axis, half)
+			assert_eq(got, dest, "a slide of %.1f wu along the hill edge from %s is not pulled back"
+					% [dx, origin])
 
 
 func test_a_unit_on_a_map_with_no_terrain_is_still_kept_on_the_field() -> void:
