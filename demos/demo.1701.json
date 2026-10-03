@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Order-of-operations fix in the move-order writers with no new mechanic to film: a fresh order (move, nudge, disengage) now re-squares a quarter-folded block before its destination is checked against terrain, so the footprint check uses the grid the block will march in. The quarter fold exists only mid-way through a lateral pivot's file march, and the visible effect is the existing documented one (a block stops short of a hill instead of entering it). Four unit tests in test_order_footprint.gd pin each writer."
+}

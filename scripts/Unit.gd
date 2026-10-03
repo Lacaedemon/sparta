@@ -4330,11 +4330,10 @@ func _formation_local_half_extents() -> Vector2:
 ## by the soldiers' body radius, laid out in the grid the men will stand in on arrival:
 ## the facing the unit will hold there (see _order_held_facing()) turned by the standing
 ## _formation_angle fold, which a march carries along -- the same rotation
-## soldier_world_slots() applies. A half-turn fold maps the rectangle onto itself. One
-## known approximation: a fresh order is validated before start_order_response()
-## re-squares a quarter-folded block, so for that order the footprint is laid out in the
-## pre-reform grid. `step` and `tolerance` default to this unit's order_clear_step and
-## order_clear_tolerance.
+## soldier_world_slots() applies. A half-turn fold maps the rectangle onto itself. A fresh
+## order's writers call start_order_response() before the write, so a quarter fold it
+## re-squares is already gone when the footprint is laid out. `step` and `tolerance`
+## default to this unit's order_clear_step and order_clear_tolerance.
 func clamp_order_destination(dest: Vector2, step: float = -1.0, tolerance: float = -1.0) -> Vector2:
 	var field: PathField = PathField.active
 	if field != null and not field.has_block_terrain():
@@ -4359,8 +4358,8 @@ func clamp_order_destination(dest: Vector2, step: float = -1.0, tolerance: float
 ## facing or an undisciplined/hasty bearing that far off the current facing returns the
 ## current facing. The bearing is the straight line to `dest`; a routed path may bend on
 ## the way, and the march facing follows the route, so the grid can arrive turned by a
-## detour's last leg. Together with the quarter-fold note on clamp_order_destination()
-## these are the known approximations. A move that goes nowhere keeps the current facing.
+## detour's last leg. These are the known approximations. A move that goes nowhere keeps
+## the current facing.
 func _order_held_facing(dest: Vector2) -> Vector2:
 	var current: Vector2 = facing.normalized() if facing != Vector2.ZERO else Vector2.DOWN
 	var target: Vector2
@@ -6767,9 +6766,11 @@ func disengage() -> void:
 	deploy_facing = Vector2.ZERO
 	_reform_on_arrival = false
 	ordered_facing = facing   # hold facing: step straight back, no pivot toward travel
+	# Respond (re-squaring a quarter fold) before the write, so the step is validated in
+	# the grid the block will actually step back in.
+	start_order_response()
 	move_target = position + disengage_offset(facing, disengage_step_distance)
 	has_move_target = true
-	start_order_response()
 
 
 ## Disengage with sacrifice (rearguard detachment): a deliberate rearguard
@@ -6799,9 +6800,9 @@ func disengage_with_sacrifice(step_distance: float = disengage_step_distance,
 	deploy_facing = Vector2.ZERO
 	_reform_on_arrival = false
 	ordered_facing = facing   # hold facing: step straight back, no pivot toward travel
+	start_order_response()   # before the write, as in disengage()
 	move_target = position + disengage_offset(facing, step_distance)
 	has_move_target = true
-	start_order_response()
 	return {"sacrifice_count": sacrifice_count, "delay_sec": delay_sec, "target_enemy": prev_foe}
 
 
