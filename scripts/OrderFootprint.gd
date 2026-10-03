@@ -33,9 +33,11 @@ const SEARCH_STEP := 8.0   # tuned in wu
 const SEARCH_TOLERANCE := 1.0   # tuned in wu
 
 ## Overlap area (square wu) an order from an already-overlapping start may add before it
-## counts as deeper: float rounding only. The off-field area is clipped exactly in floats
-## (see _outside_area), so a block sliding along the edge reads the same area to within
-## this; it is far too small for successive orders to ratchet a block anywhere.
+## counts as deeper: float rounding only. The off-field and terrain areas are both clipped
+## in the footprint's own centre-relative frame (see _outside_area and
+## PathField.footprint_overlap_area), so a block sliding straight along an edge reads
+## exactly the area it started with; this is far too small for successive orders to
+## ratchet a block anywhere.
 const AREA_SLACK := 0.001   # tuned in wu
 
 
@@ -134,26 +136,6 @@ static func _outside_area(centre: Vector2, file_axis: Vector2, half: Vector2,
 	if not _leaves_bounds(centre, file_axis, half, bounds):
 		return 0.0
 	var poly := _corners(Vector2.ZERO, file_axis, half)
-	var local := Rect2(bounds.position - centre, bounds.size)
-	poly = _clip_half_plane(poly, 0, local.position.x, 1.0)
-	poly = _clip_half_plane(poly, 0, local.end.x, -1.0)
-	poly = _clip_half_plane(poly, 1, local.position.y, 1.0)
-	poly = _clip_half_plane(poly, 1, local.end.y, -1.0)
-	return maxf(0.0, 4.0 * half.x * half.y - absf(PathField._polygon_area(poly)))
-
-
-## `poly` clipped to the half-plane where `sign * (p[axis] - limit) >= 0`: axis 0 is x, 1 is y.
-static func _clip_half_plane(poly: PackedVector2Array, axis: int, limit: float,
-		sign: float) -> PackedVector2Array:
-	var out := PackedVector2Array()
-	var n: int = poly.size()
-	for i in range(n):
-		var a: Vector2 = poly[i]
-		var b: Vector2 = poly[(i + 1) % n]
-		var da: float = sign * (a[axis] - limit)
-		var db: float = sign * (b[axis] - limit)
-		if da >= 0.0:
-			out.push_back(a)
-		if (da >= 0.0) != (db >= 0.0):
-			out.push_back(a.lerp(b, da / (da - db)))
-	return out
+	var local := PathField._relative_rect(bounds, centre)
+	var inside: PackedVector2Array = PathField._clip_to_rect(poly, local)
+	return maxf(0.0, 4.0 * half.x * half.y - absf(PathField._polygon_area(inside)))
