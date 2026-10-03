@@ -36,7 +36,7 @@ const UNIT_THINK := 7
 const SQRT_EVAL := 8
 ## Body-versus-terrain-rect containment tests in the soldier body pass's terrain backstop
 ## (SoldierBodies._terrain_entry_guard and _keep_out_of_terrain): bodies times block rects,
-## before the integration and again after it for each body that started clear.
+## once before the integration and once after it.
 const TERRAIN_PROJECT := 9
 
 ## Report keys, indexed by the bucket ids above -- the names a recorded series and its graph

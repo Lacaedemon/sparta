@@ -133,6 +133,30 @@ static func push_out_of_rects(point: Vector2, grown: Array[Rect2], max_passes: i
 	return q
 
 
+## How far `point` stands inside the grown rects and which way is out: the vector from
+## `point` to the nearest edge of the rect it is deepest inside (its length is that depth).
+## Vector2.ZERO for a point clear of every rect.
+static func nearest_exit(point: Vector2, grown: Array[Rect2]) -> Vector2:
+	var best := Vector2.ZERO
+	var best_depth: float = 0.0
+	for g in grown:
+		if not _strictly_inside(point, g):
+			continue
+		var exits: Array[Vector2] = [
+			Vector2(g.position.x - point.x, 0.0), Vector2(g.end.x - point.x, 0.0),
+			Vector2(0.0, g.position.y - point.y), Vector2(0.0, g.end.y - point.y),
+		]
+		var exit: Vector2 = exits[0]
+		for e in exits:
+			if e.length_squared() < exit.length_squared():
+				exit = e
+		var depth: float = exit.length()
+		if depth > best_depth:
+			best_depth = depth
+			best = exit
+	return best
+
+
 ## Whether `p` lies strictly inside `r` (on an edge counts as outside).
 static func _strictly_inside(p: Vector2, r: Rect2) -> bool:
 	return p.x > r.position.x and p.x < r.end.x and p.y > r.position.y and p.y < r.end.y
