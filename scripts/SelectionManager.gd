@@ -1712,7 +1712,9 @@ func _cycle_formation(reverse: bool = false) -> void:
 ## files. Routed through Battle so the resize is recorded and replays exactly. Each
 ## unit steps from its own current width, so a mixed selection keeps its proportions.
 func _resize_frontage(delta: int) -> void:
-	if Replay.mode == Replay.Mode.PLAYBACK:
+	# A live grip drag owns the width until release: its grab offset was measured against
+	# the frontage at the press, so a width change under it would shift the drag.
+	if Replay.mode == Replay.Mode.PLAYBACK or _resizing:
 		return
 	var uids: Array = _selected_uids()
 	if uids.is_empty():
@@ -1729,9 +1731,9 @@ func _resize_frontage(delta: int) -> void:
 ## CENTRE (default) is the plain symmetric maneuver. Routed through Battle so it reshapes
 ## each unit from its own current width, is recorded, and replays exactly -- the same path
 ## as the [ / ] single-file resize, one whole factor instead of one file. Blocked during
-## playback.
+## playback, and while a grip drag owns the width (see _resize_frontage).
 func _issue_file_double(direction: int, anchor: int = UnitFormation.Anchor.CENTRE) -> void:
-	if Replay.mode == Replay.Mode.PLAYBACK:
+	if Replay.mode == Replay.Mode.PLAYBACK or _resizing:
 		return
 	var uids: Array = _selected_uids()
 	if uids.is_empty():

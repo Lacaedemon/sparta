@@ -656,6 +656,69 @@ func test_a_grip_grab_does_not_change_the_frontage_until_the_cursor_moves_half_a
 		assert_eq(sm._resize_files, start - 1, "cavalry=%s: half a pitch in drops one" % cavalry)
 
 
+func test_a_grab_anywhere_on_either_grip_starts_at_the_committed_frontage() -> void:
+	# Whatever separates the grab point from the nominal flank edge -- an off-centre press
+	# inside the hit disc, the other grip, a standing anchor shift, a depleted rank, a
+	# quarter fold -- the offset absorbs it, so the drag starts at the committed width.
+	var cases := [
+		{"label": "plain"},
+		{"label": "anchor shift", "shift": 2},
+		{"label": "depleted", "soldiers": 3},
+		{"label": "quarter fold", "fold": true},
+	]
+	for c in cases:
+		for grip_index in [0, 1]:
+			for press_shift in [-9.0, 0.0, 9.0]:
+				var sm := _sm()
+				var u := _unit()
+				u.max_soldiers = 80
+				u.facing = Vector2.UP
+				u.position = Vector2(300, 300)
+				u.soldiers = int(c.get("soldiers", 80))
+				if c.has("shift"):
+					u.set_frontage(UnitFormation.frontage(u), float(c["shift"]) * u.file_pitch_wu())
+				if c.has("fold"):
+					u._formation_angle = PI * 0.5
+				var start: int = UnitFormation.frontage(u)
+				var grip: Vector2 = sm._resize_handle_positions(u)[grip_index]
+				var along: Vector2 = sm._file_axis(u)
+				var side: int = UnitFormation.Anchor.RIGHT if grip_index == 0 \
+						else UnitFormation.Anchor.LEFT
+				var press: Vector2 = grip + along * press_shift
+				sm._begin_resize(u, side, press)
+				sm._update_resize(press)
+				assert_eq(sm._resize_files, start, "%s, grip %d, press %+.0f: no change at the press"
+						% [c["label"], grip_index, press_shift])
+				sm._finish_resize()
+				assert_eq(sm._resize_grab_offset, 0.0, "%s: the offset resets on release" % c["label"])
+
+
+func test_a_grip_drag_blocks_keyboard_width_changes_until_release() -> void:
+	# The drag's grab offset was measured against the frontage at the press, so the [ / ]
+	# resize and file doubling wait for the release rather than shifting the drag.
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 31
+	u.max_soldiers = 80
+	u.facing = Vector2.UP
+	u.position = Vector2(300, 300)
+	b._by_uid[31] = u
+	sm._select(u)
+	var start: int = UnitFormation.frontage(u)
+	sm._begin_resize(u, UnitFormation.Anchor.RIGHT, sm._resize_handle_positions(u)[0])
+	sm._resize_frontage(1)
+	sm._issue_file_double(1)
+	assert_eq(UnitFormation.frontage(u), start, "neither key changes the width while the drag is live")
+	sm._finish_resize()
+	sm._resize_frontage(1)
+	assert_eq(UnitFormation.frontage(u), start + 1, "after the release the [ / ] resize works again")
+	sm._resize_frontage(-1)
+	assert_eq(UnitFormation.frontage(u), start, "a drag released in place commits no change")
+
+
 func test_keyboard_resize_recentres_a_standing_anchor_offset() -> void:
 	# The [ / ] keyboard resize stays centre-anchored: it re-centres the block and
 	# discards any standing anchor shift -- the pre-existing contract the drag's new
