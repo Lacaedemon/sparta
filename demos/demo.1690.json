@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/grip-grab-holds-frontage-1690.json",
+  "caption": "#1690: a tightly drawn-up Spearmen block, 5 files at a 0.45 m pitch, is selected. Its east grip is grabbed and nudged 1.5 wu, then let go, and the block stays at 5 files. Before this fix that nudge widened it to 7, because the drag measured straight to the cursor and the grip sits more than one and a half pitches past the flank soldier. The grip is then dragged about four pitches east, and the block widens to 9 files from its fixed west edge.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}
