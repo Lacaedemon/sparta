@@ -413,8 +413,9 @@ func test_a_quarter_folded_block_given_a_fresh_move_is_validated_squared() -> vo
 
 
 func test_a_quarter_folded_block_given_a_reforming_move_is_validated_squared() -> void:
-	# The default reform-before-move path parks the march behind a REFORM hold and writes
-	# move_target only when the hold commits, after the order has already responded.
+	# A guard on behaviour that was already right: the default reform-before-move path
+	# parks the march behind a REFORM hold and writes move_target only when the hold
+	# commits, after the order has already responded, so it must stay validated squared.
 	var u := _make_quarter_folded_block(Vector2(1250, 1100))
 	u.reform_before_move = true
 	var b := _battle_with(u)

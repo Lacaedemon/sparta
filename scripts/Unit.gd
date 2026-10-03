@@ -6753,9 +6753,10 @@ static func disengage_offset(unit_facing: Vector2, step_distance: float = DISENG
 ## target" branch below) -- this method's whole job is driving that existing machinery from
 ## a dedicated, combat-legal trigger, exactly the way Battle._apply_order_cmd's general move
 ## dispatch already would if it weren't gated to non-FIGHTING units for NUDGE specifically.
-## start_order_response() (called before the step is written, so the step is validated in
-## the grid it re-squares) already drops any in-flight engage re-face turn and re-squares the grid -- the same "reform" a fresh order
-## already gives a mid-turn unit elsewhere, so no extra settling is needed here. The enemy
+## start_order_response(), called before the step is written so the step is validated in
+## the squared grid, already drops any in-flight engage re-face turn and re-squares the
+## block -- the same "reform" a fresh order already gives a mid-turn unit elsewhere, so no
+## extra settling is needed here. The enemy
 ## keeps swinging (with the flank/rear bonus) for as long as it can still reach the
 ## retreating line; that ongoing cost is the already-documented price of disengaging, not
 ## something this maneuver adds.
