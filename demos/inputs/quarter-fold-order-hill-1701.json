@@ -1,0 +1,96 @@
+{
+  "_comment": "A lone 60-man Infantry block, reform-before-move off so the order commits its march at once, north of the default hill (Rect2(1150, 380, 250, 200)) quarter-turns to face east (E), which folds its grid: still wide along x and shallow along y, clear of the hill's top edge. It is then ordered east across the hill's top. The fresh order re-squares the grid to the east facing (shallow along x, wide along y) before the destination is checked, so the order is clamped short of the hill's west edge and no man ends up on the hill. Validated in the folded grid instead, the destination stood clear and the squared block marched its long axis down into the hill.",
+  "seed": "41701",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 1000,
+      "y": 300,
+      "facing": [
+        0,
+        -1
+      ],
+      "count": 60,
+      "reform_before_move": false
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 1150,
+      "y": 420,
+      "zoom": 1.6
+    }
+  ],
+  "steps": [
+    {
+      "tick": 8,
+      "click": [
+        1000,
+        300
+      ]
+    },
+    {
+      "tick": 20,
+      "key": "E"
+    },
+    {
+      "tick": 150,
+      "rmb_click": [
+        1300,
+        300
+      ]
+    }
+  ],
+  "state": [
+    8,
+    140,
+    200,
+    400,
+    600,
+    800,
+    1000
+  ],
+  "expect": [
+    {
+      "tick": 140,
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    },
+    {
+      "tick": 200,
+      "uid": 0,
+      "field": "current_order",
+      "value": "MOVE"
+    },
+    {
+      "tick": 1000,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 1200,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    }
+  ],
+  "defect_exemptions": {
+    "path_crossing": {
+      "uids": [
+        0
+      ],
+      "reason": "Re-squaring the quarter fold re-slots men through the block on main as well (0.30 there); tracked in #1702, not introduced by this change."
+    },
+    "shape_residual": {
+      "uids": [
+        0
+      ],
+      "reason": "The same re-slot reads far out of shape while it runs, on main as well; tracked in #1702."
+    }
+  }
+}

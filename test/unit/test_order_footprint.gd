@@ -382,6 +382,14 @@ func _make_quarter_folded_block(pos: Vector2) -> Unit:
 	return u
 
 
+## The response still ran in full (its order-response delay is armed), and the clamped
+## destination still moves the block off `start` rather than holding it where it stood.
+func _assert_responded_and_advanced(u: Unit, start: Vector2) -> void:
+	assert_almost_eq(u._order_response_timer, u.order_response_delay, 0.0001,
+			"the order still responded")
+	assert_gt(u.move_target.distance_to(start), 1.0, "the order still moves the block")
+
+
 ## A Battle holding only `u`, enough for _apply_order_cmd to dispatch orders to it.
 func _battle_with(u: Unit) -> Node:
 	u.uid = 1
@@ -401,6 +409,20 @@ func test_a_quarter_folded_block_given_a_fresh_move_is_validated_squared() -> vo
 	assert_almost_eq(u._formation_angle, 0.0, 0.001, "sanity check: the order re-squared the grid")
 	assert_true(u.has_move_target, "sanity check: a plain march, no turn or reform hold")
 	assert_true(_clear_in_final_grid(u), "the destination is clear in the squared grid it marches in")
+	_assert_responded_and_advanced(u, Vector2(1250, 1100))
+
+
+func test_a_quarter_folded_block_given_a_reforming_move_is_validated_squared() -> void:
+	# The default reform-before-move path parks the march behind a REFORM hold and writes
+	# move_target only when the hold commits, after the order has already responded.
+	var u := _make_quarter_folded_block(Vector2(1250, 1100))
+	u.reform_before_move = true
+	var b := _battle_with(u)
+	b._apply_order_cmd({"units": [1], "x": 1250.0, "y": 740.0, "target": -1})
+	assert_false(u.has_move_target, "sanity check: the march waits behind the reform hold")
+	u._commit_pending_reform()
+	assert_true(u.has_move_target, "sanity check: the hold committed its march")
+	assert_true(_clear_in_final_grid(u), "the committed march is clear in the squared grid")
 
 
 func test_a_quarter_folded_block_given_a_nudge_is_validated_squared() -> void:
@@ -412,6 +434,7 @@ func test_a_quarter_folded_block_given_a_nudge_is_validated_squared() -> void:
 			"frontage": BattleScript.NudgeDir.RIGHT})
 	assert_almost_eq(u._formation_angle, 0.0, 0.001, "sanity check: the nudge re-squared the grid")
 	assert_true(_clear_in_final_grid(u), "the side-step is clear in the squared grid")
+	_assert_responded_and_advanced(u, Vector2(1110, 330))
 
 
 func test_a_quarter_folded_block_disengaging_is_validated_squared() -> void:
@@ -420,6 +443,7 @@ func test_a_quarter_folded_block_disengaging_is_validated_squared() -> void:
 	u.disengage()
 	assert_almost_eq(u._formation_angle, 0.0, 0.001, "sanity check: the disengage re-squared the grid")
 	assert_true(_clear_in_final_grid(u), "the step back is clear in the squared grid")
+	_assert_responded_and_advanced(u, Vector2(1250, 200))
 
 
 func test_a_quarter_folded_block_disengaging_with_sacrifice_is_validated_squared() -> void:
@@ -428,6 +452,7 @@ func test_a_quarter_folded_block_disengaging_with_sacrifice_is_validated_squared
 	u.disengage_with_sacrifice()
 	assert_almost_eq(u._formation_angle, 0.0, 0.001, "sanity check: the disengage re-squared the grid")
 	assert_true(_clear_in_final_grid(u), "the step back is clear in the squared grid")
+	_assert_responded_and_advanced(u, Vector2(1250, 200))
 
 
 func test_a_promoted_queued_leg_is_validated_in_its_final_grid() -> void:

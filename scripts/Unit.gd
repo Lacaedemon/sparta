@@ -4330,9 +4330,11 @@ func _formation_local_half_extents() -> Vector2:
 ## by the soldiers' body radius, laid out in the grid the men will stand in on arrival:
 ## the facing the unit will hold there (see _order_held_facing()) turned by the standing
 ## _formation_angle fold, which a march carries along -- the same rotation
-## soldier_world_slots() applies. A half-turn fold maps the rectangle onto itself. A fresh
-## order's writers call start_order_response() before the write, so a quarter fold it
-## re-squares is already gone when the footprint is laid out. `step` and `tolerance`
+## soldier_world_slots() applies. A half-turn fold maps the rectangle onto itself. Every
+## writer that responds to a fresh order (Battle's plain march and nudge, disengage(),
+## disengage_with_sacrifice()) calls start_order_response() before the write, so a quarter
+## fold it re-squares is already gone when the footprint is laid out; writers that never
+## respond never re-square either. `step` and `tolerance`
 ## default to this unit's order_clear_step and order_clear_tolerance.
 func clamp_order_destination(dest: Vector2, step: float = -1.0, tolerance: float = -1.0) -> Vector2:
 	var field: PathField = PathField.active
@@ -6751,8 +6753,8 @@ static func disengage_offset(unit_facing: Vector2, step_distance: float = DISENG
 ## target" branch below) -- this method's whole job is driving that existing machinery from
 ## a dedicated, combat-legal trigger, exactly the way Battle._apply_order_cmd's general move
 ## dispatch already would if it weren't gated to non-FIGHTING units for NUDGE specifically.
-## start_order_response() (called at the end, like every other order) already drops any
-## in-flight engage re-face turn and re-squares the grid -- the same "reform" a fresh order
+## start_order_response() (called before the step is written, so the step is validated in
+## the grid it re-squares) already drops any in-flight engage re-face turn and re-squares the grid -- the same "reform" a fresh order
 ## already gives a mid-turn unit elsewhere, so no extra settling is needed here. The enemy
 ## keeps swinging (with the flank/rear bonus) for as long as it can still reach the
 ## retreating line; that ongoing cost is the already-documented price of disengaging, not

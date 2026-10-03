@@ -3579,9 +3579,8 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				elif not turn_armed:
 					# A fresh order responds (re-squaring a quarter fold) before the write,
 					# so the destination is validated in the grid the block will march in.
-					if not append:
-						u.start_order_response()
-						responded = true
+					u.start_order_response()
+					responded = true
 					u.move_target = point
 					u.has_move_target = true
 		if not append and not responded:
