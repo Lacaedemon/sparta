@@ -238,8 +238,16 @@ var move_target: Vector2:
 	get:
 		return _move_target
 	set(value):
+		requested_move_target = value
+		has_requested_move_target = true
 		_move_target = clamp_order_destination(value)
 var _move_target: Vector2 = Vector2.ZERO
+## The point the latest move_target write asked for, before clamp_order_destination()
+## pulled it back: beside move_target it tells a clamped order from one reached as given.
+## It keeps the last request after the unit arrives (when has_move_target clears), and
+## has_requested_move_target is false only until the first move is ordered.
+var requested_move_target: Vector2 = Vector2.ZERO
+var has_requested_move_target: bool = false
 var has_move_target: bool = false
 ## The pull-back search clamp_order_destination() runs: its coarse probe stride and the
 ## precision it narrows the clear point to (see OrderFootprint).
@@ -9294,6 +9302,8 @@ func to_snapshot_dict() -> Dictionary:
 		"soldiers": soldiers, "morale": morale, "morale_ladder": morale_ladder_name(), "combat_status": combat_status_name(), "fatigue": fatigue, "cohesion": cohesion,
 		"state": state, "facing": facing, "position": position,
 		"move_target": move_target, "has_move_target": has_move_target,
+		"requested_move_target": requested_move_target,
+		"has_requested_move_target": has_requested_move_target,
 		"order_mode": order_mode, "knockback_push_indefinite": knockback_push_indefinite,
 		"formation_mode": formation_mode, "rank_relief": rank_relief,
 		"player_group_id": player_group_id, "subcommander_rank_title": subcommander_rank_title,
@@ -9482,6 +9492,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	position = d["position"]
 	_move_target = d["move_target"]   # already validated; see move_target
 	has_move_target = bool(d["has_move_target"])
+	requested_move_target = d.get("requested_move_target", _move_target)
+	has_requested_move_target = bool(d.get("has_requested_move_target", false))
 	order_mode = int(d["order_mode"])
 	knockback_push_indefinite = bool(d["knockback_push_indefinite"])
 	formation_mode = int(d["formation_mode"])

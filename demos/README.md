@@ -474,6 +474,7 @@ by `uid`, so a unit keeps its row across the rout/rally group changes:
 | `position`, `facing` | World-space `[x, y]` pairs (rounded). |
 | `position_m` | `position` mirrored in metres (`WorldScale.WU_PER_M`), so a reviewer reads real distances without dividing by the world scale by hand. |
 | `move_target` | Where the unit is heading, `[x, y]`, after any order clamp, or `null` with no move target (including every tick after it arrives). Sampled while the unit is still marching, a target short of the point it was ordered to shows the order was clamped. |
+| `requested_move_target` | The point the latest move order asked for, `[x, y]`, before the footprint clamp, or `null` before any move is ordered. It keeps the last request after the unit arrives, so beside `move_target` one sample shows whether an order was pulled back. |
 | `morale` | Current morale (100 = fresh; a rout triggers at 0). |
 | `state` | Readable `State` name -- `IDLE` / `MOVING` / `FIGHTING` / `ROUTING` / `DEAD`. |
 | `formation` | Readable formation -- `NORMAL` / `TIGHT` / `LOOSE` / `SQUARE` / `SHIELD_WALL` / `TESTUDO` / `SCHILTRON`. |

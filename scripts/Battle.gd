@@ -1814,6 +1814,8 @@ func _spawn_rearguard_detachment(parent: Unit, soldier_count: int, delay_sec: fl
 	ud["orders"] = []                   # nothing queued; it isn't going anywhere
 	ud["move_target"] = parent.position
 	ud["has_move_target"] = false
+	ud["requested_move_target"] = parent.position
+	ud["has_requested_move_target"] = false
 	# The general stays with the main body. A rearguard is left behind to die, and one that
 	# inherited the role would report the general killed or routed while the real one lives.
 	ud["is_general"] = false

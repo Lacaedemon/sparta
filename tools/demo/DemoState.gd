@@ -312,6 +312,11 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		# clamp when this sits short of it too. Null while it has no move target, which
 		# includes every tick after it has arrived.
 		"move_target": vec2_pair(u.move_target) if u.has_move_target else null,
+		# The point the latest move order asked for, before that clamp: one sample shows the
+		# request and what the clamp made of it. It keeps the last request after the unit
+		# arrives (when move_target goes null), and is null only before any move is ordered.
+		"requested_move_target": vec2_pair(u.requested_move_target) \
+				if u.has_requested_move_target else null,
 		"morale": round_to(u.morale, 1),
 		"state": state_name(u.state),
 		"formation": formation_name(u.formation_mode),
