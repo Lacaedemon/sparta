@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/click-beside-selected-block-1663.json",
+  "caption": "#1663: a cavalry squadron is selected and ordered north, then the Spearmen block standing where the squadron's flank resize grip reaches is clicked and ordered north. Before the fix the click grabbed the grip, so the squadron kept the selection and took the Spearmen's order while the Spearmen stood still; now each block marches on its own order.",
+  "fixed_fps": 30,
+  "max_frames": 130,
+  "fps": 15,
+  "width": 720
+}
