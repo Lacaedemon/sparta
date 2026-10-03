@@ -1,5 +1,5 @@
 {
-  "_comment": "PLACEHOLDER",
+  "_comment": "An ordered formation stops with its whole footprint on the field: a lone 80-horse Cavalry column (9 files by 9 ranks at a 120 wu rank pitch, so about 960 wu deep; drill mode, no opponent) stands centred at (900, 750) facing south, clear of the forest to its west and the hill to its east. It is clicked to select it and right-clicked at (900, 1650), 70 wu short of the field's south edge at y = 1720. Its front ranks would stand far off the field there, so the order is pulled back along the move to y = 1230 -- the edge less the column's 480 wu half-depth and a horse's 10 wu body radius -- and the column marches south and halts with its front rank on the edge. Before the fix only the unit's centre was kept on the field, so it marched to y = 1650 with about 420 wu of its depth off the map. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
   "seed": "7731",
   "drill": true,
   "scenario": [
@@ -12,6 +12,10 @@
     {"tick": 15, "click": [900, 750]},
     {"tick": 30, "rmb_click": [900, 1650]}
   ],
-  "state": [0, 29, 31, 400, 900],
+  "state": [0, 29, 31, 400, 800, 900],
+  "expect": [
+    {"tick": 31, "uid": 0, "field": "move_target", "value": [900, 1230]},
+    {"tick": 900, "uid": 0, "field": "maneuver", "value": "IDLE"}
+  ],
   "frames": [31, 400, 900]
 }
