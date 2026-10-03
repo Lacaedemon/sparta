@@ -136,6 +136,6 @@ static func _outside_area(centre: Vector2, file_axis: Vector2, half: Vector2,
 	if not _leaves_bounds(centre, file_axis, half, bounds):
 		return 0.0
 	var poly := _corners(Vector2.ZERO, file_axis, half)
-	var local := Rect2(bounds.position - centre, bounds.size)
+	var local := PathField._relative_rect(bounds, centre)
 	var inside: PackedVector2Array = PathField._clip_to_rect(poly, local)
 	return maxf(0.0, 4.0 * half.x * half.y - absf(PathField._polygon_area(inside)))

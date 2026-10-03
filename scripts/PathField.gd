@@ -129,7 +129,7 @@ func footprint_overlap_area(centre: Vector2, file_axis: Vector2, half: Vector2) 
 	var xs: Array[float] = []
 	var ys: Array[float] = []
 	for r in _block_rects:
-		var local := Rect2(r.position - centre, r.size)
+		var local := _relative_rect(r, centre)
 		if local.intersects(reach):
 			rects.append(local)
 			xs.append_array([local.position.x, local.end.x])
@@ -144,6 +144,12 @@ func footprint_overlap_area(centre: Vector2, file_axis: Vector2, half: Vector2) 
 				continue
 			area += absf(_polygon_area(_clip_to_rect(poly, cell)))
 	return area
+
+
+## `rect` in coordinates relative to `origin`, each corner translated on its own: rounding
+## `r.position - origin` and adding the size back would round the far edge twice.
+static func _relative_rect(rect: Rect2, origin: Vector2) -> Rect2:
+	return Rect2(rect.position - origin, Vector2.ZERO).expand(rect.end - origin)
 
 
 ## `poly` clipped to `rect` (Sutherland-Hodgman, one edge at a time). Exact for a convex

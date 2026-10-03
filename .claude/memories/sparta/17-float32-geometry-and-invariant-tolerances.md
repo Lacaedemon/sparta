@@ -11,9 +11,12 @@ Translating the polygon and the clip rect so the footprint centre is the origin 
 the clip sees unchanged, so the area reads bit-identically.
 Godot's `Geometry2D.intersect_polygons` was not the cause.
 PR #1700 (issue #1696) did the same for the terrain half
-(`PathField.footprint_overlap_area`), which needed a 17-degree turn to show the drift --
-a 30-degree slide happened to read equal areas, so one passing angle proves nothing.
-Both now share `PathField._clip_to_rect`.
+(`PathField.footprint_overlap_area`).
+Its first test, a 30-degree turned block sliding along a hill edge, passed on the
+unfixed code; a 17-degree turn showed the drift, so one passing angle proves nothing.
+The PR also swapped `intersect_polygons` for the shared `PathField._clip_to_rect`, but a
+mutation run with `intersect_polygons` in the centred frame passed every test: the frame
+is the fix, and the swap only shares one clip between the two callers.
 
 - **Do:** translate a polygon and whatever it is clipped against so its centre is the origin before summing a shoelace area or any product of coordinates.
 

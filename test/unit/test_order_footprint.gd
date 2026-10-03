@@ -300,9 +300,9 @@ func test_a_hasty_march_keeps_its_grid_like_an_undisciplined_one() -> void:
 
 
 func test_repeated_small_orders_never_ratchet_an_overlapping_block_deeper() -> void:
-	# From a start already overlapping the hill, twenty tiny 0.001 wu steps south (each
-	# adding the block's overlapping width times 0.001 square wu of hill) must never leave
-	# the block covering more hill than it started with.
+	# From a start already overlapping the hill, twenty tiny 0.001 wu steps south, each
+	# reaching a little further into it, must never leave the block covering more hill
+	# than it started with.
 	var u := _make_deep_block(Vector2(1250, 330))
 	u.ordered_facing = u.facing
 	var start_area: float = _area_at(u, u.position)
