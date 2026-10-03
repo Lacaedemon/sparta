@@ -600,6 +600,39 @@ func test_drag_resize_composes_with_a_standing_anchor_offset() -> void:
 			"the held edge stays at its actual (shifted) place, not a recomputed centre")
 
 
+func test_a_grip_grab_does_not_change_the_frontage_until_the_cursor_moves_half_a_pitch() -> void:
+	# The grip sits a body radius and a gap past the flank slot -- for cavalry exactly
+	# half a file pitch -- so a drag measured straight to the cursor added a file on the
+	# first pixel of motion. Measured from the grab point, it waits for a real move.
+	for cavalry in [false, true]:
+		var sm := _sm()
+		var u := _unit()
+		u.max_soldiers = 80
+		u.is_cavalry = cavalry
+		if cavalry:
+			u.file_pitch = 40.0
+		u.facing = Vector2.UP   # file axis = world +X
+		u.position = Vector2(300, 300)
+		u.soldiers = 80
+		var start: int = UnitFormation.frontage(u)
+		var pitch: float = u.file_pitch_wu()
+		var grip: Vector2 = sm._resize_handle_positions(u)[0]
+		var along: Vector2 = sm._file_axis(u)
+		var side: int = UnitFormation.Anchor.RIGHT
+		if (grip - u.global_position).dot(along) < 0.0:
+			side = UnitFormation.Anchor.LEFT
+		var outward: Vector2 = along * float(side)
+		sm._begin_resize(u, side, grip)
+		sm._update_resize(grip + outward * 1.0)
+		assert_eq(sm._resize_files, start, "cavalry=%s: a 1 wu nudge keeps the frontage" % cavalry)
+		sm._update_resize(grip - outward * 1.0)
+		assert_eq(sm._resize_files, start, "cavalry=%s: so does a 1 wu nudge inward" % cavalry)
+		sm._update_resize(grip + outward * (0.5 * pitch + 1.0))
+		assert_eq(sm._resize_files, start + 1, "cavalry=%s: half a pitch out adds one file" % cavalry)
+		sm._update_resize(grip - outward * (0.5 * pitch + 1.0))
+		assert_eq(sm._resize_files, start - 1, "cavalry=%s: half a pitch in drops one" % cavalry)
+
+
 func test_keyboard_resize_recentres_a_standing_anchor_offset() -> void:
 	# The [ / ] keyboard resize stays centre-anchored: it re-centres the block and
 	# discards any standing anchor shift -- the pre-existing contract the drag's new
