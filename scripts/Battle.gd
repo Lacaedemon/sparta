@@ -3046,9 +3046,11 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 			u.deploy_facing = Vector2.ZERO
 			u._reform_on_arrival = false   # a drill step's arrival shouldn't fire a stale reform
 			u.ordered_facing = u.facing   # hold facing: side-step / back-step, no pivot
+			# Respond (re-squaring a quarter fold) before the write, so the step is
+			# validated in the grid the block will actually march in.
+			u.start_order_response()
 			u.move_target = u.position + offset
 			u.has_move_target = true
-			u.start_order_response()
 		return
 	# Wheel: swing each unit 90° about a fixed flank file. The direction rides in "x".
 	# Unit.wheel() creates and installs its own WHEEL order (with the swing goal and the
@@ -3245,6 +3247,7 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 		var u: Unit = _unit_by_uid(int(uid))
 		if u == null:
 			continue
+		var responded: bool = false   # start_order_response() already ran for this unit
 		# A fresh order (anything but a waypoint append) discards the queued route --
 		# each branch below replaces the orders queue, and the route lives there now --
 		# and sets the unit's stance; an append continues the current march/stance.
@@ -3574,9 +3577,13 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 					order._active_child = 0
 					u.has_move_target = false   # stop any prior march while reforming
 				elif not turn_armed:
+					# A fresh order responds (re-squaring a quarter fold) before the write,
+					# so the destination is validated in the grid the block will march in.
+					u.start_order_response()
+					responded = true
 					u.move_target = point
 					u.has_move_target = true
-		if not append:
+		if not append and not responded:
 			u.start_order_response()
 
 

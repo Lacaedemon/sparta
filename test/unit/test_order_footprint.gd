@@ -369,6 +369,93 @@ func test_a_disengage_with_sacrifice_is_validated_in_its_final_grid() -> void:
 	assert_true(_clear_in_final_grid(u), "clear in the grid the shrunken block holds")
 
 
+# A fresh order re-squares a quarter-folded block (start_order_response), turning a 342 wu
+# wide, 36 wu deep folded grid back into the 36 wide, 342 deep squared one. Each writer must
+# respond before it writes move_target, or the destination is validated in the folded grid
+# and the block then marches squared into the hill.
+
+## A deep block facing north at `pos`, its grid folded a quarter-turn so its 3 files run
+## east-west: wide along x and shallow along y until something re-squares it.
+func _make_quarter_folded_block(pos: Vector2) -> Unit:
+	var u := _make_deep_block(pos)
+	u._formation_angle = PI * 0.5
+	return u
+
+
+## The response still ran in full (its order-response delay is armed), and the clamped
+## destination still moves the block off `start` rather than holding it where it stood.
+func _assert_responded_and_advanced(u: Unit, start: Vector2) -> void:
+	assert_almost_eq(u._order_response_timer, u.order_response_delay, 0.0001,
+			"the order still responded")
+	assert_gt(u.move_target.distance_to(start), 1.0, "the order still moves the block")
+
+
+## A Battle holding only `u`, enough for _apply_order_cmd to dispatch orders to it.
+func _battle_with(u: Unit) -> Node:
+	u.uid = 1
+	var b = BattleScript.new()
+	autofree(b)
+	b._by_uid[u.uid] = u
+	return b
+
+
+func test_a_quarter_folded_block_given_a_fresh_move_is_validated_squared() -> void:
+	# Folded, the block at y 740 is 36 wu deep and clear of the hill above it; squared, its
+	# 342 wu depth reaches up into the hill, which ends at y 580.
+	var u := _make_quarter_folded_block(Vector2(1250, 1100))
+	u.reform_before_move = false
+	var b := _battle_with(u)
+	b._apply_order_cmd({"units": [1], "x": 1250.0, "y": 740.0, "target": -1})
+	assert_almost_eq(u._formation_angle, 0.0, 0.001, "sanity check: the order re-squared the grid")
+	assert_true(u.has_move_target, "sanity check: a plain march, no turn or reform hold")
+	assert_true(_clear_in_final_grid(u), "the destination is clear in the squared grid it marches in")
+	_assert_responded_and_advanced(u, Vector2(1250, 1100))
+
+
+func test_a_quarter_folded_block_given_a_reforming_move_is_validated_squared() -> void:
+	# A guard on behaviour that was already right: the default reform-before-move path
+	# parks the march behind a REFORM hold and writes move_target only when the hold
+	# commits, after the order has already responded, so it must stay validated squared.
+	var u := _make_quarter_folded_block(Vector2(1250, 1100))
+	u.reform_before_move = true
+	var b := _battle_with(u)
+	b._apply_order_cmd({"units": [1], "x": 1250.0, "y": 740.0, "target": -1})
+	assert_false(u.has_move_target, "sanity check: the march waits behind the reform hold")
+	u._commit_pending_reform()
+	assert_true(u.has_move_target, "sanity check: the hold committed its march")
+	assert_true(_clear_in_final_grid(u), "the committed march is clear in the squared grid")
+
+
+func test_a_quarter_folded_block_given_a_nudge_is_validated_squared() -> void:
+	# Folded, a 30 wu side-step to x 1140 keeps the 36 wu deep grid north of the hill;
+	# squared, the block's 342 wu depth beside the hill's west edge reaches into it.
+	var u := _make_quarter_folded_block(Vector2(1110, 330))
+	var b := _battle_with(u)
+	b._apply_order_cmd({"units": [1], "target": BattleScript.ORDER_NUDGE, "x": 0.0, "y": 0.0,
+			"frontage": BattleScript.NudgeDir.RIGHT})
+	assert_almost_eq(u._formation_angle, 0.0, 0.001, "sanity check: the nudge re-squared the grid")
+	assert_true(_clear_in_final_grid(u), "the side-step is clear in the squared grid")
+	_assert_responded_and_advanced(u, Vector2(1110, 330))
+
+
+func test_a_quarter_folded_block_disengaging_is_validated_squared() -> void:
+	var u := _make_quarter_folded_block(Vector2(1250, 200))
+	u.state = Unit.State.FIGHTING
+	u.disengage()
+	assert_almost_eq(u._formation_angle, 0.0, 0.001, "sanity check: the disengage re-squared the grid")
+	assert_true(_clear_in_final_grid(u), "the step back is clear in the squared grid")
+	_assert_responded_and_advanced(u, Vector2(1250, 200))
+
+
+func test_a_quarter_folded_block_disengaging_with_sacrifice_is_validated_squared() -> void:
+	var u := _make_quarter_folded_block(Vector2(1250, 200))
+	u.state = Unit.State.FIGHTING
+	u.disengage_with_sacrifice()
+	assert_almost_eq(u._formation_angle, 0.0, 0.001, "sanity check: the disengage re-squared the grid")
+	assert_true(_clear_in_final_grid(u), "the step back is clear in the squared grid")
+	_assert_responded_and_advanced(u, Vector2(1250, 200))
+
+
 func test_a_promoted_queued_leg_is_validated_in_its_final_grid() -> void:
 	var u := _make_deep_block(Vector2(1000, 480))
 	u.set_current_order(Order.new_move(Vector2(1000, 470)))
