@@ -1825,17 +1825,20 @@ func _resize_handle_at(world_pos: Vector2):
 
 ## The flank grip a left press at `world_pos` grabs, or null. A grip sits just past its
 ## block's flank (see _resize_handle_positions), so beside a neighbouring unit drawn up
-## close it can lie over that unit; a press on another of
-## the player's units there is a click on that unit, not a grab. Otherwise the selected
-## block's grip swallowed the click on the unit beside it: that unit was never selected,
-## and the next order went to the block that still was. The grip's own block under the
-## cursor does not stop the grab.
+## close it can lie over that unit's pick box. A press on that unit's body itself -- its
+## formation block or one of its men, without the click padding a pick adds around
+## them -- is a click on that unit: otherwise the selected block's grip swallowed the
+## click, that unit was never selected, and the next order went to the block that still
+## was. A press on the grip in the padded margin outside that body still grabs it, so a
+## unit drawn up close beside another keeps a usable grip. The grip's own block under
+## the cursor does not stop the grab.
 func _grip_for_press(world_pos: Vector2):
 	var grip: Variant = _resize_handle_at(world_pos)
 	if grip == null:
 		return null
 	var body = _unit_at(world_pos, TEAM_ANY_OWN)
-	if body != null and body != (grip as Dictionary)["unit"]:
+	if body != null and body != (grip as Dictionary)["unit"] \
+			and body.pick_distance_squared(world_pos, 0.0) >= 0.0:
 		return null
 	return grip
 

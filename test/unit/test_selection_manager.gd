@@ -369,6 +369,35 @@ func test_a_press_on_another_unit_over_a_grip_selects_that_unit() -> void:
 	assert_not_null(sm._grip_for_press(grip), "with nothing else under it, the grip still grabs")
 
 
+func test_a_grip_beside_a_close_neighbour_grabs_and_its_man_still_selects() -> void:
+	# A neighbour drawn up just past the selected block's flank: its pick box covers the
+	# grip, but its nearest man stands a few wu beyond it. A press on the grip grabs it;
+	# a press on that man is a click on the neighbour.
+	var sm := _sm()
+	var block := _unit()
+	block.facing = Vector2.UP
+	block.position = Vector2(50, 50)
+	sm._select(block)
+	var grip: Vector2 = sm._resize_handle_positions(block)[0]
+	var along: Vector2 = sm._file_axis(block)
+	if (grip - block.global_position).dot(along) < 0.0:
+		along = -along
+	var neighbour := _unit()
+	neighbour.facing = Vector2.UP
+	neighbour.position = Vector2.ZERO
+	var flank: Vector2 = Vector2.INF
+	for p in neighbour.soldier_world_positions():
+		if flank == Vector2.INF or p.dot(along) < flank.dot(along):
+			flank = p
+	var r: float = neighbour.soldier_body_radius()
+	var man: Vector2 = grip + along * (r + 5.0)
+	neighbour.position = man - flank
+	assert_eq(sm._unit_at(grip, sm.TEAM_ANY_OWN), neighbour, "the neighbour's pick box covers the grip")
+	assert_not_null(sm._grip_for_press(grip), "a press on the grip still grabs it")
+	assert_not_null(sm._resize_handle_at(man), "the neighbour's man is inside the grip's hit disc")
+	assert_null(sm._grip_for_press(man), "a press on the neighbour's man selects the neighbour")
+
+
 func test_a_press_on_a_grip_over_its_own_block_still_grabs() -> void:
 	# A single-rank block's extent is about its half-width, so the inner side of a grip's
 	# hit disc lies over the block's own padded body. Only ANOTHER unit there makes the
