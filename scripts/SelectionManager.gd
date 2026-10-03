@@ -1841,13 +1841,28 @@ func _single_selected_unit():
 
 
 ## World positions of a unit's two flank resize grips: out along its file axis, just
-## past the block extent, on each side -- of the block's actual footprint centre,
+## past the block's flank, on each side -- of the block's actual footprint centre,
 ## which a standing anchor offset shifts off the regiment point.
 func _resize_handle_positions(u) -> Array:
 	var right: Vector2 = _file_axis(u)
 	var block_centre: Vector2 = u.global_position + u.block_centre_offset()
-	var reach: float = u.render_block_extent() + RESIZE_HANDLE_GAP
+	var reach: float = _grip_reach(u)
 	return [block_centre + right * reach, block_centre - right * reach]
+
+
+## How far each grip sits from the block's footprint centre along the file axis: the
+## live slot grid's reach that way (the same half-width and half-depth the body pick box
+## uses, turned by the grid's rotation, so a quarter-folded block still reads its true
+## width) plus a soldier's body radius and RESIZE_HANDLE_GAP. The block's isotropic
+## extent used to stand in for this, which put a deep block's grips hundreds of wu past
+## its flanks, out over open ground or the next unit.
+func _grip_reach(u) -> float:
+	var files: int = maxi(1, u.formation_files(u.soldiers))
+	var ranks: int = UnitFormation.ranks_for(u.soldiers, files)
+	var depth_pitch: float = u.file_pitch_wu() if u.in_square() else u.rank_pitch_wu()
+	var half := Vector2(float(files - 1) * 0.5 * u.file_pitch_wu(), float(maxi(0, ranks - 1)) * 0.5 * depth_pitch)
+	return FormationTier.support_reach(half, u.soldier_block_world_angle(), _file_axis(u)) \
+			+ u.soldier_body_radius() + RESIZE_HANDLE_GAP
 
 
 ## Unit vector along a regiment's file (width) axis in world space: its facing turned
@@ -2033,14 +2048,15 @@ func _track_grip_motion() -> bool:
 
 
 ## The grip geometry's current inputs: everything _resize_handle_positions reads
-## (position, facing, block extent, and the block's centre offset -- which moves
-## when an anchored drag commits or a standing offset swings with the heading),
-## or empty when no grips are showing.
+## (position, facing, the grips' reach -- which moves with the frontage, the headcount,
+## the pitches and a fold -- and the block's centre offset, which moves when an anchored
+## drag commits or a standing offset swings with the heading), or empty when no grips
+## are showing.
 func _current_grip_state() -> Array:
 	var u = _single_selected_unit()
 	if u == null:
 		return []
-	return [u.global_position, u.facing, u.render_block_extent(), u.block_centre_offset()]
+	return [u.global_position, u.facing, _grip_reach(u), u.block_centre_offset()]
 
 
 # --- control groups --------------------------------------------------------
