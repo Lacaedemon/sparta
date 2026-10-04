@@ -4350,6 +4350,27 @@ func clamp_order_destination(dest: Vector2, step: float = -1.0, tolerance: float
 			tolerance if tolerance > 0.0 else order_clear_tolerance, bounds)
 
 
+## Where this block, just set down at its own position, should actually stand: that
+## position when its footprint is clear of impassable terrain and on the field, otherwise
+## the nearest point that is (OrderFootprint.clear_placement). The footprint is the one an
+## order's destination is checked with (clamp_order_destination): the half-extents grown by
+## the body radius, laid out along the facing the block was deployed with. Returns the
+## position unchanged with a warning when no clear point is found (a hill flush against the
+## field's edge that the block cannot fit beside).
+func clear_deployment_position() -> Vector2:
+	var field: PathField = PathField.active
+	if field != null and not field.has_block_terrain():
+		field = null
+	var body: float = soldier_body_radius()
+	var half: Vector2 = _formation_local_half_extents() + Vector2(body, body)
+	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)
+	var placed: Vector2 = OrderFootprint.clear_placement(field, position, file_axis, half, field_bounds)
+	if not OrderFootprint.footprint_clear(field, placed, file_axis, half, field_bounds):
+		push_warning("[unit] %s: no clear ground to deploy on near %s; left where placed." % [unit_name, position])
+		return position
+	return placed
+
+
 ## Where this unit's officer will actually lead it when he decides a move himself -- closing
 ## on a sighted enemy, meeting a threat to the unit he guards, or keeping up with that ward --
 ## rather than carrying out an order. He won't lead his block onto impassable terrain or off

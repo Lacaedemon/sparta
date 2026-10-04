@@ -632,3 +632,63 @@ func test_a_unit_on_a_map_with_no_terrain_is_still_kept_on_the_field() -> void:
 	u.field_bounds = Rect2(0, 0, 1000, 1000)
 	u.move_target = Vector2(995, 300)
 	assert_lt(u.move_target.x, 995.0, "the field edge still clamps without any terrain")
+
+
+func test_a_clear_placement_is_left_where_it_is() -> void:
+	var at := Vector2(600, 300)
+	assert_eq(OrderFootprint.clear_placement(PathField.active, at, Vector2.RIGHT,
+			Vector2(50, 20)), at, "a footprint already clear of the hill is not moved")
+
+
+func test_a_placement_on_the_hill_is_set_down_at_the_nearest_clear_ground() -> void:
+	# Centred 30 wu inside the hill's south edge: the nearest way off is south, the
+	# footprint's own half-depth (20) plus the placement gap clear of that edge.
+	var half := Vector2(50, 20)
+	var placed: Vector2 = OrderFootprint.clear_placement(PathField.active,
+			Vector2(1275, HILL.end.y - 30), Vector2.RIGHT, half)
+	assert_eq(placed.x, 1275.0, "set down straight off the nearest edge, not sideways")
+	assert_almost_eq(placed.y, HILL.end.y + half.y + OrderFootprint.SEARCH_TOLERANCE, 0.001, "just clear of the south edge")
+	assert_true(OrderFootprint.footprint_clear(PathField.active, placed, Vector2.RIGHT, half),
+			"the footprint where it is set down touches the hill at most")
+
+
+func test_a_turned_placement_clears_the_hill_by_its_bounding_box() -> void:
+	# File axis vertical: the block's 50 wu half-width runs north-south, so its box reaches
+	# 50 wu down from the centre and the nearest clear centre is 50 wu (plus the gap) south of
+	# the edge.
+	var half := Vector2(50, 20)
+	var placed: Vector2 = OrderFootprint.clear_placement(PathField.active,
+			Vector2(1275, HILL.end.y - 10), Vector2.DOWN, half)
+	assert_almost_eq(placed.y, HILL.end.y + half.x + OrderFootprint.SEARCH_TOLERANCE, 0.001,
+			"a turned footprint is cleared by the half-width it now presents north-south")
+	assert_true(OrderFootprint.footprint_clear(PathField.active, placed, Vector2.DOWN, half))
+
+
+func test_a_placement_off_the_field_is_pulled_onto_it() -> void:
+	var bounds := Rect2(0, 0, 2000, 1000)
+	var placed: Vector2 = OrderFootprint.clear_placement(null, Vector2(1990, 500),
+			Vector2.RIGHT, Vector2(50, 20), bounds)
+	assert_eq(placed, Vector2(1950 - OrderFootprint.SEARCH_TOLERANCE, 500),
+			"pulled in just far enough to fit on the field, less the placement gap")
+
+
+func test_a_scenario_block_placed_on_the_hill_deploys_beside_it() -> void:
+	# The cannae-scale demo stages a cavalry block at (1175, 490), inside the default hill.
+	# Its commander sets it down on the nearest clear ground instead, so not one man starts
+	# the battle on the rock.
+	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
+	battle.drill_mode = true
+	battle.scenario = [{"team": 0, "type": "Cavalry", "x": 1175.0, "y": 490.0, "count": 80}]
+	add_child_autofree(battle)
+	await get_tree().physics_frame
+	var cav: Unit = null
+	for u in get_tree().get_nodes_in_group("units"):
+		if u is Unit:
+			cav = u
+	assert_not_null(cav)
+	var on_hill: int = 0
+	for s in cav.soldier_world_slots(cav.soldiers):
+		if HILL.has_point(s):
+			on_hill += 1
+	assert_eq(on_hill, 0, "no slot of the deployed block lies on the hill")
+	assert_false(HILL.has_point(cav.position), "the block's centre was moved off the hill")

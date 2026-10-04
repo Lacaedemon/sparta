@@ -102,6 +102,54 @@ static func clamp_destination(field: PathField, origin: Vector2, dest: Vector2,
 	return origin if clear_at >= span else dest + dir * clear_at
 
 
+## Where a block set down at `centre` should actually stand: `centre` itself when its
+## footprint is clear of impassable terrain and inside `bounds`, otherwise the nearest point
+## that is. A commander does not deploy a block on the rock any more than he orders one onto
+## it (clamp_destination), but a deployment has no march to pull back along, so the block is
+## set down instead at the nearest clear ground. The footprint is taken by its axis-aligned
+## bounding box, so the terrain each rect blocks for its centre is that rect grown by the
+## box's half-extents and the nearest clear centre is the nearest point outside every grown
+## rect (PathField.push_out_of_rects); a footprint turned off the axes therefore stands at
+## most its box's slack farther off than it strictly needs. The field bounds are applied after
+## the terrain, so a hill flush against the edge of the field can leave a footprint that fits
+## neither: the caller should check the result with footprint_clear. A moved footprint is
+## set down `gap` clear of the terrain and the field's edge rather than exactly touching them:
+## a file axis turned by a quarter-turn carries float noise of order 1e-8 in its other
+## component, enough to read an exactly-touching footprint as overlapping. Other arguments as
+## clamp_destination's; `field` may be null when there is no terrain to test.
+static func clear_placement(field: PathField, centre: Vector2, file_axis: Vector2,
+		half_extents: Vector2, bounds: Rect2 = Rect2(), max_passes: int = 4,
+		gap: float = SEARCH_TOLERANCE) -> Vector2:
+	if footprint_clear(field, centre, file_axis, half_extents, bounds):
+		return centre
+	var depth_axis: Vector2 = file_axis.orthogonal()
+	var box := Vector2(
+			half_extents.x * absf(file_axis.x) + half_extents.y * absf(depth_axis.x),
+			half_extents.x * absf(file_axis.y) + half_extents.y * absf(depth_axis.y)) \
+			+ Vector2(gap, gap)
+	var placed: Vector2 = centre
+	if field != null:
+		var grown: Array[Rect2] = []
+		for r in field.block_rects():
+			grown.append(r.grow_individual(box.x, box.y, box.x, box.y))
+		placed = PathField.push_out_of_rects(centre, grown, max_passes)
+	if bounds.has_area():
+		var lo: Vector2 = bounds.position + box
+		var hi: Vector2 = bounds.end - box
+		placed = Vector2(clampf(placed.x, lo.x, maxf(lo.x, hi.x)),
+				clampf(placed.y, lo.y, maxf(lo.y, hi.y)))
+	return placed
+
+
+## Whether a footprint centred on `centre` is clear of impassable terrain and lies wholly
+## inside `bounds` (no bounds when it has no area; no terrain when `field` is null).
+static func footprint_clear(field: PathField, centre: Vector2, file_axis: Vector2,
+		half_extents: Vector2, bounds: Rect2 = Rect2()) -> bool:
+	if field != null and field.footprint_blocked(centre, file_axis, half_extents):
+		return false
+	return not _leaves_bounds(centre, file_axis, half_extents, bounds)
+
+
 ## The four corners of the rectangular footprint centred on `centre`, its width along the
 ## unit vector `file_axis` and its depth perpendicular to it.
 static func _corners(centre: Vector2, file_axis: Vector2, half: Vector2) -> PackedVector2Array:
