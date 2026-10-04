@@ -39,10 +39,6 @@ const MIN_DIST: float = 1e-6
 # Below this body speed (px/s) the render treats a body as at rest and the unit's marks
 # can skip their per-frame MultiMesh rewrite — far under what the eye resolves at 60 fps.
 const REST_SPEED: float = 0.5
-## How long the terrain backstop keeps the same-unit standoff running after it last held a
-## body at a terrain edge (see _keep_out_of_terrain): long enough to space the men pressed
-## there, re-armed every tick a body is still held.
-const TERRAIN_HOLD_STANDOFF_SEC: float = 0.5
 # How long an engaged body's assigned canonical target slot is held fixed before the
 # engaged-body <-> slot PAIRING (not the underlying canonical-slot fix itself) is
 # recomputed, in physics ticks (60/s). A real soldier in a formation doesn't instantly
@@ -604,9 +600,6 @@ static func _keep_out_of_terrain(unit: Unit, n: int, guard: Dictionary) -> void:
 		pushed += 1
 	if pushed > 0:
 		unit._render_dirty = true
-		# A man held at the rock still minds his neighbours: the same-unit standoff only runs
-		# in a fight or a settle window, so keep a window open while any body is held here.
-		unit._arm_standoff_settle_window(TERRAIN_HOLD_STANDOFF_SEC)
 	# One rect test per checked body per rect (first sweep); one normalization per body moved.
 	SimOps.add(SimOps.TERRAIN_PROJECT, checked * grown.size())
 	SimOps.add(SimOps.SQRT_EVAL, pushed)

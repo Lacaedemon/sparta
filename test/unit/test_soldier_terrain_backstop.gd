@@ -93,19 +93,6 @@ func test_a_body_driven_into_the_hill_keeps_no_inward_velocity() -> void:
 	assert_lte(u._sim_body_vel[0].x, 0.0, "the eastward (into-terrain) part is gone")
 
 
-func test_holding_a_body_at_the_rock_opens_the_same_unit_standoff() -> void:
-	# A marching unit's standoff is normally off; a man held at a hill edge must still keep
-	# clear of the neighbours pressing in behind him, so the hold opens the settle window.
-	PathField.active = _field_with([HILL])
-	var u := _make_unit(Vector2(900, 480))
-	assert_lte(u._standoff_settle_until_tick, Engine.get_physics_frames(),
-			"sanity check: no settle window open before the hold")
-	_drive_into_hill(u, Vector2(600, 0))
-	SoldierBodies.step(u, TICK)
-	assert_gt(u._standoff_settle_until_tick, Engine.get_physics_frames(),
-			"holding a body at the rock keeps the standoff running")
-
-
 func test_a_body_already_inside_the_hill_is_left_to_walk_out() -> void:
 	# A block spawned overlapping a hill is not ejected wholesale: ejecting every body at once
 	# would stack those that differ only along the ejection axis onto one point.
