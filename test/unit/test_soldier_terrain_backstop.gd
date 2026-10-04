@@ -93,24 +93,6 @@ func test_a_body_driven_into_the_hill_keeps_no_inward_velocity() -> void:
 	assert_lte(u._sim_body_vel[0].x, 0.0, "the eastward (into-terrain) part is gone")
 
 
-func test_bodies_placed_on_the_same_edge_point_are_spaced_along_the_edge() -> void:
-	# Two bodies driven onto the hill at the same spot would be placed on one point; the
-	# backstop slides one along the edge so they keep half a diameter apart, both still
-	# held clear of the hill.
-	PathField.active = _field_with([HILL])
-	var u := _make_unit(Vector2(900, 480))
-	var r: float = u.soldier_body_radius()
-	for i in [0, 1]:
-		u._sim_soldier_pos[i] = Vector2(HILL.position.x - r - 1.0, 480)
-		u._sim_body_vel[i] = Vector2(600, 0)
-	SoldierBodies.step(u, TICK)
-	var a: Vector2 = u._sim_soldier_pos[0]
-	var b: Vector2 = u._sim_soldier_pos[1]
-	assert_gte(a.distance_to(b), r * 2.0 * SoldierBodies.EDGE_SPACING_FRAC - 0.001,
-			"the two placed bodies keep half a diameter apart")
-	assert_lte(maxf(a.x, b.x), HILL.position.x - r + 0.001, "both still held clear of the hill")
-
-
 func test_a_body_already_inside_the_hill_is_left_to_walk_out() -> void:
 	# A block spawned overlapping a hill is not ejected wholesale: ejecting every body at once
 	# would stack those that differ only along the ejection axis onto one point.

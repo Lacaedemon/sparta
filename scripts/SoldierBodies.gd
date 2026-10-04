@@ -39,10 +39,6 @@ const MIN_DIST: float = 1e-6
 # Below this body speed (px/s) the render treats a body as at rest and the unit's marks
 # can skip their per-frame MultiMesh rewrite — far under what the eye resolves at 60 fps.
 const REST_SPEED: float = 0.5
-## Minimum spacing, as a fraction of two bodies' diameter, a body the terrain backstop places
-## on an edge keeps from the rest of its unit (see _space_along_edge): half a diameter keeps
-## them clear of the demo defect scan's overlap floor (a quarter) with room to spare.
-const EDGE_SPACING_FRAC: float = 0.5
 # How long an engaged body's assigned canonical target slot is held fixed before the
 # engaged-body <-> slot PAIRING (not the underlying canonical-slot fix itself) is
 # recomputed, in physics ticks (60/s). A real soldier in a formation doesn't instantly
@@ -585,8 +581,7 @@ static func _keep_out_of_terrain(unit: Unit, n: int, guard: Dictionary) -> void:
 		return
 	var grown: Array[Rect2] = guard["grown"]
 	var inside: PackedByteArray = guard["inside"]
-	var pushed := PackedInt32Array()
-	var normals := PackedVector2Array()
+	var pushed: int = 0
 	var checked: int = 0
 	for i in range(n):
 		if inside[i] != 0:
@@ -602,45 +597,12 @@ static func _keep_out_of_terrain(unit: Unit, n: int, guard: Dictionary) -> void:
 		var into: float = v.dot(outward)
 		if into < 0.0:
 			unit._sim_body_vel[i] = v - outward * into
-		pushed.append(i)
-		normals.append(outward)
-	if not pushed.is_empty():
+		pushed += 1
+	if pushed > 0:
 		unit._render_dirty = true
-		_space_along_edge(unit, n, pushed, normals,
-				unit.soldier_body_radius() * 2.0 * EDGE_SPACING_FRAC)
-	# One rect test per checked body per rect (first sweep), one spacing test per placed body
-	# per body; one normalization per body placed.
-	SimOps.add(SimOps.TERRAIN_PROJECT, checked * grown.size() + pushed.size() * n)
-	SimOps.add(SimOps.SQRT_EVAL, pushed.size())
-
-
-## A body the backstop just placed on the terrain's edge is held there while the rest of its
-## unit keeps pressing in, and nothing else spaces it while the unit marches (the same-unit
-## standoff only runs in a fight or a settle window), so a second body pressed against it
-## would stack. Each placed body at `pushed` (its outward normal at the same index of
-## `normals`) that stands nearer than `min_sep` to another body of the unit slides along
-## the edge, away from that body, by the shortfall. The slide is along the edge, so the
-## body stays out of the terrain it was placed against; one pass, nearest offender first.
-static func _space_along_edge(unit: Unit, n: int, pushed: PackedInt32Array,
-		normals: PackedVector2Array, min_sep: float) -> void:
-	for k in range(pushed.size()):
-		var i: int = pushed[k]
-		var tangent: Vector2 = normals[k].orthogonal()
-		var p: Vector2 = unit._sim_soldier_pos[i]
-		var nearest: int = -1
-		var nearest_d2: float = min_sep * min_sep
-		for j in range(n):
-			if j == i:
-				continue
-			var d2: float = p.distance_squared_to(unit._sim_soldier_pos[j])
-			if d2 < nearest_d2:
-				nearest_d2 = d2
-				nearest = j
-		if nearest < 0:
-			continue
-		var away: float = (p - unit._sim_soldier_pos[nearest]).dot(tangent)
-		var side: float = 1.0 if away > 0.0 or (away == 0.0 and i > nearest) else -1.0
-		unit._sim_soldier_pos[i] = p + tangent * side * (min_sep - sqrt(nearest_d2))
+	# One rect test per checked body per rect (first sweep); one normalization per body moved.
+	SimOps.add(SimOps.TERRAIN_PROJECT, checked * grown.size())
+	SimOps.add(SimOps.SQRT_EVAL, pushed)
 
 
 ## Cap a stationary/reforming body's velocity to its unit's jog pace, but to the slower
