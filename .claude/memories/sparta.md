@@ -29,3 +29,4 @@ imports below.
 @.claude/memories/sparta/15-windows-shell-tooling-cr-and-paths.md
 @.claude/memories/sparta/16-tier-rule-changes-benchmark-the-huge-scenarios.md
 @.claude/memories/sparta/17-float32-geometry-and-invariant-tolerances.md
+@.claude/memories/sparta/18-body-constraints-demo-mutation-and-harness-phase.md

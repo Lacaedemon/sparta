@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Demo-tooling change only: a new DemoDefects verdict (facing_flutter) that judges recorded transcripts. No battle plays differently, and the analyzer is not drawn in any clip."
+}

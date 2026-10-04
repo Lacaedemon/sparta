@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/quarter-fold-order-hill-1701.json",
+  "caption": "A 60-man Infantry block north of the hill quarter-turns east (E), folding its grid wide along x and shallow along y, then is ordered east across the hill's top. The fresh order re-squares the block (now deep along y) before its destination is checked, so the order is clamped at the hill's west edge and no man ends up on the hill. Before this change the destination was checked in the folded grid and stood clear, and six of the squared block's men ended on the hill. (The ragged, turned arrival is a separate re-slot defect present on main too, tracked in #1702.)",
+  "fixed_fps": 30,
+  "max_frames": 500,
+  "fps": 15,
+  "width": 720
+}

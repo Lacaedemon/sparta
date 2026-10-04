@@ -551,6 +551,88 @@ func test_whipsaw_verdict_fails_an_oscillating_march() -> void:
 			"a facing that keeps reversing direction while marching is a whipsaw")
 
 
+func test_flutter_run_counts_back_to_back_small_reversals() -> void:
+	var ticks: Array = [0, 1, 2, 3, 4, 5, 6, 7]
+	var half_degree: float = deg_to_rad(0.5)
+	var flutter: Array = [0.0, half_degree, 0.0, half_degree, 0.0, half_degree, 0.0, half_degree]
+	assert_eq(DemoDefects.longest_flutter_run(ticks, flutter, deg_to_rad(0.1), 4), 6,
+			"a half-degree period-2 flip reverses on every sample after the first")
+	var turn: Array = []
+	for i in range(8):
+		turn.append(i * half_degree)
+	assert_eq(DemoDefects.longest_flutter_run(ticks, turn, deg_to_rad(0.1), 4), 0,
+			"a steady turn never reverses")
+	var s_curve: Array = [0.0, 0.01, 0.02, 0.03, 0.02, 0.01, 0.0, 0.01]
+	assert_eq(DemoDefects.longest_flutter_run(ticks, s_curve, deg_to_rad(0.1), 4), 1,
+			"an S-curve's direction changes are isolated, not back to back")
+
+
+func test_flutter_run_ignores_sparse_samples_and_sub_floor_noise() -> void:
+	var half_degree: float = deg_to_rad(0.5)
+	var flip: Array = [0.0, half_degree, 0.0, half_degree, 0.0, half_degree]
+	assert_eq(DemoDefects.longest_flutter_run([0, 60, 120, 180, 240, 300], flip,
+			deg_to_rad(0.1), 4), 0, "samples a minute apart cannot show a per-tick flip")
+	var tiny: Array = [0.0, 0.0001, 0.0, 0.0001, 0.0, 0.0001]
+	assert_eq(DemoDefects.longest_flutter_run([0, 1, 2, 3, 4, 5], tiny, deg_to_rad(0.1), 4), 0,
+			"alternation below the floor is float noise, not a facing defect")
+
+
+func test_flutter_run_handles_the_wrap_gap_boundary_and_held_ticks() -> void:
+	var half_degree: float = deg_to_rad(0.5)
+	# Flipping across the +/-pi seam: plain subtraction would read each step as ~2 pi.
+	var seam: Array = []
+	for i in range(8):
+		seam.append(PI - half_degree * 0.5 if i % 2 == 0 else -PI + half_degree * 0.5)
+	assert_eq(DemoDefects.longest_flutter_run([0, 1, 2, 3, 4, 5, 6, 7], seam, deg_to_rad(0.1), 4),
+			6, "a flip across the seam is a half-degree swing, not a full turn")
+	var steady: Array = []
+	for i in range(8):
+		steady.append(wrapf(PI - 3.0 * half_degree + i * half_degree, -PI, PI))
+	assert_eq(DemoDefects.longest_flutter_run([0, 1, 2, 3, 4, 5, 6, 7], steady, deg_to_rad(0.1), 4),
+			0, "a steady turn through the seam never reverses")
+	var flip: Array = [0.0, half_degree, 0.0, half_degree, 0.0]
+	assert_eq(DemoDefects.longest_flutter_run([0, 4, 8, 12, 16], flip, deg_to_rad(0.1), 4), 3,
+			"samples exactly max_gap apart still chain")
+	assert_eq(DemoDefects.longest_flutter_run([0, 5, 10, 15, 20], flip, deg_to_rad(0.1), 4), 0,
+			"one tick past max_gap breaks every link")
+	var held: Array = [0.0, half_degree, 0.0, 0.0, half_degree, 0.0, half_degree]
+	assert_eq(DemoDefects.longest_flutter_run([0, 1, 2, 3, 4, 5, 6], held, deg_to_rad(0.1), 4), 4,
+			"a held tick pauses the alternation without ending it")
+
+
+func test_flutter_verdict_skips_contact_and_non_moving_samples() -> void:
+	var slots: Array = _grid(6, 4, SPACING)
+	var half_degree: float = deg_to_rad(0.5)
+	for state in ["IDLE", "FIGHTING"]:
+		var snaps: Array = []
+		for i in range(10):
+			var a: float = half_degree if i % 2 == 1 else 0.0
+			snaps.append(_snapshot(i * 2, slots.duplicate(), slots, state == "FIGHTING", state,
+					[cos(a), sin(a)]))
+		assert_true(bool(_verdict(DemoDefects.analyze(snaps), "facing_flutter")["pass"]),
+				"a flip while %s is not a marching flutter" % state)
+	var engaged: Array = []
+	for i in range(10):
+		var a: float = half_degree if i % 2 == 1 else 0.0
+		engaged.append(_snapshot(i * 2, slots.duplicate(), slots, true, "MOVING", [cos(a), sin(a)]))
+	assert_true(bool(_verdict(DemoDefects.analyze(engaged), "facing_flutter")["pass"]),
+			"a flip while marching in contact is contact jitter, not a steering defect")
+
+
+func test_flutter_verdict_fails_a_small_amplitude_flip_the_whipsaw_misses() -> void:
+	var slots: Array = _grid(6, 4, SPACING)
+	var snaps: Array = []
+	var half_degree: float = deg_to_rad(0.5)
+	for i in range(10):
+		var a: float = half_degree if i % 2 == 1 else 0.0
+		snaps.append(_snapshot(i * 2, slots.duplicate(), slots, false, "MOVING", [cos(a), sin(a)]))
+	var result: Dictionary = DemoDefects.analyze(snaps)
+	assert_true(bool(_verdict(result, "facing_whipsaw")["pass"]),
+			"sanity check: every swing is under the whipsaw floor")
+	assert_false(bool(_verdict(result, "facing_flutter")["pass"]),
+			"a half-degree flip every other tick, sustained, is a flutter")
+
+
 func test_misslot_is_suppressed_while_the_block_is_in_transit() -> void:
 	# Bodies caught halfway along their walks to reassigned positions (a reshape in
 	# flight): nobody stands ON any slot, identity is noise, and the settled gate must

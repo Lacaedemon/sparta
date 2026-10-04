@@ -28,6 +28,7 @@ func test_disengage_demo_input_breaks_contact() -> void:
 	var recorder: Node = load("res://tools/demo/DemoInputRecorder.tscn").instantiate()
 	add_child_autofree(recorder)
 	await get_tree().physics_frame   # the recorder spawns Battle deferred
+	assert_eq(recorder.failure_code, 0, "the demo script played: %s" % recorder.failure_message)
 	var battle: Node = recorder.get_node("Battle")
 
 	# Step to just past the scripted Ctrl+Down (tick 300, per the demo script), confirming
