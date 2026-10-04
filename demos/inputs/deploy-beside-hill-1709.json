@@ -1,0 +1,119 @@
+{
+  "_comment": "Deployment off impassable terrain (#1709): the scenario places two Spearmen blocks overlapping the hill -- one squarely on its south half, one straddling its north-west corner. Each is set down on the nearest clear ground beside the hill instead, so no man starts the battle on the rock (soldiers_in_block_terrain pinned at 0 from tick 8). The south block is then marched west along the hill's south edge to show it moving off cleanly. A distant team-1 Archers block holds so the battle has two sides; tier_ranges keeps every block on the close tier, so each man is simulated and the in-hill count is real.",
+  "seed": "71709",
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 1250,
+      "y": 540,
+      "facing": [
+        0,
+        -1
+      ],
+      "count": 64
+    },
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 1160,
+      "y": 390,
+      "facing": [
+        -1,
+        0
+      ],
+      "count": 40
+    },
+    {
+      "team": 1,
+      "type": "Archers",
+      "x": 400,
+      "y": 1200,
+      "facing": [
+        0,
+        -1
+      ],
+      "count": 30
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 1200,
+      "y": 520,
+      "zoom": 1.6
+    }
+  ],
+  "steps": [
+    {
+      "tick": 20,
+      "click": [
+        1250,
+        653
+      ]
+    },
+    {
+      "tick": 26,
+      "rmb_click": [
+        1050,
+        653
+      ]
+    }
+  ],
+  "state": [
+    8,
+    60,
+    120,
+    180,
+    240,
+    300
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        1250.0,
+        653.0
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 1,
+      "field": "position",
+      "value": [
+        1160.0,
+        365.5
+      ]
+    },
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 8,
+      "uid": 1,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 300,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 180,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    }
+  ],
+  "tier_ranges": {
+    "promote": 5000.0,
+    "demote": 6000.0
+  }
+}

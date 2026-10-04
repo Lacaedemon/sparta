@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/deploy-beside-hill-1709.json",
+  "caption": "The scenario places two Spearmen blocks overlapping the hill: one squarely on its south half, one straddling its north-west corner. A placement on impassable ground is now set down on the nearest clear ground beside it, on the field, the same footprint check an order's destination gets, so neither block starts with a man on the rock. The south block then marches west along the hill's edge.",
+  "fixed_fps": 30,
+  "max_frames": 160,
+  "fps": 15,
+  "width": 720
+}

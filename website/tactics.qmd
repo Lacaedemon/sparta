@@ -2426,7 +2426,7 @@ it will hold there (a quarter-turned block is first squared to that facing, as t
 order itself squares it). A deep column side-stepping toward a hill stops with its rear ranks
 at the hill's edge rather than among the rocks. If no spot along the move is clear,
 the unit stays where it is. A block that already overlaps the terrain where it stands,
-such as a deep cavalry block deployed against a hill, can still move, as long as the
+such as a deep column shoved against a hill, can still move, as long as the
 order would not push it deeper into the terrain than it already is.
 The edge of the field works the same way: an order is pulled back until the whole
 formation fits on the field, so a deep column sent to the edge halts with its front
@@ -2436,8 +2436,8 @@ orders.
 A man pushed, swept or marched onto the hill is held at its edge.
 A rider on the outside of a column brushing past a hill stops at its edge rather than
 riding over the rocks.
-(A unit deployed partly on a hill keeps the men already there where they stand, free to
-walk off it.)
+No unit starts a battle on a hill either: a block placed overlapping one is set down on
+the nearest clear ground beside it, on the field, as an order's destination would be.
 
 ::: {#fig-side-step-hill-footprint .demo}
 
