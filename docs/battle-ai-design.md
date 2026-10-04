@@ -336,8 +336,9 @@ The contract between levels, in both directions:
   its own local decisions -- which maneuver, which target, which formation.
   This is the bottom-up pillar applied to command: the general's plan
   constrains, the unit leader's tactics decide.
-- **Every boundary is two-way, the player's included.** Communication between
-  any two command levels runs in both directions, and so does communication
+
+- **Every boundary is two-way, the player's included.**
+  Communication between any two command levels runs in both directions, and so does communication
   between an AI module and the player whenever the player directs one
   (a group delegated to a subcommander, or an order a unit's leader carries
   out).
