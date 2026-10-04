@@ -2431,10 +2431,13 @@ order would not push it deeper into the terrain than it already is.
 The edge of the field works the same way: an order is pulled back until the whole
 formation fits on the field, so a deep column sent to the edge halts with its front
 rank on it rather than half off the map.
-Individual soldiers are kept out of a hill too, whatever moves them toward it, not only
-orders: every moment of the battle, a man who has ended up on the hill is put back on its
-edge. A rider on the outside of a column brushing past a hill stops at its edge rather than
+Individual soldiers are kept off a hill too, whatever moves them toward it, not only
+orders.
+A man pushed, swept or marched onto the hill is held at its edge.
+A rider on the outside of a column brushing past a hill stops at its edge rather than
 riding over the rocks.
+(A unit deployed partly on a hill keeps the men already there where they stand, free to
+walk off it.)
 
 ::: {#fig-side-step-hill-footprint .demo}
 
