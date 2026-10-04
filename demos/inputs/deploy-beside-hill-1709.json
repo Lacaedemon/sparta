@@ -110,6 +110,33 @@
       "uid": 0,
       "field": "soldiers_in_block_terrain",
       "value": 0
+    },
+    {
+      "tick": 120,
+      "uid": 0,
+      "field": "state",
+      "value": "MOVING"
+    },
+    {
+      "tick": 240,
+      "uid": 0,
+      "field": "state",
+      "value": "MOVING"
+    },
+    {
+      "tick": 240,
+      "uid": 1,
+      "field": "position",
+      "value": [
+        1160.0,
+        365.5
+      ]
+    },
+    {
+      "tick": 300,
+      "uid": 1,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
     }
   ],
   "tier_ranges": {

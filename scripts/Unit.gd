@@ -4352,9 +4352,10 @@ func clamp_order_destination(dest: Vector2, step: float = -1.0, tolerance: float
 
 ## Where this block, just set down at its own position, should actually stand: that
 ## position when its footprint is clear of impassable terrain and on the field, otherwise
-## the nearest point that is (OrderFootprint.clear_placement). The footprint is the one an
-## order's destination is checked with (clamp_order_destination): the half-extents grown by
-## the body radius, laid out along the facing the block was deployed with. Returns the
+## the nearest point that is (OrderFootprint.clear_placement). The footprint is sized as an
+## order's destination is (clamp_order_destination): the half-extents (the far tier's O(1)
+## reading for a far block), grown by the body radius. It is laid out along the facing the
+## block was deployed with rather than a held facing, since a deployment has no order. Returns the
 ## position unchanged with a warning when no clear point is found (a hill flush against the
 ## field's edge that the block cannot fit beside).
 func clear_deployment_position() -> Vector2:
@@ -4362,7 +4363,9 @@ func clear_deployment_position() -> Vector2:
 	if field != null and not field.has_block_terrain():
 		field = null
 	var body: float = soldier_body_radius()
-	var half: Vector2 = _formation_local_half_extents() + Vector2(body, body)
+	var extents: Vector2 = _far_tier_half_extents() if tier == FormationTier.FAR \
+			else _formation_local_half_extents()
+	var half: Vector2 = extents + Vector2(body, body)
 	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)
 	var placed: Vector2 = OrderFootprint.clear_placement(field, position, file_axis, half, field_bounds)
 	if not OrderFootprint.footprint_clear(field, placed, file_axis, half, field_bounds):
@@ -4515,8 +4518,9 @@ func _far_tier_half_extents() -> Vector2:
 ##
 ## Deliberately NOT the flat corner_clearance() (the corner man's full half-diagonal,
 ## folding in BOTH width and depth unconditionally) for a KNOWN travel direction: a
-## straight, unturning leg only needs the width actually swept along that specific
-## leg, not the worst case over every possible orientation. See corner_clearance()
+## straight leg only needs the width swept along that specific leg -- by the grid as it
+## stands now and as it will stand once it pivots onto the bearing (see swept_held
+## below) -- not the worst case over every possible orientation. See corner_clearance()
 ## below for the margin PathField.next_step() still uses for every detour leg (the
 ## funnel corner, or the corridor waypoint it falls back to) -- a route can only
 ## reorient where a detour leg turns off the straight leg's bearing, so the fuller,

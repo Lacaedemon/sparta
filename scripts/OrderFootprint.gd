@@ -111,11 +111,11 @@ static func clamp_destination(field: PathField, origin: Vector2, dest: Vector2,
 ## box's half-extents and the nearest clear centre is the nearest point outside every grown
 ## rect (PathField.push_out_of_rects); a footprint turned off the axes therefore stands at
 ## most its box's slack farther off than it strictly needs. Ground outside `bounds` is four
-## more such rects, one beyond each edge, so the search never takes the nearest way off a hill
-## when that way runs off the field. A pocket with no clear exit (terrain packed against the
-## edge tighter than the footprint) is returned where the last pass left it, so the caller
-## should check the result with footprint_clear. A moved footprint is
-## set down `gap` clear of the terrain and the field's edge rather than exactly touching them:
+## more such rects, one beyond each edge, so the search passes over a way off a hill that
+## runs off the field whenever another way is clear. A pocket with no clear exit (terrain
+## packed against the edge tighter than the footprint) is returned where the last pass left
+## it, so the caller should check the result with footprint_clear. A moved footprint is set
+## down `gap` clear of the terrain and the field's edge rather than exactly touching them:
 ## a file axis turned by a quarter-turn carries float noise of order 1e-8 in its other
 ## component, enough to read an exactly-touching footprint as overlapping. Other arguments as
 ## clamp_destination's; `field` may be null when there is no terrain to test.

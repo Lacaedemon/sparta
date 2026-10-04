@@ -2436,8 +2436,11 @@ orders.
 A man pushed, swept or marched onto the hill is held at its edge.
 A rider on the outside of a column brushing past a hill stops at its edge rather than
 riding over the rocks.
-No unit starts a battle on a hill either: a block placed overlapping one is set down on
-the nearest clear ground beside it, on the field, as an order's destination would be.
+A block placed overlapping a hill when a scenario or custom battle is set up is set down
+on the nearest clear ground beside it instead, on the field, as an order's destination
+would be.
+(Only where the hill leaves no room for it, against the field's edge, does it stay where
+it was placed, and its men already on the rock are free to walk off.)
 
 ::: {#fig-side-step-hill-footprint .demo}
 
