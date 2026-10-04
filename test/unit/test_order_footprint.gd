@@ -592,6 +592,40 @@ func test_an_officer_will_not_lead_his_block_onto_the_hill_on_his_own_initiative
 			"and the block fits where he stops")
 
 
+## A wide, shallow 120-man block facing north at `pos`: 15 files along x, 8 ranks along y.
+func _make_wide_block(pos: Vector2) -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 120
+	add_child_autofree(u)
+	u.frontage_override = 15
+	u.facing = Vector2.UP
+	u.position = pos
+	return u
+
+
+func test_route_clearance_covers_the_frontage_a_disciplined_block_will_turn_to_present() -> void:
+	# Marching east, a north-facing block sweeps only its shallow depth across the march; a
+	# disciplined march pivots onto the bearing en route and then sweeps its whole frontage.
+	# The officer plans the route for that.
+	var u := _make_wide_block(Vector2(600, 600))
+	var half: Vector2 = u._formation_local_half_extents()
+	var r: float = u.soldier_body_radius()
+	assert_gt(half.x, half.y, "sanity check: wider than deep")
+	assert_true(u.disciplined, "sanity check: a disciplined block")
+	assert_almost_eq(u.terrain_clearance(Vector2.RIGHT, half), half.x + r, 0.001,
+			"the route clears the frontage the block will present after pivoting")
+
+
+func test_route_clearance_of_a_block_that_keeps_its_grid_is_unchanged() -> void:
+	# An undisciplined march folds the turn into its grid instead of pivoting, so it keeps
+	# sweeping what it sweeps now.
+	var u := _make_wide_block(Vector2(600, 600))
+	u.disciplined = false
+	var half: Vector2 = u._formation_local_half_extents()
+	assert_almost_eq(u.terrain_clearance(Vector2.RIGHT, half), half.y + u.soldier_body_radius(), 0.001,
+			"no pivot, no extra clearance")
+
+
 func test_a_unit_on_a_map_with_no_terrain_is_still_kept_on_the_field() -> void:
 	PathField.active = PathField.new(Rect2(0, 0, 4000, 4000))   # no block terrain at all
 	var u := _make_deep_block(Vector2(300, 300))

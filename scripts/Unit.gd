@@ -4519,7 +4519,15 @@ func terrain_clearance(travel_dir: Vector2 = Vector2.ZERO, extents: Vector2 = UN
 	# cross/dot values are equal up to sign in that case, which absf() erases).
 	var u_axis: Vector2 = Vector2.RIGHT.rotated(soldier_block_world_angle())
 	var swept: float = half_extents.x * absf(u_axis.cross(dir)) + half_extents.y * absf(u_axis.dot(dir))
-	return swept + soldier_body_radius()
+	# The officer plans the line of march for the block as it will stand on it, too: a
+	# disciplined march pivots its grid onto the bearing en route, after which it sweeps
+	# its frontage across the march rather than whatever it sweeps now. Clear the wider of
+	# the two. _order_held_facing() decides which facing the block will hold (a held
+	# side-step facing, or an undisciplined fold, keeps the current grid, so nothing changes).
+	var held_axis: Vector2 = _order_held_facing(position + dir).rotated(PI * 0.5 + _formation_angle)
+	var swept_held: float = half_extents.x * absf(held_axis.cross(dir)) \
+			+ half_extents.y * absf(held_axis.dot(dir))
+	return maxf(swept, swept_held) + soldier_body_radius()
 
 
 ## The margin PathField.next_step() uses for every detour leg -- rounding a blocking
