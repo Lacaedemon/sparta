@@ -576,6 +576,22 @@ func test_a_block_overlapping_a_hill_from_the_south_can_slide_along_its_edge() -
 					% [dx, origin])
 
 
+func test_an_officer_will_not_lead_his_block_onto_the_hill_on_his_own_initiative() -> void:
+	# A chase, a guard's sortie or a ward's shadowing is the officer's own decision, not an
+	# order, but he won't lead his block onto the rock any more than he would obey an order
+	# to: the destination he picks gets the same footprint check an order's does.
+	var u := _make_deep_block(Vector2(1110, 200))
+	var clear := Vector2(1110, 230)
+	assert_eq(u._own_initiative_destination(clear), clear, "a clear chase step is kept")
+	var into_hill := Vector2(1250, 330)   # the 342 wu deep block would reach far into the hill
+	var got: Vector2 = u._own_initiative_destination(into_hill)
+	assert_ne(got, into_hill, "a chase that would put the block on the hill is pulled back")
+	var r: float = u.soldier_body_radius()
+	assert_false(PathField.active.footprint_blocked(got, u._order_held_facing(got).rotated(
+			PI * 0.5 + u._formation_angle), u._formation_local_half_extents() + Vector2(r, r)),
+			"and the block fits where he stops")
+
+
 func test_a_unit_on_a_map_with_no_terrain_is_still_kept_on_the_field() -> void:
 	PathField.active = PathField.new(Rect2(0, 0, 4000, 4000))   # no block terrain at all
 	var u := _make_deep_block(Vector2(300, 300))

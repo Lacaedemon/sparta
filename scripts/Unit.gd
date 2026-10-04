@@ -3275,7 +3275,7 @@ func _think(delta: float) -> void:
 		# keep up with the march.
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
-		_move_to(enemy.position, delta, false, true)
+		_move_to(_own_initiative_destination(enemy.position), delta, false, true)
 	else:
 		# Idle: no enemy; a HOLD/BRACE stance that won't chase; or a directly
 		# player-commanded unit holding formation (auto_advance_on_detect false) with nothing
@@ -3409,7 +3409,7 @@ func _support_tick(delta: float) -> void:
 			# the march (the turn re-arms on the next contact).
 			if _engage_turn_target != Vector2.ZERO:
 				_settle_engage_turn()
-			_move_to(threat.position, delta, false, true)
+			_move_to(_own_initiative_destination(threat.position), delta, false, true)
 			return
 	# No threat near the ward (none detected, or one out of weapon range that this unit's
 	# side does not yet perceive): shadow it, holding station a short distance off so the
@@ -3420,7 +3420,7 @@ func _support_tick(delta: float) -> void:
 		_settle_engage_turn()
 	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 	if position.distance_squared_to(ward.position) > SUPPORT_FOLLOW_DISTANCE * SUPPORT_FOLLOW_DISTANCE:
-		_move_to(ward.position, delta, false, true)
+		_move_to(_own_initiative_destination(ward.position), delta, false, true)
 	else:
 		state = State.IDLE
 
@@ -4348,6 +4348,16 @@ func clamp_order_destination(dest: Vector2, step: float = -1.0, tolerance: float
 	return OrderFootprint.clamp_destination(field, position, dest, file_axis,
 			extents + Vector2(body, body), step if step > 0.0 else order_clear_step,
 			tolerance if tolerance > 0.0 else order_clear_tolerance, bounds)
+
+
+## Where this unit's officer will actually lead it when he decides a move himself -- closing
+## on a sighted enemy, meeting a threat to the unit he guards, or keeping up with that ward --
+## rather than carrying out an order. He won't lead his block onto impassable terrain or off
+## the field any more than he would carry out an order to, so the same footprint check an
+## order's destination gets (clamp_order_destination) applies: the destination is pulled back
+## along the move to where the whole block fits.
+func _own_initiative_destination(point: Vector2) -> Vector2:
+	return clamp_order_destination(point)
 
 
 ## The facing this unit will hold at a move's destination `dest`, which the caller turns
