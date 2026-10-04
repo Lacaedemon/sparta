@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Test and tooling change with no rendered effect: the demo recorder now quits with its exit code only when it runs as the standalone tool, and records the failure on itself when a GUT test hosts it, so a stale spawn stamp or a malformed script fails that one test instead of ending the whole test run. No battle plays differently."
+}

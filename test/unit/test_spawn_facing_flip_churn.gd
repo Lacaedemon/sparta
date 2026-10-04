@@ -258,6 +258,7 @@ func test_demo_no_bbox_collapse_on_spawn_facing_flip() -> void:
 	# The recorder defers spawning Battle (_start_battle.call_deferred()), so it isn't a
 	# child yet on this frame.
 	await get_tree().physics_frame
+	assert_eq(recorder.failure_code, 0, "the demo script played: %s" % recorder.failure_message)
 	var battle: Node = recorder.get_node("Battle")
 
 	var cavalry: Unit = null
