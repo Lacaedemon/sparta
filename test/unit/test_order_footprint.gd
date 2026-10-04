@@ -672,6 +672,20 @@ func test_a_placement_off_the_field_is_pulled_onto_it() -> void:
 			"pulled in just far enough to fit on the field, less the placement gap")
 
 
+func test_a_placement_whose_nearest_way_off_the_hill_leaves_the_field_takes_another() -> void:
+	# The field ends 200 wu east of the hill: a block 340 wu wide centred near the hill's east
+	# edge would be nearest clear to the east, but its footprint would hang off the field
+	# there, so it is set down west of the hill instead.
+	var bounds := Rect2(0, -1000, 1600, 3000)
+	var half := Vector2(170, 490)
+	var placed: Vector2 = OrderFootprint.clear_placement(PathField.active, Vector2(1325, 480),
+			Vector2.RIGHT, half, bounds)
+	assert_almost_eq(placed.x, HILL.position.x - half.x - OrderFootprint.SEARCH_TOLERANCE, 0.001,
+			"set down just west of the hill")
+	assert_true(OrderFootprint.footprint_clear(PathField.active, placed, Vector2.RIGHT, half, bounds),
+			"clear of the hill and wholly on the field")
+
+
 func test_a_scenario_block_placed_on_the_hill_deploys_beside_it() -> void:
 	# The cannae-scale demo stages a cavalry block at (1175, 490), inside the default hill.
 	# Its commander sets it down on the nearest clear ground instead, so not one man starts

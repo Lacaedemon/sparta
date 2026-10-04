@@ -110,9 +110,11 @@ static func clamp_destination(field: PathField, origin: Vector2, dest: Vector2,
 ## bounding box, so the terrain each rect blocks for its centre is that rect grown by the
 ## box's half-extents and the nearest clear centre is the nearest point outside every grown
 ## rect (PathField.push_out_of_rects); a footprint turned off the axes therefore stands at
-## most its box's slack farther off than it strictly needs. The field bounds are applied after
-## the terrain, so a hill flush against the edge of the field can leave a footprint that fits
-## neither: the caller should check the result with footprint_clear. A moved footprint is
+## most its box's slack farther off than it strictly needs. Ground outside `bounds` is four
+## more such rects, one beyond each edge, so the search never takes the nearest way off a hill
+## when that way runs off the field. A pocket with no clear exit (terrain packed against the
+## edge tighter than the footprint) is returned where the last pass left it, so the caller
+## should check the result with footprint_clear. A moved footprint is
 ## set down `gap` clear of the terrain and the field's edge rather than exactly touching them:
 ## a file axis turned by a quarter-turn carries float noise of order 1e-8 in its other
 ## component, enough to read an exactly-touching footprint as overlapping. Other arguments as
@@ -127,18 +129,31 @@ static func clear_placement(field: PathField, centre: Vector2, file_axis: Vector
 			half_extents.x * absf(file_axis.x) + half_extents.y * absf(depth_axis.x),
 			half_extents.x * absf(file_axis.y) + half_extents.y * absf(depth_axis.y)) \
 			+ Vector2(gap, gap)
-	var placed: Vector2 = centre
+	var blocked: Array[Rect2] = []
 	if field != null:
-		var grown: Array[Rect2] = []
-		for r in field.block_rects():
-			grown.append(r.grow_individual(box.x, box.y, box.x, box.y))
-		placed = PathField.push_out_of_rects(centre, grown, max_passes)
+		blocked.append_array(field.block_rects())
 	if bounds.has_area():
-		var lo: Vector2 = bounds.position + box
-		var hi: Vector2 = bounds.end - box
-		placed = Vector2(clampf(placed.x, lo.x, maxf(lo.x, hi.x)),
-				clampf(placed.y, lo.y, maxf(lo.y, hi.y)))
-	return placed
+		blocked.append_array(_outside_slabs(bounds, centre, box))
+	var grown: Array[Rect2] = []
+	for r in blocked:
+		grown.append(r.grow_individual(box.x, box.y, box.x, box.y))
+	return PathField.push_out_of_rects(centre, grown, max_passes)
+
+
+## The ground outside `bounds` as four rects, one beyond each edge, each reaching far enough
+## past the field that a footprint `box` in half-extents, centred anywhere near `centre`,
+## cannot be pushed out through its far side instead of back onto the field.
+static func _outside_slabs(bounds: Rect2, centre: Vector2, box: Vector2) -> Array[Rect2]:
+	var reach: float = bounds.size.x + bounds.size.y + absf(centre.x) + absf(centre.y) \
+			+ 4.0 * (box.x + box.y)
+	var top: float = bounds.position.y - reach
+	var tall: float = bounds.size.y + 2.0 * reach
+	return [
+		Rect2(bounds.position.x - reach, top, reach, tall),
+		Rect2(bounds.end.x, top, reach, tall),
+		Rect2(bounds.position.x, bounds.position.y - reach, bounds.size.x, reach),
+		Rect2(bounds.position.x, bounds.end.y, bounds.size.x, reach),
+	]
 
 
 ## Whether a footprint centred on `centre` is clear of impassable terrain and lies wholly
