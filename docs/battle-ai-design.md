@@ -336,6 +336,21 @@ The contract between levels, in both directions:
   its own local decisions -- which maneuver, which target, which formation.
   This is the bottom-up pillar applied to command: the general's plan
   constrains, the unit leader's tactics decide.
+- **Every boundary is two-way, the player's included.** Communication between
+  any two command levels runs in both directions, and so does communication
+  between an AI module and the player whenever the player directs one
+  (a group delegated to a subcommander, or an order a unit's leader carries
+  out).
+  Whoever issued an order hears back about it: a subordinate that amends or
+  refuses an order (a destination cut short of impassable terrain, a march
+  with no way through, a maneuver that cannot start) reports what it was
+  asked, what it will do instead, and why.
+  A superior that receives a request can grant or deny it, and the
+  subordinate learns which.
+  The player is a superior like any other, so these reports reach the player
+  in the HUD, attributed to the unit or commander that sent them.
+  Tracked as #1712 (umbrella), with sighting reports in #1625 and
+  order-outcome reports in #1711 (maintainer directive, 2026-10-04).
 
 ### Orders-only actuation -- no AI backdoors
 
