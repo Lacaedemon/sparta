@@ -1441,8 +1441,8 @@ and accelerate to full speed on contact.
    the way is clear, and the HUD tells you so with a short message naming the unit,
    such as "Infantry 1: halting short of impassable ground" or
    "Infantry 1: no way through -- holding".
-   Units under AI command, including a group you have delegated, report to their
-   own commander instead of to you.
+   Units under AI command, including a group you have delegated, do not show these
+   messages.
 5. **Exploit the break** --- when a unit **routs**, it flees (its flag fading) and stops
    fighting for now. Routs spread to nearby allies, so a single break can cascade. A
    fugitive that breaks contact can **rally** and reform back under your control at low

@@ -352,6 +352,14 @@ The contract between levels, in both directions:
   in the HUD, attributed to the unit or commander that sent them.
   Tracked as #1712 (umbrella), with sighting reports in #1625 and
   order-outcome reports in #1711 (maintainer directive, 2026-10-04).
+  As of 2026-10-05 the first order-outcome slice is in: a unit reports a
+  move destination cut short of impassable terrain or the field edge, or
+  refused so that it holds.
+  A player-commanded unit's report shows in the HUD; an AI-commanded or
+  delegated unit's report collects in `Battle.ai_report_inbox`, which no
+  commander reads yet.
+  Commanders acting on reports, maneuver refusals, and coalescing a group's
+  messages are tracked in #1732.
 
 ### Orders-only actuation -- no AI backdoors
 

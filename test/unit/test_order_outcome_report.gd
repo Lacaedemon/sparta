@@ -222,3 +222,18 @@ func test_all_teams_control_treats_both_armies_as_the_players() -> void:
 	_order_into_the_hill(u)
 	assert_true(battle._hud._flash_label.visible, "the player commands team 1 here, so it toasts")
 	assert_eq(battle.ai_report_inbox.pending_count(), 0, "and no AI commander is told")
+
+
+## When a footprint both overlaps terrain and leaves the field, terrain is the reason given;
+## each alone names itself, and a clear footprint names neither.
+func test_binding_constraint_names_terrain_first_then_the_field_edge() -> void:
+	var f := PathField.new(Rect2(0, 0, 1000, 1000))
+	f.block_rect(Rect2(900, 400, 100, 200))
+	var field := Rect2(0, 0, 1000, 1000)
+	var half := Vector2(50, 20)
+	assert_eq(OrderFootprint.binding_constraint(f, Vector2(990, 500), Vector2.RIGHT, half, field),
+			OrderFootprint.Constraint.TERRAIN, "on the hill and off the field: terrain")
+	assert_eq(OrderFootprint.binding_constraint(f, Vector2(990, 100), Vector2.RIGHT, half, field),
+			OrderFootprint.Constraint.FIELD_EDGE, "off the field only: the field edge")
+	assert_eq(OrderFootprint.binding_constraint(f, Vector2(500, 500), Vector2.RIGHT, half, field),
+			OrderFootprint.Constraint.NONE, "clear: neither")
