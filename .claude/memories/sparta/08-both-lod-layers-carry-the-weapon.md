@@ -348,11 +348,16 @@ back toward the rout baseline and it re-forms where it stands --- deterministic 
 `row-major-rally-reform.json`. Add a second, safe friendly unit outside the rout-shock radius, or
 `_check_victory` ends the battle while the router is still routing.
 
-**`_spawn_scenario` silently ignores keys it does not know.** A `"frontage": 8` override reads as
-perfectly plausible and does nothing --- the supported keys are `count`, `morale`, `formation`,
-`starting_state`, `disciplined`, `atomic_response_s`, `training`, `walk_advance`,
-`reform_before_move`, `file_major_reform`, `team`, `x`, `y`, `facing`. Read the function before
-inventing a key, and confirm the effect in a state dump rather than assuming it applied.
+**`_spawn_scenario` silently ignores keys it does not know.**
+An unknown key reads as perfectly plausible and does nothing, and the supported set grows over time, so this note's list is not a reference.
+The authoritative list is the function itself (`scripts/Battle.gd`).
+As of 2026-10-05 it reads `frontage_override` and falls back to `frontage`, so a scenario `"frontage": 4` is honoured.
+When PR #1275 first recorded this, `frontage` was ignored.
+It also reads `missile`, `ammo`, `missile_range`, `subunit_structure` and `subunit_size`, among others.
+
+- **Do:** read `_spawn_scenario` before inventing or doubting a key, and confirm the effect in a state dump.
+
+- **Don't:** conclude a key is ignored from this note, or from a grep of past notes.
 
 (`Lacaedemon/sparta` PR #1275, 2026-08-16.)
 

@@ -60,3 +60,52 @@ Otherwise the footprint is validated in the folded grid, and the block marches s
 - **Do:** respond before the `move_target` write in any new fresh-order writer.
 
 - **Don't:** add a writer that writes `move_target` and responds afterwards.
+
+## Dense defect scans use CI's own 2-tick spacing
+
+`tools/ci/website-demo-defect-delta.sh` re-dumps each changed clip every `DEMO_DEFECT_DENSE_STEP` ticks (default 2) from the tick where it diverges.
+On the re-staged `trapped_routing` clip a 4-tick local scan read `facing_whipsaw` 0.
+CI's 2-tick re-dump read 11 against a threshold of 4, and a local 2-tick re-dump read 10.
+The pursuer's facing snapped between about 12 and 112 degrees, some snaps only 2 ticks apart (t178-282), so 4-tick sampling stepped over every one.
+
+- **Do:** dense-scan at 2-tick spacing before choosing a staging or calling a clip whipsaw-free.
+
+- **Don't:** treat a clean 4-tick scan as evidence about facing metrics.
+
+(`Lacaedemon/sparta` PR #1724, 2026-10-05.)
+
+## Check soldier extents, not centre distance, before staging a clash
+
+Two cavalry blocks that overlap at spawn leave the pursuer reading `engaged: true` with `in_enemy_contact: false` while its centre is 100+ wu away.
+Its facing then flickers as it backs off and re-charges.
+Default Cavalry block geometry, as slot-centre spans reported in that PR (not re-measured here): 60 mounts is 8 files at a 40 wu file pitch by 8 ranks at 120 wu, so 280 x 840 wu.
+80 mounts is 320 x 960.
+A block facing east lays its 840 wu depth along x, so a pursuer that "moved away" eastward-facing can still overlap.
+
+- **Do:** check every unit's full soldier extent (min/max of `soldiers_full.pos` at tick 1-4) for overlap before staging a clash.
+
+- **Don't:** judge separation from centre distance.
+
+(`Lacaedemon/sparta` PR #1724, 2026-10-05.)
+
+## The default hill's east corridor is 200 wu wide
+
+The hill is `Rect2(1150, 380, 250, 200)` (kind `block`) and `FIELD` is 1600 wide, so the corridor from the hill's east face (x 1400) to the field edge (x 1600) is 200 wu.
+A 60-mount cavalry block (280 wu wide) cannot stand there without men in the hill, so that staging used a 16-mount, `frontage: 4` scout (120 wu wide).
+
+- **Do:** size a unit for the corridor it must stand in, using a small block with an explicit `frontage`.
+
+- **Don't:** stage a default-geometry block beside block terrain and assume it fits.
+
+(`Lacaedemon/sparta` PR #1724, 2026-10-05.)
+
+## Pin `soldiers_in_block_terrain = 0` in stagings near block terrain
+
+`soldiers_in_block_terrain` is both a dump field (`tools/demo/DemoState.gd`) and an `expect` field (`demos/README.md`).
+Prove the pin bites by restoring the old spawn: the PR's pins failed with 6 and 19 men in the hill.
+
+- **Do:** add the pin to any staging that sits near block terrain, then run it against the old spawn to see it fail.
+
+- **Don't:** ship a pin that has never been seen to fail.
+
+(`Lacaedemon/sparta` PRs #1724 and #1726, 2026-10-05.)
