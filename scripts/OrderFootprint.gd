@@ -102,6 +102,21 @@ static func clamp_destination(field: PathField, origin: Vector2, dest: Vector2,
 	return origin if clear_at >= span else dest + dir * clear_at
 
 
+## Which constraint a footprint centred on `dest` violates: TERRAIN when it overlaps
+## impassable block terrain (the more specific cause, so it wins when both apply),
+## FIELD_EDGE when it only reaches outside `bounds`, NONE when it is clear. Same arguments
+## as clamp_destination(); a pure helper so a caller that already knows an order was
+## clamped can say which constraint bound without re-deriving the geometry.
+enum Constraint { NONE, TERRAIN, FIELD_EDGE }
+static func binding_constraint(field: PathField, dest: Vector2, file_axis: Vector2,
+		half_extents: Vector2, bounds: Rect2 = Rect2()) -> int:
+	if field != null and field.footprint_blocked(dest, file_axis, half_extents):
+		return Constraint.TERRAIN
+	if _leaves_bounds(dest, file_axis, half_extents, bounds):
+		return Constraint.FIELD_EDGE
+	return Constraint.NONE
+
+
 ## The four corners of the rectangular footprint centred on `centre`, its width along the
 ## unit vector `file_axis` and its depth perpendicular to it.
 static func _corners(centre: Vector2, file_axis: Vector2, half: Vector2) -> PackedVector2Array:
