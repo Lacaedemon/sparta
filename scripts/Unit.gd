@@ -18,6 +18,12 @@ const GaitLimitsRef = preload("res://scripts/GaitLimits.gd")
 ## inferring the cause from where the unit last stood.
 signal escaped
 
+## Emitted once when a move order is amended or refused: clamp_order_destination() pulled
+## its destination back short of block terrain or the field edge, or turned it into a hold.
+## Carries an OrderOutcomeReport. Fires at most once per (order, requested point), however
+## many times a leg's write is repeated, and never for an order carried out as given.
+signal order_outcome_reported(report)
+
 enum State { IDLE, MOVING, FIGHTING, ROUTING, DEAD }
 
 ## Readable label for current_maneuver(): distinguishes the in-progress drill/turn a plain
@@ -241,7 +247,15 @@ var move_target: Vector2:
 		requested_move_target = value
 		has_requested_move_target = true
 		_move_target = clamp_order_destination(value)
+		if _move_target != value:
+			_report_order_outcome(value, _move_target)
 var _move_target: Vector2 = Vector2.ZERO
+## The latest report order_outcome_reported fired for, and the order and requested point it
+## answered: a repeat write of the same request under the same order (a leg promoted after a
+## reform, re-validation from a new position) is not reported again.
+var last_order_report: OrderOutcomeReport = null
+var _reported_order: Order = null
+var _reported_request: Vector2 = Vector2.ZERO
 ## The point the latest write to move_target asked for, before clamp_order_destination()
 ## pulled it back: beside move_target it tells a clamped write from one kept as given. Any
 ## writer counts -- a player or AI order, a promoted queued leg, a disengage, relief or
@@ -4337,17 +4351,50 @@ func _formation_local_half_extents() -> Vector2:
 ## respond never re-square either. `step` and `tolerance`
 ## default to this unit's order_clear_step and order_clear_tolerance.
 func clamp_order_destination(dest: Vector2, step: float = -1.0, tolerance: float = -1.0) -> Vector2:
+	var ctx: Dictionary = _order_clamp_context(dest)
+	return OrderFootprint.clamp_destination(ctx["field"], position, dest, ctx["axis"],
+			ctx["half"], step if step > 0.0 else order_clear_step,
+			tolerance if tolerance > 0.0 else order_clear_tolerance, ctx["bounds"])
+
+
+## The terrain, field bounds and footprint clamp_order_destination() tests `dest` against.
+func _order_clamp_context(dest: Vector2) -> Dictionary:
 	var field: PathField = PathField.active
 	if field != null and not field.has_block_terrain():
 		field = null
-	var bounds: Rect2 = retreat_bounds if state == State.ROUTING else field_bounds
 	var extents: Vector2 = _far_tier_half_extents() if tier == FormationTier.FAR \
 			else _formation_local_half_extents()
 	var body: float = soldier_body_radius()
-	var file_axis: Vector2 = _order_held_facing(dest).rotated(PI * 0.5 + _formation_angle)
-	return OrderFootprint.clamp_destination(field, position, dest, file_axis,
-			extents + Vector2(body, body), step if step > 0.0 else order_clear_step,
-			tolerance if tolerance > 0.0 else order_clear_tolerance, bounds)
+	return {
+		"field": field,
+		"bounds": retreat_bounds if state == State.ROUTING else field_bounds,
+		"half": extents + Vector2(body, body),
+		"axis": _order_held_facing(dest).rotated(PI * 0.5 + _formation_angle),
+	}
+
+
+## Tell whoever gave this order that it was amended or refused. `requested` is the
+## destination asked for and `granted` what clamp_order_destination() returned for it: the
+## unit's own position means nothing along the move was clear (a hold), anything else is a
+## pull-back, blamed on terrain or the field edge by OrderFootprint.binding_constraint.
+## Derived only from sim state, so a replay reproduces it. Reports each (order, request)
+## once; see order_outcome_reported.
+func _report_order_outcome(requested: Vector2, granted: Vector2) -> void:
+	if last_order_report != null and _reported_order == current_order \
+			and _reported_request == requested:
+		return
+	var reason: int = OrderOutcomeReport.Reason.REFUSED_HOLD
+	if granted != position:
+		var ctx: Dictionary = _order_clamp_context(requested)
+		var bound: int = OrderFootprint.binding_constraint(ctx["field"], requested,
+				ctx["axis"], ctx["half"], ctx["bounds"])
+		reason = OrderOutcomeReport.Reason.CLAMPED_FIELD_EDGE \
+				if bound == OrderFootprint.Constraint.FIELD_EDGE \
+				else OrderOutcomeReport.Reason.CLAMPED_TERRAIN
+	_reported_order = current_order
+	_reported_request = requested
+	last_order_report = OrderOutcomeReport.create(self, requested, granted, reason)
+	order_outcome_reported.emit(last_order_report)
 
 
 ## The facing this unit will hold at a move's destination `dest`, which the caller turns

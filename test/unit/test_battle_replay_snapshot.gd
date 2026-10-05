@@ -416,3 +416,23 @@ func test_an_older_snapshot_without_the_pairing_restores_none() -> void:
 	assert_true(v._engaged_target_pairing_canonical.is_empty(), "no slot list")
 	assert_eq(v._engaged_target_reassign_frame, -1, "no pairing age, so the first step re-pairs")
 	assert_eq(v._engaged_target_soldier_count, -1, "no soldier count")
+
+
+## A restore frees and respawns every unit, so the AI report inbox must not keep reports
+## that name the freed ones.
+func test_restore_snapshot_clears_the_ai_report_inbox() -> void:
+	var prev_mode := _enter_playback()
+	var battle := _spawn_battle(_clash_scenario())
+	while battle.current_tick() < 20:
+		await get_tree().physics_frame
+	var snap: Dictionary = battle.capture_snapshot()
+	var enemy: Unit = null
+	for u in _units_by_uid(battle).values():
+		if u.team == 1:
+			enemy = u
+	battle.ai_report_inbox.receive(OrderOutcomeReport.create(
+			enemy, enemy.position, enemy.position, OrderOutcomeReport.Reason.REFUSED_HOLD))
+	assert_eq(battle.ai_report_inbox.pending_count(), 1, "precondition: a report is held")
+	battle.restore_snapshot(snap)
+	assert_eq(battle.ai_report_inbox.pending_count(), 0, "the restore leaves no stale report")
+	_leave_playback(prev_mode)
