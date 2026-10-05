@@ -85,6 +85,72 @@ func has_block_terrain() -> bool:
 	return not _block_rects.is_empty()
 
 
+## `point` moved out of impassable terrain grown by `clearance`: a point strictly inside a
+## grown rect is placed on that rect's nearest edge (a point on an edge counts as outside),
+## the least displacement that clears it -- unless that exit lands inside another grown
+## rect, in which case the next-nearest edge that lands clear of every rect is taken. A
+## pocket no exit clears (rects packed tighter than the clearance) gets the nearest edge
+## and another sweep, up to `max_passes`; a point still inside after that is returned where
+## the last pass left it. `point` itself when it is already clear. The field's own bounds are
+## not consulted, so a hill flush against the edge of the field can push a point off it.
+func push_out_of_block(point: Vector2, clearance: float = 0.0, max_passes: int = 4) -> Vector2:
+	return push_out_of_rects(point, grown_block_rects(clearance), max_passes)
+
+
+## The impassable rects grown by `clearance` on every side: computed once per caller and
+## passed to push_out_of_rects for every point that shares the clearance.
+func grown_block_rects(clearance: float) -> Array[Rect2]:
+	var grown: Array[Rect2] = []
+	for r in _block_rects:
+		grown.append(r.grow(clearance))
+	return grown
+
+
+## The impassable rects exactly as drawn (no clearance). The live array: read it, never modify it.
+func block_rects() -> Array[Rect2]:
+	return _block_rects
+
+
+## push_out_of_block against rects already grown (see grown_block_rects).
+static func push_out_of_rects(point: Vector2, grown: Array[Rect2], max_passes: int = 4) -> Vector2:
+	var q: Vector2 = point
+	for _pass in range(max_passes):
+		var moved := false
+		for g in grown:
+			if not _strictly_inside(q, g):
+				continue
+			var exits: Array = [
+				[q.x - g.position.x, Vector2(g.position.x, q.y)],
+				[g.end.x - q.x, Vector2(g.end.x, q.y)],
+				[q.y - g.position.y, Vector2(q.x, g.position.y)],
+				[g.end.y - q.y, Vector2(q.x, g.end.y)],
+			]
+			exits.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+			var chosen: Vector2 = exits[0][1]
+			for e in exits:
+				if not inside_any_rect(e[1], grown):
+					chosen = e[1]
+					break
+			q = chosen
+			moved = true
+		if not moved:
+			break
+	return q
+
+
+## Whether `p` lies strictly inside `r` (on an edge counts as outside).
+static func _strictly_inside(p: Vector2, r: Rect2) -> bool:
+	return p.x > r.position.x and p.x < r.end.x and p.y > r.position.y and p.y < r.end.y
+
+
+## Whether `p` lies strictly inside any of `rects`.
+static func inside_any_rect(p: Vector2, rects: Array[Rect2]) -> bool:
+	for r in rects:
+		if _strictly_inside(p, r):
+			return true
+	return false
+
+
 ## Whether a rectangular footprint overlaps impassable terrain: centred on `centre`, its
 ## width running along the unit vector `file_axis` and its depth perpendicular to it,
 ## with half-extents `half` (half-width, half-depth). An exact separating-axis test

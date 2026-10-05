@@ -98,7 +98,7 @@ func test_bucket_ids_are_unique_and_index_their_own_names() -> void:
 	# call sites silently share a counter, which a recorded series has no way to show.
 	var ids: Array = [SimOps.GRID_INSERT, SimOps.GRID_CANDIDATE, SimOps.STEER_PAIR,
 		SimOps.CONTACT_PAIR, SimOps.BODY_STEP, SimOps.MELEE_CHECK, SimOps.REGIMENT_CHECK,
-		SimOps.UNIT_THINK, SimOps.SQRT_EVAL]
+		SimOps.UNIT_THINK, SimOps.SQRT_EVAL, SimOps.TERRAIN_PROJECT]
 	assert_eq(ids.size(), SimOps.BUCKET_NAMES.size(), "one id per name")
 	var seen: Dictionary = {}
 	for id in ids:

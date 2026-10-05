@@ -155,8 +155,12 @@ def summary_table(before, after, buckets):
     rows = ["| work bucket | before (mean/tick) | after (mean/tick) | change |",
             "| --- | ---: | ---: | ---: |"]
     for bucket in buckets:
-        b_mean = mean(column(before, bucket)) if before else 0.0
         a_mean = mean(column(after, bucket))
+        if before and bucket != "total" and bucket not in before["ops"]:
+            # A bucket the change itself added: the base build never counted it.
+            rows.append("| `%s` | - | %s | new |" % (bucket, si(a_mean)))
+            continue
+        b_mean = mean(column(before, bucket)) if before else 0.0
         if before:
             change = "%+.1f%%" % delta_pct(b_mean, a_mean) if b_mean else "n/a"
             rows.append("| `%s` | %s | %s | %s |"

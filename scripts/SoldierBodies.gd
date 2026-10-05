@@ -364,6 +364,7 @@ static func step(unit: Unit, delta: float) -> void:
 					file_rear_neighbor[j] = j + files
 	# In-transit same-unit standoff velocities for crowding same-unit bodies:
 	var sep_vels: PackedVector2Array = _separate_same_unit(unit, n, target_slots, is_engaged, delta)
+	var terrain_guard: Dictionary = _terrain_entry_guard(unit, n)
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
@@ -543,6 +544,65 @@ static func step(unit: Unit, delta: float) -> void:
 	# One arrival integration per body, each with exactly one `to_slot.length()`.
 	SimOps.add(SimOps.BODY_STEP, n)
 	SimOps.add(SimOps.SQRT_EVAL, n)
+	_keep_out_of_terrain(unit, n, terrain_guard)
+
+
+## Which bodies already stand inside impassable terrain itself (the rects as drawn, not
+## grown) before this tick's integration: {"grown": the rects grown by the body radius,
+## "inside": one flag per body}. Empty on a map with no block terrain, which turns the
+## backstop off.
+static func _terrain_entry_guard(unit: Unit, n: int) -> Dictionary:
+	var field: PathField = PathField.active
+	if field == null or not field.has_block_terrain():
+		return {}
+	var drawn: Array[Rect2] = field.block_rects()
+	var inside := PackedByteArray()
+	inside.resize(n)
+	for i in range(n):
+		inside[i] = 1 if PathField.inside_any_rect(unit._sim_soldier_pos[i], drawn) else 0
+	SimOps.add(SimOps.TERRAIN_PROJECT, n * drawn.size())
+	return {"grown": field.grown_block_rects(unit.soldier_body_radius()), "inside": inside}
+
+
+## Hard backstop against impassable terrain, applied after the integration above so it has
+## the last word on every body this tick: a body that ends the tick within its own body
+## radius of `block` terrain is placed back on the edge of that margin, and the part of its
+## velocity still heading in is dropped so it does not press straight back. Order validation
+## keeps a destination's footprint clear, but contact forces, casualty reflow and a wheel's
+## sweep move bodies without an order, and this catches all of them. A body that began the
+## tick inside the terrain itself (a block spawned overlapping a hill) is left alone: ejecting
+## a whole overlapping block at once would stack every body that differs only along the
+## ejection axis onto one point, and holding it in place would pin the block to the rock.
+## Body positions are parent-local while the terrain rects are in the Battle's frame; the
+## two coincide while the Battle sits at the origin, as every other terrain query assumes.
+## `guard` is _terrain_entry_guard's result; empty (no block terrain) makes this a no-op.
+static func _keep_out_of_terrain(unit: Unit, n: int, guard: Dictionary) -> void:
+	if guard.is_empty():
+		return
+	var grown: Array[Rect2] = guard["grown"]
+	var inside: PackedByteArray = guard["inside"]
+	var pushed: int = 0
+	var checked: int = 0
+	for i in range(n):
+		if inside[i] != 0:
+			continue
+		checked += 1
+		var p: Vector2 = unit._sim_soldier_pos[i]
+		var q: Vector2 = PathField.push_out_of_rects(p, grown)
+		if q == p:
+			continue
+		unit._sim_soldier_pos[i] = q
+		var outward: Vector2 = (q - p).normalized()
+		var v: Vector2 = unit._sim_body_vel[i]
+		var into: float = v.dot(outward)
+		if into < 0.0:
+			unit._sim_body_vel[i] = v - outward * into
+		pushed += 1
+	if pushed > 0:
+		unit._render_dirty = true
+	# One rect test per checked body per rect (first sweep); one normalization per body moved.
+	SimOps.add(SimOps.TERRAIN_PROJECT, checked * grown.size())
+	SimOps.add(SimOps.SQRT_EVAL, pushed)
 
 
 ## Cap a stationary/reforming body's velocity to its unit's jog pace, but to the slower

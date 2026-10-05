@@ -34,12 +34,16 @@ const MELEE_CHECK := 5
 const REGIMENT_CHECK := 6
 const UNIT_THINK := 7
 const SQRT_EVAL := 8
+## Body-versus-terrain-rect containment tests in the soldier body pass's terrain backstop
+## (SoldierBodies._terrain_entry_guard and _keep_out_of_terrain): bodies times block rects,
+## once before the integration and again after it for each body not already in the terrain.
+const TERRAIN_PROJECT := 9
 
 ## Report keys, indexed by the bucket ids above -- the names a recorded series and its graph
 ## carry, so renaming one invalidates comparison against an older series.
 const BUCKET_NAMES: PackedStringArray = [
 	"grid_insert", "grid_candidate", "steer_pair", "contact_pair", "body_step",
-	"melee_check", "regiment_check", "unit_think", "sqrt_eval",
+	"melee_check", "regiment_check", "unit_think", "sqrt_eval", "terrain_project",
 ]
 
 ## Off in normal play, and in every test that doesn't explicitly opt in.
