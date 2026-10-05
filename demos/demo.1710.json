@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/battle-ai-unit-leaders.json",
+  "caption": "The battle_ai_leaders website clip, re-staged: its second player Cavalry troop was scripted across the default hill's south-west corner, so a few riders started the battle on the rock and the terrain backstop held them at its edge (overlap and shape defects on that troop and its neighbour). The clip now declares a map with the default forest but no hill, so every unit stands where it always did on open ground, and the AI decisions the clip demonstrates play out without the riders caught at the rock. cannae_scale gets the same fix, since that clip is about tier scale, not terrain.",
+  "fixed_fps": 30,
+  "max_frames": 360,
+  "fps": 15,
+  "width": 720
+}
