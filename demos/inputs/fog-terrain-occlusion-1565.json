@@ -1,11 +1,11 @@
 {
-  "_comment": "Fog of war terrain occlusion (phase 1 of docs/fog-of-war-design.md, #1565): player Cavalry (uid 0, sight 420 wu) deployed at (1420, 450) surveys the field under fog of war. Enemy uid 1 at (1275, 640) is deployed south of the hill at Rect2(1150, 380, 250, 200); at ticks 15, 60, and 150, the line of sight passes directly through the hill and the enemy is occluded and hidden despite being within the 420-wu sight radius (distance 239 wu). At tick 8, the player orders the cavalry south to (1420, 700); as the cavalry advances, clear line of sight opens past the hill shoulder and enemy uid 1 is revealed at tick 256 (the cavalry near y = 571). The enemy AI honours fog too: it cannot see the cavalry through the hill either, so it holds position until that same moment, when it starts to advance, instead of marching out to meet it; the AI's own ATTACK order follows at its next decision tick (tick 300).",
+  "_comment": "Fog of war terrain occlusion (phase 1 of docs/fog-of-war-design.md, #1565): a small player Cavalry scout troop (uid 0, 16 mounts four files wide, sight 420 wu) deployed at (1500, 360), in the corridor east of the hill at Rect2(1150, 380, 250, 200), surveys the field under fog of war. Enemy uid 1 at (1275, 710) stands south of the hill, its whole block clear of the hill's south face. At ticks 15, 60, 150, and 225 the line of sight from the scout to the enemy passes through the hill, so the enemy is occluded and hidden despite being within the 420-wu sight radius (distance 416 wu at the start). At tick 8 the player selects the scout and orders it south to (1500, 760); as it advances down the corridor, the sight line clears the hill's south-east corner (1400, 580) and enemy uid 1 is revealed at tick 249, with the scout near y = 477. The troop is small on purpose: a 60-mount block is 280 wu wide, and the corridor between the hill's east face (x = 1400) and the field edge (x = 1600) is only 200 wu, so a full troop there would have to stand with men on the hill, which the soldier terrain backstop does not allow. The enemy stays put through the clip: it cannot see the scout through the hill, and after the reveal the scout is still beyond its 190-wu detection reach. No man of either unit ever stands inside the hill (soldiers_in_block_terrain pinned to 0).",
   "seed": "1565",
   "fog_of_war": true,
   "camera": [
     {
       "tick": 0,
-      "x": 1000.0,
+      "x": 1280.0,
       "y": 500.0,
       "zoom": 0.65
     }
@@ -14,9 +14,10 @@
     {
       "team": 0,
       "type": "Cavalry",
-      "x": 1420,
-      "y": 450,
-      "count": 60,
+      "x": 1500,
+      "y": 360,
+      "count": 16,
+      "frontage": 4,
       "facing": [
         0,
         1
@@ -26,7 +27,7 @@
       "team": 1,
       "type": "Infantry",
       "x": 1275,
-      "y": 640,
+      "y": 710,
       "count": 80,
       "facing": [
         -1,
@@ -38,26 +39,38 @@
     {
       "tick": 8,
       "click": [
-        1420,
-        450
+        1500,
+        360
       ]
     },
     {
       "tick": 14,
       "rmb_click": [
-        1420,
-        700
+        1500,
+        760
       ]
     }
   ],
   "state": [
+    8,
     15,
     60,
     150,
+    225,
     270,
-    300
+    300,
+    350
   ],
   "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        1500.0,
+        360.0
+      ]
+    },
     {
       "tick": 15,
       "uid": 1,
@@ -77,6 +90,12 @@
       "value": false
     },
     {
+      "tick": 225,
+      "uid": 1,
+      "field": "visible",
+      "value": false
+    },
+    {
       "tick": 270,
       "uid": 1,
       "field": "visible",
@@ -87,6 +106,36 @@
       "uid": 1,
       "field": "visible",
       "value": true
+    },
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 150,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 300,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 8,
+      "uid": 1,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 350,
+      "uid": 1,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
     }
   ]
 }
