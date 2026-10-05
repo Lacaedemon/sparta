@@ -47,6 +47,7 @@ The writers found by `grep -n "move_target = " scripts/` (plain assignments, exc
 - `Unit._start_promoted_move`, `_arm_withdrawal_turn`, `_finish_order_turn` and `_finish_wheel`, which advance `current_order` and its leaves.
 - `Unit._commit_pending_reform`, the reform leaf.
 - `Unit.disengage` and `Unit.disengage_with_sacrifice`.
+- `UnitRelief` (the tired unit's retreat) and `UnitReinforce` (the reserve's rendezvous), both started by `Battle` from a relief or reinforce order.
 
 The per-tick auto-advance toward a detected enemy goes through `_move_to` and never writes `move_target`.
 That is why the order-outcome report (PR #1730) can hang off the setter without toasting for autonomous movement.
