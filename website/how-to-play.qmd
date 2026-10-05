@@ -1434,6 +1434,15 @@ and accelerate to full speed on contact.
    right. Units route around the hill automatically, whether under your orders or
    fleeing a rout --- and a routing unit boxed in with no way around stands to fight
    instead. See [Tactics → Terrain](tactics.qmd#terrain).
+   A unit will not march a whole block onto ground it cannot stand on, so an order
+   to a point on the hill, or too close to the edge of the field, is **amended or
+   refused** rather than carried out blindly.
+   The unit halts short of the obstacle, or holds where it stands if nothing along
+   the way is clear, and the HUD tells you so with a short message naming the unit,
+   such as "Infantry 1: halting short of impassable ground" or
+   "Infantry 1: no way through -- holding".
+   Units under AI command, including a group you have delegated, report to their
+   own commander instead of to you.
 5. **Exploit the break** --- when a unit **routs**, it flees (its flag fading) and stops
    fighting for now. Routs spread to nearby allies, so a single break can cascade. A
    fugitive that breaks contact can **rally** and reform back under your control at low

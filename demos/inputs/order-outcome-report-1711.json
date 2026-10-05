@@ -1,0 +1,40 @@
+{
+  "_comment": "Order-outcome report: a unit that cannot carry out a move order amends it and tells the player. A lone Infantry block is ordered to the middle of the default hill (Rect2(1150, 380, 250, 200), kind block), which its footprint can never fit on, so the order is clamped back along the march and the HUD toast names the unit and says it is halting short of impassable ground. drill:true keeps the recording running with no opponent; the single scenario unit keeps its uid 0 so the expect pins its tick-8 position before any order lands.",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 880,
+      "y": 480,
+      "count": 24
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 1040.0,
+      "y": 470.0,
+      "zoom": 1.5
+    }
+  ],
+  "steps": [
+    {
+      "tick": 8,
+      "click": [880, 480]
+    },
+    {
+      "tick": 24,
+      "rmb_click": [1275, 480]
+    }
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [880, 480]
+    }
+  ]
+}

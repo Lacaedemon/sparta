@@ -1,0 +1,5 @@
+{
+  "input": "demos/inputs/order-outcome-report-1711.json",
+  "caption": "Units now report amended or refused orders. A lone Infantry block is ordered into the middle of the hill, where its footprint cannot stand. Once the block turns and sets off, the order is cut back along the march and the HUD toast at the top names the unit and says it is halting short of impassable ground. The block marches only as far as the clear ground allows. A refusal reads 'no way through -- holding', and an AI unit reports to its commander instead of toasting.",
+  "max_frames": 360
+}
