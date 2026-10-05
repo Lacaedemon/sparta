@@ -6498,11 +6498,13 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 ## cell i for row major, the old file ids for file major) sends men marching through the block
 ## to reach it, and their centroid drifts off the order line while they do. Pairing from where
 ## they stand instead, by the same lateral-file rule a line-to-square reform uses, keeps
-## each man near his cell. Only a quarter fold is re-paired: a fold left by _face_dir's
-## snap-absorb can be any angle, and re-dealing those by lateral order reshuffles blocks that
-## were not crossing (measured on two catalog clips with 68 and 112 degree folds). A squared
-## block keeps its own square assignment. A row-major unit with no bodies to read (far tier, not yet seeded) keeps its
-## pairing; a file-major one gets _ensure_file_assignment's own no-body fill. A FILE_GROUP
+## each man near his cell. Only a fold within 0.01 rad of a quarter is re-paired (reform_ranks
+## gates the call): a fold left by _face_dir's snap-absorb can be any angle, and re-dealing those
+## by lateral order reshuffled blocks that were not crossing (68, 112 and 156 degree folds on
+## two catalog clips). A quarter-turn drill composed onto such a leftover fold therefore lands
+## off a quarter and is not re-paired either. A squared block keeps its own square assignment.
+## A row-major unit with no bodies to read (far tier, not yet seeded) keeps its pairing; a
+## file-major one gets _ensure_file_assignment's own no-body fill. A FILE_GROUP
 ## unit's files are re-dealt too, not carried by subunit: after a quarter-turn its old file
 ## groups run along the new heading, so keeping them would be the crossing this avoids.
 func _pair_after_quarter_fold(count: int) -> void:

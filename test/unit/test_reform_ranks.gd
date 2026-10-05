@@ -1099,3 +1099,18 @@ func test_a_fold_that_is_not_a_quarter_turn_keeps_its_pairing() -> void:
 	u._formation_angle = deg_to_rad(-68.0)
 	assert_true(u.reform_ranks(true), "a 68 degree fold re-squares")
 	assert_eq(u._sim_soldier_row_slot.size(), 0, "no proximity pairing is written for it")
+
+
+## The gate's edge: a fold 0.005 rad off a quarter is still a quarter fold and is re-paired;
+## one 0.02 rad off is not.
+func test_the_quarter_fold_gate_tolerates_float_error_but_not_a_real_offset() -> void:
+	var near := _make_row_major_unit()
+	near.facing = Vector2.RIGHT
+	near._formation_angle = -PI * 0.5 + 0.005
+	assert_true(near.reform_ranks(true), "a near-quarter fold re-squares")
+	assert_eq(near._sim_soldier_row_slot.size(), near.soldiers, "and is re-paired")
+	var off := _make_row_major_unit()
+	off.facing = Vector2.RIGHT
+	off._formation_angle = -PI * 0.5 + 0.02
+	assert_true(off.reform_ranks(true), "a fold 0.02 rad off a quarter re-squares")
+	assert_eq(off._sim_soldier_row_slot.size(), 0, "but is not re-paired")
