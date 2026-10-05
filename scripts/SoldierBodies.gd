@@ -544,7 +544,7 @@ static func step(unit: Unit, delta: float) -> void:
 	# One arrival integration per body, each with exactly one `to_slot.length()`.
 	SimOps.add(SimOps.BODY_STEP, n)
 	SimOps.add(SimOps.SQRT_EVAL, n)
-	_keep_out_of_terrain(unit, n, terrain_guard)
+	_keep_out_of_terrain(unit, n, terrain_guard, delta)
 
 
 ## Which bodies already stand inside impassable terrain itself (the rects as drawn, not
@@ -561,7 +561,8 @@ static func _terrain_entry_guard(unit: Unit, n: int) -> Dictionary:
 	for i in range(n):
 		inside[i] = 1 if PathField.inside_any_rect(unit._sim_soldier_pos[i], drawn) else 0
 	SimOps.add(SimOps.TERRAIN_PROJECT, n * drawn.size())
-	return {"grown": field.grown_block_rects(unit.soldier_body_radius()), "inside": inside}
+	return {"grown": field.grown_block_rects(unit.soldier_body_radius()), "inside": inside,
+			"bounds": field.field_bounds()}
 
 
 ## Hard backstop against impassable terrain, applied after the integration above so it has
@@ -575,12 +576,18 @@ static func _terrain_entry_guard(unit: Unit, n: int) -> Dictionary:
 ## ejection axis onto one point, and holding it in place would pin the block to the rock.
 ## Body positions are parent-local while the terrain rects are in the Battle's frame; the
 ## two coincide while the Battle sits at the origin, as every other terrain query assumes.
+## A block held with slots inside the margin is pressed back onto the edge every tick by a
+## creep far below REST_SPEED; only a push of at least REST_SPEED * delta raises the render
+## flag, as the integration's own test does, so that held block lets the render idle.
 ## `guard` is _terrain_entry_guard's result; empty (no block terrain) makes this a no-op.
-static func _keep_out_of_terrain(unit: Unit, n: int, guard: Dictionary) -> void:
+static func _keep_out_of_terrain(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 	if guard.is_empty():
 		return
 	var grown: Array[Rect2] = guard["grown"]
 	var inside: PackedByteArray = guard["inside"]
+	var bounds: Rect2 = guard["bounds"]
+	var visible_push: float = REST_SPEED * delta
+	var moved_visibly := false
 	var pushed: int = 0
 	var checked: int = 0
 	for i in range(n):
@@ -588,17 +595,20 @@ static func _keep_out_of_terrain(unit: Unit, n: int, guard: Dictionary) -> void:
 			continue
 		checked += 1
 		var p: Vector2 = unit._sim_soldier_pos[i]
-		var q: Vector2 = PathField.push_out_of_rects(p, grown)
+		var q: Vector2 = PathField.push_out_of_rects(p, grown, 4, bounds)
 		if q == p:
 			continue
 		unit._sim_soldier_pos[i] = q
-		var outward: Vector2 = (q - p).normalized()
+		var push: float = p.distance_to(q)
+		var outward: Vector2 = (q - p) / push
+		if push > visible_push:
+			moved_visibly = true
 		var v: Vector2 = unit._sim_body_vel[i]
 		var into: float = v.dot(outward)
 		if into < 0.0:
 			unit._sim_body_vel[i] = v - outward * into
 		pushed += 1
-	if pushed > 0:
+	if moved_visibly:
 		unit._render_dirty = true
 	# One rect test per checked body per rect (first sweep); one normalization per body moved.
 	SimOps.add(SimOps.TERRAIN_PROJECT, checked * grown.size())

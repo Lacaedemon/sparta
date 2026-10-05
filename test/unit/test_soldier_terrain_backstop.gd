@@ -140,3 +140,109 @@ func test_the_pass_is_counted_once_per_body() -> void:
 	SimOps.enabled = false
 	assert_eq(tick["terrain_project"], 2 * u._sim_soldier_pos.size(),
 			"one rect test per body before the step and one after (one rect)")
+
+
+func test_a_hill_flush_with_the_field_edge_pushes_a_point_onto_the_field() -> void:
+	# The hill's east face is the field's east edge. Grown by 7 wu, the rect reaches past the
+	# field, so the nearest exit for a point on the boundary (east, 7 wu) would leave the field;
+	# the push takes the nearest exit that stays on it (north, 7 wu farther).
+	var f := PathField.new(Rect2(0, 0, 1000, 1000))
+	f.block_rect(Rect2(900, 400, 100, 200))
+	var got: Vector2 = f.push_out_of_block(Vector2(1000, 400), 7.0)
+	assert_eq(got, Vector2(1000, 393), "out through the north edge, still on the field")
+
+
+# --- Steady state of a block held against the hill ---------------------------------------
+
+## An idle Infantry block facing UP just south of the hill, placed so its front rank's slots
+## lie `intrusion` wu inside the hill's grown margin (0 < intrusion < body radius). Its bodies
+## start on those slots.
+func _block_held_in_margin(intrusion: float) -> Unit:
+	var u := _make_unit(Vector2(HILL.get_center().x, 800))
+	var front_y: float = INF
+	for s in u.soldier_world_slots(u.soldiers):
+		front_y = minf(front_y, s.y)
+	u.position.y += HILL.end.y + u.soldier_body_radius() - intrusion - front_y
+	u.seed_sim_soldiers()
+	return u
+
+
+## One tick of the body pass and the position coupling, as Unit runs them for a close-tier unit.
+func _tick(u: Unit) -> void:
+	SoldierBodies.step(u, TICK)
+	SoldierBodies.couple(u, TICK)
+
+
+func test_a_block_held_in_the_margin_settles_and_lets_the_render_idle() -> void:
+	PathField.active = _field_with([HILL])
+	var u := _block_held_in_margin(_half_body_radius())
+	for _t in range(180):
+		_tick(u)
+	var prev: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	var dirty_ticks := 0
+	var max_step := 0.0
+	for _t in range(60):
+		u._render_dirty = false
+		_tick(u)
+		if u._render_dirty:
+			dirty_ticks += 1
+		for i in range(prev.size()):
+			max_step = maxf(max_step, prev[i].distance_to(u._sim_soldier_pos[i]))
+		prev = u._sim_soldier_pos.duplicate()
+	assert_lt(max_step, 0.01, "no body jitters at the edge once the block has settled")
+	assert_eq(dirty_ticks, 0, "the settled block lets the MultiMesh rewrite idle")
+	for p in u._sim_soldier_pos:
+		assert_gte(p.y, HILL.end.y + u.soldier_body_radius() - 0.001, "and every man stays clear")
+
+
+func test_holding_in_the_margin_slides_the_centre_out_by_at_most_the_intrusion() -> void:
+	# couple() reads the pressed rank's offset from its slots as drift and moves the unit off
+	# the hill. That is bounded by the intrusion (at most one body radius) and stops once the
+	# slots clear the margin, so a held block does not creep away.
+	PathField.active = _field_with([HILL])
+	var intrusion: float = _half_body_radius()
+	var u := _block_held_in_margin(intrusion)
+	var start: Vector2 = u.position
+	for _t in range(240):
+		_tick(u)
+	var after_240: Vector2 = u.position
+	for _t in range(60):
+		_tick(u)
+	assert_almost_eq(u.position.x, start.x, 0.001, "no sideways drift")
+	assert_gt(u.position.y - start.y, intrusion * 0.9, "the centre moves out, away from the hill")
+	assert_lte(u.position.y - start.y, intrusion + 0.001, "but never by more than the intrusion")
+	assert_almost_eq(u.position.y, after_240.y, 0.01, "and it has stopped")
+
+
+## Body 0 of an idle block placed `depth` wu inside the hill's grown west margin, at rest,
+## then run through the backstop alone (not the integration, which has its own render test).
+func _backstop_only(depth: float) -> Unit:
+	PathField.active = _field_with([HILL])
+	var u := _make_unit(Vector2(900, 480))
+	u._sim_soldier_pos[0] = Vector2(HILL.position.x - u.soldier_body_radius() + depth, 480)
+	u._sim_body_vel[0] = Vector2.ZERO
+	var n: int = u._sim_soldier_pos.size()
+	var guard: Dictionary = SoldierBodies._terrain_entry_guard(u, n)
+	u._render_dirty = false
+	SoldierBodies._keep_out_of_terrain(u, n, guard, TICK)
+	return u
+
+
+func test_a_visible_push_wakes_the_render() -> void:
+	var u := _backstop_only(_half_body_radius())
+	assert_true(u._render_dirty, "a body put back half a radius is redrawn")
+
+
+func test_a_creep_far_below_rest_speed_does_not_wake_the_render() -> void:
+	var u := _backstop_only(0.001)
+	assert_false(u._render_dirty, "a 0.001 wu correction is not a visible move")
+	assert_lte(u._sim_soldier_pos[0].x, HILL.position.x - u.soldier_body_radius() + 0.0001,
+			"though the body is still held on the margin edge")
+
+
+## Half a default Infantry body radius: an intrusion well inside the margin.
+func _half_body_radius() -> float:
+	var probe: Unit = Unit.new()
+	probe.max_soldiers = 12
+	add_child_autofree(probe)
+	return probe.soldier_body_radius() * 0.5

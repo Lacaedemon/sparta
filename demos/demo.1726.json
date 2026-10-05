@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/held-against-hill-1705.json",
+  "caption": "A block held against the hill under the soldier terrain backstop: 48 Spearmen stand with their front rank's slots 2 wu inside the hill's one-body-radius margin. The front rank stays on the margin's edge with no jitter, no man enters the hill, and the centre slides 2 wu off the hill and stops (verified by state dump). With the bodies at rest the render now idles instead of rewriting the block every tick; that half is not visible on screen and is covered by unit tests.",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 15,
+  "width": 640
+}
