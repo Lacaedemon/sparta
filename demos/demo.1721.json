@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "CI workflow change only (test-coverage.yml computes the patch-coverage gate in-job); no game code, scene, or asset changes, so there is nothing a recorded battle could show."
+}
