@@ -5,7 +5,7 @@
     {"team": 0, "type": "Cavalry", "x": 400, "y": 700, "count": 60},
     {"team": 1, "type": "Spearmen", "x": 400, "y": 500, "count": 140},
     {"team": 0, "type": "Infantry", "x": 900, "y": 620, "count": 100},
-    {"team": 0, "type": "Cavalry", "x": 1080, "y": 650, "count": 60},
+    {"team": 0, "type": "Cavalry", "x": 999, "y": 650, "count": 60},
     {"team": 1, "type": "Infantry", "x": 900, "y": 500, "count": 120}
   ],
   "camera": [

@@ -1471,9 +1471,6 @@ func _spawn_scenario(specs: Array) -> void:
 		# on that line like the default line does; any other spec's x/y is the block's centre.
 		if bool(spec.get("front_on_line", false)):
 			_dress_front_on_line(u)
-		# A placement on impassable terrain or off the field is set down on the nearest clear
-		# ground instead, as an order's destination would be pulled back off it.
-		u.position = u.clear_deployment_position()
 
 
 ## First default-loadout entry whose "name" matches `type_name` (case-sensitive), or an empty

@@ -363,3 +363,34 @@ func test_a_malformed_script_in_a_hosted_recorder_fails_without_quitting() -> vo
 	assert_push_error("tier_ranges")
 	assert_eq(recorder.failure_code, 2, "a malformed script is recorded with the tool's exit code")
 	assert_string_contains(recorder.failure_message, "tier_ranges")
+
+
+## A 40-man Infantry block facing south, named so the warning can be told apart.
+func _block_at(pos: Vector2, label: String) -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 40
+	add_child_autofree(u)
+	u.unit_name = label
+	u.facing = Vector2.DOWN
+	u.position = pos
+	return u
+
+
+func test_units_staged_on_block_terrain_are_named_and_others_are_not() -> void:
+	var field := PathField.new(Rect2(0, 0, 2000, 2000))
+	field.block_rect(Rect2(1150, 380, 250, 200))
+	var on_hill := _block_at(Vector2(1275, 480), "On the hill")
+	var clear := _block_at(Vector2(400, 480), "In the open")
+	var astride := _block_at(Vector2(1150, 480), "Astride the edge")
+	var stray: Node = autofree(Node.new())
+	assert_eq(RecorderScript.units_on_block_terrain([on_hill, clear, astride, stray], field),
+			["On the hill", "Astride the edge"] as Array[String],
+			"every block with a slot on the rock is named, in order; open ground and non-units are not")
+
+
+func test_no_block_terrain_names_nobody() -> void:
+	var on_hill := _block_at(Vector2(1275, 480), "Anywhere")
+	assert_eq(RecorderScript.units_on_block_terrain([on_hill], null).size(), 0, "no field")
+	var slow_only := PathField.new(Rect2(0, 0, 2000, 2000))
+	assert_eq(RecorderScript.units_on_block_terrain([on_hill], slow_only).size(), 0,
+			"a field with no block terrain")

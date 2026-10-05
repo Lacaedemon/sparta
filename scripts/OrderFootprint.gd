@@ -102,69 +102,6 @@ static func clamp_destination(field: PathField, origin: Vector2, dest: Vector2,
 	return origin if clear_at >= span else dest + dir * clear_at
 
 
-## Where a block set down at `centre` should actually stand: `centre` itself when its
-## footprint is clear of impassable terrain and inside `bounds`, otherwise the nearest point
-## that is. A commander does not deploy a block on the rock any more than he orders one onto
-## it (clamp_destination), but a deployment has no march to pull back along, so the block is
-## set down instead at the nearest clear ground. The footprint is taken by its axis-aligned
-## bounding box, so the terrain each rect blocks for its centre is that rect grown by the
-## box's half-extents and the nearest clear centre is the nearest point outside every grown
-## rect (PathField.push_out_of_rects); a footprint turned off the axes therefore stands at
-## most its box's slack farther off than it strictly needs. Ground outside `bounds` is four
-## more such rects, one beyond each edge, so the search passes over a way off a hill that
-## runs off the field whenever another way is clear. A pocket with no clear exit (terrain
-## packed against the edge tighter than the footprint) is returned where the last pass left
-## it, so the caller should check the result with footprint_clear. A moved footprint is set
-## down `gap` clear of the terrain and the field's edge rather than exactly touching them:
-## a file axis turned by a quarter-turn carries float noise of order 1e-8 in its other
-## component, enough to read an exactly-touching footprint as overlapping. Other arguments as
-## clamp_destination's; `field` may be null when there is no terrain to test.
-static func clear_placement(field: PathField, centre: Vector2, file_axis: Vector2,
-		half_extents: Vector2, bounds: Rect2 = Rect2(), max_passes: int = 4,
-		gap: float = SEARCH_TOLERANCE) -> Vector2:
-	if footprint_clear(field, centre, file_axis, half_extents, bounds):
-		return centre
-	var depth_axis: Vector2 = file_axis.orthogonal()
-	var box := Vector2(
-			half_extents.x * absf(file_axis.x) + half_extents.y * absf(depth_axis.x),
-			half_extents.x * absf(file_axis.y) + half_extents.y * absf(depth_axis.y)) \
-			+ Vector2(gap, gap)
-	var blocked: Array[Rect2] = []
-	if field != null:
-		blocked.append_array(field.block_rects())
-	if bounds.has_area():
-		blocked.append_array(_outside_slabs(bounds, centre, box))
-	var grown: Array[Rect2] = []
-	for r in blocked:
-		grown.append(r.grow_individual(box.x, box.y, box.x, box.y))
-	return PathField.push_out_of_rects(centre, grown, max_passes)
-
-
-## The ground outside `bounds` as four rects, one beyond each edge, each reaching far enough
-## past the field that a footprint `box` in half-extents, centred anywhere near `centre`,
-## cannot be pushed out through its far side instead of back onto the field.
-static func _outside_slabs(bounds: Rect2, centre: Vector2, box: Vector2) -> Array[Rect2]:
-	var reach: float = bounds.size.x + bounds.size.y + absf(centre.x) + absf(centre.y) \
-			+ 4.0 * (box.x + box.y)
-	var top: float = bounds.position.y - reach
-	var tall: float = bounds.size.y + 2.0 * reach
-	return [
-		Rect2(bounds.position.x - reach, top, reach, tall),
-		Rect2(bounds.end.x, top, reach, tall),
-		Rect2(bounds.position.x, bounds.position.y - reach, bounds.size.x, reach),
-		Rect2(bounds.position.x, bounds.end.y, bounds.size.x, reach),
-	]
-
-
-## Whether a footprint centred on `centre` is clear of impassable terrain and lies wholly
-## inside `bounds` (no bounds when it has no area; no terrain when `field` is null).
-static func footprint_clear(field: PathField, centre: Vector2, file_axis: Vector2,
-		half_extents: Vector2, bounds: Rect2 = Rect2()) -> bool:
-	if field != null and field.footprint_blocked(centre, file_axis, half_extents):
-		return false
-	return not _leaves_bounds(centre, file_axis, half_extents, bounds)
-
-
 ## The four corners of the rectangular footprint centred on `centre`, its width along the
 ## unit vector `file_axis` and its depth perpendicular to it.
 static func _corners(centre: Vector2, file_axis: Vector2, half: Vector2) -> PackedVector2Array:

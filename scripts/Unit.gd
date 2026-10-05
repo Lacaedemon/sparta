@@ -3275,7 +3275,7 @@ func _think(delta: float) -> void:
 		# keep up with the march.
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
-		_move_to(_own_initiative_destination(enemy.position), delta, false, true)
+		_move_to(enemy.position, delta, false, true)
 	else:
 		# Idle: no enemy; a HOLD/BRACE stance that won't chase; or a directly
 		# player-commanded unit holding formation (auto_advance_on_detect false) with nothing
@@ -3409,7 +3409,7 @@ func _support_tick(delta: float) -> void:
 			# the march (the turn re-arms on the next contact).
 			if _engage_turn_target != Vector2.ZERO:
 				_settle_engage_turn()
-			_move_to(_own_initiative_destination(threat.position), delta, false, true)
+			_move_to(threat.position, delta, false, true)
 			return
 	# No threat near the ward (none detected, or one out of weapon range that this unit's
 	# side does not yet perceive): shadow it, holding station a short distance off so the
@@ -3420,7 +3420,7 @@ func _support_tick(delta: float) -> void:
 		_settle_engage_turn()
 	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 	if position.distance_squared_to(ward.position) > SUPPORT_FOLLOW_DISTANCE * SUPPORT_FOLLOW_DISTANCE:
-		_move_to(_own_initiative_destination(ward.position), delta, false, true)
+		_move_to(ward.position, delta, false, true)
 	else:
 		state = State.IDLE
 
@@ -4350,40 +4350,6 @@ func clamp_order_destination(dest: Vector2, step: float = -1.0, tolerance: float
 			tolerance if tolerance > 0.0 else order_clear_tolerance, bounds)
 
 
-## Where this block, just set down at its own position, should actually stand: that
-## position when its footprint is clear of impassable terrain and on the field, otherwise
-## the nearest point that is (OrderFootprint.clear_placement). The footprint is sized as an
-## order's destination is (clamp_order_destination): the half-extents (the far tier's O(1)
-## reading for a far block), grown by the body radius. It is laid out along the facing the
-## block was deployed with rather than a held facing, since a deployment has no order. Returns the
-## position unchanged with a warning when no clear point is found (a hill flush against the
-## field's edge that the block cannot fit beside).
-func clear_deployment_position() -> Vector2:
-	var field: PathField = PathField.active
-	if field != null and not field.has_block_terrain():
-		field = null
-	var body: float = soldier_body_radius()
-	var extents: Vector2 = _far_tier_half_extents() if tier == FormationTier.FAR \
-			else _formation_local_half_extents()
-	var half: Vector2 = extents + Vector2(body, body)
-	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)
-	var placed: Vector2 = OrderFootprint.clear_placement(field, position, file_axis, half, field_bounds)
-	if not OrderFootprint.footprint_clear(field, placed, file_axis, half, field_bounds):
-		push_warning("[unit] %s: no clear ground to deploy on near %s; left where placed." % [unit_name, position])
-		return position
-	return placed
-
-
-## Where this unit's officer will actually lead it when he decides a move himself -- closing
-## on a sighted enemy, meeting a threat to the unit he guards, or keeping up with that ward --
-## rather than carrying out an order. He won't lead his block onto impassable terrain or off
-## the field any more than he would carry out an order to, so the same footprint check an
-## order's destination gets (clamp_order_destination) applies: the destination is pulled back
-## along the move to where the whole block fits.
-func _own_initiative_destination(point: Vector2) -> Vector2:
-	return clamp_order_destination(point)
-
-
 ## The facing this unit will hold at a move's destination `dest`, which the caller turns
 ## by the standing _formation_angle fold into the grid the men stand in. The target facing
 ## is a maneuver's held facing (a side-step, back-step, disengage, or reinforcing reserve
@@ -4518,9 +4484,8 @@ func _far_tier_half_extents() -> Vector2:
 ##
 ## Deliberately NOT the flat corner_clearance() (the corner man's full half-diagonal,
 ## folding in BOTH width and depth unconditionally) for a KNOWN travel direction: a
-## straight leg only needs the width swept along that specific leg -- by the grid as it
-## stands now and as it will stand once it pivots onto the bearing (see swept_held
-## below) -- not the worst case over every possible orientation. See corner_clearance()
+## straight, unturning leg only needs the width actually swept along that specific
+## leg, not the worst case over every possible orientation. See corner_clearance()
 ## below for the margin PathField.next_step() still uses for every detour leg (the
 ## funnel corner, or the corridor waypoint it falls back to) -- a route can only
 ## reorient where a detour leg turns off the straight leg's bearing, so the fuller,
@@ -4544,15 +4509,7 @@ func terrain_clearance(travel_dir: Vector2 = Vector2.ZERO, extents: Vector2 = UN
 	# cross/dot values are equal up to sign in that case, which absf() erases).
 	var u_axis: Vector2 = Vector2.RIGHT.rotated(soldier_block_world_angle())
 	var swept: float = half_extents.x * absf(u_axis.cross(dir)) + half_extents.y * absf(u_axis.dot(dir))
-	# The officer plans the line of march for the block as it will stand on it, too: a
-	# disciplined march pivots its grid onto the bearing en route, after which it sweeps
-	# its frontage across the march rather than whatever it sweeps now. Clear the wider of
-	# the two. _order_held_facing() decides which facing the block will hold (a held
-	# side-step facing, or an undisciplined fold, keeps the current grid, so nothing changes).
-	var held_axis: Vector2 = _order_held_facing(position + dir).rotated(PI * 0.5 + _formation_angle)
-	var swept_held: float = half_extents.x * absf(held_axis.cross(dir)) \
-			+ half_extents.y * absf(held_axis.dot(dir))
-	return maxf(swept, swept_held) + soldier_body_radius()
+	return swept + soldier_body_radius()
 
 
 ## The margin PathField.next_step() uses for every detour leg -- rounding a blocking

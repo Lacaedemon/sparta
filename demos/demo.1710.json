@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/deploy-beside-hill-1709.json",
-  "caption": "The scenario places two Spearmen blocks overlapping the hill: one squarely on its south half, one straddling its north-west corner. A placement on impassable ground is now set down on the nearest clear ground beside it, on the field, the same footprint check an order's destination gets, so neither block starts with a man on the rock. The south block then marches west along the hill's edge.",
+  "input": "demos/inputs/battle-ai-unit-leaders.json",
+  "caption": "The battle_ai_leaders website clip, re-staged: its second player Cavalry troop was scripted 81 wu east, overlapping the hill's south-west corner, so a few riders started the battle on the rock and the terrain backstop held them at its edge (overlap and shape defects on that troop and its neighbour). It now deploys on open ground just west of the hill; the AI decisions the clip demonstrates play out as before. cannae_scale gets the same fix by declaring a map without the hill, since that clip is about tier scale, not terrain.",
   "fixed_fps": 30,
-  "max_frames": 160,
+  "max_frames": 360,
   "fps": 15,
   "width": 720
 }

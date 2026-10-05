@@ -115,6 +115,25 @@ static func parse_tier_band(band) -> Dictionary:
 	return {"promote": promote, "demote": demote}
 
 
+## The names of the `units` (Unit nodes; anything else is skipped) with at least one formation
+## slot strictly inside a block-terrain rect of `field`, in the order given. Empty when `field`
+## is null or has no block terrain. Pure over its arguments, so it is testable without a tree.
+static func units_on_block_terrain(units: Array, field: PathField) -> Array[String]:
+	var names: Array[String] = []
+	if field == null or not field.has_block_terrain():
+		return names
+	var rects: Array[Rect2] = field.block_rects()
+	for node in units:
+		var u: Unit = node as Unit
+		if u == null:
+			continue
+		for slot in u.soldier_world_slots(u.soldiers):
+			if PathField.inside_any_rect(slot, rects):
+				names.append(u.unit_name)
+				break
+	return names
+
+
 ## An input script's optional deployment_gap_m, validated by the same rule a campaign
 ## province's is (BattleMap.parse_line_gap_m): {"gap_m": float} or {"error": String}.
 ## Pure, like parse_tier_band, so the strict contract is unit-testable without a tree.
@@ -305,6 +324,11 @@ func _start_battle() -> void:
 				"coordinates and update (or drop) the spawn_fingerprint field.") %
 				[_spawn_fingerprint, live_fingerprint])
 		return
+	# A block the script stages on impassable terrain starts the battle with men on the rock,
+	# and the soldier terrain backstop then works against their slots at its edge for as long
+	# as the block stands there. Name each one, so an author who meant open ground sees it.
+	for on_rock in units_on_block_terrain(get_tree().get_nodes_in_group("units"), PathField.active):
+		push_warning("[demo-input] %s is deployed with formation slots on impassable terrain." % on_rock)
 	_sel = _battle.get_node("SelectionManager")
 	_hud = _battle.get_node("HUD")
 	if _form_up_dist >= 0:
