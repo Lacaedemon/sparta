@@ -25,13 +25,13 @@ var granted: Vector2
 var reason: int
 
 
-## Build a report for `unit_` whose order toward `requested_` was cut to `granted_`.
-static func create(unit_: Unit, requested_: Vector2, granted_: Vector2, reason_: int) -> OrderOutcomeReport:
+## Build a report for `from_unit` whose order toward `asked` was cut to `given`.
+static func create(from_unit: Unit, asked: Vector2, given: Vector2, why: int) -> OrderOutcomeReport:
 	var r := OrderOutcomeReport.new()
-	r.unit = unit_
-	r.requested = requested_
-	r.granted = granted_
-	r.reason = reason_
+	r.unit = from_unit
+	r.requested = asked
+	r.granted = given
+	r.reason = why
 	return r
 
 
@@ -42,11 +42,11 @@ func is_hold() -> bool:
 
 ## The one-line, plain text a player is shown, naming the unit.
 func message() -> String:
-	var name_: String = unit.unit_name if unit != null else "Unit"
+	var label: String = unit.unit_name if unit != null else "Unit"
 	match reason:
 		Reason.CLAMPED_TERRAIN:
-			return "%s: halting short of impassable ground" % name_
+			return "%s: halting short of impassable ground" % label
 		Reason.CLAMPED_FIELD_EDGE:
-			return "%s: halting at the edge of the field" % name_
+			return "%s: halting at the edge of the field" % label
 		_:
-			return "%s: no way through -- holding" % name_
+			return "%s: no way through -- holding" % label

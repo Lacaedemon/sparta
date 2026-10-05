@@ -1684,6 +1684,9 @@ func restore_snapshot(snap: Dictionary) -> void:
 	_recorded_fog_of_war = bool(snap.get("recorded_fog_of_war", snap.get("fog_active", false)))
 	_fog_contacts = (snap.get("fog_contacts", {}) as Dictionary).duplicate(true)
 	_fog_seen = (snap.get("fog_seen", {}) as Dictionary).duplicate(true)
+	# Reports name units by reference, and every unit above was freed and respawned; a
+	# restored battle starts with none, as a fresh one does.
+	ai_report_inbox = CommandReportInbox.new()
 	# A restore happens outside normal physics processing (a rewind/replay action), so
 	# there is no meaningful "current physics frame" for the restored _fog_seen to already
 	# match -- force a fresh scan on the first ask afterward rather than risk reading a
