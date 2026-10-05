@@ -1089,3 +1089,13 @@ func test_row_major_quarter_fold_with_no_bodies_keeps_its_pairing() -> void:
 	u._formation_angle = -PI * 0.5
 	assert_true(u.reform_ranks(true), "a quarter fold re-squares")
 	assert_eq(u._sim_soldier_row_slot.size(), 0, "no pairing is made without bodies to read")
+
+
+## Only a quarter fold is re-paired. A fold of another angle (the snap-absorb leaves any angle)
+## re-squares on the pairing it already holds, as before.
+func test_a_fold_that_is_not_a_quarter_turn_keeps_its_pairing() -> void:
+	var u := _make_row_major_unit()
+	u.facing = Vector2.RIGHT
+	u._formation_angle = deg_to_rad(-68.0)
+	assert_true(u.reform_ranks(true), "a 68 degree fold re-squares")
+	assert_eq(u._sim_soldier_row_slot.size(), 0, "no proximity pairing is written for it")
