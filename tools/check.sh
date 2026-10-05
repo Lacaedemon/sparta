@@ -34,8 +34,9 @@
 #             that already exceed 100 lines. Scoped to scripts/, not test/ (this repo's
 #             test files deliberately group many test functions per file).
 #   coverage  GUT suite instrumented for line coverage; writes coverage/lcov.info.
-#             Mirrors .github/workflows/test-coverage.yml. Slower than `test` and
-#             non-gating, so not in the default set (run it explicitly or via "all").
+#             Mirrors .github/workflows/test-coverage.yml. Slower than `test`, so
+#             not in the default set (run it explicitly or via "all"); the overall
+#             number never gates, only patch_coverage does.
 #   patch_coverage
 #             Local approximation of Codecov's codecov/patch check: what fraction
 #             of THIS diff's added scripts/*.gd lines are covered. Fails when
@@ -578,7 +579,7 @@ check_coverage() {
   ensure_project_imported || { set_result _suite_health fail; return 1; }
   # Same run as `test`, plus the GUT pre/post hooks that instrument res://scripts
   # and write an lcov report. Mirrors .github/workflows/test-coverage.yml. Not in
-  # the default set — instrumentation is slower and coverage never gates. The
+  # the default set -- instrumentation is slower, and only patch_coverage gates. The
   # report lands at coverage/lcov.info (git-ignored); see test/README.md.
   #
   # Tee to a log and check has_script_errors, exactly like check_test does: this

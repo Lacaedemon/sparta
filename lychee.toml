@@ -89,7 +89,12 @@ exclude = [
   # badge line never changes). A dynamically-generated status badge isn't
   # meaningful link-check content anyway; skip it rather than reddening
   # every PR on a third-party rate-limit/outage this repo doesn't control.
-  "^https://codecov\\.io/gh/[^/]+/[^/]+/graph/badge\\.svg",
+  # Since 2026-10-05 the badge's link target (codecov.io/gh/<owner>/<repo>, which
+  # redirects to app.codecov.io) fails too: lychee's TLS handshake to codecov's
+  # host aborts ("received fatal alert: HandshakeFailure") on every PR run while
+  # the same URL answers normally from a browser or curl. Both are codecov's own
+  # dashboard links, not prose content, so skip the host.
+  "^https://(app\\.)?codecov\\.io",
   # gamedeveloper.com rejects lychee's automated requests with HTTP 500
   # Internal Server Error / bot protection even though the pages load in a
   # browser. Linked as citations from docs/3d-conversion-design.md.
