@@ -124,9 +124,11 @@ The fix was to call `SoldierBodies._keep_out_of_terrain` directly with a body at
 
 ## A quarter fold's index-order re-square reads as clean shape, and its fix reads worse
 
-Dropping a +/-PI/2 fold to 0 with soldier i kept on cell i is, to `kabsch_fit`, a rigid quarter-turn of the whole block, so `shape_residual` reads it low while men walk across the block (22 of 60 slots across the centreline in a unit test; 23 of 60 men crossed on the #1701 demo).
+Dropping a +/-PI/2 fold to 0 with soldier i kept on cell i is, to `kabsch_fit`, a rigid quarter-turn of the whole block, so `shape_residual` reads it low while men walk across the block.
+In a unit test 22 of 60 slots lay across the centreline, and on the #1701 demo 23 of 60 men crossed it.
 Re-pairing each man to his nearest new cell is a genuine reshape, so the same metric reads higher at first (49.5 against 45.6 at 2-tick spacing) while settling faster (mean distance to slot at tick 300: 21 wu against 49).
-On main the clip's sparse own ticks failed the metric (43.8, so it carried an exemption); with the re-pairing and ticks across the reform window it passes on the converging rule, with no exemption.
+On main the clip's sparse own ticks failed the metric (43.8), so it carried an exemption.
+With the re-pairing and ticks across the reform window it passes on the converging rule, with no exemption.
 
 - **Do:** judge a re-slot by per-index crossings and travel (de-rotate both ticks into the settled frame and count lateral sign flips), and sample the reform window in the clip's own `state` ticks so the scan judges it rather than skips it.
 
