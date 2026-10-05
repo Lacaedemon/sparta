@@ -1232,6 +1232,33 @@ func _unit_auto_advances_on_detect(team: int) -> bool:
 	return team != 0 and not all_teams_control
 
 
+## Where the AI commanders (general, subcommanders, unit leaders) receive the order-outcome
+## reports their units send upward -- those of every unit the player is not commanding
+## directly (team 1, and any player-delegated group). Read by the decision pipeline; the
+## player's own units' reports go to the HUD instead.
+var ai_report_inbox := CommandReportInbox.new()
+
+
+## Whether the player issues `u`'s orders directly: a team-0 unit not delegated to an AI
+## subcommander group, or any unit under all-teams control. Everything else takes its
+## orders from an AI commander.
+func is_player_commanded(u: Unit) -> bool:
+	if u.is_delegated():
+		return false
+	return u.team == 0 or all_teams_control
+
+
+## A unit amended or refused a move order. Deterministic routing, a pure function of the
+## unit's team, delegation and all_teams_control: the player hears it as a HUD toast, an AI
+## commander in its inbox. Never recorded -- a replay re-derives it from the same sim state.
+func _on_unit_order_outcome(report: OrderOutcomeReport) -> void:
+	if is_player_commanded(report.unit):
+		if _hud != null:
+			_hud.flash_message(report.message())
+		return
+	ai_report_inbox.receive(report)
+
+
 func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_label: String) -> Unit:
 	var u := UnitRef.new()
 	u.uid = _next_uid
@@ -1353,6 +1380,7 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 	u.position = pos
 	u.field_bounds = field   # so a skirmisher kites without backing off the map
 	u.retreat_bounds = field_with_margin   # a router may flee this far before it escapes
+	u.order_outcome_reported.connect(_on_unit_order_outcome)
 	_units.add_child(u)
 	# Set after add_child() so _ready() has already established the type's base
 	# separation_radius for set_formation() to scale from, and set soldiers from
@@ -1656,6 +1684,9 @@ func restore_snapshot(snap: Dictionary) -> void:
 	_recorded_fog_of_war = bool(snap.get("recorded_fog_of_war", snap.get("fog_active", false)))
 	_fog_contacts = (snap.get("fog_contacts", {}) as Dictionary).duplicate(true)
 	_fog_seen = (snap.get("fog_seen", {}) as Dictionary).duplicate(true)
+	# Reports name units by reference, and every unit above was freed and respawned; a
+	# restored battle starts with none, as a fresh one does.
+	ai_report_inbox = CommandReportInbox.new()
 	# A restore happens outside normal physics processing (a rewind/replay action), so
 	# there is no meaningful "current physics frame" for the restored _fog_seen to already
 	# match -- force a fresh scan on the first ask afterward rather than risk reading a
@@ -1771,6 +1802,7 @@ func _spawn_from_snapshot(ud: Dictionary) -> Unit:
 	u.is_cavalry = bool(ud["is_cavalry"])
 	u.facing = ud["facing"]
 	u.position = ud["position"]
+	u.order_outcome_reported.connect(_on_unit_order_outcome)
 	_units.add_child(u)
 	u.apply_snapshot_dict(ud)
 	if int(ud["state"]) == UnitRef.State.ROUTING:

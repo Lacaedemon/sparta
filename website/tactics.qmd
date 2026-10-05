@@ -2430,7 +2430,10 @@ order itself squares it, each man taking the new place nearest where he stands r
 than marching across the block to reach it).
 A deep column side-stepping toward a hill stops with its rear ranks
 at the hill's edge rather than among the rocks. If no spot along the move is clear,
-the unit stays where it is. A block that already overlaps the terrain where it stands,
+the unit stays where it is.
+Either way a unit under your command says so: a short HUD message names it and says it
+is halting short of impassable ground, at the edge of the field, or holding.
+A block that already overlaps the terrain where it stands,
 such as a deep cavalry block deployed against a hill, can still move, as long as the
 order would not push it deeper into the terrain than it already is.
 The edge of the field works the same way: an order is pulled back until the whole
@@ -2443,6 +2446,23 @@ A rider on the outside of a column brushing past a hill stops at its edge rather
 riding over the rocks.
 (A unit deployed partly on a hill keeps the men already there where they stand, free to
 walk off it.)
+
+::: {#fig-order-outcome-report .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/order_outcome_report.jpg">
+  <source src="media/order_outcome_report.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+An order into the hill, amended:
+the block is sent to the middle of the hill,
+its march is cut back short of the hill's edge,
+and the HUD names the unit and says it is halting short of impassable ground.
+:::
 
 ::: {#fig-side-step-hill-footprint .demo}
 
