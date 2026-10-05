@@ -16,6 +16,7 @@ const CACHE := "a cache keyed to the current physics frame or slot layout, rebui
 const COUNTER := "an instrumentation counter read only by tests and benchmarks"
 const DERIVED := "re-derived on restore from fields the snapshot does carry"
 const LINK := "a scene or UI link, not simulation state"
+const REPORT := "order-report bookkeeping: an upward notification, not simulation state; a restored unit starts with none, so a re-issued order reports afresh"
 
 ## Members deliberately not captured, each with its reason.
 const EXCLUDED := {
@@ -26,6 +27,9 @@ const EXCLUDED := {
 	"auto_advance_on_detect": DERIVED + " (Battle._spawn_from_snapshot recomputes it from the team)",
 	"incoming_friendly_links": DERIVED + " (each restored order's friendly_target setter recounts it)",
 	"selected": LINK,
+	"last_order_report": REPORT,
+	"_reported_order": REPORT,
+	"_reported_request": REPORT,
 	"_owning_battle": LINK,
 	"_formation_slots_call_count": COUNTER,
 	"_relief_reverse_scan_count": COUNTER,
