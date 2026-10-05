@@ -109,3 +109,27 @@ Prove the pin bites by restoring the old spawn: the PR's pins failed with 6 and 
 - **Don't:** ship a pin that has never been seen to fail.
 
 (`Lacaedemon/sparta` PRs #1724 and #1726, 2026-10-05.)
+
+## A gate test must reach the gate, not a stage that sets the same flag first
+
+The terrain backstop's render-flag gate was first tested by driving a body hard into the hill through `SoldierBodies.step`.
+That test passed with the gate reverted, because the integration earlier in `step` raises `_render_dirty` itself for any body above `REST_SPEED`, so the backstop's own flag was never what the assertion read.
+The fix was to call `SoldierBodies._keep_out_of_terrain` directly with a body at rest, once with a visible push and once with a 0.001 wu creep.
+
+- **Do:** when two stages can set the same flag, call the stage under test directly, and revert the gate to watch the test fail.
+
+- **Don't:** trust an end-to-end test of a gate whose observable an earlier stage also writes.
+
+(`Lacaedemon/sparta` PR #1726, 2026-10-05.)
+
+## A quarter fold's index-order re-square reads as clean shape, and its fix reads worse
+
+Dropping a +/-PI/2 fold to 0 with soldier i kept on cell i is, to `kabsch_fit`, a rigid quarter-turn of the whole block, so `shape_residual` reads it low while men walk across the block (22 of 60 slots across the centreline in a unit test; 23 of 60 men crossed on the #1701 demo).
+Re-pairing each man to his nearest new cell is a genuine reshape, so the same metric reads higher at first (49.5 against 45.6 at 2-tick spacing) while settling faster (mean distance to slot at tick 300: 21 wu against 49).
+On main the clip's sparse own ticks failed the metric (43.8, so it carried an exemption); with the re-pairing and ticks across the reform window it passes on the converging rule, with no exemption.
+
+- **Do:** judge a re-slot by per-index crossings and travel (de-rotate both ticks into the settled frame and count lateral sign flips), and sample the reform window in the clip's own `state` ticks so the scan judges it rather than skips it.
+
+- **Don't:** read a lower `shape_residual` across a fold change as a better route, or keep an exemption that only a sparse tick list makes look stale.
+
+(`Lacaedemon/sparta` PR #1727, 2026-10-05.)
