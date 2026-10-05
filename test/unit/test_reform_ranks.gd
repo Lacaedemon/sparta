@@ -991,7 +991,6 @@ func test_reorder_about_face_folded_partial_unit_holds_ground() -> void:
 			"partial-rank body %d holds ground and remains in the front row" % idx)
 
 
-
 ## --- Re-squaring a QUARTER-turn fold ------------------------------------------
 ## A fresh order drops a +/-PI/2 fold to 0 (start_order_response -> reform_ranks). The grid
 ## swings a quarter-turn under the men, so keeping the old pairing sends them through the
@@ -1044,6 +1043,19 @@ func test_row_major_quarter_fold_resquares_without_crossing_the_block() -> void:
 
 func test_file_major_quarter_fold_resquares_without_crossing_the_block() -> void:
 	var u := _make_partial_unit()
+	assert_true(u._effective_file_major_reform(), "precondition: file-major fixture")
+	var m := _resquare_and_measure(u)
+	assert_eq(int(m["crossed"]), 0, "no man is sent across the block's centreline")
+	assert_lt(float(m["mean"]), u.file_pitch_wu(), "the average man walks less than a file pitch")
+
+
+## A FILE_GROUP block's subunit files are re-dealt from where the men stand too: after a
+## quarter-turn its old file groups run along the new heading, so carrying them over by
+## subunit would send men across the block just as soldier-i-in-cell-i did.
+func test_file_group_quarter_fold_resquares_without_crossing_the_block() -> void:
+	var u := _make_partial_unit()
+	u.subunit_structure = Unit.SubunitStructure.FILE_GROUP
+	u.subunit_size = 8
 	assert_true(u._effective_file_major_reform(), "precondition: file-major fixture")
 	var m := _resquare_and_measure(u)
 	assert_eq(int(m["crossed"]), 0, "no man is sent across the block's centreline")

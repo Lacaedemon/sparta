@@ -6498,8 +6498,13 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 ## cell i for row major, the old file ids for file major) sends men marching through the block
 ## to reach it, and their centroid drifts off the order line while they do. Pairing from where
 ## they stand instead, by the same lateral-file rule a line-to-square reform uses, keeps
-## each man near his cell. A squared block keeps its own square assignment, and a unit with no
-## bodies to read (far tier, not yet seeded) keeps what it has.
+## each man near his cell. Any other fold this reaches (reform_ranks passes every fold but an
+## about-face) is paired the same way; for a small one, lateral order barely changes and the
+## pairing stays close to the one already held. A squared block keeps its own square
+## assignment. A row-major unit with no bodies to read (far tier, not yet seeded) keeps its
+## pairing; a file-major one gets _ensure_file_assignment's own no-body fill. A FILE_GROUP
+## unit's files are re-dealt too, not carried by subunit: after a quarter-turn its old file
+## groups run along the new heading, so keeping them would be the crossing this avoids.
 func _pair_after_quarter_fold(count: int) -> void:
 	if count <= 0 or in_square():
 		return
