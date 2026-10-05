@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/quarter-turn-resquare-1702.json",
+  "caption": "A quarter-turned block given a fresh order: 36 Spearmen quarter-turn to face east, then are ordered east. The order re-squares the grid to the new heading (nine files across it), and each man now takes the new place nearest where he stands, so nobody walks across the block (0 of 36 men cross its centreline, against 7 on main) and the centre stays on the order line instead of drifting about 14 wu off it. Verified by state dump.",
+  "fixed_fps": 30,
+  "max_frames": 200,
+  "fps": 15,
+  "width": 640
+}
