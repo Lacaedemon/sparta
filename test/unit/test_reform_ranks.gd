@@ -1060,3 +1060,32 @@ func test_file_group_quarter_fold_resquares_without_crossing_the_block() -> void
 	var m := _resquare_and_measure(u)
 	assert_eq(int(m["crossed"]), 0, "no man is sent across the block's centreline")
 	assert_lt(float(m["mean"]), u.file_pitch_wu(), "the average man walks less than a file pitch")
+
+
+## A squared block keeps its own square assignment through a quarter-fold re-square: the
+## row-major pairing is not written for it, so no square-derived file count leaks into it.
+func test_squared_block_quarter_fold_writes_no_row_pairing() -> void:
+	var u := _make_square_unit()
+	# Row major, so that pairing it as a line would write the row-major array this checks.
+	u.file_major_reform_mode = Unit.ReformMode.ROW_MAJOR
+	u.facing = Vector2.RIGHT
+	u._formation_angle = -PI * 0.5
+	var held: PackedInt32Array = u._sim_soldier_square_slot.duplicate()
+	assert_true(u.reform_ranks(true), "a quarter fold re-squares")
+	assert_eq(u._sim_soldier_row_slot.size(), 0, "no row-major pairing is written")
+	assert_eq(u._sim_soldier_square_slot, held, "the square assignment is left as it was")
+
+
+## A row-major unit with no bodies to read (far tier, or not yet seeded) has no positions to
+## pair from, so it keeps the pairing it has rather than inventing one.
+func test_row_major_quarter_fold_with_no_bodies_keeps_its_pairing() -> void:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 60
+	add_child_autofree(u)
+	u.frontage_override = 8
+	u.file_major_reform_mode = Unit.ReformMode.ROW_MAJOR
+	assert_eq(u._sim_soldier_pos.size(), 0, "precondition: no bodies")
+	u.facing = Vector2.RIGHT
+	u._formation_angle = -PI * 0.5
+	assert_true(u.reform_ranks(true), "a quarter fold re-squares")
+	assert_eq(u._sim_soldier_row_slot.size(), 0, "no pairing is made without bodies to read")
