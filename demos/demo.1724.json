@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/fog-terrain-occlusion-1565.json",
+  "caption": "The fog_terrain_occlusion clip re-staged so no man stands in the hill. A 16-mount cavalry scout troop marches south down the corridor east of the hill, and an enemy infantry block waits south of it, both clear of the hill. The hill blocks the line of sight between them until the scout passes the hill's south-east corner: the enemy stays hidden through tick 248 and is revealed at tick 249 (verified tick by tick in a state dump). The troop is smaller than before because a 60-mount block is wider than the 200 wu corridor between the hill and the field edge.",
+  "fixed_fps": 30,
+  "max_frames": 180,
+  "fps": 20,
+  "width": 640
+}
