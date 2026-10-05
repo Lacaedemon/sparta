@@ -10,8 +10,8 @@
 # codecov/patch metric: the share of the lines this diff adds under scripts/
 # that the suite covers, against the project-wide total). So a Codecov outage
 # no longer blocks a merge. The Codecov upload stays fatal on pushes to main,
-# where a failure means token or config breakage worth a red check, and is a
-# warning on pull requests.
+# where a failure means token or config breakage worth a red check, and cannot
+# fail a pull request's job.
 name: Test coverage
 
 on:
@@ -39,54 +39,59 @@ jobs:
       - name: Set up Godot project
         uses: ./.github/actions/setup-godot-project
 
+      - name: Resolve the patch-coverage base
+        # check.sh falls back to origin/main when the given base does not
+        # resolve, which would gate a stacked PR against the wrong diff; fail
+        # here instead.
+        if: github.event_name == 'pull_request'
+        run: git rev-parse --verify "origin/${{ github.base_ref }}^{commit}"
+
       - name: Run unit tests with coverage, then gate patch coverage
+        id: coverage
         # `coverage` runs the instrumented GUT suite (the pre/post-run hooks
-        # instrument res://scripts and write coverage/lcov.info; a test failure
-        # fails it). `patch_coverage` then reuses that report from the same
-        # invocation and fails when the diff's added scripts/ lines fall below
-        # the project-wide total, as codecov/patch's `target: auto` does. On a
-        # push to main the merge-base is HEAD itself, so it reports nothing to
-        # check and passes.
+        # instrument res://scripts and write coverage/lcov.info) and fails on a
+        # test failure, a script error, or a missing report. `patch_coverage`
+        # then reuses that report from the same invocation and fails when the
+        # diff's added scripts/ lines fall below the project-wide total, as
+        # codecov/patch's `target: auto` does. On a push to main the
+        # merge-base is HEAD itself, so it reports nothing to check and passes.
+        # On a pull request, a skipped gate (no resolvable base or common
+        # history) fails rather than passing silently.
         env:
           GODOT_BIN: godot
           SPARTA_CHECK_PATCH_COVERAGE_BASE: origin/${{ github.base_ref || 'main' }}
         run: |
           set -o pipefail
           tools/check.sh coverage patch_coverage 2>&1 | tee coverage-check.log
-
-      - name: Verify coverage report was written
-        # The post-run hook reports a failed lcov write with push_error(), which
-        # does not make Godot exit non-zero, so the step above can pass without
-        # producing a report. Fail here if it is missing -- a missing report is a
-        # real breakage.
-        if: ${{ !cancelled() }}
-        run: |
-          if [ ! -s coverage/lcov.info ]; then
-            echo "::error::coverage/lcov.info was not written by the coverage run"
+          if [ "${{ github.event_name }}" = pull_request ] \
+              && grep -qE 'skipping patch coverage' coverage-check.log; then
+            echo "::error::patch coverage was skipped on a pull request (see the log above)"
             exit 1
           fi
 
       - name: Summarize patch coverage
-        # Puts the patch-coverage verdict and the uncovered added lines on the
-        # run's summary page, whether the gate passed or failed.
+        # Puts the patch_coverage section of the log (its verdict, per-file
+        # uncovered lines, and any error or skip message) on the run's summary
+        # page, whether the gate passed or failed.
         if: ${{ !cancelled() && hashFiles('coverage-check.log') != '' }}
         run: |
           {
             echo "### Patch coverage"
             echo '```'
             sed 's/\x1b\[[0-9;]*m//g' coverage-check.log \
-              | grep -E 'Patch coverage|missing:|No scripts|no new commits|nothing to report|below the target|skipping patch coverage' \
-              || echo "(no patch-coverage lines in the log)"
+              | sed -n '/== patch_coverage ==/,/== summary ==/p'
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage to Codecov
-        if: ${{ !cancelled() && hashFiles('coverage/lcov.info') != '' }}
+        # Only a report from a passing suite is uploaded, as before.
+        if: steps.coverage.outcome == 'success'
+        # A failed upload never fails a pull request's job (its gate is the step
+        # above), whatever the action does with fail_ci_if_error internally.
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: ./coverage/lcov.info
           disable_search: true          # upload only the file above
-          # Fatal on pushes to main (token/config breakage); a warning on PRs, whose
-          # patch-coverage gate is the step above rather than Codecov.
           fail_ci_if_error: ${{ github.event_name != 'pull_request' }}
           token: ${{ secrets.CODECOV_TOKEN }}
