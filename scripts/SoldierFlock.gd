@@ -27,10 +27,12 @@ static func lod_should_detail(currently_detailed: bool, zoom: float) -> bool:
 static func compute_extent(unit: Unit, slots: PackedVector2Array,
 		centre: Vector2 = Vector2.ZERO) -> float:
 	var mark_r: float = Unit.CAV_MARK_RADIUS if unit.is_cavalry else Unit.MARK_RADIUS
-	var extent: float = Unit.RADIUS
+	var extent_sq: float = Unit.RADIUS * Unit.RADIUS
+	# ⚡ Bolt: Fast path out early using squared distance comparison,
+	# skipping the costly `.length()` calculation when finding max extent inside the loop.
 	for s in slots:
-		extent = maxf(extent, (s - centre).length())
-	return extent + mark_r + 2.0
+		extent_sq = maxf(extent_sq, (s - centre).length_squared())
+	return sqrt(extent_sq) + mark_r + 2.0
 
 
 ## Per-axis counterpart to compute_extent(): (half-width along local x/files, half-depth
