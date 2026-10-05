@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Link-checker configuration only (lychee.toml): no game code, scene, or asset changes, so there is nothing a recorded battle could show."
+}
