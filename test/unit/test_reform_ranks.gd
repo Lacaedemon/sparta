@@ -990,3 +990,127 @@ func test_reorder_about_face_folded_partial_unit_holds_ground() -> void:
 		assert_true(_in_front_row(u, idx),
 			"partial-rank body %d holds ground and remains in the front row" % idx)
 
+
+## --- Re-squaring a QUARTER-turn fold ------------------------------------------
+## A fresh order drops a +/-PI/2 fold to 0 (start_order_response -> reform_ranks). The grid
+## swings a quarter-turn under the men, so keeping the old pairing sends them through the
+## block; pairing from where they stand keeps each man near his new cell.
+
+
+## Fold `u`'s grid a quarter-turn the way _face_dir's snap-absorb does -- facing rotated,
+## fold compensating, so the drawn block does not move -- and settle every body on its slot.
+func _fold_quarter_turn(u: Unit) -> void:
+	u.facing = Vector2.RIGHT
+	u._formation_angle = -PI * 0.5
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(slots.size()):
+		u._sim_soldier_pos[i] = slots[i]
+
+
+## Re-square `u` after the fold and measure its men against their new slots: the mean and
+## farthest walk, and how many new slots lie across the block's centreline from their man.
+func _resquare_and_measure(u: Unit) -> Dictionary:
+	_fold_quarter_turn(u)
+	var bodies: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	assert_true(u.reform_ranks(true), "a quarter fold re-squares")
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var local_bodies: PackedVector2Array = u.to_slot_frame(bodies)
+	var local_slots: PackedVector2Array = u.to_slot_frame(slots)
+	var half: float = u.file_pitch_wu() * 0.5
+	var crossed: int = 0
+	var total: float = 0.0
+	var farthest: float = 0.0
+	for i in range(bodies.size()):
+		var d: float = bodies[i].distance_to(slots[i])
+		total += d
+		farthest = maxf(farthest, d)
+		var a: float = local_bodies[i].x
+		var b: float = local_slots[i].x
+		if a * b < 0.0 and absf(a) > half and absf(b) > half:
+			crossed += 1
+	return {"mean": total / bodies.size(), "farthest": farthest, "crossed": crossed}
+
+
+func test_row_major_quarter_fold_resquares_without_crossing_the_block() -> void:
+	var u := _make_row_major_unit()
+	assert_false(u._effective_file_major_reform(), "precondition: row-major fixture")
+	var m := _resquare_and_measure(u)
+	# Measured: with soldier i kept on cell i, 22 of 60 new cells lay across the centreline
+	# from their man and the mean walk was 74.8 wu.
+	assert_eq(int(m["crossed"]), 0, "no man is sent across the block's centreline")
+	assert_lt(float(m["mean"]), u.file_pitch_wu(), "the average man walks less than a file pitch")
+
+
+func test_file_major_quarter_fold_resquares_without_crossing_the_block() -> void:
+	var u := _make_partial_unit()
+	assert_true(u._effective_file_major_reform(), "precondition: file-major fixture")
+	var m := _resquare_and_measure(u)
+	assert_eq(int(m["crossed"]), 0, "no man is sent across the block's centreline")
+	assert_lt(float(m["mean"]), u.file_pitch_wu(), "the average man walks less than a file pitch")
+
+
+## A FILE_GROUP block's subunit files are re-dealt from where the men stand too: after a
+## quarter-turn its old file groups run along the new heading, so carrying them over by
+## subunit would send men across the block just as soldier-i-in-cell-i did.
+func test_file_group_quarter_fold_resquares_without_crossing_the_block() -> void:
+	var u := _make_partial_unit()
+	u.subunit_structure = Unit.SubunitStructure.FILE_GROUP
+	u.subunit_size = 8
+	assert_true(u._effective_file_major_reform(), "precondition: file-major fixture")
+	var m := _resquare_and_measure(u)
+	assert_eq(int(m["crossed"]), 0, "no man is sent across the block's centreline")
+	assert_lt(float(m["mean"]), u.file_pitch_wu(), "the average man walks less than a file pitch")
+
+
+## A squared block keeps its own square assignment through a quarter-fold re-square: the
+## row-major pairing is not written for it, so no square-derived file count leaks into it.
+func test_squared_block_quarter_fold_writes_no_row_pairing() -> void:
+	var u := _make_square_unit()
+	# Row major, so that pairing it as a line would write the row-major array this checks.
+	u.file_major_reform_mode = Unit.ReformMode.ROW_MAJOR
+	u.facing = Vector2.RIGHT
+	u._formation_angle = -PI * 0.5
+	var held: PackedInt32Array = u._sim_soldier_square_slot.duplicate()
+	assert_true(u.reform_ranks(true), "a quarter fold re-squares")
+	assert_eq(u._sim_soldier_row_slot.size(), 0, "no row-major pairing is written")
+	assert_eq(u._sim_soldier_square_slot, held, "the square assignment is left as it was")
+
+
+## A row-major unit with no bodies to read (far tier, or not yet seeded) has no positions to
+## pair from, so it keeps the pairing it has rather than inventing one.
+func test_row_major_quarter_fold_with_no_bodies_keeps_its_pairing() -> void:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 60
+	add_child_autofree(u)
+	u.frontage_override = 8
+	u.file_major_reform_mode = Unit.ReformMode.ROW_MAJOR
+	assert_eq(u._sim_soldier_pos.size(), 0, "precondition: no bodies")
+	u.facing = Vector2.RIGHT
+	u._formation_angle = -PI * 0.5
+	assert_true(u.reform_ranks(true), "a quarter fold re-squares")
+	assert_eq(u._sim_soldier_row_slot.size(), 0, "no pairing is made without bodies to read")
+
+
+## Only a quarter fold is re-paired. A fold of another angle (the snap-absorb leaves any angle)
+## re-squares on the pairing it already holds, as before.
+func test_a_fold_that_is_not_a_quarter_turn_keeps_its_pairing() -> void:
+	var u := _make_row_major_unit()
+	u.facing = Vector2.RIGHT
+	u._formation_angle = deg_to_rad(-68.0)
+	assert_true(u.reform_ranks(true), "a 68 degree fold re-squares")
+	assert_eq(u._sim_soldier_row_slot.size(), 0, "no proximity pairing is written for it")
+
+
+## The gate's edge: a fold 0.005 rad off a quarter is still a quarter fold and is re-paired;
+## one 0.02 rad off is not.
+func test_the_quarter_fold_gate_tolerates_float_error_but_not_a_real_offset() -> void:
+	var near := _make_row_major_unit()
+	near.facing = Vector2.RIGHT
+	near._formation_angle = -PI * 0.5 + 0.005
+	assert_true(near.reform_ranks(true), "a near-quarter fold re-squares")
+	assert_eq(near._sim_soldier_row_slot.size(), near.soldiers, "and is re-paired")
+	var off := _make_row_major_unit()
+	off.facing = Vector2.RIGHT
+	off._formation_angle = -PI * 0.5 + 0.02
+	assert_true(off.reform_ranks(true), "a fold 0.02 rad off a quarter re-squares")
+	assert_eq(off._sim_soldier_row_slot.size(), 0, "but is not re-paired")

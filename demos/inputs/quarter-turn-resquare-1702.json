@@ -1,0 +1,119 @@
+{
+  "_comment": "A 36-man Spearmen block, nine files wide and facing north, with reform-before-move off, is quarter-turned to face east (E) and then ordered 300 wu east. The fresh order re-squares the quarter-turned grid to the east facing: nine files across the new heading instead of four. Each man takes the new place nearest where he stands, so no man walks across the block's centreline (0 of 36 between ticks 158 and 400, measured from a 2-tick dump; 7 of 36 on main, where soldier i kept cell i). The re-slot settles by about tick 320 while the march begins, and the block's centre stays on the order line (y -199.9 at tick 240; it drifted to -204.8 there on main and ended 14 wu off the line). Drill mode, no terrain nearby, no opponent. A 2-tick defect scan reads shape_residual up to 21.5 while the re-slot converges (a real reshape reads as out of shape until it settles); main reads 16.3 only because keeping soldier i on cell i makes the re-square a rigid quarter-turn of the whole block, which the fit forgives while men cross it. At this script's own ticks the metric passes.",
+  "seed": "1702",
+  "drill": true,
+  "camera": [
+    {
+      "tick": 0,
+      "x": 730.0,
+      "y": -200.0,
+      "zoom": 1.8
+    }
+  ],
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 700,
+      "y": -200,
+      "count": 36,
+      "frontage": 9,
+      "facing": [
+        0,
+        -1
+      ],
+      "reform_before_move": false
+    }
+  ],
+  "steps": [
+    {
+      "tick": 8,
+      "click": [
+        700,
+        -200
+      ]
+    },
+    {
+      "tick": 20,
+      "key": "E"
+    },
+    {
+      "tick": 160,
+      "rmb_click": [
+        1000,
+        -200
+      ]
+    }
+  ],
+  "state": [
+    8,
+    60,
+    158,
+    170,
+    190,
+    200,
+    210,
+    230,
+    240,
+    250,
+    270,
+    280,
+    290,
+    310,
+    400,
+    700
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        700.0,
+        -200.0
+      ]
+    },
+    {
+      "tick": 60,
+      "uid": 0,
+      "field": "facing",
+      "value": [
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "tick": 158,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        700.0,
+        -200.0
+      ]
+    },
+    {
+      "tick": 400,
+      "uid": 0,
+      "field": "facing",
+      "value": [
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "tick": 700,
+      "uid": 0,
+      "field": "facing",
+      "value": [
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "tick": 700,
+      "uid": 0,
+      "field": "state",
+      "value": "MOVING"
+    }
+  ]
+}

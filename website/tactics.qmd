@@ -2426,7 +2426,9 @@ A move order (a click, an arrow-key side-step, or an AI order) whose formation
 footprint at the destination would overlap impassable terrain is pulled back along
 the move to the nearest spot where the whole formation fits, laid out in the facing
 it will hold there (a quarter-turned block is first squared to that facing, as the
-order itself squares it). A deep column side-stepping toward a hill stops with its rear ranks
+order itself squares it, each man taking the new place nearest where he stands rather
+than marching across the block to reach it).
+A deep column side-stepping toward a hill stops with its rear ranks
 at the hill's edge rather than among the rocks. If no spot along the move is clear,
 the unit stays where it is. A block that already overlaps the terrain where it stands,
 such as a deep cavalry block deployed against a hill, can still move, as long as the
