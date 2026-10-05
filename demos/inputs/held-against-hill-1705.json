@@ -1,0 +1,75 @@
+{
+  "_comment": "A Spearmen block (48 men, 12 files, facing north) held against the south face of the default hill (Rect2(1150, 380, 250, 200)), its front rank's slots 2 wu inside the hill's margin: a band one body radius (4.5 wu) wide around the hill that the soldier terrain backstop keeps every body out of. No orders: the block just stands. The front rank stands on the margin's edge (y = 584.5) from the first tick and stays there with no jitter, no man ever enters the hill, and the block's centre slides 2 wu south, away from the hill, until its slots clear the margin (y 596.0 -> 598.0, settled by about tick 180 and pinned at 300). Once settled no body moves, so the render stops rewriting the block. Drill mode: no opponent.",
+  "seed": "1705",
+  "drill": true,
+  "camera": [
+    {
+      "tick": 0,
+      "x": 1275.0,
+      "y": 560.0,
+      "zoom": 1.6
+    }
+  ],
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 1275,
+      "y": 596,
+      "count": 48,
+      "frontage": 12,
+      "facing": [
+        0,
+        -1
+      ]
+    }
+  ],
+  "steps": [],
+  "state": [
+    8,
+    60,
+    180,
+    300
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 60,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 180,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 300,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    },
+    {
+      "tick": 300,
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    },
+    {
+      "tick": 300,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        1275.0,
+        598.0
+      ]
+    }
+  ]
+}

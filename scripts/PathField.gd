@@ -38,6 +38,7 @@ const CELL := 64.0
 static var active: PathField = null
 
 var _cell: float
+var _bounds: Rect2                       # the field rect exactly as given (the grid rounds up)
 var _origin: Vector2
 var _cols: int
 var _rows: int
@@ -49,6 +50,7 @@ var _speed_scales: PackedFloat32Array = PackedFloat32Array()
 
 func _init(bounds: Rect2, cell: float = CELL) -> void:
 	_cell = cell
+	_bounds = bounds
 	_origin = bounds.position
 	_cols = int(ceil(bounds.size.x / cell))
 	_rows = int(ceil(bounds.size.y / cell))
@@ -91,10 +93,16 @@ func has_block_terrain() -> bool:
 ## rect, in which case the next-nearest edge that lands clear of every rect is taken. A
 ## pocket no exit clears (rects packed tighter than the clearance) gets the nearest edge
 ## and another sweep, up to `max_passes`; a point still inside after that is returned where
-## the last pass left it. `point` itself when it is already clear. The field's own bounds are
-## not consulted, so a hill flush against the edge of the field can push a point off it.
+## the last pass left it. `point` itself when it is already clear. An exit off the field's
+## own bounds is never taken while one on the field exists, even in a pocket, so a hill flush
+## against the edge of the field pushes a point out through a side that stays on the field.
 func push_out_of_block(point: Vector2, clearance: float = 0.0, max_passes: int = 4) -> Vector2:
-	return push_out_of_rects(point, grown_block_rects(clearance), max_passes)
+	return push_out_of_rects(point, grown_block_rects(clearance), max_passes, _bounds)
+
+
+## The field rect this PathField was built for, exactly as given to _init.
+func field_bounds() -> Rect2:
+	return _bounds
 
 
 ## The impassable rects grown by `clearance` on every side: computed once per caller and
@@ -111,8 +119,11 @@ func block_rects() -> Array[Rect2]:
 	return _block_rects
 
 
-## push_out_of_block against rects already grown (see grown_block_rects).
-static func push_out_of_rects(point: Vector2, grown: Array[Rect2], max_passes: int = 4) -> Vector2:
+## push_out_of_block against rects already grown (see grown_block_rects). `bounds`, when it
+## has an area, is the field: an exit outside it is never taken while one on it exists.
+static func push_out_of_rects(point: Vector2, grown: Array[Rect2], max_passes: int = 4,
+		bounds: Rect2 = Rect2()) -> Vector2:
+	var bounded: bool = bounds.has_area()
 	var q: Vector2 = point
 	for _pass in range(max_passes):
 		var moved := false
@@ -126,8 +137,16 @@ static func push_out_of_rects(point: Vector2, grown: Array[Rect2], max_passes: i
 				[g.end.y - q.y, Vector2(q.x, g.end.y)],
 			]
 			exits.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+			# The nearest exit clear of every rect and on the field; failing that (a pocket),
+			# the nearest exit still on the field, so the next pass works on from there.
 			var chosen: Vector2 = exits[0][1]
+			var found_on_field := false
 			for e in exits:
+				if bounded and not _on_or_inside(e[1], bounds):
+					continue
+				if not found_on_field:
+					chosen = e[1]
+					found_on_field = true
 				if not inside_any_rect(e[1], grown):
 					chosen = e[1]
 					break
@@ -136,6 +155,11 @@ static func push_out_of_rects(point: Vector2, grown: Array[Rect2], max_passes: i
 		if not moved:
 			break
 	return q
+
+
+## Whether `p` lies inside `r` or on its edge (Rect2.has_point leaves out the far edges).
+static func _on_or_inside(p: Vector2, r: Rect2) -> bool:
+	return p.x >= r.position.x and p.x <= r.end.x and p.y >= r.position.y and p.y <= r.end.y
 
 
 ## Whether `p` lies strictly inside `r` (on an edge counts as outside).
