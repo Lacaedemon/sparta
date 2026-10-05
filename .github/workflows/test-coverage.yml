@@ -1,10 +1,17 @@
-# Measures GDScript line coverage for the GUT unit suite and uploads it to
-# Codecov. Instrumentation (addons/coverage, jamie-pate/godot-code-coverage's
-# godot4 branch) runs the tests through reloaded, counter-injected copies of the
-# scripts, so this is a job separate from the fast validate-and-test gate, which
-# lives in godot-ci.yml and stays uninstrumented. Coverage *numbers* never gate a
-# PR (a dip won't fail it), but a broken upload does -- fail_ci_if_error is true,
-# so a token/config failure surfaces as a red check instead of failing silently.
+# Measures GDScript line coverage for the GUT unit suite, gates a PR on its
+# patch coverage, and uploads the report to Codecov. Instrumentation
+# (addons/coverage, jamie-pate/godot-code-coverage's godot4 branch) runs the
+# tests through reloaded, counter-injected copies of the scripts, so this is a
+# job separate from the fast validate-and-test gate, which lives in
+# godot-ci.yml and stays uninstrumented.
+#
+# The patch-coverage gate is computed here, from the report this job writes,
+# by the same `tools/check.sh patch_coverage` contributors run locally (the
+# codecov/patch metric: the share of the lines this diff adds under scripts/
+# that the suite covers, against the project-wide total). So a Codecov outage
+# no longer blocks a merge. The Codecov upload stays fatal on pushes to main,
+# where a failure means token or config breakage worth a red check, and cannot
+# fail a pull request's job.
 name: Test coverage
 
 on:
@@ -19,6 +26,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history, so patch_coverage can find the merge-base with the PR's base.
+          fetch-depth: 0
 
       # GODOT_VERSION/GUT_VERSION pins now live as the composite action's own
       # defaults (.github/actions/setup-godot-project/action.yml). The
@@ -29,33 +39,59 @@ jobs:
       - name: Set up Godot project
         uses: ./.github/actions/setup-godot-project
 
-      - name: Run unit tests with coverage
-        # The pre/post-run hooks instrument res://scripts and write lcov.info.
-        # -gexit still fails the job on a test failure, so a broken suite is
-        # caught here too, but coverage numbers themselves never gate the PR.
-        env:
-          COVERAGE_LCOV_FILE: res://coverage/lcov.info
-        run: |
-          godot --headless -s addons/gut/gut_cmdln.gd \
-            -gdir=res://test -ginclude_subdirs -gexit \
-            -gpre_run_script=res://test/pre_run_hook.gd \
-            -gpost_run_script=res://test/post_run_hook.gd
+      - name: Resolve the patch-coverage base
+        # check.sh falls back to origin/main when the given base does not
+        # resolve, which would gate a stacked PR against the wrong diff; fail
+        # here instead.
+        if: github.event_name == 'pull_request'
+        run: git rev-parse --verify "origin/${{ github.base_ref }}^{commit}"
 
-      - name: Verify coverage report was written
-        # The post-run hook reports a failed lcov write with push_error(), which
-        # does not make Godot exit non-zero, so the step above can pass without
-        # producing a report. Fail here if it is missing -- a missing report is a
-        # real breakage (distinct from a coverage dip, which never gates).
+      - name: Run unit tests with coverage, then gate patch coverage
+        id: coverage
+        # `coverage` runs the instrumented GUT suite (the pre/post-run hooks
+        # instrument res://scripts and write coverage/lcov.info) and fails on a
+        # test failure, a script error, or a missing report. `patch_coverage`
+        # then reuses that report from the same invocation and fails when the
+        # diff's added scripts/ lines fall below the project-wide total, as
+        # codecov/patch's `target: auto` does. On a push to main the
+        # merge-base is HEAD itself, so it reports nothing to check and passes.
+        # On a pull request, a skipped gate (no resolvable base or common
+        # history) fails rather than passing silently.
+        env:
+          GODOT_BIN: godot
+          SPARTA_CHECK_PATCH_COVERAGE_BASE: origin/${{ github.base_ref || 'main' }}
         run: |
-          if [ ! -s coverage/lcov.info ]; then
-            echo "::error::coverage/lcov.info was not written by the coverage run"
+          set -o pipefail
+          tools/check.sh coverage patch_coverage 2>&1 | tee coverage-check.log
+          if [ "${{ github.event_name }}" = pull_request ] \
+              && grep -qE 'skipping patch coverage' coverage-check.log; then
+            echo "::error::patch coverage was skipped on a pull request (see the log above)"
             exit 1
           fi
 
+      - name: Summarize patch coverage
+        # Puts the patch_coverage section of the log (its verdict, per-file
+        # uncovered lines, and any error or skip message) on the run's summary
+        # page, whether the gate passed or failed.
+        if: ${{ !cancelled() && hashFiles('coverage-check.log') != '' }}
+        run: |
+          {
+            echo "### Patch coverage"
+            echo '```'
+            sed 's/\x1b\[[0-9;]*m//g' coverage-check.log \
+              | sed -n '/== patch_coverage ==/,/== summary ==/p'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload coverage to Codecov
+        # Only a report from a passing suite is uploaded, as before.
+        if: steps.coverage.outcome == 'success'
+        # A failed upload never fails a pull request's job (its gate is the step
+        # above), whatever the action does with fail_ci_if_error internally.
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: ./coverage/lcov.info
           disable_search: true          # upload only the file above
-          fail_ci_if_error: true         # a failed upload fails the job (catches token/config breakage)
+          fail_ci_if_error: ${{ github.event_name != 'pull_request' }}
           token: ${{ secrets.CODECOV_TOKEN }}
