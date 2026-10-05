@@ -28,8 +28,8 @@ static func compute_extent(unit: Unit, slots: PackedVector2Array,
 		centre: Vector2 = Vector2.ZERO) -> float:
 	var mark_r: float = Unit.CAV_MARK_RADIUS if unit.is_cavalry else Unit.MARK_RADIUS
 	var extent_sq: float = Unit.RADIUS * Unit.RADIUS
-	# ⚡ Bolt: Fast path out early using squared distance comparison,
-	# skipping the costly `.length()` calculation when finding max extent inside the loop.
+	# ⚡ Bolt: Use length_squared() to avoid calculating square roots on every iteration
+	# of this tight loop, taking the sqrt() only once at the end instead.
 	for s in slots:
 		extent_sq = maxf(extent_sq, (s - centre).length_squared())
 	return sqrt(extent_sq) + mark_r + 2.0
