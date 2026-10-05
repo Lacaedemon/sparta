@@ -152,6 +152,33 @@ func test_a_hill_flush_with_the_field_edge_pushes_a_point_onto_the_field() -> vo
 	assert_eq(got, Vector2(1000, 393), "out through the north edge, still on the field")
 
 
+func test_a_pocket_against_the_field_edge_still_resolves_onto_the_field() -> void:
+	# A hill flush with the east edge, boxed in north, south and west by three more, so every
+	# exit of the first is either off the field or inside a neighbour. The push still works
+	# from an on-field exit (north, into the next rect) and comes out clear of all four,
+	# rather than taking the nearest exit off the field.
+	var f := PathField.new(Rect2(0, 0, 1000, 1000))
+	for r in [Rect2(900, 400, 100, 200), Rect2(800, 300, 200, 100), Rect2(800, 600, 200, 100),
+			Rect2(700, 400, 200, 200)]:
+		f.block_rect(r)
+	var got: Vector2 = f.push_out_of_block(Vector2(1000, 480), 7.0)
+	assert_eq(got, Vector2(1000, 293), "out through the north rect's top edge, on the field")
+
+
+func test_the_body_pass_keeps_a_body_on_the_field_by_a_flush_hill() -> void:
+	# A body at the north-east corner of a hill whose east face is the field's east edge, just
+	# below the corner: its nearest margin exit is east, off the field, and the next is north.
+	PathField.active = PathField.new(Rect2(0, 0, 1000, 1000))
+	PathField.active.block_rect(Rect2(900, 400, 100, 200))
+	var u := _make_unit(Vector2(800, 250))
+	var r: float = u.soldier_body_radius()
+	u._sim_soldier_pos[0] = Vector2(1000, 400.5)
+	u._sim_body_vel[0] = Vector2.ZERO
+	SoldierBodies.step(u, TICK)
+	assert_lte(u._sim_soldier_pos[0].x, 1000.0, "the body stays on the field")
+	assert_lte(u._sim_soldier_pos[0].y, 400.0 - r + 0.001, "pushed out north, a radius clear")
+
+
 # --- Steady state of a block held against the hill ---------------------------------------
 
 ## An idle Infantry block facing UP just south of the hill, placed so its front rank's slots

@@ -577,8 +577,9 @@ static func _terrain_entry_guard(unit: Unit, n: int) -> Dictionary:
 ## Body positions are parent-local while the terrain rects are in the Battle's frame; the
 ## two coincide while the Battle sits at the origin, as every other terrain query assumes.
 ## A block held with slots inside the margin is pressed back onto the edge every tick by a
-## creep far below REST_SPEED; only a push of at least REST_SPEED * delta raises the render
-## flag, as the integration's own test does, so that held block lets the render idle.
+## small creep; only a push longer than one tick's travel at REST_SPEED (the speed below
+## which the integration above treats a body as at rest) raises the render flag, so that
+## held block lets the render idle.
 ## `guard` is _terrain_entry_guard's result; empty (no block terrain) makes this a no-op.
 static func _keep_out_of_terrain(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 	if guard.is_empty():

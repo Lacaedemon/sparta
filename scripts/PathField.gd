@@ -94,8 +94,8 @@ func has_block_terrain() -> bool:
 ## pocket no exit clears (rects packed tighter than the clearance) gets the nearest edge
 ## and another sweep, up to `max_passes`; a point still inside after that is returned where
 ## the last pass left it. `point` itself when it is already clear. An exit off the field's
-## own bounds is passed over like one inside another rect, so a hill flush against the edge
-## of the field pushes a point out through a side that stays on the field.
+## own bounds is never taken while one on the field exists, even in a pocket, so a hill flush
+## against the edge of the field pushes a point out through a side that stays on the field.
 func push_out_of_block(point: Vector2, clearance: float = 0.0, max_passes: int = 4) -> Vector2:
 	return push_out_of_rects(point, grown_block_rects(clearance), max_passes, _bounds)
 
@@ -120,7 +120,7 @@ func block_rects() -> Array[Rect2]:
 
 
 ## push_out_of_block against rects already grown (see grown_block_rects). `bounds`, when it
-## has an area, is the field: an exit outside it is passed over like one inside another rect.
+## has an area, is the field: an exit outside it is never taken while one on it exists.
 static func push_out_of_rects(point: Vector2, grown: Array[Rect2], max_passes: int = 4,
 		bounds: Rect2 = Rect2()) -> Vector2:
 	var bounded: bool = bounds.has_area()
@@ -137,10 +137,16 @@ static func push_out_of_rects(point: Vector2, grown: Array[Rect2], max_passes: i
 				[g.end.y - q.y, Vector2(q.x, g.end.y)],
 			]
 			exits.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+			# The nearest exit clear of every rect and on the field; failing that (a pocket),
+			# the nearest exit still on the field, so the next pass works on from there.
 			var chosen: Vector2 = exits[0][1]
+			var found_on_field := false
 			for e in exits:
 				if bounded and not _on_or_inside(e[1], bounds):
 					continue
+				if not found_on_field:
+					chosen = e[1]
+					found_on_field = true
 				if not inside_any_rect(e[1], grown):
 					chosen = e[1]
 					break
