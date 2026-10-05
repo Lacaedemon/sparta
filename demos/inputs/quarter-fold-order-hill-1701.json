@@ -78,19 +78,5 @@
       "field": "soldiers_in_block_terrain",
       "value": 0
     }
-  ],
-  "defect_exemptions": {
-    "path_crossing": {
-      "uids": [
-        0
-      ],
-      "reason": "Re-squaring the quarter fold marches men through the block (#1702): 0.30 on main, 0.45 here against a 0.15 threshold. The rise is the shorter march, clamped at the hill, catching more of the re-slot between samples; the crossing itself predates this change."
-    },
-    "shape_residual": {
-      "uids": [
-        0
-      ],
-      "reason": "The same #1702 re-slot reads out of shape while it runs: 38.2 on main, where the longer march lets it converge and the sustain rule passes it, and 43.8 here, where the clamped march stops while the re-slot is still settling."
-    }
-  }
+  ]
 }

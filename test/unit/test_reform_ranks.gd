@@ -990,3 +990,61 @@ func test_reorder_about_face_folded_partial_unit_holds_ground() -> void:
 		assert_true(_in_front_row(u, idx),
 			"partial-rank body %d holds ground and remains in the front row" % idx)
 
+
+
+## --- Re-squaring a QUARTER-turn fold ------------------------------------------
+## A fresh order drops a +/-PI/2 fold to 0 (start_order_response -> reform_ranks). The grid
+## swings a quarter-turn under the men, so keeping the old pairing sends them through the
+## block; pairing from where they stand keeps each man near his new cell.
+
+
+## Fold `u`'s grid a quarter-turn the way _face_dir's snap-absorb does -- facing rotated,
+## fold compensating, so the drawn block does not move -- and settle every body on its slot.
+func _fold_quarter_turn(u: Unit) -> void:
+	u.facing = Vector2.RIGHT
+	u._formation_angle = -PI * 0.5
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(slots.size()):
+		u._sim_soldier_pos[i] = slots[i]
+
+
+## Re-square `u` after the fold and measure its men against their new slots: the mean and
+## farthest walk, and how many new slots lie across the block's centreline from their man.
+func _resquare_and_measure(u: Unit) -> Dictionary:
+	_fold_quarter_turn(u)
+	var bodies: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	assert_true(u.reform_ranks(true), "a quarter fold re-squares")
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var local_bodies: PackedVector2Array = u.to_slot_frame(bodies)
+	var local_slots: PackedVector2Array = u.to_slot_frame(slots)
+	var half: float = u.file_pitch_wu() * 0.5
+	var crossed: int = 0
+	var total: float = 0.0
+	var farthest: float = 0.0
+	for i in range(bodies.size()):
+		var d: float = bodies[i].distance_to(slots[i])
+		total += d
+		farthest = maxf(farthest, d)
+		var a: float = local_bodies[i].x
+		var b: float = local_slots[i].x
+		if a * b < 0.0 and absf(a) > half and absf(b) > half:
+			crossed += 1
+	return {"mean": total / bodies.size(), "farthest": farthest, "crossed": crossed}
+
+
+func test_row_major_quarter_fold_resquares_without_crossing_the_block() -> void:
+	var u := _make_row_major_unit()
+	assert_false(u._effective_file_major_reform(), "precondition: row-major fixture")
+	var m := _resquare_and_measure(u)
+	# Measured: with soldier i kept on cell i, 22 of 60 new cells lay across the centreline
+	# from their man and the mean walk was 74.8 wu.
+	assert_eq(int(m["crossed"]), 0, "no man is sent across the block's centreline")
+	assert_lt(float(m["mean"]), u.file_pitch_wu(), "the average man walks less than a file pitch")
+
+
+func test_file_major_quarter_fold_resquares_without_crossing_the_block() -> void:
+	var u := _make_partial_unit()
+	assert_true(u._effective_file_major_reform(), "precondition: file-major fixture")
+	var m := _resquare_and_measure(u)
+	assert_eq(int(m["crossed"]), 0, "no man is sent across the block's centreline")
+	assert_lt(float(m["mean"]), u.file_pitch_wu(), "the average man walks less than a file pitch")

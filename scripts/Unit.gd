@@ -6461,6 +6461,8 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 		_arm_standoff_settle_window(_reform_timeout())
 	_formation_angle = 0.0
 	_formation_mirror_x = is_about_face_fold
+	if not is_about_face_fold:
+		_pair_after_quarter_fold(soldiers)
 	# The mirror reflects the grid in depth, which negates every man's slot depth while
 	# leaving his lateral position alone. Reversing each file's own rank order cancels that
 	# reflection, so a hold-ground reform re-squares to the same footprint without marching
@@ -6487,6 +6489,33 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 			_apply_row_slot_reflection(soldiers, files)
 	_render_dirty = true
 	return true
+
+
+## Re-pair the men onto the grid a quarter-turn fold has just been squared to.
+##
+## Dropping a +/-PI/2 fold to 0 swings the slot grid a quarter-turn under the men, so the cell
+## each man held now lies on another side of the block. Keeping the old pairing (soldier i in
+## cell i for row major, the old file ids for file major) sends men marching through the block
+## to reach it, and their centroid drifts off the order line while they do. Pairing from where
+## they stand instead, by the same lateral-file rule a line-to-square reform uses, keeps
+## each man near his cell. A squared block keeps its own square assignment, and a unit with no
+## bodies to read (far tier, not yet seeded) keeps what it has.
+func _pair_after_quarter_fold(count: int) -> void:
+	if count <= 0 or in_square():
+		return
+	var files: int = maxi(1, formation_files(count))
+	if _effective_file_major_reform():
+		# An invalid file count reads as a reshape, which deals files and ranks from the
+		# live bodies (or holds a placeholder until they exist).
+		_file_assignment_files = -1
+		_ensure_file_assignment(count, files)
+		return
+	var live: PackedVector2Array = _slot_frame_positions(count)
+	if live.is_empty():
+		return
+	_sim_soldier_row_slot = UnitFormation.pair_slots_by_lateral_file(
+			live, UnitFormation.slots(self, count), files)
+	_row_slot_files = files
 
 
 ## Cancel a hold-ground reform's depth reflection for the ROW-MAJOR layout, by composing the
