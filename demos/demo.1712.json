@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Design-document change only (docs/battle-ai-design.md): no code, so no battle plays differently."
+}
