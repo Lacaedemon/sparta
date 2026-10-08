@@ -376,7 +376,7 @@ func next_step(from: Vector2, to: Vector2, clearance: float = 0.0, lane_offset: 
 			break
 	if not full_margin_candidate:
 		for i in range(path.size() - 1, 1, -1):
-			if not _segment_blocked(from, path[i], detour_margin, true):
+			if not _corridor_sightline_blocked(from, path[i], detour_margin):
 				corridor = path[i]
 				break
 	# Funnel refinement: the corridor candidate is a cell centre ON the coarse
@@ -644,22 +644,68 @@ const ROUTE_SIDE_COLLINEAR_EPS := 0.001   # tuned in wu, solver epsilon
 ## how wide the querying unit is, letting its flank cut into terrain exactly
 ## where routing bends. Candidates must clear the FULL margin (cap_to false);
 ## a candidate inside the margin is simply not picked.
+##
+## A real destination's room (`to_is_destination`, the default) is measured by
+## _grow_room, in the same per-axis metric Rect2.grow uses, not as a straight-line
+## distance: the grown rect has square corners, so a destination diagonal from a
+## corner stands farther away in a straight line than the grown corner reaches, and a
+## straight-line room would grow the rect over the very destination the cap exists to
+## keep reachable. next_step's corridor fallback caps on a synthetic cell centre
+## instead, which no order has to reach, so it passes false and keeps the
+## straight-line room.
+##
+## The start keeps the straight-line room. That has the mirror-image limitation (from
+## a start diagonal off a corner the straight-line room can grow the rect over the
+## start itself, so a leg leaving it reads as blocked), but the start room does more
+## than free a shoved walker: it decides whether a funnel corner's sightline from deep
+## inside the margin is accepted, and through the whole-leg cap below it sets the margin
+## a walker inside its own margin marches the entire leg at. Measuring it per axis moved
+## routing in both of those roles, so it is left as a known limitation.
+##
+## The capped margin applies to the WHOLE leg, not only near the endpoint that set
+## it. A leg to a destination just off a corner therefore keeps only that
+## destination's room all along its length, and a block marching it can run a flank
+## past the rect's edge closer than its full swept half-width: a leg whose
+## destination stands 50 wu and 80 wu off a corner's two edges is judged at a 79.5 wu
+## margin all along, so a unit needing 100 wu may still be routed straight along a
+## leg that passes 93 wu off one of those edges. This is the edge-adjacent-destination
+## trade the cap already makes -- a destination the clamp accepted stays reachable in
+## a straight line -- and the soldier terrain backstop keeps bodies out of the rect
+## itself.
 func _segment_blocked(from: Vector2, to: Vector2, clearance: float = 0.0,
-		cap_to: bool = true) -> bool:
+		cap_to: bool = true, to_is_destination: bool = true) -> bool:
 	for r in _block_rects:
 		var room: float = _distance_to_rect(from, r)
 		if cap_to:
-			room = minf(room, _distance_to_rect(to, r))
+			var to_room: float = _grow_room(to, r) if to_is_destination \
+					else _distance_to_rect(to, r)
+			room = minf(room, to_room)
 		var eff: float = minf(clearance, room - CLEARANCE_SLACK)
 		if segment_intersects_rect(from, to, r.grow(maxf(0.0, eff))):
 			return true
 	return false
 
 
+## next_step's corridor fallback sightline: capped at the room the candidate CELL
+## leaves, measured in a straight line. A cell centre is no order's destination, so it
+## does not get the per-axis room a real destination does (see _segment_blocked).
+func _corridor_sightline_blocked(from: Vector2, cell: Vector2, margin: float) -> bool:
+	return _segment_blocked(from, cell, margin, true, false)
+
+
 ## Distance from `p` to the nearest point of `r` (0 inside the rect).
 static func _distance_to_rect(p: Vector2, r: Rect2) -> float:
 	return p.distance_to(Vector2(clampf(p.x, r.position.x, r.end.x),
 			clampf(p.y, r.position.y, r.end.y)))
+
+
+## The largest margin `r` can be grown by (Rect2.grow, every side alike) before `p`
+## falls inside it: `p`'s larger per-axis gap to the rect (0 inside it). Equal to
+## _distance_to_rect beside an edge, smaller off a corner.
+static func _grow_room(p: Vector2, r: Rect2) -> float:
+	var gap_x: float = maxf(r.position.x - p.x, p.x - r.end.x)
+	var gap_y: float = maxf(r.position.y - p.y, p.y - r.end.y)
+	return maxf(0.0, maxf(gap_x, gap_y))
 
 
 ## Index into _block_rects of the FIRST rect the from..to segment enters (each
@@ -671,7 +717,7 @@ func _first_blocking_rect_index(from: Vector2, to: Vector2, clearance: float) ->
 	var best_t: float = INF
 	for i in _block_rects.size():
 		var r: Rect2 = _block_rects[i]
-		var room: float = minf(_distance_to_rect(from, r), _distance_to_rect(to, r))
+		var room: float = minf(_distance_to_rect(from, r), _grow_room(to, r))
 		var eff: float = minf(clearance, room - CLEARANCE_SLACK)
 		var t: float = segment_rect_entry(from, to, r.grow(maxf(0.0, eff)))
 		if t < best_t:
@@ -831,10 +877,13 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 	# comparing a side computed on one axis against a route_side computed on
 	# another compares two unrelated quantities, and can point the filter at
 	# the wrong corners entirely rather than merely at an
-	# occasionally-unstable one (measured on this function's own
+	# occasionally-unstable one (measured on this function's original
 	# hill-terrain repro: `to=(650,730)` and `centre=(1275,480)` put
 	# `heading` and `to - centre` about 179 degrees apart there, flipping
 	# the sign of all four of the rect's corners relative to each other).
+	# That measurement predates measuring the destination's room per axis: the leg
+	# to (650,730) only read as blocked because a straight-line room grew
+	# the hill's square corner over that destination, and it is clear now.
 	var nearest_point: Vector2 = Vector2.ZERO
 	var nearest_point_d: float = INF
 	for p in path:

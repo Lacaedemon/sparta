@@ -1,5 +1,5 @@
 {
-  "_comment": "Scenario-staged routing demo beside impassable terrain: a brittle player cavalry unit (60 mounts at morale 0.5) starts just west of the default hill (Rect2(1150, 380, 250, 200)) and holds there until an enemy cavalry charge from its WESTERN flank comes in; it moves out about 80 wu west to meet the charge and, after a long melee, breaks and routs. Both units stand clear of the hill for the whole clip: the router's block is 280 wu wide, so its centre at x=960 keeps its eastern file 50 wu clear of the hill's west face, and the whole scene sits 140 wu west of its pre-backstop staging (router 1100 -> 960, pursuer 930 -> 790, the spawn gap unchanged). On the earlier staging six of the router's men stood inside the hill, and once the soldier terrain backstop held them at the edge the router ended up fighting instead of routing. Measured with a 4-tick dense state dump: the router holds at its spawn through tick 160, is in melee from about tick 316, routs at tick 472, and stays ROUTING to the end of the clip, drifting west away from the hill as its morale recovers. This scenario does NOT show a rout detouring around the hill: the router's flight never meets it. The 'stands and fights when genuinely trapped' case is covered by test_trapped_routing_unit_fights_instead_of_fleeing. No player input needed; the scenario + seed make the clash deterministic. The pursuer's own block deforms during the post-rout gallop (a 4-tick scan reads shape residual up to ~77 wu across ticks 480-640), so the declared checks pin the router's story beats and leave mid-gallop pursuer samples out. The pursuer's facing also flickers during the charge: sampled every 2 ticks it snaps between about 12 and 112 degrees eleven times between ticks 178 and 282, backing off and re-charging while still reading engaged, because its bodies start inside the router's block (the two blocks spawn interleaved, as they did before this re-staging). A 4-tick scan steps over those snaps, and every nearby staging tried shows the same churn or worse; re-authoring the clash with separated spawns is tracked in #1725.",
+  "_comment": "Scenario-staged routing demo beside impassable terrain: a brittle player cavalry unit (60 mounts at morale 0.5) starts just west of the default hill (Rect2(1150, 380, 250, 200)) and holds there until an enemy cavalry charge from its WESTERN flank comes in. Both units stand clear of the hill for the whole clip: the router's block is 280 wu wide, so its centre at x=960 keeps its eastern file 50 wu clear of the hill's west face. The pursuer's target sits 190 wu west of the hill and 40 wu below its bottom edge, so its leg is clear of the hill and it charges straight east. Measured with a 2-tick dense state dump: the router holds at its spawn through tick 120, the charge makes contact at tick 159 and drives the router back about 60 wu west, the two fight one unbroken melee, and the router routs at tick 343. It stays ROUTING to the end of the clip, drifting south (from y 620 to about 770) and staying over 200 wu clear of the hill as its morale recovers. The pursuer's facing turns smoothly through the charge, with no snap larger than 20 degrees between 2-tick samples. This scenario does NOT show a rout detouring around the hill: the router's flight never meets it. The 'stands and fights when genuinely trapped' case is covered by test_trapped_routing_unit_fights_instead_of_fleeing. No player input needed; the scenario + seed make the clash deterministic. After the rout the pursuer gallops after the router and its own block deforms: a 2-tick scan of every sample from the rout at tick 343 reads a sustained shape residual of 43.4 wu against a 30 wu threshold. Before the charge came straight in (rout at tick 469), the same scan from the rout read 75.4 wu: the straight charge did not cause the deformation. Because of it the declared checks pin the router's story beats with only three sparse post-rout samples (400, 560 and 680) rather than sampling the gallop densely.",
   "seed": "12345",
   "scenario": [
     {
@@ -29,10 +29,10 @@
   "state": [
     10,
     120,
-    160,
-    340,
+    180,
+    240,
+    300,
     400,
-    500,
     560,
     680
   ],
@@ -68,19 +68,25 @@
       "value": "IDLE"
     },
     {
-      "tick": 340,
+      "tick": 180,
+      "uid": 0,
+      "field": "state",
+      "value": "FIGHTING"
+    },
+    {
+      "tick": 240,
+      "uid": 0,
+      "field": "state",
+      "value": "FIGHTING"
+    },
+    {
+      "tick": 300,
       "uid": 0,
       "field": "state",
       "value": "FIGHTING"
     },
     {
       "tick": 400,
-      "uid": 0,
-      "field": "state",
-      "value": "FIGHTING"
-    },
-    {
-      "tick": 500,
       "uid": 0,
       "field": "state",
       "value": "ROUTING"
@@ -110,13 +116,13 @@
       "value": 0
     },
     {
-      "tick": 340,
+      "tick": 300,
       "uid": 0,
       "field": "soldiers_in_block_terrain",
       "value": 0
     },
     {
-      "tick": 340,
+      "tick": 300,
       "uid": 1,
       "field": "soldiers_in_block_terrain",
       "value": 0
