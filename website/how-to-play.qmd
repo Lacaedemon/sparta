@@ -154,14 +154,12 @@ persists per unit until you (or a replayed order) change it again.
 face it and marches there in good order: it **pivots about its centre** onto the new
 heading --- turning in place before it advances on a sharp turn --- marches, and settles
 back into formation on arrival.
-While it marches, the info panel reports how far it is to the destination it is
-heading for and in which direction --- "Moving 45 m north-east", with north at the top
-of the screen --- followed by how many queued waypoints come after it, such as
-"(+2 waypoints)".
-It reads "Arriving" in the last half metre of the final leg, and "At waypoint" as it
-passes through an intermediate one.
-The next two sections cover the special cases: a small
-sideways shift (**side-step**) and a larger turn (**centre pivot**).
+While it marches, the info panel reports how far it is to the destination it is heading for,
+and in which direction --- "Moving 45 m north-east", with north at the top of the screen ---
+followed by how many queued waypoints come after it, such as "(+2 waypoints)".
+It reads "Arriving" in the last half metre of the final leg.
+The next two sections cover the special cases:
+a small sideways shift (**side-step**) and a larger turn (**centre pivot**).
 
 **Disciplined vs. undisciplined units.** The centre-pivot march above is what a
 **disciplined** (trained, professional) unit executes. An **undisciplined** unit ---
