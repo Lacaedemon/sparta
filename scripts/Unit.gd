@@ -499,8 +499,9 @@ var _drill_turn_fold: float = 0.0
 # _formation_angle at +-PI, or a fold whose drills net a half-turn (_drill_turn_fold) while it is
 # nearer a half-turn than square -- whether a countermarch or a hold-ground re-square. A single
 # rigid rotation of the whole grid by ang (the normal soldier_world_slots formula) is a POINT
-# reflection -- it negates both the file (lateral) and rank (depth) axes of every local slot, which is correct for holding a body's world position
-# steady DURING the turn (that's the identity-holding invariant _settle_order_turn relies on),
+# reflection -- it negates both the file (lateral) and rank (depth) axes of every local slot,
+# which is correct for holding a body's world position steady DURING the turn (that's the
+# identity-holding invariant _settle_order_turn relies on),
 # but wrong for the reform that follows: re-squaring the grid should only reverse rank order
 # within each file (a countermarch), never swap a soldier to the opposite flank. While this flag
 # is set, soldier_world_slots negates each local slot's file (x) coordinate before rotating by the

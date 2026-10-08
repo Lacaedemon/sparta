@@ -1164,6 +1164,16 @@ func test_a_snap_after_the_drill_drops_its_record_off_square_too() -> void:
 	assert_eq(u._sim_soldier_row_slot.size(), 0, "on the pairing it holds, with no re-pair")
 
 
+## Any other settled turn -- here a wheel -- drops a quarter-turn's record, as any non-drill
+## write to the fold does: the record then no longer describes drill turns alone.
+func test_a_wheel_settled_after_a_quarter_turn_drops_its_record() -> void:
+	var u := _make_row_major_unit()
+	_settle_quarter_turn_drill(u, PI * 0.5)
+	assert_almost_eq(absf(u._drill_turn_fold), PI * 0.5, 0.001, "precondition: a drilled quarter")
+	_settle_drill(u, Order.new_wheel(1), deg_to_rad(30.0))
+	assert_eq(u._drill_turn_fold, 0.0, "the record no longer describes the fold")
+
+
 ## An about-face drill settled after a quarter-turn is a drill too, so the record nets both:
 ## a quarter plus a half-turn is a quarter the other way, matching the fold they made.
 func test_an_about_face_drill_after_a_quarter_turn_adds_to_its_record() -> void:

@@ -510,11 +510,14 @@ file steps out sideways across the new facing, so the depth halves and the line 
 The explicatio is measured against the direction the men face after the turn, not the
 grid they started in --- which is what makes the pair one drill rather than two unrelated
 keypresses (pressing <kbd>Q</kbd> and then <kbd>B</kbd> by hand doubles the grid's old
-files, which after the turn run along the block's depth). A block skewed by less than half a right angle
-before the turn still unfolds across its new facing, and the skew is squared away with it.
-The historical use is deploying
-from column: a regiment marching by files quarter-turns to bring its long side to the
-front, then unfolds into line. The panel reads "Quarter-turning (step 1 of 2)" while the
+files, which after the turn run along the block's depth).
+A block skewed by less than half a right angle before the turn
+still unfolds across its new facing, and the skew is squared away with it.
+One skewed by more than half a right angle ends the turn with its files nearer across its new
+facing than along it, so it widens those files where they lie and keeps its skew.
+The historical use is deploying from column:
+a regiment marching by files quarter-turns to bring its long side to the front,
+then unfolds into line. The panel reads "Quarter-turning (step 1 of 2)" while the
 turn runs. Like every drill, it only answers a unit standing idle.
 
 ::: {#fig-turn-explicatio-combo .demo}
