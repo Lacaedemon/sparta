@@ -486,7 +486,8 @@ var _formation_angle: float = 0.0
 # The net turn of the QUARTER_TURN leaves (a Q/E drill, or a lateral pivot's legs) that have
 # settled into _formation_angle since anything else last moved it: _settle_order_turn adds each
 # such leaf's turn, and every other write to the fold -- a snap-absorb, an engage re-face, a
-# non-quarter drill, a reform, a rout -- clears it. So it only ever describes drill turns made
+# non-quarter drill, a reform, a quarter-fold file double, a rout -- clears it (a snapshot restore
+# restores it with the fold). A new write to _formation_angle must do one or the other. So it only ever describes drill turns made
 # on top of whatever fold was already there. reform_ranks re-pairs a fold that measures a quarter
 # OR whose drills net a quarter: a quarter-turn composed onto a leftover snap-absorb fold is
 # re-paired too, while a snap-absorb or engage fold made after the drill drops the record first.

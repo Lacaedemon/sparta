@@ -1195,8 +1195,10 @@ func test_a_drilled_quarter_that_completes_an_about_face_is_reflected_like_any_a
 	plain._formation_angle = drilled._formation_angle
 	for i in range(plain.soldiers):
 		plain._sim_soldier_pos[i] = drilled._sim_soldier_pos[i]
-	drilled.reform_ranks(true)
-	plain.reform_ranks(true)
+	assert_true(drilled.reform_ranks(true), "the drilled about-face re-squares")
+	assert_true(plain.reform_ranks(true), "and so does the plain one")
+	assert_eq(plain._sim_soldier_row_slot.size(), plain.soldiers,
+		"precondition: the hold-ground reflection ran, so the comparison is not of two empty arrays")
 	assert_eq(drilled._sim_soldier_row_slot, plain._sim_soldier_row_slot,
 		"the drill in the fold changes nothing about how an about-face re-squares")
 

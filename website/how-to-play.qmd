@@ -466,8 +466,8 @@ rather than marching across the block.
 ```
 
 A quarter-turn made on a block that was not square:
-a levy snaps round onto a move order, which leaves its grid skewed,
-halts, quarter-turns with <kbd>E</kbd>, and is ordered north,
+a levy snaps round onto a move order, leaving its grid skewed.
+It halts, quarter-turns with <kbd>E</kbd>, and is ordered north,
 and each man still steps into the nearest new place as the block squares to its heading.
 :::
 
