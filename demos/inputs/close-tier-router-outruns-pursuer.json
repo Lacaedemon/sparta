@@ -24,6 +24,10 @@
   "state": [8, 60, 120, 180, 240, 300, 330, 350],
   "expect": [
     {"tick": 8, "uid": 1, "field": "state", "value": "ROUTING"},
-    {"tick": [60, 350], "uid": 1, "field": "state", "value": "ROUTING"}
+    {"tick": [60, 350], "uid": 1, "field": "state", "value": "ROUTING"},
+    {"tick": 8, "uid": 0, "field": "position", "value": [860.0, 400.0], "tol": 1.0},
+    {"tick": 8, "uid": 1, "field": "position", "value": [860.0, 950.4], "tol": 1.0},
+    {"tick": 350, "uid": 0, "field": "position", "value": [860.0, 923.6], "tol": 5.0},
+    {"tick": 350, "uid": 1, "field": "position", "value": [860.0, 1616.5], "tol": 5.0}
   ]
 }

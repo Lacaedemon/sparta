@@ -760,10 +760,19 @@ static func expect_entry_error(e) -> String:
 		return "tick must be a number or a [lo, hi] pair"
 	if not (e.get("uid") is float or e.get("uid") is int):
 		return "missing numeric uid"
+	if e.has("absent"):
+		# An absence claim ("this unit is gone by then") names no field or value.
+		if not (e.get("absent") is bool) or not bool(e.get("absent")):
+			return "absent must be true"
+		return ""
 	if str(e.get("field", "")) == "":
 		return "missing field"
 	if not e.has("value"):
 		return "missing value"
+	if e.has("tol"):
+		var tol = e.get("tol")
+		if not (tol is float or tol is int) or float(tol) < 0.0:
+			return "tol must be a non-negative number"
 	return ""
 
 
@@ -788,8 +797,13 @@ static func check_expectations(expects: Array, snapshots: Array) -> Array:
 		var lo: int = int(t[0]) if t is Array else int(t)
 		var hi: int = int(t[1]) if t is Array else int(t)
 		var uid: int = int(e.get("uid", -1))
+		var when: String = str(lo) if lo == hi else "%d-%d" % [lo, hi]
+		if e.has("absent"):
+			out.append(_check_absent(uid, lo, hi, when, snapshots))
+			continue
 		var field: String = str(e.get("field", ""))
 		var expected = e.get("value")
+		var tol: float = float(e.get("tol", 0.0))
 		var probed := false
 		var passed := false
 		var actual = null
@@ -804,11 +818,10 @@ static func check_expectations(expects: Array, snapshots: Array) -> Array:
 					continue
 				probed = true
 				actual = u[field]
-				if _values_match(expected, actual):
+				if _values_match(expected, actual, tol):
 					passed = true
 			if passed:
 				break
-		var when: String = str(lo) if lo == hi else "%d-%d" % [lo, hi]
 		out.append({"uid": uid, "metric": "expect:%s@%s" % [field, when],
 				"pass": probed and passed,
 				"worst": actual if probed else "(no snapshot/unit/field in range)",
@@ -887,10 +900,47 @@ static func _exempts_uid(entry: Dictionary, uid: int) -> bool:
 	return false
 
 
-static func _values_match(expected, actual) -> bool:
+static func _values_match(expected, actual, tol: float = 0.0) -> bool:
+	var slack: float = maxf(tol, 0.001)
 	if (expected is float or expected is int) and (actual is float or actual is int):
-		return absf(float(expected) - float(actual)) < 0.001
+		return absf(float(expected) - float(actual)) < slack
+	# A numeric [x, y] pair within `tol` on each component, for a position that may drift
+	# by a fraction of a world unit across platforms.
+	if tol > 0.0 and expected is Array and actual is Array \
+			and (expected as Array).size() == (actual as Array).size():
+		for i in range((expected as Array).size()):
+			var a = expected[i]
+			var b = actual[i]
+			if not ((a is float or a is int) and (b is float or b is int)):
+				return false
+			if absf(float(a) - float(b)) > tol:
+				return false
+		return true
 	return str(expected) == str(actual)
+
+
+## An `absent` expectation: passes when some snapshot inside [lo, hi] carries no record
+## for `uid` -- the unit has left play (annihilated, escaped, merged) by then. Fails when
+## every snapshot in range still lists it, or when there is no snapshot in range at all.
+static func _check_absent(uid: int, lo: int, hi: int, when: String, snapshots: Array) -> Dictionary:
+	var probed := false
+	var gone := false
+	for snap in snapshots:
+		var tick: int = int(snap.get("tick", -1))
+		if tick < lo or tick > hi:
+			continue
+		probed = true
+		var present := false
+		for u in snap.get("units", []):
+			if int(u.get("uid", -1)) == uid:
+				present = true
+				break
+		if not present:
+			gone = true
+			break
+	return {"uid": uid, "metric": "expect:absent@%s" % when, "pass": probed and gone,
+			"worst": "absent" if gone else ("present" if probed else "(no snapshot in range)"),
+			"threshold": "absent"}
 
 
 ## Mean distance from each body to its nearest slot of ANY identity -- how settled the

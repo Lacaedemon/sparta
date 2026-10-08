@@ -42,11 +42,11 @@ fightable --- for as long as it's plausibly still in view.
 
 A routing unit runs faster than it marches. It picks up speed over its first few
 seconds of flight and then flees at about 1.3 times its own top speed, so on open
-ground a pursuer of the same type falls behind once the router gets going. Terrain in
-its path slows it: a deep block fleeing past a hill can hang its leading ranks on the
-slope and lose much of that pace. Catch a broken unit before it builds up speed, or
-send faster troops after it. When a router recovers its nerve it slows to a halt
-before it re-forms, rather than stopping dead.
+ground a pursuer of the same type falls behind once the router gets going. A router
+that breaks while in contact starts that flight from a standstill, so a pursuer
+already on it can keep pressing for those first seconds. (Currently, a deep block
+fleeing past impassable terrain can snag its leading ranks on it and lose much of
+that pace.)
 
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
   break too. One collapse can cascade down a line.
@@ -61,7 +61,10 @@ before it re-forms, rather than stopping dead.
   --- morale climbs back toward a baseline, fast at first and levelling off. If it
   **breaks contact** (no enemy close enough to keep hitting it) and still fields enough
   men, its recovering morale carries it over the rally threshold and it **returns to
-  your control**, ready to fight again. It re-squares its ranks **where it stands**
+  your control**, ready to fight again. Left alone, it first slows to a halt and then
+  re-forms; an enemy that catches it while it is slowing makes it rally on the spot,
+  and if it is gutted past reforming while slowing it does not rally at all (the rules
+  below then apply). It re-squares its ranks **where it stands**
   --- the flight leaves the grid flipped, so the short rank ends up leading, and only
   the men the flip can't leave in place have to move: under **File-major** reform
   (the default) the under-strength files step up one rank to close it, and under
@@ -178,9 +181,9 @@ isolated recovery above (@fig-morale-recovery), where nothing interferes.
 ```
 
 A team's last unit routs. A lone player infantry is broken and flees, its flag fading;
-the enemy keeps pressing since a routing unit is still fair game, so this
-matchup grinds on rather than resolving cleanly &mdash; but the point still
-holds: the battle stays live instead of ending the instant the last unit
+the enemy keeps after it, since a routing unit is still fair game, and the clip ends a
+couple of seconds into the flight, before the router has built up its pace. The point
+holds either way: the battle stays live instead of ending the instant the last unit
 broke, for as long as it's still on the field.
 :::
 

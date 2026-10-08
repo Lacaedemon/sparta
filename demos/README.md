@@ -296,8 +296,9 @@ script under `demos/inputs/`:
     rather than failing the recording outright. Pair `starting_state: 3` with a low
     `morale` override -- a unit that starts ROUTING at the default morale (100) is
     already above the rally threshold and rallies in a single tick, showing no
-    recovery at all. See `demos/inputs/morale-recovery.json` (morale `1.0`, so the
-    climb back to the ~35 rally threshold is gradual and visible).
+    recovery at all. See `demos/inputs/morale-recovery.json` (morale `25.0`, so the
+    climb back to the ~35 rally threshold is gradual and visible, yet early enough that
+    the router's brake to a halt before it re-forms still lands inside the clip).
 
   - `missile` (optional) -- missile profile integer ID from `LoadoutRegistry`.
     Sets the unit's ranged profile.
@@ -528,6 +529,15 @@ enough to make the data it checks exist; the analyzer evaluates them offline:
 "$GODOT_BIN" --headless --path . -s tools/demo/analyze_transcript.gd -- <dump-dir> \
     --script demos/inputs/<name>.json
 ```
+
+Two optional keys widen what an entry can say:
+
+- `"tol": N` -- match a number, or each component of an `[x, y]` pair such as `position`,
+  within `N` instead of exactly. Use it for a late-tick position, which can drift by a
+  fraction of a world unit across platforms.
+- `"absent": true` -- in place of `field`/`value`: the unit has left play (annihilated,
+  escaped, merged) by some snapshot inside the range, i.e. that snapshot carries no record
+  for its uid.
 
 An expectation that cannot be checked (no snapshot in range, no such unit, no such field)
 FAILS rather than skips -- an uncheckable claim is an authoring error. This is how a demo

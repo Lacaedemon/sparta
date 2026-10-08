@@ -1334,3 +1334,41 @@ func test_hud_consistency_detects_sustained_blank_caption() -> void:
 	assert_string_contains(str(verdicts[0]["worst"]), "blank hud")
 
 
+
+
+func test_check_expectations_tol_matches_a_position_within_tolerance() -> void:
+	# A late-tick position can drift by a fraction of a world unit across platforms, so a
+	# position claim carries a per-component tolerance instead of demanding an exact match.
+	var snaps: Array = [{"tick": 350, "units": [{"uid": 1, "position": [860.0, 1616.49]}]}]
+	var verdicts: Array = DemoDefects.check_expectations([
+		{"tick": 350, "uid": 1, "field": "position", "value": [860.0, 1616.0], "tol": 5.0},
+		{"tick": 350, "uid": 1, "field": "position", "value": [860.0, 1600.0], "tol": 5.0},
+		{"tick": 350, "uid": 1, "field": "position", "value": [860.0, 1616.0]},
+	], snaps)
+	assert_true(bool(verdicts[0]["pass"]), "within tolerance on every component passes")
+	assert_false(bool(verdicts[1]["pass"]), "a component outside the tolerance fails")
+	assert_false(bool(verdicts[2]["pass"]), "with no tol the match stays exact")
+	assert_ne(DemoDefects.expect_entry_error(
+			{"tick": 1, "uid": 0, "field": "position", "value": [0, 0], "tol": -1.0}), "",
+			"a negative tol is malformed")
+
+
+func test_check_expectations_absent_passes_once_the_unit_is_gone() -> void:
+	# "This unit has left play by then" (annihilated or escaped): passes when some snapshot
+	# in range carries no record for it, fails while every one still lists it.
+	var snaps: Array = [
+		{"tick": 600, "units": [{"uid": 0, "state": "ROUTING"}, {"uid": 3, "state": "FIGHTING"}]},
+		{"tick": 620, "units": [{"uid": 3, "state": "IDLE"}]},
+	]
+	var verdicts: Array = DemoDefects.check_expectations([
+		{"tick": [600, 640], "uid": 0, "absent": true},
+		{"tick": 600, "uid": 0, "absent": true},
+		{"tick": 900, "uid": 0, "absent": true},
+	], snaps)
+	assert_true(bool(verdicts[0]["pass"]), "gone by a snapshot inside the range passes")
+	assert_false(bool(verdicts[1]["pass"]), "still listed at every snapshot in range fails")
+	assert_false(bool(verdicts[2]["pass"]), "no snapshot in range at all is uncheckable, so it fails")
+	assert_eq(DemoDefects.expect_entry_error({"tick": 600, "uid": 0, "absent": true}), "",
+			"an absence claim needs no field or value")
+	assert_ne(DemoDefects.expect_entry_error({"tick": 600, "uid": 0, "absent": false}), "",
+			"absent false is malformed")
