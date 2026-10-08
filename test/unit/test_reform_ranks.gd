@@ -1159,6 +1159,30 @@ func test_a_snap_back_to_square_clears_the_drilled_quarter_record() -> void:
 	assert_eq(u._sim_soldier_row_slot.size(), 0, "on the pairing it holds, with no re-pair")
 
 
+## A snap-absorb after the drill drops its record even when it does not land on square: here it
+## turns the block back to the residue it had before the drill, which alone is not re-paired.
+func test_a_snap_after_the_drill_drops_its_record_off_square_too() -> void:
+	var u := _make_row_major_unit()
+	u._formation_angle = deg_to_rad(-25.0)   # a residue from before the drill
+	_settle_quarter_turn_drill(u, PI * 0.5)
+	u._face_dir(u.facing.rotated(-PI * 0.5))   # snapped back onto the old heading
+	assert_almost_eq(rad_to_deg(u._formation_angle), -25.0, 0.01, "precondition: only the residue is left")
+	assert_true(u.reform_ranks(true), "the residue re-squares")
+	assert_eq(u._sim_soldier_row_slot.size(), 0, "on the pairing it holds, with no re-pair")
+
+
+## A non-quarter drill (an about-face) settled after a quarter-turn drops the quarter's record.
+func test_an_about_face_drill_after_a_quarter_turn_drops_its_record() -> void:
+	var u := _make_row_major_unit()
+	_settle_quarter_turn_drill(u, PI * 0.5)
+	var leaf := Order.new_about_face()
+	u.set_current_order(leaf)
+	leaf.turn_start_facing = u.facing
+	u.facing = u.facing.rotated(PI)
+	u._settle_order_turn()
+	assert_eq(u._quarter_turn_fold, 0.0, "the record no longer describes the fold")
+
+
 ## A drilled quarter-turn on top of a quarter of snap-absorb lands on an about-face fold. That
 ## fold is reflected exactly as one with no drill in it, never proximity-paired first.
 func test_a_drilled_quarter_that_completes_an_about_face_is_reflected_like_any_about_face() -> void:

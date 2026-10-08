@@ -454,6 +454,23 @@ and the block squares to its new heading with each man stepping into the nearest
 rather than marching across the block.
 :::
 
+::: {#fig-quarter-turn-residue .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/quarter_turn_residue.jpg">
+  <source src="media/quarter_turn_residue.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A quarter-turn made on a block that was not square:
+a levy snaps round onto a move order, which leaves its grid skewed,
+halts, quarter-turns with <kbd>E</kbd>, and is ordered north,
+and each man still steps into the nearest new place as the block squares to its heading.
+:::
+
 **Turn and unfold (<kbd>Shift+Q</kbd> / <kbd>Shift+E</kbd>).** The first chained drill:
 one press runs a quarter-turn and then an explicatio, back to back, as a single order.
 Press <kbd>Shift+Q</kbd> to turn the selected unit a quarter-turn left, or

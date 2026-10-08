@@ -483,11 +483,13 @@ var _ranks_closed: bool = false
 # that rotation in soldier_world_slots so the slots stay put -- the men don't drift. 0 = the
 # grid is square to the heading (the default). A fresh move order / rout reforms it to 0.
 var _formation_angle: float = 0.0
-# The part of _formation_angle that quarter-turn drill leaves contributed, net: _settle_order_turn
-# adds each completed QUARTER_TURN leaf's turn here as well as to the fold, and every site that
-# drops the fold to 0, or finds it back at 0, clears it. reform_ranks re-pairs a fold that
-# measures a quarter OR whose drills net a quarter, so a quarter-turn composed onto a leftover
-# snap-absorb fold is re-paired too; a snap-absorb or engage fold of any other angle is not.
+# The net turn of the QUARTER_TURN leaves (a Q/E drill, or a lateral pivot's legs) that have
+# settled into _formation_angle since anything else last moved it: _settle_order_turn adds each
+# such leaf's turn, and every other write to the fold -- a snap-absorb, an engage re-face, a
+# non-quarter drill, a reform, a rout -- clears it. So it only ever describes drill turns made
+# on top of whatever fold was already there. reform_ranks re-pairs a fold that measures a quarter
+# OR whose drills net a quarter: a quarter-turn composed onto a leftover snap-absorb fold is
+# re-paired too, while a snap-absorb or engage fold made after the drill drops the record first.
 var _quarter_turn_fold: float = 0.0
 # True for exactly one thing: a countermarch just performed by reform_ranks() after an about-
 # face folded _formation_angle to ±PI. A single rigid rotation of the whole grid by ang (the
@@ -4070,7 +4072,7 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 func _settle_engage_turn() -> void:
 	var turned: float = angle_difference(_engage_turn_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
-	_drop_quarter_turn_record_if_square()
+	_quarter_turn_fold = 0.0   # the fold no longer comes from drills alone
 	_engage_turn_target = Vector2.ZERO
 	_render_dirty = true
 	match engage_reshape_mode:
@@ -4115,17 +4117,9 @@ func _face_dir(dir: Vector2) -> void:
 	var new_facing: Vector2 = dir.normalized()
 	if absf(angle_difference(facing.angle(), new_facing.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
 		_formation_angle = wrapf(_formation_angle - angle_difference(facing.angle(), new_facing.angle()), -PI, PI)
-		_drop_quarter_turn_record_if_square()
+		_quarter_turn_fold = 0.0   # the fold no longer comes from drills alone
 		_render_dirty = true
 	facing = new_facing
-
-
-## Forget the quarter-turn drills' record once a snap-absorb or engage re-face has brought the
-## fold back to square: those writers move the fold without touching the record, and a record
-## left at a quarter over a square grid would later mark an unrelated snap-absorb fold as drilled.
-func _drop_quarter_turn_record_if_square() -> void:
-	if absf(wrapf(_formation_angle, -PI, PI)) < 0.01:
-		_quarter_turn_fold = 0.0
 
 
 ## Rotate `facing` toward `target_dir` by at most `rate` * delta this frame — the
@@ -6356,6 +6350,8 @@ func _settle_order_turn() -> void:
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
 	if leaf.type == Order.Type.QUARTER_TURN:
 		_quarter_turn_fold = wrapf(_quarter_turn_fold - turned, -PI, PI)
+	else:
+		_quarter_turn_fold = 0.0
 	leaf.turn_target = Vector2.ZERO
 	_render_dirty = true
 
@@ -6572,9 +6568,10 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 ## each man near his cell. reform_ranks gates the call on a quarter-turn's origin as well as its
 ## angle: it re-pairs a fold within 0.01 rad of a quarter, or one whose quarter-turn drills net a
 ## quarter (_quarter_turn_fold), so a drill composed onto a leftover snap-absorb fold (a 25 degree
-## residue plus 90 lands at 115) is still re-paired. A snap-absorb or engage fold of any other
-## angle is not: those can be any angle, and re-dealing them by lateral order reshuffled blocks
-## that were not crossing (68, 112 and 156 degree folds on two catalog clips). Nor is an about-face
+## residue plus 90 lands at 115) is still re-paired. A fold whose last change was a snap-absorb or
+## engage re-face is not, unless it measures a quarter: those can be any angle, and re-dealing them
+## by lateral order reshuffled blocks that were not crossing (68, 112 and 156 degree folds on two
+## catalog clips), so that write drops the drill record (see _quarter_turn_fold). Nor is an about-face
 ## fold, whatever turns made it: that one is reflected, not paired. A squared block keeps its own
 ## square assignment.
 ## A row-major unit with no bodies to read (far tier, not yet seeded) keeps its pairing; a
