@@ -1,5 +1,5 @@
 {
-  "_comment": "A team's LAST unit routs, without instantly losing. Stages team 0's ONLY unit -- a full-strength (120) but jittery (morale 15) player infantry -- meeting a single enemy infantry head-on. Both blocks are pinned to Tight (formation 1) so packed files still produce the rout inside this clip -- default Normal 2x thins contact enough that onset misses the budget. Sustained frontal casualties erode its morale to 0 (the discipline-scaled rout retune, #529, made this actually reachable -- it used to sit near-immune to routing and simply grind to a stalemate), and it breaks and flees up (faded) while barely bloodied. It used to trigger instant defeat + a paused freeze the moment its last fightable unit left the line; now the battle stays live while it's routing. Routing units are still valid combat targets, so with roughly equal speeds the enemy keeps pace and this matchup grinds on rather than resolving into a clean rally -- state-dump verified: routs ~tick 720, still being fought and re-caught well past this clip's max_frames, only fully resolving (an eventual escape, badly gutted) around tick ~2175. This clip only needs to show the rout starting and the battle staying live through it, not the whole grind. No player input needed.",
+  "_comment": "A team's LAST unit routs, without instantly losing. Stages team 0's ONLY unit -- a full-strength (120) but jittery (morale 15) player infantry -- meeting a single enemy infantry head-on. Both blocks are pinned to Tight (formation 1) so packed files still produce the rout inside this clip -- default Normal 2x thins contact enough that onset misses the budget. Sustained frontal casualties erode its morale to 0 (the discipline-scaled rout retune, #529, made this actually reachable -- it used to sit near-immune to routing and simply grind to a stalemate), and it breaks and flees up (faded) while barely bloodied. It used to trigger instant defeat + a paused freeze the moment its last fightable unit left the line; now the battle stays live while it's routing. Routing units are still valid combat targets, and the enemy stays in contact with it as it flees, which holds the router to its pursuer's pace, so this matchup grinds on rather than resolving into a clean rally -- state-dump verified: routs at ~tick 1155 (60 Hz dump basis), and is still routing and still being fought at tick 2400, about 600 wu further up the field with 83 of its 120 men left. This clip only needs to show the rout starting and the battle staying live through it, not the whole grind. No player input needed.",
   "seed": "12345",
   "fixed_fps": 30,
   "max_frames": 650,
@@ -13,5 +13,10 @@
     {"tick": 0, "x": 800.0, "y": 360.0, "zoom": 1.0}
   ],
   "steps": [],
-  "frames": [60, 720]
+  "frames": [60, 720],
+  "expect": [
+    {"tick": 1150, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 1170, "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": 1300, "uid": 0, "field": "position", "value": [727.0, 416.0], "tol": 5.0}
+  ]
 }

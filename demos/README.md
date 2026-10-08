@@ -296,9 +296,8 @@ script under `demos/inputs/`:
     rather than failing the recording outright. Pair `starting_state: 3` with a low
     `morale` override -- a unit that starts ROUTING at the default morale (100) is
     already above the rally threshold and rallies in a single tick, showing no
-    recovery at all. See `demos/inputs/morale-recovery.json` (morale `25.0`, so the
-    climb back to the ~35 rally threshold is gradual and visible, yet early enough that
-    the router's brake to a halt before it re-forms still lands inside the clip).
+    recovery at all. See `demos/inputs/morale-recovery.json` (morale `1.0`, so the
+    climb back to the ~35 rally threshold is gradual and visible).
 
   - `missile` (optional) -- missile profile integer ID from `LoadoutRegistry`.
     Sets the unit's ranged profile.
