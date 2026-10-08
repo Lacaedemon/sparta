@@ -422,6 +422,32 @@ move order (which rotates the whole block around its centre as it marches), the 
 is a standing drill command: no one takes a step. Use it to face a threat behind the line
 without marching first, or to quickly reorient a reserve before it moves up.
 
+When the about-faced unit next moves off, it squares its ranks to the new heading in place:
+each man keeps his own flank, and the short rear files step up so a full rank leads.
+That holds even when the block was a little skewed before the turn,
+such as a levy still skewed from snapping round onto earlier orders:
+only that skew is squared away, and nobody crosses the block.
+Two quarter-turns the same way count as an about-face here too.
+
+::: {#fig-about-face-residue .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/about_face_residue.jpg">
+  <source src="media/about_face_residue.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+An about-face made on a block that was not square:
+a levy snaps round onto a move order and back onto a queued waypoint,
+which leaves its grid skewed a little off its heading.
+It halts, about-faces with <kbd>V</kbd>, and is ordered on the way it now faces.
+The men square away only the small skew as the block marches off,
+each keeping his own flank.
+:::
+
 **Quarter-turn in place (<kbd>Q</kbd> / <kbd>E</kbd>).** Press <kbd>Q</kbd> to turn the
 selected unit a quarter-turn left, or <kbd>E</kbd> to turn it right: every soldier pivots
 90° where they stand. No one marches and the grid of men does not reorganize --- they
@@ -480,7 +506,9 @@ file steps out sideways across the new facing, so the depth halves and the line 
 The explicatio is measured against the direction the men face after the turn, not the
 grid they started in --- which is what makes the pair one drill rather than two unrelated
 keypresses (pressing <kbd>Q</kbd> and then <kbd>B</kbd> by hand doubles the grid's old
-files, which after the turn run along the block's depth). The historical use is deploying
+files, which after the turn run along the block's depth). A block that was a little skewed
+before the turn still unfolds across its new facing, and the skew is squared away with it.
+The historical use is deploying
 from column: a regiment marching by files quarter-turns to bring its long side to the
 front, then unfolds into line. The panel reads "Quarter-turning (step 1 of 2)" while the
 turn runs. Like every drill, it only answers a unit standing idle.
