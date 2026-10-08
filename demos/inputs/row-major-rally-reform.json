@@ -54,5 +54,9 @@
       "y": 560.0,
       "zoom": 1.35
     }
+  ],
+  "expect": [
+    {"tick": [240, 375], "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": [405, 540], "uid": 0, "field": "state", "value": "IDLE"}
   ]
 }

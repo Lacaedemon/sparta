@@ -1,5 +1,5 @@
 {
-  "_comment": "Scenario-staged rout-then-ANNIHILATION demo: a lone low-morale (1) player infantry block of 12 is charged head-on by two 12-horse cavalry troops and BREAKS -- it enters routing (drawn faded) and flees toward its own back edge. The squadrons are shallow and spawn close so their facing-front is in spatha reach at regiment contact; a deep 80-horse column's front would sit a mounted rank-pitch past the infantry and land no per-soldier blows. Routing units are still valid combat targets, and the cavalry (8.5 sprint) are faster than the fleeing infantry (4.0 sprint), so pursuit is relentless: they catch it, and the casualties from being run down erode its morale faster than it can recover, so it never rallies. It's eventually ANNIHILATED (soldiers reach zero) rather than escaping or rallying. Under the rebalanced (intentionally slower) combat pace the chase is long -- the pursuit grinds the block down over ~1600+ ticks of flight -- so the scene runs on a custom tall map (field 1600x2400, flat) with every actor staged in the deep south: the flee lane north is ~1800 wu to the retreat margin, giving the kill ~5x the locally measured flight distance of headroom against the slower-platform divergence that let the router ESCAPE the default 1200-tall field on CI. The staging is the original scene translated south by exactly 1200 including the safe spearmen anchor -- the cavalry AI's target scoring sees that anchor's relative position, and moving it (measured) flips the arc from a clean chase to an enveloped kill-in-place with no visible pursuit. A second, safe player unit stays in the fight so the battle doesn't declare defeat and freeze the instant the infantry routs. Deterministic via the seed (rout ~tick 1200, annihilation ~tick 2830, measured headless on Windows). Camera frames the clash and then pans up the flee lane. No player input needed. (A unit that truly breaks free instead recovers cleanly -- see test/unit/test_morale_recovery_demo_scenario.gd for that case in isolation.)",
+  "_comment": "Scenario-staged rout-then-ANNIHILATION demo: a lone low-morale (1) player infantry block of 12 is charged head-on by two 12-horse cavalry troops and BREAKS -- it enters routing (drawn faded) and flees toward its own back edge. The squadrons are shallow and spawn close so their facing-front is in spatha reach at regiment contact; a deep 80-horse column's front would sit a mounted rank-pitch past the infantry and land no per-soldier blows. Routing units are still valid combat targets, and the cavalry (8.5 sprint) are faster than the fleeing infantry (4.0 sprint), so pursuit is relentless: they catch it, and the casualties from being run down erode its morale faster than it can recover, so it never rallies. It's eventually ANNIHILATED (soldiers reach zero) rather than escaping or rallying. The router now flees at its real flee pace, so the chase is a real run up the lane -- the lead squadron catches it around tick 480 and cuts it down by tick ~605 -- and the scene still runs on a custom tall map (field 1600x2400, flat) with every actor staged in the deep south: the flee lane north is ~1800 wu to the retreat margin, giving the kill ~5x the locally measured flight distance of headroom against the slower-platform divergence that let the router ESCAPE the default 1200-tall field on CI. The staging is the original scene translated south by exactly 1200 including the safe spearmen anchor -- the cavalry AI's target scoring sees that anchor's relative position, and moving it (measured) flips the arc from a clean chase to an enveloped kill-in-place with no visible pursuit. A second, safe player unit stays in the fight so the battle doesn't declare defeat and freeze the instant the infantry routs. Deterministic via the seed (rout by tick 60, caught ~tick 480, annihilated between ticks 600 and 610, measured headless on Windows with tools/demo/dump-state.sh; it used to crawl and take until ~tick 2640). Camera frames the clash and then pans up the flee lane with the chase, holding on the kill (website/tools/demo-catalog.sh records 330 frames at 30 fps, to tick 660). No player input needed. (A unit that truly breaks free instead recovers cleanly -- see test/unit/test_morale_recovery_demo_scenario.gd for that case in isolation.)",
   "seed": "12345",
   "map": {"field": [1600, 2400], "terrain": []},
   "scenario": [
@@ -10,9 +10,9 @@
   ],
   "camera": [
     {"tick": 0, "x": 800.0, "y": 1650.0, "zoom": 1.15},
-    {"tick": 1300, "x": 800.0, "y": 1600.0, "zoom": 1.2},
-    {"tick": 1900, "x": 790.0, "y": 1470.0, "zoom": 1.2},
-    {"tick": 2600, "x": 780.0, "y": 1320.0, "zoom": 1.25}
+    {"tick": 120, "x": 800.0, "y": 1560.0, "zoom": 1.15},
+    {"tick": 240, "x": 800.0, "y": 1150.0, "zoom": 1.15},
+    {"tick": 300, "x": 800.0, "y": 930.0, "zoom": 1.15}
   ],
   "steps": [],
   "defect_exemptions": {
@@ -26,5 +26,9 @@
       "uids": [2],
       "reason": "The same-unit standoff pass (SoldierBodies._separate_same_unit) now polices this cavalry troop's unengaged bodies for crowding during its chase/annihilation phases too, and caps the correction at STANDOFF_MAX_SPEED -- so a crowding event that used to resolve in a single tick now resolves gradually over 2+ ticks. That stretches an already-transient shape-fit residual spike (measured worst=97.1 on the pre-fix tree, a single non-sustained sample) into one that sustains across MIN_SUSTAIN=2 consecutive samples at a LOWER peak (measured worst=74.3), during the same multi-phase maneuvering the facing_whipsaw exemption above already covers."
     }
-  }
+  },
+  "expect": [
+    {"tick": [60, 540], "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": [480, 600], "uid": 3, "field": "state", "value": "FIGHTING"}
+  ]
 }

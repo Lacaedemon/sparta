@@ -93,3 +93,46 @@ func test_a_broken_unit_recovers_and_rallies_with_no_enemies_present() -> void:
 		assert_true(rallied.is_in_group("units"), "the rallied unit rejoins the fightable units")
 		assert_true(rallied.morale >= Unit.RALLY_MORALE,
 			"it reforms at or above the fragile rally floor, having recovered from the collapse")
+
+
+# The published morale_recovery clip records demos/inputs/morale-recovery.json for
+# max_frames 270 at 30 fps (website/tools/demo-catalog.sh), i.e. 540 physics ticks.
+const DEMO_INPUT := "res://demos/inputs/morale-recovery.json"
+const DEMO_WINDOW_TICKS := 540
+
+
+func test_the_published_demo_staging_rallies_inside_its_clip() -> void:
+	# Stage the demo's own scenario straight from its input file, so a change that pushes
+	# the rally past the end of the recorded clip (a faster flight, a longer brake) fails
+	# here rather than shipping a recovery clip that never shows the recovery.
+	var spec_text: String = FileAccess.get_file_as_string(DEMO_INPUT)
+	var spec: Dictionary = JSON.parse_string(spec_text)
+	assert_not_null(spec, "the demo input parses")
+	if spec == null:
+		return
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.drill_mode = bool(spec.get("drill", false))
+	_battle.scenario = spec["scenario"]
+	add_child(_battle)
+	await get_tree().physics_frame
+	var mine: Unit = _team_unit(0)
+	assert_not_null(mine, "the demo's unit deployed")
+	if mine == null:
+		return
+	assert_eq(mine.state, Unit.State.ROUTING, "it starts already routing, as the demo stages it")
+	var rallied_tick: int = -1
+	var safety: int = DEMO_WINDOW_TICKS * 20 + 200
+	while _battle.current_tick() < DEMO_WINDOW_TICKS and safety > 0:
+		safety -= 1
+		await get_tree().physics_frame
+		var unit: Unit = _team_unit(0)
+		if unit != null and unit.state == Unit.State.IDLE:
+			rallied_tick = _battle.current_tick()
+			break
+	assert_true(rallied_tick >= 0 and rallied_tick < DEMO_WINDOW_TICKS,
+			"the demo's unit rallies inside its %d-tick clip (rallied at tick %d)"
+			% [DEMO_WINDOW_TICKS, rallied_tick])
+	var rallied: Unit = _team_unit(0)
+	if rallied != null:
+		assert_true(_battle.field.has_point(rallied.position),
+				"and does so on the field, not out in the retreat margin (at %s)" % str(rallied.position))

@@ -103,7 +103,7 @@ before it re-forms, rather than stopping dead.
 A broken unit recovering with nothing to interfere: staged already routing, with no
 enemy anywhere on the field, so pursuit and further casualties can't factor in. Its
 nerve steadies as it flees, morale climbs back over the rally threshold, and it
-returns to your control. (The regression guard for this behavior is
+reins its flight in to a halt and returns to your control. (The regression guard for this behavior is
 `test_morale_recovery_demo_scenario.gd`.)
 :::
 
@@ -142,10 +142,10 @@ The same recovery once more, for a regiment holding **square**.
 A square keeps its own assignment of men to cells,
 which neither the file-major step-up nor the row-major pairing reaches,
 so undoing the flip has to name that third assignment directly.
-Measured over this rally, the average distance from a man's ground to the
-cell the reform hands him falls from 34 to 5 world units, and three and a half
-seconds later the block has stopped moving altogether &mdash; no man still short of
-his cell, where before the fix 52 of the 60 were still shuffling.
+The same cell pairing cancels the flip on the square's own assignment, so 56 of
+the 60 men hold their ground and only the four with no counterpart in the short
+rear rank swap ends: the block re-squares where it stands instead of marching
+itself inside out.
 :::
 
 ::: {#fig-rout-rally .demo}
@@ -160,8 +160,8 @@ his cell, where before the fix 52 of the 60 were still shuffling.
 ```
 
 Rout and pursuit: a low-morale infantry block is charged by cavalry and breaks &mdash;
-it flees, its flag fading, toward its own edge. The faster cavalry catch it before it can put
-real distance between them, and the casualties from being run down keep its morale
+it flees, its flag fading, toward its own edge. The faster cavalry ride it down partway up
+the field, and the casualties from being run down keep its morale
 too low to ever recover: it's annihilated rather than rallying &mdash; contrast the
 isolated recovery above (@fig-morale-recovery), where nothing interferes.
 :::
