@@ -1,0 +1,110 @@
+{
+  "_comment": "A lone 64-man Spearmen block, 16 files by 4 ranks, stands south-west of the default hill (Rect2(1150, 380, 250, 200)) and is ordered to (1095, 640): diagonal off the hill's south-west corner, 55 wu west of it and 60 wu south. The block's straight-leg clearance is wider than that 60 wu gap, so the march caps its margin round the hill at the room the destination leaves. That room is measured per axis, the way the grown hill's square corner reaches, so the straight leg reads as clear: the block marches straight along the order's line, arrives facing along it (0.97, -0.23), and stands still. On main the room was measured in a straight line (81 wu), which grew the corner over the destination, so the march swung south of its line, overshot, and pivoted on arrival to face (0.97, 0.24), south of the order's heading. The tick-900 and arrival facing pins fail there.",
+  "seed": "51738",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 760,
+      "y": 720,
+      "facing": [
+        1,
+        0
+      ],
+      "count": 64,
+      "frontage": 16
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 1000,
+      "y": 600,
+      "zoom": 1.6
+    }
+  ],
+  "steps": [
+    {
+      "tick": 8,
+      "click": [
+        760,
+        720
+      ]
+    },
+    {
+      "tick": 20,
+      "rmb_click": [
+        1095,
+        640
+      ]
+    }
+  ],
+  "state": [
+    8,
+    100,
+    300,
+    500,
+    700,
+    900,
+    1000,
+    1100,
+    1200
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        760.0,
+        720.0
+      ]
+    },
+    {
+      "tick": 900,
+      "uid": 0,
+      "field": "facing",
+      "value": [
+        0.97,
+        -0.23
+      ]
+    },
+    {
+      "tick": 900,
+      "uid": 0,
+      "field": "current_order",
+      "value": "MOVE"
+    },
+    {
+      "tick": 1100,
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    },
+    {
+      "tick": 1100,
+      "uid": 0,
+      "field": "facing",
+      "value": [
+        0.97,
+        -0.23
+      ]
+    },
+    {
+      "tick": 1200,
+      "uid": 0,
+      "field": "facing",
+      "value": [
+        0.97,
+        -0.23
+      ]
+    },
+    {
+      "tick": 1200,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    }
+  ]
+}

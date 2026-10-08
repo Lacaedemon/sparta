@@ -2504,6 +2504,11 @@ straight-leg margin. The walked detour hugs the corner's own margin the whole wa
 around a bend: straight legs run along the obstacle's own grown boundary rather than
 a wider routing-grid lane, so two blocks of different widths round the same hill on
 two visibly different tracks (@fig-funnel-lanes).
+A destination closer to the hill than that margin is still reached in a straight line:
+the leg's margin is cut to the room the destination itself leaves, measured
+square to the hill's edges, so a block sent to a spot just off one of the hill's
+corners marches straight there and halts facing along its line of march, instead of
+swinging wide around a corner it was never going to touch.
 
 ::: {#fig-terrain-exact-footprint .demo}
 

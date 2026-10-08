@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/corner-diagonal-march-1738.json",
+  "caption": "A block ordered to a spot just off a corner of the hill now marches straight there. A lone Spearmen block south-west of the hill is sent to a point diagonal off the hill's south-west corner, closer to the hill than the block's own clearance. The block marches along a straight line, stops facing along the order's line, and stands still. Before this fix, the march judged that straight line blocked, swung south of it, overshot the point, and turned on arrival to face south of the order's heading.",
+  "fixed_fps": 30,
+  "max_frames": 600,
+  "fps": 15,
+  "width": 720
+}
