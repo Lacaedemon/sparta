@@ -376,7 +376,7 @@ func next_step(from: Vector2, to: Vector2, clearance: float = 0.0, lane_offset: 
 			break
 	if not full_margin_candidate:
 		for i in range(path.size() - 1, 1, -1):
-			if not _segment_blocked(from, path[i], detour_margin, true, false):
+			if not _corridor_sightline_blocked(from, path[i], detour_margin):
 				corridor = path[i]
 				break
 	# Funnel refinement: the corridor candidate is a cell centre ON the coarse
@@ -684,6 +684,13 @@ func _segment_blocked(from: Vector2, to: Vector2, clearance: float = 0.0,
 		if segment_intersects_rect(from, to, r.grow(maxf(0.0, eff))):
 			return true
 	return false
+
+
+## next_step's corridor fallback sightline: capped at the room the candidate CELL
+## leaves, measured in a straight line. A cell centre is no order's destination, so it
+## does not get the per-axis room a real destination does (see _segment_blocked).
+func _corridor_sightline_blocked(from: Vector2, cell: Vector2, margin: float) -> bool:
+	return _segment_blocked(from, cell, margin, true, false)
 
 
 ## Distance from `p` to the nearest point of `r` (0 inside the rect).

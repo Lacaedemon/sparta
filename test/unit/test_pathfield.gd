@@ -187,6 +187,8 @@ func test_corridor_fallback_caps_a_candidate_cell_at_its_straight_line_room() ->
 		"as a real destination the corner-diagonal point is reachable")
 	assert_true(pf._segment_blocked(Vector2(100, 220), Vector2(250, 220), 100.0, true, false),
 		"as a candidate cell the same point keeps the straight-line room, as before")
+	assert_true(pf._corridor_sightline_blocked(Vector2(100, 220), Vector2(250, 220), 100.0),
+		"next_step's corridor fallback judges its cell the candidate way")
 
 
 func test_has_path_true_on_a_clear_line() -> void:
@@ -671,7 +673,8 @@ func test_funnel_corner_route_side_is_stable_under_sub_unit_position_drift() -> 
 	# beneath its bottom edge (beside an edge, so both metrics read 610, above the
 	# clearance), while `from` keeps the captured values, 673 wu from the hill in a
 	# straight line, the metric the start's room is measured in. Neither endpoint's room
-	# binds, so the full 590 wu margin applies, and the leg crosses the hill's left edge line (x = 1150) at
+	# binds, so the full 590 wu margin applies, and the leg crosses the hill's left
+	# edge line (x = 1150) at
 	# y = 789.36 + 400.64 * 639.74 / 789.74 = 1113.9: 534 wu straight below the
 	# bottom edge, inside the margin in either metric.
 	var pf := PathField.new(Rect2(0, 0, 1600, 1200))
