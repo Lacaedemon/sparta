@@ -860,10 +860,13 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 	# comparing a side computed on one axis against a route_side computed on
 	# another compares two unrelated quantities, and can point the filter at
 	# the wrong corners entirely rather than merely at an
-	# occasionally-unstable one (measured on this function's own
+	# occasionally-unstable one (measured on this function's original
 	# hill-terrain repro: `to=(650,730)` and `centre=(1275,480)` put
 	# `heading` and `to - centre` about 179 degrees apart there, flipping
 	# the sign of all four of the rect's corners relative to each other).
+	# That measurement predates measuring endpoint room per axis: the leg
+	# to (650,730) only read as blocked because a straight-line room grew
+	# the hill's square corner over that destination, and it is clear now.
 	var nearest_point: Vector2 = Vector2.ZERO
 	var nearest_point_d: float = INF
 	for p in path:

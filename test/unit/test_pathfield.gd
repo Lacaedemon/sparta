@@ -631,10 +631,12 @@ func test_funnel_corner_route_side_is_stable_under_sub_unit_position_drift() -> 
 	# a near-cancellation of two large terms, so the routine sub-world-unit position
 	# drift every live Unit accrues tick to tick (soldier-body coupling) flips its
 	# sign -- flipping which corner of the rect the funnel steers for, and therefore
-	# the unit's facing, every tick. Geometry below is the exact repro: the game's own
-	# default-map hill terrain, and two `from` values differing by a fraction of a
-	# world unit -- one live tick's worth of drift, captured from a per-tick dump of
-	# a 30-file single-rank Cavalry block marching near the default hill.
+	# the unit's facing, every tick. The terrain, clearance and two `from` values below
+	# come from that repro -- the game's own default-map hill, and one live tick's worth
+	# of drift captured from a per-tick dump of a 30-file single-rank Cavalry block
+	# marching near it -- but the destination does not (see below), so this test pins
+	# drift stability and the chosen side on a blocked leg; it is NOT the near-collinear
+	# repro any more. The next test carries a near-collinear blocked leg instead.
 	#
 	# The captured destination (650, 730) no longer serves: it stands 500 wu from the
 	# hill per axis (522 in a straight line), inside the 590 wu clearance, so the
@@ -680,7 +682,7 @@ func test_funnel_corner_route_side_is_stable_under_sub_unit_position_drift() -> 
 	# geometry _funnel_corner itself computes: the south-west corner of
 	# hill.grow(clearance + PathField.CORNER_STANDOFF). Of the two south-side
 	# candidates it is the cheaper by straight-line detour cost (from->corner->to):
-	# about 386 + 742 = 1128 wu, against about 1531 + 693 = 2224 wu round the
+	# about 385.6 + 742.2 = 1127.8 wu, against about 1530.4 + 692.2 = 2222.6 wu round the
 	# south-east corner (1992, 1172), since `from` sits west of the hill and `to`
 	# beneath it. Its sightline from `from` stays left of the margin-grown hill
 	# (x 558 against the grown edge at 560), so it is cleanly visible.
@@ -691,6 +693,43 @@ func test_funnel_corner_route_side_is_stable_under_sub_unit_position_drift() -> 
 		"the funnel must steer for the south-west corner, not the (side-inverted) north one")
 	assert_gt(step_a.y, hill.get_center().y,
 		"the chosen corner is on the correct (south) side of the rect the route passes on")
+
+
+func test_funnel_corner_route_side_is_stable_when_heading_runs_through_the_nearest_corridor_point() -> void:
+	# The near-collinear case the test above no longer reaches, on a genuinely blocked
+	# leg. A wide block (590 wu clearance) pressed 71 wu off the hill's west face is
+	# ordered to (1450, 550), just east of the hill, so the leg runs straight through
+	# it. Found by search: the A* corridor rounds the hill to the SOUTH, and its point
+	# nearest the hill is its own last cell, (1440, 544), 40 wu off the east face. The
+	# leg's heading passes the hill's centre within 0.009 wu of that point: the
+	# perpendicular offset reads +0.0089 wu from `from_a` and -0.0089 wu from `from_b`,
+	# two `from` values 0.04 wu apart. A route_side read off `heading` therefore flips
+	# sign between them, and with it every corner's filter; the corridor's own axis
+	# (here last cell minus first, (384, 128), since the nearest point IS the last)
+	# does not move with `from` at all.
+	var pf := PathField.new(Rect2(0, 0, 1600, 1200))
+	var hill := Rect2(1150, 380, 250, 200)   # Battle.TERRAIN's hill patch
+	pf.block_rect(hill)
+	var to := Vector2(1450.0, 550.0)
+	var clearance := 590.0
+	var from_a := Vector2(1079.243, 406.1699)
+	var from_b := Vector2(1079.229, 406.2072)
+	assert_lt(from_a.distance_to(from_b), 0.1,
+		"sanity: the two `from` values differ by well under one world unit")
+	assert_true(pf.is_leg_blocked(from_a, to, clearance) and pf.is_leg_blocked(from_b, to, clearance),
+		"sanity: the leg straight through the hill is blocked from both")
+	var step_a: Vector2 = pf.next_step(from_a, to, clearance)
+	var step_b: Vector2 = pf.next_step(from_b, to, clearance)
+	assert_eq(step_a, step_b,
+		"a sub-world-unit drift across the heading's collinear line must not flip the chosen corner")
+	# The corridor rounds the hill to the south, so the funnel takes a south corner of
+	# hill.grow(clearance + CORNER_STANDOFF): the south-west one, (558, 1172). Under a
+	# heading-based route_side the two `from` values pick (558, -212) and (558, 1172),
+	# north and south.
+	assert_eq(step_a, Vector2(
+			hill.position.x - clearance - PathField.CORNER_STANDOFF,
+			hill.end.y + clearance + PathField.CORNER_STANDOFF),
+		"the funnel steers for the south corner the corridor rounds on")
 
 
 func test_funnel_corner_route_side_does_not_flip_across_an_axis_switch_boundary() -> void:
@@ -780,13 +819,10 @@ func test_funnel_corner_with_empty_path_picks_the_cheaper_corner_from_the_other_
 		"with no corridor to prefer a side, the cheapest (here: south/bottom) corner by cost wins")
 
 
-func test_funnel_corner_live_corridor_with_a_collinear_nearest_point_still_steers() -> void:
-	# Regression for a review finding: a reachable corridor case can lose its
-	# side preference under the endpoint-axis design above. A LIVE
-	# find_path() corridor (not a hand-built path) can indeed drive
-	# route_side's OLD "always use the nearest point" logic to exactly 0.0 --
-	# this from/to/rect triple is a genuine corridor find_path() itself
-	# returns:
+func test_funnel_corner_find_path_corridor_with_a_collinear_nearest_point_still_steers() -> void:
+	# Regression for a review finding: a find_path() corridor (not a hand-built
+	# path) can drive route_side's OLD "always use the nearest point" logic to
+	# exactly 0.0 -- this from/to/rect triple yields such a corridor:
 	#   path == [(32,32), (96,96)]  (adjacent diagonal cells, world-space
 	#   cell centres), corridor_axis == (64,64), and rect's own centre
 	#   (160,160) sits EXACTLY on the infinite line through those two cell
@@ -891,7 +927,7 @@ func test_funnel_corner_prefers_a_farther_nonzero_side_over_a_degenerate_nearest
 
 func test_funnel_corner_near_collinear_two_point_path_reads_no_preference() -> void:
 	# Regression for a review finding: the 2-point endpoint identity
-	# (test_funnel_corner_live_corridor_with_a_collinear_nearest_point_still_steers'
+	# (test_funnel_corner_find_path_corridor_with_a_collinear_nearest_point_still_steers'
 	# own comment) holds exactly only in real-number arithmetic. Independent
 	# float32 subtractions (`p - centre` computed separately for each of the
 	# two endpoints) do not have to agree: this from/to/centre triple is a
