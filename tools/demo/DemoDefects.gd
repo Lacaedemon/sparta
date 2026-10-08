@@ -609,8 +609,14 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	out.append({"uid": uid, "metric": "facing_flutter", "pass": flutter <= FLUTTER_MAX_RUN,
 			"worst": flutter, "threshold": FLUTTER_MAX_RUN})
 
-	# Sustained super-physical soldier speed (index-aligned samples only).
+	# Sustained super-physical soldier speed (index-aligned samples only). A routing
+	# unit's top pace is its flee pace (Unit.flee_speed(): move_speed *
+	# FLEE_SPEED_MULTIPLIER), above its sprint by design, and SoldierBodies.step measures a
+	# router's body-speed ceiling from it -- so a sample interval that ends routing is held to
+	# the flee-pace cap instead of the sprint cap.
 	var cap: float = sprint * SUPERPHYSICAL_SPEED_FRAC
+	var flee_cap: float = cap * Unit.FLEE_SPEED_MULTIPLIER
+	var reported_cap: float = cap
 	var over_run := 0
 	var worst_speed := 0.0
 	var worst_run := 0
@@ -624,10 +630,12 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 		worst_speed = maxf(worst_speed, v)
 		var margin: float = speed_quantization_margin(dt)
 		worst_margin = maxf(worst_margin, margin)
-		over_run = over_run + 1 if v > cap + margin else 0
+		var sample_cap: float = flee_cap if bool(s["routing"][i]) else cap
+		reported_cap = maxf(reported_cap, sample_cap)
+		over_run = over_run + 1 if v > sample_cap + margin else 0
 		worst_run = maxi(worst_run, over_run)
 	out.append({"uid": uid, "metric": "superphysical_speed", "pass": worst_run < MIN_SUSTAIN,
-			"worst": worst_speed, "threshold": cap + worst_margin})
+			"worst": worst_speed, "threshold": reported_cap + worst_margin})
 
 	# Crossing routes: soldiers swapping sides on the way to wherever they are going.
 	# Deliberately NOT routed through _sustained_verdict. That helper forgives a series

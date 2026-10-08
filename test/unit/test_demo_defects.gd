@@ -501,6 +501,32 @@ func test_teleporting_soldier_fails_superphysical_only_when_sustained() -> void:
 			"soldiers holding 3x sprint across samples are super-physical")
 
 
+func test_superphysical_speed_holds_a_router_to_its_flee_pace_cap() -> void:
+	# A router runs at its flee pace (move_speed * Unit.FLEE_SPEED_MULTIPLIER), above its
+	# sprint by design, so its samples are held to the flee-pace ceiling, not the sprint one.
+	var slots: Array = [[0.0, 0.0], [10.0, 0.0]]
+	var sprint := 126.0
+	var sprint_cap: float = sprint * GaitLimits.SUPERPHYSICAL_SPEED_FRAC
+	var flee_cap: float = sprint_cap * Unit.FLEE_SPEED_MULTIPLIER
+	var dt_ticks := 10
+	var dt_sec: float = float(dt_ticks) / 60.0
+	# Between the two ceilings, clear of the rounding margin on both sides.
+	var v: float = 0.5 * (sprint_cap + flee_cap)
+	var snaps: Array = []
+	for k in range(4):
+		var y: float = float(k) * v * dt_sec
+		snaps.append([[0.0, y], [10.0, y]])
+	var routing: Array = []
+	var marching: Array = []
+	for k in range(4):
+		routing.append(_snapshot(k * dt_ticks, snaps[k], slots, false, "ROUTING"))
+		marching.append(_snapshot(k * dt_ticks, snaps[k], slots, false, "MOVING"))
+	assert_true(bool(_verdict(DemoDefects.analyze(routing), "superphysical_speed")["pass"]),
+			"a router running between its sprint and flee-pace ceilings is not super-physical")
+	assert_false(bool(_verdict(DemoDefects.analyze(marching), "superphysical_speed")["pass"]),
+			"the same speed on a marching unit still is")
+
+
 func test_superphysical_speed_rounding_margin_boundary() -> void:
 	var slots: Array = [[0.0, 0.0], [10.0, 0.0]]
 	var sprint := 126.0

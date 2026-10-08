@@ -40,6 +40,11 @@ and stops fighting for now. A routing unit can flee past the field's visible edg
 margin beyond it before it's gone for good, staying on the field --- and still
 fightable --- for as long as it's plausibly still in view.
 
+A routing unit runs faster than it marches. It picks up speed over its first few
+seconds of flight and then flees at about 1.3 times its own top speed, so a pursuer
+of the same type falls behind once the router gets going. Catch a broken unit before
+it builds up speed, or send faster troops after it.
+
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
   break too. One collapse can cascade down a line.
 - **Local force ratio, combat status & named morale ladder.** Morale reflects local tactical context: being locally outnumbered, under unanswered missile fire (ambient incoming fire erosion halts at the `shaken` suppression floor at 50.0, shaking the formation without breaking it unaided, though separate casualty morale shock remains unfloored, and erosion halts entirely if the target can reply with its own ranged weapons), or losing local melee balance drains morale over time, while local numerical superiority steadies nerve. Unit combat status (`Winning decisively`, `Winning`, `Balanced`, `Losing`, `Losing decisively`) is derived from engaged physics and displayed on the `Combat:` HUD readout, alongside the 7-rung morale ladder (`routing`...`berserk`).
