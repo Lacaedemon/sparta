@@ -611,11 +611,11 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 
 	# Sustained super-physical soldier speed (index-aligned samples only). A routing
 	# unit's top pace is its flee pace (Unit.flee_speed(): move_speed *
-	# FLEE_SPEED_MULTIPLIER), above its sprint by design, and SoldierBodies.step measures a
+	# GaitLimits.FLEE_SPEED_MULTIPLIER), above its sprint by design, and SoldierBodies.step measures a
 	# router's body-speed ceiling from it -- so a sample interval that ends routing is held to
 	# the flee-pace cap instead of the sprint cap.
 	var cap: float = sprint * SUPERPHYSICAL_SPEED_FRAC
-	var flee_cap: float = cap * Unit.FLEE_SPEED_MULTIPLIER
+	var flee_cap: float = cap * GaitLimitsRef.FLEE_SPEED_MULTIPLIER
 	var reported_cap: float = cap
 	var over_run := 0
 	var worst_speed := 0.0

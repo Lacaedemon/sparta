@@ -1163,8 +1163,8 @@ const PIN_DOWN_EXPOSURE_DURATION: float = 0.3
 const PIN_DOWN_DEFENSE_FACTOR: float = 0.7
 const ROUT_TIME: float = 6.0
 ## Speed multiplier on move_speed while routing: fleeing soldiers run slightly faster
-## than their normal sprint pace.
-const FLEE_SPEED_MULTIPLIER: float = 1.3
+## than their normal sprint pace. The value lives in GaitLimits.gd so DemoDefects can read it.
+const FLEE_SPEED_MULTIPLIER: float = GaitLimitsRef.FLEE_SPEED_MULTIPLIER
 # Live rout-timer duration -- a caller-configurable parameter (CLAUDE.md's code
 # conventions) defaulting to ROUT_TIME above. Settable BEFORE the node enters the
 # tree, the same set-before-_ready contract Battle.gd's ai_period/camera_smoothing

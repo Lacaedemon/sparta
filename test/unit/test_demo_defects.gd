@@ -502,12 +502,12 @@ func test_teleporting_soldier_fails_superphysical_only_when_sustained() -> void:
 
 
 func test_superphysical_speed_holds_a_router_to_its_flee_pace_cap() -> void:
-	# A router runs at its flee pace (move_speed * Unit.FLEE_SPEED_MULTIPLIER), above its
+	# A router runs at its flee pace (move_speed * GaitLimits.FLEE_SPEED_MULTIPLIER), above its
 	# sprint by design, so its samples are held to the flee-pace ceiling, not the sprint one.
 	var slots: Array = [[0.0, 0.0], [10.0, 0.0]]
 	var sprint := 126.0
 	var sprint_cap: float = sprint * GaitLimits.SUPERPHYSICAL_SPEED_FRAC
-	var flee_cap: float = sprint_cap * Unit.FLEE_SPEED_MULTIPLIER
+	var flee_cap: float = sprint_cap * GaitLimits.FLEE_SPEED_MULTIPLIER
 	var dt_ticks := 10
 	var dt_sec: float = float(dt_ticks) / 60.0
 	# Between the two ceilings, clear of the rounding margin on both sides.

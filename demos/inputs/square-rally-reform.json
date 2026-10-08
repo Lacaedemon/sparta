@@ -31,8 +31,16 @@
   "steps": [],
   "defect_exemptions": {
     "overlap": {
-      "uids": [0],
+      "uids": [
+        0
+      ],
       "reason": "Same residual as row-major-rally-reform.json, on the square's own assignment array: the four men whose lateral position has no counterpart in the centred 4-man rank have no cell to pair with, so they swap ends and cross the stationary ranks between. One judged sample catches that traverse (nnd_min 0.26 wu at tick 405, pair 0/32). Expected under the current assignment rather than correct -- whether an unpaired man should swap ends at all is open in #1280, and this clip is a third instance of it. Measured against origin/main on the same seed, the pre-fix code fails this metric at every post-rally sample and never recovers (0.51 / 0.46 / 0.82 wu at ticks 375 / 405 / 450), where this settles to a 9.0 median lattice by tick 450 (8.37 wu closest pair). Tick 405 is the one sample where the fix reads tighter than the pre-fix code (0.26 against 0.46): pairing the other 56 men holds them still for the four to walk past, instead of scattering everyone."
+    },
+    "shape_residual": {
+      "uids": [
+        0
+      ],
+      "reason": "Rally from full flight (#1749): since #1739 the square flees at its real flee pace (about 1.7 wu/tick instead of about 0.5), and on rally the anchor stops dead while the bodies still carry that velocity, so they overrun their slots and walk back. Post-rally mean body-to-slot gap 15.1 wu at tick 375 and 11.6 at 420, settling to 0.6 by 480 (merge-base 3.8 / 0.8 / 0); shape_residual worst 16.25 against the 6.75 threshold, sustained (merge-base 15.03, not sustained). Tracked in #1749 rather than fixed here, because handing the flight momentum to the coast-to-stop carries this clip's square into the far tier at tick 375."
     }
   },
   "state": [
