@@ -99,6 +99,28 @@ func test_is_leg_blocked_true_when_a_wall_crosses_the_line() -> void:
 		"a wall crossing the straight line forces a detour")
 
 
+func test_is_leg_blocked_leaves_a_destination_diagonal_from_a_corner_reachable() -> void:
+	# The destination stands 50 wu left of and 80 wu above the rect's top-left corner:
+	# 94 wu away in a straight line, but only 80 in the per-axis metric the grown
+	# rect's square corner reaches. Capping the margin at the straight-line 94 grew
+	# the corner over the destination itself, so every leg to it read as blocked even
+	# though nothing lies between; capped at the 80 the corner actually leaves, the
+	# straight leg alongside the top edge is clear.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 300, 200, 200))
+	assert_false(pf.is_leg_blocked(Vector2(100, 220), Vector2(250, 220), 100.0),
+		"a leg to a destination off the rect's corner is judged at the room that destination leaves")
+
+
+func test_is_leg_blocked_keeps_the_full_margin_between_far_endpoints() -> void:
+	# Both endpoints stand at least the margin clear of the rect in the per-axis
+	# metric, so the cap does not bind and the leg past the corner keeps all 100 wu.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 300, 200, 200))
+	assert_true(pf.is_leg_blocked(Vector2(100, 250), Vector2(620, 250), 100.0),
+		"a leg passing 50 wu above the rect with far endpoints still needs its full margin")
+
+
 func test_has_path_true_on_a_clear_line() -> void:
 	var pf := PathField.new(FIELD)
 	assert_true(pf.has_path(Vector2(50, 50), Vector2(600, 50)),
@@ -733,11 +755,17 @@ func test_funnel_corner_live_corridor_with_a_collinear_nearest_point_still_steer
 	assert_eq(path.size(), 2, "sanity: a clean 2-cell diagonal corridor")
 	assert_eq(path[0], from, "sanity: path[0] is exactly the from-cell centre")
 	assert_eq(path[1], to, "sanity: path[1] is exactly the to-cell centre")
-	var corner: Vector2 = pf._funnel_corner(from, to, path, clearance)
+	# `to` sits 54 wu off the rect's corner on each axis, inside the 60 wu margin, so
+	# the margin is capped at the room `to` leaves and the leg toward the rect, ending
+	# short of it, is clear: the live query steers straight for its destination.
+	assert_eq(pf.next_step(from, to, clearance), to,
+		"a leg ending short of the rect it points at is never blocked by that rect")
+	# The degenerate corridor itself still has to resolve to a real corner when the
+	# rect does block the leg: the same 2-point corridor, with the destination past
+	# the rect so the leg crosses it.
+	var corner: Vector2 = pf._funnel_corner(from, Vector2(288, 288), path, clearance)
 	assert_true(corner.is_finite(),
-		"a fully axis-degenerate live corridor still returns a real corner, not INF")
-	var step: Vector2 = pf.next_step(from, to, clearance)
-	assert_eq(step, corner, "next_step surfaces the same funnel corner for this live query")
+		"a fully axis-degenerate corridor still returns a real corner, not INF")
 
 
 func test_funnel_corner_prefers_a_farther_nonzero_side_over_a_degenerate_nearest_point() -> void:

@@ -644,12 +644,20 @@ const ROUTE_SIDE_COLLINEAR_EPS := 0.001   # tuned in wu, solver epsilon
 ## how wide the querying unit is, letting its flank cut into terrain exactly
 ## where routing bends. Candidates must clear the FULL margin (cap_to false);
 ## a candidate inside the margin is simply not picked.
+##
+## The destination's room is measured by _grow_room, in the same per-axis metric
+## Rect2.grow uses, not as a straight-line distance: the grown rect has square
+## corners, so a destination diagonal from a corner stands farther away in a straight
+## line than the grown corner reaches, and a straight-line room would grow the rect
+## over the very destination the cap exists to keep reachable. The start's room keeps
+## the straight-line distance; it governs a walker already shoved inside its margin,
+## a separate case.
 func _segment_blocked(from: Vector2, to: Vector2, clearance: float = 0.0,
 		cap_to: bool = true) -> bool:
 	for r in _block_rects:
 		var room: float = _distance_to_rect(from, r)
 		if cap_to:
-			room = minf(room, _distance_to_rect(to, r))
+			room = minf(room, _grow_room(to, r))
 		var eff: float = minf(clearance, room - CLEARANCE_SLACK)
 		if segment_intersects_rect(from, to, r.grow(maxf(0.0, eff))):
 			return true
@@ -662,6 +670,15 @@ static func _distance_to_rect(p: Vector2, r: Rect2) -> float:
 			clampf(p.y, r.position.y, r.end.y)))
 
 
+## The largest margin `r` can be grown by (Rect2.grow, every side alike) before `p`
+## falls inside it: `p`'s larger per-axis gap to the rect (0 inside it). Equal to
+## _distance_to_rect beside an edge, smaller off a corner.
+static func _grow_room(p: Vector2, r: Rect2) -> float:
+	var gap_x: float = maxf(r.position.x - p.x, p.x - r.end.x)
+	var gap_y: float = maxf(r.position.y - p.y, p.y - r.end.y)
+	return maxf(0.0, maxf(gap_x, gap_y))
+
+
 ## Index into _block_rects of the FIRST rect the from..to segment enters (each
 ## grown by the same room-capped margin _segment_blocked judges real endpoints
 ## with), or -1 when none blocks it. The first-entered rect is the one a detour
@@ -671,7 +688,7 @@ func _first_blocking_rect_index(from: Vector2, to: Vector2, clearance: float) ->
 	var best_t: float = INF
 	for i in _block_rects.size():
 		var r: Rect2 = _block_rects[i]
-		var room: float = minf(_distance_to_rect(from, r), _distance_to_rect(to, r))
+		var room: float = minf(_distance_to_rect(from, r), _grow_room(to, r))
 		var eff: float = minf(clearance, room - CLEARANCE_SLACK)
 		var t: float = segment_rect_entry(from, to, r.grow(maxf(0.0, eff)))
 		if t < best_t:
