@@ -1404,9 +1404,12 @@ func test_check_expectations_absent_does_not_pass_vacuously() -> void:
 		{"tick": [600, 640], "uid": 0, "absent": true},
 	], snaps)
 	assert_false(bool(never[0]["pass"]), "a uid never present has nothing to have left")
+	# Gone by tick 640 -- but the tick-620 snapshot in the same range has no units list, so
+	# the range cannot be read, and the claim fails rather than resting on the readable part.
 	var broken: Array = [
 		{"tick": 600, "units": [{"uid": 0, "state": "ROUTING"}]},
 		{"tick": 620},
+		{"tick": 640, "units": [{"uid": 3, "state": "IDLE"}]},
 	]
 	var no_units: Array = DemoDefects.check_expectations([
 		{"tick": [600, 640], "uid": 0, "absent": true},
