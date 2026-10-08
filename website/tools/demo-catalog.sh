@@ -31,6 +31,7 @@ DEMOS=(
   "file_doubling_asymmetric|demos/inputs/file-doubling-asymmetric.json|30|150|640|input"
   "turn_explicatio_combo|demos/inputs/turn-explicatio-combo.json|30|250|640|input"
   "quarter_turn_resquare|demos/inputs/quarter-turn-resquare-1702.json|30|200|640|input"
+  "quarter_turn_residue|demos/inputs/quarter-turn-onto-residue-1731.json|30|360|640|input"
   "order_outcome_report|demos/inputs/order-outcome-report-1711.json|30|180|640|input"
   "cycle_charge|demos/inputs/cycle-charge.json|30|650|640|input"
   "cycle_charge_flee|demos/inputs/cycle-charge-flee.json|30|520|640|input"

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/quarter-turn-onto-residue-1731.json",
+  "caption": "A quarter-turn made on top of a leftover fold now re-forms in place. An undisciplined Infantry block snaps onto its first move order, which leaves its grid folded off its heading. After it halts, E quarter-turns it, adding the drill's 90 degrees to that fold. The next move order re-squares the grid, and because a quarter-turn drill made the fold, each man is re-paired to the nearest new cell, so the block re-forms where it stands. Before, the composed fold was not a quarter, the re-pair was skipped, and most of the men walked through each other to cells on the far side of the block.",
+  "fixed_fps": 30,
+  "max_frames": 360,
+  "fps": 15,
+  "width": 720
+}
