@@ -645,27 +645,18 @@ const ROUTE_SIDE_COLLINEAR_EPS := 0.001   # tuned in wu, solver epsilon
 ## where routing bends. Candidates must clear the FULL margin (cap_to false);
 ## a candidate inside the margin is simply not picked.
 ##
-## On a leg between REAL endpoints (cap_to true) both endpoints' room is measured by
-## _grow_room, in the same per-axis metric Rect2.grow uses, not as a straight-line
-## distance: the grown rect has square corners, so a point diagonal from a corner
-## stands farther away in a straight line than the grown corner reaches, and a
-## straight-line room would grow the rect over the very endpoint the cap exists to
-## keep outside it. For the destination that blocked every leg TO such a point; for
-## the start it blocked every leg FROM it, even one heading straight away -- a block
-## parked just off a corner could not leave on its next order. A real endpoint must
-## never be blocked by its own cap.
+## The destination's room is measured by _grow_room, in the same per-axis metric
+## Rect2.grow uses, not as a straight-line distance: the grown rect has square
+## corners, so a destination diagonal from a corner stands farther away in a straight
+## line than the grown corner reaches, and a straight-line room would grow the rect
+## over the very destination the cap exists to keep reachable.
 ##
-## A candidate sightline (cap_to false) keeps the straight-line start room and no
-## destination cap. Its start is often a walker deep inside its own margin, and
-## there the per-axis room is smaller, which grows the rect just short of the walker:
-## a far funnel corner then reads as cleanly visible on a standoff of a fraction of a
-## world unit, and the walker is sent the long way round. Measured on the
-## campaign_deployment_gap clip: a wide cavalry line 318 wu west of and 507 wu north
-## of the hill's corner, with a 516 wu corner margin, saw the hill's far north-west
-## grown corner at a 0.5 wu standoff (the slack itself), turned off its corridor south and stalled
-## beside that corner for the rest of the clip. Measured in a straight line (598 wu)
-## the grown rect keeps the walker inside it, the corner stays rejected, and the
-## corridor route stands.
+## The start keeps the straight-line room. That has the mirror-image limitation (from
+## a start diagonal off a corner the straight-line room can grow the rect over the
+## start itself, so a leg leaving it reads as blocked), but the start room also
+## governs walkers already inside their own margin -- it decides whether a funnel
+## corner's sightline from deep inside the margin is accepted -- so changing its metric
+## moves routing well beyond this case, and it is left as a known limitation.
 ##
 ## The capped margin applies to the WHOLE leg, not only near the endpoint that set
 ## it. A leg to a destination just off a corner therefore keeps only that
@@ -683,7 +674,7 @@ func _segment_blocked(from: Vector2, to: Vector2, clearance: float = 0.0,
 	for r in _block_rects:
 		var room: float = _distance_to_rect(from, r)
 		if cap_to:
-			room = minf(_grow_room(from, r), _grow_room(to, r))
+			room = minf(room, _grow_room(to, r))
 		var eff: float = minf(clearance, room - CLEARANCE_SLACK)
 		if segment_intersects_rect(from, to, r.grow(maxf(0.0, eff))):
 			return true
@@ -714,7 +705,7 @@ func _first_blocking_rect_index(from: Vector2, to: Vector2, clearance: float) ->
 	var best_t: float = INF
 	for i in _block_rects.size():
 		var r: Rect2 = _block_rects[i]
-		var room: float = minf(_grow_room(from, r), _grow_room(to, r))
+		var room: float = minf(_distance_to_rect(from, r), _grow_room(to, r))
 		var eff: float = minf(clearance, room - CLEARANCE_SLACK)
 		var t: float = segment_rect_entry(from, to, r.grow(maxf(0.0, eff)))
 		if t < best_t:
@@ -878,7 +869,7 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 	# hill-terrain repro: `to=(650,730)` and `centre=(1275,480)` put
 	# `heading` and `to - centre` about 179 degrees apart there, flipping
 	# the sign of all four of the rect's corners relative to each other).
-	# That measurement predates measuring endpoint room per axis: the leg
+	# That measurement predates measuring the destination's room per axis: the leg
 	# to (650,730) only read as blocked because a straight-line room grew
 	# the hill's square corner over that destination, and it is clear now.
 	var nearest_point: Vector2 = Vector2.ZERO

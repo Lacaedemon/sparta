@@ -114,24 +114,11 @@ func test_is_leg_blocked_leaves_a_destination_diagonal_from_a_corner_reachable()
 		"a leg to a destination off the rect's corner is judged at the room that destination leaves")
 
 
-func test_is_leg_blocked_leaves_a_start_diagonal_from_a_corner_free_to_leave() -> void:
-	# The mirror of the test above: the same corner-diagonal point is now the START.
-	# Measured in a straight line (94 wu) its room grew the rect's square corner over
-	# the start itself, so every leg from there read as blocked, even one heading
-	# straight away from the rect; per axis (80 wu) the leg is clear.
-	var pf := PathField.new(FIELD)
-	pf.block_rect(Rect2(300, 300, 200, 200))
-	assert_false(pf.is_leg_blocked(Vector2(250, 220), Vector2(100, 220), 100.0),
-		"a leg heading away from a corner-diagonal start is not blocked by the rect behind it")
-	assert_eq(pf._first_blocking_rect_index(Vector2(250, 220), Vector2(100, 220), 100.0), -1,
-		"the funnel finds no rect to round on a leg leaving a corner-diagonal start")
-
-
 func test_candidate_sightline_from_inside_the_margin_off_a_corner_stays_rejected() -> void:
 	# A walker inside its own 150 wu margin, diagonal off the rect's top-left corner
 	# at (250, 180): 50 wu west of it and 120 wu north, so 130 wu away in a straight
-	# line and 120 per axis. A candidate sightline (cap_to false) keeps the
-	# straight-line start room, so the rect grows by 129.5, its top edge reaches
+	# line and 120 per axis. Only a destination's room is measured per axis; the
+	# start keeps the straight-line room, so the rect grows by 129.5, its top edge reaches
 	# y 170.5, and the walker stands inside it: every candidate sightline from there,
 	# including the one to the far top-right corner of the margin-grown rect, is
 	# rejected. Measured per axis, the rect would grow only to y 180.5, leaving the
@@ -179,8 +166,9 @@ func test_first_blocking_rect_agrees_with_is_leg_blocked_off_a_corner() -> void:
 
 
 func test_is_leg_blocked_keeps_the_full_margin_between_far_endpoints() -> void:
-	# Both endpoints stand at least the margin clear of the rect in the per-axis
-	# metric, so the cap does not bind and the leg past the corner keeps all 100 wu.
+	# Both endpoints stand at least the margin clear of the rect (the start 206 wu in
+	# a straight line, the destination 120 wu per axis), so the cap does not bind and
+	# the leg past the corner keeps all 100 wu.
 	var pf := PathField.new(FIELD)
 	pf.block_rect(Rect2(300, 300, 200, 200))
 	assert_true(pf.is_leg_blocked(Vector2(100, 250), Vector2(620, 250), 100.0),
