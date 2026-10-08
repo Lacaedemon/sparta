@@ -3631,6 +3631,9 @@ func test_escape_leaves_groups_synchronously() -> void:
 	u.position = Vector2(200, 5)   # team 0 flees UP (toward negative y)
 	u._rout()
 	u.morale = 0.0   # stay well below RALLY_MORALE_THRESHOLD for the few ticks this takes
+	# Already at full flight: the flee pace ramps up from a standstill at `accel`, and
+	# this test is about the escape teardown, not the build-up.
+	u._flee_pace = u.flee_speed()
 	assert_true(u.is_in_group("routers"), "a routing unit joins the routers group")
 	assert_false(u.is_in_group("units"), "a routing unit has left the units group")
 	for i in range(10):   # a handful of ticks is enough to cross y=0 from y=5
@@ -5575,6 +5578,9 @@ func test_routing_unit_flees_into_the_retreat_margin_unclamped() -> void:
 	u._rout()
 	u.morale = 0.0
 	u._rout_timer = 10.0
+	# Already at full flight (the pace ramps up from a standstill at `accel`), so every
+	# step below is exactly flee_speed() * delta.
+	u._flee_pace = u.flee_speed()
 	var delta: float = 0.016
 	var ticks: int = 60
 	for i in range(ticks):
@@ -5601,6 +5607,7 @@ func test_routing_unit_escapes_when_it_flees_past_the_retreat_margin() -> void:
 	u._rout()
 	u.morale = 0.0
 	u._rout_timer = 10.0
+	u._flee_pace = u.flee_speed()   # already at full flight; this test is about the escape
 	for i in range(10):   # a handful of ticks is enough to cross y=0 from y=5
 		if u.state != Unit.State.ROUTING:
 			break
