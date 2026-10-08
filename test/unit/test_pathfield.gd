@@ -175,6 +175,20 @@ func test_is_leg_blocked_keeps_the_full_margin_between_far_endpoints() -> void:
 		"a leg passing 50 wu above the rect with far endpoints still needs its full margin")
 
 
+func test_corridor_fallback_caps_a_candidate_cell_at_its_straight_line_room() -> void:
+	# The corridor fallback caps its candidate sightlines at the room the CELL leaves, but a
+	# cell centre is no order's destination, so it keeps the straight-line room rather than
+	# the per-axis room a real destination gets. Same corner-diagonal geometry as the
+	# destination test above: as a destination the leg is clear (80 wu per axis), as a
+	# capped candidate cell it is judged at 94 wu and blocked.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 300, 200, 200))
+	assert_false(pf._segment_blocked(Vector2(100, 220), Vector2(250, 220), 100.0, true, true),
+		"as a real destination the corner-diagonal point is reachable")
+	assert_true(pf._segment_blocked(Vector2(100, 220), Vector2(250, 220), 100.0, true, false),
+		"as a candidate cell the same point keeps the straight-line room, as before")
+
+
 func test_has_path_true_on_a_clear_line() -> void:
 	var pf := PathField.new(FIELD)
 	assert_true(pf.has_path(Vector2(50, 50), Vector2(600, 50)),
@@ -655,9 +669,9 @@ func test_funnel_corner_route_side_is_stable_under_sub_unit_position_drift() -> 
 	# straight for it now; that is pinned below. The drift check needs a leg that is
 	# GENUINELY blocked, so `to` moves to (1300, 1190): directly below the hill, 610 wu
 	# beneath its bottom edge (beside an edge, so both metrics read 610, above the
-	# clearance), while `from` keeps the captured values, 640 wu left of the hill per
-	# axis (673 in a straight line). Neither endpoint's room binds, so the full 590 wu
-	# margin applies, and the leg crosses the hill's left edge line (x = 1150) at
+	# clearance), while `from` keeps the captured values, 673 wu from the hill in a
+	# straight line, the metric the start's room is measured in. Neither endpoint's room
+	# binds, so the full 590 wu margin applies, and the leg crosses the hill's left edge line (x = 1150) at
 	# y = 789.36 + 400.64 * 639.74 / 789.74 = 1113.9: 534 wu straight below the
 	# bottom edge, inside the margin in either metric.
 	var pf := PathField.new(Rect2(0, 0, 1600, 1200))
