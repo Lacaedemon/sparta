@@ -1,11 +1,11 @@
 class_name DistanceLegend
 ## Pure math for the HUD map-scale bar (#364): how many real metres a screen pixel covers
 ## at the camera's current zoom, and which "nice" round-number distance to label the bar
-## with so it stays both round and a sensible width on screen. No node state, no RNG, no
-## wall-clock -- a function of (zoom, world_units_per_metre) only, so it's directly
-## unit-testable; HUD just reads the camera and draws the rect + label these compute.
-## Also the player-facing distance wording elsewhere in the HUD: formation intervals,
-## speeds, and the order line's distance and compass point to a destination.
+## with so it stays both round and a sensible width on screen; plus the player-facing
+## distance wording elsewhere in the HUD (formation intervals, speeds, and the order
+## line's distance and compass point to a destination). No node state, no RNG, no
+## wall-clock -- pure functions of their arguments, so they're directly unit-testable;
+## HUD just reads the camera or unit and draws what these compute.
 ## Leaf enough for the bare `godot -s` transcript analyzer: it preloads WorldScale
 ## (zero dependencies) and never touches Unit/Settings.
 

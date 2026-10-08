@@ -576,6 +576,20 @@ func test_order_summary_passing_a_waypoint_is_not_arriving() -> void:
 		"a corner the route rolls through at pace must not read as the order ending")
 
 
+func test_order_summary_stopping_before_a_later_waypoint_reads_arriving() -> void:
+	var u := _make_unit()
+	u.position = Vector2(300, 500)
+	u.set_current_order(Order.new_move(Vector2(305, 500)))
+	u.move_target = Vector2(305, 500)
+	u.has_move_target = true
+	# The next order is a drill, not a move, so the unit stops on this leg before the
+	# later waypoint: that is an arrival, even though a MOVE is still queued behind it.
+	u.append_order(Order.new_about_face())
+	u.append_order(Order.new_move(Vector2(700, 500)))
+	assert_eq(u.order_summary(), "Arriving (+1 waypoint)",
+		"only a MOVE next in the queue rolls through; anything else stops here")
+
+
 func test_order_summary_reports_attack_target_by_name() -> void:
 	var u := _make_unit()
 	var enemy := _attacker_at(FRONT)   # any other live unit serves as the target

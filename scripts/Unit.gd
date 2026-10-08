@@ -8033,8 +8033,10 @@ func order_summary() -> String:
 			var legs: int = queued_move_points().size()
 			var dest: String = "Moving %s" % travel
 			if travel.is_empty():
-				# Passing a waypoint at pace is not the end of the order.
-				dest = "Arriving" if legs == 0 else "At waypoint"
+				# A route rolls through a corner at pace only when the very next order is
+				# another MOVE (_has_queued_move_leg, the same test the arrival brake reads);
+				# any other next order stops the unit here, so that is an arrival.
+				dest = "At waypoint" if _has_queued_move_leg() else "Arriving"
 			if legs > 0:
 				dest += " (+%d waypoint%s)" % [legs, "" if legs == 1 else "s"]
 			return dest
