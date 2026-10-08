@@ -1,0 +1,104 @@
+{
+  "_comment": "A lone undisciplined 48-man Infantry block, facing north at (700, 600). Its first move order, to (760, 640) south-east of it, makes it snap straight onto the new heading (an undisciplined unit does not pivot as a body), and that snap leaves its grid folded about 124 degrees off the heading. The block halts at the point at about tick 300 and the fold is still there. At tick 330 E quarter-turns it, which composes the drill's 90 degrees onto the leftover fold (146 degrees in all, off a quarter). At tick 520 a move order north re-squares the grid. The re-square re-pairs each man to the nearest new cell, because a quarter-turn drill made the fold, so the block re-forms where it stands. Before, an angle-only test skipped this fold, and most of the men walked through each other to cells on the far side of the block (a 4-tick dense dump over ticks 500-700 reads path_crossing 0.81 and shape_residual 62.9 there, against 0.0 and 13.6 now; the 13.6 is the re-form transient as the men step to their re-paired cells, gone by tick 602). Drill mode: no enemy.",
+  "seed": "1731",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 700,
+      "y": 600,
+      "count": 48,
+      "facing": [
+        0,
+        -1
+      ],
+      "disciplined": false
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 735,
+      "y": 560,
+      "zoom": 1.5
+    }
+  ],
+  "steps": [
+    {
+      "tick": 8,
+      "click": [
+        700,
+        600
+      ]
+    },
+    {
+      "tick": 20,
+      "rmb_click": [
+        760,
+        640
+      ]
+    },
+    {
+      "tick": 330,
+      "key": "E"
+    },
+    {
+      "tick": 520,
+      "rmb_click": [
+        700,
+        400
+      ]
+    }
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        700,
+        600
+      ]
+    },
+    {
+      "tick": 300,
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    },
+    {
+      "tick": 330,
+      "uid": 0,
+      "field": "current_order",
+      "value": "QUARTER_TURN"
+    },
+    {
+      "tick": 700,
+      "uid": 0,
+      "field": "state",
+      "value": "MOVING"
+    }
+  ],
+  "frames": [
+    300,
+    420,
+    530,
+    560,
+    600,
+    700
+  ],
+  "state": [
+    8,
+    300,
+    330,
+    420,
+    520,
+    540,
+    560,
+    580,
+    600,
+    640,
+    700
+  ]
+}
