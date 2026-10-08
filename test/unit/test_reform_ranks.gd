@@ -1322,16 +1322,20 @@ func _assert_within_residue_turn(t: Dictionary, residue: Dictionary, exact: Dict
 ## about-face. The re-square still reflects it in depth, so the men only make the residue's
 ## turn (and the short files their one rank step), instead of a rigid 155 degree swing of the
 ## grid under them that sends men across the block.
+## Both hold-ground layouts are held to it: row major's slot pairing and file major's reversed
+## ranks within each file (the demo's layout).
 func test_an_about_face_onto_a_residue_fold_is_reflected_not_swung() -> void:
-	var u := _make_row_major_unit()
-	u._formation_angle = deg_to_rad(-25.0)   # a snap-absorb residue
-	_settle_about_face_drill(u)
-	assert_almost_eq(rad_to_deg(u._formation_angle), 155.0, 0.01,
-		"precondition: the drill composed onto the residue, off a half-turn")
-	var t: Dictionary = _resquare_travel(u, true)
-	assert_true(u._formation_mirror_x, "the re-square is the about-face's depth reflection")
-	_assert_within_residue_turn(t, _residue_only_travel(_make_row_major_unit()),
-			_exact_about_face_travel(_make_row_major_unit()), "about-face")
+	for make in [_make_row_major_unit, _make_partial_unit]:
+		var u: Unit = make.call()
+		var layout: String = "file major" if u._effective_file_major_reform() else "row major"
+		u._formation_angle = deg_to_rad(-25.0)   # a snap-absorb residue
+		_settle_about_face_drill(u)
+		assert_almost_eq(rad_to_deg(u._formation_angle), 155.0, 0.01,
+			"precondition: the drill composed onto the residue, off a half-turn (%s)" % layout)
+		var t: Dictionary = _resquare_travel(u, true)
+		assert_true(u._formation_mirror_x, "the re-square is the about-face's depth reflection (%s)" % layout)
+		_assert_within_residue_turn(t, _residue_only_travel(make.call()),
+				_exact_about_face_travel(make.call()), "about-face, %s" % layout)
 
 
 ## Two quarter-turns the same way on a residue block net a half-turn of drill, and re-square the
@@ -1408,6 +1412,9 @@ func test_a_full_grid_about_face_onto_a_residue_squares_only_the_residue() -> vo
 func test_a_single_rank_about_face_onto_a_residue_squares_only_the_residue() -> void:
 	for hold_ground in [true, false]:
 		var u := _make_single_rank_unit()
+		assert_eq(UnitFormation.ranks_for(u.soldiers, u.formation_files(u.soldiers)), 1,
+			"precondition: one rank")
+		assert_true(u.soldiers % u.formation_files(u.soldiers) != 0, "precondition: a short one")
 		u._formation_angle = deg_to_rad(-25.0)
 		_settle_about_face_drill(u)
 		var t: Dictionary = _resquare_travel(u, hold_ground)
@@ -1419,11 +1426,14 @@ func test_a_single_rank_about_face_onto_a_residue_squares_only_the_residue() -> 
 			"and no more men cross the centreline (hold_ground %s)" % hold_ground)
 
 
-## Six men in one rank of eight files: fewer men than files, so a single rank.
+## A single, PARTIAL rank: eight files at full strength, down to six living men. The frontage
+## is clamped to max_soldiers, not to the living count, so the six stand in one short rank of an
+## eight-file grid.
 func _make_single_rank_unit() -> Unit:
 	var u: Unit = Unit.new()
-	u.max_soldiers = 6
+	u.max_soldiers = 8
 	add_child_autofree(u)
+	u.soldiers = 6
 	u.position = Vector2.ZERO
 	u.facing = Vector2.DOWN
 	u.frontage_override = 8

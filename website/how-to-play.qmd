@@ -422,7 +422,8 @@ move order (which rotates the whole block around its centre as it marches), the 
 is a standing drill command: no one takes a step. Use it to face a threat behind the line
 without marching first, or to quickly reorient a reserve before it moves up.
 
-When the about-faced unit next moves off, it squares its ranks to the new heading in place:
+When the about-faced unit next moves off, it squares its ranks to the new heading in place,
+unless it has turned to face an enemy since:
 each man keeps his own flank.
 If the old rear rank was short, it now leads, and a full rank is brought to the front.
 In a block that reforms file by file, the files the short rank never reached step forward one place.

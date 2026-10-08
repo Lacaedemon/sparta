@@ -6501,7 +6501,8 @@ func _finish_order_turn() -> void:
 ## to the heading (its front rank is full by construction), or it is flipped a half-turn but
 ## has NO partial rank -- a full grid is centre-symmetric, so the flip already fronts a full
 ## rank and a reform would only churn every man through the block for zero shape change.
-## Returns true when a reform actually starts. Both early returns need the fold to measure +-PI:
+## Returns true when a reform actually starts. The two half-turn early returns need the fold to
+## measure +-PI:
 ## an about-face fold made by drills on top of a residue still has the residue to square, so it
 ## re-squares (returns true) even for a full grid or a single rank. A full grid then holds its
 ## ground whatever `hold_ground` says, as there is no countermarch to run.
