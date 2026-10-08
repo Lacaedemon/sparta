@@ -732,6 +732,30 @@ func test_funnel_corner_route_side_is_stable_when_heading_runs_through_the_neare
 		"the funnel steers for the south corner the corridor rounds on")
 
 
+func test_funnel_corner_classifies_each_candidate_on_the_corridor_axis_not_heading() -> void:
+	# Each candidate corner's side must be read on the same corridor axis route_side
+	# was. A block south-west of the hill at (770, 920), clearance 150, is ordered to
+	# (1520, 470), just east of it; the leg passes through the hill and the A*
+	# corridor rounds it to the south. The corridor's point nearest the hill is
+	# (1440, 544), 40 wu off its east face, and its last cell is (1504, 480), so the
+	# corridor axis is (64, -64). On that axis the route is on the + side, the
+	# south-east corner (1552, 732) of hill.grow(152) is on it too, and the south-west
+	# corner (998, 732) is on the - side, so it is filtered out. Read on `heading`
+	# ((750, -450)) instead, both south corners land on the route's side, and the
+	# south-west one wins on straight-line cost (879.6 against 1068.2 wu) -- a corner
+	# whose onward leg to (1520, 470) cuts across the hill's south-east part (it is at
+	# y 530 at the east edge, x 1400) and is blocked again.
+	var pf := PathField.new(Rect2(0, 0, 1600, 1200))
+	var hill := Rect2(1150, 380, 250, 200)   # Battle.TERRAIN's hill patch
+	pf.block_rect(hill)
+	var from := Vector2(770.0, 920.0)
+	var to := Vector2(1520.0, 470.0)
+	assert_true(pf.is_leg_blocked(from, to, 150.0), "sanity: the leg straight through the hill is blocked")
+	assert_eq(pf.next_step(from, to, 150.0),
+		Vector2(hill.end.x + 150.0 + PathField.CORNER_STANDOFF, hill.end.y + 150.0 + PathField.CORNER_STANDOFF),
+		"the funnel steers for the south-east corner, not the corridor-opposite south-west one")
+
+
 func test_funnel_corner_route_side_does_not_flip_across_an_axis_switch_boundary() -> void:
 	# Regression for the fix that immediately preceded this one: an intermediate design
 	# (introduced to fix the bug above, then found by review to break
