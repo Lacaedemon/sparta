@@ -188,11 +188,11 @@ broke, for as long as it's still on the field.
 ```
 
 Routing beside terrain: a brittle cavalry troop starts just west of the
-impassable hill, every man clear of it, and moves out west to meet a
-western-flank charge. Opening melee is per-soldier, so the troop fights for a
+impassable hill, every man clear of it, and meets a charge driven straight
+in from its western flank. Opening melee is per-soldier, so the troop fights for a
 while before it breaks;
-it then routs and drifts west, away from the hill, while its nerve slowly
-steadies. Its flight never meets the hill, so no detour around it plays here.
+it then routs and drifts south, staying well clear of the hill, while its nerve
+slowly steadies. Its flight never meets the hill, so no detour around it plays here.
 A router with no terrain escape route left at all still stands and fights
 instead of fleeing in place (see [Terrain](#terrain)) &mdash; the open field
 this clip runs in never actually boxes a unit in, so that specific case isn't
