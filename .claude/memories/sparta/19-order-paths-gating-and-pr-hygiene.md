@@ -71,13 +71,16 @@ A reviewer caught it.
 
 ## Run the adversarial pre-push review BEFORE `tools/check.sh`, not beside it
 
-Every finding the adversarial review returns forces an edit, and edits are barred while `check.sh` runs (a mid-run edit mixes heads).
-Run in parallel, a finding landing mid-suite threw the whole run away: two full `check.sh` runs were discarded in wave 5.
-`TaskStop` does not end a run: it leaves the bash and GUT tree alive, so kill it with `taskkill /PID <check.sh pid> /T /F` and re-list the process table.
+Every finding the adversarial review returns forces an edit,
+and editing while `check.sh` runs is already ruled out (part 07, "Editing a source file while a background `check.sh` is still running").
+So running the two side by side throws the suite away whenever the review finds anything:
+two full `check.sh` runs were discarded this way in one wave.
+Stopping the abandoned run is its own trap: `TaskStop` ends the harness's background shell but leaves the `check.sh` bash and GUT processes alive,
+so end them with `taskkill /PID <check.sh pid> /T /F` and re-list the process table.
 
 - **Do:** get the review's verdict on the committed head first, apply its findings, commit, then start `tools/check.sh` once on the final head.
 
-- **Don't:** start the review and `check.sh` together to save wall-clock time, or `TaskStop` a run and assume it died.
+- **Don't:** start the review and `check.sh` together to save wall-clock time.
 
 (`Lacaedemon/sparta` #1733 / PR #1737 and #1731 / PR #1740, 2026-10-07/08.)
 
@@ -94,7 +97,8 @@ Reverting a mutant with `git checkout -- <file>` restores the last committed ver
 ## `Unit._quarter_turn_fold` is a record of net drill turns; every other fold write clears it
 
 `Unit._quarter_turn_fold` holds the net turn of the QUARTER_TURN leaves settled into `_formation_angle` since anything else last moved it, so `reform_ranks` can re-pair a quarter-turn composed onto a residue fold.
-Every other write to the fold (snap-absorb, engage re-face, non-quarter drill, reform, rout) clears it.
+Every other write to the fold clears it: snap-absorb, engage re-face, a non-quarter drill, a reform or its already-square early return, the explicatio's quarter-fold transpose, and a rout.
+A snapshot restore restores it alongside the fold.
 Composed folds in the explicatio and about-face gates are still open (#1741).
 
 - **Do:** make a new write to `_formation_angle` either add to `_quarter_turn_fold` or clear it, and say which in a comment.

@@ -238,8 +238,14 @@ SPARTA_DEMO_INPUT="res://demos/inputs/<name>.json" "$GODOT_BIN" \
 ```
 
 then `Read` a frame PNG.
-For a demo clip prefer `tools/demo/capture-frames.sh <input> <ticks> [out-dir]`.
-Running `DemoInputRecorder.tscn` directly WITHOUT `--write-movie` hung with no frames (wave 5).
+
+- **Do:** capture a demo clip's frames with `tools/demo/capture-frames.sh <input> <ticks> [out-dir]`,
+  which wraps the command above.
+
+- **Don't:** launch `DemoInputRecorder.tscn` without `--write-movie` to get frames:
+  a run with only `SPARTA_DEMO_FRAMES` set ran over five minutes with no frame written
+  (`Lacaedemon/sparta` PR #1737, 2026-10-07).
+
 (The live `_draw()` renders the form-up preview during
 the drag, so the gesture shows.) Drop `--headless` on Windows -- it crashes Movie
 Maker. Run `--headless --import` first in a fresh worktree. See the
@@ -689,9 +695,9 @@ shows the drill/order never happening. This presents identically to a wrong keyc
 wrong hotkey, so it's easy to misdiagnose -- the tell is that swapping the `box` for a
 single `click` (selection commits immediately) makes the same key work.
 
-The same window applies to an `rmb_click` ATTACK order after a box-select (staging #1725 under `all_teams_control`).
-It must land at least about 30 ticks after the box.
-At 14 ticks it silently no-ops, with the recording completing normally.
+The same window applies to an `rmb_click` attack order given to a box-selected unit:
+one scripted 14 ticks after the box, before the release at 16, silently did nothing
+(staging #1725 under `all_teams_control`, 2026-10-08).
 
 **How to apply:** schedule any key that acts on a box-selection at
 `box_tick + DRAG_TICKS + margin` (a few ticks); when a scripted key silently does nothing,
@@ -718,8 +724,6 @@ demo comes up short by exactly one unit at a boundary, check this 15/16 shortfal
 suspecting the unit's spawn coordinates or the selection logic itself.
 (`Lacaedemon/sparta` PR #1088, 2026-07-26: `nested-control-groups.json`'s box-select for
 group 3 needed padding past its intended two units for this reason.)
-
-A cheap way to stage a break with no interlocked melee: a friend routing within 140 wu breaks a unit at once by morale contagion (found staging #1725 under `all_teams_control`).
 
 ## Staging a rout-pursuit demo: the constraint map (four dumped failures)
 
@@ -752,14 +756,36 @@ down": brittle player CAVALRY (fast router), one enemy cavalry charging from
 the FLANK (overshoot lands clear of the flee lane), terrain dead ahead of the
 flee vector so the clearance detour is the visual centrepiece.
 
-**The "broken cavalry outruns its pursuers" bullet above does not hold in the close tier today.**
-A close-tier router flees at about 0.6 wu/tick against a `flee_speed()` of about 3.7, even with no contact (#1739).
-A far-tier router flees at full speed.
-Until #1739 is fixed, no close-tier rout demo can show a real flight (#1725 is blocked on it).
+Three more constraints, found staging #1725 (2026-10-08):
 
-`current_speed` reads 0 for a ROUTING unit.
-`Unit._process_rout` moves `position` directly and never updates `_current_speed`.
-Measure flee speed from position deltas between state dumps, not from the `current_speed` column.
+- **A close-tier router crawls, so "a broken cavalry unit outruns its pursuers" does not hold
+  in the close tier today.**
+  It flees at about 0.6 wu/tick against its `flee_speed()` of about 3.7,
+  even with no enemy in contact (#1739);
+  a far-tier router does flee at full speed.
+
+  - **Do:** treat a close-tier flight as blocked on #1739 until it is fixed (#1725 is).
+
+  - **Don't:** stage a router into the far tier to get a fast flight:
+    that demonstrates the tier split, not the behaviour.
+
+- **`current_speed` does not report a routing unit's flee pace.**
+  `_physics_process` returns from its ROUTING branch before the speed update,
+  and `_process_rout` moves `position` directly,
+  so the value is whatever it was before the rout
+  (a dump read 0.0 while the anchor moved about 0.6 wu/tick).
+
+  - **Do:** measure flee speed from position deltas between state dumps.
+
+  - **Don't:** read the `current_speed` column for a ROUTING unit.
+
+- **Contagion is a clean way to stage a break.**
+  `_rout()` takes 12 morale off every friend within `ROUT_SHOCK_RADIUS` (140 wu),
+  so a unit already within 12 of its break point routs at once, with no interlocked melee.
+
+  - **Do:** start the target near its break point and rout a friend beside it.
+
+  - **Don't:** expect contagion alone to break a healthy unit.
 
 ## Moving a staged scenario is only a translation when the WHOLE scene moves
 
