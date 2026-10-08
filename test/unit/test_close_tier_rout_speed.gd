@@ -36,9 +36,9 @@ const RALLY_WINDOW_TICKS := 600
 # would have somewhere to overrun to.
 const RALLY_ROUTER_COUNT := 40
 # The most the men's mean speed may fall in a single tick, as a fraction of the flee pace.
-# Stopping dead from full flight drops it by the whole flee pace (measured 233 wu/s against
-# a 221 wu/s flee pace); braking first leaves only the last few wu/s of the men settling
-# onto their slots (measured 5.3 wu/s), an order of magnitude under this.
+# Stopping dead from full flight dropped it by 69.3 wu/s in one tick on this staging (flee
+# pace 221 wu/s); braking first leaves only the last few wu/s of the men settling onto
+# their slots (measured 5.3 wu/s), well under this.
 const MAX_ONE_TICK_DROP_FRAC := 0.1
 
 var _battle: Node = null
