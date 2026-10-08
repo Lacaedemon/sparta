@@ -589,15 +589,35 @@ func test_funnel_corner_route_side_is_stable_under_sub_unit_position_drift() -> 
 	# default-map hill terrain, and two `from` values differing by a fraction of a
 	# world unit -- one live tick's worth of drift, captured from a per-tick dump of
 	# a 30-file single-rank Cavalry block marching near the default hill.
+	#
+	# The captured destination (650, 730) no longer serves: it stands 500 wu from the
+	# hill per axis (522 in a straight line), inside the 590 wu clearance, so the
+	# margin is capped at the room it leaves and the leg ending there reads as clear.
+	# It only ever looked blocked because that room used to be measured in a straight
+	# line while the grown rect's corner is square, which grew the corner over the
+	# destination itself. The live query on the captured case therefore steers
+	# straight for it now; that is pinned below. The drift check needs a leg that is
+	# GENUINELY blocked, so `to` moves to (1300, 1190): directly below the hill, 610 wu
+	# beneath its bottom edge (beside an edge, so both metrics read 610, above the
+	# clearance), while `from` keeps the captured values, 640 wu left of the hill per
+	# axis (673 in a straight line). Neither endpoint's room binds, so the full 590 wu
+	# margin applies, and the leg crosses the hill's left edge line (x = 1150) at
+	# y = 789.36 + 400.64 * 639.74 / 789.74 = 1113.9: 534 wu straight below the
+	# bottom edge, inside the margin in either metric.
 	var pf := PathField.new(Rect2(0, 0, 1600, 1200))
 	var hill := Rect2(1150, 380, 250, 200)   # Battle.TERRAIN's hill patch
 	pf.block_rect(hill)
-	var to := Vector2(650.0, 730.0)
 	var clearance := 590.0   # Unit._pivot_radius() + soldier_body_radius() for a 30-file single-rank Cavalry
 	var from_a := Vector2(510.2562, 789.3583)
 	var from_b := Vector2(510.2556, 789.3166)   # one physics tick's worth of position drift from from_a
 	assert_lt(from_a.distance_to(from_b), 0.1,
 		"sanity: the two `from` values differ by well under one world unit")
+	var captured_to := Vector2(650.0, 730.0)
+	assert_eq(pf.next_step(from_a, captured_to, clearance), captured_to,
+		"the captured destination 500 wu off the hill per axis is reached in a straight line, not detoured")
+	var to := Vector2(1300.0, 1190.0)
+	assert_true(pf.is_leg_blocked(from_a, to, clearance),
+		"sanity: a leg passing 534 wu beneath the hill with both endpoints clear of the margin is blocked")
 	var step_a: Vector2 = pf.next_step(from_a, to, clearance)
 	var step_b: Vector2 = pf.next_step(from_b, to, clearance)
 	assert_eq(step_a, step_b,
@@ -612,9 +632,12 @@ func test_funnel_corner_route_side_is_stable_under_sub_unit_position_drift() -> 
 	# corner every time, which the equality assert above alone cannot catch. The exact
 	# expected corner (558.0, 1172.0) is hand-derived from the same grown-rect corner
 	# geometry _funnel_corner itself computes: the south-west corner of
-	# hill.grow(clearance + PathField.CORNER_STANDOFF), the cheaper of the two
-	# south-side candidates by straight-line detour cost (from->corner->to) since both
-	# `from` and `to` sit west of the hill.
+	# hill.grow(clearance + PathField.CORNER_STANDOFF). Of the two south-side
+	# candidates it is the cheaper by straight-line detour cost (from->corner->to):
+	# about 386 + 742 = 1128 wu, against about 1531 + 693 = 2224 wu round the
+	# south-east corner (1992, 1172), since `from` sits west of the hill and `to`
+	# beneath it. Its sightline from `from` stays left of the margin-grown hill
+	# (x 558 against the grown edge at 560), so it is cleanly visible.
 	var expected_corner := Vector2(
 		hill.position.x - clearance - PathField.CORNER_STANDOFF,
 		hill.end.y + clearance + PathField.CORNER_STANDOFF)
@@ -714,10 +737,10 @@ func test_funnel_corner_with_empty_path_picks_the_cheaper_corner_from_the_other_
 func test_funnel_corner_live_corridor_with_a_collinear_nearest_point_still_steers() -> void:
 	# Regression for a review finding: a reachable corridor case can lose its
 	# side preference under the endpoint-axis design above. A LIVE
-	# next_step() query (not a direct _funnel_corner call with a hand-built
-	# path) can indeed drive route_side's OLD "always use the nearest
-	# point" logic to exactly 0.0 -- this from/to/rect triple is a genuine
-	# corridor find_path() itself returns:
+	# find_path() corridor (not a hand-built path) can indeed drive
+	# route_side's OLD "always use the nearest point" logic to exactly 0.0 --
+	# this from/to/rect triple is a genuine corridor find_path() itself
+	# returns:
 	#   path == [(32,32), (96,96)]  (adjacent diagonal cells, world-space
 	#   cell centres), corridor_axis == (64,64), and rect's own centre
 	#   (160,160) sits EXACTLY on the infinite line through those two cell
@@ -741,10 +764,12 @@ func test_funnel_corner_live_corridor_with_a_collinear_nearest_point_still_steer
 	# tolerance) here, the corridor's own two defining endpoints are BOTH
 	# axis-aligned with centre, a fully degenerate corridor with no side to
 	# prefer, not a side the nearest-point search merely failed to find.
-	# This test pins that a live query hitting exactly that case still
-	# returns a finite, deterministic corner (cost alone, matching the
-	# empty-path premise's "no preference" semantics) rather than
-	# misbehaving.
+	# This test pins that _funnel_corner, handed exactly that corridor for a
+	# leg the rect really blocks, still returns a finite, deterministic
+	# corner (cost alone, matching the empty-path premise's "no preference"
+	# semantics) rather than misbehaving. The live next_step() query on this
+	# corridor's own from/to no longer reaches _funnel_corner at all: its leg
+	# ends short of the rect, so it is not blocked (pinned first, below).
 	var pf := PathField.new(Rect2(0, 0, 320, 320))
 	var rect := Rect2(150, 150, 20, 20)   # centre (160,160)
 	pf.block_rect(rect)
