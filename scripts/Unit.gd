@@ -1486,7 +1486,8 @@ var _flee_pace: float = 0.0
 # back to them. Read only while state == ROUTING.
 var _flee_velocity: Vector2 = Vector2.ZERO
 # Set by _start_rally while a router that has earned its rally reins its flight in (still
-# ROUTING, _flee_pace braking toward zero); _process_rout reforms it once the flight stops.
+# ROUTING, _flee_pace braking toward zero); _process_rout reforms it once the flight stops,
+# or at once if an enemy closes back into contact meanwhile.
 var _rally_braking: bool = false
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
@@ -8504,10 +8505,20 @@ func _rout() -> void:
 	# enemy -- the component of its travel velocity along its flee heading, read before
 	# anything below clears the orders. A unit caught advancing (or in a melee its charge
 	# carried it into) is moving toward the enemy, so it starts the flight from a standstill,
-	# never at speed in the opposite direction; one already falling back keeps that pace.
-	_flee_pace = clampf(_approach_velocity.dot(_flee_heading()), 0.0, flee_speed())
+	# never at speed in the opposite direction; one already falling back keeps that pace. A
+	# FIGHTING unit starts from a standstill outright: its _approach_velocity can still hold
+	# the lean-in toward its opponent until the first strike spends it.
+	if state == State.FIGHTING:
+		_flee_pace = 0.0
+	else:
+		_flee_pace = clampf(_approach_velocity.dot(_flee_heading()), 0.0, flee_speed())
 	_flee_velocity = Vector2.ZERO
 	_rally_braking = false
+	# The flight replaces whatever travel the unit had: _process_rout returns before the idle
+	# decay, so a pre-rout velocity left here would sit frozen through the rout and coast the
+	# anchor off along it on the rallied unit's first idle tick, away from its bodies.
+	_approach_velocity = Vector2.ZERO
+	_current_speed = 0.0
 	state = State.ROUTING
 	selected = false
 	target_enemy = null
@@ -8614,17 +8625,16 @@ func _process_rout(delta: float) -> void:
 	if morale < ROUT_RALLY_BASELINE:
 		morale += (ROUT_RALLY_BASELINE - morale) * ROUT_MORALE_RECOVER_RATE * delta
 
-	# Already reining in to rally: reform once the flight has come to a stop, or run on if
-	# an enemy has closed back into contact meanwhile (the timer below then decides).
+	# Already reining in to rally: reform once the flight has come to a stop. If an enemy
+	# closes back into contact meanwhile, reform on the spot instead -- the rally was already
+	# earned, and the brake must never turn it into a worse outcome (a shatter on an expired
+	# timer) than rallying at the moment it was earned.
 	if _rally_braking:
-		if not _can_rally():
-			_rally_braking = false
-		elif _flee_pace <= 0.0:
+		if _flee_pace <= 0.0 or not _can_rally():
 			_rally()
 			return
-		else:
-			queue_redraw()
-			return
+		queue_redraw()
+		return
 
 	# Rally the moment morale recovers past the threshold, provided contact is broken and
 	# enough men remain — the unit needn't run out the full timer or reach the edge.

@@ -5686,6 +5686,89 @@ func test_rallying_router_brakes_to_a_stop_before_it_reforms() -> void:
 	PathField.active = old_pf
 
 
+## A team-1 unit standing `offset` from `u`, inside RALLY_CONTACT_RADIUS when offset is small.
+func _enemy_beside(u: Unit, offset: Vector2) -> Unit:
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = u.position + offset
+	return enemy
+
+
+func test_contact_returning_mid_brake_rallies_an_earned_morale_rally() -> void:
+	# The brake before a rally must never turn an earned rally into a worse outcome: if an
+	# enemy closes back into contact while the router reins in, it reforms on the spot.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _open_ground_router(Vector2.ZERO)
+	u._flee_pace = u.flee_speed()
+	u.morale = Unit.RALLY_MORALE_THRESHOLD + 1.0
+	var delta: float = 0.016
+	u._process_rout(delta)
+	assert_true(u._rally_braking, "the morale rally is earned and the brake has begun")
+	_enemy_beside(u, Vector2(30, 0))
+	u._process_rout(delta)
+	assert_eq(u.state, Unit.State.IDLE, "contact mid-brake: it rallies at once")
+	assert_false(u._shattered, "not shattered")
+	PathField.active = old_pf
+
+
+func test_contact_returning_mid_brake_rallies_an_earned_timer_rally() -> void:
+	# The timer path: the rout timer runs out while clear, so the rally is earned and the
+	# brake begins with the timer already spent. Contact returning mid-brake must still
+	# rally, not fall through to the expired timer and shatter.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _open_ground_router(Vector2.ZERO)
+	u._flee_pace = u.flee_speed()
+	u.morale = 0.0
+	u._rout_timer = 0.001   # expires on this tick
+	var delta: float = 0.016
+	u._process_rout(delta)
+	assert_true(u._rally_braking, "the timer ran out clear: the rally is earned and the brake has begun")
+	assert_true(u._rout_timer <= 0.0, "with the timer spent")
+	_enemy_beside(u, Vector2(30, 0))
+	u._process_rout(delta)
+	assert_eq(u.state, Unit.State.IDLE, "contact mid-brake: it rallies at once")
+	assert_false(u._shattered, "rather than shattering on the spent timer")
+	PathField.active = old_pf
+
+
+func test_routing_from_fighting_ignores_even_a_lean_away() -> void:
+	# A FIGHTING unit's _approach_velocity can be a stale lean-in left over until its first
+	# strike spends it, whatever its direction: the flight starts from rest.
+	var u := _open_ground_router(Vector2(0.0, -50.0), true)
+	assert_eq(u._flee_pace, 0.0, "a unit broken from FIGHTING starts its flight from rest")
+
+
+func test_a_rallied_unit_does_not_coast_off_on_its_pre_rout_velocity() -> void:
+	# _rout() clears the travel the unit had before it broke: the routing branch skips the
+	# idle decay, so a velocity left there would sit frozen through the rout and coast the
+	# anchor away from its bodies on the rallied unit's first idle ticks.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	for fighting in [false, true]:
+		var u := _make_unit()
+		u.retreat_bounds = Rect2(-2000, -2000, 4000, 4000)
+		u.position = Vector2(200, 200)
+		u._approach_velocity = Vector2(0.0, 90.0)
+		u._current_speed = 90.0
+		if fighting:
+			u.state = Unit.State.FIGHTING
+		u.morale = 0.0
+		u._rout()
+		assert_eq(u._approach_velocity, Vector2.ZERO, "the rout clears the pre-rout travel velocity")
+		assert_eq(u._current_speed, 0.0, "and the pre-rout speed")
+		u.morale = Unit.RALLY_MORALE_THRESHOLD + 1.0
+		u._process_rout(0.016)   # one step from rest, then the rally (one brake step stops it)
+		assert_eq(u.state, Unit.State.IDLE, "it rallied")
+		var rallied_at: Vector2 = u.position
+		for i in range(30):
+			u._physics_process(1.0 / 60.0)
+		assert_almost_eq(u.position.distance_to(rallied_at), 0.0, 0.001,
+				"the rallied unit stays where it reformed (fighting=%s)" % str(fighting))
+	PathField.active = old_pf
+
+
 func test_routing_unit_escapes_when_it_flees_past_the_retreat_margin() -> void:
 	# Once a router's flee step would carry it past retreat_bounds's own outer edge, it
 	# has fled clear of the battlefield and ESCAPES instantly instead of clamping ---

@@ -2,8 +2,9 @@ extends GutTest
 ## A routing unit in the CLOSE sim tier must cover ground at its own flee_speed(), the same
 ## pace the far tier moves it at, with its soldier bodies running alongside the anchor.
 ##
-## The regression this pins: _process_rout moves the anchor at flee pace, but a router's
-## _approach_velocity stays zero, so its bodies got no march feed-forward and chased their
+## The regression this pins: _process_rout moves the anchor at flee pace, but nothing fed
+## that flight to the bodies (their feed-forward was _approach_velocity, which _process_rout
+## never sets -- zero for a router that broke standing still), so they chased their
 ## slots on the jog-capped arrival term alone. They fell tens of world units behind, and
 ## SoldierBodies.couple() -- reading that lag as the men standing off formation -- pulled the
 ## anchor most of the way back every tick. A no-contact cavalry rout crawled at about a sixth
@@ -28,6 +29,9 @@ const SPEED_TOLERANCE_FRAC := 0.1
 # How far the bodies may stand off their slots while fleeing at full pace (world units):
 # the men run WITH the anchor, not strung out behind it.
 const MAX_BODY_SLOT_WU := 10.0
+# Covers the brake from full flight before the rally (flee_speed / arrival_brake_rate is
+# about 5.5 s for this Cavalry) plus a few seconds of the reform after it.
+const RALLY_WINDOW_TICKS := 600
 
 var _battle: Node = null
 
@@ -130,3 +134,32 @@ func test_close_tier_router_flees_at_flee_speed_with_its_bodies() -> void:
 			"no body trails its slot by more than %.1f wu (worst %.2f)" % [MAX_BODY_SLOT_WU, worst])
 	assert_lt(centroid_gap, MAX_BODY_SLOT_WU,
 			"the body centroid keeps up with the slot centroid (gap %.2f wu)" % centroid_gap)
+
+
+func test_a_router_rallying_from_full_flight_comes_to_rest_with_its_bodies() -> void:
+	# A router that earns its rally at full flight reins the flight in before it reforms, so
+	# its riders come to rest with the anchor. Reforming straight out of full flight stopped
+	# the anchor dead while the men, still running, overran their slots and had to walk back.
+	var router: Unit = await _spawn()
+	assert_not_null(router, "the team-0 cavalry deployed")
+	if router == null:
+		return
+	router.rally_morale_threshold = 1000.0   # no rally until it is at full flight
+	router.rout_time = 1000.0
+	router.morale = 0.0
+	router._rout()
+	await _advance_ticks(RAMP_TICKS)
+	assert_almost_eq(router._flee_pace, router.flee_speed(), 0.001, "at full flight before the rally")
+	router.rally_morale_threshold = 0.0   # the rally is earned on the next tick
+	var worst: float = 0.0
+	var rallied_tick: int = -1
+	var budget: int = _battle.current_tick() + RALLY_WINDOW_TICKS
+	while _battle.current_tick() < budget:
+		await _advance_ticks(1)
+		worst = maxf(worst, _worst_body_slot_gap(router))
+		if rallied_tick < 0 and router.state == Unit.State.IDLE:
+			rallied_tick = _battle.current_tick()
+	assert_true(rallied_tick >= 0, "it rallied within the window")
+	assert_lt(worst, MAX_BODY_SLOT_WU,
+			"no body stood more than %.1f wu off its slot through the brake and the rally (worst %.2f)"
+			% [MAX_BODY_SLOT_WU, worst])

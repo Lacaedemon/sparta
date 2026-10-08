@@ -364,8 +364,8 @@ static func step(unit: Unit, delta: float) -> void:
 				if j + files < n:
 					file_rear_neighbor[j] = j + files
 	# A router's anchor is driven by _process_rout, not _move_to, so its _approach_velocity
-	# sits at zero for the whole flight: its bulk takes the flight velocity as feed-forward
-	# instead, the same way a marching bulk takes the march. And its flee pace is above its
+	# (zeroed by Unit._rout()) carries nothing of the flight: its bulk takes the flight
+	# velocity as feed-forward instead, the same way a marching bulk takes the march. And its flee pace is above its
 	# own move_speed by design (Unit.FLEE_SPEED_MULTIPLIER), so the superphysical ceiling is
 	# measured from the flee pace -- measured from move_speed it would hold every body below
 	# the pace its anchor runs at, and the coupling would drag the anchor back to them.
