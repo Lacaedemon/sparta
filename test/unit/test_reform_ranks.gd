@@ -1101,6 +1101,124 @@ func test_a_fold_that_is_not_a_quarter_turn_keeps_its_pairing() -> void:
 	assert_eq(u._sim_soldier_row_slot.size(), 0, "no proximity pairing is written for it")
 
 
+## Settle a quarter-turn drill on `u` the way a completed QUARTER_TURN leaf does: the leaf's turn
+## (facing rotated by `turn`) is folded into the grid by _settle_order_turn, then every body is
+## put on its slot so the re-square that follows starts from a formed block.
+func _settle_quarter_turn_drill(u: Unit, turn: float) -> void:
+	var leaf := Order.new_quarter_turn(int(signf(turn)))
+	u.set_current_order(leaf)
+	leaf.turn_start_facing = u.facing
+	u.facing = u.facing.rotated(turn)
+	u._settle_order_turn()
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(slots.size()):
+		u._sim_soldier_pos[i] = slots[i]
+
+
+## A quarter-turn drill composed onto a leftover snap-absorb fold lands off a quarter (a -25
+## degree residue plus a 90 degree turn folds to -115), which an angle gate alone skips. The
+## re-square still has to re-pair it, because the drill swung the grid a quarter under the men.
+func test_a_quarter_turn_onto_a_residue_fold_is_re_paired() -> void:
+	var u := _make_row_major_unit()
+	u._formation_angle = deg_to_rad(-25.0)   # a snap-absorb residue
+	_settle_quarter_turn_drill(u, PI * 0.5)
+	assert_almost_eq(rad_to_deg(u._formation_angle), -115.0, 0.01,
+		"precondition: the drill composed onto the residue, off a quarter")
+	var bodies: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	assert_true(u.reform_ranks(true), "the composed fold re-squares")
+	assert_eq(u._sim_soldier_row_slot.size(), u.soldiers, "and is re-paired from where the men stand")
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var total: float = 0.0
+	for i in range(bodies.size()):
+		total += bodies[i].distance_to(slots[i])
+	assert_lt(total / bodies.size(), u.file_pitch_wu() * 2.0,
+		"so the average man walks a short way, not across the block")
+
+
+## The drill's record is cleared when the fold is dropped, so a later fold that is only a
+## snap-absorb residue is not mistaken for a drilled quarter-turn.
+func test_the_drilled_quarter_record_does_not_outlive_its_re_square() -> void:
+	var u := _make_row_major_unit()
+	_settle_quarter_turn_drill(u, PI * 0.5)
+	assert_true(u.reform_ranks(true), "the drilled quarter re-squares")
+	u._sim_soldier_row_slot = PackedInt32Array()
+	u._formation_angle = deg_to_rad(-68.0)   # a later snap-absorb fold, no drill
+	assert_true(u.reform_ranks(true), "the later fold re-squares")
+	assert_eq(u._sim_soldier_row_slot.size(), 0, "on the pairing it holds, with no re-pair")
+
+
+## A snap-absorb that turns the block back square after a quarter-turn drill clears the drill's
+## record too, so a later snap-absorb fold is not taken for a drilled quarter.
+func test_a_snap_back_to_square_clears_the_drilled_quarter_record() -> void:
+	var u := _make_row_major_unit()
+	_settle_quarter_turn_drill(u, PI * 0.5)
+	u._face_dir(u.facing.rotated(-PI * 0.5))   # a snap back onto the old heading
+	assert_almost_eq(u._formation_angle, 0.0, 0.001, "precondition: the grid is square again")
+	u._formation_angle = deg_to_rad(-68.0)   # a later snap-absorb fold, no drill
+	assert_true(u.reform_ranks(true), "the later fold re-squares")
+	assert_eq(u._sim_soldier_row_slot.size(), 0, "on the pairing it holds, with no re-pair")
+
+
+## A snap-absorb after the drill drops its record even when it does not land on square: here it
+## turns the block back to the residue it had before the drill, which alone is not re-paired.
+func test_a_snap_after_the_drill_drops_its_record_off_square_too() -> void:
+	var u := _make_row_major_unit()
+	u._formation_angle = deg_to_rad(-25.0)   # a residue from before the drill
+	_settle_quarter_turn_drill(u, PI * 0.5)
+	u._face_dir(u.facing.rotated(-PI * 0.5))   # snapped back onto the old heading
+	assert_almost_eq(rad_to_deg(u._formation_angle), -25.0, 0.01, "precondition: only the residue is left")
+	assert_true(u.reform_ranks(true), "the residue re-squares")
+	assert_eq(u._sim_soldier_row_slot.size(), 0, "on the pairing it holds, with no re-pair")
+
+
+## A non-quarter drill (an about-face) settled after a quarter-turn drops the quarter's record.
+func test_an_about_face_drill_after_a_quarter_turn_drops_its_record() -> void:
+	var u := _make_row_major_unit()
+	_settle_quarter_turn_drill(u, PI * 0.5)
+	var leaf := Order.new_about_face()
+	u.set_current_order(leaf)
+	leaf.turn_start_facing = u.facing
+	u.facing = u.facing.rotated(PI)
+	u._settle_order_turn()
+	assert_eq(u._quarter_turn_fold, 0.0, "the record no longer describes the fold")
+
+
+## A drilled quarter-turn on top of a quarter of snap-absorb lands on an about-face fold. That
+## fold is reflected exactly as one with no drill in it, never proximity-paired first.
+func test_a_drilled_quarter_that_completes_an_about_face_is_reflected_like_any_about_face() -> void:
+	var drilled := _make_row_major_unit()
+	drilled._formation_angle = -PI * 0.5   # a quarter of snap-absorb
+	_settle_quarter_turn_drill(drilled, PI * 0.5)
+	assert_almost_eq(absf(drilled._formation_angle), PI, 0.001, "precondition: an about-face fold")
+	var plain := _make_row_major_unit()
+	plain.facing = drilled.facing
+	plain._formation_angle = drilled._formation_angle
+	for i in range(plain.soldiers):
+		plain._sim_soldier_pos[i] = drilled._sim_soldier_pos[i]
+	assert_true(drilled.reform_ranks(true), "the drilled about-face re-squares")
+	assert_true(plain.reform_ranks(true), "and so does the plain one")
+	assert_eq(plain._sim_soldier_row_slot.size(), plain.soldiers,
+		"precondition: the hold-ground reflection ran, so the comparison is not of two empty arrays")
+	assert_eq(drilled._sim_soldier_row_slot, plain._sim_soldier_row_slot,
+		"the drill in the fold changes nothing about how an about-face re-squares")
+
+
+## A rout and a quarter-fold file double each drop the fold to 0, and must drop the record with it.
+func test_a_rout_clears_the_drilled_quarter_record() -> void:
+	var u := _make_row_major_unit()
+	_settle_quarter_turn_drill(u, PI * 0.5)
+	u._rout()
+	assert_eq(u._quarter_turn_fold, 0.0, "a routed unit carries no drill record into its rally")
+
+
+func test_a_quarter_fold_file_double_clears_the_drilled_quarter_record() -> void:
+	var u := _make_row_major_unit()
+	_settle_quarter_turn_drill(u, PI * 0.5)
+	u._apply_file_double_step(Order.new_file_double(1))
+	assert_eq(u._formation_angle, 0.0, "precondition: the file double transposed the fold away")
+	assert_eq(u._quarter_turn_fold, 0.0, "and dropped the drill record with it")
+
+
 ## The gate's edge: a fold 0.005 rad off a quarter is still a quarter fold and is re-paired;
 ## one 0.02 rad off is not.
 func test_the_quarter_fold_gate_tolerates_float_error_but_not_a_real_offset() -> void:

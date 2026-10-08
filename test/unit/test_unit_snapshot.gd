@@ -135,6 +135,20 @@ func test_reinforce_cohesion_floor_round_trips_and_defaults_for_older_snapshots(
 		"a snapshot from before the field existed restores the default")
 
 
+func test_quarter_turn_fold_round_trips_and_defaults_for_older_snapshots() -> void:
+	var original := _sample_unit()
+	original._quarter_turn_fold = -PI * 0.5
+	var d := original.to_snapshot_dict()
+	var restored := Unit.new()
+	restored.apply_snapshot_dict(d)
+	assert_almost_eq(restored._quarter_turn_fold, -PI * 0.5, 0.0001,
+		"a quarter-turn drill's record survives a replay-seek restore, so the next re-square still re-pairs")
+	d.erase("quarter_turn_fold")
+	var older := Unit.new()
+	older.apply_snapshot_dict(d)
+	assert_eq(older._quarter_turn_fold, 0.0, "a snapshot from before the field existed restores no record")
+
+
 func test_anchor_hold_until_tick_round_trips_and_defaults_for_older_snapshots() -> void:
 	var original := _sample_unit()
 	var remaining: int = 50

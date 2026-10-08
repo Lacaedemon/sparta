@@ -433,6 +433,8 @@ as the first step of marching off to the side in good order.
 A move order given to a quarter-turned unit squares it back to its heading first: the
 block takes its usual frontage across the direction it now faces, and each man steps into
 the new place nearest where he stands, so nobody crosses the block to get there.
+That holds even when the block was not square to its heading before the turn,
+such as a levy still skewed from snapping round onto an earlier order.
 
 ::: {#fig-quarter-turn-resquare .demo}
 
@@ -450,6 +452,23 @@ the spearmen quarter-turn to face east,
 then are ordered east,
 and the block squares to its new heading with each man stepping into the nearest new place
 rather than marching across the block.
+:::
+
+::: {#fig-quarter-turn-residue .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/quarter_turn_residue.jpg">
+  <source src="media/quarter_turn_residue.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A quarter-turn made on a block that was not square:
+a levy snaps round onto a move order, leaving its grid skewed.
+It halts, quarter-turns with <kbd>E</kbd>, and is ordered north,
+and each man still steps into the nearest new place as the block squares to its heading.
 :::
 
 **Turn and unfold (<kbd>Shift+Q</kbd> / <kbd>Shift+E</kbd>).** The first chained drill:
