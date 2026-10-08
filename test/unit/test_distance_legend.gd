@@ -190,3 +190,43 @@ func test_end_to_end_across_the_camera_zoom_range() -> void:
 		assert_gt(metres, 0.0, "zoom %s yields a positive round distance" % zoom)
 		assert_lte(width, DistanceLegend.MAX_PX + 0.01, "zoom %s stays within the max band" % zoom)
 		assert_ne(DistanceLegend.label_text(metres), "", "zoom %s yields a non-empty label" % zoom)
+
+
+# --- compass_name / travel_label: an order destination the player can read -------------
+
+func test_compass_name_maps_each_screen_direction_to_its_point() -> void:
+	# Screen-up (-y) is north. One case per point, so a swapped pair or an
+	# off-by-one sector shift fails on the exact direction it breaks.
+	var cases := {
+		Vector2(1, 0): "east", Vector2(1, -1): "north-east", Vector2(0, -1): "north",
+		Vector2(-1, -1): "north-west", Vector2(-1, 0): "west",
+		Vector2(-1, 1): "south-west", Vector2(0, 1): "south", Vector2(1, 1): "south-east",
+	}
+	for v in cases:
+		assert_eq(DistanceLegend.compass_name(v), cases[v], "direction %s" % v)
+
+
+func test_compass_name_rounds_to_the_nearest_point() -> void:
+	# 20 degrees above east is nearer east (0) than north-east (45); 25 is nearer north-east.
+	assert_eq(DistanceLegend.compass_name(Vector2.from_angle(deg_to_rad(-20.0))), "east")
+	assert_eq(DistanceLegend.compass_name(Vector2.from_angle(deg_to_rad(-25.0))), "north-east")
+	# Just below due west wraps through +/-PI without leaving "west".
+	assert_eq(DistanceLegend.compass_name(Vector2.from_angle(deg_to_rad(179.0))), "west")
+	assert_eq(DistanceLegend.compass_name(Vector2.from_angle(deg_to_rad(-179.0))), "west")
+
+
+func test_compass_name_is_empty_for_a_zero_offset() -> void:
+	assert_eq(DistanceLegend.compass_name(Vector2.ZERO), "")
+
+
+func test_travel_label_reads_metres_and_compass_point() -> void:
+	assert_eq(DistanceLegend.travel_label(Vector2(0, -200), WUPM), "10 m north")
+	assert_eq(DistanceLegend.travel_label(Vector2(-900, 900), WUPM), "64 m south-west")
+	assert_eq(DistanceLegend.travel_label(Vector2(30000, 0), WUPM), "1.5 km east",
+			"long trips switch to kilometres through label_text")
+
+
+func test_travel_label_is_empty_below_half_a_metre() -> void:
+	assert_eq(DistanceLegend.travel_label(Vector2(9, 0), WUPM), "", "0.45 m rounds to nothing")
+	assert_eq(DistanceLegend.travel_label(Vector2(10, 0), WUPM), "1 m east",
+			"0.5 m is the first distance worth showing")
