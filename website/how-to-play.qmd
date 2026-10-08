@@ -428,7 +428,7 @@ each man keeps his own flank.
 If the old rear rank was short, it now leads, and a full rank is brought to the front.
 In a block that reforms file by file, the files the short rank never reached step forward one place.
 In one that reforms by rows (cavalry always does, and the panel's Reform button can choose it for foot),
-some men of the old front rank instead walk the length of the block to fill the new front.
+some men of the old front rank instead walk the depth of the block to fill the new front.
 A block with no short rank needs no step at all.
 The same holds when the block was skewed by less than a right angle before the turn,
 such as a levy still skewed from snapping round onto earlier orders:
@@ -518,8 +518,8 @@ files, which after the turn run along the block's depth).
 A block skewed by less than half a right angle before the turn,
 or by more than one and a half (nearly reversed),
 still unfolds across its new facing, and the skew is squared away with it.
-One skewed in between ends the turn with its files nearer across its new
-facing than along it, so it widens those files where they lie and keeps its skew.
+One skewed in between ends the turn with its files nearer across its new facing than along it,
+so it widens those files where they lie and keeps its skew.
 The historical use is deploying from column:
 a regiment marching by files quarter-turns to bring its long side to the front,
 then unfolds into line. The panel reads "Quarter-turning (step 1 of 2)" while the
