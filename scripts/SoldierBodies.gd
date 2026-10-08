@@ -362,6 +362,15 @@ static func step(unit: Unit, delta: float) -> void:
 					file_front_neighbor[j] = j - files
 				if j + files < n:
 					file_rear_neighbor[j] = j + files
+	# A router's anchor is driven by _process_rout, not _move_to, so its _approach_velocity
+	# sits at zero for the whole flight: its bulk takes the flight velocity as feed-forward
+	# instead, the same way a marching bulk takes the march. And its flee pace is above its
+	# own move_speed by design (Unit.FLEE_SPEED_MULTIPLIER), so the superphysical ceiling is
+	# measured from the flee pace -- measured from move_speed it would hold every body below
+	# the pace its anchor runs at, and the coupling would drag the anchor back to them.
+	var routing: bool = unit.state == Unit.State.ROUTING
+	var march_vel: Vector2 = unit._flee_velocity if routing else unit._approach_velocity
+	var top_pace: float = unit.flee_speed() if routing else unit.move_speed
 	# In-transit same-unit standoff velocities for crowding same-unit bodies:
 	var sep_vels: PackedVector2Array = _separate_same_unit(unit, n, target_slots, is_engaged, delta)
 	var terrain_guard: Dictionary = _terrain_entry_guard(unit, n)
@@ -382,7 +391,7 @@ static func step(unit: Unit, delta: float) -> void:
 		# steering pass this tick (it clears all steer first), so this reduces to the plain
 		# march for the uncrowded bulk.
 		var feed_forward: Vector2 = unit._sim_steer[i] if is_engaged[i] == 1 \
-				else unit._approach_velocity + unit._sim_steer[i]
+				else march_vel + unit._sim_steer[i]
 		# During an in-place turn the slot targets rotate with unit.facing, which would drag
 		# bodies to intermediate positions and back. Drop the arrival term so bodies aim only at
 		# the feed-forward (~zero for a turn in place); they decelerate to rest where they stand
@@ -533,7 +542,7 @@ static func step(unit: Unit, delta: float) -> void:
 		# next tick's superphysical clamp would slam that legitimate push straight back down,
 		# defeating the whole "coast much further than a normal push" point of the stance.
 		var superphysical_cap: float = maxf(
-			unit.move_speed * unit.superphysical_speed_frac, pre_tick_speed)
+			top_pace * unit.superphysical_speed_frac, pre_tick_speed)
 		unit._sim_body_vel[i] = unit._sim_body_vel[i].limit_length(superphysical_cap)
 		unit._sim_soldier_pos[i] += step_vel.limit_length(superphysical_cap) * delta
 		# Tell the render a body actually moved this tick, so _process can skip the

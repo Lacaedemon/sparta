@@ -1471,6 +1471,18 @@ var _cycle_recharging: bool = false
 # true when the unit moved at flee speed during _process_rout,
 # so stamina_band can bill the flight at sprint pace even if _rally transitioned to IDLE.
 var _moved_while_routing: bool = false
+# A routing unit's live flight pace (world units/s). _process_rout ramps it toward
+# flee_speed() at `accel`, the same build-up a march takes, rather than starting the anchor
+# at full flight: the soldier bodies only gain speed at their own bounded acceleration, so
+# an anchor that leapt to flee pace would run ahead of them, the body coupling would pull
+# it back, and the block would trail its slots by tens of world units until they caught up.
+var _flee_pace: float = 0.0
+# This tick's flight velocity (flee direction * _flee_pace), set by _process_rout: the
+# routing counterpart of _approach_velocity. SoldierBodies.step feeds it forward to a
+# router's unengaged bodies so they run with the fleeing anchor; without it they only
+# chase their slots on the jog-capped arrival term, and the body coupling drags the anchor
+# back to them. Read only while state == ROUTING.
+var _flee_velocity: Vector2 = Vector2.ZERO
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -8499,6 +8511,10 @@ func _rout() -> void:
 	_quarter_turn_fold = 0.0
 	_formation_mirror_x = false
 	_rout_timer = rout_time
+	# The flight builds up from whatever pace the unit already had when it broke (one caught
+	# mid-march is already moving), never from above its own flee pace.
+	_flee_pace = minf(_current_speed, flee_speed())
+	_flee_velocity = Vector2.ZERO
 	# Deliberately no `_shattered = false` here: a fresh rout starts "broken"
 	# (recoverable) only when it wasn't already permanently shattered by a
 	# prior _stop_rout_and_fight(). That call returns the unit to State.IDLE
@@ -8553,7 +8569,9 @@ func _process_rout(delta: float) -> void:
 	var to: Vector2 = step - position
 	var dir: Vector2 = to.normalized()
 	_face_dir(dir)
-	var next: Vector2 = position + dir * flee_speed() * delta
+	_flee_pace = move_toward(_flee_pace, flee_speed(), accel * delta)
+	_flee_velocity = dir * _flee_pace
+	var next: Vector2 = position + _flee_velocity * delta
 	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
 			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
 		_escape()
@@ -9484,6 +9502,7 @@ func to_snapshot_dict() -> Dictionary:
 		"withdrawal_peeling": _withdrawal_peeling,
 		"separation_velocity": _separation_velocity,
 		"moved_while_routing": _moved_while_routing,
+		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity,
 		# Not reset before a routing unit's early return, so a router keeps reading it.
 		"is_facing_turning": _is_facing_turning,
 
@@ -9707,6 +9726,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_withdrawal_peeling = bool(d.get("withdrawal_peeling", _withdrawal_peeling))
 	_separation_velocity = d.get("separation_velocity", _separation_velocity)
 	_moved_while_routing = bool(d.get("moved_while_routing", _moved_while_routing))
+	_flee_pace = float(d.get("flee_pace", _flee_pace))
+	_flee_velocity = d.get("flee_velocity", _flee_velocity)
 	_is_facing_turning = bool(d.get("is_facing_turning", _is_facing_turning))
 	is_general = bool(d.get("is_general", is_general))
 	order_clear_step = float(d.get("order_clear_step", order_clear_step))
