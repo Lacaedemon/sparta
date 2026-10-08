@@ -433,6 +433,8 @@ as the first step of marching off to the side in good order.
 A move order given to a quarter-turned unit squares it back to its heading first: the
 block takes its usual frontage across the direction it now faces, and each man steps into
 the new place nearest where he stands, so nobody crosses the block to get there.
+That holds even when the block was not square to its heading before the turn,
+such as a levy still skewed from snapping round onto an earlier order.
 
 ::: {#fig-quarter-turn-resquare .demo}
 
