@@ -237,7 +237,19 @@ SPARTA_DEMO_INPUT="res://demos/inputs/<name>.json" "$GODOT_BIN" \
   --fixed-fps 30 --quit-after 130 res://tools/demo/DemoInputRecorder.tscn
 ```
 
-then `Read` a frame PNG. (The live `_draw()` renders the form-up preview during
+then `Read` a frame PNG.
+
+- **Do:** capture a demo clip's frames with `tools/demo/capture-frames.sh <input> <ticks> [out-dir]`.
+  It runs the recorder with `SPARTA_DEMO_FRAMES` set (not Movie Maker) under a timeout,
+  and imports first.
+
+- **Don't:** launch `DemoInputRecorder.tscn` by hand with no timeout around it:
+  one such run, `SPARTA_DEMO_FRAMES` set and no `--path`,
+  sat over five minutes without writing a frame, and its cause was not found,
+  while `capture-frames.sh` on the same script succeeded
+  (`Lacaedemon/sparta` PR #1737, 2026-10-07).
+
+(The live `_draw()` renders the form-up preview during
 the drag, so the gesture shows.) Drop `--headless` on Windows -- it crashes Movie
 Maker. Run `--headless --import` first in a fresh worktree. See the
 "Local testing" section of `.claude/memories/sparta.md` for the binary.
@@ -686,6 +698,10 @@ shows the drill/order never happening. This presents identically to a wrong keyc
 wrong hotkey, so it's easy to misdiagnose -- the tell is that swapping the `box` for a
 single `click` (selection commits immediately) makes the same key work.
 
+The same window applies to an `rmb_click` attack order given to a box-selected unit:
+one scripted 14 ticks after the box, before the release at 16, silently did nothing
+(staging #1725 under `all_teams_control`, 2026-10-08).
+
 **How to apply:** schedule any key that acts on a box-selection at
 `box_tick + DRAG_TICKS + margin` (a few ticks); when a scripted key silently does nothing,
 check the selection-commit timing before suspecting the key name or the dispatch code.
@@ -742,6 +758,38 @@ The staging that works for "break, flee, detour around terrain, get run
 down": brittle player CAVALRY (fast router), one enemy cavalry charging from
 the FLANK (overshoot lands clear of the flee lane), terrain dead ahead of the
 flee vector so the clearance detour is the visual centrepiece.
+
+Three more constraints, found staging #1725 (2026-10-08):
+
+- **A close-tier router crawls, so "a broken cavalry unit outruns its pursuers" does not hold
+  in the close tier today.**
+  It flees at about 0.6 wu/tick against its `flee_speed()` of about 3.7,
+  even with no enemy in contact (#1739);
+  a far-tier router does flee at full speed.
+
+  - **Do:** treat a close-tier flight as blocked on #1739 until it is fixed,
+    as #1725 is blocked on it.
+
+  - **Don't:** stage a router into the far tier to get a fast flight:
+    that demonstrates the tier split, not the behaviour.
+
+- **`current_speed` does not report a routing unit's flee pace.**
+  `_physics_process` returns from its ROUTING branch before the speed update,
+  and `_process_rout` moves `position` directly,
+  so the value is whatever it was before the rout
+  (a dump read 0.0 while the anchor moved about 0.6 wu/tick).
+
+  - **Do:** measure flee speed from position deltas between state dumps.
+
+  - **Don't:** read the `current_speed` column for a ROUTING unit.
+
+- **Contagion is a clean way to stage a break.**
+  `_rout()` takes 12 morale off every friend within `ROUT_SHOCK_RADIUS` (140 wu),
+  so a unit already within 12 of its break point routs at once, with no interlocked melee.
+
+  - **Do:** start the target near its break point and rout a friend beside it.
+
+  - **Don't:** expect contagion alone to break a healthy unit.
 
 ## Moving a staged scenario is only a translation when the WHOLE scene moves
 
