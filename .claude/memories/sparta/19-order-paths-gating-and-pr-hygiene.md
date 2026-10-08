@@ -123,3 +123,63 @@ Composed folds in the explicatio and about-face gates are still open (#1741).
   a stale value re-pairs men through a fold that no longer measures a quarter.
 
 (`Lacaedemon/sparta` #1731 / PR #1740, 2026-10-08.)
+
+## `PathField` room cap: a real destination's room is measured per axis
+
+`PathField._segment_blocked` caps each rect's margin at the room a REAL destination leaves,
+so an order the clamp accepted stays reachable.
+That room is `_grow_room`, which uses `Rect2.grow`'s own per-axis metric:
+the grown rect is square-cornered, so a straight-line room grew the corner over a destination diagonal off it.
+`_first_blocking_rect_index` uses the same metric.
+Three callers keep the straight-line room (`_distance_to_rect`):
+the start of a leg,
+`next_step`'s corridor fallback (`_corridor_sightline_blocked`, whose target is a synthetic cell centre),
+and the candidate sightlines (uncapped, `cap_to` false).
+The start-room limitation is tracked in #1743.
+
+- **Do:** measure a destination's room with `_grow_room`, and leave the start and the corridor fallback on `_distance_to_rect`.
+
+- **Don't:** measure a destination's room in a straight line:
+  off a hill corner it grows the rect over the destination, and every leg to it reads as blocked.
+
+(`Lacaedemon/sparta` #1729 / PR #1738, 2026-10-08.)
+
+## A cap with several caller classes names the class explicitly
+
+`_segment_blocked`'s `cap_to` alone conflated a real destination with the corridor fallback's synthetic cell centre.
+That one conflation drove 12 of the 14 catalog changes.
+Gating it with `to_is_destination` (and the named wrapper `_corridor_sightline_blocked`) cut the blast radius to 1 clip on CI.
+
+- **Do:** name the caller class as a parameter or a named helper, so each class picks its own metric on purpose.
+
+- **Don't:** let a positional boolean decide a metric.
+
+(`Lacaedemon/sparta` #1729 / PR #1738, 2026-10-08.)
+
+## Stop chasing a "make it symmetric" review fix after its second regression
+
+A review asked for the start room to be measured per axis too, the mirror image of the destination fix.
+Two attempts each regressed a catalog clip:
+measuring it on every leg stalled `campaign_deployment_gap`,
+and measuring it on real-endpoint legs only left `funnel_lanes` never reaching IDLE.
+The start room sets the whole leg's margin and decides whether candidate corners are accepted, so it is a separate change.
+
+- **Do:** after the second regression, scope back to the issue's exact case and file the rest with both traces (#1743).
+
+- **Don't:** try a third narrowing in the same PR.
+
+(`Lacaedemon/sparta` #1729 / PR #1738, 2026-10-08.)
+
+## Re-run the full catalog hash comparison after every metric change
+
+The comparison is `website/tools/dump-demo-states.sh` on both trees, then `analyze_transcript.gd --compare-hash-trees`.
+On #1738 it caught both regressions above, neither of which the unit suite saw, and it showed the effect of the fallback gating.
+A local 0.3 wu drift in `showcase` did not reproduce in CI's transcript.
+
+- **Do:** re-run it after each change to a metric or gate, not once per PR,
+  and confirm a sub-wu late-divergence row on CI's comment before treating it as real.
+
+- **Don't:** read a sub-wu late-divergence row in a local run as a regression:
+  it can be platform noise.
+
+(`Lacaedemon/sparta` #1729 / PR #1738, 2026-10-08.)
