@@ -1,0 +1,20 @@
+{
+  "_comment": "One Archers regiment, alone on the field, selected so the info panel stays open, is sent on a diagonal march up and to the right. The panel's order line reads the remaining distance and compass point (Moving N m north-east) and counts down as the block closes, instead of printing the destination's raw world-unit coordinates. Drill mode: no enemy, since the panel text is the only subject.",
+  "seed": "20261007",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Archers", "x": 380, "y": 820, "count": 48, "facing": [0, -1]}
+  ],
+  "camera": [ { "tick": 0, "x": 560, "y": 700, "zoom": 0.85 } ],
+  "steps": [
+    { "tick": 8, "click": [380, 820] },
+    { "tick": 24, "rmb_click": [620, 640] }
+  ],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [380, 820]},
+    {"tick": 400, "uid": 0, "field": "state", "value": "MOVING"},
+    {"tick": 800, "uid": 0, "field": "state", "value": "IDLE"}
+  ],
+  "frames": [30, 200, 400, 600, 800],
+  "state": [8, 30, 200, 400, 600, 740, 800]
+}

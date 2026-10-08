@@ -548,10 +548,46 @@ func test_order_summary_idle_holds_position() -> void:
 
 func test_order_summary_reports_move_destination() -> void:
 	var u := _make_unit()
-	u.move_target = Vector2(420, -130)
+	# Off the origin, so the distance must be measured from the unit, not from (0, 0).
+	u.position = Vector2(300, 500)
+	u.move_target = Vector2(300, 300)   # 200 wu = 10 m straight up the screen
 	u.has_move_target = true
-	assert_eq(u.order_summary(), "Moving to (420, -130)",
-		"a move order reports its destination coordinates")
+	assert_eq(u.order_summary(), "Moving 10 m north",
+		"a move order reports distance and compass point, never raw world-unit coordinates")
+
+
+func test_order_summary_reads_arriving_within_half_a_metre() -> void:
+	var u := _make_unit()
+	u.position = Vector2(300, 500)
+	u.move_target = Vector2(305, 500)   # 5 wu = 0.25 m
+	u.has_move_target = true
+	assert_eq(u.order_summary(), "Arriving",
+		"a destination too close to show a distance reads as arriving, not '0 m'")
+
+
+func test_order_summary_passing_a_waypoint_is_not_arriving() -> void:
+	var u := _make_unit()
+	u.position = Vector2(300, 500)
+	u.set_current_order(Order.new_move(Vector2(305, 500)))   # 0.25 m off the corner
+	u.move_target = Vector2(305, 500)
+	u.has_move_target = true
+	u.append_order(Order.new_move(Vector2(700, 500)))
+	assert_eq(u.order_summary(), "At waypoint (+1 waypoint)",
+		"a corner the route rolls through at pace must not read as the order ending")
+
+
+func test_order_summary_stopping_before_a_later_waypoint_reads_arriving() -> void:
+	var u := _make_unit()
+	u.position = Vector2(300, 500)
+	u.set_current_order(Order.new_move(Vector2(305, 500)))
+	u.move_target = Vector2(305, 500)
+	u.has_move_target = true
+	# The next order is a drill, not a move, so the unit stops on this leg before the
+	# later waypoint: that is an arrival, even though a MOVE is still queued behind it.
+	u.append_order(Order.new_about_face())
+	u.append_order(Order.new_move(Vector2(700, 500)))
+	assert_eq(u.order_summary(), "Arriving (+1 waypoint)",
+		"only a MOVE next in the queue rolls through; anything else stops here")
 
 
 func test_order_summary_reports_attack_target_by_name() -> void:
@@ -3061,7 +3097,7 @@ func test_order_summary_reports_waypoint_count() -> void:
 	u.append_order(Order.new_move(Vector2(600, 0)))
 	assert_eq(
 		u.order_summary(),
-		"Moving to (420, -130) (+2 waypoints)",
+		"Moving 22 m east (+2 waypoints)",   # 440 wu, 17 degrees north of east
 		"the order summary notes how many waypoints remain"
 	)
 
@@ -3074,7 +3110,7 @@ func test_order_summary_singular_waypoint() -> void:
 	u.append_order(Order.new_move(Vector2(50, 50)))
 	assert_eq(
 		u.order_summary(),
-		"Moving to (10, 20) (+1 waypoint)",
+		"Moving 1 m south-east (+1 waypoint)",   # 22 wu, 63 degrees below east
 		"a single remaining waypoint is reported in the singular"
 	)
 

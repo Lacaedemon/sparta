@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/order-destination-distance.json",
+  "caption": "The info panel's order line now gives a selected unit's destination as a distance and compass point instead of raw world-unit coordinates. A lone Archers regiment, selected so its panel stays open, is sent about 15 m up and to the right. After a brief \"Re-forming\" hold the order line reads \"Moving 15 m north-east\" and counts down as the block marches, until the unit arrives, goes idle, and the line reads \"Holding position\". North is the top of the screen.",
+  "fixed_fps": 30,
+  "max_frames": 450,
+  "fps": 15,
+  "width": 720
+}
