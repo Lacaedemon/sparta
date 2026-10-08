@@ -239,11 +239,14 @@ SPARTA_DEMO_INPUT="res://demos/inputs/<name>.json" "$GODOT_BIN" \
 
 then `Read` a frame PNG.
 
-- **Do:** capture a demo clip's frames with `tools/demo/capture-frames.sh <input> <ticks> [out-dir]`,
-  which wraps the command above.
+- **Do:** capture a demo clip's frames with `tools/demo/capture-frames.sh <input> <ticks> [out-dir]`.
+  It runs the recorder with `SPARTA_DEMO_FRAMES` set (not Movie Maker) under a timeout,
+  and imports first.
 
-- **Don't:** launch `DemoInputRecorder.tscn` without `--write-movie` to get frames:
-  a run with only `SPARTA_DEMO_FRAMES` set ran over five minutes with no frame written
+- **Don't:** launch `DemoInputRecorder.tscn` by hand with no timeout around it:
+  one such run, `SPARTA_DEMO_FRAMES` set and no `--path`,
+  sat over five minutes without writing a frame, and its cause was not found,
+  while `capture-frames.sh` on the same script succeeded
   (`Lacaedemon/sparta` PR #1737, 2026-10-07).
 
 (The live `_draw()` renders the form-up preview during
@@ -764,7 +767,8 @@ Three more constraints, found staging #1725 (2026-10-08):
   even with no enemy in contact (#1739);
   a far-tier router does flee at full speed.
 
-  - **Do:** treat a close-tier flight as blocked on #1739 until it is fixed (#1725 is).
+  - **Do:** treat a close-tier flight as blocked on #1739 until it is fixed,
+    as #1725 is blocked on it.
 
   - **Don't:** stage a router into the far tier to get a fast flight:
     that demonstrates the tier split, not the behaviour.
