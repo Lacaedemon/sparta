@@ -645,13 +645,27 @@ const ROUTE_SIDE_COLLINEAR_EPS := 0.001   # tuned in wu, solver epsilon
 ## where routing bends. Candidates must clear the FULL margin (cap_to false);
 ## a candidate inside the margin is simply not picked.
 ##
-## Both endpoints' room is measured by _grow_room, in the same per-axis metric
-## Rect2.grow uses, not as a straight-line distance: the grown rect has square
-## corners, so a point diagonal from a corner stands farther away in a straight line
-## than the grown corner reaches, and a straight-line room would grow the rect over
-## the very endpoint the cap exists to keep outside it. For the destination that
-## blocked every leg TO such a point; for the start it blocked every leg FROM it,
-## even one heading straight away.
+## On a leg between REAL endpoints (cap_to true) both endpoints' room is measured by
+## _grow_room, in the same per-axis metric Rect2.grow uses, not as a straight-line
+## distance: the grown rect has square corners, so a point diagonal from a corner
+## stands farther away in a straight line than the grown corner reaches, and a
+## straight-line room would grow the rect over the very endpoint the cap exists to
+## keep outside it. For the destination that blocked every leg TO such a point; for
+## the start it blocked every leg FROM it, even one heading straight away -- a block
+## parked just off a corner could not leave on its next order. A real endpoint must
+## never be blocked by its own cap.
+##
+## A candidate sightline (cap_to false) keeps the straight-line start room and no
+## destination cap. Its start is often a walker deep inside its own margin, and
+## there the per-axis room is smaller, which grows the rect just short of the walker:
+## a far funnel corner then reads as cleanly visible on a standoff of a fraction of a
+## world unit, and the walker is sent the long way round. Measured on the
+## campaign_deployment_gap clip: a wide cavalry line 318 wu west of and 507 wu north
+## of the hill's corner, with a 516 wu corner margin, saw the hill's far north-west
+## grown corner at a 0.5 wu standoff (the slack itself), turned off its corridor south and stalled
+## beside that corner for the rest of the clip. Measured in a straight line (598 wu)
+## the grown rect keeps the walker inside it, the corner stays rejected, and the
+## corridor route stands.
 ##
 ## The capped margin applies to the WHOLE leg, not only near the endpoint that set
 ## it. A leg to a destination just off a corner therefore keeps only that
@@ -659,17 +673,17 @@ const ROUTE_SIDE_COLLINEAR_EPS := 0.001   # tuned in wu, solver epsilon
 ## past the rect's edge closer than its full swept half-width: a leg whose
 ## destination stands 50 wu and 80 wu off a corner's two edges is judged at a 79.5 wu
 ## margin all along, so a unit needing 100 wu may still be routed straight along a
-## leg that passes 93 wu off one of those edges. The same holds for the corridor fallback in next_step,
-## whose capped candidate sightlines take the room the candidate cell leaves. This
-## is the edge-adjacent-destination trade the cap already makes -- a destination the
-## clamp accepted stays reachable in a straight line -- and the soldier terrain
-## backstop keeps bodies out of the rect itself.
+## leg that passes 93 wu off one of those edges. The same holds for the corridor
+## fallback in next_step, whose capped candidate sightlines take the room the
+## candidate cell leaves. This is the edge-adjacent-destination trade the cap already
+## makes -- a destination the clamp accepted stays reachable in a straight line -- and
+## the soldier terrain backstop keeps bodies out of the rect itself.
 func _segment_blocked(from: Vector2, to: Vector2, clearance: float = 0.0,
 		cap_to: bool = true) -> bool:
 	for r in _block_rects:
-		var room: float = _grow_room(from, r)
+		var room: float = _distance_to_rect(from, r)
 		if cap_to:
-			room = minf(room, _grow_room(to, r))
+			room = minf(_grow_room(from, r), _grow_room(to, r))
 		var eff: float = minf(clearance, room - CLEARANCE_SLACK)
 		if segment_intersects_rect(from, to, r.grow(maxf(0.0, eff))):
 			return true

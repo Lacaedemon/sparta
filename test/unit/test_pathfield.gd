@@ -127,6 +127,26 @@ func test_is_leg_blocked_leaves_a_start_diagonal_from_a_corner_free_to_leave() -
 		"the funnel finds no rect to round on a leg leaving a corner-diagonal start")
 
 
+func test_candidate_sightline_from_inside_the_margin_off_a_corner_stays_rejected() -> void:
+	# A walker inside its own 150 wu margin, diagonal off the rect's top-left corner
+	# at (250, 180): 50 wu west of it and 120 wu north, so 130 wu away in a straight
+	# line and 120 per axis. A candidate sightline (cap_to false) keeps the
+	# straight-line start room, so the rect grows by 129.5, its top edge reaches
+	# y 170.5, and the walker stands inside it: every candidate sightline from there,
+	# including the one to the far top-right corner of the margin-grown rect, is
+	# rejected. Measured per axis, the rect would grow only to y 180.5, leaving the
+	# walker 0.5 wu outside it, and that far corner would read as cleanly visible --
+	# the shape that sent a wide cavalry line the long way round a hill and stalled it.
+	var pf := PathField.new(FIELD)
+	var rect := Rect2(300, 300, 200, 200)
+	pf.block_rect(rect)
+	var from := Vector2(250, 180)
+	var far_corner := Vector2(rect.end.x + 150.0 + PathField.CORNER_STANDOFF,
+			rect.position.y - 150.0 - PathField.CORNER_STANDOFF)
+	assert_true(pf._segment_blocked(from, far_corner, 150.0, false),
+		"a candidate sightline from deep inside the margin is not accepted on a sub-wu standoff")
+
+
 func test_is_leg_blocked_caps_the_whole_leg_at_the_destinations_room() -> void:
 	# The cap a corner-diagonal destination sets applies to the WHOLE leg, not only
 	# near its end. From (700, 100), 200 wu above the rect, to (250, 220), 80 wu off
