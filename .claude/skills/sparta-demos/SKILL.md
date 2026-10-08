@@ -237,7 +237,9 @@ SPARTA_DEMO_INPUT="res://demos/inputs/<name>.json" "$GODOT_BIN" \
   --fixed-fps 30 --quit-after 130 res://tools/demo/DemoInputRecorder.tscn
 ```
 
-then `Read` a frame PNG. (The live `_draw()` renders the form-up preview during
+then `Read` a frame PNG. For a demo clip prefer `tools/demo/capture-frames.sh
+<input> <ticks> [out-dir]`: running `DemoInputRecorder.tscn` directly WITHOUT
+`--write-movie` hung with no frames (wave 5). (The live `_draw()` renders the form-up preview during
 the drag, so the gesture shows.) Drop `--headless` on Windows -- it crashes Movie
 Maker. Run `--headless --import` first in a fresh worktree. See the
 "Local testing" section of `.claude/memories/sparta.md` for the binary.
@@ -686,6 +688,10 @@ shows the drill/order never happening. This presents identically to a wrong keyc
 wrong hotkey, so it's easy to misdiagnose -- the tell is that swapping the `box` for a
 single `click` (selection commits immediately) makes the same key work.
 
+The same window applies to an `rmb_click` ATTACK order after a box-select (staging #1725
+under `all_teams_control`): it must land at least about 30 ticks after the box. At 14 ticks
+it silently no-ops, with the recording completing normally.
+
 **How to apply:** schedule any key that acts on a box-selection at
 `box_tick + DRAG_TICKS + margin` (a few ticks); when a scripted key silently does nothing,
 check the selection-commit timing before suspecting the key name or the dispatch code.
@@ -712,6 +718,9 @@ suspecting the unit's spawn coordinates or the selection logic itself.
 (`Lacaedemon/sparta` PR #1088, 2026-07-26: `nested-control-groups.json`'s box-select for
 group 3 needed padding past its intended two units for this reason.)
 
+A cheap way to stage a break with no interlocked melee: a friend routing within 140 wu
+breaks a unit at once by morale contagion (found staging #1725 under `all_teams_control`).
+
 ## Staging a rout-pursuit demo: the constraint map (four dumped failures)
 
 Retuning the trapped_routing clip surveyed the pursuit-dynamics staging space;
@@ -726,7 +735,14 @@ every rejected staging is a reusable constraint for any future rout/chase demo:
 - **A cavalry pursuer that keeps contact herds and grinds the mob in place**
   (41 -> 2 men in 100 ticks) -- no flee geometry ever forms. Fast pursuit only
   reads as "chasing" when the router is faster (a broken CAVALRY unit outruns
-  its pursuers; a foot router cannot break cavalry contact at all).
+  its pursuers; a foot router cannot break cavalry contact at all). That
+  bullet does NOT hold in the close tier today: a close-tier router flees at
+  about 0.6 wu/tick against a `flee_speed()` of about 3.7, even with no contact
+  (#1739), while a far-tier router flees at full speed. Until #1739 is fixed no
+  close-tier rout demo can show a real flight (#1725 is blocked on it).
+- **`current_speed` reads 0 for a ROUTING unit.** `Unit._process_rout` moves
+  `position` directly and never updates `_current_speed`, so measure flee speed
+  from position deltas between state dumps, not from the `current_speed` column.
 - **Archer fire pins a fleeing mob prone into a crawl** (~14 wu/s vs the
   ~100+ flee pace) -- arrow knockdowns dominate the mob's coupled position, so
   the "flee" becomes 25 seconds of being carved. Ranged pressure cannot drive

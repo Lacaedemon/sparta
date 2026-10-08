@@ -68,3 +68,37 @@ A reviewer caught it.
 - **Don't:** quote a figure from memory or from an earlier run into a commit message.
 
 (`Lacaedemon/sparta` PR #1727, 2026-10-05.)
+
+## Run the adversarial pre-push review BEFORE `tools/check.sh`, not beside it
+
+Every finding the adversarial review returns forces an edit, and edits are barred while `check.sh` runs (a mid-run edit mixes heads).
+Run in parallel, a finding landing mid-suite threw the whole run away: two full `check.sh` runs were discarded in wave 5.
+`TaskStop` does not end a run: it leaves the bash and GUT tree alive, so kill it with `taskkill /PID <check.sh pid> /T /F` and re-list the process table.
+
+- **Do:** get the review's verdict on the committed head first, apply its findings, commit, then start `tools/check.sh` once on the final head.
+
+- **Don't:** start the review and `check.sh` together to save wall-clock time, or `TaskStop` a run and assume it died.
+
+(`Lacaedemon/sparta` #1733 / PR #1737 and #1731 / PR #1740, 2026-10-07/08.)
+
+## Commit before mutation-testing; undo a mutant by its exact inverse
+
+Reverting a mutant with `git checkout -- <file>` restores the last committed version of the whole file, so it wiped an uncommitted fix on PR #1737.
+
+- **Do:** commit the fix first, then mutate, and restore from that commit (or undo the mutation with its exact inverse edit).
+
+- **Don't:** run `git checkout -- <file>` to un-mutate a file that holds uncommitted work.
+
+(`Lacaedemon/sparta` PR #1737, 2026-10-07.)
+
+## `Unit._quarter_turn_fold` is a record of net drill turns; every other fold write clears it
+
+`Unit._quarter_turn_fold` holds the net turn of the QUARTER_TURN leaves settled into `_formation_angle` since anything else last moved it, so `reform_ranks` can re-pair a quarter-turn composed onto a residue fold.
+Every other write to the fold (snap-absorb, engage re-face, non-quarter drill, reform, rout) clears it.
+Composed folds in the explicatio and about-face gates are still open (#1741).
+
+- **Do:** make a new write to `_formation_angle` either add to `_quarter_turn_fold` or clear it, and say which in a comment.
+
+- **Don't:** write `_formation_angle` without touching the record: a stale value re-pairs men through a fold that no longer measures a quarter.
+
+(`Lacaedemon/sparta` #1731 / PR #1740, 2026-10-08.)
