@@ -483,6 +483,12 @@ var _ranks_closed: bool = false
 # that rotation in soldier_world_slots so the slots stay put -- the men don't drift. 0 = the
 # grid is square to the heading (the default). A fresh move order / rout reforms it to 0.
 var _formation_angle: float = 0.0
+# The part of _formation_angle that quarter-turn drill leaves contributed, net: _settle_order_turn
+# adds each completed QUARTER_TURN leaf's turn here as well as to the fold, and every site that
+# drops the fold to 0 clears it. reform_ranks reads it to tell a drill's quarter-turn from a fold
+# that merely measures a quarter, so a quarter-turn composed onto a leftover snap-absorb fold is
+# still re-paired, while snap-absorb and engage folds alone never are.
+var _quarter_turn_fold: float = 0.0
 # True for exactly one thing: a countermarch just performed by reform_ranks() after an about-
 # face folded _formation_angle to ±PI. A single rigid rotation of the whole grid by ang (the
 # normal soldier_world_slots formula) is a POINT reflection -- it negates both the file (lateral)
@@ -6133,6 +6139,7 @@ func _apply_file_double_step(step: Order) -> void:
 		if _holds_quarter_fold():
 			current = UnitFormation.transposed_files(soldiers, current)
 			_formation_angle = 0.0
+			_quarter_turn_fold = 0.0
 			_render_dirty = true
 		files = UnitFormation.widened_files(soldiers, current) if step.dir > 0 \
 				else UnitFormation.narrowed_files(current)
@@ -6337,6 +6344,8 @@ func _settle_order_turn() -> void:
 	var leaf := active_leaf()
 	var turned: float = angle_difference(leaf.turn_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
+	if leaf.type == Order.Type.QUARTER_TURN:
+		_quarter_turn_fold = wrapf(_quarter_turn_fold - turned, -PI, PI)
 	leaf.turn_target = Vector2.ZERO
 	_render_dirty = true
 
@@ -6506,9 +6515,11 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 	# arrays so no body marches anywhere: nothing crosses a file, so no watch is armed.
 	if not (hold_ground and is_about_face_fold):
 		_arm_standoff_settle_window(_reform_timeout())
+	var drilled_quarter: bool = absf(absf(_quarter_turn_fold) - PI * 0.5) < 0.01
 	_formation_angle = 0.0
+	_quarter_turn_fold = 0.0
 	_formation_mirror_x = is_about_face_fold
-	if absf(absf(angle) - PI * 0.5) < 0.01:
+	if absf(absf(angle) - PI * 0.5) < 0.01 or drilled_quarter:
 		_pair_after_quarter_fold(soldiers)
 	# The mirror reflects the grid in depth, which negates every man's slot depth while
 	# leaving his lateral position alone. Reversing each file's own rank order cancels that
@@ -6545,11 +6556,13 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 ## cell i for row major, the old file ids for file major) sends men marching through the block
 ## to reach it, and their centroid drifts off the order line while they do. Pairing from where
 ## they stand instead, by the same lateral-file rule a line-to-square reform uses, keeps
-## each man near his cell. Only a fold within 0.01 rad of a quarter is re-paired (reform_ranks
-## gates the call): a fold left by _face_dir's snap-absorb can be any angle, and re-dealing those
-## by lateral order reshuffled blocks that were not crossing (68, 112 and 156 degree folds on
-## two catalog clips). A quarter-turn drill composed onto such a leftover fold therefore lands
-## off a quarter and is not re-paired either. A squared block keeps its own square assignment.
+## each man near his cell. reform_ranks gates the call on a quarter-turn's origin as well as its
+## angle: it re-pairs a fold within 0.01 rad of a quarter, or one whose quarter-turn drills net a
+## quarter (_quarter_turn_fold), so a drill composed onto a leftover snap-absorb fold (a 25 degree
+## residue plus 90 lands at 115) is still re-paired. A fold that is only snap-absorb or engage
+## re-facing is not: those can be any angle, and re-dealing them by lateral order reshuffled
+## blocks that were not crossing (68, 112 and 156 degree folds on two catalog clips). A squared
+## block keeps its own square assignment.
 ## A row-major unit with no bodies to read (far tier, not yet seeded) keeps its pairing; a
 ## file-major one gets _ensure_file_assignment's own no-body fill. A FILE_GROUP
 ## unit's files are re-dealt too, not carried by subunit: after a quarter-turn its old file
@@ -8471,6 +8484,7 @@ func _rout() -> void:
 	_engage_turn_enemy = null
 	_pin_down_exposure_cd = 0.0        # a rout ends the exposure window instead of freezing it open
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
+	_quarter_turn_fold = 0.0
 	_formation_mirror_x = false
 	_rout_timer = rout_time
 	# Deliberately no `_shattered = false` here: a fresh rout starts "broken"
@@ -9423,6 +9437,7 @@ func to_snapshot_dict() -> Dictionary:
 		"reinforce_cohesion_floor": reinforce_cohesion_floor,
 		"standoff_prev_state": _standoff_prev_state,
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
+		"quarter_turn_fold": _quarter_turn_fold,
 		"formation_mirror_x": _formation_mirror_x,
 		"deploy_facing": deploy_facing, "ordered_facing": ordered_facing,
 		"walk_advance": walk_advance, "reform_before_move": reform_before_move,
@@ -9636,6 +9651,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_standoff_prev_state = int(d.get("standoff_prev_state", state))
 	_ranks_closed = bool(d["ranks_closed"])
 	_formation_angle = float(d["formation_angle"])
+	_quarter_turn_fold = float(d.get("quarter_turn_fold", 0.0))
 	_formation_mirror_x = bool(d["formation_mirror_x"])
 	deploy_facing = d["deploy_facing"]
 	ordered_facing = d["ordered_facing"]
