@@ -13,8 +13,8 @@
   "expect": [
     {"tick": 8, "uid": 0, "field": "position", "value": [380, 820]},
     {"tick": 400, "uid": 0, "field": "state", "value": "MOVING"},
-    {"tick": 800, "uid": 0, "field": "state", "value": "IDLE"}
+    {"tick": 740, "uid": 0, "field": "state", "value": "IDLE"}
   ],
   "frames": [30, 200, 400, 600, 800],
-  "state": [8, 30, 200, 400, 600, 800]
+  "state": [8, 30, 200, 400, 600, 740, 800]
 }

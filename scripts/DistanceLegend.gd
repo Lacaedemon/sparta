@@ -4,6 +4,8 @@ class_name DistanceLegend
 ## with so it stays both round and a sensible width on screen. No node state, no RNG, no
 ## wall-clock -- a function of (zoom, world_units_per_metre) only, so it's directly
 ## unit-testable; HUD just reads the camera and draws the rect + label these compute.
+## Also the player-facing distance wording elsewhere in the HUD: formation intervals,
+## speeds, and the order line's distance and compass point to a destination.
 ## Leaf enough for the bare `godot -s` transcript analyzer: it preloads WorldScale
 ## (zero dependencies) and never touches Unit/Settings.
 
@@ -135,15 +137,15 @@ static func compass_name(offset: Vector2) -> String:
 
 
 ## Player-facing label for a world-unit `offset` from a unit to where it is going: the
-## distance through label_text plus its compass point, e.g. "45 m north-east". Below the
-## half metre label_text would print as "0 m" the trip has no meaningful size or
-## direction, so it returns "" and the caller words the arrival itself.
+## distance through label_text plus its compass point, e.g. "45 m north-east". A trip
+## label_text itself rounds to "0 m" has no meaningful size or direction, so this returns
+## "" and the caller words the arrival itself.
 static func travel_label(offset: Vector2,
 		world_units_per_metre: float = WorldScaleRef.WU_PER_M) -> String:
-	var metres: float = metres_for_world(offset.length(), world_units_per_metre)
-	if metres < 0.5:
+	var distance: String = label_text(metres_for_world(offset.length(), world_units_per_metre))
+	if distance == label_text(0.0):
 		return ""
-	return "%s %s" % [label_text(metres), compass_name(offset)]
+	return "%s %s" % [distance, compass_name(offset)]
 
 
 ## The 1-2-5 ladder from 1 m up to 1e7 m (10,000 km -- far past any battlefield), so

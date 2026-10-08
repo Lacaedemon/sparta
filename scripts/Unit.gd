@@ -8028,9 +8028,13 @@ func order_summary() -> String:
 		if has_move_target:
 			# A distance and compass point from the unit, never the raw world-unit
 			# coordinates: a coordinate pair means nothing to the player in any unit.
+			# The distance is to the current leg's end; queued legs follow as a count.
 			var travel: String = DistanceLegend.travel_label(move_target - position)
-			var dest: String = "Arriving" if travel.is_empty() else "Moving %s" % travel
 			var legs: int = queued_move_points().size()
+			var dest: String = "Moving %s" % travel
+			if travel.is_empty():
+				# Passing a waypoint at pace is not the end of the order.
+				dest = "Arriving" if legs == 0 else "At waypoint"
 			if legs > 0:
 				dest += " (+%d waypoint%s)" % [legs, "" if legs == 1 else "s"]
 			return dest

@@ -565,6 +565,17 @@ func test_order_summary_reads_arriving_within_half_a_metre() -> void:
 		"a destination too close to show a distance reads as arriving, not '0 m'")
 
 
+func test_order_summary_passing_a_waypoint_is_not_arriving() -> void:
+	var u := _make_unit()
+	u.position = Vector2(300, 500)
+	u.set_current_order(Order.new_move(Vector2(305, 500)))   # 0.25 m off the corner
+	u.move_target = Vector2(305, 500)
+	u.has_move_target = true
+	u.append_order(Order.new_move(Vector2(700, 500)))
+	assert_eq(u.order_summary(), "At waypoint (+1 waypoint)",
+		"a corner the route rolls through at pace must not read as the order ending")
+
+
 func test_order_summary_reports_attack_target_by_name() -> void:
 	var u := _make_unit()
 	var enemy := _attacker_at(FRONT)   # any other live unit serves as the target

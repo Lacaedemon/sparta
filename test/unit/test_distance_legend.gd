@@ -226,7 +226,8 @@ func test_travel_label_reads_metres_and_compass_point() -> void:
 			"long trips switch to kilometres through label_text")
 
 
-func test_travel_label_is_empty_below_half_a_metre() -> void:
-	assert_eq(DistanceLegend.travel_label(Vector2(9, 0), WUPM), "", "0.45 m rounds to nothing")
+func test_travel_label_is_empty_when_the_distance_rounds_to_zero() -> void:
+	assert_eq(DistanceLegend.travel_label(Vector2(9, 0), WUPM), "",
+			"0.45 m, which label_text prints as 0 m, has no distance worth showing")
 	assert_eq(DistanceLegend.travel_label(Vector2(10, 0), WUPM), "1 m east",
-			"0.5 m is the first distance worth showing")
+			"0.5 m rounds up to 1 m, the first distance worth showing")
