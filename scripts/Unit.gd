@@ -1471,13 +1471,16 @@ var _cycle_recharging: bool = false
 # true when the unit moved at flee speed during _process_rout,
 # so stamina_band can bill the flight at sprint pace even if _rally transitioned to IDLE.
 var _moved_while_routing: bool = false
+# The flee pace the unit actually ran on that move (its _flee_pace at the time), kept beside
+# _moved_while_routing so the same tick's stamina bill reads the speed run even after a
+# rally has cleared _flee_pace.
+var _moved_while_routing_pace: float = 0.0
 # A routing unit's live flight pace (world units/s). _process_rout ramps it toward
 # flee_speed() at `accel`, the same build-up a march takes, rather than starting the anchor
 # at full flight: the soldier bodies only gain speed at their own bounded acceleration, so
 # an anchor that leapt to flee pace would run ahead of them, the body coupling would pull
 # it back, and the block would trail its slots by tens of world units until they caught up.
-# Seeded by _rout() from the speed the unit was already carrying away from the enemy, and
-# braked back to zero at arrival_brake_rate() before a rally (_rally_braking).
+# Seeded by _rout() from the speed the unit was already carrying away from the enemy.
 var _flee_pace: float = 0.0
 # This tick's flight velocity (flee direction * _flee_pace), set by _process_rout: the
 # routing counterpart of _approach_velocity. SoldierBodies.step feeds it forward to a
@@ -1485,10 +1488,6 @@ var _flee_pace: float = 0.0
 # chase their slots on the jog-capped arrival term, and the body coupling drags the anchor
 # back to them. Read only while state == ROUTING.
 var _flee_velocity: Vector2 = Vector2.ZERO
-# Set by _start_rally while a router that has earned its rally reins its flight in (still
-# ROUTING, _flee_pace braking toward zero); _process_rout reforms it once the flight stops,
-# or at once if an enemy closes back into contact meanwhile.
-var _rally_braking: bool = false
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -1626,6 +1625,7 @@ func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
 	_moved_while_routing = false
+	_moved_while_routing_pace = 0.0
 
 	# Before the rout branch below returns, so a routing tick records ROUTING as the
 	# previous-tick reading and the rally that _process_rout performs is seen on the next
@@ -7923,8 +7923,12 @@ func flee_speed() -> float:
 func stamina_band() -> int:
 	if state == State.FIGHTING:
 		return StaminaFlow.BAND_REST
-	if state == State.ROUTING or _moved_while_routing:
-		return StaminaFlow.band_for_speed(flee_speed(), walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
+	# A router is billed at the pace it is actually running: the flight builds up from a
+	# standstill, so the first seconds of a rout are not yet a flat-out sprint.
+	if _moved_while_routing:
+		return StaminaFlow.band_for_speed(_moved_while_routing_pace, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
+	if state == State.ROUTING:
+		return StaminaFlow.band_for_speed(_flee_pace, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
 	return StaminaFlow.band_for_speed(_current_speed, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
 
 
@@ -8513,7 +8517,6 @@ func _rout() -> void:
 	else:
 		_flee_pace = clampf(_approach_velocity.dot(_flee_heading()), 0.0, flee_speed())
 	_flee_velocity = Vector2.ZERO
-	_rally_braking = false
 	# The flight replaces whatever travel the unit had: _process_rout returns before the idle
 	# decay, so a pre-rout velocity left here would sit frozen through the rout and coast the
 	# anchor off along it on the rallied unit's first idle tick, away from its bodies.
@@ -8577,11 +8580,6 @@ func _process_rout(delta: float) -> void:
 	# Check for viable escape path using PathField (like _move_to does).
 	# If trapped in terrain with no escape route, stop routing and fight instead.
 	if PathField.active != null and _is_escape_path_blocked(flee):
-		# An earned rally that is still braking reforms on the spot instead: it was owed the
-		# rally the moment it earned it, before any of this flight.
-		if _rally_braking:
-			_rally()
-			return
 		_stop_rout_and_fight()
 		return
 
@@ -8600,27 +8598,16 @@ func _process_rout(delta: float) -> void:
 	var to: Vector2 = step - position
 	var dir: Vector2 = to.normalized()
 	_face_dir(dir)
-	# A router that has started to rally reins the flight in at the body-trackable brake
-	# rate (the same rate an orderly arrival brakes at); otherwise the flight builds up
-	# toward full flee pace at the unit's own accel.
-	if _rally_braking:
-		_flee_pace = move_toward(_flee_pace, 0.0, arrival_brake_rate() * delta)
-	else:
-		_flee_pace = move_toward(_flee_pace, flee_speed(), accel * delta)
+	_flee_pace = move_toward(_flee_pace, flee_speed(), accel * delta)
 	_flee_velocity = dir * _flee_pace
 	var next: Vector2 = position + _flee_velocity * delta
 	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
 			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
-		# Braking toward an earned rally, it reforms on the spot rather than running off the
-		# map: the brake runs on for hundreds of world units, well past the retreat margin
-		# from a start near the back edge, and the rally was already owed.
-		if _rally_braking:
-			_rally()
-			return
 		_escape()
 		return
 	position = next
 	_moved_while_routing = true
+	_moved_while_routing_pace = _flee_pace
 
 	# A SHATTERED unit has lost its nerve for good: it just keeps fleeing (the movement
 	# above already ran), with no morale recovery and no rally check ever again. The only
@@ -8636,30 +8623,13 @@ func _process_rout(delta: float) -> void:
 	if morale < ROUT_RALLY_BASELINE:
 		morale += (ROUT_RALLY_BASELINE - morale) * ROUT_MORALE_RECOVER_RATE * delta
 
-	# Already reining in to rally. Gutted below reforming strength meanwhile: the rally is
-	# no longer earned, so the brake is called off and the ordinary rules below decide (a
-	# spent timer then shatters it). Otherwise it reforms once the flight has stopped -- or
-	# on the spot if an enemy closes back into contact, since the rally was already earned
-	# and the brake must never end worse than rallying the moment it was earned. That
-	# contact rally stops the anchor dead from part-pace while the men still carry some of
-	# it; accepted, as the case is rare and rallying at full pace did the same.
-	if _rally_braking:
-		if not _has_rally_strength():
-			_rally_braking = false
-		elif _flee_pace <= 0.0 or not _is_clear_to_rally():
-			_rally()
-			return
-		else:
-			queue_redraw()
-			return
-
 	# Rally the moment morale recovers past the threshold, provided contact is broken and
 	# enough men remain — the unit needn't run out the full timer or reach the edge.
 	# Note: a unit that enters routing with morale already >= rally_morale_threshold rallies
 	# on the first call here (a one-tick rout). In practice routing is triggered by depleted
 	# morale so this is dormant; keep it in mind if non-morale rout triggers are ever added.
 	if morale >= rally_morale_threshold and _can_rally():
-		_start_rally(delta)
+		_rally()
 		return
 
 	_rout_timer -= delta
@@ -8671,31 +8641,14 @@ func _process_rout(delta: float) -> void:
 	# fleeing (still on the field, still fightable) but can never recover morale or rally
 	# again from here on.
 	if _can_rally():
-		_start_rally(delta)
+		_rally()
 	else:
 		_shatter()
 
 
-## Begin a rally: at once if the flight is already at a standstill, otherwise rein it in
-## first (_rally_braking) and reform when it stops. Reforming straight out of full flight
-## stopped the anchor dead while the men, still running, overran their slots and had to
-## walk back; braking while still ROUTING keeps the flight feed-forward on the bodies, so
-## anchor and men come to rest together.
-func _start_rally(delta: float) -> void:
-	# A flight one brake step would stop anyway (a router that rallies on its first tick
-	# has barely started moving) reforms at once.
-	if _flee_pace <= arrival_brake_rate() * delta:
-		_rally()
-		return
-	_rally_braking = true
-	queue_redraw()
-
-
-## Drop the flight state a router carries (_flee_pace, _flee_velocity, _rally_braking) on
-## the way out of ROUTING into play, so a later rout starts clean and nothing reads a
-## stale flight.
+## Drop the flight state a router carries (_flee_pace, _flee_velocity) on the way out of
+## ROUTING into play, so a later rout starts clean and nothing reads a stale flight.
 func _clear_flight() -> void:
-	_rally_braking = false
 	_flee_pace = 0.0
 	_flee_velocity = Vector2.ZERO
 
@@ -8705,17 +8658,8 @@ func _clear_flight() -> void:
 ## field enough men to reform (>= shatter_strength_frac of its max). Positions + counts
 ## only, so it's deterministic and replay-safe.
 func _can_rally() -> bool:
-	return _has_rally_strength() and _is_clear_to_rally()
-
-
-## The strength half of _can_rally: enough men left to reform (>= shatter_strength_frac of
-## its max).
-func _has_rally_strength() -> bool:
-	return soldiers >= int(round(max_soldiers * shatter_strength_frac))
-
-
-## The contact half of _can_rally: no living enemy within RALLY_CONTACT_RADIUS.
-func _is_clear_to_rally() -> bool:
+	if soldiers < int(round(max_soldiers * shatter_strength_frac)):
+		return false
 	return UnitTargeting.nearest_enemy_to(self, position, RALLY_CONTACT_RADIUS) == null
 
 
@@ -9597,8 +9541,8 @@ func to_snapshot_dict() -> Dictionary:
 		"withdrawal_peeling": _withdrawal_peeling,
 		"separation_velocity": _separation_velocity,
 		"moved_while_routing": _moved_while_routing,
+		"moved_while_routing_pace": _moved_while_routing_pace,
 		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity,
-		"rally_braking": _rally_braking,
 		# Not reset before a routing unit's early return, so a router keeps reading it.
 		"is_facing_turning": _is_facing_turning,
 
@@ -9822,9 +9766,9 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_withdrawal_peeling = bool(d.get("withdrawal_peeling", _withdrawal_peeling))
 	_separation_velocity = d.get("separation_velocity", _separation_velocity)
 	_moved_while_routing = bool(d.get("moved_while_routing", _moved_while_routing))
+	_moved_while_routing_pace = float(d.get("moved_while_routing_pace", _moved_while_routing_pace))
 	_flee_pace = float(d.get("flee_pace", _flee_pace))
 	_flee_velocity = d.get("flee_velocity", _flee_velocity)
-	_rally_braking = bool(d.get("rally_braking", _rally_braking))
 	_is_facing_turning = bool(d.get("is_facing_turning", _is_facing_turning))
 	is_general = bool(d.get("is_general", is_general))
 	order_clear_step = float(d.get("order_clear_step", order_clear_step))

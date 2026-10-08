@@ -432,7 +432,7 @@ func test_spawn_role_tunables_and_late_state_round_trip() -> void:
 		"is_general": true, "line_index": 2,
 		"_withdrawal_peeling": true, "_separation_velocity": Vector2(3.5, -1.25),
 		"_moved_while_routing": true, "_is_facing_turning": true,
-		"_flee_pace": 61.5, "_flee_velocity": Vector2(-12.0, 60.25), "_rally_braking": true,
+		"_flee_pace": 61.5, "_flee_velocity": Vector2(-12.0, 60.25), "_moved_while_routing_pace": 47.5,
 		"order_clear_step": 12.0, "order_clear_tolerance": 2.5,
 		"formed_turn_tracking_frac": 0.4, "melee_press_fraction": 0.33,
 		"routing_melee_press_fraction": 0.21, "disengage_step_distance": 77.0,
@@ -462,7 +462,8 @@ func test_newly_captured_fields_default_for_older_snapshots() -> void:
 		"is_general": "is_general", "line_index": "line_index",
 		"withdrawal_peeling": "_withdrawal_peeling", "separation_velocity": "_separation_velocity",
 		"moved_while_routing": "_moved_while_routing", "is_facing_turning": "_is_facing_turning",
-		"flee_pace": "_flee_pace", "flee_velocity": "_flee_velocity", "rally_braking": "_rally_braking",
+		"flee_pace": "_flee_pace", "flee_velocity": "_flee_velocity",
+		"moved_while_routing_pace": "_moved_while_routing_pace",
 	}
 	for tunable in ["order_clear_step", "order_clear_tolerance", "formed_turn_tracking_frac",
 			"melee_press_fraction", "routing_melee_press_fraction", "disengage_step_distance",

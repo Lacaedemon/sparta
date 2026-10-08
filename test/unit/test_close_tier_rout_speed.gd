@@ -29,17 +29,6 @@ const SPEED_TOLERANCE_FRAC := 0.1
 # How far the bodies may stand off their slots while fleeing at full pace (world units):
 # the men run WITH the anchor, not strung out behind it.
 const MAX_BODY_SLOT_WU := 10.0
-# Covers the brake from full flight before the rally (flee_speed / arrival_brake_rate is
-# about 5.5 s for this Cavalry) plus a few seconds of the reform after it.
-const RALLY_WINDOW_TICKS := 600
-# A deeper squadron than the speed test's, so men running on past a dead-stopped anchor
-# would have somewhere to overrun to.
-const RALLY_ROUTER_COUNT := 40
-# The most the men's mean speed may fall in a single tick, as a fraction of the flee pace.
-# Reforming straight out of full flight dropped it by 69.3 wu/s in one tick on this staging
-# (flee pace 221 wu/s); braking first leaves only the last few wu/s of the men settling onto
-# their slots (measured 5.3 wu/s), well under this.
-const MAX_ONE_TICK_DROP_FRAC := 0.1
 
 var _battle: Node = null
 
@@ -53,22 +42,17 @@ func after_each() -> void:
 	await get_tree().physics_frame
 
 
-## Stage the router (and, unless `with_enemy` is false, the idle enemy squadron). Without
-## the enemy the battle runs in drill mode, so nothing demotes the rallied router to the far
-## tier -- which would drop its bodies and leave nothing to measure.
-func _spawn(with_enemy: bool = true, router_count: int = 12) -> Unit:
+func _spawn() -> Unit:
 	Replay.forced_seed = 12345
 	_battle = load("res://scenes/Battle.tscn").instantiate()
 	_battle.all_teams_control = true
-	_battle.drill_mode = not with_enemy
 	_battle.terrain = []
 	_battle.scenario = [
-		{"team": 0, "type": "Cavalry", "count": router_count, "x": ROUTER_START.x,
-				"y": ROUTER_START.y, "facing": [0, -1]},
+		{"team": 0, "type": "Cavalry", "count": 12, "x": ROUTER_START.x, "y": ROUTER_START.y,
+				"facing": [0, -1]},
+		{"team": 1, "type": "Cavalry", "count": 12, "x": ENEMY_START.x, "y": ENEMY_START.y,
+				"facing": [-1, 0]},
 	]
-	if with_enemy:
-		_battle.scenario.append({"team": 1, "type": "Cavalry", "count": 12,
-				"x": ENEMY_START.x, "y": ENEMY_START.y, "facing": [-1, 0]})
 	add_child(_battle)
 	await get_tree().physics_frame
 	for u in get_tree().get_nodes_in_group("units"):
@@ -147,67 +131,3 @@ func test_close_tier_router_flees_at_flee_speed_with_its_bodies() -> void:
 			"no body trails its slot by more than %.1f wu (worst %.2f)" % [MAX_BODY_SLOT_WU, worst])
 	assert_lt(centroid_gap, MAX_BODY_SLOT_WU,
 			"the body centroid keeps up with the slot centroid (gap %.2f wu)" % centroid_gap)
-
-
-func test_a_router_rallying_from_full_flight_comes_to_rest_with_its_bodies() -> void:
-	# A router that earns its rally at full flight reins the flight in before it reforms, so
-	# its riders come to rest with the anchor. Reforming straight out of full flight stopped
-	# the anchor dead while the men were still running at flee pace: their mean ground speed
-	# fell by 69.3 wu/s (flee pace 221) in a single tick on this staging. On a
-	# block that also re-squares as it rallies (the square and row-major rally clips) the
-	# men overran their slots too; this squadron has no fold to undo, so the coupling drags
-	# its anchor along with them and the slot gap stays small either way (0.62 wu without
-	# the brake). The one-tick speed drop is what catches the abrupt stop here, and the gap
-	# bound below guards the bodies staying with the anchor through the brake.
-	var router: Unit = await _spawn(false, RALLY_ROUTER_COUNT)
-	assert_not_null(router, "the team-0 cavalry deployed")
-	if router == null:
-		return
-	router.rally_morale_threshold = 1000.0   # no rally until it is at full flight
-	router.rout_time = 1000.0
-	router.morale = 0.0
-	router._rout()
-	await _advance_ticks(RAMP_TICKS)
-	assert_almost_eq(router._flee_pace, router.flee_speed(), 0.001, "at full flight before the rally")
-	router.rally_morale_threshold = 0.0   # the rally is earned on the next tick
-	var worst: float = 0.0
-	var rallied_tick: int = -1
-	# The men's own deceleration, tick to tick: braking first brings them down gradually,
-	# where reforming straight out of full flight cut 69.3 wu/s from it in one tick.
-	var worst_drop: float = 0.0
-	var last_pos: PackedVector2Array = router._sim_soldier_pos.duplicate()
-	var last_speed: float = -1.0
-	var budget: int = _battle.current_tick() + RALLY_WINDOW_TICKS
-	while _battle.current_tick() < budget:
-		await _advance_ticks(1)
-		assert_eq(router.tier, FormationTier.CLOSE, "the router keeps its bodies (close tier) throughout")
-		assert_eq(router._sim_soldier_pos.size(), router.soldiers, "one body per man to measure")
-		worst = maxf(worst, _worst_body_slot_gap(router))
-		var speed: float = _mean_body_speed(last_pos, router._sim_soldier_pos)
-		if last_speed >= 0.0:
-			worst_drop = maxf(worst_drop, last_speed - speed)
-		last_speed = speed
-		last_pos = router._sim_soldier_pos.duplicate()
-		if rallied_tick < 0 and router.state == Unit.State.IDLE:
-			rallied_tick = _battle.current_tick()
-	assert_true(rallied_tick >= 0, "it rallied within the window")
-	assert_lt(worst, MAX_BODY_SLOT_WU,
-			"no body stood more than %.1f wu off its slot through the brake and the rally (worst %.2f)"
-			% [MAX_BODY_SLOT_WU, worst])
-	var max_drop: float = MAX_ONE_TICK_DROP_FRAC * router.flee_speed()
-	assert_lt(worst_drop, max_drop,
-			"the men never stop dead from their flight (worst drop %.2f wu/s in one tick, cap %.2f)"
-			% [worst_drop, max_drop])
-
-
-## Mean speed of a block's bodies over one tick (world units/s), from how far each moved
-## between two consecutive position snapshots -- the ground they actually covered, not the
-## stored velocity the arrival bookkeeping trims.
-func _mean_body_speed(before: PackedVector2Array, after: PackedVector2Array) -> float:
-	var n: int = mini(before.size(), after.size())
-	if n == 0:
-		return 0.0
-	var total: float = 0.0
-	for i in range(n):
-		total += before[i].distance_to(after[i])
-	return total / float(n) * float(Engine.physics_ticks_per_second)

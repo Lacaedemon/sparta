@@ -614,7 +614,7 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	# GaitLimits.FLEE_SPEED_MULTIPLIER), above its sprint by design, and SoldierBodies.step
 	# measures a router's body-speed ceiling from it. An interval is held to that flee-pace
 	# cap when its START sample is routing: the men carry their flight speed into the
-	# interval, and a router that rallies inside it brakes down from flee pace first. A unit
+	# interval, and a router that rallies inside it was running at flee pace up to then. A unit
 	# that only starts routing at the interval's end builds its flight up from its march
 	# pace at its own accel, so over that interval its sprint ceiling still applies.
 	var cap: float = sprint * SUPERPHYSICAL_SPEED_FRAC
@@ -764,6 +764,8 @@ static func expect_entry_error(e) -> String:
 		# An absence claim ("this unit is gone by then") names no field or value.
 		if not (e.get("absent") is bool) or not bool(e.get("absent")):
 			return "absent must be true"
+		if e.has("field") or e.has("value") or e.has("tol"):
+			return "an absent entry takes no field, value or tol"
 		return ""
 	if str(e.get("field", "")) == "":
 		return "missing field"
@@ -773,7 +775,21 @@ static func expect_entry_error(e) -> String:
 		var tol = e.get("tol")
 		if not (tol is float or tol is int) or float(tol) < 0.0:
 			return "tol must be a non-negative number"
+		if not _is_numeric_value(e.get("value")):
+			return "tol applies only to a number or an array of numbers"
 	return ""
+
+
+## Whether `v` is a number or a non-empty array of numbers -- what a `tol` can compare.
+static func _is_numeric_value(v) -> bool:
+	if v is float or v is int:
+		return true
+	if not (v is Array) or (v as Array).is_empty():
+		return false
+	for x in v:
+		if not (x is float or x is int):
+			return false
+	return true
 
 
 ## Evaluate declared demo intent against a dumped transcript: each expectation is
@@ -901,9 +917,11 @@ static func _exempts_uid(entry: Dictionary, uid: int) -> bool:
 
 
 static func _values_match(expected, actual, tol: float = 0.0) -> bool:
-	var slack: float = maxf(tol, 0.001)
 	if (expected is float or expected is int) and (actual is float or actual is int):
-		return absf(float(expected) - float(actual)) < slack
+		# An explicit tol is inclusive; with none, the old exact-match slack applies.
+		if tol > 0.0:
+			return absf(float(expected) - float(actual)) <= tol
+		return absf(float(expected) - float(actual)) < 0.001
 	# A numeric [x, y] pair within `tol` on each component, for a position that may drift
 	# by a fraction of a world unit across platforms.
 	if tol > 0.0 and expected is Array and actual is Array \
@@ -920,27 +938,49 @@ static func _values_match(expected, actual, tol: float = 0.0) -> bool:
 
 
 ## An `absent` expectation: passes when some snapshot inside [lo, hi] carries no record
-## for `uid` -- the unit has left play (annihilated, escaped, merged) by then. Fails when
-## every snapshot in range still lists it, or when there is no snapshot in range at all.
+## for `uid` AND an earlier snapshot did -- the unit was in play and has left it
+## (annihilated, escaped, merged) by then. A uid that never appears at all fails, as does a
+## snapshot without a `units` list (unreadable, not empty), every snapshot in range still
+## listing it, or no snapshot in range at all.
 static func _check_absent(uid: int, lo: int, hi: int, when: String, snapshots: Array) -> Dictionary:
 	var probed := false
 	var gone := false
+	var seen_before := false
+	var malformed := false
 	for snap in snapshots:
 		var tick: int = int(snap.get("tick", -1))
-		if tick < lo or tick > hi:
+		if tick > hi:
 			continue
-		probed = true
+		if not (snap.get("units") is Array):
+			if tick >= lo:
+				malformed = true
+			continue
 		var present := false
-		for u in snap.get("units", []):
+		for u in snap["units"]:
 			if int(u.get("uid", -1)) == uid:
 				present = true
 				break
-		if not present:
+		if tick < lo:
+			seen_before = seen_before or present
+			continue
+		probed = true
+		if present:
+			seen_before = true
+		elif seen_before:
 			gone = true
 			break
-	return {"uid": uid, "metric": "expect:absent@%s" % when, "pass": probed and gone,
-			"worst": "absent" if gone else ("present" if probed else "(no snapshot in range)"),
-			"threshold": "absent"}
+	var ok: bool = probed and gone and not malformed
+	var worst: String = "absent"
+	if malformed:
+		worst = "(snapshot without a units list)"
+	elif not probed:
+		worst = "(no snapshot in range)"
+	elif not seen_before:
+		worst = "(never present -- nothing to have left)"
+	elif not gone:
+		worst = "present"
+	return {"uid": uid, "metric": "expect:absent@%s" % when, "pass": ok,
+			"worst": worst, "threshold": "absent"}
 
 
 ## Mean distance from each body to its nearest slot of ANY identity -- how settled the

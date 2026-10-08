@@ -5657,80 +5657,8 @@ func test_routing_from_melee_ignores_leftover_charge_speed() -> void:
 	PathField.active = old_pf
 
 
-func test_rallying_router_brakes_to_a_stop_before_it_reforms() -> void:
-	# A router that earns its rally at full flight reins the flight in first (still
-	# ROUTING), and reforms only once it has stopped, so its bodies come to rest with it.
-	var old_pf: PathField = PathField.active
-	PathField.active = null
-	var u := _open_ground_router(Vector2.ZERO)
-	u._flee_pace = u.flee_speed()   # already at full flight
-	u.morale = Unit.RALLY_MORALE_THRESHOLD + 1.0   # earns the rally on the next tick, no enemy near
-	var delta: float = 0.016
-	u._process_rout(delta)
-	assert_eq(u.state, Unit.State.ROUTING, "still routing while it reins in")
-	assert_true(u._rally_braking, "it has begun braking for the rally")
-	var last_pace: float = u._flee_pace
-	var ticks: int = 1
-	while u.state == Unit.State.ROUTING and ticks < 2000:
-		u._process_rout(delta)
-		ticks += 1
-		if u.state == Unit.State.ROUTING:
-			assert_true(u._flee_pace < last_pace, "the flight only ever slows while braking")
-			last_pace = u._flee_pace
-	assert_eq(u.state, Unit.State.IDLE, "it rallies once the flight has stopped")
-	var expected_ticks: int = int(ceil(u.flee_speed() / (u.arrival_brake_rate() * delta)))
-	assert_almost_eq(float(ticks), float(expected_ticks), 2.0,
-			"after braking at arrival_brake_rate() from flee pace")
-	assert_eq(u._flee_pace, 0.0, "and the rallied unit carries no flight pace")
-	assert_false(u._rally_braking, "nor a stale braking flag")
-	PathField.active = old_pf
 
 
-## A team-1 unit standing `offset` from `u`, inside RALLY_CONTACT_RADIUS when offset is small.
-func _enemy_beside(u: Unit, offset: Vector2) -> Unit:
-	var enemy := _make_unit()
-	enemy.team = 1
-	enemy.position = u.position + offset
-	return enemy
-
-
-func test_contact_returning_mid_brake_rallies_an_earned_morale_rally() -> void:
-	# The brake before a rally must never turn an earned rally into a worse outcome: if an
-	# enemy closes back into contact while the router reins in, it reforms on the spot.
-	var old_pf: PathField = PathField.active
-	PathField.active = null
-	var u := _open_ground_router(Vector2.ZERO)
-	u._flee_pace = u.flee_speed()
-	u.morale = Unit.RALLY_MORALE_THRESHOLD + 1.0
-	var delta: float = 0.016
-	u._process_rout(delta)
-	assert_true(u._rally_braking, "the morale rally is earned and the brake has begun")
-	_enemy_beside(u, Vector2(30, 0))
-	u._process_rout(delta)
-	assert_eq(u.state, Unit.State.IDLE, "contact mid-brake: it rallies at once")
-	assert_false(u._shattered, "not shattered")
-	PathField.active = old_pf
-
-
-func test_contact_returning_mid_brake_rallies_an_earned_timer_rally() -> void:
-	# The timer path: the rout timer runs out while clear, so the rally is earned and the
-	# brake begins with the timer already spent. Contact returning mid-brake must still
-	# rally, not fall through to the expired timer and shatter.
-	var old_pf: PathField = PathField.active
-	PathField.active = null
-	var u := _open_ground_router(Vector2.ZERO)
-	u._flee_pace = u.flee_speed()
-	u.morale = 0.0
-	u._rout_timer = 0.001   # expires on this tick
-	var delta: float = 0.016
-	u._process_rout(delta)
-	assert_true(u._rally_braking, "the timer ran out clear: the rally is earned and the brake has begun")
-	assert_true(u._rout_timer <= 0.0, "with the timer spent")
-	_enemy_beside(u, Vector2(30, 0))
-	u._process_rout(delta)
-	assert_eq(u.state, Unit.State.IDLE, "contact mid-brake: it rallies at once")
-	assert_false(u._shattered, "rather than shattering on the spent timer")
-	PathField.active = old_pf
 
 
 func test_routing_from_fighting_ignores_even_a_lean_away() -> void:
@@ -5759,7 +5687,7 @@ func test_a_rallied_unit_does_not_coast_off_on_its_pre_rout_velocity() -> void:
 		assert_eq(u._approach_velocity, Vector2.ZERO, "the rout clears the pre-rout travel velocity")
 		assert_eq(u._current_speed, 0.0, "and the pre-rout speed")
 		u.morale = Unit.RALLY_MORALE_THRESHOLD + 1.0
-		u._process_rout(0.016)   # one step from rest, then the rally (one brake step stops it)
+		u._process_rout(0.016)   # one step from rest, then the rally
 		assert_eq(u.state, Unit.State.IDLE, "it rallied")
 		var rallied_at: Vector2 = u.position
 		for i in range(30):
@@ -5769,67 +5697,8 @@ func test_a_rallied_unit_does_not_coast_off_on_its_pre_rout_velocity() -> void:
 	PathField.active = old_pf
 
 
-## A router at full flight that has just earned its rally and begun braking for it.
-func _braking_router(at: Vector2, bounds: Rect2) -> Unit:
-	var u := _open_ground_router(Vector2.ZERO)
-	u.retreat_bounds = bounds
-	u.position = at
-	u._flee_pace = u.flee_speed()
-	u.morale = Unit.RALLY_MORALE_THRESHOLD + 1.0
-	u._process_rout(0.016)
-	assert_true(u._rally_braking, "setup: the rally is earned and the brake has begun")
-	return u
 
 
-func test_a_braking_router_at_its_back_edge_rallies_instead_of_escaping() -> void:
-	# The brake runs on far past a router's retreat margin from a start near its back edge.
-	# The rally was owed the moment it was earned, so it reforms on the spot rather than
-	# running off the map and out of play.
-	var old_pf: PathField = PathField.active
-	PathField.active = null
-	var u := _braking_router(Vector2(200, 20), Rect2(0, 0, 400, 400))   # flees UP toward y=0
-	var ticks: int = 0
-	while u.state == Unit.State.ROUTING and ticks < 200:
-		u._process_rout(0.016)
-		ticks += 1
-	assert_eq(u.state, Unit.State.IDLE, "it rallied at the edge of its margin")
-	assert_true(u.is_in_group("units"), "and is still in play")
-	assert_true(u.position.y >= 0.0, "without having left its retreat bounds")
-	PathField.active = old_pf
-
-
-func test_a_router_gutted_while_braking_does_not_rally() -> void:
-	# Losing men below reforming strength while it slows means the rally is no longer
-	# earned: the brake is called off and the ordinary rules decide -- with its timer spent,
-	# it shatters rather than reforming.
-	var old_pf: PathField = PathField.active
-	PathField.active = null
-	var u := _braking_router(Vector2(200, 200), Rect2(-2000, -2000, 4000, 4000))
-	u._rout_timer = 0.0
-	u.soldiers = int(round(u.max_soldiers * u.shatter_strength_frac)) - 1
-	u._process_rout(0.016)
-	assert_ne(u.state, Unit.State.IDLE, "a gutted router does not rally")
-	assert_false(u._rally_braking, "the brake is called off")
-	assert_true(u._shattered, "and with its timer spent it shatters")
-	PathField.active = old_pf
-
-
-func test_a_braking_router_that_turns_out_trapped_rallies_instead_of_fighting_to_the_death() -> void:
-	# Boxed in by terrain while slowing to an earned rally, it reforms on the spot -- not the
-	# trapped router's stand-and-fight, which marks it shattered for good.
-	var old_pf: PathField = PathField.active
-	PathField.active = null
-	var u := _braking_router(Vector2(640, 360), Rect2(-2000, -2000, 4000, 4000))
-	var pf := PathField.new(Rect2(0, 0, 1280, 720))
-	pf.block_rect(Rect2(520, 240, 240, 60))   # top wall
-	pf.block_rect(Rect2(520, 420, 240, 60))   # bottom wall
-	pf.block_rect(Rect2(520, 240, 60, 240))   # left wall
-	pf.block_rect(Rect2(700, 240, 60, 240))   # right wall
-	PathField.active = pf
-	u._process_rout(0.016)
-	assert_eq(u.state, Unit.State.IDLE, "it rallied")
-	assert_false(u._shattered, "rather than standing to fight to the death")
-	PathField.active = old_pf
 
 
 func test_stopping_a_rout_to_fight_clears_the_flight() -> void:
@@ -5839,11 +5708,9 @@ func test_stopping_a_rout_to_fight_clears_the_flight() -> void:
 	u._rout()
 	u._flee_pace = 80.0
 	u._flee_velocity = Vector2(0, -80)
-	u._rally_braking = true
 	u._stop_rout_and_fight()
 	assert_eq(u._flee_pace, 0.0, "no flight pace left")
 	assert_eq(u._flee_velocity, Vector2.ZERO, "no flight velocity left")
-	assert_false(u._rally_braking, "no stale braking flag")
 
 
 func test_routing_unit_escapes_when_it_flees_past_the_retreat_margin() -> void:

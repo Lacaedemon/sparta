@@ -1351,6 +1351,22 @@ func test_check_expectations_tol_matches_a_position_within_tolerance() -> void:
 	assert_ne(DemoDefects.expect_entry_error(
 			{"tick": 1, "uid": 0, "field": "position", "value": [0, 0], "tol": -1.0}), "",
 			"a negative tol is malformed")
+	assert_ne(DemoDefects.expect_entry_error(
+			{"tick": 1, "uid": 0, "field": "state", "value": "IDLE", "tol": 1.0}), "",
+			"a tol on a non-numeric value is malformed")
+
+
+func test_check_expectations_tol_is_inclusive_for_numbers_and_pairs() -> void:
+	# A value exactly `tol` away matches, for a scalar and for each component of a pair.
+	var snaps: Array = [{"tick": 10, "units": [{"uid": 0, "morale": 12.5, "position": [10.0, 22.5]}]}]
+	var verdicts: Array = DemoDefects.check_expectations([
+		{"tick": 10, "uid": 0, "field": "morale", "value": 10.0, "tol": 2.5},
+		{"tick": 10, "uid": 0, "field": "position", "value": [12.5, 20.0], "tol": 2.5},
+		{"tick": 10, "uid": 0, "field": "morale", "value": 10.0, "tol": 2.4},
+	], snaps)
+	assert_true(bool(verdicts[0]["pass"]), "a number exactly tol away matches")
+	assert_true(bool(verdicts[1]["pass"]), "a pair exactly tol away on each component matches")
+	assert_false(bool(verdicts[2]["pass"]), "just outside tol does not")
 
 
 func test_check_expectations_absent_passes_once_the_unit_is_gone() -> void:
@@ -1372,3 +1388,27 @@ func test_check_expectations_absent_passes_once_the_unit_is_gone() -> void:
 			"an absence claim needs no field or value")
 	assert_ne(DemoDefects.expect_entry_error({"tick": 600, "uid": 0, "absent": false}), "",
 			"absent false is malformed")
+	assert_ne(DemoDefects.expect_entry_error(
+			{"tick": 600, "uid": 0, "absent": true, "field": "state", "value": "IDLE"}), "",
+			"an absent entry naming a field/value is malformed")
+
+
+func test_check_expectations_absent_does_not_pass_vacuously() -> void:
+	# Absence means the unit was in play and has left it: a uid that was never there, or a
+	# snapshot with no readable units list, must not read as "gone".
+	var snaps: Array = [
+		{"tick": 600, "units": [{"uid": 3, "state": "FIGHTING"}]},
+		{"tick": 620, "units": [{"uid": 3, "state": "IDLE"}]},
+	]
+	var never: Array = DemoDefects.check_expectations([
+		{"tick": [600, 640], "uid": 0, "absent": true},
+	], snaps)
+	assert_false(bool(never[0]["pass"]), "a uid never present has nothing to have left")
+	var broken: Array = [
+		{"tick": 600, "units": [{"uid": 0, "state": "ROUTING"}]},
+		{"tick": 620},
+	]
+	var no_units: Array = DemoDefects.check_expectations([
+		{"tick": [600, 640], "uid": 0, "absent": true},
+	], broken)
+	assert_false(bool(no_units[0]["pass"]), "a snapshot without a units list is unreadable, not empty")

@@ -69,10 +69,8 @@ func test_a_broken_unit_recovers_and_rallies_with_no_enemies_present() -> void:
 	# Nothing to interfere: no enemy exists anywhere, so _can_rally() is trivially satisfied
 	# the moment morale crosses the threshold (or the timer expires, whichever comes first ---
 	# both lead to a rally here, never a shatter). Tick until it rallies, bounded by ROUT_TIME
-	# plus generous slack for the asymptotic climb and the test loop's own granularity, plus
-	# the time a router at full flight takes to rein in before it reforms.
-	var brake_ticks: int = int(ceil(mine.flee_speed() / mine.arrival_brake_rate() * Replay.PHYSICS_TPS))
-	var budget: int = int(ceil(Unit.ROUT_TIME * Replay.PHYSICS_TPS)) + brake_ticks + 120
+	# plus generous slack for the asymptotic climb and the test loop's own granularity.
+	var budget: int = int(ceil(Unit.ROUT_TIME * Replay.PHYSICS_TPS)) + 120
 	var rallied_tick: int = -1
 	while battle.current_tick() < budget:
 		await get_tree().physics_frame
@@ -103,7 +101,7 @@ const DEMO_WINDOW_TICKS := 540
 
 func test_the_published_demo_staging_rallies_inside_its_clip() -> void:
 	# Stage the demo's own scenario straight from its input file, so a change that pushes
-	# the rally past the end of the recorded clip (a faster flight, a longer brake) fails
+	# the rally past the end of the recorded clip (a faster or longer flight) fails
 	# here rather than shipping a recovery clip that never shows the recovery.
 	var spec_text: String = FileAccess.get_file_as_string(DEMO_INPUT)
 	var spec: Dictionary = JSON.parse_string(spec_text)
