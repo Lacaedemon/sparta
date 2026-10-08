@@ -71,6 +71,15 @@ func _advance_ticks(n: int) -> void:
 		await get_tree().physics_frame
 
 
+## The farthest any of `unit`'s bodies stands from its own formation slot (world units).
+func _worst_body_slot_gap(unit: Unit) -> float:
+	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
+	var worst: float = 0.0
+	for i in range(mini(slots.size(), unit._sim_soldier_pos.size())):
+		worst = maxf(worst, unit._sim_soldier_pos[i].distance_to(slots[i]))
+	return worst
+
+
 func test_close_tier_router_flees_at_flee_speed_with_its_bodies() -> void:
 	var router: Unit = await _spawn()
 	assert_not_null(router, "the team-0 cavalry deployed")
@@ -82,8 +91,17 @@ func test_close_tier_router_flees_at_flee_speed_with_its_bodies() -> void:
 	router.rout_time = 1000.0
 	router.morale = 0.0
 	router._rout()
-	await _advance_ticks(RAMP_TICKS)
+	# Through the build-up too, the men keep pace with the anchor rather than the anchor
+	# leaping to full flight and the block trailing it until the coupling drags it back.
+	var worst_ramp: float = 0.0
+	var ramp_end: int = _battle.current_tick() + RAMP_TICKS
+	while _battle.current_tick() < ramp_end and router.state == Unit.State.ROUTING:
+		await _advance_ticks(1)
+		worst_ramp = maxf(worst_ramp, _worst_body_slot_gap(router))
 	assert_eq(router.state, Unit.State.ROUTING, "still routing after the build-up")
+	assert_lt(worst_ramp, MAX_BODY_SLOT_WU,
+			"no body trails its slot by more than %.1f wu while the flight builds up (worst %.2f)"
+			% [MAX_BODY_SLOT_WU, worst_ramp])
 
 	var start: Vector2 = router.position
 	var start_tick: int = _battle.current_tick()
@@ -102,11 +120,10 @@ func test_close_tier_router_flees_at_flee_speed_with_its_bodies() -> void:
 	assert_eq(slots.size(), router._sim_soldier_pos.size(), "one body per slot")
 	var body_centroid := Vector2.ZERO
 	var slot_centroid := Vector2.ZERO
-	var worst: float = 0.0
 	for i in range(slots.size()):
 		body_centroid += router._sim_soldier_pos[i]
 		slot_centroid += slots[i]
-		worst = maxf(worst, router._sim_soldier_pos[i].distance_to(slots[i]))
+	var worst: float = _worst_body_slot_gap(router)
 	var inv: float = 1.0 / float(maxi(1, slots.size()))
 	var centroid_gap: float = (body_centroid * inv).distance_to(slot_centroid * inv)
 	assert_lt(worst, MAX_BODY_SLOT_WU,
