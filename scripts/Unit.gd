@@ -8026,7 +8026,10 @@ func order_summary() -> String:
 			# say "Holding position", reading as if the order had been dropped.
 			return "Re-forming"
 		if has_move_target:
-			var dest: String = "Moving to (%d, %d)" % [int(round(move_target.x)), int(round(move_target.y))]
+			# A distance and compass point from the unit, never the raw world-unit
+			# coordinates: a coordinate pair means nothing to the player in any unit.
+			var travel: String = DistanceLegend.travel_label(move_target - position)
+			var dest: String = "Arriving" if travel.is_empty() else "Moving %s" % travel
 			var legs: int = queued_move_points().size()
 			if legs > 0:
 				dest += " (+%d waypoint%s)" % [legs, "" if legs == 1 else "s"]

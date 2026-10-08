@@ -119,6 +119,33 @@ static func interval_pair_label(file_wu: float, rank_wu: float = -1.0) -> String
 	return "%s x %s" % [file_s.trim_suffix(" m"), rank_s]
 
 
+## Eight-point compass names, counter-clockwise from east in 45-degree steps.
+const COMPASS_POINTS: Array[String] = ["east", "north-east", "north", "north-west",
+		"west", "south-west", "south", "south-east"]
+
+
+## The eight-point compass name nearest `offset`'s direction. Screen-up (-y) is north, as
+## on a map. "" for a zero offset, which has no direction.
+static func compass_name(offset: Vector2) -> String:
+	if offset == Vector2.ZERO:
+		return ""
+	var ang: float = atan2(-offset.y, offset.x)   # CCW from east, north positive
+	var sector: int = posmod(int(round(ang / (PI / 4.0))), COMPASS_POINTS.size())
+	return COMPASS_POINTS[sector]
+
+
+## Player-facing label for a world-unit `offset` from a unit to where it is going: the
+## distance through label_text plus its compass point, e.g. "45 m north-east". Below the
+## half metre label_text would print as "0 m" the trip has no meaningful size or
+## direction, so it returns "" and the caller words the arrival itself.
+static func travel_label(offset: Vector2,
+		world_units_per_metre: float = WorldScaleRef.WU_PER_M) -> String:
+	var metres: float = metres_for_world(offset.length(), world_units_per_metre)
+	if metres < 0.5:
+		return ""
+	return "%s %s" % [label_text(metres), compass_name(offset)]
+
+
 ## The 1-2-5 ladder from 1 m up to 1e7 m (10,000 km -- far past any battlefield), so
 ## pick_round_metres always has a candidate at any sane zoom. Generated, not hand-listed,
 ## so it never runs out at an extreme zoom.
