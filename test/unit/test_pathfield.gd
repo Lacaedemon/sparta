@@ -104,12 +104,46 @@ func test_is_leg_blocked_leaves_a_destination_diagonal_from_a_corner_reachable()
 	# 94 wu away in a straight line, but only 80 in the per-axis metric the grown
 	# rect's square corner reaches. Capping the margin at the straight-line 94 grew
 	# the corner over the destination itself, so every leg to it read as blocked even
-	# though nothing lies between; capped at the 80 the corner actually leaves, the
-	# straight leg alongside the top edge is clear.
+	# though nothing lies between. Capped at the 80 the corner actually leaves (79.5
+	# after the slack), the grown rect's top edge sits at y 220.5, so the leg along
+	# y = 220, which lies wholly west of the rect (x 100 to 250, the rect starts at
+	# 300), clears it by just that 0.5 wu slack.
 	var pf := PathField.new(FIELD)
 	pf.block_rect(Rect2(300, 300, 200, 200))
 	assert_false(pf.is_leg_blocked(Vector2(100, 220), Vector2(250, 220), 100.0),
 		"a leg to a destination off the rect's corner is judged at the room that destination leaves")
+
+
+func test_is_leg_blocked_leaves_a_start_diagonal_from_a_corner_free_to_leave() -> void:
+	# The mirror of the test above: the same corner-diagonal point is now the START.
+	# Measured in a straight line (94 wu) its room grew the rect's square corner over
+	# the start itself, so every leg from there read as blocked, even one heading
+	# straight away from the rect; per axis (80 wu) the leg is clear.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 300, 200, 200))
+	assert_false(pf.is_leg_blocked(Vector2(250, 220), Vector2(100, 220), 100.0),
+		"a leg heading away from a corner-diagonal start is not blocked by the rect behind it")
+	assert_eq(pf._first_blocking_rect_index(Vector2(250, 220), Vector2(100, 220), 100.0), -1,
+		"the funnel finds no rect to round on a leg leaving a corner-diagonal start")
+
+
+func test_is_leg_blocked_caps_the_whole_leg_at_the_destinations_room() -> void:
+	# The cap a corner-diagonal destination sets applies to the WHOLE leg, not only
+	# near its end. From (700, 100), 200 wu above the rect, to (250, 220), 80 wu off
+	# the top edge's line and 50 wu off the left edge's, the leg crosses x = 300 at
+	# y 206.7: 93 wu above the top edge, inside a 100 wu margin. At the full margin
+	# the leg is blocked; capped at the destination's 79.5 it is clear, so a unit
+	# needing 100 wu is routed straight along it. Accepted by design (an accepted
+	# destination stays reachable in a straight line); the soldier terrain backstop
+	# keeps bodies out of the rect itself.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 300, 200, 200))
+	var from := Vector2(700, 100)
+	var to := Vector2(250, 220)
+	assert_true(pf._segment_blocked(from, to, 100.0, false),
+		"sanity: at the full 100 wu margin the leg passing 93 wu off the top edge is blocked")
+	assert_false(pf.is_leg_blocked(from, to, 100.0),
+		"the destination's 79.5 wu room caps the margin along the whole leg")
 
 
 func test_first_blocking_rect_agrees_with_is_leg_blocked_off_a_corner() -> void:
