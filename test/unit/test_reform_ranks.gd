@@ -1171,16 +1171,14 @@ func test_a_snap_after_the_drill_drops_its_record_off_square_too() -> void:
 	assert_eq(u._sim_soldier_row_slot.size(), 0, "on the pairing it holds, with no re-pair")
 
 
-## A non-quarter drill (an about-face) settled after a quarter-turn drops the quarter's record.
-func test_an_about_face_drill_after_a_quarter_turn_drops_its_record() -> void:
+## An about-face drill settled after a quarter-turn is a drill too, so the record nets both:
+## a quarter plus a half-turn is a quarter the other way, matching the fold they made.
+func test_an_about_face_drill_after_a_quarter_turn_adds_to_its_record() -> void:
 	var u := _make_row_major_unit()
 	_settle_quarter_turn_drill(u, PI * 0.5)
-	var leaf := Order.new_about_face()
-	u.set_current_order(leaf)
-	leaf.turn_start_facing = u.facing
-	u.facing = u.facing.rotated(PI)
-	u._settle_order_turn()
-	assert_eq(u._quarter_turn_fold, 0.0, "the record no longer describes the fold")
+	_settle_about_face_drill(u)
+	assert_almost_eq(u._drill_turn_fold, PI * 0.5, 0.001, "the record nets both drills")
+	assert_almost_eq(u._formation_angle, PI * 0.5, 0.001, "and so does the fold they made")
 
 
 ## A drilled quarter-turn on top of a quarter of snap-absorb lands on an about-face fold. That
@@ -1208,7 +1206,7 @@ func test_a_rout_clears_the_drilled_quarter_record() -> void:
 	var u := _make_row_major_unit()
 	_settle_quarter_turn_drill(u, PI * 0.5)
 	u._rout()
-	assert_eq(u._quarter_turn_fold, 0.0, "a routed unit carries no drill record into its rally")
+	assert_eq(u._drill_turn_fold, 0.0, "a routed unit carries no drill record into its rally")
 
 
 func test_a_quarter_fold_file_double_clears_the_drilled_quarter_record() -> void:
@@ -1216,7 +1214,7 @@ func test_a_quarter_fold_file_double_clears_the_drilled_quarter_record() -> void
 	_settle_quarter_turn_drill(u, PI * 0.5)
 	u._apply_file_double_step(Order.new_file_double(1))
 	assert_eq(u._formation_angle, 0.0, "precondition: the file double transposed the fold away")
-	assert_eq(u._quarter_turn_fold, 0.0, "and dropped the drill record with it")
+	assert_eq(u._drill_turn_fold, 0.0, "and dropped the drill record with it")
 
 
 ## The gate's edge: a fold 0.005 rad off a quarter is still a quarter fold and is re-paired;
@@ -1232,3 +1230,131 @@ func test_the_quarter_fold_gate_tolerates_float_error_but_not_a_real_offset() ->
 	off._formation_angle = -PI * 0.5 + 0.02
 	assert_true(off.reform_ranks(true), "a fold 0.02 rad off a quarter re-squares")
 	assert_eq(off._sim_soldier_row_slot.size(), 0, "but is not re-paired")
+
+
+## Settle an about-face drill on `u` the way a completed ABOUT_FACE leaf does, then put every
+## body on its slot, as _settle_quarter_turn_drill does for a quarter-turn.
+func _settle_about_face_drill(u: Unit) -> void:
+	var leaf := Order.new_about_face()
+	u.set_current_order(leaf)
+	leaf.turn_start_facing = u.facing
+	u.facing = u.facing.rotated(PI)
+	u._settle_order_turn()
+	_stand_on_slots(u)
+
+
+func _stand_on_slots(u: Unit) -> void:
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(slots.size()):
+		u._sim_soldier_pos[i] = slots[i]
+
+
+## Hold-ground re-square `u` and return the mean distance from each man to his new slot.
+func _mean_hold_ground_walk(u: Unit, hold_ground: bool = true) -> float:
+	var bodies: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	assert_true(u.reform_ranks(hold_ground), "the fold re-squares")
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var total: float = 0.0
+	for i in range(bodies.size()):
+		total += bodies[i].distance_to(slots[i])
+	return total / bodies.size()
+
+
+## The walk a block makes squaring a -25 degree snap-absorb residue alone, with no drill on it:
+## the yardstick the drilled half-turns below are held to.
+func _residue_only_walk(u: Unit) -> float:
+	u._formation_angle = deg_to_rad(-25.0)
+	_stand_on_slots(u)
+	return _mean_hold_ground_walk(u)
+
+
+## An about-face drill composed onto a leftover snap-absorb fold lands off a half-turn (a -25
+## degree residue plus 180 folds to 155), which an angle gate alone does not read as an
+## about-face. The re-square still reflects it in depth, so the men only make the residue's
+## turn (and the short files their one rank step), instead of a rigid 155 degree swing of the
+## grid under them that sends nearly every man across the block.
+func test_an_about_face_onto_a_residue_fold_is_reflected_not_swung() -> void:
+	var u := _make_row_major_unit()
+	u._formation_angle = deg_to_rad(-25.0)   # a snap-absorb residue
+	_settle_about_face_drill(u)
+	assert_almost_eq(rad_to_deg(u._formation_angle), 155.0, 0.01,
+		"precondition: the drill composed onto the residue, off a half-turn")
+	var walk: float = _mean_hold_ground_walk(u)
+	assert_true(u._formation_mirror_x, "the re-square is the about-face's depth reflection")
+	var yardstick: float = _residue_only_walk(_make_row_major_unit())
+	assert_lt(walk, yardstick + u.rank_pitch_wu(),
+		"so the men walk no farther than squaring the residue alone, plus one rank step "
+		+ "(%.1f against %.1f)" % [walk, yardstick])
+
+
+## Two quarter-turns the same way on a residue block net a half-turn of drill, and re-square the
+## same way as an about-face drill does.
+func test_two_quarter_turns_onto_a_residue_fold_are_reflected_like_an_about_face() -> void:
+	var u := _make_row_major_unit()
+	u._formation_angle = deg_to_rad(-25.0)
+	_settle_quarter_turn_drill(u, PI * 0.5)
+	_settle_quarter_turn_drill(u, PI * 0.5)
+	assert_almost_eq(absf(u._drill_turn_fold), PI, 0.001, "precondition: the drills net a half-turn")
+	assert_almost_eq(rad_to_deg(u._formation_angle), 155.0, 0.01, "precondition: off a half-turn")
+	var walk: float = _mean_hold_ground_walk(u)
+	assert_true(u._formation_mirror_x, "the re-square is the about-face's depth reflection")
+	assert_eq(u._sim_soldier_row_slot.size(), u.soldiers, "with the hold-ground pairing written")
+	var yardstick: float = _residue_only_walk(_make_row_major_unit())
+	assert_lt(walk, yardstick + u.rank_pitch_wu(),
+		"so the men walk no farther than squaring the residue alone, plus one rank step "
+		+ "(%.1f against %.1f)" % [walk, yardstick])
+
+
+## A full grid has nothing to bring forward, so an exact about-face fold is left in place. With a
+## residue under the drill, the residue still has to be squared, and the drilled half-turn is
+## reflected away rather than swung: each man ends where squaring the residue alone puts him.
+## A countermarch's full traversal (hold_ground false) is not run either, exactly as the exact
+## about-face of a full grid runs none.
+func test_a_full_grid_about_face_onto_a_residue_squares_only_the_residue() -> void:
+	for hold_ground in [true, false]:
+		var u := _make_full_unit()
+		u._formation_angle = deg_to_rad(-25.0)
+		_settle_about_face_drill(u)
+		var walk: float = _mean_hold_ground_walk(u, hold_ground)
+		assert_true(u._formation_mirror_x, "reflected, not swung (hold_ground %s)" % hold_ground)
+		var yardstick: float = _residue_only_walk(_make_full_unit())
+		assert_almost_eq(walk, yardstick, 0.01,
+			"each man walks exactly the residue's turn (hold_ground %s)" % hold_ground)
+
+
+## A snap-absorb after the about-face drill drops its record, so the fold it leaves is squared as
+## a plain residue, not reflected.
+func test_a_snap_after_an_about_face_drill_drops_its_record() -> void:
+	var u := _make_row_major_unit()
+	u._formation_angle = deg_to_rad(-25.0)
+	_settle_about_face_drill(u)
+	u._face_dir(u.facing.rotated(deg_to_rad(100.0)))   # past the snap-absorb threshold
+	assert_eq(u._drill_turn_fold, 0.0, "the record no longer describes the fold")
+	assert_true(u.reform_ranks(true), "the fold re-squares")
+	assert_false(u._formation_mirror_x, "as a plain rotation, with no reflection")
+
+
+## A fold that measures a quarter keeps the quarter re-pair even when a half-turn of drill made
+## it (a quarter of snap-absorb under an about-face): the angle test comes first, as before.
+func test_a_drilled_half_turn_that_lands_on_a_quarter_is_re_paired() -> void:
+	var u := _make_row_major_unit()
+	u._formation_angle = -PI * 0.5   # a quarter of snap-absorb
+	_settle_about_face_drill(u)
+	assert_almost_eq(absf(u._formation_angle), PI * 0.5, 0.001, "precondition: a quarter fold")
+	assert_true(u.reform_ranks(true), "the quarter fold re-squares")
+	assert_false(u._formation_mirror_x, "it is not reflected")
+	assert_eq(u._sim_soldier_row_slot.size(), u.soldiers, "it is re-paired from where the men stand")
+
+
+## Past a 90 degree residue the plain drop is the shorter re-square: a 124 degree residue (what a
+## levy's snap round onto an order behind its flank leaves) plus an about-face folds to 56, and
+## dropping that swings the grid 56 degrees, where reflecting it would turn the men the residue's
+## full 124. So that fold is dropped as before, not reflected.
+func test_an_about_face_onto_a_residue_past_a_quarter_keeps_the_plain_drop() -> void:
+	var u := _make_row_major_unit()
+	u._formation_angle = deg_to_rad(-124.0)
+	_settle_about_face_drill(u)
+	assert_almost_eq(rad_to_deg(u._formation_angle), 56.0, 0.01, "precondition: nearer square")
+	assert_true(u.reform_ranks(true), "the fold re-squares")
+	assert_false(u._formation_mirror_x, "as a plain drop, with no reflection")
+	assert_eq(u._sim_soldier_row_slot.size(), 0, "and no pairing written")

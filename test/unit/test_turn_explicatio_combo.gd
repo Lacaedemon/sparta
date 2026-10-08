@@ -258,6 +258,28 @@ func test_file_double_step_keeps_a_half_turn_fold_and_widens_the_grids_own_files
 	assert_true(is_equal_approx(absf(u._formation_angle), PI), "the half-turn fold survives")
 
 
+## A quarter-turn composed onto a leftover snap-absorb fold lands off a quarter (a -25 degree
+## residue plus a quarter-turn right folds to -115). Its file axis still runs along the block's
+## depth, so the explicatio transposes it exactly as it does an exact quarter fold.
+func test_file_double_step_transposes_a_quarter_turn_composed_onto_a_residue() -> void:
+	var u := _make_unit()
+	u._formation_angle = deg_to_rad(-115.0)
+	u._apply_file_double_step(Order.new_file_double(1))
+	assert_eq(UnitFormation.frontage(u), 10,
+		"5 files across the turned facing (the old 5 ranks), doubled -> 10, not 16 along the depth")
+	assert_eq(u._formation_angle, 0.0, "the fold is dropped: the grid is re-squared to the heading")
+
+
+## A fold nearer a half-turn than a quarter (a quarter-turn onto a 56 degree residue folds to
+## 146) leaves the file axis nearer lateral than depth, so it widens the grid's own files.
+func test_file_double_step_reads_a_fold_nearer_a_half_turn_as_lateral_files() -> void:
+	var u := _make_unit()
+	u._formation_angle = deg_to_rad(146.0)
+	u._apply_file_double_step(Order.new_file_double(1))
+	assert_eq(UnitFormation.frontage(u), 16, "8 lateral files doubled -> 16")
+	assert_almost_eq(rad_to_deg(u._formation_angle), 146.0, 0.01, "the fold is kept")
+
+
 func test_file_double_step_with_no_fold_matches_the_plain_explicatio() -> void:
 	var u := _make_unit()
 	u._apply_file_double_step(Order.new_file_double(1))
