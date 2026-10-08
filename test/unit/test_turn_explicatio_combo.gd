@@ -270,6 +270,24 @@ func test_file_double_step_transposes_a_quarter_turn_composed_onto_a_residue() -
 	assert_eq(u._formation_angle, 0.0, "the fold is dropped: the grid is re-squared to the heading")
 
 
+## The same through the real combo: a block carrying a -25 degree snap-absorb residue runs
+## quarter-turn right then explicatio (Shift+E), the turn composing onto the residue to -115.
+## The explicatio still unfolds across the new facing, from the old 5 ranks to 10 files.
+func test_turn_explicatio_on_a_residue_block_unfolds_across_the_new_facing() -> void:
+	var u := _make_unit()
+	u._formation_angle = deg_to_rad(-25.0)   # a snap-absorb residue
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(slots.size()):
+		u._sim_soldier_pos[i] = slots[i]
+	u.quarter_turn_explicatio(1)
+	assert_not_null(u.current_order, "precondition: the combo was accepted")
+	_run_to_completion(u)
+	assert_null(u.current_order, "the combo completed within the budget")
+	assert_eq(UnitFormation.frontage(u), 10,
+		"5 files across the turned facing (the old 5 ranks), doubled -> 10, not 16 along the depth")
+	assert_eq(u._formation_angle, 0.0, "the fold, residue and all, is squared away")
+
+
 ## A fold nearer a half-turn than a quarter (a quarter-turn onto a 56 degree residue folds to
 ## 146) leaves the file axis nearer lateral than depth, so it widens the grid's own files.
 func test_file_double_step_reads_a_fold_nearer_a_half_turn_as_lateral_files() -> void:

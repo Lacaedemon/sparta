@@ -423,10 +423,14 @@ is a standing drill command: no one takes a step. Use it to face a threat behind
 without marching first, or to quickly reorient a reserve before it moves up.
 
 When the about-faced unit next moves off, it squares its ranks to the new heading in place:
-each man keeps his own flank, and the short rear files step up so a full rank leads.
-That holds even when the block was a little skewed before the turn,
+each man keeps his own flank.
+If the old rear rank was short, it now leads, so the files it never reached step forward one
+place and a full rank fronts the block; a block with no short rank needs no step at all.
+The same holds when the block was skewed by less than a right angle before the turn,
 such as a levy still skewed from snapping round onto earlier orders:
-only that skew is squared away, and nobody crosses the block.
+the men also turn through that skew about the block's centre as it squares,
+which carries the men farthest from the centre a little way round.
+A block skewed by more than a right angle is instead swung the shorter way round to its new heading.
 Two quarter-turns the same way count as an about-face here too.
 
 ::: {#fig-about-face-residue .demo}
@@ -506,7 +510,7 @@ file steps out sideways across the new facing, so the depth halves and the line 
 The explicatio is measured against the direction the men face after the turn, not the
 grid they started in --- which is what makes the pair one drill rather than two unrelated
 keypresses (pressing <kbd>Q</kbd> and then <kbd>B</kbd> by hand doubles the grid's old
-files, which after the turn run along the block's depth). A block that was a little skewed
+files, which after the turn run along the block's depth). A block skewed by less than half a right angle
 before the turn still unfolds across its new facing, and the skew is squared away with it.
 The historical use is deploying
 from column: a regiment marching by files quarter-turns to bring its long side to the

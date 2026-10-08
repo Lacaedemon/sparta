@@ -1105,14 +1105,7 @@ func test_a_fold_that_is_not_a_quarter_turn_keeps_its_pairing() -> void:
 ## (facing rotated by `turn`) is folded into the grid by _settle_order_turn, then every body is
 ## put on its slot so the re-square that follows starts from a formed block.
 func _settle_quarter_turn_drill(u: Unit, turn: float) -> void:
-	var leaf := Order.new_quarter_turn(int(signf(turn)))
-	u.set_current_order(leaf)
-	leaf.turn_start_facing = u.facing
-	u.facing = u.facing.rotated(turn)
-	u._settle_order_turn()
-	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
-	for i in range(slots.size()):
-		u._sim_soldier_pos[i] = slots[i]
+	_settle_drill(u, Order.new_quarter_turn(int(signf(turn))), turn)
 
 
 ## A quarter-turn drill composed onto a leftover snap-absorb fold lands off a quarter (a -25
@@ -1235,10 +1228,15 @@ func test_the_quarter_fold_gate_tolerates_float_error_but_not_a_real_offset() ->
 ## Settle an about-face drill on `u` the way a completed ABOUT_FACE leaf does, then put every
 ## body on its slot, as _settle_quarter_turn_drill does for a quarter-turn.
 func _settle_about_face_drill(u: Unit) -> void:
-	var leaf := Order.new_about_face()
+	_settle_drill(u, Order.new_about_face(), PI)
+
+
+## Fold `leaf`'s turn (facing rotated by `turn`) into the grid through _settle_order_turn, then
+## stand every body on its slot so the re-square that follows starts from a formed block.
+func _settle_drill(u: Unit, leaf: Order, turn: float) -> void:
 	u.set_current_order(leaf)
 	leaf.turn_start_facing = u.facing
-	u.facing = u.facing.rotated(PI)
+	u.facing = u.facing.rotated(turn)
 	u._settle_order_turn()
 	_stand_on_slots(u)
 
@@ -1249,42 +1247,74 @@ func _stand_on_slots(u: Unit) -> void:
 		u._sim_soldier_pos[i] = slots[i]
 
 
-## Hold-ground re-square `u` and return the mean distance from each man to his new slot.
-func _mean_hold_ground_walk(u: Unit, hold_ground: bool = true) -> float:
+## Re-square `u` (reform_ranks(hold_ground) must start a reform) and measure every man against his
+## new slot: the farthest walk, and how many men's new slot lies across the block's lateral
+## centreline from where they stand (each more than half a file pitch off it). The re-square
+## does not change the heading, so one lateral axis serves both sides.
+func _resquare_travel(u: Unit, hold_ground: bool) -> Dictionary:
 	var bodies: PackedVector2Array = u._sim_soldier_pos.duplicate()
 	assert_true(u.reform_ranks(hold_ground), "the fold re-squares")
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
-	var total: float = 0.0
+	var t: Dictionary = _slot_travel(bodies, slots, u.rank_pitch_wu())
+	var lateral: Vector2 = u.facing.orthogonal()
+	var half: float = u.file_pitch_wu() * 0.5
+	var crossed: int = 0
 	for i in range(bodies.size()):
-		total += bodies[i].distance_to(slots[i])
-	return total / bodies.size()
+		var a: float = (bodies[i] - u.position).dot(lateral)
+		var b: float = (slots[i] - u.position).dot(lateral)
+		if a * b < 0.0 and absf(a) > half and absf(b) > half:
+			crossed += 1
+	t["crossed"] = crossed
+	return t
 
 
-## The walk a block makes squaring a -25 degree snap-absorb residue alone, with no drill on it:
-## the yardstick the drilled half-turns below are held to.
-func _residue_only_walk(u: Unit) -> float:
+## The same measures for a block that squares a -25 degree snap-absorb residue alone, with no
+## drill on it: the yardstick the drilled half-turns below are held to.
+func _residue_only_travel(u: Unit, hold_ground: bool = true) -> Dictionary:
 	u._formation_angle = deg_to_rad(-25.0)
 	_stand_on_slots(u)
-	return _mean_hold_ground_walk(u)
+	return _resquare_travel(u, hold_ground)
+
+
+## The same measures for the hold-ground re-square of an exact about-face (no residue) of a
+## fresh unit from `make`: the other yardstick, since a partial grid's exact re-square already
+## walks some men a long way (row major sends the corner men the short rank never reached the
+## block's depth to the empty front corners).
+func _exact_about_face_travel(u: Unit) -> Dictionary:
+	_settle_about_face_drill(u)
+	return _resquare_travel(u, true)
+
+
+## Hold a drilled re-square to its two parts: nobody crosses the centreline that squaring the
+## residue alone would not take across, and no man walks farther than the exact about-face's
+## farthest walk plus the residue's own farthest turn (each man's walk is at most the sum of
+## the two, so a swing of the grid under the men shows up in the crossings instead).
+func _assert_within_residue_turn(t: Dictionary, residue: Dictionary, exact: Dictionary,
+		what: String) -> void:
+	assert_true(int(t["crossed"]) <= int(residue["crossed"]),
+		"%s: %d men cross the centreline, against %d squaring the residue alone"
+		% [what, int(t["crossed"]), int(residue["crossed"])])
+	var bound: float = float(exact["farthest"]) + float(residue["farthest"])
+	assert_lt(float(t["farthest"]), bound + 0.01,
+		"%s: the farthest man walks %.1f, against %.1f for the exact about-face plus the residue"
+		% [what, float(t["farthest"]), bound])
 
 
 ## An about-face drill composed onto a leftover snap-absorb fold lands off a half-turn (a -25
 ## degree residue plus 180 folds to 155), which an angle gate alone does not read as an
 ## about-face. The re-square still reflects it in depth, so the men only make the residue's
 ## turn (and the short files their one rank step), instead of a rigid 155 degree swing of the
-## grid under them that sends nearly every man across the block.
+## grid under them that sends men across the block.
 func test_an_about_face_onto_a_residue_fold_is_reflected_not_swung() -> void:
 	var u := _make_row_major_unit()
 	u._formation_angle = deg_to_rad(-25.0)   # a snap-absorb residue
 	_settle_about_face_drill(u)
 	assert_almost_eq(rad_to_deg(u._formation_angle), 155.0, 0.01,
 		"precondition: the drill composed onto the residue, off a half-turn")
-	var walk: float = _mean_hold_ground_walk(u)
+	var t: Dictionary = _resquare_travel(u, true)
 	assert_true(u._formation_mirror_x, "the re-square is the about-face's depth reflection")
-	var yardstick: float = _residue_only_walk(_make_row_major_unit())
-	assert_lt(walk, yardstick + u.rank_pitch_wu(),
-		"so the men walk no farther than squaring the residue alone, plus one rank step "
-		+ "(%.1f against %.1f)" % [walk, yardstick])
+	_assert_within_residue_turn(t, _residue_only_travel(_make_row_major_unit()),
+			_exact_about_face_travel(_make_row_major_unit()), "about-face")
 
 
 ## Two quarter-turns the same way on a residue block net a half-turn of drill, and re-square the
@@ -1296,39 +1326,102 @@ func test_two_quarter_turns_onto_a_residue_fold_are_reflected_like_an_about_face
 	_settle_quarter_turn_drill(u, PI * 0.5)
 	assert_almost_eq(absf(u._drill_turn_fold), PI, 0.001, "precondition: the drills net a half-turn")
 	assert_almost_eq(rad_to_deg(u._formation_angle), 155.0, 0.01, "precondition: off a half-turn")
-	var walk: float = _mean_hold_ground_walk(u)
+	var t: Dictionary = _resquare_travel(u, true)
 	assert_true(u._formation_mirror_x, "the re-square is the about-face's depth reflection")
 	assert_eq(u._sim_soldier_row_slot.size(), u.soldiers, "with the hold-ground pairing written")
-	var yardstick: float = _residue_only_walk(_make_row_major_unit())
-	assert_lt(walk, yardstick + u.rank_pitch_wu(),
-		"so the men walk no farther than squaring the residue alone, plus one rank step "
-		+ "(%.1f against %.1f)" % [walk, yardstick])
+	_assert_within_residue_turn(t, _residue_only_travel(_make_row_major_unit()),
+			_exact_about_face_travel(_make_row_major_unit()), "two quarters")
+
+
+## A countermarch (hold_ground false) of a drilled half-turn on a residue is the about-face's
+## countermarch too: each man keeps his own flank while the ranks trade ends, rather than the
+## rigid swing that would carry men to the other flank.
+func test_a_countermarch_of_an_about_face_onto_a_residue_keeps_each_man_on_his_flank() -> void:
+	var u := _make_row_major_unit()
+	u._formation_angle = deg_to_rad(-25.0)
+	_settle_about_face_drill(u)
+	var t: Dictionary = _resquare_travel(u, false)
+	assert_true(u._formation_mirror_x, "the countermarch is the about-face's depth reflection")
+	assert_eq(u._sim_soldier_row_slot.size(), 0, "no hold-ground pairing: the ranks trade ends")
+	var yardstick: Dictionary = _residue_only_travel(_make_row_major_unit(), false)
+	assert_true(int(t["crossed"]) <= int(yardstick["crossed"]),
+		"%d men cross the centreline, against %d squaring the residue alone"
+		% [int(t["crossed"]), int(yardstick["crossed"])])
+
+
+## A drilled half-turn's re-square turns the men through the residue, so it arms the standoff
+## settle window, unlike the hold-ground re-square of an exact about-face, where nobody moves.
+func test_a_drilled_half_turn_re_square_arms_the_standoff_window() -> void:
+	var u := _make_row_major_unit()
+	u._formation_angle = deg_to_rad(-25.0)
+	_settle_about_face_drill(u)
+	u._standoff_settle_until_tick = -1
+	assert_true(u.reform_ranks(true), "the fold re-squares")
+	assert_gt(u._standoff_settle_until_tick, Engine.get_physics_frames(), "the window is armed")
+	var exact := _make_row_major_unit()
+	_settle_about_face_drill(exact)
+	exact._standoff_settle_until_tick = -1
+	assert_true(exact.reform_ranks(true), "an exact about-face fold re-squares")
+	assert_eq(exact._standoff_settle_until_tick, -1, "and holds its ground with no window")
 
 
 ## A full grid has nothing to bring forward, so an exact about-face fold is left in place. With a
 ## residue under the drill, the residue still has to be squared, and the drilled half-turn is
-## reflected away rather than swung: each man ends where squaring the residue alone puts him.
-## A countermarch's full traversal (hold_ground false) is not run either, exactly as the exact
-## about-face of a full grid runs none.
+## reflected away rather than swung: each man walks exactly as far as squaring the residue alone
+## moves him. A countermarch's full traversal (hold_ground false) is not run either, exactly as
+## the exact about-face of a full grid runs none.
 func test_a_full_grid_about_face_onto_a_residue_squares_only_the_residue() -> void:
 	for hold_ground in [true, false]:
 		var u := _make_full_unit()
 		u._formation_angle = deg_to_rad(-25.0)
 		_settle_about_face_drill(u)
-		var walk: float = _mean_hold_ground_walk(u, hold_ground)
+		var t: Dictionary = _resquare_travel(u, hold_ground)
 		assert_true(u._formation_mirror_x, "reflected, not swung (hold_ground %s)" % hold_ground)
-		var yardstick: float = _residue_only_walk(_make_full_unit())
-		assert_almost_eq(walk, yardstick, 0.01,
-			"each man walks exactly the residue's turn (hold_ground %s)" % hold_ground)
+		var yardstick: Dictionary = _residue_only_travel(_make_full_unit())
+		assert_almost_eq(float(t["farthest"]), float(yardstick["farthest"]), 0.01,
+			"the farthest man walks exactly the residue's turn (hold_ground %s)" % hold_ground)
+		assert_eq(int(t["crossed"]), int(yardstick["crossed"]),
+			"and no more men cross the centreline (hold_ground %s)" % hold_ground)
+
+
+## A single rank is reflected the same way: with no depth to its slots, the reflection leaves
+## each man on his own slot and he walks only the residue's turn, countermarch or not.
+func test_a_single_rank_about_face_onto_a_residue_squares_only_the_residue() -> void:
+	for hold_ground in [true, false]:
+		var u := _make_single_rank_unit()
+		u._formation_angle = deg_to_rad(-25.0)
+		_settle_about_face_drill(u)
+		var t: Dictionary = _resquare_travel(u, hold_ground)
+		assert_true(u._formation_mirror_x, "reflected, not swung (hold_ground %s)" % hold_ground)
+		var yardstick: Dictionary = _residue_only_travel(_make_single_rank_unit())
+		assert_almost_eq(float(t["farthest"]), float(yardstick["farthest"]), 0.01,
+			"the farthest man walks exactly the residue's turn (hold_ground %s)" % hold_ground)
+		assert_eq(int(t["crossed"]), int(yardstick["crossed"]),
+			"and no more men cross the centreline (hold_ground %s)" % hold_ground)
+
+
+## Six men in one rank of eight files: fewer men than files, so a single rank.
+func _make_single_rank_unit() -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 6
+	add_child_autofree(u)
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	u.frontage_override = 8
+	u.seed_sim_soldiers()
+	return u
 
 
 ## A snap-absorb after the about-face drill drops its record, so the fold it leaves is squared as
-## a plain residue, not reflected.
+## a plain residue, not reflected. The snap here leaves the fold at -125 degrees, nearer a
+## half-turn than square, where a surviving half-turn record would have been reflected.
 func test_a_snap_after_an_about_face_drill_drops_its_record() -> void:
 	var u := _make_row_major_unit()
 	u._formation_angle = deg_to_rad(-25.0)
 	_settle_about_face_drill(u)
-	u._face_dir(u.facing.rotated(deg_to_rad(100.0)))   # past the snap-absorb threshold
+	u._face_dir(u.facing.rotated(deg_to_rad(-80.0)))   # past the snap-absorb threshold
+	assert_almost_eq(rad_to_deg(u._formation_angle), -125.0, 0.01,
+		"precondition: the fold is nearer a half-turn than square")
 	assert_eq(u._drill_turn_fold, 0.0, "the record no longer describes the fold")
 	assert_true(u.reform_ranks(true), "the fold re-squares")
 	assert_false(u._formation_mirror_x, "as a plain rotation, with no reflection")
