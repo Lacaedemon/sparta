@@ -424,8 +424,11 @@ without marching first, or to quickly reorient a reserve before it moves up.
 
 When the about-faced unit next moves off, it squares its ranks to the new heading in place:
 each man keeps his own flank.
-If the old rear rank was short, it now leads, so the files it never reached step forward one
-place and a full rank fronts the block; a block with no short rank needs no step at all.
+If the old rear rank was short, it now leads, and a full rank is brought to the front.
+In a block that reforms file by file, the files the short rank never reached step forward one place.
+In one that reforms by rows (cavalry always does, and the panel's Reform button can choose it for foot),
+some men of the old front rank instead walk the length of the block to fill the new front.
+A block with no short rank needs no step at all.
 The same holds when the block was skewed by less than a right angle before the turn,
 such as a levy still skewed from snapping round onto earlier orders:
 the men also turn through that skew about the block's centre as it squares,
@@ -511,9 +514,10 @@ The explicatio is measured against the direction the men face after the turn, no
 grid they started in --- which is what makes the pair one drill rather than two unrelated
 keypresses (pressing <kbd>Q</kbd> and then <kbd>B</kbd> by hand doubles the grid's old
 files, which after the turn run along the block's depth).
-A block skewed by less than half a right angle before the turn
+A block skewed by less than half a right angle before the turn,
+or by more than one and a half (nearly reversed),
 still unfolds across its new facing, and the skew is squared away with it.
-One skewed by more than half a right angle ends the turn with its files nearer across its new
+One skewed in between ends the turn with its files nearer across its new
 facing than along it, so it widens those files where they lie and keeps its skew.
 The historical use is deploying from column:
 a regiment marching by files quarter-turns to bring its long side to the front,

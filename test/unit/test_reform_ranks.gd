@@ -1164,14 +1164,21 @@ func test_a_snap_after_the_drill_drops_its_record_off_square_too() -> void:
 	assert_eq(u._sim_soldier_row_slot.size(), 0, "on the pairing it holds, with no re-pair")
 
 
-## Any other settled turn -- here a wheel -- drops a quarter-turn's record, as any non-drill
-## write to the fold does: the record then no longer describes drill turns alone.
-func test_a_wheel_settled_after_a_quarter_turn_drops_its_record() -> void:
+## A rear move's about-face is armed through begin_pivot as an ABOUT_FACE turn child, so its
+## settle adds to the drill record like the V drill's: after a quarter-turn drill the record
+## nets both turns, matching the fold they made.
+func test_a_rear_moves_about_face_adds_to_the_drill_record() -> void:
 	var u := _make_row_major_unit()
 	_settle_quarter_turn_drill(u, PI * 0.5)
-	assert_almost_eq(absf(u._drill_turn_fold), PI * 0.5, 0.001, "precondition: a drilled quarter")
-	_settle_drill(u, Order.new_wheel(1), deg_to_rad(30.0))
-	assert_eq(u._drill_turn_fold, 0.0, "the record no longer describes the fold")
+	var order := Order.new_move(u.position - u.facing * 300.0)
+	u.set_current_order(order)
+	assert_true(u.begin_about_face(order), "precondition: the rear move arms its about-face")
+	var leaf: Order = u.active_leaf()
+	assert_eq(leaf.type, Order.Type.ABOUT_FACE, "its turn is an ABOUT_FACE leaf")
+	u.facing = leaf.turn_target
+	u._settle_order_turn()
+	assert_almost_eq(absf(u._drill_turn_fold), PI * 0.5, 0.001, "the record nets both turns")
+	assert_almost_eq(u._drill_turn_fold, u._formation_angle, 0.001, "matching the fold they made")
 
 
 ## An about-face drill settled after a quarter-turn is a drill too, so the record nets both:
@@ -1359,20 +1366,22 @@ func test_a_countermarch_of_an_about_face_onto_a_residue_keeps_each_man_on_his_f
 		% [int(t["crossed"]), int(yardstick["crossed"])])
 
 
-## A drilled half-turn's re-square turns the men through the residue, so it arms the standoff
-## settle window, unlike the hold-ground re-square of an exact about-face, where nobody moves.
-func test_a_drilled_half_turn_re_square_arms_the_standoff_window() -> void:
-	var u := _make_row_major_unit()
-	u._formation_angle = deg_to_rad(-25.0)
-	_settle_about_face_drill(u)
-	u._standoff_settle_until_tick = -1
-	assert_true(u.reform_ranks(true), "the fold re-squares")
-	assert_gt(u._standoff_settle_until_tick, Engine.get_physics_frames(), "the window is armed")
-	var exact := _make_row_major_unit()
-	_settle_about_face_drill(exact)
-	exact._standoff_settle_until_tick = -1
-	assert_true(exact.reform_ranks(true), "an exact about-face fold re-squares")
-	assert_eq(exact._standoff_settle_until_tick, -1, "and holds its ground with no window")
+## A drilled half-turn's hold-ground re-square arms no standoff window, like an exact one's:
+## while its mirror is armed and the men are still moving, SoldierBodies stands the separation
+## pass down as a deliberate pass-through, so a window could only ever watch the formed block.
+## Its countermarch still arms one, as an exact about-face's countermarch does.
+func test_a_drilled_half_turn_re_square_arms_a_window_only_for_a_countermarch() -> void:
+	for hold_ground in [true, false]:
+		var u := _make_row_major_unit()
+		u._formation_angle = deg_to_rad(-25.0)
+		_settle_about_face_drill(u)
+		u._standoff_settle_until_tick = -1
+		assert_true(u.reform_ranks(hold_ground), "the fold re-squares (hold_ground %s)" % hold_ground)
+		if hold_ground:
+			assert_eq(u._standoff_settle_until_tick, -1, "the hold-ground re-square arms no window")
+		else:
+			assert_gt(u._standoff_settle_until_tick, Engine.get_physics_frames(),
+				"the countermarch arms the window")
 
 
 ## A full grid has nothing to bring forward, so an exact about-face fold is left in place. With a

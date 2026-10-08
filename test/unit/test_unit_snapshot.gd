@@ -144,6 +144,12 @@ func test_drill_turn_fold_round_trips_and_defaults_for_older_snapshots() -> void
 	assert_almost_eq(restored._drill_turn_fold, -PI * 0.5, 0.0001,
 		"a drill's record survives a replay-seek restore, so the next re-square still reads it")
 	d.erase("drill_turn_fold")
+	d["quarter_turn_fold"] = PI * 0.5
+	var renamed := Unit.new()
+	renamed.apply_snapshot_dict(d)
+	assert_almost_eq(renamed._drill_turn_fold, PI * 0.5, 0.0001,
+		"a snapshot from before the rename restores the record from its old key")
+	d.erase("quarter_turn_fold")
 	var older := Unit.new()
 	older.apply_snapshot_dict(d)
 	assert_eq(older._drill_turn_fold, 0.0, "a snapshot from before the field existed restores no record")

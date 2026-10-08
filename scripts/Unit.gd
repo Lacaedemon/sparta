@@ -486,9 +486,9 @@ var _formation_angle: float = 0.0
 # The net turn of the in-place drill leaves -- QUARTER_TURN (a Q/E drill, or a lateral pivot's
 # legs) and ABOUT_FACE (a V drill, or a rear move's turn) -- that have settled into
 # _formation_angle since anything else last moved it: _settle_order_turn adds each such leaf's
-# turn, and every other write to the fold -- a snap-absorb, an engage re-face, any other settled
-# turn, a reform, a quarter-fold file double, a rout -- clears it (a snapshot restore restores it
-# with the fold). A new write to _formation_angle must do one or the other. So it only ever
+# turn (every turn that settles there is one of these two leaf types), and every other write to
+# the fold -- a snap-absorb, an engage re-face, a reform, a quarter-fold file double, a rout --
+# clears it (a snapshot restore restores it with the fold). A new write to _formation_angle must do one or the other. So it only ever
 # describes drill turns made on top of whatever fold was already there. reform_ranks reads it for
 # what the angle alone cannot tell: a fold whose drills net a quarter is re-paired, and one whose
 # drills net a half-turn is reflected like an about-face, even when a leftover snap-absorb fold
@@ -6362,10 +6362,11 @@ func _settle_order_turn() -> void:
 	var leaf := active_leaf()
 	var turned: float = angle_difference(leaf.turn_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
-	if leaf.type == Order.Type.QUARTER_TURN or leaf.type == Order.Type.ABOUT_FACE:
-		_drill_turn_fold = wrapf(_drill_turn_fold - turned, -PI, PI)
-	else:
-		_drill_turn_fold = 0.0
+	# Every leaf that settles here is a drill turn: is_order_turning() admits only a leaf with a
+	# turn target that is not a WHEEL, and only _arm_in_place_turn and begin_pivot arm one, on an
+	# ABOUT_FACE or QUARTER_TURN leaf (a rear move's or a lateral pivot's turn child included).
+	# So every settled turn adds to the drill record.
+	_drill_turn_fold = wrapf(_drill_turn_fold - turned, -PI, PI)
 	leaf.turn_target = Vector2.ZERO
 	_render_dirty = true
 
@@ -6554,10 +6555,13 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 	# quarter-turn's re-square) -- the file-crossing traversal the standoff pass exists to
 	# police, including the hasty variant's deferred call once the march that carried it
 	# arrives (Unit._physics_process's _reform_on_arrival hand-off). The one exception is
-	# the hold-ground exact about-face below, which cancels the reflection on the assignment
-	# arrays so no body marches anywhere: nothing crosses a file, so no watch is armed. A
-	# drilled half-turn's residue still turns the block under its men, so that one is watched.
-	if not (hold_ground and is_half_fold):
+	# the hold-ground about-face below, which cancels the reflection on the assignment
+	# arrays: an exact one marches no body anywhere, so nothing crosses a file. A drilled
+	# half-turn's residue does turn its men about the centre, but no window would watch that
+	# either: while the mirror is armed and the bodies are still moving, SoldierBodies stands
+	# the separation pass down as a deliberate pass-through, so a window could only run over
+	# the block once it had already formed. Neither arms one.
+	if not (hold_ground and is_about_face_fold):
 		_arm_standoff_settle_window(_reform_timeout())
 	# An about-face fold is reflected below, never proximity-paired, whatever turns made it.
 	var drilled_quarter: bool = not is_about_face_fold \
@@ -9699,7 +9703,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_standoff_prev_state = int(d.get("standoff_prev_state", state))
 	_ranks_closed = bool(d["ranks_closed"])
 	_formation_angle = float(d["formation_angle"])
-	_drill_turn_fold = float(d.get("drill_turn_fold", 0.0))
+	# A snapshot from before the rename carries the quarter-turn-only record under its old key.
+	_drill_turn_fold = float(d.get("drill_turn_fold", d.get("quarter_turn_fold", 0.0)))
 	_formation_mirror_x = bool(d["formation_mirror_x"])
 	deploy_facing = d["deploy_facing"]
 	ordered_facing = d["ordered_facing"]
