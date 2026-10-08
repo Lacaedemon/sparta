@@ -36,8 +36,8 @@ const RALLY_WINDOW_TICKS := 600
 # would have somewhere to overrun to.
 const RALLY_ROUTER_COUNT := 40
 # The most the men's mean speed may fall in a single tick, as a fraction of the flee pace.
-# Stopping dead from full flight dropped it by 69.3 wu/s in one tick on this staging (flee
-# pace 221 wu/s); braking first leaves only the last few wu/s of the men settling onto
+# Reforming straight out of full flight dropped it by 69.3 wu/s in one tick on this staging
+# (flee pace 221 wu/s); braking first leaves only the last few wu/s of the men settling onto
 # their slots (measured 5.3 wu/s), well under this.
 const MAX_ONE_TICK_DROP_FRAC := 0.1
 
@@ -152,7 +152,13 @@ func test_close_tier_router_flees_at_flee_speed_with_its_bodies() -> void:
 func test_a_router_rallying_from_full_flight_comes_to_rest_with_its_bodies() -> void:
 	# A router that earns its rally at full flight reins the flight in before it reforms, so
 	# its riders come to rest with the anchor. Reforming straight out of full flight stopped
-	# the anchor dead while the men, still running, overran their slots and had to walk back.
+	# the anchor dead while the men were still running at flee pace: their mean ground speed
+	# fell by 69.3 wu/s (flee pace 221) in a single tick on this staging. On a
+	# block that also re-squares as it rallies (the square and row-major rally clips) the
+	# men overran their slots too; this squadron has no fold to undo, so the coupling drags
+	# its anchor along with them and the slot gap stays small either way (0.62 wu without
+	# the brake). The one-tick speed drop is what catches the abrupt stop here, and the gap
+	# bound below guards the bodies staying with the anchor through the brake.
 	var router: Unit = await _spawn(false, RALLY_ROUTER_COUNT)
 	assert_not_null(router, "the team-0 cavalry deployed")
 	if router == null:
@@ -166,8 +172,8 @@ func test_a_router_rallying_from_full_flight_comes_to_rest_with_its_bodies() -> 
 	router.rally_morale_threshold = 0.0   # the rally is earned on the next tick
 	var worst: float = 0.0
 	var rallied_tick: int = -1
-	# The men's own deceleration, tick to tick. Reforming straight out of full flight stopped
-	# them from flee pace in a single tick; braking first brings them down gradually.
+	# The men's own deceleration, tick to tick: braking first brings them down gradually,
+	# where reforming straight out of full flight cut 69.3 wu/s from it in one tick.
 	var worst_drop: float = 0.0
 	var last_pos: PackedVector2Array = router._sim_soldier_pos.duplicate()
 	var last_speed: float = -1.0

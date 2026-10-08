@@ -8577,6 +8577,11 @@ func _process_rout(delta: float) -> void:
 	# Check for viable escape path using PathField (like _move_to does).
 	# If trapped in terrain with no escape route, stop routing and fight instead.
 	if PathField.active != null and _is_escape_path_blocked(flee):
+		# An earned rally that is still braking reforms on the spot instead: it was owed the
+		# rally the moment it earned it, before any of this flight.
+		if _rally_braking:
+			_rally()
+			return
 		_stop_rout_and_fight()
 		return
 
@@ -8606,6 +8611,12 @@ func _process_rout(delta: float) -> void:
 	var next: Vector2 = position + _flee_velocity * delta
 	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
 			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
+		# Braking toward an earned rally, it reforms on the spot rather than running off the
+		# map: the brake runs on for hundreds of world units, well past the retreat margin
+		# from a start near the back edge, and the rally was already owed.
+		if _rally_braking:
+			_rally()
+			return
 		_escape()
 		return
 	position = next
@@ -8625,16 +8636,22 @@ func _process_rout(delta: float) -> void:
 	if morale < ROUT_RALLY_BASELINE:
 		morale += (ROUT_RALLY_BASELINE - morale) * ROUT_MORALE_RECOVER_RATE * delta
 
-	# Already reining in to rally: reform once the flight has come to a stop. If an enemy
-	# closes back into contact meanwhile, reform on the spot instead -- the rally was already
-	# earned, and the brake must never turn it into a worse outcome (a shatter on an expired
-	# timer) than rallying at the moment it was earned.
+	# Already reining in to rally. Gutted below reforming strength meanwhile: the rally is
+	# no longer earned, so the brake is called off and the ordinary rules below decide (a
+	# spent timer then shatters it). Otherwise it reforms once the flight has stopped -- or
+	# on the spot if an enemy closes back into contact, since the rally was already earned
+	# and the brake must never end worse than rallying the moment it was earned. That
+	# contact rally stops the anchor dead from part-pace while the men still carry some of
+	# it; accepted, as the case is rare and rallying at full pace did the same.
 	if _rally_braking:
-		if _flee_pace <= 0.0 or not _can_rally():
+		if not _has_rally_strength():
+			_rally_braking = false
+		elif _flee_pace <= 0.0 or not _is_clear_to_rally():
 			_rally()
 			return
-		queue_redraw()
-		return
+		else:
+			queue_redraw()
+			return
 
 	# Rally the moment morale recovers past the threshold, provided contact is broken and
 	# enough men remain — the unit needn't run out the full timer or reach the edge.
@@ -8674,13 +8691,31 @@ func _start_rally(delta: float) -> void:
 	queue_redraw()
 
 
+## Drop the flight state a router carries (_flee_pace, _flee_velocity, _rally_braking) on
+## the way out of ROUTING into play, so a later rout starts clean and nothing reads a
+## stale flight.
+func _clear_flight() -> void:
+	_rally_braking = false
+	_flee_pace = 0.0
+	_flee_velocity = Vector2.ZERO
+
+
 ## Whether a routed unit recovers rather than shatters when its rout times out:
 ## it must have broken contact — no living enemy within RALLY_CONTACT_RADIUS — and still
 ## field enough men to reform (>= shatter_strength_frac of its max). Positions + counts
 ## only, so it's deterministic and replay-safe.
 func _can_rally() -> bool:
-	if soldiers < int(round(max_soldiers * shatter_strength_frac)):
-		return false
+	return _has_rally_strength() and _is_clear_to_rally()
+
+
+## The strength half of _can_rally: enough men left to reform (>= shatter_strength_frac of
+## its max).
+func _has_rally_strength() -> bool:
+	return soldiers >= int(round(max_soldiers * shatter_strength_frac))
+
+
+## The contact half of _can_rally: no living enemy within RALLY_CONTACT_RADIUS.
+func _is_clear_to_rally() -> bool:
 	return UnitTargeting.nearest_enemy_to(self, position, RALLY_CONTACT_RADIUS) == null
 
 
@@ -8693,9 +8728,7 @@ func _rally() -> void:
 	# floor — a unit that rallies the instant its timer expires still reforms shaken.
 	morale = maxf(morale, RALLY_MORALE)
 	_rout_timer = 0.0
-	_rally_braking = false
-	_flee_pace = 0.0
-	_flee_velocity = Vector2.ZERO
+	_clear_flight()
 	# _rout() zeroed _formation_angle so the unit "reforms square to its heading on rally"
 	# (its own comment), but fleeing can re-fold it via _face_dir's snap-absorb (a sharp
 	# turn away from the enemy at the moment routing starts). reform_ranks() is the
@@ -8771,6 +8804,7 @@ func _rout_clearance() -> float:
 func _stop_rout_and_fight() -> void:
 	# Exit routing state: rejoin the fighting units instead of routers.
 	state = State.IDLE
+	_clear_flight()
 	remove_from_group("routers")
 	add_to_group("units")
 	# Mark as shattered so the unit will fight to the death without rallying if it
