@@ -114,11 +114,69 @@ func test_is_leg_blocked_leaves_a_destination_diagonal_from_a_corner_reachable()
 		"a leg to a destination off the rect's corner is judged at the room that destination leaves")
 
 
+func test_is_leg_blocked_lets_a_start_diagonal_from_a_corner_walk_straight_away() -> void:
+	# The swapped-endpoint mirror of the destination test above. The start stands 50 wu
+	# left of and 80 wu above the rect's top-left corner: 94 wu away in a straight line,
+	# 80 per axis. Capped at the straight-line 94 (93.8 after the slack) the grown rect's
+	# top edge reaches y 206.2 and its left edge x 206.2, so it covers the start itself
+	# and the leg due west, straight away from the rect, read as blocked while the
+	# reverse leg was clear. A leg that leaves the corner never comes closer to the rect
+	# on either axis, so its start room is the per-axis 80, and the leg is clear.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 300, 200, 200))
+	assert_false(pf.is_leg_blocked(Vector2(250, 220), Vector2(100, 220), 100.0),
+		"a leg from a corner-diagonal start heading straight away is clear")
+	assert_false(pf.is_leg_blocked(Vector2(100, 220), Vector2(250, 220), 100.0),
+		"sanity: the reverse leg is clear too, so the two directions now agree")
+	assert_eq(pf.next_step(Vector2(250, 220), Vector2(100, 220), 100.0), Vector2(100, 220),
+		"next_step walks straight off rather than funnelling")
+	assert_eq(pf._first_blocking_rect_index(Vector2(250, 220), Vector2(100, 220), 100.0), -1,
+		"the funnel's blocker choice agrees: no rect blocks a leg leaving the corner")
+
+
+func test_start_room_stays_straight_line_for_non_order_sightlines() -> void:
+	# The start's second role: from deep inside the margin, a candidate or corridor
+	# sightline is judged at the straight-line start room, even one heading straight
+	# away. Same corner-diagonal start as above (94 wu straight, 80 per axis), so the
+	# rect grown by 93.8 covers the start and both non-order kinds stay blocked; only
+	# the ORDER leg takes the per-axis room.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 300, 200, 200))
+	var from := Vector2(250, 220)
+	var to := Vector2(100, 220)
+	assert_false(pf._segment_blocked(from, to, 100.0, PathField.Leg.ORDER),
+		"sanity: the order leg leaving the corner is clear")
+	assert_true(pf._segment_blocked(from, to, 100.0, PathField.Leg.CANDIDATE),
+		"a candidate sightline keeps the straight-line start room")
+	assert_true(pf._corridor_sightline_blocked(from, to, 100.0),
+		"a corridor-cell sightline keeps the straight-line start room")
+
+
+func test_order_leg_running_past_the_rect_keeps_the_straight_line_start_room() -> void:
+	# The start's third role: the start room caps the margin for the WHOLE leg. The
+	# start stands 100 wu off each face of the top-left corner (141 straight, 100 per
+	# axis) and the leg runs due south, down the rect's left face. Every point of that
+	# leg is 100 wu from the face, so a per-axis start room (99.5 after the slack) would
+	# clear it and march a unit needing 137 wu past the face at 100. The leg does not
+	# leave the corner (it moves toward the rect on y), so it keeps the straight-line
+	# room, the rect grows by the full 137 (the destination, 140 wu below the rect's
+	# bottom edge, leaves room for it), and the leg stays blocked.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 300, 200, 200))
+	var from := Vector2(200, 200)
+	var to := Vector2(200, 640)
+	assert_true(pf.is_leg_blocked(from, to, 137.0),
+		"a leg running past the rect from a corner-diagonal start keeps the full margin")
+	assert_false(pf.is_leg_blocked(from, Vector2(200, 50), 137.0),
+		"sanity: the same start heading straight away (north) is clear")
+
+
 func test_candidate_sightline_from_inside_the_margin_off_a_corner_stays_rejected() -> void:
 	# A walker inside its own 150 wu margin, diagonal off the rect's top-left corner
 	# at (250, 180): 50 wu west of it and 120 wu north, so 130 wu away in a straight
-	# line and 120 per axis. Only a destination's room is measured per axis; the
-	# start keeps the straight-line room, so the rect grows by 129.5, its top edge reaches
+	# line and 120 per axis. A candidate sightline keeps the straight-line start room
+	# (only an ORDER leg leaving the corner takes the per-axis one, and this sightline
+	# runs past the rect, not away from it), so the rect grows by 129.5, its top edge reaches
 	# y 170.5, and the walker stands inside it: every candidate sightline from there,
 	# including the one to the far top-right corner of the margin-grown rect, is
 	# rejected. Measured per axis, the rect would grow only to y 180.5, leaving the
@@ -130,7 +188,7 @@ func test_candidate_sightline_from_inside_the_margin_off_a_corner_stays_rejected
 	var from := Vector2(250, 180)
 	var far_corner := Vector2(rect.end.x + 150.0 + PathField.CORNER_STANDOFF,
 			rect.position.y - 150.0 - PathField.CORNER_STANDOFF)
-	assert_true(pf._segment_blocked(from, far_corner, 150.0, false),
+	assert_true(pf._segment_blocked(from, far_corner, 150.0, PathField.Leg.CANDIDATE),
 		"a candidate sightline from deep inside the margin is not accepted on a sub-wu standoff")
 
 
@@ -147,7 +205,7 @@ func test_is_leg_blocked_caps_the_whole_leg_at_the_destinations_room() -> void:
 	pf.block_rect(Rect2(300, 300, 200, 200))
 	var from := Vector2(700, 100)
 	var to := Vector2(250, 220)
-	assert_true(pf._segment_blocked(from, to, 100.0, false),
+	assert_true(pf._segment_blocked(from, to, 100.0, PathField.Leg.CANDIDATE),
 		"sanity: at the full 100 wu margin the leg passing 93 wu off the top edge is blocked")
 	assert_false(pf.is_leg_blocked(from, to, 100.0),
 		"the destination's 79.5 wu room caps the margin along the whole leg")
@@ -183,9 +241,9 @@ func test_corridor_fallback_caps_a_candidate_cell_at_its_straight_line_room() ->
 	# capped candidate cell it is judged at 94 wu and blocked.
 	var pf := PathField.new(FIELD)
 	pf.block_rect(Rect2(300, 300, 200, 200))
-	assert_false(pf._segment_blocked(Vector2(100, 220), Vector2(250, 220), 100.0, true, true),
+	assert_false(pf._segment_blocked(Vector2(100, 220), Vector2(250, 220), 100.0, PathField.Leg.ORDER),
 		"as a real destination the corner-diagonal point is reachable")
-	assert_true(pf._segment_blocked(Vector2(100, 220), Vector2(250, 220), 100.0, true, false),
+	assert_true(pf._segment_blocked(Vector2(100, 220), Vector2(250, 220), 100.0, PathField.Leg.CORRIDOR_CELL),
 		"as a candidate cell the same point keeps the straight-line room, as before")
 	assert_true(pf._corridor_sightline_blocked(Vector2(100, 220), Vector2(250, 220), 100.0),
 		"next_step's corridor fallback judges its cell the candidate way")
@@ -358,7 +416,7 @@ func test_string_pull_candidates_must_clear_the_full_margin() -> void:
 	var near_centre := Vector2(288, 128)      # open cell centre, only 62 wu off the rect
 	assert_false(pf._segment_blocked(from, near_centre, 70.0),
 		"judged as a real endpoint, the 62-wu-out point is reachable (room-capped)")
-	assert_true(pf._segment_blocked(from, near_centre, 70.0, false),
+	assert_true(pf._segment_blocked(from, near_centre, 70.0, PathField.Leg.CANDIDATE),
 		"judged as a candidate, it must clear the full 70-wu margin -- and cannot")
 
 
@@ -526,7 +584,7 @@ func test_corridor_fallback_clears_the_corner_margin() -> void:
 	assert_false(corner.is_finite(), "sanity check: no grown corner is visible, so the corridor is used")
 	var step: Vector2 = pf.next_step(from, to, small_clearance, 0.0, big_corner_clearance)
 	assert_ne(step, to, "the leg is blocked, so next_step detours")
-	assert_false(pf._segment_blocked(from, step, big_corner_clearance, false),
+	assert_false(pf._segment_blocked(from, step, big_corner_clearance, PathField.Leg.CANDIDATE),
 		"the corridor leg clears the corner margin: got %s" % step)
 
 
