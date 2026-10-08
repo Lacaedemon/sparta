@@ -41,9 +41,12 @@ margin beyond it before it's gone for good, staying on the field --- and still
 fightable --- for as long as it's plausibly still in view.
 
 A routing unit runs faster than it marches. It picks up speed over its first few
-seconds of flight and then flees at about 1.3 times its own top speed, so a pursuer
-of the same type falls behind once the router gets going. Catch a broken unit before
-it builds up speed, or send faster troops after it.
+seconds of flight and then flees at about 1.3 times its own top speed, so on open
+ground a pursuer of the same type falls behind once the router gets going. Terrain in
+its path slows it: a deep block fleeing past a hill can hang its leading ranks on the
+slope and lose much of that pace. Catch a broken unit before it builds up speed, or
+send faster troops after it. When a router recovers its nerve it slows to a halt
+before it re-forms, rather than stopping dead.
 
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
   break too. One collapse can cascade down a line.

@@ -5591,6 +5591,101 @@ func test_routing_unit_flees_into_the_retreat_margin_unclamped() -> void:
 	assert_almost_eq(u.position.y, expected_y, 0.5, "flees past y=0 unclamped, into the margin")
 
 
+## A bare team-0 router (flees UP) in a wide-open retreat margin with no PathField, so each
+## _process_rout step moves it straight up by exactly _flee_pace * delta.
+func _open_ground_router(approach_velocity: Vector2, fighting: bool = false) -> Unit:
+	var u := _make_unit()
+	u.retreat_bounds = Rect2(-2000, -2000, 4000, 4000)
+	u.position = Vector2(200, 200)
+	u._approach_velocity = approach_velocity
+	if fighting:
+		u.state = Unit.State.FIGHTING
+		u._current_speed = 120.0   # leftover charge speed FIGHTING never decays
+	u.morale = 0.0
+	u._rout()
+	u.morale = 0.0
+	u._rout_timer = 10.0
+	return u
+
+
+func test_routing_flight_builds_up_from_rest_at_accel() -> void:
+	# The flight ramps from a standstill at the unit's own accel: the first step from rest
+	# covers accel * delta of pace for one delta, not a full flee_speed() step.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _open_ground_router(Vector2.ZERO)
+	assert_eq(u._flee_pace, 0.0, "a unit that broke standing still starts its flight from rest")
+	var delta: float = 0.016
+	var start: Vector2 = u.position
+	u._process_rout(delta)
+	assert_almost_eq(start.y - u.position.y, u.accel * delta * delta, 0.00001,
+			"tick 1 from rest moves accel * delta * delta")
+	assert_almost_eq(u.position.x, start.x, 0.00001, "straight up, toward its own back edge")
+	for i in range(int(ceil(u.flee_speed() / (u.accel * delta))) + 2):
+		u._process_rout(delta)
+	assert_almost_eq(u._flee_pace, u.flee_speed(), 0.0001, "and tops out at flee_speed()")
+	PathField.active = old_pf
+
+
+func test_routing_flight_keeps_only_the_speed_already_carried_away_from_the_enemy() -> void:
+	# Seeded from the component of the pre-rout travel velocity along the flee heading
+	# (team 0 flees UP), never from the bare speed: a unit caught advancing on the enemy
+	# starts its flight from rest, not at speed in reverse.
+	var falling_back := _open_ground_router(Vector2(0.0, -50.0))
+	assert_almost_eq(falling_back._flee_pace, 50.0, 0.0001,
+			"a unit already moving away keeps that pace into the flight")
+	var advancing := _open_ground_router(Vector2(0.0, 80.0))
+	assert_eq(advancing._flee_pace, 0.0, "a unit advancing on the enemy starts its flight from rest")
+	var oblique := _open_ground_router(Vector2(30.0, -40.0))
+	assert_almost_eq(oblique._flee_pace, 40.0, 0.0001, "only the part of the speed along the flight counts")
+	var too_fast := _open_ground_router(Vector2(0.0, -10000.0))
+	assert_almost_eq(too_fast._flee_pace, too_fast.flee_speed(), 0.0001, "never above flee_speed()")
+
+
+func test_routing_from_melee_ignores_leftover_charge_speed() -> void:
+	# FIGHTING skips the idle speed decay, so a unit broken in the melee its charge carried
+	# it into can still hold its charge speed toward the enemy: that is not flight speed.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _open_ground_router(Vector2(0.0, 120.0), true)
+	assert_eq(u._flee_pace, 0.0, "a unit broken in melee starts its flight from rest")
+	var delta: float = 0.016
+	var start: Vector2 = u.position
+	u._process_rout(delta)
+	assert_almost_eq(start.y - u.position.y, u.accel * delta * delta, 0.00001,
+			"and its first step is the from-rest ramp step, away from the enemy")
+	PathField.active = old_pf
+
+
+func test_rallying_router_brakes_to_a_stop_before_it_reforms() -> void:
+	# A router that earns its rally at full flight reins the flight in first (still
+	# ROUTING), and reforms only once it has stopped, so its bodies come to rest with it.
+	var old_pf: PathField = PathField.active
+	PathField.active = null
+	var u := _open_ground_router(Vector2.ZERO)
+	u._flee_pace = u.flee_speed()   # already at full flight
+	u.morale = Unit.RALLY_MORALE_THRESHOLD + 1.0   # earns the rally on the next tick, no enemy near
+	var delta: float = 0.016
+	u._process_rout(delta)
+	assert_eq(u.state, Unit.State.ROUTING, "still routing while it reins in")
+	assert_true(u._rally_braking, "it has begun braking for the rally")
+	var last_pace: float = u._flee_pace
+	var ticks: int = 1
+	while u.state == Unit.State.ROUTING and ticks < 2000:
+		u._process_rout(delta)
+		ticks += 1
+		if u.state == Unit.State.ROUTING:
+			assert_true(u._flee_pace < last_pace, "the flight only ever slows while braking")
+			last_pace = u._flee_pace
+	assert_eq(u.state, Unit.State.IDLE, "it rallies once the flight has stopped")
+	var expected_ticks: int = int(ceil(u.flee_speed() / (u.arrival_brake_rate() * delta)))
+	assert_almost_eq(float(ticks), float(expected_ticks), 2.0,
+			"after braking at arrival_brake_rate() from flee pace")
+	assert_eq(u._flee_pace, 0.0, "and the rallied unit carries no flight pace")
+	assert_false(u._rally_braking, "nor a stale braking flag")
+	PathField.active = old_pf
+
+
 func test_routing_unit_escapes_when_it_flees_past_the_retreat_margin() -> void:
 	# Once a router's flee step would carry it past retreat_bounds's own outer edge, it
 	# has fled clear of the battlefield and ESCAPES instantly instead of clamping ---

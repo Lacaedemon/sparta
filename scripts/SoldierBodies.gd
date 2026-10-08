@@ -9,8 +9,9 @@ class_name SoldierBodies
 ## friendly-avoidance steering velocity forward so it drifts off a crowding friend; the
 ## unengaged bulk feeds the unit's march velocity forward so it tracks its moving slots
 ## with no lag, easing onto a reformed slot instead of snapping. A body's fully-integrated
-## speed is still hard-capped near its unit's own sprint pace (Unit.superphysical_speed_frac
-## * move_speed) no matter how far its slot has receded -- see the final clamp at the end of
+## speed is still hard-capped near its unit's own top pace (Unit.superphysical_speed_frac
+## * move_speed, or * flee_speed() while routing) no matter how far its slot has receded --
+## see the final clamp at the end of
 ## the per-soldier loop in step(). That clamp floors at whatever speed the body already
 ## carried in, so it never suppresses a deliberately faster external push (a knockback) --
 ## only the march/arrival stacking it exists to bound. Operates on a Unit's
@@ -527,12 +528,13 @@ static func step(unit: Unit, delta: float) -> void:
 			new_vel = _cap_body_speed_vec(new_vel, facing, unit.jog_speed, unit.back_speed_fraction)
 		unit._sim_body_vel[i] = new_vel
 		# Final physical ceiling, applied after every adjustment above and to every body
-		# alike (marching, engaged, idle/reforming): a man cannot exceed his own sprint by
-		# more than a hard margin no matter how fast his slot is receding out from under him.
+		# alike (marching, engaged, idle/reforming): a man cannot exceed his own top pace (his
+		# sprint, or his flee pace while routing -- `top_pace` above) by more than a hard
+		# margin no matter how fast his slot is receding out from under him.
 		# The arrival term above is already capped at jog pace, but the march feed-forward
 		# stacks on top of it with no cap of its own, so only this clamp on the FULLY
 		# INTEGRATED velocity bounds their sum -- see Unit.superphysical_speed_frac. Floored at
-		# pre_tick_speed (above) rather than a flat move_speed * frac, so this clamp only ever
+		# pre_tick_speed (above) rather than a flat top_pace * frac, so this clamp only ever
 		# bounds speed THIS tick's own steering adds -- it never re-clamps a body already
 		# coasting faster than the floor from an external impulse. A knockback -- especially
 		# ORDER_KNOCKBACK_FOCUS's knockback_push_indefinite variant, which deliberately drives a

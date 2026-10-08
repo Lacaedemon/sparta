@@ -611,31 +611,45 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 
 	# Sustained super-physical soldier speed (index-aligned samples only). A routing
 	# unit's top pace is its flee pace (Unit.flee_speed(): move_speed *
-	# GaitLimits.FLEE_SPEED_MULTIPLIER), above its sprint by design, and SoldierBodies.step measures a
-	# router's body-speed ceiling from it -- so a sample interval that ends routing is held to
-	# the flee-pace cap instead of the sprint cap.
+	# GaitLimits.FLEE_SPEED_MULTIPLIER), above its sprint by design, and SoldierBodies.step
+	# measures a router's body-speed ceiling from it. An interval is held to that flee-pace
+	# cap when its START sample is routing: the men carry their flight speed into the
+	# interval, and a router that rallies inside it brakes down from flee pace first. A unit
+	# that only starts routing at the interval's end builds its flight up from its march
+	# pace at its own accel, so over that interval its sprint ceiling still applies.
 	var cap: float = sprint * SUPERPHYSICAL_SPEED_FRAC
 	var flee_cap: float = cap * GaitLimitsRef.FLEE_SPEED_MULTIPLIER
-	var reported_cap: float = cap
 	var over_run := 0
 	var worst_speed := 0.0
 	var worst_run := 0
-	var worst_margin := 0.0
+	# The threshold reported is the one the verdict was decided against: the cap and margin
+	# of the interval that set the longest over-cap run, or, with no interval over its cap,
+	# those of the fastest interval.
+	var run_threshold := 0.0
+	var worst_run_threshold := 0.0
+	var fastest_threshold := cap
 	for i in range(1, n):
 		if s["counts"][i] != s["counts"][i - 1]:
 			over_run = 0   # casualty compaction: indexes no longer align across the gap
 			continue
 		var dt: int = int(s["ticks"][i]) - int(s["ticks"][i - 1])
 		var v: float = max_soldier_speed(s["pos"][i - 1], s["pos"][i], dt)
-		worst_speed = maxf(worst_speed, v)
-		var margin: float = speed_quantization_margin(dt)
-		worst_margin = maxf(worst_margin, margin)
-		var sample_cap: float = flee_cap if bool(s["routing"][i]) else cap
-		reported_cap = maxf(reported_cap, sample_cap)
-		over_run = over_run + 1 if v > sample_cap + margin else 0
-		worst_run = maxi(worst_run, over_run)
+		var interval_threshold: float = (flee_cap if bool(s["routing"][i - 1]) else cap) \
+				+ speed_quantization_margin(dt)
+		if v > worst_speed:
+			worst_speed = v
+			fastest_threshold = interval_threshold
+		if v > interval_threshold:
+			over_run += 1
+			run_threshold = interval_threshold
+		else:
+			over_run = 0
+		if over_run > worst_run:
+			worst_run = over_run
+			worst_run_threshold = run_threshold
 	out.append({"uid": uid, "metric": "superphysical_speed", "pass": worst_run < MIN_SUSTAIN,
-			"worst": worst_speed, "threshold": reported_cap + worst_margin})
+			"worst": worst_speed,
+			"threshold": worst_run_threshold if worst_run > 0 else fastest_threshold})
 
 	# Crossing routes: soldiers swapping sides on the way to wherever they are going.
 	# Deliberately NOT routed through _sustained_verdict. That helper forgives a series

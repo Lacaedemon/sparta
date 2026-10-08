@@ -1476,6 +1476,8 @@ var _moved_while_routing: bool = false
 # at full flight: the soldier bodies only gain speed at their own bounded acceleration, so
 # an anchor that leapt to flee pace would run ahead of them, the body coupling would pull
 # it back, and the block would trail its slots by tens of world units until they caught up.
+# Seeded by _rout() from the speed the unit was already carrying away from the enemy, and
+# braked back to zero at arrival_brake_rate() before a rally (_rally_braking).
 var _flee_pace: float = 0.0
 # This tick's flight velocity (flee direction * _flee_pace), set by _process_rout: the
 # routing counterpart of _approach_velocity. SoldierBodies.step feeds it forward to a
@@ -1483,6 +1485,9 @@ var _flee_pace: float = 0.0
 # chase their slots on the jog-capped arrival term, and the body coupling drags the anchor
 # back to them. Read only while state == ROUTING.
 var _flee_velocity: Vector2 = Vector2.ZERO
+# Set by _start_rally while a router that has earned its rally reins its flight in (still
+# ROUTING, _flee_pace braking toward zero); _process_rout reforms it once the flight stops.
+var _rally_braking: bool = false
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -8495,6 +8500,14 @@ func _remove_from_play() -> void:
 func _rout() -> void:
 	if state == State.ROUTING:
 		return
+	# The flight builds up from whatever speed the unit was already carrying AWAY from the
+	# enemy -- the component of its travel velocity along its flee heading, read before
+	# anything below clears the orders. A unit caught advancing (or in a melee its charge
+	# carried it into) is moving toward the enemy, so it starts the flight from a standstill,
+	# never at speed in the opposite direction; one already falling back keeps that pace.
+	_flee_pace = clampf(_approach_velocity.dot(_flee_heading()), 0.0, flee_speed())
+	_flee_velocity = Vector2.ZERO
+	_rally_braking = false
 	state = State.ROUTING
 	selected = false
 	target_enemy = null
@@ -8511,10 +8524,6 @@ func _rout() -> void:
 	_quarter_turn_fold = 0.0
 	_formation_mirror_x = false
 	_rout_timer = rout_time
-	# The flight builds up from whatever pace the unit already had when it broke (one caught
-	# mid-march is already moving), never from above its own flee pace.
-	_flee_pace = minf(_current_speed, flee_speed())
-	_flee_velocity = Vector2.ZERO
 	# Deliberately no `_shattered = false` here: a fresh rout starts "broken"
 	# (recoverable) only when it wasn't already permanently shattered by a
 	# prior _stop_rout_and_fight(). That call returns the unit to State.IDLE
@@ -8542,11 +8551,17 @@ func _rout() -> void:
 	queue_redraw()
 
 
+## The direction a router flees in before terrain detours: toward its own back edge
+## (team 0 started at the top of the field, team 1 at the bottom).
+func _flee_heading() -> Vector2:
+	return Vector2.UP if team == 0 else Vector2.DOWN
+
+
 func _process_rout(delta: float) -> void:
 	# Flee toward own back edge (team 0 started at top, team 1 at bottom). Route around
 	# impassable terrain via PathField.next_step() if available (same as _move_to does).
 	# If trapped with no escape path, fall back to fighting to the death.
-	var flee: Vector2 = Vector2.UP if team == 0 else Vector2.DOWN
+	var flee: Vector2 = _flee_heading()
 
 	# Check for viable escape path using PathField (like _move_to does).
 	# If trapped in terrain with no escape route, stop routing and fight instead.
@@ -8569,7 +8584,13 @@ func _process_rout(delta: float) -> void:
 	var to: Vector2 = step - position
 	var dir: Vector2 = to.normalized()
 	_face_dir(dir)
-	_flee_pace = move_toward(_flee_pace, flee_speed(), accel * delta)
+	# A router that has started to rally reins the flight in at the body-trackable brake
+	# rate (the same rate an orderly arrival brakes at); otherwise the flight builds up
+	# toward full flee pace at the unit's own accel.
+	if _rally_braking:
+		_flee_pace = move_toward(_flee_pace, 0.0, arrival_brake_rate() * delta)
+	else:
+		_flee_pace = move_toward(_flee_pace, flee_speed(), accel * delta)
 	_flee_velocity = dir * _flee_pace
 	var next: Vector2 = position + _flee_velocity * delta
 	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
@@ -8593,13 +8614,25 @@ func _process_rout(delta: float) -> void:
 	if morale < ROUT_RALLY_BASELINE:
 		morale += (ROUT_RALLY_BASELINE - morale) * ROUT_MORALE_RECOVER_RATE * delta
 
+	# Already reining in to rally: reform once the flight has come to a stop, or run on if
+	# an enemy has closed back into contact meanwhile (the timer below then decides).
+	if _rally_braking:
+		if not _can_rally():
+			_rally_braking = false
+		elif _flee_pace <= 0.0:
+			_rally()
+			return
+		else:
+			queue_redraw()
+			return
+
 	# Rally the moment morale recovers past the threshold, provided contact is broken and
 	# enough men remain — the unit needn't run out the full timer or reach the edge.
 	# Note: a unit that enters routing with morale already >= rally_morale_threshold rallies
 	# on the first call here (a one-tick rout). In practice routing is triggered by depleted
 	# morale so this is dormant; keep it in mind if non-morale rout triggers are ever added.
 	if morale >= rally_morale_threshold and _can_rally():
-		_rally()
+		_start_rally(delta)
 		return
 
 	_rout_timer -= delta
@@ -8611,9 +8644,24 @@ func _process_rout(delta: float) -> void:
 	# fleeing (still on the field, still fightable) but can never recover morale or rally
 	# again from here on.
 	if _can_rally():
-		_rally()
+		_start_rally(delta)
 	else:
 		_shatter()
+
+
+## Begin a rally: at once if the flight is already at a standstill, otherwise rein it in
+## first (_rally_braking) and reform when it stops. Reforming straight out of full flight
+## stopped the anchor dead while the men, still running, overran their slots and had to
+## walk back; braking while still ROUTING keeps the flight feed-forward on the bodies, so
+## anchor and men come to rest together.
+func _start_rally(delta: float) -> void:
+	# A flight one brake step would stop anyway (a router that rallies on its first tick
+	# has barely started moving) reforms at once.
+	if _flee_pace <= arrival_brake_rate() * delta:
+		_rally()
+		return
+	_rally_braking = true
+	queue_redraw()
 
 
 ## Whether a routed unit recovers rather than shatters when its rout times out:
@@ -8635,6 +8683,9 @@ func _rally() -> void:
 	# floor — a unit that rallies the instant its timer expires still reforms shaken.
 	morale = maxf(morale, RALLY_MORALE)
 	_rout_timer = 0.0
+	_rally_braking = false
+	_flee_pace = 0.0
+	_flee_velocity = Vector2.ZERO
 	# _rout() zeroed _formation_angle so the unit "reforms square to its heading on rally"
 	# (its own comment), but fleeing can re-fold it via _face_dir's snap-absorb (a sharp
 	# turn away from the enemy at the moment routing starts). reform_ranks() is the
@@ -9503,6 +9554,7 @@ func to_snapshot_dict() -> Dictionary:
 		"separation_velocity": _separation_velocity,
 		"moved_while_routing": _moved_while_routing,
 		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity,
+		"rally_braking": _rally_braking,
 		# Not reset before a routing unit's early return, so a router keeps reading it.
 		"is_facing_turning": _is_facing_turning,
 
@@ -9728,6 +9780,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_moved_while_routing = bool(d.get("moved_while_routing", _moved_while_routing))
 	_flee_pace = float(d.get("flee_pace", _flee_pace))
 	_flee_velocity = d.get("flee_velocity", _flee_velocity)
+	_rally_braking = bool(d.get("rally_braking", _rally_braking))
 	_is_facing_turning = bool(d.get("is_facing_turning", _is_facing_turning))
 	is_general = bool(d.get("is_general", is_general))
 	order_clear_step = float(d.get("order_clear_step", order_clear_step))
