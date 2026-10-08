@@ -112,6 +112,18 @@ func test_is_leg_blocked_leaves_a_destination_diagonal_from_a_corner_reachable()
 		"a leg to a destination off the rect's corner is judged at the room that destination leaves")
 
 
+func test_first_blocking_rect_agrees_with_is_leg_blocked_off_a_corner() -> void:
+	# The funnel picks which rect to round with the same destination-room cap the
+	# blocked check uses. Measured in a straight line here (94 wu), the cap would let
+	# the rect grow far enough to enter the leg, so the funnel would round a rect the
+	# blocked check already cleared; measured per axis (80 wu, what the square grown
+	# corner actually leaves), no rect blocks the leg.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 300, 200, 200))
+	assert_eq(pf._first_blocking_rect_index(Vector2(100, 220), Vector2(250, 220), 100.0), -1,
+		"no rect blocks a leg the blocked check clears")
+
+
 func test_is_leg_blocked_keeps_the_full_margin_between_far_endpoints() -> void:
 	# Both endpoints stand at least the margin clear of the rect in the per-axis
 	# metric, so the cap does not bind and the leg past the corner keeps all 100 wu.
