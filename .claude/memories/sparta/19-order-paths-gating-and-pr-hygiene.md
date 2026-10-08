@@ -131,13 +131,14 @@ so an order the clamp accepted stays reachable.
 That room is `_grow_room`, which uses `Rect2.grow`'s own per-axis metric:
 the grown rect is square-cornered, so a straight-line room grew the corner over a destination diagonal off it.
 `_first_blocking_rect_index` uses the same metric.
-Three callers keep the straight-line room (`_distance_to_rect`):
-the start of a leg,
+Everything else keeps main's straight-line room (`_distance_to_rect`):
+the start of every leg,
 `next_step`'s corridor fallback (`_corridor_sightline_blocked`, whose target is a synthetic cell centre),
-and the candidate sightlines (uncapped, `cap_to` false).
+and the candidate sightlines, which are uncapped (`cap_to` false).
 The start-room limitation is tracked in #1743.
 
-- **Do:** measure a destination's room with `_grow_room`, and leave the start and the corridor fallback on `_distance_to_rect`.
+- **Do:** measure a real destination's room with `_grow_room`,
+  and leave the start, the corridor fallback and the candidate sightlines as they are.
 
 - **Don't:** measure a destination's room in a straight line:
   off a hill corner it grows the rect over the destination, and every leg to it reads as blocked.
@@ -147,12 +148,17 @@ The start-room limitation is tracked in #1743.
 ## A cap with several caller classes names the class explicitly
 
 `_segment_blocked`'s `cap_to` alone conflated a real destination with the corridor fallback's synthetic cell centre.
-That one conflation drove 12 of the 14 catalog changes.
-Gating it with `to_is_destination` (and the named wrapper `_corridor_sightline_blocked`) cut the blast radius to 1 clip on CI.
+Before the corridor fallback was gated, a local catalog comparison changed 14 clips;
+after gating it with `to_is_destination` and the named wrapper `_corridor_sightline_blocked`,
+the same comparison changed 2, and CI's website demo diff changed 1.
+So the fallback accounted for 12 of the 14 (inferred from the before/after difference).
+This is a sharper case of "Gate a sim fix to the exact case it targets" at the top of this file.
 
-- **Do:** name the caller class as a parameter or a named helper, so each class picks its own metric on purpose.
+- **Do:** name the caller class with a named helper (or a named argument) at the call site,
+  so each class picks its own metric on purpose.
 
-- **Don't:** let a positional boolean decide a metric.
+- **Don't:** leave a bare positional boolean at a call site to decide a metric:
+  a tidy-up can flip it with the unit suite still green.
 
 (`Lacaedemon/sparta` #1729 / PR #1738, 2026-10-08.)
 
@@ -172,14 +178,15 @@ The start room sets the whole leg's margin and decides whether candidate corners
 
 ## Re-run the full catalog hash comparison after every metric change
 
-The comparison is `website/tools/dump-demo-states.sh` on both trees, then `analyze_transcript.gd --compare-hash-trees`.
+The whole-catalog comparison is `website/tools/dump-demo-states.sh` on both trees, then `analyze_transcript.gd --compare-hash-trees`
+(the per-clip recipe in "Gate a sim fix to the exact case it targets" is `--compare-hashes`).
 On #1738 it caught both regressions above, neither of which the unit suite saw, and it showed the effect of the fallback gating.
 A local 0.3 wu drift in `showcase` did not reproduce in CI's transcript.
 
 - **Do:** re-run it after each change to a metric or gate, not once per PR,
   and confirm a sub-wu late-divergence row on CI's comment before treating it as real.
 
-- **Don't:** read a sub-wu late-divergence row in a local run as a regression:
-  it can be platform noise.
+- **Don't:** treat a sub-wu late-divergence row seen only in a local run as a regression
+  before CI's transcript shows it too; its cause was not established here.
 
 (`Lacaedemon/sparta` #1729 / PR #1738, 2026-10-08.)
