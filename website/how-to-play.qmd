@@ -150,10 +150,11 @@ shield wall or pike phalanx that break if the unit breaks into a run. Each unit 
 has its own default --- spearmen start with it on, everyone else off --- and the setting
 persists per unit until you (or a replayed order) change it again.
 
-**Move order sequence.** When you right-click a destination, the regiment turns to
-face it and marches there in good order: it **pivots about its centre** onto the new
-heading --- turning in place before it advances on a sharp turn --- marches, and settles
-back into formation on arrival.
+**Move order sequence.**
+When you right-click a destination, the regiment turns to face it and marches there in good order:
+it **pivots about its centre** onto the new heading ---
+turning in place before it advances on a sharp turn ---
+then marches, and settles back into formation on arrival.
 While it marches, the info panel reports how far it is to the destination it is heading for,
 and in which direction --- "Moving 45 m north-east", with north at the top of the screen ---
 followed by how many queued waypoints come after it, such as "(+2 waypoints)".
