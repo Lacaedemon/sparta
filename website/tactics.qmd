@@ -1669,9 +1669,10 @@ chase.
 </video>
 ```
 
-Coasting to a stop: a shallow Cavalry troop wipes a small Infantry remnant
-mid-charge; with no enemy left to chase and no new order, it keeps sliding
-forward on its residual speed, decelerating, before finally coming to rest.
+Coasting to a stop: a shallow Cavalry troop wipes out a small Infantry squad
+that stands to fight; with no enemy left to chase and no new order, it keeps
+moving on the speed it carried out of the melee, decelerating, before finally
+coming to rest.
 :::
 
 ## Wheeling on a flank

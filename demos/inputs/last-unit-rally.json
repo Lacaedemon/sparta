@@ -17,6 +17,6 @@
   "expect": [
     {"tick": 1150, "uid": 0, "field": "state", "value": "FIGHTING"},
     {"tick": 1170, "uid": 0, "field": "state", "value": "ROUTING"},
-    {"tick": 1300, "uid": 0, "field": "position", "value": [727.0, 416.0], "tol": 5.0}
+    {"tick": 1300, "uid": 0, "field": "position", "value": [733.4, 425.7], "tol": 5.0}
   ]
 }

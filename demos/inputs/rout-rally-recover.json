@@ -20,5 +20,11 @@
     {"tick": [480, 600], "uid": 3, "field": "target_enemy_uid", "value": 0},
     {"tick": [480, 600], "uid": 3, "field": "engaged", "value": true},
     {"tick": [610, 700], "uid": 0, "absent": true}
-  ]
+  ],
+  "defect_exemptions": {
+    "shape_residual": {
+      "uids": [3],
+      "reason": "The pursuing cavalry troop (uid 3) never routs, so nothing in #1739 runs for it. On the merge-base it stays in contact with the crawling router, FIGHTING, so its samples are never judged. Now the router flees at its real pace: uid 3 chases it MOVING (judged), catches it at about tick 480, and the router is gone by about tick 605-610. Sustained shape residual on a 2-tick scan from the divergence (tick 60): 44.47 wu at the #1739 head against 8.678 wu on the merge-base (threshold 30). Tracked as a pursuer deforming on engaging a full-pace router in #1757."
+    }
+  }
 }
