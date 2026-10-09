@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This PR adds unit tests only and changes no game code, so no recorded battle plays any differently. It pins the issue's two geometries: the corridor-fallback step that moves one cell along a straight corridor run under drift (a bearing change of about 0.02 degrees, not a whipsaw), and the funnel corner cost near-tie, which still flips and is left to per-unit hysteresis in a follow-up."
+}

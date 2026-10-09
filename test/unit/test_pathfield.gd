@@ -834,6 +834,69 @@ func test_funnel_corner_route_side_is_stable_when_heading_runs_through_the_neare
 		"the funnel steers for the south corner the corridor rounds on")
 
 
+## The default hill, a 590 wu clearance, and the near cost tie between its two west
+## grown corners seen from (370.26, 190.36), north-west of the hill, ordered to
+## (1025, 825), south-west of it.
+func _near_tie_field() -> PathField:
+	var pf := PathField.new(Rect2(0, 0, 1600, 1200))
+	pf.block_rect(Rect2(1150, 380, 250, 200))   # Battle.TERRAIN's hill patch
+	return pf
+
+
+## Straight-line detour cost from `p` round `corner` to `to`: the quantity the funnel
+## ranks visible corners by.
+func _live_detour_cost(p: Vector2, corner: Vector2, to: Vector2) -> float:
+	return p.distance_to(corner) + corner.distance_to(to)
+
+
+func test_funnel_corner_near_cost_tie_still_flips_under_drift() -> void:
+	# Documents a known instability rather than a wanted behaviour. Both west corners
+	# of hill.grow(590 + CORNER_STANDOFF), (558, -212) and (558, 1172), are visible
+	# from `from_a`, and neither is filtered by side. Their straight-line detour costs
+	# from the live position differ by under 0.1 wu, so the drift below -- one tick's
+	# worth of soldier-body coupling -- reorders them, and the funnel steers south one
+	# tick and north the next, about 144 degrees apart. Ranking from the walker's cell
+	# centre instead only moved the flip onto the cell boundaries, and did not reduce
+	# drift flips in the catalog, so the stateless ranking stays.
+	# TODO(#1756): per-unit hysteresis should hold the chosen corner here too; then
+	# assert step_a == step_b instead.
+	var pf := _near_tie_field()
+	var to := Vector2(1025.0, 825.0)
+	var from_a := Vector2(370.2562, 190.3583)
+	var from_b := from_a + Vector2(-0.0006, -0.0417)
+	var north := Vector2(558.0, -212.0)
+	var south := Vector2(558.0, 1172.0)
+	var gap_a: float = _live_detour_cost(from_a, north, to) - _live_detour_cost(from_a, south, to)
+	var gap_b: float = _live_detour_cost(from_b, north, to) - _live_detour_cost(from_b, south, to)
+	assert_lt(absf(gap_a), 0.1, "sanity: from from_a the two corners' live costs are within 0.1 wu")
+	assert_true(gap_a > 0.0 and gap_b < 0.0,
+		"sanity: the drift reorders the live costs (south cheaper from from_a, north from from_b)")
+	assert_eq(pf.next_step(from_a, to, 590.0), south, "from from_a the cheaper south corner is taken")
+	assert_eq(pf.next_step(from_b, to, 590.0), north, "from from_b the drift has made the north corner cheaper")
+
+
+func test_corridor_fallback_drift_between_cells_of_one_run_keeps_the_bearing() -> void:
+	# The issue's second geometry, pinned rather than changed. From (610.26, 670.36)
+	# ordered to (1425, 425), no corner of the hill is visible at the full margin, and
+	# no corridor cell is either, so next_step takes the farthest corridor cell visible
+	# at the room that cell leaves. The cell (1248, 672) is 92 wu below the hill, and
+	# the sightline to it grazes the grown corner (x 1058.5, y 671.5) within a fraction
+	# of a world unit, so the drift below hides it and the step falls back one cell to
+	# (1184, 672). Both cells lie on the same straight run of the corridor, y = 672,
+	# 1.6 wu off the walker's own line, so the bearing to them differs by about 0.02
+	# degrees: the unit steers by the bearing, so it does not whipsaw.
+	var pf := _near_tie_field()
+	var to := Vector2(1425.0, 425.0)
+	var from_a := Vector2(610.2562, 670.3583)
+	var from_b := from_a + Vector2(-0.0006, -0.0417)
+	var step_a: Vector2 = pf.next_step(from_a, to, 590.0)
+	var step_b: Vector2 = pf.next_step(from_b, to, 590.0)
+	assert_eq(step_a, Vector2(1248.0, 672.0), "sanity: from from_a the farther cell is visible")
+	assert_eq(step_b, Vector2(1184.0, 672.0), "sanity: from from_b the graze hides it, one cell nearer")
+	var turn_deg: float = rad_to_deg(absf((step_a - from_a).angle_to(step_b - from_b)))
+	assert_lt(turn_deg, 0.05, "the two cells' bearings differ by %.4f deg, well under a visible turn" % turn_deg)
+
+
 func test_funnel_corner_classifies_each_candidate_on_the_corridor_axis_not_heading() -> void:
 	# Each candidate corner's side must be read on the same corridor axis route_side
 	# was. A block south-west of the hill at (770, 920), clearance 150, is ordered to
