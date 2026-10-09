@@ -532,14 +532,15 @@ enough to make the data it checks exist; the analyzer evaluates them offline:
 Two optional keys widen what an entry can say:
 
 - `"tol": N` -- match a number, or each component of an `[x, y]` pair such as `position`,
-  within `N` (inclusive) instead of exactly. Use it for a late-tick position, which can
-  drift by a fraction of a world unit across platforms. Only valid when `value` is a number
-  or an array of numbers.
+  within `N` (inclusive) instead of exactly.
+  Use it for a late-tick position, which can drift by a fraction of a world unit across platforms.
+  Only valid when `value` is a number or an array of numbers.
+
 - `"absent": true` -- in place of `field`/`value` (an absent entry takes neither, nor a
   `tol`): the unit has left play (annihilated, escaped, merged) by some snapshot inside the
-  range, i.e. that snapshot carries no record for its uid while an earlier one did. A uid
-  that never appeared, or any snapshot inside the range with no `units` list, fails rather
-  than passing.
+  range, i.e. that snapshot carries no record for its uid while an earlier one did.
+  A uid that never appeared, or any snapshot inside the range with no `units` list,
+  fails rather than passing.
 
 An expectation that cannot be checked (no snapshot in range, no such unit, no such field)
 FAILS rather than skips -- an uncheckable claim is an authoring error. This is how a demo
