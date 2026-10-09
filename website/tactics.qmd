@@ -48,6 +48,23 @@ its own type; a pursuer that stays in contact with it holds it to that pursuer's
 pace. (Currently, a deep block fleeing past impassable terrain can snag its leading
 ranks on it and lose much of that pace.)
 
+::: {#fig-router-outruns-pursuer .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/router_outruns_pursuer.jpg">
+  <source src="media/router_outruns_pursuer.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A broken cavalry squadron (bottom, faded) flees down the field while a fresh squadron
+of the same type sprints after it.
+The router picks up speed over its first few seconds, then pulls away at full flight,
+its riders running together as a block.
+:::
+
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
   break too. One collapse can cascade down a line.
 - **Local force ratio, combat status & named morale ladder.** Morale reflects local tactical context: being locally outnumbered, under unanswered missile fire (ambient incoming fire erosion halts at the `shaken` suppression floor at 50.0, shaking the formation without breaking it unaided, though separate casualty morale shock remains unfloored, and erosion halts entirely if the target can reply with its own ranged weapons), or losing local melee balance drains morale over time, while local numerical superiority steadies nerve. Unit combat status (`Winning decisively`, `Winning`, `Balanced`, `Losing`, `Losing decisively`) is derived from engaged physics and displayed on the `Combat:` HUD readout, alongside the 7-rung morale ladder (`routing`...`berserk`).
