@@ -254,22 +254,41 @@ func _regrid_travel(u: Unit, bodies: PackedVector2Array, lateral: Vector2) -> Di
 	return _travel(u, bodies.slice(0, u.soldiers), lateral)
 
 
+## A block of `make`'s shape that never turned, formed on its slots.
+func _plain_block(make: Callable) -> Unit:
+	var u: Unit = make.call()
+	_stand_on_slots(u)
+	return u
+
+
 ## Assert a regrid moves the baked block's men exactly as it moves the same block whose mirror
 ## is still armed: the same centreline crossings and the same farthest walk. Without the bake's
 ## fallback reflection, the baked block's fallback sends every off-centre man across instead.
-func _assert_regrid_like_mirrored(u: Unit, mirrored: Unit, regrid: Callable, what: String) -> void:
+## The mirrored yardstick carries the depth walk a dropped hold-ground pairing makes, so the
+## crossings are also held, independently, to the same regrid of a block that never turned (a
+## row-major index-order reflow moves some men across the centreline for any block). Returns
+## the baked block's measures.
+func _assert_regrid_like_mirrored(u: Unit, mirrored: Unit, plain: Unit, regrid: Callable,
+		what: String) -> Dictionary:
 	var bodies: PackedVector2Array = u._sim_soldier_pos.duplicate()
 	var m_bodies: PackedVector2Array = mirrored._sim_soldier_pos.duplicate()
+	var p_bodies: PackedVector2Array = plain._sim_soldier_pos.duplicate()
 	regrid.call(u)
 	regrid.call(mirrored)
+	regrid.call(plain)
 	var t: Dictionary = _regrid_travel(u, bodies, u.facing.orthogonal())
 	var y: Dictionary = _regrid_travel(mirrored, m_bodies, mirrored.facing.orthogonal())
+	var p: Dictionary = _regrid_travel(plain, p_bodies, plain.facing.orthogonal())
+	assert_true(int(t["crossed"]) <= int(p["crossed"]),
+		"%s: %d men cross the centreline, against %d for a block that never turned"
+		% [what, int(t["crossed"]), int(p["crossed"])])
 	assert_eq(int(t["crossed"]), int(y["crossed"]),
 		"%s: %d men cross the centreline, against %d with the mirror still armed"
 		% [what, int(t["crossed"]), int(y["crossed"])])
 	assert_almost_eq(float(t["farthest"]), float(y["farthest"]), 0.01,
 		"%s: the farthest man walks %.1f wu, against %.1f with the mirror still armed"
 		% [what, float(t["farthest"]), float(y["farthest"])])
+	return t
 
 
 ## A row-major block whose frontage comes from its own headcount (no player override), so
@@ -287,6 +306,7 @@ func test_a_baked_row_major_block_keeps_its_flanks_through_a_resize() -> void:
 	var u := _make_partial_row_major()
 	_baked_block(u)
 	_assert_regrid_like_mirrored(u, _mirrored_block(_make_partial_row_major),
+			_plain_block(_make_partial_row_major),
 			func(b: Unit) -> void: b.set_frontage(7), "row major, resized 8 -> 7")
 
 
@@ -296,8 +316,8 @@ func test_a_baked_row_major_block_keeps_its_flanks_when_ranks_close() -> void:
 	var files_open: int = u.formation_files(u.soldiers)
 	_baked_block(u)
 	var narrow := func(b: Unit) -> void: b._ranks_closed = true
-	_assert_regrid_like_mirrored(u, _mirrored_block(_make_auto_row_major), narrow,
-			"row major, ranks closed")
+	_assert_regrid_like_mirrored(u, _mirrored_block(_make_auto_row_major),
+			_plain_block(_make_auto_row_major), narrow, "row major, ranks closed")
 	assert_lt(u.formation_files(u.soldiers), files_open, "precondition: closing ranks narrowed it")
 
 
@@ -310,8 +330,11 @@ func test_a_baked_block_keeps_its_flanks_through_a_regiment_path_casualty() -> v
 		var layout: String = "file major" if u._effective_file_major_reform() else "row major"
 		_baked_block(u)
 		var lose_three := func(b: Unit) -> void: b.soldiers -= 3
-		_assert_regrid_like_mirrored(u, _mirrored_block(make), lose_three,
-				"%s, three regiment-path casualties" % layout)
+		var t: Dictionary = _assert_regrid_like_mirrored(u, _mirrored_block(make),
+				_plain_block(make), lose_three, "%s, three regiment-path casualties" % layout)
+		assert_eq(int(t["crossed"]), 0,
+			"%s: no man's slot crosses the centreline after the casualties (%d cross)"
+			% [layout, int(t["crossed"])])
 
 
 ## A block squared and returned to line by ORDER_FORMATION_ONLY: Battle sets the formation
@@ -426,6 +449,94 @@ func _laterals(u: Unit, axis: Vector2) -> PackedFloat32Array:
 ## depleted spearmen block, re-squares it holding ground, and marches it to its destination.
 ## A second move order straight ahead must then march the block off with every man on the
 ## flank he held, rather than walking each off-centre man across the block.
+## Stage the spearmen, give them a standing anchor shift (an anchored narrowing from 9 to 7
+## files, right flank held), then a drilled rear move: they about-face, re-square holding their
+## ground, march, and halt idle with the mirror still armed. Returns the unit, or null.
+func _live_idle_mirrored_block() -> Unit:
+	Replay.forced_seed = 13579
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.drill_mode = true
+	_battle.scenario = [
+		{"team": 0, "type": "Spearmen", "x": SPAWN.x, "y": SPAWN.y,
+			"count": SPEARMEN_COUNT, "facing": [0, 1], "frontage_override": 9},
+	]
+	add_child(_battle)
+	var u: Unit = null
+	for n in get_tree().get_nodes_in_group("units"):
+		if n is Unit and n.team == 0:
+			u = n
+	assert_not_null(u, "the scenario staged the spearmen")
+	if u == null:
+		return null
+	for _k in range(20):
+		await get_tree().physics_frame
+	_battle.enqueue_frontage([u.uid], -2, UnitFormation.Anchor.RIGHT)
+	for _k in range(240):
+		await get_tree().physics_frame
+	u.reform_before_move = true
+	var dest := SPAWN + Vector2(0, -120)
+	_battle._apply_order_cmd({"units": [u.uid], "x": dest.x, "y": dest.y,
+		"target": -1, "mode": 0})
+	for _i in range(1800):
+		await get_tree().physics_frame
+		if u.current_order == null and not u.has_move_target and u._reform_bodies_settled():
+			break
+	assert_null(u.current_order, "precondition: the rear move ran to completion")
+	assert_true(u._formation_mirror_x, "precondition: idle with the mirror armed")
+	assert_ne(u.frontage_anchor_offset, 0.0, "precondition: a standing anchor shift")
+	return u
+
+
+## The block's extent along its file axis (the facing's right-hand side is +), from its slots.
+func _file_extent(u: Unit) -> Vector2:
+	var axis: Vector2 = Vector2.RIGHT.rotated(u.facing.angle() + PI * 0.5)
+	var lo: float = INF
+	var hi: float = -INF
+	for s in u.soldier_world_slots(u.soldiers):
+		var d: float = (s - u.position).dot(axis)
+		lo = minf(lo, d)
+		hi = maxf(hi, d)
+	return Vector2(lo, hi)
+
+
+## A grip resize on an idle about-faced block: Battle writes the anchored offset through
+## set_frontage and then installs the FRONTAGE order. The held flank must stay where it is and
+## the other one move, as for a block that never turned.
+func test_live_anchored_resize_on_a_mirrored_block_holds_its_edge() -> void:
+	var u: Unit = await _live_idle_mirrored_block()
+	if u == null:
+		return
+	var before: Vector2 = _file_extent(u)
+	_battle.enqueue_frontage([u.uid], 2, UnitFormation.Anchor.LEFT)
+	var after: Vector2 = _file_extent(u)
+	assert_eq(UnitFormation.frontage(u), 9, "precondition: widened from 7 to 9 files")
+	assert_almost_eq(after.x, before.x, 0.01,
+		"the held left edge stays put (%.2f -> %.2f)" % [before.x, after.x])
+	assert_gt(after.y, before.y + u.file_pitch_wu(),
+		"the right edge moves out (%.2f -> %.2f)" % [before.y, after.y])
+
+
+## An anchored explicatio on an idle about-faced block: the file-double order bakes the mirror at
+## dispatch, and its step writes the offset Battle composed from the standing one.
+func test_live_anchored_explicatio_on_a_mirrored_block_holds_its_edge() -> void:
+	var u: Unit = await _live_idle_mirrored_block()
+	if u == null:
+		return
+	var files_before: int = UnitFormation.frontage(u)
+	var before: Vector2 = _file_extent(u)
+	_battle.enqueue_file_double([u.uid], 1, UnitFormation.Anchor.RIGHT)
+	for _i in range(240):
+		await get_tree().physics_frame
+		if UnitFormation.frontage(u) != files_before:
+			break
+	var after: Vector2 = _file_extent(u)
+	assert_gt(UnitFormation.frontage(u), files_before, "precondition: the explicatio widened it")
+	assert_almost_eq(after.y, before.y, 0.01,
+		"the held right edge stays put (%.2f -> %.2f)" % [before.y, after.y])
+	assert_lt(after.x, before.x - u.file_pitch_wu(),
+		"the left edge moves out (%.2f -> %.2f)" % [before.x, after.x])
+
+
 func test_live_second_order_after_an_about_face_keeps_every_man_on_his_flank() -> void:
 	Replay.forced_seed = 24680
 	_battle = load("res://scenes/Battle.tscn").instantiate()

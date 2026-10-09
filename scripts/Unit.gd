@@ -510,8 +510,11 @@ var _drill_turn_fold: float = 0.0
 # toggles it (a second about-face reflection inside one order takes it off again).
 # set_current_order() bakes it into the soldier-to-slot assignment (_bake_formation_mirror), so a
 # fresh order starts unmirrored with every man's slot exactly where the mirror had put it;
-# simply dropping the flag would swap every off-centre man to the opposite flank. _rout() clears
-# it outright, along with the fold, as a routed block re-forms from scratch on rally.
+# simply dropping the flag would swap every off-centre man to the opposite flank. set_frontage()
+# bakes it too, before writing its anchor shift, which callers compute in the unmirrored frame
+# (see unmirrored_anchor_offset). _rout() drops it without baking it, along with the fold, which
+# still reflects every off-centre man's slot to the other flank; that is a known gap, not a
+# design choice.
 #
 # Deliberately NOT cleared by _settle_engage_turn() or _face_dir()'s snap-absorb branch: those
 # both fold a rotation into _formation_angle specifically to hold `ang` (soldier_world_slots'
@@ -4976,7 +4979,11 @@ func _reset_shield_hold_angles() -> void:
 ## centred behaviour). Clamped to [1, max_soldiers]; the formation grid
 ## (UnitFormation.slots) picks both up on the next tick and the soldier bodies ease
 ## toward the reshaped slots at velocity (no teleport).
+## `anchor_offset` is in the unmirrored local frame (unmirrored_anchor_offset is the standing
+## offset in that frame), so a standing about-face mirror is baked first: written under the
+## mirror, the shift would land on the opposite flank.
 func set_frontage(files: int, anchor_offset: float = 0.0) -> void:
+	_bake_formation_mirror()
 	var old_files: int = UnitFormation.frontage(self)
 	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
 	frontage_anchor_offset = anchor_offset
@@ -6740,6 +6747,14 @@ func _bake_formation_mirror() -> void:
 				UnitFormation.lateral_reflection_pairing(count, _row_slot_files),
 				_sim_soldier_row_slot)
 	_render_dirty = true
+
+
+## The standing frontage anchor shift in the unmirrored local frame: the frame resize grips
+## and anchored file-doubling name their LEFT/RIGHT flanks in (local +X along the facing's
+## right-hand file axis), and the value frontage_anchor_offset takes once the mirror is baked.
+## Callers that compose a new anchored offset start from this, not from the raw field.
+func unmirrored_anchor_offset() -> float:
+	return -frontage_anchor_offset if _formation_mirror_x else frontage_anchor_offset
 
 
 ## The index-order layout a grid of `count` men on `files` files falls back to when no
