@@ -102,7 +102,11 @@
   "defect_exemptions": {
     "overlap": {
       "uids": [0],
-      "reason": "With the squad staged to stand and die (morale 100), the troop wipes it at tick 562, coasts to rest by tick 622, and at the tick-700 sample, IDLE and after the recorded clip ends (tick 640), two of its bodies stand 3.84 wu apart against the 5.0 wu floor (40.58 wu at 640, 32.13 at 800). The same staging on the #1739 merge-base gives the identical 3.84 wu, so it is how an idle troop settles after a melee, not the rout changes. Tracked in #1758."
+      "reason": "The troop wipes the squad at tick 562 and coasts to rest by tick 622; at the tick-700 sample, IDLE and after the recorded clip ends (tick 640), two of its bodies stand 3.84 wu apart against the 5.0 wu floor (40.58 wu at 640, 32.13 at 800). This staging (squad at morale 100) runs hash-identical, every tick to 1100, on the #1739 merge-base, so nothing in #1739 reaches it; the defect is how the idle troop settles after the melee. Tracked in #1758."
+    },
+    "shape_residual": {
+      "uids": [0],
+      "reason": "After the wipe at tick 562 the IDLE troop's bodies settle back onto their slots slowly: sustained shape residual on a 2-tick scan of the clip, 100.4 wu against the 30 wu threshold. This staging (squad at morale 100) runs hash-identical, every tick to 1100, on the #1739 merge-base, so nothing in #1739 reaches it; the defect is how the idle troop settles after the melee. Tracked in #1758."
     }
   }
 }
