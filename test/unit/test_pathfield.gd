@@ -844,22 +844,24 @@ func _near_tie_field() -> PathField:
 
 
 ## Straight-line detour cost from `p` round `corner` to `to`: the quantity the funnel
-## ranked corners by when it measured from the live position.
+## ranks visible corners by.
 func _live_detour_cost(p: Vector2, corner: Vector2, to: Vector2) -> float:
 	return p.distance_to(corner) + corner.distance_to(to)
 
 
-func test_funnel_corner_rank_is_stable_under_drift_at_a_near_cost_tie() -> void:
-	# Both west corners of hill.grow(590 + CORNER_STANDOFF), (558, -212) and
-	# (558, 1172), are visible from `from_a`, and neither is filtered by side. Their
-	# straight-line detour costs from the live position differ by under 0.1 wu, so the
-	# drift below -- one tick's worth of soldier-body coupling -- reorders them, and a
-	# ranking taken from `from` steers north one tick and south the next: about 144
-	# degrees apart. Ranked from the centre of the walker's cell, (352, 160), the north
-	# corner costs about 1562.5 wu against 1614.6 for the south one, from either point.
+func test_funnel_corner_near_cost_tie_still_flips_under_drift() -> void:
+	# Documents a known instability rather than a wanted behaviour. Both west corners
+	# of hill.grow(590 + CORNER_STANDOFF), (558, -212) and (558, 1172), are visible
+	# from `from_a`, and neither is filtered by side. Their straight-line detour costs
+	# from the live position differ by under 0.1 wu, so the drift below -- one tick's
+	# worth of soldier-body coupling -- reorders them, and the funnel steers south one
+	# tick and north the next, about 144 degrees apart. Ranking from the walker's cell
+	# centre instead only moved the flip onto the cell boundaries, and did not reduce
+	# drift flips in the catalog, so the stateless ranking stays.
+	# TODO(#1756): per-unit hysteresis should hold the chosen corner here too; then
+	# assert step_a == step_b instead.
 	var pf := _near_tie_field()
 	var to := Vector2(1025.0, 825.0)
-	var clearance := 590.0
 	var from_a := Vector2(370.2562, 190.3583)
 	var from_b := from_a + Vector2(-0.0006, -0.0417)
 	var north := Vector2(558.0, -212.0)
@@ -869,50 +871,8 @@ func test_funnel_corner_rank_is_stable_under_drift_at_a_near_cost_tie() -> void:
 	assert_lt(absf(gap_a), 0.1, "sanity: from from_a the two corners' live costs are within 0.1 wu")
 	assert_true(gap_a > 0.0 and gap_b < 0.0,
 		"sanity: the drift reorders the live costs (south cheaper from from_a, north from from_b)")
-	var step_a: Vector2 = pf.next_step(from_a, to, clearance)
-	var step_b: Vector2 = pf.next_step(from_b, to, clearance)
-	assert_eq(step_a, step_b, "a sub-world-unit drift must not flip the funnel between the two west corners")
-	assert_eq(step_a, north, "the corner cheaper from the walker's cell centre, (352, 160), is taken")
-
-
-func test_funnel_corner_rank_holds_across_the_whole_start_cell() -> void:
-	# Sweep `from` over a 9 x 9 grid inside the near-tie start cell, x 320..384 and
-	# y 128..192. The live cost tie runs through the cell's southern row, so ranking
-	# from the live position picks both corners within the sweep; ranked from the cell
-	# centre, every point picks the same one.
-	var pf := _near_tie_field()
-	var to := Vector2(1025.0, 825.0)
-	var north := Vector2(558.0, -212.0)
-	var south := Vector2(558.0, 1172.0)
-	var live_north := 0
-	var live_south := 0
-	var off_north: Array[Vector2] = []
-	for iy in 9:
-		for ix in 9:
-			var p := Vector2(322.0 + ix * 7.5, 130.0 + iy * 7.5)
-			if _live_detour_cost(p, north, to) < _live_detour_cost(p, south, to):
-				live_north += 1
-			else:
-				live_south += 1
-			if pf.next_step(p, to, 590.0) != north:
-				off_north.append(p)
-	assert_true(live_north > 0 and live_south > 0,
-		"sanity: the live ranking picks both corners inside this one cell (%d north, %d south)" % [
-			live_north, live_south])
-	assert_eq(off_north, [] as Array[Vector2], "every point of the start cell steers for the same corner")
-
-
-func test_funnel_corner_rank_changes_only_across_a_cell_boundary() -> void:
-	# The limitation the cell-centre ranking keeps: it changes where `from` crosses a
-	# routing-cell boundary. Here the cell below the near-tie one, centred (352, 224),
-	# ranks the south corner cheaper (about 1551.9 wu against 1619.5), so the pick
-	# changes between y = 191.9 and y = 192.1, either side of the boundary at y = 192.
-	var pf := _near_tie_field()
-	var to := Vector2(1025.0, 825.0)
-	assert_eq(pf.next_step(Vector2(370.2562, 191.9), to, 590.0), Vector2(558.0, -212.0),
-		"just inside the near-tie cell: its centre ranks the north corner cheaper")
-	assert_eq(pf.next_step(Vector2(370.2562, 192.1), to, 590.0), Vector2(558.0, 1172.0),
-		"just inside the cell below: its centre ranks the south corner cheaper")
+	assert_eq(pf.next_step(from_a, to, 590.0), south, "from from_a the cheaper south corner is taken")
+	assert_eq(pf.next_step(from_b, to, 590.0), north, "from from_b the drift has made the north corner cheaper")
 
 
 func test_corridor_fallback_drift_between_cells_of_one_run_keeps_the_bearing() -> void:

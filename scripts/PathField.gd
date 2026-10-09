@@ -1007,18 +1007,6 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 		if d < nearest_d:
 			nearest_d = d
 			route_side = side
-	# Rank the visible corners by detour cost measured from the centre of the
-	# walker's own routing cell, not from `from`: the same quantization
-	# corridor_axis uses above, for the same reason. Two corners on opposite sides
-	# of the rect can cost within a fraction of a world unit of each other from the
-	# live position, and the per-tick drift of `from` then reorders them -- from
-	# one side of the hill to the other -- every tick. The cell centre moves only
-	# when `from` crosses a cell boundary. Visibility and the reached-corner test
-	# above stay on `from` itself, since they guard the leg actually walked. This
-	# ranking can disagree with the live-position one only when the two costs sit
-	# within twice the cell's half-diagonal of each other (each leg's length moves
-	# by at most the distance from `from` to its cell centre).
-	var rank_from: Vector2 = _cell_centre(_cell_coord(from))
 	var best: Vector2 = Vector2.INF
 	var best_cost: float = INF
 	for raw_c in [grown.position, Vector2(grown.end.x, grown.position.y),
@@ -1039,7 +1027,7 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 			continue
 		if _segment_blocked(from, c, margin, Leg.CANDIDATE):
 			continue
-		var cost: float = rank_from.distance_to(c) + c.distance_to(to)
+		var cost: float = from.distance_to(c) + c.distance_to(to)
 		if cost < best_cost:
 			best_cost = cost
 			best = c
