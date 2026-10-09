@@ -1,0 +1,35 @@
+{
+  "_comment": "A lone undisciplined 53-man Spearmen block nine files wide (five full ranks and a rear rank of eight), facing north at (520, 480). Its move order east to (620, 500) snaps it round onto the new heading, and a queued waypoint north to (640, 400) snaps it back the other way; the two snaps leave its grid skewed about 14 degrees off the heading when it halts. At tick 600 V about-faces it in place, which composes the drill's 180 degrees onto that skew (about 166 degrees in all, off a half-turn). At tick 800 a move order south, the way it now faces, re-squares the grid. The drills under the fold net a half-turn, so the re-square reflects it in depth like any about-face: the men turn only through the 14 degree skew and the short files step up a rank, and the block marches off whole. Before, the angle-only test read the fold as no about-face, and dropping it swung the grid 166 degrees under the men: DemoDefects over ticks 8-1500 reads path_crossing 0.47 and shape_residual 35.2 on main against 0.0 and 2.7 here, and on main 40 of 53 men cross the block's centreline to the other flank. Drill mode: no enemy.",
+  "seed": "1741",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 520,
+      "y": 480,
+      "count": 53,
+      "facing": [0, -1],
+      "frontage": 9,
+      "disciplined": false
+    }
+  ],
+  "camera": [
+    {"tick": 0, "x": 580, "y": 470, "zoom": 1.4}
+  ],
+  "steps": [
+    {"tick": 8, "click": [520, 480]},
+    {"tick": 20, "rmb_click": [620, 500]},
+    {"tick": 22, "rmb_drag": {"from": [640, 400], "to": [640, 400], "shift": true}},
+    {"tick": 600, "key": "V"},
+    {"tick": 800, "rmb_click": [640, 560]}
+  ],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [520, 480]},
+    {"tick": 600, "uid": 0, "field": "current_order", "value": "ABOUT_FACE"},
+    {"tick": 790, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": 900, "uid": 0, "field": "state", "value": "MOVING"}
+  ],
+  "frames": [560, 790, 840, 880, 960, 1100],
+  "state": [8, 60, 300, 560, 600, 700, 790, 820, 850, 880, 910, 940, 970, 1000, 1060, 1120, 1180]
+}
