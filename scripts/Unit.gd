@@ -1632,6 +1632,10 @@ func _physics_process(delta: float) -> void:
 	# ordinary tick.
 	_arm_standoff_on_leaving_fight_or_rout()
 	if state == State.ROUTING:
+		# _think() never runs for a router, so refresh its physical contact here: left as it
+		# was at the break, it would keep the router's bodies colliding as if still pressed
+		# against the enemy it has fled.
+		_refresh_enemy_contact()
 		_process_rout(delta)
 		if state != State.DEAD:   # timer expired: rallied (IDLE) or shattered (DEAD -> freed)
 			_separate(delta)   # routers still shoulder past anyone in their path
@@ -2745,16 +2749,12 @@ func fresh_pick_allowed(candidate: Unit) -> bool:
 	return in_contact or _enemy_is_perceived(candidate)
 
 
-## Decide what to do this frame: fight if in contact, otherwise move.
-func _think(delta: float) -> void:
-	# Physical contact: true when ANY live-or-routing enemy regiment is within melee
-	# contact range of EITHER side's own reach, regardless of order_mode/state -- see
-	# _in_enemy_contact's own doc comment. Computed first, before every other branch in
-	# this function (including the order-response-delay/reform/turn/wheel early returns
-	# below), so it's always fresh on every tick regardless of which branch a unit takes --
-	# unlike _under_fire further down, which only needs to be fresh for the branches that
-	# actually read it.
-	SimOps.bump(SimOps.UNIT_THINK)
+## Recompute _in_enemy_contact from scratch: true when ANY live-or-routing enemy regiment is
+## within melee contact range of EITHER side's own reach. Run every tick by _think() and, for a
+## router (which never runs _think), by the rout branch of _physics_process -- contact is a
+## physical fact, so a router still pressed against an enemy keeps colliding with it, and one
+## that has got clear stops.
+func _refresh_enemy_contact() -> void:
 	_in_enemy_contact = false
 	var contact_candidates: Array = get_tree().get_nodes_in_group("units")
 	contact_candidates.append_array(get_tree().get_nodes_in_group("routers"))
@@ -2769,6 +2769,19 @@ func _think(delta: float) -> void:
 				_in_enemy_contact = true
 				break
 	SimOps.add(SimOps.REGIMENT_CHECK, contact_checks)
+
+
+## Decide what to do this frame: fight if in contact, otherwise move.
+func _think(delta: float) -> void:
+	# Physical contact: true when ANY live-or-routing enemy regiment is within melee
+	# contact range of EITHER side's own reach, regardless of order_mode/state -- see
+	# _in_enemy_contact's own doc comment. Computed first, before every other branch in
+	# this function (including the order-response-delay/reform/turn/wheel early returns
+	# below), so it's always fresh on every tick regardless of which branch a unit takes --
+	# unlike _under_fire further down, which only needs to be fresh for the branches that
+	# actually read it.
+	SimOps.bump(SimOps.UNIT_THINK)
+	_refresh_enemy_contact()
 
 	_update_current_order()
 	# Order-response delay: tick down on every frame. Non-fighting units are frozen

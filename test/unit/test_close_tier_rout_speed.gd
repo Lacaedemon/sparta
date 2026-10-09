@@ -199,6 +199,9 @@ func test_a_router_broken_from_melee_leaves_the_engaged_tier() -> void:
 	router.rout_time = 1000.0
 	router.morale = 0.0
 	router._rout()
+	await _advance_ticks(1)
+	assert_true(router._in_enemy_contact,
+			"a router still pressed against the enemy it broke from stays in enemy contact")
 	var flee: Vector2 = router._flee_heading()
 	var worst_lead: float = -INF
 	var engaged_ticks: int = 0
@@ -219,3 +222,23 @@ func test_a_router_broken_from_melee_leaves_the_engaged_tier() -> void:
 	assert_lt(worst_lead, MAX_ENGAGED_FLIGHT_LEAD_WU,
 			"an engaged router's bulk stays on its slots rather than running on with the flight"
 			+ " (worst mean lead %.2f wu)" % worst_lead)
+
+
+func test_a_router_clear_of_every_enemy_is_not_in_enemy_contact() -> void:
+	# A router never runs _think(), where _in_enemy_contact is recomputed, so the rout path
+	# must refresh it: left as it was when the unit broke, a router that has got clear would
+	# keep its bodies colliding as if still pressed against the enemy it fled. Here the only
+	# enemy stands far beyond contact range, and the flag starts stale-true as at a break.
+	var router: Unit = await _spawn()
+	assert_not_null(router, "the team-0 cavalry deployed")
+	if router == null:
+		return
+	router.rally_morale_threshold = 1000.0
+	router.rout_time = 1000.0
+	router.morale = 0.0
+	router._in_enemy_contact = true
+	router._rout()
+	await _advance_ticks(1)
+	assert_eq(router.state, Unit.State.ROUTING, "setup: the unit is routing")
+	assert_false(router._in_enemy_contact,
+			"a router with no enemy within contact range is not in enemy contact")
