@@ -1755,7 +1755,7 @@ func _physics_process(delta: float) -> void:
 
 	# The parallel soldier-body layer (seeding + the global engaged-soldier
 	# separation) is orchestrated once per tick by Battle, AFTER every unit has
-	# settled this frame — see Battle._on_soldier_tick. It's non-authoritative
+	# settled this frame -- see Battle._on_soldier_tick. It's non-authoritative
 	# (nothing in combat/movement/morale reads _sim_soldier_pos), so it changes no
 	# gameplay; the debug overlay in _draw shows it. See docs/individual-collision-design.md.
 	queue_redraw()
