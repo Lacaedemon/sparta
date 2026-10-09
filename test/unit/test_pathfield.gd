@@ -120,9 +120,8 @@ func test_is_leg_blocked_lets_a_start_diagonal_from_a_corner_walk_straight_away(
 	# 80 per axis. Capped at the straight-line 94 (93.8 after the slack) the grown rect's
 	# top edge reaches y 206.2 and its left edge x 206.2, so it covers the start itself
 	# and the leg due west, straight away from the rect, read as blocked while the
-	# reverse leg was clear. A leg that diverges from the corner never comes nearer the
-	# rect than its start, so it is capped at the smallest per-axis room along it, here
-	# the start's own 80, and the leg is clear.
+	# reverse leg was clear. A leg that leaves the corner never comes closer to the rect
+	# on either axis, so its start room is the per-axis 80, and the leg is clear.
 	var pf := PathField.new(FIELD)
 	pf.block_rect(Rect2(300, 300, 200, 200))
 	assert_false(pf.is_leg_blocked(Vector2(250, 220), Vector2(100, 220), 100.0),
@@ -132,43 +131,7 @@ func test_is_leg_blocked_lets_a_start_diagonal_from_a_corner_walk_straight_away(
 	assert_eq(pf.next_step(Vector2(250, 220), Vector2(100, 220), 100.0), Vector2(100, 220),
 		"next_step walks straight off rather than funnelling")
 	assert_eq(pf._first_blocking_rect_index(Vector2(250, 220), Vector2(100, 220), 100.0), -1,
-		"the funnel's blocker choice agrees: no rect blocks a leg diverging from the corner")
-
-
-func test_a_leg_slightly_inward_on_one_axis_still_walks_away_from_a_corner() -> void:
-	# Same corner-diagonal start, 50 wu west of and 80 wu north of the rect's top-left
-	# corner (94 straight, 80 per axis), with each leg tilted 5 wu back toward the rect
-	# on one axis while it moves 150 wu away on the other. Both still move away from the
-	# rect in a straight line from the start (a positive dot product with the 94 wu
-	# offset from the corner), so neither should depend on which side of the axis the
-	# order landed.
-	# - West to (100, 225): the per-axis gaps 50 + 150t and 80 - 5t meet at t 0.19, where
-	#   the leg is 79.03 per axis from the rect, below the start's own 80. Capped at that
-	#   smallest room (78.53 after the slack) the leg is clear.
-	# - North to (255, 70): the x gap shrinks to 45 but the y gap, the larger, only grows,
-	#   so the smallest per-axis room is the start's 80, and the leg is clear.
-	var pf := PathField.new(FIELD)
-	pf.block_rect(Rect2(300, 300, 200, 200))
-	var from := Vector2(250, 220)
-	assert_false(pf.is_leg_blocked(from, Vector2(100, 225), 100.0),
-		"a leg west, 5 wu inward on y, is clear")
-	assert_false(pf.is_leg_blocked(from, Vector2(255, 70), 100.0),
-		"a leg north, 5 wu inward on x, is clear")
-	assert_eq(pf.next_step(from, Vector2(100, 225), 100.0), Vector2(100, 225),
-		"next_step walks the inward-tilted leg straight")
-
-
-func test_a_leg_converging_on_a_corner_keeps_the_straight_line_start_room() -> void:
-	# The other side of that boundary. From the same start, the leg to (100, 320) moves
-	# 150 wu west but 100 wu south, and its dot product with the start's offset from the
-	# corner, (-150, 100) . (-50, -80) = -500, is negative: the leg starts by closing on
-	# the rect. It keeps the straight-line start room (93.8 after the slack), whose grown
-	# rect covers the start, so it stays blocked. Capped at its smallest per-axis room
-	# instead (68 at t 0.12), it would read as clear.
-	var pf := PathField.new(FIELD)
-	pf.block_rect(Rect2(300, 300, 200, 200))
-	assert_true(pf.is_leg_blocked(Vector2(250, 220), Vector2(100, 320), 100.0),
-		"a leg that starts by closing on the rect is judged at the straight-line start room")
+		"the funnel's blocker choice agrees: no rect blocks a leg leaving the corner")
 
 
 func test_start_room_stays_straight_line_for_non_order_sightlines() -> void:
@@ -182,7 +145,7 @@ func test_start_room_stays_straight_line_for_non_order_sightlines() -> void:
 	var from := Vector2(250, 220)
 	var to := Vector2(100, 220)
 	assert_false(pf._segment_blocked(from, to, 100.0, PathField.Leg.ORDER),
-		"sanity: the order leg diverging from the corner is clear")
+		"sanity: the order leg leaving the corner is clear")
 	assert_true(pf._segment_blocked(from, to, 100.0, PathField.Leg.CANDIDATE),
 		"a candidate sightline keeps the straight-line start room")
 	assert_true(pf._corridor_sightline_blocked(from, to, 100.0),
@@ -195,7 +158,7 @@ func test_order_leg_running_past_the_rect_keeps_the_straight_line_start_room() -
 	# axis) and the leg runs due south, down the rect's left face. Every point of that
 	# leg is 100 wu from the face, so a per-axis start room (99.5 after the slack) would
 	# clear it and march a unit needing 137 wu past the face at 100. The leg does not
-	# diverge from the corner (it comes nearer the rect), so it keeps the straight-line
+	# leave the corner (it moves toward the rect on y), so it keeps the straight-line
 	# room, the rect grows by the full 137 (the destination, 140 wu below the rect's
 	# bottom edge, leaves room for it), and the leg stays blocked.
 	var pf := PathField.new(FIELD)
@@ -212,7 +175,7 @@ func test_candidate_sightline_from_inside_the_margin_off_a_corner_stays_rejected
 	# A walker inside its own 150 wu margin, diagonal off the rect's top-left corner
 	# at (250, 180): 50 wu west of it and 120 wu north, so 130 wu away in a straight
 	# line and 120 per axis. A candidate sightline keeps the straight-line start room
-	# (only an ORDER leg diverging from the corner gets a per-axis one, and this sightline
+	# (only an ORDER leg leaving the corner takes the per-axis one, and this sightline
 	# runs past the rect, not away from it), so the rect grows by 129.5, its top edge reaches
 	# y 170.5, and the walker stands inside it: every candidate sightline from there,
 	# including the one to the far top-right corner of the margin-grown rect, is
