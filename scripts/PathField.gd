@@ -666,21 +666,27 @@ enum Leg { ORDER, CORRIDOR_CELL, CANDIDATE }
 ##
 ## - The start. The start's room has three roles, and only the first wants the
 ##   per-axis metric:
-##   1. Freeing a walker inside its own margin. An ORDER leg that LEAVES a corner
-##      (_leg_leaves_corner: it never comes closer to the rect on either axis) takes
-##      the start's per-axis room. From a start diagonal off a corner the
-##      straight-line room grows the square corner over the start itself, so a leg
-##      heading straight away read as blocked while the reverse leg was clear.
+##   1. Freeing a walker inside its own margin. From a start diagonal off a corner
+##      the straight-line room grows the square corner over the start itself, so a
+##      leg heading straight away read as blocked while the reverse leg was clear. An
+##      ORDER leg that DIVERGES from the corner (_leg_diverges_from_corner: it never
+##      comes nearer the rect, in a straight line, than its start) is instead capped
+##      at the smallest per-axis room any point of it has
+##      (_min_grow_room_on_segment). That can sit below the start's own per-axis
+##      room: a leg slightly inward on one axis but outward faster on the other dips
+##      past the square corner's reach while moving away from the rect. The rect
+##      grown by that room never touches the leg, so a diverging leg is never blocked
+##      by the rect it is leaving; the walker only ever gets farther from it.
 ##   2. Rejecting candidate corners seen from deep inside the margin. CANDIDATE and
 ##      CORRIDOR_CELL sightlines keep the straight-line start room: measured per
 ##      axis, a wide line deep inside its corner margin accepted the hill's far grown
 ##      corner at a sub-wu standoff, detoured and stalled.
-##   3. Setting the whole leg's margin. Any other ORDER leg (one running past the
-##      rect, or turning back toward it) also keeps the straight-line start room. A
-##      leg down the face beside a corner-diagonal start stays at the start's
-##      per-axis gap all along, so a per-axis start room would march the whole leg
-##      at that gap rather than the unit's own margin. A leg that leaves the corner
-##      never comes closer than its start, so its start-derived cap only frees it.
+##   3. Setting the whole leg's margin. Any other ORDER leg (one that comes nearer
+##      the rect than its start: running down a face, or turning back toward it)
+##      keeps the straight-line start room. A leg down the face beside a
+##      corner-diagonal start stays at the start's per-axis gap all along, so a
+##      per-axis start room would march the whole leg at that gap rather than the
+##      unit's own margin.
 ##
 ## The capped margin applies to the WHOLE leg, not only near the endpoint that set
 ## it. A leg to a destination just off a corner therefore keeps only that
@@ -707,9 +713,9 @@ func _segment_blocked(from: Vector2, to: Vector2, clearance: float = 0.0,
 static func _leg_room(from: Vector2, to: Vector2, r: Rect2, kind: Leg) -> float:
 	match kind:
 		Leg.ORDER:
-			var start_room: float = _grow_room(from, r) if _leg_leaves_corner(from, to, r) \
-					else _distance_to_rect(from, r)
-			return minf(start_room, _grow_room(to, r))
+			if _leg_diverges_from_corner(from, to, r):
+				return _min_grow_room_on_segment(from, to, r)
+			return minf(_distance_to_rect(from, r), _grow_room(to, r))
 		Leg.CORRIDOR_CELL:
 			return minf(_distance_to_rect(from, r), _distance_to_rect(to, r))
 		_:
@@ -717,25 +723,45 @@ static func _leg_room(from: Vector2, to: Vector2, r: Rect2, kind: Leg) -> float:
 
 
 ## Whether `from` stands diagonally off one of `r`'s corners (outside the rect's span
-## on both axes) and the from..to leg moves outward, or not at all, on each of those
-## axes. Such a leg never comes closer to the rect on either axis, so no point of it
-## is nearer the rect than its start. Only there does the straight-line room exceed
-## the per-axis room; beside an edge the two agree.
-static func _leg_leaves_corner(from: Vector2, to: Vector2, r: Rect2) -> bool:
-	var out_x: float = 0.0
-	if from.x < r.position.x:
-		out_x = -1.0
-	elif from.x > r.end.x:
-		out_x = 1.0
-	var out_y: float = 0.0
-	if from.y < r.position.y:
-		out_y = -1.0
-	elif from.y > r.end.y:
-		out_y = 1.0
-	if out_x == 0.0 or out_y == 0.0:
+## on both axes) and the from..to leg never comes nearer the rect, in a straight line,
+## than its start. Only off a corner does the straight-line room exceed the per-axis
+## room; beside an edge the two agree. The distance to a convex set is convex along a
+## line, so it never decreases along the leg exactly when it does not decrease at the
+## start: the leg's direction makes a non-negative dot product with the offset from
+## the corner to `from`. That admits a leg slightly inward on one axis if it moves
+## outward faster on the other, and rejects one running parallel to a face (its
+## distance to the corner shrinks until it passes beside the face) or back toward the
+## rect.
+static func _leg_diverges_from_corner(from: Vector2, to: Vector2, r: Rect2) -> bool:
+	var outside_x: bool = from.x < r.position.x or from.x > r.end.x
+	var outside_y: bool = from.y < r.position.y or from.y > r.end.y
+	if not (outside_x and outside_y):
 		return false
+	var corner := Vector2(clampf(from.x, r.position.x, r.end.x),
+			clampf(from.y, r.position.y, r.end.y))
+	return (to - from).dot(from - corner) >= 0.0
+
+
+## The smallest _grow_room any point of the from..to segment has to `r`. _grow_room is
+## the largest of four linear functions of the segment parameter (the gaps beyond
+## each of the rect's four edges, clamped at 0), so it is convex and piecewise linear
+## along the segment, and its minimum lies at an endpoint or where two of those four
+## gaps are equal. Growing `r` by anything less leaves the whole segment outside it.
+static func _min_grow_room_on_segment(from: Vector2, to: Vector2, r: Rect2) -> float:
 	var d: Vector2 = to - from
-	return d.x * out_x >= 0.0 and d.y * out_y >= 0.0
+	var base: Array[float] = [r.position.x - from.x, from.x - r.end.x,
+			r.position.y - from.y, from.y - r.end.y]
+	var rate: Array[float] = [-d.x, d.x, -d.y, d.y]
+	var best: float = minf(_grow_room(from, r), _grow_room(to, r))
+	for i in 4:
+		for j in range(i + 1, 4):
+			var dr: float = rate[i] - rate[j]
+			if dr == 0.0:
+				continue
+			var t: float = (base[j] - base[i]) / dr
+			if t > 0.0 and t < 1.0:
+				best = minf(best, _grow_room(from + d * t, r))
+	return best
 
 
 ## next_step's corridor fallback sightline: capped at the room the candidate CELL
