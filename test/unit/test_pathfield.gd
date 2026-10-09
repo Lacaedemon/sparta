@@ -134,6 +134,25 @@ func test_is_leg_blocked_lets_a_start_diagonal_from_a_corner_walk_straight_away(
 		"the funnel's blocker choice agrees: no rect blocks a leg leaving the corner")
 
 
+func test_a_leg_tilted_back_toward_the_rect_on_one_axis_is_still_judged_from_the_start() -> void:
+	# Pins a known limitation of the leaves-the-corner rule. From the same
+	# corner-diagonal start (94 wu straight, 80 per axis), each leg below moves 150 wu
+	# away from the rect on one axis but 5 wu back toward it on the other, so its
+	# straight-line distance to the rect still grows the whole way. The rule frees
+	# only a leg moving outward, or not at all, on both axes, so these keep the
+	# straight-line start room, whose grown rect covers the start, and stay blocked.
+	# Freeing every such diverging leg moved routing in a catalog clip (a fight beside
+	# the hill drifted toward it and the router rallied instead of fleeing south).
+	# TODO(#1754): free these legs once a rule exists that leaves that clip alone.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 300, 200, 200))
+	var from := Vector2(250, 220)
+	assert_true(pf.is_leg_blocked(from, Vector2(100, 225), 100.0),
+		"a leg west, 5 wu back toward the rect on y, is still judged at the straight-line start room")
+	assert_true(pf.is_leg_blocked(from, Vector2(255, 70), 100.0),
+		"a leg north, 5 wu back toward the rect on x, is still judged at the straight-line start room")
+
+
 func test_start_room_stays_straight_line_for_non_order_sightlines() -> void:
 	# The start's second role: from deep inside the margin, a candidate or corridor
 	# sightline is judged at the straight-line start room, even one heading straight

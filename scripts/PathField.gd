@@ -721,6 +721,11 @@ static func _leg_room(from: Vector2, to: Vector2, r: Rect2, kind: Leg) -> float:
 ## axes. Such a leg never comes closer to the rect on either axis, so no point of it
 ## is nearer the rect than its start. Only there does the straight-line room exceed
 ## the per-axis room; beside an edge the two agree.
+## A leg that tilts back toward the rect on one axis while moving away faster on the
+## other also never comes nearer the rect in a straight line, but is not freed here:
+## widening the rule to every such leg moved routing in a catalog clip (a fight beside
+## the hill drifted toward it, and its router rallied instead of fleeing south).
+## TODO(#1754): free those legs too, under a rule that leaves that case alone.
 static func _leg_leaves_corner(from: Vector2, to: Vector2, r: Rect2) -> bool:
 	var out_x: float = 0.0
 	if from.x < r.position.x:
