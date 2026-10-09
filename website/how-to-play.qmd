@@ -422,6 +422,40 @@ move order (which rotates the whole block around its centre as it marches), the 
 is a standing drill command: no one takes a step. Use it to face a threat behind the line
 without marching first, or to quickly reorient a reserve before it moves up.
 
+When the about-faced unit next moves off, it squares its ranks to the new heading in place,
+unless it has turned to face an enemy since:
+each man keeps his own flank.
+If the old rear rank was short, it now leads, and a full rank is brought to the front.
+In a block that reforms file by file, the files the short rank never reached step forward one place.
+In one that reforms by rows (cavalry always does, and the panel's Reform button can choose it for foot),
+some men of the old front rank instead walk the depth of the block to fill the new front.
+A block with no short rank needs no step at all.
+The same holds when the block was skewed by less than a right angle before the turn,
+such as a levy still skewed from snapping round onto earlier orders:
+the men also turn through that skew about the block's centre as it squares,
+which carries the men farthest from the centre a little way round.
+A block skewed by more than a right angle is instead swung the shorter way round to its new heading.
+Two quarter-turns the same way count as an about-face here too.
+
+::: {#fig-about-face-residue .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/about_face_residue.jpg">
+  <source src="media/about_face_residue.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+An about-face made on a block that was not square:
+a levy snaps round onto a move order and back onto a queued waypoint,
+which leaves its grid skewed a little off its heading.
+It halts, about-faces with <kbd>V</kbd>, and is ordered on the way it now faces.
+The men square away only the small skew as the block marches off,
+each keeping his own flank.
+:::
+
 **Quarter-turn in place (<kbd>Q</kbd> / <kbd>E</kbd>).** Press <kbd>Q</kbd> to turn the
 selected unit a quarter-turn left, or <kbd>E</kbd> to turn it right: every soldier pivots
 90° where they stand. No one marches and the grid of men does not reorganize --- they
@@ -480,9 +514,15 @@ file steps out sideways across the new facing, so the depth halves and the line 
 The explicatio is measured against the direction the men face after the turn, not the
 grid they started in --- which is what makes the pair one drill rather than two unrelated
 keypresses (pressing <kbd>Q</kbd> and then <kbd>B</kbd> by hand doubles the grid's old
-files, which after the turn run along the block's depth). The historical use is deploying
-from column: a regiment marching by files quarter-turns to bring its long side to the
-front, then unfolds into line. The panel reads "Quarter-turning (step 1 of 2)" while the
+files, which after the turn run along the block's depth).
+A block skewed by less than half a right angle before the turn,
+or by more than one and a half (nearly reversed),
+still unfolds across its new facing, and the skew is squared away with it.
+One skewed in between ends the turn with its files nearer across its new facing than along it,
+so it widens those files where they lie and keeps its skew.
+The historical use is deploying from column:
+a regiment marching by files quarter-turns to bring its long side to the front,
+then unfolds into line. The panel reads "Quarter-turning (step 1 of 2)" while the
 turn runs. Like every drill, it only answers a unit standing idle.
 
 ::: {#fig-turn-explicatio-combo .demo}

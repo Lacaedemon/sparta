@@ -258,6 +258,92 @@ func test_file_double_step_keeps_a_half_turn_fold_and_widens_the_grids_own_files
 	assert_true(is_equal_approx(absf(u._formation_angle), PI), "the half-turn fold survives")
 
 
+## A quarter-turn composed onto a leftover snap-absorb fold lands off a quarter (a -25 degree
+## residue plus a quarter-turn right folds to -115). Its file axis still runs along the block's
+## depth, so the explicatio transposes it exactly as it does an exact quarter fold.
+func test_file_double_step_transposes_a_quarter_turn_composed_onto_a_residue() -> void:
+	var u := _make_unit()
+	u._formation_angle = deg_to_rad(-115.0)
+	u._apply_file_double_step(Order.new_file_double(1))
+	assert_eq(UnitFormation.frontage(u), 10,
+		"5 files across the turned facing (the old 5 ranks), doubled -> 10, not 16 along the depth")
+	assert_eq(u._formation_angle, 0.0, "the fold is dropped: the grid is re-squared to the heading")
+
+
+## The same through the real combo: a block carrying a -25 degree snap-absorb residue runs
+## quarter-turn right then explicatio (Shift+E), the turn composing onto the residue to -115.
+## The explicatio still unfolds across the new facing, from the old 5 ranks to 10 files.
+func test_turn_explicatio_on_a_residue_block_unfolds_across_the_new_facing() -> void:
+	var u := _make_unit()
+	u._formation_angle = deg_to_rad(-25.0)   # a snap-absorb residue
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(slots.size()):
+		u._sim_soldier_pos[i] = slots[i]
+	u.quarter_turn_explicatio(1)
+	assert_not_null(u.current_order, "precondition: the combo was accepted")
+	_run_to_completion(u)
+	assert_null(u.current_order, "the combo completed within the budget")
+	assert_eq(UnitFormation.frontage(u), 10,
+		"5 files across the turned facing (the old 5 ranks), doubled -> 10, not 16 along the depth")
+	assert_eq(u._formation_angle, 0.0, "the fold, residue and all, is squared away")
+
+
+## Squaring the residue away with the fold costs the men no more than the residue's own turn: run
+## the same combo on a square block and on one carrying the -25 degree residue, and hold the
+## skewed block to the square one. Nobody's new slot lies across the block's lateral centreline
+## from where he stood that would not in the square block, and no man walks farther than the
+## square block's farthest plus the residue's turn at the block's farthest man from its centre.
+func test_turn_explicatio_on_a_residue_block_moves_men_no_farther_than_the_residue_turn() -> void:
+	var square: Dictionary = _combo_travel(_make_unit(), 0.0)
+	var skewed: Dictionary = _combo_travel(_make_unit(), deg_to_rad(-25.0))
+	assert_true(int(skewed["crossed"]) <= int(square["crossed"]),
+		"%d men cross the centreline, against %d in the square block"
+		% [int(skewed["crossed"]), int(square["crossed"])])
+	var turn: float = 2.0 * float(skewed["radius"]) * sin(deg_to_rad(25.0) * 0.5)
+	var bound: float = float(square["farthest"]) + turn
+	assert_lt(float(skewed["farthest"]), bound + 0.01,
+		"the farthest man walks %.1f, against %.1f for the square block plus the residue's turn"
+		% [float(skewed["farthest"]), bound])
+
+
+## Stand `u` formed on a grid folded by `residue`, run the Shift+E combo to completion, and
+## measure each man from where he stood to his final slot: the farthest walk, how many new slots
+## lie across the final lateral centreline from their man (each more than half a file pitch
+## off it), and the farthest man's distance from the centre before the combo.
+func _combo_travel(u: Unit, residue: float) -> Dictionary:
+	u._formation_angle = residue
+	var start: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(start.size()):
+		u._sim_soldier_pos[i] = start[i]
+	u.quarter_turn_explicatio(1)
+	_run_to_completion(u)
+	assert_null(u.current_order, "the combo completed within the budget")
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var lateral: Vector2 = u.facing.orthogonal()
+	var half: float = u.file_pitch_wu() * 0.5
+	var crossed: int = 0
+	var farthest: float = 0.0
+	var radius: float = 0.0
+	for i in range(start.size()):
+		farthest = maxf(farthest, start[i].distance_to(slots[i]))
+		radius = maxf(radius, start[i].distance_to(u.position))
+		var a: float = (start[i] - u.position).dot(lateral)
+		var b: float = (slots[i] - u.position).dot(lateral)
+		if a * b < 0.0 and absf(a) > half and absf(b) > half:
+			crossed += 1
+	return {"crossed": crossed, "farthest": farthest, "radius": radius}
+
+
+## A fold nearer a half-turn than a quarter (a quarter-turn onto a 56 degree residue folds to
+## 146) leaves the file axis nearer lateral than depth, so it widens the grid's own files.
+func test_file_double_step_reads_a_fold_nearer_a_half_turn_as_lateral_files() -> void:
+	var u := _make_unit()
+	u._formation_angle = deg_to_rad(146.0)
+	u._apply_file_double_step(Order.new_file_double(1))
+	assert_eq(UnitFormation.frontage(u), 16, "8 lateral files doubled -> 16")
+	assert_almost_eq(rad_to_deg(u._formation_angle), 146.0, 0.01, "the fold is kept")
+
+
 func test_file_double_step_with_no_fold_matches_the_plain_explicatio() -> void:
 	var u := _make_unit()
 	u._apply_file_double_step(Order.new_file_double(1))

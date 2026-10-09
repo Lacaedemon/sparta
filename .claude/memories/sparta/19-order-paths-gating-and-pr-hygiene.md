@@ -104,25 +104,30 @@ so it wiped an uncommitted fix on PR #1737.
 
 (`Lacaedemon/sparta` PR #1737, 2026-10-07.)
 
-## `Unit._quarter_turn_fold` is a record of net drill turns; every other fold write clears it
+## `Unit._drill_turn_fold` is a record of net drill turns; every other fold write clears it
 
-`Unit._quarter_turn_fold` holds the net turn of the QUARTER_TURN leaves
-settled into `_formation_angle` since anything else last moved it,
-so `reform_ranks` can re-pair a quarter-turn composed onto a residue fold.
+`Unit._drill_turn_fold` (named `_quarter_turn_fold` before #1741) holds the net turn of the
+QUARTER_TURN and ABOUT_FACE leaves settled into `_formation_angle` since anything else last
+moved it.
+Every turn `_settle_order_turn` settles is one of those two leaf types,
+a rear move's and a lateral pivot's turn children included (begin_pivot types them so).
+`reform_ranks` re-pairs a fold whose drills net a quarter,
+and reflects one whose drills net a half-turn like an about-face
+while the fold is nearer a half-turn than square.
+The explicatio's transpose reads the fold's nearest quarter, not the record.
 Every other write to the fold clears it:
-snap-absorb, engage re-face, a non-quarter drill,
+snap-absorb, engage re-face,
 a reform or its already-square early return,
 the explicatio's quarter-fold transpose, and a rout.
-A snapshot restore restores it alongside the fold.
-Composed folds in the explicatio and about-face gates are still open (#1741).
+A snapshot restore restores it alongside the fold, falling back to the old `quarter_turn_fold` key.
 
-- **Do:** make a new write to `_formation_angle` either add to `_quarter_turn_fold` or clear it,
+- **Do:** make a new write to `_formation_angle` either add to `_drill_turn_fold` or clear it,
   and say which in a comment.
 
 - **Don't:** write `_formation_angle` without touching the record:
   a stale value re-pairs men through a fold that no longer measures a quarter.
 
-(`Lacaedemon/sparta` #1731 / PR #1740, 2026-10-08.)
+(`Lacaedemon/sparta` #1731 / PR #1740 and #1741 / PR #1747, 2026-10-08.)
 
 ## `PathField` room cap: a real destination's room is measured per axis
 

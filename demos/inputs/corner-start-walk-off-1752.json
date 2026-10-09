@@ -1,0 +1,112 @@
+{
+  "_comment": "A lone 30-man Infantry block, 10 files by 3 ranks, stands diagonally off the default hill's north-east corner (the hill is Rect2(1150, 380, 250, 200), so the corner is (1400, 380)): its centre is 65 wu east and 55 wu north of the corner, inside the margin its north leg needs. It is ordered due north to (1465, 0), straight away from the hill. That leg never comes closer to the hill on either axis, so its start room is measured per axis (65 wu), the way the grown hill's square corner reaches, and the leg reads as clear: the block marches straight up x = 1465, keeps facing north, and halts at the point. On main the start room was measured in a straight line (85 wu), which grew the corner over the block's own position, so the leg read as blocked: the block's first steps swung west, toward the hill (facing (-0.51, -0.86) at tick 120), its ranks stretched to 90 wu deep by tick 200, and it marched the rest of the way on a slant from x = 1454. The tick-120 facing and tick-300 position pins fail there.",
+  "seed": "61743",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 1465,
+      "y": 325,
+      "facing": [
+        0,
+        -1
+      ],
+      "count": 30,
+      "frontage": 10
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 1380,
+      "y": 200,
+      "zoom": 1.2
+    }
+  ],
+  "steps": [
+    {
+      "tick": 8,
+      "click": [
+        1465,
+        325
+      ]
+    },
+    {
+      "tick": 20,
+      "rmb_click": [
+        1465,
+        0
+      ]
+    }
+  ],
+  "state": [
+    8,
+    60,
+    120,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900
+  ],
+  "expect": [
+    {
+      "tick": 8,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        1465.0,
+        325.0
+      ]
+    },
+    {
+      "tick": 120,
+      "uid": 0,
+      "field": "current_order",
+      "value": "MOVE"
+    },
+    {
+      "tick": 120,
+      "uid": 0,
+      "field": "facing",
+      "value": [
+        0.0,
+        -1.0
+      ]
+    },
+    {
+      "tick": 300,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        1465.0,
+        228.82
+      ]
+    },
+    {
+      "tick": 900,
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    },
+    {
+      "tick": 900,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        1465.0,
+        0.15
+      ]
+    },
+    {
+      "tick": 900,
+      "uid": 0,
+      "field": "soldiers_in_block_terrain",
+      "value": 0
+    }
+  ]
+}

@@ -114,11 +114,88 @@ func test_is_leg_blocked_leaves_a_destination_diagonal_from_a_corner_reachable()
 		"a leg to a destination off the rect's corner is judged at the room that destination leaves")
 
 
+func test_is_leg_blocked_lets_a_start_diagonal_from_a_corner_walk_straight_away() -> void:
+	# The swapped-endpoint mirror of the destination test above. The start stands 50 wu
+	# left of and 80 wu above the rect's top-left corner: 94 wu away in a straight line,
+	# 80 per axis. Capped at the straight-line 94 (93.8 after the slack) the grown rect's
+	# top edge reaches y 206.2 and its left edge x 206.2, so it covers the start itself
+	# and the leg due west, straight away from the rect, read as blocked while the
+	# reverse leg was clear. A leg that leaves the corner never comes closer to the rect
+	# on either axis, so its start room is the per-axis 80, and the leg is clear.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 300, 200, 200))
+	assert_false(pf.is_leg_blocked(Vector2(250, 220), Vector2(100, 220), 100.0),
+		"a leg from a corner-diagonal start heading straight away is clear")
+	assert_false(pf.is_leg_blocked(Vector2(100, 220), Vector2(250, 220), 100.0),
+		"sanity: the reverse leg is clear too, so the two directions now agree")
+	assert_eq(pf.next_step(Vector2(250, 220), Vector2(100, 220), 100.0), Vector2(100, 220),
+		"next_step walks straight off rather than funnelling")
+	assert_eq(pf._first_blocking_rect_index(Vector2(250, 220), Vector2(100, 220), 100.0), -1,
+		"the funnel's blocker choice agrees: no rect blocks a leg leaving the corner")
+
+
+func test_a_leg_tilted_back_toward_the_rect_on_one_axis_is_still_judged_from_the_start() -> void:
+	# Pins a known limitation of the leaves-the-corner rule. From the same
+	# corner-diagonal start (94 wu straight, 80 per axis), each leg below moves 150 wu
+	# away from the rect on one axis but 5 wu back toward it on the other, so its
+	# straight-line distance to the rect still grows the whole way. The rule frees
+	# only a leg moving outward, or not at all, on both axes, so these keep the
+	# straight-line start room, whose grown rect covers the start, and stay blocked.
+	# Freeing every such diverging leg moved routing in a catalog clip (a fight beside
+	# the hill drifted toward it and the router rallied instead of fleeing south).
+	# TODO(#1754): free these legs once a rule exists that leaves that clip alone.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 300, 200, 200))
+	var from := Vector2(250, 220)
+	assert_true(pf.is_leg_blocked(from, Vector2(100, 225), 100.0),
+		"a leg west, 5 wu back toward the rect on y, is still judged at the straight-line start room")
+	assert_true(pf.is_leg_blocked(from, Vector2(255, 70), 100.0),
+		"a leg north, 5 wu back toward the rect on x, is still judged at the straight-line start room")
+
+
+func test_start_room_stays_straight_line_for_non_order_sightlines() -> void:
+	# The start's second role: from deep inside the margin, a candidate or corridor
+	# sightline is judged at the straight-line start room, even one heading straight
+	# away. Same corner-diagonal start as above (94 wu straight, 80 per axis), so the
+	# rect grown by 93.8 covers the start and both non-order kinds stay blocked; only
+	# the ORDER leg takes the per-axis room.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 300, 200, 200))
+	var from := Vector2(250, 220)
+	var to := Vector2(100, 220)
+	assert_false(pf._segment_blocked(from, to, 100.0, PathField.Leg.ORDER),
+		"sanity: the order leg leaving the corner is clear")
+	assert_true(pf._segment_blocked(from, to, 100.0, PathField.Leg.CANDIDATE),
+		"a candidate sightline keeps the straight-line start room")
+	assert_true(pf._corridor_sightline_blocked(from, to, 100.0),
+		"a corridor-cell sightline keeps the straight-line start room")
+
+
+func test_order_leg_running_past_the_rect_keeps_the_straight_line_start_room() -> void:
+	# The start's third role: the start room caps the margin for the WHOLE leg. The
+	# start stands 100 wu off each face of the top-left corner (141 straight, 100 per
+	# axis) and the leg runs due south, down the rect's left face. Every point of that
+	# leg is 100 wu from the face, so a per-axis start room (99.5 after the slack) would
+	# clear it and march a unit needing 137 wu past the face at 100. The leg does not
+	# leave the corner (it moves toward the rect on y), so it keeps the straight-line
+	# room, the rect grows by the full 137 (the destination, 140 wu below the rect's
+	# bottom edge, leaves room for it), and the leg stays blocked.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 300, 200, 200))
+	var from := Vector2(200, 200)
+	var to := Vector2(200, 640)
+	assert_true(pf.is_leg_blocked(from, to, 137.0),
+		"a leg running past the rect from a corner-diagonal start keeps the full margin")
+	assert_false(pf.is_leg_blocked(from, Vector2(200, 50), 137.0),
+		"sanity: the same start heading straight away (north) is clear")
+
+
 func test_candidate_sightline_from_inside_the_margin_off_a_corner_stays_rejected() -> void:
 	# A walker inside its own 150 wu margin, diagonal off the rect's top-left corner
 	# at (250, 180): 50 wu west of it and 120 wu north, so 130 wu away in a straight
-	# line and 120 per axis. Only a destination's room is measured per axis; the
-	# start keeps the straight-line room, so the rect grows by 129.5, its top edge reaches
+	# line and 120 per axis. A candidate sightline keeps the straight-line start room
+	# (only an ORDER leg leaving the corner takes the per-axis one, and this sightline
+	# runs past the rect, not away from it), so the rect grows by 129.5, its top edge reaches
 	# y 170.5, and the walker stands inside it: every candidate sightline from there,
 	# including the one to the far top-right corner of the margin-grown rect, is
 	# rejected. Measured per axis, the rect would grow only to y 180.5, leaving the
@@ -130,7 +207,7 @@ func test_candidate_sightline_from_inside_the_margin_off_a_corner_stays_rejected
 	var from := Vector2(250, 180)
 	var far_corner := Vector2(rect.end.x + 150.0 + PathField.CORNER_STANDOFF,
 			rect.position.y - 150.0 - PathField.CORNER_STANDOFF)
-	assert_true(pf._segment_blocked(from, far_corner, 150.0, false),
+	assert_true(pf._segment_blocked(from, far_corner, 150.0, PathField.Leg.CANDIDATE),
 		"a candidate sightline from deep inside the margin is not accepted on a sub-wu standoff")
 
 
@@ -147,7 +224,7 @@ func test_is_leg_blocked_caps_the_whole_leg_at_the_destinations_room() -> void:
 	pf.block_rect(Rect2(300, 300, 200, 200))
 	var from := Vector2(700, 100)
 	var to := Vector2(250, 220)
-	assert_true(pf._segment_blocked(from, to, 100.0, false),
+	assert_true(pf._segment_blocked(from, to, 100.0, PathField.Leg.CANDIDATE),
 		"sanity: at the full 100 wu margin the leg passing 93 wu off the top edge is blocked")
 	assert_false(pf.is_leg_blocked(from, to, 100.0),
 		"the destination's 79.5 wu room caps the margin along the whole leg")
@@ -183,9 +260,9 @@ func test_corridor_fallback_caps_a_candidate_cell_at_its_straight_line_room() ->
 	# capped candidate cell it is judged at 94 wu and blocked.
 	var pf := PathField.new(FIELD)
 	pf.block_rect(Rect2(300, 300, 200, 200))
-	assert_false(pf._segment_blocked(Vector2(100, 220), Vector2(250, 220), 100.0, true, true),
+	assert_false(pf._segment_blocked(Vector2(100, 220), Vector2(250, 220), 100.0, PathField.Leg.ORDER),
 		"as a real destination the corner-diagonal point is reachable")
-	assert_true(pf._segment_blocked(Vector2(100, 220), Vector2(250, 220), 100.0, true, false),
+	assert_true(pf._segment_blocked(Vector2(100, 220), Vector2(250, 220), 100.0, PathField.Leg.CORRIDOR_CELL),
 		"as a candidate cell the same point keeps the straight-line room, as before")
 	assert_true(pf._corridor_sightline_blocked(Vector2(100, 220), Vector2(250, 220), 100.0),
 		"next_step's corridor fallback judges its cell the candidate way")
@@ -358,7 +435,7 @@ func test_string_pull_candidates_must_clear_the_full_margin() -> void:
 	var near_centre := Vector2(288, 128)      # open cell centre, only 62 wu off the rect
 	assert_false(pf._segment_blocked(from, near_centre, 70.0),
 		"judged as a real endpoint, the 62-wu-out point is reachable (room-capped)")
-	assert_true(pf._segment_blocked(from, near_centre, 70.0, false),
+	assert_true(pf._segment_blocked(from, near_centre, 70.0, PathField.Leg.CANDIDATE),
 		"judged as a candidate, it must clear the full 70-wu margin -- and cannot")
 
 
@@ -526,7 +603,7 @@ func test_corridor_fallback_clears_the_corner_margin() -> void:
 	assert_false(corner.is_finite(), "sanity check: no grown corner is visible, so the corridor is used")
 	var step: Vector2 = pf.next_step(from, to, small_clearance, 0.0, big_corner_clearance)
 	assert_ne(step, to, "the leg is blocked, so next_step detours")
-	assert_false(pf._segment_blocked(from, step, big_corner_clearance, false),
+	assert_false(pf._segment_blocked(from, step, big_corner_clearance, PathField.Leg.CANDIDATE),
 		"the corridor leg clears the corner margin: got %s" % step)
 
 
@@ -755,6 +832,69 @@ func test_funnel_corner_route_side_is_stable_when_heading_runs_through_the_neare
 			hill.position.x - clearance - PathField.CORNER_STANDOFF,
 			hill.end.y + clearance + PathField.CORNER_STANDOFF),
 		"the funnel steers for the south corner the corridor rounds on")
+
+
+## The default hill, a 590 wu clearance, and the near cost tie between its two west
+## grown corners seen from (370.26, 190.36), north-west of the hill, ordered to
+## (1025, 825), south-west of it.
+func _near_tie_field() -> PathField:
+	var pf := PathField.new(Rect2(0, 0, 1600, 1200))
+	pf.block_rect(Rect2(1150, 380, 250, 200))   # Battle.TERRAIN's hill patch
+	return pf
+
+
+## Straight-line detour cost from `p` round `corner` to `to`: the quantity the funnel
+## ranks visible corners by.
+func _live_detour_cost(p: Vector2, corner: Vector2, to: Vector2) -> float:
+	return p.distance_to(corner) + corner.distance_to(to)
+
+
+func test_funnel_corner_near_cost_tie_still_flips_under_drift() -> void:
+	# Documents a known instability rather than a wanted behaviour. Both west corners
+	# of hill.grow(590 + CORNER_STANDOFF), (558, -212) and (558, 1172), are visible
+	# from `from_a`, and neither is filtered by side. Their straight-line detour costs
+	# from the live position differ by under 0.1 wu, so the drift below -- one tick's
+	# worth of soldier-body coupling -- reorders them, and the funnel steers south one
+	# tick and north the next, about 144 degrees apart. Ranking from the walker's cell
+	# centre instead only moved the flip onto the cell boundaries, and did not reduce
+	# drift flips in the catalog, so the stateless ranking stays.
+	# TODO(#1756): per-unit hysteresis should hold the chosen corner here too; then
+	# assert step_a == step_b instead.
+	var pf := _near_tie_field()
+	var to := Vector2(1025.0, 825.0)
+	var from_a := Vector2(370.2562, 190.3583)
+	var from_b := from_a + Vector2(-0.0006, -0.0417)
+	var north := Vector2(558.0, -212.0)
+	var south := Vector2(558.0, 1172.0)
+	var gap_a: float = _live_detour_cost(from_a, north, to) - _live_detour_cost(from_a, south, to)
+	var gap_b: float = _live_detour_cost(from_b, north, to) - _live_detour_cost(from_b, south, to)
+	assert_lt(absf(gap_a), 0.1, "sanity: from from_a the two corners' live costs are within 0.1 wu")
+	assert_true(gap_a > 0.0 and gap_b < 0.0,
+		"sanity: the drift reorders the live costs (south cheaper from from_a, north from from_b)")
+	assert_eq(pf.next_step(from_a, to, 590.0), south, "from from_a the cheaper south corner is taken")
+	assert_eq(pf.next_step(from_b, to, 590.0), north, "from from_b the drift has made the north corner cheaper")
+
+
+func test_corridor_fallback_drift_between_cells_of_one_run_keeps_the_bearing() -> void:
+	# The issue's second geometry, pinned rather than changed. From (610.26, 670.36)
+	# ordered to (1425, 425), no corner of the hill is visible at the full margin, and
+	# no corridor cell is either, so next_step takes the farthest corridor cell visible
+	# at the room that cell leaves. The cell (1248, 672) is 92 wu below the hill, and
+	# the sightline to it grazes the grown corner (x 1058.5, y 671.5) within a fraction
+	# of a world unit, so the drift below hides it and the step falls back one cell to
+	# (1184, 672). Both cells lie on the same straight run of the corridor, y = 672,
+	# 1.6 wu off the walker's own line, so the bearing to them differs by about 0.02
+	# degrees: the unit steers by the bearing, so it does not whipsaw.
+	var pf := _near_tie_field()
+	var to := Vector2(1425.0, 425.0)
+	var from_a := Vector2(610.2562, 670.3583)
+	var from_b := from_a + Vector2(-0.0006, -0.0417)
+	var step_a: Vector2 = pf.next_step(from_a, to, 590.0)
+	var step_b: Vector2 = pf.next_step(from_b, to, 590.0)
+	assert_eq(step_a, Vector2(1248.0, 672.0), "sanity: from from_a the farther cell is visible")
+	assert_eq(step_b, Vector2(1184.0, 672.0), "sanity: from from_b the graze hides it, one cell nearer")
+	var turn_deg: float = rad_to_deg(absf((step_a - from_a).angle_to(step_b - from_b)))
+	assert_lt(turn_deg, 0.05, "the two cells' bearings differ by %.4f deg, well under a visible turn" % turn_deg)
 
 
 func test_funnel_corner_classifies_each_candidate_on_the_corridor_axis_not_heading() -> void:
