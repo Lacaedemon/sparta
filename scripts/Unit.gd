@@ -483,20 +483,25 @@ var _ranks_closed: bool = false
 # that rotation in soldier_world_slots so the slots stay put -- the men don't drift. 0 = the
 # grid is square to the heading (the default). A fresh move order / rout reforms it to 0.
 var _formation_angle: float = 0.0
-# The net turn of the QUARTER_TURN leaves (a Q/E drill, or a lateral pivot's legs) that have
-# settled into _formation_angle since anything else last moved it: _settle_order_turn adds each
-# such leaf's turn, and every other write to the fold -- a snap-absorb, an engage re-face, a
-# non-quarter drill, a reform, a quarter-fold file double, a rout -- clears it (a snapshot restore
-# restores it with the fold). A new write to _formation_angle must do one or the other. So it only ever describes drill turns made
-# on top of whatever fold was already there. reform_ranks re-pairs a fold that measures a quarter
-# OR whose drills net a quarter: a quarter-turn composed onto a leftover snap-absorb fold is
-# re-paired too, while a snap-absorb or engage fold made after the drill drops the record first.
-var _quarter_turn_fold: float = 0.0
-# True for exactly one thing: a countermarch just performed by reform_ranks() after an about-
-# face folded _formation_angle to ±PI. A single rigid rotation of the whole grid by ang (the
-# normal soldier_world_slots formula) is a POINT reflection -- it negates both the file (lateral)
-# and rank (depth) axes of every local slot, which is correct for holding a body's world position
-# steady DURING the turn (that's the identity-holding invariant _settle_order_turn relies on),
+# The net turn of the in-place drill leaves -- QUARTER_TURN (a Q/E drill, or a lateral pivot's
+# legs) and ABOUT_FACE (a V drill, or a rear move's turn) -- that have settled into
+# _formation_angle since anything else last moved it: _settle_order_turn adds each such leaf's
+# turn (every turn that settles there is one of these two leaf types), and every other write to
+# the fold -- a snap-absorb, an engage re-face, a reform, a quarter-fold file double, a rout --
+# clears it (a snapshot restore restores it with the fold). A new write to _formation_angle must do one or the other. So it only ever
+# describes drill turns made on top of whatever fold was already there. reform_ranks reads it for
+# what the angle alone cannot tell: a fold whose drills net a quarter is re-paired, and one whose
+# drills net a half-turn is reflected like an about-face, even when a leftover snap-absorb fold
+# underneath puts the angle off a quarter or a half-turn. A snap-absorb or engage fold made after
+# the drill drops the record first.
+var _drill_turn_fold: float = 0.0
+# True for exactly one thing: a re-square performed by reform_ranks() of an about-face fold --
+# _formation_angle at +-PI, or a fold whose drills net a half-turn (_drill_turn_fold) while it is
+# nearer a half-turn than square -- whether a countermarch or a hold-ground re-square. A single
+# rigid rotation of the whole grid by ang (the normal soldier_world_slots formula) is a POINT
+# reflection -- it negates both the file (lateral) and rank (depth) axes of every local slot,
+# which is correct for holding a body's world position steady DURING the turn (that's the
+# identity-holding invariant _settle_order_turn relies on),
 # but wrong for the reform that follows: re-squaring the grid should only reverse rank order
 # within each file (a countermarch), never swap a soldier to the opposite flank. While this flag
 # is set, soldier_world_slots negates each local slot's file (x) coordinate before rotating by the
@@ -4073,7 +4078,7 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 func _settle_engage_turn() -> void:
 	var turned: float = angle_difference(_engage_turn_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
-	_quarter_turn_fold = 0.0   # the fold no longer comes from drills alone
+	_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
 	_engage_turn_target = Vector2.ZERO
 	_render_dirty = true
 	match engage_reshape_mode:
@@ -4118,7 +4123,7 @@ func _face_dir(dir: Vector2) -> void:
 	var new_facing: Vector2 = dir.normalized()
 	if absf(angle_difference(facing.angle(), new_facing.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
 		_formation_angle = wrapf(_formation_angle - angle_difference(facing.angle(), new_facing.angle()), -PI, PI)
-		_quarter_turn_fold = 0.0   # the fold no longer comes from drills alone
+		_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
 		_render_dirty = true
 	facing = new_facing
 
@@ -6132,6 +6137,8 @@ func _arm_combo_step(step: Order) -> bool:
 ## then the grid's RANK count, not its file count. Transposing first (UnitFormation.
 ## transposed_files) and dropping the fold re-squares the grid to the new heading at the
 ## same footprint, and the widen/narrow then lands across the direction the men now face.
+## _holds_quarter_fold reads the fold's nearest quarter, so a quarter-turn made on a skewed
+## block transposes too, and its leftover skew is squared away with the fold.
 ## Without the transposition an explicatio after a quarter-turn would double the grid's
 ## files along what is now the block's DEPTH -- a duplicatio in everything but name. An
 ## about-face fold (+-PI) needs no such step: files stay lateral under a half-turn. An
@@ -6144,19 +6151,25 @@ func _apply_file_double_step(step: Order) -> void:
 		if _holds_quarter_fold():
 			current = UnitFormation.transposed_files(soldiers, current)
 			_formation_angle = 0.0
-			_quarter_turn_fold = 0.0
+			_drill_turn_fold = 0.0
 			_render_dirty = true
 		files = UnitFormation.widened_files(soldiers, current) if step.dir > 0 \
 				else UnitFormation.narrowed_files(current)
 	set_frontage(files, step.frontage_anchor_offset)
 
 
-## True while the folded maneuver rotation is a quarter turn either way -- the grid is laid
-## a quarter off the heading, so its file axis runs along the block's depth. False for a
-## square grid (no fold) and for an about-face fold, whose file axis is still lateral.
+## True while the folded maneuver rotation is nearer a quarter turn either way than a square or
+## a half-turn -- the grid's file axis then runs nearer the block's depth than across its
+## facing. False for a square grid and for an about-face fold, whose file axis is still lateral.
+## Read from the fold's nearest quarter, not from an exact quarter, because a quarter-turn
+## composed onto a leftover snap-absorb fold lands off one (a 25 degree residue plus 90 is 115)
+## while its files still run along the depth. Nor from the drills that made it: a quarter-turn
+## onto a 56 degree residue folds to 146, nearer a half-turn, so its files are nearer lateral.
+## A fold exactly between two quarters falls to roundi's tie-break, half away from zero: 45
+## degrees reads as a quarter and 135 as a half-turn.
 func _holds_quarter_fold() -> bool:
-	var angle: float = absf(wrapf(_formation_angle, -PI, PI))
-	return absf(angle - PI * 0.5) < 0.01
+	var quarters: int = roundi(wrapf(_formation_angle, -PI, PI) / (PI * 0.5))
+	return quarters % 2 != 0
 
 
 ## Arm the in-place turn opening (or, on a second call, closing) a phased MOVE order,
@@ -6349,10 +6362,11 @@ func _settle_order_turn() -> void:
 	var leaf := active_leaf()
 	var turned: float = angle_difference(leaf.turn_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
-	if leaf.type == Order.Type.QUARTER_TURN:
-		_quarter_turn_fold = wrapf(_quarter_turn_fold - turned, -PI, PI)
-	else:
-		_quarter_turn_fold = 0.0
+	# Every leaf that settles here is a drill turn: is_order_turning() admits only a leaf with a
+	# turn target that is not a WHEEL, and only _arm_in_place_turn and begin_pivot arm one, on an
+	# ABOUT_FACE or QUARTER_TURN leaf (a rear move's or a lateral pivot's turn child included).
+	# So every settled turn adds to the drill record.
+	_drill_turn_fold = wrapf(_drill_turn_fold - turned, -PI, PI)
 	leaf.turn_target = Vector2.ZERO
 	_render_dirty = true
 
@@ -6487,7 +6501,11 @@ func _finish_order_turn() -> void:
 ## to the heading (its front rank is full by construction), or it is flipped a half-turn but
 ## has NO partial rank -- a full grid is centre-symmetric, so the flip already fronts a full
 ## rank and a reform would only churn every man through the block for zero shape change.
-## Returns true when a reform actually starts.
+## Returns true when a reform actually starts. The two half-turn early returns need the fold to
+## measure +-PI:
+## an about-face fold made by drills on top of a residue still has the residue to square, so it
+## re-squares (returns true) even for a full grid or a single rank. A full grid then holds its
+## ground whatever `hold_ground` says, as there is no countermarch to run.
 ##
 ## The ±PI case (an about-face fold) arms _formation_mirror_x rather than just dropping the
 ## fold: a plain rotation by the post-reform ang is a POINT reflection of the pre-reform grid
@@ -6495,7 +6513,9 @@ func _finish_order_turn() -> void:
 ## soldier_world_slots and the field doc), so the ±PI case needs the depth-only reflection
 ## that flag arms instead. Any other fold (a quarter-turn, e.g. a lateral-pivot move's TURN
 ## phase) keeps the plain drop: nothing but an about-face produces the point-reflection
-## hazard the flag exists for.
+## hazard the flag exists for. A fold whose drills net a half-turn (_drill_turn_fold) counts as
+## an about-face fold too while it is nearer a half-turn than square, even off +-PI by a
+## leftover snap-absorb residue; the residue is then squared by the same drop.
 ##
 ## The single-rank early-return above is scoped to the ±PI case specifically: a half-turn of
 ## a single centred rank really is a no-op (it's still the same row, just read backwards), but
@@ -6504,32 +6524,53 @@ func _finish_order_turn() -> void:
 func reform_ranks(hold_ground: bool = false) -> bool:
 	var angle: float = wrapf(_formation_angle, -PI, PI)
 	if absf(angle) < 0.01:
-		_quarter_turn_fold = 0.0
+		_drill_turn_fold = 0.0
 		return false
 	var files: int = maxi(1, formation_files(soldiers))
-	var is_about_face_fold: bool = absf(absf(angle) - PI) < 0.01
+	var is_quarter_fold: bool = absf(absf(angle) - PI * 0.5) < 0.01
+	var is_half_fold: bool = absf(absf(angle) - PI) < 0.01
+	# A half-turn of drill (an about-face, or two quarter-turns the same way) composed onto a
+	# leftover snap-absorb fold lands off a half-turn: a -25 degree residue plus 180 folds to
+	# 155. Dropping that fold swings the grid 155 degrees under the men, so it is reflected like
+	# an about-face instead, which leaves only the residue's own 25 degrees to square. Only
+	# while the fold is nearer a half-turn than square, though: past a 90 degree residue the
+	# plain drop is the shorter swing (a 124 degree residue plus 180 drops by 56), and a fold
+	# that measures a quarter keeps the quarter re-pair below.
+	var drilled_half: bool = not is_half_fold and not is_quarter_fold \
+			and absf(angle) > PI * 0.5 and absf(absf(_drill_turn_fold) - PI) < 0.01
+	var is_about_face_fold: bool = is_half_fold or drilled_half
 	# A single rank has no rear to tuck a gap into under a HALF-turn (its one rank IS the
 	# fullest, and a half-turn of it is just a lateral mirror of the same centred row) --
 	# but that's only true for the ±PI fold; any other fold still needs squaring below.
-	if is_about_face_fold and UnitFormation.ranks_for(soldiers, files) <= 1:
+	if is_half_fold and UnitFormation.ranks_for(soldiers, files) <= 1:
 		return false
-	if is_about_face_fold and soldiers % files == 0:
+	if is_half_fold and soldiers % files == 0:
 		return false
+	# A drilled half-turn on a full grid still has its residue to square, but nothing to bring
+	# forward either, so it holds its ground: no countermarch runs, as none runs for the exact
+	# half-turn above. (A single rank needs no such force: its slots have no depth, so the
+	# depth reflection and its cancellation land every man on the same slot.)
+	if drilled_half and soldiers % files == 0:
+		hold_ground = true
 	# Past this point the reform re-slots the block (an about-face's depth reflection, or a
 	# quarter-turn's re-square) -- the file-crossing traversal the standoff pass exists to
 	# police, including the hasty variant's deferred call once the march that carried it
 	# arrives (Unit._physics_process's _reform_on_arrival hand-off). The one exception is
 	# the hold-ground about-face below, which cancels the reflection on the assignment
-	# arrays so no body marches anywhere: nothing crosses a file, so no watch is armed.
+	# arrays: an exact one marches no body anywhere, so nothing crosses a file. A drilled
+	# half-turn's residue does turn its men about the centre, but no window would watch that
+	# either: while the mirror is armed and the bodies are still moving, SoldierBodies stands
+	# the separation pass down as a deliberate pass-through, so a window could only run over
+	# the block once it had already formed. Neither arms one.
 	if not (hold_ground and is_about_face_fold):
 		_arm_standoff_settle_window(_reform_timeout())
 	# An about-face fold is reflected below, never proximity-paired, whatever turns made it.
 	var drilled_quarter: bool = not is_about_face_fold \
-			and absf(absf(_quarter_turn_fold) - PI * 0.5) < 0.01
+			and absf(absf(_drill_turn_fold) - PI * 0.5) < 0.01
 	_formation_angle = 0.0
-	_quarter_turn_fold = 0.0
+	_drill_turn_fold = 0.0
 	_formation_mirror_x = is_about_face_fold
-	if absf(absf(angle) - PI * 0.5) < 0.01 or drilled_quarter:
+	if is_quarter_fold or drilled_quarter:
 		_pair_after_quarter_fold(soldiers)
 	# The mirror reflects the grid in depth, which negates every man's slot depth while
 	# leaving his lateral position alone. Reversing each file's own rank order cancels that
@@ -6567,12 +6608,12 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 ## to reach it, and their centroid drifts off the order line while they do. Pairing from where
 ## they stand instead, by the same lateral-file rule a line-to-square reform uses, keeps
 ## each man near his cell. reform_ranks gates the call on a quarter-turn's origin as well as its
-## angle: it re-pairs a fold within 0.01 rad of a quarter, or one whose quarter-turn drills net a
-## quarter (_quarter_turn_fold), so a drill composed onto a leftover snap-absorb fold (a 25 degree
+## angle: it re-pairs a fold within 0.01 rad of a quarter, or one whose drills net a
+## quarter (_drill_turn_fold), so a drill composed onto a leftover snap-absorb fold (a 25 degree
 ## residue plus 90 lands at 115) is still re-paired. A fold whose last change was a snap-absorb or
 ## engage re-face is not, unless it measures a quarter: those can be any angle, and re-dealing them
 ## by lateral order reshuffled blocks that were not crossing (68, 112 and 156 degree folds on two
-## catalog clips), so that write drops the drill record (see _quarter_turn_fold). Nor is an about-face
+## catalog clips), so that write drops the drill record (see _drill_turn_fold). Nor is an about-face
 ## fold, whatever turns made it: that one is reflected, not paired. A squared block keeps its own
 ## square assignment.
 ## A row-major unit with no bodies to read (far tier, not yet seeded) keeps its pairing; a
@@ -8496,7 +8537,7 @@ func _rout() -> void:
 	_engage_turn_enemy = null
 	_pin_down_exposure_cd = 0.0        # a rout ends the exposure window instead of freezing it open
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
-	_quarter_turn_fold = 0.0
+	_drill_turn_fold = 0.0
 	_formation_mirror_x = false
 	_rout_timer = rout_time
 	# Deliberately no `_shattered = false` here: a fresh rout starts "broken"
@@ -9449,7 +9490,7 @@ func to_snapshot_dict() -> Dictionary:
 		"reinforce_cohesion_floor": reinforce_cohesion_floor,
 		"standoff_prev_state": _standoff_prev_state,
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
-		"quarter_turn_fold": _quarter_turn_fold,
+		"drill_turn_fold": _drill_turn_fold,
 		"formation_mirror_x": _formation_mirror_x,
 		"deploy_facing": deploy_facing, "ordered_facing": ordered_facing,
 		"walk_advance": walk_advance, "reform_before_move": reform_before_move,
@@ -9663,7 +9704,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_standoff_prev_state = int(d.get("standoff_prev_state", state))
 	_ranks_closed = bool(d["ranks_closed"])
 	_formation_angle = float(d["formation_angle"])
-	_quarter_turn_fold = float(d.get("quarter_turn_fold", 0.0))
+	# A snapshot from before the rename carries the quarter-turn-only record under its old key.
+	_drill_turn_fold = float(d.get("drill_turn_fold", d.get("quarter_turn_fold", 0.0)))
 	_formation_mirror_x = bool(d["formation_mirror_x"])
 	deploy_facing = d["deploy_facing"]
 	ordered_facing = d["ordered_facing"]

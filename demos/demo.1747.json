@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/about-face-onto-residue-1741.json",
+  "caption": "An about-face made on top of a leftover skew now re-forms in place. An undisciplined Spearmen block snaps round onto a move order and back onto a queued waypoint, which leaves its grid skewed about 14 degrees off its heading. After it halts, V about-faces it, adding the drill's 180 degrees to that skew. The next move order, south the way it now faces, re-squares the grid. Because the drills under the fold net a half-turn, the re-square reflects it in depth like any about-face, so the men turn only through the small skew and the short files step up a rank. Before, the fold did not measure a half-turn, so the grid swung about 166 degrees under the men and most of them walked through the block to the other flank.",
+  "fixed_fps": 30,
+  "max_frames": 600,
+  "fps": 15,
+  "width": 720
+}
