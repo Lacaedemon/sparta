@@ -290,6 +290,7 @@ func test_a_router_caught_by_a_pursuer_comes_into_enemy_contact_and_holds_togeth
 	router.morale = 0.0
 	router.move_speed = CAUGHT_ROUTER_MOVE_SPEED
 	router._rout()
+	assert_eq(router.state, Unit.State.ROUTING, "setup: the router is routing")
 	_battle._apply_order_cmd({"units": [pursuer.uid], "x": router.position.x,
 			"y": router.position.y, "target": router.uid})
 	assert_false(router._in_enemy_contact, "setup: the router routs out of contact")
@@ -302,16 +303,20 @@ func test_a_router_caught_by_a_pursuer_comes_into_enemy_contact_and_holds_togeth
 	assert_true(caught, "the router comes into enemy contact when the pursuer catches it")
 	if not caught:
 		return
+	assert_eq(router.state, Unit.State.ROUTING, "the router is still routing when caught")
 	var worst_spread: float = 0.0
+	var watched: int = 0
 	for i in range(CAUGHT_WATCH_TICKS):
 		await _advance_ticks(1)
 		if router.state != Unit.State.ROUTING:
 			break
+		watched += 1
 		var centroid := Vector2.ZERO
 		for p in router._sim_soldier_pos:
 			centroid += p
 		centroid /= maxf(1.0, float(router._sim_soldier_pos.size()))
 		worst_spread = maxf(worst_spread, router.position.distance_to(centroid))
 		worst_spread = maxf(worst_spread, _worst_body_slot_gap(router))
+	assert_eq(watched, CAUGHT_WATCH_TICKS, "the router stayed routing for every watched tick")
 	assert_lt(worst_spread, MAX_CAUGHT_SPREAD_WU,
 			"a caught router's anchor and bodies stay together (worst %.2f wu)" % worst_spread)
