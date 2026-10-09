@@ -2513,12 +2513,14 @@ was never going to touch --- as long as its line of march clears the hill by tha
 smaller room; one that would cross it still routes around.
 On such a leg the block's flank can pass the hill's edge closer than its full margin;
 individual soldiers are still held off the hill itself.
-At the start end, the room is measured square to the hill's edges only when the leg
-leads away from the hill, never closer to it along either edge. So a block left
-standing just off a corner, inside its margin, walks straight off on an order that
-takes it away from the hill, rather than first edging round the corner; a leg that
-runs along the hill or turns back toward it still measures its start's room in a
-straight line.
+A block left standing just off one of the hill's corners, inside its margin,
+walks straight off on any order whose line of march never brings it nearer the hill,
+even one that tilts slightly back toward the hill along one edge
+while moving away faster along the other,
+rather than first edging round the corner.
+Any leg that does bring it nearer the hill,
+running down a face or turning back toward it,
+still keeps the full straight-line margin from where the block stands.
 
 ::: {#fig-terrain-exact-footprint .demo}
 
