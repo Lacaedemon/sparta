@@ -19,7 +19,7 @@
   "defect_exemptions": {
     "facing_flutter": {
       "uids": [3],
-      "reason": "Tracked in #1764: a pre-existing sub-degree facing sawtooth (about 0.25 degrees, period 2-4 ticks) while uid 3 marches up behind uid 1, which main shows too. With every tick from 61 to 540 sampled on both trees, main reads uid 3 at 6 reversals in a row and this branch at 13 (threshold 3); a temporary exact-facing print measured the same amplitude on both (main ticks 220-249, this branch ticks 154-176). The local 2-tick dense delta from the divergence tick read 7 here against 2 on main. Uid 3 never reflects its grid; it marches behind uid 1, whose men now keep their flanks after uid 1's re-square at tick 62, so it meets a differently shaped block ahead."
+      "reason": "Tracked in #1764, a sub-degree facing sawtooth (about 0.25 degrees, every 2-4 ticks) while uid 3 marches up behind uid 1. Measured 2026-10-09, merge-base 1f4a77eb against fix commit 392571fd (whose roll_the_line transcript is identical to 20bf172b's). Under CI's dense delta (2-tick samples from the divergence tick 61), the merge-base reads uid 3 at 2, below the threshold of 3, and the fix reads 7. So at that sampling the merge-base passes and only the fix fails. Two measurements attribute the sawtooth itself to code older than the fix. With every tick from 61 to 540 sampled, the merge-base fails too: uid 3 at 6 and uid 2 at 4 (the fix: 13 and 9). And a temporary exact-facing print measured the same amplitude on both trees (merge-base ticks 220-249, fix ticks 154-176). Uid 3 never reflects its grid. It differs only because uid 1, which bakes its re-square's mirror at tick 62, now keeps its men on their flanks, so uid 3 marches behind a differently shaped block."
     }
   }
 }
