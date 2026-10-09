@@ -445,10 +445,6 @@ func _laterals(u: Unit, axis: Vector2) -> PackedFloat32Array:
 	return out
 
 
-## The full-scene version, through the real order pipeline: a drilled rear move about-faces a
-## depleted spearmen block, re-squares it holding ground, and marches it to its destination.
-## A second move order straight ahead must then march the block off with every man on the
-## flank he held, rather than walking each off-centre man across the block.
 ## Stage the spearmen, give them a standing anchor shift (an anchored narrowing from 9 to 6
 ## files, right flank held: 6 rows of 6 and a 4-man partial rank, so the about-face re-squares),
 ## then a drilled rear move: they about-face, re-square holding their
@@ -520,8 +516,11 @@ func test_live_anchored_resize_on_a_mirrored_block_holds_its_edge() -> void:
 		"the right edge moves out (%.2f -> %.2f)" % [before.y, after.y])
 
 
-## An anchored explicatio on an idle about-faced block: the file-double order bakes the mirror at
-## dispatch, and its step writes the offset Battle composed from the standing one.
+## An anchored explicatio on an idle about-faced block. Battle.enqueue_file_double composes the
+## anchored offset from the standing one (unmirrored_anchor_offset) and sends it as an
+## ORDER_FRONTAGE_ONLY command, so it reaches set_frontage the same way the grip resize above
+## does, with a different file count and the other flank held. The widening applies at once,
+## so the slots are read straight after the command.
 func test_live_anchored_explicatio_on_a_mirrored_block_holds_its_edge() -> void:
 	var u: Unit = await _live_idle_mirrored_block()
 	if u == null:
@@ -529,10 +528,6 @@ func test_live_anchored_explicatio_on_a_mirrored_block_holds_its_edge() -> void:
 	var files_before: int = UnitFormation.frontage(u)
 	var before: Vector2 = _file_extent(u)
 	_battle.enqueue_file_double([u.uid], 1, UnitFormation.Anchor.RIGHT)
-	for _i in range(240):
-		await get_tree().physics_frame
-		if UnitFormation.frontage(u) != files_before:
-			break
 	var after: Vector2 = _file_extent(u)
 	assert_gt(UnitFormation.frontage(u), files_before, "precondition: the explicatio widened it")
 	assert_almost_eq(after.y, before.y, 0.01,
@@ -541,6 +536,10 @@ func test_live_anchored_explicatio_on_a_mirrored_block_holds_its_edge() -> void:
 		"the left edge moves out (%.2f -> %.2f)" % [before.x, after.x])
 
 
+## The full-scene version, through the real order pipeline: a drilled rear move about-faces a
+## depleted spearmen block, re-squares it holding ground, and marches it to its destination.
+## A second move order straight ahead must then march the block off with every man on the
+## flank he held, rather than walking each off-centre man across the block.
 func test_live_second_order_after_an_about_face_keeps_every_man_on_his_flank() -> void:
 	Replay.forced_seed = 24680
 	_battle = load("res://scenes/Battle.tscn").instantiate()

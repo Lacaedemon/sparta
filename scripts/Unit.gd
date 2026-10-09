@@ -4122,11 +4122,11 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 ## the exact point-reflection/flank-swap bug this file's countermarch fix exists to eliminate,
 ## just triggered by an engage re-face instead of a reform (reachable whenever a unit engages
 ## combat mid-march after a countermarched reform, since the mirror flag stays true through
-## that march). The reshape branches above are orthogonal to this: set_frontage() changes the
-## file/rank COUNT (which slot index `i` maps to), the same relabelling a reshape always causes
-## regardless of the mirror -- _formation_mirror_x only decides whether soldier_world_slots
-## negates local x before rotating, so it doesn't make a reshape any less (or more) consistent
-## than an unmirrored one; the two concerns don't interact.
+## that march). The reshape branches above do take the mirror off, but without moving anyone:
+## set_frontage() first bakes a standing mirror into the assignment (_bake_formation_mirror),
+## which clears _formation_mirror_x, toggles _fallback_mirror_x and negates the anchor shift
+## while leaving every man's slot exactly where it was, and only then changes the file COUNT.
+## So a reshape still relabels slots the way any reshape does, and the bake adds no flank swap.
 func _settle_engage_turn() -> void:
 	var turned: float = angle_difference(_engage_turn_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
