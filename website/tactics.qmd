@@ -59,8 +59,8 @@ ranks on it and lose much of that pace.)
 </video>
 ```
 
-A broken cavalry squadron (bottom, faded) flees down the field while a fresh squadron
-of the same type sprints after it.
+A broken cavalry squadron (bottom, faded) flees down the field
+while a fresh squadron of the same type sprints after it.
 The router picks up speed over its first few seconds, then pulls away at full flight,
 its riders running together as a block.
 :::
