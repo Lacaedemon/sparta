@@ -449,8 +449,9 @@ func _laterals(u: Unit, axis: Vector2) -> PackedFloat32Array:
 ## depleted spearmen block, re-squares it holding ground, and marches it to its destination.
 ## A second move order straight ahead must then march the block off with every man on the
 ## flank he held, rather than walking each off-centre man across the block.
-## Stage the spearmen, give them a standing anchor shift (an anchored narrowing from 9 to 7
-## files, right flank held), then a drilled rear move: they about-face, re-square holding their
+## Stage the spearmen, give them a standing anchor shift (an anchored narrowing from 9 to 6
+## files, right flank held: 6 rows of 6 and a 4-man partial rank, so the about-face re-squares),
+## then a drilled rear move: they about-face, re-square holding their
 ## ground, march, and halt idle with the mirror still armed. Returns the unit, or null.
 func _live_idle_mirrored_block() -> Unit:
 	Replay.forced_seed = 13579
@@ -470,7 +471,7 @@ func _live_idle_mirrored_block() -> Unit:
 		return null
 	for _k in range(20):
 		await get_tree().physics_frame
-	_battle.enqueue_frontage([u.uid], -2, UnitFormation.Anchor.RIGHT)
+	_battle.enqueue_frontage([u.uid], -3, UnitFormation.Anchor.RIGHT)
 	for _k in range(240):
 		await get_tree().physics_frame
 	u.reform_before_move = true
@@ -508,8 +509,11 @@ func test_live_anchored_resize_on_a_mirrored_block_holds_its_edge() -> void:
 		return
 	var before: Vector2 = _file_extent(u)
 	_battle.enqueue_frontage([u.uid], 2, UnitFormation.Anchor.LEFT)
+	assert_false(u._formation_mirror_x, "the resize baked the mirror")
 	var after: Vector2 = _file_extent(u)
-	assert_eq(UnitFormation.frontage(u), 9, "precondition: widened from 7 to 9 files")
+	# Widened by less than the standing shift narrowed it, so the new shift differs from the
+	# standing one and a frame mix-up cannot cancel out.
+	assert_eq(UnitFormation.frontage(u), 8, "precondition: widened from 6 to 8 files")
 	assert_almost_eq(after.x, before.x, 0.01,
 		"the held left edge stays put (%.2f -> %.2f)" % [before.x, after.x])
 	assert_gt(after.y, before.y + u.file_pitch_wu(),
