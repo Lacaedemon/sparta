@@ -506,9 +506,12 @@ var _drill_turn_fold: float = 0.0
 # within each file (a countermarch), never swap a soldier to the opposite flank. While this flag
 # is set, soldier_world_slots negates each local slot's file (x) coordinate before rotating by the
 # CURRENT ang -- a depth-only reflection -- so a body that stood in the front rank on one flank
-# lands in the rear rank on that SAME flank, matching real countermarch drill. Cleared by
-# set_current_order() and _rout() (any fresh order or maneuver re-squares from a clean baseline,
-# so a stale mirror must not compound with the next turn's own _formation_angle fold).
+# lands in the rear rank on that SAME flank, matching real countermarch drill. reform_ranks
+# toggles it (a second about-face reflection inside one order takes it off again).
+# set_current_order() bakes it into the soldier-to-slot assignment (_bake_formation_mirror), so a
+# fresh order starts unmirrored with every man's slot exactly where the mirror had put it;
+# simply dropping the flag would swap every off-centre man to the opposite flank. _rout() clears
+# it outright, along with the fold, as a routed block re-forms from scratch on rally.
 #
 # Deliberately NOT cleared by _settle_engage_turn() or _face_dir()'s snap-absorb branch: those
 # both fold a rotation into _formation_angle specifically to hold `ang` (soldier_world_slots'
@@ -1793,10 +1796,11 @@ func set_current_order(order: Order) -> void:
 		q.append(order)
 	orders = q
 	current_order = order
-	# A fresh order always re-squares from a clean baseline (see start_order_response, called
-	# right after this for every dispatched order): a stale countermarch mirror must not
-	# compound with whatever fold the new order's own maneuver applies to _formation_angle.
-	_formation_mirror_x = false
+	# A fresh order starts from an unmirrored grid, so everything that reads the slot frame's
+	# local X (frontage anchors, resize grips, the relief corridor) means the same flank it
+	# does for any other block. The mirror is baked into the assignment rather than dropped:
+	# dropping it would carry every off-centre man to the other flank.
+	_bake_formation_mirror()
 
 
 ## Append `order` to the queue tail (a shift-click waypoint leg). If the unit is currently idle
@@ -6607,7 +6611,12 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 			and absf(absf(_drill_turn_fold) - PI * 0.5) < 0.01
 	_formation_angle = 0.0
 	_drill_turn_fold = 0.0
-	_formation_mirror_x = is_about_face_fold
+	# An about-face reflection toggles the mirror rather than setting it. A block that is
+	# already mirrored (a second re-square inside one order, such as a queued leg's turn) has
+	# its lateral axis reversed once already, so a second depth-only reflection takes it off
+	# again, and any other fold leaves it standing. Setting it outright would instead flip
+	# every off-centre man to the other flank whenever the two disagree.
+	_formation_mirror_x = _formation_mirror_x != is_about_face_fold
 	if is_quarter_fold or drilled_quarter:
 		_pair_after_quarter_fold(soldiers)
 	# The mirror reflects the grid in depth, which negates every man's slot depth while
@@ -6674,6 +6683,57 @@ func _pair_after_quarter_fold(count: int) -> void:
 	_sim_soldier_row_slot = UnitFormation.pair_slots_by_lateral_file(
 			live, UnitFormation.slots(self, count), files)
 	_row_slot_files = files
+
+
+## Take the lateral mirror off the grid without moving any man's slot: the slot map with the
+## mirror armed and the one with it baked in agree for every soldier.
+##
+## The mirror negates each slot's local X before the block's rotation. Its exact equivalent
+## without the flag is a lateral relabelling of the assignment, plus the frontage anchor
+## shift negated, since the anchor is added in the same local frame the mirror reflects:
+## - file major: file f becomes file (files - 1 - f). Ranks stay as they are, so each man
+##   keeps his depth, and file_major_block_slots places file positions symmetrically.
+## - row major: compose UnitFormation.lateral_reflection_pairing onto the held pairing
+##   (identity when none is held, which formation_slots then reads as cell i for soldier i).
+## - square: the same pairing on the square's own assignment, which uses the same
+##   block_slots grid.
+## An assignment that is out of sync with the live grid is left alone: formation_slots
+## re-deals it from the live bodies before using it, and the bodies stand where the mirrored
+## slots put them. A row-major pairing is not written while squared, for the reason
+## _apply_square_slot_reflection gives (it would commit a square-derived file count).
+func _bake_formation_mirror() -> void:
+	if not _formation_mirror_x:
+		return
+	_formation_mirror_x = false
+	frontage_anchor_offset = -frontage_anchor_offset
+	var count: int = soldiers
+	if _file_assignment_files > 0 and _sim_soldier_file.size() == count:
+		for i in range(count):
+			_sim_soldier_file[i] = _file_assignment_files - 1 - _sim_soldier_file[i]
+	var files: int = maxi(1, formation_files(count))
+	var pairing: PackedInt32Array = UnitFormation.lateral_reflection_pairing(count, files)
+	if pairing.size() == count:
+		if in_square():
+			if _sim_soldier_square_slot.size() == count and _square_slot_files == files:
+				_sim_soldier_square_slot = _composed_pairing(pairing, _sim_soldier_square_slot)
+		elif not _effective_file_major_reform():
+			var held: bool = _sim_soldier_row_slot.size() == count and _row_slot_files == files
+			_sim_soldier_row_slot = _composed_pairing(pairing,
+					_sim_soldier_row_slot if held else PackedInt32Array())
+			_row_slot_files = files
+	_render_dirty = true
+
+
+## `pairing` applied after `held`: soldier i, who holds cell held[i] (cell i when `held` is
+## empty), takes cell pairing[held[i]].
+func _composed_pairing(pairing: PackedInt32Array, held: PackedInt32Array) -> PackedInt32Array:
+	var n: int = pairing.size()
+	var out := PackedInt32Array()
+	out.resize(n)
+	for i in range(n):
+		var cell: int = held[i] if held.size() == n else i
+		out[i] = pairing[clampi(cell, 0, n - 1)]
+	return out
 
 
 ## Cancel a hold-ground reform's depth reflection for the ROW-MAJOR layout, by composing the
