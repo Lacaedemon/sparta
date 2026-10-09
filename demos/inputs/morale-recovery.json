@@ -1,5 +1,5 @@
 {
-  "_comment": "Isolated morale-recovery scenario (#657): single infantry unit, started already ROUTING via the scenario's starting_state field (no enemy ever on the field, so nothing can interfere), recovers morale in isolation and rallies back to IDLE. Mirrors test_morale_recovery_demo_scenario.gd's staging: morale is pinned low (1.0) so the recovery is gradual instead of an instant one-tick rally, and drill mode keeps the battle from declaring a false victory the moment it sees zero team-1 units. State-dump verified (tools/demo/dump-state.sh): morale climbs from 1.0 -> ~35 and the unit rallies (ROUTING -> IDLE) by tick 360 (60Hz dump basis), settling near y=-23 after fleeing from its y=400 spawn -- a router now builds up to its real flee pace, so it covers ~420 wu where it used to crawl ~160 (to y~242); the camera's end point follows it there. Camera frames the recovering unit from a close zoom to show individual soldier detail, panning to track the flee and finishing (tick 180, in this manifest's 30fps recording basis -- see demos/README.md's note on the two tick bases) right around the rally, then holding.",
+  "_comment": "Isolated morale-recovery scenario (#657): single infantry unit, started already ROUTING via the scenario's starting_state field (no enemy ever on the field, so nothing can interfere), recovers morale in isolation and rallies back to IDLE. Mirrors test_morale_recovery_demo_scenario.gd's staging: morale is pinned low (1.0) so the recovery is gradual instead of an instant one-tick rally, and drill mode keeps the battle from declaring a false victory the moment it sees zero team-1 units. State-dump verified (tools/demo/dump-state.sh): morale climbs from 1.0 -> ~35 and the unit rallies (ROUTING -> IDLE) at tick 355 (60Hz dump basis), near y=-23 after fleeing from its y=400 spawn -- a router now builds up to its real flee pace, so it covers ~420 wu where it used to crawl ~160 (to y~242). It rallies at full flight, so it pulls up over about 97 wu, braking at its own decel with its men keeping step, and stands at y~-120 from tick 460. Camera frames the recovering unit from a close zoom to show individual soldier detail, panning to track the flee and arriving at the rally (tick 180, in this manifest's 30fps recording basis -- see demos/README.md's note on the two tick bases), then following the halt to where the block comes to rest (tick 240) and holding.",
   "seed": "12345",
   "drill": true,
   "scenario": [
@@ -7,13 +7,14 @@
   ],
   "camera": [
     {"tick": 0, "x": 800.0, "y": 400.0, "zoom": 2.0},
-    {"tick": 180, "x": 800.0, "y": -23.0, "zoom": 1.8}
+    {"tick": 180, "x": 800.0, "y": -32.0, "zoom": 1.8},
+    {"tick": 240, "x": 800.0, "y": -120.0, "zoom": 1.8}
   ],
   "steps": [],
   "state": [0, 60, 180, 300, 360, 420],
   "expect": [
     {"tick": 300, "uid": 0, "field": "position", "value": [800.0, 75.6], "tol": 5.0},
     {"tick": 420, "uid": 0, "field": "state", "value": "IDLE"},
-    {"tick": 420, "uid": 0, "field": "position", "value": [800.0, -23.2], "tol": 5.0}
+    {"tick": 480, "uid": 0, "field": "position", "value": [800.0, -120.0], "tol": 5.0}
   ]
 }

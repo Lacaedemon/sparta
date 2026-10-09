@@ -78,7 +78,12 @@ its riders running together as a block.
   --- morale climbs back toward a baseline, fast at first and levelling off. If it
   **breaks contact** (no enemy close enough to keep hitting it) and still fields enough
   men, its recovering morale carries it over the rally threshold and it **returns to
-  your control**, ready to fight again. It re-squares its ranks **where it stands**
+  your control**, ready to fight again. A unit that rallies at a run first **pulls up**
+  where it has the room, braking at its own rate with its men keeping step:
+  about 5 metres for foot running flat out, and several times that for horse.
+  So the block halts as one, instead of stopping dead and leaving its men to run on
+  past their places and walk back.
+  It then re-squares its ranks **where it stands**
   --- the flight leaves the grid flipped, so the short rank ends up leading, and only
   the men the flip can't leave in place have to move: under **File-major** reform
   (the default) the under-strength files step up one rank to close it, and under
