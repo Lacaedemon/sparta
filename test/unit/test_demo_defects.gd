@@ -530,21 +530,32 @@ func test_superphysical_speed_holds_a_router_to_its_flee_pace_cap() -> void:
 
 
 func test_superphysical_speed_holds_a_rallied_unit_pulling_up_to_its_flee_pace_cap() -> void:
-	# A rallied unit is IDLE while it pulls up from its flight, but its men are braking down
-	# from the flee pace, so its halting intervals keep the router's ceiling. Once the halt
-	# ends, the same speed is held to the sprint cap again.
+	# A rallied unit is IDLE while its anchor coasts to a stop on its flight, and its men brake
+	# down from the flee pace with it, so a halting interval is allowed the speed the anchor
+	# still carries at its start. Once the anchor has slowed, or the halt has ended, the same
+	# body speed is held to the sprint cap again.
 	var sprint := 126.0
 	var sprint_cap: float = sprint * GaitLimits.SUPERPHYSICAL_SPEED_FRAC
 	var flee_cap: float = sprint_cap * GaitLimits.FLEE_SPEED_MULTIPLIER
 	var v: float = 0.5 * (sprint_cap + flee_cap)
+	var flee_pace: float = sprint * GaitLimits.FLEE_SPEED_MULTIPLIER
 	var halting: Array = _moving_pair(v, 10, ["IDLE", "IDLE", "IDLE", "IDLE"])
 	for snap in halting:
 		snap["units"][0]["rally_halting"] = true
+		snap["units"][0]["current_speed"] = flee_pace
 	assert_true(bool(_verdict(DemoDefects.analyze(halting), "superphysical_speed")["pass"]),
-			"a rallied unit pulling up between its sprint and flee-pace ceilings is not super-physical")
+			"men carrying the anchor's flee-pace coast are not super-physical")
+	var slowed: Array = _moving_pair(v, 10, ["IDLE", "IDLE", "IDLE", "IDLE"])
+	for snap in slowed:
+		snap["units"][0]["rally_halting"] = true
+		snap["units"][0]["current_speed"] = sprint * 0.5
+	assert_false(bool(_verdict(DemoDefects.analyze(slowed), "superphysical_speed")["pass"]),
+			"a spike past the sprint cap while the anchor has slowed below sprint is still flagged")
 	var settled: Array = _moving_pair(v, 10, ["IDLE", "IDLE", "IDLE", "IDLE"])
+	for snap in settled:
+		snap["units"][0]["current_speed"] = 0.0
 	assert_false(bool(_verdict(DemoDefects.analyze(settled), "superphysical_speed")["pass"]),
-			"the same speed on an idle unit that is not pulling up still is")
+			"a spike past the sprint cap after the halt has ended is flagged")
 
 
 func test_superphysical_speed_picks_the_cap_from_the_interval_start() -> void:

@@ -39,6 +39,8 @@ const SETTLE_TICKS := 240
 const SQUARE_RALLY_TIMEOUT_TICKS := 400
 const SQUARE_SETTLE_PROBE_TICKS := 60
 const SQUARE_MAX_MEAN_GAP_WU := 8.0
+# Ticks watched after the square's anchor stops, covering its men's re-form walk.
+const POST_STOP_WATCH_TICKS := 120
 
 var _battle: Node = null
 
@@ -218,12 +220,66 @@ func test_a_square_rallying_with_an_about_face_settles_without_walking_back() ->
 		waited += 1
 	assert_eq(square.state, Unit.State.IDLE, "setup: the square rallied (after %d ticks)" % waited)
 	await _advance_ticks(SQUARE_SETTLE_PROBE_TICKS)
+	# A far-tier block carries no bodies, and a mean over none reads zero: the coast must not
+	# have carried the square out of the close tier, which is how this staging once failed.
+	assert_ne(square.tier, FormationTier.FAR, "the square is still simulated in the close tier")
+	assert_eq(square._sim_soldier_pos.size(), square.soldiers, "with one body per man")
 	var gap: float = _mean_body_slot_gap(square)
 	gut.p("square: rallied after %d ticks; mean body-slot gap %.2f wu %d ticks later"
 			% [waited, gap, SQUARE_SETTLE_PROBE_TICKS])
 	assert_lt(gap, SQUARE_MAX_MEAN_GAP_WU,
 			"%d ticks after the rally the men stand near their slots (mean %.2f wu)"
 			% [SQUARE_SETTLE_PROBE_TICKS, gap])
+
+
+func test_once_the_anchor_stops_the_mens_re_form_is_held_to_the_idle_caps() -> void:
+	# The halt lifts the idle jog and back-speed caps only while the anchor still carries the
+	# flight. The square's men are still walking onto their re-paired slots after the anchor
+	# stops, some of them backward against their facing: from then on every body's velocity
+	# must sit inside the ordinary idle caps (jog, and jog * back_speed_fraction backward).
+	Replay.forced_seed = 12345
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.all_teams_control = true
+	_battle.terrain = []
+	_battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": 800, "y": 700, "count": 60, "morale": 22.0,
+				"formation": Unit.FORMATION_SQUARE, "starting_state": Unit.State.ROUTING},
+		{"team": 0, "type": "Spearmen", "x": 260, "y": 260, "count": 60, "morale": 100.0},
+		{"team": 1, "type": "Spearmen", "x": 800, "y": 1150, "count": 80},
+	]
+	add_child(_battle)
+	await get_tree().physics_frame
+	var square: Unit = null
+	for u in get_tree().get_nodes_in_group("routers"):
+		square = u as Unit
+	assert_not_null(square, "setup: the square spawned routing")
+	if square == null:
+		return
+	var waited: int = 0
+	while (square.state == Unit.State.ROUTING or square._current_speed > 0.0) \
+			and waited < SQUARE_RALLY_TIMEOUT_TICKS:
+		await _advance_ticks(1)
+		waited += 1
+	assert_eq(square.state, Unit.State.IDLE, "setup: the square rallied")
+	assert_eq(square._current_speed, 0.0, "setup: its anchor has pulled up")
+	assert_false(square._rally_halt, "the halt ended when the anchor stopped")
+	var worst_excess: float = 0.0
+	var worst_back: float = 0.0
+	for t in range(POST_STOP_WATCH_TICKS):
+		await _advance_ticks(1)
+		for i in range(square._sim_body_vel.size()):
+			var v: Vector2 = square._sim_body_vel[i]
+			var f: Vector2 = square._sim_soldier_facing[i]
+			var capped: Vector2 = SoldierBodies._cap_body_speed_vec(v, f, square.jog_speed,
+					square.back_speed_fraction)
+			worst_excess = maxf(worst_excess, (v - capped).length())
+			worst_back = maxf(worst_back, -v.dot(f))
+	gut.p("after the anchor stopped: worst backward body speed %.2f wu/s (back cap %.2f), worst excess over the idle caps %.4f"
+			% [worst_back, square.jog_speed * square.back_speed_fraction, worst_excess])
+	assert_gt(worst_back, 0.0, "setup: some men walk back against their facing in the re-form")
+	assert_lt(worst_excess, 0.001,
+			"no body exceeds the idle jog and back-speed caps once the anchor has stopped (worst excess %.4f wu/s)"
+			% worst_excess)
 
 
 func test_the_rally_hands_the_flight_to_a_coast_braking_at_the_units_decel() -> void:
@@ -344,5 +400,153 @@ func test_a_coast_into_impassable_terrain_stops_where_it_rallied() -> void:
 	u._begin_rally_halt()
 	assert_false(u._rally_halt, "a coast into a block is not handed over")
 	assert_eq(u._current_speed, 0.0, "the anchor stops where it rallied")
+	u.free()
+	PathField.active = old_field
+
+
+func test_a_wide_block_coasting_past_a_terrain_face_is_checked_by_its_swept_width() -> void:
+	# The coast is checked with the block's own swept width, not a lone body's clearance: a
+	# rect beside the line the anchor travels, inside the block's half-width but beyond the
+	# anchor's own clearance, still blocks it.
+	var old_field: PathField = PathField.active
+	var u := _bare_flight_unit()
+	u.max_soldiers = 120
+	u.soldiers = 120
+	u.facing = Vector2(0.0, -1.0)
+	var half: Vector2 = u._formation_local_half_extents()
+	var lateral: float = half.x * 0.6
+	assert_gt(lateral, u._rout_clearance() + 5.0,
+			"setup: the face stands beyond a lone anchor's clearance (half-width %.1f)" % half.x)
+	var field := PathField.new(Rect2(0.0, 0.0, 2000.0, 2000.0))
+	# A full-gallop flight: 200^2 / (2 * 60) = 333.3 wu to stop.
+	u._flee_pace = 200.0
+	u._flee_velocity = Vector2(0.0, -200.0)
+	var half_leg: float = 200.0 * 200.0 / (2.0 * u.decel) * 0.5
+	# A thin face `lateral` wu to the right of the middle of the coast. PathField never grows
+	# a rect by more than the room the leg's two ends leave it, so the face stands farther
+	# than `lateral` from both ends and only the coast's middle passes that close.
+	assert_lt(lateral, half_leg - 5.0, "setup: the face is nearer the middle of the coast than its ends")
+	field.block_rect(Rect2(500.0 + lateral, 500.0 - half_leg - 1.0, 60.0, 2.0))
+	PathField.active = field
+	u._begin_rally_halt()
+	assert_false(u._rally_halt, "a coast whose block would sweep into the face is not handed over")
+	assert_eq(u._current_speed, 0.0, "the anchor stops where it rallied")
+	u.free()
+	PathField.active = old_field
+
+
+func test_a_coast_toward_an_enemy_is_not_handed_over() -> void:
+	# The flee pace must not carry a rallied unit into contact, where its travel velocity
+	# would read as a charge: with a living enemy within the contact radius of the coast's
+	# path (though beyond it from where the unit rallies), the anchor stops where it rallied.
+	var router: Unit = await _spawn()
+	assert_not_null(router, "the team-0 infantry deployed")
+	if router == null:
+		return
+	var enemy: Unit = null
+	for u in get_tree().get_nodes_in_group("units"):
+		if (u as Unit).team == 1:
+			enemy = u as Unit
+	assert_not_null(enemy, "the enemy deployed")
+	if enemy == null:
+		return
+	await _rout_to_full_flight(router)
+	var dir: Vector2 = router._flee_velocity.normalized()
+	var stop_dist: float = router._flee_pace * router._flee_pace / (2.0 * router.rally_halt_brake_rate())
+	# Just past the contact radius from the router, and well within it of the coast's end.
+	enemy.position = router.position + dir * (Unit.RALLY_CONTACT_RADIUS + 20.0)
+	assert_lt(Unit.RALLY_CONTACT_RADIUS + 20.0 - stop_dist, Unit.RALLY_CONTACT_RADIUS,
+			"setup: the coast would end inside the enemy's contact radius")
+	await _rally_next_tick(router)
+	assert_eq(router.state, Unit.State.IDLE, "setup: the router rallied (the enemy is out of contact)")
+	assert_false(router._rally_halt, "no coast is handed over toward the enemy")
+	assert_eq(router._current_speed, 0.0, "the anchor stops where it rallied")
+	assert_eq(router._approach_velocity, Vector2.ZERO, "and carries no velocity into the enemy")
+
+
+func test_a_halt_that_starts_in_the_retreat_margin_is_not_snapped_onto_the_field() -> void:
+	# A router may flee past the field edge into the retreat margin before it rallies. The halt
+	# is held to retreat_bounds there: clamping it to field_bounds would yank the anchor back
+	# onto the field the moment the coast starts.
+	var router: Unit = await _spawn()
+	assert_not_null(router, "the team-0 infantry deployed")
+	if router == null:
+		return
+	await _rout_to_full_flight(router)
+	# Pretend the field's top edge lies just behind the router: it is fleeing up, out of it.
+	router.field_bounds = Rect2(0.0, router.position.y + 20.0, 2000.0, 2000.0)
+	var field_top: float = router.field_bounds.position.y
+	await _rally_next_tick(router)
+	assert_true(router.is_rally_halting(), "setup: the halt was handed over")
+	var prev_y: float = router.position.y
+	for i in range(5):
+		await _advance_ticks(1)
+		assert_lt(router.position.y, prev_y, "the coast keeps carrying the anchor on (tick %d)" % i)
+		prev_y = router.position.y
+	assert_lt(router.position.y, field_top - 20.0, "the anchor is still out in the margin")
+
+
+## A bare unit coasting on a rally's halt, with no bodies (as a far-tier unit carries none).
+func _bare_coasting_unit() -> Unit:
+	var u := Unit.new()
+	u.state = Unit.State.IDLE
+	u.tier = FormationTier.FAR
+	u.position = Vector2(500.0, 500.0)
+	u.accel = 30.0
+	u.decel = 60.0
+	u._current_speed = 30.0
+	u._approach_velocity = Vector2(0.0, -30.0)
+	u._rally_halt = true
+	return u
+
+
+func test_a_halting_unit_with_no_bodies_ends_the_halt_when_its_anchor_stops() -> void:
+	var old_field: PathField = PathField.active
+	PathField.active = null
+	var u := _bare_coasting_unit()
+	var ticks: int = 0
+	while u._current_speed > 0.0 and ticks < 120:
+		u._tick_idle_coast(1.0 / 60.0)
+		ticks += 1
+	assert_eq(u._current_speed, 0.0, "setup: the anchor pulled up (after %d ticks)" % ticks)
+	assert_false(u._rally_halt, "the halt ends with the anchor's stop")
+	u.free()
+	PathField.active = old_field
+
+
+func test_fighting_mid_halt_ends_the_halt() -> void:
+	var old_field: PathField = PathField.active
+	PathField.active = null
+	var u := _bare_coasting_unit()
+	u.state = Unit.State.FIGHTING
+	u._tick_idle_coast(1.0 / 60.0)
+	assert_false(u._rally_halt, "a unit that is fighting is no longer pulling up from a rally")
+	u.free()
+	PathField.active = old_field
+
+
+func test_locomoting_mid_halt_ends_the_halt() -> void:
+	var old_field: PathField = PathField.active
+	PathField.active = null
+	var u := _bare_coasting_unit()
+	u._moved_last_frame = true
+	u._tick_idle_coast(1.0 / 60.0)
+	assert_false(u._rally_halt, "a unit that moved under its own drive is no longer pulling up")
+	u.free()
+	PathField.active = old_field
+
+
+func test_a_held_march_mid_halt_ends_the_halt() -> void:
+	var old_field: PathField = PathField.active
+	PathField.active = null
+	var u := _bare_coasting_unit()
+	# Frozen by a fresh order's response delay, with the order going the way it coasts.
+	u._order_response_timer = 0.5
+	u.move_target = u.position + Vector2(0.0, -200.0)
+	u.has_move_target = true
+	assert_true(u._held_march_continues_travel(), "setup: the held march continues the coast")
+	u._tick_idle_coast(1.0 / 60.0)
+	assert_false(u._rally_halt, "a held march carries the momentum on, so the halt is over")
+	assert_eq(u._current_speed, 30.0, "and the held momentum is not braked")
 	u.free()
 	PathField.active = old_field

@@ -80,7 +80,7 @@ its riders running together as a block.
   men, its recovering morale carries it over the rally threshold and it **returns to
   your control**, ready to fight again. A unit that rallies at a run first **pulls up**
   where it has the room, braking at its own rate with its men keeping step:
-  about 5 metres for foot running flat out, and several times that for horse.
+  about 3 to 5 metres for foot running flat out, and about 30 for horse.
   So the block halts as one, instead of stopping dead and leaving its men to run on
   past their places and walk back.
   It then re-squares its ranks **where it stands**
@@ -168,6 +168,9 @@ The same cell pairing cancels the flip on the square's own assignment, so 56 of
 the 60 men hold their ground and only the four with no counterpart in the short
 rear rank swap ends: the block re-squares where it stands instead of marching
 itself inside out.
+For a moment after the rally, though, most of the men still stand on a
+neighbour's place before they settle onto their own --- a known flaw,
+tracked in [#1766](https://github.com/Lacaedemon/sparta/issues/1766).
 :::
 
 ::: {#fig-rout-rally .demo}

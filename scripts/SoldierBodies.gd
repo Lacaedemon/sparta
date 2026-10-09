@@ -376,7 +376,6 @@ static func step(unit: Unit, delta: float) -> void:
 	# In-transit same-unit standoff velocities for crowding same-unit bodies:
 	var sep_vels: PackedVector2Array = _separate_same_unit(unit, n, target_slots, is_engaged, delta)
 	var terrain_guard: Dictionary = _terrain_entry_guard(unit, n)
-	var any_moving: bool = false
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
@@ -555,13 +554,6 @@ static func step(unit: Unit, delta: float) -> void:
 		# MultiMesh rewrite while a block sits at rest (REST_SPEED is well below visible).
 		if unit._sim_body_vel[i].length_squared() > REST_SPEED * REST_SPEED:
 			unit._render_dirty = true
-			any_moving = true
-
-	# A rally's halt ends once the anchor has stopped AND its bodies have pulled up with it:
-	# dropping the halt's brake while bodies still carry speed would leave them braking at
-	# the gentler rate and running on past their slots.
-	if halting and not any_moving and unit._current_speed <= 0.0:
-		unit._rally_halt = false
 
 	# One arrival integration per body, each with exactly one `to_slot.length()`.
 	SimOps.add(SimOps.BODY_STEP, n)
