@@ -1,5 +1,5 @@
 {
-  "_comment": "Idle-speed-friction demo: Unit._current_speed now bleeds off via arrival_brake_rate() instead of snapping to zero the instant a unit stops locomoting with no move/chase target (Battle._physics_process's 'no momentum while stationary' guard, scripts/Unit.gd). A shallow 8-horse Cavalry troop (facing-front actually in spatha reach of a small remnant) charges a brittle 1-man Infantry squad and wipes it; once the last enemy on the field is dead the cavalry has nothing left to chase or march toward, so it goes idle mid-pursuit with real residual speed still on the clock. An 80-horse column's facing-front sits a mounted rank-pitch past a 5-man blob and never finishes the wipe under per-soldier melee, which is why this clip is staged shallow. hold_space + show_unit_speed (session-only, Settings.set_show_unit_speed_session -- never persisted) put the HUD speed label on screen the whole time: it holds near the charge speed through the fight, then visibly counts down over several seconds instead of snapping straight to '0.0 m/s'. drill:true stops Battle._check_victory from pausing the tree once team 1 is wiped out, so the recording keeps running through the whole decay. Deterministic: seed + scripted input + a custom scenario (no default line spawn). Verified by state dump: infantry gone by t950; cavalry IDLE with residual speed ~65 wu/s at t950, decaying to 0 through t1000-1050 while still sliding south.",
+  "_comment": "Idle-speed-friction demo: Unit._current_speed now bleeds off via arrival_brake_rate() instead of snapping to zero the instant a unit stops locomoting with no move/chase target (Battle._physics_process's 'no momentum while stationary' guard, scripts/Unit.gd). A shallow 8-horse Cavalry troop (facing-front actually in spatha reach of a small remnant) charges a 1-man Infantry squad and wipes it; once the last enemy on the field is dead the cavalry has nothing left to chase or march toward, so it goes idle with real residual speed still on the clock. The squad is staged at full morale (100) so it stands and dies in the melee: at morale 25 it broke between ticks 400 and 450, and since routers flee at their real flee pace it outran the troop's melee for the rest of the clip (still ROUTING at y 1451 at tick 1100, the troop chasing it), so nothing ever went idle. An 80-horse column's facing-front sits a mounted rank-pitch past a 5-man blob and never finishes the wipe under per-soldier melee, which is why this clip is staged shallow. hold_space + show_unit_speed (session-only, Settings.set_show_unit_speed_session -- never persisted) put the HUD speed label on screen the whole time: it holds at the fight's speed through the melee, then visibly counts down over about a second instead of snapping straight to '0.0 m/s'. drill:true stops Battle._check_victory from pausing the tree once team 1 is wiped out, so the recording keeps running through the whole decay. Deterministic: seed + scripted input + a custom scenario (no default line spawn). Verified by a 2-tick state dump: the squad fights to the last and is gone at t562; the cavalry goes IDLE that tick with residual speed 38 wu/s, decaying steadily to 0 by t622, and its anchor settles at about (663, 505) by t950, IDLE through t1100.",
   "seed": "12345",
   "show_unit_speed": true,
   "drill": true,
@@ -17,7 +17,7 @@
       "x": 700,
       "y": 500,
       "count": 1,
-      "morale": 25.0
+      "morale": 100.0
     }
   ],
   "camera": [
@@ -91,6 +91,20 @@
     },
     {
       "tick": [
+        560,
+        600
+      ],
+      "uid": 1,
+      "absent": true
+    },
+    {
+      "tick": 600,
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    },
+    {
+      "tick": [
         1000,
         1100
       ],
@@ -98,5 +112,15 @@
       "field": "state",
       "value": "IDLE"
     }
-  ]
+  ],
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [0],
+      "reason": "The troop wipes the squad at tick 562 and coasts to rest by tick 622; at the tick-700 sample, IDLE and after the recorded clip ends (tick 640), two of its bodies stand 3.84 wu apart against the 5.0 wu floor (40.58 wu at 640, 32.13 at 800). This staging (squad at morale 100) runs hash-identical, every tick to 1100, on the #1739 merge-base, so nothing in #1739 reaches it; the defect is how the idle troop settles after the melee. Tracked in #1758."
+    },
+    "shape_residual": {
+      "uids": [0],
+      "reason": "After the wipe at tick 562 the IDLE troop's bodies settle back onto their slots slowly: sustained shape residual on a 2-tick scan of the clip, 100.4 wu against the 30 wu threshold. This staging (squad at morale 100) runs hash-identical, every tick to 1100, on the #1739 merge-base, so nothing in #1739 reaches it; the defect is how the idle troop settles after the melee. Tracked in #1758."
+    }
+  }
 }

@@ -40,6 +40,31 @@ and stops fighting for now. A routing unit can flee past the field's visible edg
 margin beyond it before it's gone for good, staying on the field --- and still
 fightable --- for as long as it's plausibly still in view.
 
+A routing unit runs faster than it marches. Unless it was already falling back, it
+starts its flight from a standstill (whatever broke it: a melee, missile fire, a
+neighbour's rout), picks up speed over its first few seconds, and then flees at about
+1.3 times its own top speed. Once clear of its pursuers it pulls away from troops of
+its own type; a pursuer that stays in contact with it holds it to that pursuer's own
+pace. (Currently, a deep block fleeing past impassable terrain can snag its leading
+ranks on it and lose much of that pace.)
+
+::: {#fig-router-outruns-pursuer .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/router_outruns_pursuer.jpg">
+  <source src="media/router_outruns_pursuer.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A broken cavalry squadron (bottom, faded) flees down the field
+while a fresh squadron of the same type sprints after it.
+The router picks up speed over its first few seconds, then pulls away at full flight,
+its riders running together as a block.
+:::
+
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
   break too. One collapse can cascade down a line.
 - **Local force ratio, combat status & named morale ladder.** Morale reflects local tactical context: being locally outnumbered, under unanswered missile fire (ambient incoming fire erosion halts at the `shaken` suppression floor at 50.0, shaking the formation without breaking it unaided, though separate casualty morale shock remains unfloored, and erosion halts entirely if the target can reply with its own ranged weapons), or losing local melee balance drains morale over time, while local numerical superiority steadies nerve. Unit combat status (`Winning decisively`, `Winning`, `Balanced`, `Losing`, `Losing decisively`) is derived from engaged physics and displayed on the `Combat:` HUD readout, alongside the 7-rung morale ladder (`routing`...`berserk`).
@@ -134,10 +159,10 @@ The same recovery once more, for a regiment holding **square**.
 A square keeps its own assignment of men to cells,
 which neither the file-major step-up nor the row-major pairing reaches,
 so undoing the flip has to name that third assignment directly.
-Measured over this rally, the average distance from a man's ground to the
-cell the reform hands him falls from 34 to 5 world units, and three and a half
-seconds later the block has stopped moving altogether &mdash; no man still short of
-his cell, where before the fix 52 of the 60 were still shuffling.
+The same cell pairing cancels the flip on the square's own assignment, so 56 of
+the 60 men hold their ground and only the four with no counterpart in the short
+rear rank swap ends: the block re-squares where it stands instead of marching
+itself inside out.
 :::
 
 ::: {#fig-rout-rally .demo}
@@ -152,8 +177,8 @@ his cell, where before the fix 52 of the 60 were still shuffling.
 ```
 
 Rout and pursuit: a low-morale infantry block is charged by cavalry and breaks &mdash;
-it flees, its flag fading, toward its own edge. The faster cavalry catch it before it can put
-real distance between them, and the casualties from being run down keep its morale
+it flees, its flag fading, toward its own edge. The faster cavalry ride it down partway up
+the field, and the casualties from being run down keep its morale
 too low to ever recover: it's annihilated rather than rallying &mdash; contrast the
 isolated recovery above (@fig-morale-recovery), where nothing interferes.
 :::
@@ -170,10 +195,9 @@ isolated recovery above (@fig-morale-recovery), where nothing interferes.
 ```
 
 A team's last unit routs. A lone player infantry is broken and flees, its flag fading;
-the enemy keeps pressing since a routing unit is still fair game, so this
-matchup grinds on rather than resolving cleanly &mdash; but the point still
-holds: the battle stays live instead of ending the instant the last unit
-broke, for as long as it's still on the field.
+the enemy keeps after it, since a routing unit is still fair game, and stays on its
+heels as it goes. The point: the battle stays live instead of ending the instant the
+last unit broke, for as long as it's still on the field.
 :::
 
 ::: {#fig-trapped-routing .demo}
@@ -191,8 +215,10 @@ Routing beside terrain: a brittle cavalry troop starts just west of the
 impassable hill, every man clear of it, and meets a charge driven straight
 in from its western flank. Opening melee is per-soldier, so the troop fights for a
 while before it breaks;
-it then routs and drifts south, staying well clear of the hill, while its nerve
-slowly steadies. Its flight never meets the hill, so no detour around it plays here.
+it then routs, is shoved a little south while the charge is still on it, and once
+clear flees north up the hill's western side, every man clear of it, while its
+nerve steadies, rallying near the end of the clip well past the hill's
+northern end. Its flight never meets the hill, so no detour around it plays here.
 A router with no terrain escape route left at all still stands and fights
 instead of fleeing in place (see [Terrain](#terrain)) &mdash; the open field
 this clip runs in never actually boxes a unit in, so that specific case isn't
@@ -1644,10 +1670,10 @@ deliberate stop --- its last target dies with no new order queued, say. Its
 speed doesn't just tick down to zero on the spot while the unit sits frozen:
 it keeps sliding forward along the direction it was actually heading, slowing
 under the same braking rate, until it drifts to a genuine halt. Watch a
-cavalry regiment that wipes out its target mid-charge: it carries real charge
-speed into that final moment, so it visibly coasts on for a beat before
-coming to rest, instead of stopping dead the instant it has nothing left to
-chase.
+cavalry troop that cuts down the last man of a squad standing to fight it: it
+comes out of the melee still moving at about 2 m/s, so it visibly coasts on
+for about a second before coming to rest, instead of stopping dead the
+instant it has nothing left to fight.
 
 ::: {#fig-coast-to-stop .demo}
 
@@ -1660,9 +1686,10 @@ chase.
 </video>
 ```
 
-Coasting to a stop: a shallow Cavalry troop wipes a small Infantry remnant
-mid-charge; with no enemy left to chase and no new order, it keeps sliding
-forward on its residual speed, decelerating, before finally coming to rest.
+Coasting to a stop: a shallow Cavalry troop wipes out a small Infantry squad
+that stands to fight; with no enemy left to chase and no new order, it keeps
+moving on the speed it carried out of the melee, decelerating, before finally
+coming to rest.
 :::
 
 ## Wheeling on a flank

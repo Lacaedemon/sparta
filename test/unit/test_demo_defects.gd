@@ -501,6 +501,58 @@ func test_teleporting_soldier_fails_superphysical_only_when_sustained() -> void:
 			"soldiers holding 3x sprint across samples are super-physical")
 
 
+## One sample per entry of `states`, `dt_ticks` apart, of a two-body block moving straight at
+## `speed` wu/s, each sample tagged with its entry as the unit's state.
+func _moving_pair(speed: float, dt_ticks: int, states: Array) -> Array:
+	var slots: Array = [[0.0, 0.0], [10.0, 0.0]]
+	var dt_sec: float = float(dt_ticks) / 60.0
+	var out: Array = []
+	for k in range(states.size()):
+		var y: float = float(k) * speed * dt_sec
+		out.append(_snapshot(k * dt_ticks, [[0.0, y], [10.0, y]], slots, false, String(states[k])))
+	return out
+
+
+func test_superphysical_speed_holds_a_router_to_its_flee_pace_cap() -> void:
+	# A router runs at its flee pace (move_speed * GaitLimits.FLEE_SPEED_MULTIPLIER), above its
+	# sprint by design, so its intervals are held to the flee-pace ceiling, not the sprint one.
+	var sprint := 126.0
+	var sprint_cap: float = sprint * GaitLimits.SUPERPHYSICAL_SPEED_FRAC
+	var flee_cap: float = sprint_cap * GaitLimits.FLEE_SPEED_MULTIPLIER
+	# Between the two ceilings, clear of the rounding margin on both sides.
+	var v: float = 0.5 * (sprint_cap + flee_cap)
+	var routing: Array = _moving_pair(v, 10, ["ROUTING", "ROUTING", "ROUTING", "ROUTING"])
+	assert_true(bool(_verdict(DemoDefects.analyze(routing), "superphysical_speed")["pass"]),
+			"a router running between its sprint and flee-pace ceilings is not super-physical")
+	var marching: Array = _moving_pair(v, 10, ["MOVING", "MOVING", "MOVING", "MOVING"])
+	assert_false(bool(_verdict(DemoDefects.analyze(marching), "superphysical_speed")["pass"]),
+			"the same speed on a marching unit still is")
+
+
+func test_superphysical_speed_picks_the_cap_from_the_interval_start() -> void:
+	# The flee-pace allowance belongs to intervals that START routing. A unit that only
+	# breaks at the last sample spent the intervals before it at its march pace, so a
+	# sustained run over its sprint cap there still fails -- picking the cap off the
+	# interval's END sample would have excused the second of the two.
+	var sprint := 126.0
+	var sprint_cap: float = sprint * GaitLimits.SUPERPHYSICAL_SPEED_FRAC
+	var flee_cap: float = sprint_cap * GaitLimits.FLEE_SPEED_MULTIPLIER
+	var v: float = 0.5 * (sprint_cap + flee_cap)
+	var breaks_last: Array = _moving_pair(v, 10, ["MOVING", "MOVING", "ROUTING"])
+	var verdict: Dictionary = _verdict(DemoDefects.analyze(breaks_last), "superphysical_speed")
+	assert_false(bool(verdict["pass"]),
+			"two march-pace intervals over the sprint cap fail even though the run ends routing")
+	var margin: float = DemoDefects.speed_quantization_margin(10)
+	assert_almost_eq(float(verdict["threshold"]), sprint_cap + margin, 0.001,
+			"and the reported threshold is the sprint cap the failing intervals were held to")
+	# A router flat out past even its flee-pace cap fails, reporting that cap.
+	var too_fast: Array = _moving_pair(flee_cap * 1.5, 10, ["ROUTING", "ROUTING", "ROUTING"])
+	var fast_verdict: Dictionary = _verdict(DemoDefects.analyze(too_fast), "superphysical_speed")
+	assert_false(bool(fast_verdict["pass"]), "a router past its flee-pace cap is super-physical")
+	assert_almost_eq(float(fast_verdict["threshold"]), flee_cap + margin, 0.001,
+			"and the reported threshold is the flee-pace cap it was held to")
+
+
 func test_superphysical_speed_rounding_margin_boundary() -> void:
 	var slots: Array = [[0.0, 0.0], [10.0, 0.0]]
 	var sprint := 126.0
@@ -1282,3 +1334,93 @@ func test_hud_consistency_detects_sustained_blank_caption() -> void:
 	assert_string_contains(str(verdicts[0]["worst"]), "blank hud")
 
 
+func test_check_expectations_tol_matches_a_position_within_tolerance() -> void:
+	# A late-tick position can drift by a fraction of a world unit across platforms, so a
+	# position claim carries a per-component tolerance instead of demanding an exact match.
+	var snaps: Array = [{"tick": 350, "units": [{"uid": 1, "position": [860.0, 1616.49]}]}]
+	var verdicts: Array = DemoDefects.check_expectations([
+		{"tick": 350, "uid": 1, "field": "position", "value": [860.0, 1616.0], "tol": 5.0},
+		{"tick": 350, "uid": 1, "field": "position", "value": [860.0, 1600.0], "tol": 5.0},
+		{"tick": 350, "uid": 1, "field": "position", "value": [860.0, 1616.0]},
+	], snaps)
+	assert_true(bool(verdicts[0]["pass"]), "within tolerance on every component passes")
+	assert_false(bool(verdicts[1]["pass"]), "a component outside the tolerance fails")
+	assert_false(bool(verdicts[2]["pass"]), "with no tol the match stays exact")
+	assert_ne(DemoDefects.expect_entry_error(
+			{"tick": 1, "uid": 0, "field": "position", "value": [0, 0], "tol": -1.0}), "",
+			"a negative tol is malformed")
+	assert_ne(DemoDefects.expect_entry_error(
+			{"tick": 1, "uid": 0, "field": "state", "value": "IDLE", "tol": 1.0}), "",
+			"a tol on a non-numeric value is malformed")
+
+
+func test_check_expectations_tol_is_inclusive_for_numbers_and_pairs() -> void:
+	# A value exactly `tol` away matches, for a scalar and for each component of a pair.
+	var snaps: Array = [{"tick": 10, "units": [{"uid": 0, "morale": 12.5, "position": [10.0, 22.5]}]}]
+	var verdicts: Array = DemoDefects.check_expectations([
+		{"tick": 10, "uid": 0, "field": "morale", "value": 10.0, "tol": 2.5},
+		{"tick": 10, "uid": 0, "field": "position", "value": [12.5, 20.0], "tol": 2.5},
+		{"tick": 10, "uid": 0, "field": "morale", "value": 10.0, "tol": 2.4},
+	], snaps)
+	assert_true(bool(verdicts[0]["pass"]), "a number exactly tol away matches")
+	assert_true(bool(verdicts[1]["pass"]), "a pair exactly tol away on each component matches")
+	assert_false(bool(verdicts[2]["pass"]), "just outside tol does not")
+
+
+func test_check_expectations_absent_passes_once_the_unit_is_gone() -> void:
+	# "This unit has left play by then" (annihilated or escaped): passes when some snapshot
+	# in range carries no record for it, fails while every one still lists it.
+	var snaps: Array = [
+		{"tick": 600, "units": [{"uid": 0, "state": "ROUTING"}, {"uid": 3, "state": "FIGHTING"}]},
+		{"tick": 620, "units": [{"uid": 3, "state": "IDLE"}]},
+	]
+	var verdicts: Array = DemoDefects.check_expectations([
+		{"tick": [600, 640], "uid": 0, "absent": true},
+		{"tick": 600, "uid": 0, "absent": true},
+		{"tick": 900, "uid": 0, "absent": true},
+	], snaps)
+	assert_true(bool(verdicts[0]["pass"]), "gone by a snapshot inside the range passes")
+	assert_false(bool(verdicts[1]["pass"]), "still listed at every snapshot in range fails")
+	assert_false(bool(verdicts[2]["pass"]), "no snapshot in range at all is uncheckable, so it fails")
+	assert_eq(DemoDefects.expect_entry_error({"tick": 600, "uid": 0, "absent": true}), "",
+			"an absence claim needs no field or value")
+	assert_ne(DemoDefects.expect_entry_error({"tick": 600, "uid": 0, "absent": false}), "",
+			"absent false is malformed")
+	assert_ne(DemoDefects.expect_entry_error(
+			{"tick": 600, "uid": 0, "absent": true, "field": "state", "value": "IDLE"}), "",
+			"an absent entry naming a field/value is malformed")
+
+
+func test_check_expectations_absent_does_not_pass_vacuously() -> void:
+	# Absence means the unit was in play and has left it: a uid that was never there, or a
+	# snapshot with no readable units list, must not read as "gone".
+	var snaps: Array = [
+		{"tick": 600, "units": [{"uid": 3, "state": "FIGHTING"}]},
+		{"tick": 620, "units": [{"uid": 3, "state": "IDLE"}]},
+	]
+	var never: Array = DemoDefects.check_expectations([
+		{"tick": [600, 640], "uid": 0, "absent": true},
+	], snaps)
+	assert_false(bool(never[0]["pass"]), "a uid never present has nothing to have left")
+	# Gone by tick 640 -- but the tick-620 snapshot in the same range has no units list, so
+	# the range cannot be read, and the claim fails rather than resting on the readable part.
+	var broken: Array = [
+		{"tick": 600, "units": [{"uid": 0, "state": "ROUTING"}]},
+		{"tick": 620},
+		{"tick": 640, "units": [{"uid": 3, "state": "IDLE"}]},
+	]
+	var no_units: Array = DemoDefects.check_expectations([
+		{"tick": [600, 640], "uid": 0, "absent": true},
+	], broken)
+	assert_false(bool(no_units[0]["pass"]), "a snapshot without a units list is unreadable, not empty")
+	# An unreadable snapshot later in the range fails the claim too, even after the unit is
+	# already seen gone: the whole range is read, not just up to the first absence.
+	var broken_after: Array = [
+		{"tick": 600, "units": [{"uid": 0, "state": "ROUTING"}]},
+		{"tick": 620, "units": [{"uid": 3, "state": "IDLE"}]},
+		{"tick": 640},
+	]
+	var late: Array = DemoDefects.check_expectations([
+		{"tick": [600, 640], "uid": 0, "absent": true},
+	], broken_after)
+	assert_false(bool(late[0]["pass"]), "an unreadable snapshot after the absence still fails it")

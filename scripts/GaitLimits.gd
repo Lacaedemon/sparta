@@ -15,3 +15,9 @@ class_name GaitLimits
 ## threshold, so the engine and the metric agree by construction instead of by two
 ## separately hand-kept literals.
 const SUPERPHYSICAL_SPEED_FRAC := 1.15
+
+## Speed multiplier on move_speed while routing: fleeing soldiers run slightly faster
+## than their normal sprint pace (Unit.flee_speed()). Lives here, not only on Unit, so
+## DemoDefects can hold a router's bodies to the same flee-pace ceiling
+## SoldierBodies.step() applies to them.
+const FLEE_SPEED_MULTIPLIER := 1.3

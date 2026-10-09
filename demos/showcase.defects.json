@@ -3,9 +3,15 @@
   "defect_exemptions": {
     "overlap": {
       "uids": [
-        8
+        7
       ],
-      "reason": "Team 1's cavalry squadron (uid 8, 9 ranks, 960 wu deep) now deploys with its front rank on its line and marches toward its ATTACK target (uid 2) for the whole clip without reaching it: state MOVING, engaged false, at every sampled tick through 1300. As the deep column turns onto its bearing its bounding box widens from about 320 wu to about 700 wu and its own files close up mid-turn, the deep-block mid-turn mechanism #1546 tracks. CI website demo-diff on PR #1677 (81718f4e): nnd_min 2.996 wu against the 5.0 wu floor, merge-base 9.615. Self-compression of a turning block, not interpenetration with another unit."
+      "reason": "uid 7: an archer block standing in the routing uid 2's line of flight and fighting it. Over the ticks both runs share (942-1012) the router's closest body pair to uid 7 is 3.37 wu at the #1739 head against 2.01 wu on the merge-base, so the router comes no nearer; at the head the router lives on to tick 1072 (gone at 1012 on the merge-base), still against uid 7, and over those extra ticks the pair reaches 1.34 wu (tick 1028). Holding the flight feed-forward off the router's contact bodies moved that only to 1.49 wu, so it is melee contact, not the flight drive. Afterwards uid 7 presses against its friendly neighbour uid 8: on a 2-tick scan from the divergence (tick 942), nnd_min 0.905 wu at the #1739 head (worst at tick 1218, uid 8 0.4 wu away) against the 2.25 wu floor, merge-base 8.762. No #1739 code path runs in uid 7's own update. #1739 reaches it only through the router: the router's full-pace flight, its decaying engaged latch and its refreshed enemy-contact flag; the latter two feed this unit's own _separate() pair test against the router (Unit.gd:5181) while the two are in contact. Tracked as a block crowding after a full-pace router leaves in #1757."
+    },
+    "misslotted": {
+      "uids": [
+        7
+      ],
+      "reason": "uid 7, the same block as the overlap entry, after the routing uid 2 leaves it. On a 2-tick scan from the divergence (tick 942): misslotted fraction 0.478 at the #1739 head against 0.25, merge-base 0.130. No #1739 code path runs in uid 7's own update (see the overlap entry); tracked with its overlap in #1757."
     }
   }
 }

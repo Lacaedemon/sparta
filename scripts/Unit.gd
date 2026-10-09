@@ -1096,7 +1096,9 @@ var under_fire_morale_erosion: float = UnitMorale.UNDER_FIRE_MORALE_EROSION_PER_
 var under_fire_morale_floor: float = UnitMorale.UNDER_FIRE_MORALE_FLOOR
 # True when under fire and able to reply (has ranged capability, ammo, and range to reach all threats).
 var _under_fire_can_reply: bool = false
-# Set to true in _think when ANY live-or-routing enemy regiment is within melee contact
+# Recomputed every tick by _refresh_enemy_contact() -- from _think for a unit that thinks,
+# and from the rout branch of _physics_process for a router, which never runs _think -- and
+# true when ANY live-or-routing enemy regiment is within melee contact
 # range of EITHER side's own reach -- PURE PROXIMITY, independent of order_mode/state
 # (unlike is_engaged(), which only goes true once this unit itself decides to fight).
 # Feeds the soldier-level contact-collision gate (Unit.contact_soldier_indices /
@@ -1168,8 +1170,8 @@ const PIN_DOWN_EXPOSURE_DURATION: float = 0.3
 const PIN_DOWN_DEFENSE_FACTOR: float = 0.7
 const ROUT_TIME: float = 6.0
 ## Speed multiplier on move_speed while routing: fleeing soldiers run slightly faster
-## than their normal sprint pace.
-const FLEE_SPEED_MULTIPLIER: float = 1.3
+## than their normal sprint pace. The value lives in GaitLimits.gd so DemoDefects can read it.
+const FLEE_SPEED_MULTIPLIER: float = GaitLimitsRef.FLEE_SPEED_MULTIPLIER
 # Live rout-timer duration -- a caller-configurable parameter (CLAUDE.md's code
 # conventions) defaulting to ROUT_TIME above. Settable BEFORE the node enters the
 # tree, the same set-before-_ready contract Battle.gd's ai_period/camera_smoothing
@@ -1476,6 +1478,23 @@ var _cycle_recharging: bool = false
 # true when the unit moved at flee speed during _process_rout,
 # so stamina_band can bill the flight at sprint pace even if _rally transitioned to IDLE.
 var _moved_while_routing: bool = false
+# The flee pace the unit actually ran on that move (its _flee_pace at the time), kept beside
+# _moved_while_routing so the same tick's stamina bill reads the speed run even after a
+# rally has cleared _flee_pace.
+var _moved_while_routing_pace: float = 0.0
+# A routing unit's live flight pace (world units/s). _process_rout ramps it toward
+# flee_speed() at `accel`, the same build-up a march takes, rather than starting the anchor
+# at full flight: the soldier bodies only gain speed at their own bounded acceleration, so
+# an anchor that leapt to flee pace would run ahead of them, the body coupling would pull
+# it back, and the block would trail its slots by tens of world units until they caught up.
+# Seeded by _rout() from the speed the unit was already carrying away from the enemy.
+var _flee_pace: float = 0.0
+# This tick's flight velocity (flee direction * _flee_pace), set by _process_rout: the
+# routing counterpart of _approach_velocity. SoldierBodies.step feeds it forward to a
+# router's unengaged bodies so they run with the fleeing anchor; without it they only
+# chase their slots on the jog-capped arrival term, and the body coupling drags the anchor
+# back to them. Read only while state == ROUTING.
+var _flee_velocity: Vector2 = Vector2.ZERO
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -1613,16 +1632,26 @@ func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
 	_moved_while_routing = false
+	_moved_while_routing_pace = 0.0
 
 	# Before the rout branch below returns, so a routing tick records ROUTING as the
 	# previous-tick reading and the rally that _process_rout performs is seen on the next
 	# ordinary tick.
 	_arm_standoff_on_leaving_fight_or_rout()
 	if state == State.ROUTING:
+		# _think() never runs for a router, so refresh its physical contact here: left as it
+		# was at the break, it would keep the router's bodies colliding as if still pressed
+		# against the enemy it has fled.
+		_refresh_enemy_contact()
 		_process_rout(delta)
 		if state != State.DEAD:   # timer expired: rallied (IDLE) or shattered (DEAD -> freed)
 			_separate(delta)   # routers still shoulder past anyone in their path
 			_tick_far_stamina(delta)
+			# The engaged latch decays here too: a router is not FIGHTING, so its front leaves
+			# the engaged tier ENGAGED_LINGER after the break, as the latch's contract says.
+			# Skipping it froze the latch for the whole rout, holding the router's front on
+			# the melee line it had fled.
+			tick_engaged(delta)
 		return
 
 	_attack_cd = max(0.0, _attack_cd - delta)
@@ -2727,16 +2756,12 @@ func fresh_pick_allowed(candidate: Unit) -> bool:
 	return in_contact or _enemy_is_perceived(candidate)
 
 
-## Decide what to do this frame: fight if in contact, otherwise move.
-func _think(delta: float) -> void:
-	# Physical contact: true when ANY live-or-routing enemy regiment is within melee
-	# contact range of EITHER side's own reach, regardless of order_mode/state -- see
-	# _in_enemy_contact's own doc comment. Computed first, before every other branch in
-	# this function (including the order-response-delay/reform/turn/wheel early returns
-	# below), so it's always fresh on every tick regardless of which branch a unit takes --
-	# unlike _under_fire further down, which only needs to be fresh for the branches that
-	# actually read it.
-	SimOps.bump(SimOps.UNIT_THINK)
+## Recompute _in_enemy_contact from scratch: true when ANY live-or-routing enemy regiment is
+## within melee contact range of EITHER side's own reach. Run every tick by _think() and, for a
+## router (which never runs _think), by the rout branch of _physics_process -- contact is a
+## physical fact, so a router still pressed against an enemy keeps colliding with it, and one
+## that has got clear stops.
+func _refresh_enemy_contact() -> void:
 	_in_enemy_contact = false
 	var contact_candidates: Array = get_tree().get_nodes_in_group("units")
 	contact_candidates.append_array(get_tree().get_nodes_in_group("routers"))
@@ -2751,6 +2776,19 @@ func _think(delta: float) -> void:
 				_in_enemy_contact = true
 				break
 	SimOps.add(SimOps.REGIMENT_CHECK, contact_checks)
+
+
+## Decide what to do this frame: fight if in contact, otherwise move.
+func _think(delta: float) -> void:
+	# Physical contact: true when ANY live-or-routing enemy regiment is within melee
+	# contact range of EITHER side's own reach, regardless of order_mode/state -- see
+	# _in_enemy_contact's own doc comment. Computed first, before every other branch in
+	# this function (including the order-response-delay/reform/turn/wheel early returns
+	# below), so it's always fresh on every tick regardless of which branch a unit takes --
+	# unlike _under_fire further down, which only needs to be fresh for the branches that
+	# actually read it.
+	SimOps.bump(SimOps.UNIT_THINK)
+	_refresh_enemy_contact()
 
 	_update_current_order()
 	# Order-response delay: tick down on every frame. Non-fighting units are frozen
@@ -7946,8 +7984,12 @@ func flee_speed() -> float:
 func stamina_band() -> int:
 	if state == State.FIGHTING:
 		return StaminaFlow.BAND_REST
-	if state == State.ROUTING or _moved_while_routing:
-		return StaminaFlow.band_for_speed(flee_speed(), walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
+	# A router is billed at the pace it is actually running: the flight builds up from a
+	# standstill, so the first seconds of a rout are not yet a flat-out sprint.
+	if _moved_while_routing:
+		return StaminaFlow.band_for_speed(_moved_while_routing_pace, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
+	if state == State.ROUTING:
+		return StaminaFlow.band_for_speed(_flee_pace, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
 	return StaminaFlow.band_for_speed(_current_speed, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
 
 
@@ -8524,6 +8566,23 @@ func _remove_from_play() -> void:
 func _rout() -> void:
 	if state == State.ROUTING:
 		return
+	# The flight builds up from whatever speed the unit was already carrying AWAY from the
+	# enemy -- the component of its travel velocity along its flee heading, read before
+	# anything below clears the orders. A unit caught advancing (or in a melee its charge
+	# carried it into) is moving toward the enemy, so it starts the flight from a standstill,
+	# never at speed in the opposite direction; one already falling back keeps that pace. A
+	# FIGHTING unit starts from a standstill outright: its _approach_velocity can still hold
+	# the lean-in toward its opponent until the first strike spends it.
+	if state == State.FIGHTING:
+		_flee_pace = 0.0
+	else:
+		_flee_pace = clampf(_approach_velocity.dot(_flee_heading()), 0.0, flee_speed())
+	_flee_velocity = Vector2.ZERO
+	# The flight replaces whatever travel the unit had: _process_rout returns before the idle
+	# decay, so a pre-rout velocity left here would sit frozen through the rout and coast the
+	# anchor off along it on the rallied unit's first idle tick, away from its bodies.
+	_approach_velocity = Vector2.ZERO
+	_current_speed = 0.0
 	state = State.ROUTING
 	selected = false
 	target_enemy = null
@@ -8567,11 +8626,17 @@ func _rout() -> void:
 	queue_redraw()
 
 
+## The direction a router flees in before terrain detours: toward its own back edge
+## (team 0 started at the top of the field, team 1 at the bottom).
+func _flee_heading() -> Vector2:
+	return Vector2.UP if team == 0 else Vector2.DOWN
+
+
 func _process_rout(delta: float) -> void:
 	# Flee toward own back edge (team 0 started at top, team 1 at bottom). Route around
 	# impassable terrain via PathField.next_step() if available (same as _move_to does).
 	# If trapped with no escape path, fall back to fighting to the death.
-	var flee: Vector2 = Vector2.UP if team == 0 else Vector2.DOWN
+	var flee: Vector2 = _flee_heading()
 
 	# Check for viable escape path using PathField (like _move_to does).
 	# If trapped in terrain with no escape route, stop routing and fight instead.
@@ -8594,13 +8659,16 @@ func _process_rout(delta: float) -> void:
 	var to: Vector2 = step - position
 	var dir: Vector2 = to.normalized()
 	_face_dir(dir)
-	var next: Vector2 = position + dir * flee_speed() * delta
+	_flee_pace = move_toward(_flee_pace, flee_speed(), accel * delta)
+	_flee_velocity = dir * _flee_pace
+	var next: Vector2 = position + _flee_velocity * delta
 	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
 			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
 		_escape()
 		return
 	position = next
 	_moved_while_routing = true
+	_moved_while_routing_pace = _flee_pace
 
 	# A SHATTERED unit has lost its nerve for good: it just keeps fleeing (the movement
 	# above already ran), with no morale recovery and no rally check ever again. The only
@@ -8639,6 +8707,13 @@ func _process_rout(delta: float) -> void:
 		_shatter()
 
 
+## Drop the flight state a router carries (_flee_pace, _flee_velocity) on the way out of
+## ROUTING into play, so a later rout starts clean and nothing reads a stale flight.
+func _clear_flight() -> void:
+	_flee_pace = 0.0
+	_flee_velocity = Vector2.ZERO
+
+
 ## Whether a routed unit recovers rather than shatters when its rout times out:
 ## it must have broken contact — no living enemy within RALLY_CONTACT_RADIUS — and still
 ## field enough men to reform (>= shatter_strength_frac of its max). Positions + counts
@@ -8658,6 +8733,7 @@ func _rally() -> void:
 	# floor — a unit that rallies the instant its timer expires still reforms shaken.
 	morale = maxf(morale, RALLY_MORALE)
 	_rout_timer = 0.0
+	_clear_flight()
 	# _rout() zeroed _formation_angle so the unit "reforms square to its heading on rally"
 	# (its own comment), but fleeing can re-fold it via _face_dir's snap-absorb (a sharp
 	# turn away from the enemy at the moment routing starts). reform_ranks() is the
@@ -8733,6 +8809,7 @@ func _rout_clearance() -> float:
 func _stop_rout_and_fight() -> void:
 	# Exit routing state: rejoin the fighting units instead of routers.
 	state = State.IDLE
+	_clear_flight()
 	remove_from_group("routers")
 	add_to_group("units")
 	# Mark as shattered so the unit will fight to the death without rallying if it
@@ -9525,6 +9602,8 @@ func to_snapshot_dict() -> Dictionary:
 		"withdrawal_peeling": _withdrawal_peeling,
 		"separation_velocity": _separation_velocity,
 		"moved_while_routing": _moved_while_routing,
+		"moved_while_routing_pace": _moved_while_routing_pace,
+		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity,
 		# Not reset before a routing unit's early return, so a router keeps reading it.
 		"is_facing_turning": _is_facing_turning,
 
@@ -9749,6 +9828,9 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_withdrawal_peeling = bool(d.get("withdrawal_peeling", _withdrawal_peeling))
 	_separation_velocity = d.get("separation_velocity", _separation_velocity)
 	_moved_while_routing = bool(d.get("moved_while_routing", _moved_while_routing))
+	_moved_while_routing_pace = float(d.get("moved_while_routing_pace", _moved_while_routing_pace))
+	_flee_pace = float(d.get("flee_pace", _flee_pace))
+	_flee_velocity = d.get("flee_velocity", _flee_velocity)
 	_is_facing_turning = bool(d.get("is_facing_turning", _is_facing_turning))
 	is_general = bool(d.get("is_general", is_general))
 	order_clear_step = float(d.get("order_clear_step", order_clear_step))

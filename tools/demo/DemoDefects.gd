@@ -609,25 +609,49 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	out.append({"uid": uid, "metric": "facing_flutter", "pass": flutter <= FLUTTER_MAX_RUN,
 			"worst": flutter, "threshold": FLUTTER_MAX_RUN})
 
-	# Sustained super-physical soldier speed (index-aligned samples only).
+	# Sustained super-physical soldier speed (index-aligned samples only). A routing
+	# unit's top pace is its flee pace (Unit.flee_speed(): move_speed *
+	# GaitLimits.FLEE_SPEED_MULTIPLIER), above its sprint by design, and SoldierBodies.step
+	# measures a router's body-speed ceiling from it. An interval is held to that flee-pace
+	# cap when its START sample is routing: the men carry their flight speed into the
+	# interval, and a router that rallies inside it was running at flee pace up to then. A unit
+	# that only starts routing at the interval's end spent that interval under its ordinary
+	# gaits, and its flight then builds up at its own accel from no more than the speed it
+	# was already carrying away from the enemy (Unit._rout's seed, zero for a FIGHTING
+	# unit), so over that interval its sprint ceiling still applies.
 	var cap: float = sprint * SUPERPHYSICAL_SPEED_FRAC
+	var flee_cap: float = cap * GaitLimitsRef.FLEE_SPEED_MULTIPLIER
 	var over_run := 0
 	var worst_speed := 0.0
 	var worst_run := 0
-	var worst_margin := 0.0
+	# The threshold reported is the one the verdict was decided against: the cap and margin
+	# of the interval that set the longest over-cap run, or, with no interval over its cap,
+	# those of the fastest interval.
+	var run_threshold := 0.0
+	var worst_run_threshold := 0.0
+	var fastest_threshold := cap
 	for i in range(1, n):
 		if s["counts"][i] != s["counts"][i - 1]:
 			over_run = 0   # casualty compaction: indexes no longer align across the gap
 			continue
 		var dt: int = int(s["ticks"][i]) - int(s["ticks"][i - 1])
 		var v: float = max_soldier_speed(s["pos"][i - 1], s["pos"][i], dt)
-		worst_speed = maxf(worst_speed, v)
-		var margin: float = speed_quantization_margin(dt)
-		worst_margin = maxf(worst_margin, margin)
-		over_run = over_run + 1 if v > cap + margin else 0
-		worst_run = maxi(worst_run, over_run)
+		var interval_threshold: float = (flee_cap if bool(s["routing"][i - 1]) else cap) \
+				+ speed_quantization_margin(dt)
+		if v > worst_speed:
+			worst_speed = v
+			fastest_threshold = interval_threshold
+		if v > interval_threshold:
+			over_run += 1
+			run_threshold = interval_threshold
+		else:
+			over_run = 0
+		if over_run > worst_run:
+			worst_run = over_run
+			worst_run_threshold = run_threshold
 	out.append({"uid": uid, "metric": "superphysical_speed", "pass": worst_run < MIN_SUSTAIN,
-			"worst": worst_speed, "threshold": cap + worst_margin})
+			"worst": worst_speed,
+			"threshold": worst_run_threshold if worst_run > 0 else fastest_threshold})
 
 	# Crossing routes: soldiers swapping sides on the way to wherever they are going.
 	# Deliberately NOT routed through _sustained_verdict. That helper forgives a series
@@ -738,11 +762,36 @@ static func expect_entry_error(e) -> String:
 		return "tick must be a number or a [lo, hi] pair"
 	if not (e.get("uid") is float or e.get("uid") is int):
 		return "missing numeric uid"
+	if e.has("absent"):
+		# An absence claim ("this unit is gone by then") names no field or value.
+		if not (e.get("absent") is bool) or not bool(e.get("absent")):
+			return "absent must be true"
+		if e.has("field") or e.has("value") or e.has("tol"):
+			return "an absent entry takes no field, value or tol"
+		return ""
 	if str(e.get("field", "")) == "":
 		return "missing field"
 	if not e.has("value"):
 		return "missing value"
+	if e.has("tol"):
+		var tol = e.get("tol")
+		if not (tol is float or tol is int) or float(tol) < 0.0:
+			return "tol must be a non-negative number"
+		if not _is_numeric_value(e.get("value")):
+			return "tol applies only to a number or an array of numbers"
 	return ""
+
+
+## Whether `v` is a number or a non-empty array of numbers -- what a `tol` can compare.
+static func _is_numeric_value(v) -> bool:
+	if v is float or v is int:
+		return true
+	if not (v is Array) or (v as Array).is_empty():
+		return false
+	for x in v:
+		if not (x is float or x is int):
+			return false
+	return true
 
 
 ## Evaluate declared demo intent against a dumped transcript: each expectation is
@@ -766,8 +815,13 @@ static func check_expectations(expects: Array, snapshots: Array) -> Array:
 		var lo: int = int(t[0]) if t is Array else int(t)
 		var hi: int = int(t[1]) if t is Array else int(t)
 		var uid: int = int(e.get("uid", -1))
+		var when: String = str(lo) if lo == hi else "%d-%d" % [lo, hi]
+		if e.has("absent"):
+			out.append(_check_absent(uid, lo, hi, when, snapshots))
+			continue
 		var field: String = str(e.get("field", ""))
 		var expected = e.get("value")
+		var tol: float = float(e.get("tol", 0.0))
 		var probed := false
 		var passed := false
 		var actual = null
@@ -782,11 +836,10 @@ static func check_expectations(expects: Array, snapshots: Array) -> Array:
 					continue
 				probed = true
 				actual = u[field]
-				if _values_match(expected, actual):
+				if _values_match(expected, actual, tol):
 					passed = true
 			if passed:
 				break
-		var when: String = str(lo) if lo == hi else "%d-%d" % [lo, hi]
 		out.append({"uid": uid, "metric": "expect:%s@%s" % [field, when],
 				"pass": probed and passed,
 				"worst": actual if probed else "(no snapshot/unit/field in range)",
@@ -865,10 +918,72 @@ static func _exempts_uid(entry: Dictionary, uid: int) -> bool:
 	return false
 
 
-static func _values_match(expected, actual) -> bool:
+static func _values_match(expected, actual, tol: float = 0.0) -> bool:
 	if (expected is float or expected is int) and (actual is float or actual is int):
+		# An explicit tol is inclusive; with none, the old exact-match slack applies.
+		if tol > 0.0:
+			return absf(float(expected) - float(actual)) <= tol
 		return absf(float(expected) - float(actual)) < 0.001
+	# A numeric [x, y] pair within `tol` on each component, for a position that may drift
+	# by a fraction of a world unit across platforms.
+	if tol > 0.0 and expected is Array and actual is Array \
+			and (expected as Array).size() == (actual as Array).size():
+		for i in range((expected as Array).size()):
+			var a = expected[i]
+			var b = actual[i]
+			if not ((a is float or a is int) and (b is float or b is int)):
+				return false
+			if absf(float(a) - float(b)) > tol:
+				return false
+		return true
 	return str(expected) == str(actual)
+
+
+## An `absent` expectation: passes when some snapshot inside [lo, hi] carries no record
+## for `uid` AND an earlier snapshot did -- the unit was in play and has left it
+## (annihilated, escaped, merged) by then. A uid that never appears at all fails, as does a
+## snapshot without a `units` list (unreadable, not empty), every snapshot in range still
+## listing it, or no snapshot in range at all.
+static func _check_absent(uid: int, lo: int, hi: int, when: String, snapshots: Array) -> Dictionary:
+	var probed := false
+	var gone := false
+	var seen_before := false
+	var malformed := false
+	for snap in snapshots:
+		var tick: int = int(snap.get("tick", -1))
+		if tick > hi:
+			continue
+		if not (snap.get("units") is Array):
+			if tick >= lo:
+				malformed = true
+			continue
+		var present := false
+		for u in snap["units"]:
+			if int(u.get("uid", -1)) == uid:
+				present = true
+				break
+		if tick < lo:
+			seen_before = seen_before or present
+			continue
+		probed = true
+		if present:
+			seen_before = true
+		elif seen_before:
+			gone = true
+		# No early exit: every snapshot up to `hi` is still read, so an unreadable one after
+		# the unit is gone fails the claim too.
+	var ok: bool = probed and gone and not malformed
+	var worst: String = "absent"
+	if malformed:
+		worst = "(snapshot without a units list)"
+	elif not probed:
+		worst = "(no snapshot in range)"
+	elif not seen_before:
+		worst = "(never present -- nothing to have left)"
+	elif not gone:
+		worst = "present"
+	return {"uid": uid, "metric": "expect:absent@%s" % when, "pass": ok,
+			"worst": worst, "threshold": "absent"}
 
 
 ## Mean distance from each body to its nearest slot of ANY identity -- how settled the
