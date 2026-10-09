@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/corner-start-walk-off-1752.json",
+  "caption": "A block standing just off a corner of the hill now walks straight away from it. A lone Infantry block stands diagonally off the hill's north-east corner, closer to it than its own marching margin, and is ordered due north, away from the hill. It marches straight up its line, keeps facing north, and halts at the point. Before this fix the march judged that leg blocked from where the block stood: its first steps swung west, toward the hill, its ranks stretched out, and it finished the march on a slant.",
+  "fixed_fps": 30,
+  "max_frames": 450,
+  "fps": 15,
+  "width": 720
+}

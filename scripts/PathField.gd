@@ -370,7 +370,7 @@ func next_step(from: Vector2, to: Vector2, clearance: float = 0.0, lane_offset: 
 	var corridor: Vector2 = path[1]
 	var full_margin_candidate: bool = false
 	for i in range(path.size() - 1, 1, -1):
-		if not _segment_blocked(from, path[i], detour_margin, false):
+		if not _segment_blocked(from, path[i], detour_margin, Leg.CANDIDATE):
 			corridor = path[i]
 			full_margin_candidate = true
 			break
@@ -622,6 +622,17 @@ const CORNER_ARRIVE_EPS := CELL * 0.5   # tuned in wu, solver epsilon
 # genuine one.
 const ROUTE_SIDE_COLLINEAR_EPS := 0.001   # tuned in wu, solver epsilon
 
+## Which kind of sightline a _segment_blocked query judges. Each kind caps the
+## margin at the room its endpoints leave in its own way (see _segment_blocked), so
+## the caller names its kind rather than having it inferred from a flag.
+## - ORDER: a real leg, from the walker's own position to a destination an order
+##   must reach (next_step's straight check, is_leg_blocked, has_path).
+## - CORRIDOR_CELL: next_step's corridor fallback, from the walker to a synthetic
+##   A* cell centre that no order has to reach.
+## - CANDIDATE: a string-pull or funnel-corner candidate sightline, which must clear
+##   the full margin at its far end.
+enum Leg { ORDER, CORRIDOR_CELL, CANDIDATE }
+
 ## True if the straight segment from..to crosses any terrain rect, each grown by
 ## the sightline's margin on every side. Exact geometry against the drawn rects —
 ## not the routing cells — so a line that merely passes through a cell an
@@ -637,30 +648,39 @@ const ROUTE_SIDE_COLLINEAR_EPS := 0.001   # tuned in wu, solver epsilon
 ## is judged at the room the destination leaves, so orders there remain
 ## reachable. Legs between far-off points keep the full margin.
 ##
-## `cap_to` marks whether `to` is such a real endpoint. A string-pull CANDIDATE
-## waypoint is not — it's a synthetic A* cell centre, and an open cell adjoining
-## a blocked one sits only half a routing cell from the drawn rect, so capping
-## on it would silently shrink every corner sightline to ~half a cell no matter
-## how wide the querying unit is, letting its flank cut into terrain exactly
-## where routing bends. Candidates must clear the FULL margin (cap_to false);
-## a candidate inside the margin is simply not picked.
+## `kind` (see Leg) names the caller class, and each caps differently (_leg_room):
 ##
-## A real destination's room (`to_is_destination`, the default) is measured by
-## _grow_room, in the same per-axis metric Rect2.grow uses, not as a straight-line
-## distance: the grown rect has square corners, so a destination diagonal from a
-## corner stands farther away in a straight line than the grown corner reaches, and a
-## straight-line room would grow the rect over the very destination the cap exists to
-## keep reachable. next_step's corridor fallback caps on a synthetic cell centre
-## instead, which no order has to reach, so it passes false and keeps the
-## straight-line room.
+## - The far end. Only an ORDER leg's `to` is a real endpoint. A CANDIDATE waypoint
+##   is a synthetic A* cell centre or a funnel corner, and an open cell adjoining a
+##   blocked one sits only half a routing cell from the drawn rect, so capping on it
+##   would silently shrink every corner sightline to ~half a cell no matter how wide
+##   the querying unit is, letting its flank cut into terrain exactly where routing
+##   bends. Candidates must clear the FULL margin at their far end; a candidate
+##   inside the margin is simply not picked. A real destination's room is measured
+##   by _grow_room, in the same per-axis metric Rect2.grow uses, not as a
+##   straight-line distance: the grown rect has square corners, so a destination
+##   diagonal from a corner stands farther away in a straight line than the grown
+##   corner reaches, and a straight-line room would grow the rect over the very
+##   destination the cap exists to keep reachable. A CORRIDOR_CELL is capped at the
+##   room its cell leaves, in a straight line, since no order has to reach it.
 ##
-## The start keeps the straight-line room. That has the mirror-image limitation (from
-## a start diagonal off a corner the straight-line room can grow the rect over the
-## start itself, so a leg leaving it reads as blocked), but the start room does more
-## than free a shoved walker: it decides whether a funnel corner's sightline from deep
-## inside the margin is accepted, and through the whole-leg cap below it sets the margin
-## a walker inside its own margin marches the entire leg at. Measuring it per axis moved
-## routing in both of those roles, so it is left as a known limitation.
+## - The start. The start's room has three roles, and only the first wants the
+##   per-axis metric:
+##   1. Freeing a walker inside its own margin. An ORDER leg that LEAVES a corner
+##      (_leg_leaves_corner: it never comes closer to the rect on either axis) takes
+##      the start's per-axis room. From a start diagonal off a corner the
+##      straight-line room grows the square corner over the start itself, so a leg
+##      heading straight away read as blocked while the reverse leg was clear.
+##   2. Rejecting candidate corners seen from deep inside the margin. CANDIDATE and
+##      CORRIDOR_CELL sightlines keep the straight-line start room: measured per
+##      axis, a wide line deep inside its corner margin accepted the hill's far grown
+##      corner at a sub-wu standoff, detoured and stalled.
+##   3. Setting the whole leg's margin. Any other ORDER leg (one running past the
+##      rect, or turning back toward it) also keeps the straight-line start room. A
+##      leg down the face beside a corner-diagonal start stays at the start's
+##      per-axis gap all along, so a per-axis start room would march the whole leg
+##      at that gap rather than the unit's own margin. A leg that leaves the corner
+##      never comes closer than its start, so its start-derived cap only frees it.
 ##
 ## The capped margin applies to the WHOLE leg, not only near the endpoint that set
 ## it. A leg to a destination just off a corner therefore keeps only that
@@ -673,24 +693,61 @@ const ROUTE_SIDE_COLLINEAR_EPS := 0.001   # tuned in wu, solver epsilon
 ## a straight line -- and the soldier terrain backstop keeps bodies out of the rect
 ## itself.
 func _segment_blocked(from: Vector2, to: Vector2, clearance: float = 0.0,
-		cap_to: bool = true, to_is_destination: bool = true) -> bool:
+		kind: Leg = Leg.ORDER) -> bool:
 	for r in _block_rects:
-		var room: float = _distance_to_rect(from, r)
-		if cap_to:
-			var to_room: float = _grow_room(to, r) if to_is_destination \
-					else _distance_to_rect(to, r)
-			room = minf(room, to_room)
-		var eff: float = minf(clearance, room - CLEARANCE_SLACK)
+		var eff: float = minf(clearance, _leg_room(from, to, r, kind) - CLEARANCE_SLACK)
 		if segment_intersects_rect(from, to, r.grow(maxf(0.0, eff))):
 			return true
 	return false
+
+
+## The room a `kind` leg from..to may grow `r` by before the margin cap binds: the
+## smaller of the start's room and, for capped kinds, the far end's room. See
+## _segment_blocked for which metric each role takes.
+static func _leg_room(from: Vector2, to: Vector2, r: Rect2, kind: Leg) -> float:
+	match kind:
+		Leg.ORDER:
+			var start_room: float = _grow_room(from, r) if _leg_leaves_corner(from, to, r) \
+					else _distance_to_rect(from, r)
+			return minf(start_room, _grow_room(to, r))
+		Leg.CORRIDOR_CELL:
+			return minf(_distance_to_rect(from, r), _distance_to_rect(to, r))
+		_:
+			return _distance_to_rect(from, r)
+
+
+## Whether `from` stands diagonally off one of `r`'s corners (outside the rect's span
+## on both axes) and the from..to leg moves outward, or not at all, on each of those
+## axes. Such a leg never comes closer to the rect on either axis, so no point of it
+## is nearer the rect than its start. Only there does the straight-line room exceed
+## the per-axis room; beside an edge the two agree.
+## A leg that tilts back toward the rect on one axis while moving away faster on the
+## other also never comes nearer the rect in a straight line, but is not freed here:
+## widening the rule to every such leg moved routing in a catalog clip (a fight beside
+## the hill drifted toward it, and its router rallied instead of fleeing south).
+## TODO(#1754): free those legs too, under a rule that leaves that case alone.
+static func _leg_leaves_corner(from: Vector2, to: Vector2, r: Rect2) -> bool:
+	var out_x: float = 0.0
+	if from.x < r.position.x:
+		out_x = -1.0
+	elif from.x > r.end.x:
+		out_x = 1.0
+	var out_y: float = 0.0
+	if from.y < r.position.y:
+		out_y = -1.0
+	elif from.y > r.end.y:
+		out_y = 1.0
+	if out_x == 0.0 or out_y == 0.0:
+		return false
+	var d: Vector2 = to - from
+	return d.x * out_x >= 0.0 and d.y * out_y >= 0.0
 
 
 ## next_step's corridor fallback sightline: capped at the room the candidate CELL
 ## leaves, measured in a straight line. A cell centre is no order's destination, so it
 ## does not get the per-axis room a real destination does (see _segment_blocked).
 func _corridor_sightline_blocked(from: Vector2, cell: Vector2, margin: float) -> bool:
-	return _segment_blocked(from, cell, margin, true, false)
+	return _segment_blocked(from, cell, margin, Leg.CORRIDOR_CELL)
 
 
 ## Distance from `p` to the nearest point of `r` (0 inside the rect).
@@ -717,8 +774,7 @@ func _first_blocking_rect_index(from: Vector2, to: Vector2, clearance: float) ->
 	var best_t: float = INF
 	for i in _block_rects.size():
 		var r: Rect2 = _block_rects[i]
-		var room: float = minf(_distance_to_rect(from, r), _grow_room(to, r))
-		var eff: float = minf(clearance, room - CLEARANCE_SLACK)
+		var eff: float = minf(clearance, _leg_room(from, to, r, Leg.ORDER) - CLEARANCE_SLACK)
 		var t: float = segment_rect_entry(from, to, r.grow(maxf(0.0, eff)))
 		if t < best_t:
 			best_t = t
@@ -969,7 +1025,7 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 		var side: float = signf(corridor_axis.cross(raw_c - centre))
 		if route_side != 0.0 and side != 0.0 and side != route_side:
 			continue
-		if _segment_blocked(from, c, margin, false):
+		if _segment_blocked(from, c, margin, Leg.CANDIDATE):
 			continue
 		var cost: float = from.distance_to(c) + c.distance_to(to)
 		if cost < best_cost:
