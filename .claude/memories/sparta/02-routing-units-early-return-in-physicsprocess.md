@@ -920,7 +920,6 @@ BODIES are being displaced (contact physics, knockback, a facing/grid change dra
 targets) and whether `couple()` is just honestly reporting that drift back up to `position`.
 (`Lacaedemon/sparta` PR #749, 2026-07-11.)
 
-
 ## Per-tick upkeep placed after the rout early return never runs for routers
 
 The `State.ROUTING` branch of `Unit._physics_process` returns early, so any per-tick upkeep written below it skips every router.
