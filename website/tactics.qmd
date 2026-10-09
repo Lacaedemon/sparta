@@ -2521,8 +2521,9 @@ Any other leg measures its start's room in a straight line from where the block 
 still cut to the destination's room as described above.
 That covers a leg running down a face, one turning back toward the hill,
 and one that moves away from one edge while tilting even slightly back toward the other.
-Such a leg to a spot close to the hill can still be clear under that destination cut;
-to a spot well clear of the hill it keeps the full margin from the block's start,
+Unless the destination's own room cuts it lower still,
+such a leg is judged at the start's straight-line room,
+which puts the block's own position inside the grown hill,
 so it is judged blocked and routes round the corner.
 
 ::: {#fig-terrain-exact-footprint .demo}
