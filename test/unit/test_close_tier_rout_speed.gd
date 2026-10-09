@@ -33,11 +33,15 @@ const MAX_BODY_SLOT_WU := 10.0
 # rout, and ticks watched after it.
 const CONTACT_SETTLE_TICKS := 240
 const CONTACT_WATCH_TICKS := 240
-# How far, on average, a still-engaged router's bodies may stand ahead of their slots toward
-# its line of flight (world units). With the flight fed forward into an engaged router's bulk
-# they ran on to about 33 wu ahead of their slots, into the enemy block in their way; with
-# the bulk held to its slots they stayed within about 7 wu.
+# How far, on average, a router broken from melee may stand ahead of its slots toward its line
+# of flight while its front is still in the engaged tier (world units). With the engaged latch
+# frozen for the whole rout, the front stayed paired on the melee line while the flight drove
+# the bulk on: about 33 wu ahead of its slots, into the enemy block in its way. With the latch
+# decaying as for any unit that stops fighting, about 7 wu.
 const MAX_ENGAGED_FLIGHT_LEAD_WU := 15.0
+# Ticks after the break by which the router must have left the engaged tier: ENGAGED_LINGER
+# (0.5 s, 30 ticks at 60 tps) plus a margin.
+const ENGAGED_RELEASE_TICKS := 45
 
 var _battle: Node = null
 
@@ -155,11 +159,11 @@ func _mean_body_lead(unit: Unit, dir: Vector2) -> float:
 	return lead / float(n)
 
 
-func test_a_router_still_in_contact_does_not_drive_its_bulk_into_the_enemy() -> void:
-	# A router whose front is still in the engaged tier has its anchor held there by the
-	# coupling, so the flight is not what its slots are doing. Its bulk must not take the flight
-	# as feed-forward then, or it runs on ahead of its slots into the enemy block in its way.
-	# Team 0 flees north, and the enemy attacks it from the north: across its line of flight.
+func test_a_router_broken_from_melee_leaves_the_engaged_tier() -> void:
+	# A router is not FIGHTING, so its engaged latch must decay like any other unit's that stops
+	# fighting. Left armed for the whole rout, it kept the router's front paired on the melee
+	# line while the flight drove the bulk on ahead of its slots, into the enemy block in its
+	# way. Team 0 flees north, and the enemy attacks it from the north: across its line of flight.
 	Replay.forced_seed = 12345
 	_battle = load("res://scenes/Battle.tscn").instantiate()
 	_battle.all_teams_control = true
@@ -198,15 +202,20 @@ func test_a_router_still_in_contact_does_not_drive_its_bulk_into_the_enemy() -> 
 	var flee: Vector2 = router._flee_heading()
 	var worst_lead: float = -INF
 	var engaged_ticks: int = 0
+	var engaged_at_release: bool = true
 	for i in range(CONTACT_WATCH_TICKS):
 		await _advance_ticks(1)
 		if router.state != Unit.State.ROUTING:
 			break
+		if i + 1 == ENGAGED_RELEASE_TICKS:
+			engaged_at_release = router.is_engaged()
 		if router.body_tier_soldier_indices(router._sim_soldier_pos.size()).is_empty():
 			continue
 		engaged_ticks += 1
 		worst_lead = maxf(worst_lead, _mean_body_lead(router, flee))
 	assert_gt(engaged_ticks, 0, "setup: the router still had bodies in the engaged tier after it broke")
+	assert_false(engaged_at_release,
+			"the router left the engaged tier within %d ticks of breaking" % ENGAGED_RELEASE_TICKS)
 	assert_lt(worst_lead, MAX_ENGAGED_FLIGHT_LEAD_WU,
 			"an engaged router's bulk stays on its slots rather than running on with the flight"
 			+ " (worst mean lead %.2f wu)" % worst_lead)

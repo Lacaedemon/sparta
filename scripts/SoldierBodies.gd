@@ -365,17 +365,12 @@ static func step(unit: Unit, delta: float) -> void:
 					file_rear_neighbor[j] = j + files
 	# A router's anchor is driven by _process_rout, not _move_to, so its _approach_velocity
 	# (zeroed by Unit._rout()) carries nothing of the flight: its bulk takes the flight
-	# velocity as feed-forward instead, the same way a marching bulk takes the march -- but
-	# only while none of its bodies is in the engaged tier. A router still in contact has its
-	# anchor held by the coupling to its engaged front, so the flight is not what its slots
-	# are doing; feeding it forward there drove the bulk on at flee pace into the enemy
-	# blocks around it. And its flee pace is above its own move_speed by design
-	# (Unit.FLEE_SPEED_MULTIPLIER), so the superphysical ceiling is measured from the flee
-	# pace -- measured from move_speed it would hold every body below the pace its anchor
-	# runs at, and the coupling would drag the anchor back to them.
+	# velocity as feed-forward instead, the same way a marching bulk takes the march. And its flee pace is above its
+	# own move_speed by design (Unit.FLEE_SPEED_MULTIPLIER), so the superphysical ceiling is
+	# measured from the flee pace -- measured from move_speed it would hold every body below
+	# the pace its anchor runs at, and the coupling would drag the anchor back to them.
 	var routing: bool = unit.state == Unit.State.ROUTING
-	var flight_feed_forward: bool = routing and engaged_indices.is_empty()
-	var march_vel: Vector2 = unit._flee_velocity if flight_feed_forward else unit._approach_velocity
+	var march_vel: Vector2 = unit._flee_velocity if routing else unit._approach_velocity
 	var top_pace: float = unit.flee_speed() if routing else unit.move_speed
 	# In-transit same-unit standoff velocities for crowding same-unit bodies:
 	var sep_vels: PackedVector2Array = _separate_same_unit(unit, n, target_slots, is_engaged, delta)

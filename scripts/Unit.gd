@@ -1636,6 +1636,11 @@ func _physics_process(delta: float) -> void:
 		if state != State.DEAD:   # timer expired: rallied (IDLE) or shattered (DEAD -> freed)
 			_separate(delta)   # routers still shoulder past anyone in their path
 			_tick_far_stamina(delta)
+			# The engaged latch decays here too: a router is not FIGHTING, so its front leaves
+			# the engaged tier ENGAGED_LINGER after the break, as the latch's contract says.
+			# Skipping it froze the latch for the whole rout, holding the router's front on
+			# the melee line it had fled.
+			tick_engaged(delta)
 		return
 
 	_attack_cd = max(0.0, _attack_cd - delta)
