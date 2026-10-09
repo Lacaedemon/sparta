@@ -339,6 +339,7 @@ would otherwise lead with its **thinnest rank** --- the short, under-strength ra
 had been tucked safely at the back. So after the turn the regiment **reforms**:
 the men re-square without marching through the block,
 dressing the line without countermarching.
+Every man keeps the flank he stood on, through the reform and through the orders that follow it.
 With **Reform before move** on (the default) this happens before the unit steps off;
 with it off, the unit marches at once --- short rank leading --- and reforms on arrival instead.
 
