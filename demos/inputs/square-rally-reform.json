@@ -32,7 +32,7 @@
   "defect_exemptions": {
     "overlap": {
       "uids": [0],
-      "reason": "Same residual as row-major-rally-reform.json, on the square's own assignment array: the four men whose lateral position has no counterpart in the centred 4-man rank have no cell to pair with, so they swap ends and cross the stationary ranks between. The rally is at tick 200. On 2-tick samples the closest body pair is under the 2.25 wu floor from tick 212 to tick 302 (worst 0.298 wu at tick 284), against a worst of 0.054 wu on main 1f4a77eb, where the anchor stopped dead on the rally; the block is back on its 9.0 wu lattice from tick 304."
+      "reason": "Same residual as row-major-rally-reform.json, on the square's own assignment array: the four men whose lateral position has no counterpart in the centred 4-man rank have no cell to pair with, so they swap ends and cross the stationary ranks between. The rally is at tick 200. On 2-tick samples the closest body pair is under the 2.25 wu floor from tick 212 to tick 302 (worst 0.298 wu at tick 284), against a worst of 0.054 wu on main 1f4a77eb, where the anchor stopped dead on the rally; the block is back on its 9.0 wu lattice from tick 304. Tracked in #1772."
     },
     "misslotted": {
       "uids": [0],

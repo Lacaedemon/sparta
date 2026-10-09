@@ -92,7 +92,8 @@ its riders running together as a block.
   unit is back in fighting shape almost at once rather than spending seconds
   shuffling through itself.
   A unit that rallies at a run **pulls up** while it re-forms,
-  where it has the room and no enemy in its way:
+  where it has the room and no enemy is near it or its path
+  (and it stops short if one comes near while it slows):
   it brakes at its own rate with its men keeping step,
   over about 3 to 5 metres for foot running flat out and about 30 for horse,
   so the block halts as one instead of stopping dead and leaving its men to run on
