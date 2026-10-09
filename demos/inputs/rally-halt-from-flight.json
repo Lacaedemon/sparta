@@ -1,5 +1,5 @@
 {
-  "_comment": "A routing infantry block rallies at full flight and pulls up with its men in step. Team 0's 72-man Infantry block spawns ALREADY routing (starting_state 3) facing north, its own back edge, so it flees straight ahead with no flee turn and no rank reflection on the rally; drill mode, so no enemy is ever near and the rally only waits on its morale. Morale 15 is staged so the flight has built up to its full flee pace (104 wu/s, 1.3 x the 80 wu/s sprint) when its recovering morale crosses the rally threshold at tick 263 or 264 (60 Hz dump basis; IDLE on the tick-264 sample), at y~1392. The rally hands the flight over to the idle coast-to-stop: the anchor brakes at the Infantry decel (60 wu/s^2), the men brake at the same rate and stay within 1.2 wu of their slots the whole way (2-tick samples), and the block stands at y~1294.7 from tick 368, about 97 wu on. Before the fix the anchor stopped dead on the rally tick at about y 1392 and every man was brought from the flee pace to a standstill in that one tick. Flat declared map (terrain empty). The camera follows the flight and holds over the halt. Driven live through tools/demo/DemoInputRecorder.gd (no player input: the rout and the rally are the sim's own); world coordinates; physics ticks (60/s).",
+  "_comment": "A routing infantry block rallies at full flight and pulls up with its men in step. Team 0's 72-man Infantry block spawns ALREADY routing (starting_state 3) facing north, its own back edge, so it flees straight ahead with no flee turn and no rank reflection on the rally; drill mode, so no enemy is ever near and the rally only waits on its morale. Morale 15 is staged so the flight has built up to its full flee pace (104 wu/s, 1.3 x the 80 wu/s sprint) when its recovering morale crosses the rally threshold at tick 263 or 264 (60 Hz dump basis; IDLE on the tick-264 sample), at y~1392. The rally hands the flight over to the idle coast-to-stop: the anchor brakes at the Infantry decel (60 wu/s^2), the men brake at the same rate and stay within 0.9 wu of their slots the whole way (2-tick samples), and the block stands at y~1295.8 from tick 368, about 96 wu on. Before the fix the anchor stopped dead on the rally tick at about y 1392 and every man was brought from the flee pace to a standstill in that one tick. Flat declared map (terrain empty). The camera follows the flight and holds over the halt. Driven live through tools/demo/DemoInputRecorder.gd (no player input: the rout and the rally are the sim's own); world coordinates; physics ticks (60/s).",
   "seed": "40417",
   "drill": true,
   "map": {
@@ -19,7 +19,7 @@
   "state": [8, 60, 120, 180, 240, 260, 264, 280, 300, 330, 370, 420, 470],
   "expect": [
     {"tick": 300, "uid": 0, "field": "current_speed", "value": 68.0, "tol": 3.0},
-    {"tick": 300, "uid": 0, "field": "position", "value": [940.0, 1336.3], "tol": 5.0},
-    {"tick": 420, "uid": 0, "field": "position", "value": [940.0, 1294.7], "tol": 5.0}
+    {"tick": 300, "uid": 0, "field": "position", "value": [940.0, 1337.0], "tol": 5.0},
+    {"tick": 420, "uid": 0, "field": "position", "value": [940.0, 1295.8], "tol": 5.0}
   ]
 }
