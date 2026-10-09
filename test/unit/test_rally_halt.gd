@@ -4,8 +4,9 @@ extends GutTest
 ## soldier bodies brake with it and settle onto their slots.
 ##
 ## The regression this pins: _rally() flipped the unit to IDLE and the anchor stopped dead on
-## that tick, while its bodies still carried the flight velocity. They overran their slots and
-## walked back, scrambling the block while it settled.
+## that tick, while its bodies still carried the flight velocity. A body already on its slot was
+## brought to a dead stop in that one tick; one the rally re-paired onto another slot carried
+## the flight on past it and walked back, scrambling the block while it settled.
 ##
 ## The staging is an empty map with the only enemy far off and idle (all_teams_control skips
 ## team 1's AI), so nothing but the rout and the rally moves the router.
@@ -15,15 +16,29 @@ const ENEMY_START := Vector2(1030.0, 1300.0)   # 330 wu off: close tier, never i
 # Ticks for an Infantry router's flight to build up to its flee pace (flee_speed / accel is
 # about 3.5 s) with margin.
 const RAMP_TICKS := 300
+# The most the men's mean speed may drop by in one tick after the rally, as a fraction of the
+# flee pace. Braking at decel sheds 1 wu/s a tick; the arrival's final landing onto the slot
+# sheds a body's last few wu/s in one tick, as every arrival does (measured: 4.2 wu/s worst).
+# Stopping dead sheds the whole flight, about 110 wu/s, on the rally tick.
+const MAX_DROP_FRAC := 0.1
 # How far, on average, the rallied block's bodies may stand ahead of their slots along the
 # line of flight while it pulls up (world units).
 const MAX_MEAN_OVERRUN_WU := 5.0
 # How far any one body may stand off its slot while the block pulls up (world units).
-const MAX_BODY_SLOT_WU := 10.0
+# Measured: 1.15 wu; with the bodies held to their idle jog cap through the halt they trail
+# their coasting slots by 5.3 wu.
+const MAX_BODY_SLOT_WU := 3.0
 # How far any body may stand off its slot once the block has settled (world units).
 const SETTLED_BODY_SLOT_WU := 1.0
 # Ticks after the rally by which every body must have settled.
 const SETTLE_TICKS := 240
+# The about-face square: ticks allowed for its rout to end in a rally, how long after the
+# rally its men are measured, and the bound on their mean distance from their slots then
+# (world units). Measured on the website clip's transcript 60 ticks after the rally: 4.4 wu
+# with the halt, 14.8 wu with the anchor stopped dead.
+const SQUARE_RALLY_TIMEOUT_TICKS := 400
+const SQUARE_SETTLE_PROBE_TICKS := 60
+const SQUARE_MAX_MEAN_GAP_WU := 8.0
 
 var _battle: Node = null
 
@@ -91,6 +106,29 @@ func _worst_body_slot_gap(unit: Unit) -> float:
 	return worst
 
 
+## The mean distance of `unit`'s bodies from their own formation slots (world units).
+func _mean_body_slot_gap(unit: Unit) -> float:
+	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
+	var n: int = mini(slots.size(), unit._sim_soldier_pos.size())
+	if n == 0:
+		return 0.0
+	var total: float = 0.0
+	for i in range(n):
+		total += unit._sim_soldier_pos[i].distance_to(slots[i])
+	return total / float(n)
+
+
+## The mean speed of `unit`'s bodies (world units/s).
+func _mean_body_speed(unit: Unit) -> float:
+	var n: int = unit._sim_body_vel.size()
+	if n == 0:
+		return 0.0
+	var total: float = 0.0
+	for v in unit._sim_body_vel:
+		total += v.length()
+	return total / float(n)
+
+
 ## How far, on average, `unit`'s bodies stand ahead of their own slots along `dir`.
 func _mean_body_lead(unit: Unit, dir: Vector2) -> float:
 	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
@@ -113,17 +151,30 @@ func test_a_router_rallying_from_full_flight_pulls_up_with_its_bodies() -> void:
 	assert_almost_eq(router._flee_pace, router.flee_speed(), 0.01, "setup: running at full flee pace")
 	var flee_dir: Vector2 = router._flee_velocity.normalized()
 	var rally_at: Vector2 = router.position
+	var prev_speed: float = _mean_body_speed(router)
+	assert_gt(prev_speed, router.flee_speed() * 0.9, "setup: the men are running with the flight")
 	await _rally_next_tick(router)
 	assert_eq(router.state, Unit.State.IDLE, "the router rallied")
-	var worst_overrun: float = -INF
-	var worst_gap: float = 0.0
+	# The rally tick's own drop counts: that is where the bodies used to stop dead.
+	var worst_drop: float = prev_speed - _mean_body_speed(router)
+	prev_speed = _mean_body_speed(router)
+	var worst_overrun: float = _mean_body_lead(router, flee_dir)
+	var worst_gap: float = _worst_body_slot_gap(router)
 	for i in range(SETTLE_TICKS):
 		await _advance_ticks(1)
+		var speed: float = _mean_body_speed(router)
+		worst_drop = maxf(worst_drop, prev_speed - speed)
+		prev_speed = speed
 		worst_overrun = maxf(worst_overrun, _mean_body_lead(router, flee_dir))
 		worst_gap = maxf(worst_gap, _worst_body_slot_gap(router))
 	var settled_gap: float = _worst_body_slot_gap(router)
-	gut.p("worst mean overrun %.2f wu, worst body gap %.2f wu, gap after %d ticks %.2f wu, coast %.1f wu"
-			% [worst_overrun, worst_gap, SETTLE_TICKS, settled_gap, router.position.distance_to(rally_at)])
+	var max_drop: float = router.flee_speed() * MAX_DROP_FRAC
+	gut.p("worst one-tick body speed drop %.2f wu/s (bound %.2f), worst mean overrun %.2f wu, worst body gap %.2f wu, gap after %d ticks %.2f wu, coast %.1f wu"
+			% [worst_drop, max_drop, worst_overrun, worst_gap, SETTLE_TICKS, settled_gap,
+			router.position.distance_to(rally_at)])
+	assert_lt(worst_drop, max_drop,
+			"the men pull up rather than stopping dead on the rally (worst one-tick drop %.2f wu/s)"
+			% worst_drop)
 	assert_lt(worst_overrun, MAX_MEAN_OVERRUN_WU,
 			"the rallied block's bodies do not run on past their slots (worst mean lead %.2f wu)"
 			% worst_overrun)
@@ -137,6 +188,42 @@ func test_a_router_rallying_from_full_flight_pulls_up_with_its_bodies() -> void:
 	assert_false(router.is_rally_halting(), "the halt ended once the block came to rest")
 	assert_eq(SoldierBodies.body_accel_for(router), maxf(router.accel, SoldierBodies.BODY_ACCEL_FLOOR),
 			"the bodies are back on their ordinary acceleration once the halt ends")
+
+
+func test_a_square_rallying_with_an_about_face_settles_without_walking_back() -> void:
+	# The website clip's staging: a SQUARE spawned routing away from its facing, so the rally's
+	# hold-ground reform re-pairs men across the block's depth while they still carry the flight.
+	# A second, safe team-0 unit keeps the battle from ending while the square routs.
+	Replay.forced_seed = 12345
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.all_teams_control = true
+	_battle.terrain = []
+	_battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": 800, "y": 700, "count": 60, "morale": 22.0,
+				"formation": Unit.FORMATION_SQUARE, "starting_state": Unit.State.ROUTING},
+		{"team": 0, "type": "Spearmen", "x": 260, "y": 260, "count": 60, "morale": 100.0},
+		{"team": 1, "type": "Spearmen", "x": 800, "y": 1150, "count": 80},
+	]
+	add_child(_battle)
+	await get_tree().physics_frame
+	var square: Unit = null
+	for u in get_tree().get_nodes_in_group("routers"):
+		square = u as Unit
+	assert_not_null(square, "setup: the square spawned routing")
+	if square == null:
+		return
+	var waited: int = 0
+	while square.state == Unit.State.ROUTING and waited < SQUARE_RALLY_TIMEOUT_TICKS:
+		await _advance_ticks(1)
+		waited += 1
+	assert_eq(square.state, Unit.State.IDLE, "setup: the square rallied (after %d ticks)" % waited)
+	await _advance_ticks(SQUARE_SETTLE_PROBE_TICKS)
+	var gap: float = _mean_body_slot_gap(square)
+	gut.p("square: rallied after %d ticks; mean body-slot gap %.2f wu %d ticks later"
+			% [waited, gap, SQUARE_SETTLE_PROBE_TICKS])
+	assert_lt(gap, SQUARE_MAX_MEAN_GAP_WU,
+			"%d ticks after the rally the men stand near their slots (mean %.2f wu)"
+			% [SQUARE_SETTLE_PROBE_TICKS, gap])
 
 
 func test_the_rally_hands_the_flight_to_a_coast_braking_at_the_units_decel() -> void:
