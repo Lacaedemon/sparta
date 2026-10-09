@@ -24,7 +24,7 @@
       "uids": [
         0
       ],
-      "reason": "The left Spearmen (uid 0) win their fight when uid 1 routs (about tick 780) and goes IDLE at about tick 890 without re-forming. On the merge-base the clip ended at tick 923 with uid 0 still FIGHTING (contact samples are not judged); now routers flee at their real pace, so the right-hand router (uid 3) is still fleeing and the battle and clip run on to tick 1440, judging uid 0's idle block throughout. Sustained shape residual on a 2-tick scan from the divergence (tick 674): 22.48 wu at the #1739 head against 0 on the merge-base (threshold 6.75). uid 0's own behaviour is unchanged; tracked as a block deforming after a full-pace router leaves it in #1757."
+      "reason": "The left Spearmen (uid 0) win their fight when uid 1 routs (about tick 780) and goes IDLE at about tick 890 without re-forming. On the merge-base the clip ended at tick 923 with uid 0 still FIGHTING (contact samples are not judged); now routers flee at their real pace, so the right-hand router (uid 3) is still fleeing and the battle and clip run on to tick 1440, judging uid 0's idle block throughout. Sustained shape residual on a 2-tick scan from the divergence (tick 674): 22.48 wu at the #1739 head against 0 on the merge-base (threshold 6.75). No #1739 code path runs in uid 0's own update. The one way #1739 reaches it is through the router: the router's refreshed enemy-contact flag feeds this unit's own _separate() pair test against the router while the two are in contact. Tracked as a block deforming after a full-pace router leaves it in #1757."
     }
   }
 }

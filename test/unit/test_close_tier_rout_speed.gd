@@ -42,6 +42,16 @@ const MAX_ENGAGED_FLIGHT_LEAD_WU := 15.0
 # Ticks after the break by which the router must have left the engaged tier: ENGAGED_LINGER
 # (0.5 s, 30 ticks at 60 tps) plus a margin.
 const ENGAGED_RELEASE_TICKS := 45
+# The caught-router staging: a slow router (move_speed set low, so its flee pace is under a
+# walking pursuer's) routed out of contact with a pursuer 130 wu behind it; ticks allowed for
+# the pursuer to close, and the bound on how far the router's anchor and bodies may come
+# apart once caught (world units). Measured: contact at about 160 ticks; anchor 6.0 wu off
+# the body centroid and worst body 7.5 wu off its slot after 400 ticks in contact.
+const CAUGHT_ROUTER_MOVE_SPEED := 15.0
+const CAUGHT_PURSUER_GAP := 130.0
+const CATCH_TICKS := 300
+const CAUGHT_WATCH_TICKS := 400
+const MAX_CAUGHT_SPREAD_WU := 15.0
 
 var _battle: Node = null
 
@@ -242,3 +252,66 @@ func test_a_router_clear_of_every_enemy_is_not_in_enemy_contact() -> void:
 	assert_eq(router.state, Unit.State.ROUTING, "setup: the unit is routing")
 	assert_false(router._in_enemy_contact,
 			"a router with no enemy within contact range is not in enemy contact")
+
+
+func test_a_router_caught_by_a_pursuer_comes_into_enemy_contact_and_holds_together() -> void:
+	# The rising edge of the router's contact flag: routed out of contact, it must come into
+	# contact when a pursuer catches it, since a router never runs _think() where the flag is
+	# otherwise refreshed. While caught, its anchor sits on its front (flight-side) ranks, the
+	# ones farthest from the pursuer, so pin that anchor and bodies stay together.
+	Replay.forced_seed = 12345
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.all_teams_control = true
+	_battle.terrain = []
+	_battle.scenario = [
+		{"team": 0, "type": "Infantry", "count": 48, "x": ROUTER_START.x, "y": ROUTER_START.y,
+				"facing": [0, -1]},
+		{"team": 1, "type": "Cavalry", "count": 24, "x": ROUTER_START.x,
+				"y": ROUTER_START.y + CAUGHT_PURSUER_GAP, "facing": [0, -1]},
+	]
+	add_child(_battle)
+	await get_tree().physics_frame
+	var router: Unit = null
+	var pursuer: Unit = null
+	for u in get_tree().get_nodes_in_group("units"):
+		var unit: Unit = u as Unit
+		if unit == null:
+			continue
+		if unit.team == 0:
+			router = unit
+		else:
+			pursuer = unit
+	assert_not_null(router, "the router deployed")
+	assert_not_null(pursuer, "the pursuer deployed")
+	if router == null or pursuer == null:
+		return
+	router.rally_morale_threshold = 1000.0
+	router.rout_time = 1000.0
+	router.morale = 0.0
+	router.move_speed = CAUGHT_ROUTER_MOVE_SPEED
+	router._rout()
+	_battle._apply_order_cmd({"units": [pursuer.uid], "x": router.position.x,
+			"y": router.position.y, "target": router.uid})
+	assert_false(router._in_enemy_contact, "setup: the router routs out of contact")
+	var caught: bool = false
+	for i in range(CATCH_TICKS):
+		await _advance_ticks(1)
+		if router._in_enemy_contact:
+			caught = true
+			break
+	assert_true(caught, "the router comes into enemy contact when the pursuer catches it")
+	if not caught:
+		return
+	var worst_spread: float = 0.0
+	for i in range(CAUGHT_WATCH_TICKS):
+		await _advance_ticks(1)
+		if router.state != Unit.State.ROUTING:
+			break
+		var centroid := Vector2.ZERO
+		for p in router._sim_soldier_pos:
+			centroid += p
+		centroid /= maxf(1.0, float(router._sim_soldier_pos.size()))
+		worst_spread = maxf(worst_spread, router.position.distance_to(centroid))
+		worst_spread = maxf(worst_spread, _worst_body_slot_gap(router))
+	assert_lt(worst_spread, MAX_CAUGHT_SPREAD_WU,
+			"a caught router's anchor and bodies stay together (worst %.2f wu)" % worst_spread)

@@ -1091,7 +1091,9 @@ var under_fire_morale_erosion: float = UnitMorale.UNDER_FIRE_MORALE_EROSION_PER_
 var under_fire_morale_floor: float = UnitMorale.UNDER_FIRE_MORALE_FLOOR
 # True when under fire and able to reply (has ranged capability, ammo, and range to reach all threats).
 var _under_fire_can_reply: bool = false
-# Set to true in _think when ANY live-or-routing enemy regiment is within melee contact
+# Recomputed every tick by _refresh_enemy_contact() -- from _think for a unit that thinks,
+# and from the rout branch of _physics_process for a router, which never runs _think -- and
+# true when ANY live-or-routing enemy regiment is within melee contact
 # range of EITHER side's own reach -- PURE PROXIMITY, independent of order_mode/state
 # (unlike is_engaged(), which only goes true once this unit itself decides to fight).
 # Feeds the soldier-level contact-collision gate (Unit.contact_soldier_indices /

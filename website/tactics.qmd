@@ -200,8 +200,8 @@ in from its western flank. Opening melee is per-soldier, so the troop fights for
 while before it breaks;
 it then routs, is shoved a little south while the charge is still on it, and once
 clear flees north up the hill's western side, every man clear of it, while its
-nerve steadies, rallying near the end of the clip alongside the hill. Its
-flight never meets the hill, so no detour around it plays here.
+nerve steadies, rallying near the end of the clip well past the hill's
+northern end. Its flight never meets the hill, so no detour around it plays here.
 A router with no terrain escape route left at all still stands and fights
 instead of fleeing in place (see [Terrain](#terrain)) &mdash; the open field
 this clip runs in never actually boxes a unit in, so that specific case isn't
