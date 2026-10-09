@@ -2514,13 +2514,16 @@ smaller room; one that would cross it still routes around.
 On such a leg the block's flank can pass the hill's edge closer than its full margin;
 individual soldiers are still held off the hill itself.
 A block left standing just off one of the hill's corners, inside its margin,
-walks straight off on an order that takes it away from the hill along both of the corner's edges,
-or away along one edge and parallel to the other,
+walks straight off on an order that takes it away from both of the corner's edges,
+or away from one and parallel to the other,
 rather than first edging round the corner.
-Any other leg keeps the full straight-line margin from where the block stands,
-so it is judged as blocked and routes round the corner:
-that covers a leg running down a face, one turning back toward the hill,
-and one that moves away along one edge while tilting even slightly back toward the hill along the other.
+Any other leg measures its start's room in a straight line from where the block stands,
+still cut to the destination's room as described above.
+That covers a leg running down a face, one turning back toward the hill,
+and one that moves away from one edge while tilting even slightly back toward the other.
+Such a leg to a spot close to the hill can still be clear under that destination cut;
+to a spot well clear of the hill it keeps the full margin from the block's start,
+so it is judged blocked and routes round the corner.
 
 ::: {#fig-terrain-exact-footprint .demo}
 
