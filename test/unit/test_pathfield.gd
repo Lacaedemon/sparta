@@ -834,6 +834,109 @@ func test_funnel_corner_route_side_is_stable_when_heading_runs_through_the_neare
 		"the funnel steers for the south corner the corridor rounds on")
 
 
+## The default hill, a 590 wu clearance, and the near cost tie between its two west
+## grown corners seen from (370.26, 190.36), north-west of the hill, ordered to
+## (1025, 825), south-west of it.
+func _near_tie_field() -> PathField:
+	var pf := PathField.new(Rect2(0, 0, 1600, 1200))
+	pf.block_rect(Rect2(1150, 380, 250, 200))   # Battle.TERRAIN's hill patch
+	return pf
+
+
+## Straight-line detour cost from `p` round `corner` to `to`: the quantity the funnel
+## ranked corners by when it measured from the live position.
+func _live_detour_cost(p: Vector2, corner: Vector2, to: Vector2) -> float:
+	return p.distance_to(corner) + corner.distance_to(to)
+
+
+func test_funnel_corner_rank_is_stable_under_drift_at_a_near_cost_tie() -> void:
+	# Both west corners of hill.grow(590 + CORNER_STANDOFF), (558, -212) and
+	# (558, 1172), are visible from `from_a`, and neither is filtered by side. Their
+	# straight-line detour costs from the live position differ by under 0.1 wu, so the
+	# drift below -- one tick's worth of soldier-body coupling -- reorders them, and a
+	# ranking taken from `from` steers north one tick and south the next: about 144
+	# degrees apart. Ranked from the centre of the walker's cell, (352, 160), the north
+	# corner costs about 1562.5 wu against 1614.6 for the south one, from either point.
+	var pf := _near_tie_field()
+	var to := Vector2(1025.0, 825.0)
+	var clearance := 590.0
+	var from_a := Vector2(370.2562, 190.3583)
+	var from_b := from_a + Vector2(-0.0006, -0.0417)
+	var north := Vector2(558.0, -212.0)
+	var south := Vector2(558.0, 1172.0)
+	var gap_a: float = _live_detour_cost(from_a, north, to) - _live_detour_cost(from_a, south, to)
+	var gap_b: float = _live_detour_cost(from_b, north, to) - _live_detour_cost(from_b, south, to)
+	assert_lt(absf(gap_a), 0.1, "sanity: from from_a the two corners' live costs are within 0.1 wu")
+	assert_true(gap_a > 0.0 and gap_b < 0.0,
+		"sanity: the drift reorders the live costs (south cheaper from from_a, north from from_b)")
+	var step_a: Vector2 = pf.next_step(from_a, to, clearance)
+	var step_b: Vector2 = pf.next_step(from_b, to, clearance)
+	assert_eq(step_a, step_b, "a sub-world-unit drift must not flip the funnel between the two west corners")
+	assert_eq(step_a, north, "the corner cheaper from the walker's cell centre, (352, 160), is taken")
+
+
+func test_funnel_corner_rank_holds_across_the_whole_start_cell() -> void:
+	# Sweep `from` over a 9 x 9 grid inside the near-tie start cell, x 320..384 and
+	# y 128..192. The live cost tie runs through the cell's southern row, so ranking
+	# from the live position picks both corners within the sweep; ranked from the cell
+	# centre, every point picks the same one.
+	var pf := _near_tie_field()
+	var to := Vector2(1025.0, 825.0)
+	var north := Vector2(558.0, -212.0)
+	var south := Vector2(558.0, 1172.0)
+	var live_north := 0
+	var live_south := 0
+	var off_north: Array[Vector2] = []
+	for iy in 9:
+		for ix in 9:
+			var p := Vector2(322.0 + ix * 7.5, 130.0 + iy * 7.5)
+			if _live_detour_cost(p, north, to) < _live_detour_cost(p, south, to):
+				live_north += 1
+			else:
+				live_south += 1
+			if pf.next_step(p, to, 590.0) != north:
+				off_north.append(p)
+	assert_true(live_north > 0 and live_south > 0,
+		"sanity: the live ranking picks both corners inside this one cell (%d north, %d south)" % [
+			live_north, live_south])
+	assert_eq(off_north, [] as Array[Vector2], "every point of the start cell steers for the same corner")
+
+
+func test_funnel_corner_rank_changes_only_across_a_cell_boundary() -> void:
+	# The limitation the cell-centre ranking keeps: it changes where `from` crosses a
+	# routing-cell boundary. Here the cell below the near-tie one, centred (352, 224),
+	# ranks the south corner cheaper (about 1551.9 wu against 1619.5), so the pick
+	# changes between y = 191.9 and y = 192.1, either side of the boundary at y = 192.
+	var pf := _near_tie_field()
+	var to := Vector2(1025.0, 825.0)
+	assert_eq(pf.next_step(Vector2(370.2562, 191.9), to, 590.0), Vector2(558.0, -212.0),
+		"just inside the near-tie cell: its centre ranks the north corner cheaper")
+	assert_eq(pf.next_step(Vector2(370.2562, 192.1), to, 590.0), Vector2(558.0, 1172.0),
+		"just inside the cell below: its centre ranks the south corner cheaper")
+
+
+func test_corridor_fallback_drift_between_cells_of_one_run_keeps_the_bearing() -> void:
+	# The issue's second geometry, pinned rather than changed. From (610.26, 670.36)
+	# ordered to (1425, 425), no corner of the hill is visible at the full margin, and
+	# no corridor cell is either, so next_step takes the farthest corridor cell visible
+	# at the room that cell leaves. The cell (1248, 672) is 92 wu below the hill, and
+	# the sightline to it grazes the grown corner (x 1058.5, y 671.5) within a fraction
+	# of a world unit, so the drift below hides it and the step falls back one cell to
+	# (1184, 672). Both cells lie on the same straight run of the corridor, y = 672,
+	# 1.6 wu off the walker's own line, so the bearing to them differs by about 0.02
+	# degrees: the unit steers by the bearing, so it does not whipsaw.
+	var pf := _near_tie_field()
+	var to := Vector2(1425.0, 425.0)
+	var from_a := Vector2(610.2562, 670.3583)
+	var from_b := from_a + Vector2(-0.0006, -0.0417)
+	var step_a: Vector2 = pf.next_step(from_a, to, 590.0)
+	var step_b: Vector2 = pf.next_step(from_b, to, 590.0)
+	assert_eq(step_a, Vector2(1248.0, 672.0), "sanity: from from_a the farther cell is visible")
+	assert_eq(step_b, Vector2(1184.0, 672.0), "sanity: from from_b the graze hides it, one cell nearer")
+	var turn_deg: float = rad_to_deg(absf((step_a - from_a).angle_to(step_b - from_b)))
+	assert_lt(turn_deg, 0.05, "the two cells' bearings differ by %.4f deg, well under a visible turn" % turn_deg)
+
+
 func test_funnel_corner_classifies_each_candidate_on_the_corridor_axis_not_heading() -> void:
 	# Each candidate corner's side must be read on the same corridor axis route_side
 	# was. A block south-west of the hill at (770, 920), clearance 150, is ordered to
