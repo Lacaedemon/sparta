@@ -193,18 +193,24 @@ func test_a_rallied_about_face_fold_survives_the_next_order() -> void:
 
 
 ## A second about-face after the first re-square and a fresh order: the second re-square is
-## another depth-only reflection, so each man still ends on the flank he held before it.
+## another depth-only reflection, so each man still ends on the flank he held after the first.
+## The baseline is taken once the first re-square has formed, and nothing re-stands the bodies
+## after it: the fresh order, the second drill and its re-square are all measured together, so a
+## flank swap at any of them shows.
 func test_a_second_about_face_re_square_keeps_every_man_on_his_flank() -> void:
 	for make in [_make_partial_file_major, _make_partial_row_major, _make_square]:
 		var u: Unit = make.call()
 		var layout: String = "square" if u.in_square() \
 				else ("file major" if u._effective_file_major_reform() else "row major")
 		_about_face_and_resquare(u, true)
-		_issue_move_ahead(u)
-		_stand_on_slots(u)
 		var bodies: PackedVector2Array = u._sim_soldier_pos.duplicate()
 		var lateral: Vector2 = u.facing.orthogonal()
-		_settle_about_face(u)
+		_issue_move_ahead(u)
+		var leaf: Order = Order.new_about_face()
+		u.set_current_order(leaf)
+		leaf.turn_start_facing = u.facing
+		u.facing = u.facing.rotated(PI)
+		u._settle_order_turn()
 		assert_true(u.reform_ranks(true), "precondition: the second about-face re-squares (%s)" % layout)
 		var t: Dictionary = _travel(u, bodies, lateral)
 		assert_eq(int(t["crossed"]), 0,
@@ -224,6 +230,113 @@ func test_an_anchored_block_survives_the_next_order() -> void:
 		_assert_next_order_moves_nobody(u, "%s, anchored" % layout)
 		assert_almost_eq(u.frontage_anchor_offset, -u.file_pitch_wu() * 2.0, 0.001,
 			"%s: the anchor shift is carried into the unmirrored frame" % layout)
+
+
+## About-face `u`, re-square it holding ground, issue the next order (which bakes the
+## mirror), and stand every body on its slot: a formed, baked block.
+func _baked_block(u: Unit) -> void:
+	_about_face_and_resquare(u, true)
+	_issue_move_ahead(u)
+	_stand_on_slots(u)
+
+
+## The same block re-squared but with no next order, so its mirror is still armed as a flag:
+## the yardstick a baked block must match, since the bake exists to change no man's slot.
+func _mirrored_block(make: Callable) -> Unit:
+	var u: Unit = make.call()
+	_about_face_and_resquare(u, true)
+	assert_true(u._formation_mirror_x, "precondition: the yardstick is still mirrored")
+	return u
+
+
+## Crossings and farthest walk from where the first `count` bodies stand to their slots now.
+func _regrid_travel(u: Unit, bodies: PackedVector2Array, lateral: Vector2) -> Dictionary:
+	return _travel(u, bodies.slice(0, u.soldiers), lateral)
+
+
+## Assert a regrid moves the baked block's men exactly as it moves the same block whose mirror
+## is still armed: the same centreline crossings and the same farthest walk. Without the bake's
+## fallback reflection, the baked block's fallback sends every off-centre man across instead.
+func _assert_regrid_like_mirrored(u: Unit, mirrored: Unit, regrid: Callable, what: String) -> void:
+	var bodies: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	var m_bodies: PackedVector2Array = mirrored._sim_soldier_pos.duplicate()
+	regrid.call(u)
+	regrid.call(mirrored)
+	var t: Dictionary = _regrid_travel(u, bodies, u.facing.orthogonal())
+	var y: Dictionary = _regrid_travel(mirrored, m_bodies, mirrored.facing.orthogonal())
+	assert_eq(int(t["crossed"]), int(y["crossed"]),
+		"%s: %d men cross the centreline, against %d with the mirror still armed"
+		% [what, int(t["crossed"]), int(y["crossed"])])
+	assert_almost_eq(float(t["farthest"]), float(y["farthest"]), 0.01,
+		"%s: the farthest man walks %.1f wu, against %.1f with the mirror still armed"
+		% [what, float(t["farthest"]), float(y["farthest"])])
+
+
+## A row-major block whose frontage comes from its own headcount (no player override), so
+## closing ranks narrows it.
+func _make_auto_row_major() -> Unit:
+	var u: Unit = _make_unit(60, Unit.ReformMode.ROW_MAJOR)
+	u.frontage_override = 0
+	u.seed_sim_soldiers()
+	return u
+
+
+## A frontage resize drops the held row-major pairing (it was dealt for the old file count),
+## so the block falls back to its index-order layout. That fallback must keep the baked mirror.
+func test_a_baked_row_major_block_keeps_its_flanks_through_a_resize() -> void:
+	var u := _make_partial_row_major()
+	_baked_block(u)
+	_assert_regrid_like_mirrored(u, _mirrored_block(_make_partial_row_major),
+			func(b: Unit) -> void: b.set_frontage(7), "row major, resized 8 -> 7")
+
+
+## The automatic ranks-closed narrowing changes the file count the same way a resize does.
+func test_a_baked_row_major_block_keeps_its_flanks_when_ranks_close() -> void:
+	var u := _make_auto_row_major()
+	var files_open: int = u.formation_files(u.soldiers)
+	_baked_block(u)
+	var narrow := func(b: Unit) -> void: b._ranks_closed = true
+	_assert_regrid_like_mirrored(u, _mirrored_block(_make_auto_row_major), narrow,
+			"row major, ranks closed")
+	assert_lt(u.formation_files(u.soldiers), files_open, "precondition: closing ranks narrowed it")
+
+
+## A regiment-path casualty (UnitCombat.take_casualties) drops `soldiers` without splicing the
+## per-soldier arrays, so a held pairing no longer matches the headcount and is dropped, and a
+## file-major block refills its files in index order. Both fallbacks must keep the baked mirror.
+func test_a_baked_block_keeps_its_flanks_through_a_regiment_path_casualty() -> void:
+	for make in [_make_partial_row_major, _make_partial_file_major]:
+		var u: Unit = make.call()
+		var layout: String = "file major" if u._effective_file_major_reform() else "row major"
+		_baked_block(u)
+		var lose_three := func(b: Unit) -> void: b.soldiers -= 3
+		_assert_regrid_like_mirrored(u, _mirrored_block(make), lose_three,
+				"%s, three regiment-path casualties" % layout)
+
+
+## A block squared and returned to line by ORDER_FORMATION_ONLY: Battle sets the formation
+## before installing the order, so the mirror is baked while the block is squared. The line
+## pairing is dormant then, and must be relabelled anyway, or the return to line sends every
+## off-centre man across the block.
+func test_a_block_baked_while_squared_returns_to_line_on_its_own_flanks() -> void:
+	var u := _make_partial_row_major()
+	_about_face_and_resquare(u, true)
+	assert_true(u._formation_mirror_x, "precondition: mirrored")
+	var line: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var lateral: Vector2 = u.facing.orthogonal()
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u.set_current_order(Order.new_formation(Unit.FORMATION_SQUARE))
+	assert_false(u._formation_mirror_x, "precondition: the mirror is baked while squared")
+	_stand_on_slots(u)
+	u.set_formation(Unit.FORMATION_NORMAL)
+	u.set_current_order(Order.new_formation(Unit.FORMATION_NORMAL))
+	var t: Dictionary = _travel(u, line, lateral)
+	assert_eq(int(t["crossed"]), 0,
+		"back in line, no man's slot is across the block from his old line slot (%d cross)"
+		% int(t["crossed"]))
+	assert_lt(float(t["farthest"]), 0.01,
+		"back in line, every man's slot is his old line slot (farthest %.2f wu)"
+		% float(t["farthest"]))
 
 
 ## Fold the block by `turn` the way a snap-absorb or a settled drill does, holding every slot

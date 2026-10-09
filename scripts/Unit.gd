@@ -524,6 +524,13 @@ var _drill_turn_fold: float = 0.0
 # large facing snap instead of a reform, for a unit still marching after a countermarched
 # reform.
 var _formation_mirror_x: bool = false
+# Whether the index-order layout a slot grid falls back to (row major's identity grid, file
+# major's index-order fill, the square's identity fill) is laterally reflected. Toggled when
+# set_current_order bakes _formation_mirror_x into the assignment arrays: those arrays carry
+# the reflection, but a fallback rebuilds from index order, which would otherwise drop it and
+# send every off-centre man to the other flank. See _bake_formation_mirror and
+# _fallback_assignment.
+var _fallback_mirror_x: bool = false
 # Facing to pivot to once a move order's destination is reached, set by a
 # drag-to-form-up order so the unit deploys facing the dragged line rather than its
 # march direction. Vector2.ZERO means "keep the march facing" (no deploy turn).
@@ -5741,7 +5748,8 @@ func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVe
 				r_slots = UnitFormation.apply_traverse_flank_arcs(r_slots, _sim_soldier_pos, position, r_ang, _sim_soldier_row_slot, formation_files(count), file_pitch_wu())
 			slots = r_slots
 		else:
-			slots = row_grid
+			slots = UnitFormation.permute_slots(row_grid,
+					_fallback_assignment(count, UnitFormation.frontage(self)))
 	if apply_relief_corridor:
 		return _apply_relief_corridor_to_slots(slots)
 	return slots
@@ -5809,6 +5817,11 @@ func _ensure_file_assignment(count: int, files: int) -> void:
 	if live.is_empty():
 		_sim_soldier_file = UnitFormation.file_ids_in_index_order(capacities)
 		_sim_soldier_rank = PackedInt32Array()   # array order IS the depth order here
+		if _fallback_mirror_x:
+			# The baked mirror's lateral reflection, reapplied to the fresh fill: reversing the
+			# file ids keeps each file's men in the same array order, so their depths stand.
+			for i in range(_sim_soldier_file.size()):
+				_sim_soldier_file[i] = files - 1 - _sim_soldier_file[i]
 	else:
 		if subunit_structure == SubunitStructure.FILE_GROUP and _file_assignment_files > 0 and _sim_soldier_file.size() == count:
 			var reformed: Dictionary = UnitFormation.subunit_reform_files(
@@ -5955,7 +5968,7 @@ func _ensure_square_slot_assignment(count: int, files: int, slots: PackedVector2
 		return
 	var live: PackedVector2Array = _slot_frame_positions(count)
 	if live.is_empty():
-		_sim_soldier_square_slot = UnitFormation.identity_assignment(count)
+		_sim_soldier_square_slot = _fallback_assignment(count, files)
 	else:
 		_sim_soldier_square_slot = UnitFormation.pair_slots_by_lateral_file(live, slots, files)
 	# Commit the file count ONLY when the pairing was actually computed from live bodies. A
@@ -6690,49 +6703,64 @@ func _pair_after_quarter_fold(count: int) -> void:
 ##
 ## The mirror negates each slot's local X before the block's rotation. Its exact equivalent
 ## without the flag is a lateral relabelling of the assignment, plus the frontage anchor
-## shift negated, since the anchor is added in the same local frame the mirror reflects:
-## - file major: file f becomes file (files - 1 - f). Ranks stay as they are, so each man
-##   keeps his depth, and file_major_block_slots places file positions symmetrically.
-## - row major: compose UnitFormation.lateral_reflection_pairing onto the held pairing
-##   (identity when none is held, which formation_slots then reads as cell i for soldier i).
-## - square: the same pairing on the square's own assignment, which uses the same
-##   block_slots grid.
-## An assignment that is out of sync with the live grid is left alone: formation_slots
-## re-deals it from the live bodies before using it, and the bodies stand where the mirrored
-## slots put them. A row-major pairing is not written while squared, for the reason
-## _apply_square_slot_reflection gives (it would commit a square-derived file count).
+## shift negated, since the anchor is added in the same local frame the mirror reflects.
+## Every assignment array that holds a pairing of the live count is relabelled, whether or
+## not the live grid reads it right now, because a dormant one (the line pairing of a squared
+## block) comes back into use later:
+## - file major: file f becomes file (files - 1 - f), against the file count the ids were
+##   dealt for. Ranks stay as they are, so each man keeps his depth, and
+##   file_major_block_slots places file positions symmetrically.
+## - row major and square: compose UnitFormation.lateral_reflection_pairing, over the
+##   pairing's own file count, onto the held pairing.
+## No array holds the index-order layout a grid falls back to when its pairing is missing or
+## out of sync: row major's identity grid (no pairing held, a frontage change, or a
+## regiment-path casualty that leaves the pairing longer than the block), file major's
+## index-order fill (a size mismatch at an unchanged frontage, such as that casualty), and
+## the square's identity fill (no bodies to read). Those fills read _fallback_mirror_x
+## instead, toggled here (see _fallback_assignment), so a fallback keeps every man on the
+## flank the mirror had him on. A fallback that deals from the live bodies (a file-major
+## reshape, a square re-pair) needs nothing: the bodies already stand where the mirrored
+## slots put them.
 func _bake_formation_mirror() -> void:
 	if not _formation_mirror_x:
 		return
 	_formation_mirror_x = false
+	_fallback_mirror_x = not _fallback_mirror_x
 	frontage_anchor_offset = -frontage_anchor_offset
 	var count: int = soldiers
 	if _file_assignment_files > 0 and _sim_soldier_file.size() == count:
 		for i in range(count):
 			_sim_soldier_file[i] = _file_assignment_files - 1 - _sim_soldier_file[i]
-	var files: int = maxi(1, formation_files(count))
-	var pairing: PackedInt32Array = UnitFormation.lateral_reflection_pairing(count, files)
-	if pairing.size() == count:
-		if in_square():
-			if _sim_soldier_square_slot.size() == count and _square_slot_files == files:
-				_sim_soldier_square_slot = _composed_pairing(pairing, _sim_soldier_square_slot)
-		elif not _effective_file_major_reform():
-			var held: bool = _sim_soldier_row_slot.size() == count and _row_slot_files == files
-			_sim_soldier_row_slot = _composed_pairing(pairing,
-					_sim_soldier_row_slot if held else PackedInt32Array())
-			_row_slot_files = files
+	if _square_slot_files > 0 and _sim_soldier_square_slot.size() == count:
+		_sim_soldier_square_slot = _composed_pairing(
+				UnitFormation.lateral_reflection_pairing(count, _square_slot_files),
+				_sim_soldier_square_slot)
+	if _row_slot_files > 0 and _sim_soldier_row_slot.size() == count:
+		_sim_soldier_row_slot = _composed_pairing(
+				UnitFormation.lateral_reflection_pairing(count, _row_slot_files),
+				_sim_soldier_row_slot)
 	_render_dirty = true
 
 
-## `pairing` applied after `held`: soldier i, who holds cell held[i] (cell i when `held` is
-## empty), takes cell pairing[held[i]].
+## The index-order layout a grid of `count` men on `files` files falls back to when no
+## pairing is held: cell i for soldier i, laterally reflected while _fallback_mirror_x
+## stands (see _bake_formation_mirror).
+func _fallback_assignment(count: int, files: int) -> PackedInt32Array:
+	if _fallback_mirror_x:
+		var mirrored: PackedInt32Array = UnitFormation.lateral_reflection_pairing(count, files)
+		if mirrored.size() == count:
+			return mirrored
+	return UnitFormation.identity_assignment(count)
+
+
+## `pairing` applied after `held`: soldier i, who holds cell held[i], takes cell
+## pairing[held[i]]. Both arrays are `pairing.size()` long.
 func _composed_pairing(pairing: PackedInt32Array, held: PackedInt32Array) -> PackedInt32Array:
 	var n: int = pairing.size()
 	var out := PackedInt32Array()
 	out.resize(n)
 	for i in range(n):
-		var cell: int = held[i] if held.size() == n else i
-		out[i] = pairing[clampi(cell, 0, n - 1)]
+		out[i] = pairing[clampi(held[i], 0, n - 1)]
 	return out
 
 
@@ -6751,7 +6779,8 @@ func _composed_pairing(pairing: PackedInt32Array, held: PackedInt32Array) -> Pac
 ## reform undo the first exactly, which is what the maneuver means.
 ##
 ## An out-of-sync held assignment (a reshape changed the file count, or the array size drifted)
-## is treated as identity rather than reinterpreted: its cell ids were computed against a grid
+## is treated as the fallback layout (_fallback_assignment: identity, or its lateral reflection
+## after a baked mirror) rather than reinterpreted: its cell ids were computed against a grid
 ## that no longer exists. That is the same judgment formation_slots() makes when it declines to
 ## apply such an assignment, kept consistent here so the two never disagree about which layout
 ## is in force.
@@ -6762,11 +6791,12 @@ func _apply_row_slot_reflection(count: int, files: int) -> void:
 	if pairing.size() != count:
 		return
 	var held: bool = _sim_soldier_row_slot.size() == count and _row_slot_files == files
+	var base: PackedInt32Array = _sim_soldier_row_slot if held \
+			else _fallback_assignment(count, files)
 	var out := PackedInt32Array()
 	out.resize(count)
 	for i in range(count):
-		var cell: int = _sim_soldier_row_slot[i] if held else i
-		out[i] = pairing[clampi(cell, 0, count - 1)]
+		out[i] = pairing[clampi(base[i], 0, count - 1)]
 	_sim_soldier_row_slot = out
 	_row_slot_files = files
 
@@ -9629,6 +9659,7 @@ func to_snapshot_dict() -> Dictionary:
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
 		"drill_turn_fold": _drill_turn_fold,
 		"formation_mirror_x": _formation_mirror_x,
+		"fallback_mirror_x": _fallback_mirror_x,
 		"deploy_facing": deploy_facing, "ordered_facing": ordered_facing,
 		"walk_advance": walk_advance, "reform_before_move": reform_before_move,
 		"file_major_reform_mode": file_major_reform_mode,
@@ -9846,6 +9877,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	# A snapshot from before the rename carries the quarter-turn-only record under its old key.
 	_drill_turn_fold = float(d.get("drill_turn_fold", d.get("quarter_turn_fold", 0.0)))
 	_formation_mirror_x = bool(d["formation_mirror_x"])
+	_fallback_mirror_x = bool(d.get("fallback_mirror_x", false))
 	deploy_facing = d["deploy_facing"]
 	ordered_facing = d["ordered_facing"]
 	walk_advance = bool(d["walk_advance"])
