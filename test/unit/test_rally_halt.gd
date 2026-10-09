@@ -415,6 +415,11 @@ func test_brake_biased_step_raises_only_the_braking_part() -> void:
 			Vector2(100.0, -100.0), 30.0, 60.0, dt)
 	assert_almost_eq(turned.x, 0.5, 0.0001, "a sideways change keeps the ordinary rate")
 	assert_almost_eq(turned.y, -100.0, 0.0001, "with nothing braked")
+	# Braking and turning at once: each part keeps its own bound.
+	var mixed: Vector2 = SoldierBodies.brake_biased_step(Vector2(0.0, -100.0), Vector2(100.0, 0.0),
+			30.0, 60.0, dt)
+	assert_almost_eq(mixed.y, -99.0, 0.0001, "the braking part sheds speed at the raised rate")
+	assert_almost_eq(mixed.x, 0.5, 0.0001, "while the sideways part turns at the ordinary rate")
 
 
 func test_a_coast_that_would_leave_retreat_bounds_stops_where_it_rallied() -> void:
