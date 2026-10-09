@@ -91,6 +91,20 @@
     },
     {
       "tick": [
+        560,
+        600
+      ],
+      "uid": 1,
+      "absent": true
+    },
+    {
+      "tick": 600,
+      "uid": 0,
+      "field": "state",
+      "value": "IDLE"
+    },
+    {
+      "tick": [
         1000,
         1100
       ],

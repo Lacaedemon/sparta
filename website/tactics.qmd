@@ -1653,10 +1653,10 @@ deliberate stop --- its last target dies with no new order queued, say. Its
 speed doesn't just tick down to zero on the spot while the unit sits frozen:
 it keeps sliding forward along the direction it was actually heading, slowing
 under the same braking rate, until it drifts to a genuine halt. Watch a
-cavalry regiment that wipes out its target mid-charge: it carries real charge
-speed into that final moment, so it visibly coasts on for a beat before
-coming to rest, instead of stopping dead the instant it has nothing left to
-chase.
+cavalry troop that cuts down the last man of a squad standing to fight it: it
+comes out of the melee still moving at about 2 m/s, so it visibly coasts on
+for about a second before coming to rest, instead of stopping dead the
+instant it has nothing left to fight.
 
 ::: {#fig-coast-to-stop .demo}
 
