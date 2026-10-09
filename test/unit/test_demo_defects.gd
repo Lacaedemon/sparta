@@ -529,6 +529,24 @@ func test_superphysical_speed_holds_a_router_to_its_flee_pace_cap() -> void:
 			"the same speed on a marching unit still is")
 
 
+func test_superphysical_speed_holds_a_rallied_unit_pulling_up_to_its_flee_pace_cap() -> void:
+	# A rallied unit is IDLE while it pulls up from its flight, but its men are braking down
+	# from the flee pace, so its halting intervals keep the router's ceiling. Once the halt
+	# ends, the same speed is held to the sprint cap again.
+	var sprint := 126.0
+	var sprint_cap: float = sprint * GaitLimits.SUPERPHYSICAL_SPEED_FRAC
+	var flee_cap: float = sprint_cap * GaitLimits.FLEE_SPEED_MULTIPLIER
+	var v: float = 0.5 * (sprint_cap + flee_cap)
+	var halting: Array = _moving_pair(v, 10, ["IDLE", "IDLE", "IDLE", "IDLE"])
+	for snap in halting:
+		snap["units"][0]["rally_halting"] = true
+	assert_true(bool(_verdict(DemoDefects.analyze(halting), "superphysical_speed")["pass"]),
+			"a rallied unit pulling up between its sprint and flee-pace ceilings is not super-physical")
+	var settled: Array = _moving_pair(v, 10, ["IDLE", "IDLE", "IDLE", "IDLE"])
+	assert_false(bool(_verdict(DemoDefects.analyze(settled), "superphysical_speed")["pass"]),
+			"the same speed on an idle unit that is not pulling up still is")
+
+
 func test_superphysical_speed_picks_the_cap_from_the_interval_start() -> void:
 	# The flee-pace allowance belongs to intervals that START routing. A unit that only
 	# breaks at the last sample spent the intervals before it at its march pace, so a
