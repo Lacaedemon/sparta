@@ -29,6 +29,15 @@ const SPEED_TOLERANCE_FRAC := 0.1
 # How far the bodies may stand off their slots while fleeing at full pace (world units):
 # the men run WITH the anchor, not strung out behind it.
 const MAX_BODY_SLOT_WU := 10.0
+# The in-contact router staging: ticks for the two blocks to close and engage before the
+# rout, and ticks watched after it.
+const CONTACT_SETTLE_TICKS := 240
+const CONTACT_WATCH_TICKS := 240
+# How far, on average, a still-engaged router's bodies may stand ahead of their slots toward
+# its line of flight (world units). With the flight fed forward into an engaged router's bulk
+# they ran on to about 33 wu ahead of their slots, into the enemy block in their way; with
+# the bulk held to its slots they stayed within about 7 wu.
+const MAX_ENGAGED_FLIGHT_LEAD_WU := 15.0
 
 var _battle: Node = null
 
@@ -131,3 +140,73 @@ func test_close_tier_router_flees_at_flee_speed_with_its_bodies() -> void:
 			"no body trails its slot by more than %.1f wu (worst %.2f)" % [MAX_BODY_SLOT_WU, worst])
 	assert_lt(centroid_gap, MAX_BODY_SLOT_WU,
 			"the body centroid keeps up with the slot centroid (gap %.2f wu)" % centroid_gap)
+
+
+## How far, on average, `unit`'s bodies stand ahead of their own formation slots along `dir`
+## (world units; negative means behind).
+func _mean_body_lead(unit: Unit, dir: Vector2) -> float:
+	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
+	var n: int = mini(slots.size(), unit._sim_soldier_pos.size())
+	if n == 0:
+		return 0.0
+	var lead: float = 0.0
+	for i in range(n):
+		lead += (unit._sim_soldier_pos[i] - slots[i]).dot(dir)
+	return lead / float(n)
+
+
+func test_a_router_still_in_contact_does_not_drive_its_bulk_into_the_enemy() -> void:
+	# A router whose front is still in the engaged tier has its anchor held there by the
+	# coupling, so the flight is not what its slots are doing. Its bulk must not take the flight
+	# as feed-forward then, or it runs on ahead of its slots into the enemy block in its way.
+	# Team 0 flees north, and the enemy attacks it from the north: across its line of flight.
+	Replay.forced_seed = 12345
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.all_teams_control = true
+	_battle.terrain = []
+	_battle.scenario = [
+		{"team": 0, "type": "Cavalry", "count": 24, "x": 700.0, "y": 1300.0, "facing": [0, -1]},
+		{"team": 1, "type": "Infantry", "count": 120, "x": 700.0, "y": 1160.0, "facing": [0, 1]},
+	]
+	add_child(_battle)
+	await get_tree().physics_frame
+	var router: Unit = null
+	var enemy: Unit = null
+	for u in get_tree().get_nodes_in_group("units"):
+		var unit: Unit = u as Unit
+		if unit == null:
+			continue
+		if unit.team == 0:
+			router = unit
+		else:
+			enemy = unit
+	assert_not_null(router, "the router deployed")
+	assert_not_null(enemy, "the enemy deployed")
+	if router == null or enemy == null:
+		return
+	_battle._apply_order_cmd({"units": [enemy.uid], "x": router.position.x,
+			"y": router.position.y, "target": router.uid})
+	for i in range(CONTACT_SETTLE_TICKS):
+		if router.state == Unit.State.FIGHTING:
+			break
+		await _advance_ticks(1)
+	assert_eq(router.state, Unit.State.FIGHTING, "setup: the enemy closed and the two blocks fought")
+	router.rally_morale_threshold = 1000.0
+	router.rout_time = 1000.0
+	router.morale = 0.0
+	router._rout()
+	var flee: Vector2 = router._flee_heading()
+	var worst_lead: float = -INF
+	var engaged_ticks: int = 0
+	for i in range(CONTACT_WATCH_TICKS):
+		await _advance_ticks(1)
+		if router.state != Unit.State.ROUTING:
+			break
+		if router.body_tier_soldier_indices(router._sim_soldier_pos.size()).is_empty():
+			continue
+		engaged_ticks += 1
+		worst_lead = maxf(worst_lead, _mean_body_lead(router, flee))
+	assert_gt(engaged_ticks, 0, "setup: the router still had bodies in the engaged tier after it broke")
+	assert_lt(worst_lead, MAX_ENGAGED_FLIGHT_LEAD_WU,
+			"an engaged router's bulk stays on its slots rather than running on with the flight"
+			+ " (worst mean lead %.2f wu)" % worst_lead)
