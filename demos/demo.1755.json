@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This change only re-ranks two visible hill corners whose detour costs from a unit's live position sit within about 90 wu of each other (twice a routing cell's half-diagonal); outside that band it picks the same corner as before. Across all 114 website catalog clips, the only funnel queries inside that band are in funnel_lanes, and there the new ranking picks the same corner, so no recorded battle steers any differently: every catalog transcript on this branch hashes identical to its base. The issue's near-tie geometry, found by search rather than in play, is pinned by unit tests instead."
+}
