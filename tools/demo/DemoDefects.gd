@@ -365,7 +365,7 @@ static func analyze(snapshots: Array) -> Dictionary:
 			if not series.has(uid):
 				series[uid] = {
 					"ticks": [], "engaged": [], "in_enemy_contact": [],
-					"moving": [], "routing": [], "rally_halting": [], "current_speed": [], "counts": [],
+					"moving": [], "routing": [], "rally_halting": [], "counts": [],
 					"formation": [], "frontage": [],
 					"last_reshape_tick": [], "anchor_held": [],
 					"nnd_min": [], "nnd_med": [], "angle": [], "residual": [],
@@ -387,7 +387,6 @@ static func analyze(snapshots: Array) -> Dictionary:
 			s["routing"].append(String(u.get("state", "")) == "ROUTING")
 			# Absent from transcripts dumped before the field existed: false there.
 			s["rally_halting"].append(bool(u.get("rally_halting", false)))
-			s["current_speed"].append(float(u.get("current_speed", 0.0)))
 			s["counts"].append(bodies.size())
 			s["formation"].append(String(u.get("formation", "")))
 			s["frontage"].append(int(u.get("frontage", 0)))
@@ -623,12 +622,12 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	# was already carrying away from the enemy (Unit._rout's seed, zero for a FIGHTING
 	# unit), so over that interval its sprint ceiling still applies. A rallied unit whose
 	# anchor is still coasting to a stop on its flight (rally_halting at the interval's start)
-	# is allowed the speed the men actually carry in: the cap measured from the anchor's own
-	# current_speed rather than its sprint, never below the sprint cap nor above the flee-pace
-	# one. That allowance shrinks as the anchor brakes, and is gone once it stops, so it cannot
-	# excuse a spike in the re-form that follows (Unit._begin_rally_halt).
+	# keeps the router's flee-pace ceiling: men the rally re-paired onto other slots catch up
+	# at the flee pace they were running at while the anchor already brakes below its sprint
+	# (morale_recovery: a man at 110.7 wu/s with the anchor at 77). rally_halting is only true
+	# while the anchor still carries speed, so the allowance ends when it stops and cannot
+	# excuse a spike in the re-form that follows (Unit.is_rally_halting).
 	var halting: Array = s.get("rally_halting", [])
-	var anchor_speed: Array = s.get("current_speed", [])
 	var cap: float = sprint * SUPERPHYSICAL_SPEED_FRAC
 	var flee_cap: float = cap * GaitLimitsRef.FLEE_SPEED_MULTIPLIER
 	var over_run := 0
@@ -646,10 +645,10 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 			continue
 		var dt: int = int(s["ticks"][i]) - int(s["ticks"][i - 1])
 		var v: float = max_soldier_speed(s["pos"][i - 1], s["pos"][i], dt)
-		var base_cap: float = flee_cap if bool(s["routing"][i - 1]) else cap
-		if halting.size() > i - 1 and bool(halting[i - 1]) and anchor_speed.size() > i - 1:
-			base_cap = clampf(float(anchor_speed[i - 1]) * SUPERPHYSICAL_SPEED_FRAC, cap, flee_cap)
-		var interval_threshold: float = base_cap + speed_quantization_margin(dt)
+		var fleeing: bool = bool(s["routing"][i - 1]) \
+				or (halting.size() > i - 1 and bool(halting[i - 1]))
+		var interval_threshold: float = (flee_cap if fleeing else cap) \
+				+ speed_quantization_margin(dt)
 		if v > worst_speed:
 			worst_speed = v
 			fastest_threshold = interval_threshold

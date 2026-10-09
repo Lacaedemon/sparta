@@ -340,8 +340,8 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		# True while a hold_position_anchor window is in effect (e.g. during reinforcement arrival).
 		"anchor_held": u.position_anchor_held(),
 		# True while a rallied unit's anchor is still coasting to a stop on its flight
-		# (Unit.is_rally_halting): DemoDefects' speed ceiling then allows its men the speed the
-		# anchor still carries (current_speed below).
+		# (Unit.is_rally_halting): DemoDefects' speed ceiling then allows its men the flee pace
+		# they are still running at, as for a router.
 		"rally_halting": u.is_rally_halting(),
 		"soldiers": u.soldiers,
 		"current_speed": round_to(u._current_speed, 1),
