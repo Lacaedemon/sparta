@@ -78,12 +78,7 @@ its riders running together as a block.
   --- morale climbs back toward a baseline, fast at first and levelling off. If it
   **breaks contact** (no enemy close enough to keep hitting it) and still fields enough
   men, its recovering morale carries it over the rally threshold and it **returns to
-  your control**, ready to fight again. A unit that rallies at a run first **pulls up**
-  where it has the room, braking at its own rate with its men keeping step:
-  about 3 to 5 metres for foot running flat out, and about 30 for horse.
-  So the block halts as one, instead of stopping dead and leaving its men to run on
-  past their places and walk back.
-  It then re-squares its ranks **where it stands**
+  your control**, ready to fight again. It re-squares its ranks the moment it rallies
   --- the flight leaves the grid flipped, so the short rank ends up leading, and only
   the men the flip can't leave in place have to move: under **File-major** reform
   (the default) the under-strength files step up one rank to close it, and under
@@ -96,6 +91,12 @@ its riders running together as a block.
   about-face, the men don't counter-march through the block to do it, so a rallied
   unit is back in fighting shape almost at once rather than spending seconds
   shuffling through itself.
+  A unit that rallies at a run **pulls up** while it re-forms,
+  where it has the room and no enemy in its way:
+  it brakes at its own rate with its men keeping step,
+  over about 3 to 5 metres for foot running flat out and about 30 for horse,
+  so the block halts as one instead of stopping dead and leaving its men to run on
+  past their places and walk back.
 - **Keep pressing it and it "shatters" instead** --- still in contact when its time
   runs out, or gutted past reforming. A shattered unit does NOT vanish: it stays on the
   field, still routing, but can never again recover morale or rally. From there it

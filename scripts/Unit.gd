@@ -1676,6 +1676,7 @@ func _physics_process(delta: float) -> void:
 	_moved_last_frame = false
 	_is_facing_turning = false
 
+	_cut_rally_halt_on_enemy()
 	_think(delta)
 	_tick_intermixing(delta)
 
@@ -8793,17 +8794,21 @@ func _rally() -> void:
 ## The men are still running when they rally: hand the flight over to the idle coast-to-stop
 ## instead of stopping the anchor dead under bodies that still carry the flight velocity (they
 ## would overrun their slots and walk back). The coast pulls up at rally_halt_brake_rate(), and
-## the bodies brake with it (SoldierBodies.body_accel_for), so the block halts as one.
+## the bodies brake with it (SoldierBodies.body_brake_accel_for), so the block halts as one.
 ## Called from _rally() after the state flip and the re-square, before _clear_flight() drops
 ## the flight. A coast is not handed over -- the anchor stops where it rallied, as it always
 ## did -- when its stopping point would leave retreat_bounds, when the block's swept width
 ## along it runs into impassable terrain, or when a living enemy stands within
-## RALLY_CONTACT_RADIUS of it: the flee pace must not carry the rallied unit into contact,
-## where _approach_velocity would read as a charge.
+## rally_coast_enemy_radius() of it: the flee pace must not carry the rallied unit into
+## contact, where _approach_velocity would read as a charge. An enemy that comes near the
+## remaining coast later cuts it short (_cut_rally_halt_on_enemy).
 func _begin_rally_halt() -> void:
-	if _flee_pace <= 0.0 or rally_halt_brake_rate() <= 0.0:
+	# A flight with no direction (a zero _flee_velocity) has no leg to check: the idle coast
+	# would fall back to running along `facing`, which nothing here vetted.
+	if _flee_pace <= 0.0 or rally_halt_brake_rate() <= 0.0 \
+			or _flee_velocity.length_squared() <= 0.0001:
 		return
-	var dir: Vector2 = _flee_velocity / _flee_pace
+	var dir: Vector2 = _flee_velocity.normalized()
 	var stop_dist: float = _flee_pace * _flee_pace / (2.0 * rally_halt_brake_rate())
 	var stop_at: Vector2 = position + dir * stop_dist
 	if not retreat_bounds.has_point(stop_at):
@@ -8811,11 +8816,36 @@ func _begin_rally_halt() -> void:
 	if PathField.active != null \
 			and PathField.active.is_leg_blocked(position, stop_at, terrain_clearance(dir)):
 		return
-	if _enemy_near_leg(position, stop_at, RALLY_CONTACT_RADIUS):
+	if _enemy_near_leg(position, stop_at, rally_coast_enemy_radius()):
 		return
 	_current_speed = _flee_pace
 	_approach_velocity = _flee_velocity
 	_rally_halt = true
+
+
+## How near a living enemy may come to a rallied unit's coast before the coast is refused,
+## or cut short: the farther of the rally-contact radius and this unit's own detection
+## range, inside which its idle auto-engage would turn the coast's flee-pace velocity
+## toward the enemy (where UnitCombat.charge_multiplier reads it as a charge).
+func rally_coast_enemy_radius() -> float:
+	return maxf(RALLY_CONTACT_RADIUS, detection_range)
+
+
+## Called each tick before _think: a halting unit whose remaining coast an enemy has come
+## near -- one that moved into its path or its detection range after the rally -- stops where
+## it stands, as a rally did before the halt existed, so it never carries the flee pace into
+## contact.
+func _cut_rally_halt_on_enemy() -> void:
+	if not is_rally_halting():
+		return
+	var dir: Vector2 = _approach_velocity.normalized() \
+			if _approach_velocity.length_squared() > 0.0001 else Vector2.ZERO
+	var remaining: float = _current_speed * _current_speed / (2.0 * rally_halt_brake_rate())
+	if not _enemy_near_leg(position, position + dir * remaining, rally_coast_enemy_radius()):
+		return
+	_rally_halt = false
+	_current_speed = 0.0
+	_approach_velocity = Vector2.ZERO
 
 
 ## Whether a living enemy (fighting or routing) stands within `radius` of the segment
@@ -8838,7 +8868,7 @@ func _enemy_near_leg(from: Vector2, to: Vector2, radius: float) -> bool:
 ## The rate a rallied unit pulls up from its flight at: its own decel, the halt the type can
 ## actually make. The orderly arrival brake (arrival_brake_rate, never above decel) is held to
 ## what the bodies track at their ordinary acceleration and would coast a full-flight block up
-## to twice as far; SoldierBodies.body_accel_for raises the bodies to this rate for the halt.
+## to twice as far; SoldierBodies.body_brake_accel_for raises the bodies to this rate for the halt.
 func rally_halt_brake_rate() -> float:
 	return decel
 

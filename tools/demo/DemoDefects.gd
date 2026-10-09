@@ -623,10 +623,16 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	# unit), so over that interval its sprint ceiling still applies. A rallied unit whose
 	# anchor is still coasting to a stop on its flight (rally_halting at the interval's start)
 	# keeps the router's flee-pace ceiling: men the rally re-paired onto other slots catch up
-	# at the flee pace they were running at while the anchor already brakes below its sprint
-	# (morale_recovery: a man at 110.7 wu/s with the anchor at 77). rally_halting is only true
-	# while the anchor still carries speed, so the allowance ends when it stops and cannot
-	# excuse a spike in the re-form that follows (Unit.is_rally_halting).
+	# at the pace the block was fleeing at while the anchor already brakes below its sprint
+	# (morale_recovery: a man at 110.7 wu/s with the anchor at 77). That 110.7 is the flight's
+	# own pace, not one gained in the halt: on the last routing samples (ticks 346-354) the
+	# anchor itself covers 3.69 wu per 2 ticks, 110.7 wu/s, the 104 wu/s Infantry flee pace
+	# (1.3 x 80) plus the body coupling's pull -- the few percent test_close_tier_rout_speed.gd
+	# allows (SPEED_TOLERANCE_FRAC 0.1; here 6.4%). It sits well under the flee-pace cap
+	# (80 x 1.15 x 1.3 = 119.6 wu/s, plus 0.42 wu/s of 2-tick quantization margin).
+	# rally_halting is only true while the anchor still carries speed, so the allowance ends
+	# when it stops and cannot excuse a spike in the re-form that follows
+	# (Unit.is_rally_halting).
 	var halting: Array = s.get("rally_halting", [])
 	var cap: float = sprint * SUPERPHYSICAL_SPEED_FRAC
 	var flee_cap: float = cap * GaitLimitsRef.FLEE_SPEED_MULTIPLIER

@@ -299,7 +299,8 @@ static func step(unit: Unit, delta: float) -> void:
 	# No body ever teleports: every body steers toward a desired velocity under bounded
 	# acceleration and integrates its own velocity (fixed delta), so position only ever
 	# changes by velocity * delta.
-	var body_accel: float = body_accel_for(unit)
+	var body_accel: float = maxf(unit.accel, BODY_ACCEL_FLOOR)
+	var brake_accel: float = body_brake_accel_for(unit)
 	# Cap the arrival approach at the unit's jog pace (not walk, not the move_speed sprint):
 	# reforming and recovering from a knockback is a brisk jog, never a flat-out run, and the
 	# same ceiling applies to engaged and unengaged bodies alike. The idle/reform jog cap
@@ -443,7 +444,9 @@ static func step(unit: Unit, delta: float) -> void:
 		# See SoldierCollision.apply_kinetic_friction and SoldierCombat friction constants.
 		var damped_vel: Vector2 = SoldierCollision.apply_kinetic_friction(
 				unit._sim_body_vel[i], mass, 0.0, delta)
-		var new_vel: Vector2 = damped_vel.move_toward(desired_vel, body_accel * delta)
+		var new_vel: Vector2 = damped_vel.move_toward(desired_vel, body_accel * delta) \
+				if brake_accel <= body_accel \
+				else brake_biased_step(damped_vel, desired_vel, body_accel, brake_accel, delta)
 		# The sqrt(2 a d) arrival profile decelerates to 0 at the slot in continuous time, but
 		# its slope steepens near the slot faster than a bounded decel can follow, so a body
 		# arriving with residual inbound speed (built up from the previous tick's move_toward)
@@ -561,13 +564,31 @@ static func step(unit: Unit, delta: float) -> void:
 	_keep_out_of_terrain(unit, n, terrain_guard, delta)
 
 
-## The bounded acceleration this unit's bodies steer with: max(unit.accel, BODY_ACCEL_FLOOR),
-## raised to the anchor's own braking rate while it pulls up from a rally (Unit.is_rally_halting,
-## Unit.rally_halt_brake_rate): bodies held to the gentler rate would run on past their halting
-## slots and walk back.
-static func body_accel_for(unit: Unit) -> float:
+## The rate this unit's bodies may shed speed at: their ordinary max(unit.accel,
+## BODY_ACCEL_FLOOR), raised to the anchor's own braking rate while it pulls up from a rally
+## (Unit.is_rally_halting, Unit.rally_halt_brake_rate): bodies held to the gentler rate would
+## run on past their halting slots and walk back. Only braking is raised; a body speeding up
+## (a man re-paired onto a slot ahead of him) still does so at the ordinary rate.
+static func body_brake_accel_for(unit: Unit) -> float:
 	var base: float = maxf(unit.accel, BODY_ACCEL_FLOOR)
 	return maxf(base, unit.rally_halt_brake_rate()) if unit.is_rally_halting() else base
+
+
+## One tick of a body's velocity toward `desired`, with the part of the change that opposes
+## the body's current motion (braking) bounded by `brake_accel` and the rest (speeding up,
+## or turning) by the ordinary `accel`.
+static func brake_biased_step(vel: Vector2, desired: Vector2, accel: float, brake_accel: float,
+		delta: float) -> Vector2:
+	var change: Vector2 = desired - vel
+	if vel.length_squared() < 0.0001:
+		return vel.move_toward(desired, accel * delta)
+	var brake_dir: Vector2 = -vel.normalized()
+	var along: float = change.dot(brake_dir)
+	if along <= 0.0:
+		return vel.move_toward(desired, accel * delta)
+	var brake: Vector2 = brake_dir * along
+	var rest: Vector2 = change - brake
+	return vel + brake.limit_length(brake_accel * delta) + rest.limit_length(accel * delta)
 
 
 ## Which bodies already stand inside impassable terrain itself (the rects as drawn, not

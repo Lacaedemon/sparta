@@ -58,7 +58,7 @@ func after_each() -> void:
 	await get_tree().physics_frame
 
 
-func _spawn(terrain: Array = []) -> Unit:
+func _spawn(terrain: Array = [], extra: Array = []) -> Unit:
 	Replay.forced_seed = 12345
 	_battle = load("res://scenes/Battle.tscn").instantiate()
 	_battle.all_teams_control = true
@@ -68,7 +68,7 @@ func _spawn(terrain: Array = []) -> Unit:
 				"facing": [0, -1]},
 		{"team": 1, "type": "Infantry", "count": 24, "x": ENEMY_START.x, "y": ENEMY_START.y,
 				"facing": [-1, 0]},
-	]
+	] + extra
 	add_child(_battle)
 	await get_tree().physics_frame
 	for u in get_tree().get_nodes_in_group("units"):
@@ -192,7 +192,7 @@ func test_a_router_rallying_from_full_flight_pulls_up_with_its_bodies() -> void:
 			% [SETTLE_TICKS, settled_gap])
 	assert_eq(router._current_speed, 0.0, "the anchor has come to a stop")
 	assert_false(router.is_rally_halting(), "the halt ended once the block came to rest")
-	assert_eq(SoldierBodies.body_accel_for(router), maxf(router.accel, SoldierBodies.BODY_ACCEL_FLOOR),
+	assert_eq(SoldierBodies.body_brake_accel_for(router), maxf(router.accel, SoldierBodies.BODY_ACCEL_FLOOR),
 			"the bodies are back on their ordinary acceleration once the halt ends")
 
 
@@ -305,7 +305,7 @@ func test_the_rally_hands_the_flight_to_a_coast_braking_at_the_units_decel() -> 
 	assert_true(router.is_rally_halting(), "the rallied unit is pulling up from its flight")
 	assert_almost_eq(router._current_speed, pace, 0.001, "the coast starts at the flight's pace")
 	assert_eq(router.idle_brake_rate(), router.decel, "the coast brakes at the unit's own decel")
-	assert_eq(SoldierBodies.body_accel_for(router), router.decel,
+	assert_eq(SoldierBodies.body_brake_accel_for(router), router.decel,
 			"the bodies brake at the same rate as the anchor")
 	var ticks := 10
 	await _advance_ticks(ticks)
@@ -386,6 +386,35 @@ func test_a_rally_from_a_standstill_has_nothing_to_hand_over() -> void:
 	assert_eq(u._current_speed, 0.0, "and no coast")
 	u.free()
 	PathField.active = old_field
+
+
+func test_a_flight_pace_with_no_direction_has_nothing_to_hand_over() -> void:
+	# A zero flight velocity gives no leg to check: stop_at would sit on the unit itself, every
+	# check would pass, and the coast would then run along `facing`, which nothing vetted.
+	var old_field: PathField = PathField.active
+	PathField.active = null
+	var u := _bare_flight_unit()
+	u._flee_velocity = Vector2.ZERO
+	u._begin_rally_halt()
+	assert_false(u._rally_halt, "a flight with no direction is not handed over")
+	assert_eq(u._current_speed, 0.0, "and no coast starts")
+	u.free()
+	PathField.active = old_field
+
+
+func test_brake_biased_step_raises_only_the_braking_part() -> void:
+	var dt: float = 1.0 / 60.0
+	var braked: Vector2 = SoldierBodies.brake_biased_step(Vector2(0.0, -100.0), Vector2.ZERO,
+			30.0, 60.0, dt)
+	assert_almost_eq(braked.y, -99.0, 0.0001, "slowing down uses the raised braking rate")
+	assert_almost_eq(braked.x, 0.0, 0.0001, "and nothing sideways")
+	var sped: Vector2 = SoldierBodies.brake_biased_step(Vector2(0.0, -50.0), Vector2(0.0, -100.0),
+			30.0, 60.0, dt)
+	assert_almost_eq(sped.y, -50.5, 0.0001, "speeding up keeps the ordinary rate")
+	var turned: Vector2 = SoldierBodies.brake_biased_step(Vector2(0.0, -100.0),
+			Vector2(100.0, -100.0), 30.0, 60.0, dt)
+	assert_almost_eq(turned.x, 0.5, 0.0001, "a sideways change keeps the ordinary rate")
+	assert_almost_eq(turned.y, -100.0, 0.0001, "with nothing braked")
 
 
 func test_a_coast_that_would_leave_retreat_bounds_stops_where_it_rallied() -> void:
@@ -473,6 +502,74 @@ func test_a_coast_toward_an_enemy_is_not_handed_over() -> void:
 	assert_false(router._rally_halt, "no coast is handed over toward the enemy")
 	assert_eq(router._current_speed, 0.0, "the anchor stops where it rallied")
 	assert_eq(router._approach_velocity, Vector2.ZERO, "and carries no velocity into the enemy")
+
+
+## The team-1 unit _spawn deploys.
+func _enemy_unit() -> Unit:
+	for group in ["units", "routers"]:
+		for u in get_tree().get_nodes_in_group(group):
+			if (u as Unit).team == 1:
+				return u as Unit
+	return null
+
+
+func test_a_coast_toward_a_routing_enemy_is_not_handed_over() -> void:
+	var router: Unit = await _spawn()
+	var enemy: Unit = _enemy_unit()
+	assert_not_null(enemy, "the enemy deployed")
+	if router == null or enemy == null:
+		return
+	await _rout_to_full_flight(router)
+	var dir: Vector2 = router._flee_velocity.normalized()
+	enemy.position = router.position + dir * (router.rally_coast_enemy_radius() + 20.0)
+	enemy.rally_morale_threshold = 1000.0
+	enemy.rout_time = 1000.0
+	enemy._rout()
+	assert_eq(enemy.state, Unit.State.ROUTING, "setup: the enemy ahead is routing")
+	await _rally_next_tick(router)
+	assert_eq(router.state, Unit.State.IDLE, "setup: the router rallied")
+	assert_false(router._rally_halt, "no coast is handed over toward a routing enemy either")
+	assert_eq(router._current_speed, 0.0, "the anchor stops where it rallied")
+
+
+func test_a_teammate_ahead_does_not_cancel_the_coast() -> void:
+	var router: Unit = await _spawn([], [{"team": 0, "type": "Infantry", "count": 24,
+			"x": 1500.0, "y": 1300.0, "facing": [0, -1]}])
+	var friend: Unit = null
+	for u in get_tree().get_nodes_in_group("units"):
+		if (u as Unit).team == 0 and u != router:
+			friend = u as Unit
+	assert_not_null(friend, "the teammate deployed")
+	if router == null or friend == null:
+		return
+	await _rout_to_full_flight(router)
+	var dir: Vector2 = router._flee_velocity.normalized()
+	friend.position = router.position + dir * (router.rally_coast_enemy_radius() + 20.0)
+	await _rally_next_tick(router)
+	assert_eq(router.state, Unit.State.IDLE, "setup: the router rallied")
+	assert_true(router.is_rally_halting(), "a friend in the coast's path does not cancel it")
+
+
+func test_an_enemy_that_comes_near_mid_coast_cuts_the_halt_short() -> void:
+	# The coast was clear when it was handed over; an enemy that then moves into its path must
+	# not meet the flee-pace velocity (a charge for cavalry): the halt ends and the anchor
+	# stops where it stands, as a rally did before the halt existed.
+	var router: Unit = await _spawn()
+	var enemy: Unit = _enemy_unit()
+	assert_not_null(enemy, "the enemy deployed")
+	if router == null or enemy == null:
+		return
+	await _rout_to_full_flight(router)
+	await _rally_next_tick(router)
+	await _advance_ticks(5)
+	assert_true(router.is_rally_halting(), "setup: the coast was handed over and is running")
+	var dir: Vector2 = router._approach_velocity.normalized()
+	enemy.position = router.position + dir * 100.0
+	await _advance_ticks(1)
+	assert_false(router._rally_halt, "an enemy near the remaining coast ends the halt")
+	assert_lt(router._approach_velocity.length(), router.flee_speed() * 0.1,
+			"and the unit carries none of the flight toward it (%.2f wu/s)"
+			% router._approach_velocity.length())
 
 
 func test_a_halt_that_starts_in_the_retreat_margin_is_not_snapped_onto_the_field() -> void:
