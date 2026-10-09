@@ -299,7 +299,7 @@ static func step(unit: Unit, delta: float) -> void:
 	# No body ever teleports: every body steers toward a desired velocity under bounded
 	# acceleration and integrates its own velocity (fixed delta), so position only ever
 	# changes by velocity * delta.
-	var body_accel: float = maxf(unit.accel, BODY_ACCEL_FLOOR)
+	var body_accel: float = body_accel_for(unit)
 	# Cap the arrival approach at the unit's jog pace (not walk, not the move_speed sprint):
 	# reforming and recovering from a knockback is a brisk jog, never a flat-out run, and the
 	# same ceiling applies to engaged and unengaged bodies alike. The idle/reform jog cap
@@ -370,11 +370,13 @@ static func step(unit: Unit, delta: float) -> void:
 	# measured from the flee pace -- measured from move_speed it would hold every body below
 	# the pace its anchor runs at, and the coupling would drag the anchor back to them.
 	var routing: bool = unit.state == Unit.State.ROUTING
+	var halting: bool = unit.is_rally_halting()
 	var march_vel: Vector2 = unit._flee_velocity if routing else unit._approach_velocity
 	var top_pace: float = unit.flee_speed() if routing else unit.move_speed
 	# In-transit same-unit standoff velocities for crowding same-unit bodies:
 	var sep_vels: PackedVector2Array = _separate_same_unit(unit, n, target_slots, is_engaged, delta)
 	var terrain_guard: Dictionary = _terrain_entry_guard(unit, n)
+	var any_moving: bool = false
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
@@ -521,7 +523,9 @@ static func step(unit: Unit, delta: float) -> void:
 		# (frontage change, centre pivot) plays out on an idle unit. A marching unit is
 		# exempt — its bodies need to keep up with moving slots — so the cap only
 		# applies when state == IDLE.
-		if unit._reform_holding() or unit.state == Unit.State.IDLE:
+		# A rallied unit pulling up from its flight is still moving -- its slots coast with
+		# the anchor (Unit.is_rally_halting) -- so it is exempt for the same reason.
+		if unit._reform_holding() or (unit.state == Unit.State.IDLE and not halting):
 			var facing: Vector2 = unit._sim_soldier_facing[i] if i < unit._sim_soldier_facing.size() \
 					else unit.facing
 			step_vel = _cap_body_speed_vec(step_vel, facing, unit.jog_speed, unit.back_speed_fraction)
@@ -551,11 +555,27 @@ static func step(unit: Unit, delta: float) -> void:
 		# MultiMesh rewrite while a block sits at rest (REST_SPEED is well below visible).
 		if unit._sim_body_vel[i].length_squared() > REST_SPEED * REST_SPEED:
 			unit._render_dirty = true
+			any_moving = true
+
+	# A rally's halt ends once the anchor has stopped AND its bodies have pulled up with it:
+	# dropping the halt's brake while bodies still carry speed would leave them braking at
+	# the gentler rate and running on past their slots.
+	if halting and not any_moving and unit._current_speed <= 0.0:
+		unit._rally_halt = false
 
 	# One arrival integration per body, each with exactly one `to_slot.length()`.
 	SimOps.add(SimOps.BODY_STEP, n)
 	SimOps.add(SimOps.SQRT_EVAL, n)
 	_keep_out_of_terrain(unit, n, terrain_guard, delta)
+
+
+## The bounded acceleration this unit's bodies steer with: max(unit.accel, BODY_ACCEL_FLOOR),
+## raised to the anchor's own braking rate while it pulls up from a rally (Unit.is_rally_halting,
+## Unit.rally_halt_brake_rate): bodies held to the gentler rate would run on past their halting
+## slots and walk back.
+static func body_accel_for(unit: Unit) -> float:
+	var base: float = maxf(unit.accel, BODY_ACCEL_FLOOR)
+	return maxf(base, unit.rally_halt_brake_rate()) if unit.is_rally_halting() else base
 
 
 ## Which bodies already stand inside impassable terrain itself (the rects as drawn, not

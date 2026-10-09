@@ -1495,6 +1495,11 @@ var _flee_pace: float = 0.0
 # chase their slots on the jog-capped arrival term, and the body coupling drags the anchor
 # back to them. Read only while state == ROUTING.
 var _flee_velocity: Vector2 = Vector2.ZERO
+# True from a rally until the block has pulled up from the flight it handed over (see _rally
+# and is_rally_halting). Cleared once the anchor and its bodies are at rest (SoldierBodies.step;
+# the idle decay for a unit with no bodies), or the moment the unit locomotes, fights, or
+# routs again -- whichever comes first.
+var _rally_halt: bool = false
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -1758,7 +1763,15 @@ func _physics_process(delta: float) -> void:
 		# zero-velocity/nonzero-speed state, never to a unit still under normal control.
 		if travel_dir == Vector2.ZERO and _current_speed > 0.0:
 			travel_dir = facing
-		_current_speed = move_toward(_current_speed, 0.0, arrival_brake_rate() * delta)
+		_current_speed = move_toward(_current_speed, 0.0, idle_brake_rate() * delta)
+		# A rally can come anywhere inside retreat_bounds, the margin past the field edge a
+		# router may flee into, so the halt is held to that rather than snapped onto the field
+		# (_begin_rally_halt only hands over a coast that stops inside it).
+		var coast_bounds: Rect2 = retreat_bounds if is_rally_halting() else field_bounds
+		# With bodies, the halt lasts until they have pulled up too (SoldierBodies.step ends
+		# it); a unit with none has nothing left to settle once the anchor stops.
+		if _current_speed <= 0.0 and _sim_soldier_pos.is_empty():
+			_rally_halt = false
 		# Terrain-scaled, matching _move_to's own effective_speed -- a unit coasting to a
 		# stop in a forest carries proportionally less real velocity, just like one still
 		# under active order control, so downstream consumers (the march feed-forward, the
@@ -1769,8 +1782,12 @@ func _physics_process(delta: float) -> void:
 		_approach_velocity = travel_dir * (_current_speed * terrain_speed)
 		if _current_speed > 0.0 and travel_dir != Vector2.ZERO:
 			position += travel_dir * (_current_speed * terrain_speed * delta)
-			position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
-			position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
+			position.x = clampf(position.x, coast_bounds.position.x, coast_bounds.end.x)
+			position.y = clampf(position.y, coast_bounds.position.y, coast_bounds.end.y)
+	else:
+		# Locomoting, fighting, or carrying a held march's momentum: whatever the unit does
+		# now, it is no longer pulling up from a rally.
+		_rally_halt = false
 
 	_tick_far_stamina(delta)
 
@@ -3502,6 +3519,18 @@ func _support_tick(delta: float) -> void:
 ## downshift keeps the marker moving, so a transient body lag self-corrects there).
 func arrival_brake_rate() -> float:
 	return minf(decel, maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR))
+
+
+## The rate the idle coast-to-stop sheds speed with: the orderly arrival brake, except while a
+## rallied unit pulls up from its flight (is_rally_halting), at rally_halt_brake_rate().
+func idle_brake_rate() -> float:
+	return rally_halt_brake_rate() if is_rally_halting() else arrival_brake_rate()
+
+
+## True while a rallied unit is still pulling up from the flight its rally handed over: its
+## anchor coasting to a stop, or its bodies still settling after the anchor has stopped.
+func is_rally_halting() -> bool:
+	return _rally_halt and state == State.IDLE
 
 
 ## Whether the current order is a genuine click-count-driven run/sprint MOVE -- too urgent
@@ -8583,6 +8612,7 @@ func _rout() -> void:
 	# anchor off along it on the rallied unit's first idle tick, away from its bodies.
 	_approach_velocity = Vector2.ZERO
 	_current_speed = 0.0
+	_rally_halt = false
 	state = State.ROUTING
 	selected = false
 	target_enemy = null
@@ -8733,6 +8763,7 @@ func _rally() -> void:
 	# floor — a unit that rallies the instant its timer expires still reforms shaken.
 	morale = maxf(morale, RALLY_MORALE)
 	_rout_timer = 0.0
+	_begin_rally_halt()
 	_clear_flight()
 	# _rout() zeroed _formation_angle so the unit "reforms square to its heading on rally"
 	# (its own comment), but fleeing can re-fold it via _face_dir's snap-absorb (a sharp
@@ -8749,6 +8780,35 @@ func _rally() -> void:
 	remove_from_group("routers")
 	add_to_group("units")
 	queue_redraw()
+
+
+## The men are still running when they rally: hand the flight over to the idle coast-to-stop
+## instead of stopping the anchor dead under bodies that still carry the flight velocity (they
+## would overrun their slots and walk back). The coast pulls up at rally_halt_brake_rate(), and
+## the bodies brake with it (SoldierBodies.body_accel_for), so the block halts as one.
+## Called from _rally() after the state flip and before _clear_flight() drops the flight.
+## A coast whose stopping point would leave retreat_bounds or run into impassable terrain is
+## not handed over: the anchor stops where it rallied, as it always did.
+func _begin_rally_halt() -> void:
+	if _flee_pace <= 0.0 or rally_halt_brake_rate() <= 0.0:
+		return
+	var stop_dist: float = _flee_pace * _flee_pace / (2.0 * rally_halt_brake_rate())
+	var stop_at: Vector2 = position + _flee_velocity / _flee_pace * stop_dist
+	if not retreat_bounds.has_point(stop_at):
+		return
+	if PathField.active != null and PathField.active.is_leg_blocked(position, stop_at, _rout_clearance()):
+		return
+	_current_speed = _flee_pace
+	_approach_velocity = _flee_velocity
+	_rally_halt = true
+
+
+## The rate a rallied unit pulls up from its flight at: its own decel, the halt the type can
+## actually make. The orderly arrival brake (arrival_brake_rate, never above decel) is held to
+## what the bodies track at their ordinary acceleration and would coast a full-flight block up
+## to twice as far; SoldierBodies.body_accel_for raises the bodies to this rate for the halt.
+func rally_halt_brake_rate() -> float:
+	return decel
 
 
 ## Shatter: a routed ("broken") unit that couldn't recover in time --- still in contact,
@@ -9604,6 +9664,7 @@ func to_snapshot_dict() -> Dictionary:
 		"moved_while_routing": _moved_while_routing,
 		"moved_while_routing_pace": _moved_while_routing_pace,
 		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity,
+		"rally_halt": _rally_halt,
 		# Not reset before a routing unit's early return, so a router keeps reading it.
 		"is_facing_turning": _is_facing_turning,
 
@@ -9831,6 +9892,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_moved_while_routing_pace = float(d.get("moved_while_routing_pace", _moved_while_routing_pace))
 	_flee_pace = float(d.get("flee_pace", _flee_pace))
 	_flee_velocity = d.get("flee_velocity", _flee_velocity)
+	_rally_halt = bool(d.get("rally_halt", _rally_halt))
 	_is_facing_turning = bool(d.get("is_facing_turning", _is_facing_turning))
 	is_general = bool(d.get("is_general", is_general))
 	order_clear_step = float(d.get("order_clear_step", order_clear_step))
