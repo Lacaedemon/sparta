@@ -41,6 +41,10 @@ const SQUARE_SETTLE_PROBE_TICKS := 60
 const SQUARE_MAX_MEAN_GAP_WU := 8.0
 # Ticks watched after the square's anchor stops, covering its men's re-form walk.
 const POST_STOP_WATCH_TICKS := 120
+# How far one man is set ahead of his slot after the anchor stops (world units): far enough
+# that his arrival speed, sqrt(2 * accel * d), clears the 22.5 wu/s Infantry back-speed cap
+# at the ordinary body acceleration (42 wu/s at 30 wu/s^2).
+const SHOVE_WU := 30.0
 
 var _battle: Node = null
 
@@ -263,6 +267,12 @@ func test_once_the_anchor_stops_the_mens_re_form_is_held_to_the_idle_caps() -> v
 	assert_eq(square.state, Unit.State.IDLE, "setup: the square rallied")
 	assert_eq(square._current_speed, 0.0, "setup: its anchor has pulled up")
 	assert_false(square._rally_halt, "the halt ended when the anchor stopped")
+	# The square's own re-form walks men back only slowly, so also set one man well ahead of
+	# his slot along his facing, as a shove would: he has to walk back against his facing,
+	# fast enough to meet the back-speed cap if nothing holds him to it.
+	var slots: PackedVector2Array = square.soldier_world_slots(square.soldiers)
+	square._sim_soldier_pos[0] = slots[0] + square._sim_soldier_facing[0] * SHOVE_WU
+	square._sim_body_vel[0] = Vector2.ZERO
 	var worst_excess: float = 0.0
 	var worst_back: float = 0.0
 	for t in range(POST_STOP_WATCH_TICKS):
@@ -276,7 +286,8 @@ func test_once_the_anchor_stops_the_mens_re_form_is_held_to_the_idle_caps() -> v
 			worst_back = maxf(worst_back, -v.dot(f))
 	gut.p("after the anchor stopped: worst backward body speed %.2f wu/s (back cap %.2f), worst excess over the idle caps %.4f"
 			% [worst_back, square.jog_speed * square.back_speed_fraction, worst_excess])
-	assert_gt(worst_back, 0.0, "setup: some men walk back against their facing in the re-form")
+	assert_gt(worst_back, square.jog_speed * square.back_speed_fraction * 0.9,
+			"setup: the shoved man walks back against his facing up against the back-speed cap")
 	assert_lt(worst_excess, 0.001,
 			"no body exceeds the idle jog and back-speed caps once the anchor has stopped (worst excess %.4f wu/s)"
 			% worst_excess)
