@@ -16,7 +16,7 @@
   ],
   "steps": [],
   "expect": [
-    {"tick": [60, 540], "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": 540, "uid": 0, "field": "state", "value": "ROUTING"},
     {"tick": [480, 600], "uid": 3, "field": "target_enemy_uid", "value": 0},
     {"tick": [480, 600], "uid": 3, "field": "engaged", "value": true},
     {"tick": [610, 700], "uid": 0, "absent": true}

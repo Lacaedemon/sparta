@@ -310,9 +310,9 @@ static func shatter(rec: FarTierFormation) -> void:
 ## Flees straight away from `enemy` (the pair's own opposing formation — the far tier has no
 ## fixed "own back edge" to run toward, so fleeing the immediate threat is the natural
 ## two-body substitute) at FLEE_SPEED_MULTIPLIER on effective_speed. Unlike Unit._process_rout,
-## which builds the flight up from a standstill at the unit's accel and reins it in before a
-## rally (so its soldier bodies can keep up), this aggregate record flees at full pace from
-## the first tick and rallies on the spot: it has no bodies to outrun.
+## which builds the flight up from a standstill at the unit's accel (so its soldier bodies can
+## keep up), this aggregate record flees at full pace from the first tick: it has no bodies
+## to outrun.
 ## Morale steadies toward ROUT_RALLY_BASELINE at a rate proportional to the remaining gap,
 ## and the formation rallies the moment it crosses rec.rally_morale_threshold (carried forward
 ## from the demoted unit's own caller-configurable rally_morale_threshold, default

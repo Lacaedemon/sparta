@@ -538,7 +538,8 @@ Two optional keys widen what an entry can say:
 - `"absent": true` -- in place of `field`/`value` (an absent entry takes neither, nor a
   `tol`): the unit has left play (annihilated, escaped, merged) by some snapshot inside the
   range, i.e. that snapshot carries no record for its uid while an earlier one did. A uid
-  that never appeared, or a snapshot with no `units` list, fails rather than passing.
+  that never appeared, or any snapshot inside the range with no `units` list, fails rather
+  than passing.
 
 An expectation that cannot be checked (no snapshot in range, no such unit, no such field)
 FAILS rather than skips -- an uncheckable claim is an authoring error. This is how a demo

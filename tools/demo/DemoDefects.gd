@@ -615,8 +615,10 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	# measures a router's body-speed ceiling from it. An interval is held to that flee-pace
 	# cap when its START sample is routing: the men carry their flight speed into the
 	# interval, and a router that rallies inside it was running at flee pace up to then. A unit
-	# that only starts routing at the interval's end builds its flight up from its march
-	# pace at its own accel, so over that interval its sprint ceiling still applies.
+	# that only starts routing at the interval's end spent that interval under its ordinary
+	# gaits, and its flight then builds up at its own accel from no more than the speed it
+	# was already carrying away from the enemy (Unit._rout's seed, zero for a FIGHTING
+	# unit), so over that interval its sprint ceiling still applies.
 	var cap: float = sprint * SUPERPHYSICAL_SPEED_FRAC
 	var flee_cap: float = cap * GaitLimitsRef.FLEE_SPEED_MULTIPLIER
 	var over_run := 0
@@ -968,7 +970,8 @@ static func _check_absent(uid: int, lo: int, hi: int, when: String, snapshots: A
 			seen_before = true
 		elif seen_before:
 			gone = true
-			break
+		# No early exit: every snapshot up to `hi` is still read, so an unreadable one after
+		# the unit is gone fails the claim too.
 	var ok: bool = probed and gone and not malformed
 	var worst: String = "absent"
 	if malformed:

@@ -5657,10 +5657,6 @@ func test_routing_from_melee_ignores_leftover_charge_speed() -> void:
 	PathField.active = old_pf
 
 
-
-
-
-
 func test_routing_from_fighting_ignores_even_a_lean_away() -> void:
 	# A FIGHTING unit's _approach_velocity can be a stale lean-in left over until its first
 	# strike spends it, whatever its direction: the flight starts from rest.
@@ -5695,10 +5691,6 @@ func test_a_rallied_unit_does_not_coast_off_on_its_pre_rout_velocity() -> void:
 		assert_almost_eq(u.position.distance_to(rallied_at), 0.0, 0.001,
 				"the rallied unit stays where it reformed (fighting=%s)" % str(fighting))
 	PathField.active = old_pf
-
-
-
-
 
 
 func test_stopping_a_rout_to_fight_clears_the_flight() -> void:

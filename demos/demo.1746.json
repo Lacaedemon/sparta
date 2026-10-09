@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/close-tier-router-outruns-pursuer.json",
-  "caption": "Fixes #1739: a routing unit up close now flees at its real flee pace. A broken 16-horse squadron (bottom, faded) runs for its own back edge while a fresh 20-horse squadron sprints after it down the same line. The router builds up speed over its first few seconds, then pulls away at full flight -- the gap between the two grows from about 550 wu to about 690 wu -- with its riders running together as a block rather than straggling behind. Before the fix the same router crawled at about a fifth of its flee pace (0.81 against 3.68 wu per tick), and the pursuer closed to about 350 wu over the same stretch. The clip ends just before the router, clear of its pursuer, starts reining in to rally.",
+  "caption": "Fixes #1739: a routing unit up close now flees at its real flee pace. A broken 16-horse squadron (bottom, faded) runs for its own back edge while a fresh 20-horse squadron sprints after it down the same line. The router builds up speed over its first few seconds, then pulls away at full flight -- the gap between the two grows from about 550 wu to about 690 wu -- with its riders running together as a block rather than straggling behind. Before the fix the same router crawled at about a fifth of its flee pace (0.81 against 3.68 wu per tick), and the pursuer closed to about 350 wu over the same stretch. The clip ends just before the router, clear of its pursuer, rallies (tick 355).",
   "fixed_fps": 30,
   "max_frames": 176,
   "fps": 15,

@@ -1334,8 +1334,6 @@ func test_hud_consistency_detects_sustained_blank_caption() -> void:
 	assert_string_contains(str(verdicts[0]["worst"]), "blank hud")
 
 
-
-
 func test_check_expectations_tol_matches_a_position_within_tolerance() -> void:
 	# A late-tick position can drift by a fraction of a world unit across platforms, so a
 	# position claim carries a per-component tolerance instead of demanding an exact match.
@@ -1415,3 +1413,14 @@ func test_check_expectations_absent_does_not_pass_vacuously() -> void:
 		{"tick": [600, 640], "uid": 0, "absent": true},
 	], broken)
 	assert_false(bool(no_units[0]["pass"]), "a snapshot without a units list is unreadable, not empty")
+	# An unreadable snapshot later in the range fails the claim too, even after the unit is
+	# already seen gone: the whole range is read, not just up to the first absence.
+	var broken_after: Array = [
+		{"tick": 600, "units": [{"uid": 0, "state": "ROUTING"}]},
+		{"tick": 620, "units": [{"uid": 3, "state": "IDLE"}]},
+		{"tick": 640},
+	]
+	var late: Array = DemoDefects.check_expectations([
+		{"tick": [600, 640], "uid": 0, "absent": true},
+	], broken_after)
+	assert_false(bool(late[0]["pass"]), "an unreadable snapshot after the absence still fails it")
