@@ -34,9 +34,9 @@ extends RefCounted
 
 ## A routing formation's flee pace, relative to its (stance-capped) effective speed -- mirrors
 ## Unit.FLEE_SPEED_MULTIPLIER (move_speed * FLEE_SPEED_MULTIPLIER flee rate). A Unit flees
-## at its multiplied sprint pace once its flight has built up (see Unit._process_rout). The far tier scales effective_speed (walk or jog pace)
-## by FLEE_SPEED_MULTIPLIER while tick_stamina bills moving flight at
-## the sprint drain rate (stamina_sprint_drain_per_s).
+## at its multiplied sprint pace once its flight has built up (see Unit._process_rout).
+## The far tier scales effective_speed (walk or jog pace) by FLEE_SPEED_MULTIPLIER while
+## tick_stamina bills moving flight at the sprint drain rate (stamina_sprint_drain_per_s).
 const FLEE_SPEED_MULTIPLIER: float = Unit.FLEE_SPEED_MULTIPLIER
 
 
@@ -310,9 +310,9 @@ static func shatter(rec: FarTierFormation) -> void:
 ## Flees straight away from `enemy` (the pair's own opposing formation — the far tier has no
 ## fixed "own back edge" to run toward, so fleeing the immediate threat is the natural
 ## two-body substitute) at FLEE_SPEED_MULTIPLIER on effective_speed. Unlike Unit._process_rout,
-## which builds the flight up from a standstill at the unit's accel (so its soldier bodies can
-## keep up), this aggregate record flees at full pace from the first tick: it has no bodies
-## to outrun.
+## which builds the flight up at the unit's accel from the speed it was already carrying away
+## from the enemy (often a standstill) so its soldier bodies can keep up, this aggregate
+## record flees at full pace from the first tick: it has no bodies to outrun.
 ## Morale steadies toward ROUT_RALLY_BASELINE at a rate proportional to the remaining gap,
 ## and the formation rallies the moment it crosses rec.rally_morale_threshold (carried forward
 ## from the demoted unit's own caller-configurable rally_morale_threshold, default
