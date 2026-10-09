@@ -31,3 +31,4 @@ imports below.
 @.claude/memories/sparta/17-float32-geometry-and-invariant-tolerances.md
 @.claude/memories/sparta/18-body-constraints-demo-mutation-and-harness-phase.md
 @.claude/memories/sparta/19-order-paths-gating-and-pr-hygiene.md
+@.claude/memories/sparta/20-wave6-demo-claims-flips-and-brief-hygiene.md

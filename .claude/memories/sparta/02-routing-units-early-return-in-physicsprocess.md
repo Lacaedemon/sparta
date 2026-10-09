@@ -920,3 +920,18 @@ BODIES are being displaced (contact physics, knockback, a facing/grid change dra
 targets) and whether `couple()` is just honestly reporting that drift back up to `position`.
 (`Lacaedemon/sparta` PR #749, 2026-07-11.)
 
+
+## Per-tick upkeep placed after the rout early return never runs for routers
+
+The `State.ROUTING` branch of `Unit._physics_process` returns early, so any per-tick upkeep written below it skips every router.
+Two instances surfaced on PR #1746 (2026-10-09):
+`tick_engaged()` was below the return, so the engaged latch froze for the whole rout and held the router's front on the melee line it had fled;
+and `_in_enemy_contact` was refreshed only inside `_think`, which never runs for a router, so its bodies kept colliding as if still pressed against the enemy.
+Both now run on the rout path (`_refresh_enemy_contact()` and `tick_engaged(delta)` inside the `ROUTING` branch).
+
+- **Do:** when adding per-tick upkeep (a latch decay, a cache refresh, a cooldown), decide whether routers need it,
+  put it on the rout path if so, and grep the sibling per-tick calls below the return for the same omission.
+
+- **Don't:** assume code placed in the normal path of `_physics_process` covers every state.
+
+(`Lacaedemon/sparta` PR #1746, 2026-10-09.)
