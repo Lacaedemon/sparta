@@ -1,6 +1,6 @@
 ## Moving state from a flag into a cache inherits every invalidation of that cache
 
-PR #1763's first fix for #1751 baked the about-face mirror into `_sim_soldier_row_slot` and cleared the flag.
+PR #1763's first fix for #1751 baked the about-face mirror into the slot assignment (file ids and the row and square pairings) and cleared the flag.
 Review found that `formation_slots` drops that cache on a frontage resize, a ranks-closed narrowing, and any regiment-path casualty (a size mismatch).
 Each of those falls back to an identity grid, so the flank swap was postponed, not removed.
 
@@ -25,12 +25,15 @@ On PR #1763 a new bake in `set_current_order` negated the offset just written, s
 
 PR #1762's rally halt (#1749) hands the flight speed to the idle coast.
 Its terrain, enemy, and `retreat_bounds` checks ran only at the hand-off.
-Review found `_approach_velocity` at flee pace for about 5.5 s and 30 m (horse), which feeds `UnitCombat.charge_multiplier` if an enemy arrives mid-coast.
+Review found that `_approach_velocity` stays near flee pace through the coast (a horse pulls up in about 30 m).
+`UnitCombat.charge_multiplier` reads `_approach_velocity`, so an enemy arriving mid-coast would meet a charge bonus.
 Two more findings had the same shape.
 A speed-cap exemption tied to "until every body is at rest" outlived the pull-up and uncapped the whole reform.
 A body acceleration raise applied in every direction, not only to braking.
 
-- **Do:** scope a new state's exemptions to the physical phase they model (anchor speed above zero), and list what reads the carried quantity (approach velocity feeds the charge bonus) so it is re-checked during the state.
+- **Do:** scope a new state's exemptions to the physical phase they model (anchor speed above zero).
+
+- **Do:** list what reads the carried quantity (approach velocity feeds the charge bonus), and re-check those readers during the state.
 
 - **Don't:** gate a cap exemption on an "all bodies at rest" condition that friendly steering can keep false indefinitely.
 
@@ -39,7 +42,7 @@ A body acceleration raise applied in every direction, not only to braking.
 ## A rally hand-off coast changes DemoDefects' superphysical baseline
 
 PR #1762 needed a `rally_halting` dump field and a flee-pace allowance in DemoDefects.
-A suggested `max(cap, anchor speed)` allowance falsely flagged `morale_recovery`, where re-paired men keep about 110 wu/s while the anchor brakes to 77.
+A suggested `max(cap, anchor speed)` allowance falsely flagged `morale_recovery`, where re-paired men keep about 110 wu/s while the anchor brakes well below that.
 
 - **Do:** limit a DemoDefects allowance to the window the new state actually covers (here, the coast).
 
@@ -62,8 +65,8 @@ A delta against `main` is blind to that by construction.
 
 ## Briefs: gate `tools/check.sh` behind the coordinator's review
 
-In wave 7 the briefs twice told a subagent to run `tools/check.sh` before the adversarial review.
-A review round that finds anything invalidates that run, and the suite costs 45 to 90 minutes on the wave machine.
+In wave 7 the coordinator's briefs twice told a subagent to run `tools/check.sh` before the adversarial review (caught before the suite started).
+A review round that finds anything invalidates that run, and the full suite is long (part 20 already raises its coverage timeout to 5400 seconds under load).
 
 - **Do:** end every implementation brief and every fix-round message with "commit, report the full head SHA, and stop: no push and no check.sh until I say so", and send the check.sh go-ahead only after a review with no findings.
 
