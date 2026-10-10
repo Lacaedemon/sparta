@@ -196,9 +196,10 @@ func test_cavalry_reshapes_send_no_mount_across_the_centreline() -> void:
 	_assert_no_walk_across(closing, t, "cavalry ranks closed 9 -> 4", 0.0)
 
 
-## The narrowings again on every heading the widening test uses: read back into the slot frame
-## off an axis, one old column's men stand a hair apart laterally, which is when the deal's
-## column buckets matter (see the widening test below).
+## The narrowings again on every heading the widening test uses, each bounded in depth by the
+## depth the block gains plus one rank, so no man is dealt ranks deeper than the narrowing
+## itself needs. This does not guard the deal's column buckets: removing them leaves every
+## narrowing here reading the same. Only the widening test below guards them.
 func test_narrowings_keep_their_depth_on_every_heading() -> void:
 	for heading in [Vector2.UP, Vector2.DOWN, Vector2.RIGHT, Vector2(1, 1).normalized()]:
 		var foot := _make_foot(0)
