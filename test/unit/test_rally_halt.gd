@@ -398,12 +398,14 @@ func test_an_order_mid_halt_after_an_about_face_rally_keeps_every_man_on_his_fla
 			"no man's slot is moved to the other flank by the order (%d were)" % slot_crossed)
 	var ended_after: int = -1
 	var worst_body_crossed: int = 0
-	for i in range(120):
+	for i in range(480):
 		await _advance_ticks(1)
 		worst_body_crossed = maxi(worst_body_crossed, _flank_crossings(bodies_before, centre_before,
 				router._sim_soldier_pos, router.position, lateral, half))
 		if ended_after < 0 and not router._rally_halt:
 			ended_after = i + 1
+	gut.p("order mid halt: %d slots crossed, worst %d bodies crossed, halt ended after %d ticks, worst body-slot gap now %.1f wu"
+			% [slot_crossed, worst_body_crossed, ended_after, _worst_body_slot_gap(router)])
 	assert_between(ended_after, 1, 120, "the order ends the halt (after %d ticks)" % ended_after)
 	assert_eq(worst_body_crossed, 0,
 			"no man walks across to the other flank after the order (%d did)" % worst_body_crossed)
