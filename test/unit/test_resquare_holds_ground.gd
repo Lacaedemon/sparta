@@ -251,9 +251,6 @@ func _follow_of_a_shove_during_the_turn(count: int) -> float:
 	return u.position.y - y0
 
 
-## A shove during the turn still moves the regiment, whatever the block's shape: the turn
-## only changes what the drift is measured against, not whether it is followed. Half the
-## 6 wu shove is far below what follows it when no turn is in progress.
 ## The worst distance the regiment centre stands from where it stood at the order, through an
 ## about-face in which one man dies `kill_after` ticks into the turn (or nobody, at -1).
 func _anchor_offset_with_a_casualty_mid_turn(count: int, kill_after: int, victim: int) -> float:
@@ -320,6 +317,9 @@ func test_the_turn_capture_ends_with_the_turn_or_the_order() -> void:
 	assert_true(u._turn_start_slots.is_empty(), "cancelling the order drops the capture")
 
 
+## A shove during the turn still moves the regiment, whatever the block's shape: the turn
+## only changes what the drift is measured against, not whether it is followed. Half the
+## 6 wu shove is far below what follows it when no turn is in progress.
 func test_a_shove_during_the_turn_moves_a_full_block() -> void:
 	var follow: float = await _follow_of_a_shove_during_the_turn(FULL_COUNT)
 	assert_gt(follow, 3.0, "the full block followed the shove (moved %.3f wu)" % follow)
