@@ -811,6 +811,57 @@ static func _is_numeric_value(v) -> bool:
 	return true
 
 
+## Expectation fields derived offline from a FULL record (soldiers_full plus motion_ref), for
+## claims about where each man is sent rather than where the unit is. Null when the record
+## cannot supply the field (not one of these names, or a dump without soldiers_full), which
+## check_expectations reports as uncheckable. Both read every man's body against his own
+## slot along the unit's lateral axis (its facing turned a quarter), from the unit's position:
+##
+## - slots_across_centreline: men whose slot lies across the centreline from them, each more
+##   than half a file pitch off it -- the walk through the block a reshape must not send.
+## - slot_lateral_excess: the farthest any man's slot lies sideways of the nearest point of the
+##   block's own width to him (his own lateral position when he stands inside it), in world
+##   units to 0.1. A man inside the block kept within a pitch of his place reads at most one
+##   file pitch; one outside it is measured from the block's edge, which he has to reach anyway.
+##
+## Sampled the tick after a reshape, before the men have walked, they measure the deal itself.
+static func derived_field(u: Dictionary, field: String):
+	if field != "slots_across_centreline" and field != "slot_lateral_excess":
+		return null
+	var full = u.get("soldiers_full")
+	var ref = u.get("motion_ref")
+	if not (full is Dictionary) or not (ref is Dictionary):
+		return null
+	var pos: Array = full.get("pos", [])
+	var slots: Array = full.get("slots", [])
+	# Nothing to measure, or bodies and slots out of step (a dump taken while the body layer
+	# lags the headcount): a claim about either would pass on nothing, so it is uncheckable.
+	if pos.is_empty() or pos.size() != slots.size():
+		return null
+	var centre_pair: Array = u.get("position", [])
+	var facing_pair: Array = u.get("facing", [])
+	if centre_pair.size() != 2 or facing_pair.size() != 2:
+		return null
+	var centre := Vector2(float(centre_pair[0]), float(centre_pair[1]))
+	var lateral: Vector2 = Vector2(float(facing_pair[0]), float(facing_pair[1])).normalized().orthogonal()
+	var half: float = float(ref.get("file_pitch", 0.0)) * 0.5
+	var n: int = pos.size()
+	var width: float = 0.0
+	for i in range(n):
+		width = maxf(width, absf((Vector2(slots[i][0], slots[i][1]) - centre).dot(lateral)))
+	var crossed: int = 0
+	var excess: float = 0.0
+	for i in range(n):
+		var a: float = (Vector2(pos[i][0], pos[i][1]) - centre).dot(lateral)
+		var b: float = (Vector2(slots[i][0], slots[i][1]) - centre).dot(lateral)
+		if a * b < 0.0 and absf(a) > half and absf(b) > half:
+			crossed += 1
+		excess = maxf(excess, absf(b - clampf(a, -width, width)))
+	if field == "slots_across_centreline":
+		return crossed
+	return snappedf(excess, 0.1)
+
+
 ## Evaluate declared demo intent against a dumped transcript: each expectation is
 ## {tick: N or [lo, hi], uid, field, value} and passes when the named unit's dumped
 ## record field equals the value at that tick (or at ANY snapshot inside the range --
@@ -849,10 +900,15 @@ static func check_expectations(expects: Array, snapshots: Array) -> Array:
 			for u in snap.get("units", []):
 				if int(u.get("uid", -1)) != uid:
 					continue
-				if not u.has(field):
-					continue
+				var value = null
+				if u.has(field):
+					value = u[field]
+				else:
+					value = derived_field(u, field)
+					if value == null:
+						continue
 				probed = true
-				actual = u[field]
+				actual = value
 				if _values_match(expected, actual, tol):
 					passed = true
 			if passed:

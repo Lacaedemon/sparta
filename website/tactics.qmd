@@ -639,6 +639,12 @@ A 140-man Spearmen regiment formed up into 9 files (16 ranks deep) in drill mode
 
 Cavalry regiments field a square/oblong squadron block rather than line-infantry files (@fig-cavalry-squadron-structureless). An 80-man cavalry regiment fields 9 columns (aspect ~1.0) operating as a cohesive structureless squadron block with row-major reflow instead of line-infantry file tracking.
 
+When such a block changes its width, whether you widen or narrow it
+or it closes its ranks by itself after heavy losses,
+each rider steps into the new place nearest where he stands,
+so nobody crosses the block to get there.
+The same goes for any foot regiment set to reform row-major.
+
 ::: {#fig-cavalry-squadron-structureless .demo}
 
 ```{=html}
