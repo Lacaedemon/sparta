@@ -960,6 +960,12 @@ func test_derived_slot_fields_need_a_full_record() -> void:
 			"a compact record cannot supply the field")
 	assert_null(DemoDefects.derived_field(_derived_record([], []), "state"),
 			"only the two named fields are derived")
+	for field in ["slots_across_centreline", "slot_lateral_excess"]:
+		assert_null(DemoDefects.derived_field(_derived_record([], []), field),
+				"%s: no men to measure is uncheckable, not a pass" % field)
+		assert_null(DemoDefects.derived_field(
+				_derived_record([[-15.0, 0.0], [15.0, 0.0]], [[15.0, 0.0]]), field),
+				"%s: bodies and slots out of step are uncheckable, not measured short" % field)
 	var verdicts: Array = DemoDefects.check_expectations([
 		{"tick": 60, "uid": 0, "field": "slots_across_centreline", "value": 0},
 	], [{"tick": 60, "units": [compact]}])

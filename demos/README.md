@@ -543,21 +543,28 @@ Two optional keys widen what an entry can say:
   fails rather than passing.
 
 Two more fields are derived from a FULL dump (`SPARTA_DEMO_STATE_FULL=1`, which CI's
-defect scan uses) rather than read from the compact record
-(`DemoDefects.derived_field`).
-Each compares every man's body with his own slot along the unit's lateral axis, measured
-from the unit's position, so sampled the tick after a reshape they show where the reshape
-sends the men before anyone has walked:
+defect scan uses) rather than read from the compact record (`DemoDefects.derived_field`).
+Each compares every man's body with his own slot along the unit's lateral axis,
+measured from the unit's position.
+Sampled the tick after a reshape, they show where the reshape sends the men before anyone has walked:
 
 - `slots_across_centreline` -- how many men have their slot across the unit's centreline
   from them, each more than half a file pitch off it.
-- `slot_lateral_excess` -- the farthest any man's slot lies sideways of his place, in world
-  units, rounded to 0.1. A man standing outside the new block is measured from its near
-  edge instead, since he has to come in to it anyway.
-  Pin it with `"value": 0` and a `tol` of about one file pitch.
+- `slot_lateral_excess` -- the farthest any man's slot lies sideways of his place,
+  in world units, rounded to 0.1.
+  A man standing outside the new block is measured from its near edge instead,
+  since he has to come in to it anyway.
+  Pin it with `"value": 0` and a `tol` in world units with a stated basis.
+  For a block standing on its slots, one file pitch plus a float margin (such as 0.5 wu) is enough;
+  the pitch is the unit's `motion_ref.file_pitch`, which already carries any spacing scale.
+  Men standing off their slots (scattered by a fight, or still settling) need more.
+  State how much more and why in the script's `_comment`,
+  rather than tuning the `tol` to the value one run reads.
 
-A dump without the full arrays cannot supply either field, so the expectation fails as
-uncheckable.
+A dump without the full arrays cannot supply either field.
+Neither can one whose per-soldier bodies and slots are empty or differ in count
+(a casualty the body layer has not caught up with yet).
+The expectation then fails as uncheckable rather than passing on nothing.
 
 An expectation that cannot be checked (no snapshot in range, no such unit, no such field)
 FAILS rather than skips -- an uncheckable claim is an authoring error. This is how a demo

@@ -34,6 +34,11 @@ func _make_cavalry(files: int = 0, count: int = COUNT) -> Unit:
 	u.max_soldiers = count
 	u.is_cavalry = true
 	add_child_autofree(u)
+	# The Cavalry loadout's own pitches (1 m files, 3 m ranks), which a bare Unit does not get,
+	# so the grid matches a live squadron's (the demo dumps 40 wu files and 120 wu ranks):
+	# a rank is deeper than a file is wide, as a horse is longer than broad.
+	u.file_pitch = 1.0 * WorldScale.WU_PER_M
+	u.rank_pitch = 3.0 * WorldScale.WU_PER_M
 	u.position = Vector2.ZERO
 	u.facing = Vector2.DOWN
 	u.frontage_override = files
@@ -59,16 +64,25 @@ func _stand_on_slots(u: Unit) -> void:
 ## - lateral_excess: how far each man's slot lies sideways from the nearest point of the new
 ##   block's width to him (his own lateral position when he already stands inside it). A man
 ##   inside the block keeps within a pitch of his place; one outside it comes straight in.
+## - depth_excess: the same along the depth axis (perpendicular to `lateral`), against the new
+##   block's own depth span: a man already inside it keeps within a rank of his depth, so no
+##   front-rank man is dealt a cell ranks back.
 ## - farthest: the longest walk to a slot.
 func _travel(u: Unit, bodies: PackedVector2Array, lateral: Vector2) -> Dictionary:
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var depth_axis: Vector2 = lateral.orthogonal()
 	var half: float = u.file_pitch_wu() * 0.5
 	var width: float = 0.0
+	var depth_lo: float = INF
+	var depth_hi: float = -INF
 	for s in slots:
 		width = maxf(width, absf((s - u.position).dot(lateral)))
+		depth_lo = minf(depth_lo, (s - u.position).dot(depth_axis))
+		depth_hi = maxf(depth_hi, (s - u.position).dot(depth_axis))
 	var crossed: int = 0
 	var farthest: float = 0.0
 	var excess: float = 0.0
+	var depth_excess: float = 0.0
 	for i in range(mini(bodies.size(), slots.size())):
 		farthest = maxf(farthest, bodies[i].distance_to(slots[i]))
 		var a: float = (bodies[i] - u.position).dot(lateral)
@@ -76,16 +90,27 @@ func _travel(u: Unit, bodies: PackedVector2Array, lateral: Vector2) -> Dictionar
 		if a * b < 0.0 and absf(a) > half and absf(b) > half:
 			crossed += 1
 		excess = maxf(excess, absf(b - clampf(a, -width, width)))
-	return {"crossed": crossed, "farthest": farthest, "lateral_excess": excess}
+		var ad: float = (bodies[i] - u.position).dot(depth_axis)
+		var bd: float = (slots[i] - u.position).dot(depth_axis)
+		depth_excess = maxf(depth_excess, absf(bd - clampf(ad, depth_lo, depth_hi)))
+	return {"crossed": crossed, "farthest": farthest, "lateral_excess": excess,
+			"depth_excess": depth_excess}
 
 
-## Assert no man crosses the centreline and none is sent more than a pitch sideways of his
-## place in the new block.
-func _assert_no_walk_across(u: Unit, t: Dictionary, what: String) -> void:
+## Assert no man crosses the centreline, none is sent more than `lateral_pitches` file pitches
+## sideways of his place in the new block, and (when `depth_ranks` is positive) none more than
+## that many rank pitches off his depth. A narrowing passes no depth bound: it deepens the
+## block, so its men spread rearward by design, file by file.
+func _assert_no_walk_across(u: Unit, t: Dictionary, what: String,
+		depth_ranks: float = 1.0, lateral_pitches: float = 1.0) -> void:
 	assert_eq(int(t["crossed"]), 0, "%s: %d men cross the centreline" % [what, int(t["crossed"])])
-	assert_lt(float(t["lateral_excess"]), u.file_pitch_wu() + 0.01,
+	assert_lt(float(t["lateral_excess"]), u.file_pitch_wu() * lateral_pitches + 0.01,
 		"%s: a man is sent %.1f wu sideways of his place (pitch %.1f)"
 		% [what, float(t["lateral_excess"]), u.file_pitch_wu()])
+	if depth_ranks > 0.0:
+		assert_lt(float(t["depth_excess"]), u.rank_pitch_wu() * depth_ranks + 0.01,
+			"%s: a man is sent %.1f wu off his depth (rank pitch %.1f)"
+			% [what, float(t["depth_excess"]), u.rank_pitch_wu()])
 
 
 ## Apply `regrid` to a formed block and measure the walk to the regridded slots.
@@ -135,7 +160,7 @@ func test_closing_ranks_sends_no_man_across_the_centreline() -> void:
 	var t := _regrid(u, _close_ranks)
 	assert_eq(files_open, 11, "precondition: 60 men open on 11 files")
 	assert_eq(u.formation_files(u.soldiers), 5, "precondition: closing ranks narrows to 5")
-	_assert_no_walk_across(u, t, "ranks closed 11 -> 5")
+	_assert_no_walk_across(u, t, "ranks closed 11 -> 5", 0.0)
 
 
 ## Cavalry reflows row major whatever its reform mode, so it carries the same walk: a resize and
@@ -144,14 +169,39 @@ func test_cavalry_reshapes_send_no_mount_across_the_centreline() -> void:
 	var resized := _make_cavalry(8)
 	assert_false(resized._effective_file_major_reform(), "precondition: cavalry is row major")
 	var t := _regrid(resized, func(b: Unit) -> void: b.set_frontage(5))
-	_assert_no_walk_across(resized, t, "cavalry resize 8 -> 5")
+	_assert_no_walk_across(resized, t, "cavalry resize 8 -> 5", 0.0)
 	var closing := _make_cavalry(0, 80)
 	var files_open: int = closing.formation_files(closing.soldiers)
 	t = _regrid(closing, _close_ranks)
 	assert_eq(files_open, 9, "precondition: 80 mounts open on 9 files")
 	assert_eq(closing.formation_files(closing.soldiers), 4,
 		"precondition: closing ranks narrowed the squadron to 4")
-	_assert_no_walk_across(closing, t, "cavalry ranks closed 9 -> 4")
+	_assert_no_walk_across(closing, t, "cavalry ranks closed 9 -> 4", 0.0)
+
+
+## A widening by one file, the demo's left squadron: 46 mounts from 7 files to 8. A lateral-file
+## deal hands each new file one old column's rear and the next one's front, so it sent a
+## front-rank mount ranks back (180 wu on the squadron's own 60 wu ranks). Every mount stays
+## within a rank of his depth and a pitch of his place.
+##
+## The deal sorts the men laterally, and one column's men stand a hair apart laterally: float
+## residue, from reading them back into the slot frame (a diagonal heading here) or from the sim
+## itself (the demo squadron's columns agree to the dump's 0.01 wu). An exact lateral sort
+## ordered each column by that hair instead of by depth; bucketing lateral position into
+## half-pitch steps fixes it. Without the buckets the diagonal foot block reads 27 wu here.
+func test_a_widening_keeps_every_mount_near_his_depth() -> void:
+	for heading in [Vector2.UP, Vector2.DOWN, Vector2.RIGHT, Vector2(1, 1).normalized()]:
+		var u := _make_cavalry(7, 46)
+		u.facing = heading
+		assert_eq(u.rank_pitch_wu(), 3.0 * u.file_pitch_wu(), "precondition: ranks three files deep")
+		var t := _regrid(u, func(b: Unit) -> void: b.set_frontage(8))
+		assert_eq(u.formation_files(u.soldiers), 8, "precondition: widened to 8 files")
+		_assert_no_walk_across(u, t, "cavalry facing %s widened 7 -> 8" % heading)
+		for f in range(1, 4):
+			var g := _make_foot(8 + f)
+			g.facing = heading
+			_assert_no_walk_across(g, _regrid(g, func(b: Unit) -> void: b.set_frontage(9 + f)),
+					"foot facing %s widened %d -> %d" % [heading, 8 + f, 9 + f])
 
 
 ## The deal is a re-labelling: the block's footprint is the grid's, cell for cell.
@@ -277,11 +327,18 @@ func test_an_absorb_after_a_resize_deals_the_newcomers_in() -> void:
 		SoldierBodies.step(u, 1.0 / 60.0)
 	assert_eq(u._sim_soldier_pos.size(), u.soldiers, "precondition: the body layer holds them")
 	assert_eq(u._sim_soldier_row_slot.size(), u.soldiers, "the pairing covers the whole block")
-	_assert_no_walk_across(u, _travel(u, bodies, lateral), "absorb after a resize")
+	# The newcomers still stand where they spawned, 200 wu off the block, and are dealt in with
+	# the rest. Measured, one file's own men shift up to 27 wu (a rank and a half) along it:
+	# a rank for a newcomer dealt into that file, and the half rank the grid re-centres by as
+	# it gains a rank.
+	_assert_no_walk_across(u, _travel(u, bodies, lateral), "absorb after a resize", 1.5)
 
 
 ## An ordinary per-soldier casualty keeps the deal: SoldierMelee.reap trims the pairing at the
-## dead man's own index, and the next query leaves that trim as it is.
+## dead man's own index, and the next query leaves that trim as it is. The trim renumbers every
+## cell behind the dead man's, so a row-major rank's first man behind him steps to the far end
+## of the rank ahead; this pins only that the deal does not undo or redo the trim.
+## TODO(#1781): the reap cascade itself walks men across the block.
 func test_a_per_soldier_casualty_after_a_resize_keeps_the_deal() -> void:
 	var u := _make_foot(8)
 	_stand_on_slots(u)
@@ -308,7 +365,8 @@ func test_closing_ranks_under_an_armed_mirror_sends_no_man_across() -> void:
 		_about_face_and_resquare(u, true)
 		assert_true(u._formation_mirror_x, "precondition: the mirror is armed")
 		var t := _regrid(u, _close_ranks)
-		_assert_no_walk_across(u, t, "cavalry %s, ranks closed under an armed mirror" % u.is_cavalry)
+		_assert_no_walk_across(u, t, "cavalry %s, ranks closed under an armed mirror" % u.is_cavalry,
+				0.0)
 
 
 ## The same block once a fresh order has baked its mirror into the assignment, then resized:
@@ -356,7 +414,9 @@ func test_a_hold_ground_re_square_over_a_pending_reshape_moves_nobody() -> void:
 	u.frontage_override = 7   # no query between this and the re-square
 	assert_true(u.reform_ranks(true), "precondition: the about-face fold re-squares")
 	var t: Dictionary = _travel(u, bodies, lateral)
-	_assert_no_walk_across(u, t, "hold ground over a pending reshape")
+	# The re-square reflects the grid in depth and the new grid is a rank deeper, so the short
+	# rear rank's men, now at the front, step a rank and a half back into the new front ranks.
+	_assert_no_walk_across(u, t, "hold ground over a pending reshape", 1.5)
 	assert_lt(float(t["farthest"]), u.file_pitch_wu() * 4.0,
 		"no man walks the block's depth (farthest %.1f wu)" % float(t["farthest"]))
 
@@ -385,6 +445,34 @@ func test_a_dealt_pairing_takes_no_flank_arcs_under_a_reform_hold() -> void:
 		u._sim_soldier_pos[i] = u.position
 	var slots: PackedVector2Array = u.formation_slots(COUNT, false)
 	assert_eq(slots, UnitFormation.permute_slots(UnitFormation.slots(u, COUNT), pairing),
+		"every man's slot is the dealt cell, unbowed")
+
+
+## A quarter-fold re-square deals its pairing from where the men stand too, so it is tagged as
+## dealt and its reform hold takes no arcs either (the gate itself is the test above).
+func test_a_quarter_fold_pairing_takes_no_flank_arcs_under_its_reform_hold() -> void:
+	var u := _make_foot(8)
+	_stand_on_slots(u)
+	# A settled quarter-turn drill: the facing turns and the grid folds the turn back.
+	var leaf: Order = Order.new_quarter_turn(1)
+	u.set_current_order(leaf)
+	leaf.turn_start_facing = u.facing
+	u.facing = u.facing.rotated(PI * 0.5)
+	u._settle_order_turn()
+	_stand_on_slots(u)
+	assert_almost_eq(absf(u._formation_angle), PI * 0.5, 0.001, "precondition: a quarter fold")
+	assert_true(u.reform_ranks(true), "precondition: the quarter fold re-squares")
+	assert_true(u._row_slot_dealt, "the quarter-fold pairing is tagged as dealt")
+	var pairing: PackedInt32Array = u._sim_soldier_row_slot.duplicate()
+	assert_eq(pairing.size(), COUNT, "precondition: the fold was re-paired")
+	if u.active_leaf() == null:
+		u.set_current_order(Order.new_move(u.position + u.facing * 200.0))
+	u.active_leaf().reform_timer = 1.0
+	assert_true(u._reform_holding(), "precondition: a reform hold")
+	for i in range(COUNT):
+		u._sim_soldier_pos[i] = u.position
+	assert_eq(u.formation_slots(COUNT, false),
+		UnitFormation.permute_slots(UnitFormation.slots(u, COUNT), pairing),
 		"every man's slot is the dealt cell, unbowed")
 
 

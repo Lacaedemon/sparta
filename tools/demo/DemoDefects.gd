@@ -834,6 +834,10 @@ static func derived_field(u: Dictionary, field: String):
 		return null
 	var pos: Array = full.get("pos", [])
 	var slots: Array = full.get("slots", [])
+	# Nothing to measure, or bodies and slots out of step (a dump taken while the body layer
+	# lags the headcount): a claim about either would pass on nothing, so it is uncheckable.
+	if pos.is_empty() or pos.size() != slots.size():
+		return null
 	var centre_pair: Array = u.get("position", [])
 	var facing_pair: Array = u.get("facing", [])
 	if centre_pair.size() != 2 or facing_pair.size() != 2:
@@ -841,7 +845,7 @@ static func derived_field(u: Dictionary, field: String):
 	var centre := Vector2(float(centre_pair[0]), float(centre_pair[1]))
 	var lateral: Vector2 = Vector2(float(facing_pair[0]), float(facing_pair[1])).normalized().orthogonal()
 	var half: float = float(ref.get("file_pitch", 0.0)) * 0.5
-	var n: int = mini(pos.size(), slots.size())
+	var n: int = pos.size()
 	var width: float = 0.0
 	for i in range(n):
 		width = maxf(width, absf((Vector2(slots[i][0], slots[i][1]) - centre).dot(lateral)))

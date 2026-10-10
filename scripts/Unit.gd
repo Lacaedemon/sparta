@@ -5543,10 +5543,12 @@ var _square_slot_files: int = -1
 # The last two are dealt from where the men stand (UnitFormation.pair_slots_by_lateral_file,
 # and for a file-count change UnitFormation.pair_slots_rear_rank_first).
 #
-# Carried through a casualty by SoldierMelee.reap()'s index-aligned trim, exactly like
-# _sim_soldier_square_slot, so a man keeps his cell as the block takes losses. A regiment-path
-# casualty, which never says who died, or an absorb that adds men re-deals it from the bodies
-# instead (see _ensure_row_slot_assignment).
+# Carried through a per-soldier casualty by SoldierMelee.reap()'s index-aligned trim
+# (UnitFormation.drop_slot_assignment), exactly like _sim_soldier_square_slot. That trim
+# renumbers the cells behind the dead man's: every man behind the vacancy steps one cell on,
+# which in a row-major grid sends a rank's first man to the far end of the rank ahead. A
+# regiment-path casualty, which never says who died, or an absorb that adds men re-deals it
+# from the bodies instead (see _ensure_row_slot_assignment).
 var _sim_soldier_row_slot: PackedInt32Array = PackedInt32Array()
 # The file count _sim_soldier_row_slot was paired against. A mismatch against the current
 # formation_files(count) means the grid has genuinely reshaped, so the cells the pairing names
@@ -5558,10 +5560,11 @@ var _row_slot_files: int = -1
 # tells _ensure_row_slot_assignment that a block which never paired has changed its file
 # count. -1 = never laid out yet, so the first layout is the identity grid the bodies seed from.
 var _row_layout_files: int = -1
-# Whether _sim_soldier_row_slot was dealt by _ensure_row_slot_assignment from where the men
-# stood. The traverse flank arcs a reform hold bends men's paths with read a pairing as a
-# depth reflection (a man on his own cell index is one the reflection left to walk the
-# block's depth), which a lateral deal is not, so they skip a dealt pairing.
+# Whether _sim_soldier_row_slot was dealt from where the men stood (a file-count or headcount
+# change, or a quarter-fold re-square) rather than composed from a depth reflection. The
+# traverse flank arcs a reform hold bends men's paths with read a pairing as a depth
+# reflection (a man on his own cell index is one the reflection left to walk the block's
+# depth), which a lateral deal is not, so they skip a dealt pairing.
 var _row_slot_dealt: bool = false
 
 # Per-soldier facing (the drill-maneuver foundation), index-aligned with
@@ -6106,11 +6109,11 @@ func _ensure_row_slot_assignment(count: int, files: int, grid: PackedVector2Arra
 				unmirrored_anchor_offset())
 		_sim_soldier_row_slot = _composed_pairing(
 				UnitFormation.lateral_reflection_pairing(count, files),
-				UnitFormation.pair_slots_rear_rank_first(
-						live, unmirrored_grid, files, rank_pitch_wu() * 0.5))
+				UnitFormation.pair_slots_rear_rank_first(live, unmirrored_grid, files,
+						rank_pitch_wu() * 0.5, file_pitch_wu() * 0.5))
 	else:
 		_sim_soldier_row_slot = UnitFormation.pair_slots_rear_rank_first(
-				live, grid, files, rank_pitch_wu() * 0.5)
+				live, grid, files, rank_pitch_wu() * 0.5, file_pitch_wu() * 0.5)
 	_row_slot_files = files
 	_row_slot_dealt = true
 	_row_layout_files = files
@@ -6834,7 +6837,7 @@ func _pair_after_quarter_fold(count: int) -> void:
 	_sim_soldier_row_slot = UnitFormation.pair_slots_by_lateral_file(
 			live, UnitFormation.slots(self, count), files)
 	_row_slot_files = files
-	_row_slot_dealt = false
+	_row_slot_dealt = true
 	_row_layout_files = files
 
 
