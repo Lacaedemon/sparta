@@ -1,32 +1,37 @@
-## A cache-invalidation sweep must cover the paths that grow the block, not only those that shrink it
+## A cache-invalidation sweep must also cover the paths that grow the block
 
-PR #1778 (#1768) made every resized row-major block hold a dealt `_sim_soldier_row_slot` pairing.
-Its first version re-dealt only when the pairing outgrew the block, so an `absorb()` at an unchanged file count left the pairing shorter than the block.
-`formation_slots` then fell back to the identity grid and never re-dealt, which walked men across the centreline again.
-The implementer had listed merge and reinforcement as "same as main", which stopped being true once a resize left a pairing behind.
+Part 21 says that moving state into a cache inherits every invalidation of that cache.
+PR #1778 (#1768) adds the other direction.
+Its first version made every resized row-major block hold a dealt `_sim_soldier_row_slot` pairing,
+but re-dealt only when the pairing was longer than the block (a casualty).
+An `absorb()` at an unchanged file count left the pairing shorter than the block,
+so `formation_slots` dropped the block to the identity layout.
 
-- **Do:** list the size-changing paths in both directions (casualty, `reap`, `absorb`/merge, reinforcement), trigger on any size mismatch, and test the growing case.
+- **Do:** list the size-changing paths in both directions (casualty, `reap`, `absorb` or merge, reinforcement), trigger on any size mismatch, and test the growing case.
 
-- **Don't:** carry "same as main" forward for a path whose precondition the fix itself changed.
+- **Don't:** assume a path behaves as on main once the fix has changed what state that path finds.
 
 (`Lacaedemon/sparta` PR #1778, 2026-10-10.)
 
-## A test margin justified as float noise can hide a real mover
+## A crossing threshold can hide a man who really crosses
 
-A crossing test on PR #1778 used half a file pitch plus 0.01 wu as its threshold and called the margin float noise.
-The margin excluded a rear-rank man who really walked across the centre, so the test read zero crossings on a deal that still crossed.
+A crossing test in PR #1778's first version counted a man as crossing only when he and his new slot each stood more than half a file pitch off the centreline.
+Two rear-rank men walked 36 wu across the block, and the half-pitch threshold excluded them,
+so the test read zero crossings.
+The fix dropped the margin and added a bound on each man's lateral travel.
 
-- **Do:** bound each man's travel as well as counting threshold crossings, and justify any margin by naming the man it excludes.
+- **Do:** bound each man's travel as well as counting threshold crossings, and name the men any threshold excludes.
 
-- **Don't:** widen a threshold until the branch reads zero.
+- **Don't:** accept a threshold just because the branch reads zero under it.
 
 (`Lacaedemon/sparta` PR #1778, 2026-10-10.)
 
 ## A skip keyed on a phase predicate covers every block in that phase
 
 PR #1776's (#1774) first version skipped `SoldierBodies.couple()` whenever `is_order_turning()` was true.
-That also froze blocks with full ranks, which have no phantom drift to suppress, so a shove during their turn was no longer followed.
-It also covered the order-response delay, because `turn_target` is armed when the order is issued, before the visible turn starts.
+The skip also froze blocks with full ranks, which have no phantom drift to suppress,
+so a shove during their turn was no longer followed.
+The skip also covered the order-response delay, because `turn_target` is armed when the order is issued.
 The merged fix measures drift against the slots as they stood when the turn began, instead of skipping.
 
 - **Do:** gate a sim change on the defect's own precondition, and probe both a block without that precondition and the window before the visible phase starts.
@@ -35,74 +40,80 @@ The merged fix measures drift against the slots as they stood when the turn bega
 
 (`Lacaedemon/sparta` PR #1776, 2026-10-10.)
 
-## A getter that can mutate is a hidden ordering dependency
+## A getter that gains a side effect is a hidden ordering dependency
 
-PR #1778 made `soldier_world_slots()` lazily re-deal a row-major pairing on the first query after a reshape.
-PR #1776's `reform_ranks` read the slots before arming the about-face mirror, so once both had merged that read dealt the pairing in the wrong frame.
-The auto-merge was textually clean, and each PR's own tests were green on its own branch.
-The semantic review of the merge commit found it, and the same review found the square branch had always had the read-before-mirror bug.
-The fix (`Unit._slot_deal_pending`) skips the early read whenever any layout has a deal pending.
+PR #1778 made `soldier_world_slots()` re-deal a row-major pairing on the first query after a reshape.
+PR #1776's `reform_ranks` read the slots before arming the about-face mirror,
+so once #1778 merged, that read dealt the pairing in the wrong frame.
+A review of the merge commit's meaning, not its text, found it.
+The same review found the square branch already dealt before the mirror on main.
+The fix skips the early read whenever `Unit._slot_deal_pending` (a side-effect-free predicate) is true.
 
 - **Do:** when a getter gains a side effect, grep every caller in open sibling branches, and review the merge commit for meaning, not only for conflicts.
 
-- **Do:** take a capture from a read that cannot mutate state.
+- **Do:** guard a capture that must not mutate state with a side-effect-free predicate such as `_slot_deal_pending`.
 
-- **Don't:** treat a conflict-free auto-merge plus green per-PR tests as evidence that two sim changes compose.
+- **Don't:** treat a conflict-free merge as evidence that two sim changes compose.
 
 (`Lacaedemon/sparta` PRs #1776 and #1778, 2026-10-10.)
 
-## A facing or grid hold has a cost no defect verdict measures
+## A facing hold can cost combat that no defect verdict reports
 
-PR #1790 (#1757) holds a fighting block's facing while a router is inside it, so the slot grid does not swing after the router.
-The defect delta reads the result as clean, because no verdict measures where a block faces against its target.
-But a router that lingers among the ranks keeps the block's front off it, and the block lands fewer blows; the measurements are on #1793.
+PR #1790 (#1757) holds a fighting block's facing while a router is inside it,
+so the slot grid does not swing after the router.
+In the `charge` clip a router lingers inside an archer block,
+whose front then stays off it; the router keeps 8 men at ticks 1460 and 1500, against 6 on main.
+Three ways of bounding the hold each broke another clip's formation, so the hold was kept and the cost recorded on #1793.
 
-- **Do:** when a change holds a facing or a grid, measure what it costs in combat (strikers in reach, casualties dealt), and record any cost you accept on a tracking issue.
+- **Do:** when a change holds a facing or a grid, measure what it costs in combat (for example, the casualties the enemy takes), and record any cost you accept on a tracking issue.
 
-- **Don't:** read "no new defects" as "no behaviour change" for a change that alters facing.
+- **Don't:** take a clean defect delta as evidence that combat outcomes did not change.
 
 (`Lacaedemon/sparta` PR #1790 and issue #1793, 2026-10-10.)
 
 ## Do not move a demo's staging to where the fix looks clean
 
-After a review found PR #1784's (#1748) demo still shed its front rank against the hill, the next round moved the hill further from the block.
-The re-staged clip passed, but the close start the review had measured was still unsolved.
-The merged PR keeps the re-staged demo, adds a unit test that pins the close-start case's improvement over main, says in the caption how far the block starts from the hill, and tracks the rest in #1787.
+After a review found that PR #1784's (#1748) demo still shed its front rank against the hill,
+the next round moved the hill further from the block.
+The merged PR keeps the re-staged demo but adds a unit test that pins the close-start case's improvement over main,
+says in the caption how far the block starts from the hill, and tracks the rest in #1787.
+Part 20's rule against choosing sample ticks by their verdict applies to staging too.
 
-- **Do:** keep the case the review found as a test or an expect, and caption the clip with the staging it actually uses.
+- **Do:** keep the case a review found as a test or an expect, and caption the clip with the staging it actually uses.
 
-- **Don't:** answer a review finding by changing the staging until the verdict passes; that is the sample-tick anti-pattern in another form.
+- **Don't:** answer a review finding by changing the staging until the verdict passes.
 
 (`Lacaedemon/sparta` PR #1784 and issue #1787, 2026-10-10.)
 
 ## Measure a relayed "main does this too" before filing it as pre-existing
 
-Twice in wave 8 an implementer's out-of-scope note said main had the same defect, and the coordinator filed it as pre-existing.
-Both times a later review showed the defect came mostly from the PR's own change: #1783 (an idle squadron's drift after a widen) and #1791 (a showcase block's re-square, which PR #1790's first version caused).
-Both issues were corrected in comments.
+Twice in wave 8 an implementer's note said main had the same defect, and it was filed as pre-existing.
+Both times a later review showed the headline figures came from the PR's own change,
+and a smaller residual remained on main.
+#1783 was narrowed to a 10-15 wu drift on main after the 53 wu creep turned out to be PR #1778's own regression.
+#1791's first figures came from PR #1790's superseded first version; its later comment gives main's own figures.
 
-- **Do:** file a relayed out-of-scope defect only after the reviewer, or a dump of the base tree, has measured it on main, and mark it as relayed until then.
+- **Do:** file a relayed out-of-scope defect only after the reviewer, or a dump of the base tree, has measured it on main, and mark the figures as relayed until then.
 
-- **Don't:** file an implementer's "also on main" as fact; it is the claim most likely to hide the implementer's own regression.
+- **Don't:** file an implementer's "also on main" as measured fact,
+  because it is the claim most likely to hide the implementer's own regression.
 
 (`Lacaedemon/sparta` issues #1783 and #1791, 2026-10-10.)
 
-## Wave hygiene: scratch directories, cheap checks, and cancelled runs
+## Run the cheap `tools/check.sh` targets on every handback
 
-Three process misses from wave 8:
+Two review rounds on PR #1776 read a docs rewording without running `tools/check.sh markdown`,
+and the lines missing semantic breaks surfaced only on a later doc-only fix.
+The markdown checks examine only committed lines, so a run before `git commit` passes vacuously,
+and the semantic-line-break check skips `.qmd` files (#1773).
+On PR #1778, cancelled `demo`, `benchmark` and `demo-diff` runs sat beside successful reruns on the same head,
+and were at first misread as leftovers from an earlier push.
 
-- Two concurrent agents shared the session scratchpad, and one agent's catalog run deleted the other's merge-base transcripts because they used the same file names.
+- **Do:** have both the implementer and the reviewer run `tools/check.sh chars comments markdown units file_length` on the committed head at every handback,
+  as a supplement to the full target list in part 20, and check `.qmd` line breaks by hand while #1773 is open.
 
-- Two review rounds on PR #1776 read a docs rewording without running `tools/check.sh markdown`; the lines missing semantic breaks surfaced only on a later doc-only fix.
+- **Do:** read `commits/<sha>/check-runs` for the head before explaining a cancelled or failing row, and gate any clean claim on `check-pr-fully-clean.py` (see part 08).
 
-- On PR #1778, cancelled `demo`, `benchmark` and `demo-diff` runs were described as leftovers from an earlier push, but they were duplicates on the same head, started by marking the PR ready right after the push.
+- **Don't:** leave prose-format checks to the full suite, where a failure costs a full re-run.
 
-- **Do:** name a separate scratch subdirectory for each concurrent agent in its brief, and forbid deletes outside it.
-
-- **Do:** have both the implementer and the reviewer run `tools/check.sh chars comments markdown units file_length` (seconds) at every handback, and check `.qmd` line breaks by hand while #1773 is open.
-
-- **Do:** read `commits/<sha>/check-runs` for the head before explaining a cancelled or failing row, and gate any clean claim on `check-pr-fully-clean.py`.
-
-- **Don't:** leave prose-format checks to the full suite, where a failure costs a full re-run (about 45 minutes on the wave machine).
-
-(`Lacaedemon/sparta` PRs #1776, #1778 and #1790, 2026-10-10.)
+(`Lacaedemon/sparta` PRs #1776 and #1778, 2026-10-10.)
