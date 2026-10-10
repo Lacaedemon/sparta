@@ -16,8 +16,7 @@ so `formation_slots` dropped the block to the identity layout.
 ## A crossing threshold can hide a man who really crosses
 
 A crossing test in PR #1778's first version counted a man as crossing only when he and his new slot each stood more than half a file pitch off the centreline.
-Two rear-rank men walked 36 wu across the block, and the half-pitch threshold excluded them,
-so the test read zero crossings.
+Two rear-rank men walked 36 wu across the block, and the half-pitch threshold excluded them.
 The fix dropped the margin and added a bound on each man's lateral travel.
 
 - **Do:** bound each man's travel as well as counting threshold crossings, and name the men any threshold excludes.
@@ -91,9 +90,9 @@ Part 20's rule against choosing sample ticks by their verdict applies to staging
 Twice in wave 8 an implementer's note said main had the same defect, and it was filed as pre-existing.
 Both times a later review showed the headline figures came from the PR's own change,
 and a smaller residual remained on main.
-#1783 was narrowed to a 10-15 wu drift on main after the 53 wu creep turned out to be PR #1778's own regression.
+#1783 was narrowed to a residual of about 15 wu on main (about 10 wu on the branch) after the 53 wu creep turned out to be PR #1778's own regression.
 #1791's first figures came from PR #1790's superseded first version.
-Its later comment gives main's own figures.
+#1791's later comment gives main's own figures.
 
 - **Do:** file a relayed out-of-scope defect only after the reviewer, or a dump of the base tree, has measured it on main, and mark the figures as relayed until then.
 
@@ -109,7 +108,7 @@ and the lines missing semantic breaks surfaced only on a later doc-only fix.
 The markdown checks examine only committed lines, so a run before `git commit` passes vacuously,
 and the semantic-line-break check skips `.qmd` files (#1773).
 On PR #1778, cancelled `demo`, `benchmark` and `demo-diff` runs sat beside successful reruns on the same head,
-and were at first misread as leftovers from an earlier push.
+which a PR-level check list does not show.
 
 - **Do:** have both the implementer and the reviewer run `tools/check.sh chars comments markdown units file_length` on the committed head at every handback,
   as a supplement to the full target list in part 20, and check `.qmd` line breaks by hand while #1773 is open.
