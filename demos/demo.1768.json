@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/row-major-reshape-deal-1768.json",
+  "caption": "Cavalry changes its file count without walking through itself. The squadron on the left is widened from 7 files to 8 by the player; the one on the right, shot down to half strength by archers, closes its ranks from 7 files to 3 on its own. Each mount takes the new place nearest the one he stands in. Before this fix both squadrons handed out the new places in roster order, which sent 17 of the left squadron's 46 mounts and 5 of the right one's 19 across their own block.",
+  "fixed_fps": 30,
+  "max_frames": 240,
+  "fps": 15,
+  "width": 720
+}

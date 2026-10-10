@@ -626,19 +626,24 @@ func test_row_major_pairing_is_re_dealt_when_the_frontage_reshapes() -> void:
 		var reshaped: PackedVector2Array = u.formation_slots(u.soldiers)
 		var plain: PackedVector2Array = UnitFormation.slots(u, u.soldiers)
 		assert_eq(reshaped.size(), plain.size(), "same soldier count either way")
-		var expected: PackedVector2Array = plain
-		if has_bodies:
-			expected = UnitFormation.permute_slots(plain,
-					UnitFormation.pair_slots_by_lateral_file(live, plain, 10))
-			assert_eq(u._row_slot_files, 10, "the new pairing records the new frontage")
-		else:
-			assert_eq(u._sim_soldier_row_slot.size(), 0, "with no bodies, no pairing is held")
 		assert_ne(reshaped, UnitFormation.permute_slots(plain, old_pairing),
 			"bodies %s: the old pairing is not reinterpreted on the new grid" % has_bodies)
+		if not has_bodies:
+			assert_eq(u._sim_soldier_row_slot.size(), 0, "with no bodies, no pairing is held")
+			assert_eq(reshaped, plain, "with no bodies, soldier i takes cell i")
+			continue
+		assert_eq(u._row_slot_files, 10, "the new pairing records the new frontage")
+		var cells := {}
+		for c in u._sim_soldier_row_slot:
+			cells[c] = true
+		assert_eq(cells.size(), u.soldiers, "the new pairing gives every man a cell of his own")
+		# Both read in the slot frame, so a sign change is a man sent across the block.
+		var half: float = u.file_pitch_wu() * 0.5
 		for i in range(reshaped.size()):
-			assert_eq(reshaped[i], expected[i],
-				"bodies %s: soldier %d takes the dealt cell (or the identity cell without bodies)"
-				% [has_bodies, i])
+			var crosses: bool = live[i].x * reshaped[i].x < 0.0 \
+					and absf(live[i].x) > half and absf(reshaped[i].x) > half
+			assert_false(crosses, "soldier %d is dealt a cell on his own side (%.1f -> %.1f)"
+					% [i, live[i].x, reshaped[i].x])
 
 
 ## The row-major pairing must not leak into the file-major branch, which cancels the same

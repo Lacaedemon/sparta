@@ -1,0 +1,29 @@
+{
+  "_comment": "Two cavalry squadrons change their file count with their mounts formed, and no mount is sent across his own block. Cavalry always reforms row major. Left (uid 0): a 46-mount squadron on 7 files, facing north at (420, 420), is selected at tick 10 and widened to 8 files with ] at tick 30. Right (uid 1): a 40-mount squadron on 7 files, facing east at (1050, 440), stands under bow fire from a 40-man Archers regiment at (1050, 190) whose reach the scenario stretches to 300 wu; its morale floor under fire is 50, so it holds. At tick 307 the fourth volley takes it to 19 of 40 mounts, at or under half strength, and at tick 308 it closes its ranks from 7 files to 3 by itself. all_teams_control and drill keep both sides under test control. slots_across_centreline and slot_lateral_excess are read from the full dump the tick after each change, before the mounts have moved (DemoDefects.derived_field). Measured on the merge-base, the widening sent 17 of the 46 mounts to a slot across the squadron (one 260 wu sideways of his place), and the ranks-closed narrowing sent 5 of the 19 (one 80 wu off). Here no mount is sent across either squadron, and none more than about a file pitch (40 wu) sideways of his place: 40.0 wu after the widening and 44.5 wu after the narrowing, whose mounts already stood scattered by the volleys. Each slots_across_centreline and slot_lateral_excess pin below fails on the merge-base.",
+  "seed": "17680",
+  "drill": true,
+  "all_teams_control": true,
+  "scenario": [
+    {"team": 1, "type": "Cavalry", "x": 420, "y": 420, "count": 46, "facing": [0, -1]},
+    {"team": 1, "type": "Cavalry", "x": 1050, "y": 440, "count": 40, "facing": [1, 0], "under_fire_morale_floor": 50.0},
+    {"team": 0, "type": "Archers", "x": 1050, "y": 190, "count": 40, "facing": [0, 1], "missile_range": 300}
+  ],
+  "camera": [
+    {"tick": 0, "x": 735, "y": 380, "zoom": 0.9}
+  ],
+  "steps": [
+    {"tick": 10, "click": [420, 420]},
+    {"tick": 30, "key": "BracketRight"}
+  ],
+  "state": [8, 29, 31, 60, 90, 120, 150, 180, 210, 240, 270, 300, 307, 308, 330, 360, 390, 420, 450, 480],
+  "frames": [29, 31, 120, 307, 308, 420],
+  "expect": [
+    {"tick": 31, "uid": 0, "field": "frontage", "value": 8},
+    {"tick": 31, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 31, "uid": 0, "field": "slot_lateral_excess", "value": 0, "tol": 40},
+    {"tick": 308, "uid": 1, "field": "frontage", "value": 3},
+    {"tick": 308, "uid": 1, "field": "soldiers", "value": 19},
+    {"tick": 308, "uid": 1, "field": "slots_across_centreline", "value": 0},
+    {"tick": 308, "uid": 1, "field": "slot_lateral_excess", "value": 0, "tol": 48}
+  ]
+}

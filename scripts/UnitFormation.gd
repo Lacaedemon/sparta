@@ -446,6 +446,83 @@ static func pair_slots_by_lateral_file(positions: PackedVector2Array,
 	return perm
 
 
+## pair_slots_by_lateral_file for a row-major grid whose short rear rank is dealt on its own:
+## the deepest men take the rear rank's cells in lateral order, and the rest are dealt onto the
+## full ranks by lateral file.
+##
+## The plain deal buckets a short rear rank's cells by index modulo `files`, so they join the
+## LEFT-hand files' columns, while `block_slots` lays those cells out centred. A man dealt into
+## a left file's column can then be sent to a rear cell well to the right of him, and the men
+## of a short rear rank trade sides on their way back into one: measured on a 60-man block
+## resized from 8 files to 7, both rear ranks hold four men at the same four lateral
+## positions, yet two of them walked 36 wu across the block to trade places.
+##
+## The rear rank's men are the `k` deepest (largest slot-frame y), nearest the rear cells'
+## centre on a tie, then lowest index. On a block standing formed, that is the rank already at
+## the rear, so a reshape that keeps a short rear rank of the same length leaves each of its
+## men on his own lateral position. The full ranks hold `files` cells each, so their own deal
+## has no short rank to misplace. Pure and deterministic, like the deal it wraps.
+##
+## Depth is compared in steps of `depth_quantum` (rounded), so men of one rank whose depths
+## differ only by float residue tie and fall to the centre rule: measured on an about-faced
+## block, its rank stood at 63.0 and 63.00001, and an exact comparison picked the two flank men
+## of an 8-man rank for a 4-cell rear rank centred 36 wu away from them. Half a rank pitch puts
+## every rank of a block_slots grid on a whole step. 0 compares exactly.
+static func pair_slots_rear_rank_first(positions: PackedVector2Array,
+		slots: PackedVector2Array, files: int, depth_quantum: float = 0.0) -> PackedInt32Array:
+	var n: int = positions.size()
+	if n <= 0 or files <= 0 or slots.size() != n:
+		return identity_assignment(slots.size())
+	var full: int = (n / files) * files
+	var k: int = n - full
+	if k == 0 or full == 0:
+		return pair_slots_by_lateral_file(positions, slots, files)
+	var rear_centre: float = 0.0
+	for c in range(full, n):
+		rear_centre += slots[c].x
+	rear_centre /= float(k)
+	var depth := PackedFloat32Array()
+	depth.resize(n)
+	for i in range(n):
+		depth[i] = roundf(positions[i].y / depth_quantum) if depth_quantum > 0.0 else positions[i].y
+	var by_depth: Array = range(n)
+	by_depth.sort_custom(func(a: int, b: int) -> bool:
+		var pa: Vector2 = positions[a]
+		var pb: Vector2 = positions[b]
+		if depth[a] != depth[b]:
+			return depth[a] > depth[b]
+		var da: float = absf(pa.x - rear_centre)
+		var db: float = absf(pb.x - rear_centre)
+		if da != db:
+			return da < db
+		return a < b)
+	var is_rear := {}
+	var rear_pos := PackedVector2Array()
+	var rear_ids := PackedInt32Array()
+	for j in range(k):
+		is_rear[by_depth[j]] = true
+	var front_pos := PackedVector2Array()
+	var front_ids := PackedInt32Array()
+	for i in range(n):
+		if is_rear.has(i):
+			rear_pos.push_back(positions[i])
+			rear_ids.push_back(i)
+		else:
+			front_pos.push_back(positions[i])
+			front_ids.push_back(i)
+	var perm := PackedInt32Array()
+	perm.resize(n)
+	var front_perm: PackedInt32Array = pair_slots_by_lateral_file(
+			front_pos, slots.slice(0, full), files)
+	for j in range(front_ids.size()):
+		perm[front_ids[j]] = front_perm[j]
+	# block_slots lays a rank out left to right, so the rear cells are already in lateral order.
+	var rear_order: PackedInt32Array = lateral_order(rear_pos)
+	for j in range(k):
+		perm[rear_ids[rear_order[j]]] = full + j
+	return perm
+
+
 ## The cell pairing that cancels a hold-ground reform's DEPTH REFLECTION on a row-major
 ## grid: entry `c` is the cell whose post-reflection world position equals cell `c`'s
 ## pre-reflection one, so a soldier holding `c` and reassigned to `out[c]` stands on the

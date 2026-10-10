@@ -542,6 +542,23 @@ Two optional keys widen what an entry can say:
   A uid that never appeared, or any snapshot inside the range with no `units` list,
   fails rather than passing.
 
+Two more fields are derived from a FULL dump (`SPARTA_DEMO_STATE_FULL=1`, which CI's
+defect scan uses) rather than read from the compact record
+(`DemoDefects.derived_field`).
+Each compares every man's body with his own slot along the unit's lateral axis, measured
+from the unit's position, so sampled the tick after a reshape they show where the reshape
+sends the men before anyone has walked:
+
+- `slots_across_centreline` -- how many men have their slot across the unit's centreline
+  from them, each more than half a file pitch off it.
+- `slot_lateral_excess` -- the farthest any man's slot lies sideways of his place, in world
+  units, rounded to 0.1. A man standing outside the new block is measured from its near
+  edge instead, since he has to come in to it anyway.
+  Pin it with `"value": 0` and a `tol` of about one file pitch.
+
+A dump without the full arrays cannot supply either field, so the expectation fails as
+uncheckable.
+
 An expectation that cannot be checked (no snapshot in range, no such unit, no such field)
 FAILS rather than skips -- an uncheckable claim is an authoring error. This is how a demo
 that stops demonstrating its own caption (a rebound hotkey arming the wrong stance, a rally

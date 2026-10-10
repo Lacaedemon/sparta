@@ -920,6 +920,59 @@ func test_check_expectations_reports_a_passed_null_match_as_null_not_no_data() -
 			"a passing null match must not read as an unprobed expectation")
 
 
+## A FULL record for a unit at the origin facing down the screen (its lateral axis, the facing
+## turned a quarter, is world +X), file pitch 10, with the men's bodies and slots given.
+func _derived_record(pos: Array, slots: Array) -> Dictionary:
+	return {"uid": 0, "position": [0.0, 0.0], "facing": [0.0, 1.0],
+			"motion_ref": {"file_pitch": 10.0},
+			"soldiers_full": {"pos": pos, "slots": slots}}
+
+
+func test_derived_slot_fields_count_men_sent_across_and_how_far_sideways() -> void:
+	# Men at x -15, -5, 5, 15. Slots swap the two outer men across the centre; the inner two
+	# step onto the opposite inner slot, which is only half a pitch out, so they do not count.
+	var u: Dictionary = _derived_record(
+			[[-15.0, 0.0], [-5.0, 0.0], [5.0, 0.0], [15.0, 0.0]],
+			[[15.0, 0.0], [5.0, 0.0], [-5.0, 0.0], [-15.0, 0.0]])
+	assert_eq(DemoDefects.derived_field(u, "slots_across_centreline"), 2,
+			"the two outer men are sent across, each more than half a pitch off it")
+	assert_almost_eq(float(DemoDefects.derived_field(u, "slot_lateral_excess")), 30.0, 0.001,
+			"the farthest is sent 30 wu sideways of his place")
+	var kept: Dictionary = _derived_record(
+			[[-15.0, 0.0], [-5.0, 0.0], [5.0, 0.0], [15.0, 0.0]],
+			[[-15.0, 10.0], [-5.0, 10.0], [5.0, 10.0], [15.0, 10.0]])
+	assert_eq(DemoDefects.derived_field(kept, "slots_across_centreline"), 0, "nobody crosses")
+	assert_almost_eq(float(DemoDefects.derived_field(kept, "slot_lateral_excess")), 0.0, 0.001,
+			"a step straight back moves nobody sideways")
+
+
+func test_derived_slot_excess_measures_an_outside_man_from_the_block_edge() -> void:
+	# A narrowing: the man at x 40 stands outside the new block (half-width 10), so his walk in
+	# to its near edge is not excess; the man at the centre stepping out to -10 is.
+	var u: Dictionary = _derived_record([[40.0, 0.0], [0.0, 0.0]], [[10.0, 0.0], [-10.0, 0.0]])
+	assert_almost_eq(float(DemoDefects.derived_field(u, "slot_lateral_excess")), 10.0, 0.001,
+			"the outside man reaches the near edge (0 excess); the inside man steps 10 wu")
+
+
+func test_derived_slot_fields_need_a_full_record() -> void:
+	var compact := {"uid": 0, "position": [0.0, 0.0], "facing": [0.0, 1.0]}
+	assert_null(DemoDefects.derived_field(compact, "slots_across_centreline"),
+			"a compact record cannot supply the field")
+	assert_null(DemoDefects.derived_field(_derived_record([], []), "state"),
+			"only the two named fields are derived")
+	var verdicts: Array = DemoDefects.check_expectations([
+		{"tick": 60, "uid": 0, "field": "slots_across_centreline", "value": 0},
+	], [{"tick": 60, "units": [compact]}])
+	assert_false(bool(verdicts[0]["pass"]), "an uncheckable derived claim fails")
+	verdicts = DemoDefects.check_expectations([
+		{"tick": 60, "uid": 0, "field": "slots_across_centreline", "value": 0},
+		{"tick": 60, "uid": 0, "field": "slot_lateral_excess", "value": 0, "tol": 10},
+	], [{"tick": 60, "units": [_derived_record([[-15.0, 0.0], [15.0, 0.0]],
+			[[-15.0, 5.0], [15.0, 5.0]])]}])
+	assert_true(bool(verdicts[0]["pass"]), "a held derived claim passes")
+	assert_true(bool(verdicts[1]["pass"]), "a derived claim within its tol passes")
+
+
 func test_malformed_expect_entries_are_named_errors_not_crashes() -> void:
 	# A [480] range typo (missing upper bound) must surface as a shape error under the
 	# tool's own contract -- never an out-of-bounds abort mid-evaluation.
