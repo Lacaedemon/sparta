@@ -62,7 +62,8 @@ The fix skips the early read whenever `Unit._slot_deal_pending` (a side-effect-f
 PR #1790 (#1757) holds a fighting block's facing while a router is inside it,
 so the slot grid does not swing after the router.
 In the `charge` clip a router lingers inside an archer block,
-whose front then stays off it; the router keeps 8 men at ticks 1460 and 1500, against 6 on main.
+whose front then stays off it.
+The router keeps 8 men at ticks 1460 and 1500, against 6 on main.
 Three ways of bounding the hold each broke another clip's formation, so the hold was kept and the cost recorded on #1793.
 
 - **Do:** when a change holds a facing or a grid, measure what it costs in combat (for example, the casualties the enemy takes), and record any cost you accept on a tracking issue.
@@ -91,7 +92,8 @@ Twice in wave 8 an implementer's note said main had the same defect, and it was 
 Both times a later review showed the headline figures came from the PR's own change,
 and a smaller residual remained on main.
 #1783 was narrowed to a 10-15 wu drift on main after the 53 wu creep turned out to be PR #1778's own regression.
-#1791's first figures came from PR #1790's superseded first version; its later comment gives main's own figures.
+#1791's first figures came from PR #1790's superseded first version.
+Its later comment gives main's own figures.
 
 - **Do:** file a relayed out-of-scope defect only after the reviewer, or a dump of the base tree, has measured it on main, and mark the figures as relayed until then.
 
