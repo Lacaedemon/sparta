@@ -32,3 +32,4 @@ imports below.
 @.claude/memories/sparta/18-body-constraints-demo-mutation-and-harness-phase.md
 @.claude/memories/sparta/19-order-paths-gating-and-pr-hygiene.md
 @.claude/memories/sparta/20-wave6-demo-claims-flips-and-brief-hygiene.md
+@.claude/memories/sparta/21-wave7-caches-order-hooks-carried-momentum-and-absolute-expects.md
