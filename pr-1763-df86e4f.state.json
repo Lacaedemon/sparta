@@ -57,6 +57,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": null,
@@ -158,6 +159,7 @@
             18.06
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": null,
@@ -259,6 +261,7 @@
             18.015
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": null,
@@ -363,6 +366,7 @@
             18.013
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -470,6 +474,7 @@
             18.008
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -577,6 +582,7 @@
             18.004
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -684,6 +690,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -788,6 +795,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -892,6 +900,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -996,6 +1005,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -1100,6 +1110,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -1207,6 +1218,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -1314,6 +1326,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -1421,6 +1434,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -1528,6 +1542,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -1635,6 +1650,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -1742,6 +1758,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -1849,6 +1866,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -1956,6 +1974,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -2063,6 +2082,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -2170,6 +2190,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -2274,6 +2295,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -2378,6 +2400,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -2482,6 +2505,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
@@ -2586,6 +2610,7 @@
             18.0
           ],
           "queue_tail": [],
+          "rally_halting": false,
           "rank_pitch": 18.0,
           "rank_relief": true,
           "requested_move_target": [
