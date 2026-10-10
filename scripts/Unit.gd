@@ -6080,6 +6080,18 @@ func _row_slot_deal_pending(count: int, files: int) -> bool:
 	return reshaped or resized
 
 
+## Whether the next slot query for (count, files) would rebuild this block's assignment, in
+## whichever layout it uses: the square pairing, the file-major file assignment, or the row-major
+## pairing. Each mirrors its own ensure function's early-out exactly. Pure: reads state, changes
+## none. reform_ranks reads it to avoid dealing an assignment before its mirror is armed.
+func _slot_deal_pending(count: int, files: int) -> bool:
+	if in_square():
+		return _sim_soldier_square_slot.size() != count or _square_slot_files != files
+	if _effective_file_major_reform():
+		return _sim_soldier_file.size() != count or _file_assignment_files != files
+	return _row_slot_deal_pending(count, files)
+
+
 ## Keep the row-major pairing (_sim_soldier_row_slot) in step with the grid it places men on,
 ## for the two events that change that grid under a block without going through a reform:
 ##
@@ -6804,14 +6816,13 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 	# Where each man's slot stood before the re-deal, so a hold-ground re-square can tell
 	# which men it actually sent somewhere (see arm_couple_transit). step() lays these slots
 	# out every tick, so reading them here normally fills no cache that was not already filled.
-	# The exception is a row-major block whose file count or headcount changed earlier this
-	# tick: reading its slots would deal its pairing from the bodies before the mirror below is
-	# armed, while _apply_row_slot_reflection must deal it after. That block skips the capture,
-	# so arm_couple_transit flags nobody and the coupling runs as it did before the flags.
+	# The exception is a block whose assignment is out of step with its grid (a file count or
+	# headcount changed since the last slot query, in any of the three layouts): reading its
+	# slots would deal the assignment from the bodies before the mirror below is armed, while
+	# the branch below must deal it after. That block skips the capture, and arm_couple_transit
+	# judges the re-dealt slots against where the men stand instead (see its own doc).
 	var slots_before := PackedVector2Array()
-	var row_deal_pending: bool = not in_square() and not _effective_file_major_reform() \
-			and _row_slot_deal_pending(soldiers, files)
-	if hold_ground and is_about_face_fold and not row_deal_pending:
+	if hold_ground and is_about_face_fold and not _slot_deal_pending(soldiers, files):
 		slots_before = soldier_world_slots(soldiers)
 	_formation_angle = 0.0
 	_drill_turn_fold = 0.0
@@ -7170,7 +7181,9 @@ func position_anchor_held() -> bool:
 
 ## Flag every man whose slot the re-deal moved by more than REFORM_SETTLE_EPS as in transit
 ## (see _couple_transit), for `timeout_sec` at most. `slots_before` is each man's slot just
-## before the re-deal. Called by a hold-ground about-face re-square. On an exact half-turn the
+## before the re-deal, or empty when the re-square had to re-deal an out-of-step assignment
+## from the bodies (then each man's body stands in for his old slot). Called by a hold-ground
+## about-face re-square. On an exact half-turn the
 ## full files keep their slots, so only the men of the short files are flagged. A block with a
 ## short rank has its slot centroid off `position`, and those men's walk moves the body
 ## centroid by a good fraction of a rank pitch; left in the drift average, it would drag
@@ -7189,8 +7202,17 @@ func arm_couple_transit(slots_before: PackedVector2Array, timeout_sec: float) ->
 	clear_couple_transit()
 	var slots: PackedVector2Array = soldier_world_slots(soldiers)
 	var n: int = slots.size()
-	if n == 0 or slots_before.size() != n:
+	if n == 0:
 		return
+	# With no pre-deal slots (the caller's assignment had to be re-dealt from the bodies, see
+	# reform_ranks), judge the new slots against where the men stand: after an in-place turn
+	# they stand on the slots they held before it. A regiment-path casualty trims the rear
+	# bodies, so the first `n` line up with the new slots.
+	var reference: PackedVector2Array = slots_before
+	if reference.size() != n:
+		if _sim_soldier_pos.size() < n:
+			return
+		reference = _sim_soldier_pos.slice(0, n)
 	var centroid := Vector2.ZERO
 	for p in slots:
 		centroid += p
@@ -7201,7 +7223,7 @@ func arm_couple_transit(slots_before: PackedVector2Array, timeout_sec: float) ->
 	flags.fill(0)
 	var any: bool = false
 	for i in range(n):
-		if slots_before[i].distance_squared_to(slots[i]) > REFORM_SETTLE_EPS * REFORM_SETTLE_EPS:
+		if reference[i].distance_squared_to(slots[i]) > REFORM_SETTLE_EPS * REFORM_SETTLE_EPS:
 			flags[i] = 1
 			any = true
 	if not any:
