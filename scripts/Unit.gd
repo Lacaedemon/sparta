@@ -4150,6 +4150,9 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	# it is free. Holding moves neither the facing nor _formation_angle, so nothing is left
 	# for a later reform to undo; once the router is out of reach the ordinary re-face
 	# (turn-in-place for a large swing) brings the front round.
+	# TODO(#1793): the hold has no bound in time, so a router that lingers among the ranks
+	# keeps the block's front off it for as long as it stays, and the block lands fewer blows
+	# on it than one that turned onto it would.
 	if _router_streaming_through(enemy_unit):
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
