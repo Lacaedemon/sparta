@@ -151,8 +151,8 @@ Runs once, inside the physics tick, and does five things in order.
    `absorb` keeps its behaviour by calling the two halves in turn.
 
 5. **Anchor the front (both axes).**
-   The slot grid is centred on `position` -- `SoldierBodies.couple` relies on `mean(slots) ~ position` -- so deepening from `D` to `D'` ranks would push the front rank forward by `(D' - D) / 2` rank pitches, into the enemy on an engaged host.
-   Commit instead moves `host.position` rearward along `host.facing` by that amount: a one-time relocation of the anchor rather than a standing offset, so the coupling premise holds again from the next tick and the growth lands entirely at the rear.
+   The slot grid is centred on `position` (a block with a short rear rank only roughly, its slot centroid sitting a fraction of a rank toward its front), so deepening from `D` to `D'` ranks would push the front rank forward by `(D' - D) / 2` rank pitches, into the enemy on an engaged host.
+   Commit instead moves `host.position` rearward along `host.facing` by that amount: a one-time relocation of the anchor rather than a standing offset, so the slots are back around `position` from the next tick and the growth lands entirely at the rear.
    The files axis widens laterally about the same centre and needs no lateral shift of its own;
    a flank-held widen can reuse `frontage_anchor_offset` and `UnitFormation.anchor_shift` exactly as the anchored explicatio does.
    It does need the same rearward shift whenever the interleave changes the deepest file (a partial or surplus reserve), since the slot grid is centred on depth too;

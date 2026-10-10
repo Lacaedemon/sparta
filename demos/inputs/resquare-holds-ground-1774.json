@@ -1,0 +1,21 @@
+{
+  "_comment": "A lone 52-man Infantry block, 12 files by 4 full ranks plus a 4-man short rank (so 4 full files of 5 men and 8 short files of 4), faces north at (700, 520). At tick 20 it is ordered to (700, 660), behind it: it about-faces (ticks 22-80), re-squares holding its ground (REFORM, ticks 80-158: the 32 men of the short files step one rank forward to close the new front while the 20 men of the full files stand fast), then marches south and halts at (700, 659.86) by tick 530. The regiment centre must not move until the march: the pins below hold it at (700, 520) at the end of the turn, mid re-square, and just before the march. On main the centre was dragged toward the block's off-centre body mean: (704.16, 515.59) at tick 70 during the turn and (700.47, 511.59) at tick 150, and the full files walked up to 8.8 wu backwards and 0.6 wu sideways with it. Each expect below fails on main.",
+  "seed": "55120",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 700, "y": 520, "facing": [0, -1], "count": 52, "frontage": 12, "reform_before_move": true}
+  ],
+  "camera": [
+    {"tick": 0, "x": 700, "y": 560, "zoom": 1.6}
+  ],
+  "steps": [
+    {"tick": 8, "click": [700, 520]},
+    {"tick": 20, "rmb_click": [700, 660]}
+  ],
+  "state": [8, 60, 70, 120, 150, 180, 240, 300, 360, 420, 480, 540, 600, 660],
+  "expect": [
+    {"tick": 70, "uid": 0, "field": "position", "value": [700.0, 520.0], "tol": 0.25},
+    {"tick": 120, "uid": 0, "field": "position", "value": [700.0, 520.0], "tol": 0.25},
+    {"tick": 150, "uid": 0, "field": "position", "value": [700.0, 520.0], "tol": 0.25}
+  ]
+}
