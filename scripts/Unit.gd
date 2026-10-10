@@ -8793,9 +8793,11 @@ func _process_rout(delta: float) -> void:
 	# field's own grid bounds first (mirroring has_escape_route() above). An unclipped
 	# point 1000px out lands off the grid for virtually every real position, which A*
 	# can never reach regardless of terrain -- silently defeating this whole detour.
+	# The step rounds terrain with the block's own swept width (_rout_step_clearance), so
+	# the men running on the anchor's flanks pass the terrain too, not just the anchor.
 	var step: Vector2 = position + flee * 1000.0
 	if PathField.active != null:
-		step = PathField.active.next_step_fleeing(position, flee, _rout_clearance())
+		step = PathField.active.next_step_fleeing(position, flee, _rout_step_clearance())
 
 	# next_step() returns an absolute world-space point, not a direction -- subtract
 	# position first (as _move_to() does) before normalizing.
@@ -9024,11 +9026,26 @@ func _is_escape_path_blocked(flee_direction: Vector2) -> bool:
 	return true
 
 
-## Clearance margin for a routing unit. A routing mob does not hold a rigid formation
-## grid, so its clearance needs only to keep the loose cluster of bodies off obstacles
-## rather than clearing a full formed pivot radius.
+## Clearance margin for a routing unit's escape check (_is_escape_path_blocked): whether
+## any way out exists at all. A routing mob need not clear a full formed pivot radius, so
+## this keeps only a loose cluster of bodies off obstacles; the flight's own step rounds
+## terrain wider (_rout_step_clearance).
 func _rout_clearance() -> float:
 	return soldier_body_radius() + RADIUS
+
+
+## The margin a router's flight step rounds impassable terrain with: the block's swept
+## width across its own heading (terrain_clearance along `facing`, which _process_rout turns
+## onto each step), never less than _rout_clearance(). The router's bodies run on their
+## formation slots, so a step that cleared only the anchor's own margin led the block's flank
+## files straight into the terrain, where the soldier backstop held them against the face
+## while the block ran on and the coupling dragged the anchor back toward them. A flight
+## line clear of terrain by more than the block's half-width takes the same step at either
+## margin.
+## The escape check keeps the narrower _rout_clearance(), so whether a router counts as
+## trapped (and turns to fight) is unchanged.
+func _rout_step_clearance() -> float:
+	return maxf(_rout_clearance(), terrain_clearance(facing))
 
 
 ## Unit is trapped by terrain with no viable escape path: stop routing and stand ground

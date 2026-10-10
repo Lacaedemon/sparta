@@ -45,8 +45,7 @@ starts its flight from a standstill (whatever broke it: a melee, missile fire, a
 neighbour's rout), picks up speed over its first few seconds, and then flees at about
 1.3 times its own top speed. Once clear of its pursuers it pulls away from troops of
 its own type; a pursuer that stays in contact with it holds it to that pursuer's own
-pace. (Currently, a deep block fleeing past impassable terrain can snag its leading
-ranks on it and lose much of that pace.)
+pace.
 
 ::: {#fig-router-outruns-pursuer .demo}
 
@@ -105,7 +104,11 @@ its riders running together as a block.
   **annihilated** (soldiers reduced to zero) before it can.
 - **A routing unit paths around impassable terrain too** --- fleeing is no longer a
   straight line toward the back edge; a router detours around a hill in its way the
-  same as an ordered move does. If every escape direction is blocked, it gives up
+  same as an ordered move does.
+  It swings wide enough for its whole block to pass,
+  and its men veer off the rock rather than running into it,
+  so even a deep block rounds the hill at its full flight pace.
+  If every escape direction is blocked, it gives up
   fleeing and stands to fight instead of uselessly running in place against the
   obstacle.
 - **The battle isn't over while a side is only routing.** A team is beaten only once

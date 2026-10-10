@@ -377,6 +377,10 @@ static func step(unit: Unit, delta: float) -> void:
 	# In-transit same-unit standoff velocities for crowding same-unit bodies:
 	var sep_vels: PackedVector2Array = _separate_same_unit(unit, n, target_slots, is_engaged, delta)
 	var terrain_guard: Dictionary = _terrain_entry_guard(unit, n)
+	# A router's men veer off impassable terrain they are running at (router_terrain_avoid);
+	# the flight's feed-forward otherwise carries a man still closing on his slot after a turn
+	# of the flight straight onto the rock. Only on a map with block terrain, and only routers.
+	var routing_near_terrain: bool = routing and not terrain_guard.is_empty()
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
@@ -428,6 +432,9 @@ static func step(unit: Unit, delta: float) -> void:
 			# drifting through it and having to turn around -- the last guard against a
 			# sub-pixel oscillation around the exact point.
 			desired_vel += (to_slot / dist) * (dist / delta)
+		if routing_near_terrain and terrain_guard["inside"][i] == 0:
+			desired_vel = router_terrain_avoid(unit._sim_soldier_pos[i], unit._sim_body_vel[i],
+					own_slot, desired_vel, terrain_guard["grown"], body_accel, delta)
 		# The speed this body carried INTO this tick, before anything below touches it --
 		# the floor the superphysical clamp uses further down, so a body already coasting
 		# faster than that clamp (a knockback -- see the clamp's own comment) never gets
@@ -561,6 +568,9 @@ static func step(unit: Unit, delta: float) -> void:
 	# One arrival integration per body, each with exactly one `to_slot.length()`.
 	SimOps.add(SimOps.BODY_STEP, n)
 	SimOps.add(SimOps.SQRT_EVAL, n)
+	if routing_near_terrain:
+		# router_terrain_avoid: one segment-rect clip per body per rect.
+		SimOps.add(SimOps.TERRAIN_PROJECT, n * terrain_guard["grown"].size())
 	_keep_out_of_terrain(unit, n, terrain_guard, delta)
 
 
@@ -658,6 +668,61 @@ static func _keep_out_of_terrain(unit: Unit, n: int, guard: Dictionary, delta: f
 	# One rect test per checked body per rect (first sweep); one normalization per body moved.
 	SimOps.add(SimOps.TERRAIN_PROJECT, checked * grown.size())
 	SimOps.add(SimOps.SQRT_EVAL, pushed)
+
+
+## A routing man's desired velocity near impassable terrain. When the run he is carrying
+## (his velocity `vel`) would take him into one of `grown` (the rects grown by the body
+## radius) before he could turn it -- within the distance he covers while shedding that speed
+## at `accel`, plus one tick -- the part of `desired` heading into the face he would meet is
+## turned along that face, toward whichever of its two ends makes the shorter way round to
+## `slot`. He veers off the rock while he still can, instead of running onto it and standing
+## there: the hard backstop (_keep_out_of_terrain) stops a body dead in the direction of the
+## rock, and a man stopped dead takes as long to pick up the flight again as it took him to
+## reach it. `desired` unchanged when his run clears every rect, or when he is already
+## running away from the face. Pure function of its arguments; deterministic and replay-safe.
+static func router_terrain_avoid(pos: Vector2, vel: Vector2, slot: Vector2, desired: Vector2,
+		grown: Array[Rect2], accel: float, delta: float) -> Vector2:
+	var speed: float = vel.length()
+	if speed <= 0.0 or accel <= 0.0:
+		return desired
+	var reach: float = speed * speed / (2.0 * accel) + speed * delta
+	var ahead: Vector2 = pos + vel / speed * reach
+	var best_t: float = INF
+	var hit := Rect2()
+	for g in grown:
+		var t: float = PathField.segment_rect_entry(pos, ahead, g)
+		if t < best_t:
+			best_t = t
+			hit = g
+	if not is_finite(best_t):
+		return desired
+	var entry: Vector2 = pos.lerp(ahead, best_t)
+	# The face he meets: the one the entry point lies on (nearest, for a point on a corner).
+	var top_left: Vector2 = hit.position
+	var top_right := Vector2(hit.end.x, hit.position.y)
+	var bottom_left := Vector2(hit.position.x, hit.end.y)
+	var faces: Array = [
+		[absf(entry.x - hit.position.x), Vector2.LEFT, top_left, bottom_left],
+		[absf(hit.end.x - entry.x), Vector2.RIGHT, top_right, hit.end],
+		[absf(entry.y - hit.position.y), Vector2.UP, top_left, top_right],
+		[absf(hit.end.y - entry.y), Vector2.DOWN, bottom_left, hit.end],
+	]
+	var face: Array = faces[0]
+	for f in faces:
+		if f[0] < face[0]:
+			face = f
+	var outward: Vector2 = face[1]
+	var inward_part: float = -desired.dot(outward)
+	if inward_part <= 0.0:
+		return desired
+	var end_a: Vector2 = face[2]
+	var end_b: Vector2 = face[3]
+	var via_a: float = pos.distance_to(end_a) + end_a.distance_to(slot)
+	var via_b: float = pos.distance_to(end_b) + end_b.distance_to(slot)
+	var along: Vector2 = (end_a - end_b).normalized() if via_a <= via_b \
+			else (end_b - end_a).normalized()
+	var tangential: Vector2 = desired + outward * inward_part
+	return tangential + along * inward_part
 
 
 ## Cap a stationary/reforming body's velocity to its unit's jog pace, but to the slower
