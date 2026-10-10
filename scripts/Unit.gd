@@ -2032,6 +2032,9 @@ func _interrupt_current_order() -> void:
 	# marches under must not inherit a peel phase armed for a march that no longer
 	# exists. (No-op when no order was in flight -- a peel can't exist without one.)
 	_withdrawal_peeling = false
+	# Likewise the slots an interrupted turn captured (see turn_start_slots): couple() only
+	# drops them on a coupled tick, which a far-tier unit never has.
+	clear_turn_start_slots()
 	if current_order == null:
 		return
 	if is_order_turning():
@@ -6481,6 +6484,7 @@ func countermarch_variant() -> int:
 ## body's own pre-turn slot and the arrival sees ~zero error either way — no man ever surges
 ## to a different soldier's slot.
 func _settle_order_turn() -> void:
+	clear_turn_start_slots()   # this turn is over; the next one captures its own slots
 	var leaf := active_leaf()
 	var turned: float = angle_difference(leaf.turn_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
@@ -7105,13 +7109,20 @@ func clear_couple_transit() -> void:
 
 ## The slots SoldierBodies.couple measures drift against during an in-place turn: `current`
 ## (this tick's slots) as they stood on the turn's first coupled tick, shifted by however far
-## `position` has moved since. The first call of a turn (no capture yet, a different turn's
-## goal facing, or a changed soldier count) captures `current` and returns it unchanged.
+## `position` has moved since. The first call of a turn (no capture yet, or a different turn's
+## goal facing) captures `current` and returns it unchanged.
 ## Through the turn the men stand fast while the slots swing about `position`; against these
 ## captured slots the swing reads as no drift, while a push on the bodies still does.
+## A casualty mid-turn must not recapture: by then the slots have swung, and the men still
+## stand on the start grid. SoldierMelee.reap splices the dead man's slot out of the capture,
+## like his body; the regiment-path casualty trims the rear bodies, so the capture trims its
+## tail to match. Only a block that grew mid-turn recaptures.
 func turn_start_slots(current: PackedVector2Array) -> PackedVector2Array:
 	var leaf := active_leaf()
 	var target: Vector2 = leaf.turn_target if leaf != null else Vector2.ZERO
+	if not _turn_start_slots.is_empty() and target == _turn_start_target \
+			and _turn_start_slots.size() > current.size():
+		_turn_start_slots.resize(current.size())
 	if _turn_start_slots.size() != current.size() or target != _turn_start_target:
 		_turn_start_slots = current.duplicate()
 		_turn_start_position = position

@@ -15,6 +15,9 @@ const SPAWN := Vector2(900, 360)
 const BEHIND := Vector2(1040, 360)   # straight behind the west-facing block
 # The 50-man control: 10 files by 5 full ranks, so its slot centroid sits on `position`.
 const FULL_COUNT := 50
+# How far the centre may move through a turn in which a man dies: float residue only, since no
+# body moves during the swing. A solver epsilon in wu, not a gameplay length.
+const CASUALTY_TURN_TOL := 0.05
 
 var _battle: Node = null
 
@@ -44,13 +47,13 @@ func _stage(reform_before_move: bool, count: int = COUNT) -> Unit:
 
 
 ## How far a full-file man, or the regiment centre, may stand off his starting point through
-## the turn and re-square. Two terms: one tick of travel at the slowest pace the unit's own
-## reform bound uses (jog_speed * back_speed_fraction), which is the most a committing tick
-## can carry the block before a loop sees the commit; and REFORM_SETTLE_EPS, the farthest a
-## short-file walker can stand off his slot when he re-enters the coupling, so the most any
-## one man can still read as drift. The defect this file guards moved them 7 wu or more.
+## the turn and re-square. Two terms: one tick of travel at the unit's top speed (move_speed),
+## a true upper bound on how far the committing tick's march can carry the block before a
+## loop sees the commit; and REFORM_SETTLE_EPS, the farthest a short-file walker can stand
+## off his slot when he re-enters the coupling, so the most any one man can still read as
+## drift. The defect this file guards moved them 7 wu or more.
 func _hold_tol(u: Unit) -> float:
-	return u.jog_speed * u.back_speed_fraction / Replay.PHYSICS_TPS + Unit.REFORM_SETTLE_EPS
+	return u.move_speed / Replay.PHYSICS_TPS + Unit.REFORM_SETTLE_EPS
 
 
 ## Settle the spawned bodies onto their slots.
@@ -251,6 +254,72 @@ func _follow_of_a_shove_during_the_turn(count: int) -> float:
 ## A shove during the turn still moves the regiment, whatever the block's shape: the turn
 ## only changes what the drift is measured against, not whether it is followed. Half the
 ## 6 wu shove is far below what follows it when no turn is in progress.
+## The worst distance the regiment centre stands from where it stood at the order, through an
+## about-face in which one man dies `kill_after` ticks into the turn (or nobody, at -1).
+func _anchor_offset_with_a_casualty_mid_turn(count: int, kill_after: int, victim: int) -> float:
+	var u := _stage(true, count)
+	assert_not_null(u, "the scenario staged the block")
+	if u == null:
+		return INF
+	await _settle()
+	var start: Vector2 = u.position
+	_order(u, BEHIND)
+	var turning_ticks: int = 0
+	var worst: float = 0.0
+	var budget: int = int(ceil((u.order_response_delay + PI / Unit.CONVERSIO_TURN_RATE)
+			* Replay.PHYSICS_TPS)) + 30
+	for _i in range(budget):
+		await get_tree().physics_frame
+		if not u.is_order_turning():
+			break
+		worst = maxf(worst, u.position.distance_to(start))
+		turning_ticks += 1
+		if turning_ticks == kill_after:
+			u._sim_soldier_hp[victim] = 0.0
+			SoldierMelee.reap(u, null)
+	assert_false(u.is_order_turning(), "the turn finished within its budget")
+	return worst
+
+
+## A casualty during the turn leaves the survivors standing where they stood, so the centre
+## must not move either: the turn's captured slots lose the dead man's slot, as his body is
+## lost, rather than being captured afresh from the half-swung grid. No body moves during
+## the swing, so the bound is float residue only (CASUALTY_TURN_TOL); recapturing read
+## 0.81 wu (full block) and 3.99 wu (short rank) here.
+func test_a_casualty_mid_turn_does_not_drag_a_short_rank_block() -> void:
+	var worst: float = await _anchor_offset_with_a_casualty_mid_turn(COUNT, 45, 15)
+	assert_lt(worst, CASUALTY_TURN_TOL,
+		"the centre held through the swing, killed late in the turn (worst %.3f wu)" % worst)
+
+
+func test_a_casualty_mid_turn_does_not_drag_a_full_block() -> void:
+	var worst: float = await _anchor_offset_with_a_casualty_mid_turn(FULL_COUNT, 45, 15)
+	assert_lt(worst, CASUALTY_TURN_TOL,
+		"the centre held through the swing, killed late in the turn (worst %.3f wu)" % worst)
+
+
+## The turn's captured slots end with the turn or the order, whether or not couple() runs
+## again (a far-tier unit never couples), so a later turn with the same goal facing and
+## soldier count can never reuse them.
+func test_the_turn_capture_ends_with_the_turn_or_the_order() -> void:
+	var u := _stage(true)
+	assert_not_null(u, "the scenario staged the block")
+	if u == null:
+		return
+	await _settle()
+	_order(u, BEHIND)
+	for _i in range(10):
+		await get_tree().physics_frame
+	assert_true(u.is_order_turning(), "turning")
+	assert_false(u._turn_start_slots.is_empty(), "the turn captured its slots")
+	u._settle_order_turn()
+	assert_true(u._turn_start_slots.is_empty(), "settling the turn drops the capture")
+	u.turn_start_slots(u.soldier_world_slots(u.soldiers))
+	assert_false(u._turn_start_slots.is_empty(), "captured again")
+	u.clear_orders()
+	assert_true(u._turn_start_slots.is_empty(), "cancelling the order drops the capture")
+
+
 func test_a_shove_during_the_turn_moves_a_full_block() -> void:
 	var follow: float = await _follow_of_a_shove_during_the_turn(FULL_COUNT)
 	assert_gt(follow, 3.0, "the full block followed the shove (moved %.3f wu)" % follow)

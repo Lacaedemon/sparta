@@ -380,6 +380,10 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				# And a hold-ground re-square's walker flags, so a casualty mid re-square keeps
 				# every other walker out of the anchor coupling instead of dropping them all.
 				unit._couple_transit.remove_at(i)
+			if i < unit._turn_start_slots.size():
+				# And the slot a turn in progress captured for him (Unit.turn_start_slots), so
+				# the survivors are still measured against the grid they stand on.
+				unit._turn_start_slots.remove_at(i)
 			dead += 1
 	if dead == 0:
 		return

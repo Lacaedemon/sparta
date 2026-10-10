@@ -341,7 +341,7 @@ the men re-square without marching through the block,
 dressing the line without countermarching.
 Most of the block stands fast on the ground it holds, through the turn and the reform alike.
 In a block that reforms file by file, only the files the short rank never reached step forward one place to close the new front.
-In one that reforms by rows (cavalry always does, and so does foot that is not disciplined or whose Reform button chooses rows),
+In one that reforms by rows (cavalry always does, and so does foot whose Reform button is set to Row-major, or to Auto when it is not disciplined),
 only the few men with no counterpart across the flip keep their file and swap ends.
 The reform keeps every man on the flank he stood on,
 and the orders after it do not swap the men to the opposite flanks.
