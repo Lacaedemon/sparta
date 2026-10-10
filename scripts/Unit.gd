@@ -4112,6 +4112,24 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
 		return true
+	# A routing target streaming out through this block: the facing follows it, but the slot
+	# grid stays where it stands. The bearing from this anchor to a point within the block's
+	# own reach names no front, so following it the ordinary way (each tick's small
+	# correction snaps unabsorbed) swings the whole grid around while the men, held in
+	# contact, stay where they are -- the block is then left with its slots turned away from
+	# its men and has to wheel back once it is free. The turn is folded into
+	# _formation_angle instead, as a large snap already is.
+	if _router_streaming_through(enemy_unit):
+		if _engage_turn_target != Vector2.ZERO:
+			_settle_engage_turn()
+		var router_dir: Vector2 = point - position
+		if router_dir.length_squared() > 0.0001:
+			var new_facing: Vector2 = router_dir.normalized()
+			_formation_angle = wrapf(_formation_angle - angle_difference(facing.angle(), new_facing.angle()), -PI, PI)
+			_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
+			_render_dirty = true
+			facing = new_facing
+		return true
 	var dir: Vector2 = point - position
 	if dir.length_squared() < 0.0001:
 		return true
@@ -4137,6 +4155,30 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	if _advance_turn(_engage_turn_target, delta):
 		_settle_engage_turn()
 	return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
+
+
+## Whether `enemy_unit` is a ROUTING regiment streaming out through this block. It starts
+## doing so when its centre lies within the block's own reach (soldier_block_extent, the
+## slot grid's circumradius around the anchor) without leading this anchor along its own
+## line of flight, and keeps doing so (_streaming_router_uid) until it is out of that reach
+## or stops routing: a router that has worked its way just past the anchor is still among
+## the ranks, and a bearing taken from a few world units behind it swings as wildly as one
+## taken from in front. A router that leads the anchor from the start is being ridden down
+## from behind -- it is ahead of this block, and the ordinary re-face keeps the front on it.
+## A router with no flight velocity has no line of flight to lead along, so it counts as
+## streaming through.
+func _router_streaming_through(enemy_unit: Unit) -> bool:
+	if enemy_unit == null or enemy_unit.state != State.ROUTING:
+		_streaming_router_uid = -1
+		return false
+	var reach: float = soldier_block_extent()
+	var offset: Vector2 = enemy_unit.position - position
+	if offset.length_squared() > reach * reach:
+		_streaming_router_uid = -1
+		return false
+	if offset.dot(enemy_unit._flee_velocity) <= 0.0:
+		_streaming_router_uid = enemy_unit.uid
+	return _streaming_router_uid == enemy_unit.uid
 
 
 ## Finish an engage turn-in-place: fold the rotation into _formation_angle (so the men keep
@@ -5607,6 +5649,10 @@ var _engage_turn_start_facing: Vector2 = Vector2.ZERO
 # is_instance_valid/State.DEAD itself before reading it, same as every other target_enemy use.
 var _engage_turn_old_files: int = 0
 var _engage_turn_enemy: Unit = null
+# The uid of the routing regiment this block has seen streaming out through its own ranks,
+# or -1: _router_streaming_through keeps folding the re-face toward it until it is out of
+# the block's reach or stops routing.
+var _streaming_router_uid: int = -1
 # Beyond this heading offset (radians) an engage/attack re-face turns in place gradually
 # instead of snapping. Below it a small correction snaps, keeping close-quarters combat
 # responsive; only a large swing (roughly a quarter-turn or more) turns the men in place.
@@ -9963,6 +10009,7 @@ func to_snapshot_dict() -> Dictionary:
 		"flanking_maneuver_wrap_files": flanking_maneuver_wrap_files,
 		"flanking_maneuver_cooldown_ticks": flanking_maneuver_cooldown_ticks,
 		"flanking_maneuver_hysteresis": flanking_maneuver_hysteresis,
+		"streaming_router_uid": _streaming_router_uid,
 
 		# Unit references, resolved by uid after every unit in the snapshot is restored.
 		"target_enemy_uid": target_enemy.uid if is_instance_valid(target_enemy) else -1,
@@ -10191,6 +10238,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	flanking_maneuver_wrap_files = int(d.get("flanking_maneuver_wrap_files", flanking_maneuver_wrap_files))
 	flanking_maneuver_cooldown_ticks = int(d.get("flanking_maneuver_cooldown_ticks", flanking_maneuver_cooldown_ticks))
 	flanking_maneuver_hysteresis = int(d.get("flanking_maneuver_hysteresis", flanking_maneuver_hysteresis))
+	_streaming_router_uid = int(d.get("streaming_router_uid", -1))
 
 	var restored: Array[Order] = []
 	for od in d.get("orders", []):

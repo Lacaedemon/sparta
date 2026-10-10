@@ -1,0 +1,28 @@
+{
+  "_comment": "A rout streaming out through a block that is fighting it (#1757). Blue (team 0): 48 Infantry on 6 files at (780, 760), facing north, put on Hold (Ctrl+H) at tick 12 so it stands its ground rather than chasing. Red (team 1): 16 Infantry at (780, 640), facing south, at morale 1, so it routs on its own at about tick 46 and flees south toward its own back edge, straight into the blue block. Blue fights it from tick 176 to tick 320 while it pushes through, then stands; the router keeps all 16 men and is near (787, 1200) at tick 600. Measured with a 2-tick full state dump: blue's facing follows the router's centre, but its slot grid stays where it stands, so its men stay near their own places. At most 1 of blue's 48 men has his slot across the block's centreline from him at any tick (slots_across_centreline, DemoDefects.derived_field), the mean distance from a man to his own slot peaks at 11.5 wu (tick 254), and by tick 600 every man is back on his slot (mean 0.0 wu). On main 6e702b6a, with the same 2-tick dump, the grid swung round after the router's centre as it moved through the block: 25 of 48 slots lie across the centreline at tick 300 and 16 at tick 400 (26 at most, tick 284), the mean distance to a man's own slot peaks at 85.1 wu (tick 288) and is still 15.8 wu at tick 600, and blue fails the sustained shape-residual check (47.4 wu against 13.5). The two slots_across_centreline pins below fail on main; the state pins only tie them to the story (blue fighting the router at tick 280, the router still routing at 300 and 400).",
+  "seed": "17570",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 780, "y": 760, "count": 48, "frontage": 6, "facing": [0, -1]},
+    {"team": 1, "type": "Infantry", "x": 780, "y": 640, "count": 16, "facing": [0, 1], "morale": 1.0}
+  ],
+  "camera": [
+    {"tick": 0, "x": 780, "y": 740, "zoom": 1.2},
+    {"tick": 360, "x": 775, "y": 800, "zoom": 1.2}
+  ],
+  "steps": [
+    {"tick": 4, "click": [780, 760]},
+    {"tick": 12, "key": "H", "ctrl": true}
+  ],
+  "state": [8, 60, 120, 180, 240, 300, 360, 400, 420, 480, 540, 600],
+  "expect": [
+    {"tick": 300, "uid": 1, "field": "state", "value": "ROUTING"},
+    {"tick": 280, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 300, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 400, "uid": 1, "field": "state", "value": "ROUTING"},
+    {"tick": 400, "uid": 0, "field": "slots_across_centreline", "value": 0}
+  ],
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}
