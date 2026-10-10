@@ -105,12 +105,16 @@ its riders running together as a block.
 - **A routing unit paths around impassable terrain too** --- fleeing is no longer a
   straight line toward the back edge; a router detours around a hill in its way the
   same as an ordered move does.
-  It swings wide enough for its whole block to pass, turns onto the detour gradually,
+  It swings wide enough for its whole block to pass,
+  turns onto the detour gradually,
   and its men veer off the rock rather than running into it,
-  so even a deep block keeps together round the hill and regains its full flight pace once past it.
-  If every escape direction is blocked, it gives up
-  fleeing and stands to fight instead of uselessly running in place against the
-  obstacle.
+  so even a deep block keeps together round the hill
+  and regains its full flight pace once past it.
+  (Currently, a block that breaks just short of a hill
+  can still leave some of its leading men behind.)
+  If every escape direction is blocked,
+  it gives up fleeing and stands to fight
+  instead of uselessly running in place against the obstacle.
 - **The battle isn't over while a side is only routing.** A team is beaten only once
   its last unit is truly gone (escaped, annihilated, or otherwise removed), not while
   its final unit is merely routing. Even a lone survivor that breaks can flee, rally,
