@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/deep-router-rounds-hill.json",
+  "caption": "Fixes #1748: a routing deep block now rounds a hill in its way without leaving men pinned against it. An 80-horse squadron, already broken, flees south (down the screen) toward a hill that stands across the eastern half of its block; the clip starts the block's front rank 220 wu short of the hill. Its flight swings west wide enough for the whole block to pass, its heading turns onto the detour gradually so the block's corners never swing off the men, and the men on its eastern files run past the hill rather than into it: no man is at the hill at any sampled tick, and on average the men stay within about 28 wu of their places. Before the fix the flight cleared only the centre of the block: the eastern files ran into the hill's face and were held there (11 men against it by tick 330) while the rest ran on and the block stretched, and over a longer flight the held men slowed the whole rout to under 60 percent of its pace. A block that starts much closer, its front only a few strides from the hill, still leaves some of its leading men behind (#1787). The clip ends just before the rout timer runs out and the squadron rallies.",
+  "fixed_fps": 30,
+  "max_frames": 176,
+  "fps": 15,
+  "width": 720
+}

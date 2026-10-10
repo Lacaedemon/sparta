@@ -83,6 +83,9 @@ const STANDOFF_MIN_SEP_FRAC: float = 0.9
 const STANDOFF_MAX_SPEED: float = 2.0 * WorldScaleRef.WU_PER_M
 # Floor below which same-unit standoff separation is disabled (tuned in wu):
 const STANDOFF_MIN_SEP_FLOOR: float = 0.01
+# How far inside a rect a line must pass to count as crossing it, not running along its edge
+# (router_terrain_avoid's way round). A solver epsilon, tuned in wu:
+const INTERIOR_EPS: float = 0.01
 # Deterministic spread of directions for exactly coincident bodies:
 const STANDOFF_TIE_BREAK_DIRS: int = 99
 
@@ -373,10 +376,18 @@ static func step(unit: Unit, delta: float) -> void:
 	var routing: bool = unit.state == Unit.State.ROUTING
 	var halting: bool = unit.is_rally_halting()
 	var march_vel: Vector2 = unit._flee_velocity if routing else unit._approach_velocity
+	# A router turning its flight turns its slot grid about the anchor at this rate (rad/s;
+	# Unit._turn_flight_toward): each unengaged slot also moves at turn_rate x its offset from
+	# the anchor, and that is fed forward with the march.
+	var turn_rate: float = unit._flight_turn_rate if routing else 0.0
 	var top_pace: float = unit.flee_speed() if routing else unit.move_speed
 	# In-transit same-unit standoff velocities for crowding same-unit bodies:
 	var sep_vels: PackedVector2Array = _separate_same_unit(unit, n, target_slots, is_engaged, delta)
 	var terrain_guard: Dictionary = _terrain_entry_guard(unit, n)
+	# A router's men veer off impassable terrain they are running at (router_terrain_avoid);
+	# the flight's feed-forward otherwise carries a man still closing on his slot after a turn
+	# of the flight straight onto the rock. Only on a map with block terrain, and only routers.
+	var routing_near_terrain: bool = routing and not terrain_guard.is_empty()
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
@@ -402,6 +413,9 @@ static func step(unit: Unit, delta: float) -> void:
 		# drill turns and the wheel, read off current_order) AND the engage re-face (a fighting
 		# unit turning its front onto a new enemy) -- see Unit.is_maneuver_turning.
 		var own_slot: Vector2 = target_slots[i]
+		if turn_rate != 0.0 and is_engaged[i] == 0:
+			var arm: Vector2 = own_slot - unit.position
+			feed_forward += Vector2(-arm.y, arm.x) * turn_rate
 		var to_slot: Vector2 = Vector2.ZERO if turning \
 				else _corridor_to_slot(unit, i, own_slot, n, proximity_mult, straight_march)
 		# Arrival: approach the slot at a speed that decelerates to 0 by the time the body
@@ -428,6 +442,9 @@ static func step(unit: Unit, delta: float) -> void:
 			# drifting through it and having to turn around -- the last guard against a
 			# sub-pixel oscillation around the exact point.
 			desired_vel += (to_slot / dist) * (dist / delta)
+		if routing_near_terrain and terrain_guard["inside"][i] == 0:
+			desired_vel = router_terrain_avoid(unit._sim_soldier_pos[i], unit._sim_body_vel[i],
+					own_slot, desired_vel, terrain_guard["grown"], body_accel, delta)
 		# The speed this body carried INTO this tick, before anything below touches it --
 		# the floor the superphysical clamp uses further down, so a body already coasting
 		# faster than that clamp (a knockback -- see the clamp's own comment) never gets
@@ -658,6 +675,118 @@ static func _keep_out_of_terrain(unit: Unit, n: int, guard: Dictionary, delta: f
 	# One rect test per checked body per rect (first sweep); one normalization per body moved.
 	SimOps.add(SimOps.TERRAIN_PROJECT, checked * grown.size())
 	SimOps.add(SimOps.SQRT_EVAL, pushed)
+
+
+## A routing man's desired velocity near impassable terrain. He looks ahead two ways: along
+## the run he is carrying (his velocity `vel`), as far as he covers while shedding that speed
+## at `accel`, plus one tick; and along where he wants to go (`desired`), as far as one tick
+## takes him. If either look meets one of `grown` (the rects grown by the body radius), the
+## part of `desired` heading into the face it meets is turned along that face: toward the
+## side `slot` lies on when the slot is on his own side of the face, and otherwise toward the
+## end that makes the shorter way round to `slot` -- counting, for an end whose straight line
+## on to `slot` would cross the rect, the way on round its far corner. He veers off the rock
+## while he can still turn, instead of running onto it and standing there: the hard backstop
+## (_keep_out_of_terrain) stops a body dead in the direction of the rock, and a man stopped
+## dead takes as long to pick up the flight again as it took him to reach it. The second look
+## keeps a man already standing at the face from pressing into it. `desired` unchanged when
+## both looks clear every rect, or when he already wants to run away from the face met.
+## Deterministic and replay-safe; counts its own rect clips and square roots in SimOps.
+static func router_terrain_avoid(pos: Vector2, vel: Vector2, slot: Vector2, desired: Vector2,
+		grown: Array[Rect2], accel: float, delta: float) -> Vector2:
+	var speed: float = vel.length()
+	var want: float = desired.length()
+	var sqrts: int = 2
+	var clips: int = 0
+	var best: float = INF
+	var hit := Rect2()
+	var entry := Vector2.ZERO
+	if speed > 0.0 and accel > 0.0:
+		var reach: float = speed * speed / (2.0 * accel) + speed * delta
+		var ahead: Vector2 = pos + vel * (reach / speed)
+		for g in grown:
+			clips += 1
+			var t: float = PathField.segment_rect_entry(pos, ahead, g)
+			if t * reach < best:
+				best = t * reach
+				hit = g
+				entry = pos.lerp(ahead, t)
+	if want > 0.0 and delta > 0.0:
+		var step_end: Vector2 = pos + desired * delta
+		for g in grown:
+			clips += 1
+			var t: float = PathField.segment_rect_entry(pos, step_end, g)
+			if t * want * delta < best:
+				best = t * want * delta
+				hit = g
+				entry = pos.lerp(step_end, t)
+	SimOps.add(SimOps.TERRAIN_PROJECT, clips)
+	if not is_finite(best):
+		SimOps.add(SimOps.SQRT_EVAL, sqrts)
+		return desired
+	# The face met: the one the entry point lies on (the nearest, for a point on a corner),
+	# its outward normal, and its two ends.
+	var gap_left: float = absf(entry.x - hit.position.x)
+	var gap_right: float = absf(hit.end.x - entry.x)
+	var gap_up: float = absf(entry.y - hit.position.y)
+	var gap_down: float = absf(hit.end.y - entry.y)
+	var outward := Vector2.LEFT
+	var end_a: Vector2 = hit.position
+	var end_b := Vector2(hit.position.x, hit.end.y)
+	var nearest: float = gap_left
+	if gap_right < nearest:
+		nearest = gap_right
+		outward = Vector2.RIGHT
+		end_a = Vector2(hit.end.x, hit.position.y)
+		end_b = hit.end
+	if gap_up < nearest:
+		nearest = gap_up
+		outward = Vector2.UP
+		end_a = hit.position
+		end_b = Vector2(hit.end.x, hit.position.y)
+	if gap_down < nearest:
+		outward = Vector2.DOWN
+		end_a = Vector2(hit.position.x, hit.end.y)
+		end_b = hit.end
+	var inward_part: float = -desired.dot(outward)
+	if inward_part <= 0.0:
+		SimOps.add(SimOps.SQRT_EVAL, sqrts)
+		return desired
+	var toward_a: bool
+	var side: float = (slot - pos).dot(end_a - end_b)
+	if slot.dot(outward) >= end_a.dot(outward) and side != 0.0:
+		# His slot is on his own side of the face: he only has to stop running into it, so
+		# he turns toward the side his slot lies on.
+		toward_a = side > 0.0
+	else:
+		# His slot lies beyond the face: the shorter way round, by either end. Each end's far
+		# corner is the same corner of the rect on its opposite face.
+		var depth: float = absf(hit.size.dot(outward))
+		var via_a: float = pos.distance_to(end_a) \
+				+ _way_round(end_a, end_a - outward * depth, slot, hit)
+		var via_b: float = pos.distance_to(end_b) \
+				+ _way_round(end_b, end_b - outward * depth, slot, hit)
+		sqrts += 8
+		SimOps.add(SimOps.TERRAIN_PROJECT, 2)
+		toward_a = via_a <= via_b
+	var along: Vector2 = (end_a - end_b) if toward_a else (end_b - end_a)
+	var along_len: float = along.length()
+	sqrts += 1
+	SimOps.add(SimOps.SQRT_EVAL, sqrts)
+	if along_len <= 0.0:
+		return desired
+	return desired + outward * inward_part + along * (inward_part / along_len)
+
+
+## How far it is from `corner` (one end of a face of `rect`) on to `slot`: straight there,
+## unless that line would cross the rect's interior, in which case on round `far` (the same
+## end's corner on the rect's opposite face) first. Always three square roots and one rect
+## clip, so the caller can count them.
+static func _way_round(corner: Vector2, far: Vector2, slot: Vector2, rect: Rect2) -> float:
+	var direct: float = corner.distance_to(slot)
+	var round_far: float = corner.distance_to(far) + far.distance_to(slot)
+	if PathField.segment_intersects_rect(corner, slot, rect.grow(-INTERIOR_EPS)):
+		return round_far
+	return direct
 
 
 ## Cap a stationary/reforming body's velocity to its unit's jog pace, but to the slower
