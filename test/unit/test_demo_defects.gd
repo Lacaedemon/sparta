@@ -529,6 +529,27 @@ func test_superphysical_speed_holds_a_router_to_its_flee_pace_cap() -> void:
 			"the same speed on a marching unit still is")
 
 
+func test_superphysical_speed_holds_a_rallied_unit_pulling_up_to_its_flee_pace_cap() -> void:
+	# A rallied unit is IDLE while its anchor coasts to a stop on its flight, and its men are
+	# still running at up to the flee pace, so its halting intervals keep the router's ceiling.
+	# The dump's rally_halting is only true while the anchor still carries speed: once it has
+	# stopped, a spike past the sprint cap in the re-form is flagged, including the first
+	# interval after the last halting sample.
+	var sprint := 126.0
+	var sprint_cap: float = sprint * GaitLimits.SUPERPHYSICAL_SPEED_FRAC
+	var flee_cap: float = sprint_cap * GaitLimits.FLEE_SPEED_MULTIPLIER
+	var v: float = 0.5 * (sprint_cap + flee_cap)
+	var halting: Array = _moving_pair(v, 10, ["IDLE", "IDLE", "IDLE", "IDLE"])
+	for snap in halting:
+		snap["units"][0]["rally_halting"] = true
+	assert_true(bool(_verdict(DemoDefects.analyze(halting), "superphysical_speed")["pass"]),
+			"men running on the anchor's flee-pace coast are not super-physical")
+	var stopped: Array = _moving_pair(v, 10, ["IDLE", "IDLE", "IDLE", "IDLE", "IDLE"])
+	stopped[0]["units"][0]["rally_halting"] = true
+	assert_false(bool(_verdict(DemoDefects.analyze(stopped), "superphysical_speed")["pass"]),
+			"a spike past the sprint cap after the anchor has stopped is flagged")
+
+
 func test_superphysical_speed_picks_the_cap_from_the_interval_start() -> void:
 	# The flee-pace allowance belongs to intervals that START routing. A unit that only
 	# breaks at the last sample spent the intervals before it at its march pace, so a

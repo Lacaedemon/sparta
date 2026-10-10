@@ -339,6 +339,10 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		"last_reshape_tick": u._last_reshape_tick,
 		# True while a hold_position_anchor window is in effect (e.g. during reinforcement arrival).
 		"anchor_held": u.position_anchor_held(),
+		# True while a rallied unit's anchor is still coasting to a stop on its flight
+		# (Unit.is_rally_halting): DemoDefects' speed ceiling then allows its men the flee pace
+		# they are still running at, as for a router.
+		"rally_halting": u.is_rally_halting(),
 		"soldiers": u.soldiers,
 		"current_speed": round_to(u._current_speed, 1),
 		"current_speed_mps": mps(u._current_speed, WorldScaleRef.WU_PER_M, speed_scale),

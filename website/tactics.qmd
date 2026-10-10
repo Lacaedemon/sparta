@@ -78,7 +78,7 @@ its riders running together as a block.
   --- morale climbs back toward a baseline, fast at first and levelling off. If it
   **breaks contact** (no enemy close enough to keep hitting it) and still fields enough
   men, its recovering morale carries it over the rally threshold and it **returns to
-  your control**, ready to fight again. It re-squares its ranks **where it stands**
+  your control**, ready to fight again. It re-squares its ranks the moment it rallies
   --- the flight leaves the grid flipped, so the short rank ends up leading, and only
   the men the flip can't leave in place have to move: under **File-major** reform
   (the default) the under-strength files step up one rank to close it, and under
@@ -91,6 +91,13 @@ its riders running together as a block.
   about-face, the men don't counter-march through the block to do it, so a rallied
   unit is back in fighting shape almost at once rather than spending seconds
   shuffling through itself.
+  A unit that rallies at a run **pulls up** while it re-forms,
+  where it has the room and no enemy is near it or its path
+  (and it stops short if one comes near while it slows):
+  it brakes at its own rate with its men keeping step,
+  over about 3 to 5 metres for foot running flat out and about 30 for horse,
+  so the block halts as one instead of stopping dead and leaving its men to run on
+  past their places and walk back.
 - **Keep pressing it and it "shatters" instead** --- still in contact when its time
   runs out, or gutted past reforming. A shattered unit does NOT vanish: it stays on the
   field, still routing, but can never again recover morale or rally. From there it
@@ -163,6 +170,9 @@ The same cell pairing cancels the flip on the square's own assignment, so 56 of
 the 60 men hold their ground and only the four with no counterpart in the short
 rear rank swap ends: the block re-squares where it stands instead of marching
 itself inside out.
+For a moment after the rally, though, most of the men still stand on a
+neighbour's place before they settle onto their own --- a known flaw,
+tracked in [#1766](https://github.com/Lacaedemon/sparta/issues/1766).
 :::
 
 ::: {#fig-rout-rally .demo}

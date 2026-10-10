@@ -365,7 +365,7 @@ static func analyze(snapshots: Array) -> Dictionary:
 			if not series.has(uid):
 				series[uid] = {
 					"ticks": [], "engaged": [], "in_enemy_contact": [],
-					"moving": [], "routing": [], "counts": [],
+					"moving": [], "routing": [], "rally_halting": [], "counts": [],
 					"formation": [], "frontage": [],
 					"last_reshape_tick": [], "anchor_held": [],
 					"nnd_min": [], "nnd_med": [], "angle": [], "residual": [],
@@ -385,6 +385,8 @@ static func analyze(snapshots: Array) -> Dictionary:
 			s["in_enemy_contact"].append(bool(u.get("in_enemy_contact", false)))
 			s["moving"].append(String(u.get("state", "")) == "MOVING")
 			s["routing"].append(String(u.get("state", "")) == "ROUTING")
+			# Absent from transcripts dumped before the field existed: false there.
+			s["rally_halting"].append(bool(u.get("rally_halting", false)))
 			s["counts"].append(bodies.size())
 			s["formation"].append(String(u.get("formation", "")))
 			s["frontage"].append(int(u.get("frontage", 0)))
@@ -618,7 +620,20 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	# that only starts routing at the interval's end spent that interval under its ordinary
 	# gaits, and its flight then builds up at its own accel from no more than the speed it
 	# was already carrying away from the enemy (Unit._rout's seed, zero for a FIGHTING
-	# unit), so over that interval its sprint ceiling still applies.
+	# unit), so over that interval its sprint ceiling still applies. A rallied unit whose
+	# anchor is still coasting to a stop on its flight (rally_halting at the interval's start)
+	# keeps the router's flee-pace ceiling: men the rally re-paired onto other slots catch up
+	# at the pace the block was fleeing at while the anchor already brakes below its sprint
+	# (morale_recovery: a man at 110.7 wu/s with the anchor at 77). That 110.7 is the flight's
+	# own pace, not one gained in the halt: on the last routing samples (ticks 346-354) the
+	# anchor itself covers 3.69 wu per 2 ticks, 110.7 wu/s, the 104 wu/s Infantry flee pace
+	# (1.3 x 80) plus the body coupling's pull -- the few percent test_close_tier_rout_speed.gd
+	# allows (SPEED_TOLERANCE_FRAC 0.1; here 6.4%). It sits well under the flee-pace cap
+	# (80 x 1.15 x 1.3 = 119.6 wu/s, plus 0.42 wu/s of 2-tick quantization margin).
+	# rally_halting is only true while the anchor still carries speed, so the allowance ends
+	# when it stops and cannot excuse a spike in the re-form that follows
+	# (Unit.is_rally_halting).
+	var halting: Array = s.get("rally_halting", [])
 	var cap: float = sprint * SUPERPHYSICAL_SPEED_FRAC
 	var flee_cap: float = cap * GaitLimitsRef.FLEE_SPEED_MULTIPLIER
 	var over_run := 0
@@ -636,7 +651,9 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 			continue
 		var dt: int = int(s["ticks"][i]) - int(s["ticks"][i - 1])
 		var v: float = max_soldier_speed(s["pos"][i - 1], s["pos"][i], dt)
-		var interval_threshold: float = (flee_cap if bool(s["routing"][i - 1]) else cap) \
+		var fleeing: bool = bool(s["routing"][i - 1]) \
+				or (halting.size() > i - 1 and bool(halting[i - 1]))
+		var interval_threshold: float = (flee_cap if fleeing else cap) \
 				+ speed_quantization_margin(dt)
 		if v > worst_speed:
 			worst_speed = v
