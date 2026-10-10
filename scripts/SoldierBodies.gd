@@ -766,6 +766,7 @@ static func router_terrain_avoid(pos: Vector2, vel: Vector2, slot: Vector2, desi
 		var via_b: float = pos.distance_to(end_b) \
 				+ _way_round(end_b, end_b - outward * depth, slot, hit)
 		sqrts += 8
+		SimOps.add(SimOps.TERRAIN_PROJECT, 2)
 		toward_a = via_a <= via_b
 	var along: Vector2 = (end_a - end_b) if toward_a else (end_b - end_a)
 	var along_len: float = along.length()
@@ -778,8 +779,8 @@ static func router_terrain_avoid(pos: Vector2, vel: Vector2, slot: Vector2, desi
 
 ## How far it is from `corner` (one end of a face of `rect`) on to `slot`: straight there,
 ## unless that line would cross the rect's interior, in which case on round `far` (the same
-## end's corner on the rect's opposite face) first. Always two square roots, so the caller can
-## count them.
+## end's corner on the rect's opposite face) first. Always three square roots and one rect
+## clip, so the caller can count them.
 static func _way_round(corner: Vector2, far: Vector2, slot: Vector2, rect: Rect2) -> float:
 	var direct: float = corner.distance_to(slot)
 	var round_far: float = corner.distance_to(far) + far.distance_to(slot)

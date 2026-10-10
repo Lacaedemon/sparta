@@ -48,6 +48,23 @@ const EDGE_HILL := Rect2(0.0, 1220.0, 1420.0, 200.0)
 const EDGE_START := Vector2(1300.0, 600.0)
 const EDGE_ENEMY := Vector2(900.0, 400.0)
 const EDGE_WATCH_TICKS := 480
+# The close-start staging (demos/inputs/deep-router-rounds-hill.json's first draft): an
+# 80-mount Cavalry block already routing south, its front rank only 40 wu short of a hill
+# across its eastern half, on a declared field with an idle squadron keeping it in the close
+# tier. Sampled at CLOSE_START_TICK, just before its 6 s rout timer runs out.
+const CLOSE_FIELD := Rect2(0.0, 0.0, 1800.0, 2400.0)
+const CLOSE_HILL := Rect2(780.0, 1220.0, 260.0, 200.0)
+const CLOSE_START := Vector2(820.0, 700.0)
+const CLOSE_ENEMY := Vector2(1420.0, 760.0)
+const CLOSE_START_TICK := 350
+# The men counted as fallen out of their block: more than this far from their slots (wu).
+const FALLEN_OUT_WU := 100.0
+# Measured at CLOSE_START_TICK on this branch: 5 men fallen out and a worst gap of 382 wu;
+# on main 12 and 426. The bounds sit one man and about 5 percent above the branch's figures,
+# below main's: they pin the improvement, not a clean result.
+# TODO(#1787): tighten once the close-start lag is fixed.
+const CLOSE_MAX_FALLEN_OUT := 6
+const CLOSE_MAX_WORST_WU := 400.0
 # Pure-function fixtures for router_terrain_avoid: a rect (already grown by the body radius)
 # north of a man running north, and the man's own acceleration.
 const FACE_RECT := Rect2(-100.0, -300.0, 300.0, 100.0)   # south face at y = -200
@@ -79,7 +96,7 @@ func _spawn(scenario: Array, field := Rect2(), terrain: Array = []) -> Unit:
 	_battle.scenario = scenario
 	add_child(_battle)
 	await get_tree().physics_frame
-	for u in get_tree().get_nodes_in_group("units"):
+	for u in get_tree().get_nodes_in_group("units") + get_tree().get_nodes_in_group("routers"):
 		var unit: Unit = u as Unit
 		if unit != null and unit.uid == 0:
 			return unit
@@ -205,7 +222,7 @@ func test_a_wide_shallow_line_rounds_a_hill_without_pinning_its_flank() -> void:
 func test_a_detour_beside_the_field_edge_keeps_the_block_on_the_field() -> void:
 	# The only way round leaves too little room for the block's swept width beside the
 	# field's edge: the flight falls back to the anchor's own margin rather than leading the
-	# block off the field, and the rally's coast does not carry it off either.
+	# block off the field, so the rally's coast that follows stays on it too.
 	var router: Unit = await _spawn([
 		{"team": 1, "type": "Cavalry", "count": MOUNTS, "x": EDGE_START.x, "y": EDGE_START.y,
 				"facing": [0, 1]},
@@ -235,6 +252,99 @@ func test_a_detour_beside_the_field_edge_keeps_the_block_on_the_field() -> void:
 	assert_eq(off_field, 0, "no man left the field (man-ticks off it: %d)" % off_field)
 	assert_true(EDGE_FIELD.has_point(router.position),
 			"the rallied anchor stands on the field (%s)" % router.position)
+
+
+func test_a_close_start_router_keeps_more_of_its_front_than_before() -> void:
+	# A block whose front rank starts within a few strides of the hill cannot turn away in
+	# time, so its leading men still meet the hill's face and fall behind. This pins the
+	# improvement over the anchor-margin detour.
+	# TODO(#1787): the leading men of a close-start block still fall behind.
+	var router: Unit = await _spawn([
+		{"team": 1, "type": "Cavalry", "count": MOUNTS, "x": CLOSE_START.x, "y": CLOSE_START.y,
+				"morale": 1.0, "starting_state": 3, "facing": [0, 1]},
+		{"team": 0, "type": "Cavalry", "count": 24, "x": CLOSE_ENEMY.x, "y": CLOSE_ENEMY.y,
+				"facing": [-1, 0]},
+	], CLOSE_FIELD, [{"rect": CLOSE_HILL, "type": "hill", "kind": "block"}])
+	assert_not_null(router, "the team-1 cavalry deployed")
+	if router == null:
+		return
+	await _advance_ticks(CLOSE_START_TICK - _battle.current_tick())
+	assert_eq(_battle.current_tick(), CLOSE_START_TICK, "setup: sampled at tick %d" % CLOSE_START_TICK)
+	assert_eq(router.state, Unit.State.ROUTING, "setup: still routing at the sample")
+	assert_eq(router.tier, FormationTier.CLOSE, "setup: still in the close tier")
+	var slots: PackedVector2Array = router.soldier_world_slots(router.soldiers)
+	var fallen_out: int = 0
+	var worst: float = 0.0
+	for i in range(mini(slots.size(), router._sim_soldier_pos.size())):
+		var gap: float = router._sim_soldier_pos[i].distance_to(slots[i])
+		worst = maxf(worst, gap)
+		if gap > FALLEN_OUT_WU:
+			fallen_out += 1
+	assert_lte(fallen_out, CLOSE_MAX_FALLEN_OUT,
+			"at most %d men more than %.0f wu off their slots (got %d)"
+			% [CLOSE_MAX_FALLEN_OUT, FALLEN_OUT_WU, fallen_out])
+	assert_lt(worst, CLOSE_MAX_WORST_WU, "worst body-to-slot gap under %.0f wu (got %.1f)"
+			% [CLOSE_MAX_WORST_WU, worst])
+
+
+func test_a_router_in_enemy_contact_snaps_its_heading() -> void:
+	# The bounded turn is for a flight bending round terrain; a router still in contact with
+	# the enemy turns at once, as before (Unit._turn_flight_toward).
+	var router: Unit = await _spawn([
+		{"team": 0, "type": "Cavalry", "count": MOUNTS, "x": DEEP_START.x, "y": DEEP_START.y,
+				"facing": [0, -1]},
+		{"team": 1, "type": "Cavalry", "count": MOUNTS, "x": DEEP_ENEMY.x, "y": DEEP_ENEMY.y,
+				"facing": [0, -1]},
+	])
+	assert_not_null(router, "the team-0 cavalry deployed")
+	if router == null:
+		return
+	var flee := Vector2.UP
+	var tilted: Vector2 = flee.rotated(deg_to_rad(30.0))
+	router.facing = tilted
+	router._in_enemy_contact = false
+	router._turn_flight_toward(flee, TICK)
+	assert_gt(absf(angle_difference(router.facing.angle(), flee.angle())), 0.001,
+			"setup: out of contact the heading turns only part of the way in one tick")
+	router.facing = tilted
+	router._flight_turn_rate = 0.0
+	router._in_enemy_contact = true
+	router._turn_flight_toward(flee, TICK)
+	assert_almost_eq(angle_difference(router.facing.angle(), flee.angle()), 0.0, 0.000001,
+			"in enemy contact the heading snaps onto the flight direction")
+	assert_eq(router._flight_turn_rate, 0.0, "and carries no turn rate on to the bodies")
+
+
+func test_a_turning_router_feeds_its_turn_forward_to_its_men() -> void:
+	# Each unengaged man of a router turning its flight is carried with his slot's own turning
+	# velocity, turn rate x the slot's offset from the anchor turned a quarter, not only the
+	# march.
+	var router: Unit = await _spawn([
+		{"team": 0, "type": "Cavalry", "count": MOUNTS, "x": DEEP_START.x, "y": DEEP_START.y,
+				"facing": [0, -1]},
+		{"team": 1, "type": "Cavalry", "count": MOUNTS, "x": DEEP_ENEMY.x, "y": DEEP_ENEMY.y,
+				"facing": [0, -1]},
+	])
+	assert_not_null(router, "the team-0 cavalry deployed")
+	if router == null:
+		return
+	router._rout()
+	router._in_enemy_contact = false
+	router._flee_velocity = Vector2.ZERO
+	var rate: float = 0.1
+	router._flight_turn_rate = rate
+	router._sim_soldier_pos = router.soldier_world_slots(router.soldiers)
+	for i in range(router._sim_body_vel.size()):
+		router._sim_body_vel[i] = Vector2.ZERO
+	SoldierBodies.step(router, TICK)
+	var slots: PackedVector2Array = router.soldier_world_slots(router.soldiers)
+	var corner: int = slots.size() - 1
+	var arm: Vector2 = slots[corner] - router.position
+	var expected: Vector2 = Vector2(-arm.y, arm.x) * rate
+	var got: Vector2 = router._sim_body_vel[corner]
+	assert_gt(got.length(), 0.0, "the corner man starts moving with his turning slot")
+	assert_almost_eq(got.normalized().dot(expected.normalized()), 1.0, 0.001,
+			"along his slot's turning velocity (got %s, slot moves %s)" % [got, expected])
 
 
 ## FACE_RECT as the typed rect list router_terrain_avoid takes.

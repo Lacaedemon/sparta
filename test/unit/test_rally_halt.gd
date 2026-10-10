@@ -497,35 +497,6 @@ func test_a_coast_that_would_leave_retreat_bounds_stops_where_it_rallied() -> vo
 	PathField.active = old_field
 
 
-func test_a_coast_from_the_field_off_its_edge_stops_where_it_rallied() -> void:
-	var old_field: PathField = PathField.active
-	PathField.active = null
-	var u := _bare_flight_unit()
-	# 100^2 / (2 * 60) = 83.3 wu to stop, heading up; the field's edge is 50 wu ahead, and the
-	# retreat bounds reach well past it.
-	u.field_bounds = Rect2(0.0, 450.0, 1000.0, 1000.0)
-	u.retreat_bounds = Rect2(-200.0, 250.0, 1400.0, 1400.0)
-	u._begin_rally_halt()
-	assert_false(u._rally_halt, "a coast from the field off its edge is not handed over")
-	assert_eq(u._current_speed, 0.0, "the anchor stops where it rallied")
-	u.free()
-	PathField.active = old_field
-
-
-func test_a_coast_that_starts_off_the_field_is_still_handed_over() -> void:
-	# A router that fled past the field's edge (into the retreat margin) and rallied there
-	# coasts as before: the guard only stops a coast carrying a unit off the field.
-	var old_field: PathField = PathField.active
-	PathField.active = null
-	var u := _bare_flight_unit()
-	u.field_bounds = Rect2(0.0, 600.0, 1000.0, 1000.0)
-	u.retreat_bounds = Rect2(-200.0, 250.0, 1400.0, 1400.0)
-	u._begin_rally_halt()
-	assert_true(u._rally_halt, "a coast that starts off the field is handed over")
-	u.free()
-	PathField.active = old_field
-
-
 func test_a_coast_into_impassable_terrain_stops_where_it_rallied() -> void:
 	var old_field: PathField = PathField.active
 	var field := PathField.new(Rect2(0.0, 0.0, 2000.0, 2000.0))

@@ -8983,6 +8983,10 @@ func _process_rout(delta: float) -> void:
 ## SoldierBodies.step feeds it forward to the bodies.
 func _turn_flight_toward(dir: Vector2, delta: float) -> void:
 	var diff: float = angle_difference(facing.angle(), dir.angle())
+	# In contact the old snap stays: a bounded turn there let the enemy's press shove a
+	# router breaking from a melee beside a hill into the terrain (catalog trapped_routing:
+	# trapped, it turned to fight at tick 400). The mechanism is not diagnosed.
+	# TODO(#1788): find why the press carries the anchor into the terrain, then reconsider.
 	if absf(diff) > FACING_SNAP_ABSORB_THRESHOLD or _in_enemy_contact:
 		_flight_turn_rate = 0.0
 		_face_dir(dir)
@@ -9088,9 +9092,6 @@ func _begin_rally_halt() -> void:
 	var stop_dist: float = _flee_pace * _flee_pace / (2.0 * rally_halt_brake_rate())
 	var stop_at: Vector2 = position + dir * stop_dist
 	if not retreat_bounds.has_point(stop_at):
-		return
-	# A unit that rallies on the field never coasts off it: it would stand idle off the map.
-	if field_bounds.has_point(position) and not field_bounds.has_point(stop_at):
 		return
 	if PathField.active != null \
 			and PathField.active.is_leg_blocked(position, stop_at, terrain_clearance(dir)):
@@ -9267,6 +9268,8 @@ func _flight_step(flee: Vector2) -> Vector2:
 	var swept: float = half.x * cos_turn + half.y * sin_turn + soldier_body_radius()
 	if _across_flight_on_field(step, flee, swept):
 		return step
+	# TODO(#1789): the fallback's narrow margin pins the flank files against the terrain
+	# again, about as before the swept width existed.
 	return field.next_step_fleeing(position, flee, _rout_clearance())
 
 
