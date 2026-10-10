@@ -2561,7 +2561,7 @@ func enqueue_frontage(uids: Array, delta: int,
 		var files: int = clampi(current + delta, 1, maxi(1, u.max_soldiers))
 		var anchor_offset: float = 0.0
 		if anchor != UnitFormation.Anchor.CENTRE:
-			anchor_offset = u.frontage_anchor_offset + UnitFormation.anchor_shift(
+			anchor_offset = u.unmirrored_anchor_offset() + UnitFormation.anchor_shift(
 					current, files, u.file_pitch_wu(), anchor)
 		var cmd := {
 			"units": [uid],
@@ -2641,7 +2641,7 @@ func enqueue_file_double(uids: Array, direction: int,
 		if anchor == UnitFormation.Anchor.CENTRE:
 			anchor_offset = 0.0
 		else:
-			anchor_offset = u.frontage_anchor_offset \
+			anchor_offset = u.unmirrored_anchor_offset() \
 				+ UnitFormation.anchor_shift(current, files, spacing, anchor)
 		var cmd := {
 			"units": [uid],

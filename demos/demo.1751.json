@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/resquare-next-order-1751.json",
+  "caption": "An about-faced block keeps every man on his own flank through the next order. A lone Infantry block with a short rear rank is ordered to a point behind it: it about-faces, re-squares where it stands, marches there and halts. It is then ordered straight ahead. It steps off as the same block, every man in his own file. Before this fix the second order mirrored every off-centre man's place to the other flank, so the men walked through each other across the block and its frontage shrank to a third before spreading out again.",
+  "fixed_fps": 30,
+  "max_frames": 495,
+  "fps": 15,
+  "width": 720
+}

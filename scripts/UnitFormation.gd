@@ -506,6 +506,25 @@ static func depth_reflection_pairing(n: int, files: int) -> PackedInt32Array:
 	return out
 
 
+## The cell pairing that reflects a `block_slots(n, files, ...)` grid laterally: cell `c`
+## pairs with the cell standing at the same depth on the other side of the centreline, so
+## `slots[out[c]].x == -slots[c].x` and the depths agree. Every rank of block_slots is
+## centred on its own run of columns, a short rear rank included, so each rank is exactly
+## symmetric and every cell has a partner in its own rank (a rank's middle cell, when it
+## has one, pairs with itself). The pairing is an involution and a permutation for every
+## (n, files). Empty for a non-positive count or file count, like depth_reflection_pairing.
+static func lateral_reflection_pairing(n: int, files: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	if n <= 0 or files <= 0:
+		return out
+	out.resize(n)
+	for c in range(n):
+		var r: int = c / files
+		var rank_count: int = mini(files, n - r * files)
+		out[c] = r * files + (rank_count - 1 - c % files)
+	return out
+
+
 ## `slots` relabelled by `perm` (perm[i] = the cell soldier i occupies), so the returned
 ## array is index-aligned with the live soldier arrays like every other slot array in the
 ## sim. A `perm` of the wrong size returns `slots` untouched -- the historical index-order

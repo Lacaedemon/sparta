@@ -1847,7 +1847,7 @@ func _grip_for_press(world_pos: Vector2):
 ## anchored drag holds fixed -- the dragged width and the preview line both measure
 ## from it. Pure, so the drag-start "no jump" invariant is directly testable.
 func _resize_anchored_edge_x(u, anchor: int) -> float:
-	return u.frontage_anchor_offset \
+	return u.unmirrored_anchor_offset() \
 			+ float(anchor) * _resize_preview_half_width(u, UnitFormation.frontage(u))
 
 

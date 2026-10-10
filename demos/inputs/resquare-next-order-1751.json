@@ -1,0 +1,22 @@
+{
+  "_comment": "A lone 46-man Infantry block, 10 files by 4 full ranks plus a 6-man partial rank, faces west at (900, 360). At tick 20 it is ordered to (1040, 360), behind it: it about-faces, re-squares holding its ground (a depth-only reflection of the grid, so every man keeps his flank), marches east and halts by tick 600. At tick 620 it gets a SECOND order, straight ahead to (1170, 360). That order needs no turn, so no man should move off his file: the block holds a 162 wu frontage throughout, steps off, and halts at (1108.9, 360) by tick 880. On main the second order dropped the re-square's mirror, which reflected every off-centre man's slot to the other flank: the men walked through each other across the block, the frontage collapsed from 162 to 55.6 wu at tick 740, and the march lagged (centre 1052.08 at tick 740, still MOVING at tick 880, and settling at (1110.74, 359.88) at tick 980). Each expect below fails on main; main's dump also fails the blob, overlap, shape_residual, misslotted and path_crossing scans, all of which pass here.",
+  "seed": "90417",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 900, "y": 360, "facing": [-1, 0], "count": 46, "frontage": 10}
+  ],
+  "camera": [
+    {"tick": 0, "x": 1030, "y": 360, "zoom": 1.5}
+  ],
+  "steps": [
+    {"tick": 8, "click": [900, 360]},
+    {"tick": 20, "rmb_click": [1040, 360]},
+    {"tick": 620, "rmb_click": [1170, 360]}
+  ],
+  "state": [8, 60, 120, 200, 300, 400, 500, 600, 620, 640, 660, 680, 700, 720, 740, 760, 780, 800, 820, 840, 860, 880, 900, 940, 980],
+  "expect": [
+    {"tick": 740, "uid": 0, "field": "position", "value": [1060.55, 360.0], "tol": 0.5},
+    {"tick": 880, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": 980, "uid": 0, "field": "position", "value": [1108.9, 360.0], "tol": 0.5}
+  ]
+}

@@ -506,9 +506,15 @@ var _drill_turn_fold: float = 0.0
 # within each file (a countermarch), never swap a soldier to the opposite flank. While this flag
 # is set, soldier_world_slots negates each local slot's file (x) coordinate before rotating by the
 # CURRENT ang -- a depth-only reflection -- so a body that stood in the front rank on one flank
-# lands in the rear rank on that SAME flank, matching real countermarch drill. Cleared by
-# set_current_order() and _rout() (any fresh order or maneuver re-squares from a clean baseline,
-# so a stale mirror must not compound with the next turn's own _formation_angle fold).
+# lands in the rear rank on that SAME flank, matching real countermarch drill. reform_ranks
+# toggles it (a second about-face reflection inside one order takes it off again).
+# set_current_order() bakes it into the soldier-to-slot assignment (_bake_formation_mirror), so a
+# fresh order starts unmirrored with every man's slot exactly where the mirror had put it;
+# simply dropping the flag would swap every off-centre man to the opposite flank. set_frontage()
+# bakes it too, before writing its anchor shift, which callers compute in the unmirrored frame
+# (see unmirrored_anchor_offset). _rout() drops it without baking it, along with the fold, which
+# still reflects every off-centre man's slot to the other flank; that is a known gap, not a
+# design choice.
 #
 # Deliberately NOT cleared by _settle_engage_turn() or _face_dir()'s snap-absorb branch: those
 # both fold a rotation into _formation_angle specifically to hold `ang` (soldier_world_slots'
@@ -521,6 +527,13 @@ var _drill_turn_fold: float = 0.0
 # large facing snap instead of a reform, for a unit still marching after a countermarched
 # reform.
 var _formation_mirror_x: bool = false
+# Whether the index-order layout a slot grid falls back to (row major's identity grid, file
+# major's index-order fill, the square's identity fill) is laterally reflected. Toggled when
+# set_current_order bakes _formation_mirror_x into the assignment arrays: those arrays carry
+# the reflection, but a fallback rebuilds from index order, which would otherwise drop it and
+# send every off-centre man to the other flank. See _bake_formation_mirror and
+# _fallback_assignment.
+var _fallback_mirror_x: bool = false
 # Facing to pivot to once a move order's destination is reached, set by a
 # drag-to-form-up order so the unit deploys facing the dragged line rather than its
 # march direction. Vector2.ZERO means "keep the march facing" (no deploy turn).
@@ -1817,10 +1830,11 @@ func set_current_order(order: Order) -> void:
 		q.append(order)
 	orders = q
 	current_order = order
-	# A fresh order always re-squares from a clean baseline (see start_order_response, called
-	# right after this for every dispatched order): a stale countermarch mirror must not
-	# compound with whatever fold the new order's own maneuver applies to _formation_angle.
-	_formation_mirror_x = false
+	# A fresh order starts from an unmirrored grid, so everything that reads the slot frame's
+	# local X (frontage anchors, resize grips, the relief corridor) means the same flank it
+	# does for any other block. The mirror is baked into the assignment rather than dropped:
+	# dropping it would carry every off-centre man to the other flank.
+	_bake_formation_mirror()
 
 
 ## Append `order` to the queue tail (a shift-click waypoint leg). If the unit is currently idle
@@ -4145,11 +4159,11 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 ## the exact point-reflection/flank-swap bug this file's countermarch fix exists to eliminate,
 ## just triggered by an engage re-face instead of a reform (reachable whenever a unit engages
 ## combat mid-march after a countermarched reform, since the mirror flag stays true through
-## that march). The reshape branches above are orthogonal to this: set_frontage() changes the
-## file/rank COUNT (which slot index `i` maps to), the same relabelling a reshape always causes
-## regardless of the mirror -- _formation_mirror_x only decides whether soldier_world_slots
-## negates local x before rotating, so it doesn't make a reshape any less (or more) consistent
-## than an unmirrored one; the two concerns don't interact.
+## that march). The reshape branches above do take the mirror off, but without moving anyone:
+## set_frontage() first bakes a standing mirror into the assignment (_bake_formation_mirror),
+## which clears _formation_mirror_x, toggles _fallback_mirror_x and negates the anchor shift
+## while leaving every man's slot exactly where it was, and only then changes the file COUNT.
+## So a reshape still relabels slots the way any reshape does, and the bake adds no flank swap.
 func _settle_engage_turn() -> void:
 	var turned: float = angle_difference(_engage_turn_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
@@ -5002,7 +5016,11 @@ func _reset_shield_hold_angles() -> void:
 ## centred behaviour). Clamped to [1, max_soldiers]; the formation grid
 ## (UnitFormation.slots) picks both up on the next tick and the soldier bodies ease
 ## toward the reshaped slots at velocity (no teleport).
+## `anchor_offset` is in the unmirrored local frame (unmirrored_anchor_offset is the standing
+## offset in that frame), so a standing about-face mirror is baked first: written under the
+## mirror, the shift would land on the opposite flank.
 func set_frontage(files: int, anchor_offset: float = 0.0) -> void:
+	_bake_formation_mirror()
 	var old_files: int = UnitFormation.frontage(self)
 	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
 	frontage_anchor_offset = anchor_offset
@@ -5774,7 +5792,8 @@ func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVe
 				r_slots = UnitFormation.apply_traverse_flank_arcs(r_slots, _sim_soldier_pos, position, r_ang, _sim_soldier_row_slot, formation_files(count), file_pitch_wu())
 			slots = r_slots
 		else:
-			slots = row_grid
+			slots = UnitFormation.permute_slots(row_grid,
+					_fallback_assignment(count, UnitFormation.frontage(self)))
 	if apply_relief_corridor:
 		return _apply_relief_corridor_to_slots(slots)
 	return slots
@@ -5842,6 +5861,11 @@ func _ensure_file_assignment(count: int, files: int) -> void:
 	if live.is_empty():
 		_sim_soldier_file = UnitFormation.file_ids_in_index_order(capacities)
 		_sim_soldier_rank = PackedInt32Array()   # array order IS the depth order here
+		if _fallback_mirror_x:
+			# The baked mirror's lateral reflection, reapplied to the fresh fill: reversing the
+			# file ids keeps each file's men in the same array order, so their depths stand.
+			for i in range(_sim_soldier_file.size()):
+				_sim_soldier_file[i] = files - 1 - _sim_soldier_file[i]
 	else:
 		if subunit_structure == SubunitStructure.FILE_GROUP and _file_assignment_files > 0 and _sim_soldier_file.size() == count:
 			var reformed: Dictionary = UnitFormation.subunit_reform_files(
@@ -5988,7 +6012,7 @@ func _ensure_square_slot_assignment(count: int, files: int, slots: PackedVector2
 		return
 	var live: PackedVector2Array = _slot_frame_positions(count)
 	if live.is_empty():
-		_sim_soldier_square_slot = UnitFormation.identity_assignment(count)
+		_sim_soldier_square_slot = _fallback_assignment(count, files)
 	else:
 		_sim_soldier_square_slot = UnitFormation.pair_slots_by_lateral_file(live, slots, files)
 	# Commit the file count ONLY when the pairing was actually computed from live bodies. A
@@ -6644,7 +6668,12 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 			and absf(absf(_drill_turn_fold) - PI * 0.5) < 0.01
 	_formation_angle = 0.0
 	_drill_turn_fold = 0.0
-	_formation_mirror_x = is_about_face_fold
+	# An about-face reflection toggles the mirror rather than setting it. A block that is
+	# already mirrored (a second re-square inside one order, such as a queued leg's turn) has
+	# its lateral axis reversed once already, so a second depth-only reflection takes it off
+	# again, and any other fold leaves it standing. Setting it outright would instead flip
+	# every off-centre man to the other flank whenever the two disagree.
+	_formation_mirror_x = _formation_mirror_x != is_about_face_fold
 	if is_quarter_fold or drilled_quarter:
 		_pair_after_quarter_fold(soldiers)
 	# The mirror reflects the grid in depth, which negates every man's slot depth while
@@ -6713,6 +6742,80 @@ func _pair_after_quarter_fold(count: int) -> void:
 	_row_slot_files = files
 
 
+## Take the lateral mirror off the grid without moving any man's slot: the slot map with the
+## mirror armed and the one with it baked in agree for every soldier.
+##
+## The mirror negates each slot's local X before the block's rotation. Its exact equivalent
+## without the flag is a lateral relabelling of the assignment, plus the frontage anchor
+## shift negated, since the anchor is added in the same local frame the mirror reflects.
+## Every assignment array that holds a pairing of the live count is relabelled, whether or
+## not the live grid reads it right now, because a dormant one (the line pairing of a squared
+## block) comes back into use later:
+## - file major: file f becomes file (files - 1 - f), against the file count the ids were
+##   dealt for. Ranks stay as they are, so each man keeps his depth, and
+##   file_major_block_slots places file positions symmetrically.
+## - row major and square: compose UnitFormation.lateral_reflection_pairing, over the
+##   pairing's own file count, onto the held pairing.
+## No array holds the index-order layout a grid falls back to when its pairing is missing or
+## out of sync: row major's identity grid (no pairing held, a frontage change, or a
+## regiment-path casualty that leaves the pairing longer than the block), file major's
+## index-order fill (a size mismatch at an unchanged frontage, such as that casualty), and
+## the square's identity fill (no bodies to read). Those fills read _fallback_mirror_x
+## instead, toggled here (see _fallback_assignment), so a fallback keeps every man on the
+## flank the mirror had him on. A fallback that deals from the live bodies (a file-major
+## reshape, a square re-pair) needs nothing: the bodies already stand where the mirrored
+## slots put them.
+func _bake_formation_mirror() -> void:
+	if not _formation_mirror_x:
+		return
+	_formation_mirror_x = false
+	_fallback_mirror_x = not _fallback_mirror_x
+	frontage_anchor_offset = -frontage_anchor_offset
+	var count: int = soldiers
+	if _file_assignment_files > 0 and _sim_soldier_file.size() == count:
+		for i in range(count):
+			_sim_soldier_file[i] = _file_assignment_files - 1 - _sim_soldier_file[i]
+	if _square_slot_files > 0 and _sim_soldier_square_slot.size() == count:
+		_sim_soldier_square_slot = _composed_pairing(
+				UnitFormation.lateral_reflection_pairing(count, _square_slot_files),
+				_sim_soldier_square_slot)
+	if _row_slot_files > 0 and _sim_soldier_row_slot.size() == count:
+		_sim_soldier_row_slot = _composed_pairing(
+				UnitFormation.lateral_reflection_pairing(count, _row_slot_files),
+				_sim_soldier_row_slot)
+	_render_dirty = true
+
+
+## The standing frontage anchor shift in the unmirrored local frame: the frame resize grips
+## and anchored file-doubling name their LEFT/RIGHT flanks in (local +X along the facing's
+## right-hand file axis), and the value frontage_anchor_offset takes once the mirror is baked.
+## Callers that compose a new anchored offset start from this, not from the raw field.
+func unmirrored_anchor_offset() -> float:
+	return -frontage_anchor_offset if _formation_mirror_x else frontage_anchor_offset
+
+
+## The index-order layout a grid of `count` men on `files` files falls back to when no
+## pairing is held: cell i for soldier i, laterally reflected while _fallback_mirror_x
+## stands (see _bake_formation_mirror).
+func _fallback_assignment(count: int, files: int) -> PackedInt32Array:
+	if _fallback_mirror_x:
+		var mirrored: PackedInt32Array = UnitFormation.lateral_reflection_pairing(count, files)
+		if mirrored.size() == count:
+			return mirrored
+	return UnitFormation.identity_assignment(count)
+
+
+## `pairing` applied after `held`: soldier i, who holds cell held[i], takes cell
+## pairing[held[i]]. Both arrays are `pairing.size()` long.
+func _composed_pairing(pairing: PackedInt32Array, held: PackedInt32Array) -> PackedInt32Array:
+	var n: int = pairing.size()
+	var out := PackedInt32Array()
+	out.resize(n)
+	for i in range(n):
+		out[i] = pairing[clampi(held[i], 0, n - 1)]
+	return out
+
+
 ## Cancel a hold-ground reform's depth reflection for the ROW-MAJOR layout, by composing the
 ## reflection's own cell pairing onto this unit's persistent slot assignment.
 ##
@@ -6728,7 +6831,8 @@ func _pair_after_quarter_fold(count: int) -> void:
 ## reform undo the first exactly, which is what the maneuver means.
 ##
 ## An out-of-sync held assignment (a reshape changed the file count, or the array size drifted)
-## is treated as identity rather than reinterpreted: its cell ids were computed against a grid
+## is treated as the fallback layout (_fallback_assignment: identity, or its lateral reflection
+## after a baked mirror) rather than reinterpreted: its cell ids were computed against a grid
 ## that no longer exists. That is the same judgment formation_slots() makes when it declines to
 ## apply such an assignment, kept consistent here so the two never disagree about which layout
 ## is in force.
@@ -6739,11 +6843,12 @@ func _apply_row_slot_reflection(count: int, files: int) -> void:
 	if pairing.size() != count:
 		return
 	var held: bool = _sim_soldier_row_slot.size() == count and _row_slot_files == files
+	var base: PackedInt32Array = _sim_soldier_row_slot if held \
+			else _fallback_assignment(count, files)
 	var out := PackedInt32Array()
 	out.resize(count)
 	for i in range(count):
-		var cell: int = _sim_soldier_row_slot[i] if held else i
-		out[i] = pairing[clampi(cell, 0, count - 1)]
+		out[i] = pairing[clampi(base[i], 0, count - 1)]
 	_sim_soldier_row_slot = out
 	_row_slot_files = files
 
@@ -9691,6 +9796,7 @@ func to_snapshot_dict() -> Dictionary:
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
 		"drill_turn_fold": _drill_turn_fold,
 		"formation_mirror_x": _formation_mirror_x,
+		"fallback_mirror_x": _fallback_mirror_x,
 		"deploy_facing": deploy_facing, "ordered_facing": ordered_facing,
 		"walk_advance": walk_advance, "reform_before_move": reform_before_move,
 		"file_major_reform_mode": file_major_reform_mode,
@@ -9909,6 +10015,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	# A snapshot from before the rename carries the quarter-turn-only record under its old key.
 	_drill_turn_fold = float(d.get("drill_turn_fold", d.get("quarter_turn_fold", 0.0)))
 	_formation_mirror_x = bool(d["formation_mirror_x"])
+	_fallback_mirror_x = bool(d.get("fallback_mirror_x", false))
 	deploy_facing = d["deploy_facing"]
 	ordered_facing = d["ordered_facing"]
 	walk_advance = bool(d["walk_advance"])
