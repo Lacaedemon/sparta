@@ -6695,7 +6695,9 @@ func _finish_order_turn() -> void:
 		return
 	# Hold ground for an ordinary order, while a countermarch drill keeps the full traversal.
 	var hold_ground: bool = current_order.countermarch_variant < 0
-	if current_order.reform and reform_ranks(hold_ground):
+	# The turn held every man on his slot, so the re-square may judge its walkers by where the
+	# men stand (see reform_ranks' bodies_on_old_slots).
+	if current_order.reform and reform_ranks(hold_ground, true):
 		# Splice a REFORM leaf in right after the turn (still at index 0 -- this handoff runs
 		# the instant it completes) and ahead of the march already at index 1, then advance the
 		# cursor onto it the same way any other completed leaf hands off to its next sibling.
@@ -6763,7 +6765,13 @@ func _finish_order_turn() -> void:
 ## a single centred rank really is a no-op (it's still the same row, just read backwards), but
 ## a QUARTER-turn is not -- the grid axis is genuinely rotated relative to facing even with
 ## only one rank, so it still needs _formation_angle dropped to re-square the line.
-func reform_ranks(hold_ground: bool = false) -> bool:
+##
+## `bodies_on_old_slots` says the men stand on the slots they held before this re-square, which
+## is true only for the re-square that ends an in-place turn (the turn holds every man where he
+## stands). arm_couple_transit needs it when an out-of-step assignment had to be re-dealt from
+## the bodies and no pre-deal slots could be read: it then judges the walkers by where the men
+## stand, which would flag every man of a block still braking out of a flight. Default false.
+func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) -> bool:
 	var angle: float = wrapf(_formation_angle, -PI, PI)
 	if absf(angle) < 0.01:
 		_drill_turn_fold = 0.0
@@ -6866,7 +6874,7 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 		# `position` (a full grid squaring a residue), where the walk is symmetric and reads
 		# no drift. Covers the drilled REFORM hold, the hasty variant's re-square on arrival
 		# (which runs outside any hold) and a rally's re-square alike.
-		arm_couple_transit(slots_before, _reform_timeout())
+		arm_couple_transit(slots_before, _reform_timeout(), bodies_on_old_slots)
 	_render_dirty = true
 	return true
 
@@ -7182,8 +7190,10 @@ func position_anchor_held() -> bool:
 ## Flag every man whose slot the re-deal moved by more than REFORM_SETTLE_EPS as in transit
 ## (see _couple_transit), for `timeout_sec` at most. `slots_before` is each man's slot just
 ## before the re-deal, or empty when the re-square had to re-deal an out-of-step assignment
-## from the bodies (then each man's body stands in for his old slot). Called by a hold-ground
-## about-face re-square. On an exact half-turn the
+## from the bodies. With it empty, each man's body stands in for his old slot only when
+## `bodies_on_old_slots` says the men stand on them (the re-square that ends an in-place turn);
+## otherwise nothing is armed. Called by a hold-ground about-face re-square.
+## On an exact half-turn the
 ## full files keep their slots, so only the men of the short files are flagged. A block with a
 ## short rank has its slot centroid off `position`, and those men's walk moves the body
 ## centroid by a good fraction of a rank pitch; left in the drift average, it would drag
@@ -7198,19 +7208,21 @@ func position_anchor_held() -> bool:
 ## The flags are sized to the live soldier count, like the slots. During a regiment-path
 ## casualty's window (soldiers already dropped, body arrays not yet trimmed) couple() does
 ## not run, and the flags take effect once step() trims the arrays to match.
-func arm_couple_transit(slots_before: PackedVector2Array, timeout_sec: float) -> void:
+func arm_couple_transit(slots_before: PackedVector2Array, timeout_sec: float,
+		bodies_on_old_slots: bool = false) -> void:
 	clear_couple_transit()
 	var slots: PackedVector2Array = soldier_world_slots(soldiers)
 	var n: int = slots.size()
 	if n == 0:
 		return
 	# With no pre-deal slots (the caller's assignment had to be re-dealt from the bodies, see
-	# reform_ranks), judge the new slots against where the men stand: after an in-place turn
-	# they stand on the slots they held before it. A regiment-path casualty trims the rear
-	# bodies, so the first `n` line up with the new slots.
+	# reform_ranks), judge the new slots against where the men stand, but only after an
+	# in-place turn, which leaves them on the slots they held before it. A block braking out of
+	# a flight stands off its slots, so every man would read as a walker: arm nothing then. A
+	# regiment-path casualty trims the rear bodies, so the first `n` line up with the new slots.
 	var reference: PackedVector2Array = slots_before
 	if reference.size() != n:
-		if _sim_soldier_pos.size() < n:
+		if not bodies_on_old_slots or _sim_soldier_pos.size() < n:
 			return
 		reference = _sim_soldier_pos.slice(0, n)
 	var centroid := Vector2.ZERO

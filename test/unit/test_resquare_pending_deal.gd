@@ -89,7 +89,8 @@ func test_a_pending_row_deal_resquare_keeps_the_anchor_in_place() -> void:
 	assert_true(u._row_slot_deal_pending(u.soldiers, u.formation_files(u.soldiers)),
 		"precondition: the row deal is pending")
 	var start: Vector2 = u.position
-	assert_true(u.reform_ranks(true), "precondition: the about-face fold re-squares")
+	# The re-square that ends an in-place turn, as _finish_order_turn makes it.
+	assert_true(u.reform_ranks(true, true), "precondition: the about-face fold re-squares")
 	assert_false(u._couple_transit.is_empty(), "the re-square flagged its walkers")
 	var worst: float = 0.0
 	for _i in range(300):
@@ -98,3 +99,29 @@ func test_a_pending_row_deal_resquare_keeps_the_anchor_in_place() -> void:
 		worst = maxf(worst, u.position.distance_to(start))
 	assert_lt(worst, Unit.REFORM_SETTLE_EPS,
 		"the anchor held through the re-square (worst %.3f wu)" % worst)
+
+
+## A rally re-square over the same pending deal (a casualty in the rally frame): the block is
+## still braking, every man 20 wu ahead of his slot, so where the men stand says nothing about
+## who walks. No man is flagged, and the coupling follows the bodies (11.7 wu
+## here). Judging the walkers by the bodies flagged all 45 and held the anchor
+## at 0.48 wu while the men walked about 17 wu back to it.
+func test_a_pending_deal_on_a_rally_resquare_keeps_following_the_bodies() -> void:
+	var u := _make(46, 10, true)
+	_settle_about_face(u)
+	assert_true(u.reform_ranks(true), "precondition: the first re-square")
+	_stand_on_slots(u)
+	_settle_about_face(u)
+	for i in range(u._sim_soldier_pos.size()):
+		u._sim_soldier_pos[i] += u.facing * 20.0   # braking, a stride ahead of the slots
+	u.soldiers -= 1   # a regiment-path casualty: the pairing is now one man long
+	assert_true(u._row_slot_deal_pending(u.soldiers, u.formation_files(u.soldiers)),
+		"precondition: the row deal is pending")
+	var start: Vector2 = u.position
+	assert_true(u.reform_ranks(true), "precondition: the about-face fold re-squares")
+	assert_true(u._couple_transit.is_empty(), "a rally re-square flags nobody by the bodies")
+	for _i in range(300):
+		SoldierBodies.step(u, DT)
+		SoldierBodies.couple(u, DT)
+	var follow: float = (u.position - start).dot(u.facing)
+	assert_gt(follow, 10.0, "the anchor followed the braking bodies (%.2f wu)" % follow)
