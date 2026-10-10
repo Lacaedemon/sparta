@@ -140,13 +140,36 @@ func test_the_latch_is_let_go_when_the_block_stops_fighting() -> void:
 	assert_eq(u._streaming_router_uid, r.uid, "sanity: the pass latched the router")
 	u.tick_engaged(DT)
 	assert_eq(u._streaming_router_uid, r.uid, "a block still fighting keeps the latch")
-	u.state = Unit.State.MOVING   # an order, a march, or the fight simply ending
+	# A tick or two out of FIGHTING inside the melee keeps it: the engaged latch still holds.
+	u.state = Unit.State.IDLE
 	u.tick_engaged(DT)
-	assert_eq(u._streaming_router_uid, -1, "a block that stops fighting lets the latch go")
+	u.tick_engaged(DT)
+	assert_eq(u._streaming_router_uid, r.uid, "a brief lapse out of FIGHTING keeps the latch")
+	# Back in the fight with the router now ahead along its flight, it is still held.
+	u.state = Unit.State.FIGHTING
+	r.position = u.position + Vector2(20.0, -12.0)
+	u._face_for_action(r.position, DT, r)
+	_assert_facing_down(u, "the router met again after a lapse is still held, not faced afresh")
+	# Out of the fight for longer than the engaged latch (ENGAGED_LINGER): let go.
+	u.state = Unit.State.MOVING
+	var ticks: int = ceili(Unit.ENGAGED_LINGER / DT) + 1
+	for i in range(ticks):
+		u.tick_engaged(DT)
+	assert_eq(u._streaming_router_uid, -1, "a block that has left the fight lets the latch go")
 	# The same router, met again later ahead of the anchor as a pursuit, is faced as before.
-	r._flee_velocity = Vector2(0.0, 80.0)
 	u._face_for_action(r.position, DT, r)
 	assert_gt(absf(u.facing.angle_to(Vector2.DOWN)), 0.1, "a stale latch does not hold the facing")
+
+
+func test_a_new_order_lets_the_latch_go() -> void:
+	var u := _make_unit()
+	u.uid = 1
+	u.state = Unit.State.FIGHTING
+	var r := _make_router(u.position + ROUTER_INSIDE_OFFSET, Vector2(0.0, -80.0))
+	u._face_for_action(r.position, DT, r)
+	assert_eq(u._streaming_router_uid, r.uid, "sanity: the pass latched the router")
+	u.start_order_response()
+	assert_eq(u._streaming_router_uid, -1, "a fresh order lets the latch go")
 
 
 func test_a_stance_hold_lets_the_latch_go() -> void:

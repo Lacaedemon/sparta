@@ -4112,7 +4112,7 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		# (via is_maneuver_turning()) -- the squared body never eases onto its new slots.
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
-		_streaming_router_uid = -1
+		_release_streaming_router()
 		return true
 	# MULTIPLE_ENGAGE, once genuinely fighting 2+ distinct adjacent enemy units at once: hold
 	# the current facing instead of turning to bring the front to bear on whichever single foe
@@ -4126,7 +4126,7 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	if order_mode == ORDER_MULTIPLE_ENGAGE and _adjacent_engaged_enemy_units().size() >= 2:
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
-		_streaming_router_uid = -1
+		_release_streaming_router()
 		return true
 	# FLANKING_MANEUVER, while in active melee combat with the enemy: hold the line facing so the unit
 	# maintains its forward engagement while the outer wings envelop the enemy flanks,
@@ -4134,7 +4134,7 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	if order_mode == ORDER_FLANKING_MANEUVER and state == State.FIGHTING:
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
-		_streaming_router_uid = -1
+		_release_streaming_router()
 		return true
 	# A routing target streaming out through this block: hold the current facing, as the
 	# stances above do. The bearing from this anchor to a point within the block's own reach
@@ -4179,7 +4179,7 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 ## doing so when its centre lies within the block's own reach (soldier_block_extent, the
 ## slot grid's circumradius around the anchor) without leading this anchor along its own
 ## line of flight, and keeps doing so (_streaming_router_uid) until it is out of that reach,
-## stops routing, or this block stops fighting: a router that has worked its way just past
+## stops routing, or this block leaves the fight: a router that has worked its way just past
 ## the anchor is still among the ranks, and a bearing taken from a few world units behind it
 ## swings as wildly as one taken from in front. A router that leads the anchor from the
 ## start is being ridden down from behind: it is ahead of this block on a steady bearing,
@@ -4190,16 +4190,23 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 ## streaming through.
 func _router_streaming_through(enemy_unit: Unit) -> bool:
 	if enemy_unit == null or enemy_unit.state != State.ROUTING:
-		_streaming_router_uid = -1
+		_release_streaming_router()
 		return false
 	var reach: float = soldier_block_extent()
 	var offset: Vector2 = enemy_unit.position - position
 	if offset.length_squared() > reach * reach:
-		_streaming_router_uid = -1
+		_release_streaming_router()
 		return false
-	if offset.dot(enemy_unit._flee_velocity) <= 0.0:
+	if _streaming_router_uid != enemy_unit.uid:
+		if offset.dot(enemy_unit._flee_velocity) > 0.0:
+			return false
 		_streaming_router_uid = enemy_unit.uid
-	return _streaming_router_uid == enemy_unit.uid
+	return true
+
+
+## Let go of the streaming-router latch.
+func _release_streaming_router() -> void:
+	_streaming_router_uid = -1
 
 
 ## Finish an engage turn-in-place: fold the rotation into _formation_angle (so the men keep
@@ -5676,8 +5683,9 @@ var _engage_turn_old_files: int = 0
 var _engage_turn_enemy: Unit = null
 # The uid of the routing regiment this block has seen streaming out through its own ranks,
 # or -1: _router_streaming_through holds the block's facing against it until it is out of
-# the block's reach or stops routing. Cleared as well whenever the block is not FIGHTING
-# (tick_engaged) or a stance's own facing hold takes over in _face_for_action.
+# the block's reach or stops routing. Cleared as well when the block leaves the engaged tier
+# (tick_engaged), takes a new order (start_order_response) or routes itself (_rout), or when
+# a stance's own facing hold takes over in _face_for_action.
 var _streaming_router_uid: int = -1
 # Beyond this heading offset (radians) an engage/attack re-face turns in place gradually
 # instead of snapping. Below it a small correction snaps, keeping close-quarters combat
@@ -7880,10 +7888,12 @@ func tick_engaged(delta: float) -> void:
 		_engaged_linger = ENGAGED_LINGER
 	else:
 		_engaged_linger = maxf(0.0, _engaged_linger - delta)
-		# The streaming-router latch only means anything inside the fight that set it: a
-		# block that stops fighting (an order, a march, its own rout, going idle) lets it go,
-		# so a later fight never inherits it.
-		_streaming_router_uid = -1
+		# The streaming-router latch lives as long as the fight that set it, and the engaged
+		# latch is this block's own measure of that: a tick or two out of FIGHTING inside the
+		# melee keeps it, so a router already past the anchor is not met afresh (and faced) on
+		# re-entry, while a block that has left the fight lets it go.
+		if _engaged_linger <= 0.0:
+			_release_streaming_router()
 
 
 ## True while this regiment is in the engaged tier (its front ranks run the full
@@ -8944,6 +8954,7 @@ func resolve_soldier_melee(enemy: Unit) -> void:
 ## order_response_delay seconds before executing the new order.
 func start_order_response() -> void:
 	_order_response_timer = order_response_delay
+	_release_streaming_router()   # a fresh order is a fresh action; no fight's latch carries
 	# A move/attack order reforms a quarter-turned unit back square to its heading, so it
 	# marches as a proper line rather than crabbing sideways. The bodies ease onto the
 	# reformed slots via the arrival dynamics (a future turn-and-widen move maneuver will make
@@ -9059,6 +9070,7 @@ func _remove_from_play() -> void:
 func _rout() -> void:
 	if state == State.ROUTING:
 		return
+	_release_streaming_router()
 	# The flight builds up from whatever speed the unit was already carrying AWAY from the
 	# enemy -- the component of its travel velocity along its flee heading, read before
 	# anything below clears the orders. A unit caught advancing (or in a melee its charge
