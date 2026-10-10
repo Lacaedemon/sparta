@@ -1,0 +1,30 @@
+{
+  "_comment": "Two cavalry squadrons change their file count with their mounts formed, and no mount is sent across his own block or out of his own depth. Cavalry always reforms row major; its grid is 40 wu files by 120 wu ranks. Left (uid 0): a 46-mount squadron on 7 files, facing north at (420, 420), is selected at tick 10 and widened to 8 files with ] at tick 30. Right (uid 1): a 40-mount squadron on 7 files, facing east at (1050, 440), stands under bow fire from a 40-man Archers regiment at (1050, 190) whose reach the scenario stretches to 300 wu; its morale floor under fire is 50, so it holds. At tick 307 the fourth volley takes it to 19 of 40 mounts, at or under half strength, and at tick 308 it closes its ranks from 7 files to 3 by itself. The volleys tear uid 1's block from tick 104 on, before it closes ranks: that is the identity layout's casualty reflow, unchanged here and tracked in #1781. all_teams_control and drill keep both sides under test control. slots_across_centreline and slot_lateral_excess are read from the full dump the tick after each change, before the mounts have moved (DemoDefects.derived_field). Measured on the merge-base (86fd0902), the widening sent 17 of the 46 mounts to a slot across the squadron (one 260 wu sideways of his place) and the narrowing sent 5 of the 19 (one 80 wu off). Here no mount is sent across either squadron: the widening sends none more than 40.0 wu (one file pitch) sideways and none more than 61 wu (about half a rank) off his depth, and the narrowing none more than 44.5 wu sideways. Tolerances: slot_lateral_excess is pinned at one file pitch plus a 0.5 wu float margin (40.5) for the widening, whose mounts stand on their slots; and at a pitch and a half (60) for the narrowing, whose mounts already stand scattered by the volleys. With nothing else ordered, the widened squadron's centre then settles 10.1 wu from where it spawned, at (419.51, 409.95) by tick 420 (body-to-slot RMS 1.0 wu at tick 300); on the merge-base it settles 15.1 wu away, at (405.07, 417.72) (RMS 3.0 wu at tick 300). The tick-480 position pin carries the same 0.5 wu float margin. Each slots_across_centreline, slot_lateral_excess and position pin below fails on the merge-base.",
+  "seed": "17680",
+  "drill": true,
+  "all_teams_control": true,
+  "scenario": [
+    {"team": 1, "type": "Cavalry", "x": 420, "y": 420, "count": 46, "facing": [0, -1]},
+    {"team": 1, "type": "Cavalry", "x": 1050, "y": 440, "count": 40, "facing": [1, 0], "under_fire_morale_floor": 50.0},
+    {"team": 0, "type": "Archers", "x": 1050, "y": 190, "count": 40, "facing": [0, 1], "missile_range": 300}
+  ],
+  "camera": [
+    {"tick": 0, "x": 735, "y": 380, "zoom": 0.9}
+  ],
+  "steps": [
+    {"tick": 10, "click": [420, 420]},
+    {"tick": 30, "key": "BracketRight"}
+  ],
+  "state": [8, 29, 31, 60, 90, 120, 150, 180, 210, 240, 270, 300, 307, 308, 330, 360, 390, 420, 450, 480],
+  "frames": [29, 31, 120, 307, 308, 420],
+  "expect": [
+    {"tick": 31, "uid": 0, "field": "frontage", "value": 8},
+    {"tick": 31, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 31, "uid": 0, "field": "slot_lateral_excess", "value": 0, "tol": 40.5},
+    {"tick": 480, "uid": 0, "field": "position", "value": [419.51, 409.95], "tol": 0.5},
+    {"tick": 308, "uid": 1, "field": "frontage", "value": 3},
+    {"tick": 308, "uid": 1, "field": "soldiers", "value": 19},
+    {"tick": 308, "uid": 1, "field": "slots_across_centreline", "value": 0},
+    {"tick": 308, "uid": 1, "field": "slot_lateral_excess", "value": 0, "tol": 60}
+  ]
+}

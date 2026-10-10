@@ -446,6 +446,184 @@ static func pair_slots_by_lateral_file(positions: PackedVector2Array,
 	return perm
 
 
+## Deal men onto a row-major grid from where they stand, with its short rear rank dealt on its
+## own: the deepest men take the rear rank's cells in lateral order, and the rest are dealt onto
+## the full ranks by _deal_full_ranks.
+##
+## The plain deal buckets a short rear rank's cells by index modulo `files`, so they join the
+## LEFT-hand files' columns, while `block_slots` lays those cells out centred. A man dealt into
+## a left file's column can then be sent to a rear cell well to the right of him, and the men
+## of a short rear rank trade sides on their way back into one: measured on a 60-man block
+## resized from 8 files to 7, both rear ranks hold four men at the same four lateral
+## positions, yet two of them walked 36 wu across the block to trade places.
+##
+## The rear rank's men are the `k` deepest (largest slot-frame y), nearest the rear cells'
+## centre on a tie, then lowest index. On a block standing formed, that is the rank already at
+## the rear, so a reshape that keeps a short rear rank of the same length leaves each of its
+## men on his own lateral position. The full ranks hold `files` cells each, so their own deal
+## has no short rank to misplace. Pure and deterministic.
+##
+## Depth is compared in steps of `depth_quantum` (rounded), so men of one rank whose depths
+## differ only by float residue tie and fall to the centre rule: measured on an about-faced
+## block, its rank stood at 63.0 and 63.00001, and an exact comparison picked the two flank men
+## of an 8-man rank for a 4-cell rear rank centred 36 wu away from them. Half a rank pitch puts
+## every rank of a block_slots grid on a whole step. 0 compares exactly. `lateral_quantum` does
+## the same for the full ranks' columns (see _deal_full_ranks).
+static func pair_slots_rear_rank_first(positions: PackedVector2Array,
+		slots: PackedVector2Array, files: int, depth_quantum: float = 0.0,
+		lateral_quantum: float = 0.0) -> PackedInt32Array:
+	var n: int = positions.size()
+	if n <= 0 or files <= 0 or slots.size() != n:
+		return identity_assignment(slots.size())
+	var full: int = (n / files) * files
+	var k: int = n - full
+	if full == 0:
+		return pair_slots_by_lateral_file(positions, slots, files)
+	if k == 0:
+		return _deal_full_ranks(positions, slots, files, depth_quantum, lateral_quantum)
+	var rear_centre: float = 0.0
+	for c in range(full, n):
+		rear_centre += slots[c].x
+	rear_centre /= float(k)
+	var depth: PackedFloat32Array = _quantised_depths(positions, depth_quantum)
+	var by_depth: Array = range(n)
+	by_depth.sort_custom(func(a: int, b: int) -> bool:
+		var pa: Vector2 = positions[a]
+		var pb: Vector2 = positions[b]
+		if depth[a] != depth[b]:
+			return depth[a] > depth[b]
+		var da: float = absf(pa.x - rear_centre)
+		var db: float = absf(pb.x - rear_centre)
+		if da != db:
+			return da < db
+		return a < b)
+	var is_rear := {}
+	var rear_pos := PackedVector2Array()
+	var rear_ids := PackedInt32Array()
+	for j in range(k):
+		is_rear[by_depth[j]] = true
+	var front_pos := PackedVector2Array()
+	var front_ids := PackedInt32Array()
+	for i in range(n):
+		if is_rear.has(i):
+			rear_pos.push_back(positions[i])
+			rear_ids.push_back(i)
+		else:
+			front_pos.push_back(positions[i])
+			front_ids.push_back(i)
+	var perm := PackedInt32Array()
+	perm.resize(n)
+	var front_perm: PackedInt32Array = _deal_full_ranks(
+			front_pos, slots.slice(0, full), files, depth_quantum, lateral_quantum)
+	for j in range(front_ids.size()):
+		perm[front_ids[j]] = front_perm[j]
+	# block_slots lays a rank out left to right, so the rear cells are already in lateral order.
+	var rear_order: PackedInt32Array = lateral_order(rear_pos)
+	for j in range(k):
+		perm[rear_ids[rear_order[j]]] = full + j
+	return perm
+
+
+## Each man's y in steps of `quantum` (rounded), or his raw y with no quantum.
+static func _quantised_depths(positions: PackedVector2Array, quantum: float) -> PackedFloat32Array:
+	var depth := PackedFloat32Array()
+	depth.resize(positions.size())
+	for i in range(positions.size()):
+		depth[i] = roundf(positions[i].y / quantum) if quantum > 0.0 else positions[i].y
+	return depth
+
+
+## Deal `positions` onto `slots`, a block_slots grid of whole ranks of `files` cells, by
+## lateral file: men are taken in lateral order, `slots.size() / files` to a file from the left,
+## and each file is filled front to back by depth.
+##
+## The plain lateral deal (pair_slots_by_lateral_file) sorts by exact lateral position. One old
+## column's men stand only a hair apart laterally (float residue), so that sort orders each
+## column by the hair, not by depth, and where a new file's share ends partway down a column it
+## takes an arbitrary handful of the column's men; sorting the share by depth then sends some of
+## them ranks from where they stood. Measured on a 46-mount squadron widened from 7 files to 8,
+## a front-rank mount was sent 180 wu (a rank and a half) rearward. Here the men are bucketed
+## into old columns by lateral position (in `lateral_quantum` steps), and each column's men are
+## ordered so that every leading run of them spreads evenly over the column's depth (its ranks
+## in bit-reversed order). A share that ends partway down a column then takes men from its
+## whole depth, and so does the next file.
+##
+## The bit-reversed order earns its place where a share is a large part of a column. Ordering
+## each column plainly front to back, measured: a 60-man block doubled from 5 files to 10 sent a
+## man 54 wu (three ranks) off his depth, against 18 wu (one rank) here; and on the demo's
+## squadron closing ranks from 7 files to 3 under fire (demos/inputs/
+## row-major-reshape-deal-1768.json) the body-to-slot RMS read 96.1 wu at the close and 42.4 wu
+## 172 ticks later, against 84.2 and 24.4 here. On a one-file widening the two orders deal alike.
+##
+## Depth and lateral position are compared in steps of `depth_quantum` and `lateral_quantum`
+## (rounded; half a pitch puts every rank and file of a block_slots grid on a whole step). With
+## no lateral quantum only men at exactly the same lateral position share a column. Pure and
+## deterministic.
+static func _deal_full_ranks(positions: PackedVector2Array, slots: PackedVector2Array,
+		files: int, depth_quantum: float, lateral_quantum: float = 0.0) -> PackedInt32Array:
+	var n: int = positions.size()
+	var depth: PackedFloat32Array = _quantised_depths(positions, depth_quantum)
+	var column := PackedFloat32Array()
+	column.resize(n)
+	for i in range(n):
+		column[i] = roundf(positions[i].x / lateral_quantum) if lateral_quantum > 0.0 \
+				else positions[i].x
+	# Rank each man within his column by depth, then give him that rank's bit-reversed spread key.
+	var by_column: Array = range(n)
+	by_column.sort_custom(func(a: int, b: int) -> bool:
+		if column[a] != column[b]:
+			return column[a] < column[b]
+		if depth[a] != depth[b]:
+			return depth[a] < depth[b]
+		if positions[a].y != positions[b].y:
+			return positions[a].y < positions[b].y
+		return a < b)
+	var spread := PackedInt32Array()
+	spread.resize(n)
+	var run_start: int = 0
+	while run_start < n:
+		var run_end: int = run_start
+		while run_end < n and column[by_column[run_end]] == column[by_column[run_start]]:
+			run_end += 1
+		var bits: int = 0
+		while (1 << bits) < run_end - run_start:
+			bits += 1
+		for r in range(run_end - run_start):
+			spread[by_column[run_start + r]] = _bit_reversed(r, bits)
+		run_start = run_end
+	var order: Array = range(n)
+	order.sort_custom(func(a: int, b: int) -> bool:
+		if column[a] != column[b]:
+			return column[a] < column[b]
+		if spread[a] != spread[b]:
+			return spread[a] < spread[b]
+		return a < b)
+	var ranks: int = n / files
+	var perm := PackedInt32Array()
+	perm.resize(n)
+	for f in range(files):
+		var share: Array = order.slice(f * ranks, (f + 1) * ranks)
+		share.sort_custom(func(a: int, b: int) -> bool:
+			if depth[a] != depth[b]:
+				return depth[a] < depth[b]
+			if positions[a].y != positions[b].y:
+				return positions[a].y < positions[b].y
+			return a < b)
+		for r in range(share.size()):
+			perm[share[r]] = r * files + f
+	return perm
+
+
+## `value`'s low `bits` bits in reverse order: 0, 4, 2, 6, 1, 5, 3, 7 for 0..7 over 3 bits, so
+## every leading run of 0..2^bits-1 sorted by it is spread evenly over the range.
+static func _bit_reversed(value: int, bits: int) -> int:
+	var out: int = 0
+	for b in range(bits):
+		if value & (1 << b):
+			out |= 1 << (bits - 1 - b)
+	return out
+
+
 ## The cell pairing that cancels a hold-ground reform's DEPTH REFLECTION on a row-major
 ## grid: entry `c` is the cell whose post-reflection world position equals cell `c`'s
 ## pre-reflection one, so a soldier holding `c` and reassigned to `out[c]` stands on the

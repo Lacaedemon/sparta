@@ -69,12 +69,17 @@ applied to organisation.
 - **Only one of three layout branches preserves identity.**
   `Unit.formation_slots()` dispatches three ways: the square branch pairs men
   onto a `ceil(sqrt(n))` grid by proximity and bypasses file identity entirely;
-  the file-major branch is the one that keeps it; the row-major fallback
-  recomputes from the live count every tick and, unless a hold-ground reform
-  has left a `_sim_soldier_row_slot` pairing behind, hands cell `i` to soldier
-  `i` by raw array index.
-  Every loadout type defaults to FILE_MAJOR and `disciplined` defaults to true,
-  so the fallback is reached only by an explicit scenario override.
+  the file-major branch is the one that keeps it; the row-major branch
+  recomputes the grid from the live count every tick and hands cell `i` to
+  soldier `i` by raw array index, unless a `_sim_soldier_row_slot` pairing is
+  held.
+  A hold-ground reform leaves one behind, and so does a quarter-turn re-square.
+  A change of file count (a resize or the ranks-closed narrowing) deals one from
+  where the men stand, so no man walks across the block to reach his new cell.
+  Cavalry always reflows row-major.
+  For foot, every loadout type defaults to FILE_MAJOR and `disciplined`
+  defaults to true, so a foot unit reaches the row-major branch only through an
+  explicit scenario override or the player's reform-mode toggle.
 
 ## The inversion this note is about
 

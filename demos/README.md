@@ -542,6 +542,36 @@ Two optional keys widen what an entry can say:
   A uid that never appeared, or any snapshot inside the range with no `units` list,
   fails rather than passing.
 
+Two more fields are derived from a FULL dump (`SPARTA_DEMO_STATE_FULL=1`, which CI's
+defect scan uses) rather than read from the compact record (`DemoDefects.derived_field`).
+Each compares every man's body with his own slot along the unit's lateral axis,
+measured from the unit's position.
+Sampled the tick after a reshape, they show where the reshape sends the men before anyone has walked:
+
+- `slots_across_centreline` -- how many men have their slot across the unit's centreline
+  from them, each more than half a file pitch off it.
+
+- `slot_lateral_excess` -- the farthest any man's slot lies sideways of his place,
+  in world units, rounded to 0.1.
+  A man standing outside the new block is measured from its near edge instead,
+  since he has to come in to it anyway.
+  Pin it with `"value": 0` and a `tol` in world units with a stated basis.
+  For a block standing on its slots and widened by `k` files, allow `(k + 1) / 2` file pitches
+  plus a float margin (such as 0.5 wu): the outermost men spread `k / 2` pitches,
+  and the new grid's centring can shift half a pitch more.
+  That is one pitch for a one-file widening, and three for doubling 5 files to 10 (which reads 2.5).
+  A narrowing's men inside the new width move within one pitch,
+  and those outside it are measured from its edge.
+  The pitch is the unit's `motion_ref.file_pitch`, which already carries any spacing scale.
+  Men standing off their slots (scattered by a fight, or still settling) need more.
+  State how much more and why in the script's `_comment`,
+  rather than tuning the `tol` to the value one run reads.
+
+A dump without the full arrays cannot supply either field.
+Neither can one whose per-soldier bodies and slots are empty or differ in count
+(a casualty the body layer has not caught up with yet).
+The expectation then fails as uncheckable rather than passing on nothing.
+
 An expectation that cannot be checked (no snapshot in range, no such unit, no such field)
 FAILS rather than skips -- an uncheckable claim is an authoring error. This is how a demo
 that stops demonstrating its own caption (a rebound hotkey arming the wrong stance, a rally
