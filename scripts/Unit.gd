@@ -4112,6 +4112,7 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		# (via is_maneuver_turning()) -- the squared body never eases onto its new slots.
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
+		_streaming_router_uid = -1
 		return true
 	# MULTIPLE_ENGAGE, once genuinely fighting 2+ distinct adjacent enemy units at once: hold
 	# the current facing instead of turning to bring the front to bear on whichever single foe
@@ -4125,6 +4126,7 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	if order_mode == ORDER_MULTIPLE_ENGAGE and _adjacent_engaged_enemy_units().size() >= 2:
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
+		_streaming_router_uid = -1
 		return true
 	# FLANKING_MANEUVER, while in active melee combat with the enemy: hold the line facing so the unit
 	# maintains its forward engagement while the outer wings envelop the enemy flanks,
@@ -4132,24 +4134,19 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	if order_mode == ORDER_FLANKING_MANEUVER and state == State.FIGHTING:
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
+		_streaming_router_uid = -1
 		return true
-	# A routing target streaming out through this block: the facing follows it, but the slot
-	# grid stays where it stands. The bearing from this anchor to a point within the block's
-	# own reach names no front, so following it the ordinary way (each tick's small
-	# correction snaps unabsorbed) swings the whole grid around while the men, held in
-	# contact, stay where they are -- the block is then left with its slots turned away from
-	# its men and has to wheel back once it is free. The turn is folded into
-	# _formation_angle instead, as a large snap already is.
+	# A routing target streaming out through this block: hold the current facing, as the
+	# stances above do. The bearing from this anchor to a point within the block's own reach
+	# names no front, so following it (each tick's small correction snaps unabsorbed) swings
+	# the whole slot grid round while the men, held in contact, stay where they are -- the
+	# block is then left with its slots turned away from its men and has to wheel back once
+	# it is free. Holding moves neither the facing nor _formation_angle, so nothing is left
+	# for a later reform to undo; once the router is out of reach the ordinary re-face
+	# (turn-in-place for a large swing) brings the front round.
 	if _router_streaming_through(enemy_unit):
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
-		var router_dir: Vector2 = point - position
-		if router_dir.length_squared() > 0.0001:
-			var new_facing: Vector2 = router_dir.normalized()
-			_formation_angle = wrapf(_formation_angle - angle_difference(facing.angle(), new_facing.angle()), -PI, PI)
-			_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
-			_render_dirty = true
-			facing = new_facing
 		return true
 	var dir: Vector2 = point - position
 	if dir.length_squared() < 0.0001:
@@ -4181,11 +4178,14 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 ## Whether `enemy_unit` is a ROUTING regiment streaming out through this block. It starts
 ## doing so when its centre lies within the block's own reach (soldier_block_extent, the
 ## slot grid's circumradius around the anchor) without leading this anchor along its own
-## line of flight, and keeps doing so (_streaming_router_uid) until it is out of that reach
-## or stops routing: a router that has worked its way just past the anchor is still among
-## the ranks, and a bearing taken from a few world units behind it swings as wildly as one
-## taken from in front. A router that leads the anchor from the start is being ridden down
-## from behind -- it is ahead of this block, and the ordinary re-face keeps the front on it.
+## line of flight, and keeps doing so (_streaming_router_uid) until it is out of that reach,
+## stops routing, or this block stops fighting: a router that has worked its way just past
+## the anchor is still among the ranks, and a bearing taken from a few world units behind it
+## swings as wildly as one taken from in front. A router that leads the anchor from the
+## start is being ridden down from behind: it is ahead of this block on a steady bearing,
+## and the ordinary re-face keeps the front on it. Holding the facing there instead keeps a
+## pursuit's front off its quarry -- in the rout_rally clip, whose cavalry rides inside its
+## router's reach, the router then outlives the clip and the troop's own shape breaks up.
 ## A router with no flight velocity has no line of flight to lead along, so it counts as
 ## streaming through.
 func _router_streaming_through(enemy_unit: Unit) -> bool:
@@ -5675,8 +5675,9 @@ var _engage_turn_start_facing: Vector2 = Vector2.ZERO
 var _engage_turn_old_files: int = 0
 var _engage_turn_enemy: Unit = null
 # The uid of the routing regiment this block has seen streaming out through its own ranks,
-# or -1: _router_streaming_through keeps folding the re-face toward it until it is out of
-# the block's reach or stops routing.
+# or -1: _router_streaming_through holds the block's facing against it until it is out of
+# the block's reach or stops routing. Cleared as well whenever the block is not FIGHTING
+# (tick_engaged) or a stance's own facing hold takes over in _face_for_action.
 var _streaming_router_uid: int = -1
 # Beyond this heading offset (radians) an engage/attack re-face turns in place gradually
 # instead of snapping. Below it a small correction snaps, keeping close-quarters combat
@@ -7879,6 +7880,10 @@ func tick_engaged(delta: float) -> void:
 		_engaged_linger = ENGAGED_LINGER
 	else:
 		_engaged_linger = maxf(0.0, _engaged_linger - delta)
+		# The streaming-router latch only means anything inside the fight that set it: a
+		# block that stops fighting (an order, a march, its own rout, going idle) lets it go,
+		# so a later fight never inherits it.
+		_streaming_router_uid = -1
 
 
 ## True while this regiment is in the engaged tier (its front ranks run the full
