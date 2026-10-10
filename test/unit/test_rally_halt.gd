@@ -58,14 +58,15 @@ func after_each() -> void:
 	await get_tree().physics_frame
 
 
-func _spawn(terrain: Array = [], extra: Array = []) -> Unit:
+func _spawn(terrain: Array = [], extra: Array = [], count: int = 48,
+		facing: Array = [0, -1]) -> Unit:
 	Replay.forced_seed = 12345
 	_battle = load("res://scenes/Battle.tscn").instantiate()
 	_battle.all_teams_control = true
 	_battle.terrain = terrain
 	_battle.scenario = [
-		{"team": 0, "type": "Infantry", "count": 48, "x": ROUTER_START.x, "y": ROUTER_START.y,
-				"facing": [0, -1]},
+		{"team": 0, "type": "Infantry", "count": count, "x": ROUTER_START.x, "y": ROUTER_START.y,
+				"facing": facing},
 		{"team": 1, "type": "Infantry", "count": 24, "x": ENEMY_START.x, "y": ENEMY_START.y,
 				"facing": [-1, 0]},
 	] + extra
@@ -348,6 +349,64 @@ func test_an_order_mid_halt_ends_the_halt() -> void:
 			break
 	assert_between(ended_after, 1, 120, "an order ends the halt (after %d ticks)" % ended_after)
 	assert_ne(router.state, Unit.State.IDLE, "the halt ended because the unit took up its order")
+
+
+## How many of `before`'s off-centre points (more than half a file pitch off the centreline,
+## measured from `centre_before`) sit on the other side of it in `after` (measured from
+## `centre_after`), on the fixed lateral axis `lateral`.
+func _flank_crossings(before: PackedVector2Array, centre_before: Vector2,
+		after: PackedVector2Array, centre_after: Vector2, lateral: Vector2, half: float) -> int:
+	var crossed: int = 0
+	for i in range(mini(before.size(), after.size())):
+		var a: float = (before[i] - centre_before).dot(lateral)
+		var b: float = (after[i] - centre_after).dot(lateral)
+		if a * b < 0.0 and absf(a) > half and absf(b) > half:
+			crossed += 1
+	return crossed
+
+
+## The rally's hold-ground re-square of an about-face fold arms the depth mirror, and an order
+## issued while the rallied block is still coasting to a stop is the fresh order that bakes it.
+## A router spawned facing south and fleeing north snap-absorbs a half-turn into its grid; with
+## 46 men on 9 files the rear rank is short, so the rally's re-square reflects rather than
+## leaving the fold. The order must end the halt without sending any man across the block.
+func test_an_order_mid_halt_after_an_about_face_rally_keeps_every_man_on_his_flank() -> void:
+	var router: Unit = await _spawn([], [], 46, [0, 1])
+	assert_not_null(router, "the team-0 infantry deployed")
+	if router == null:
+		return
+	assert_ne(router.soldiers % router.formation_files(router.soldiers), 0,
+			"setup: the block has a short rear rank")
+	await _rout_to_full_flight(router)
+	assert_almost_eq(absf(router._formation_angle), PI, 0.01,
+			"setup: the flight snap-absorbed a half-turn into the grid")
+	await _rally_next_tick(router)
+	await _advance_ticks(5)
+	assert_true(router.is_rally_halting(), "setup: still pulling up")
+	assert_true(router._formation_mirror_x, "setup: the rally's re-square armed the mirror")
+	var lateral: Vector2 = router.facing.orthogonal()
+	var half: float = router.file_pitch_wu() * 0.5
+	var slots_before: PackedVector2Array = router.soldier_world_slots(router.soldiers)
+	var bodies_before: PackedVector2Array = router._sim_soldier_pos.duplicate()
+	var centre_before: Vector2 = router.position
+	var dest: Vector2 = router.position + router.facing * 200.0
+	_battle._apply_order_cmd({"units": [router.uid], "x": dest.x, "y": dest.y, "target": -1})
+	assert_false(router._formation_mirror_x, "the order baked the mirror")
+	var slot_crossed: int = _flank_crossings(slots_before, centre_before,
+			router.soldier_world_slots(router.soldiers), router.position, lateral, half)
+	assert_eq(slot_crossed, 0,
+			"no man's slot is moved to the other flank by the order (%d were)" % slot_crossed)
+	var ended_after: int = -1
+	var worst_body_crossed: int = 0
+	for i in range(120):
+		await _advance_ticks(1)
+		worst_body_crossed = maxi(worst_body_crossed, _flank_crossings(bodies_before, centre_before,
+				router._sim_soldier_pos, router.position, lateral, half))
+		if ended_after < 0 and not router._rally_halt:
+			ended_after = i + 1
+	assert_between(ended_after, 1, 120, "the order ends the halt (after %d ticks)" % ended_after)
+	assert_eq(worst_body_crossed, 0,
+			"no man walks across to the other flank after the order (%d did)" % worst_body_crossed)
 
 
 func _bare_flight_unit() -> Unit:
