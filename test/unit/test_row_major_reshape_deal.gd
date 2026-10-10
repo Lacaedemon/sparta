@@ -67,6 +67,9 @@ func _stand_on_slots(u: Unit) -> void:
 ## - depth_excess: the same along the depth axis (perpendicular to `lateral`), against the new
 ##   block's own depth span: a man already inside it keeps within a rank of his depth, so no
 ##   front-rank man is dealt a cell ranks back.
+## - depth_gained: how much deeper the new block is than the men stood (the slots' depth span
+##   less the men's), 0 when it is shallower. A narrowing deepens the block, so its men spread
+##   rearward by design, by at most this much more than a widening's men move.
 ## - farthest: the longest walk to a slot.
 func _travel(u: Unit, bodies: PackedVector2Array, lateral: Vector2) -> Dictionary:
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
@@ -79,11 +82,17 @@ func _travel(u: Unit, bodies: PackedVector2Array, lateral: Vector2) -> Dictionar
 		width = maxf(width, absf((s - u.position).dot(lateral)))
 		depth_lo = minf(depth_lo, (s - u.position).dot(depth_axis))
 		depth_hi = maxf(depth_hi, (s - u.position).dot(depth_axis))
+	var count: int = mini(bodies.size(), slots.size())
+	var old_lo: float = INF
+	var old_hi: float = -INF
+	for i in range(count):
+		old_lo = minf(old_lo, (bodies[i] - u.position).dot(depth_axis))
+		old_hi = maxf(old_hi, (bodies[i] - u.position).dot(depth_axis))
 	var crossed: int = 0
 	var farthest: float = 0.0
 	var excess: float = 0.0
 	var depth_excess: float = 0.0
-	for i in range(mini(bodies.size(), slots.size())):
+	for i in range(count):
 		farthest = maxf(farthest, bodies[i].distance_to(slots[i]))
 		var a: float = (bodies[i] - u.position).dot(lateral)
 		var b: float = (slots[i] - u.position).dot(lateral)
@@ -94,13 +103,16 @@ func _travel(u: Unit, bodies: PackedVector2Array, lateral: Vector2) -> Dictionar
 		var bd: float = (slots[i] - u.position).dot(depth_axis)
 		depth_excess = maxf(depth_excess, absf(bd - clampf(ad, depth_lo, depth_hi)))
 	return {"crossed": crossed, "farthest": farthest, "lateral_excess": excess,
-			"depth_excess": depth_excess}
+			"depth_excess": depth_excess,
+			"depth_gained": maxf(0.0, (depth_hi - depth_lo) - (old_hi - old_lo))}
 
 
 ## Assert no man crosses the centreline, none is sent more than `lateral_pitches` file pitches
 ## sideways of his place in the new block, and (when `depth_ranks` is positive) none more than
-## that many rank pitches off his depth. A narrowing passes no depth bound: it deepens the
-## block, so its men spread rearward by design, file by file.
+## that many rank pitches off his depth. A narrowing deepens the block, so its men spread
+## rearward by design: `depth_ranks` 0 bounds the depth walk by the depth the block gains plus
+## one rank instead. A front man dealt to the rear of a deepened file walks the block's whole
+## new depth, past that bound.
 func _assert_no_walk_across(u: Unit, t: Dictionary, what: String,
 		depth_ranks: float = 1.0, lateral_pitches: float = 1.0) -> void:
 	assert_eq(int(t["crossed"]), 0, "%s: %d men cross the centreline" % [what, int(t["crossed"])])
@@ -111,6 +123,11 @@ func _assert_no_walk_across(u: Unit, t: Dictionary, what: String,
 		assert_lt(float(t["depth_excess"]), u.rank_pitch_wu() * depth_ranks + 0.01,
 			"%s: a man is sent %.1f wu off his depth (rank pitch %.1f)"
 			% [what, float(t["depth_excess"]), u.rank_pitch_wu()])
+	else:
+		assert_lt(float(t["depth_excess"]),
+			float(t["depth_gained"]) + u.rank_pitch_wu() + 0.01,
+			"%s: a man is sent %.1f wu off his depth (the block gains %.1f, rank %.1f)"
+			% [what, float(t["depth_excess"]), float(t["depth_gained"]), u.rank_pitch_wu()])
 
 
 ## Apply `regrid` to a formed block and measure the walk to the regridded slots.
@@ -179,10 +196,30 @@ func test_cavalry_reshapes_send_no_mount_across_the_centreline() -> void:
 	_assert_no_walk_across(closing, t, "cavalry ranks closed 9 -> 4", 0.0)
 
 
-## A widening by one file, the demo's left squadron: 46 mounts from 7 files to 8. A lateral-file
-## deal hands each new file one old column's rear and the next one's front, so it sent a
-## front-rank mount ranks back (180 wu on the squadron's own 60 wu ranks). Every mount stays
-## within a rank of his depth and a pitch of his place.
+## The narrowings again on every heading the widening test uses: read back into the slot frame
+## off an axis, one old column's men stand a hair apart laterally, which is when the deal's
+## column buckets matter (see the widening test below).
+func test_narrowings_keep_their_depth_on_every_heading() -> void:
+	for heading in [Vector2.UP, Vector2.DOWN, Vector2.RIGHT, Vector2(1, 1).normalized()]:
+		var foot := _make_foot(0)
+		foot.facing = heading
+		_assert_no_walk_across(foot, _regrid(foot, _close_ranks),
+				"foot facing %s ranks closed 11 -> 5" % heading, 0.0)
+		var squadron := _make_cavalry(0, 80)
+		squadron.facing = heading
+		_assert_no_walk_across(squadron, _regrid(squadron, _close_ranks),
+				"cavalry facing %s ranks closed 9 -> 4" % heading, 0.0)
+		var resized := _make_cavalry(8)
+		resized.facing = heading
+		_assert_no_walk_across(resized,
+				_regrid(resized, func(b: Unit) -> void: b.set_frontage(5)),
+				"cavalry facing %s resized 8 -> 5" % heading, 0.0)
+
+
+## A widening by one file, the demo's left squadron: 46 mounts from 7 files to 8. The plain
+## lateral-file deal sent a front-rank mount 180 wu rearward there, a rank and a half of the
+## squadron's 120 wu ranks (3 m ranks at 20 wu/m, doubled by the formation's spacing). Every
+## mount now stays within a rank of his depth and a pitch of his place.
 ##
 ## The deal sorts the men laterally, and one column's men stand a hair apart laterally: float
 ## residue, from reading them back into the slot frame (a diagonal heading here) or from the sim
@@ -202,6 +239,15 @@ func test_a_widening_keeps_every_mount_near_his_depth() -> void:
 			g.facing = heading
 			_assert_no_walk_across(g, _regrid(g, func(b: Unit) -> void: b.set_frontage(9 + f)),
 					"foot facing %s widened %d -> %d" % [heading, 8 + f, 9 + f])
+		# A doubling, 5 files to 10: each new file takes half an old column, which the column's
+		# bit-reversed order spreads over its whole depth (plain front-to-back order sends a
+		# man 54 wu, three ranks, off his depth here). Five files are added, so the outermost
+		# men spread up to 5 / 2 pitches sideways, plus half a pitch where the new grid's
+		# centring shifts: a bound of (5 + 1) / 2 = 3 pitches (they read 2.5).
+		var doubled := _make_foot(5)
+		doubled.facing = heading
+		_assert_no_walk_across(doubled, _regrid(doubled, func(b: Unit) -> void: b.set_frontage(10)),
+				"foot facing %s doubled 5 -> 10" % heading, 1.0, 3.0)
 
 
 ## The deal is a re-labelling: the block's footprint is the grid's, cell for cell.

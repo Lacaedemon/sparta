@@ -548,6 +548,13 @@ static func _quantised_depths(positions: PackedVector2Array, quantum: float) -> 
 ## in bit-reversed order). A share that ends partway down a column then takes men from its
 ## whole depth, and so does the next file.
 ##
+## The bit-reversed order earns its place where a share is a large part of a column. Ordering
+## each column plainly front to back, measured: a 60-man block doubled from 5 files to 10 sent a
+## man 54 wu (three ranks) off his depth, against 18 wu (one rank) here; and on the demo's
+## squadron closing ranks from 7 files to 3 under fire (demos/inputs/
+## row-major-reshape-deal-1768.json) the body-to-slot RMS read 96.1 wu at the close and 42.4 wu
+## 172 ticks later, against 84.2 and 24.4 here. On a one-file widening the two orders deal alike.
+##
 ## Depth and lateral position are compared in steps of `depth_quantum` and `lateral_quantum`
 ## (rounded; half a pitch puts every rank and file of a block_slots grid on a whole step). With
 ## no lateral quantum only men at exactly the same lateral position share a column. Pure and

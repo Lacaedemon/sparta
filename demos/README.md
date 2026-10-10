@@ -555,8 +555,13 @@ Sampled the tick after a reshape, they show where the reshape sends the men befo
   A man standing outside the new block is measured from its near edge instead,
   since he has to come in to it anyway.
   Pin it with `"value": 0` and a `tol` in world units with a stated basis.
-  For a block standing on its slots, one file pitch plus a float margin (such as 0.5 wu) is enough;
-  the pitch is the unit's `motion_ref.file_pitch`, which already carries any spacing scale.
+  For a block standing on its slots and widened by `k` files, allow `(k + 1) / 2` file pitches
+  plus a float margin (such as 0.5 wu): the outermost men spread `k / 2` pitches,
+  and the new grid's centring can shift half a pitch more.
+  That is one pitch for a one-file widening, and three for doubling 5 files to 10 (which reads 2.5).
+  A narrowing's men inside the new width move within one pitch,
+  and those outside it are measured from its edge.
+  The pitch is the unit's `motion_ref.file_pitch`, which already carries any spacing scale.
   Men standing off their slots (scattered by a fight, or still settling) need more.
   State how much more and why in the script's `_comment`,
   rather than tuning the `tol` to the value one run reads.
