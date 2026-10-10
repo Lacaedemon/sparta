@@ -1508,6 +1508,10 @@ var _flee_pace: float = 0.0
 # chase their slots on the jog-capped arrival term, and the body coupling drags the anchor
 # back to them. Read only while state == ROUTING.
 var _flee_velocity: Vector2 = Vector2.ZERO
+# True from a rally until the anchor has pulled up from the flight it handed over (see _rally
+# and is_rally_halting). Cleared by _tick_idle_coast once the anchor stops, or the moment the
+# unit locomotes, fights, or carries a held march; and by _rout() -- whichever comes first.
+var _rally_halt: bool = false
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -1685,6 +1689,7 @@ func _physics_process(delta: float) -> void:
 	_moved_last_frame = false
 	_is_facing_turning = false
 
+	_cut_rally_halt_on_enemy()
 	_think(delta)
 	_tick_intermixing(delta)
 
@@ -1758,6 +1763,21 @@ func _physics_process(delta: float) -> void:
 	# OLD way while the hold pivots their slot grid, scrambling the block into body
 	# overlap (see REORDER_MOMENTUM_DOT_MIN). A genuinely idle unit already has
 	# _current_speed == 0, so the decay is a no-op for it either way.
+	_tick_idle_coast(delta)
+
+	_tick_far_stamina(delta)
+
+	# The parallel soldier-body layer (seeding + the global engaged-soldier
+	# separation) is orchestrated once per tick by Battle, AFTER every unit has
+	# settled this frame -- see Battle._on_soldier_tick. It's non-authoritative
+	# (nothing in combat/movement/morale reads _sim_soldier_pos), so it changes no
+	# gameplay; the debug overlay in _draw shows it. See docs/individual-collision-design.md.
+	queue_redraw()
+
+
+## The idle coast-to-stop _physics_process runs every non-routing tick (see the comment at
+## its call site for why it runs when it does), and the end of a rally's halt.
+func _tick_idle_coast(delta: float) -> void:
 	if not _moved_last_frame and state != State.FIGHTING \
 			and not _held_march_continues_travel():
 		var travel_dir: Vector2 = _approach_velocity.normalized() \
@@ -1771,7 +1791,16 @@ func _physics_process(delta: float) -> void:
 		# zero-velocity/nonzero-speed state, never to a unit still under normal control.
 		if travel_dir == Vector2.ZERO and _current_speed > 0.0:
 			travel_dir = facing
-		_current_speed = move_toward(_current_speed, 0.0, arrival_brake_rate() * delta)
+		_current_speed = move_toward(_current_speed, 0.0, idle_brake_rate() * delta)
+		# A rally can come anywhere inside retreat_bounds, the margin past the field edge a
+		# router may flee into, so the halt is held to that rather than snapped onto the field
+		# (_begin_rally_halt only hands over a coast that stops inside it).
+		var coast_bounds: Rect2 = retreat_bounds if is_rally_halting() else field_bounds
+		# The halt is the anchor's pull-up and nothing after it: once the anchor stops, the
+		# men walk the rest of the way onto their slots under the ordinary idle caps and
+		# acceleration, like any other idle re-form.
+		if _current_speed <= 0.0:
+			_rally_halt = false
 		# Terrain-scaled, matching _move_to's own effective_speed -- a unit coasting to a
 		# stop in a forest carries proportionally less real velocity, just like one still
 		# under active order control, so downstream consumers (the march feed-forward, the
@@ -1782,17 +1811,12 @@ func _physics_process(delta: float) -> void:
 		_approach_velocity = travel_dir * (_current_speed * terrain_speed)
 		if _current_speed > 0.0 and travel_dir != Vector2.ZERO:
 			position += travel_dir * (_current_speed * terrain_speed * delta)
-			position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
-			position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
-
-	_tick_far_stamina(delta)
-
-	# The parallel soldier-body layer (seeding + the global engaged-soldier
-	# separation) is orchestrated once per tick by Battle, AFTER every unit has
-	# settled this frame — see Battle._on_soldier_tick. It's non-authoritative
-	# (nothing in combat/movement/morale reads _sim_soldier_pos), so it changes no
-	# gameplay; the debug overlay in _draw shows it. See docs/individual-collision-design.md.
-	queue_redraw()
+			position.x = clampf(position.x, coast_bounds.position.x, coast_bounds.end.x)
+			position.y = clampf(position.y, coast_bounds.position.y, coast_bounds.end.y)
+	else:
+		# Locomoting, fighting, or carrying a held march's momentum: whatever the unit does
+		# now, it is no longer pulling up from a rally.
+		_rally_halt = false
 
 
 ## Replace the orders queue with a single fresh order (a plain, non-append order): interrupts
@@ -3516,6 +3540,19 @@ func _support_tick(delta: float) -> void:
 ## downshift keeps the marker moving, so a transient body lag self-corrects there).
 func arrival_brake_rate() -> float:
 	return minf(decel, maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR))
+
+
+## The rate the idle coast-to-stop sheds speed with: the orderly arrival brake, except while a
+## rallied unit pulls up from its flight (is_rally_halting), at rally_halt_brake_rate().
+func idle_brake_rate() -> float:
+	return rally_halt_brake_rate() if is_rally_halting() else arrival_brake_rate()
+
+
+## True while a rallied unit's anchor is still coasting to a stop on the flight its rally
+## handed over. Only while it still carries speed: the men's settle after the anchor stops is
+## an ordinary idle re-form, held to the ordinary caps.
+func is_rally_halting() -> bool:
+	return _rally_halt and state == State.IDLE and _current_speed > 0.0
 
 
 ## Whether the current order is a genuine click-count-driven run/sprint MOVE -- too urgent
@@ -8688,6 +8725,7 @@ func _rout() -> void:
 	# anchor off along it on the rallied unit's first idle tick, away from its bodies.
 	_approach_velocity = Vector2.ZERO
 	_current_speed = 0.0
+	_rally_halt = false
 	state = State.ROUTING
 	selected = false
 	target_enemy = null
@@ -8838,7 +8876,6 @@ func _rally() -> void:
 	# floor — a unit that rallies the instant its timer expires still reforms shaken.
 	morale = maxf(morale, RALLY_MORALE)
 	_rout_timer = 0.0
-	_clear_flight()
 	# _rout() zeroed _formation_angle so the unit "reforms square to its heading on rally"
 	# (its own comment), but fleeing can re-fold it via _face_dir's snap-absorb (a sharp
 	# turn away from the enemy at the moment routing starts). reform_ranks() is the
@@ -8849,11 +8886,96 @@ func _rally() -> void:
 	# left behind, so the ranks re-square where the men are standing rather than marching the
 	# whole block through itself to reach the same footprint.
 	reform_ranks(true)
+	# After the re-square, so the coast's terrain check sweeps the block the unit now forms.
+	_begin_rally_halt()
+	_clear_flight()
 	# The orders queue (route legs included) was already dropped by _rout()'s
 	# clear_orders(), so a rallied unit reforms with no orders.
 	remove_from_group("routers")
 	add_to_group("units")
 	queue_redraw()
+
+
+## The men are still running when they rally: hand the flight over to the idle coast-to-stop
+## instead of stopping the anchor dead under bodies that still carry the flight velocity (they
+## would overrun their slots and walk back). The coast pulls up at rally_halt_brake_rate(), and
+## the bodies brake with it (SoldierBodies.body_brake_accel_for), so the block halts as one.
+## Called from _rally() after the state flip and the re-square, before _clear_flight() drops
+## the flight. A coast is not handed over -- the anchor stops where it rallied, as it always
+## did -- when its stopping point would leave retreat_bounds, when the block's swept width
+## along it runs into impassable terrain, or when a living enemy stands within
+## rally_coast_enemy_radius() of it: the flee pace must not carry the rallied unit into
+## contact, where _approach_velocity would read as a charge. An enemy that comes near the
+## remaining coast later cuts it short (_cut_rally_halt_on_enemy).
+func _begin_rally_halt() -> void:
+	# A flight with no direction (a zero _flee_velocity) has no leg to check: the idle coast
+	# would fall back to running along `facing`, which nothing here vetted.
+	if _flee_pace <= 0.0 or rally_halt_brake_rate() <= 0.0 \
+			or _flee_velocity.length_squared() <= 0.0001:
+		return
+	var dir: Vector2 = _flee_velocity.normalized()
+	var stop_dist: float = _flee_pace * _flee_pace / (2.0 * rally_halt_brake_rate())
+	var stop_at: Vector2 = position + dir * stop_dist
+	if not retreat_bounds.has_point(stop_at):
+		return
+	if PathField.active != null \
+			and PathField.active.is_leg_blocked(position, stop_at, terrain_clearance(dir)):
+		return
+	if _enemy_near_leg(position, stop_at, rally_coast_enemy_radius()):
+		return
+	_current_speed = _flee_pace
+	_approach_velocity = _flee_velocity
+	_rally_halt = true
+
+
+## How near a living enemy may come to a rallied unit's coast before the coast is refused,
+## or cut short: the farther of the rally-contact radius and this unit's own detection
+## range, inside which its idle auto-engage would turn the coast's flee-pace velocity
+## toward the enemy (where UnitCombat.charge_multiplier reads it as a charge).
+func rally_coast_enemy_radius() -> float:
+	return maxf(RALLY_CONTACT_RADIUS, detection_range)
+
+
+## Called each tick before _think: a halting unit whose remaining coast an enemy has come
+## near -- one that moved into its path or its detection range after the rally -- stops where
+## it stands, as a rally did before the halt existed, so it never carries the flee pace into
+## contact.
+func _cut_rally_halt_on_enemy() -> void:
+	if not is_rally_halting():
+		return
+	var dir: Vector2 = _approach_velocity.normalized() \
+			if _approach_velocity.length_squared() > 0.0001 else Vector2.ZERO
+	var remaining: float = _current_speed * _current_speed / (2.0 * rally_halt_brake_rate())
+	if not _enemy_near_leg(position, position + dir * remaining, rally_coast_enemy_radius()):
+		return
+	_rally_halt = false
+	_current_speed = 0.0
+	_approach_velocity = Vector2.ZERO
+
+
+## Whether a living enemy (fighting or routing) stands within `radius` of the segment
+## `from`-`to`. Centre distances, as _can_rally reads contact. False outside the scene tree.
+func _enemy_near_leg(from: Vector2, to: Vector2, radius: float) -> bool:
+	if not is_inside_tree():
+		return false
+	var r_sq: float = radius * radius
+	for group in ["units", "routers"]:
+		for o in get_tree().get_nodes_in_group(group):
+			var other: Unit = o as Unit
+			if other == null or other.team == team or other.state == State.DEAD:
+				continue
+			var near: Vector2 = Geometry2D.get_closest_point_to_segment(other.position, from, to)
+			if near.distance_squared_to(other.position) < r_sq:
+				return true
+	return false
+
+
+## The rate a rallied unit pulls up from its flight at: its own decel, the halt the type can
+## actually make. The orderly arrival brake (arrival_brake_rate, never above decel) is held to
+## what the bodies track at their ordinary acceleration and would coast a full-flight block up
+## to twice as far; SoldierBodies.body_brake_accel_for raises the bodies to this rate for the halt.
+func rally_halt_brake_rate() -> float:
+	return decel
 
 
 ## Shatter: a routed ("broken") unit that couldn't recover in time --- still in contact,
@@ -9710,6 +9832,7 @@ func to_snapshot_dict() -> Dictionary:
 		"moved_while_routing": _moved_while_routing,
 		"moved_while_routing_pace": _moved_while_routing_pace,
 		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity,
+		"rally_halt": _rally_halt,
 		# Not reset before a routing unit's early return, so a router keeps reading it.
 		"is_facing_turning": _is_facing_turning,
 
@@ -9938,6 +10061,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_moved_while_routing_pace = float(d.get("moved_while_routing_pace", _moved_while_routing_pace))
 	_flee_pace = float(d.get("flee_pace", _flee_pace))
 	_flee_velocity = d.get("flee_velocity", _flee_velocity)
+	_rally_halt = bool(d.get("rally_halt", _rally_halt))
 	_is_facing_turning = bool(d.get("is_facing_turning", _is_facing_turning))
 	is_general = bool(d.get("is_general", is_general))
 	order_clear_step = float(d.get("order_clear_step", order_clear_step))

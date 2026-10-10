@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/rally-halt-from-flight.json",
+  "caption": "Fixes #1749: a router that rallies at full flight now pulls up as one block. A 72-man infantry block, already routing north, builds up to its full flee pace; when its morale recovers and it rallies (a little past halfway), the rally hands the flight over to a coast-to-stop at the unit's own braking rate. The anchor and the men brake together, so the block slides about 96 wu (about 5 m) to a halt with every man within about a wu of his place. Before the fix the anchor stopped dead on the rally tick and every man went from the flee pace to a standstill in one tick; where the rally re-paired men (the website's rally-reform clips), they ran on past their places and walked back.",
+  "fixed_fps": 30,
+  "max_frames": 240,
+  "fps": 15,
+  "width": 720
+}
