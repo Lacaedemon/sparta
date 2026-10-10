@@ -604,25 +604,46 @@ func test_row_major_pairing_survives_a_casualty_index_aligned() -> void:
 
 
 ## A genuine reshape changes what the cells MEAN, so a pairing computed against the old
-## frontage is dropped rather than reinterpreted against the new one.
-func test_row_major_pairing_is_dropped_when_the_frontage_reshapes() -> void:
-	var u := _make_row_major_unit()
-	u.facing = Vector2.UP
-	u._formation_angle = PI
-	assert_true(u.reform_ranks(true), "a flipped partial grid reforms")
-	assert_eq(u._row_slot_files, 8, "the pairing records the frontage it was computed for")
+## frontage is never reinterpreted against the new one: the new cells are dealt from where the
+## men stand, or, with no bodies to read, the block falls back to the identity layout.
+func test_row_major_pairing_is_re_dealt_when_the_frontage_reshapes() -> void:
+	for has_bodies in [true, false]:
+		var u := _make_row_major_unit()
+		u.facing = Vector2.UP
+		u._formation_angle = PI
+		assert_true(u.reform_ranks(true), "a flipped partial grid reforms")
+		assert_eq(u._row_slot_files, 8, "the pairing records the frontage it was computed for")
+		var old_pairing: PackedInt32Array = u._sim_soldier_row_slot.duplicate()
+		if not has_bodies:
+			u._sim_soldier_pos = PackedVector2Array()
 
-	# Compared at formation_slots(), which is where the guard lives -- soldier_world_slots()
-	# would additionally apply the still-armed _formation_mirror_x and rotate into world
-	# space, neither of which is what this test is about.
-	u.frontage_override = 10
-	assert_eq(u.formation_files(u.soldiers), 10, "precondition: the grid really did reshape")
-	var reshaped: PackedVector2Array = u.formation_slots(u.soldiers)
-	var plain: PackedVector2Array = UnitFormation.slots(u, u.soldiers)
-	assert_eq(reshaped.size(), plain.size(), "same soldier count either way")
-	for i in range(reshaped.size()):
-		assert_eq(reshaped[i], plain[i],
-			"soldier %d falls back to the identity layout on the new grid" % i)
+		# Compared at formation_slots(), which is where the guard lives -- soldier_world_slots()
+		# would additionally apply the still-armed _formation_mirror_x and rotate into world
+		# space, neither of which is what this test is about.
+		var live: PackedVector2Array = u._slot_frame_positions(u.soldiers)
+		u.frontage_override = 10
+		assert_eq(u.formation_files(u.soldiers), 10, "precondition: the grid really did reshape")
+		var reshaped: PackedVector2Array = u.formation_slots(u.soldiers)
+		var plain: PackedVector2Array = UnitFormation.slots(u, u.soldiers)
+		assert_eq(reshaped.size(), plain.size(), "same soldier count either way")
+		assert_ne(reshaped, UnitFormation.permute_slots(plain, old_pairing),
+			"bodies %s: the old pairing is not reinterpreted on the new grid" % has_bodies)
+		if not has_bodies:
+			assert_eq(u._sim_soldier_row_slot.size(), 0, "with no bodies, no pairing is held")
+			assert_eq(reshaped, plain, "with no bodies, soldier i takes cell i")
+			continue
+		assert_eq(u._row_slot_files, 10, "the new pairing records the new frontage")
+		var cells := {}
+		for c in u._sim_soldier_row_slot:
+			cells[c] = true
+		assert_eq(cells.size(), u.soldiers, "the new pairing gives every man a cell of his own")
+		# Both read in the slot frame, so a sign change is a man sent across the block.
+		var half: float = u.file_pitch_wu() * 0.5
+		for i in range(reshaped.size()):
+			var crosses: bool = live[i].x * reshaped[i].x < 0.0 \
+					and absf(live[i].x) > half and absf(reshaped[i].x) > half
+			assert_false(crosses, "soldier %d is dealt a cell on his own side (%.1f -> %.1f)"
+					% [i, live[i].x, reshaped[i].x])
 
 
 ## The row-major pairing must not leak into the file-major branch, which cancels the same
