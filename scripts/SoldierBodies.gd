@@ -873,8 +873,8 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 ## silent and never double-counts the march. Capped at MAX_FOLLOW_SPEED*delta so the center
 ## can never teleport. Per-unit and RNG-free -- replay-safe.
 ##
-## An anchored (asymmetric) explicatio/duplicatio breaks the "mean(slots) ~ position" premise
-## ON PURPOSE: unit.frontage_anchor_offset shifts every slot by a fixed local-X amount so one
+## An anchored (asymmetric) explicatio/duplicatio moves the slot centroid off `position`
+## ON PURPOSE, and for good, not for one maneuver: unit.frontage_anchor_offset shifts every slot by a fixed local-X amount so one
 ## flank's edge holds fixed as the block widens/narrows (UnitFormation.slots), which moves the
 ## slot centroid away from `position` by that same amount for as long as the offset is nonzero
 ## -- not a transient lag that resolves as bodies arrive, but a standing, intentional gap. Left
@@ -915,12 +915,10 @@ static func couple(unit: Unit, delta: float) -> void:
 	# slot centroid, so coupling would read that lag as off-formation drift and drag the centre
 	# BACKWARD against the arc — pulling the standing flank off its hinge. Skip it; the arrival
 	# alone brings the bodies onto the arc, and coupling resumes once the wheel completes.
-	# An in-place turn (an about-face or quarter-turn, standalone or a rear move's TURN phase)
-	# freezes the men where they stand while the slots swing about `position`. A block with a
-	# short rear rank has its slot centroid off `position`, so that swing moves the slot
-	# centroid away from bodies nobody pushed, and coupling would drag the centre after it.
-	# Skip it for the same reason as the wheel.
-	if unit.is_wheeling() or unit.frontage_anchor_offset != 0.0 or unit.is_order_turning():
+	var turning: bool = unit.is_order_turning()
+	if not turning:
+		unit.clear_turn_start_slots()
+	if unit.is_wheeling() or unit.frontage_anchor_offset != 0.0:
 		unit._body_follow_vel = Vector2.ZERO
 		unit._step_slots_for_couple_valid = false   # this tick's handoff goes unused
 		return
@@ -933,6 +931,14 @@ static func couple(unit: Unit, delta: float) -> void:
 	unit._step_slots_for_couple_valid = false
 	if slots.size() != n:
 		return   # arrays mid-resize this tick; couple next tick when they realign
+	# An in-place turn (an about-face or quarter-turn, standalone or a rear move's TURN phase,
+	# from the order's response delay on) holds the men where they stand while the slots swing
+	# about `position`. A block with a short rear rank has its slot centroid off `position`,
+	# so that swing moves the slot centroid away from bodies nobody pushed. Measure the drift
+	# against the slots as they stood when the turn began, carried along with `position`, so
+	# the swing reads as nothing while a real push (a friendly shove) still moves the block.
+	if turning:
+		slots = unit.turn_start_slots(slots)
 	# position_anchor_indices narrows the contact-tier selection down to the live
 	# near-front ranks (Unit.ANCHOR_RANKS) once the unit has settled (see
 	# Unit.position_anchor_indices / _position_anchor_unstable) -- Square/Schiltron and any

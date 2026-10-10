@@ -468,6 +468,11 @@ var _couple_transit: PackedByteArray = PackedByteArray()
 # against a friend or terrain), so no man stays out of the average for good. -1 means
 # "never armed", on the same convention as the two ticks above.
 var _couple_transit_until_tick: int = -1
+# The slots as they stood when the current in-place turn began, with the `position` and the
+# turn's goal facing they were captured at (see turn_start_slots). Empty outside a turn.
+var _turn_start_slots: PackedVector2Array = PackedVector2Array()
+var _turn_start_position: Vector2 = Vector2.ZERO
+var _turn_start_target: Vector2 = Vector2.ZERO
 # The state this unit was in on its previous physics tick, read only to notice a unit
 # LEAVING a fight or a rout: both leave the bodies wherever the press or the flight put
 # them, and the walk back to pitch spacing is the same file-crossing traversal a re-slot
@@ -1209,6 +1214,10 @@ const REFORM_DURATION: float = 0.8
 # reform's "ranks have re-formed" check. Loose enough that couple()'s tiny centre drift
 # can't stall the check, far tighter than a rank gap (FORMATION_SPACING is 9).
 const REFORM_SETTLE_EPS: float = 1.0
+# How far the slot centroid may sit from `position` and still count as centred, for
+# arm_couple_transit. A solver epsilon (float residue of summing a symmetric grid), not a
+# gameplay length: a short rank puts the centroid whole wu off. Tuned in wu.
+const COUPLE_TRANSIT_CENTRED_EPS: float = 0.01
 # The same check's tolerance for a full frontage RESHAPE (a form-up's changed file count,
 # not just an angle fold) -- see Order.reform_settle_eps's own doc comment for why a wholesale
 # reshape needs a looser bound than REFORM_SETTLE_EPS to ever actually trigger. Empirically
@@ -4933,6 +4942,9 @@ static func spacing_scale_for_mode(mode: int) -> float:
 ## cycle on a merged unit doesn't discard the merge-widened body.
 func set_formation(mode: int) -> void:
 	if mode != formation_mode:
+		# A new stance re-deals every slot, so no man is still walking to the slot a
+		# hold-ground re-square gave him.
+		clear_couple_transit()
 		# A deliberate reshape. The square slot pairing is taken from where the men
 		# stand at the moment the square forms (_ensure_square_slot_assignment), so a
 		# pairing left over from an earlier square must not survive a spell back in
@@ -5034,6 +5046,7 @@ func set_frontage(files: int, anchor_offset: float = 0.0) -> void:
 	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
 	frontage_anchor_offset = anchor_offset
 	if frontage_override != old_files:
+		clear_couple_transit()   # a new frontage re-deals every slot (see set_formation)
 		_last_reshape_tick = Engine.get_physics_frames()
 		_last_reshape_widened = frontage_override > old_files
 		_apply_moving_reshape_penalty()
@@ -5976,6 +5989,7 @@ func install_file_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array
 		old_files: int = -1) -> void:
 	if old_files < 0:
 		old_files = UnitFormation.frontage(self)
+	clear_couple_transit()   # a fresh file assignment re-deals every slot (see set_formation)
 	_sim_soldier_file = file_ids
 	_sim_soldier_rank = ranks
 	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
@@ -6660,6 +6674,10 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 	# depth reflection and its cancellation land every man on the same slot.)
 	if drilled_half and soldiers % files == 0:
 		hold_ground = true
+	# This reform re-deals the slots, so any walker an earlier hold-ground re-square flagged is
+	# now bound for a different slot: drop the old flags (the branch below re-arms its own).
+	# The early returns above re-deal nothing, so they leave a walk in progress flagged.
+	clear_couple_transit()
 	# Past this point the reform re-slots the block (an about-face's depth reflection, or a
 	# quarter-turn's re-square) -- the file-crossing traversal the standoff pass exists to
 	# police, including the hasty variant's deferred call once the march that carried it
@@ -6715,10 +6733,14 @@ func reform_ranks(hold_ground: bool = false) -> bool:
 			# already held (identity, normally) rather than overwriting it, so a second
 			# hold-ground reform undoes the first exactly -- the pairing is an involution.
 			_apply_row_slot_reflection(soldiers, files)
-		# The full files keep their slots; the short files' slots move up a rank. Keep those
-		# walkers out of the anchor coupling until they arrive, so `position` holds the ground
-		# the full files hold. Covers the drilled REFORM hold, the hasty variant's re-square on
-		# arrival (which runs outside any hold) and a rally's re-square alike.
+		# On an exact half-turn the full files keep their slots and the short files' slots move
+		# up a rank (file major) or swap ends (row major, square); a drilled half-turn's residue
+		# also swings every slot by the residue. Keep the men whose slot moved out of the anchor
+		# coupling until they arrive, so `position` holds the ground the rest of the block
+		# holds. arm_couple_transit arms nothing for a block whose slots are centred on
+		# `position` (a full grid squaring a residue), where the walk is symmetric and reads
+		# no drift. Covers the drilled REFORM hold, the hasty variant's re-square on arrival
+		# (which runs outside any hold) and a rally's re-square alike.
 		arm_couple_transit(slots_before, _reform_timeout())
 	_render_dirty = true
 	return true
@@ -7022,19 +7044,31 @@ func position_anchor_held() -> bool:
 
 ## Flag every man whose slot the re-deal moved by more than REFORM_SETTLE_EPS as in transit
 ## (see _couple_transit), for `timeout_sec` at most. `slots_before` is each man's slot just
-## before the re-deal. Called by a hold-ground about-face re-square: the full files keep their
-## slots, so only the short files' men, stepping up a rank to close the line, are flagged. A
-## block with a short rank has its slot centroid off `position`, and those men's walk moves
-## the body centroid by a good fraction of a rank pitch; left in the drift average, it would
-## drag `position` back to meet them and walk the full files off the ground they hold.
+## before the re-deal. Called by a hold-ground about-face re-square. On an exact half-turn the
+## full files keep their slots, so only the men of the short files are flagged. A block with a
+## short rank has its slot centroid off `position`, and those men's walk moves the body
+## centroid by a good fraction of a rank pitch; left in the drift average, it would drag
+## `position` back to meet them and walk the full files off the ground they hold.
 ## Keyed on the slot moving, not on the man standing off it: a block rallying out of a flight
 ## re-squares while its men are still braking well off their slots, and that lag is exactly
 ## what the coupling has to keep following.
+## Arms nothing when the new slots are centred on `position` (within
+## COUPLE_TRANSIT_CENTRED_EPS): a full grid squaring a drilled half-turn's residue swings
+## every slot, but symmetrically, so the walk reads no drift and the coupling can keep
+## following any push.
+## The flags are sized to the live soldier count, like the slots. During a regiment-path
+## casualty's window (soldiers already dropped, body arrays not yet trimmed) couple() does
+## not run, and the flags take effect once step() trims the arrays to match.
 func arm_couple_transit(slots_before: PackedVector2Array, timeout_sec: float) -> void:
 	clear_couple_transit()
-	var n: int = _sim_soldier_pos.size()
 	var slots: PackedVector2Array = soldier_world_slots(soldiers)
-	if n == 0 or slots.size() != n or slots_before.size() != n:
+	var n: int = slots.size()
+	if n == 0 or slots_before.size() != n:
+		return
+	var centroid := Vector2.ZERO
+	for p in slots:
+		centroid += p
+	if (centroid / float(n)).distance_to(position) <= COUPLE_TRANSIT_CENTRED_EPS:
 		return
 	var flags := PackedByteArray()
 	flags.resize(n)
@@ -7067,6 +7101,37 @@ func couple_transit_active(count: int) -> bool:
 func clear_couple_transit() -> void:
 	_couple_transit = PackedByteArray()
 	_couple_transit_until_tick = -1
+
+
+## The slots SoldierBodies.couple measures drift against during an in-place turn: `current`
+## (this tick's slots) as they stood on the turn's first coupled tick, shifted by however far
+## `position` has moved since. The first call of a turn (no capture yet, a different turn's
+## goal facing, or a changed soldier count) captures `current` and returns it unchanged.
+## Through the turn the men stand fast while the slots swing about `position`; against these
+## captured slots the swing reads as no drift, while a push on the bodies still does.
+func turn_start_slots(current: PackedVector2Array) -> PackedVector2Array:
+	var leaf := active_leaf()
+	var target: Vector2 = leaf.turn_target if leaf != null else Vector2.ZERO
+	if _turn_start_slots.size() != current.size() or target != _turn_start_target:
+		_turn_start_slots = current.duplicate()
+		_turn_start_position = position
+		_turn_start_target = target
+		return current
+	var shift: Vector2 = position - _turn_start_position
+	var out := PackedVector2Array()
+	out.resize(current.size())
+	for i in range(current.size()):
+		out[i] = _turn_start_slots[i] + shift
+	return out
+
+
+## Drop the turn's captured slots (see turn_start_slots). couple() calls it on every tick the
+## unit is not turning, so the next turn captures afresh.
+func clear_turn_start_slots() -> void:
+	if not _turn_start_slots.is_empty():
+		_turn_start_slots = PackedVector2Array()
+		_turn_start_position = Vector2.ZERO
+		_turn_start_target = Vector2.ZERO
 
 
 ## Advance an in-place turn one tick: rotate `facing` toward `target` at the drill rate and
@@ -9861,6 +9926,9 @@ func to_snapshot_dict() -> Dictionary:
 				_anchor_hold_until_tick - Engine.get_physics_frames()
 				if _anchor_hold_until_tick > Engine.get_physics_frames() else -1
 		),
+		"turn_start_slots": _turn_start_slots.duplicate(),
+		"turn_start_position": _turn_start_position,
+		"turn_start_target": _turn_start_target,
 		"couple_transit": _couple_transit.duplicate(),
 		"couple_transit_remaining_ticks": (
 				_couple_transit_until_tick - Engine.get_physics_frames()
@@ -10083,6 +10151,11 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 		)
 	else:
 		_anchor_hold_until_tick = int(d.get("anchor_hold_until_tick", -1))
+	# An older snapshot carries no turn capture: a restore mid-turn then captures the slots
+	# on its first coupled tick, as a turn that had just begun would.
+	_turn_start_slots = (d.get("turn_start_slots", PackedVector2Array()) as PackedVector2Array).duplicate()
+	_turn_start_position = d.get("turn_start_position", Vector2.ZERO)
+	_turn_start_target = d.get("turn_start_target", Vector2.ZERO)
 	# An older snapshot carries no transit flags: it restores none, and couple() averages
 	# every body as it did before they existed.
 	_couple_transit = (d.get("couple_transit", PackedByteArray()) as PackedByteArray).duplicate()

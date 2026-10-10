@@ -156,8 +156,11 @@ func test_drilled_rear_move_refills_the_front_rank_before_marching() -> void:
 	# SoldierBodies.couple() no longer reads that offset as drift while the turn swings the
 	# slots, nor while the short files step up a rank, so the regiment centre holds the ground
 	# it stood on when the order came, through the turn and the reform alike. The tolerance
-	# only absorbs the step the committing tick's march may already have taken.
-	var creep_tolerance: float = 0.5
+	# is one tick of travel at the slowest pace the unit's own reform bound uses (the most
+	# the committing tick's march can already have carried it) plus REFORM_SETTLE_EPS (the
+	# farthest a short-file walker stands off his slot when he re-enters the coupling).
+	var creep_tolerance: float = u.jog_speed * u.back_speed_fraction / Replay.PHYSICS_TPS \
+			+ Unit.REFORM_SETTLE_EPS
 	assert_lt(u.position.distance_to(order_pos), creep_tolerance,
 		"the regiment held its ground for the turn and reform (no creep, tolerance %.3f wu)"
 			% creep_tolerance)

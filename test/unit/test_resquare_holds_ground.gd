@@ -13,8 +13,8 @@ const COUNT := 46
 const FILES := 10
 const SPAWN := Vector2(900, 360)
 const BEHIND := Vector2(1040, 360)   # straight behind the west-facing block
-# How far a full-file man may stand off his starting point through the turn and re-square.
-const HOLD_TOL := 0.5
+# The 50-man control: 10 files by 5 full ranks, so its slot centroid sits on `position`.
+const FULL_COUNT := 50
 
 var _battle: Node = null
 
@@ -28,19 +28,29 @@ func after_each() -> void:
 	await get_tree().physics_frame
 
 
-func _stage(reform_before_move: bool) -> Unit:
+func _stage(reform_before_move: bool, count: int = COUNT) -> Unit:
 	Replay.forced_seed = 90417
 	_battle = load("res://scenes/Battle.tscn").instantiate()
 	_battle.drill_mode = true   # set before add_child so Battle._ready reads it
 	_battle.scenario = [
 		{"team": 0, "type": "Infantry", "x": SPAWN.x, "y": SPAWN.y, "facing": [-1, 0],
-			"count": COUNT, "frontage": FILES, "reform_before_move": reform_before_move},
+			"count": count, "frontage": FILES, "reform_before_move": reform_before_move},
 	]
 	add_child(_battle)
 	for u in get_tree().get_nodes_in_group("units"):
 		if u is Unit and u.team == 0:
 			return u
 	return null
+
+
+## How far a full-file man, or the regiment centre, may stand off his starting point through
+## the turn and re-square. Two terms: one tick of travel at the slowest pace the unit's own
+## reform bound uses (jog_speed * back_speed_fraction), which is the most a committing tick
+## can carry the block before a loop sees the commit; and REFORM_SETTLE_EPS, the farthest a
+## short-file walker can stand off his slot when he re-enters the coupling, so the most any
+## one man can still read as drift. The defect this file guards moved them 7 wu or more.
+func _hold_tol(u: Unit) -> float:
+	return u.jog_speed * u.back_speed_fraction / Replay.PHYSICS_TPS + Unit.REFORM_SETTLE_EPS
 
 
 ## Settle the spawned bodies onto their slots.
@@ -126,10 +136,10 @@ func test_drilled_about_face_resquare_holds_the_full_files_in_place() -> void:
 		worst_anchor = maxf(worst_anchor, u.position.distance_to(start_anchor))
 	assert_true(saw_reform, "the order ran a REFORM hold after the turn")
 	assert_true(u.has_move_target, "the march committed within the budget")
-	assert_lt(worst_full, HOLD_TOL,
+	assert_lt(worst_full, _hold_tol(u),
 		"every full-file man held his ground through the turn and re-square (worst %.3f wu)"
 			% worst_full)
-	assert_lt(worst_anchor, HOLD_TOL,
+	assert_lt(worst_anchor, _hold_tol(u),
 		"the regiment centre held its ground until the march (worst %.3f wu)" % worst_anchor)
 	# The short files stepped up one whole rank pitch toward the new (east) front, not part
 	# of one: on the defect they stopped about 9.7 wu short of it.
@@ -179,10 +189,10 @@ func test_hasty_about_face_resquare_on_arrival_holds_the_full_files_in_place() -
 		if u._reform_bodies_settled():
 			break
 	assert_true(u._reform_bodies_settled(), "the ranks re-formed within the budget")
-	assert_lt(worst_full, HOLD_TOL,
+	assert_lt(worst_full, _hold_tol(u),
 		"every full-file man held his ground through the arrival re-square (worst %.3f wu)"
 			% worst_full)
-	assert_lt(u.position.distance_to(arrived_anchor), HOLD_TOL,
+	assert_lt(u.position.distance_to(arrived_anchor), _hold_tol(u),
 		"the regiment centre held its ground through the arrival re-square (%.3f wu)"
 			% u.position.distance_to(arrived_anchor))
 
@@ -215,6 +225,55 @@ func test_a_shove_during_the_resquare_still_moves_the_regiment() -> void:
 		await get_tree().physics_frame
 	assert_gt(u.position.y - y0, 1.0,
 		"the regiment centre followed the shove (moved %.3f wu)" % (u.position.y - y0))
+
+
+## The shove 20 ticks into an about-face, measured 30 ticks later while the block is still
+## turning. Returns how far the regiment centre followed it sideways.
+func _follow_of_a_shove_during_the_turn(count: int) -> float:
+	var u := _stage(true, count)
+	assert_not_null(u, "the scenario staged the block")
+	if u == null:
+		return 0.0
+	await _settle()
+	_order(u, BEHIND)
+	for _i in range(20):
+		await get_tree().physics_frame
+	assert_true(u.is_order_turning(), "the shove lands during the turn")
+	var y0: float = u.position.y
+	for i in range(u._sim_soldier_pos.size()):
+		u._sim_soldier_pos[i] += Vector2(0, 6)
+	for _i in range(30):
+		await get_tree().physics_frame
+	assert_true(u.is_order_turning(), "and the follow is read before the turn ends")
+	return u.position.y - y0
+
+
+## A shove during the turn still moves the regiment, whatever the block's shape: the turn
+## only changes what the drift is measured against, not whether it is followed. Half the
+## 6 wu shove is far below what follows it when no turn is in progress.
+func test_a_shove_during_the_turn_moves_a_full_block() -> void:
+	var follow: float = await _follow_of_a_shove_during_the_turn(FULL_COUNT)
+	assert_gt(follow, 3.0, "the full block followed the shove (moved %.3f wu)" % follow)
+
+
+func test_a_shove_during_the_turn_moves_a_short_rank_block() -> void:
+	var follow: float = await _follow_of_a_shove_during_the_turn(COUNT)
+	assert_gt(follow, 3.0, "the short-rank block followed the shove (moved %.3f wu)" % follow)
+
+
+## A full grid's slots sit centred on `position`, so a re-square that swings them all (a
+## drilled half-turn's residue) reads no drift, and no man is kept out of the coupling.
+func test_transit_arms_nothing_for_a_centred_grid() -> void:
+	var u := _stage(true, FULL_COUNT)
+	assert_not_null(u, "the scenario staged the block")
+	if u == null:
+		return
+	await _settle()
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(before.size()):
+		before[i] += Vector2(18, 0)   # every slot moved
+	u.arm_couple_transit(before, 10.0)
+	assert_true(u._couple_transit.is_empty(), "a centred grid flags nobody")
 
 
 func test_transit_flags_only_men_whose_slot_moved() -> void:
@@ -256,6 +315,67 @@ func test_transit_flags_lapse_on_a_count_change_or_the_deadline() -> void:
 	assert_false(u._couple_transit.is_empty(), "armed with a zero window")
 	assert_false(u.couple_transit_active(n), "a lapsed deadline clears the flags")
 	assert_true(u._couple_transit.is_empty(), "and drops them")
+
+
+func test_a_rout_or_a_new_formation_clears_the_flags() -> void:
+	var u := _stage(true)
+	assert_not_null(u, "the scenario staged the block")
+	if u == null:
+		return
+	await _settle()
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	before[0] += Vector2(18, 0)
+	u.arm_couple_transit(before, 10.0)
+	assert_false(u._couple_transit.is_empty(), "armed")
+	u.set_formation(Unit.FORMATION_TIGHT)
+	assert_true(u._couple_transit.is_empty(), "a new formation clears the flags")
+	u.arm_couple_transit(before, 10.0)
+	u._rout()
+	assert_true(u._couple_transit.is_empty(), "a rout clears the flags")
+
+
+## A casualty mid re-square drops only the dead man's flag: every other walker stays out of
+## the coupling, aligned to his own body.
+func test_a_casualty_mid_resquare_keeps_the_other_walkers_flagged() -> void:
+	var u := _stage(true)
+	assert_not_null(u, "the scenario staged the block")
+	if u == null:
+		return
+	await _settle()
+	var n: int = u._sim_soldier_pos.size()
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	before[2] += Vector2(18, 0)
+	before[7] += Vector2(18, 0)
+	u.arm_couple_transit(before, 10.0)
+	u._sim_soldier_hp[2] = 0.0
+	SoldierMelee.reap(u, null)
+	assert_eq(u._sim_soldier_pos.size(), n - 1, "the dead man's body was removed")
+	assert_eq(u._couple_transit.size(), n - 1, "and his flag with it")
+	assert_eq(int(u._couple_transit[6]), 1, "the other walker's flag moved down with his body")
+	assert_eq(u._couple_transit.count(1), 1, "and is the only one left")
+	assert_true(u.couple_transit_active(n - 1), "so the flags stay active")
+
+
+## A snapshot from before the flags existed restores none.
+func test_an_older_snapshot_restores_no_flags() -> void:
+	var u := _stage(true)
+	assert_not_null(u, "the scenario staged the block")
+	if u == null:
+		return
+	await _settle()
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	before[0] += Vector2(18, 0)
+	var d: Dictionary = u.to_snapshot_dict()
+	d.erase("couple_transit")
+	d.erase("couple_transit_remaining_ticks")
+	d.erase("turn_start_slots")
+	d.erase("turn_start_position")
+	d.erase("turn_start_target")
+	u.arm_couple_transit(before, 10.0)
+	u.apply_snapshot_dict(d)
+	assert_true(u._couple_transit.is_empty(), "no flags restored")
+	assert_eq(u._couple_transit_until_tick, -1, "and no window")
+	assert_true(u._turn_start_slots.is_empty(), "and no turn capture")
 
 
 func test_transit_flags_survive_a_snapshot_round_trip() -> void:

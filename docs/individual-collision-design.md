@@ -162,9 +162,12 @@ verified before the next phase builds on it.
    - **Slice 1 [DONE] -- friendly collision.** A soldier->regiment **coupling** slides each
      regiment's center toward its soldiers' centroid at a bounded velocity, never a snap
      (`SoldierBodies.couple` / `Unit.couple_all_sim_soldiers`, run as the last soldier
-     sub-step in `Battle._on_soldier_tick`). Because the formation slots are centred, the
-     drift is ~0 during a clean march, so the coupling is silent except when bodies are
-     pushed off formation. `SoldierSteering` gained a **friendly-contact tier**
+     sub-step in `Battle._on_soldier_tick`). The drift is measured against the slots, not
+     against the centre, so it is ~0 during a clean march even for a block whose short rear
+     rank puts its slot centroid off the centre: the coupling is silent except when bodies
+     are pushed off formation. While the slots move and the men deliberately do not follow
+     (an in-place turn) or walk onto new ones (a hold-ground re-square's short files),
+     `couple` measures against the turn's starting slots, or leaves the walkers out. `SoldierSteering` gained a **friendly-contact tier**
      (regiment-broadphase-gated) that steers overlapping friendlies apart even when neither
      is fighting, carrying the move-through-idle / relief exemptions and the engaged-anchor
      asymmetry down from `_separate`. `_separate()` now **skips friendly pairs** -- the

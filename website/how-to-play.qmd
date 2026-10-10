@@ -339,8 +339,10 @@ would otherwise lead with its **thinnest rank** --- the short, under-strength ra
 had been tucked safely at the back. So after the turn the regiment **reforms**:
 the men re-square without marching through the block,
 dressing the line without countermarching.
-The full files stand fast on the ground they hold, through the turn and the reform alike,
-and only the files the short rank never reached step forward one place to close the new front.
+Most of the block stands fast on the ground it holds, through the turn and the reform alike.
+In a block that reforms file by file, only the files the short rank never reached step forward one place to close the new front.
+In one that reforms by rows (cavalry always does, and so does foot that is not disciplined or whose Reform button chooses rows),
+only the few men with no counterpart across the flip keep their file and swap ends.
 The reform keeps every man on the flank he stood on,
 and the orders after it do not swap the men to the opposite flanks.
 With **Reform before move** on (the default) this happens before the unit steps off;
