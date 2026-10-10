@@ -7192,8 +7192,7 @@ func position_anchor_held() -> bool:
 ## before the re-deal, or empty when the re-square had to re-deal an out-of-step assignment
 ## from the bodies. With it empty, each man's body stands in for his old slot only when
 ## `bodies_on_old_slots` says the men stand on them (the re-square that ends an in-place turn);
-## otherwise nothing is armed. Called by a hold-ground about-face re-square.
-## On an exact half-turn the
+## otherwise nothing is armed. Called by a hold-ground about-face re-square. On an exact half-turn the
 ## full files keep their slots, so only the men of the short files are flagged. A block with a
 ## short rank has its slot centroid off `position`, and those men's walk moves the body
 ## centroid by a good fraction of a rank pitch; left in the drift average, it would drag
