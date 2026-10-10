@@ -858,8 +858,14 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 
 
 ## Slide the regiment center toward its soldiers' centroid, at a bounded velocity (phase 5).
-## The formation slots are centred (mean(slots) ~ position), so the drift body_centroid -
-## slot_centroid is how far the bodies have been pushed off formation as a whole; stepping
+## The drift body_centroid - slot_centroid is how far the bodies have been pushed off
+## formation as a whole. It compares the bodies with their slots, not with `position`, which
+## matters because the slots are not always centred on `position`: a block with a short rear
+## rank has its slot centroid a fraction of a rank toward its front. That offset is harmless
+## while the slots move rigidly with `position`, but not while they move and the men
+## deliberately do not follow (an in-place turn swings them about `position` under men who
+## stand fast) or the men deliberately walk onto new ones (a hold-ground re-square's short
+## files); both cases are handled below. Stepping
 ## the center a fraction of that each tick drives the slot centroid onto the body centroid
 ## (geometric decay, stable). When bodies are pushed off slot by friendly avoidance or
 ## knockback, the whole regiment follows -- so friendly regiments separate from the soldier
@@ -909,7 +915,12 @@ static func couple(unit: Unit, delta: float) -> void:
 	# slot centroid, so coupling would read that lag as off-formation drift and drag the centre
 	# BACKWARD against the arc — pulling the standing flank off its hinge. Skip it; the arrival
 	# alone brings the bodies onto the arc, and coupling resumes once the wheel completes.
-	if unit.is_wheeling() or unit.frontage_anchor_offset != 0.0:
+	# An in-place turn (an about-face or quarter-turn, standalone or a rear move's TURN phase)
+	# freezes the men where they stand while the slots swing about `position`. A block with a
+	# short rear rank has its slot centroid off `position`, so that swing moves the slot
+	# centroid away from bodies nobody pushed, and coupling would drag the centre after it.
+	# Skip it for the same reason as the wheel.
+	if unit.is_wheeling() or unit.frontage_anchor_offset != 0.0 or unit.is_order_turning():
 		unit._body_follow_vel = Vector2.ZERO
 		unit._step_slots_for_couple_valid = false   # this tick's handoff goes unused
 		return
@@ -963,10 +974,29 @@ static func couple(unit: Unit, delta: float) -> void:
 			for j in range(count):
 				slot_centroid += slots[j]
 	else:
-		count = n
+		# A hold-ground re-square walks the short files onto slots a rank pitch away while the
+		# full files already stand on theirs (Unit.arm_couple_transit). Those walkers are in
+		# deliberate transit, not pushed off formation, so they stay out of the average until
+		# each one arrives; the men already on their slots still carry any real push (a
+		# friendly shove) into `position` as usual.
+		var transit: bool = unit.couple_transit_active(n)
+		var eps_sq: float = Unit.REFORM_SETTLE_EPS * Unit.REFORM_SETTLE_EPS
+		var walking: int = 0
+		count = 0
 		for i in range(n):
+			if transit and unit._couple_transit[i] != 0:
+				if unit._sim_soldier_pos[i].distance_squared_to(slots[i]) > eps_sq:
+					walking += 1
+					continue
+				unit._couple_transit[i] = 0
 			body_centroid += unit._sim_soldier_pos[i]
 			slot_centroid += slots[i]
+			count += 1
+		if transit and walking == 0:
+			unit.clear_couple_transit()
+		if count == 0:
+			unit._body_follow_vel = Vector2.ZERO
+			return
 	var inv: float = 1.0 / float(count)
 	var drift: Vector2 = (body_centroid - slot_centroid) * inv
 	var follow_step: Vector2 = (drift * Unit.FOLLOW_RATE * delta).limit_length(Unit.MAX_FOLLOW_SPEED * delta)

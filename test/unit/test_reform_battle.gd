@@ -112,6 +112,7 @@ func test_drilled_rear_move_refills_the_front_rank_before_marching() -> void:
 	assert_eq(files, 9, "40 spearmen deploy 9 files wide (4 full ranks + a 4-man partial)")
 	var dest := SPAWN + Vector2(0, -180)   # straight behind the DOWN-facing unit
 	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	var order_pos: Vector2 = u.position
 
 	# The drilled variant: reform_before_move is a per-unit field now, read straight
 	# off the unit rather than a cmd-level "reform" flag -- set it explicitly rather than
@@ -146,30 +147,19 @@ func test_drilled_rear_move_refills_the_front_rank_before_marching() -> void:
 		assert_eq(u.active_leaf().phase, Order.Phase.REFORM,
 			"the order transcript shows the REFORM phase")
 	var reform_budget: int = int(ceil(u._reform_timeout() * Replay.PHYSICS_TPS)) + 30
-	var start_pos: Vector2 = u.position
 	for _i in range(reform_budget):
 		await get_tree().physics_frame
 		if u.has_move_target:
 			break
 	assert_true(u.has_move_target, "the parked march commits once the ranks re-form")
-	# A partial rear rank centres on fewer columns than a full one, so the block's own local
-	# grid (UnitFormation.block_slots) is not perfectly centred on `position` -- its true mean
-	# sits a fraction of a rank off, front-to-back. SoldierBodies.couple() gently follows the
-	# soldiers' actual centroid toward that mean while they arrive on their (re-)squared slots,
-	# so `position` always wobbles a little during any reform, independent of which soldier
-	# lands on which slot. The countermarch fix changes each soldier's individual target (see
-	# soldier_world_slots' _formation_mirror_x), which changes how far bodies travel and so
-	# exactly where in its decaying oscillation couple() gets caught at the instant the ranks
-	# finish settling -- a strictly smaller total march can commit sooner and catch the wobble
-	# at a slightly less-settled point than a slower one does. On top of that, the settling
-	# window itself (_reform_timeout()) is derived from the unit's own back_speed_fraction: a
-	# slower per-type backward pace widens the window and so accumulates more follow drift.
-	# Bound the wobble at one file spacing scaled by how much slower THIS type's own fraction
-	# is than the 0.5 baseline the countermarch fix was tuned against -- loose enough not to be
-	# a coin flip on exactly which tick the reform happens to commit, at any type's pace.
-	var creep_tolerance: float = Unit.FORMATION_SPACING * (0.5 / u.back_speed_fraction)
-	assert_lt(u.position.distance_to(start_pos), creep_tolerance,
-		"the regiment held its ground for the reform (no march creep, tolerance %.3f px)"
+	# A partial rear rank leaves the block's slot centroid a fraction of a rank off `position`.
+	# SoldierBodies.couple() no longer reads that offset as drift while the turn swings the
+	# slots, nor while the short files step up a rank, so the regiment centre holds the ground
+	# it stood on when the order came, through the turn and the reform alike. The tolerance
+	# only absorbs the step the committing tick's march may already have taken.
+	var creep_tolerance: float = 0.5
+	assert_lt(u.position.distance_to(order_pos), creep_tolerance,
+		"the regiment held its ground for the turn and reform (no creep, tolerance %.3f wu)"
 			% creep_tolerance)
 	assert_true(u._reform_bodies_settled(), "the march waited for the ranks, not the timeout")
 	assert_eq(_front_row_count(u), files,
@@ -184,7 +174,7 @@ func test_drilled_rear_move_refills_the_front_rank_before_marching() -> void:
 	# one bookkeeping tick behind the commit, has advanced REFORM -> MARCH).
 	for _i in range(int(Replay.PHYSICS_TPS)):
 		await get_tree().physics_frame
-	assert_lt(u.position.y, start_pos.y - 1.0, "the unit is marching toward the rear destination")
+	assert_lt(u.position.y, order_pos.y - 1.0, "the unit is marching toward the rear destination")
 	if u.current_order != null:
 		assert_eq(u.current_order.effective_phase_name(), "MARCH",
 			"the order transcript advanced REFORM -> MARCH")
