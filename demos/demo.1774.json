@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/resquare-holds-ground-1774.json",
+  "caption": "An about-faced block re-squares where it stands. A lone Infantry block with a short rear rank is ordered to a point behind it: it about-faces, and the short files step one rank forward to close the new front while the full files stand fast. Only then does it march off. Before this fix the block's centre was dragged toward its off-centre men during the turn and the re-square, so the full files walked almost half a metre backwards and the short files stopped about half a rank short.",
+  "fixed_fps": 30,
+  "max_frames": 290,
+  "fps": 15,
+  "width": 720
+}
