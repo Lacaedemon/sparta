@@ -550,6 +550,7 @@ Sampled the tick after a reshape, they show where the reshape sends the men befo
 
 - `slots_across_centreline` -- how many men have their slot across the unit's centreline
   from them, each more than half a file pitch off it.
+
 - `slot_lateral_excess` -- the farthest any man's slot lies sideways of his place,
   in world units, rounded to 0.1.
   A man standing outside the new block is measured from its near edge instead,
