@@ -78,6 +78,7 @@ const EXCLUDED := {
 # in ticks, the way the standoff and anchor-hold timers travel as remaining ticks.
 const RENAMED := {
 	"_engaged_target_reassign_frame": "engaged_target_pairing_age_ticks",
+	"_couple_transit_until_tick": "couple_transit_remaining_ticks",
 }
 
 
