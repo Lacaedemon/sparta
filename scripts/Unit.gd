@@ -1508,6 +1508,12 @@ var _flee_pace: float = 0.0
 # chase their slots on the jog-capped arrival term, and the body coupling drags the anchor
 # back to them. Read only while state == ROUTING.
 var _flee_velocity: Vector2 = Vector2.ZERO
+# The rate (rad/s, signed like an angle) _turn_flight_toward turned this router's heading,
+# and with it the slot grid about the anchor, this tick: zero while the flight runs
+# straight. SoldierBodies.step feeds the turn forward with the march (each slot's own
+# velocity about the anchor), so the men turn with their slots instead of chasing them on
+# the arrival term. Read only while state == ROUTING.
+var _flight_turn_rate: float = 0.0
 # True from a rally until the anchor has pulled up from the flight it handed over (see _rally
 # and is_rally_halting). Cleared by _tick_idle_coast once the anchor stops, or the moment the
 # unit locomotes, fights, or carries a held march; and by _rout() -- whichever comes first.
@@ -8902,17 +8908,17 @@ func _process_rout(delta: float) -> void:
 	# field's own grid bounds first (mirroring has_escape_route() above). An unclipped
 	# point 1000px out lands off the grid for virtually every real position, which A*
 	# can never reach regardless of terrain -- silently defeating this whole detour.
-	# The step rounds terrain with the block's own swept width (_rout_step_clearance), so
-	# the men running on the anchor's flanks pass the terrain too, not just the anchor.
+	# _flight_step rounds terrain with the block's own swept width, so the men running on the
+	# anchor's flanks pass the terrain too, not just the anchor.
 	var step: Vector2 = position + flee * 1000.0
 	if PathField.active != null:
-		step = PathField.active.next_step_fleeing(position, flee, _rout_step_clearance())
+		step = _flight_step(flee)
 
 	# next_step() returns an absolute world-space point, not a direction -- subtract
 	# position first (as _move_to() does) before normalizing.
 	var to: Vector2 = step - position
 	var dir: Vector2 = to.normalized()
-	_face_dir(dir)
+	_turn_flight_toward(dir, delta)
 	_flee_pace = move_toward(_flee_pace, flee_speed(), accel * delta)
 	_flee_velocity = dir * _flee_pace
 	var next: Vector2 = position + _flee_velocity * delta
@@ -8961,11 +8967,65 @@ func _process_rout(delta: float) -> void:
 		_shatter()
 
 
+## Turn a router's heading onto its flight direction `dir`. A turn past
+## FACING_SNAP_ABSORB_THRESHOLD snaps as _face_dir always did (the fold absorbs it, so the
+## slot grid stays where the men stand), and so does any turn while the router is still in
+## enemy contact: men breaking from a melee turn and run each on his own, and the block's
+## anchor and contact ranks are held by the fight, not carried by a running block. A smaller
+## turn out of contact -- the flight bending round terrain -- would rotate the whole slot grid
+## about the anchor in one tick, swinging a deep block's corner slots hundreds of world units
+## off the men running on them; instead the heading turns the way a body arrives on its slot
+## (SoldierBodies.step): its turn rate builds and sheds at rout_turn_accel() and never
+## exceeds rout_turn_rate(), and it eases to a stop on `dir`. So the block's farthest slot
+## never moves sideways faster, or changes that pace faster, than the man on it can follow.
+## The anchor itself still travels along `dir` (see _process_rout), so the flight keeps the
+## path the step chose. _flight_turn_rate carries the turn from tick to tick, and
+## SoldierBodies.step feeds it forward to the bodies.
+func _turn_flight_toward(dir: Vector2, delta: float) -> void:
+	var diff: float = angle_difference(facing.angle(), dir.angle())
+	if absf(diff) > FACING_SNAP_ABSORB_THRESHOLD or _in_enemy_contact:
+		_flight_turn_rate = 0.0
+		_face_dir(dir)
+		return
+	if diff == 0.0 or delta <= 0.0:
+		_flight_turn_rate = 0.0
+		return
+	var turn_accel: float = rout_turn_accel()
+	var wanted: float = signf(diff) * minf(rout_turn_rate(), sqrt(2.0 * turn_accel * absf(diff)))
+	_flight_turn_rate = move_toward(_flight_turn_rate, wanted, turn_accel * delta)
+	var turn: float = _flight_turn_rate * delta
+	if signf(turn) == signf(diff) and absf(turn) >= absf(diff):
+		# Lands on the heading this tick: turn exactly the rest of the way.
+		_flight_turn_rate = diff / delta
+		_face_dir(dir)
+		return
+	facing = Vector2.from_angle(facing.angle() + turn)
+	_render_dirty = true
+
+
+## The fastest a router's heading turns (rad/s): the rate at which its farthest slot (the
+## block's corner, at _formation_local_half_extents().length() from the anchor) sweeps
+## sideways at jog_speed, the pace a body's arrival term closes on a moving slot at
+## (SoldierBodies.step caps arrival at jog_speed). INF for a block with no extent.
+func rout_turn_rate() -> float:
+	var radius: float = _formation_local_half_extents().length()
+	return jog_speed / radius if radius > 0.0 else INF
+
+
+## How fast a router's turn rate builds or sheds (rad/s^2): the rate at which its farthest
+## slot's sideways speed changes at the bodies' own acceleration (SoldierBodies.step's
+## max(accel, BODY_ACCEL_FLOOR)). INF for a block with no extent.
+func rout_turn_accel() -> float:
+	var radius: float = _formation_local_half_extents().length()
+	return maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR) / radius if radius > 0.0 else INF
+
+
 ## Drop the flight state a router carries (_flee_pace, _flee_velocity) on the way out of
 ## ROUTING into play, so a later rout starts clean and nothing reads a stale flight.
 func _clear_flight() -> void:
 	_flee_pace = 0.0
 	_flee_velocity = Vector2.ZERO
+	_flight_turn_rate = 0.0
 
 
 ## Whether a routed unit recovers rather than shatters when its rout times out:
@@ -9028,6 +9088,9 @@ func _begin_rally_halt() -> void:
 	var stop_dist: float = _flee_pace * _flee_pace / (2.0 * rally_halt_brake_rate())
 	var stop_at: Vector2 = position + dir * stop_dist
 	if not retreat_bounds.has_point(stop_at):
+		return
+	# A unit that rallies on the field never coasts off it: it would stand idle off the map.
+	if field_bounds.has_point(position) and not field_bounds.has_point(stop_at):
 		return
 	if PathField.active != null \
 			and PathField.active.is_leg_blocked(position, stop_at, terrain_clearance(dir)):
@@ -9135,6 +9198,11 @@ func _is_escape_path_blocked(flee_direction: Vector2) -> bool:
 	return true
 
 
+# How close to parallel (cosine) a step direction must be to a heading to count as running
+# along it: a solver tolerance on float directions, not a gameplay parameter.
+const STRAIGHT_FLIGHT_DOT: float = 0.999999
+
+
 ## Clearance margin for a routing unit's escape check (_is_escape_path_blocked): whether
 ## any way out exists at all. A routing mob need not clear a full formed pivot radius, so
 ## this keeps only a loose cluster of bodies off obstacles; the flight's own step rounds
@@ -9144,17 +9212,73 @@ func _rout_clearance() -> float:
 
 
 ## The margin a router's flight step rounds impassable terrain with: the block's swept
-## width across its own heading (terrain_clearance along `facing`, which _process_rout turns
-## onto each step), never less than _rout_clearance(). The router's bodies run on their
-## formation slots, so a step that cleared only the anchor's own margin led the block's flank
-## files straight into the terrain, where the soldier backstop held them against the face
-## while the block ran on and the coupling dragged the anchor back toward them. A flight
-## line clear of terrain by more than the block's half-width takes the same step at either
-## margin.
+## width across its own heading (terrain_clearance along `facing`, the heading
+## _turn_flight_toward turns onto each step), never less than _rout_clearance(). The router's
+## bodies run on their formation slots, so a step that cleared only the anchor's own margin
+## led the block's flank files straight into the terrain, where the soldier backstop held
+## them against the face while the block ran on and the coupling dragged the anchor back
+## toward them. That holds for any block wider than the anchor's own margin, a wide shallow
+## line as much as a deep column. A flight line clear of terrain by more than the block's
+## half-width takes the same step at either margin.
 ## The escape check keeps the narrower _rout_clearance(), so whether a router counts as
 ## trapped (and turns to fight) is unchanged.
 func _rout_step_clearance() -> float:
 	return maxf(_rout_clearance(), terrain_clearance(facing))
+
+
+## The point a router's anchor steers for this tick (PathField active): next_step_fleeing at
+## the block's swept width (_rout_step_clearance), with two exceptions.
+## - The flight is about to turn back off a detour leg onto its flight line while the block
+##   is still turned onto the detour (its heading turns at a bounded rate,
+##   _turn_flight_toward): the turned block sweeps wider across the flight line than its
+##   half-width, by its depth times the sine of the turn, so turning back now would run its
+##   rear ranks into the terrain it just rounded. It runs on along its own heading until the
+##   flight line is clear at the turned block's swept width (terrain_clearance along the
+##   flight line), as long as that heading itself runs clear, and only then turns back. Only a router whose last step ran a detour leg does this; a router
+##   just broken has no flight yet.
+## - A detour whose waypoint would leave the turned block hanging off the field sideways (a
+##   hill near the field's edge) falls back to the anchor's own margin (_rout_clearance), as
+##   before the swept width existed, so the flight never leads the block off the field.
+func _flight_step(flee: Vector2) -> Vector2:
+	var field: PathField = PathField.active
+	var wide: float = _rout_step_clearance()
+	var step: Vector2 = field.next_step_fleeing(position, flee, wide)
+	var dir: Vector2 = (step - position).normalized()
+	if dir.dot(flee) >= STRAIGHT_FLIGHT_DOT:
+		# Last tick's flight, if it ran a detour leg (a router just broken has no flight yet).
+		var leg: Vector2 = _flee_velocity.normalized()
+		if leg != Vector2.ZERO and leg.dot(flee) < STRAIGHT_FLIGHT_DOT \
+				and facing.dot(flee) < STRAIGHT_FLIGHT_DOT \
+				and _across_flight_on_field(position, flee, wide):
+			var turned: float = maxf(wide, terrain_clearance(flee))
+			var straight: Vector2 = field.next_step_fleeing(position, flee, turned)
+			if (straight - position).normalized().dot(flee) < STRAIGHT_FLIGHT_DOT:
+				var ahead: Vector2 = field.next_step_fleeing(position, facing, wide)
+				if (ahead - position).normalized().dot(facing) >= STRAIGHT_FLIGHT_DOT:
+					return ahead
+		return step
+	if wide <= _rout_clearance():
+		return step
+	# The block turns onto the detour leg, so across the flight line it sweeps its half-width
+	# times the cosine of that turn plus its half-depth times the sine.
+	var half: Vector2 = _formation_local_half_extents()
+	var cos_turn: float = absf(dir.dot(flee))
+	var sin_turn: float = absf(dir.cross(flee))
+	var swept: float = half.x * cos_turn + half.y * sin_turn + soldier_body_radius()
+	if _across_flight_on_field(step, flee, swept):
+		return step
+	return field.next_step_fleeing(position, flee, _rout_clearance())
+
+
+## Whether `p` stands at least `margin` inside the field across the flight line `flee` (the
+## field PathField.active was built for).
+func _across_flight_on_field(p: Vector2, flee: Vector2, margin: float) -> bool:
+	var bounds: Rect2 = PathField.active.field_bounds()
+	var side: Vector2 = flee.orthogonal()
+	var a: float = bounds.position.dot(side)
+	var b: float = bounds.end.dot(side)
+	var at: float = p.dot(side)
+	return at >= minf(a, b) + margin and at <= maxf(a, b) - margin
 
 
 ## Unit is trapped by terrain with no viable escape path: stop routing and stand ground
@@ -9959,7 +10083,7 @@ func to_snapshot_dict() -> Dictionary:
 		"separation_velocity": _separation_velocity,
 		"moved_while_routing": _moved_while_routing,
 		"moved_while_routing_pace": _moved_while_routing_pace,
-		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity,
+		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity, "flight_turn_rate": _flight_turn_rate,
 		"rally_halt": _rally_halt,
 		# Not reset before a routing unit's early return, so a router keeps reading it.
 		"is_facing_turning": _is_facing_turning,
@@ -10191,6 +10315,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_moved_while_routing_pace = float(d.get("moved_while_routing_pace", _moved_while_routing_pace))
 	_flee_pace = float(d.get("flee_pace", _flee_pace))
 	_flee_velocity = d.get("flee_velocity", _flee_velocity)
+	_flight_turn_rate = float(d.get("flight_turn_rate", _flight_turn_rate))
 	_rally_halt = bool(d.get("rally_halt", _rally_halt))
 	_is_facing_turning = bool(d.get("is_facing_turning", _is_facing_turning))
 	is_general = bool(d.get("is_general", is_general))

@@ -105,9 +105,9 @@ its riders running together as a block.
 - **A routing unit paths around impassable terrain too** --- fleeing is no longer a
   straight line toward the back edge; a router detours around a hill in its way the
   same as an ordered move does.
-  It swings wide enough for its whole block to pass,
+  It swings wide enough for its whole block to pass, turns onto the detour gradually,
   and its men veer off the rock rather than running into it,
-  so even a deep block rounds the hill at its full flight pace.
+  so even a deep block keeps together round the hill and regains its full flight pace once past it.
   If every escape direction is blocked, it gives up
   fleeing and stands to fight instead of uselessly running in place against the
   obstacle.

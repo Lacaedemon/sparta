@@ -12,6 +12,9 @@ class_name DemoState
 ## scripted-input recorder (DemoInputRecorder) and the replay-playback sink (DemoStateSink).
 
 const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+# soldiers_at_block_terrain_edge's tolerance beyond a man's body radius, so a man the terrain
+# backstop holds on the margin still counts after another pass nudges him within the tick.
+const TERRAIN_EDGE_BAND: float = 1.0   # tuned in wu
 
 ## Unit.State int -> readable name. Mirrors `enum State { IDLE, MOVING, FIGHTING, ROUTING, DEAD }`
 ## on Unit.gd. Kept as an explicit table (not a reflected enum) so the dump names stay stable
@@ -212,6 +215,29 @@ static func soldiers_in_block_terrain(positions: PackedVector2Array, field: Path
 		if field.is_blocked(p):
 			inside += 1
 	return inside
+
+
+## How many of `positions` stand at the edge of impassable terrain registered on `field`:
+## outside every drawn rect, but within `radius` + `band` of one. The soldier terrain backstop
+## (SoldierBodies._keep_out_of_terrain) holds a man running into a hill on exactly that
+## margin, its drawn edge grown by his body radius, so this is the direct reading of "how many
+## men are pressed against the hill" -- which soldiers_in_block_terrain cannot see, since the
+## backstop keeps them outside the drawn rect. `band` absorbs the nudges later passes give a
+## held man within the tick. 0 when no field is active. Pure: reads only its arguments.
+static func soldiers_at_block_terrain_edge(positions: PackedVector2Array, field: PathField,
+		radius: float, band: float = TERRAIN_EDGE_BAND) -> int:
+	if field == null:
+		return 0
+	var drawn: Array[Rect2] = field.block_rects()
+	var at_edge: int = 0
+	for p in positions:
+		if PathField.inside_any_rect(p, drawn):
+			continue
+		for r in drawn:
+			if PathField._distance_to_rect(p, r) <= radius + band:
+				at_edge += 1
+				break
+	return at_edge
 
 
 ## Metric mirrors for the dev-facing dump: every user-facing number already displays in
@@ -435,6 +461,8 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		rec["soldier_summary"] = soldier_summary(u._sim_soldier_pos, u._sim_prone, u._sim_soldier_broken)
 		rec["soldier_summary_m"] = soldier_summary_m(u._sim_soldier_pos, WorldScaleRef.WU_PER_M)
 		rec["soldiers_in_block_terrain"] = soldiers_in_block_terrain(u._sim_soldier_pos, PathField.active)
+		rec["soldiers_at_block_terrain_edge"] = soldiers_at_block_terrain_edge(
+				u._sim_soldier_pos, PathField.active, u.soldier_body_radius())
 		if full:
 			rec["soldiers_full"] = soldier_arrays(u)
 			rec["motion_ref"] = motion_ref(u)
