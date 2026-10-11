@@ -9127,7 +9127,7 @@ func _rout() -> void:
 	# would send every off-centre man's slot to the other flank. The rally squares the fold to
 	# the heading (see _rally). The drill record still goes: the rally squares the fold by its
 	# angle alone, whatever turns made it.
-	# Known gap (#1785, #1806): a router still in contact turns onto its first flight heading
+	# TODO(#1785): a known gap. A router still in contact turns onto its first flight heading
 	# with _face_dir, and a turn under FACING_SNAP_ABSORB_THRESHOLD is not folded in, so on that
 	# next tick the grid does swing under the men (catalog trapped_routing: mean body-to-slot gap
 	# 19.8 wu at the rout tick, 288.9 the tick after).
