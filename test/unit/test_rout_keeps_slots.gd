@@ -28,6 +28,7 @@ const FILES := 8
 const SHORT_FILE_MEN := 28
 
 var _old_pf: PathField = null
+var _battle: Node = null
 
 
 func before_each() -> void:
@@ -38,6 +39,10 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	if is_instance_valid(_battle):
+		_battle.free()
+	_battle = null
+	Replay.forced_seed = -1
 	PathField.active = _old_pf
 
 
@@ -133,7 +138,7 @@ func _assert_rally_holds_ground(u: Unit, what: String) -> void:
 
 
 ## Run the rally's deferred re-square tick by tick, as _physics_process does, and check the turn
-## that precedes it: the heading turns at most TURN_RATE * TICK a tick (a float margin of 1e-4
+## that precedes it: the heading turns at most CONVERSIO_TURN_RATE * TICK a tick (a float margin of 1e-4
 ## rad), and no slot moves while it does (EPS), since the fold takes up each step.
 func _settle_rally(u: Unit, what: String) -> void:
 	var worst_step: float = 0.0
@@ -149,7 +154,7 @@ func _settle_rally(u: Unit, what: String) -> void:
 			worst_step = maxf(worst_step, absf(angle_difference(heading, u.facing.angle())))
 			worst_slot = maxf(worst_slot, _moved(slots, u.soldier_world_slots(u.soldiers)).y)
 	assert_false(u._rally_resquare_pending, "%s: the rally's re-square ran" % what)
-	assert_lt(worst_step, Unit.TURN_RATE * TICK + 0.0001,
+	assert_lt(worst_step, Unit.CONVERSIO_TURN_RATE * TICK + 0.0001,
 			"%s: the heading turns at a bounded rate (worst step %.4f rad)" % [what, worst_step])
 	assert_lt(worst_slot, EPS, "%s: no slot moves while the heading turns (max %.3f)" % [what, worst_slot])
 
@@ -330,14 +335,15 @@ func test_the_rally_re_square_waits_for_the_coast_and_turns_at_a_bounded_rate() 
 
 
 ## A regiment-path casualty during the flight leaves the held pairing longer than the block. The
-## rally still reads the men's slots before it re-squares (a shrink is not a deal from the bodies,
-## see Unit._slot_read_deals_from_bodies) and deals the re-square from them, so the short files
-## step one rank instead of swapping ends, which would carry a man the block's whole depth
-## (7 rank pitches, 126 wu). Bound: two rank pitches, one for the re-square's step and one for
-## closing the casualty's gap on a 59-man grid whose short rank lies half a file off the 60-man
-## grid's (measured 27.0 wu here). This test passes on main too, where the rally re-squared by
-## the reflection alone and dealt the shrunken block from the bodies; it guards the read the
-## column deal depends on.
+## next slot query would deal that pairing again from the bodies, so the rally does not read the
+## men's slots first (Unit._slot_read_deals_from_bodies reports the shrink): reading them would
+## deal the pairing before the re-square's reflection is armed. The reflection then deals the
+## re-squared grid from where the men stand, deliberately, and no man swaps ends, which would
+## carry him the block's whole depth (7 rank pitches, 126 wu). Bound: two rank pitches, one for
+## the re-square's step and one for closing the casualty's gap on a 59-man grid whose short rank
+## lies half a file off the 60-man grid's. This test passes on main too, where the rally dealt the
+## shrunken block from the bodies the same way; it guards that this branch's column deal stands
+## aside for it.
 func test_a_casualty_during_the_flight_then_a_rally_keeps_every_man_near_his_ground() -> void:
 	var u := _make(Unit.ReformMode.ROW_MAJOR, Vector2.UP)
 	_about_face_and_resquare(u)
@@ -346,6 +352,8 @@ func test_a_casualty_during_the_flight_then_a_rally_keeps_every_man_near_his_gro
 	_stand_on_slots(u)
 	var bodies: PackedVector2Array = u._sim_soldier_pos.slice(0, COUNT - 1)
 	u.soldiers = COUNT - 1   # the regiment path: the body arrays are not trimmed
+	assert_true(u._slot_read_deals_from_bodies(u.soldiers, u.formation_files(u.soldiers)),
+			"the shrink would deal from the bodies, so the rally does not read the slots first")
 	u._flee_pace = 0.0
 	u._rally()
 	_settle_rally(u, "casualty in flight")
@@ -371,3 +379,62 @@ func test_a_trapped_router_that_stands_to_fight_squares_its_fold() -> void:
 	assert_eq(u.state, Unit.State.IDLE, "the router stood to fight")
 	assert_almost_eq(wrapf(u._formation_angle, -PI, PI), 0.0, 0.001, "and squared its ranks to its heading")
 	assert_false(u._rally_resquare_pending, "with nothing left pending")
+
+
+## A live battle: a rallied 60-man Infantry block at (600, 600) facing east, its re-square still
+## pending with its slot grid folded `fold_deg` against its heading and every man on his slot, and
+## a 40-man enemy block 130 wu away at `enemy_deg` from that heading. Runs `ticks` ticks and
+## returns the worst angle between the block's heading and the bearing to the enemy, and how many
+## degrees further off that bearing the heading turned, at worst, before the block first touched
+## the enemy (the enemy advances to contact about 168 ticks in).
+func _pending_rally_meets_enemy(fold_deg: float, enemy_deg: float, ticks: int) -> Vector2:
+	Replay.forced_seed = 61766
+	var enemy_at: Vector2 = Vector2(600, 600) + Vector2.RIGHT.rotated(deg_to_rad(enemy_deg)) * 130.0
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": 600, "y": 600, "facing": [1, 0], "count": COUNT},
+		{"team": 1, "type": "Infantry", "x": enemy_at.x, "y": enemy_at.y,
+				"facing": [-cos(deg_to_rad(enemy_deg)), -sin(deg_to_rad(enemy_deg))], "count": 40},
+	]
+	add_child(_battle)
+	await get_tree().physics_frame
+	var u: Unit = null
+	var e: Unit = null
+	for n in get_tree().get_nodes_in_group("units"):
+		if n.team == 0:
+			u = n
+		else:
+			e = n
+	u._formation_angle = deg_to_rad(fold_deg)
+	_stand_on_slots(u)
+	u._rally_resquare_pending = true
+	var worst_off: float = 0.0
+	var turned_away: float = 0.0
+	var start_off: float = absf(angle_difference(u.facing.angle(), (e.position - u.position).angle()))
+	for _i in range(ticks):
+		await get_tree().physics_frame
+		if not is_instance_valid(u) or not is_instance_valid(e) or u.state == Unit.State.DEAD:
+			break
+		var off: float = absf(angle_difference(u.facing.angle(), (e.position - u.position).angle()))
+		worst_off = maxf(worst_off, off)
+		if not u._in_enemy_contact and u.state == Unit.State.IDLE:
+			turned_away = maxf(turned_away, off - start_off)
+	return Vector2(rad_to_deg(worst_off), rad_to_deg(turned_away))
+
+
+## An enemy dead ahead of a unit whose rally re-square is pending: the re-square gives way, so the
+## heading turn never turns the unit off its attacker. Bound: 45 degrees, half the quarter-turn
+## the pending turn would take; a fighting block's own small facing corrections stay well inside it.
+func test_an_enemy_ahead_cancels_a_pending_rally_turn_instead_of_turning_away() -> void:
+	var r: Vector2 = await _pending_rally_meets_enemy(90.0, 0.0, 60)
+	assert_lt(r.x, 45.0, "the heading stays on the enemy (worst %.1f degrees off)" % r.x)
+
+
+## An enemy 120 degrees off a unit whose grid is folded 150 degrees, inside the radius its idle
+## auto-engage reacts in: the pending re-square gives way at once, so the unit waits for the
+## enemy's advance facing as it did. On ba30d954 the pending turn turned it 30 degrees further off
+## the enemy before contact (from 120 to 150 degrees off), then re-squared it, and the block lost
+## its shape as it closed. Bound: 1 degree, a float margin on a heading that should not turn.
+func test_an_enemy_off_the_flank_cancels_a_pending_rally_turn_without_turning_away() -> void:
+	var r: Vector2 = await _pending_rally_meets_enemy(150.0, 120.0, 260)
+	assert_lt(r.y, 1.0, "the heading does not turn away from the enemy before contact (%.1f degrees)" % r.y)

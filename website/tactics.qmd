@@ -97,7 +97,9 @@ its riders running together as a block.
   The block fled with its ranks as they stood when it broke,
   so they are often turned against its new heading,
   and a half-turn leaves the short rank leading.
-  It re-squares its ranks once it has pulled up (below).
+  It re-squares its ranks once it has pulled up (below),
+  which for horse rallying at full gallop takes several seconds
+  (about 5.5 seconds in the demo for this change).
   First the men turn where they stand, at the pace of an ordered about-face,
   by at most a quarter-turn,
   until the ranks lie square across the way they face, facing either way.
@@ -106,6 +108,10 @@ its riders running together as a block.
   into a different shape,
   and a unit only rallies clear of the enemy,
   so keeping its men in place matters more than which way it faces.
+  An enemy can still close in while the unit pulls up.
+  If one comes within reach before the ranks have re-squared,
+  the re-square is called off and the unit turns to face the enemy
+  with its ranks as they stand.
   Then the ranks re-square from the places the men held.
   If its ranks face the wrong way, each man keeps his file,
   and only the under-strength files step up one rank to close the front,
@@ -113,7 +119,7 @@ its riders running together as a block.
   **File-major** reform (the default), **Row-major**, or **square** (orbis or schiltron).
   As with an ordered about-face,
   the men don't counter-march through the block to do it,
-  so a rallied unit is back in fighting shape almost at once
+  so once it has pulled up a rallied unit is back in fighting shape quickly
   rather than spending seconds shuffling through itself.
   A unit that rallies at a run **pulls up** before it turns and re-forms,
   where it has the room and no enemy is near it or its path

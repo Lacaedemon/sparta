@@ -2863,6 +2863,7 @@ func _think(delta: float) -> void:
 	# actually read it.
 	SimOps.bump(SimOps.UNIT_THINK)
 	_refresh_enemy_contact()
+	_drop_rally_resquare_near_enemy()   # before anything below turns the unit
 
 	_update_current_order()
 	# Order-response delay: tick down on every frame. Non-fighting units are frozen
@@ -9363,8 +9364,8 @@ func _rally() -> void:
 ## reform_ranks makes from where the men stand (see _apply_row_slot_reflection).
 ## The heading turn here is a one-tick turn of every man's facing (the grid stays put). A rally
 ## normally reaches this through _advance_rally_resquare, which has already turned the heading at
-## a bounded rate, so the turn here is empty; a fresh order or a fight that interrupts that turn,
-## and a trapped router that stands to fight (_stop_rout_and_fight), take the rest at once.
+## a bounded rate, so the turn here is empty; a fresh order that interrupts that turn, and a
+## trapped router that stands to fight (_stop_rout_and_fight), take the rest at once.
 func _rally_resquare() -> void:
 	_turn_heading_onto_fold_half()
 	var files: int = maxi(1, formation_files(soldiers))
@@ -9397,19 +9398,23 @@ func _rally_resquare() -> void:
 
 
 ## Whether the next slot query for (count, files) would deal the row-major or square pairing
-## from the live bodies: the file count changed since the last layout, or men were added under a
-## held pairing. A headcount that only fell (a regiment-path casualty) is not counted: the read
-## then keeps or closes up the men's own slots. Pure: reads state, changes none.
+## from the live bodies: the file count changed since the last layout, or the headcount changed
+## under a held pairing in either direction. A headcount that fell (a regiment-path casualty)
+## counts as well as one that grew, since _ensure_row_slot_assignment and
+## _ensure_square_slot_assignment deal a shrunken pairing again from the bodies too. Pure: reads
+## state, changes none.
+## TODO(#1781): once a regiment-path shrink closes the men up without reading the bodies, a fall
+## no longer deals from them, and _slot_body_deal_pending replaces this predicate.
 func _slot_read_deals_from_bodies(count: int, files: int) -> bool:
 	if in_square():
-		return _square_slot_files != files or _sim_soldier_square_slot.size() < count
+		return _square_slot_files != files or _sim_soldier_square_slot.size() != count
 	var reshaped: bool = _row_layout_files > 0 and _row_layout_files != files
-	var grown: bool = _row_slot_files == files and _sim_soldier_row_slot.size() < count
-	return reshaped or grown
+	var resized: bool = _row_slot_files == files and _sim_soldier_row_slot.size() != count
+	return reshaped or resized
 
 
 ## Called each non-routing tick: carry a rally's re-square through once the coast has stopped.
-## The heading first turns at TURN_RATE (the rate of an ordered about-face) by the part of the
+## The heading first turns at CONVERSIO_TURN_RATE (an ordered about-face's rate) by the part of the
 ## fold off its nearer whole or half turn, the fold taking up each step so the slot grid stays
 ## where the men stand; then _rally_resquare re-squares the ranks. Waiting for the coast means the
 ## block never slides sideways along its old flight line with its men facing across it.
@@ -9418,20 +9423,21 @@ func _slot_read_deals_from_bodies(count: int, files: int) -> bool:
 ## square through a different footprint (the 60-horse router in the catalog clip trapped_routing
 ## would have been sent 235 wu off its slots on average), and a unit can only rally clear of the
 ## enemy, so which way it faces matters less than keeping its men in place; the next order turns
-## it. A unit that leaves IDLE before the turn is done (it engages, or an order moves it) takes
-## the rest of the turn and the re-square at once, as a fresh order does (start_order_response).
+## it. A fresh order takes the rest of the turn and the re-square at once (set_current_order,
+## start_order_response). An enemy that closes in first, which the coast's own cut-off allows,
+## cancels it instead (_drop_rally_resquare_near_enemy), as does any other way out of IDLE.
 func _advance_rally_resquare(delta: float) -> void:
 	if not _rally_resquare_pending:
 		return
 	if state != State.IDLE:
-		_finish_rally_resquare()
+		_rally_resquare_pending = false
 		return
 	if is_rally_halting():
 		return
 	var fold: float = wrapf(_formation_angle, -PI, PI)
 	var residue: float = fold - roundf(fold / PI) * PI
 	if absf(residue) > RALLY_TURN_DONE_EPS:
-		var step: float = clampf(residue, -TURN_RATE * delta, TURN_RATE * delta)
+		var step: float = clampf(residue, -CONVERSIO_TURN_RATE * delta, CONVERSIO_TURN_RATE * delta)
 		facing = facing.rotated(step)
 		_formation_angle = wrapf(_formation_angle - step, -PI, PI)
 		_drill_turn_fold = 0.0   # a heading turn absorbed into the fold, not a drill turn
@@ -9443,6 +9449,20 @@ func _advance_rally_resquare(delta: float) -> void:
 # The residue (rad) under which a rally's bounded heading turn counts as done; the last few
 # millionths are taken by _turn_heading_onto_fold_half inside _rally_resquare.
 const RALLY_TURN_DONE_EPS: float = 0.0001
+
+
+## Called from _think before anything there turns the unit: a rallied unit whose re-square is
+## still pending gives it up once an enemy is in contact or within rally_coast_enemy_radius(),
+## the range inside which its idle auto-engage would face it toward that enemy. The heading turn
+## would otherwise turn it away from its attacker, and a turn counted twice with an engage turn
+## swings the grid under the men. The fold stays as it stands, as any engage re-face leaves one,
+## and the engage logic faces the enemy from there.
+func _drop_rally_resquare_near_enemy() -> void:
+	if not _rally_resquare_pending:
+		return
+	if _in_enemy_contact \
+			or UnitTargeting.nearest_enemy_to(self, position, rally_coast_enemy_radius()) != null:
+		_rally_resquare_pending = false
 
 
 ## Run a pending rally re-square now (see _advance_rally_resquare). A no-op when none is pending.
