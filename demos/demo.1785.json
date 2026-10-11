@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/contact-rout-keeps-ranks-1785.json",
+  "caption": "A deep cavalry squadron breaks while still locked in a melee and flees north, 45 degrees off the way it faced. It now swings round onto its flight no faster than its outermost riders can follow, so every rider keeps his place in the block as it runs. Before this fix the squadron snapped onto its flight in one tick and its whole formation swung 45 degrees round under the riders, leaving them on average about 9 m from their places and sending 15 of them across the block to reach them.",
+  "fixed_fps": 30,
+  "max_frames": 330,
+  "fps": 15,
+  "width": 720
+}

@@ -287,34 +287,6 @@ func test_a_close_start_router_keeps_more_of_its_front_than_before() -> void:
 			% [CLOSE_MAX_WORST_WU, worst])
 
 
-func test_a_router_in_enemy_contact_snaps_its_heading() -> void:
-	# The bounded turn is for a flight bending round terrain; a router still in contact with
-	# the enemy turns at once, as before (Unit._turn_flight_toward).
-	var router: Unit = await _spawn([
-		{"team": 0, "type": "Cavalry", "count": MOUNTS, "x": DEEP_START.x, "y": DEEP_START.y,
-				"facing": [0, -1]},
-		{"team": 1, "type": "Cavalry", "count": MOUNTS, "x": DEEP_ENEMY.x, "y": DEEP_ENEMY.y,
-				"facing": [0, -1]},
-	])
-	assert_not_null(router, "the team-0 cavalry deployed")
-	if router == null:
-		return
-	var flee := Vector2.UP
-	var tilted: Vector2 = flee.rotated(deg_to_rad(30.0))
-	router.facing = tilted
-	router._in_enemy_contact = false
-	router._turn_flight_toward(flee, TICK)
-	assert_gt(absf(angle_difference(router.facing.angle(), flee.angle())), 0.001,
-			"setup: out of contact the heading turns only part of the way in one tick")
-	router.facing = tilted
-	router._flight_turn_rate = 0.0
-	router._in_enemy_contact = true
-	router._turn_flight_toward(flee, TICK)
-	assert_almost_eq(angle_difference(router.facing.angle(), flee.angle()), 0.0, 0.000001,
-			"in enemy contact the heading snaps onto the flight direction")
-	assert_eq(router._flight_turn_rate, 0.0, "and carries no turn rate on to the bodies")
-
-
 func test_a_turning_router_feeds_its_turn_forward_to_its_men() -> void:
 	# Each unengaged man of a router turning its flight is carried with his slot's own turning
 	# velocity, turn rate x the slot's offset from the anchor turned a quarter, not only the

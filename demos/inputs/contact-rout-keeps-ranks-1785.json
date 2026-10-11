@@ -1,0 +1,24 @@
+{
+  "_comment": "A deep cavalry squadron breaks while still locked in a melee and turns onto its flight without its slot grid swinging under its men (#1785). A brittle player squadron (48 mounts at morale 0.5) stands on open ground facing north-west (-135 degrees); an enemy cavalry squadron 230 wu up that line charges it on its own (no player input). They fight head-on from about tick 190, and the player squadron routs at tick 309 (FIGHTING at 308, ROUTING at 309), still in contact. It flees north, 45 degrees off its heading, which is under the 75 degree threshold above which a facing snap is folded into the grid. Before this fix a router in contact snapped onto that heading, so the whole grid turned 45 degrees about the anchor in one tick: on main bb2a9e4f the mean body-to-slot gap goes from 0.1 wu at tick 309 to 174.3 at tick 310, and 15 men's slots lie across the block's centreline from them at tick 310 (14 at 350, 12 at 400, 10 at 450, 7 at 500). Now the heading turns at the same bounded rate as every other flight turn (it has reached -125 degrees by tick 420 and -100 by tick 560), so on 2-tick samples from the rout to the clip's end no man's slot is across the centreline from him and the mean gap stays under 41 wu through the flight (40.6 at tick 660, the most on 2-tick samples from the rout). The enemy pursues and stays in contact until about tick 550; the squadron is still fleeing north when the clip ends at tick 660, before it rallies. Sampled with a full state dump; the slots_across_centreline expects fail on main.",
+  "seed": "17851",
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 900, "y": 900, "count": 48, "morale": 0.5, "facing": [-0.7071, -0.7071]},
+    {"team": 1, "type": "Cavalry", "x": 740, "y": 740}
+  ],
+  "camera": [{"tick": 0, "x": 870.0, "y": 720.0, "zoom": 0.65}],
+  "steps": [],
+  "state": [10, 180, 308, 309, 310, 350, 400, 450, 500, 600, 660],
+  "expect": [
+    {"tick": 10, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": 308, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 309, "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": 309, "uid": 0, "field": "in_enemy_contact", "value": true},
+    {"tick": 310, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 350, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 400, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 450, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 500, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 600, "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": 660, "uid": 0, "field": "state", "value": "ROUTING"}
+  ]
+}

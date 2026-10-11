@@ -9256,11 +9256,8 @@ func _rout() -> void:
 	# under the men. It bakes an armed mirror the way a fresh order does, since clearing the flag
 	# would send every off-centre man's slot to the other flank. The rally squares the fold to
 	# the heading (see _rally). The drill record still goes: the rally squares the fold by its
-	# angle alone, whatever turns made it.
-	# TODO(#1785): a known gap. A router still in contact turns onto its first flight heading
-	# with _face_dir, and a turn under FACING_SNAP_ABSORB_THRESHOLD is not folded in, so on that
-	# next tick the grid does swing under the men (catalog trapped_routing: mean body-to-slot gap
-	# 19.8 wu at the rout tick, 288.9 the tick after).
+	# angle alone, whatever turns made it. The flight's first heading, still in contact, turns
+	# onto the flight at a bounded rate like any later flight turn (see _turn_flight_toward).
 	_bake_formation_mirror()
 	_drill_turn_fold = 0.0
 	_rally_resquare_pending = false
@@ -9379,25 +9376,24 @@ func _process_rout(delta: float) -> void:
 
 ## Turn a router's heading onto its flight direction `dir`. A turn past
 ## FACING_SNAP_ABSORB_THRESHOLD snaps as _face_dir always did (the fold absorbs it, so the
-## slot grid stays where the men stand), and so does any turn while the router is still in
-## enemy contact: men breaking from a melee turn and run each on his own, and the block's
-## anchor and contact ranks are held by the fight, not carried by a running block. A smaller
-## turn out of contact -- the flight bending round terrain -- would rotate the whole slot grid
-## about the anchor in one tick, swinging a deep block's corner slots hundreds of world units
-## off the men running on them; instead the heading turns the way a body arrives on its slot
-## (SoldierBodies.step): its turn rate builds and sheds at rout_turn_accel() and never
+## slot grid stays where the men stand). A smaller turn -- the flight's first heading as the
+## block breaks from a melee, or the flight bending round terrain -- would rotate the whole
+## slot grid about the anchor in one tick, swinging a deep block's corner slots hundreds of
+## world units off the men running on them; instead the heading turns the way a body arrives
+## on its slot (SoldierBodies.step): its turn rate builds and sheds at rout_turn_accel() and never
 ## exceeds rout_turn_rate(), and it eases to a stop on `dir`. So the block's farthest slot
 ## never moves sideways faster, or changes that pace faster, than the man on it can follow.
 ## The anchor itself still travels along `dir` (see _process_rout), so the flight keeps the
 ## path the step chose. _flight_turn_rate carries the turn from tick to tick, and
-## SoldierBodies.step feeds it forward to the bodies.
+## SoldierBodies.step feeds it forward to the bodies. Enemy contact makes no difference: the
+## heading a router breaking from a melee turns onto is a flight turn like any other. Folding
+## that turn into _formation_angle instead would leave a deep block running obliquely across
+## its own grid, so its swept width across the heading, the terrain margin its flight step
+## rounds terrain with (_rout_step_clearance), would grow, and the step could swing onto a
+## detour on the next tick.
 func _turn_flight_toward(dir: Vector2, delta: float) -> void:
 	var diff: float = angle_difference(facing.angle(), dir.angle())
-	# In contact the old snap stays: a bounded turn there let the enemy's press shove a
-	# router breaking from a melee beside a hill into the terrain (catalog trapped_routing:
-	# trapped, it turned to fight at tick 400). The mechanism is not diagnosed.
-	# TODO(#1788): find why the press carries the anchor into the terrain, then reconsider.
-	if absf(diff) > FACING_SNAP_ABSORB_THRESHOLD or _in_enemy_contact:
+	if absf(diff) > FACING_SNAP_ABSORB_THRESHOLD:
 		_flight_turn_rate = 0.0
 		_face_dir(dir)
 		return

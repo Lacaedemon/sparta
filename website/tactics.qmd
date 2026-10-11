@@ -42,12 +42,10 @@ fightable --- for as long as it's plausibly still in view.
 A unit breaks with its ranks as they stand:
 each man runs from his own place in the block,
 whichever way the block had turned before it broke.
-One case still throws the men out of their places:
-a unit that breaks while still in contact with the enemy
-turns onto its flight at once,
-and a turn of less than about 75 degrees swings the whole block round under the men
-instead of each man turning where he stands
-([#1785](https://github.com/Lacaedemon/sparta/issues/1785)).
+A unit that breaks while still in contact with the enemy
+swings round onto its flight no faster than its outermost men can follow,
+as it does on any turn in its flight,
+so its men keep their places as it runs.
 
 A routing unit runs faster than it marches. Unless it was already falling back, it
 starts its flight from a standstill (whatever broke it: a melee, missile fire, a
