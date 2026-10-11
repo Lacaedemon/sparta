@@ -2,12 +2,12 @@ extends GutTest
 ## file_major_reform: the per-unit toggle between FILE-MAJOR casualty reflow (a
 ## soldier's file/column assignment is persistent; when a file-mate dies, only that file's
 ## own survivors step forward to close the gap -- every other file is untouched) and the
-## existing ROW-MAJOR behavior (the whole grid recomputes fresh from the live headcount every
-## tick, cascading survivors across the entire block on any casualty). Live-battle proof, in
+## ROW-MAJOR behavior (the grid keeps full ranks: the casualty's file closes up too, and the
+## short rear rank refills it). Live-battle proof, in
 ## the real Battle scene with the real order pipeline and body-arrival dynamics: kill one
 ## specific soldier and confirm the blast radius stays inside its own file when the toggle is
-## on, and confirm the pre-existing cascade still happens when it's off (a regression guard
-## for the historical default). The pure geometry itself (exact rank/position math) is
+## on, and that the rear rank refills that file when it's off (a regression guard
+## for the row-major default). The pure geometry itself (exact rank/position math) is
 ## covered by test_unit_formation.gd's file_major_block_slots tests; this is the full-scene
 ## proof that the wiring (Unit._ensure_file_assignment, SoldierMelee.reap trimming
 ## _sim_soldier_file, SoldierBodies' real arrival dynamics) actually plays out correctly.
@@ -127,10 +127,9 @@ func test_file_major_reform_on_a_casualty_only_moves_its_own_files_later_ranks()
 				% [pair[0], pair[1]])
 
 
-func test_file_major_reform_off_a_casualty_cascades_across_the_whole_block() -> void:
-	# The regression guard: with the toggle OFF, behavior is byte-for-byte the historical
-	# row-major cascade -- the same casualty used above visibly displaces a soldier in a
-	# DIFFERENT file too, unlike the file-major case just proven above.
+func test_file_major_reform_off_a_casualty_refills_its_file_from_the_rear_rank() -> void:
+	# The regression guard: with the toggle OFF the block reflows row major, which closes the
+	# casualty's file up too but keeps its ranks full, so the rear rank refills that file.
 	var u := _stage_lone_spearmen()
 	assert_not_null(u, "the scenario staged the lone spearmen regiment")
 	if u == null:
@@ -151,19 +150,24 @@ func test_file_major_reform_off_a_casualty_cascades_across_the_whole_block() -> 
 	for _k in range(60):
 		await get_tree().physics_frame
 
-	# A soldier well past the casualty, in a DIFFERENT file than the one killed (file0's
-	# third-rank member, originally index 2*files) -- file-major mode leaves it untouched
-	# (see the companion test above); row-major recomputes its cell fresh from the live
-	# count every tick, so it visibly relocates too. Compared RELATIVE to the regiment's own
-	# anchor (see _local_positions) so the shared, expected couple() anchor-drift a casualty
-	# always causes (in EITHER mode) doesn't mask -- or get mistaken for -- the row-major
-	# cascade this test exists to prove.
+	# Row major closes up like file major in the full ranks: a soldier in a DIFFERENT file
+	# (file0's third-rank member, originally index 2*files) holds his place. Compared RELATIVE
+	# to the regiment's own anchor (see _local_positions) so the shared, expected couple()
+	# anchor-drift a casualty always causes (in EITHER mode) doesn't mask a move.
 	var after_pos: PackedVector2Array = _local_positions(u)
 	var other_file_orig_index: int = files * 2
 	var new_index: int = _orig_index_reverse(other_file_orig_index, dead_index)
 	var dist: float = after_pos[new_index].distance_to(before_pos[other_file_orig_index])
-	assert_gt(dist, 1.0,
-		"row-major mode still cascades a casualty across the whole block, not just its own file")
+	assert_lt(dist, 0.5,
+		"row-major mode keeps a man in another file in place (moved %.3f wu)" % dist)
+	# What still sets row major apart: its grid keeps full ranks, so the short rear rank
+	# refills the casualty's file. The rear-rank man nearest the centre file (rear cell 1 of 4,
+	# half a pitch left of it, originally index 4*files + 1) steps up a rank into it.
+	var rear_orig_index: int = files * 4 + 1
+	var rear_index: int = _orig_index_reverse(rear_orig_index, dead_index)
+	var rear_dist: float = after_pos[rear_index].distance_to(before_pos[rear_orig_index])
+	assert_gt(rear_dist, u.rank_pitch_wu() * 0.5,
+		"row-major mode refills the casualty's file from the rear rank (moved %.3f wu)" % rear_dist)
 
 
 ## The inverse of _orig_index: given the ORIGINAL (pre-casualty) index of a surviving

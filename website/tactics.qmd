@@ -657,6 +657,10 @@ When such a block changes its width, whether you widen or narrow it
 or it closes its ranks by itself after heavy losses,
 each rider steps into the new place nearest where he stands,
 so nobody crosses the block to get there.
+When a rider falls, the riders behind him in his file step up,
+and the rear rank fills the back of that file,
+so the squadron's slots keep their shape at once,
+though the riders can take a while to walk up to them.
 The same goes for any foot regiment set to reform row-major.
 
 ::: {#fig-cavalry-squadron-structureless .demo}
@@ -771,13 +775,15 @@ survivors. The front rank still keeps its full width for as long as any file has
 to hold it, and the block never bulges wider than the frontage you set --- only the depth,
 file by file, tells you where the losses landed.
 
-Click the button through to **Row-major** for the historical behavior instead: the whole grid
-recomputes fresh from the live headcount every tick, so the file behind each fighter feeds men
-forward to hold the contact line and the depth shrinks rank by rank, uniformly. When the
-rearmost rank is left short-handed, its survivors close up toward the centre --- the wings
-shorten first while the middle files stay deepest --- rather than leaving a ragged,
-gap-toothed back rank, but a soldier's own file assignment isn't stable: it can shift sideways
-as the whole block re-knits itself around the casualty.
+Click the button through to **Row-major** to keep every rank full instead.
+When a man falls, the men behind him in his file step forward to close the gap,
+and the short rear rank sends a man forward to fill the back of that file,
+so the depth shrinks rank by rank, uniformly.
+The rear rank's survivors close up toward the centre ---
+the wings shorten first while the middle files stay deepest ---
+rather than leaving a ragged, gap-toothed back rank.
+Every other man keeps his place or steps one place over,
+and nobody crosses the block to fill a gap.
 
 A third click cycles to **Auto**, which resolves to File-major or Row-major per unit from its
 own `disciplined` flag rather than a fixed choice --- a disciplined, professional regiment
