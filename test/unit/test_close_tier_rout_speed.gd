@@ -258,7 +258,9 @@ func test_a_router_caught_by_a_pursuer_comes_into_enemy_contact_and_holds_togeth
 	# The rising edge of the router's contact flag: routed out of contact, it must come into
 	# contact when a pursuer catches it, since a router never runs _think() where the flag is
 	# otherwise refreshed. While caught, its anchor sits on its front (flight-side) ranks, the
-	# ones farthest from the pursuer, so pin that anchor and bodies stay together.
+	# ones farthest from the pursuer, so pin that anchor and bodies stay together. (A router
+	# whose front ranks are still in the melee it broke from anchors on its whole block instead;
+	# test_router_breaks_from_contact.gd pins both cases.)
 	Replay.forced_seed = 12345
 	_battle = load("res://scenes/Battle.tscn").instantiate()
 	_battle.all_teams_control = true

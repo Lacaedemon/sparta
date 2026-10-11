@@ -266,7 +266,7 @@ impassable hill, every man clear of it, and meets a charge driven straight
 in from its western flank. Opening melee is per-soldier, so the troop fights for a
 while before it breaks;
 it then routs
-and flees north-north-east past the hill's west face, every man clear of it,
+and flees north, drifting slightly east, past the hill's west face, every man clear of it,
 with the charge's files still among its own and riding north with it,
 its ranks slanting across its flight as it swings slowly round onto it,
 while its nerve steadies,

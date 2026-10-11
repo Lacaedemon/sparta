@@ -228,13 +228,8 @@ static func step(unit: Unit, delta: float) -> void:
 	# march feed-forward, the canonical-slot re-pairing -- is written relative to an unengaged
 	# bulk that still tracks the formation's own slots (see this file's class doc), so a tier
 	# that swallowed every rank would leave those behaviours with no reference to work
-	# against. See Unit.body_tier_soldier_indices / body_tier_ranks. A router has no engaged
-	# front: every man runs, so every man takes the flight's feed-forward. Its engaged latch
-	# outlives the break, and its heading turns off the melee at a bounded rate
-	# (Unit._turn_flight_toward), so the front men facing the enemy would otherwise stand in
-	# the fight while the rest of the block runs.
-	var engaged_indices: PackedInt32Array = PackedInt32Array() if unit.state == Unit.State.ROUTING \
-			else unit.body_tier_soldier_indices(n)
+	# against. See Unit.body_tier_soldier_indices / body_tier_ranks.
+	var engaged_indices: PackedInt32Array = unit.body_tier_soldier_indices(n)
 	# Membership test for the per-soldier loop below, as a packed bool array instead of a
 	# Dictionary -- every tick, every unit builds one of these (engaged or not), so a
 	# Dictionary's per-entry hashing/boxing overhead here is pure per-tick waste versus a
@@ -1078,11 +1073,8 @@ static func couple(unit: Unit, delta: float) -> void:
 	# Unit.position_anchor_indices / _position_anchor_unstable) -- Square/Schiltron and any
 	# in-progress turn or reform keep the wider contact_soldier_indices selection this
 	# always used to be. Also anchors a merely-in-contact (not fighting) regiment on its real
-	# front-rank bodies, not the whole-block centroid -- see Unit._in_enemy_contact. A router
-	# anchors on every body instead: its front ranks are the men the melee still holds as it
-	# breaks, and anchoring on them would hold the whole block in the fight.
-	var indices: PackedInt32Array = PackedInt32Array() if unit.state == Unit.State.ROUTING \
-			else unit.position_anchor_indices(n)
+	# front-rank bodies, not the whole-block centroid -- see Unit._in_enemy_contact.
+	var indices: PackedInt32Array = unit.position_anchor_indices(n)
 	# With no engaged front to anchor on, the drift is averaged over every body -- and while
 	# a reinforcement's newcomers are still walking in from behind, that average reads their
 	# approach as the whole regiment standing off its slots. Hold `position` for the arrival

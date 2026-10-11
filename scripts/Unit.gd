@@ -1135,6 +1135,10 @@ var _under_fire_can_reply: bool = false
 # attack target: see the disengage comment below) or otherwise not actively fighting --
 # contact is a physical fact, not a gameplay choice; see docs/individual-collision-design.md.
 var _in_enemy_contact: bool = false
+# Whether the enemy regiment _refresh_enemy_contact found in contact stands ahead of this
+# unit's heading (in front of its front rank) rather than behind it. Read through
+# router_front_in_melee(); refreshed with _in_enemy_contact.
+var _contact_enemy_ahead: bool = false
 
 var support_target: Unit = null
 # Field rectangle the unit keeps inside when kiting (set by Battle on spawn). The
@@ -2843,6 +2847,7 @@ func fresh_pick_allowed(candidate: Unit) -> bool:
 ## that has got clear stops.
 func _refresh_enemy_contact() -> void:
 	_in_enemy_contact = false
+	_contact_enemy_ahead = false
 	var contact_candidates: Array = get_tree().get_nodes_in_group("units")
 	contact_candidates.append_array(get_tree().get_nodes_in_group("routers"))
 	# The regiment-scale contact broadphase: every candidate this scan measures against, whether
@@ -2854,6 +2859,7 @@ func _refresh_enemy_contact() -> void:
 			var c_dist: float = maxf(attack_range, u.attack_range) + RADIUS + u.RADIUS
 			if position.distance_squared_to(u.position) <= c_dist * c_dist:
 				_in_enemy_contact = true
+				_contact_enemy_ahead = (u.position - position).dot(facing) > 0.0
 				break
 	SimOps.add(SimOps.REGIMENT_CHECK, contact_checks)
 
@@ -8277,8 +8283,12 @@ func contact_soldier_indices(count: int) -> PackedInt32Array:
 ## or without a cache. The cost this does add is that one bounded heap selection -- the same
 ## O(n log k) shape the melee tier's own selection already runs, and below the benchmark's
 ## noise floor in practice.
+##
+## A router whose front ranks are the ones in the melee (router_front_in_melee) has none: its
+## engaged latch outlives the break, and holding its front men back from the flight's
+## feed-forward would leave them standing in the fight while the rest of the block runs.
 func body_tier_soldier_indices(count: int) -> PackedInt32Array:
-	if not is_engaged() or count <= 0:
+	if not is_engaged() or count <= 0 or router_front_in_melee():
 		return PackedInt32Array()
 	return _select_near_front_indices(count, body_tier_cap(count))
 
@@ -8435,12 +8445,40 @@ func near_front_soldier_indices(count: int) -> PackedInt32Array:
 ## fix closed for a fighting regiment's charge -- see docs/individual-collision-design.md.
 ## See near_front_soldier_indices' own docstring for the re-verification history behind this
 ## gate.
+##
+## A router whose front ranks are the ones in the melee (router_front_in_melee) gets none, so
+## couple() tracks its whole block: anchoring on the men the melee holds would hold the whole
+## router in the fight. A router caught from behind still anchors on its front ranks, which
+## are then its flight-side ranks, the ones farthest from the pursuer.
 func position_anchor_indices(count: int) -> PackedInt32Array:
-	if not (is_engaged() or _in_enemy_contact):
+	if not (is_engaged() or _in_enemy_contact) or router_front_in_melee():
 		return PackedInt32Array()
 	if in_square() or _position_anchor_unstable():
 		return contact_soldier_indices(count)
 	return near_front_soldier_indices(count)
+
+
+## Whether this unit is a router whose front ranks are the ones in the melee rather than its
+## flight-side ranks: it is in enemy contact, the enemy it touches stands ahead of its
+## heading, and its heading is still turning onto its flight. A unit breaks facing the enemy
+## it fought, and its flight heading turns off that enemy at a bounded rate
+## (_turn_flight_toward), so until it lands on the flight its front ranks face the melee.
+## Its men all run then, with none held back as an engaged front (body_tier_soldier_indices)
+## and the block anchored on all of them (position_anchor_indices). Once the heading is on
+## the flight its front ranks are its flight-side ranks, and the rules for those apply: a
+## router caught from behind anchors on them, and one fleeing straight into the enemy it
+## broke from keeps its engaged front on the melee line.
+func router_front_in_melee() -> bool:
+	if state != State.ROUTING or not _in_enemy_contact or not _contact_enemy_ahead:
+		return false
+	if _flee_velocity == Vector2.ZERO:
+		return false
+	return absf(angle_difference(facing.angle(), _flee_velocity.angle())) > FLIGHT_HEADING_EPS
+
+
+# The angle (rad) under which a router's heading counts as on its flight line
+# (router_front_in_melee); a solver tolerance, matching _rotate_facing_toward's own.
+const FLIGHT_HEADING_EPS: float = 0.001
 
 
 ## The `count` formation SLOTS (not live bodies) that count as "the front" (or, for
@@ -9387,9 +9425,9 @@ func _process_rout(delta: float) -> void:
 ## path the step chose. _flight_turn_rate carries the turn from tick to tick, and
 ## SoldierBodies.step feeds it forward to the bodies. The turn is bounded the same way in
 ## enemy contact, so a router breaking from a melee keeps its front toward the enemy for a
-## while: its men still run at the flight's pace because SoldierBodies holds none of a
-## router's men back as an engaged front and does not anchor the block on its front ranks
-## (see SoldierBodies.step and couple()). Folding the turn into _formation_angle instead would
+## while: its men still run at the flight's pace because, while its front ranks are in the
+## melee (router_front_in_melee), none of them is held back as an engaged front and the block
+## is not anchored on them. Folding the turn into _formation_angle instead would
 ## leave a deep block running obliquely across its own grid, so its swept width across the
 ## heading, the terrain margin its flight step rounds terrain with (_rout_step_clearance),
 ## would grow, and the step could swing onto a detour on the next tick.
@@ -10656,7 +10694,7 @@ func to_snapshot_dict() -> Dictionary:
 		"row_layout_files": _row_layout_files,
 		"row_slot_dealt": _row_slot_dealt,
 		"under_fire": _under_fire, "under_fire_can_reply": _under_fire_can_reply,
-		"in_enemy_contact": _in_enemy_contact,
+		"in_enemy_contact": _in_enemy_contact, "contact_enemy_ahead": _contact_enemy_ahead,
 		"attack_cd": _attack_cd, "pin_down_exposure_cd": _pin_down_exposure_cd,
 		"rout_timer": _rout_timer, "shattered": _shattered,
 		"far_tier_casualty_carry": _far_tier_casualty_carry,
@@ -10895,6 +10933,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_under_fire = bool(d["under_fire"])
 	_under_fire_can_reply = bool(d.get("under_fire_can_reply", false))
 	_in_enemy_contact = bool(d["in_enemy_contact"])
+	_contact_enemy_ahead = bool(d.get("contact_enemy_ahead", false))
 	_attack_cd = float(d["attack_cd"])
 	_pin_down_exposure_cd = float(d["pin_down_exposure_cd"])
 	_rout_timer = float(d["rout_timer"])

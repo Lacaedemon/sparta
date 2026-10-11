@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/contact-rout-keeps-ranks-1785.json",
-  "caption": "A deep cavalry squadron, caught among an enemy charge's open files, breaks while still in the melee and flees north, 45 degrees off the way it faced. It now swings round onto its flight no faster than its outermost riders can follow, so it runs north as one block with every rider keeping his place, while the enemy rides along beside it for a few seconds before giving chase. Before this fix the squadron's formation swung 45 degrees round under the riders in one tick, leaving them on average about 9 m from their places; 15 had to cross the block to reach theirs, and the squadron fled as a block trailing a ragged line of riders.",
+  "caption": "A deep cavalry squadron, caught among an enemy charge's open files, breaks while still in the melee and flees north, 45 degrees off the way it faced. It now swings round onto its flight no faster than its outermost riders can follow, so it runs north as one block with its riders staying close to their places, while the enemy rides along beside it for a few seconds before giving chase. Before this fix the squadron's formation swung 45 degrees round under the riders in one tick, leaving them on average about 9 m from their places; 15 had to cross the block to reach theirs, and the squadron fled as a block trailing a ragged line of riders.",
   "fixed_fps": 30,
   "max_frames": 330,
   "fps": 15,
