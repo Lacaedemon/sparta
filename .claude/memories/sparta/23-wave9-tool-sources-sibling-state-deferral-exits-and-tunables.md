@@ -18,8 +18,7 @@ The new part is how to catch it while both PRs are still open.
 PRs #1802 (#1765) and #1803 (#1781) were in flight together.
 #1802's first version (aaf4f68a) skipped its rally slot capture whenever `_slot_deal_pending` was true,
 assuming a pending deal reads the bodies.
-#1803's first version (91c5b0b8) made a row-major close-up leave `_slot_deal_pending` true without reading the bodies.
-The first adversarial review of each PR was briefed with the other branch's head, and both reviews found the interaction.
+#1803 at 91c5b0b8, before `_slot_body_deal_pending` existed, made a row-major close-up leave `_slot_deal_pending` true without reading the bodies.
 #1803 then added `_slot_body_deal_pending` and a merge-order note,
 and #1802, landing second, deleted its own predicate and gated on that one.
 
