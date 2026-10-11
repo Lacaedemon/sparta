@@ -334,37 +334,99 @@ func test_the_rally_re_square_waits_for_the_coast_and_turns_at_a_bounded_rate() 
 	assert_almost_eq(wrapf(u._formation_angle, -PI, PI), 0.0, 0.001, "and the ranks re-squared")
 
 
-## A regiment-path casualty during the flight leaves the held pairing longer than the block. The
-## next slot query would deal that pairing again from the bodies, so the rally does not read the
-## men's slots first (Unit._slot_read_deals_from_bodies reports the shrink): reading them would
-## deal the pairing before the re-square's reflection is armed. The reflection then deals the
-## re-squared grid from where the men stand, deliberately, and no man swaps ends, which would
-## carry him the block's whole depth (7 rank pitches, 126 wu). Bound: two rank pitches, one for
-## the re-square's step and one for closing the casualty's gap on a 59-man grid whose short rank
-## lies half a file off the 60-man grid's. This test passes on main too, where the rally dealt the
-## shrunken block from the bodies the same way; it guards that this branch's column deal stands
-## aside for it.
-func test_a_casualty_during_the_flight_then_a_rally_keeps_every_man_near_his_ground() -> void:
-	var u := _make(Unit.ReformMode.ROW_MAJOR, Vector2.UP)
-	_about_face_and_resquare(u)
+## Rally  and run its re-square while the loss is still pending: no slot query between the loss
+## and the re-square (in a battle SoldierBodies.step queries every tick, so this is the window of
+## a loss landing on the tick the re-square runs). The fold is a half-turn, so the first advance
+## runs the re-square.
+func _rally_with_the_loss_pending(u: Unit, what: String) -> void:
+	u._flee_pace = 0.0
+	u._rally()
+	assert_true(u._slot_deal_pending(u.soldiers, u.formation_files(u.soldiers)),
+			"%s: setup: the loss is still pending when the re-square runs" % what)
+	u._advance_rally_resquare(TICK)
+	assert_false(u._rally_resquare_pending, "%s: the re-square ran" % what)
+
+
+## The worst distance from each surviving man's body to his slot once a rally has re-squared a
+## block that took a regiment-path loss of `lost` men during its flight (the body arrays are left
+## untrimmed, so the assignment is out of step with the headcount when the rally comes).
+func _rally_after_flight_loss(u: Unit, lost: int, what: String) -> float:
 	u._rout()
 	_flee_one_tick(u)
 	_stand_on_slots(u)
-	var bodies: PackedVector2Array = u._sim_soldier_pos.slice(0, COUNT - 1)
-	u.soldiers = COUNT - 1   # the regiment path: the body arrays are not trimmed
-	assert_true(u._slot_read_deals_from_bodies(u.soldiers, u.formation_files(u.soldiers)),
-			"the shrink would deal from the bodies, so the rally does not read the slots first")
-	u._flee_pace = 0.0
-	u._rally()
-	_settle_rally(u, "casualty in flight")
+	var survivors: int = u.soldiers - lost
+	var bodies: PackedVector2Array = u._sim_soldier_pos.slice(0, survivors)
+	u.soldiers = survivors   # the regiment path: the body arrays are not trimmed
+	assert_true(u._slot_deal_pending(u.soldiers, u.formation_files(u.soldiers)),
+			"%s: setup: the loss left the assignment out of step" % what)
+	_rally_with_the_loss_pending(u, what)
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
-	var bound: float = 2.0 * u.rank_pitch_wu() + EPS
 	var worst: float = 0.0
 	for i in range(slots.size()):
 		worst = maxf(worst, bodies[i].distance_to(slots[i]))
+	return worst
+
+
+## A row-major block that loses two men to the regiment path during its flight (58 men on 8
+## files: the 2-man short rank is centred under the middle files, the case where a depth
+## reflection alone sends the outer files' men the block's whole depth). The loss is closed up
+## from the cells alone, reading no body, so the rally settles that close-up first and deals its
+## re-square column by column from the closed-up slots. A twin block put through the same steps
+## gives those closed-up slots without rallying. Bound: one rank pitch from each man's closed-up
+## slot, the column deal's own step (plus the float margin). Measured: 18.0 wu here; with the
+## rally's read skipped on any pending rebuild, the reflection alone sent a man 127.3 wu, and with
+## the read taken without settling the close-up, 58 walkers were judged against slots the men had
+## not reached.
+func test_a_row_major_loss_in_flight_then_a_rally_deals_from_the_closed_up_slots() -> void:
+	var blocks: Array = []
+	for _k in range(2):
+		var b := _make(Unit.ReformMode.ROW_MAJOR, Vector2.UP)
+		_about_face_and_resquare(b)
+		b._rout()
+		_flee_one_tick(b)
+		_stand_on_slots(b)
+		b.soldiers = COUNT - 2   # the regiment path: the body arrays are not trimmed
+		blocks.append(b)
+	var u: Unit = blocks[0]
+	var twin: Unit = blocks[1]
+	var files: int = u.formation_files(u.soldiers)
+	assert_true(u._slot_deal_pending(u.soldiers, files), "setup: the loss left the pairing out of step")
+	assert_false(u._slot_body_deal_pending(u.soldiers, files), "setup: and closing it up reads no body")
+	var closed_up: PackedVector2Array = twin.soldier_world_slots(twin.soldiers)
+	_rally_with_the_loss_pending(u, "row major")
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var worst: float = _moved(closed_up, slots).y
+	var bound: float = u.rank_pitch_wu() + EPS
 	assert_lt(worst, bound,
-			"no man's slot is more than two rank pitches from him (max %.2f, bound %.2f)"
+			"no man's slot moves more than a rank pitch from his closed-up slot (max %.2f, bound %.2f)"
 			% [worst, bound])
+	# The men have not walked to their closed-up slots yet, so no walker is judged against them.
+	assert_true(u._couple_transit.is_empty(), "no walker is flagged against the closed-up slots")
+
+
+## A squared block that loses a man to the regiment path during its flight. A square rebuilds a
+## changed headcount from the bodies, so the rally reads no slots first (_slot_body_deal_pending)
+## and keeps the deal the re-square's reflection makes from where the men stand, rather than
+## dealing the square from the bodies mid-rally before that reflection is armed. Bound: three
+## pitches (the square's rank pitch is its file pitch, 9 wu). Measured 22.5 wu here, and 28.46 wu
+## when the rally reads the slots first and so deals the square from the bodies before the
+## reflection is armed; the bound sits between the two, so it is calibrated on that pair rather
+## than derived.
+func test_a_squared_loss_in_flight_then_a_rally_keeps_every_man_near_his_ground() -> void:
+	var u: Unit = Unit.new()
+	u.max_soldiers = COUNT
+	add_child_autofree(u)
+	u.position = Vector2(600, 600)
+	u.facing = Vector2.DOWN
+	u.seed_sim_soldiers()
+	u.set_formation(Unit.FORMATION_SQUARE)
+	_stand_on_slots(u)
+	assert_true(u._slot_body_deal_pending(u.soldiers - 1, u.formation_files(u.soldiers - 1)),
+			"setup: a square loss is dealt from the bodies")
+	var worst: float = _rally_after_flight_loss(u, 1, "square")
+	var bound: float = 3.0 * u.file_pitch_wu() + EPS
+	assert_lt(worst, bound,
+			"no man's slot is more than three pitches from him (max %.2f, bound %.2f)" % [worst, bound])
 
 
 ## A router with no escape stands to fight. It squares the fold it kept from the rout, plus its

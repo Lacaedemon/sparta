@@ -9481,8 +9481,8 @@ func _rally() -> void:
 ## (UnitFormation.pair_slots_by_column) from the slots the men held before the re-square, so no
 ## man's slot moves more than a rank pitch, and the walkers are judged against those slots, as
 ## reform_ranks judges its own. A block whose old slots could only be read by dealing them from
-## the bodies (a frontage reshape, or men added since the last layout) keeps the deal
-## reform_ranks makes from where the men stand (see _apply_row_slot_reflection).
+## the bodies (_slot_body_deal_pending) keeps the deal reform_ranks makes from where the men stand
+## (see _apply_row_slot_reflection and _apply_square_slot_reflection).
 ## The heading turn here is a one-tick turn of every man's facing (the grid stays put). A rally
 ## normally reaches this through _advance_rally_resquare, which has already turned the heading at
 ## a bounded rate, so the turn here is empty; a fresh order that interrupts that turn, and a
@@ -9492,11 +9492,19 @@ func _rally_resquare() -> void:
 	var files: int = maxi(1, formation_files(soldiers))
 	var half_turn: bool = absf(absf(wrapf(_formation_angle, -PI, PI)) - PI) < 0.01
 	var deal: bool = half_turn and (in_square() or not _effective_file_major_reform())
-	# Read before the re-square. A read that would deal the assignment from the bodies is
-	# skipped; one that only keeps or closes up a held pairing is taken, since the column deal
-	# below replaces the pairing anyway.
+	# Read before the re-square, unless the read would deal the assignment from the bodies
+	# (_slot_body_deal_pending: a frontage reshape, or any rebuild of a square or file-major
+	# assignment). A row-major close-up over a regiment-path loss, or a gain given the tail
+	# cells, reads no body: it is settled first, so the column deal below starts from the
+	# closed-up slots. The men have not walked to those yet, so the walkers are then not judged
+	# against them (main measured a capture over a pending close-up dragging the anchor 4.4 wu,
+	# see _slot_deal_pending), and transit arms nothing.
 	var slots_before := PackedVector2Array()
-	if deal and not _slot_read_deals_from_bodies(soldiers, files):
+	var settled_rebuild: bool = false
+	if deal and not _slot_body_deal_pending(soldiers, files):
+		settled_rebuild = _slot_deal_pending(soldiers, files)
+		if settled_rebuild:
+			formation_slots(soldiers)
 		slots_before = soldier_world_slots(soldiers)
 	if not reform_ranks(true) or not deal or slots_before.size() != soldiers:
 		return
@@ -9515,23 +9523,7 @@ func _rally_resquare() -> void:
 		_row_slot_files = files
 		_row_slot_dealt = true
 		_row_layout_files = files
-	arm_couple_transit(slots_before, _reform_timeout())
-
-
-## Whether the next slot query for (count, files) would deal the row-major or square pairing
-## from the live bodies: the file count changed since the last layout, or the headcount changed
-## under a held pairing in either direction. A headcount that fell (a regiment-path casualty)
-## counts as well as one that grew, since _ensure_row_slot_assignment and
-## _ensure_square_slot_assignment deal a shrunken pairing again from the bodies too. Pure: reads
-## state, changes none.
-## TODO(#1781): once a regiment-path shrink closes the men up without reading the bodies, a fall
-## no longer deals from them, and _slot_body_deal_pending replaces this predicate.
-func _slot_read_deals_from_bodies(count: int, files: int) -> bool:
-	if in_square():
-		return _square_slot_files != files or _sim_soldier_square_slot.size() != count
-	var reshaped: bool = _row_layout_files > 0 and _row_layout_files != files
-	var resized: bool = _row_slot_files == files and _sim_soldier_row_slot.size() != count
-	return reshaped or resized
+	arm_couple_transit(PackedVector2Array() if settled_rebuild else slots_before, _reform_timeout())
 
 
 ## Called each non-routing tick: carry a rally's re-square through once the coast has stopped.
