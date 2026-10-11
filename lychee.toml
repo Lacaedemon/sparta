@@ -2,7 +2,16 @@
 # default; passed via `lychee-config: lychee.toml`). Mirrors that default and
 # adds repo-specific exclusions.
 
-max_retries = 3
+# github.com intermittently answers the runner's blob-page requests with 503 (and 429
+# under rate limiting) although the pages are fine (#1796). lychee retries 5xx, 429
+# and 408 responses; the old 3 retries at a 1s base wait gave up within seconds.
+# Retry more times with a longer base wait (it grows between attempts) so a transient
+# outage can clear, while a real 404 is not retryable and still fails at once.
+# 503 is NOT added to `accept`: lychee's accept list is global, so accepting 503 would
+# hide real outages on every host. See also the [hosts."github.com"] throttle at the
+# end of this file.
+max_retries = 6
+retry_wait_time = 5
 max_concurrency = 10
 user_agent = "Mozilla/5.0 (compatible; Lychee/0.15; +https://github.com/lycheeverse/lychee)"
 accept = [200, 201, 202, 203, 204, 206, 301, 302, 303, 307, 308, 429]
@@ -108,3 +117,10 @@ exclude = [
   # Skip it rather than reddening PRs on an upstream infrastructure issue.
   "^https://godotengine\\.org",
 ]
+
+# Throttle requests to github.com so the burst of blob-page checks does not trip its
+# rate limiter in the first place. This table must stay last: keys after a [table]
+# header belong to that table, not to the top level.
+[hosts."github.com"]
+concurrency = 2
+request_interval = "500ms"

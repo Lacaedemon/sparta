@@ -136,6 +136,15 @@ listed in `lychee.toml`'s `exclude` array.
 - **Don't:** read a non-zero lychee exit as proof of a broken link without
   checking whether the failure was a timeout.
 
+The same exit-2 failure comes from github.com answering blob links with
+HTTP 503 (#1796).
+`lychee.toml` retries those (`max_retries`, `retry_wait_time`) and throttles
+github.com (`[hosts."github.com"]`); 503 is not in `accept`, which is global.
+
+- **Do:** rerun once, then read the run's `[503]` lines before touching
+  `lychee.toml`; a 503 on `github.com` is the transient case.
+- **Don't:** add `503` to `accept` or exclude `github.com` to silence it.
+
 ## Design-doc-only PRs: the demo manifest must be skip-form, not an `input` recording
 
 A PR that only adds or edits a design document -- no implemented mechanic
