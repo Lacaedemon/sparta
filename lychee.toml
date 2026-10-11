@@ -2,8 +2,21 @@
 # default; passed via `lychee-config: lychee.toml`). Mirrors that default and
 # adds repo-specific exclusions.
 
+# github.com intermittently answers the runner's blob-page requests with 503 although
+# the pages are fine (#1796). Retries do not help: in lychee v0.24.2 (lychee-lib
+# src/retry.rs, ErrorKind::should_retry) a rejected 503 is not retryable -- only timeouts
+# and HTTP 429 are -- so max_retries and retry_wait_time stay at their old values.
+# 503 is NOT added to `accept` either: that list is global, so it would hide real
+# outages on every host. Instead:
+#   - the repo's own github.com/Lacaedemon/sparta/{blob,tree}/main/ links, most of the
+#     503 noise, are excluded below and checked against the tracked tree by
+#     tools/ci/check-own-blob-links.sh (tools/check.sh own_links), so a deleted or
+#     renamed target still fails;
+#   - requests to github.com are throttled (`hosts` below) so external blob links
+#     (RecoilEngine, 0 A.D.) are less likely to trip its rate limiter.
 max_retries = 3
 max_concurrency = 10
+hosts = { "github.com" = { concurrency = 2, request_interval = "500ms" } }
 user_agent = "Mozilla/5.0 (compatible; Lychee/0.15; +https://github.com/lycheeverse/lychee)"
 accept = [200, 201, 202, 203, 204, 206, 301, 302, 303, 307, 308, 429]
 timeout = 20
@@ -11,6 +24,8 @@ timeout = 20
 exclude = [
   # LacusCurtius answers slowly enough that the link checker times out; the pages are stable.
   "https://penelope.uchicago.edu/",
+  # This repo's own blob/tree links: checked offline by tools/ci/check-own-blob-links.sh.
+  "^https://github\\.com/Lacaedemon/sparta/(blob|tree)/main/",
   # Bundled-default placeholders / local-only URLs.
   "https://github.com/YOUR-USERNAME/.*",
   "https://YOUR-USERNAME.github.io/.*",
