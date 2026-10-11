@@ -145,6 +145,7 @@ func test_rally_after_flee_facing_snap_resets_formation_angle() -> void:
 	assert_ne(u._formation_angle, 0.0, "sanity: the flip did fold _formation_angle")
 
 	u._rally()
+	u._finish_rally_resquare()   # the re-square otherwise waits for the coast to stop
 
 	assert_eq(u._formation_angle, 0.0,
 		"rally resets _formation_angle -- the unit reforms square to its facing")

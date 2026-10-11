@@ -39,10 +39,15 @@ flank/rear hits, it **routs** --- it flees (its flag fading) toward its own back
 and stops fighting for now. A routing unit can flee past the field's visible edge into a
 margin beyond it before it's gone for good, staying on the field --- and still
 fightable --- for as long as it's plausibly still in view.
-A unit breaks with its ranks as they lay:
+A unit breaks with its ranks as they stand:
 each man runs from his own place in the block,
-whichever way the block had turned before it broke,
-so breaking does not throw the men out of their places.
+whichever way the block had turned before it broke.
+One case still throws the men out of their places:
+a unit that breaks while still in contact with the enemy
+turns onto its flight at once,
+and a turn of less than about 75 degrees swings the whole block round under the men
+instead of each man turning where he stands
+([#1785](https://github.com/Lacaedemon/sparta/issues/1785)).
 
 A routing unit runs faster than it marches. Unless it was already falling back, it
 starts its flight from a standstill (whatever broke it: a melee, missile fire, a
@@ -89,14 +94,19 @@ its riders running together as a block.
   **breaks contact** (no enemy close enough to keep hitting it) and still fields enough
   men, its recovering morale carries it over the rally threshold and it **returns to
   your control**, ready to fight again.
-  It re-squares its ranks the moment it rallies.
-  The block fled with its ranks as they lay when it broke,
+  The block fled with its ranks as they stood when it broke,
   so they are often turned against its new heading,
   and a half-turn leaves the short rank leading.
-  The rallying unit first turns its heading by at most a quarter-turn,
-  until its ranks lie square across it, facing either way,
-  so the turn itself moves no man.
-  Then it re-squares from where the men stand.
+  It re-squares its ranks once it has pulled up (below).
+  First the men turn where they stand, at the pace of an ordered about-face,
+  by at most a quarter-turn,
+  until the ranks lie square across the way they face, facing either way.
+  So a rallied unit can end up facing across its line of flight:
+  turning the ranks themselves onto that line would march a block that is not square
+  into a different shape,
+  and a unit only rallies clear of the enemy,
+  so keeping its men in place matters more than which way it faces.
+  Then the ranks re-square from the places the men held.
   If its ranks face the wrong way, each man keeps his file,
   and only the under-strength files step up one rank to close the front,
   whichever the layout:
@@ -105,7 +115,7 @@ its riders running together as a block.
   the men don't counter-march through the block to do it,
   so a rallied unit is back in fighting shape almost at once
   rather than spending seconds shuffling through itself.
-  A unit that rallies at a run **pulls up** while it re-forms,
+  A unit that rallies at a run **pulls up** before it turns and re-forms,
   where it has the room and no enemy is near it or its path
   (and it stops short if one comes near while it slows):
   it brakes at its own rate with its men keeping step,

@@ -109,11 +109,16 @@ func _assert_rout_moves_no_slot(u: Unit, what: String) -> void:
 
 ## Rally `u` (already routing) with every man on his slot, and check how far the re-square
 ## moved the slots against the bounds in the file header.
+## The flight is taken out first (a zero flee pace hands no coast over), so the anchor stays put
+## and the slots are compared in one frame; the coast itself is covered by
+## test_the_rally_re_square_waits_for_the_coast_and_turns_at_a_bounded_rate.
 func _assert_rally_holds_ground(u: Unit, what: String) -> void:
 	_stand_on_slots(u)
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	u._flee_pace = 0.0
 	u._rally()
 	assert_eq(u.state, Unit.State.IDLE, "%s: the unit rallied" % what)
+	_settle_rally(u, what)
 	assert_almost_eq(wrapf(u._formation_angle, -PI, PI), 0.0, 0.001,
 			"%s: the rally squared the grid to the heading" % what)
 	var m: Vector2 = _moved(before, u.soldier_world_slots(u.soldiers))
@@ -125,6 +130,28 @@ func _assert_rally_holds_ground(u: Unit, what: String) -> void:
 	assert_lt(m.x, mean_bound,
 			"%s: the mean slot move is at most the short files' step (mean %.2f, bound %.2f)"
 			% [what, m.x, mean_bound])
+
+
+## Run the rally's deferred re-square tick by tick, as _physics_process does, and check the turn
+## that precedes it: the heading turns at most TURN_RATE * TICK a tick (a float margin of 1e-4
+## rad), and no slot moves while it does (EPS), since the fold takes up each step.
+func _settle_rally(u: Unit, what: String) -> void:
+	var worst_step: float = 0.0
+	var worst_slot: float = 0.0
+	for _i in range(300):
+		if not u._rally_resquare_pending:
+			break
+		var heading: float = u.facing.angle()
+		var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+		u._tick_idle_coast(TICK)
+		u._advance_rally_resquare(TICK)
+		if u._rally_resquare_pending:
+			worst_step = maxf(worst_step, absf(angle_difference(heading, u.facing.angle())))
+			worst_slot = maxf(worst_slot, _moved(slots, u.soldier_world_slots(u.soldiers)).y)
+	assert_false(u._rally_resquare_pending, "%s: the rally's re-square ran" % what)
+	assert_lt(worst_step, Unit.TURN_RATE * TICK + 0.0001,
+			"%s: the heading turns at a bounded rate (worst step %.4f rad)" % [what, worst_step])
+	assert_lt(worst_slot, EPS, "%s: no slot moves while the heading turns (max %.3f)" % [what, worst_slot])
 
 
 ## One tick of flight: team 0 flees north, so a block facing south snaps a half-turn, which
@@ -199,7 +226,9 @@ func test_a_block_that_never_folded_rallies_without_scattering() -> void:
 	_flee_one_tick(odd)
 	_stand_on_slots(odd)
 	var before: PackedVector2Array = odd.soldier_world_slots(odd.soldiers)
+	odd._flee_pace = 0.0
 	odd._rally()
+	_settle_rally(odd, "offset short rank")
 	var m: Vector2 = _moved(before, odd.soldier_world_slots(odd.soldiers))
 	assert_lt(m.y, odd.rank_pitch_wu() + EPS,
 			"an offset short rank re-squares within one rank pitch (max %.2f, pitch %.2f)"
@@ -245,7 +274,9 @@ func test_a_squared_block_rallies_without_scattering() -> void:
 	assert_almost_eq(absf(u._formation_angle), PI, 0.001, "setup: the flight folded a half-turn")
 	_stand_on_slots(u)
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	u._flee_pace = 0.0
 	u._rally()
+	_settle_rally(u, "square")
 	var m: Vector2 = _moved(before, u.soldier_world_slots(u.soldiers))
 	# The square's rank pitch is its file pitch (UnitFormation.block_slots with no rank pitch).
 	assert_lt(m.y, u.file_pitch_wu() + EPS,
@@ -262,3 +293,81 @@ func test_the_column_deal_falls_back_to_identity_on_input_it_cannot_pair() -> vo
 			PackedInt32Array([0, 1]), "no pitch keeps the identity layout")
 	assert_eq(UnitFormation.pair_slots_by_column(PackedVector2Array(), PackedVector2Array(), 10.0),
 			PackedInt32Array(), "nothing to pair pairs nothing")
+
+
+## The rally hands the flight to a coast and waits for it: while the block pulls up, its heading
+## and its fold stay as they flew, so it never slides sideways along the flight line with its men
+## facing across it. Once it has stopped, the heading turns at a bounded rate by the 30 degrees
+## its ranks lie off a half-turn, and only then do the ranks re-square.
+func test_the_rally_re_square_waits_for_the_coast_and_turns_at_a_bounded_rate() -> void:
+	var u := _make(Unit.ReformMode.ROW_MAJOR)
+	u.retreat_bounds = Rect2(-10000, -10000, 20000, 20000)
+	u._face_dir(Vector2.DOWN.rotated(deg_to_rad(-150.0)))
+	u._rout()
+	u.morale = 0.0
+	for _i in range(20):
+		u._process_rout(TICK)   # a bounded flight turn onto north: the fold stays at 150 degrees
+	assert_almost_eq(u._formation_angle, deg_to_rad(150.0), 0.001, "setup: the fold flew unchanged")
+	assert_gt(u._flee_pace, 0.0, "setup: the block is running")
+	var flight_heading: float = u.facing.angle()
+	u._rally()
+	assert_true(u.is_rally_halting(), "setup: the rally handed over a coast")
+	var coast_ticks: int = 0
+	while u.is_rally_halting() and coast_ticks < 600:
+		u._tick_idle_coast(TICK)
+		u._advance_rally_resquare(TICK)
+		coast_ticks += 1
+		if u.is_rally_halting():
+			assert_almost_eq(angle_difference(flight_heading, u.facing.angle()), 0.0, 0.0001,
+					"the heading holds while the block coasts (tick %d)" % coast_ticks)
+	assert_false(u.is_rally_halting(), "the coast stopped (after %d ticks)" % coast_ticks)
+	assert_true(u._rally_resquare_pending, "the re-square waited for the coast")
+	_stand_on_slots(u)
+	_settle_rally(u, "after the coast")
+	assert_almost_eq(absf(angle_difference(flight_heading, u.facing.angle())), deg_to_rad(30.0), 0.001,
+			"the heading turned by the 30 degrees the ranks lay off a half-turn")
+	assert_almost_eq(wrapf(u._formation_angle, -PI, PI), 0.0, 0.001, "and the ranks re-squared")
+
+
+## A regiment-path casualty during the flight leaves the held pairing longer than the block. The
+## rally still reads the men's slots before it re-squares (a shrink is not a deal from the bodies,
+## see Unit._slot_read_deals_from_bodies) and deals the re-square from them, so the short files
+## step one rank instead of swapping ends, which would carry a man the block's whole depth
+## (7 rank pitches, 126 wu). Bound: two rank pitches, one for the re-square's step and one for
+## closing the casualty's gap on a 59-man grid whose short rank lies half a file off the 60-man
+## grid's (measured 27.0 wu here). This test passes on main too, where the rally re-squared by
+## the reflection alone and dealt the shrunken block from the bodies; it guards the read the
+## column deal depends on.
+func test_a_casualty_during_the_flight_then_a_rally_keeps_every_man_near_his_ground() -> void:
+	var u := _make(Unit.ReformMode.ROW_MAJOR, Vector2.UP)
+	_about_face_and_resquare(u)
+	u._rout()
+	_flee_one_tick(u)
+	_stand_on_slots(u)
+	var bodies: PackedVector2Array = u._sim_soldier_pos.slice(0, COUNT - 1)
+	u.soldiers = COUNT - 1   # the regiment path: the body arrays are not trimmed
+	u._flee_pace = 0.0
+	u._rally()
+	_settle_rally(u, "casualty in flight")
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var bound: float = 2.0 * u.rank_pitch_wu() + EPS
+	var worst: float = 0.0
+	for i in range(slots.size()):
+		worst = maxf(worst, bodies[i].distance_to(slots[i]))
+	assert_lt(worst, bound,
+			"no man's slot is more than two rank pitches from him (max %.2f, bound %.2f)"
+			% [worst, bound])
+
+
+## A router with no escape stands to fight. It squares the fold it kept from the rout, plus its
+## flight's turns, to its heading at once, as a rally would: a stale 120 degree fold would leave
+## its ranks lying across the way it faces.
+func test_a_trapped_router_that_stands_to_fight_squares_its_fold() -> void:
+	var u := _make(Unit.ReformMode.FILE_MAJOR)
+	u._rout()
+	u._face_dir(Vector2.DOWN.rotated(deg_to_rad(120.0)))   # a flight snap the fold absorbs
+	assert_almost_eq(absf(u._formation_angle), deg_to_rad(120.0), 0.001, "setup: a 120 degree fold")
+	u._stop_rout_and_fight()
+	assert_eq(u.state, Unit.State.IDLE, "the router stood to fight")
+	assert_almost_eq(wrapf(u._formation_angle, -PI, PI), 0.0, 0.001, "and squared its ranks to its heading")
+	assert_false(u._rally_resquare_pending, "with nothing left pending")
