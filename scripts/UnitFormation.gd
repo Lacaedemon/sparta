@@ -446,6 +446,62 @@ static func pair_slots_by_lateral_file(positions: PackedVector2Array,
 	return perm
 
 
+## Pair each soldier to one of `slots` column by column, a column being the cells nearest one
+## file: a cell belongs to the file position nearest it, counted in steps of `pitch` from the
+## leftmost cell, with a cell half a file off (a short rank whose count and the frontage have
+## opposite parity) going to the file on its right. The men are taken in lateral order, as many
+## to each column as it has cells, left to right, and each column's men take its cells front to
+## back in their own depth order. Returns `perm` as pair_slots_by_lateral_file does.
+##
+## Unlike pair_slots_by_lateral_file, which reads a cell's file from its index, this reads it
+## from the cell's position, so a short rank is dealt to the files it actually stands under.
+## That is the pairing for men who already stand on the grid in depth-reversed order, as a block
+## re-squaring a half-turn fold does: each file's men keep their file and their depth order, so
+## a file whose short-rank cell moved to the other end steps one rank, and a man of an offset
+## short rank steps half a file into the file beside him while that file's last man steps half a
+## file into the vacated end. Bucketing by index would deal the short rank to the outer files
+## and walk men sideways across the block, and bucketing by exact x would leave each offset
+## cell a column of its own, which a short-rank man can only reach through the block's depth.
+##
+## Pure and deterministic, like pair_slots_by_lateral_file.
+static func pair_slots_by_column(positions: PackedVector2Array, slots: PackedVector2Array,
+		pitch: float) -> PackedInt32Array:
+	var n: int = positions.size()
+	if n <= 0 or slots.size() != n or pitch <= 0.0:
+		return identity_assignment(slots.size())
+	var left: float = slots[0].x
+	for s in slots:
+		left = minf(left, s.x)
+	var column_of := PackedInt32Array()
+	column_of.resize(n)
+	for i in range(n):
+		column_of[i] = roundi((slots[i].x - left) / pitch)
+	var cells: Array = range(n)
+	cells.sort_custom(func(a: int, b: int) -> bool:
+		if column_of[a] != column_of[b]:
+			return column_of[a] < column_of[b]
+		if slots[a].y != slots[b].y:
+			return slots[a].y < slots[b].y
+		return a < b)
+	var men: PackedInt32Array = lateral_order(positions)
+	var perm := PackedInt32Array()
+	perm.resize(n)
+	var start: int = 0
+	while start < n:
+		var stop: int = start + 1
+		while stop < n and column_of[cells[stop]] == column_of[cells[start]]:
+			stop += 1
+		var group: Array = Array(men.slice(start, stop))
+		group.sort_custom(func(a: int, b: int) -> bool:
+			if positions[a].y != positions[b].y:
+				return positions[a].y < positions[b].y
+			return a < b)
+		for k in range(group.size()):
+			perm[group[k]] = cells[start + k]
+		start = stop
+	return perm
+
+
 ## Deal men onto a row-major grid from where they stand, with its short rear rank dealt on its
 ## own: the deepest men take the rear rank's cells in lateral order, and the rest are dealt onto
 ## the full ranks by _deal_full_ranks.

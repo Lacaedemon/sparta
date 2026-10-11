@@ -365,8 +365,9 @@ func _flank_crossings(before: PackedVector2Array, centre_before: Vector2,
 	return crossed
 
 
-## The rally's hold-ground re-square of an about-face fold arms the depth mirror, and an order
-## issued while the rallied block is still coasting to a stop is the fresh order that bakes it.
+## The rally's hold-ground re-square of an about-face fold arms the depth mirror. It waits for the
+## coast to stop, so an order issued while the rallied block is still coasting runs it first, and
+## is then the fresh order that bakes the mirror.
 ## A router spawned facing south and fleeing north snap-absorbs a half-turn into its grid; with
 ## 46 men on 9 files the rear rank is short, so the rally's re-square reflects rather than
 ## leaving the fold. The order must end the halt without sending any man across the block.
@@ -383,7 +384,7 @@ func test_an_order_mid_halt_after_an_about_face_rally_keeps_every_man_on_his_fla
 	await _rally_next_tick(router)
 	await _advance_ticks(5)
 	assert_true(router.is_rally_halting(), "setup: still pulling up")
-	assert_true(router._formation_mirror_x, "setup: the rally's re-square armed the mirror")
+	assert_true(router._rally_resquare_pending, "setup: the rally's re-square waits for the halt")
 	var lateral: Vector2 = router.facing.orthogonal()
 	var half: float = router.file_pitch_wu() * 0.5
 	var slots_before: PackedVector2Array = router.soldier_world_slots(router.soldiers)

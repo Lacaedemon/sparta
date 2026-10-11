@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/rout-keeps-slots-1765.json",
+  "caption": "A routed block keeps its shape. A cavalry troop of 18 horses (5 files, with a 3-horse short rank) is quarter-turned right, so the horses face west while the ranks still run across the screen. A small infantry company stands among its ranks; enemy cavalry charges the company, which breaks, and the panic breaks the troop too. The troop turns north and flees with every horse in its place, ranks and files intact. When it rallies it keeps its heading and its ranks while it pulls up. Once it has stopped it re-squares to its heading: the 3-horse short rank, which led the flight, goes to the rear, and the horses of the two outer files each walk one rank forward until the front is closed. Meanwhile the company, still fleeing, runs into the troop from behind with the enemy cavalry following it, and at the end of the clip the enemy horses are passing among the troop's rear ranks. Before this fix the rout swung the troop's slot grid a quarter-turn under the horses, so the block came apart as it fled.",
+  "fixed_fps": 30,
+  "max_frames": 550,
+  "fps": 15,
+  "width": 720
+}

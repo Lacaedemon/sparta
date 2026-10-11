@@ -495,14 +495,16 @@ var _ranks_closed: bool = false
 # A quarter-turn turns every soldier in place WITHOUT reorganising the grid: each man
 # faces a new way but stands where he stood. unit.facing rotates 90°, and this offset cancels
 # that rotation in soldier_world_slots so the slots stay put -- the men don't drift. 0 = the
-# grid is square to the heading (the default). A fresh move order / rout reforms it to 0.
+# grid is square to the heading (the default). A fresh move order reforms it to 0. A rout
+# keeps it, and the rally squares it to the heading.
 var _formation_angle: float = 0.0
 # The net turn of the in-place drill leaves -- QUARTER_TURN (a Q/E drill, or a lateral pivot's
 # legs) and ABOUT_FACE (a V drill, or a rear move's turn) -- that have settled into
 # _formation_angle since anything else last moved it: _settle_order_turn adds each such leaf's
 # turn (every turn that settles there is one of these two leaf types), and every other write to
-# the fold -- a snap-absorb, an engage re-face, a reform, a quarter-fold file double, a rout --
-# clears it (a snapshot restore restores it with the fold). A new write to _formation_angle must do one or the other. So it only ever
+# the fold -- a snap-absorb, an engage re-face, a reform, a quarter-fold file double, the
+# rally's squaring of the fold -- clears it, and so does a rout, which keeps the fold itself (a
+# snapshot restore restores it with the fold). A new write to _formation_angle must do one or the other. So it only ever
 # describes drill turns made on top of whatever fold was already there. reform_ranks reads it for
 # what the angle alone cannot tell: a fold whose drills net a quarter is re-paired, and one whose
 # drills net a half-turn is reflected like an about-face, even when a leftover snap-absorb fold
@@ -526,9 +528,8 @@ var _drill_turn_fold: float = 0.0
 # fresh order starts unmirrored with every man's slot exactly where the mirror had put it;
 # simply dropping the flag would swap every off-centre man to the opposite flank. set_frontage()
 # bakes it too, before writing its anchor shift, which callers compute in the unmirrored frame
-# (see unmirrored_anchor_offset). _rout() drops it without baking it, along with the fold, which
-# still reflects every off-centre man's slot to the other flank; that is a known gap, not a
-# design choice.
+# (see unmirrored_anchor_offset). _rout() bakes it too, so a mirrored block that breaks keeps
+# every man's slot on his own flank.
 #
 # Deliberately NOT cleared by _settle_engage_turn() or _face_dir()'s snap-absorb branch: those
 # both fold a rotation into _formation_angle specifically to hold `ang` (soldier_world_slots'
@@ -1536,6 +1537,16 @@ var _flight_turn_rate: float = 0.0
 # and is_rally_halting). Cleared by _tick_idle_coast once the anchor stops, or the moment the
 # unit locomotes, fights, or carries a held march; and by _rout() -- whichever comes first.
 var _rally_halt: bool = false
+# True from a rally until its re-square has run (see _advance_rally_resquare): the coast stops,
+# the heading turns onto the ranks, then the ranks re-square. Cleared by _finish_rally_resquare
+# and by _rout().
+var _rally_resquare_pending: bool = false
+# True once an enemy has called a pending rally re-square off (_drop_rally_resquare_near_enemy),
+# until the fold it left is squared: by the heading turn a fresh order makes first
+# (_square_cancelled_rally_fold), or by the re-square resuming once the enemy has stayed clear.
+# Cleared by _rout(). _rally_clear_ticks counts the ticks the enemy has stayed clear.
+var _rally_fold_unsquared: bool = false
+var _rally_clear_ticks: int = 0
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -1788,6 +1799,7 @@ func _physics_process(delta: float) -> void:
 	# overlap (see REORDER_MOMENTUM_DOT_MIN). A genuinely idle unit already has
 	# _current_speed == 0, so the decay is a no-op for it either way.
 	_tick_idle_coast(delta)
+	_advance_rally_resquare(delta)
 
 	_tick_far_stamina(delta)
 
@@ -1858,6 +1870,9 @@ func set_current_order(order: Order) -> void:
 	# local X (frontage anchors, resize grips, the relief corridor) means the same flank it
 	# does for any other block. The mirror is baked into the assignment rather than dropped:
 	# dropping it would carry every off-centre man to the other flank.
+	# A rally still waiting to re-square does so first, so the mirror its re-square arms is
+	# baked here with any other.
+	_finish_rally_resquare()
 	_bake_formation_mirror()
 
 
@@ -2854,6 +2869,7 @@ func _think(delta: float) -> void:
 	# actually read it.
 	SimOps.bump(SimOps.UNIT_THINK)
 	_refresh_enemy_contact()
+	_drop_rally_resquare_near_enemy()   # before anything below turns the unit
 
 	_update_current_order()
 	# Order-response delay: tick down on every frame. Non-fighting units are frozen
@@ -9083,6 +9099,8 @@ func resolve_soldier_melee(enemy: Unit) -> void:
 ## motion fields onto the unit. The unit holds its current action for
 ## order_response_delay seconds before executing the new order.
 func start_order_response() -> void:
+	_finish_rally_resquare()   # before the reform below reads the fold
+	_square_cancelled_rally_fold()
 	_order_response_timer = order_response_delay
 	_release_streaming_router()   # a fresh order is a fresh action; no fight's latch carries
 	# A move/attack order reforms a quarter-turned unit back square to its heading, so it
@@ -9113,6 +9131,8 @@ func start_order_response() -> void:
 ## drills in combat anyway). Unlike start_order_response this does NOT re-square the
 ## grid or drop an engage turn: a drill manages its own geometry.
 func _start_atomic_response() -> void:
+	_finish_rally_resquare()   # a drill turns the block from a squared grid, not a rally's fold
+	_square_cancelled_rally_fold()
 	_order_response_timer = maxf(_order_response_timer, atomic_response_delay)
 
 
@@ -9231,9 +9251,20 @@ func _rout() -> void:
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn
 	_engage_turn_enemy = null
 	_pin_down_exposure_cd = 0.0        # a rout ends the exposure window instead of freezing it open
-	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
+	# The rout leaves the slot grid where the men stand. It keeps the fold (an engage re-face, a
+	# half-turn or a drill leaves one), since dropping it would swing the grid about the anchor
+	# under the men. It bakes an armed mirror the way a fresh order does, since clearing the flag
+	# would send every off-centre man's slot to the other flank. The rally squares the fold to
+	# the heading (see _rally). The drill record still goes: the rally squares the fold by its
+	# angle alone, whatever turns made it.
+	# TODO(#1785): a known gap. A router still in contact turns onto its first flight heading
+	# with _face_dir, and a turn under FACING_SNAP_ABSORB_THRESHOLD is not folded in, so on that
+	# next tick the grid does swing under the men (catalog trapped_routing: mean body-to-slot gap
+	# 19.8 wu at the rout tick, 288.9 the tick after).
+	_bake_formation_mirror()
 	_drill_turn_fold = 0.0
-	_formation_mirror_x = false
+	_rally_resquare_pending = false
+	_rally_fold_unsquared = false
 	clear_couple_transit()             # the flight scatters the walkers; nothing is in transit
 	_rout_timer = rout_time
 	# Deliberately no `_shattered = false` here: a fresh rout starts "broken"
@@ -9430,17 +9461,9 @@ func _rally() -> void:
 	# floor — a unit that rallies the instant its timer expires still reforms shaken.
 	morale = maxf(morale, RALLY_MORALE)
 	_rout_timer = 0.0
-	# _rout() zeroed _formation_angle so the unit "reforms square to its heading on rally"
-	# (its own comment), but fleeing can re-fold it via _face_dir's snap-absorb (a sharp
-	# turn away from the enemy at the moment routing starts). reform_ranks() is the
-	# established mechanism for dropping that fold back to zero -- unlike a raw
-	# `_formation_angle = 0.0`, it correctly arms _formation_mirror_x for an exact
-	# about-face fold instead of point-reflecting the whole block.
-	# Hold-ground: nothing ordered a countermarch here. The fold is bookkeeping the flight
-	# left behind, so the ranks re-square where the men are standing rather than marching the
-	# whole block through itself to reach the same footprint.
-	reform_ranks(true)
-	# After the re-square, so the coast's terrain check sweeps the block the unit now forms.
+	# The re-square waits for the coast to stop and the heading to turn (see
+	# _advance_rally_resquare), so the coast's terrain check sweeps the block as it flew.
+	_rally_resquare_pending = true
 	_begin_rally_halt()
 	_clear_flight()
 	# The orders queue (route legs included) was already dropped by _rout()'s
@@ -9450,11 +9473,190 @@ func _rally() -> void:
 	queue_redraw()
 
 
+## Square a rallying unit's slot grid to its heading without sending the men across the block.
+## The fold it carries here is whatever it held when it broke (_rout keeps it) plus every
+## flight turn _face_dir's snap-absorb took in. That can be any angle, and dropping an arbitrary
+## fold swings the grid about the anchor under the men, so the heading first takes the part of
+## the fold off its nearer whole or half turn (_turn_heading_onto_fold_half). A quarter-turn
+## left in the fold would still swing a block that is not square through a different footprint,
+## so the heading takes that too, turning by up to a quarter-turn. reform_ranks() then drops
+## what is left, holding ground: nothing ordered a countermarch, so the ranks re-square where the
+## men are standing. A half-turn fold arms the depth reflection instead of point-reflecting the
+## whole block.
+## A half-turn's hold-ground reflection keeps a file-major block's men within a rank pitch of
+## their ground, but in the row-major and square layouts, when the short rank is centred under
+## the middle files, it sends the outer files' men to the other end of their file, the whole
+## depth of the block. Those two layouts are dealt again instead, column by column
+## (UnitFormation.pair_slots_by_column) from the slots the men held before the re-square, so no
+## man's slot moves more than a rank pitch, and the walkers are judged against those slots, as
+## reform_ranks judges its own. A block whose old slots could only be read by dealing them from
+## the bodies (_slot_body_deal_pending) keeps the deal reform_ranks makes from where the men stand
+## (see _apply_row_slot_reflection and _apply_square_slot_reflection).
+## The heading turn here is a one-tick turn of every man's facing (the grid stays put). A rally
+## normally reaches this through _advance_rally_resquare, which has already turned the heading at
+## a bounded rate, so the turn here is empty; a fresh order that interrupts that turn, and a
+## trapped router that stands to fight (_stop_rout_and_fight), take the rest at once.
+func _rally_resquare() -> void:
+	_turn_heading_onto_fold_half()
+	var files: int = maxi(1, formation_files(soldiers))
+	var half_turn: bool = absf(absf(wrapf(_formation_angle, -PI, PI)) - PI) < 0.01
+	var deal: bool = half_turn and (in_square() or not _effective_file_major_reform())
+	# Read before the re-square, unless the read would deal the assignment from the bodies
+	# (_slot_body_deal_pending: a frontage reshape, or any rebuild of a square or file-major
+	# assignment). A row-major close-up over a regiment-path loss, or a gain given the tail
+	# cells, reads no body: the read settles it first (formation_slots), so the column deal below
+	# starts from the closed-up slots. The men have not walked to those yet, so the walkers are then not judged
+	# against them (main measured a capture over a pending close-up dragging the anchor 4.4 wu,
+	# see _slot_deal_pending), and transit arms nothing.
+	var slots_before := PackedVector2Array()
+	var settled_rebuild: bool = false
+	if deal and not _slot_body_deal_pending(soldiers, files):
+		settled_rebuild = _slot_deal_pending(soldiers, files)
+		slots_before = soldier_world_slots(soldiers)   # settles that close-up or extension first
+	if not reform_ranks(true) or not deal or slots_before.size() != soldiers:
+		return
+	# Deal from the slots the men held, not from where they stand: a block braking out of a
+	# flight stands sheared and strung out around its slots, and dealing from that would hand a
+	# man a cell across the block. Each man's new cell is then at most a rank pitch from his old
+	# one, so his distance to it grows by at most a rank pitch.
+	var held: PackedVector2Array = to_slot_frame(slots_before)
+	if in_square():
+		_sim_soldier_square_slot = UnitFormation.pair_slots_by_column(
+				held, UnitFormation.block_slots(soldiers, files, file_pitch_wu()), file_pitch_wu())
+		_square_slot_files = files
+	else:
+		_sim_soldier_row_slot = UnitFormation.pair_slots_by_column(
+				held, UnitFormation.slots(self, soldiers), file_pitch_wu())
+		_row_slot_files = files
+		_row_slot_dealt = true
+		_row_layout_files = files
+	arm_couple_transit(PackedVector2Array() if settled_rebuild else slots_before, _reform_timeout())
+
+
+## Called each non-routing tick: carry a rally's re-square through once the coast has stopped.
+## The heading first turns at CONVERSIO_TURN_RATE (an ordered about-face's rate) by the part of the
+## fold off its nearer whole or half turn, the fold taking up each step so the slot grid stays
+## where the men stand; then _rally_resquare re-squares the ranks. Waiting for the coast means the
+## block never slides sideways along its old flight line with its men facing across it.
+## The heading can end up to a quarter-turn off the flight line, square across it at worst. That
+## is intended: turning the ranks onto the flight heading instead would swing a block that is not
+## square through a different footprint (the 60-horse router in the catalog clip trapped_routing
+## would have been sent 235 wu off its slots on average), and a unit can only rally clear of the
+## enemy, so which way it faces matters less than keeping its men in place; the next order turns
+## it. A fresh order takes the rest of the turn and the re-square at once (set_current_order,
+## start_order_response). An enemy that closes in first, which the coast's own cut-off allows,
+## cancels it instead (_drop_rally_resquare_near_enemy), as does any other way out of IDLE.
+func _advance_rally_resquare(delta: float) -> void:
+	if not _rally_resquare_pending:
+		return
+	if state != State.IDLE:
+		_rally_resquare_pending = false
+		_rally_fold_unsquared = true
+		_rally_clear_ticks = 0
+		return
+	if is_rally_halting():
+		return
+	var fold: float = wrapf(_formation_angle, -PI, PI)
+	var residue: float = fold - roundf(fold / PI) * PI
+	if absf(residue) > RALLY_TURN_DONE_EPS:
+		var step: float = clampf(residue, -CONVERSIO_TURN_RATE * delta, CONVERSIO_TURN_RATE * delta)
+		facing = facing.rotated(step)
+		_formation_angle = wrapf(_formation_angle - step, -PI, PI)
+		_drill_turn_fold = 0.0   # a heading turn absorbed into the fold, not a drill turn
+		_render_dirty = true
+		return
+	_finish_rally_resquare()
+
+
+# The residue (rad) under which a rally's bounded heading turn counts as done; the last few
+# millionths are taken by _turn_heading_onto_fold_half inside _rally_resquare.
+const RALLY_TURN_DONE_EPS: float = 0.0001
+
+
+## Called from _think before anything there turns the unit: a rallied unit whose re-square is
+## still pending gives it up once an enemy is in contact or within rally_coast_enemy_radius(),
+## the range inside which its idle auto-engage would face it toward that enemy. The heading turn
+## would otherwise turn it away from its attacker, and a turn counted twice with an engage turn
+## swings the grid under the men. The fold stays as it stands, as any engage re-face leaves one,
+## and the engage logic faces the enemy from there; _rally_fold_unsquared records that the fold
+## still wants squaring. Once the unit is IDLE again, out of contact, and no enemy has come within
+## rally_resume_radius_factor times that radius for rally_resume_clear_ticks ticks, the re-square
+## resumes. The wider radius and the wait keep an enemy hovering at the edge of the radius from
+## flipping it on and off.
+func _drop_rally_resquare_near_enemy() -> void:
+	var radius: float = rally_coast_enemy_radius()
+	if _rally_resquare_pending:
+		if _in_enemy_contact or UnitTargeting.nearest_enemy_to(self, position, radius) != null:
+			_rally_resquare_pending = false
+			_rally_fold_unsquared = true
+			_rally_clear_ticks = 0
+		return
+	if not _rally_fold_unsquared:
+		return
+	if state != State.IDLE or _in_enemy_contact or UnitTargeting.nearest_enemy_to(
+			self, position, radius * rally_resume_radius_factor) != null:
+		_rally_clear_ticks = 0
+		return
+	_rally_clear_ticks += 1
+	if _rally_clear_ticks >= rally_resume_clear_ticks:
+		_rally_fold_unsquared = false
+		_rally_clear_ticks = 0
+		_rally_resquare_pending = true
+
+
+# How much farther than rally_coast_enemy_radius() every enemy must stand, and for how many
+# ticks, before a rally re-square an enemy called off resumes (see _drop_rally_resquare_near_enemy).
+# Defaults for the caller-configurable fields below.
+const RALLY_RESUME_RADIUS_FACTOR: float = 1.25
+const RALLY_RESUME_CLEAR_TICKS: int = 30
+# Live rally-resume thresholds -- caller-configurable parameters (CLAUDE.md's code conventions)
+# defaulting to the consts above, with the same set-before-_ready contract as rout_time.
+var rally_resume_radius_factor: float = RALLY_RESUME_RADIUS_FACTOR
+var rally_resume_clear_ticks: int = RALLY_RESUME_CLEAR_TICKS
+
+
+## A fresh order squares the fold a rally re-square left when an enemy called it off: the heading
+## takes the part of the fold off its nearer whole or half turn (_turn_heading_onto_fold_half), so
+## the order's own reform_ranks drops a whole or half turn rather than an arbitrary fold, which
+## would swing the grid under the men. The order re-aims the unit anyway. A no-op otherwise.
+func _square_cancelled_rally_fold() -> void:
+	if not _rally_fold_unsquared:
+		return
+	_rally_fold_unsquared = false
+	_rally_clear_ticks = 0
+	_turn_heading_onto_fold_half()
+
+
+## Run a pending rally re-square now (see _advance_rally_resquare). A no-op when none is pending.
+func _finish_rally_resquare() -> void:
+	if not _rally_resquare_pending:
+		return
+	_rally_resquare_pending = false
+	_rally_resquare()
+
+
+## Turn `facing` by the part of the fold that lies off its nearer whole or half turn, and take
+## that part out of the fold, so the slot grid stays exactly where it was (soldier_world_slots
+## turns the grid by facing plus the fold) and the fold is left at 0 or a half-turn. The heading
+## moves by at most a quarter-turn. Clears the drill record, as every fold write that is not a
+## drill turn does.
+func _turn_heading_onto_fold_half() -> void:
+	var fold: float = wrapf(_formation_angle, -PI, PI)
+	var half: float = roundf(fold / PI) * PI
+	var residue: float = fold - half
+	if residue == 0.0:
+		return
+	facing = facing.rotated(residue)
+	_formation_angle = half
+	_drill_turn_fold = 0.0
+	_render_dirty = true
+
+
 ## The men are still running when they rally: hand the flight over to the idle coast-to-stop
 ## instead of stopping the anchor dead under bodies that still carry the flight velocity (they
 ## would overrun their slots and walk back). The coast pulls up at rally_halt_brake_rate(), and
 ## the bodies brake with it (SoldierBodies.body_brake_accel_for), so the block halts as one.
-## Called from _rally() after the state flip and the re-square, before _clear_flight() drops
+## Called from _rally() after the state flip, before its re-square and before _clear_flight() drops
 ## the flight. A coast is not handed over -- the anchor stops where it rallied, as it always
 ## did -- when its stopping point would leave retreat_bounds, when the block's swept width
 ## along it runs into impassable terrain, or when a living enemy stands within
@@ -9668,6 +9870,9 @@ func _across_flight_on_field(p: Vector2, flee: Vector2, margin: float) -> bool:
 func _stop_rout_and_fight() -> void:
 	# Exit routing state: rejoin the fighting units instead of routers.
 	state = State.IDLE
+	# Square the fold the rout kept (plus the flight's turns) to the heading, as a rally does,
+	# but at once: the unit stands to fight with no coast to wait for (see _rally_resquare).
+	_rally_resquare()
 	_clear_flight()
 	remove_from_group("routers")
 	add_to_group("units")
@@ -10474,7 +10679,8 @@ func to_snapshot_dict() -> Dictionary:
 		"moved_while_routing": _moved_while_routing,
 		"moved_while_routing_pace": _moved_while_routing_pace,
 		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity, "flight_turn_rate": _flight_turn_rate,
-		"rally_halt": _rally_halt,
+		"rally_halt": _rally_halt, "rally_resquare_pending": _rally_resquare_pending,
+		"rally_fold_unsquared": _rally_fold_unsquared, "rally_clear_ticks": _rally_clear_ticks,
 		# Not reset before a routing unit's early return, so a router keeps reading it.
 		"is_facing_turning": _is_facing_turning,
 
@@ -10491,6 +10697,8 @@ func to_snapshot_dict() -> Dictionary:
 		"rearguard_delay_sec": rearguard_delay_sec,
 		"rout_time": rout_time, "shatter_strength_frac": shatter_strength_frac,
 		"rally_morale_threshold": rally_morale_threshold,
+		"rally_resume_radius_factor": rally_resume_radius_factor,
+		"rally_resume_clear_ticks": rally_resume_clear_ticks,
 		"flanking_maneuver_wrap_files": flanking_maneuver_wrap_files,
 		"flanking_maneuver_cooldown_ticks": flanking_maneuver_cooldown_ticks,
 		"flanking_maneuver_hysteresis": flanking_maneuver_hysteresis,
@@ -10720,6 +10928,9 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_flee_velocity = d.get("flee_velocity", _flee_velocity)
 	_flight_turn_rate = float(d.get("flight_turn_rate", _flight_turn_rate))
 	_rally_halt = bool(d.get("rally_halt", _rally_halt))
+	_rally_resquare_pending = bool(d.get("rally_resquare_pending", false))
+	_rally_fold_unsquared = bool(d.get("rally_fold_unsquared", false))
+	_rally_clear_ticks = int(d.get("rally_clear_ticks", 0))
 	_is_facing_turning = bool(d.get("is_facing_turning", _is_facing_turning))
 	is_general = bool(d.get("is_general", is_general))
 	order_clear_step = float(d.get("order_clear_step", order_clear_step))
@@ -10733,6 +10944,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rout_time = float(d.get("rout_time", rout_time))
 	shatter_strength_frac = float(d.get("shatter_strength_frac", shatter_strength_frac))
 	rally_morale_threshold = float(d.get("rally_morale_threshold", rally_morale_threshold))
+	rally_resume_radius_factor = float(d.get("rally_resume_radius_factor", rally_resume_radius_factor))
+	rally_resume_clear_ticks = int(d.get("rally_resume_clear_ticks", rally_resume_clear_ticks))
 	flanking_maneuver_wrap_files = int(d.get("flanking_maneuver_wrap_files", flanking_maneuver_wrap_files))
 	flanking_maneuver_cooldown_ticks = int(d.get("flanking_maneuver_cooldown_ticks", flanking_maneuver_cooldown_ticks))
 	flanking_maneuver_hysteresis = int(d.get("flanking_maneuver_hysteresis", flanking_maneuver_hysteresis))

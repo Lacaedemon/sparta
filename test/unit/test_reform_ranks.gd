@@ -400,6 +400,7 @@ func test_rally_reforms_without_marching_the_block_through_itself() -> void:
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 
 	u._rally()
+	u._advance_rally_resquare(1.0 / 60.0)   # no flight to coast off, and the fold is a half-turn
 
 	assert_eq(u.state, Unit.State.IDLE, "the unit rallied")
 	assert_eq(u._formation_angle, 0.0, "and re-squared the grid to its heading")

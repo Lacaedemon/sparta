@@ -446,6 +446,7 @@ func test_spawn_role_tunables_and_late_state_round_trip() -> void:
 		"routing_melee_press_fraction": 0.21, "disengage_step_distance": 77.0,
 		"rearguard_sacrifice_frac": 0.15, "rearguard_delay_sec": 6.5,
 		"rout_time": 9.0, "shatter_strength_frac": 0.11, "rally_morale_threshold": 33.0,
+		"rally_resume_radius_factor": 1.5, "rally_resume_clear_ticks": 45,
 		"flanking_maneuver_wrap_files": 6, "flanking_maneuver_cooldown_ticks": 90,
 		"flanking_maneuver_hysteresis": 3,
 	}
@@ -477,7 +478,8 @@ func test_newly_captured_fields_default_for_older_snapshots() -> void:
 	for tunable in ["order_clear_step", "order_clear_tolerance", "formed_turn_tracking_frac",
 			"melee_press_fraction", "routing_melee_press_fraction", "disengage_step_distance",
 			"rearguard_sacrifice_frac", "rearguard_delay_sec", "rout_time", "shatter_strength_frac",
-			"rally_morale_threshold", "flanking_maneuver_wrap_files",
+			"rally_morale_threshold", "rally_resume_radius_factor", "rally_resume_clear_ticks",
+			"flanking_maneuver_wrap_files",
 			"flanking_maneuver_cooldown_ticks", "flanking_maneuver_hysteresis"]:
 		fields[tunable] = tunable
 	for key in fields:
