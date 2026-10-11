@@ -34,3 +34,4 @@ imports below.
 @.claude/memories/sparta/20-wave6-demo-claims-flips-and-brief-hygiene.md
 @.claude/memories/sparta/21-wave7-caches-order-hooks-carried-momentum-and-absolute-expects.md
 @.claude/memories/sparta/22-wave8-cache-grow-paths-phase-gates-lazy-getters-and-relayed-claims.md
+@.claude/memories/sparta/23-wave9-tool-sources-sibling-state-deferral-exits-and-tunables.md
