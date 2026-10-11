@@ -1,0 +1,28 @@
+# Checks the repo's own github.com/Lacaedemon/sparta/{blob,tree}/main/<path> links
+# against the tracked tree. check-links.yml (lychee) excludes those URLs because
+# github.com answers the runner's burst of blob-page requests with intermittent
+# 503s (#1796); this job keeps a deleted or renamed link target failing, offline.
+name: Check Own Blob Links
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Own blob links
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check own-repo blob/tree links resolve
+        run: tools/check.sh own_links

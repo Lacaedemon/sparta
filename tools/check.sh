@@ -59,6 +59,10 @@
 #             diff-scoped check and any finding is unambiguously new. Not in
 #             the default set (run it explicitly or via "all"); mirrors
 #             .github/workflows/check-gdlint.yml.
+#   own_links This repo's own github.com/Lacaedemon/sparta/{blob,tree}/main/<path> links, checked
+#             against the tracked tree (tools/ci/check-own-blob-links.sh). lychee.toml
+#             excludes those URLs, so this keeps a deleted or renamed target failing.
+#             Offline and fast; mirrors .github/workflows/check-own-blob-links.yml.
 #   links     Markdown link-check with lychee, if it's installed. Mirrors
 #             .github/workflows/check-links.yml. Needs network; not in the
 #             default set (run it explicitly or via "all").
@@ -88,7 +92,7 @@
 #             check when python3 is.
 #
 # Usage:
-#   tools/check.sh                 # default set: validate, test, chars, comments, units, file_length, shell_tests, markdown
+#   tools/check.sh                 # default set: validate, test, chars, comments, units, file_length, shell_tests, markdown, own_links
 #   tools/check.sh test chars      # only the named checks, in the given order
 #   tools/check.sh all             # every check (links included if lychee is present)
 #   tools/check.sh -l | --list     # list the available checks
@@ -171,8 +175,8 @@ DUMP_TIMEOUT="${SPARTA_DUMP_STATE_TIMEOUT:-300}"
 # shellcheck source=lib/demo-defect-metrics.sh
 . "$SCRIPT_DIR/lib/demo-defect-metrics.sh"
 
-DEFAULT_CHECKS=(validate test chars comments units file_length shell_tests markdown)
-ALL_CHECKS=(validate test chars comments units file_length shell_tests markdown coverage patch_coverage lint links demo_defects)
+DEFAULT_CHECKS=(validate test chars comments units file_length shell_tests markdown own_links)
+ALL_CHECKS=(validate test chars comments units file_length shell_tests markdown own_links coverage patch_coverage lint links demo_defects)
 
 # --- pretty output ---------------------------------------------------------
 # Colour only when stdout is a terminal and NO_COLOR isn't set. Per the NO_COLOR
@@ -240,6 +244,7 @@ list_checks() {
   info "  coverage   instrumented GUT suite -> coverage/lcov.info (test-coverage.yml)"
   info "  patch_coverage  local codecov/patch gate for this diff's scripts/*.gd changes (fails below the effective target)"
   info "  lint       GDScript style lint via gdlint (see .gdlintrc), whole tracked *.gd tree"
+  info "  own_links  own-repo github.com blob/tree links checked against the tracked tree (check-own-blob-links.yml)"
   info "  links      Markdown link-check via lychee (check-links.yml)"
   info "  demo_defects  deterministic defect scan of this diff's changed demo input scripts and replay sidecars (demo-video.yml)"
   info ""
@@ -1352,6 +1357,13 @@ check_lint() {
   ( cd "$PROJECT_ROOT" && gdlint "${files[@]}" )
 }
 
+check_own_links() {
+  # lychee.toml excludes the repo's own github.com blob/tree/main links (github.com
+  # answers the runner's burst with intermittent 503s); this is where they are still
+  # verified, against the tracked tree and offline.
+  ( cd "$PROJECT_ROOT" && bash tools/ci/check-own-blob-links.sh )
+}
+
 check_links() {
   if ! have lychee; then
     warn "lychee not installed — skipping link check."
@@ -1910,7 +1922,7 @@ main() {
       -l|--list) list_checks; exit 0 ;;
       all)       checks+=("${ALL_CHECKS[@]}") ;;
       markdown)  checks+=("$arg"); MARKDOWN_REQUESTED=1 ;;
-      validate|test|chars|comments|units|file_length|shell_tests|coverage|patch_coverage|lint|links|demo_defects) checks+=("$arg") ;;
+      validate|test|chars|comments|units|file_length|shell_tests|own_links|coverage|patch_coverage|lint|links|demo_defects) checks+=("$arg") ;;
       *) err "Unknown argument: $arg"; usage; exit 2 ;;
     esac
   done
