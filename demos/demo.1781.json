@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/row-major-casualty-close-up-1781.json",
+  "caption": "Archers shoot down the front mounts of a cavalry squadron that holds its ground. Each fallen mount's file steps forward a rank to close the gap and the rear rank fills in behind, so the squadron keeps its seven files on its own centre line. Before this fix every mount behind a fallen one moved up one place in roster order, so mounts were sent across the squadron to the far end of the rank ahead; the squadron slid 3 m to one side and broke into uneven clumps.",
+  "fixed_fps": 30,
+  "max_frames": 240,
+  "fps": 15,
+  "width": 720
+}

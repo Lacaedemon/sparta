@@ -1,0 +1,26 @@
+{
+  "_comment": "A row-major cavalry squadron standing under bow fire closes up over its casualties instead of reflowing by roster order. uid 0: 42 mounts on 7 files (6 full ranks; 40 wu files, 120 wu ranks), facing north at (700, 640), with a morale floor of 50 under fire so it holds. uid 1: 60 Archers at (700, 200) facing south, their reach stretched to 460 wu; they shoot the squadron's front ranks from tick 160 on. Volleys land at tick 162 (42 -> 40) and tick 282 (40 -> 37). slots_across_centreline and slot_lateral_excess are read from the full dump on the volley's own tick, before the mounts move (DemoDefects.derived_field). On the merge-base (e81ea9fa) the identity layout renumbers every cell behind each fallen mount, so at tick 162 15 mounts get a slot across the squadron's centreline and one is sent 200 wu (five files) sideways of his place; at tick 282, 18 and 154.7 wu. Here none is sent across, and none more than one file pitch sideways: 40.0 wu at tick 162 (pinned at a pitch plus a 0.5 wu float margin) and 41.0 wu at tick 282 (pinned at 41.5: the bodies stood up to 0.8 wu off their slots at tick 280, before that volley). The squadron's centre stays within 3 wu of x = 700 through tick 420 here; on the merge-base the torn block drags it to x = 639.38 by tick 420. Both trees also drift the squadron rearward (south), 88.6 wu here and 103.5 wu on the merge-base by tick 420, a separate pre-existing effect. all_teams_control and drill keep both sides under test control. Each slots_across_centreline, slot_lateral_excess and tick-420 position pin fails on the merge-base.",
+  "seed": "17810",
+  "drill": true,
+  "all_teams_control": true,
+  "scenario": [
+    {"team": 1, "type": "Cavalry", "x": 700, "y": 640, "count": 42, "facing": [0, -1], "frontage_override": 7, "under_fire_morale_floor": 50.0},
+    {"team": 0, "type": "Archers", "x": 700, "y": 200, "count": 60, "facing": [0, 1], "missile_range": 460}
+  ],
+  "camera": [
+    {"tick": 0, "x": 700, "y": 560, "zoom": 0.5}
+  ],
+  "steps": [],
+  "state": [8, 60, 120, 160, 162, 200, 240, 280, 282, 320, 360, 400, 420, 460],
+  "frames": [160, 164, 240, 282, 286, 360, 420],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [700.0, 640.0], "tol": 0.5},
+    {"tick": 162, "uid": 0, "field": "soldiers", "value": 40},
+    {"tick": 162, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 162, "uid": 0, "field": "slot_lateral_excess", "value": 0, "tol": 40.5},
+    {"tick": 282, "uid": 0, "field": "soldiers", "value": 37},
+    {"tick": 282, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 282, "uid": 0, "field": "slot_lateral_excess", "value": 0, "tol": 41.5},
+    {"tick": 420, "uid": 0, "field": "position", "value": [697.12, 728.59], "tol": 0.5}
+  ]
+}

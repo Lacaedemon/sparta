@@ -337,6 +337,31 @@ func test_a_baked_block_keeps_its_flanks_through_a_regiment_path_casualty() -> v
 			% [layout, int(t["crossed"])])
 
 
+## Per-soldier casualties close the row-major pairing up (Unit.close_up_row_slots), which breaks
+## its ties toward one flank. The baked block and its armed twin must still close up onto the
+## same ground, man for man, or the bake would move men after all.
+func test_a_baked_row_major_block_closes_up_over_casualties_as_its_armed_twin_does() -> void:
+	for dead in [[4], [0, 1, 2, 9, 17], [3, 4, 11, 12, 59]]:
+		var u := _make_partial_row_major()
+		_baked_block(u)
+		var m: Unit = _mirrored_block(_make_partial_row_major)
+		_stand_on_slots(m)
+		assert_false(u._formation_mirror_x, "precondition: the mirror is baked")
+		for b in [u, m]:
+			for i in dead:
+				b._sim_soldier_hp[i] = 0.0
+			SoldierMelee.reap(b, null)
+		var a: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+		var y: PackedVector2Array = m.soldier_world_slots(m.soldiers)
+		assert_eq(a.size(), y.size(), "precondition: both lost %d" % dead.size())
+		var worst: float = 0.0
+		for j in range(mini(a.size(), y.size())):
+			worst = maxf(worst, (a[j] - u.position).distance_to(y[j] - m.position))
+		assert_lt(worst, 0.01,
+			"casualties %s: a slot differs by %.2f wu between the baked block and its armed twin"
+			% [dead, worst])
+
+
 ## A block squared and returned to line by ORDER_FORMATION_ONLY: Battle sets the formation
 ## before installing the order, so the mirror is baked while the block is squared. The line
 ## pairing is dormant then, and must be relabelled anyway, or the return to line sends every

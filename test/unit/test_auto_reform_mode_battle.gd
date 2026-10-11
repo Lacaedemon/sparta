@@ -6,7 +6,7 @@ extends GutTest
 ## test_file_major_reform_battle.gd already applies to the two explicit modes: kill one
 ## specific soldier and confirm AUTO+disciplined behaves exactly like FILE_MAJOR (the blast
 ## radius stays inside its own file) and AUTO+undisciplined behaves exactly like ROW_MAJOR
-## (the casualty cascades across the whole block). Also exercises the scenario-spec "auto"
+## (the file closes up as well, and the short rear rank refills it). Also exercises the scenario-spec "auto"
 ## string end to end (Battle._parse_reform_mode), not just the enum field directly.
 
 const SPEARMEN_COUNT := 40          # 9 files -> 4 full ranks + a 4-man partial rank
@@ -118,10 +118,10 @@ func test_auto_reform_mode_with_a_disciplined_unit_only_moves_the_casualtys_own_
 		"AUTO+disciplined: at least one deeper survivor in the affected file visibly stepped forward")
 
 
-func test_auto_reform_mode_with_an_undisciplined_unit_cascades_across_the_whole_block() -> void:
+func test_auto_reform_mode_with_an_undisciplined_unit_refills_the_file_from_the_rear_rank() -> void:
 	# The regression companion of the disciplined case above: AUTO on an UNDISCIPLINED unit
-	# resolves row-major, so the SAME casualty visibly displaces a soldier in a DIFFERENT file
-	# too, matching test_file_major_reform_battle.gd's own ROW_MAJOR regression guard.
+	# resolves row-major, so the SAME casualty is refilled from the rear rank, matching
+	# test_file_major_reform_battle.gd's own ROW_MAJOR regression guard.
 	var u := _stage_lone_spearmen(false)
 	assert_not_null(u, "the scenario staged the lone spearmen regiment")
 	if u == null:
@@ -146,13 +146,20 @@ func test_auto_reform_mode_with_an_undisciplined_unit_cascades_across_the_whole_
 	for _k in range(60):
 		await get_tree().physics_frame
 
-	# A soldier well past the casualty, in a DIFFERENT file than the one killed (file0's
-	# third-rank member, originally index 2*files) -- AUTO+disciplined leaves it untouched
-	# (see the companion test above); AUTO+undisciplined recomputes its cell fresh from the
-	# live count every tick, so it visibly relocates too.
+	# A soldier in a DIFFERENT file than the one killed (file0's third-rank member, originally
+	# index 2*files) holds his place, as under AUTO+disciplined (see the companion test above).
 	var after_pos: PackedVector2Array = _local_positions(u)
 	var other_file_orig_index: int = files * 2
 	var new_index: int = _orig_index_reverse(other_file_orig_index, dead_index)
 	var dist: float = after_pos[new_index].distance_to(before_pos[other_file_orig_index])
-	assert_gt(dist, 1.0,
-		"AUTO+undisciplined still cascades a casualty across the whole block, not just its own file")
+	assert_lt(dist, 0.5,
+		"AUTO+undisciplined keeps a man in another file in place (moved %.3f wu)" % dist)
+	# What sets AUTO+undisciplined (row major) apart: its grid keeps full ranks, so the short
+	# rear rank refills the casualty's file. The rear-rank man nearest the centre file (rear
+	# cell 1 of 4, originally index 4*files + 1) steps up a rank into it.
+	var rear_orig_index: int = files * 4 + 1
+	var rear_index: int = _orig_index_reverse(rear_orig_index, dead_index)
+	var rear_dist: float = after_pos[rear_index].distance_to(before_pos[rear_orig_index])
+	assert_gt(rear_dist, u.rank_pitch_wu() * 0.5,
+		"AUTO+undisciplined refills the casualty's file from the rear rank (moved %.3f wu)"
+			% rear_dist)
