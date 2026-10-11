@@ -26,7 +26,7 @@
   "defect_exemptions": {
     "shape_residual": {
       "uids": [0],
-      "reason": "Measured by analyze_transcript.gd on this tree: uid0 reads shape_residual 57.05 wu, sustained, against its 30 wu floor from the tick-284 sample, two ticks after the second volley. The volley's files have closed up in the slots at once, while the mounts walk up to them, a rank (120 wu) for each man stepping up; after the first volley they had all but arrived within 118 ticks (the farthest 14.9 wu from his slot at tick 280). The merge-base 7d209821 reads 128.73 wu on the same samples, from the roster-order cascade this change removes. Tracking issue: TRACKING-ISSUE-PENDING."
+      "reason": "Measured by analyze_transcript.gd on this tree: uid0 reads shape_residual 57.05 wu, sustained, against its 30 wu floor from the tick-284 sample, two ticks after the second volley. The volley's files have closed up in the slots at once, while the mounts walk up to them, a rank (120 wu) for each man stepping up; after the first volley they had all but arrived within 118 ticks (the farthest 14.9 wu from his slot at tick 280). The merge-base 7d209821 reads 128.73 wu on the same samples, from the roster-order cascade this change removes. Tracking issue: #1807."
     }
   }
 }
