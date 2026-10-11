@@ -143,6 +143,7 @@ github.com (`[hosts."github.com"]`); 503 is not in `accept`, which is global.
 
 - **Do:** rerun once, then read the run's `[503]` lines before touching
   `lychee.toml`; a 503 on `github.com` is the transient case.
+
 - **Don't:** add `503` to `accept` or exclude `github.com` to silence it.
 
 ## Design-doc-only PRs: the demo manifest must be skip-form, not an `input` recording
