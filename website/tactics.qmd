@@ -249,7 +249,8 @@ it then routs,
 is carried east to the hill's west face while the charge is still on it,
 and once clear flees north-west and then north, every man clear of the hill,
 while its nerve steadies,
-rallying near the end of the clip well past the hill's northern end. Its flight never meets the hill, so no detour around it plays here.
+rallying near the end of the clip well past the hill's northern end.
+The clip does not show a detour around the hill.
 A router with no terrain escape route left at all still stands and fights
 instead of fleeing in place (see [Terrain](#terrain)) &mdash; the open field
 this clip runs in never actually boxes a unit in, so that specific case isn't
