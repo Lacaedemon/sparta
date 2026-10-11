@@ -9330,10 +9330,12 @@ func _rally() -> void:
 ## The fold it carries here is whatever it held when it broke (_rout keeps it) plus every
 ## flight turn _face_dir's snap-absorb took in. That can be any angle, and dropping an arbitrary
 ## fold swings the grid about the anchor under the men, so the heading first takes the part of
-## the fold off its nearest quarter (_turn_heading_onto_fold_quarter). reform_ranks() then drops
+## the fold off its nearer whole or half turn (_turn_heading_onto_fold_half). A quarter-turn
+## left in the fold would still swing a block that is not square through a different footprint,
+## so the heading takes that too, turning by up to a quarter-turn. reform_ranks() then drops
 ## what is left, holding ground: nothing ordered a countermarch, so the ranks re-square where the
-## men are standing. A quarter fold re-pairs the men from where they stand, and a half-turn fold
-## arms the depth reflection instead of point-reflecting the whole block.
+## men are standing. A half-turn fold arms the depth reflection instead of point-reflecting the
+## whole block.
 ## A half-turn's hold-ground reflection keeps a file-major block's men within a rank pitch of
 ## their ground, but in the row-major and square layouts, when the short rank is centred under
 ## the middle files, it sends the outer files' men to the other end of their file, the whole
@@ -9344,7 +9346,7 @@ func _rally() -> void:
 ## assignment out of step with its grid, such as after a regiment-path casualty) keeps the deal
 ## reform_ranks already made from where the men stand (see _apply_row_slot_reflection).
 func _rally_resquare() -> void:
-	_turn_heading_onto_fold_quarter()
+	_turn_heading_onto_fold_half()
 	var files: int = maxi(1, formation_files(soldiers))
 	var half_turn: bool = absf(absf(wrapf(_formation_angle, -PI, PI)) - PI) < 0.01
 	var deal: bool = half_turn and (in_square() or not _effective_file_major_reform())
@@ -9372,19 +9374,19 @@ func _rally_resquare() -> void:
 	arm_couple_transit(slots_before, _reform_timeout())
 
 
-## Turn `facing` by the part of the fold that lies off its nearest quarter-turn, and take that
-## part out of the fold, so the slot grid stays exactly where it was (soldier_world_slots turns
-## the grid by facing plus the fold) and the fold is left at 0, a quarter or a half-turn. The
-## heading moves by at most an eighth of a turn. Clears the drill record, as every fold write
-## that is not a drill turn does.
-func _turn_heading_onto_fold_quarter() -> void:
+## Turn `facing` by the part of the fold that lies off its nearer whole or half turn, and take
+## that part out of the fold, so the slot grid stays exactly where it was (soldier_world_slots
+## turns the grid by facing plus the fold) and the fold is left at 0 or a half-turn. The heading
+## moves by at most a quarter-turn. Clears the drill record, as every fold write that is not a
+## drill turn does.
+func _turn_heading_onto_fold_half() -> void:
 	var fold: float = wrapf(_formation_angle, -PI, PI)
-	var quarter: float = roundf(fold / (PI * 0.5)) * PI * 0.5
-	var residue: float = fold - quarter
+	var half: float = roundf(fold / PI) * PI
+	var residue: float = fold - half
 	if residue == 0.0:
 		return
 	facing = facing.rotated(residue)
-	_formation_angle = quarter
+	_formation_angle = half
 	_drill_turn_fold = 0.0
 	_render_dirty = true
 

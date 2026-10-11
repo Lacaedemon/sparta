@@ -93,14 +93,14 @@ its riders running together as a block.
   The block fled with its ranks as they lay when it broke,
   so they are often turned against its new heading,
   and a half-turn leaves the short rank leading.
-  The rallying unit first turns its heading by at most an eighth of a turn,
-  onto the nearest quarter of the way its ranks lie,
+  The rallying unit first turns its heading by at most a quarter-turn,
+  until its ranks lie square across it, facing either way,
   so the turn itself moves no man.
   Then it re-squares from where the men stand.
-  After a half-turn each man keeps his file,
+  If its ranks face the wrong way, each man keeps his file,
   and only the under-strength files step up one rank to close the front,
-  under **File-major** reform (the default), **Row-major**
-  and in **square** (orbis or schiltron) alike.
+  whichever the layout:
+  **File-major** reform (the default), **Row-major**, or **square** (orbis or schiltron).
   As with an ordered about-face,
   the men don't counter-march through the block to do it,
   so a rallied unit is back in fighting shape almost at once
@@ -164,13 +164,14 @@ returns to your control. (The regression guard for this behavior is
 </video>
 ```
 
-The same recovery for a **Row-major** regiment, where re-squaring the ranks is the
-harder case. The flight leaves the grid flipped, and a row-major block carries no
-per-soldier file to step up, so the flip has to be undone by naming slots directly.
-Each man takes the slot whose flipped position is the ground he already holds, so
-almost the whole block stands still &mdash; only the six front-rank men with no
-counterpart across the flip (an 11-wide rank pairing against a centred 5-wide one)
-hold their file and swap ends.
+The same recovery for a **Row-major** regiment.
+The flight leaves the grid flipped, with the 5-man short rank leading.
+A row-major block carries no per-soldier file to step up,
+so the rally deals the slots again file by file:
+each man keeps his file and his place in its order.
+The men of the five full-depth files stand still,
+and the men of the six short files each step one rank forward to close the front,
+so the short rank ends at the rear.
 :::
 
 ::: {#fig-square-rally-reform .demo}
@@ -188,13 +189,10 @@ The same recovery once more, for a regiment holding **square**.
 A square keeps its own assignment of men to cells,
 which neither the file-major step-up nor the row-major pairing reaches,
 so undoing the flip has to name that third assignment directly.
-The same cell pairing cancels the flip on the square's own assignment, so 56 of
-the 60 men hold their ground and only the four with no counterpart in the short
-rear rank swap ends: the block re-squares where it stands instead of marching
-itself inside out.
-For a moment after the rally, though, most of the men still stand on a
-neighbour's place before they settle onto their own --- a known flaw,
-tracked in [#1766](https://github.com/Lacaedemon/sparta/issues/1766).
+The rally deals the square's own cells file by file, as for row-major:
+the men of the four full-depth files stand still,
+and the men of the four short files each step one rank forward,
+so the block re-squares where it stands instead of marching itself inside out.
 :::
 
 ::: {#fig-rout-rally .demo}
@@ -247,10 +245,11 @@ Routing beside terrain: a brittle cavalry troop starts just west of the
 impassable hill, every man clear of it, and meets a charge driven straight
 in from its western flank. Opening melee is per-soldier, so the troop fights for a
 while before it breaks;
-it then routs, is shoved a little south while the charge is still on it, and once
-clear flees north up the hill's western side, every man clear of it, while its
-nerve steadies, rallying near the end of the clip well past the hill's
-northern end. Its flight never meets the hill, so no detour around it plays here.
+it then routs,
+is carried east to the hill's west face while the charge is still on it,
+and once clear flees north-west and then north, every man clear of the hill,
+while its nerve steadies,
+rallying near the end of the clip well past the hill's northern end. Its flight never meets the hill, so no detour around it plays here.
 A router with no terrain escape route left at all still stands and fights
 instead of fleeing in place (see [Terrain](#terrain)) &mdash; the open field
 this clip runs in never actually boxes a unit in, so that specific case isn't

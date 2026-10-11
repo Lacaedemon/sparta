@@ -143,6 +143,9 @@ func test_a_flank_charged_block_keeps_every_slot_on_the_rout_tick() -> void:
 		assert_almost_eq(u._formation_angle, PI * 0.5, 0.001, "setup: the re-face folded a quarter")
 		_assert_rout_moves_no_slot(u, "flank-charged, layout %d" % mode)
 		assert_almost_eq(u._formation_angle, PI * 0.5, 0.001, "the rout keeps the fold")
+		# Rallying straight from the quarter fold: the heading takes the quarter-turn, so the
+		# re-square is a half-turn's, never a quarter's swing of the block's footprint.
+		_assert_rally_holds_ground(u, "flank-charged, layout %d" % mode)
 
 
 ## A block mirrored by an about-face re-square that breaks before any fresh order baked the
@@ -215,7 +218,7 @@ func test_a_block_folded_off_a_quarter_keeps_its_slots_and_rallies_without_scatt
 		var heading_before: float = u.facing.angle()
 		_stand_on_slots(u)
 		var grid_before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
-		u._turn_heading_onto_fold_quarter()
+		u._turn_heading_onto_fold_half()
 		var still: Vector2 = _moved(grid_before, u.soldier_world_slots(u.soldiers))
 		assert_lt(still.y, EPS, "taking the residue into the heading moves no slot (max %.3f)" % still.y)
 		assert_almost_eq(absf(angle_difference(heading_before, u.facing.angle())), deg_to_rad(30.0),
