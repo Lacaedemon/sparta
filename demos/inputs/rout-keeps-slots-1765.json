@@ -38,8 +38,8 @@
   ],
   "defect_exemptions": {
     "shape_residual": {
-      "uids": [2],
-      "reason": "uid 2 is the enemy cavalry (48 horses, frontage 12). After the company breaks it marches north after it from about tick 400, and its horses fall behind their slots as it goes: mean body-to-slot gap 10.1 wu at tick 460, 22.7 at 500, 34.4 at 600 and 45.1 at 660. That is the long-pursuit drift tracked in #1716, and main does the same: over this script's own state ticks, to the clip's end at tick 1100, the shape_residual worst reads 48.59 on main 7d209821 and 54.74 here, against a 30 wu threshold; to tick 760 it read 41.03 and 40.29, so the rise is the longer chase. Measured 2026-10-11."
+      "uids": [0, 2],
+      "reason": "uid 2 is the enemy cavalry (48 horses, frontage 12). After the company breaks it marches north after it from about tick 400, and its horses fall behind their slots as it goes: mean body-to-slot gap 10.1 wu at tick 460, 22.7 at 500, 34.4 at 600 and 45.1 at 660. That is the long-pursuit drift tracked in #1716, and main does the same: over this script's own state ticks, to the clip's end at tick 1100, the shape_residual worst reads 48.59 on main 7d209821 and 54.74 here, against a 30 wu threshold; to tick 760 it read 41.03 and 40.29, so the rise is the longer chase. Measured 2026-10-11. uid 0 (the troop), on dense samples only: after its re-square at tick 863 the 6 horses of its two outer files walk one cavalry rank (120 wu) forward at the idle arrival pace and arrive by about tick 1080 (mean body-to-slot gap 39.3 wu at tick 880, 22.0 at 960, 0.0 at 1080). On 2-tick samples from tick 170 to tick 1100 its shape_residual reads 56.5 against the 30 wu threshold, and only between ticks 862 and 1080; outside that window it reads 8.85. On main 7d209821 it reads 116.3, from the rout on. Tracked in #1807 (men lag rebuilt slots at the idle arrival pace). Measured 2026-10-11."
     }
   }
 }
