@@ -112,7 +112,10 @@ its riders running together as a block.
   If one comes within reach before the ranks have re-squared,
   the re-square is called off and the unit turns to face the enemy
   with its ranks as they stand.
-  Then the ranks re-square from the places the men held.
+  Your next order squares them first, turning the men where they stand,
+  and if you give none, the re-square resumes once every enemy has stayed
+  a quarter beyond that reach for half a second.
+  When the ranks do re-square, they do so from the places the men held.
   If its ranks face the wrong way, each man keeps his file,
   and only the under-strength files step up one rank to close the front,
   whichever the layout:

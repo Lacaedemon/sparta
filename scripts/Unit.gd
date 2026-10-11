@@ -1541,6 +1541,12 @@ var _rally_halt: bool = false
 # the heading turns onto the ranks, then the ranks re-square. Cleared by _finish_rally_resquare
 # and by _rout().
 var _rally_resquare_pending: bool = false
+# True once an enemy has called a pending rally re-square off (_drop_rally_resquare_near_enemy),
+# until the fold it left is squared: by the heading turn a fresh order makes first
+# (_square_cancelled_rally_fold), or by the re-square resuming once the enemy has stayed clear.
+# Cleared by _rout(). _rally_clear_ticks counts the ticks the enemy has stayed clear.
+var _rally_fold_unsquared: bool = false
+var _rally_clear_ticks: int = 0
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -9094,6 +9100,7 @@ func resolve_soldier_melee(enemy: Unit) -> void:
 ## order_response_delay seconds before executing the new order.
 func start_order_response() -> void:
 	_finish_rally_resquare()   # before the reform below reads the fold
+	_square_cancelled_rally_fold()
 	_order_response_timer = order_response_delay
 	_release_streaming_router()   # a fresh order is a fresh action; no fight's latch carries
 	# A move/attack order reforms a quarter-turned unit back square to its heading, so it
@@ -9125,6 +9132,7 @@ func start_order_response() -> void:
 ## grid or drop an engage turn: a drill manages its own geometry.
 func _start_atomic_response() -> void:
 	_finish_rally_resquare()   # a drill turns the block from a squared grid, not a rally's fold
+	_square_cancelled_rally_fold()
 	_order_response_timer = maxf(_order_response_timer, atomic_response_delay)
 
 
@@ -9256,6 +9264,7 @@ func _rout() -> void:
 	_bake_formation_mirror()
 	_drill_turn_fold = 0.0
 	_rally_resquare_pending = false
+	_rally_fold_unsquared = false
 	clear_couple_transit()             # the flight scatters the walkers; nothing is in transit
 	_rout_timer = rout_time
 	# Deliberately no `_shattered = false` here: a fresh rout starts "broken"
@@ -9495,17 +9504,15 @@ func _rally_resquare() -> void:
 	# Read before the re-square, unless the read would deal the assignment from the bodies
 	# (_slot_body_deal_pending: a frontage reshape, or any rebuild of a square or file-major
 	# assignment). A row-major close-up over a regiment-path loss, or a gain given the tail
-	# cells, reads no body: it is settled first, so the column deal below starts from the
-	# closed-up slots. The men have not walked to those yet, so the walkers are then not judged
+	# cells, reads no body: the read settles it first (formation_slots), so the column deal below
+	# starts from the closed-up slots. The men have not walked to those yet, so the walkers are then not judged
 	# against them (main measured a capture over a pending close-up dragging the anchor 4.4 wu,
 	# see _slot_deal_pending), and transit arms nothing.
 	var slots_before := PackedVector2Array()
 	var settled_rebuild: bool = false
 	if deal and not _slot_body_deal_pending(soldiers, files):
 		settled_rebuild = _slot_deal_pending(soldiers, files)
-		if settled_rebuild:
-			formation_slots(soldiers)
-		slots_before = soldier_world_slots(soldiers)
+		slots_before = soldier_world_slots(soldiers)   # settles that close-up or extension first
 	if not reform_ranks(true) or not deal or slots_before.size() != soldiers:
 		return
 	# Deal from the slots the men held, not from where they stand: a block braking out of a
@@ -9544,6 +9551,8 @@ func _advance_rally_resquare(delta: float) -> void:
 		return
 	if state != State.IDLE:
 		_rally_resquare_pending = false
+		_rally_fold_unsquared = true
+		_rally_clear_ticks = 0
 		return
 	if is_rally_halting():
 		return
@@ -9569,13 +9578,48 @@ const RALLY_TURN_DONE_EPS: float = 0.0001
 ## the range inside which its idle auto-engage would face it toward that enemy. The heading turn
 ## would otherwise turn it away from its attacker, and a turn counted twice with an engage turn
 ## swings the grid under the men. The fold stays as it stands, as any engage re-face leaves one,
-## and the engage logic faces the enemy from there.
+## and the engage logic faces the enemy from there; _rally_fold_unsquared records that the fold
+## still wants squaring. Once the unit is IDLE again, out of contact, and no enemy has come within
+## RALLY_RESUME_RADIUS_FACTOR times that radius for RALLY_RESUME_CLEAR_TICKS ticks, the re-square
+## resumes. The wider radius and the wait keep an enemy hovering at the edge of the radius from
+## flipping it on and off.
 func _drop_rally_resquare_near_enemy() -> void:
-	if not _rally_resquare_pending:
+	var radius: float = rally_coast_enemy_radius()
+	if _rally_resquare_pending:
+		if _in_enemy_contact or UnitTargeting.nearest_enemy_to(self, position, radius) != null:
+			_rally_resquare_pending = false
+			_rally_fold_unsquared = true
+			_rally_clear_ticks = 0
 		return
-	if _in_enemy_contact \
-			or UnitTargeting.nearest_enemy_to(self, position, rally_coast_enemy_radius()) != null:
-		_rally_resquare_pending = false
+	if not _rally_fold_unsquared:
+		return
+	if state != State.IDLE or _in_enemy_contact or UnitTargeting.nearest_enemy_to(
+			self, position, radius * RALLY_RESUME_RADIUS_FACTOR) != null:
+		_rally_clear_ticks = 0
+		return
+	_rally_clear_ticks += 1
+	if _rally_clear_ticks >= RALLY_RESUME_CLEAR_TICKS:
+		_rally_fold_unsquared = false
+		_rally_clear_ticks = 0
+		_rally_resquare_pending = true
+
+
+# How much farther than rally_coast_enemy_radius() every enemy must stand, and for how many
+# ticks, before a rally re-square an enemy called off resumes (see _drop_rally_resquare_near_enemy).
+const RALLY_RESUME_RADIUS_FACTOR: float = 1.25
+const RALLY_RESUME_CLEAR_TICKS: int = 30
+
+
+## A fresh order squares the fold a rally re-square left when an enemy called it off: the heading
+## takes the part of the fold off its nearer whole or half turn (_turn_heading_onto_fold_half), so
+## the order's own reform_ranks drops a whole or half turn rather than an arbitrary fold, which
+## would swing the grid under the men. The order re-aims the unit anyway. A no-op otherwise.
+func _square_cancelled_rally_fold() -> void:
+	if not _rally_fold_unsquared:
+		return
+	_rally_fold_unsquared = false
+	_rally_clear_ticks = 0
+	_turn_heading_onto_fold_half()
 
 
 ## Run a pending rally re-square now (see _advance_rally_resquare). A no-op when none is pending.
@@ -10631,6 +10675,7 @@ func to_snapshot_dict() -> Dictionary:
 		"moved_while_routing_pace": _moved_while_routing_pace,
 		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity, "flight_turn_rate": _flight_turn_rate,
 		"rally_halt": _rally_halt, "rally_resquare_pending": _rally_resquare_pending,
+		"rally_fold_unsquared": _rally_fold_unsquared, "rally_clear_ticks": _rally_clear_ticks,
 		# Not reset before a routing unit's early return, so a router keeps reading it.
 		"is_facing_turning": _is_facing_turning,
 
@@ -10877,6 +10922,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_flight_turn_rate = float(d.get("flight_turn_rate", _flight_turn_rate))
 	_rally_halt = bool(d.get("rally_halt", _rally_halt))
 	_rally_resquare_pending = bool(d.get("rally_resquare_pending", false))
+	_rally_fold_unsquared = bool(d.get("rally_fold_unsquared", false))
+	_rally_clear_ticks = int(d.get("rally_clear_ticks", 0))
 	_is_facing_turning = bool(d.get("is_facing_turning", _is_facing_turning))
 	is_general = bool(d.get("is_general", is_general))
 	order_clear_step = float(d.get("order_clear_step", order_clear_step))

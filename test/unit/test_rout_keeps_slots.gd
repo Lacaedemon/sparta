@@ -404,15 +404,16 @@ func test_a_row_major_loss_in_flight_then_a_rally_deals_from_the_closed_up_slots
 	assert_true(u._couple_transit.is_empty(), "no walker is flagged against the closed-up slots")
 
 
-## A squared block that loses a man to the regiment path during its flight. A square rebuilds a
-## changed headcount from the bodies, so the rally reads no slots first (_slot_body_deal_pending)
-## and keeps the deal the re-square's reflection makes from where the men stand, rather than
-## dealing the square from the bodies mid-rally before that reflection is armed. Bound: three
-## pitches (the square's rank pitch is its file pitch, 9 wu). Measured 22.5 wu here, and 28.46 wu
-## when the rally reads the slots first and so deals the square from the bodies before the
-## reflection is armed; the bound sits between the two, so it is calibrated on that pair rather
-## than derived.
-func test_a_squared_loss_in_flight_then_a_rally_keeps_every_man_near_his_ground() -> void:
+## A regression guard for main's square behaviour, not a test of this change: a squared block that
+## loses a man to the regiment path during its flight rebuilds its headcount from the bodies, so
+## the rally reads no slots first (_slot_body_deal_pending) and keeps the deal the re-square's
+## reflection makes from where the men stand, as main does. That deal buckets the short rank's
+## cells by index into the leftmost files (UnitFormation.pair_slots_by_lateral_file), so the man
+## of file k can be dealt the short rank's cell k, which stands (files - short rank) / 2 file
+## pitches to his side. Bound, for this 1-man loss (59 men: 8 files, a 3-man short rank): that
+## lateral offset, 2.5 pitches (22.5 wu), plus the float margin. It grows with the loss: 27.0 wu
+## for 2 men and 31.5 for 3.
+func test_a_squared_loss_in_flight_then_a_rally_deals_the_square_as_main_does() -> void:
 	var u: Unit = Unit.new()
 	u.max_soldiers = COUNT
 	add_child_autofree(u)
@@ -424,9 +425,12 @@ func test_a_squared_loss_in_flight_then_a_rally_keeps_every_man_near_his_ground(
 	assert_true(u._slot_body_deal_pending(u.soldiers - 1, u.formation_files(u.soldiers - 1)),
 			"setup: a square loss is dealt from the bodies")
 	var worst: float = _rally_after_flight_loss(u, 1, "square")
-	var bound: float = 3.0 * u.file_pitch_wu() + EPS
+	var files: int = u.formation_files(u.soldiers)
+	var short_rank: int = u.soldiers % files
+	var bound: float = float(files - short_rank) * 0.5 * u.file_pitch_wu() + EPS
 	assert_lt(worst, bound,
-			"no man's slot is more than three pitches from him (max %.2f, bound %.2f)" % [worst, bound])
+			"no man's slot lies farther from him than the short rank's index offset (max %.2f, bound %.2f)"
+			% [worst, bound])
 
 
 ## A router with no escape stands to fight. It squares the fold it kept from the rout, plus its
@@ -500,3 +504,68 @@ func test_an_enemy_ahead_cancels_a_pending_rally_turn_instead_of_turning_away() 
 func test_an_enemy_off_the_flank_cancels_a_pending_rally_turn_without_turning_away() -> void:
 	var r: Vector2 = await _pending_rally_meets_enemy(150.0, 120.0, 260)
 	assert_lt(r.y, 1.0, "the heading does not turn away from the enemy before contact (%.1f degrees)" % r.y)
+
+
+## A live battle: a rallied `count`-man Infantry block on 8 files at (600, 600) facing east, its
+## grid folded 150 degrees with its re-square pending, and a 40-man enemy 130 wu off at 120
+## degrees, inside the radius that calls the re-square off. Returns the two units once the
+## call-off has happened.
+func _cancelled_rally(count: int) -> Array:
+	Replay.forced_seed = 61767
+	var enemy_at: Vector2 = Vector2(600, 600) + Vector2.RIGHT.rotated(deg_to_rad(120.0)) * 130.0
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.scenario = [
+		{"team": 0, "type": "Infantry", "x": 600, "y": 600, "facing": [1, 0], "count": count,
+				"frontage": FILES},
+		{"team": 1, "type": "Infantry", "x": enemy_at.x, "y": enemy_at.y, "facing": [0.5, -0.87],
+				"count": 40},
+	]
+	add_child(_battle)
+	await get_tree().physics_frame
+	var u: Unit = null
+	var e: Unit = null
+	for n in get_tree().get_nodes_in_group("units"):
+		if n.team == 0:
+			u = n
+		else:
+			e = n
+	u._formation_angle = deg_to_rad(150.0)
+	_stand_on_slots(u)
+	u._rally_resquare_pending = true
+	await get_tree().physics_frame
+	assert_false(u._rally_resquare_pending, "setup: the enemy called the re-square off")
+	assert_true(u._rally_fold_unsquared, "setup: and the fold is left to square")
+	return [u, e]
+
+
+## After an enemy calls a rally re-square off, the unit's next order squares the fold first, so
+## its own re-square drops a half-turn instead of swinging an arbitrary 150 degree fold under the
+## men. With a full grid (64 men on 8 files) a half-turn needs no re-square at all, so no slot
+## may move (EPS); on 263f0333 the order dropped the 150 degree fold and moved slots 46 wu.
+func test_an_order_after_a_called_off_rally_squares_the_fold_without_moving_a_slot() -> void:
+	var units: Array = await _cancelled_rally(64)
+	var u: Unit = units[0]
+	_stand_on_slots(u)
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	_battle._apply_order_cmd({"units": [u.uid], "x": 600, "y": 300, "target": -1})
+	var m: Vector2 = _moved(before, u.soldier_world_slots(u.soldiers))
+	assert_lt(m.y, EPS, "the order moves no slot (max %.2f wu)" % m.y)
+	assert_false(u._rally_fold_unsquared, "and the fold is squared")
+
+
+## Once the enemy that called a rally re-square off has gone, the re-square resumes: after
+## RALLY_RESUME_CLEAR_TICKS clear ticks the heading turns and the ranks re-square, as for any
+## rally. 60 men on 8 files have a short rank, so the half-turn re-squares to 0.
+func test_a_called_off_rally_resquare_resumes_once_the_enemy_has_gone() -> void:
+	var units: Array = await _cancelled_rally(COUNT)
+	var u: Unit = units[0]
+	var e: Unit = units[1]
+	var away := Vector2(0.0, 3000.0)
+	e.position += away
+	for i in range(e._sim_soldier_pos.size()):
+		e._sim_soldier_pos[i] += away
+	for _i in range(Unit.RALLY_RESUME_CLEAR_TICKS + 30):
+		await get_tree().physics_frame
+	assert_false(u._rally_fold_unsquared, "the call-off was lifted")
+	assert_false(u._rally_resquare_pending, "the re-square ran")
+	assert_almost_eq(wrapf(u._formation_angle, -PI, PI), 0.0, 0.001, "and the ranks are square")
