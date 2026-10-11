@@ -283,9 +283,11 @@ It walks the dead high-to-low and hand-writes a `remove_at(i)` per array:
 `_sim_soldier_shield_id`, `_sim_soldier_shield_hold_angle`, `_sim_soldier_file`, and
 `_sim_soldier_broken`, each behind its own size guard.
 The three arrays carrying permutation semantics (`_sim_soldier_rank`,
-`_sim_soldier_square_slot`, `_sim_soldier_row_slot`) go through
-`UnitFormation.drop_rank_assignment` and `UnitFormation.drop_slot_assignment` instead,
-because dropping an index there also has to renumber the survivors' assignments.
+`_sim_soldier_square_slot`, `_sim_soldier_row_slot`) are renumbered instead,
+because dropping an index there also has to renumber the survivors' assignments:
+the first two inside the walk, through `UnitFormation.drop_rank_assignment` and
+`UnitFormation.drop_slot_assignment`, and the row-major one after it, over all of the dead
+at once (`Unit.close_up_row_slots`).
 A new array omitted from that walk de-aligns from `_sim_soldier_pos` on the first melee
 death, with no error and no crash;
 every surviving soldier's body stats shift by one index for the remainder of the battle.

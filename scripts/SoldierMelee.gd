@@ -331,8 +331,11 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 	var dead: int = 0
 	var dead_positions := PackedVector2Array()
+	var dead_indices := PackedInt32Array()
+	var count_before: int = unit._sim_soldier_pos.size()
 	for i in range(unit._sim_soldier_hp.size() - 1, -1, -1):
 		if unit._sim_soldier_hp[i] <= 0.0:
+			dead_indices.push_back(i)
 			dead_positions.push_back(unit._sim_soldier_pos[i])
 			unit._sim_soldier_pos.remove_at(i)
 			unit._sim_body_vel.remove_at(i)
@@ -367,13 +370,6 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				# mid-fight -- see UnitFormation.drop_slot_assignment.
 				unit._sim_soldier_square_slot = UnitFormation.drop_slot_assignment(
 						unit._sim_soldier_square_slot, i)
-			if i < unit._sim_soldier_row_slot.size():
-				# Same trim for the row-major pairing a hold-ground reform leaves behind, and
-				# for the same reason: a man who held his ground through the reflection keeps
-				# holding it as the block takes losses, rather than the whole grid re-pairing
-				# the moment someone dies. Normally empty, so this is usually a no-op.
-				unit._sim_soldier_row_slot = UnitFormation.drop_slot_assignment(
-						unit._sim_soldier_row_slot, i)
 			if i < unit._sim_soldier_broken.size():
 				unit._sim_soldier_broken.remove_at(i)   # and the encirclement-broken flag
 			if i < unit._couple_transit.size():
@@ -387,6 +383,11 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 			dead += 1
 	if dead == 0:
 		return
+	# The row-major pairing closes up over all of this cadence's dead at once, after the trims
+	# above: the men behind each in his file step up, rather than every later cell stepping one
+	# on, which in a row-major grid sends a rank's first man to the far end of the rank ahead.
+	# It holds the identity layout first when no pairing is held (see Unit.close_up_row_slots).
+	unit.close_up_row_slots(dead_indices, count_before)
 	unit.soldiers = maxi(0, unit.soldiers - dead)
 	UnitCombat.register_casualties(unit, dead, killer, morale_flank, dead_positions)
 

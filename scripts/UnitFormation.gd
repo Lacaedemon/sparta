@@ -777,21 +777,37 @@ static func permute_slots(slots: PackedVector2Array, perm: PackedInt32Array) -> 
 
 ## Applies outward lateral flank arcs to unpaired traversing soldiers during depth-reflection
 ## reform, preventing them from interpenetrating stationary neighbours as they cross ranks.
+##
+## A walker is a man the reflection left on his own cell, so he walks the block's depth to its
+## other end. By default that is read as `perm[i] == i`, which holds only when the reflection
+## was composed onto the identity layout. With `walkers_by_cell` the walker is instead a man
+## whose cell is one the reflection leaves fixed (depth_reflection_pairing maps it to itself),
+## with his rank and file read from that cell: right over any base the reflection was composed
+## onto, since composing keeps a man on his base cell exactly when that cell is fixed. That holds
+## only while the pairing is the one composed at `perm.size()`: a casualty during the reform
+## hold closes the pairing up onto a smaller grid, and the fixed cells of that grid's reflection
+## are not the men who were walking, so the gate then picks the wrong men (as the index read
+## does on that path too).
 static func apply_traverse_flank_arcs(slots: PackedVector2Array, world_positions: PackedVector2Array,
-		unit_pos: Vector2, unit_ang: float, perm: PackedInt32Array, files: int, spacing: float) -> PackedVector2Array:
+		unit_pos: Vector2, unit_ang: float, perm: PackedInt32Array, files: int, spacing: float,
+		walkers_by_cell: bool = false) -> PackedVector2Array:
 	var n: int = slots.size()
 	if n <= 0 or files <= 0 or perm.size() != n or world_positions.size() != n:
 		return slots
 	var ranks: int = ranks_for(n, files)
 	if ranks <= 1:
 		return slots
+	var fixed: PackedInt32Array = depth_reflection_pairing(n, files) if walkers_by_cell \
+			else PackedInt32Array()
 	var out: PackedVector2Array = slots.duplicate()
 	for i in range(n):
-		if perm[i] == i:
-			var r: int = i / files
+		var cell: int = clampi(perm[i], 0, n - 1) if walkers_by_cell else i
+		var walker: bool = fixed[cell] == cell if walkers_by_cell else perm[i] == i
+		if walker:
+			var r: int = cell / files
 			var r2: int = ranks - 1 - r
 			if r != r2:
-				var f: int = i % files
+				var f: int = cell % files
 				var y_start: float = slots[i].y
 				var y_target: float = -y_start
 				var dy: float = y_target - y_start
@@ -831,6 +847,219 @@ static func drop_slot_assignment(perm: PackedInt32Array, index: int) -> PackedIn
 		if out[i] > vacated:
 			out[i] -= 1
 	return out
+
+
+## `perm`, a pairing onto a row-major `block_slots(n, files, ...)` grid, with the man at
+## `index` removed and the block closed up over his cell the way drilled men close up: the
+## result pairs the survivors onto `block_slots(n - 1, files, ...)`.
+##
+## drop_slot_assignment's renumbering is wrong for this grid. Cell c sits in column c % files,
+## so stepping every cell behind the vacancy down by one moves each of those men one column
+## sideways, and a rank's first man to the far end of the rank ahead: across the whole block,
+## through its centreline. Instead:
+## - A man lost from the short rear rank leaves its survivors in their lateral order, and the
+##   rank re-centres around them, half a file pitch each.
+## - A man lost from a full rank is replaced by the men behind him in his own file, each
+##   stepping up one rank. That moves the gap to the back of his file, in the last full rank.
+##   With no short rear rank behind it, that last rank becomes the short rear rank, its men
+##   keeping their lateral order. With one, the rear-rank man nearest the gap steps up into
+##   the last full rank. When the gap lies beyond the rear rank's flank, the last full rank's
+##   men between the gap and that rear-rank man each side-step one file toward the gap first,
+##   so the man who steps up moves at most half a pitch sideways. The rear rank then
+##   re-centres around the men it has left.
+## So a man moves at most one rank forward, one file sideways (outward, toward the gap), or
+## half a file sideways while stepping one rank forward, plus the half-rank re-centring the
+## whole grid makes when it loses its last rear-rank man. Every sideways move either keeps a
+## man's side or starts or ends on the centreline itself, so no man ends on the other side of
+## it from where he started. Several losses at once compound, so they go through
+## close_up_slot_assignment_over instead. An out-of-range `index` returns `perm` unchanged, and a
+## `perm` entry outside the grid falls back to drop_slot_assignment. Pure and deterministic:
+## integer arithmetic over the grid, with no body read.
+static func close_up_slot_assignment(perm: PackedInt32Array, index: int,
+		files: int) -> PackedInt32Array:
+	var n: int = perm.size()
+	if index < 0 or index >= n:
+		return perm
+	var vacated: int = perm[index]
+	if files <= 0 or vacated < 0 or vacated >= n:
+		return drop_slot_assignment(perm, index)
+	var full: int = n / files
+	var rear: int = full * files
+	# moved[c] is the cell, in the n - 1 grid, of the man who held cell c.
+	var moved := PackedInt32Array()
+	moved.resize(n)
+	for c in range(n):
+		moved[c] = c
+	if vacated >= rear:
+		for c in range(vacated + 1, n):
+			moved[c] = c - 1
+	else:
+		_close_file_up(moved, vacated, files, full, n - rear)
+	var out := PackedInt32Array()
+	out.resize(n - 1)
+	var j: int = 0
+	for i in range(n):
+		if i == index:
+			continue
+		out[j] = moved[clampi(perm[i], 0, n - 1)]
+		j += 1
+	return out
+
+
+## close_up_slot_assignment's full-rank case: fill `moved` for a gap at full-rank cell
+## `vacated`, on a grid of `full` full ranks of `files` and a short rear rank of `k` (0 for
+## none). Lateral positions are compared doubled, in file pitches, so every comparison is an
+## integer one: file f sits at 2f - (files - 1) and rear-rank man s at 2s - (k - 1).
+static func _close_file_up(moved: PackedInt32Array, vacated: int, files: int, full: int,
+		k: int) -> void:
+	var gap_file: int = vacated % files
+	for r in range(vacated / files + 1, full):
+		moved[r * files + gap_file] = (r - 1) * files + gap_file
+	var last: int = (full - 1) * files
+	if k == 0:
+		for f in range(files):
+			if f != gap_file:
+				moved[last + f] = last + (f if f < gap_file else f - 1)
+		return
+	# The rear-rank man nearest the gap steps up; between two equally near, the one nearer the
+	# centre, then the lower index.
+	var gap_x: int = 2 * gap_file - (files - 1)
+	var step_up: int = 0
+	for s in range(1, k):
+		var d_new: int = absi(2 * s - (k - 1) - gap_x)
+		var d_old: int = absi(2 * step_up - (k - 1) - gap_x)
+		if d_new < d_old or (d_new == d_old
+				and absi(2 * s - (k - 1)) < absi(2 * step_up - (k - 1))):
+			step_up = s
+	var step_x: int = 2 * step_up - (k - 1)
+	var target_file: int = gap_file
+	if absi(step_x - gap_x) > 1:
+		# The file nearest him, on the gap's side when he stands between two.
+		var twice: int = step_x + files - 1
+		target_file = twice / 2
+		if twice % 2 != 0 and gap_file > target_file:
+			target_file += 1
+	var dir: int = 1 if target_file > gap_file else -1
+	var f2: int = gap_file
+	while f2 != target_file:
+		moved[last + f2 + dir] = last + f2
+		f2 += dir
+	var rear: int = full * files
+	moved[rear + step_up] = last + target_file
+	for s in range(k):
+		if s != step_up:
+			moved[rear + s] = rear + (s if s < step_up else s - 1)
+
+
+## close_up_slot_assignment over every man in `dead` (indices into `perm`) lost at once.
+##
+## The losses are closed up one at a time, highest index first, as reap removes them. Two things
+## compound over several at once, and each is corrected afterwards:
+## - Many losses in one file (a flank file shot away from the side) send the man who steps into
+##   the back of that file up it again on every later loss, ranks along the flank. The same
+##   survivors dealt by lateral file from the cells they held (pair_slots_rear_rank_first, the
+##   deal a file-count change uses) shift whole ranks one file over instead. The deal is kept
+##   when it leaves the longest walk shorter by more than `deal_margin` file pitches. That
+##   margin is tuned, not derived: a deal re-labels whole ranks, so on a near tie the close-up,
+##   which moves fewer men, is the better drill. The default of a quarter pitch keeps the
+##   close-up on a 40-mount squadron's three-mount volley, where the deal led by 6.5 wu of a
+##   40 wu pitch. Measured on a 40-mount squadron shot from the flank, three of the six volleys that
+##   took more than one mount took the deal: the longest walk read 247, 206 and 361 wu closed up,
+##   against 127, 72 and 127 wu dealt.
+## - Each loss re-centres the short rear rank by half a file pitch, so a rear-rank man beside the
+##   centre can drift across it when the losses fall lopsidedly, and two can trade sides: on a
+##   40-mount squadron on 7 files losing three mounts a volley, the eighth volley swapped two
+##   mounts 20 wu either side of the centre. So a man who ended across the centreline trades
+##   cells with one who can take his without crossing: one who started on that far side or on the
+##   centreline, and ended on the near side or on it. Of those, the trade picks the one whose
+##   longer walk is shortest, and makes no trade that lengthens the longer of the two men's walks
+##   (beyond 0.001 wu of float residue). Each trade takes one man back and puts none across; a
+##   crossing with no such trade stays.
+## Neither correction lengthens the longest walk, so it stays within the sum of the single
+## close-ups' bounds.
+##
+## The cells are compared as block_slots lays them out at `spacing` and `rank_pitch`, and a cell
+## within a quarter pitch of the centreline is on it (cells sit on whole half pitches). Pure and
+## deterministic.
+static func close_up_slot_assignment_over(perm: PackedInt32Array, dead: PackedInt32Array,
+		files: int, spacing: float, rank_pitch: float,
+		deal_margin: float = 0.25) -> PackedInt32Array:
+	var n: int = perm.size()
+	var order: Array = []
+	for i in dead:
+		if i >= 0 and i < n and not order.has(i):
+			order.push_back(i)
+	order.sort()
+	order.reverse()
+	var out: PackedInt32Array = perm
+	for i in order:
+		out = close_up_slot_assignment(out, i, files)
+	if order.size() < 2 or files <= 0:
+		return out
+	var before: PackedVector2Array = block_slots(n, files, spacing, rank_pitch)
+	var start := PackedVector2Array()
+	for i in range(n):
+		if not order.has(i):
+			start.push_back(before[clampi(perm[i], 0, n - 1)])
+	var grid: PackedVector2Array = block_slots(out.size(), files, spacing, rank_pitch)
+	var dealt: PackedInt32Array = pair_slots_rear_rank_first(start, grid, files,
+			rank_pitch * 0.5, spacing * 0.5)
+	if _longest_walk(dealt, start, grid) < _longest_walk(out, start, grid) - spacing * deal_margin:
+		out = dealt
+	_keep_sides(out, start, grid, spacing * 0.25)
+	return out
+
+
+## The longest distance from `start[j]` to `grid[perm[j]]`.
+static func _longest_walk(perm: PackedInt32Array, start: PackedVector2Array,
+		grid: PackedVector2Array) -> float:
+	var longest: float = 0.0
+	for j in range(perm.size()):
+		longest = maxf(longest, start[j].distance_to(grid[clampi(perm[j], 0, grid.size() - 1)]))
+	return longest
+
+
+## Trade cells in `out` (the cell in `grid` of each man, who started at `start`) until no man
+## who ended across the centreline has a partner to trade with (see
+## close_up_slot_assignment_over). Each trade cuts the crossings by at least one, so it ends.
+static func _keep_sides(out: PackedInt32Array, start: PackedVector2Array,
+		grid: PackedVector2Array, on_line: float) -> void:
+	var traded: bool = true
+	while traded:
+		traded = false
+		for a in range(out.size()):
+			var sa: int = _lateral_side(start[a].x, on_line)
+			var ea: int = _lateral_side(grid[out[a]].x, on_line)
+			if sa * ea >= 0:
+				continue
+			var best: int = -1
+			var best_walk: float = INF
+			var walk_a: float = start[a].distance_to(grid[out[a]])
+			for c in range(out.size()):
+				var sc: int = _lateral_side(start[c].x, on_line)
+				var ec: int = _lateral_side(grid[out[c]].x, on_line)
+				if c == a or (sc != 0 and sc != ea) or (ec != 0 and ec != sa):
+					continue
+				var walk: float = maxf(start[a].distance_to(grid[out[c]]),
+						start[c].distance_to(grid[out[a]]))
+				# A trade that lengthens the longer of the two walks is not taken.
+				if walk > maxf(walk_a, start[c].distance_to(grid[out[c]])) + 0.001:
+					continue
+				if walk < best_walk:
+					best_walk = walk
+					best = c
+			if best >= 0:
+				var cell: int = out[a]
+				out[a] = out[best]
+				out[best] = cell
+				traded = true
+
+
+## -1 left of the centreline, 0 within `on_line` of it, 1 right of it.
+static func _lateral_side(x: float, on_line: float) -> int:
+	if absf(x) <= on_line:
+		return 0
+	return -1 if x < 0.0 else 1
 
 
 # --- Deliberate-reshape file dealing -----------------------------------------

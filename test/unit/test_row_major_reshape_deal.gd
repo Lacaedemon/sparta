@@ -6,7 +6,7 @@ extends GutTest
 ## across its own centreline to reach the new grid. These measure that walk for a player resize
 ## and for the automatic ranks-closed narrowing, on foot and on cavalry (which is always row
 ## major), and the paths that keep the dealt pairing in force afterwards: casualties on either
-## path, an absorb, a lateral mirror armed or baked, a hold-ground re-square, a reform hold, and a
+## path (closed up rather than dealt again), an absorb, a lateral mirror armed or baked, a hold-ground re-square, a reform hold, and a
 ## block with no bodies.
 
 const COUNT := 60
@@ -312,10 +312,11 @@ func test_too_few_bodies_hold_a_placeholder_and_deal_next_query() -> void:
 
 
 ## A regiment-path casualty (UnitCombat.take_casualties) drops `soldiers` without splicing the
-## per-soldier arrays and never says who died. The survivors are dealt again from where they
-## stand: dropping the pairing would fall back to the identity layout and send the crossing walk
-## the deal avoided, and trimming the tail men's cells out cascades every man behind a vacancy
-## one cell on, which sends a rank's first man to the far end of the rank ahead (20 of 57 cross).
+## per-soldier arrays and never says who died; the body layer trims the tail men. The pairing is
+## closed up over them: dropping it would fall back to the identity layout and send the crossing
+## walk the deal avoided, and trimming the tail men's cells out cascades every man behind a
+## vacancy one cell on, which sends a rank's first man to the far end of the rank ahead (20 of 57
+## cross).
 func test_a_regiment_path_casualty_after_a_resize_keeps_men_on_their_flank() -> void:
 	for make in [_make_foot, _make_cavalry]:
 		var u: Unit = make.call(8)
@@ -339,7 +340,7 @@ func test_a_regiment_path_casualty_after_a_resize_keeps_men_on_their_flank() -> 
 
 
 ## The same casualties on a hold-ground re-squared block, whose pairing is the depth reflection:
-## the survivors are dealt from where they stand, so none walks the block's depth either.
+## the survivors close up over the tail men, so none walks the block's depth either.
 func test_a_regiment_path_casualty_after_a_hold_ground_re_square_keeps_men_in_place() -> void:
 	var u := _make_foot(8)
 	_about_face_and_resquare(u, true)
@@ -351,10 +352,10 @@ func test_a_regiment_path_casualty_after_a_hold_ground_re_square_keeps_men_in_pl
 		"no man walks the block's depth (farthest %.1f wu)" % float(t["farthest"]))
 
 
-## An absorb after a resize appends men the dealt pairing has no entry for. Once the body layer
-## holds them, the whole block is dealt again from where it stands rather than dropped to the
+## An absorb after a resize appends men the dealt pairing has no entry for. They take the tail
+## cells and every man already held keeps his own, rather than the block dropping to the
 ## identity layout, which walked 23 of the 60 across.
-func test_an_absorb_after_a_resize_deals_the_newcomers_in() -> void:
+func test_an_absorb_after_a_resize_gives_the_newcomers_the_tail_cells() -> void:
 	var u := _make_foot(8)
 	_stand_on_slots(u)
 	u.set_frontage(7)
@@ -374,18 +375,17 @@ func test_an_absorb_after_a_resize_deals_the_newcomers_in() -> void:
 		SoldierBodies.step(u, 1.0 / 60.0)
 	assert_eq(u._sim_soldier_pos.size(), u.soldiers, "precondition: the body layer holds them")
 	assert_eq(u._sim_soldier_row_slot.size(), u.soldiers, "the pairing covers the whole block")
-	# The newcomers still stand where they spawned, 200 wu off the block, and are dealt in with
-	# the rest. Measured, one file's own men shift up to 27 wu (a rank and a half) along it:
-	# a rank for a newcomer dealt into that file, and the half rank the grid re-centres by as
-	# it gains a rank.
-	_assert_no_walk_across(u, _travel(u, bodies, lateral), "absorb after a resize", 1.5)
+	# The newcomers still stand where they spawned, 200 wu off the block, and walk in to the
+	# tail. The 60-man grid on 7 files has a short rear rank of 4, centred; with 70 men it is a
+	# full rank, cells 56 to 59 on files 0 to 3, so its outer man steps (7 - 4) / 2 = 1.5
+	# pitches sideways (27 wu), and the grid re-centres its depth by half a rank as it gains a
+	# rank. Hence a pitch and a half each way.
+	_assert_no_walk_across(u, _travel(u, bodies, lateral), "absorb after a resize", 1.5, 1.5)
 
 
-## An ordinary per-soldier casualty keeps the deal: SoldierMelee.reap trims the pairing at the
-## dead man's own index, and the next query leaves that trim as it is. The trim renumbers every
-## cell behind the dead man's, so a row-major rank's first man behind him steps to the far end
-## of the rank ahead; this pins only that the deal does not undo or redo the trim.
-## TODO(#1781): the reap cascade itself walks men across the block.
+## An ordinary per-soldier casualty keeps the deal: SoldierMelee.reap closes the pairing up over
+## the dead man's cell, and the next query leaves that close-up as it is rather than dealing the
+## block again. test_row_major_casualty_close_up.gd measures the close-up's own walk.
 func test_a_per_soldier_casualty_after_a_resize_keeps_the_deal() -> void:
 	var u := _make_foot(8)
 	_stand_on_slots(u)
@@ -398,10 +398,11 @@ func test_a_per_soldier_casualty_after_a_resize_keeps_the_deal() -> void:
 	u._sim_soldier_hp[10] = 0.0
 	SoldierMelee.reap(u, killer)
 	assert_eq(u.soldiers, COUNT - 1, "precondition: reap took the man")
-	var expected: PackedInt32Array = UnitFormation.drop_slot_assignment(held, 10)
-	assert_eq(u._sim_soldier_row_slot, expected, "reap trims the pairing at the dead man's index")
+	var expected: PackedInt32Array = UnitFormation.close_up_slot_assignment_over(
+			held, PackedInt32Array([10]), 7, u.file_pitch_wu(), u.rank_pitch_wu())
+	assert_eq(u._sim_soldier_row_slot, expected, "reap closes the pairing up over the dead man")
 	u.formation_slots(u.soldiers)
-	assert_eq(u._sim_soldier_row_slot, expected, "and the next query leaves the trim as it is")
+	assert_eq(u._sim_soldier_row_slot, expected, "and the next query leaves the close-up as it is")
 
 
 ## An about-faced block whose mirror is still armed narrows its ranks: the deal reads the bodies
@@ -430,11 +431,10 @@ func test_a_resize_after_a_baked_mirror_sends_no_man_across() -> void:
 
 
 ## A regiment-path casualty no query has seen yet, then a fresh order that bakes the mirror. The
-## bake relabels only a pairing as long as the block, so it leaves this one as it was; the next
-## query finds it longer than the block and deals it again from the bodies, which already stand
-## where the mirrored slots put them, so the skipped relabel costs nothing. Dropping that pairing
-## to the identity layout instead walked a man 128.9 wu through the block's depth.
-func test_a_bake_over_an_unqueried_casualty_is_dealt_from_the_bodies() -> void:
+## bake relabels the longer pairing over its own length, so the next query, which finds it
+## longer than the block, closes it up over the tail men in the baked frame. Dropping that
+## pairing to the identity layout instead walked a man 128.9 wu through the block's depth.
+func test_a_bake_over_an_unqueried_casualty_is_closed_up_in_the_baked_frame() -> void:
 	var u := _make_foot(8)
 	_about_face_and_resquare(u, true)
 	var bodies: PackedVector2Array = u._sim_soldier_pos.duplicate()
@@ -442,9 +442,9 @@ func test_a_bake_over_an_unqueried_casualty_is_dealt_from_the_bodies() -> void:
 	u.soldiers -= 3
 	u.set_current_order(Order.new_move(u.position + u.facing * 200.0))
 	assert_false(u._formation_mirror_x, "precondition: the mirror is baked")
-	assert_eq(u._sim_soldier_row_slot.size(), COUNT, "the bake leaves the long pairing unrelabelled")
+	assert_eq(u._sim_soldier_row_slot.size(), COUNT, "the bake keeps the long pairing's length")
 	var t: Dictionary = _travel(u, bodies, lateral)
-	assert_eq(u._sim_soldier_row_slot.size(), u.soldiers, "the next query deals it for the survivors")
+	assert_eq(u._sim_soldier_row_slot.size(), u.soldiers, "the next query closes it up for the survivors")
 	_assert_no_walk_across(u, t, "a bake over an unqueried casualty")
 	assert_lt(float(t["farthest"]), u.file_pitch_wu() * 4.0,
 		"no man walks the block's depth (farthest %.1f wu)" % float(t["farthest"]))
