@@ -9385,18 +9385,23 @@ func _process_rout(delta: float) -> void:
 ## never moves sideways faster, or changes that pace faster, than the man on it can follow.
 ## The anchor itself still travels along `dir` (see _process_rout), so the flight keeps the
 ## path the step chose. _flight_turn_rate carries the turn from tick to tick, and
-## SoldierBodies.step feeds it forward to the bodies. Enemy contact makes no difference: the
-## heading a router breaking from a melee turns onto is a flight turn like any other. Folding
-## that turn into _formation_angle instead would leave a deep block running obliquely across
-## its own grid, so its swept width across the heading, the terrain margin its flight step
-## rounds terrain with (_rout_step_clearance), would grow, and the step could swing onto a
-## detour on the next tick.
+## SoldierBodies.step feeds it forward to the bodies. The turn is bounded the same way in
+## enemy contact, so a router breaking from a melee keeps its front toward the enemy for a
+## while: its men still run at the flight's pace because SoldierBodies holds none of a
+## router's men back as an engaged front and does not anchor the block on its front ranks
+## (see SoldierBodies.step and couple()). Folding the turn into _formation_angle instead would
+## leave a deep block running obliquely across its own grid, so its swept width across the
+## heading, the terrain margin its flight step rounds terrain with (_rout_step_clearance),
+## would grow, and the step could swing onto a detour on the next tick.
 func _turn_flight_toward(dir: Vector2, delta: float) -> void:
 	var diff: float = angle_difference(facing.angle(), dir.angle())
 	if absf(diff) > FACING_SNAP_ABSORB_THRESHOLD:
 		_flight_turn_rate = 0.0
 		_face_dir(dir)
 		return
+	# TODO(#1788): a bounded turn in contact once let the pursuer's press carry the anchor into
+	# block terrain (catalog trapped_routing, before the rout kept its slots); the mechanism is
+	# undiagnosed, and test_router_breaks_from_contact.gd watches that staging.
 	if diff == 0.0 or delta <= 0.0:
 		_flight_turn_rate = 0.0
 		return
