@@ -554,7 +554,7 @@ func test_an_order_after_a_called_off_rally_squares_the_fold_without_moving_a_sl
 
 
 ## Once the enemy that called a rally re-square off has gone, the re-square resumes: after
-## RALLY_RESUME_CLEAR_TICKS clear ticks the heading turns and the ranks re-square, as for any
+## rally_resume_clear_ticks clear ticks the heading turns and the ranks re-square, as for any
 ## rally. 60 men on 8 files have a short rank, so the half-turn re-squares to 0.
 func test_a_called_off_rally_resquare_resumes_once_the_enemy_has_gone() -> void:
 	var units: Array = await _cancelled_rally(COUNT)
@@ -564,7 +564,7 @@ func test_a_called_off_rally_resquare_resumes_once_the_enemy_has_gone() -> void:
 	e.position += away
 	for i in range(e._sim_soldier_pos.size()):
 		e._sim_soldier_pos[i] += away
-	for _i in range(Unit.RALLY_RESUME_CLEAR_TICKS + 30):
+	for _i in range(u.rally_resume_clear_ticks + 30):
 		await get_tree().physics_frame
 	assert_false(u._rally_fold_unsquared, "the call-off was lifted")
 	assert_false(u._rally_resquare_pending, "the re-square ran")

@@ -9580,7 +9580,7 @@ const RALLY_TURN_DONE_EPS: float = 0.0001
 ## swings the grid under the men. The fold stays as it stands, as any engage re-face leaves one,
 ## and the engage logic faces the enemy from there; _rally_fold_unsquared records that the fold
 ## still wants squaring. Once the unit is IDLE again, out of contact, and no enemy has come within
-## RALLY_RESUME_RADIUS_FACTOR times that radius for RALLY_RESUME_CLEAR_TICKS ticks, the re-square
+## rally_resume_radius_factor times that radius for rally_resume_clear_ticks ticks, the re-square
 ## resumes. The wider radius and the wait keep an enemy hovering at the edge of the radius from
 ## flipping it on and off.
 func _drop_rally_resquare_near_enemy() -> void:
@@ -9594,11 +9594,11 @@ func _drop_rally_resquare_near_enemy() -> void:
 	if not _rally_fold_unsquared:
 		return
 	if state != State.IDLE or _in_enemy_contact or UnitTargeting.nearest_enemy_to(
-			self, position, radius * RALLY_RESUME_RADIUS_FACTOR) != null:
+			self, position, radius * rally_resume_radius_factor) != null:
 		_rally_clear_ticks = 0
 		return
 	_rally_clear_ticks += 1
-	if _rally_clear_ticks >= RALLY_RESUME_CLEAR_TICKS:
+	if _rally_clear_ticks >= rally_resume_clear_ticks:
 		_rally_fold_unsquared = false
 		_rally_clear_ticks = 0
 		_rally_resquare_pending = true
@@ -9606,8 +9606,13 @@ func _drop_rally_resquare_near_enemy() -> void:
 
 # How much farther than rally_coast_enemy_radius() every enemy must stand, and for how many
 # ticks, before a rally re-square an enemy called off resumes (see _drop_rally_resquare_near_enemy).
+# Defaults for the caller-configurable fields below.
 const RALLY_RESUME_RADIUS_FACTOR: float = 1.25
 const RALLY_RESUME_CLEAR_TICKS: int = 30
+# Live rally-resume thresholds -- caller-configurable parameters (CLAUDE.md's code conventions)
+# defaulting to the consts above, with the same set-before-_ready contract as rout_time.
+var rally_resume_radius_factor: float = RALLY_RESUME_RADIUS_FACTOR
+var rally_resume_clear_ticks: int = RALLY_RESUME_CLEAR_TICKS
 
 
 ## A fresh order squares the fold a rally re-square left when an enemy called it off: the heading
@@ -10692,6 +10697,8 @@ func to_snapshot_dict() -> Dictionary:
 		"rearguard_delay_sec": rearguard_delay_sec,
 		"rout_time": rout_time, "shatter_strength_frac": shatter_strength_frac,
 		"rally_morale_threshold": rally_morale_threshold,
+		"rally_resume_radius_factor": rally_resume_radius_factor,
+		"rally_resume_clear_ticks": rally_resume_clear_ticks,
 		"flanking_maneuver_wrap_files": flanking_maneuver_wrap_files,
 		"flanking_maneuver_cooldown_ticks": flanking_maneuver_cooldown_ticks,
 		"flanking_maneuver_hysteresis": flanking_maneuver_hysteresis,
@@ -10937,6 +10944,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rout_time = float(d.get("rout_time", rout_time))
 	shatter_strength_frac = float(d.get("shatter_strength_frac", shatter_strength_frac))
 	rally_morale_threshold = float(d.get("rally_morale_threshold", rally_morale_threshold))
+	rally_resume_radius_factor = float(d.get("rally_resume_radius_factor", rally_resume_radius_factor))
+	rally_resume_clear_ticks = int(d.get("rally_resume_clear_ticks", rally_resume_clear_ticks))
 	flanking_maneuver_wrap_files = int(d.get("flanking_maneuver_wrap_files", flanking_maneuver_wrap_files))
 	flanking_maneuver_cooldown_ticks = int(d.get("flanking_maneuver_cooldown_ticks", flanking_maneuver_cooldown_ticks))
 	flanking_maneuver_hysteresis = int(d.get("flanking_maneuver_hysteresis", flanking_maneuver_hysteresis))
