@@ -721,21 +721,33 @@ static func permute_slots(slots: PackedVector2Array, perm: PackedInt32Array) -> 
 
 ## Applies outward lateral flank arcs to unpaired traversing soldiers during depth-reflection
 ## reform, preventing them from interpenetrating stationary neighbours as they cross ranks.
+##
+## A walker is a man the reflection left on his own cell, so he walks the block's depth to its
+## other end. By default that is read as `perm[i] == i`, which holds only when the reflection
+## was composed onto the identity layout. With `walkers_by_cell` the walker is instead a man
+## whose cell is one the reflection leaves fixed (depth_reflection_pairing maps it to itself),
+## with his rank and file read from that cell: right over any base the reflection was composed
+## onto, since composing keeps a man on his base cell exactly when that cell is fixed.
 static func apply_traverse_flank_arcs(slots: PackedVector2Array, world_positions: PackedVector2Array,
-		unit_pos: Vector2, unit_ang: float, perm: PackedInt32Array, files: int, spacing: float) -> PackedVector2Array:
+		unit_pos: Vector2, unit_ang: float, perm: PackedInt32Array, files: int, spacing: float,
+		walkers_by_cell: bool = false) -> PackedVector2Array:
 	var n: int = slots.size()
 	if n <= 0 or files <= 0 or perm.size() != n or world_positions.size() != n:
 		return slots
 	var ranks: int = ranks_for(n, files)
 	if ranks <= 1:
 		return slots
+	var fixed: PackedInt32Array = depth_reflection_pairing(n, files) if walkers_by_cell \
+			else PackedInt32Array()
 	var out: PackedVector2Array = slots.duplicate()
 	for i in range(n):
-		if perm[i] == i:
-			var r: int = i / files
+		var cell: int = clampi(perm[i], 0, n - 1) if walkers_by_cell else i
+		var walker: bool = fixed[cell] == cell if walkers_by_cell else perm[i] == i
+		if walker:
+			var r: int = cell / files
 			var r2: int = ranks - 1 - r
 			if r != r2:
-				var f: int = i % files
+				var f: int = cell % files
 				var y_start: float = slots[i].y
 				var y_target: float = -y_start
 				var dy: float = y_target - y_start
@@ -886,11 +898,14 @@ static func _close_file_up(moved: PackedInt32Array, vacated: int, files: int, fu
 ## - Many losses in one file (a flank file shot away from the side) send the man who steps into
 ##   the back of that file up it again on every later loss, ranks along the flank. The same
 ##   survivors dealt by lateral file from the cells they held (pair_slots_rear_rank_first, the
-##   deal a file-count change uses) shift whole ranks one file over instead. Whichever of the two
-##   leaves the longest walk shorter, by more than a quarter pitch, is kept. Measured on a
-##   40-mount squadron shot from the flank, three of the six volleys that took more than one
-##   mount took the deal: the longest walk read 247, 206 and 361 wu closed up, against 127, 72
-##   and 127 wu dealt.
+##   deal a file-count change uses) shift whole ranks one file over instead. The deal is kept
+##   when it leaves the longest walk shorter by more than `deal_margin` file pitches. That
+##   margin is tuned, not derived: a deal re-labels whole ranks, so on a near tie the close-up,
+##   which moves fewer men, is the better drill. The default of a quarter pitch keeps the
+##   close-up on a 40-mount squadron's three-mount volley, where the deal led by 6.5 wu of a
+##   40 wu pitch. Measured on a 40-mount squadron shot from the flank, three of the six volleys that
+##   took more than one mount took the deal: the longest walk read 247, 206 and 361 wu closed up,
+##   against 127, 72 and 127 wu dealt.
 ## - Each loss re-centres the short rear rank by half a file pitch, so a rear-rank man beside the
 ##   centre can drift across it when the losses fall lopsidedly, and two can trade sides: on a
 ##   40-mount squadron on 7 files losing three mounts a volley, the eighth volley swapped two
@@ -907,7 +922,8 @@ static func _close_file_up(moved: PackedInt32Array, vacated: int, files: int, fu
 ## within a quarter pitch of the centreline is on it (cells sit on whole half pitches). Pure and
 ## deterministic.
 static func close_up_slot_assignment_over(perm: PackedInt32Array, dead: PackedInt32Array,
-		files: int, spacing: float, rank_pitch: float) -> PackedInt32Array:
+		files: int, spacing: float, rank_pitch: float,
+		deal_margin: float = 0.25) -> PackedInt32Array:
 	var n: int = perm.size()
 	var order: Array = []
 	for i in dead:
@@ -926,10 +942,9 @@ static func close_up_slot_assignment_over(perm: PackedInt32Array, dead: PackedIn
 		if not order.has(i):
 			start.push_back(before[clampi(perm[i], 0, n - 1)])
 	var grid: PackedVector2Array = block_slots(out.size(), files, spacing, rank_pitch)
-	# A near tie (within a quarter pitch) keeps the close-up.
 	var dealt: PackedInt32Array = pair_slots_rear_rank_first(start, grid, files,
 			rank_pitch * 0.5, spacing * 0.5)
-	if _longest_walk(dealt, start, grid) < _longest_walk(out, start, grid) - spacing * 0.25:
+	if _longest_walk(dealt, start, grid) < _longest_walk(out, start, grid) - spacing * deal_margin:
 		out = dealt
 	_keep_sides(out, start, grid, spacing * 0.25)
 	return out

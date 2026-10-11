@@ -352,10 +352,10 @@ func test_a_regiment_path_casualty_after_a_hold_ground_re_square_keeps_men_in_pl
 		"no man walks the block's depth (farthest %.1f wu)" % float(t["farthest"]))
 
 
-## An absorb after a resize appends men the dealt pairing has no entry for. Once the body layer
-## holds them, the whole block is dealt again from where it stands rather than dropped to the
+## An absorb after a resize appends men the dealt pairing has no entry for. They take the tail
+## cells and every man already held keeps his own, rather than the block dropping to the
 ## identity layout, which walked 23 of the 60 across.
-func test_an_absorb_after_a_resize_deals_the_newcomers_in() -> void:
+func test_an_absorb_after_a_resize_gives_the_newcomers_the_tail_cells() -> void:
 	var u := _make_foot(8)
 	_stand_on_slots(u)
 	u.set_frontage(7)
@@ -375,11 +375,12 @@ func test_an_absorb_after_a_resize_deals_the_newcomers_in() -> void:
 		SoldierBodies.step(u, 1.0 / 60.0)
 	assert_eq(u._sim_soldier_pos.size(), u.soldiers, "precondition: the body layer holds them")
 	assert_eq(u._sim_soldier_row_slot.size(), u.soldiers, "the pairing covers the whole block")
-	# The newcomers still stand where they spawned, 200 wu off the block, and are dealt in with
-	# the rest. Measured, one file's own men shift up to 27 wu (a rank and a half) along it:
-	# a rank for a newcomer dealt into that file, and the half rank the grid re-centres by as
-	# it gains a rank.
-	_assert_no_walk_across(u, _travel(u, bodies, lateral), "absorb after a resize", 1.5)
+	# The newcomers still stand where they spawned, 200 wu off the block, and walk in to the
+	# tail. The 60-man grid on 7 files has a short rear rank of 4, centred; with 70 men it is a
+	# full rank, cells 56 to 59 on files 0 to 3, so its outer man steps (7 - 4) / 2 = 1.5
+	# pitches sideways (27 wu), and the grid re-centres its depth by half a rank as it gains a
+	# rank. Hence a pitch and a half each way.
+	_assert_no_walk_across(u, _travel(u, bodies, lateral), "absorb after a resize", 1.5, 1.5)
 
 
 ## An ordinary per-soldier casualty keeps the deal: SoldierMelee.reap closes the pairing up over

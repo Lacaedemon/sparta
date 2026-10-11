@@ -5634,7 +5634,7 @@ var _square_slot_files: int = -1
 # every man behind him one cell on and a rank's first man to the far end of the rank ahead.
 # SoldierMelee.reap() closes it up over the man it names; a regiment-path casualty, which never
 # says who died, is closed up over the tail men the body layer trims (see
-# _ensure_row_slot_assignment). An absorb that adds men re-deals it from the bodies instead.
+# _ensure_row_slot_assignment). An absorb that adds men gives them the tail cells.
 var _sim_soldier_row_slot: PackedInt32Array = PackedInt32Array()
 # The file count _sim_soldier_row_slot was paired against. A mismatch against the current
 # formation_files(count) means the grid has genuinely reshaped, so the cells the pairing names
@@ -5904,7 +5904,9 @@ func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVe
 			var r_slots: PackedVector2Array = UnitFormation.permute_slots(row_grid, _sim_soldier_row_slot)
 			if _sim_soldier_pos.size() == count and _reform_holding() and not _row_slot_dealt:
 				var r_ang: float = facing.angle() + PI * 0.5 + _formation_angle
-				r_slots = UnitFormation.apply_traverse_flank_arcs(r_slots, _sim_soldier_pos, position, r_ang, _sim_soldier_row_slot, row_files, file_pitch_wu())
+				# Walkers are read by cell: a casualty's close-up leaves a held pairing the
+				# reflection can be composed onto, so a walker's index no longer names his cell.
+				r_slots = UnitFormation.apply_traverse_flank_arcs(r_slots, _sim_soldier_pos, position, r_ang, _sim_soldier_row_slot, row_files, file_pitch_wu(), true)
 			slots = r_slots
 		else:
 			slots = UnitFormation.permute_slots(row_grid, _fallback_assignment(count, row_files))
@@ -6140,24 +6142,45 @@ func _ensure_square_slot_assignment(count: int, files: int, slots: PackedVector2
 
 ## Whether the row-major layout's next query for (count, files) would rebuild the pairing (see
 ## _ensure_row_slot_assignment): the file count changed since the last layout, or the headcount
-## changed under a held pairing. A file-count change or a gain is dealt from the live bodies; a
-## loss is closed up over the tail men. Pure: reads state, changes none.
+## changed under a held pairing. Only a file-count change is dealt from the live bodies
+## (_row_slot_body_deal_pending); a headcount change is worked out from the cells alone, a loss
+## closed up over the tail men and a gain given the tail cells. Pure: reads state, changes none.
 func _row_slot_deal_pending(count: int, files: int) -> bool:
-	var reshaped: bool = _row_layout_files > 0 and _row_layout_files != files
 	var resized: bool = _row_slot_files == files and _sim_soldier_row_slot.size() != count
-	return reshaped or resized
+	return _row_slot_body_deal_pending(count, files) or resized
+
+
+## Whether the row-major layout's next query for (count, files) would deal the pairing from the
+## live bodies: the file count changed since the last layout. A headcount change under a held
+## pairing reads no body (see _row_slot_deal_pending), so it is not one. Pure.
+func _row_slot_body_deal_pending(count: int, files: int) -> bool:
+	return _row_layout_files > 0 and _row_layout_files != files
 
 
 ## Whether the next slot query for (count, files) would rebuild this block's assignment, in
 ## whichever layout it uses: the square pairing, the file-major file assignment, or the row-major
 ## pairing. Each mirrors its own ensure function's early-out exactly. Pure: reads state, changes
-## none. reform_ranks reads it to avoid dealing an assignment before its mirror is armed.
+## none. reform_ranks reads it to skip its slot capture: a rebuild of any kind, a row-major
+## close-up included, moves slots off where the men stand, so the capture would misjudge who
+## walks (measured: capturing over a pending regiment-path close-up dragged the anchor 4.4 wu
+## through an about-face re-square). For whether the rebuild reads the bodies, use
+## _slot_body_deal_pending.
 func _slot_deal_pending(count: int, files: int) -> bool:
 	if in_square():
 		return _sim_soldier_square_slot.size() != count or _square_slot_files != files
 	if _effective_file_major_reform():
 		return _sim_soldier_file.size() != count or _file_assignment_files != files
 	return _row_slot_deal_pending(count, files)
+
+
+## Whether the next slot query for (count, files) would deal this block's assignment from the
+## live bodies: _slot_deal_pending, less the row-major rebuilds worked out from the cells alone (a
+## close-up over a loss, or the tail cells for a gain). A caller that relies on the block having
+## been dealt where its men stand reads this one. Pure.
+func _slot_body_deal_pending(count: int, files: int) -> bool:
+	if in_square() or _effective_file_major_reform():
+		return _slot_deal_pending(count, files)
+	return _row_slot_body_deal_pending(count, files)
 
 
 ## Keep the row-major pairing (_sim_soldier_row_slot) in step with the grid it places men on,
@@ -6185,7 +6208,12 @@ func _slot_deal_pending(count: int, files: int) -> bool:
 ## pairing exists to keep still, and dealing the survivors again from where they stand would
 ## re-pair a block in a press from wherever the press has pushed its men.
 ##
-## A file-count change or a gain is dealt again from where the men stand, by lateral file, with
+## A gain at an unchanged file count (an absorb, a merge or a reinforcement appends men at the
+## tail) gives the newcomers the tail cells and leaves every man already held on his own cell
+## (_extended_row_slots), as the identity layout does: dealing the whole block again from where
+## it stands would move men who had not moved for newcomers who may still be on their way.
+##
+## A file-count change is dealt again from where the men stand, by lateral file, with
 ## the short rear rank dealt on its own (UnitFormation.pair_slots_rear_rank_first), as a squared
 ## block's regiment-path casualty already re-pairs. The bodies are read in the slot frame, so
 ## the deal holds whatever lateral reflection the block carries and needs no _fallback_mirror_x.
@@ -6199,10 +6227,11 @@ func _slot_deal_pending(count: int, files: int) -> bool:
 ## tail, where the body layer trims, exactly as the close-up would.
 ##
 ## With no bodies at all (a fresh spawn, a far-tier unit) the identity layout is the answer, as
-## it is for the square: the bodies are built from these slots. With some bodies but fewer than
-## `count` (a reinforcement or an absorb that has run ahead of the body layer), the identity
-## layout serves as a placeholder for the tick and nothing is committed, so the next query
-## deals again: committing it would make the placeholder permanent.
+## it is for the square: the bodies are built from these slots. A file-count change met with
+## some bodies but fewer than `count` (a reinforcement or an absorb that has run ahead of the
+## body layer) uses the identity layout as a placeholder for the tick and commits nothing, so
+## the next query deals again: committing it would make the placeholder permanent. A headcount
+## change at an unchanged file count needs no body read, so it is settled at once.
 ##
 ## Returns true when this call dealt a fresh pairing from the live bodies (a close-up reads no
 ## body, so it returns false). Idempotent once in sync, so it is safe to call from every
@@ -6213,12 +6242,15 @@ func _ensure_row_slot_assignment(count: int, files: int, grid: PackedVector2Arra
 	if not _row_slot_deal_pending(count, files):
 		_row_layout_files = files
 		return false
-	var reshaped: bool = _row_layout_files > 0 and _row_layout_files != files
-	if not reshaped and _sim_soldier_row_slot.size() > count and not _sim_soldier_pos.is_empty():
-		var tail := PackedInt32Array()
-		for i in range(count, _sim_soldier_row_slot.size()):
-			tail.push_back(i)
-		_sim_soldier_row_slot = _closed_up_row_slots(tail, files)
+	var held_rows: int = _sim_soldier_row_slot.size()
+	if not _row_slot_body_deal_pending(count, files) and not _sim_soldier_pos.is_empty():
+		if held_rows > count:
+			var tail := PackedInt32Array()
+			for i in range(count, held_rows):
+				tail.push_back(i)
+			_sim_soldier_row_slot = _closed_up_row_slots(tail, files)
+		else:
+			_sim_soldier_row_slot = _extended_row_slots(count, files)
 		_row_layout_files = files
 		return false
 	var live: PackedVector2Array = _slot_frame_positions(count)
@@ -6296,6 +6328,22 @@ func _closed_up_row_slots(dead: PackedInt32Array, files: int) -> PackedInt32Arra
 	var closed: PackedInt32Array = UnitFormation.close_up_slot_assignment_over(
 			baked, dead, files, file_pitch_wu(), rank_pitch_wu())
 	return _composed_pairing(UnitFormation.lateral_reflection_pairing(closed.size(), files), closed)
+
+
+## The held row-major pairing extended to `count` men on `files` files: the men it holds keep
+## their cells and the men appended after them take the tail cells, in order. With
+## _formation_mirror_x armed the extension is made in the frame the bake would leave and
+## relabelled back, as _closed_up_row_slots does, so a baked block and its armed twin agree.
+func _extended_row_slots(count: int, files: int) -> PackedInt32Array:
+	var held: PackedInt32Array = _sim_soldier_row_slot
+	if _formation_mirror_x:
+		held = _composed_pairing(UnitFormation.lateral_reflection_pairing(held.size(), files), held)
+	var out := PackedInt32Array(held)
+	for c in range(held.size(), count):
+		out.push_back(c)
+	if not _formation_mirror_x:
+		return out
+	return _composed_pairing(UnitFormation.lateral_reflection_pairing(count, files), out)
 
 
 ## World-space per-soldier facing directions for `count` soldiers, index-aligned with
@@ -7065,9 +7113,10 @@ func _pair_after_quarter_fold(count: int) -> void:
 ##   dealt for. Ranks stay as they are, so each man keeps his depth, and
 ##   file_major_block_slots places file positions symmetrically.
 ## - row major and square: compose UnitFormation.lateral_reflection_pairing, over the
-##   pairing's own file count, onto the held pairing. A row pairing still longer than the
-##   block (a regiment-path casualty no query has closed up yet) is relabelled over its own
-##   length, the grid its cells name, so the close-up that follows reads it in the new frame.
+##   pairing's own file count, onto the held pairing. A row pairing of another length than
+##   the block (a regiment-path casualty no query has closed up yet, or men appended that it
+##   has not yet extended over) is relabelled over its own length, the grid its cells name, so
+##   the close-up or extension that follows reads it in the new frame.
 ## No array holds the index-order layout a grid falls back to when its pairing is missing or
 ## out of sync: row major's identity grid (no pairing held, or a frontage change or a
 ## regiment-path casualty with no bodies to deal from), file major's
@@ -7092,7 +7141,7 @@ func _bake_formation_mirror() -> void:
 				UnitFormation.lateral_reflection_pairing(count, _square_slot_files),
 				_sim_soldier_square_slot)
 	var held_rows: int = _sim_soldier_row_slot.size()
-	if _row_slot_files > 0 and held_rows >= count and held_rows > 0:
+	if _row_slot_files > 0 and held_rows > 0:
 		_sim_soldier_row_slot = _composed_pairing(
 				UnitFormation.lateral_reflection_pairing(held_rows, _row_slot_files),
 				_sim_soldier_row_slot)

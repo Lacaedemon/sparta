@@ -8,8 +8,10 @@ extends GutTest
 ## through the block's centreline. These pin, as absolutes, how far any survivor's slot moves on
 ## a casualty and that none crosses the centreline (see _walk for the one step across the centre
 ## several casualties at once can force): for the identity layout and for held pairings, on the
-## per-soldier (reap) path and the regiment path. The regiment-path tests also pass on main,
-## whose regiment path never cascaded; they guard the pairing a reap now leaves held.
+## per-soldier (reap) path and the regiment path. The regiment-path walk tests also pass on main,
+## whose regiment path never cascaded; they guard the pairing a reap now leaves held. The new
+## UnitFormation functions are called by name (_formation_call), so this file loads on a tree
+## that lacks them and its tests fail there by assertion.
 ##
 ## The per-casualty bound, from UnitFormation.close_up_slot_assignment: a survivor's slot moves
 ## at most one rank forward (d), one file sideways (p), or half a file sideways while stepping one
@@ -20,7 +22,7 @@ extends GutTest
 
 const COUNT := 60
 ## A slot within this of the centreline is on it: grid positions are whole multiples of half a
-## file pitch (9 wu on foot, 10 wu on cavalry), so only a man on the centre file or the centre
+## file pitch (9 wu on foot, 20 wu on the cavalry here), so only a man on the centre file or the centre
 ## of an odd rear rank sits this close, and he is on the centreline, not across it. Rotation
 ## residue is under 0.001 wu.
 const ON_CENTRELINE := 0.01
@@ -127,6 +129,36 @@ func _assert_closed_up(u: Unit, t: Dictionary, casualties: int, what: String) ->
 		% [what, int(t["who"]), float(t["farthest"]), bound, casualties])
 
 
+## Call UnitFormation's static `method` by name, so this file still loads on a tree without it
+## (the merge-base) and every other test there fails by its own assertion. Fails the test, and
+## returns an empty array, when the method is missing.
+func _formation_call(method: String, args: Array) -> PackedInt32Array:
+	var formation: Script = load("res://scripts/UnitFormation.gd")
+	for m in formation.get_script_method_list():
+		if m["name"] == method:
+			return formation.callv(method, args)
+	fail_test("UnitFormation.%s does not exist on this tree" % method)
+	return PackedInt32Array()
+
+
+## The longest walk, cell to cell, when the men holding `perm` on a `block_slots(n, files)` grid
+## lose the men at `dead` and are given `out` on the grid of the survivors.
+func _cell_walk(perm: PackedInt32Array, dead: Array, out: PackedInt32Array, files: int,
+		p: float, d: float) -> float:
+	var n: int = perm.size()
+	var old: PackedVector2Array = UnitFormation.block_slots(n, files, p, d)
+	var grid: PackedVector2Array = UnitFormation.block_slots(n - dead.size(), files, p, d)
+	var longest: float = 0.0
+	var j: int = 0
+	for i in range(n):
+		if dead.has(i):
+			continue
+		if j < out.size():
+			longest = maxf(longest, old[perm[i]].distance_to(grid[out[j]]))
+		j += 1
+	return longest
+
+
 ## The old indices that survive `dead` (each removed from the arrays, as reap removes them).
 func _survivors(n: int, dead: Array) -> PackedInt32Array:
 	var out := PackedInt32Array()
@@ -180,10 +212,12 @@ func test_several_casualties_in_one_volley_close_up_their_files() -> void:
 
 ## A whole flank file lost at once, as a volley from the side takes it. Closing each loss up in
 ## turn would send the men who step into the back of that file up it again on every later loss;
-## the deal by lateral file shifts the ranks one file over instead. The bound is one rank and one
-## file, sqrt(d^2 + p^2) = 126.5 wu, which is the longest walk measured here, not a derived
-## limit: the deal fills the lost file from the file beside it, rank by rank. With the deal
-## disabled, closing up in turn walks a mount 421.9 wu here and sends one across the centreline.
+## the deal by lateral file shifts the ranks one file over instead. These are regression pins
+## computed from the functions, not derived limits: the block's longest walk must not exceed the
+## deal's own longest walk from the cells the men held, and closing up in turn alone (each loss
+## through close_up_slot_assignment) must walk further by more than the quarter-pitch margin
+## close_up_slot_assignment_over takes before preferring the deal. Measured here: 126.5 wu
+## dealt, against 421.9 wu closed up in turn.
 func test_a_flank_file_lost_at_once_shifts_ranks_over() -> void:
 	var u := _make_cavalry(7, 40)
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
@@ -193,9 +227,26 @@ func test_a_flank_file_lost_at_once_shifts_ranks_over() -> void:
 	_assert_closed_up(u, t, dead.size(), "a flank file lost at once")
 	var p: float = u.file_pitch_wu()
 	var d: float = u.rank_pitch_wu()
-	assert_lt(float(t["farthest"]), sqrt(d * d + p * p) + 0.01,
-		"man %d's slot moves %.1f wu, more than a rank and a file"
-		% [int(t["who"]), float(t["farthest"])])
+	var files: int = 7
+	var identity: PackedInt32Array = UnitFormation.identity_assignment(40)
+	var old: PackedVector2Array = UnitFormation.block_slots(40, files, p, d)
+	var start := PackedVector2Array()
+	for i in _survivors(40, dead):
+		start.push_back(old[i])
+	var dealt: PackedInt32Array = UnitFormation.pair_slots_rear_rank_first(start,
+			UnitFormation.block_slots(40 - dead.size(), files, p, d), files, d * 0.5, p * 0.5)
+	var closed: PackedInt32Array = identity
+	var order: Array = dead.duplicate()
+	order.reverse()
+	for i in order:
+		closed = _formation_call("close_up_slot_assignment", [closed, i, files])
+	var dealt_walk: float = _cell_walk(identity, dead, dealt, files, p, d)
+	var closed_walk: float = _cell_walk(identity, dead, closed, files, p, d)
+	assert_gt(closed_walk, dealt_walk + p * 0.25,
+		"precondition: closing up in turn walks %.1f wu, the deal %.1f" % [closed_walk, dealt_walk])
+	assert_lt(float(t["farthest"]), dealt_walk + 0.01,
+		"the longest walk %.1f wu is no longer than the deal's %.1f (man %d)"
+		% [float(t["farthest"]), dealt_walk, int(t["who"])])
 
 
 ## Attrition: ten volleys of three, each measured against the block as it stood before it, so
@@ -308,9 +359,120 @@ func test_a_regiment_path_casualty_in_a_press_closes_up_from_the_cells() -> void
 					+ u.facing * cos(i * 2.3) * amplitude * d
 		var n: int = u.soldiers
 		var before: PackedVector2Array = u.soldier_world_slots(n)
+		var held: PackedInt32Array = u._sim_soldier_row_slot.duplicate()
+		var files: int = u.formation_files(n)
 		u.soldiers -= 2
+		# The two outcomes the branch chooses between: closing up from the cells, or dealing
+		# again from where the pressed bodies stand (the deal a file-count change makes).
+		var closed: PackedInt32Array = _formation_call("close_up_slot_assignment_over",
+				[held, PackedInt32Array([n - 2, n - 1]), files, p, d])
+		var dealt: PackedInt32Array = UnitFormation.pair_slots_rear_rank_first(
+				u._slot_frame_positions(u.soldiers), UnitFormation.slots(u, u.soldiers), files,
+				d * 0.5, p * 0.5)
+		assert_ne(dealt, closed, "precondition: a deal from the pressed bodies would differ")
 		_assert_closed_up(u, _walk(u, before, _survivors(n, [n - 2, n - 1])), 2,
 				"two regiment-path casualties, bodies off their slots by %.2f of a pitch" % amplitude)
+		assert_eq(u._sim_soldier_row_slot, closed,
+			"amplitude %.2f: the pairing is the close-up from the cells, not a deal" % amplitude)
+
+
+## A front-rank reap leaves the closed-up pairing held; a hold-ground re-square then composes the
+## depth reflection onto it. The traverse flank arcs must bend exactly the men the reflection
+## leaves on their own cells (the walkers, who cross the block's depth), not the men whose index
+## happens to equal their cell. With every body at the block's centre depth, halfway through any
+## walk, the arc is at full strength, so a man is arced exactly when his slot is bent sideways.
+## Read by index instead, the gate missed six walkers here (measured on 91c5b0b8).
+func test_a_hold_ground_re_square_after_a_reap_arcs_exactly_its_walkers() -> void:
+	var u := _make_foot(8)
+	_reap(u, [3])
+	_stand_on_slots(u)
+	var leaf: Order = Order.new_about_face()
+	u.set_current_order(leaf)
+	leaf.turn_start_facing = u.facing
+	u.facing = u.facing.rotated(PI)
+	u._settle_order_turn()
+	_stand_on_slots(u)
+	var n: int = u.soldiers
+	var base: PackedInt32Array = u._sim_soldier_row_slot.duplicate()
+	assert_eq(base.size(), n, "precondition: the reap left a pairing held")
+	assert_true(u.reform_ranks(true), "precondition: the about-face fold re-squares")
+	# The hold a re-square runs under (the arcs bend paths only while it runs).
+	assert_not_null(u.active_leaf(), "precondition: the about-face leaf is still current")
+	if u.active_leaf() == null:
+		return
+	u.active_leaf().reform_timer = 1.0
+	assert_true(u._reform_holding(), "precondition: the reform hold is on")
+	assert_false(u._row_slot_dealt, "precondition: the held pairing is a reflection")
+	var after: PackedInt32Array = u._sim_soldier_row_slot.duplicate()
+	var files: int = u.formation_files(n)
+	var ranks: int = UnitFormation.ranks_for(n, files)
+	var walkers: Array = []
+	for i in range(n):
+		var r: int = after[i] / files
+		if after[i] == base[i] and r != ranks - 1 - r:
+			walkers.push_back(i)
+	assert_gt(walkers.size(), 0, "precondition: the reflection leaves walkers")
+	for i in range(n):
+		u._sim_soldier_pos[i] = u.position
+	var arced_slots: PackedVector2Array = u.formation_slots(n, false)
+	var plain: PackedVector2Array = UnitFormation.permute_slots(UnitFormation.slots(u, n), after)
+	var arced: Array = []
+	for i in range(n):
+		if absf(arced_slots[i].x - plain[i].x) > 0.01:
+			arced.push_back(i)
+	assert_eq(arced, walkers, "the arcs bend exactly the walkers")
+
+
+## A gain after a reap: an absorb appends men at the tail. The men already held keep their
+## cells, and the newcomers take the tail cells, as the identity layout gives them, rather than
+## the whole block being dealt again from where it stands.
+func test_an_absorb_after_a_reap_gives_the_newcomers_the_tail_cells() -> void:
+	var u := _make_foot(8)
+	_reap(u, [17])
+	_stand_on_slots(u)
+	var held: PackedInt32Array = u._sim_soldier_row_slot.duplicate()
+	var n: int = u.soldiers
+	assert_eq(held.size(), n, "precondition: the reap left a pairing held")
+	var other: Unit = Unit.new()
+	other.max_soldiers = 10
+	add_child_autofree(other)
+	other.position = Vector2(0.0, 200.0)
+	other.facing = Vector2.DOWN
+	other.file_major_reform_mode = Unit.ReformMode.ROW_MAJOR
+	other.seed_sim_soldiers()
+	u.absorb(other)
+	assert_eq(u.soldiers, n + 10, "precondition: the newcomers joined")
+	for _k in range(3):
+		SoldierBodies.step(u, 1.0 / 60.0)
+	assert_eq(u._sim_soldier_pos.size(), u.soldiers, "precondition: the body layer holds them")
+	var now: PackedInt32Array = u._sim_soldier_row_slot
+	assert_eq(now.size(), u.soldiers, "the pairing covers the whole block")
+	assert_eq(now.slice(0, n), held, "every man already held keeps his cell")
+	for k in range(10):
+		assert_eq(now[n + k], n + k, "newcomer %d takes tail cell %d" % [k, n + k])
+
+
+## A pending row-major rebuild worked out from the cells (a close-up over a regiment-path loss)
+## still counts as a rebuild (_slot_deal_pending, so reform_ranks skips its slot capture), but
+## not as a deal from the bodies (_slot_body_deal_pending). A file-count change is both.
+func test_a_pending_close_up_is_a_rebuild_but_not_a_body_deal() -> void:
+	var u := _make_foot(8)
+	_reap(u, [17])
+	_stand_on_slots(u)
+	var files: int = u.formation_files(u.soldiers)
+	u.soldiers -= 2
+	if not u.has_method("_slot_body_deal_pending"):
+		fail_test("Unit._slot_body_deal_pending does not exist on this tree")
+		return
+	assert_true(u._slot_deal_pending(u.soldiers, files), "a pending close-up is a rebuild")
+	assert_false(u.call("_slot_body_deal_pending", u.soldiers, files),
+		"a pending close-up reads no body")
+	u.formation_slots(u.soldiers)
+	u.frontage_override = 7   # no query yet, so the deal stays pending
+	var narrower: int = u.formation_files(u.soldiers)
+	assert_true(u._slot_deal_pending(u.soldiers, narrower), "a file-count change is a rebuild")
+	assert_true(u.call("_slot_body_deal_pending", u.soldiers, narrower),
+		"and a deal from the bodies")
 
 
 ## Once a reap has held the identity layout, a later regiment-path casualty closes up over the
@@ -334,6 +496,8 @@ func test_close_up_slot_assignment_on_every_shape() -> void:
 	var p: float = 18.0
 	var d: float = 24.0
 	var bound: float = maxf(sqrt(d * d + p * p * 0.25), sqrt(p * p + d * d * 0.25)) + 0.001
+	if _formation_call("close_up_slot_assignment", [PackedInt32Array([0, 1]), 0, 1]).is_empty():
+		return
 	var worst: float = 0.0
 	var bad: Array = []
 	for files in range(1, 10):
@@ -342,7 +506,8 @@ func test_close_up_slot_assignment_on_every_shape() -> void:
 			var grid: PackedVector2Array = UnitFormation.block_slots(n - 1, files, p, d)
 			var perm: PackedInt32Array = UnitFormation.identity_assignment(n)
 			for index in range(n):
-				var out: PackedInt32Array = UnitFormation.close_up_slot_assignment(perm, index, files)
+				var out: PackedInt32Array = _formation_call("close_up_slot_assignment",
+						[perm, index, files])
 				var seen := {}
 				for c in out:
 					seen[c] = true
@@ -370,6 +535,7 @@ func test_close_up_slot_assignment_on_every_shape() -> void:
 ## A rear-rank loss is the plain renumbering: the rank keeps its order and re-centres.
 func test_a_rear_rank_loss_keeps_the_rear_ranks_order() -> void:
 	var perm: PackedInt32Array = UnitFormation.identity_assignment(60)
-	assert_eq(UnitFormation.close_up_slot_assignment(perm, 57, 8),
+	assert_eq(_formation_call("close_up_slot_assignment", [perm, 57, 8]),
 			UnitFormation.drop_slot_assignment(perm, 57), "a rear-rank loss renumbers the rank")
-	assert_eq(UnitFormation.close_up_slot_assignment(perm, -1, 8), perm, "out of range is a no-op")
+	assert_eq(_formation_call("close_up_slot_assignment", [perm, -1, 8]), perm,
+			"out of range is a no-op")

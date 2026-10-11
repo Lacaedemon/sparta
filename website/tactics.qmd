@@ -659,7 +659,8 @@ each rider steps into the new place nearest where he stands,
 so nobody crosses the block to get there.
 When a rider falls, the riders behind him in his file step up,
 and the rear rank fills the back of that file,
-so a squadron standing under arrows keeps its shape.
+so under arrows the squadron's places keep its shape,
+and the riders catch up to them after each volley.
 The same goes for any foot regiment set to reform row-major.
 
 ::: {#fig-cavalry-squadron-structureless .demo}
