@@ -1069,7 +1069,8 @@ rather than a single evenly-shrinking rear rank. Click the **File-major reform**
 in the unit settings panel to cycle to **Row-major**, which keeps every rank full instead:
 the men behind a fallen man step up in his file,
 and the short rear rank sends a man forward to fill the back of that file
-(see [Tactics](tactics.qmd#line-width-frontage)). A third click cycles to
+(see [Tactics](tactics.qmd#line-width-frontage)).
+A third click cycles to
 **Auto**, which picks File-major or Row-major for you from the unit's own discipline: a
 disciplined, professional regiment reflows File-major, an undisciplined mob reflows
 Row-major --- useful for a mixed army where you'd otherwise have to set each unit by
