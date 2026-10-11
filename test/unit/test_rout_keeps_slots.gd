@@ -541,7 +541,7 @@ func _cancelled_rally(count: int) -> Array:
 ## After an enemy calls a rally re-square off, the unit's next order squares the fold first, so
 ## its own re-square drops a half-turn instead of swinging an arbitrary 150 degree fold under the
 ## men. With a full grid (64 men on 8 files) a half-turn needs no re-square at all, so no slot
-## may move (EPS); on 263f0333 the order dropped the 150 degree fold and moved slots 46 wu.
+## may move (EPS); on 263f0333 the order dropped the 150 degree fold and moved a slot 172.12 wu.
 func test_an_order_after_a_called_off_rally_squares_the_fold_without_moving_a_slot() -> void:
 	var units: Array = await _cancelled_rally(64)
 	var u: Unit = units[0]
