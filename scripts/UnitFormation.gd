@@ -727,7 +727,11 @@ static func permute_slots(slots: PackedVector2Array, perm: PackedInt32Array) -> 
 ## was composed onto the identity layout. With `walkers_by_cell` the walker is instead a man
 ## whose cell is one the reflection leaves fixed (depth_reflection_pairing maps it to itself),
 ## with his rank and file read from that cell: right over any base the reflection was composed
-## onto, since composing keeps a man on his base cell exactly when that cell is fixed.
+## onto, since composing keeps a man on his base cell exactly when that cell is fixed. That holds
+## only while the pairing is the one composed at `perm.size()`: a casualty during the reform
+## hold closes the pairing up onto a smaller grid, and the fixed cells of that grid's reflection
+## are not the men who were walking, so the gate then picks the wrong men (as the index read
+## does on that path too).
 static func apply_traverse_flank_arcs(slots: PackedVector2Array, world_positions: PackedVector2Array,
 		unit_pos: Vector2, unit_ang: float, perm: PackedInt32Array, files: int, spacing: float,
 		walkers_by_cell: bool = false) -> PackedVector2Array:
