@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/router-through-block-1757.json",
+  "caption": "A routed red company runs south straight through a blue infantry block that is holding its ground. Blue fights the fugitives as they push through its ranks and is shoved back a little, but keeps facing north. Once the rout has passed out of its rear, the blue men step back onto their places and the block stands formed again.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}
