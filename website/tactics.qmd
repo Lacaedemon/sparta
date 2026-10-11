@@ -73,6 +73,13 @@ its riders running together as a block.
   unit can still be struck and run down, chased as relentlessly as your pursuer can
   manage. So chase a broken enemy down to finish it, rather than assuming it's out of
   the fight.
+- **A rout that runs through your ranks doesn't spin them round.**
+  When a broken enemy flees straight through one of your blocks,
+  your men keep fighting it as it passes,
+  but the block keeps its facing and the block's ranks keep their places
+  instead of swinging round after the fugitives,
+  so once they have gone each man steps back to his own place.
+  A block riding a rout down from behind still turns to keep its front on it.
 - **A "broken" unit can rally** if nothing catches it. As it flees, its nerve steadies
   --- morale climbs back toward a baseline, fast at first and levelling off. If it
   **breaks contact** (no enemy close enough to keep hitting it) and still fields enough

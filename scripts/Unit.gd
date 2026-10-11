@@ -4118,6 +4118,7 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		# (via is_maneuver_turning()) -- the squared body never eases onto its new slots.
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
+		_release_streaming_router()
 		return true
 	# MULTIPLE_ENGAGE, once genuinely fighting 2+ distinct adjacent enemy units at once: hold
 	# the current facing instead of turning to bring the front to bear on whichever single foe
@@ -4131,11 +4132,28 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	if order_mode == ORDER_MULTIPLE_ENGAGE and _adjacent_engaged_enemy_units().size() >= 2:
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
+		_release_streaming_router()
 		return true
 	# FLANKING_MANEUVER, while in active melee combat with the enemy: hold the line facing so the unit
 	# maintains its forward engagement while the outer wings envelop the enemy flanks,
 	# rather than rotating off-axis as wing soldier collisions jostle.
 	if order_mode == ORDER_FLANKING_MANEUVER and state == State.FIGHTING:
+		if _engage_turn_target != Vector2.ZERO:
+			_settle_engage_turn()
+		_release_streaming_router()
+		return true
+	# A routing target streaming out through this block: hold the current facing, as the
+	# stances above do. The bearing from this anchor to a point within the block's own reach
+	# names no front, so following it (each tick's small correction snaps unabsorbed) swings
+	# the whole slot grid round while the men, held in contact, stay where they are -- the
+	# block is then left with its slots turned away from its men and has to wheel back once
+	# it is free. Holding moves neither the facing nor _formation_angle, so nothing is left
+	# for a later reform to undo; once the router is out of reach the ordinary re-face
+	# (turn-in-place for a large swing) brings the front round.
+	# TODO(#1793): the hold has no bound in time, so a router that lingers among the ranks
+	# keeps the block's front off it for as long as it stays, and the block lands fewer blows
+	# on it than one that turned onto it would.
+	if _router_streaming_through(enemy_unit):
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
 		return true
@@ -4164,6 +4182,40 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	if _advance_turn(_engage_turn_target, delta):
 		_settle_engage_turn()
 	return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
+
+
+## Whether `enemy_unit` is a ROUTING regiment streaming out through this block. It starts
+## doing so when its centre lies within the block's own reach (soldier_block_extent, the
+## slot grid's circumradius around the anchor) without leading this anchor along its own
+## line of flight, and keeps doing so (_streaming_router_uid) until it is out of that reach,
+## stops routing, or this block leaves the fight: a router that has worked its way just past
+## the anchor is still among the ranks, and a bearing taken from a few world units behind it
+## swings as wildly as one taken from in front. A router that leads the anchor from the
+## start is being ridden down from behind: it is ahead of this block on a steady bearing,
+## and the ordinary re-face keeps the front on it. Holding the facing there instead keeps a
+## pursuit's front off its quarry -- in the rout_rally clip, whose cavalry rides inside its
+## router's reach, the router then outlives the clip and the troop's own shape breaks up.
+## A router with no flight velocity has no line of flight to lead along, so it counts as
+## streaming through.
+func _router_streaming_through(enemy_unit: Unit) -> bool:
+	if enemy_unit == null or enemy_unit.state != State.ROUTING:
+		_release_streaming_router()
+		return false
+	var reach: float = soldier_block_extent()
+	var offset: Vector2 = enemy_unit.position - position
+	if offset.length_squared() > reach * reach:
+		_release_streaming_router()
+		return false
+	if _streaming_router_uid != enemy_unit.uid:
+		if offset.dot(enemy_unit._flee_velocity) > 0.0:
+			return false
+		_streaming_router_uid = enemy_unit.uid
+	return true
+
+
+## Let go of the streaming-router latch.
+func _release_streaming_router() -> void:
+	_streaming_router_uid = -1
 
 
 ## Finish an engage turn-in-place: fold the rotation into _formation_angle (so the men keep
@@ -5638,6 +5690,12 @@ var _engage_turn_start_facing: Vector2 = Vector2.ZERO
 # is_instance_valid/State.DEAD itself before reading it, same as every other target_enemy use.
 var _engage_turn_old_files: int = 0
 var _engage_turn_enemy: Unit = null
+# The uid of the routing regiment this block has seen streaming out through its own ranks,
+# or -1: _router_streaming_through holds the block's facing against it until it is out of
+# the block's reach or stops routing. Cleared as well when the block leaves the engaged tier
+# (tick_engaged), takes a new order (start_order_response) or routes itself (_rout), or when
+# a stance's own facing hold takes over in _face_for_action.
+var _streaming_router_uid: int = -1
 # Beyond this heading offset (radians) an engage/attack re-face turns in place gradually
 # instead of snapping. Below it a small correction snaps, keeping close-quarters combat
 # responsive; only a large swing (roughly a quarter-turn or more) turns the men in place.
@@ -7839,6 +7897,12 @@ func tick_engaged(delta: float) -> void:
 		_engaged_linger = ENGAGED_LINGER
 	else:
 		_engaged_linger = maxf(0.0, _engaged_linger - delta)
+		# The streaming-router latch lives as long as the fight that set it, and the engaged
+		# latch is this block's own measure of that: a tick or two out of FIGHTING inside the
+		# melee keeps it, so a router already past the anchor is not met afresh (and faced) on
+		# re-entry, while a block that has left the fight lets it go.
+		if _engaged_linger <= 0.0:
+			_release_streaming_router()
 
 
 ## True while this regiment is in the engaged tier (its front ranks run the full
@@ -8899,6 +8963,7 @@ func resolve_soldier_melee(enemy: Unit) -> void:
 ## order_response_delay seconds before executing the new order.
 func start_order_response() -> void:
 	_order_response_timer = order_response_delay
+	_release_streaming_router()   # a fresh order is a fresh action; no fight's latch carries
 	# A move/attack order reforms a quarter-turned unit back square to its heading, so it
 	# marches as a proper line rather than crabbing sideways. The bodies ease onto the
 	# reformed slots via the arrival dynamics (a future turn-and-widen move maneuver will make
@@ -9014,6 +9079,7 @@ func _remove_from_play() -> void:
 func _rout() -> void:
 	if state == State.ROUTING:
 		return
+	_release_streaming_router()
 	# The flight builds up from whatever speed the unit was already carrying AWAY from the
 	# enemy -- the component of its travel velocity along its flee heading, read before
 	# anything below clears the orders. A unit caught advancing (or in a melee its charge
@@ -10307,6 +10373,7 @@ func to_snapshot_dict() -> Dictionary:
 		"flanking_maneuver_wrap_files": flanking_maneuver_wrap_files,
 		"flanking_maneuver_cooldown_ticks": flanking_maneuver_cooldown_ticks,
 		"flanking_maneuver_hysteresis": flanking_maneuver_hysteresis,
+		"streaming_router_uid": _streaming_router_uid,
 
 		# Unit references, resolved by uid after every unit in the snapshot is restored.
 		"target_enemy_uid": target_enemy.uid if is_instance_valid(target_enemy) else -1,
@@ -10548,6 +10615,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	flanking_maneuver_wrap_files = int(d.get("flanking_maneuver_wrap_files", flanking_maneuver_wrap_files))
 	flanking_maneuver_cooldown_ticks = int(d.get("flanking_maneuver_cooldown_ticks", flanking_maneuver_cooldown_ticks))
 	flanking_maneuver_hysteresis = int(d.get("flanking_maneuver_hysteresis", flanking_maneuver_hysteresis))
+	_streaming_router_uid = int(d.get("streaming_router_uid", -1))
 
 	var restored: Array[Order] = []
 	for od in d.get("orders", []):
