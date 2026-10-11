@@ -129,11 +129,10 @@ func test_rout_flee_facing_snap_keeps_every_body_on_its_own_slot() -> void:
 
 
 func test_rally_after_flee_facing_snap_resets_formation_angle() -> void:
-	# _rout() zeroes _formation_angle so a unit "reforms square to its heading on rally" (its
-	# own comment) -- but fleeing can re-fold it via _face_dir's snap-absorb, so _rally() must
-	# drop that fold back to zero (via reform_ranks(), which also handles the about-face
-	# point-reflection case) rather than leaving the rallied unit's grid rotated relative to
-	# its own facing.
+	# A routed unit reforms square to its heading on rally -- but fleeing folds the grid via
+	# _face_dir's snap-absorb, so _rally() must drop that fold back to zero (via reform_ranks(),
+	# which also handles the about-face point-reflection case) rather than leaving the rallied
+	# unit's grid rotated relative to its own facing.
 	var old_pf: PathField = PathField.active
 	PathField.active = null   # see test_rout_flee_facing_snap_keeps_every_body_on_its_own_slot
 	var u := _unit(1, 0, Vector2(500, 500), Vector2.DOWN)   # facing south
@@ -148,8 +147,7 @@ func test_rally_after_flee_facing_snap_resets_formation_angle() -> void:
 	u._rally()
 
 	assert_eq(u._formation_angle, 0.0,
-		"rally resets _formation_angle -- the unit reforms square to its facing, "
-			+ "per _rout()'s own invariant")
+		"rally resets _formation_angle -- the unit reforms square to its facing")
 	PathField.active = old_pf
 
 

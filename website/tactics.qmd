@@ -39,6 +39,10 @@ flank/rear hits, it **routs** --- it flees (its flag fading) toward its own back
 and stops fighting for now. A routing unit can flee past the field's visible edge into a
 margin beyond it before it's gone for good, staying on the field --- and still
 fightable --- for as long as it's plausibly still in view.
+A unit breaks with its ranks as they lay:
+each man runs from his own place in the block,
+whichever way the block had turned before it broke,
+so breaking does not throw the men out of their places.
 
 A routing unit runs faster than it marches. Unless it was already falling back, it
 starts its flight from a standstill (whatever broke it: a melee, missile fire, a
@@ -84,19 +88,23 @@ its riders running together as a block.
   --- morale climbs back toward a baseline, fast at first and levelling off. If it
   **breaks contact** (no enemy close enough to keep hitting it) and still fields enough
   men, its recovering morale carries it over the rally threshold and it **returns to
-  your control**, ready to fight again. It re-squares its ranks the moment it rallies
-  --- the flight leaves the grid flipped, so the short rank ends up leading, and only
-  the men the flip can't leave in place have to move: under **File-major** reform
-  (the default) the under-strength files step up one rank to close it, and under
-  **Row-major** the handful whose rank is a different width from the one it pairs
-  with across the flip hold their file and swap ends.
-  A unit rallying in **square** (orbis or schiltron) keeps its own assignment of men
-  to cells and re-squares on that,
-  so a broken square recovers without marching itself inside out.
-  Whichever it is, as with an ordered
-  about-face, the men don't counter-march through the block to do it, so a rallied
-  unit is back in fighting shape almost at once rather than spending seconds
-  shuffling through itself.
+  your control**, ready to fight again.
+  It re-squares its ranks the moment it rallies.
+  The block fled with its ranks as they lay when it broke,
+  so they are often turned against its new heading,
+  and a half-turn leaves the short rank leading.
+  The rallying unit first turns its heading by at most an eighth of a turn,
+  onto the nearest quarter of the way its ranks lie,
+  so the turn itself moves no man.
+  Then it re-squares from where the men stand.
+  After a half-turn each man keeps his file,
+  and only the under-strength files step up one rank to close the front,
+  under **File-major** reform (the default), **Row-major**
+  and in **square** (orbis or schiltron) alike.
+  As with an ordered about-face,
+  the men don't counter-march through the block to do it,
+  so a rallied unit is back in fighting shape almost at once
+  rather than spending seconds shuffling through itself.
   A unit that rallies at a run **pulls up** while it re-forms,
   where it has the room and no enemy is near it or its path
   (and it stops short if one comes near while it slows):

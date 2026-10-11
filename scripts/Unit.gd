@@ -495,14 +495,16 @@ var _ranks_closed: bool = false
 # A quarter-turn turns every soldier in place WITHOUT reorganising the grid: each man
 # faces a new way but stands where he stood. unit.facing rotates 90°, and this offset cancels
 # that rotation in soldier_world_slots so the slots stay put -- the men don't drift. 0 = the
-# grid is square to the heading (the default). A fresh move order / rout reforms it to 0.
+# grid is square to the heading (the default). A fresh move order reforms it to 0. A rout
+# keeps it, and the rally squares it to the heading.
 var _formation_angle: float = 0.0
 # The net turn of the in-place drill leaves -- QUARTER_TURN (a Q/E drill, or a lateral pivot's
 # legs) and ABOUT_FACE (a V drill, or a rear move's turn) -- that have settled into
 # _formation_angle since anything else last moved it: _settle_order_turn adds each such leaf's
 # turn (every turn that settles there is one of these two leaf types), and every other write to
-# the fold -- a snap-absorb, an engage re-face, a reform, a quarter-fold file double, a rout --
-# clears it (a snapshot restore restores it with the fold). A new write to _formation_angle must do one or the other. So it only ever
+# the fold -- a snap-absorb, an engage re-face, a reform, a quarter-fold file double, the
+# rally's squaring of the fold -- clears it, and so does a rout, which keeps the fold itself (a
+# snapshot restore restores it with the fold). A new write to _formation_angle must do one or the other. So it only ever
 # describes drill turns made on top of whatever fold was already there. reform_ranks reads it for
 # what the angle alone cannot tell: a fold whose drills net a quarter is re-paired, and one whose
 # drills net a half-turn is reflected like an about-face, even when a leftover snap-absorb fold
@@ -526,9 +528,8 @@ var _drill_turn_fold: float = 0.0
 # fresh order starts unmirrored with every man's slot exactly where the mirror had put it;
 # simply dropping the flag would swap every off-centre man to the opposite flank. set_frontage()
 # bakes it too, before writing its anchor shift, which callers compute in the unmirrored frame
-# (see unmirrored_anchor_offset). _rout() drops it without baking it, along with the fold, which
-# still reflects every off-centre man's slot to the other flank; that is a known gap, not a
-# design choice.
+# (see unmirrored_anchor_offset). _rout() bakes it too, so a mirrored block that breaks keeps
+# every man's slot on his own flank.
 #
 # Deliberately NOT cleared by _settle_engage_turn() or _face_dir()'s snap-absorb branch: those
 # both fold a rotation into _formation_angle specifically to hold `ang` (soldier_world_slots'
@@ -9110,9 +9111,14 @@ func _rout() -> void:
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn
 	_engage_turn_enemy = null
 	_pin_down_exposure_cd = 0.0        # a rout ends the exposure window instead of freezing it open
-	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
+	# The rout leaves the slot grid where the men stand. It keeps the fold (an engage re-face, a
+	# half-turn or a drill leaves one), since dropping it would swing the grid about the anchor
+	# under the men. It bakes an armed mirror the way a fresh order does, since clearing the flag
+	# would send every off-centre man's slot to the other flank. The rally squares the fold to
+	# the heading (see _rally). The drill record still goes: the rally squares the fold by its
+	# angle alone, whatever turns made it.
+	_bake_formation_mirror()
 	_drill_turn_fold = 0.0
-	_formation_mirror_x = false
 	clear_couple_transit()             # the flight scatters the walkers; nothing is in transit
 	_rout_timer = rout_time
 	# Deliberately no `_shattered = false` here: a fresh rout starts "broken"
@@ -9309,16 +9315,7 @@ func _rally() -> void:
 	# floor — a unit that rallies the instant its timer expires still reforms shaken.
 	morale = maxf(morale, RALLY_MORALE)
 	_rout_timer = 0.0
-	# _rout() zeroed _formation_angle so the unit "reforms square to its heading on rally"
-	# (its own comment), but fleeing can re-fold it via _face_dir's snap-absorb (a sharp
-	# turn away from the enemy at the moment routing starts). reform_ranks() is the
-	# established mechanism for dropping that fold back to zero -- unlike a raw
-	# `_formation_angle = 0.0`, it correctly arms _formation_mirror_x for an exact
-	# about-face fold instead of point-reflecting the whole block.
-	# Hold-ground: nothing ordered a countermarch here. The fold is bookkeeping the flight
-	# left behind, so the ranks re-square where the men are standing rather than marching the
-	# whole block through itself to reach the same footprint.
-	reform_ranks(true)
+	_rally_resquare()
 	# After the re-square, so the coast's terrain check sweeps the block the unit now forms.
 	_begin_rally_halt()
 	_clear_flight()
@@ -9327,6 +9324,69 @@ func _rally() -> void:
 	remove_from_group("routers")
 	add_to_group("units")
 	queue_redraw()
+
+
+## Square a rallying unit's slot grid to its heading without sending the men across the block.
+## The fold it carries here is whatever it held when it broke (_rout keeps it) plus every
+## flight turn _face_dir's snap-absorb took in. That can be any angle, and dropping an arbitrary
+## fold swings the grid about the anchor under the men, so the heading first takes the part of
+## the fold off its nearest quarter (_turn_heading_onto_fold_quarter). reform_ranks() then drops
+## what is left, holding ground: nothing ordered a countermarch, so the ranks re-square where the
+## men are standing. A quarter fold re-pairs the men from where they stand, and a half-turn fold
+## arms the depth reflection instead of point-reflecting the whole block.
+## A half-turn's hold-ground reflection keeps a file-major block's men within a rank pitch of
+## their ground, but in the row-major and square layouts, when the short rank is centred under
+## the middle files, it sends the outer files' men to the other end of their file, the whole
+## depth of the block. Those two layouts are dealt again instead, column by column
+## (UnitFormation.pair_slots_by_column) from the slots the men held before the re-square, so no
+## man's slot moves more than a rank pitch, and the walkers are judged against those slots, as
+## reform_ranks judges its own. A block whose old slots cannot be read without dealing them (an
+## assignment out of step with its grid, such as after a regiment-path casualty) keeps the deal
+## reform_ranks already made from where the men stand (see _apply_row_slot_reflection).
+func _rally_resquare() -> void:
+	_turn_heading_onto_fold_quarter()
+	var files: int = maxi(1, formation_files(soldiers))
+	var half_turn: bool = absf(absf(wrapf(_formation_angle, -PI, PI)) - PI) < 0.01
+	var deal: bool = half_turn and (in_square() or not _effective_file_major_reform())
+	# Read before the re-square, and only when the read deals nothing (see reform_ranks).
+	var slots_before := PackedVector2Array()
+	if deal and not _slot_deal_pending(soldiers, files):
+		slots_before = soldier_world_slots(soldiers)
+	if not reform_ranks(true) or not deal or slots_before.size() != soldiers:
+		return
+	# Deal from the slots the men held, not from where they stand: a block braking out of a
+	# flight stands sheared and strung out around its slots, and dealing from that would hand a
+	# man a cell across the block. Each man's new cell is then at most a rank pitch from his old
+	# one, so his distance to it grows by at most a rank pitch.
+	var held: PackedVector2Array = to_slot_frame(slots_before)
+	if in_square():
+		_sim_soldier_square_slot = UnitFormation.pair_slots_by_column(
+				held, UnitFormation.block_slots(soldiers, files, file_pitch_wu()), file_pitch_wu())
+		_square_slot_files = files
+	else:
+		_sim_soldier_row_slot = UnitFormation.pair_slots_by_column(
+				held, UnitFormation.slots(self, soldiers), file_pitch_wu())
+		_row_slot_files = files
+		_row_slot_dealt = true
+		_row_layout_files = files
+	arm_couple_transit(slots_before, _reform_timeout())
+
+
+## Turn `facing` by the part of the fold that lies off its nearest quarter-turn, and take that
+## part out of the fold, so the slot grid stays exactly where it was (soldier_world_slots turns
+## the grid by facing plus the fold) and the fold is left at 0, a quarter or a half-turn. The
+## heading moves by at most an eighth of a turn. Clears the drill record, as every fold write
+## that is not a drill turn does.
+func _turn_heading_onto_fold_quarter() -> void:
+	var fold: float = wrapf(_formation_angle, -PI, PI)
+	var quarter: float = roundf(fold / (PI * 0.5)) * PI * 0.5
+	var residue: float = fold - quarter
+	if residue == 0.0:
+		return
+	facing = facing.rotated(residue)
+	_formation_angle = quarter
+	_drill_turn_fold = 0.0
+	_render_dirty = true
 
 
 ## The men are still running when they rally: hand the flight over to the idle coast-to-stop
