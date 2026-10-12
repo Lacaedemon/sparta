@@ -13,7 +13,7 @@ static func markdown(result: Dictionary, config: Dictionary, base: Dictionary,
 		label: String = "") -> String:
 	var cfg: Dictionary = MeleeOutcomeDelta.DEFAULTS.merged(config, true)
 	var rows: Array = result["rows"]
-	var tested: Array = rows.filter(func(r: Dictionary) -> bool: return r["status"] == "tested")
+	var tested: Array = rows.filter(func(r: Dictionary) -> bool: return r["status"] in ["tested", "not comparable"])
 	var flagged: Array = rows.filter(func(r: Dictionary) -> bool: return r["flag"])
 	var small: Array = rows.filter(func(r: Dictionary) -> bool: return r["significant"] and not r["flag"])
 	var blind: Array = tested.filter(func(r: Dictionary) -> bool: return r["min_p"] > result["level"])
@@ -25,20 +25,26 @@ static func markdown(result: Dictionary, config: Dictionary, base: Dictionary,
 	if label != "":
 		lines.append(label)
 		lines.append("")
-	lines.append(("%d clips, %s perturbed runs per side, %d rows tested with an exact rank-sum "
-			+ "test. %s at %s bounds the expected share of false flags among the flags (the false "
-			+ "discovery rate) at %s%s. A row is flagged only when its Hodges-Lehmann shift is also "
-			+ "at least its threshold: %s times its own run-to-run spread, and never under the "
-			+ "measurement floor.") % [
+	var unlike: Array = rows.filter(func(r: Dictionary) -> bool: return r["status"] == "not comparable")
+	lines.append(("%d clips, %s perturbed runs per side, %d rows tested: an exact rank-sum test for "
+			+ "ticks, metres and men, and Fisher's exact test for proportions. %s at %s bounds the "
+			+ "expected share of false flags among the flags (the false discovery rate) at %s%s. "
+			+ "A rank row is flagged only when its Hodges-Lehmann shift is also at least %s times "
+			+ "its own run-to-run spread (never under the measurement floor), and a removed-by row "
+			+ "when its change is at least %s percentage points. A `:unobserved` row tests how often "
+			+ "a value went unobserved and is flagged on significance alone.") % [
 			base.size(), _range_text(runs), result["tested"], method, str(cfg["alpha"]),
 			str(cfg["alpha"]),
 			"" if str(cfg["correction"]) == "by" else " for independent or positively dependent rows",
-			str(cfg["min_effect"])])
+			str(cfg["min_effect"]), str(cfg["min_pp"])])
 	lines.append("")
 	lines.append(("**No flag is not evidence of no effect.** One row must reach p <= %s to be flagged "
-			+ "alone. %d of %d tested rows cannot reach it with any change; the MDS column gives each "
-			+ "row's smallest detectable pure shift.") % [
-			str(snappedf(result["level"], 0.000001)), blind.size(), tested.size()])
+			+ "alone. %d of %d tested rows cannot reach it with any change. The MDS column is the "
+			+ "change a row would flag with %s%% power, never below its threshold: smaller changes "
+			+ "are usually missed. %d row(s) are not comparable, because their two sides left "
+			+ "significantly different shares of runs unobserved.") % [
+			str(snappedf(result["level"], 0.000001)), blind.size(), tested.size(),
+			str(int(100.0 * float(cfg["power"]))), unlike.size()])
 	lines.append("")
 	if flagged.is_empty():
 		lines.append("**No flagged shifts.**")
@@ -63,17 +69,20 @@ static func markdown(result: Dictionary, config: Dictionary, base: Dictionary,
 
 static func _table(rows: Array) -> PackedStringArray:
 	var out: PackedStringArray = [
-		"| Clip | Metric | Base median | Head median | Shift | Threshold | MDS | p | Runs (base/head) |",
-		"|---|---|---|---|---|---|---|---|---|",
+		"| Clip | Metric | Base | Head | Shift | Threshold | MDS (80%) | p | Runs (base/head) | Unobserved (base/head) | Status |",
+		"|---|---|---|---|---|---|---|---|---|---|---|",
 	]
 	for r in rows:
-		out.append("| `%s` | `%s` | %s | %s | %s %s | %s | %s | %s | %d/%d |" % [r["clip"], r["metric"],
-				_median_cell(r["base"], r["never_base"], r["n_base"]),
-				_median_cell(r["head"], r["never_head"], r["n_head"]),
+		var pct: String = "%" if r["kind"] == "proportion" else ""
+		out.append("| `%s` | `%s` | %s%s | %s%s | %s %s | %s | %s %s | %s | %d/%d | %d/%d | %s |" % [
+				r["clip"], r["metric"],
+				_median_cell(r["base"], r["never_base"], r["n_base"]), pct,
+				_median_cell(r["head"], r["never_head"], r["n_head"]), pct,
 				MeleeOutcomeDelta.cell(r["shift"]), r["unit"],
 				MeleeOutcomeDelta.cell(r["threshold"]),
-				"n/a" if r["mds"] < 0.0 else MeleeOutcomeDelta.cell(r["mds"]),
-				_p_cell(r["p"]), r["n_base"], r["n_head"]])
+				MeleeOutcomeDelta.cell(r["mds"]), r["mds_unit"],
+				_p_cell(r["p"]), r["n_base"], r["n_head"], r["dropped_base"], r["dropped_head"],
+				r["status"]])
 	return out
 
 

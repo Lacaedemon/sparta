@@ -11,7 +11,9 @@
 #      every run keeps its metrics.json, and its snapshots only under KEEP_DUMPS=1
 #   6. a second run on the same out-dir reuses every finished dump, and the comparison is
 #      told exactly which clips and seeds this run selected, so leftover runs never join;
-#      a failed project import fails the delta with exit 2
+#      a failed project import fails the delta with exit 2; with a step that does not divide
+#      the clip's covered ticks, a run ends (and is extracted as complete) at the last
+#      scheduled snapshot, recorded in its run.json
 #   7. a run that writes no snapshots fails the whole delta with exit 2
 #   8. --derive-clips runs every catalog clip on its own seed and prints only the clips
 #      with enemy contact
@@ -68,6 +70,7 @@ md="" extract=""
 while [ "$#" -gt 0 ]; do
   if [ "$1" = "--markdown" ]; then md="$2"; fi
   if [ "$1" = "--extract" ]; then extract="$2"; fi
+  if [ "$1" = "--end" ]; then echo "$2" > "$STUB_END"; fi
   shift
 done
 if [ -n "$extract" ]; then
@@ -85,7 +88,8 @@ fi
 exit 0
 EOF
 chmod +x "$WORK/godot"
-export GODOT_BIN="$WORK/godot" STUB_LOG="$WORK/stub.log" STUB_ARGS="$WORK/compare-args"
+export GODOT_BIN="$WORK/godot" STUB_LOG="$WORK/stub.log" STUB_ARGS="$WORK/compare-args" \
+  STUB_END="$WORK/extract-end"
 
 # make_tree <dir> [no-seed]: a fake project with a two-clip catalog and both sources.
 make_tree() {
@@ -158,6 +162,15 @@ assert_eq "a smaller K on the same out-dir compares only its own seeds" "1,2" \
 # 6b. A failed import.
 assert_eq "a failed import fails the delta" 2 \
   "$(MELEE_DELTA_CLIPS=clip_a MELEE_DELTA_K=1 STUB_IMPORT_RC=1 rc_of bash "$DELTA" "$WORK/base" "$WORK/head" "$WORK/o5")"
+
+# 6c. A step that does not divide the clip's 40 covered ticks: the last scheduled snapshot is
+# tick 35, and that, not 40, is where a complete run ends.
+MELEE_DELTA_CLIPS=clip_a MELEE_DELTA_K=1 MELEE_DELTA_STEP=7 \
+  bash "$DELTA" "$WORK/base" "$WORK/head" "$WORK/o6" >/dev/null 2>&1 || true
+assert_eq "extraction ends at the last scheduled tick" 35 "$(cat "$STUB_END")"
+assert_eq "the run records its end and step" '{"end": 35, "step": 7}' \
+  "$(cat "$WORK/o6/dumps/base/clip_a/seed1/run.json")"
+assert_eq "the comparison is told the step" 7 "$(arg_after --step)"
 
 # 7. A run with no snapshots.
 rc="$(MELEE_DELTA_CLIPS=clip_a MELEE_DELTA_K=2 STUB_FAIL_RUN=2 \

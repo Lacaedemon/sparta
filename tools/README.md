@@ -345,7 +345,8 @@ MELEE_DELTA_CLIPS=spear_standoff,charge MELEE_DELTA_METRICS='uid[0-9]+_(break|co
 ```
 
 **A clean report is not evidence of no regression.**
-It is evidence only for the rows whose minimum detectable shift (the MDS column) is smaller than the change you care about.
+A row's MDS column is the change it would flag 80% of the time, so a row is weak evidence of no effect only for changes larger than its MDS,
+and a change smaller than the MDS is usually missed.
 At the defaults over all 50 clips, about 30% of tested rows cannot be flagged with any change at all.
 Ask a narrow question instead: name the clips and metrics the change is about, which keeps the row count small.
 
@@ -366,21 +367,30 @@ Per run it records the first contact tick and each team's men on the field at th
 Per unit it records its first contact tick, its break tick (first `ROUTING` snapshot) and the tick it left play.
 After a break it also records the contact-break delay (ticks from the break until the unit is out of contact),
 its men's centroid travel 60, 150 and 300 ticks after the break,
-and whether it had left play by each of those offsets.
+and whether it had left play by each of those offsets (a removed-by indicator).
 
 Each value is one of three things.
 A number means the event happened.
-"never" means the run was observed to its end (the clip's last tick, or a `battle_over` snapshot) and the event did not happen.
+"never" means the run was observed to its end (the last scheduled snapshot, or a `battle_over` snapshot) and the event did not happen.
 It ranks after every tick.
 Unobserved means the stream was cut off first, or the question does not apply: travel after the unit left play is censored, and so is the break of a unit destroyed unbroken.
-Unobserved values are dropped, not ranked.
+Unobserved values are dropped, not ranked, and every row reports how many it dropped on each side.
+Each run directory records its last scheduled tick and cadence in `run.json`,
+and a `metrics.json` is reused only when it was made with the same travel offsets, cadence and end,
+so a re-extraction from kept snapshots still tells a cut-off run from a complete one.
 Leaving play does not yet say whether the unit escaped or died (TODO(#1832)),
 and a replay clip's stream has no `battle_over` marker (#1831), so a replay battle that ends early reads as cut off.
 
 ### Comparison
 
-`tools/demo/MeleeOutcomeDelta.gd` and `OutcomeStats.gd` do the statistics.
-Each clip and metric gets an exact two-sided rank-sum (Mann-Whitney) test, with tied values sharing a mid-rank.
+`tools/demo/MeleeOutcomeDelta.gd`, `OutcomeStats.gd` and `OutcomePower.gd` do the statistics.
+Each clip and tick, metre or headcount metric gets an exact two-sided rank-sum (Mann-Whitney) test, with tied values sharing a mid-rank.
+A removed-by indicator is a proportion, so it gets Fisher's exact test, and its effect is the change in percentage points.
+A median of 0/1 values could not register a change from 0% to 40% at all.
+Whenever a metric has unobserved values on either side, a `<metric>:unobserved` row tests how often it went unobserved, also with Fisher's test.
+That row is flagged on significance alone,
+and when it is significant the metric's own row is marked "not comparable", because its two sides dropped different shares of runs.
+Dropping censored runs is still a simplification: a censoring-aware rank test (Gehan) belongs here once escapes are told from deaths (TODO(#1832)).
 Then Benjamini-Hochberg runs across every row tested in the report, at `MELEE_DELTA_ALPHA` (default 0.05).
 That bounds the false discovery rate: in expectation, at most 5% of the flags are false.
 It bounds the chance of any flag at all only when no row has a real change.
@@ -390,17 +400,27 @@ These rows are not independent: the travel offsets come from the same runs, and 
 BH stays the default because power, not false flags, is the binding limit (see the table below), and both measured nulls flagged nothing.
 Use `by` when a report gates a decision.
 
-A significant row is flagged only when its Hodges-Lehmann shift is also at least its threshold:
+A significant rank row is flagged only when its Hodges-Lehmann shift is also at least its threshold:
 `MELEE_DELTA_MIN_EFFECT` (default 0.5) times that row's own run-to-run spread,
 the robust standard deviation of its base runs (1.4826 times the median absolute deviation, or the sample standard deviation when that is 0).
 The criterion is a standardized effect size of half a standard deviation (Cohen's "medium"), fixed before any validation run.
-The floors are the measurement resolution: the snapshot cadence (5 ticks), 0.1 m (`MELEE_DELTA_FLOOR_METRES`), 1 man (`MELEE_DELTA_FLOOR_MEN`), and 0.5 for a removed-by indicator.
+The floors are the measurement resolution: the snapshot cadence (5 ticks), 0.1 m (`MELEE_DELTA_FLOOR_METRES`) and 1 man (`MELEE_DELTA_FLOOR_MEN`).
+A removed-by indicator is flagged when significant and at least `MELEE_DELTA_MIN_PP` (default 20) percentage points:
+a unit removed in roughly one more battle in five, a change a player would notice over a handful of battles.
+At K=16 it rarely binds, since the 80%-power detectable change is larger (about 45 points from 0%).
 The threshold does not screen noise on its own: in the null run below, 39 of 171 rows had a shift past it.
 The significance test screens noise, and the threshold then drops significant shifts too small to matter.
 
-Each tested row also reports its smallest attainable p-value and its minimum detectable shift:
-the smallest pure shift of its own base runs that would reach the p-value one row must reach alone (alpha divided by the row count, and by the harmonic number for `by`).
-The MDS is `inf` for a row that cannot reach that level whatever the change, typically a row with few runs, such as the travel of a unit that rarely breaks.
+Each tested row also reports its smallest attainable p-value and its minimum detectable change (the MDS column):
+the change a fresh experiment of the row's own run counts would flag alone (at alpha divided by the row count, and by the harmonic number for `by`) with 80% probability,
+and never less than the row's threshold, since a smaller change is never flagged.
+It comes from simulation in `OutcomePower.gd` with a fixed seed.
+For a tick, metre or headcount row it is the normal-model shift in standard deviations times the row's robust spread,
+so on a heavily tied row the real power is lower and the MDS is a lower bound.
+For a row with "never" in its base runs it is the change in how often the event never happens, in percentage points,
+and for a proportion row the change in percentage points.
+`test/unit/test_outcome_power.gd` checks each against an independent simulation, which detects a change of that size 72% to 88% of the time.
+The MDS is `inf` for a row that cannot reach the level whatever the change, typically a row with few runs, such as the travel of a unit that rarely breaks.
 A metric with fewer than `MELEE_DELTA_MIN_RUNS` (4) runs on a side is listed but not tested.
 
 ### Power
@@ -427,7 +447,7 @@ Pass a larger `MELEE_DELTA_K` when the change is subtle.
 
 `<out-dir>/melee-delta.md` is a summary to paste into a PR.
 It lists the flagged rows, says how many tested rows could not be flagged with any change, and, collapsed, the smallest p-values.
-`melee-delta.tsv` holds every row with its threshold, smallest attainable p and minimum detectable shift.
+`melee-delta.tsv` holds every row with its threshold, smallest attainable p, minimum detectable change and its unit, unobserved runs per side, and status.
 Exit code 0 means nothing was flagged, 1 means at least one flagged shift, and 2 means a usage, input or run failure.
 
 ### Cost and subsets

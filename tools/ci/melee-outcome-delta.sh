@@ -54,6 +54,8 @@
 #   MELEE_DELTA_FLOOR_METRES / MELEE_DELTA_FLOOR_MEN
 #                           Smallest threshold for a travel metric (default 0.1) and a
 #                           headcount (default 1).
+#   MELEE_DELTA_MIN_PP      Smallest flagged change of a removed-by proportion, in percentage
+#                           points (default 20).
 #   MELEE_DELTA_MIN_RUNS    Fewest runs per side for a metric to be tested (default 4).
 #   MELEE_DELTA_TRAVEL      Tick offsets after a break for the travel metrics
 #                           (default 60,150,300).
@@ -98,11 +100,18 @@ import_tree() {
   fi
 }
 
-# --run-one <tree> <source> <type> <ticks> <end> <run> <dir>: one perturbed dump and its
-# metrics. Internal: the parallel pool below re-invokes this script with it.
+# last_scheduled <covered> <step>: the last tick a snapshot is scheduled at, the largest
+# multiple of step not past covered. A run that reaches it is complete.
+last_scheduled() {
+  echo $(( $1 / $2 * $2 ))
+}
+
+# --run-one <tree> <source> <type> <ticks> <end> <step> <run> <dir>: one perturbed dump and
+# its metrics. <end> is the last scheduled snapshot tick. Internal: the parallel pool below
+# re-invokes this script with it.
 if [ "${1:-}" = "--run-one" ]; then
-  [ "$#" -eq 8 ] || usage
-  tree="$2" source="$3" type="$4" ticks="$5" end="$6" run="$7" dir="$8"
+  [ "$#" -eq 9 ] || usage
+  tree="$2" source="$3" type="$4" ticks="$5" end="$6" step="$7" run="$8" dir="$9"
   if [ "$type" = "input" ]; then
     scene=res://tools/demo/DemoInputRecorder.tscn key=SPARTA_DEMO_INPUT
   else
@@ -119,12 +128,16 @@ if [ "${1:-}" = "--run-one" ]; then
     echo "error: run $run of $source in $tree failed (rc $rc); log: $dir.log" >&2
     exit 2
   fi
+  # Where the run should end and at what cadence, so a later re-extraction (KEEP_DUMPS=1)
+  # can still tell a complete run from a cut-off one.
+  printf '{"end": %d, "step": %d}\n' "$end" "$step" > "$dir/run.json"
   # Extract this run's metrics now, in the parallel pool, so the comparison reads one small
   # file per run instead of parsing every snapshot serially.
   rc=0
   run_bounded "${MELEE_DELTA_TIMEOUT:-300}" "$GODOT_BIN" --headless --path "$TOOL_ROOT" \
       -s tools/demo/melee_outcome_compare.gd -- --extract "$dir" \
-      --travel "${MELEE_DELTA_TRAVEL:-60,150,300}" --end "$end" >> "$dir.log" 2>&1 || rc=$?
+      --travel "${MELEE_DELTA_TRAVEL:-60,150,300}" --end "$end" --step "$step" \
+      >> "$dir.log" 2>&1 || rc=$?
   if [ "$rc" -ne 0 ] || [ ! -s "$dir/metrics.json" ]; then
     echo "error: extracting run $run of $source failed (rc $rc); log: $dir.log" >&2
     exit 2
@@ -152,11 +165,12 @@ if [ "${1:-}" = "--derive-clips" ]; then
   for spec in "${DEMOS[@]}"; do
     IFS='|' read -r name source fixed_fps max_frames _width type <<<"$spec"
     covered=$(( max_frames * 60 / fixed_fps ))
-    printf '%s\0%s\0%s\0%s\0%s\0%s\0%s\0' "$tree" "$source" "${type:-replay}" \
-        "$(seq -s, "$step" "$step" "$covered")" "$covered" 0 "$out/$name" >> "$out/jobs.txt"
+    printf '%s\0%s\0%s\0%s\0%s\0%s\0%s\0%s\0' "$tree" "$source" "${type:-replay}" \
+        "$(seq -s, "$step" "$step" "$covered")" "$(last_scheduled "$covered" "$step")" "$step" 0 \
+        "$out/$name" >> "$out/jobs.txt"
   done
   import_tree "$tree" "$out/import.log"
-  xargs -0 -n 7 -P "${MELEE_DELTA_JOBS:-2}" bash "$SCRIPT_DIR/melee-outcome-delta.sh" --run-one \
+  xargs -0 -n 8 -P "${MELEE_DELTA_JOBS:-2}" bash "$SCRIPT_DIR/melee-outcome-delta.sh" --run-one \
       < "$out/jobs.txt" || { echo "error: at least one clip run failed" >&2; exit 2; }
   for spec in "${DEMOS[@]}"; do
     name="${spec%%|*}"
@@ -224,6 +238,7 @@ for spec in "${DEMOS[@]}"; do
   demo_catalog_selected "$name" "$SELECTION" || continue
   covered=$(( max_frames * 60 / fixed_fps ))
   ticks="$(seq -s, "$STEP" "$STEP" "$covered")"
+  end="$(last_scheduled "$covered" "$STEP")"
   if [ ! -f "$BASE_TREE/$source" ] || [ ! -f "$HEAD_TREE/$source" ]; then
     echo "note: '$name' has no $source in one of the trees; skipping it"
     continue
@@ -235,8 +250,8 @@ for spec in "${DEMOS[@]}"; do
       if [ "$side" = head ]; then run=$(( run + HEAD_OFFSET )); fi
       dir="$OUT_DIR/dumps/$side/$name/seed$run"
       [ -f "$dir.done" ] && continue
-      printf '%s\0%s\0%s\0%s\0%s\0%s\0%s\0' "$tree" "$source" "$type" "$ticks" "$covered" "$run" "$dir" \
-          >> "$JOB_LIST"
+      printf '%s\0%s\0%s\0%s\0%s\0%s\0%s\0%s\0' "$tree" "$source" "$type" "$ticks" "$end" "$STEP" \
+          "$run" "$dir" >> "$JOB_LIST"
     done
   done
 done
@@ -248,8 +263,8 @@ import_tree "$HEAD_TREE" "$OUT_DIR/import-head.log"
 import_tree "$TOOL_ROOT" "$OUT_DIR/import-tool.log"
 START=$SECONDS
 if [ -s "$JOB_LIST" ]; then
-  echo "== $(( $(tr -cd '\0' < "$JOB_LIST" | wc -c) / 7 )) perturbed runs, $JOBS at a time =="
-  xargs -0 -n 7 -P "$JOBS" bash "$SCRIPT_DIR/melee-outcome-delta.sh" --run-one < "$JOB_LIST" || {
+  echo "== $(( $(tr -cd '\0' < "$JOB_LIST" | wc -c) / 8 )) perturbed runs, $JOBS at a time =="
+  xargs -0 -n 8 -P "$JOBS" bash "$SCRIPT_DIR/melee-outcome-delta.sh" --run-one < "$JOB_LIST" || {
     echo "error: at least one perturbed run failed" >&2
     exit 2
   }
@@ -263,7 +278,7 @@ GODOT_ARGS=(--clips "$COMPARED"
   --alpha "${MELEE_DELTA_ALPHA:-0.05}" --correction "${MELEE_DELTA_CORRECTION:-bh}"
   --min-effect "${MELEE_DELTA_MIN_EFFECT:-0.5}" --floor-ticks "$STEP"
   --floor-metres "${MELEE_DELTA_FLOOR_METRES:-0.1}" --floor-men "${MELEE_DELTA_FLOOR_MEN:-1}"
-  --min-runs "${MELEE_DELTA_MIN_RUNS:-4}"
+  --min-runs "${MELEE_DELTA_MIN_RUNS:-4}" --min-pp "${MELEE_DELTA_MIN_PP:-20}" --step "$STEP"
   --travel "${MELEE_DELTA_TRAVEL:-60,150,300}"
   --markdown "$OUT_DIR/melee-delta.md"
   --label "Base \`$(git -C "$BASE_TREE" rev-parse --short HEAD 2>/dev/null || echo "$BASE_TREE")\`, head \`$(git -C "$HEAD_TREE" rev-parse --short HEAD 2>/dev/null || echo "$HEAD_TREE")\`; snapshots every $STEP ticks.")

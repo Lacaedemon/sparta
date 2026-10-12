@@ -125,7 +125,7 @@ func test_compare_flags_a_large_significant_shift_only() -> void:
 	# Base spread: MAD 20 ticks, robust sd 29.652; half of it is the threshold.
 	assert_almost_eq(float(r["threshold"]), 14.826, 1e-6)
 	assert_almost_eq(float(r["min_p"]), 2.0 / 12870.0, 1e-15)
-	assert_true(r["mds"] > 0.0 and r["mds"] < INF, "a finite minimum detectable shift")
+	assert_true(r["mds"] >= r["threshold"] and r["mds"] < INF, "a finite MDS, never under the threshold")
 	# One to eight ticks later than a constant: significant, but its 4.5-tick shift is under
 	# the 5-tick resolution floor, which is the threshold of a row with no spread.
 	var nudged: Array = _runs([601, 602, 603, 604, 605, 606, 607, 608])
@@ -140,12 +140,59 @@ func test_compare_flags_a_large_significant_shift_only() -> void:
 func test_compare_counts_never_as_latest_and_drops_unobserved() -> void:
 	var base: Array = _runs(["never", "never", "never", "never", "never", "never", null])
 	var head: Array = _runs([400, 410, 420, 430, 440, 450, null])
-	var r: Dictionary = MeleeOutcomeDelta.compare({"c": base}, {"c": head})["rows"][0]
+	var result: Dictionary = MeleeOutcomeDelta.compare({"c": base}, {"c": head})
+	var r: Dictionary = result["rows"][0]
 	assert_true(r["flag"], "a unit that now breaks every run where it never did is flagged")
 	assert_eq(r["never_base"], 6)
 	assert_eq(r["n_base"], 6, "the unobserved run is dropped, not ranked")
-	assert_eq(r["mds"], -1.0, "no detectable shift for a censored row")
+	assert_eq(r["dropped_base"], 1)
+	assert_eq(r["mds_unit"], "pp never", "its detectable change is in how often it never breaks")
+	assert_true(r["mds"] < INF)
+	var censor: Dictionary = result["rows"][1]
+	assert_eq(censor["metric"], "uid1_break:unobserved")
+	assert_false(censor["significant"], "1 of 7 on each side is no difference")
 	assert_eq(MeleeOutcomeDelta.cell(r["base"]), "never")
+
+
+func _flags(key: String, ones: int, zeros: int, nulls: int) -> Array:
+	var out: Array = []
+	for i in range(ones):
+		out.append({key: 1})
+	for i in range(zeros):
+		out.append({key: 0})
+	for i in range(nulls):
+		out.append({key: null})
+	return out
+
+
+func test_indicator_is_a_proportion_tested_with_fisher() -> void:
+	# Removed by +150 in 0 of 16 base runs and 7 of 16 head runs: 43.75 percentage points.
+	var key: String = "uid1_removed_by_150"
+	var r: Dictionary = MeleeOutcomeDelta.compare({"c": _flags(key, 0, 16, 0)},
+			{"c": _flags(key, 7, 9, 0)})["rows"][0]
+	assert_eq(r["kind"], "proportion")
+	assert_almost_eq(float(r["shift"]), 43.75, 1e-9)
+	assert_almost_eq(float(r["p"]), OutcomeStats.fisher_p(0, 16, 7, 16), 1e-12)
+	assert_true(r["flag"], "a 0% to 44% change is flaggable, unlike a median of 0/1 values")
+	assert_true(r["mds"] >= 20.0 and r["mds"] < INF, "in percentage points, at least min_pp")
+
+
+func test_censoring_that_differs_makes_a_row_not_comparable() -> void:
+	# Travel unobserved in 1 of 16 base runs but 12 of 16 head runs.
+	var key: String = "uid1_travel_300"
+	var base: Array = _flags(key, 0, 0, 1)
+	var head: Array = _flags(key, 0, 0, 12)
+	for i in range(15):
+		base.append({key: 10.0 + i})
+	for i in range(4):
+		head.append({key: 20.0 + i})
+	var rows: Array = MeleeOutcomeDelta.compare({"c": base}, {"c": head})["rows"]
+	assert_eq(rows[1]["metric"], key + ":unobserved")
+	assert_true(rows[1]["significant"], "1/16 against 12/16 unobserved")
+	assert_true(rows[1]["flag"], "a censoring row is flagged on significance alone")
+	assert_eq(rows[0]["status"], "not comparable")
+	assert_false(rows[0]["flag"])
+	assert_eq([rows[0]["dropped_base"], rows[0]["dropped_head"]], [1, 12])
 
 
 func test_compare_skips_too_few_runs_and_identical() -> void:
@@ -172,7 +219,7 @@ func test_single_row_level_bh_and_by() -> void:
 func test_metric_units_and_thresholds() -> void:
 	assert_eq(MeleeOutcomeDelta.metric_unit("team_0_men"), "men")
 	assert_eq(MeleeOutcomeDelta.metric_unit("uid3_travel_150"), "metres")
-	assert_eq(MeleeOutcomeDelta.metric_unit("uid3_removed_by_150"), "indicator")
+	assert_eq(MeleeOutcomeDelta.metric_unit("uid3_removed_by_150"), "pp")
 	assert_eq(MeleeOutcomeDelta.metric_unit("uid3_contact_break"), "ticks")
 	assert_eq(MeleeOutcomeDelta.threshold("team_0_men", [10.0, 10.0, 10.0], {"floor_men": 5.0}), 5.0,
 			"no spread: the floor")

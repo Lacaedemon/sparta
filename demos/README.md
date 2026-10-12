@@ -755,7 +755,7 @@ A 0.0001 rad facing nudge flips them, so a hash or defect delta that shows a rou
 For a change to melee dynamics, run `tools/ci/melee-outcome-delta.sh <base-tree> <head-tree> <out-dir>`.
 It plays every melee clip on K seeds per side and flags only the shifts in break, contact-break, travel, contact and headcount metrics that are both significant and large.
 Then paste its `melee-delta.md` into the PR.
-A row it does not flag is only evidence of no effect when its minimum detectable shift is smaller than the effect you care about,
+A row it does not flag says little about changes smaller than its minimum detectable change, the change it would catch 80% of the time,
 so name the clips and metrics your change is about (`MELEE_DELTA_CLIPS`, `MELEE_DELTA_METRICS`).
 The seed comes from `SPARTA_DEMO_SEED_RUN`, which either demo scene accepts.
 Leave it unset for a recording: the clip then plays its own seed.

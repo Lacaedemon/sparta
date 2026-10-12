@@ -147,15 +147,14 @@ func test_min_attainable_p() -> void:
 	assert_eq(OutcomeStats.min_attainable_p([3, 3], [3, 3]), 1.0, "all tied: no split differs")
 
 
-func test_min_detectable_shift() -> void:
-	# Base [0, 1, 2, 3] against itself shifted: past 3 it separates completely, p = 2 / 70;
-	# between 2 and 3 one pair still overlaps and p = 4 / 70.
-	assert_eq(OutcomeStats.min_detectable_shift([0, 1, 2, 3], 0.03), 3.0)
-	assert_eq(OutcomeStats.min_detectable_shift([0, 1, 2, 3], 0.06), 2.0)
-	assert_eq(OutcomeStats.min_detectable_shift([0, 1, 2, 3], 0.01), INF,
-			"no shift reaches a level below 2 / 70")
-	assert_eq(OutcomeStats.min_detectable_shift([5, 5, 5, 5], 0.03), 0.0,
-			"a constant row separates under any shift")
+func test_fisher_p_hand_computed() -> void:
+	# Margins 4 and 4 with 4 events: tables k = 0..4 have weights 1, 16, 36, 16, 1 out of 70.
+	# k = 3 (or 1) is matched or beaten by 1, 16, 16, 1: 34 / 70.
+	assert_almost_eq(OutcomeStats.fisher_p(3, 4, 1, 4), 34.0 / 70.0, 1e-12)
+	assert_almost_eq(OutcomeStats.fisher_p(0, 8, 8, 8), 2.0 / 12870.0, 1e-15,
+			"complete separation of 8 and 8")
+	assert_eq(OutcomeStats.fisher_p(2, 4, 2, 4), 1.0, "equal proportions")
+	assert_eq(OutcomeStats.fisher_p(0, 0, 3, 4), 1.0, "an empty side")
 
 
 func test_robust_sd() -> void:

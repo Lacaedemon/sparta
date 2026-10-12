@@ -8,7 +8,8 @@ class_name OutcomeStats
 ## tie structure of the pooled sample, so a metric with many ties (a headcount, a censored
 ## "never" value) gets the right p-value rather than a normal approximation's. The effect
 ## size is the Hodges-Lehmann shift (the median of every head-minus-base difference), the
-## estimator that goes with the rank-sum test.
+## estimator that goes with the rank-sum test. A proportion (how often a unit was removed
+## by some tick, how often a value went unobserved) is tested with Fisher's exact test.
 ##
 ## Benjamini-Hochberg turns a report's p-values into flags at a false discovery rate q: in
 ## expectation, at most a fraction q of the flags are false. That holds for independent or
@@ -164,34 +165,36 @@ static func min_attainable_p(base: Array, head: Array) -> float:
 	return minf(_tail_p(dist, low, expected), _tail_p(dist, high, expected))
 
 
-## The smallest shift that, added to every value of `base` to make a head sample of the same
-## size, gives a rank-sum p-value at or below `level`: this row's minimum detectable pure
-## location shift, in its own units. 0.0 when base is constant (any shift separates it),
-## INF when even a complete separation cannot reach `level`.
-static func min_detectable_shift(base: Array, level: float) -> float:
-	if base.is_empty():
-		return INF
-	var shifted := func(d: float) -> Array: return base.map(func(v) -> float: return float(v) + d)
-	# The p-value only changes where the shift crosses a pairwise gap of base, so those gaps,
-	# plus one past the range (complete separation), are the only candidates.
-	var gaps: Dictionary = {}
-	for a in base:
-		for b in base:
-			if float(b) > float(a):
-				gaps[float(b) - float(a)] = true
-	var candidates: Array = gaps.keys()
-	candidates.sort()
-	var span: float = 0.0 if candidates.is_empty() else candidates[-1]
-	if rank_sum_p(base, shifted.call(span + 1.0)) > level:
-		return INF
-	if candidates.is_empty():
-		return 0.0
-	for d in candidates:
-		# Just past each gap, where the crossing has happened.
-		var past: float = d * (1.0 + 1e-9) + 1e-9
-		if rank_sum_p(base, shifted.call(past)) <= level:
-			return d
-	return span
+## Two-sided Fisher exact p-value for x1 events out of n1 against x2 out of n2: the summed
+## probability, with both margins fixed, of every table no more likely than the observed one.
+## 1.0 when either side is empty or the pooled count is 0 or n1 + n2.
+static func fisher_p(x1: int, n1: int, x2: int, n2: int) -> float:
+	if n1 <= 0 or n2 <= 0:
+		return 1.0
+	var total: int = x1 + x2
+	var lo: int = maxi(0, total - n2)
+	var hi: int = mini(total, n1)
+	var observed: float = _hypergeometric(x1, n1, n2, total)
+	var p: float = 0.0
+	for k in range(lo, hi + 1):
+		var q: float = _hypergeometric(k, n1, n2, total)
+		if q <= observed * (1.0 + 1e-7):
+			p += q
+	return minf(p, 1.0)
+
+
+## P(k of the `total` events fall on the side of size n1), sides n1 and n2.
+static func _hypergeometric(k: int, n1: int, n2: int, total: int) -> float:
+	return exp(_log_choose(n1, k) + _log_choose(n2, total - k) - _log_choose(n1 + n2, total))
+
+
+static func _log_choose(n: int, k: int) -> float:
+	if k < 0 or k > n:
+		return -INF
+	var s: float = 0.0
+	for i in range(1, k + 1):
+		s += log(float(n - k + i)) - log(float(i))
+	return s
 
 
 ## Benjamini-Hochberg at false discovery rate `q`: true at index i when p_values[i] is
