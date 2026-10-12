@@ -25,7 +25,7 @@ PR #1822's (#1801) first version put a re-entry gap on `_in_enemy_contact` to st
 That flag also gates physics.
 `contact_soldier_indices` and `SoldierEnemyContact` resolve body contact only for units flagged in contact.
 The separation rule in `Unit.gd` falls back to non-contact spacing.
-In `rout_rally` the review's dense dump counted 133 routing ticks with the router out of contact while its bodies overlapped the pursuer's, against 1 on main.
+So in `rout_rally` the router's bodies walked through its pursuer's while the router counted as out of contact.
 The fix the PR shipped puts the gap on a separate anchor-only flag, and every physical reader still reads the unmodified one.
 
 - **Do:** `git grep` every reader of a flag before changing when it turns on, and put behaviour-specific hysteresis on a new flag read only by the behaviour it fixes.
