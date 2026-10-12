@@ -376,10 +376,11 @@ static func step(unit: Unit, delta: float) -> void:
 	var routing: bool = unit.state == Unit.State.ROUTING
 	var halting: bool = unit.is_rally_halting()
 	var march_vel: Vector2 = unit._flee_velocity if routing else unit._approach_velocity
-	# A router turning its flight turns its slot grid about the anchor at this rate (rad/s;
-	# Unit._turn_flight_toward): each unengaged slot also moves at turn_rate x its offset from
-	# the anchor, and that is fed forward with the march.
-	var turn_rate: float = unit._flight_turn_rate if routing else 0.0
+	# A router turning its flight, or any other block whose slot grid is turning after a small
+	# heading correction, turns its grid about the anchor at this rate (rad/s;
+	# Unit._turn_flight_toward, Unit._advance_grid_lag): each unengaged slot also moves at
+	# turn_rate x its offset from the anchor, and that is fed forward with the march.
+	var turn_rate: float = unit._flight_turn_rate if routing else unit._grid_lag_rate
 	var top_pace: float = unit.flee_speed() if routing else unit.move_speed
 	# In-transit same-unit standoff velocities for crowding same-unit bodies:
 	var sep_vels: PackedVector2Array = _separate_same_unit(unit, n, target_slots, is_engaged, delta)

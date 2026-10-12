@@ -498,6 +498,19 @@ var _ranks_closed: bool = false
 # grid is square to the heading (the default). A fresh move order reforms it to 0. A rout
 # keeps it, and the rally squares it to the heading.
 var _formation_angle: float = 0.0
+# How far (rad) the slot grid still trails a small heading correction (_reface): the grid
+# stands at facing + _formation_angle + _grid_lag (grid_fold). A correction under
+# FACING_SNAP_ABSORB_THRESHOLD turns `facing` at once but leaves the grid where the men stand,
+# and _advance_grid_lag then turns the grid after the heading at a bounded rate. Kept apart from
+# _formation_angle, which records the turns the men made in place (drills, snap-absorbs, engage
+# re-faces) and is read as such by reform_ranks and the rally; a lag is only a grid on its way
+# to square. _reface folds a lag that grows past the threshold into _formation_angle, and a
+# rout folds whatever is left, so the grid stays where it stands in both cases.
+var _grid_lag: float = 0.0
+# The rate (rad/s, signed like an angle) _advance_grid_lag turned the slot grid about the anchor
+# this tick, and carries to the next. SoldierBodies.step feeds it forward to a non-routing
+# unit's bodies the way it feeds a router's _flight_turn_rate. Zero while no lag is left.
+var _grid_lag_rate: float = 0.0
 # The net turn of the in-place drill leaves -- QUARTER_TURN (a Q/E drill, or a lateral pivot's
 # legs) and ABOUT_FACE (a V drill, or a rear move's turn) -- that have settled into
 # _formation_angle since anything else last moved it: _settle_order_turn adds each such leaf's
@@ -1738,6 +1751,7 @@ func _physics_process(delta: float) -> void:
 
 	_cut_rally_halt_on_enemy()
 	_think(delta)
+	_advance_grid_lag(delta)
 	_tick_intermixing(delta)
 
 	# Units are solid: resolve any overlap so an advancing regiment can't
@@ -2972,12 +2986,13 @@ func _think(delta: float) -> void:
 				# applied synchronously at order time): soldier_world_slots' grid depends on
 				# BOTH facing and frontage, so gradually rotating facing while the frontage is
 				# already fixed at its new shape makes the bodies chase a target that's
-				# simultaneously resizing AND rotating every tick -- a visible swirl. _face_dir's
-				# _formation_angle absorption means the snap itself is invisible (bodies don't
-				# jump; only the facing/grid-angle bookkeeping changes), so nothing is lost by
-				# not animating this turn. A plain side-step/back-step sets ordered_facing (to
-				# its OWN current facing) with no deploy_facing, so it still holds and skips
-				# this branch, unchanged.
+				# simultaneously resizing AND rotating every tick -- a visible swirl. Past
+				# FACING_SNAP_ABSORB_THRESHOLD _face_dir's _formation_angle absorption means the
+				# snap itself is invisible (bodies don't jump; only the facing/grid-angle
+				# bookkeeping changes); a smaller snap here does turn the grid in one tick, on
+				# top of the reshape the men are already walking to. A plain side-step or
+				# back-step sets ordered_facing (to its OWN current facing) with no
+				# deploy_facing, so it still holds and skips this branch, unchanged.
 				if deploy_facing != Vector2.ZERO:
 					_face_dir(deploy_facing)
 				elif ordered_facing == Vector2.ZERO:
@@ -2998,7 +3013,7 @@ func _think(delta: float) -> void:
 						_rotate_facing_toward(reform_dir, delta,
 								UnitManeuver.wheel_gait_rate(TURN_RATE, jog_speed, _pivot_arm()))
 					else:
-						_face_dir(reform_dir)
+						_reface(reform_dir)
 				return
 			_commit_pending_reform()
 
@@ -3533,7 +3548,7 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 	# through so the normal approach closes on the enemy and carries a charge velocity.
 	if in_contact:
 		state = State.FIGHTING
-		_face(enemy.position)
+		_reface(enemy.position - position)
 		# Only peel back once a hit actually lands: flipping to recharging is gated on the
 		# strike so a contact that arrives mid-cooldown holds and fights until the cooldown
 		# clears, rather than retreating without having landed the charge. (For current
@@ -3888,10 +3903,10 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	# still re-forms them onto the block as they arrive, so no separate "form up" step is
 	# needed. A disciplined unit given an in-haste order (a triple/quadruple-click
 	# RUN/SPRINT gait) temporarily marches the same undisciplined way -- there's no time
-	# to execute a formed turn. Without the pivot, a snap under _face_dir's absorb
-	# threshold rotates the whole slot grid in one tick (up to ~75 deg), sweeping flank
-	# slots far faster than any body can run -- the soldiers scramble across the block
-	# and the formation reads as a blob for the next several seconds.
+	# to execute a formed turn. That heading goes through _reface, not a plain snap: a snap
+	# under _face_dir's absorb threshold rotates the whole slot grid in one tick (up to ~75
+	# deg), sweeping flank slots far faster than any body can run, so the grid instead
+	# follows the heading at a bounded rate.
 	var pivot_as_formation: bool = (orderly or formed_turn) and disciplined and not _is_move_order_in_haste()
 	# A formed_turn approach only pivots for bearings under the fold-absorb threshold. At or
 	# past it, the plain snap is already scramble-free by construction: _face_dir folds the
@@ -3907,7 +3922,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 			and absf(angle_difference(facing.angle(), steer_dir.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
 		pivot_as_formation = false
 	if maneuvering:
-		_face_dir(ordered_facing)
+		_reface(ordered_facing)
 	elif pivot_as_formation:
 		var speed_frac: float = clampf(_current_speed / move_speed, 0.0, 1.0)
 		var pivot_rate: float = TURN_RATE * lerpf(1.0, TURN_RATE_TAPER_FLOOR, speed_frac)
@@ -3965,7 +3980,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 			pivot_rate = minf(pivot_rate, UnitManeuver.max_turn_rate_for_speed(turn_body_accel, _current_speed))
 		_rotate_facing_toward(steer_dir, delta, pivot_rate)
 	else:
-		_face_dir(steer_dir)
+		_reface(steer_dir)
 	var effective_speed: float = _current_speed * terrain_speed
 	# Turn-before-march: while centre-pivoting a formed march, scale the advance by how
 	# far the unit has come onto its heading. A sharp turn (e.g. a 180° pivot to a rear
@@ -4047,10 +4062,6 @@ func _press_into(point: Vector2, delta: float, pressing_router: bool = false) ->
 	# enemy into the retreat margin, even while pressing a lean into melee contact.
 	position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
 	position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
-
-
-func _face(point: Vector2) -> void:
-	_face_dir(point - position)
 
 
 # Per-tick memo for _adjacent_engaged_enemy_units(), the same (frame -> result) idiom
@@ -4167,9 +4178,11 @@ func _flanking_maneuver_reflow(enemy: Unit = null, wrap_files: int = flanking_ma
 ## Face `point` for an engage/attack action against `enemy_unit` (the target the turn is
 ## bringing the front to bear on; kept so the settle step can reshape toward it under
 ## MATCH_TARGET -- see engage_reshape_mode). A small heading correction snaps (stays
-## responsive at close quarters); a large swing (>ENGAGE_TURN_THRESHOLD, ~a quarter-turn or
-## more) turns the men in place gradually instead — the line pivots to bring its front to bear
-## without the grid collapsing and re-expanding. Returns whether the unit is faced enough to
+## responsive at close quarters) through _reface, so the slot grid follows the heading at a
+## bounded rate instead of swinging under the men; a large swing (>ENGAGE_TURN_THRESHOLD,
+## ~a quarter-turn or more) turns the men in place gradually instead — the line pivots to
+## bring its front to bear without the grid collapsing and re-expanding. Returns whether the
+## unit is faced enough to
 ## fight this tick (true when snapping, or once a turn has closed to within
 ## ENGAGE_TURN_FIGHT_TOLERANCE); the caller withholds the strike while still turning. Reuses
 ## the drill turns' arrival-freeze + _formation_angle-absorb, so the bodies hold their ground.
@@ -4218,8 +4231,8 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		return true
 	# A routing target streaming out through this block: hold the current facing, as the
 	# stances above do. The bearing from this anchor to a point within the block's own reach
-	# names no front, so following it (each tick's small correction snaps unabsorbed) swings
-	# the whole slot grid round while the men, held in contact, stay where they are -- the
+	# names no front, so following it (each tick's small correction turns the grid after it)
+	# swings the whole slot grid round while the men, held in contact, stay where they are -- the
 	# block is then left with its slots turned away from its men and has to wheel back once
 	# it is free. Holding moves neither the facing nor _formation_angle, so nothing is left
 	# for a later reform to undo; once the router is out of reach the ordinary re-face
@@ -4242,9 +4255,18 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		if _advance_turn(_engage_turn_target, delta):
 			_settle_engage_turn()
 		return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
-	# Small offset: snap and fight now, as before.
+	# Small offset: face the enemy and fight now, as before; the slot grid follows the heading
+	# at a bounded rate (_reface) instead of swinging under the men. When either block's centre
+	# lies inside the other's footprint, the grid still snaps with the heading.
 	if offset <= ENGAGE_TURN_THRESHOLD:
-		_face_dir(dir)
+		if _inside_block_footprint(point) or (enemy_unit != null
+				and enemy_unit._inside_block_footprint(position)):
+			# TODO(#1792): blocks inside one another give no front to turn the grid onto; the
+			# bearing between them swings tick by tick, and which way, or whether, the grid
+			# should turn for it is that issue's decision.
+			_face_dir(dir)
+		else:
+			_reface(dir)
 		return true
 	# Large offset: begin a turn-in-place. Men hold their positions (arrival frozen) while
 	# facing rotates; the strike is withheld until the front comes to bear. Capture the
@@ -4290,6 +4312,15 @@ func _router_streaming_through(enemy_unit: Unit) -> bool:
 ## Let go of the streaming-router latch.
 func _release_streaming_router() -> void:
 	_streaming_router_uid = -1
+
+
+## Whether `point` lies inside this block's own footprint: within the rectangle its slot grid
+## spans (_formation_local_half_extents), in the grid's own frame (soldier_block_world_angle).
+## Two blocks fighting front to front each stand outside the other's footprint.
+func _inside_block_footprint(point: Vector2) -> bool:
+	var half: Vector2 = _formation_local_half_extents()
+	var local: Vector2 = (point - position).rotated(-soldier_block_world_angle())
+	return absf(local.x) <= half.x and absf(local.y) <= half.y
 
 
 ## Finish an engage turn-in-place: fold the rotation into _formation_angle (so the men keep
@@ -4339,12 +4370,15 @@ func _settle_engage_turn() -> void:
 	_engage_turn_enemy = null
 
 
-## Snap `facing` to `dir` instantly. A small change (the common case: a moving unit's
-## travel direction drifting tick to tick, or a close-quarters combat correction) is
-## visually a non-event, so soldier_world_slots' facing-relative grid barely moves and the
-## men stay near their own slots. A LARGE snap (e.g. an idle unit's very first move order
-## firing while it still faces its spawn heading, or a combat chase target appearing behind
-## it) would instead swap every slot to the opposite side of the block in one tick --
+## Snap `facing` to `dir` instantly. A change up to FACING_SNAP_ABSORB_THRESHOLD is not
+## absorbed here, so soldier_world_slots' facing-relative grid turns about the anchor by the
+## whole change in one tick; the callers that correct a heading tick by tick (a moving unit's
+## travel direction, a close-quarters re-face) go through _reface instead, which keeps the
+## grid where the men stand and lets it follow at a bounded rate. A form-up hold still snaps
+## here, since its frontage reshapes in the same tick. A LARGE snap (e.g. an idle unit's
+## very first move order firing while it still faces its spawn heading, or a combat chase
+## target appearing behind it) would instead swap every slot to the opposite side of the
+## block in one tick --
 ## _formation_angle absorbs the jump the same way a completed drill turn does, so
 ## soldier_world_slots reproduces each body's own pre-snap slot under the new facing and no
 ## soldier surges across the formation. Unlike the drill turns, this is a same-tick snap, not
@@ -4368,6 +4402,80 @@ func _face_dir(dir: Vector2) -> void:
 		_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
 		_render_dirty = true
 	facing = new_facing
+
+
+## Turn `facing` onto `dir` at once, as _face_dir does, but keep the slot grid where the men
+## stand. _face_dir leaves a change up to FACING_SNAP_ABSORB_THRESHOLD unfolded, so the whole
+## grid turns about the anchor by it in one tick, and a block's corner slot moves its radius
+## times that angle: for a deep block, hundreds of world units at a few tens of degrees, with
+## every man then chasing his slot across the block. Here the change goes into _grid_lag
+## instead, and _advance_grid_lag turns the grid after the heading no faster than the man on
+## the farthest slot can follow. The heading itself is not slowed, so a re-face in combat and a
+## march's travel direction answer exactly as before; only where the slots stand changes.
+## A lag that grows past the threshold (a heading swinging faster than the grid follows) is
+## folded into _formation_angle, as a single snap that large is, so the men turn where they
+## stand. A change past the threshold goes to _face_dir, and so does any change on a far-tier
+## block, which has no bodies on its slots. The callers are the ones that correct a heading
+## tick by tick: a fighting or shooting block re-facing an enemy outside its own footprint
+## (_face_for_action), a march that does not pivot as a formation (an undisciplined or hasty
+## march, a held maneuver facing, a combat approach), a hasty reform hold, and a caracole's
+## contact.
+func _reface(dir: Vector2) -> void:
+	if dir.length_squared() <= 0.0001:   # _face_dir's own zero-direction guard
+		return
+	var new_facing: Vector2 = dir.normalized()
+	var turn: float = angle_difference(facing.angle(), new_facing.angle())
+	if absf(turn) > FACING_SNAP_ABSORB_THRESHOLD or tier == FormationTier.FAR:
+		_face_dir(dir)
+		return
+	_grid_lag = wrapf(_grid_lag - turn, -PI, PI)
+	facing = new_facing
+	_render_dirty = true
+	if absf(_grid_lag) > FACING_SNAP_ABSORB_THRESHOLD:
+		_fold_grid_lag()
+
+
+## Fold whatever the slot grid still trails its heading by into _formation_angle, so the grid
+## stays where it stands and the men keep their slots: a lag past the snap-absorb threshold, or
+## a block that routs (the rout keeps the fold and the rally squares it). Like every other write
+## to the fold that is not a drill turn, it drops the drill record.
+func _fold_grid_lag() -> void:
+	_grid_lag_rate = 0.0
+	if _grid_lag == 0.0:
+		return
+	_formation_angle = wrapf(_formation_angle + _grid_lag, -PI, PI)
+	_drill_turn_fold = 0.0
+	_grid_lag = 0.0
+	_render_dirty = true
+
+
+## Called each non-routing tick after _think: turn the slot grid after its heading by at most
+## one tick of a bounded turn (bounded_turn_step at bounded_turn_rate and bounded_turn_accel),
+## easing to a stop as the lag closes, and record the rate in _grid_lag_rate for
+## SoldierBodies.step to feed forward. A tick whose heading pivots or turns in place (is_turning)
+## already moves the grid, so the lag waits and its turn starts again from rest.
+func _advance_grid_lag(delta: float) -> void:
+	if _grid_lag == 0.0 or delta <= 0.0 or is_turning():
+		_grid_lag_rate = 0.0
+		return
+	var rate: float = bounded_turn_step(_grid_lag_rate, -_grid_lag, bounded_turn_rate(),
+			bounded_turn_accel(), delta)
+	var turn: float = rate * delta
+	if signf(turn) == signf(-_grid_lag) and absf(turn) >= absf(_grid_lag):
+		# Closes the lag this tick: turn exactly the rest of the way.
+		_grid_lag_rate = -_grid_lag / delta
+		_grid_lag = 0.0
+	else:
+		_grid_lag_rate = rate
+		_grid_lag += turn
+	_render_dirty = true
+
+
+## The slot grid's turn off the heading (rad): the fold the men turned in place
+## (_formation_angle) plus the lag the grid still trails a small heading correction by
+## (_grid_lag). soldier_world_slots lays the grid out at facing.angle() + PI/2 + grid_fold().
+func grid_fold() -> float:
+	return _formation_angle + _grid_lag
 
 
 ## Rotate `facing` toward `target_dir` by at most `rate` * delta this frame — the
@@ -4660,8 +4768,9 @@ func _report_order_outcome(requested: Vector2, granted: Vector2) -> void:
 ## is a maneuver's held facing (a side-step, back-step, disengage, or reinforcing reserve
 ## holds ordered_facing; a form-up holds deploy_facing) or otherwise the bearing to `dest`.
 ## A formed march (disciplined, not hasty) pivots its grid onto that bearing. Every other
-## turn goes through _face_dir(), which snaps facing and, past FACING_SNAP_ABSORB_THRESHOLD,
-## folds the snap into _formation_angle so the grid keeps its current orientation: a held
+## turn goes through _face_dir() or _reface(), which snap facing and, past
+## FACING_SNAP_ABSORB_THRESHOLD, fold the snap into _formation_angle so the grid keeps its
+## current orientation (a smaller _reface turn is only a passing _grid_lag): a held
 ## facing or an undisciplined/hasty bearing that far off the current facing returns the
 ## current facing. The bearing is the straight line to `dest`; a routed path may bend on
 ## the way, and the march facing follows the route, so the grid can arrive turned by a
@@ -4811,8 +4920,11 @@ func terrain_clearance(travel_dir: Vector2 = Vector2.ZERO, extents: Vector2 = UN
 	# u_axis.cross(dir) / u_axis.dot(dir) play the same role facing.cross(dir) /
 	# facing.dot(dir) did before a fold was accounted for (u_axis reduces to
 	# facing.rotated(PI*0.5) when _formation_angle == 0, and the two pairs of
-	# cross/dot values are equal up to sign in that case, which absf() erases).
-	var u_axis: Vector2 = Vector2.RIGHT.rotated(soldier_block_world_angle())
+	# cross/dot values are equal up to sign in that case, which absf() erases). The grid a
+	# small heading correction left trailing (_grid_lag) is left out: it closes within a
+	# bounded turn, and a clearance that read it would steer the march off the heading the
+	# lag is still closing on, which turns the heading again and feeds the lag back.
+	var u_axis: Vector2 = Vector2.RIGHT.rotated(facing.angle() + PI * 0.5 + _formation_angle)
 	var swept: float = half_extents.x * absf(u_axis.cross(dir)) + half_extents.y * absf(u_axis.dot(dir))
 	return swept + soldier_body_radius()
 
@@ -5774,8 +5886,9 @@ var _engage_turn_enemy: Unit = null
 # a stance's own facing hold takes over in _face_for_action.
 var _streaming_router_uid: int = -1
 # Beyond this heading offset (radians) an engage/attack re-face turns in place gradually
-# instead of snapping. Below it a small correction snaps, keeping close-quarters combat
-# responsive; only a large swing (roughly a quarter-turn or more) turns the men in place.
+# instead of snapping. Below it a small correction snaps the heading (_reface), keeping
+# close-quarters combat responsive, while the slot grid follows at a bounded rate; only a large
+# swing (roughly a quarter-turn or more) turns the men in place.
 const ENGAGE_TURN_THRESHOLD: float = deg_to_rad(75.0)
 # The unit strikes once its front is within this offset of the enemy — a turn-in-place brings
 # the line to bear before it fights, but it need not be dead-on. Slightly under a flank
@@ -5783,10 +5896,12 @@ const ENGAGE_TURN_THRESHOLD: float = deg_to_rad(75.0)
 const ENGAGE_TURN_FIGHT_TOLERANCE: float = deg_to_rad(50.0)
 # Beyond this heading offset (radians) an instant facing snap (_face_dir) folds the jump into
 # _formation_angle instead of leaving soldier_world_slots' facing-relative grid to swap every
-# slot to the new side of the block. A small snap (normal travel-direction drift, a
-# close-quarters correction) is left alone -- the grid barely moves and there is nothing to
-# absorb. Same threshold as ENGAGE_TURN_THRESHOLD (roughly a quarter-turn or more): past that
-# angle the slot swap is large enough to read as the formation collapsing and re-expanding.
+# slot to the new side of the block. Below it _face_dir leaves the change unfolded, so the
+# grid turns with the heading; a small correction (travel-direction drift, a close-quarters
+# re-face) therefore goes through _reface, which holds the grid back as _grid_lag and turns it
+# after the heading at a bounded rate, folding the lag in once it passes this same threshold.
+# Same threshold as ENGAGE_TURN_THRESHOLD (roughly a quarter-turn or more): past that angle
+# the slot swap is large enough to read as the formation collapsing and re-expanding.
 const FACING_SNAP_ABSORB_THRESHOLD: float = ENGAGE_TURN_THRESHOLD
 
 # A rear-sector move order parks its march destination and its reform choice on the Order
@@ -5862,7 +5977,7 @@ func soldier_world_slots(count: int) -> PackedVector2Array:
 	var slots := formation_slots(count)
 	# _formation_angle lets a quarter-turn rotate every soldier's facing without moving the
 	# grid: it cancels the heading rotation here, so the slots (and the men) stay put.
-	var ang: float = facing.angle() + PI * 0.5 + _formation_angle
+	var ang: float = facing.angle() + PI * 0.5 + grid_fold()
 	for i in range(slots.size()):
 		var slot: Vector2 = slots[i]
 		if _formation_mirror_x:
@@ -5955,7 +6070,7 @@ func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVe
 		_ensure_square_slot_assignment(count, square_file_count, square_grid)
 		var sq_slots: PackedVector2Array = UnitFormation.permute_slots(square_grid, _sim_soldier_square_slot)
 		if _sim_soldier_pos.size() == count and _sim_soldier_square_slot.size() == count and _reform_holding():
-			var sq_ang: float = facing.angle() + PI * 0.5 + _formation_angle
+			var sq_ang: float = facing.angle() + PI * 0.5 + grid_fold()
 			sq_slots = UnitFormation.apply_traverse_flank_arcs(sq_slots, _sim_soldier_pos, position, sq_ang, _sim_soldier_square_slot, square_file_count, file_pitch_wu())
 		return sq_slots
 	var slots: PackedVector2Array
@@ -5977,7 +6092,7 @@ func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVe
 		if _sim_soldier_row_slot.size() == count and _row_slot_files == row_files:
 			var r_slots: PackedVector2Array = UnitFormation.permute_slots(row_grid, _sim_soldier_row_slot)
 			if _sim_soldier_pos.size() == count and _reform_holding() and not _row_slot_dealt:
-				var r_ang: float = facing.angle() + PI * 0.5 + _formation_angle
+				var r_ang: float = facing.angle() + PI * 0.5 + grid_fold()
 				# Walkers are read by cell: a casualty's close-up leaves a held pairing the
 				# reflection can be composed onto, so a walker's index no longer names his cell.
 				r_slots = UnitFormation.apply_traverse_flank_arcs(r_slots, _sim_soldier_pos, position, r_ang, _sim_soldier_row_slot, row_files, file_pitch_wu(), true)
@@ -6436,7 +6551,7 @@ func soldier_world_facings(count: int) -> PackedVector2Array:
 	var files: int = formation_files(count)
 	var slots := UnitFormation.block_slots(count, files, file_pitch_wu())
 	_ensure_square_slot_assignment(count, files, slots)
-	var ang: float = facing.angle() + PI * 0.5 + _formation_angle
+	var ang: float = facing.angle() + PI * 0.5 + grid_fold()
 	for i in range(slots.size()):
 		# Read the CELL this soldier was paired onto, not its raw array index. The
 		# pairing is what decides who ends up standing on the ring, so a facing keyed
@@ -7588,8 +7703,8 @@ func _wheel_pivot_point(dir: int) -> Vector2:
 	# wheel hinges against the grid the regiment is actually laid out on.
 	var files: int = formation_files(soldiers)
 	var half_width: float = float(files - 1) * 0.5 * file_pitch_wu()
-	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)   # slot-grid local +X direction
-	var front_axis: Vector2 = facing.rotated(_formation_angle)             # slot-grid local -Y (toward front)
+	var file_axis: Vector2 = facing.rotated(PI * 0.5 + grid_fold())   # slot-grid local +X direction
+	var front_axis: Vector2 = facing.rotated(grid_fold())             # slot-grid local -Y (toward front)
 	if front_axis.dot(facing) < -0.5:
 		# A completed about-face folds _formation_angle to ±PI, which spins BOTH grid axes
 		# 180°. The rectangular slot lattice is identical under that spin, but "front" and
@@ -7896,7 +8011,7 @@ func soldier_block_half_extents() -> Vector2:
 ## working with soldier_block_half_extents() (also local-frame) can convert a world
 ## direction into that same local frame without duplicating the formula.
 func soldier_block_world_angle() -> float:
-	return facing.angle() + PI * 0.5 + _formation_angle
+	return facing.angle() + PI * 0.5 + grid_fold()
 
 
 ## The render block's current half-size: the cached extent _process maintains as
@@ -8416,7 +8531,7 @@ func _select_near_front_indices(count: int, max_selected: int = -1) -> PackedInt
 	var cutoff: int = mini(count, formation_files(count) * engaged_ranks())
 	if max_selected >= 0:
 		cutoff = mini(cutoff, max_selected)
-	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
+	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle   # the front the unit faces, not a trailing grid
 	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
 	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)
 
@@ -8479,7 +8594,7 @@ func near_front_soldier_indices(count: int) -> PackedInt32Array:
 	if not (is_engaged() or _in_enemy_contact) or count <= 0 or in_square():
 		return PackedInt32Array()
 	var cutoff: int = mini(count, formation_files(count) * ANCHOR_RANKS)
-	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
+	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle   # the front the unit faces, not a trailing grid
 	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
 	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)
 
@@ -8578,8 +8693,8 @@ func canonical_target_slot_indices(slots: PackedVector2Array, count: int) -> Pac
 func pairing_sort_indices(indices: PackedInt32Array, positions: PackedVector2Array) -> PackedInt32Array:
 	if in_square():
 		return UnitFormation.sort_indices_by_angle(indices, positions, position)
-	var forward: Vector2 = facing.rotated(_formation_angle)               # slot-grid local -Y direction
-	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)   # slot-grid local +X direction
+	var forward: Vector2 = facing.rotated(grid_fold())               # slot-grid local -Y direction
+	var file_axis: Vector2 = facing.rotated(PI * 0.5 + grid_fold())   # slot-grid local +X direction
 	var files: int = formation_files(indices.size())
 	return UnitFormation.sort_indices_by_rank_then_lateral(indices, positions, position, forward, file_axis, files)
 
@@ -9347,7 +9462,9 @@ func _rout() -> void:
 	# would send every off-centre man's slot to the other flank. The rally squares the fold to
 	# the heading (see _rally). The drill record still goes: the rally squares the fold by its
 	# angle alone, whatever turns made it. The flight's first heading, still in contact, turns
-	# onto the flight at a bounded rate like any later flight turn (see _turn_flight_toward).
+	# onto the flight at a bounded rate like any later flight turn (see _turn_flight_toward). A
+	# grid still trailing a small heading correction (_grid_lag) is folded in where it stands.
+	_fold_grid_lag()
 	_bake_formation_mirror()
 	_arm_router_front_in_melee()
 	_drill_turn_fold = 0.0
@@ -9471,8 +9588,9 @@ func _process_rout(delta: float) -> void:
 ## block breaks from a melee, or the flight bending round terrain -- would rotate the whole
 ## slot grid about the anchor in one tick, swinging a deep block's corner slots hundreds of
 ## world units off the men running on them; instead the heading turns the way a body arrives
-## on its slot (SoldierBodies.step): its turn rate builds and sheds at rout_turn_accel() and never
-## exceeds rout_turn_rate(), and it eases to a stop on `dir`. So the block's farthest slot
+## on its slot (SoldierBodies.step): its turn rate builds and sheds at bounded_turn_accel()
+## and never exceeds bounded_turn_rate() (bounded_turn_step), and it eases to a stop on
+## `dir`. So the block's farthest slot
 ## never moves sideways faster, or changes that pace faster, than the man on it can follow.
 ## The anchor itself still travels along `dir` (see _process_rout), so the flight keeps the
 ## path the step chose. _flight_turn_rate carries the turn from tick to tick, and
@@ -9496,9 +9614,8 @@ func _turn_flight_toward(dir: Vector2, delta: float) -> void:
 	if diff == 0.0 or delta <= 0.0:
 		_flight_turn_rate = 0.0
 		return
-	var turn_accel: float = rout_turn_accel()
-	var wanted: float = signf(diff) * minf(rout_turn_rate(), sqrt(2.0 * turn_accel * absf(diff)))
-	_flight_turn_rate = move_toward(_flight_turn_rate, wanted, turn_accel * delta)
+	_flight_turn_rate = bounded_turn_step(_flight_turn_rate, diff, bounded_turn_rate(),
+			bounded_turn_accel(), delta)
 	var turn: float = _flight_turn_rate * delta
 	if signf(turn) == signf(diff) and absf(turn) >= absf(diff):
 		# Lands on the heading this tick: turn exactly the rest of the way.
@@ -9509,19 +9626,33 @@ func _turn_flight_toward(dir: Vector2, delta: float) -> void:
 	_render_dirty = true
 
 
-## The fastest a router's heading turns (rad/s): the rate at which its farthest slot (the
-## block's corner, at _formation_local_half_extents().length() from the anchor) sweeps
-## sideways at jog_speed, the pace a body's arrival term closes on a moving slot at
-## (SoldierBodies.step caps arrival at jog_speed). INF for a block with no extent.
-func rout_turn_rate() -> float:
+## One tick of a bounded turn still `diff` (rad) off its target: the turn rate moves from
+## `rate` toward the fastest rate that can still stop on the target at `turn_accel` (sqrt(2 a d),
+## the profile a body arrives on its slot with), capped at `max_rate`, and changes by at most
+## `turn_accel` * `delta`. Returns this tick's rate. Shared by a router's heading turn
+## (_turn_flight_toward) and the slot grid's turn after a small heading correction
+## (_advance_grid_lag).
+static func bounded_turn_step(rate: float, diff: float, max_rate: float, turn_accel: float,
+		delta: float) -> float:
+	var wanted: float = signf(diff) * minf(max_rate, sqrt(2.0 * turn_accel * absf(diff)))
+	return move_toward(rate, wanted, turn_accel * delta)
+
+
+## The fastest a block's slot grid turns at a bounded rate (rad/s): a router's heading
+## (_turn_flight_toward), or any block's grid after a small heading correction
+## (_advance_grid_lag). It is the rate at which the farthest slot (the block's corner, at
+## _formation_local_half_extents().length() from the anchor) sweeps sideways at jog_speed, the
+## pace a body's arrival term closes on a moving slot at (SoldierBodies.step caps arrival at
+## jog_speed). INF for a block with no extent.
+func bounded_turn_rate() -> float:
 	var radius: float = _formation_local_half_extents().length()
 	return jog_speed / radius if radius > 0.0 else INF
 
 
-## How fast a router's turn rate builds or sheds (rad/s^2): the rate at which its farthest
-## slot's sideways speed changes at the bodies' own acceleration (SoldierBodies.step's
+## How fast a bounded grid turn's rate builds or sheds (rad/s^2): the rate at which the block's
+## farthest slot's sideways speed changes at the bodies' own acceleration (SoldierBodies.step's
 ## max(accel, BODY_ACCEL_FLOOR)). INF for a block with no extent.
-func rout_turn_accel() -> float:
+func bounded_turn_accel() -> float:
 	var radius: float = _formation_local_half_extents().length()
 	return maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR) / radius if radius > 0.0 else INF
 
@@ -10378,7 +10509,7 @@ func _refresh_flock_render(delta: float) -> void:
 	var far_facings := PackedVector2Array()
 	if far_tier:
 		far_locals = formation_slots(soldiers)
-		var grid_ang: float = facing.angle() + PI * 0.5 + _formation_angle
+		var grid_ang: float = facing.angle() + PI * 0.5 + grid_fold()
 		for fi in range(far_locals.size()):
 			far_locals[fi] = far_locals[fi].rotated(grid_ang)
 		far_facings = soldier_world_facings(far_locals.size())
@@ -10731,6 +10862,7 @@ func to_snapshot_dict() -> Dictionary:
 		"reinforce_cohesion_floor": reinforce_cohesion_floor,
 		"standoff_prev_state": _standoff_prev_state,
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
+		"grid_lag": _grid_lag, "grid_lag_rate": _grid_lag_rate,
 		"drill_turn_fold": _drill_turn_fold,
 		"formation_mirror_x": _formation_mirror_x,
 		"fallback_mirror_x": _fallback_mirror_x,
@@ -10968,6 +11100,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_standoff_prev_state = int(d.get("standoff_prev_state", state))
 	_ranks_closed = bool(d["ranks_closed"])
 	_formation_angle = float(d["formation_angle"])
+	_grid_lag = float(d.get("grid_lag", _grid_lag))
+	_grid_lag_rate = float(d.get("grid_lag_rate", _grid_lag_rate))
 	# A snapshot from before the rename carries the quarter-turn-only record under its old key.
 	_drill_turn_fold = float(d.get("drill_turn_fold", d.get("quarter_turn_fold", 0.0)))
 	_formation_mirror_x = bool(d["formation_mirror_x"])

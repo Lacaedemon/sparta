@@ -38,7 +38,7 @@ DEMOS=(
   "cycle_charge_flee|demos/inputs/cycle-charge-flee.json|30|520|640|input"
   "router_outruns_pursuer|demos/inputs/close-tier-router-outruns-pursuer.json|30|176|640|input"
   "rout_rally|demos/inputs/rout-rally-recover.json|30|360|640|input"
-  "last_unit_rally|demos/inputs/last-unit-rally.json|30|650|640|input"
+  "last_unit_rally|demos/inputs/last-unit-rally.json|30|760|640|input"
   "morale_recovery|demos/inputs/morale-recovery.json|30|270|640|input"
   "row_major_rally_reform|demos/inputs/row-major-rally-reform.json|30|300|640|input"
   "square_rally_reform|demos/inputs/square-rally-reform.json|30|300|640|input"

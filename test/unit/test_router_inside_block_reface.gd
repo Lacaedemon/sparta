@@ -230,9 +230,10 @@ func test_router_outside_the_block_reach_is_faced_as_before() -> void:
 	u.uid = 1
 	var far: Vector2 = ROUTER_INSIDE_OFFSET.normalized() * (u.soldier_block_extent() + 50.0)
 	var r := _make_router(u.position + far, Vector2(0.0, -80.0))
-	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	u._face_for_action(r.position, DT, r)
-	assert_gt(_max_slot_shift(before, u.soldier_world_slots(u.soldiers)), 1.0,
+	# The heading turns onto it at once; the slot grid follows at a bounded rate (Unit._reface),
+	# as for any re-face of an enemy outside the block's footprint.
+	assert_almost_eq(angle_difference(u.facing.angle(), far.angle()), 0.0, 0.0001,
 		"a router beyond the block's reach is faced as before")
 
 
