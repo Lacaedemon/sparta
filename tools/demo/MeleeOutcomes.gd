@@ -22,7 +22,7 @@ class_name MeleeOutcomes
 ##                          null for an incomplete run
 ##   uid<u>_first_contact   first tick unit u is in enemy contact
 ##   uid<u>_removed         first tick unit u is absent or has no men left, after being
-##                          seen. Escape and death are not yet told apart (TODO(#1832)).
+##                          seen, whether it escaped or died
 ##   uid<u>_break           first tick unit u is ROUTING; null when it left play unbroken
 ##   uid<u>_contact_break   (only when u broke) ticks from the break to the first tick it is
 ##                          out of contact; null when it left play while still in contact
@@ -31,6 +31,8 @@ class_name MeleeOutcomes
 ##                          when it left play before then (censored, see removed_by_<n>)
 ##   uid<u>_removed_by_<n>  (only when u broke) 1 when it left play within n ticks of its
 ##                          break, 0 when it was still on the field at break + n
+##
+## TODO(#1832): tell a unit that escaped off the map from one cut down.
 
 ## How many ticks after a break each travel metric is read at, by default.
 const DEFAULT_TRAVEL_OFFSETS := [60, 150, 300]

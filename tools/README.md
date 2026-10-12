@@ -370,7 +370,8 @@ and whether it had left play by each of those offsets.
 
 Each value is one of three things.
 A number means the event happened.
-"never" means the run was observed to its end (the clip's last tick, or a `battle_over` snapshot) and the event did not happen; it ranks after every tick.
+"never" means the run was observed to its end (the clip's last tick, or a `battle_over` snapshot) and the event did not happen.
+It ranks after every tick.
 Unobserved means the stream was cut off first, or the question does not apply: travel after the unit left play is censored, and so is the break of a unit destroyed unbroken.
 Unobserved values are dropped, not ranked.
 Leaving play does not yet say whether the unit escaped or died (TODO(#1832)),
@@ -404,7 +405,7 @@ A metric with fewer than `MELEE_DELTA_MIN_RUNS` (4) runs on a side is listed but
 
 ### Power
 
-Measured 2026-10-12 by simulation (300 trials per cell; two normal samples of K, the head shifted by d standard deviations),
+Measured 2026-10-12 by simulation (300 trials per cell, two normal samples of K, the head shifted by d standard deviations),
 the chance the exact test reaches the level one row needs alone among m rows:
 
 | K | d | m = 1 (p <= 0.05) | m = 10 (0.005) | m = 150 (0.00033) |
@@ -449,7 +450,8 @@ so change thresholds or questions freely, but use a fresh out-dir when a tree ch
 Measured 2026-10-12 at `K=16` over all 50 clips with the defaults above.
 The effect multiple, the floors and K were set before these runs, from the criteria above and the power table.
 The two known effects were new and not used to choose anything.
-(An earlier round fitted a fixed 1 m travel threshold to a routers-30%-slower run; that threshold is withdrawn.)
+An earlier round fitted a fixed 1 m travel threshold to a routers-30%-slower run.
+That threshold is withdrawn.
 
 - **Null:** the same tree against itself on disjoint seeds (`MELEE_DELTA_HEAD_RUN_OFFSET=16`) flagged 0 of 171 tested rows,
   with BH and with BY. 6 rows had a raw p at or below 0.05.
