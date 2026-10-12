@@ -258,11 +258,12 @@ static func _detectable(r: Dictionary, level: float, cfg: Dictionary) -> void:
 	r["mds"] = maxf(shift_sd * OutcomeStats.robust_sd(r["_b"]), r["threshold"])
 
 
-## A median, shift or threshold for a report cell: "never" for a NEVER rank, "inf" for an
-## undetectable change, otherwise the number with up to 3 decimals.
+## A median, shift or threshold for a report cell: "never" for a NEVER rank (or a median or
+## shift that averages one with a tick), "inf" for an undetectable change, otherwise the
+## number with up to 3 decimals.
 static func cell(value: float) -> String:
 	if is_inf(value):
 		return "inf"
-	if absf(value) >= NEVER / 2.0:
+	if absf(value) >= NEVER / 4.0:
 		return "never" if value > 0.0 else "-never"
 	return str(snappedf(value, 0.001))
