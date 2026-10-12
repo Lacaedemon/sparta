@@ -1,8 +1,8 @@
 {
-  "_comment": "A team's LAST unit routs, without instantly losing. Stages team 0's ONLY unit -- a full-strength (120) but jittery (morale 15) player infantry -- meeting a single enemy infantry head-on. Both blocks are pinned to Tight (formation 1) so packed files still produce the rout inside this clip -- default Normal 2x thins contact enough that onset misses the budget. Sustained frontal casualties erode its morale to 0 (the discipline-scaled rout retune, #529, made this actually reachable -- it used to sit near-immune to routing and simply grind to a stalemate), and it breaks and flees up (faded) while barely bloodied. It used to trigger instant defeat + a paused freeze the moment its last fightable unit left the line; now the battle stays live while it's routing. Routing units are still valid combat targets, and the enemy follows it as it flees -- state-dump verified (2-tick dump): FIGHTING at tick 1150 and 1374, ROUTING from tick 1376 with 89 of its 120 men, and still ROUTING at tick 1520, the clip's end, at (789.0, 446.8) with its pursuer (uid 1) still pressing it. By the break the two blocks have ground into each other (anchors 26 wu apart), so the router's flight is held in contact: it is about 13 wu from where it broke at tick 1520. On main 9d39a353 it broke between ticks 1160 and 1170 and was about 73 wu clear at tick 1300, with its pursuer MOVING after it. The break now comes about 210 ticks later, since a fighting block's small re-faces no longer swing its slot grid under its men (#1806): the two lines lose men at much the same rate (by tick 1150, 23 and 27 men against 24 and 25 on main), and a morale that hangs a few points above the rout threshold for hundreds of ticks crosses it later. The clip was lengthened from 1300 to 1520 ticks to keep the rout in it, and tick 1300 stays sampled. This clip only needs to show the rout starting and the battle staying live through it, not the whole grind. No player input needed.",
+  "_comment": "A team's LAST unit routs, without instantly losing. Stages team 0's ONLY unit -- a full-strength (120) but jittery (morale 15) player infantry -- meeting a single enemy infantry head-on. Both blocks are pinned to Tight (formation 1) so packed files still produce the rout inside this clip -- default Normal 2x thins contact enough that onset misses the budget. Sustained frontal casualties erode its morale to 0 (the discipline-scaled rout retune, #529, made this actually reachable -- it used to sit near-immune to routing and simply grind to a stalemate), and it breaks and flees up (faded) while barely bloodied. It used to trigger instant defeat + a paused freeze the moment its last fightable unit left the line; now the battle stays live while it's routing. Routing units are still valid combat targets, and the enemy follows it as it flees -- state-dump verified: FIGHTING at tick 1150, ROUTING by tick 1170 with 91 of its 120 men, and still ROUTING at tick 1300, the clip's end, about 73 wu from where it broke, at (722.5, 405.7) with its pursuer (uid 1) MOVING after it. This clip only needs to show the rout starting and the battle staying live through it, not the whole grind. No player input needed.",
   "seed": "12345",
   "fixed_fps": 30,
-  "max_frames": 760,
+  "max_frames": 650,
   "fps": 15,
   "width": 640,
   "scenario": [
@@ -14,12 +14,9 @@
   ],
   "steps": [],
   "frames": [60, 720],
-  "state": [1300, 1374, 1376],
   "expect": [
     {"tick": 1150, "uid": 0, "field": "state", "value": "FIGHTING"},
-    {"tick": 1374, "uid": 0, "field": "state", "value": "FIGHTING"},
-    {"tick": 1376, "uid": 0, "field": "state", "value": "ROUTING"},
-    {"tick": 1520, "uid": 0, "field": "state", "value": "ROUTING"},
-    {"tick": 1520, "uid": 0, "field": "position", "value": [789.0, 446.8], "tol": 5.0}
+    {"tick": 1170, "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": 1300, "uid": 0, "field": "position", "value": [722.5, 405.7], "tol": 5.0}
   ]
 }

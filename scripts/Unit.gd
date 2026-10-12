@@ -3548,7 +3548,7 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 	# through so the normal approach closes on the enemy and carries a charge velocity.
 	if in_contact:
 		state = State.FIGHTING
-		_reface(enemy.position - position)
+		_face_dir(enemy.position - position)
 		# Only peel back once a hit actually lands: flipping to recharging is gated on the
 		# strike so a contact that arrives mid-cooldown holds and fights until the cooldown
 		# clears, rather than retreating without having landed the charge. (For current
@@ -4178,8 +4178,8 @@ func _flanking_maneuver_reflow(enemy: Unit = null, wrap_files: int = flanking_ma
 ## Face `point` for an engage/attack action against `enemy_unit` (the target the turn is
 ## bringing the front to bear on; kept so the settle step can reshape toward it under
 ## MATCH_TARGET -- see engage_reshape_mode). A small heading correction snaps (stays
-## responsive at close quarters) through _reface, so the slot grid follows the heading at a
-## bounded rate instead of swinging under the men; a large swing (>ENGAGE_TURN_THRESHOLD,
+## responsive at close quarters) through _reface, so out of contact the slot grid follows the
+## heading at a bounded rate instead of swinging under the men; a large swing (>ENGAGE_TURN_THRESHOLD,
 ## ~a quarter-turn or more) turns the men in place gradually instead -- the line pivots to
 ## bring its front to bear without the grid collapsing and re-expanding. Returns whether the
 ## unit is faced enough to
@@ -4255,18 +4255,11 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		if _advance_turn(_engage_turn_target, delta):
 			_settle_engage_turn()
 		return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
-	# Small offset: face the enemy and fight now, as before; the slot grid follows the heading
-	# at a bounded rate (_reface) instead of swinging under the men. When either block's centre
-	# lies inside the other's footprint, the grid still snaps with the heading.
+	# Small offset: face the enemy and fight now, as before. Out of contact (a block shooting,
+	# or closing on its target) the slot grid follows the heading at a bounded rate (_reface)
+	# instead of swinging under the men; in contact it still turns with the heading.
 	if offset <= ENGAGE_TURN_THRESHOLD:
-		if _inside_block_footprint(point) or (enemy_unit != null
-				and enemy_unit._inside_block_footprint(position)):
-			# TODO(#1792): blocks inside one another give no front to turn the grid onto; the
-			# bearing between them swings tick by tick, and which way, or whether, the grid
-			# should turn for it is that issue's decision.
-			_face_dir(dir)
-		else:
-			_reface(dir)
+		_reface(dir)
 		return true
 	# Large offset: begin a turn-in-place. Men hold their positions (arrival frozen) while
 	# facing rotates; the strike is withheld until the front comes to bear. Capture the
@@ -4312,15 +4305,6 @@ func _router_streaming_through(enemy_unit: Unit) -> bool:
 ## Let go of the streaming-router latch.
 func _release_streaming_router() -> void:
 	_streaming_router_uid = -1
-
-
-## Whether `point` lies inside this block's own footprint: within the rectangle its slot grid
-## spans (_formation_local_half_extents), in the grid's own frame (soldier_block_world_angle).
-## Two blocks fighting front to front each stand outside the other's footprint.
-func _inside_block_footprint(point: Vector2) -> bool:
-	var half: Vector2 = _formation_local_half_extents()
-	var local: Vector2 = (point - position).rotated(-soldier_block_world_angle())
-	return absf(local.x) <= half.x and absf(local.y) <= half.y
 
 
 ## Finish an engage turn-in-place: fold the rotation into _formation_angle (so the men keep
@@ -4415,17 +4399,19 @@ func _face_dir(dir: Vector2) -> void:
 ## A lag that grows past the threshold (a heading swinging faster than the grid follows) is
 ## folded into _formation_angle, as a single snap that large is, so the men turn where they
 ## stand. A change past the threshold goes to _face_dir, and so does any change on a far-tier
-## block, which has no bodies on its slots. The callers are the ones that correct a heading
-## tick by tick: a fighting or shooting block re-facing an enemy outside its own footprint
-## (_face_for_action), a march that does not pivot as a formation (an undisciplined or hasty
-## march, a held maneuver facing, a combat approach), a hasty reform hold, and a caracole's
-## contact.
+## block, which has no bodies on its slots. So does any change while the block is in enemy
+## contact: there its front men are held against the enemy's, and a grid left trailing the
+## heading in a melee lets the two blocks grind into each other and holds a block that breaks
+## in the press (TODO(#1792) decides how a melee re-face should turn the grid). The callers
+## are the ones that correct a heading tick by tick: a fighting or shooting block re-facing
+## its enemy (_face_for_action), a march that does not pivot as a formation (an undisciplined
+## or hasty march, a held maneuver facing, a combat approach), and a hasty reform hold.
 func _reface(dir: Vector2) -> void:
 	if dir.length_squared() <= 0.0001:   # _face_dir's own zero-direction guard
 		return
 	var new_facing: Vector2 = dir.normalized()
 	var turn: float = angle_difference(facing.angle(), new_facing.angle())
-	if absf(turn) > FACING_SNAP_ABSORB_THRESHOLD or tier == FormationTier.FAR:
+	if absf(turn) > FACING_SNAP_ABSORB_THRESHOLD or tier == FormationTier.FAR or _in_enemy_contact:
 		_face_dir(dir)
 		return
 	_grid_lag = wrapf(_grid_lag - turn, -PI, PI)
@@ -4458,8 +4444,9 @@ func _advance_grid_lag(delta: float) -> void:
 	if _grid_lag == 0.0 or delta <= 0.0 or is_turning():
 		_grid_lag_rate = 0.0
 		return
-	var rate: float = bounded_turn_step(_grid_lag_rate, -_grid_lag, bounded_turn_rate(),
-			bounded_turn_accel(), delta)
+	var radius: float = _formation_local_half_extents().length()
+	var rate: float = bounded_turn_step(_grid_lag_rate, -_grid_lag, bounded_turn_rate(radius),
+			bounded_turn_accel(radius), delta)
 	var turn: float = rate * delta
 	if signf(turn) == signf(-_grid_lag) and absf(turn) >= absf(_grid_lag):
 		# Closes the lag this tick: turn exactly the rest of the way.
@@ -5887,7 +5874,8 @@ var _engage_turn_enemy: Unit = null
 var _streaming_router_uid: int = -1
 # Beyond this heading offset (radians) an engage/attack re-face turns in place gradually
 # instead of snapping. Below it a small correction snaps the heading (_reface), keeping
-# close-quarters combat responsive, while the slot grid follows at a bounded rate; only a large
+# close-quarters combat responsive; out of contact the slot grid follows it at a bounded rate,
+# in contact it turns with it. Only a large
 # swing (roughly a quarter-turn or more) turns the men in place.
 const ENGAGE_TURN_THRESHOLD: float = deg_to_rad(75.0)
 # The unit strikes once its front is within this offset of the enemy — a turn-in-place brings
@@ -5897,9 +5885,10 @@ const ENGAGE_TURN_FIGHT_TOLERANCE: float = deg_to_rad(50.0)
 # Beyond this heading offset (radians) an instant facing snap (_face_dir) folds the jump into
 # _formation_angle instead of leaving soldier_world_slots' facing-relative grid to swap every
 # slot to the new side of the block. Below it _face_dir leaves the change unfolded, so the
-# grid turns with the heading; a small correction (travel-direction drift, a close-quarters
-# re-face) therefore goes through _reface, which holds the grid back as _grid_lag and turns it
-# after the heading at a bounded rate, folding the lag in once it passes this same threshold.
+# grid turns with the heading; a small correction (travel-direction drift, a re-face onto a
+# target) therefore goes through _reface, which out of contact holds the grid back as _grid_lag
+# and turns it after the heading at a bounded rate, folding the lag in once it passes this same
+# threshold.
 # Same threshold as ENGAGE_TURN_THRESHOLD (roughly a quarter-turn or more): past that angle
 # the slot swap is large enough to read as the formation collapsing and re-expanding.
 const FACING_SNAP_ABSORB_THRESHOLD: float = ENGAGE_TURN_THRESHOLD
@@ -9614,8 +9603,9 @@ func _turn_flight_toward(dir: Vector2, delta: float) -> void:
 	if diff == 0.0 or delta <= 0.0:
 		_flight_turn_rate = 0.0
 		return
-	_flight_turn_rate = bounded_turn_step(_flight_turn_rate, diff, bounded_turn_rate(),
-			bounded_turn_accel(), delta)
+	var radius: float = _formation_local_half_extents().length()
+	_flight_turn_rate = bounded_turn_step(_flight_turn_rate, diff, bounded_turn_rate(radius),
+			bounded_turn_accel(radius), delta)
 	var turn: float = _flight_turn_rate * delta
 	if signf(turn) == signf(diff) and absf(turn) >= absf(diff):
 		# Lands on the heading this tick: turn exactly the rest of the way.
@@ -9643,17 +9633,21 @@ static func bounded_turn_step(rate: float, diff: float, max_rate: float, turn_ac
 ## (_advance_grid_lag). It is the rate at which the farthest slot (the block's corner, at
 ## _formation_local_half_extents().length() from the anchor) sweeps sideways at jog_speed, the
 ## pace a body's arrival term closes on a moving slot at (SoldierBodies.step caps arrival at
-## jog_speed). INF for a block with no extent.
-func bounded_turn_rate() -> float:
-	var radius: float = _formation_local_half_extents().length()
+## jog_speed). INF for a block with no extent. `radius` lets a caller that already holds that
+## corner radius pass it in instead of paying for a second O(soldiers) slot walk.
+func bounded_turn_rate(radius: float = -1.0) -> float:
+	if radius < 0.0:
+		radius = _formation_local_half_extents().length()
 	return jog_speed / radius if radius > 0.0 else INF
 
 
 ## How fast a bounded grid turn's rate builds or sheds (rad/s^2): the rate at which the block's
 ## farthest slot's sideways speed changes at the bodies' own acceleration (SoldierBodies.step's
-## max(accel, BODY_ACCEL_FLOOR)). INF for a block with no extent.
-func bounded_turn_accel() -> float:
-	var radius: float = _formation_local_half_extents().length()
+## max(accel, BODY_ACCEL_FLOOR)). INF for a block with no extent. `radius` as for
+## bounded_turn_rate.
+func bounded_turn_accel(radius: float = -1.0) -> float:
+	if radius < 0.0:
+		radius = _formation_local_half_extents().length()
 	return maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR) / radius if radius > 0.0 else INF
 
 

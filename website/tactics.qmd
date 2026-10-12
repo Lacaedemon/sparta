@@ -244,11 +244,9 @@ isolated recovery above (@fig-morale-recovery), where nothing interferes.
 </video>
 ```
 
-A team's last unit routs. A lone player infantry is broken after a long grind and tries
-to flee, its flag fading;
-the two blocks have ground into each other by then,
-so the enemy keeps pressing it, since a routing unit is still fair game,
-and it can barely pull away. The point: the battle stays live instead of ending the instant the
+A team's last unit routs. A lone player infantry is broken and flees, its flag fading;
+the enemy keeps after it, since a routing unit is still fair game, and stays on its
+heels as it goes. The point: the battle stays live instead of ending the instant the
 last unit broke, for as long as it's still on the field.
 :::
 
@@ -1669,10 +1667,10 @@ Instead the whole line **turns in place** to bring its front to bear, the men
 holding their ground as the block pivots, and it withholds its blows until it
 has come about. A small correction still snaps and fights at once, so a unit
 already roughly fronting its target loses no time.
-Its men do not run to new places when it does:
+Until it is in contact, its men do not run to new places when it does:
 the block's ranks come round after the new heading
-no faster than the men on its far corners can walk,
-so a deep block re-facing a few tens of degrees keeps its men in their places
+no faster than the men on its far corners can jog,
+so a deep block turning a few tens of degrees onto its target keeps its men in their places
 instead of sending them across the formation.
 The same goes for a levy, or any unit ordered to run,
 whose march turns its heading straight onto its path without a pivot.
