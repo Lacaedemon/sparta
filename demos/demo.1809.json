@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/square-reflection-walkers-1809.json",
-  "caption": "A square of 60 men about-faces and reforms in place. Its short rear rank is now in front, so four men of the old front rank keep their file and walk the depth of the square to its far end. Each of them now swings out round his own flank while the rest of the square stands fast. Before this fix the square chose those men by roster order: three men who should have stood still were sent out beside the square, and one of the four walked straight through it.",
+  "caption": "A square of 60 men about-faces and reforms in place. Its short rear rank is now in front, so four men of the old front rank keep their file and walk the depth of the square to its far end. Each of the four is now given a path out past his own flank of the square, and every other man is left where he stands. Before this fix the square picked those men by roster order: four men who should have stood still were sent out of their places, two of them walking out beside the square, and one of the four walkers was given no way round at all.",
   "fixed_fps": 30,
   "max_frames": 180,
   "fps": 15,
