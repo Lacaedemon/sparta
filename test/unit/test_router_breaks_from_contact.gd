@@ -1,9 +1,11 @@
 extends GutTest
 ## A router breaking from a melee runs from it, though its heading turns onto the flight at a
 ## bounded rate (Unit._turn_flight_toward) and so keeps its front toward the enemy for a while.
-## While its front ranks are the ones in the melee (Unit.router_front_in_melee), none of its men
-## is held back as an engaged front and couple() anchors the block on all of them. A router
-## caught from behind keeps its anchor on its front, flight-side ranks.
+## While its front ranks are the ones in the melee (Unit.router_front_in_melee: armed once at
+## the break from any contact enemy in its front arc, held until its heading lands on the
+## flight or contact ends), none of its men is held back as an engaged front and couple()
+## anchors the block on all of them. A router caught from behind keeps its anchor on its
+## front, flight-side ranks.
 ##
 ## The regression the first test pins: with the bounded turn, couple() anchored a router
 ## breaking from a melee on its front ranks, the men the melee held, so the anchor followed
@@ -24,9 +26,9 @@ const WATCH_TICKS := 300
 # anchor fleeing from a standstill covers the integral of min(accel x t, flee_speed()), and
 # its men run on its slots, so they cover the same distance less the growth in their lag
 # (501.7 wu here over 300 ticks). They start in the melee, with the enemy's files among them
-# and riding north beside them for about 4 s, which costs any flight here about 40 percent of
+# and riding north beside them for about 3 s, which costs any flight here 35 to 40 percent of
 # that distance: 0.60 on main bb2a9e4f, where the grid snapped onto the flight and the anchor
-# was thrown clear of its men, and 0.57 now. Anchored on the front ranks the melee holds, the
+# was thrown clear of its men, and 0.63 now. Anchored on the front ranks the melee holds, the
 # block lost about half (0.52), the hold this pins. The bound sits between those: the melee may
 # cost the flight at most 45 percent of an unhindered run.
 const MIN_FLIGHT_SHARE := 0.55
@@ -40,8 +42,13 @@ const PRESS_WATCH_TICKS := 720
 # 24-mount Cavalry pursuer 130 wu behind it is ordered onto it.
 const CAUGHT_START := Vector2(700.0, 1300.0)
 const CAUGHT_PURSUER_GAP := 130.0
-const CAUGHT_ROUTER_MOVE_SPEED := 20.0   # tuned in wu, slow enough to be caught
+const CAUGHT_ROUTER_MOVE_SPEED := 20.0   # tuned in wu/s, slow enough to be caught
 const CATCH_TICKS := 600
+# The arming stagings: a router facing east (off its northward flight) with enemy squadrons
+# ARM_OFFSET from its anchor, inside melee contact range, ahead (east), behind (west) or on
+# its flank (north, 90 degrees off its heading, outside the 60 degree front arc).
+const ARM_START := Vector2(700.0, 1300.0)
+const ARM_OFFSET := 40.0
 
 var _battle: Node = null
 
@@ -131,6 +138,12 @@ func test_a_router_pressed_beside_a_hill_is_not_carried_into_it() -> void:
 	var routed: bool = false
 	var anchor_in_hill: int = 0
 	var men_in_hill: int = 0
+	# router_front_in_melee() over the rout: armed at the break, it may clear once (its heading
+	# lands on the flight, or contact ends) and never comes back, though the pursuer passes
+	# alongside the router while still in contact.
+	var front_was: bool = false
+	var front_ever: bool = false
+	var transitions: int = 0
 	var safety: int = PRESS_WATCH_TICKS * 4
 	while _battle.current_tick() < PRESS_WATCH_TICKS and safety > 0:
 		safety -= 1
@@ -141,6 +154,12 @@ func test_a_router_pressed_beside_a_hill_is_not_carried_into_it() -> void:
 			routed = true
 		if not routed:
 			continue
+		var front: bool = router.router_front_in_melee()
+		if router.state == Unit.State.ROUTING:
+			if front_ever and front != front_was:
+				transitions += 1
+			front_ever = front_ever or front
+			front_was = front
 		if hill.has_point(router.position):
 			anchor_in_hill += 1
 		for p in router._sim_soldier_pos:
@@ -150,6 +169,10 @@ func test_a_router_pressed_beside_a_hill_is_not_carried_into_it() -> void:
 	assert_true(is_instance_valid(router), "setup: the squadron is still on the field")
 	if not is_instance_valid(router):
 		return
+	assert_true(front_ever, "setup: it breaks with its front in the melee")
+	assert_lte(transitions, 1,
+			"its front stops counting as in the melee at most once in the rout (got %d switches)"
+			% transitions)
 	assert_eq(anchor_in_hill, 0, "the press never carries the router's anchor into the hill")
 	assert_eq(men_in_hill, 0, "nor any of its men")
 	assert_false(router._shattered, "it is never trapped into fighting to the death")
@@ -166,7 +189,6 @@ func test_a_router_caught_from_behind_anchors_on_its_flight_side_ranks() -> void
 		{"team": 1, "type": "Cavalry", "count": 24, "x": CAUGHT_START.x,
 				"y": CAUGHT_START.y + CAUGHT_PURSUER_GAP, "facing": [0, -1]},
 	]
-	_battle = null
 	Replay.forced_seed = 12345
 	_battle = load("res://scenes/Battle.tscn").instantiate()
 	_battle.all_teams_control = true
@@ -211,3 +233,52 @@ func test_a_router_caught_from_behind_anchors_on_its_flight_side_ranks() -> void
 	var anchor: PackedInt32Array = router.position_anchor_indices(n)
 	assert_gt(anchor.size(), 0, "couple() anchors it on a front selection, not the whole block")
 	assert_lt(anchor.size(), n, "and on part of the block only")
+
+
+## Deploy a 48-mount squadron at ARM_START facing east, with an enemy squadron at each
+## `offsets` entry (relative to ARM_START, in that spawn order, all idle), rout it, and return
+## whether it broke with its front in the melee.
+func _armed_with_enemies_at(offsets: Array) -> bool:
+	var scenario: Array = [{"team": 0, "type": "Cavalry", "count": 48, "x": ARM_START.x,
+			"y": ARM_START.y, "facing": [1, 0]}]
+	for off in offsets:
+		var at: Vector2 = ARM_START + (off as Vector2)
+		scenario.append({"team": 1, "type": "Cavalry", "count": 24, "x": at.x, "y": at.y,
+				"facing": [-1, 0]})
+	var router: Unit = await _start(scenario, 12345, true)
+	assert_not_null(router, "setup: the squadron deployed")
+	if router == null:
+		return false
+	var in_contact: int = 0
+	for u in get_tree().get_nodes_in_group("units"):
+		var enemy: Unit = u as Unit
+		if enemy != null and enemy.team != router.team:
+			var reach: float = maxf(router.attack_range, enemy.attack_range) + router.RADIUS + enemy.RADIUS
+			if router.position.distance_to(enemy.position) <= reach:
+				in_contact += 1
+	assert_eq(in_contact, offsets.size(), "setup: every enemy squadron is in melee contact range")
+	router.rally_morale_threshold = 1000.0
+	router.rout_time = 1000.0
+	router.morale = 0.0
+	router._rout()
+	var armed: bool = router.router_front_in_melee()
+	_battle.free()
+	_battle = null
+	return armed
+
+
+func test_a_router_arms_its_front_in_the_melee_from_any_enemy_in_its_front_arc() -> void:
+	var ahead := Vector2(ARM_OFFSET, 0.0)
+	var behind := Vector2(-ARM_OFFSET, 0.0)
+	assert_true(await _armed_with_enemies_at([ahead, behind]),
+			"an enemy ahead arms it with another behind, the one ahead spawned first")
+	assert_true(await _armed_with_enemies_at([behind, ahead]),
+			"and with the one behind spawned first")
+	assert_true(await _armed_with_enemies_at([ahead]), "an enemy ahead alone arms it")
+
+
+func test_a_router_with_no_enemy_in_its_front_arc_is_not_armed() -> void:
+	assert_false(await _armed_with_enemies_at([Vector2(-ARM_OFFSET, 0.0)]),
+			"an enemy only behind does not arm it")
+	assert_false(await _armed_with_enemies_at([Vector2(0.0, -ARM_OFFSET)]),
+			"nor does an enemy only on its flank, 90 degrees off its heading")
