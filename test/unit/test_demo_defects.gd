@@ -954,10 +954,13 @@ func test_derived_slot_excess_measures_an_outside_man_from_the_block_edge() -> v
 			"the outside man reaches the near edge (0 excess); the inside man steps 10 wu")
 
 
-## _derived_record with the slot grid's footprint: it reaches `half_width` either side.
-func _grid_record(pos: Array, slots: Array, half_width: float) -> Dictionary:
+## _derived_record with the slot grid's footprint: along `axis` (world +X by default, the
+## record's lateral axis), from `lo` to `hi` (from -half_width to half_width when `lo` is null).
+func _grid_record(pos: Array, slots: Array, half_width: float, axis: Array = [1.0, 0.0],
+		lo = null) -> Dictionary:
 	var u: Dictionary = _derived_record(pos, slots)
-	u["motion_ref"]["slot_grid_half_width"] = half_width
+	u["motion_ref"]["slot_grid"] = {"axis": axis,
+			"lateral_min": -half_width if lo == null else lo, "lateral_max": half_width}
 	return u
 
 
@@ -993,6 +996,23 @@ func test_derived_slots_beyond_flanks_reads_the_grid_not_the_bodies() -> void:
 	assert_null(DemoDefects.derived_field(
 			_derived_record([[0.0, 0.0]], [[30.0, 0.0]]), "slots_beyond_flanks"),
 			"a dump without the grid's footprint cannot supply the field")
+
+
+func test_derived_slots_beyond_flanks_measures_along_the_grid_axis() -> void:
+	# A grid folded a quarter-turn off the unit's facing: its files run along world +Y, out to
+	# 45 wu either side, while the facing's lateral axis is world +X. Slots at y -40 and 40 are
+	# inside the grid; along the facing's axis every slot reads 0. The slot at y 60 is outside.
+	var folded: Dictionary = _grid_record(
+			[[0.0, -40.0], [0.0, 40.0], [0.0, 60.0]],
+			[[0.0, -40.0], [0.0, 40.0], [0.0, 60.0]], 45.0, [0.0, 1.0])
+	assert_eq(DemoDefects.derived_field(folded, "slots_beyond_flanks"), 1,
+			"only the slot past the grid's own edge counts")
+	# A grid that is not centred on the unit (a file-major block short of men keeps its files
+	# where they stand): it reaches from -63 to 45. A slot at -60 is inside it.
+	var shifted: Dictionary = _grid_record(
+			[[-60.0, 0.0], [40.0, 0.0]], [[-60.0, 0.0], [52.0, 0.0]], 45.0, [1.0, 0.0], -63.0)
+	assert_eq(DemoDefects.derived_field(shifted, "slots_beyond_flanks"), 1,
+			"each side is measured against its own edge")
 
 
 func test_derived_slot_fields_need_a_full_record() -> void:

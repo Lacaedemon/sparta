@@ -820,9 +820,10 @@ const DERIVED_FIELDS: Array[String] = [
 ## Expectation fields derived offline from a FULL record (soldiers_full plus motion_ref), for
 ## claims about where each man is sent rather than where the unit is. Null when the record
 ## cannot supply the field (not one of these names, or a dump without soldiers_full), which
-## check_expectations reports as uncheckable. Each measures along the unit's lateral axis (its
-## facing turned a quarter), from the unit's position. The first two read every man's body
-## against his own slot; the third reads every slot against the grid's own footprint:
+## check_expectations reports as uncheckable. Each measures sideways from the unit's position.
+## The first two read every man's body against his own slot along the unit's lateral axis (its
+## facing turned a quarter); the third reads every slot against the grid's own footprint, along
+## the grid's own file axis:
 ##
 ## - slots_across_centreline: men whose slot lies across the centreline from them, each more
 ##   than half a file pitch off it -- the walk through the block a reshape must not send.
@@ -831,12 +832,14 @@ const DERIVED_FIELDS: Array[String] = [
 ##   units to 0.1. A man inside the block kept within a pitch of his place reads at most one
 ##   file pitch; one outside it is measured from the block's edge, which he has to reach anyway.
 ## - slots_beyond_flanks: men whose slot lies more than half a file pitch outside the slot grid's
-##   own footprint (motion_ref.slot_grid_half_width, measured before any traverse arc bends a
-##   slot) -- the men a drill sends out round the block's flank rather than through it. It is
-##   measured against the grid, not the bodies: the men it counts are walking, so the outermost
-##   bodies would move with them (or with a straggler) and the count would change with how far
-##   they have got rather than with where they are sent. A dump without the half-width cannot
-##   supply it.
+##   own footprint -- the men a drill sends out round the block's flank rather than through it.
+##   The footprint is motion_ref.slot_grid (DemoState.slot_grid_footprint): the grid's file axis
+##   and its extent along it, read off the slots the unit lays out before any traverse arc bends
+##   one. It is measured against the grid, not the bodies: the men it counts are walking, so the
+##   outermost bodies would move with them (or with a straggler) and the count would change with
+##   how far they have got rather than with where they are sent. It is measured along the grid's
+##   own axis, not the facing's, so a block whose grid is folded off its facing (a quarter-turn)
+##   reads its own width. A dump without the footprint cannot supply it.
 ##
 ## Sampled the tick after a reshape, before the men have walked, they measure the deal itself.
 static func derived_field(u: Dictionary, field: String):
@@ -857,32 +860,48 @@ static func derived_field(u: Dictionary, field: String):
 	if centre_pair.size() != 2 or facing_pair.size() != 2:
 		return null
 	var centre := Vector2(float(centre_pair[0]), float(centre_pair[1]))
+	if field == "slots_beyond_flanks":
+		return _slots_beyond_flanks(slots, centre, ref)
 	var lateral: Vector2 = Vector2(float(facing_pair[0]), float(facing_pair[1])).normalized().orthogonal()
 	var half: float = float(ref.get("file_pitch", 0.0)) * 0.5
 	var n: int = pos.size()
 	var width: float = 0.0
 	for i in range(n):
 		width = maxf(width, absf((Vector2(slots[i][0], slots[i][1]) - centre).dot(lateral)))
-	var grid_half = ref.get("slot_grid_half_width")
-	if field == "slots_beyond_flanks" and not (grid_half is float or grid_half is int):
-		return null
-	var reach: float = (float(grid_half) + half) if grid_half != null else 0.0
 	var crossed: int = 0
-	var beyond: int = 0
 	var excess: float = 0.0
 	for i in range(n):
 		var a: float = (Vector2(pos[i][0], pos[i][1]) - centre).dot(lateral)
 		var b: float = (Vector2(slots[i][0], slots[i][1]) - centre).dot(lateral)
 		if a * b < 0.0 and absf(a) > half and absf(b) > half:
 			crossed += 1
-		if absf(b) > reach:
-			beyond += 1
 		excess = maxf(excess, absf(b - clampf(a, -width, width)))
 	if field == "slots_across_centreline":
 		return crossed
-	if field == "slots_beyond_flanks":
-		return beyond
 	return snappedf(excess, 0.1)
+
+
+## slots_beyond_flanks (see derived_field): how many of `slots` lie more than half a file pitch
+## outside motion_ref.slot_grid's extent along its axis, from `centre`. Null when the footprint
+## is missing or malformed.
+static func _slots_beyond_flanks(slots: Array, centre: Vector2, ref: Dictionary):
+	var grid = ref.get("slot_grid")
+	if not (grid is Dictionary):
+		return null
+	var axis_pair = grid.get("axis")
+	var lo = grid.get("lateral_min")
+	var hi = grid.get("lateral_max")
+	if not (axis_pair is Array) or (axis_pair as Array).size() != 2 \
+			or not (lo is float or lo is int) or not (hi is float or hi is int):
+		return null
+	var axis := Vector2(float(axis_pair[0]), float(axis_pair[1])).normalized()
+	var half: float = float(ref.get("file_pitch", 0.0)) * 0.5
+	var beyond: int = 0
+	for s in slots:
+		var b: float = (Vector2(s[0], s[1]) - centre).dot(axis)
+		if b < float(lo) - half or b > float(hi) + half:
+			beyond += 1
+	return beyond
 
 
 ## Evaluate declared demo intent against a dumped transcript: each expectation is

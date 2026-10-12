@@ -545,8 +545,8 @@ Two optional keys widen what an entry can say:
 
 Three more fields are derived from a FULL dump (`SPARTA_DEMO_STATE_FULL=1`, which CI's
 defect scan uses) rather than read from the compact record (`DemoDefects.derived_field`).
-Each measures along the unit's lateral axis, from the unit's position.
-The first two compare every man's body with his own slot.
+Each measures sideways from the unit's position.
+The first two compare every man's body with his own slot, along the unit's lateral axis.
 Sampled the tick after a reshape, they show where the reshape sends the men before anyone has walked:
 
 - `slots_across_centreline` -- how many men have their slot across the unit's centreline
@@ -569,10 +569,11 @@ Sampled the tick after a reshape, they show where the reshape sends the men befo
   rather than tuning the `tol` to the value one run reads.
 
 - `slots_beyond_flanks` -- how many men have their slot more than half a file pitch
-  outside the slot grid's own footprint,
-  `motion_ref.slot_grid_half_width` either side of the unit's position.
-  That is half the widest rank's span, plus any frontage anchor shift,
-  measured before a traverse arc bends a slot.
+  outside the slot grid's own footprint, `motion_ref.slot_grid`.
+  The footprint is the grid's file axis and its extent along it,
+  read off the slots the unit lays out before a traverse arc bends one.
+  It is measured along the grid's own axis,
+  so a block whose grid is folded off its facing reads its own width.
   These are the men a drill sends out round the block's flank rather than through it,
   such as a hold-ground about-face's walkers once their walk is under way.
   It reads slots against the grid, not against the bodies,

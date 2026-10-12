@@ -5963,7 +5963,12 @@ func _effective_file_major_reform() -> bool:
 ## spread-strength distance gate and the rank-overlap window, and calling
 ## formation_slots(true) from there would recurse forever through
 ## _relief_corridor_spread_strength / soldier_block_half_extents -> formation_slots.
-func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVector2Array:
+##
+## `apply_traverse_arcs` defaults true so a hold-ground re-square's walkers are bent round their
+## flank (UnitFormation.apply_traverse_flank_arcs). Pass false for the grid as laid out before
+## any arc, such as the footprint a demo dump measures the bent slots against.
+func formation_slots(count: int, apply_relief_corridor: bool = true,
+		apply_traverse_arcs: bool = true) -> PackedVector2Array:
 	_formation_slots_call_count += 1   # test-only instrumentation; see its own doc comment
 	if in_square():
 		var square_file_count: int = formation_files(count)
@@ -5971,7 +5976,8 @@ func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVe
 				count, square_file_count, file_pitch_wu())
 		_ensure_square_slot_assignment(count, square_file_count, square_grid)
 		var sq_slots: PackedVector2Array = UnitFormation.permute_slots(square_grid, _sim_soldier_square_slot)
-		if _sim_soldier_pos.size() == count and _sim_soldier_square_slot.size() == count and _reform_holding():
+		if apply_traverse_arcs and _sim_soldier_pos.size() == count \
+				and _sim_soldier_square_slot.size() == count and _reform_holding():
 			var sq_ang: float = facing.angle() + PI * 0.5 + _formation_angle
 			sq_slots = UnitFormation.apply_traverse_flank_arcs(sq_slots, _sim_soldier_pos, position,
 					sq_ang, _sim_soldier_square_slot, square_file_count, file_pitch_wu(),
@@ -5995,7 +6001,8 @@ func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVe
 		_ensure_row_slot_assignment(count, row_files, row_grid)
 		if _sim_soldier_row_slot.size() == count and _row_slot_files == row_files:
 			var r_slots: PackedVector2Array = UnitFormation.permute_slots(row_grid, _sim_soldier_row_slot)
-			if _sim_soldier_pos.size() == count and _reform_holding() and not _row_slot_dealt:
+			if apply_traverse_arcs and _sim_soldier_pos.size() == count and _reform_holding() \
+					and not _row_slot_dealt:
 				var r_ang: float = facing.angle() + PI * 0.5 + _formation_angle
 				r_slots = UnitFormation.apply_traverse_flank_arcs(r_slots, _sim_soldier_pos, position,
 						r_ang, _sim_soldier_row_slot, row_files, file_pitch_wu(),
