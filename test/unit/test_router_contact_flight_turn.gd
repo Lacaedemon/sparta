@@ -80,12 +80,12 @@ func test_a_flight_turn_in_contact_is_bounded() -> void:
 	router._turn_flight_toward(flee, tick)
 	assert_gt(absf(angle_difference(router.facing.angle(), flee.angle())), 0.001,
 			"in contact the heading turns only part of the way in one tick")
-	assert_lte(absf(router._flight_turn_rate), router.rout_turn_rate(),
-			"and no faster than rout_turn_rate()")
+	assert_lte(absf(router._flight_turn_rate), router.bounded_turn_rate(),
+			"and no faster than bounded_turn_rate()")
 	var after: PackedVector2Array = router.soldier_world_slots(router.soldiers)
 	assert_eq(after.size(), before.size(), "setup: the same men before and after")
 	# The farthest slot sits at most the block's corner radius from the anchor, so a turn of
-	# rout_turn_rate() for one tick moves it at most jog_speed for one tick.
+	# bounded_turn_rate() for one tick moves it at most jog_speed for one tick.
 	assert_lte(_worst_slot_turn(before, after, Vector2.ZERO), router.jog_speed * tick + SLOT_EPS,
 			"no slot moves sideways faster than jog_speed")
 
@@ -116,8 +116,8 @@ func test_a_router_breaking_from_contact_keeps_its_slot_grid_on_the_rout_tick() 
 			Unit.FACING_SNAP_ABSORB_THRESHOLD,
 			"setup: the flight line is under the snap-absorb threshold off the heading")
 	var turned: float = absf(angle_difference(heading_before, router.facing.angle()))
-	assert_lte(turned, router.rout_turn_rate() * tick + 0.000001,
-			"the heading turns by at most rout_turn_rate() for one tick")
+	assert_lte(turned, router.bounded_turn_rate() * tick + 0.000001,
+			"the heading turns by at most bounded_turn_rate() for one tick")
 	var after: PackedVector2Array = router.soldier_world_slots(router.soldiers)
 	assert_lte(_worst_slot_turn(before, after, router.position - anchor_before),
 			router.jog_speed * tick + SLOT_EPS,

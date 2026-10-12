@@ -1,0 +1,24 @@
+{
+  "_comment": "A small heading correction keeps the men in their places. A 120-man Infantry block (15 files by 8 ranks, about 141 wu from its anchor to a corner) stands facing north and is given a RUN order (triple right-click) to a point about 40 degrees east of north. A run order marches without a formed pivot, so when the order response ends at tick 60 the heading turns 39.7 degrees onto the march in one tick (from -90 to -50.3 degrees), under the 75-degree threshold past which a snap is folded into the grid. On main 9d39a353 that turn also swung the whole slot grid about the anchor in the same tick: at tick 62 six men's slots lay across the centreline from them and the farthest slot sat 69.6 wu sideways of its man; the mean body-to-slot gap jumped from 0 to 55.5 wu, and the men were still 62.3 wu off sideways at tick 120. Now the heading still turns at once, but the grid stays where the men stand and turns after it no faster than the men on its corners can jog (Unit._reface, Unit._advance_grid_lag): at tick 62 no slot is across the centreline and none sits sideways of its man, and at tick 120 the farthest sits 2.8 wu off. The block also covers a little more ground, because its anchor is no longer held back by men running across the block: at tick 360 it stands at about (865.8, 851.2), against (855.1, 862.6) on main. Drill mode (no enemy), static camera. Deterministic (scenario + seed + scripted input). Measured with a 2-tick state dump on main and on this branch.",
+  "seed": "18060",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 760, "y": 980, "count": 120, "facing": [0, -1]}
+  ],
+  "camera": [{"tick": 0, "x": 900.0, "y": 800.0, "zoom": 1.1}],
+  "steps": [
+    {"tick": 8, "click": [760, 980]},
+    {"tick": 16, "rmb_click": [1146, 520]},
+    {"tick": 22, "rmb_click": [1146, 520]},
+    {"tick": 28, "rmb_click": [1146, 520]}
+  ],
+  "state": [8, 60, 62, 120, 180, 240, 300, 360],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [760, 980]},
+    {"tick": 62, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 62, "uid": 0, "field": "slot_lateral_excess", "value": 0.0, "tol": 18.0},
+    {"tick": 120, "uid": 0, "field": "slot_lateral_excess", "value": 0.0, "tol": 18.0},
+    {"tick": 120, "uid": 0, "field": "state", "value": "MOVING"},
+    {"tick": 360, "uid": 0, "field": "position", "value": [865.78, 851.17], "tol": 5.0}
+  ]
+}

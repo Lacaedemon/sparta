@@ -19,11 +19,11 @@ const LATERAL_TOLERANCE_PITCHES: float = 1.0
 
 
 ## The host's physical front/rear axis: the slot grid's depth axis, which is the heading
-## rotated by the formation angle (soldier_block_world_angle's own formula). A quarter-turn
+## rotated by the grid fold (soldier_block_world_angle's own formula). A quarter-turn
 ## or about-face turns the men in place and leaves the grid folded, so the raw heading is
 ## the wrong axis for where "behind the block" is until a fresh move re-squares it.
 static func depth_axis(host: Unit) -> Vector2:
-	return host.facing.rotated(host._formation_angle)
+	return host.facing.rotated(host.grid_fold())
 
 
 ## The largest entry of a per-file count or per-man rank array (0 when empty).

@@ -1663,6 +1663,16 @@ pacing cost during this pivot.
 The ramp is continuous, so an ordinary line keeps near-full jog pace through the
 turn and a stock cavalry block pays the most.
 
+A levy, or any unit ordered to run, skips the pivot:
+its heading turns straight onto its path.
+When you send it to a place (a move order, or a step back out of a fight),
+its men still do not run to new places as it turns:
+the block's ranks come round after the new heading
+no faster than the men on its far corners can jog,
+so a deep block setting off a few tens of degrees off its front keeps its men in their places
+instead of sending them across the formation.
+A march on an enemy (an attack, a chase or a caracole) still swings its ranks round at once.
+
 **Re-facing to fight** has a cost of its own. When a unit engages an enemy that is
 roughly a quarter-turn or more off its current front --- attacked in the flank, or
 sent to hit a foe off to one side --- it does **not** snap its facing round.
