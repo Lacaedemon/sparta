@@ -7,7 +7,8 @@
 #   3. a clip the catalog lacks exits 2 rather than comparing nothing
 #   4. each selected clip runs K times per side with SPARTA_DEMO_SEED_RUN 1..K on the base
 #      and 1+offset..K+offset on the head, and no unselected clip runs at all
-#   5. the comparison's exit code passes through (1 = flagged) and the summary is written
+#   5. the comparison's exit code passes through (1 = flagged) and the summary is written;
+#      every run keeps its metrics.json, and its snapshots only under KEEP_DUMPS=1
 #   6. a second run on the same out-dir reuses every finished dump
 #   7. a run that writes no snapshots fails the whole delta with exit 2
 #   8. --derive-clips runs every catalog clip on its own seed and prints only the clips
@@ -41,8 +42,9 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 # The stub: a dump run (SPARTA_DEMO_STATE_DIR set) logs "<dir>|<seed run>" and writes a
-# snapshot unless STUB_FAIL_RUN names its seed run; the comparison writes its markdown
-# and exits STUB_COMPARE_RC; anything else (the import) does nothing.
+# snapshot unless STUB_FAIL_RUN names its seed run; --extract writes a metrics.json whose
+# first_contact says whether that snapshot was in contact; the comparison writes its
+# markdown and exits STUB_COMPARE_RC; anything else (the import) does nothing.
 cat > "$WORK/godot" <<'EOF'
 #!/usr/bin/env bash
 if [ -n "${SPARTA_DEMO_STATE_DIR:-}" ]; then
@@ -54,11 +56,18 @@ if [ -n "${SPARTA_DEMO_STATE_DIR:-}" ]; then
     > "$SPARTA_DEMO_STATE_DIR/state_00005.json"
   exit 0
 fi
-md=""
+md="" extract=""
 while [ "$#" -gt 0 ]; do
   if [ "$1" = "--markdown" ]; then md="$2"; fi
+  if [ "$1" = "--extract" ]; then extract="$2"; fi
   shift
 done
+if [ -n "$extract" ]; then
+  first=null
+  grep -q '"in_enemy_contact": true' "$extract"/state_*.json && first=5
+  echo "{\"travel\": [60], \"metrics\": {\"first_contact\": $first}}" > "$extract/metrics.json"
+  exit 0
+fi
 if [ -n "$md" ]; then
   echo "### Melee outcome delta" > "$md"
   printf 'MELEE\tclip_a\tuid1_break\t3\t3\t1\t2\t1\t0.5\ttested\t-\n'
@@ -114,6 +123,14 @@ assert_eq "head plays seed runs offset+1..offset+K" "4,5,6" "$(seeds head)"
 assert_eq "unselected clip never runs" 0 "$(grep -c '/clip_b/' "$STUB_LOG" || true)"
 assert_eq "summary written" "### Melee outcome delta" "$(head -1 "$WORK/o1/melee-delta.md")"
 assert_eq "metric rows kept" 1 "$(grep -c '^MELEE	' "$WORK/o1/melee-delta.tsv")"
+assert_eq "each run keeps its metrics" yes \
+  "$([ -s "$WORK/o1/dumps/base/clip_a/seed1/metrics.json" ] && echo yes || echo no)"
+assert_eq "snapshots are dropped by default" 0 \
+  "$(find "$WORK/o1/dumps" -name 'state_*.json' | wc -l | tr -d ' ')"
+MELEE_DELTA_CLIPS=clip_a MELEE_DELTA_K=1 MELEE_DELTA_KEEP_DUMPS=1 \
+  bash "$DELTA" "$WORK/base" "$WORK/head" "$WORK/o4" >/dev/null 2>&1 || true
+assert_eq "MELEE_DELTA_KEEP_DUMPS=1 keeps them" 2 \
+  "$(find "$WORK/o4/dumps" -name 'state_*.json' | wc -l | tr -d ' ')"
 
 # 6. Reuse.
 : > "$STUB_LOG"

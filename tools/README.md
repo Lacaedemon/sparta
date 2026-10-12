@@ -343,37 +343,84 @@ GODOT_BIN=godot tools/ci/melee-outcome-delta.sh <base-tree> <head-tree> <out-dir
 MELEE_DELTA_SUBSET=quick tools/ci/melee-outcome-delta.sh <base-tree> <head-tree> <out-dir>
 ```
 
-- **Perturbation.**
-  `SPARTA_DEMO_SEED_RUN=k` (`tools/demo/DemoSeed.gd`, read by `DemoInputRecorder` and `DemoRunner`) plays the clip on a seed hashed from its own seed and `k`.
-  The scenario, orders and spawn are unchanged.
-  Only draws from `Replay.rng` differ (melee land, fall and damage rolls, missile hits, far-tier promotion scatter), so each run is bit-identical to the clip until its first such roll.
-  Unset, the clip's own seed plays, so every existing clip hash is unchanged.
-  Both trees must carry `DemoSeed.gd`.
-- **Metrics per run** (`tools/demo/MeleeOutcomes.gd`, from compact state dumps every `MELEE_DELTA_STEP` ticks):
-  the first contact tick, then for each unit its first contact tick, break tick (first `ROUTING` snapshot),
-  contact-break delay (ticks from the break until it is out of contact),
-  its men's centroid travel 60, 150 and 300 ticks after the break,
-  and each team's men alive at the end.
-  An event that never happens ranks after every tick, so a change in how often a unit breaks is tested along with when.
-- **Comparison** (`tools/demo/MeleeOutcomeDelta.gd`, `OutcomeStats.gd`).
-  An exact two-sided rank-sum (Mann-Whitney) test per clip and metric, with tied values sharing a mid-rank.
-  Benjamini-Hochberg across every metric tested in the report, at `MELEE_DELTA_ALPHA` (default 0.05).
-  With no real change anywhere, the chance of any flag in the whole report is at most alpha.
-  A significant row is flagged only when its Hodges-Lehmann shift is also at least
-  `MELEE_DELTA_MIN_TICKS` (30), `MELEE_DELTA_MIN_METRES` (3) or `MELEE_DELTA_MIN_MEN` (2).
-  A metric with fewer than `MELEE_DELTA_MIN_RUNS` (4) runs on a side, such as the contact-break delay of a unit that seldom breaks, is listed but not tested.
-- **Output.** `<out-dir>/melee-delta.md` is a summary to paste into a PR.
-  It lists the flagged rows and, collapsed, the smallest p-values.
-  `melee-delta.tsv` holds every row.
-  Exit code 0 means nothing was flagged, 1 means at least one flagged shift, and 2 means a usage, input or run failure.
-- **Cost.** The defaults (`K=8`, all 50 clips in `tools/lib/melee-clips.sh`) make 800 Godot runs.
-  `MELEE_DELTA_SUBSET=quick` runs the 6 clips whose outcomes flipped under the facing nudge.
-  `MELEE_DELTA_CLIPS=a,b` runs a list of your own.
-  `MELEE_DELTA_JOBS` sets how many runs go in parallel.
-  Dumps are kept and reused on a re-run, keyed on side, clip and seed, so change thresholds freely but use a fresh out-dir when a tree changes.
-- **Null calibration.** `MELEE_DELTA_HEAD_RUN_OFFSET=K` with the same tree on both sides compares disjoint seeds of identical code, which should flag nothing.
-- **Clip list.** `tools/ci/melee-outcome-delta.sh --derive-clips <tree> <out-dir>` runs every catalog clip once and prints those with any enemy contact.
-  Paste its output into `MELEE_CLIPS` when the catalog gains a fighting clip.
+### Perturbation
+
+`SPARTA_DEMO_SEED_RUN=k` (`tools/demo/DemoSeed.gd`, read by `DemoInputRecorder` and `DemoRunner`) plays the clip on a seed hashed from its own seed and `k`.
+The scenario, orders and spawn are unchanged.
+Only draws from `Replay.rng` differ (melee land, fall and damage rolls, missile hits, far-tier promotion scatter), so each run is bit-identical to the clip until its first such roll.
+Unset, the clip's own seed plays, so every existing clip hash is unchanged.
+Both trees must carry `DemoSeed.gd`.
+
+### Metrics per run
+
+`tools/demo/MeleeOutcomes.gd` reads compact state dumps taken every `MELEE_DELTA_STEP` ticks (default 5).
+Per run it records the first contact tick and each team's men on the field at the end (a unit cut down or escaped off the map counts zero).
+Per unit it records its first contact tick and its break tick (first `ROUTING` snapshot).
+After a break it also records the contact-break delay (ticks from the break until the unit is out of contact)
+and its men's centroid travel 60, 150 and 300 ticks after the break.
+An event that never happens ranks after every tick, so a change in how often a unit breaks is tested along with when.
+
+### Comparison
+
+`tools/demo/MeleeOutcomeDelta.gd` and `OutcomeStats.gd` do the statistics.
+Each clip and metric gets an exact two-sided rank-sum (Mann-Whitney) test, with tied values sharing a mid-rank.
+Benjamini-Hochberg then runs across every metric tested in the report, at `MELEE_DELTA_ALPHA` (default 0.05).
+With no real change anywhere, the chance of any flag in the whole report is at most alpha.
+A significant row is flagged only when its Hodges-Lehmann shift is also at least
+`MELEE_DELTA_MIN_TICKS` (30), `MELEE_DELTA_MIN_METRES` (1) or `MELEE_DELTA_MIN_MEN` (2).
+A metric with fewer than `MELEE_DELTA_MIN_RUNS` (4) runs on a side, such as the contact-break delay of a unit that seldom breaks, is listed but not tested.
+
+### Output
+
+`<out-dir>/melee-delta.md` is a summary to paste into a PR.
+It lists the flagged rows and, collapsed, the smallest p-values.
+`melee-delta.tsv` holds every row.
+Exit code 0 means nothing was flagged, 1 means at least one flagged shift, and 2 means a usage, input or run failure.
+
+### Cost and subsets
+
+The defaults (`K=8`, all 50 clips in `tools/lib/melee-clips.sh`) make 800 Godot runs.
+Measured on a 20-thread Windows machine with another delta running beside it (2026-10-12),
+800 runs took 31 minutes at `MELEE_DELTA_JOBS=6`.
+`MELEE_DELTA_SUBSET=quick` runs the 6 clips whose outcomes flipped under the facing nudge:
+96 runs, 9 minutes at 3 jobs.
+`MELEE_DELTA_CLIPS=a,b` runs a list of your own.
+`MELEE_DELTA_JOBS` (default 2) sets how many runs go in parallel.
+
+Each run's metrics are extracted in the pool, right after its dump, into its own `metrics.json`,
+so the comparison itself takes seconds.
+The snapshots (about 5 MB a run) are then deleted unless `MELEE_DELTA_KEEP_DUMPS=1`.
+A re-run reuses every finished run, keyed on side, clip and seed,
+so change thresholds freely but use a fresh out-dir when a tree changes.
+
+### Validation
+
+Measured 2026-10-12 at `K=8` over all 50 clips, with the defaults above:
+
+- **Null:** the same tree against itself on disjoint seeds (`MELEE_DELTA_HEAD_RUN_OFFSET=8`) flagged nothing.
+  Of 138 tested rows, 7 had a raw p-value at or below 0.05, about the 5% chance predicts.
+  With no change at all, the Hodges-Lehmann shift reached 37.5 ticks in a break tick and 9 men in a team's headcount.
+
+- **Known effect:** routers 30% slower (`flee_speed()` times 0.7) flagged `rout_rally`:
+  the router's travel 300 ticks after its break fell from 15.4 m to 13.7 m (median),
+  an enemy cavalry unit that never reached contact now does,
+  and its team's median end headcount rose from 140 to 152: the 12-man router, removed from play in most base runs, now stays on the field.
+  `trapped_routing`'s router travel also fell significantly, but by 0.6 m, under the 1 m threshold.
+  No other router metric moved significantly.
+
+- **Back-test:** the first version of PR #1814 (581db291 against its base 9d39a353) flagged `cycle_charge`, the caracole regression with a traced mechanism,
+  and `pace_modes`, where contact came 70 ticks earlier in every run and both teams ended with about 10 more men.
+  It flagged no router metric in `file_major_reform_contrast`, `spear_standoff` or `last_unit_rally`, the three "held router" clips, and neither did a `K=16` run of just those three.
+
+### Null calibration
+
+`MELEE_DELTA_HEAD_RUN_OFFSET=K` with the same tree on both sides compares disjoint seeds of identical code,
+which should flag nothing.
+
+### Clip list
+
+`tools/ci/melee-outcome-delta.sh --derive-clips <tree> <out-dir>` runs every catalog clip once and prints those with any enemy contact.
+Paste its output into `MELEE_CLIPS` when the catalog gains a fighting clip.
 
 The script is not wired into CI: run it locally on any PR that changes melee dynamics and paste the summary into the PR.
 

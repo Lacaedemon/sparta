@@ -11,7 +11,8 @@ class_name MeleeOutcomes
 ##
 ## Metrics:
 ##   first_contact          first tick any unit is in enemy contact
-##   team_<t>_men           team t's men alive at the end of the run
+##   team_<t>_men           team t's men on the field at the end of the run (a unit removed
+##                          from play, cut down or escaped off the map, counts zero)
 ##   uid<u>_first_contact   first tick unit u is in enemy contact
 ##   uid<u>_break           first tick unit u is ROUTING
 ##   uid<u>_contact_break   ticks from u's break to the first tick it is out of contact

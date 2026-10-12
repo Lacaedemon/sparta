@@ -16,10 +16,10 @@
 #                          tools/demo/DemoSeed.gd, or their runs could not be perturbed.
 #   out-dir                Where dumps/<side>/<clip>/seed<k>/ and the reports go:
 #                          melee-delta.tsv (every metric row) and melee-delta.md (the
-#                          summary to paste into a PR). A run directory that already holds
-#                          a finished dump is reused, so a re-run with new thresholds only
-#                          re-compares. Reuse is keyed on side, clip and seed only, so use
-#                          a fresh out-dir whenever either tree changes.
+#                          summary to paste into a PR). Each run directory keeps its
+#                          metrics.json; a finished run is reused, so a re-run with new
+#                          thresholds only re-compares. Reuse is keyed on side, clip and
+#                          seed only, so use a fresh out-dir whenever either tree changes.
 #
 #        melee-outcome-delta.sh --derive-clips <tree> <out-dir>
 #
@@ -38,9 +38,11 @@
 #                           tick metric.
 #   MELEE_DELTA_JOBS        Godot runs in parallel (default 2).
 #   MELEE_DELTA_TIMEOUT     Hard per-run timeout in seconds (default 300).
+#   MELEE_DELTA_COMPARE_TIMEOUT
+#                           Hard timeout for the comparison step in seconds (default 1800).
 #   MELEE_DELTA_ALPHA       Benjamini-Hochberg false discovery rate (default 0.05).
 #   MELEE_DELTA_MIN_TICKS   Smallest flagged shift of a tick metric (default 30).
-#   MELEE_DELTA_MIN_METRES  Smallest flagged shift of a travel metric (default 3).
+#   MELEE_DELTA_MIN_METRES  Smallest flagged shift of a travel metric (default 1).
 #   MELEE_DELTA_MIN_MEN     Smallest flagged shift of a headcount (default 2).
 #   MELEE_DELTA_MIN_RUNS    Fewest runs per side for a metric to be tested (default 4).
 #   MELEE_DELTA_TRAVEL      Tick offsets after a break for the travel metrics
@@ -51,7 +53,9 @@
 #                           does not touch reads identical). Comparing a tree with itself at
 #                           an offset of K is the null calibration: the same code on
 #                           disjoint seeds, which should flag nothing.
-#   MELEE_DELTA_KEEP_DUMPS  1 (default) keeps the dumps; 0 deletes them after the compare.
+#   MELEE_DELTA_KEEP_DUMPS  0 (default) deletes each run's snapshots (about 5 MB a run) once
+#                           its metrics.json is written; 1 keeps them, which a re-compare
+#                           with other MELEE_DELTA_TRAVEL offsets needs.
 #   MELEE_DELTA_DERIVE_STEP Snapshot cadence of --derive-clips (default 30).
 #
 # Exit code: 0 = nothing flagged, 1 = at least one flagged shift, 2 = usage, input or run
@@ -91,6 +95,19 @@ if [ "${1:-}" = "--run-one" ]; then
     echo "error: run $run of $source in $tree failed (rc $rc); log: $dir.log" >&2
     exit 2
   fi
+  # Extract this run's metrics now, in the parallel pool, so the comparison reads one small
+  # file per run instead of parsing every snapshot serially.
+  rc=0
+  run_bounded "${MELEE_DELTA_TIMEOUT:-300}" "$GODOT_BIN" --headless --path "$TOOL_ROOT" \
+      -s tools/demo/melee_outcome_compare.gd -- --extract "$dir" \
+      --travel "${MELEE_DELTA_TRAVEL:-60,150,300}" >> "$dir.log" 2>&1 || rc=$?
+  if [ "$rc" -ne 0 ] || [ ! -s "$dir/metrics.json" ]; then
+    echo "error: extracting run $run of $source failed (rc $rc); log: $dir.log" >&2
+    exit 2
+  fi
+  if [ "${MELEE_DELTA_KEEP_DUMPS:-0}" != "1" ]; then
+    rm -f "$dir"/state_*.json "$dir"/hash_stream.jsonl
+  fi
   touch "$dir.done"
   exit 0
 fi
@@ -118,7 +135,8 @@ if [ "${1:-}" = "--derive-clips" ]; then
       < "$out/jobs.txt" || { echo "error: at least one clip run failed" >&2; exit 2; }
   for spec in "${DEMOS[@]}"; do
     name="${spec%%|*}"
-    if cat "$out/$name"/state_*.json | jq -e -s 'any(.[].units[]; .in_enemy_contact == true)' >/dev/null; then
+    # The extractor's own first_contact: the tick any unit was first in enemy contact.
+    if jq -e '.metrics.first_contact != null' "$out/$name/metrics.json" >/dev/null; then
       echo "$name"
     fi
   done
@@ -147,6 +165,7 @@ K="$(positive_int MELEE_DELTA_K "${MELEE_DELTA_K:-8}")"
 STEP="$(positive_int MELEE_DELTA_STEP "${MELEE_DELTA_STEP:-5}")"
 JOBS="$(positive_int MELEE_DELTA_JOBS "${MELEE_DELTA_JOBS:-2}")"
 positive_int MELEE_DELTA_TIMEOUT "${MELEE_DELTA_TIMEOUT:-300}" >/dev/null
+positive_int MELEE_DELTA_COMPARE_TIMEOUT "${MELEE_DELTA_COMPARE_TIMEOUT:-1800}" >/dev/null
 HEAD_OFFSET="${MELEE_DELTA_HEAD_RUN_OFFSET:-0}"
 if [ "$HEAD_OFFSET" != 0 ]; then
   HEAD_OFFSET="$(positive_int MELEE_DELTA_HEAD_RUN_OFFSET "$HEAD_OFFSET")"
@@ -209,11 +228,11 @@ echo "== runs took $(( SECONDS - START ))s =="
 
 rc=0
 GODOT_ARGS=(--alpha "${MELEE_DELTA_ALPHA:-0.05}" --min-ticks "${MELEE_DELTA_MIN_TICKS:-30}"
-  --min-metres "${MELEE_DELTA_MIN_METRES:-3}" --min-men "${MELEE_DELTA_MIN_MEN:-2}"
+  --min-metres "${MELEE_DELTA_MIN_METRES:-1}" --min-men "${MELEE_DELTA_MIN_MEN:-2}"
   --min-runs "${MELEE_DELTA_MIN_RUNS:-4}" --travel "${MELEE_DELTA_TRAVEL:-60,150,300}"
   --markdown "$OUT_DIR/melee-delta.md"
   --label "Base \`$(git -C "$BASE_TREE" rev-parse --short HEAD 2>/dev/null || echo "$BASE_TREE")\`, head \`$(git -C "$HEAD_TREE" rev-parse --short HEAD 2>/dev/null || echo "$HEAD_TREE")\`; snapshots every $STEP ticks.")
-run_bounded "${MELEE_DELTA_TIMEOUT:-300}" "$GODOT_BIN" --headless --path "$TOOL_ROOT" \
+run_bounded "${MELEE_DELTA_COMPARE_TIMEOUT:-1800}" "$GODOT_BIN" --headless --path "$TOOL_ROOT" \
     -s tools/demo/melee_outcome_compare.gd -- "$OUT_DIR/dumps/base" "$OUT_DIR/dumps/head" \
     "${GODOT_ARGS[@]}" > "$OUT_DIR/compare.log" 2>&1 || rc=$?
 grep '^MELEE' "$OUT_DIR/compare.log" > "$OUT_DIR/melee-delta.tsv" || true
@@ -226,8 +245,5 @@ if [ ! -s "$OUT_DIR/melee-delta.md" ]; then
   exit 2
 fi
 grep '^MELEE-SUMMARY' "$OUT_DIR/compare.log" || true
-if [ "${MELEE_DELTA_KEEP_DUMPS:-1}" = "0" ]; then
-  rm -rf "$OUT_DIR/dumps"
-fi
 echo "Summary: $OUT_DIR/melee-delta.md"
 exit "$rc"

@@ -20,7 +20,7 @@ const NEVER := 1.0e12
 const DEFAULTS := {
 	"alpha": 0.05,
 	"min_ticks": 30.0,
-	"min_metres": 3.0,
+	"min_metres": 1.0,
 	"min_men": 2.0,
 	"min_runs": 4,
 }
