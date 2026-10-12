@@ -117,7 +117,7 @@ func _advance_ticks(n: int) -> void:
 ## pace: its mean anchor speed over the MEASURE_TICKS after that (wu/tick, -1 if not
 ## reached), held: man-ticks held at the hill's face, mean_gap: the largest mean
 ## body-to-slot gap over the flight (wu), turn_excess: the most any one tick turned the
-## heading beyond rout_turn_rate() (rad; turns past the snap-absorb threshold excluded)}.
+## heading beyond bounded_turn_rate() (rad; turns past the snap-absorb threshold excluded)}.
 func _watch_flight(router: Unit) -> Dictionary:
 	var half: Vector2 = router._formation_local_half_extents()
 	router.rally_morale_threshold = 1000.0
@@ -140,7 +140,7 @@ func _watch_flight(router: Unit) -> Dictionary:
 		var turned: float = absf(angle_difference(heading, router.facing.angle()))
 		heading = router.facing.angle()
 		if turned <= Unit.FACING_SNAP_ABSORB_THRESHOLD:
-			out["turn_excess"] = maxf(out["turn_excess"], turned - router.rout_turn_rate() * tick_s)
+			out["turn_excess"] = maxf(out["turn_excess"], turned - router.bounded_turn_rate() * tick_s)
 		var slots: PackedVector2Array = router.soldier_world_slots(router.soldiers)
 		var n: int = mini(slots.size(), router._sim_soldier_pos.size())
 		var gap_sum: float = 0.0
@@ -191,7 +191,7 @@ func test_a_deep_router_rounds_a_hill_at_flight_pace_with_its_block_together() -
 			"mean body-to-slot gap stays under one rank pitch %.1f (largest %.1f wu)"
 			% [rank_pitch, r["mean_gap"]])
 	assert_almost_eq(r["turn_excess"], 0.0, 0.0001,
-			"the heading never turns faster than rout_turn_rate() (excess %.4f rad)" % r["turn_excess"])
+			"the heading never turns faster than bounded_turn_rate() (excess %.4f rad)" % r["turn_excess"])
 
 
 func test_a_wide_shallow_line_rounds_a_hill_without_pinning_its_flank() -> void:
