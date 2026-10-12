@@ -7,10 +7,11 @@ class_name DemoSeed
 ## (tools/ci/melee-outcome-delta.sh). This is where the draws come from.
 ##
 ## A run index k >= 1 replaces the clip's own seed with a seed derived from (base seed, k),
-## so the scenario, its orders and its spawn are unchanged and only the draws from
-## Replay.rng differ: melee land and fall rolls, damage rolls, missile hits, and the scatter
-## of a far-tier promotion. Every draw before the first such roll is the same, so each run
-## is bit-identical to the clip until its first contact.
+## so the scenario, its orders and its spawn are unchanged. What differs is every draw from
+## Replay.rng (melee land and fall rolls, damage rolls, missile hits) and the scatter of a
+## far-tier promotion, which comes from a local RNG seeded with Replay.seed_value. Each run
+## is bit-identical to the clip until the first of those: a melee roll, but also a missile
+## volley or a far-tier promotion, either of which can come before any melee contact.
 ##
 ## Unset, empty, or "0" leaves the clip's own seed alone, so every existing clip's hash is
 ## unchanged. Pure: a function of its arguments only.

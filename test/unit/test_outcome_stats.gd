@@ -5,30 +5,42 @@ extends GutTest
 ## distributions.
 
 
-## Brute-force two-sided rank-sum p-value: enumerate every split of the pooled values.
-## The oracle the dynamic-programming version must match exactly.
+## Twice the Mann-Whitney U of `head` over `base`, from the values themselves: 2 per pair
+## where head is larger, 1 per tie. No ranks, so it shares no code with OutcomeStats.
+func _twice_u(base: Array, head: Array) -> int:
+	var u: int = 0
+	for h in head:
+		for b in base:
+			if float(h) > float(b):
+				u += 2
+			elif float(h) == float(b):
+				u += 1
+	return u
+
+
+## Brute-force two-sided p-value: enumerate every split of the pooled values into groups of
+## the two sizes and count those whose U is at least as far from its mean as the observed
+## one. The independent oracle the dynamic-programming rank-sum version must match exactly.
 func _brute_p(base: Array, head: Array) -> float:
 	var pooled: Array = base + head
-	var ranks: PackedInt64Array = OutcomeStats.doubled_midranks(pooled)
 	var n: int = pooled.size()
 	var nb: int = head.size()
-	var observed: int = 0
-	for k in range(base.size(), n):
-		observed += ranks[k]
-	var expected: int = nb * (n + 1)
+	var mean_twice: int = base.size() * nb
+	var observed: int = absi(_twice_u(base, head) - mean_twice)
 	var total: int = 0
 	var extreme: int = 0
 	for mask in range(1 << n):
-		var bits: int = 0
-		var s: int = 0
+		var h: Array = []
+		var b: Array = []
 		for i in range(n):
 			if mask & (1 << i):
-				bits += 1
-				s += ranks[i]
-		if bits != nb:
+				h.append(pooled[i])
+			else:
+				b.append(pooled[i])
+		if h.size() != nb:
 			continue
 		total += 1
-		if absi(s - expected) >= absi(observed - expected):
+		if absi(_twice_u(b, h) - mean_twice) >= observed:
 			extreme += 1
 	return float(extreme) / float(total)
 
@@ -116,6 +128,46 @@ func test_benjamini_hochberg_known_example() -> void:
 func test_benjamini_hochberg_step_up_and_input_order() -> void:
 	# Sorted 0.01, 0.02, 0.03 against 0.0167, 0.0333, 0.05: the largest passing rank (3)
 	# rejects everything below it, in whatever order the inputs came.
-	assert_eq(OutcomeStats.benjamini_hochberg([0.03, 0.01, 0.02], 0.05), [true, true, true])
+	assert_eq(OutcomeStats.benjamini_hochberg([0.03, 0.005, 0.015], 0.05), [true, true, true])
 	assert_eq(OutcomeStats.benjamini_hochberg([0.5, 0.9], 0.05), [false, false])
 	assert_eq(OutcomeStats.benjamini_hochberg([], 0.05), [])
+
+
+func test_rank_sum_p_hand_computed_with_ties() -> void:
+	# Exact enumerations of every split, computed outside this code base.
+	assert_almost_eq(OutcomeStats.rank_sum_p([0, 0, 0, 1, 1], [1, 1, 1, 1, 2]), 0.119048, 1e-6)
+	assert_almost_eq(OutcomeStats.rank_sum_p([1, 2, 3, 4, 5], [3, 4, 5, 6, 7]), 0.126984, 1e-6)
+
+
+func test_min_attainable_p() -> void:
+	# Eight distinct values per side: the best a split can do is 2 / C(16, 8).
+	var base: Array = [1, 2, 3, 4, 5, 6, 7, 8]
+	assert_almost_eq(OutcomeStats.min_attainable_p(base, [9, 10, 11, 12, 13, 14, 15, 16]),
+			2.0 / 12870.0, 1e-15)
+	assert_eq(OutcomeStats.min_attainable_p([3, 3], [3, 3]), 1.0, "all tied: no split differs")
+
+
+func test_min_detectable_shift() -> void:
+	# Base [0, 1, 2, 3] against itself shifted: past 3 it separates completely, p = 2 / 70;
+	# between 2 and 3 one pair still overlaps and p = 4 / 70.
+	assert_eq(OutcomeStats.min_detectable_shift([0, 1, 2, 3], 0.03), 3.0)
+	assert_eq(OutcomeStats.min_detectable_shift([0, 1, 2, 3], 0.06), 2.0)
+	assert_eq(OutcomeStats.min_detectable_shift([0, 1, 2, 3], 0.01), INF,
+			"no shift reaches a level below 2 / 70")
+	assert_eq(OutcomeStats.min_detectable_shift([5, 5, 5, 5], 0.03), 0.0,
+			"a constant row separates under any shift")
+
+
+func test_robust_sd() -> void:
+	# MAD of [1, 2, 3, 4, 100] is 1 (deviations 2, 1, 0, 1, 97), so 1.4826.
+	assert_almost_eq(OutcomeStats.robust_sd([1, 2, 3, 4, 100]), 1.4826, 1e-9)
+	# More than half equal: MAD 0, so the plain sample sd of [5, 5, 5, 9] (2.0).
+	assert_almost_eq(OutcomeStats.robust_sd([5, 5, 5, 9]), 2.0, 1e-9)
+	assert_eq(OutcomeStats.robust_sd([7]), 0.0)
+
+
+func test_benjamini_yekutieli_divides_by_the_harmonic_number() -> void:
+	assert_almost_eq(OutcomeStats.harmonic(3), 1.0 + 0.5 + 1.0 / 3.0, 1e-12)
+	# m = 3, H = 1.8333: BY thresholds 0.00909, 0.01818, 0.02727; BH 0.0167, 0.0333, 0.05.
+	assert_eq(OutcomeStats.benjamini_yekutieli([0.03, 0.005, 0.015], 0.05), [false, true, true])
+	assert_eq(OutcomeStats.benjamini_hochberg([0.03, 0.005, 0.015], 0.05), [true, true, true])

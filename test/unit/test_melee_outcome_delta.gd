@@ -49,39 +49,59 @@ func test_seed_for_run_keeps_run_zero_and_varies_the_rest() -> void:
 
 
 func test_extract_router_metrics() -> void:
-	var m: Dictionary = MeleeOutcomes.extract(_router_run(400), [60, 150])
+	var m: Dictionary = MeleeOutcomes.extract(_router_run(400), [60, 150], 400)
 	assert_eq(m["first_contact"], 10)
 	assert_eq(m["uid1_first_contact"], 10)
 	assert_eq(m["uid1_break"], 30)
 	assert_eq(m["uid1_contact_break"], 20, "clear at 50, broke at 30")
 	assert_almost_eq(float(m["uid1_travel_60"]), 6.0, 1e-6, "x 5 -> 11 by tick 90")
 	assert_almost_eq(float(m["uid1_travel_150"]), 15.0, 1e-6)
-	assert_eq(m["uid0_break"], null, "uid 0 never broke")
+	assert_eq(m["uid1_removed_by_150"], 0, "still on the field at break + 150")
+	assert_eq(m["uid1_removed"], MeleeOutcomes.NEVER, "observed to the end, never removed")
+	assert_eq(m["uid0_break"], MeleeOutcomes.NEVER, "observed to the end, never broke")
 	assert_false(m.has("uid0_contact_break"), "no contact-break metric without a break")
 	assert_eq(m["team_0_men"], 20)
 	assert_eq(m["team_1_men"], 8)
 
 
-func test_extract_cut_off_versus_decided_stream() -> void:
-	# The stream ends at tick 100, 70 ticks after the break.
-	var cut: Dictionary = MeleeOutcomes.extract(_router_run(100), [60, 150])
+func test_extract_cut_off_stream_is_unobserved_not_never() -> void:
+	# The stream ends at tick 100 of a clip meant to run to 400, 70 ticks after the break.
+	var cut: Dictionary = MeleeOutcomes.extract(_router_run(100), [60, 150], 400)
 	assert_almost_eq(float(cut["uid1_travel_60"]), 6.0, 1e-6)
 	assert_eq(cut["uid1_travel_150"], null, "a cut-off stream cannot say where the router got to")
-	var decided: Dictionary = MeleeOutcomes.extract(_router_run(100, true), [60, 150])
+	assert_eq(cut["uid1_removed_by_150"], null)
+	assert_eq(cut["uid0_break"], null, "a cut-off stream cannot say uid 0 never breaks")
+	assert_eq(cut["team_0_men"], null, "nor how many men are left at the end")
+	var decided: Dictionary = MeleeOutcomes.extract(_router_run(100, true), [60, 150], 400)
 	assert_almost_eq(float(decided["uid1_travel_150"]), 7.0, 1e-6, "a decided battle is frozen at its end")
+	assert_eq(decided["uid0_break"], MeleeOutcomes.NEVER, "a decided battle is complete")
+	assert_eq(decided["team_0_men"], 20)
 
 
-func test_extract_router_cut_down_in_contact() -> void:
+func test_extract_router_cut_down_in_contact_is_censored() -> void:
 	var snaps: Array = [
 		_snap(0, [_rec(0, 0, "FIGHTING", 20, true, 0.0), _rec(1, 1, "FIGHTING", 5, true, 5.0)]),
 		_snap(10, [_rec(0, 0, "FIGHTING", 20, true, 0.0), _rec(1, 1, "ROUTING", 2, true, 6.0)]),
 		_snap(20, [_rec(0, 0, "FIGHTING", 20, true, 0.0)], true),
 	]
-	var m: Dictionary = MeleeOutcomes.extract(snaps, [60])
+	var m: Dictionary = MeleeOutcomes.extract(snaps, [60], 400)
 	assert_eq(m["uid1_break"], 10)
-	assert_eq(m["uid1_contact_break"], null, "never got clear before it was cut down")
-	assert_almost_eq(float(m["uid1_travel_60"]), 0.0, 1e-6, "travel stops at its last living centroid")
+	assert_eq(m["uid1_removed"], 20)
+	assert_eq(m["uid1_contact_break"], null, "left play in contact: not a never-got-clear")
+	assert_eq(m["uid1_travel_60"], null, "travel past its removal is censored, not ranked")
+	assert_eq(m["uid1_removed_by_60"], 1)
 	assert_eq(m["team_1_men"], 0, "an absent unit has no men")
+
+
+func test_extract_unit_removed_before_routing() -> void:
+	var snaps: Array = [
+		_snap(0, [_rec(0, 0, "FIGHTING", 20, true, 0.0), _rec(1, 1, "FIGHTING", 5, true, 5.0)]),
+		_snap(10, [_rec(0, 0, "FIGHTING", 20, true, 0.0), _rec(1, 1, "FIGHTING", 0, true, 5.0)]),
+		_snap(20, [_rec(0, 0, "FIGHTING", 20, true, 0.0)]),
+	]
+	var m: Dictionary = MeleeOutcomes.extract(snaps, [60], 20)
+	assert_eq(m["uid1_break"], null, "destroyed unbroken: whether it would break is unobserved")
+	assert_eq(m["uid1_removed"], 10, "no men left counts as removed")
 
 
 func _runs(values: Array) -> Array:
@@ -102,22 +122,29 @@ func test_compare_flags_a_large_significant_shift_only() -> void:
 	var r: Dictionary = MeleeOutcomeDelta.compare({"c": base}, {"c": late})["rows"][0]
 	assert_true(r["flag"], "100 ticks later with no overlap is flagged")
 	assert_eq(r["shift"], 100.0)
-	# One to eight ticks later than a constant is significant but under the 30-tick threshold.
+	# Base spread: MAD 20 ticks, robust sd 29.652; half of it is the threshold.
+	assert_almost_eq(float(r["threshold"]), 14.826, 1e-6)
+	assert_almost_eq(float(r["min_p"]), 2.0 / 12870.0, 1e-15)
+	assert_true(r["mds"] > 0.0 and r["mds"] < INF, "a finite minimum detectable shift")
+	# One to eight ticks later than a constant: significant, but its 4.5-tick shift is under
+	# the 5-tick resolution floor, which is the threshold of a row with no spread.
 	var nudged: Array = _runs([601, 602, 603, 604, 605, 606, 607, 608])
 	var near: Dictionary = MeleeOutcomeDelta.compare({"c": _runs([600, 600, 600, 600, 600, 600, 600, 600])},
 			{"c": nudged})["rows"][0]
 	assert_true(near["significant"])
-	assert_false(near["flag"], "a significant shift below the practical threshold is not flagged")
-	var loose: Dictionary = MeleeOutcomeDelta.compare({"c": base}, {"c": late}, {"min_ticks": 200.0})
-	assert_false(loose["rows"][0]["flag"], "the threshold is configurable")
+	assert_false(near["flag"], "a significant shift below the row's threshold is not flagged")
+	var loose: Dictionary = MeleeOutcomeDelta.compare({"c": base}, {"c": late}, {"min_effect": 10.0})
+	assert_false(loose["rows"][0]["flag"], "the effect multiple is configurable")
 
 
-func test_compare_counts_never_as_latest() -> void:
-	var base: Array = _runs([null, null, null, null, null, null])
-	var head: Array = _runs([400, 410, 420, 430, 440, 450])
+func test_compare_counts_never_as_latest_and_drops_unobserved() -> void:
+	var base: Array = _runs(["never", "never", "never", "never", "never", "never", null])
+	var head: Array = _runs([400, 410, 420, 430, 440, 450, null])
 	var r: Dictionary = MeleeOutcomeDelta.compare({"c": base}, {"c": head})["rows"][0]
 	assert_true(r["flag"], "a unit that now breaks every run where it never did is flagged")
 	assert_eq(r["never_base"], 6)
+	assert_eq(r["n_base"], 6, "the unobserved run is dropped, not ranked")
+	assert_eq(r["mds"], -1.0, "no detectable shift for a censored row")
 	assert_eq(MeleeOutcomeDelta.cell(r["base"]), "never")
 
 
@@ -129,19 +156,38 @@ func test_compare_skips_too_few_runs_and_identical() -> void:
 	assert_eq(same["rows"][0]["status"], "identical")
 
 
+func test_compare_metric_filter_keeps_only_matching_rows() -> void:
+	var runs: Array = [{"uid1_break": 1, "team_0_men": 5}, {"uid1_break": 2, "team_0_men": 6}]
+	var rows: Array = MeleeOutcomeDelta.compare({"c": runs}, {"c": runs}, {"metrics": "_break$"})["rows"]
+	assert_eq(rows.size(), 1)
+	assert_eq(rows[0]["metric"], "uid1_break")
+
+
+func test_single_row_level_bh_and_by() -> void:
+	assert_almost_eq(MeleeOutcomeDelta.single_row_level(10, {}), 0.005, 1e-12)
+	assert_almost_eq(MeleeOutcomeDelta.single_row_level(10, {"correction": "by"}),
+			0.005 / OutcomeStats.harmonic(10), 1e-12)
+
+
 func test_metric_units_and_thresholds() -> void:
 	assert_eq(MeleeOutcomeDelta.metric_unit("team_0_men"), "men")
 	assert_eq(MeleeOutcomeDelta.metric_unit("uid3_travel_150"), "metres")
+	assert_eq(MeleeOutcomeDelta.metric_unit("uid3_removed_by_150"), "indicator")
 	assert_eq(MeleeOutcomeDelta.metric_unit("uid3_contact_break"), "ticks")
-	assert_eq(MeleeOutcomeDelta.threshold("team_0_men", {"min_men": 5.0}), 5.0)
-	assert_eq(MeleeOutcomeDelta.threshold("uid3_break", {}), 30.0)
+	assert_eq(MeleeOutcomeDelta.threshold("team_0_men", [10.0, 10.0, 10.0], {"floor_men": 5.0}), 5.0,
+			"no spread: the floor")
+	# Median 20, MAD 10, robust sd 14.826; half of it.
+	assert_almost_eq(MeleeOutcomeDelta.threshold("uid3_break", [0.0, 10.0, 20.0, 30.0, 40.0], {}),
+			7.413, 1e-9)
 
 
-func test_report_names_flagged_rows() -> void:
+func test_report_names_flagged_rows_and_warns_about_silence() -> void:
 	var base: Dictionary = {"c": _runs([600, 610, 620, 630, 640, 650, 660, 670])}
 	var head: Dictionary = {"c": _runs([700, 710, 720, 730, 740, 750, 760, 770])}
 	var md: String = MeleeOutcomeReport.markdown(MeleeOutcomeDelta.compare(base, head), {}, base, "L")
 	assert_string_contains(md, "**1 flagged shift(s):**")
 	assert_string_contains(md, "| `c` | `uid1_break` | 635.0 | 735.0 | 100.0 ticks |")
+	assert_string_contains(md, "false discovery rate")
 	var none: String = MeleeOutcomeReport.markdown(MeleeOutcomeDelta.compare(base, base), {}, base)
 	assert_string_contains(none, "**No flagged shifts.**")
+	assert_string_contains(none, "**No flag is not evidence of no effect.**")

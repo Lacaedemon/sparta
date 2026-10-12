@@ -9,7 +9,9 @@
 #      and 1+offset..K+offset on the head, and no unselected clip runs at all
 #   5. the comparison's exit code passes through (1 = flagged) and the summary is written;
 #      every run keeps its metrics.json, and its snapshots only under KEEP_DUMPS=1
-#   6. a second run on the same out-dir reuses every finished dump
+#   6. a second run on the same out-dir reuses every finished dump, and the comparison is
+#      told exactly which clips and seeds this run selected, so leftover runs never join;
+#      a failed project import fails the delta with exit 2
 #   7. a run that writes no snapshots fails the whole delta with exit 2
 #   8. --derive-clips runs every catalog clip on its own seed and prints only the clips
 #      with enemy contact
@@ -44,7 +46,7 @@ trap 'rm -rf "$WORK"' EXIT
 # The stub: a dump run (SPARTA_DEMO_STATE_DIR set) logs "<dir>|<seed run>" and writes a
 # snapshot unless STUB_FAIL_RUN names its seed run; --extract writes a metrics.json whose
 # first_contact says whether that snapshot was in contact; the comparison writes its
-# markdown and exits STUB_COMPARE_RC; anything else (the import) does nothing.
+# markdown, saves its arguments and exits STUB_COMPARE_RC; an import exits STUB_IMPORT_RC.
 cat > "$WORK/godot" <<'EOF'
 #!/usr/bin/env bash
 if [ -n "${SPARTA_DEMO_STATE_DIR:-}" ]; then
@@ -56,6 +58,12 @@ if [ -n "${SPARTA_DEMO_STATE_DIR:-}" ]; then
     > "$SPARTA_DEMO_STATE_DIR/state_00005.json"
   exit 0
 fi
+case " $* " in
+  *" --import "*) exit "${STUB_IMPORT_RC:-0}" ;;
+esac
+case " $* " in
+  *" --markdown "*) echo "$*" > "$STUB_ARGS" ;;
+esac
 md="" extract=""
 while [ "$#" -gt 0 ]; do
   if [ "$1" = "--markdown" ]; then md="$2"; fi
@@ -63,7 +71,7 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 if [ -n "$extract" ]; then
-  first=null
+  first='"never"'
   grep -q '"in_enemy_contact": true' "$extract"/state_*.json && first=5
   echo "{\"travel\": [60], \"metrics\": {\"first_contact\": $first}}" > "$extract/metrics.json"
   exit 0
@@ -77,7 +85,7 @@ fi
 exit 0
 EOF
 chmod +x "$WORK/godot"
-export GODOT_BIN="$WORK/godot" STUB_LOG="$WORK/stub.log"
+export GODOT_BIN="$WORK/godot" STUB_LOG="$WORK/stub.log" STUB_ARGS="$WORK/compare-args"
 
 # make_tree <dir> [no-seed]: a fake project with a two-clip catalog and both sources.
 make_tree() {
@@ -138,6 +146,18 @@ rc="$(MELEE_DELTA_CLIPS=clip_a MELEE_DELTA_K=3 MELEE_DELTA_HEAD_RUN_OFFSET=3 \
   rc_of bash "$DELTA" "$WORK/base" "$WORK/head" "$WORK/o1")"
 assert_eq "re-run with nothing flagged exits 0" 0 "$rc"
 assert_eq "re-run reuses every finished dump" 0 "$(grep -c 'dumps' "$STUB_LOG" || true)"
+arg_after() { sed -n "s/.* $1 \([^ ]*\).*/\1/p" "$STUB_ARGS"; }
+assert_eq "the comparison is told the base seeds" "1,2,3" "$(arg_after --seeds-base)"
+assert_eq "the comparison is told the head seeds" "4,5,6" "$(arg_after --seeds-head)"
+assert_eq "the comparison is told the clips" "clip_a" "$(arg_after --clips)"
+MELEE_DELTA_CLIPS=clip_a MELEE_DELTA_K=2 bash "$DELTA" "$WORK/base" "$WORK/head" "$WORK/o1" \
+  >/dev/null 2>&1 || true
+assert_eq "a smaller K on the same out-dir compares only its own seeds" "1,2" \
+  "$(arg_after --seeds-head)"
+
+# 6b. A failed import.
+assert_eq "a failed import fails the delta" 2 \
+  "$(MELEE_DELTA_CLIPS=clip_a MELEE_DELTA_K=1 STUB_IMPORT_RC=1 rc_of bash "$DELTA" "$WORK/base" "$WORK/head" "$WORK/o5")"
 
 # 7. A run with no snapshots.
 rc="$(MELEE_DELTA_CLIPS=clip_a MELEE_DELTA_K=2 STUB_FAIL_RUN=2 \
