@@ -4258,6 +4258,9 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 			_settle_engage_turn()
 		return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
 	# Small offset: snap and fight now, as before.
+	# TODO(#1792): the snap still swings the slot grid with the heading; holding the grid back
+	# as a march does (_reface) let blocks in a melee grind into each other and held a block
+	# that broke in the press, so how a combat re-face should turn the grid is left open.
 	if offset <= ENGAGE_TURN_THRESHOLD:
 		_face_dir(dir)
 		return true
@@ -4359,7 +4362,7 @@ func _settle_engage_turn() -> void:
 ## whole change in one tick; a march that corrects its heading tick by tick without a formed
 ## pivot goes through _reface instead, which keeps the grid where the men stand and lets it
 ## follow at a bounded rate. A combat re-face (_face_for_action) and a form-up hold still snap
-## here (TODO(#1792) for the combat re-face; a form-up reshapes its frontage in the same tick).
+## here (a form-up reshapes its frontage in the same tick).
 ## A LARGE snap (e.g. an idle unit's
 ## very first move order firing while it still faces its spawn heading, or a combat chase
 ## target appearing behind it) would instead swap every slot to the opposite side of the
@@ -4406,8 +4409,7 @@ func _face_dir(dir: Vector2) -> void:
 ## grind into each other, and a block that then breaks is held in the press. The callers are
 ## the marches that do not pivot as a formation (an undisciplined or hasty march, a held
 ## maneuver facing, a combat approach that does not pivot) and a hasty reform hold. A combat
-## re-face (_face_for_action) does not come here: TODO(#1792) decides how it should turn the
-## grid.
+## re-face (_face_for_action) does not come here.
 func _reface(dir: Vector2) -> void:
 	if dir.length_squared() <= 0.0001:   # _face_dir's own zero-direction guard
 		return
