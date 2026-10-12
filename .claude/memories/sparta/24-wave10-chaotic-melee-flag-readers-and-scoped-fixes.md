@@ -12,7 +12,8 @@ Any change that touches melee dynamics therefore flips per-clip router and casua
 This holds whether or not the change does harm.
 #1826 tracks building a several-seed or perturbed comparison to judge such changes instead.
 
-- **Do:** before reading a single clip's changed router outcome as a regression, check whether a negligible perturbation of main moves it too. Report the mechanism you measured, not only the outcome.
+- **Do:** before reading a single clip's changed router outcome as a regression, check whether a negligible perturbation of main moves it too,
+  and report the mechanism you measured, not only the outcome.
 - **Don't:** treat "no router breaks later than main on any clip" as a pass or fail gate for a change to melee dynamics.
 
 (`Lacaedemon/sparta` #1792 and #1826, 2026-10-12.)
