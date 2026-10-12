@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/router-contact-edge-1801.json",
-  "caption": "A brittle cavalry squadron (blue) is charged by an infantry block, breaks while still in contact and flees north, with the infantry following at the edge of melee range. As it crosses the edge of that reach it now switches once from laying out its formation on its front ranks to laying it out on its whole block. Before this fix it switched back and forth between the two every tick or two for half a second, so its pace jerked from tick to tick as it pulled away. Both versions cover the same ground.",
+  "caption": "A brittle cavalry squadron (blue) is charged by an infantry block, breaks while still in contact and flees north, with the infantry following at the edge of melee range. As it crosses the edge of that reach, the point its formation is laid out from now moves once, from its front ranks to its whole block, and stays there. Before this fix that point jumped back and forth between the two every tick or two for about half a second. The riders themselves move the same way in both versions and cover the same ground.",
   "fixed_fps": 30,
   "max_frames": 280,
   "fps": 15,
