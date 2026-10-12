@@ -1,13 +1,12 @@
 extends GutTest
-## A heading correction under FACING_SNAP_ABSORB_THRESHOLD, made out of enemy contact, turns the
-## unit's facing at once but leaves its slot grid where the men stand (Unit._reface); the grid
-## then turns after the heading no faster than the man on its farthest slot can follow
-## (Unit._advance_grid_lag). In contact the grid still turns with the heading.
+## A march that turns its heading without a formed pivot (an undisciplined or hasty march) turns
+## `facing` at once but, out of enemy contact, leaves its slot grid where the men stand
+## (Unit._reface); the grid then turns after the heading no faster than the man on its farthest
+## slot can follow (Unit._advance_grid_lag). In contact the grid still turns with the heading.
 ##
 ## The regression this pins: such a correction went through _face_dir unfolded, so the whole
 ## slot grid turned about the anchor in the same tick and a block's corner slots jumped by a
-## chord of its corner radius. The call sites were a block re-facing its target
-## (_face_for_action) and a march that does not pivot as a formation (_move_to).
+## chord of its corner radius.
 
 const START := Vector2(500.0, 500.0)
 const MEN := 120
@@ -18,8 +17,8 @@ const TURN_DEG := 35.0
 const WIDE_TURN_DEG := 70.0
 # Ticks to follow the grid's turn for: past the bounded turn's settle time for TURN_DEG.
 const TURN_TICKS := 240
-# How far ahead the target point stands, in block extents: well clear of the block.
-const POINT_REACHES := 2.0
+# How far off the march destination lies (wu): far enough that the first tick only turns.
+const MARCH_RANGE := 1000.0
 # Float slack on a slot's position (wu): the grid is rebuilt through float32 facings.
 const SLOT_EPS := 0.01   # tuned in wu, solver epsilon
 # Float slack on an angle (rad).
@@ -64,38 +63,9 @@ func _bearing(deg: float) -> Vector2:
 	return Vector2.UP.rotated(deg_to_rad(deg))
 
 
-## A target point `deg` degrees off north, well clear of the block.
-func _target_at(u: Unit, deg: float) -> Vector2:
-	return START + _bearing(deg) * u.soldier_block_extent() * POINT_REACHES
-
-
-func test_a_small_reface_out_of_contact_faces_the_target_but_keeps_the_grid() -> void:
-	var u := _unit(Vector2.UP)
-	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
-	var faced: bool = u._face_for_action(_target_at(u, TURN_DEG), _tick())
-	assert_true(faced, "a small correction fights at once, as before")
-	assert_almost_eq(angle_difference(u.facing.angle(), _bearing(TURN_DEG).angle()), 0.0, ANGLE_EPS,
-			"the heading is on the target at once, as before")
-	var after: PackedVector2Array = u.soldier_world_slots(u.soldiers)
-	assert_eq(after.size(), before.size(), "setup: the same men before and after")
-	assert_lte(_worst_slot_turn(before, after, Vector2.ZERO), _slot_turn_bound(u),
-			"no slot jumps with the heading (main turned the grid %.0f degrees in one tick)" % TURN_DEG)
-
-
-func test_a_small_reface_in_contact_still_turns_the_grid_with_the_heading() -> void:
-	# In a melee the front men are held against the enemy's; a grid left trailing there let the
-	# blocks grind into each other and held a block that broke in the press, so contact keeps
-	# the old snap. A grid turned by the whole correction moves its farthest slot by the chord
-	# 2 R sin(theta / 2).
-	var u := _unit(Vector2.UP)
-	u._in_enemy_contact = true
-	var radius: float = u._formation_local_half_extents().length()
-	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
-	u._face_for_action(_target_at(u, TURN_DEG), _tick())
-	assert_eq(u._grid_lag, 0.0, "no lag is left in contact")
-	assert_almost_eq(_worst_slot_turn(before, u.soldier_world_slots(u.soldiers), Vector2.ZERO),
-			2.0 * radius * sin(deg_to_rad(TURN_DEG) * 0.5), 0.5,
-			"the grid turned with the heading, as on main")
+## Turn `u`'s heading `deg` degrees off north the way a march without a formed pivot does.
+func _reface_to(u: Unit, deg: float) -> void:
+	u._reface(_bearing(deg))
 
 
 func test_an_undisciplined_march_turns_its_heading_but_not_its_grid() -> void:
@@ -103,17 +73,46 @@ func test_an_undisciplined_march_turns_its_heading_but_not_its_grid() -> void:
 	u.disciplined = false
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	var anchor_before: Vector2 = u.position
-	u._move_to(START + _bearing(TURN_DEG) * 1000.0, _tick(), true)
+	u._move_to(START + _bearing(TURN_DEG) * MARCH_RANGE, _tick(), true)
 	assert_almost_eq(angle_difference(u.facing.angle(), _bearing(TURN_DEG).angle()), 0.0, ANGLE_EPS,
 			"the heading takes the travel direction at once, as before")
 	var after: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	assert_lte(_worst_slot_turn(before, after, u.position - anchor_before), _slot_turn_bound(u),
-			"the slots only carry along with the anchor")
+			"the slots only carry along with the anchor (main turned the grid %.0f degrees in one tick)"
+			% TURN_DEG)
+
+
+func test_a_hasty_march_turns_its_heading_but_not_its_grid() -> void:
+	var u := _unit(Vector2.UP)
+	u.set_current_order(Order.new_move(START + _bearing(TURN_DEG) * MARCH_RANGE))
+	u.current_order.haste = true
+	assert_true(u._is_move_order_in_haste(), "setup: a hasty order marches without a formed pivot")
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var anchor_before: Vector2 = u.position
+	u._move_to(START + _bearing(TURN_DEG) * MARCH_RANGE, _tick(), true)
+	assert_lte(_worst_slot_turn(before, u.soldier_world_slots(u.soldiers), u.position - anchor_before),
+			_slot_turn_bound(u), "the slots only carry along with the anchor")
+
+
+func test_a_reface_in_contact_still_turns_the_grid_with_the_heading() -> void:
+	# With its front men held against the enemy's, a grid left trailing the heading lets the
+	# blocks grind into each other and holds a block that breaks in the press, so contact keeps
+	# the old snap. A grid turned by the whole correction moves its farthest slot by the chord
+	# 2 R sin(theta / 2).
+	var u := _unit(Vector2.UP)
+	u._in_enemy_contact = true
+	var radius: float = u._formation_local_half_extents().length()
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	_reface_to(u, TURN_DEG)
+	assert_eq(u._grid_lag, 0.0, "no lag is left in contact")
+	assert_almost_eq(_worst_slot_turn(before, u.soldier_world_slots(u.soldiers), Vector2.ZERO),
+			2.0 * radius * sin(deg_to_rad(TURN_DEG) * 0.5), 0.5,
+			"the grid turned with the heading, as on main")
 
 
 func test_the_grid_follows_the_heading_at_a_bounded_rate_until_square() -> void:
 	var u := _unit(Vector2.UP)
-	u._face_for_action(_target_at(u, WIDE_TURN_DEG), _tick())
+	_reface_to(u, WIDE_TURN_DEG)
 	var radius: float = u._formation_local_half_extents().length()
 	assert_gt(radius, 0.0, "setup: the block has an extent")
 	# The bounded profile (bounded_turn_step): the rate builds at a = body accel / radius up to
@@ -149,7 +148,7 @@ func test_the_lag_waits_while_the_heading_itself_turns() -> void:
 	# A pivot or an in-place turn already moves the grid at its own bounded rate this tick; the
 	# lag turning on top of it would sweep the corner slot faster than jog_speed.
 	var u := _unit(Vector2.UP)
-	u._face_for_action(_target_at(u, TURN_DEG), _tick())
+	_reface_to(u, TURN_DEG)
 	var lag: float = u._grid_lag
 	assert_ne(lag, 0.0, "setup: the grid trails the heading")
 	u._is_facing_turning = true
@@ -166,7 +165,7 @@ func test_terrain_clearance_reads_the_heading_not_the_trailing_grid() -> void:
 	# lag closes on; read off the trailing grid it would steer the march, re-face it, and feed
 	# the lag back.
 	var u := _unit(Vector2.UP)
-	u._face_for_action(_target_at(u, TURN_DEG), _tick())
+	_reface_to(u, TURN_DEG)
 	assert_ne(u._grid_lag, 0.0, "setup: the grid trails the heading")
 	var square := _unit(_bearing(TURN_DEG))
 	var travel: Vector2 = _bearing(TURN_DEG + 20.0)
@@ -180,7 +179,7 @@ func test_a_lag_past_the_threshold_folds_where_the_grid_stands() -> void:
 	var u := _unit(Vector2.UP)
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	for k in range(1, 4):
-		u._face_for_action(_target_at(u, 30.0 * k), _tick())
+		_reface_to(u, 30.0 * k)
 	assert_almost_eq(angle_difference(u.facing.angle(), _bearing(90.0).angle()), 0.0, ANGLE_EPS,
 			"the heading follows every correction")
 	var after: PackedVector2Array = u.soldier_world_slots(u.soldiers)
@@ -193,7 +192,7 @@ func test_a_lag_past_the_threshold_folds_where_the_grid_stands() -> void:
 
 func test_a_rout_folds_the_lag_where_the_grid_stands() -> void:
 	var u := _unit(Vector2.UP)
-	u._face_for_action(_target_at(u, TURN_DEG), _tick())
+	_reface_to(u, TURN_DEG)
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	u._rout()
 	var after: PackedVector2Array = u.soldier_world_slots(u.soldiers)
@@ -208,7 +207,7 @@ func test_a_rout_folds_the_lag_where_the_grid_stands() -> void:
 ## so the men chase their slots on the arrival term alone.
 func _worst_mean_gap(fed: bool) -> float:
 	var u := _unit(Vector2.UP)
-	u._face_for_action(_target_at(u, TURN_DEG), _tick())
+	_reface_to(u, TURN_DEG)
 	var worst: float = 0.0
 	for _t in range(TURN_TICKS):
 		u._advance_grid_lag(_tick())

@@ -219,7 +219,6 @@ func test_a_router_ridden_down_from_behind_is_faced_as_before() -> void:
 	# failed the clip's annihilation pin. The ordinary small-offset snap therefore applies.
 	var u := _make_unit()
 	u.uid = 1
-	u._in_enemy_contact = true   # a router among the ranks is in contact
 	var r := _make_router(u.position + ROUTER_INSIDE_OFFSET, Vector2(0.0, 80.0))
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	u._face_for_action(r.position, DT, r)
@@ -231,17 +230,15 @@ func test_router_outside_the_block_reach_is_faced_as_before() -> void:
 	u.uid = 1
 	var far: Vector2 = ROUTER_INSIDE_OFFSET.normalized() * (u.soldier_block_extent() + 50.0)
 	var r := _make_router(u.position + far, Vector2(0.0, -80.0))
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	u._face_for_action(r.position, DT, r)
-	# The heading turns onto it at once; the slot grid follows at a bounded rate (Unit._reface),
-	# as for any re-face of an enemy outside the block's footprint.
-	assert_almost_eq(angle_difference(u.facing.angle(), far.angle()), 0.0, 0.0001,
+	assert_gt(_max_slot_shift(before, u.soldier_world_slots(u.soldiers)), 1.0,
 		"a router beyond the block's reach is faced as before")
 
 
 func test_a_standing_enemy_inside_the_block_is_faced_as_before() -> void:
 	var u := _make_unit()
 	u.uid = 1
-	u._in_enemy_contact = true   # an enemy among the ranks is in contact
 	var r := _make_router(u.position + ROUTER_INSIDE_OFFSET, Vector2(0.0, -80.0))
 	r.state = Unit.State.FIGHTING
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)

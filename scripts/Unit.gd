@@ -3548,7 +3548,7 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 	# through so the normal approach closes on the enemy and carries a charge velocity.
 	if in_contact:
 		state = State.FIGHTING
-		_face_dir(enemy.position - position)
+		_face(enemy.position)
 		# Only peel back once a hit actually lands: flipping to recharging is gated on the
 		# strike so a contact that arrives mid-cooldown holds and fights until the cooldown
 		# clears, rather than retreating without having landed the charge. (For current
@@ -4064,6 +4064,10 @@ func _press_into(point: Vector2, delta: float, pressing_router: bool = false) ->
 	position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
 
 
+func _face(point: Vector2) -> void:
+	_face_dir(point - position)
+
+
 # Per-tick memo for _adjacent_engaged_enemy_units(), the same (frame -> result) idiom
 # _engaged_indices_cache uses: the scan is cheap per call (it walks the regiment-level
 # candidate list, not a per-soldier one), but MULTIPLE_ENGAGE's own call sites
@@ -4178,11 +4182,9 @@ func _flanking_maneuver_reflow(enemy: Unit = null, wrap_files: int = flanking_ma
 ## Face `point` for an engage/attack action against `enemy_unit` (the target the turn is
 ## bringing the front to bear on; kept so the settle step can reshape toward it under
 ## MATCH_TARGET -- see engage_reshape_mode). A small heading correction snaps (stays
-## responsive at close quarters) through _reface, so out of contact the slot grid follows the
-## heading at a bounded rate instead of swinging under the men; a large swing (>ENGAGE_TURN_THRESHOLD,
-## ~a quarter-turn or more) turns the men in place gradually instead -- the line pivots to
-## bring its front to bear without the grid collapsing and re-expanding. Returns whether the
-## unit is faced enough to
+## responsive at close quarters); a large swing (>ENGAGE_TURN_THRESHOLD, ~a quarter-turn or
+## more) turns the men in place gradually instead — the line pivots to bring its front to bear
+## without the grid collapsing and re-expanding. Returns whether the unit is faced enough to
 ## fight this tick (true when snapping, or once a turn has closed to within
 ## ENGAGE_TURN_FIGHT_TOLERANCE); the caller withholds the strike while still turning. Reuses
 ## the drill turns' arrival-freeze + _formation_angle-absorb, so the bodies hold their ground.
@@ -4231,8 +4233,8 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		return true
 	# A routing target streaming out through this block: hold the current facing, as the
 	# stances above do. The bearing from this anchor to a point within the block's own reach
-	# names no front, so following it (each tick's small correction turns the grid after it)
-	# swings the whole slot grid round while the men, held in contact, stay where they are -- the
+	# names no front, so following it (each tick's small correction snaps unabsorbed) swings
+	# the whole slot grid round while the men, held in contact, stay where they are -- the
 	# block is then left with its slots turned away from its men and has to wheel back once
 	# it is free. Holding moves neither the facing nor _formation_angle, so nothing is left
 	# for a later reform to undo; once the router is out of reach the ordinary re-face
@@ -4255,11 +4257,9 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		if _advance_turn(_engage_turn_target, delta):
 			_settle_engage_turn()
 		return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
-	# Small offset: face the enemy and fight now, as before. Out of contact (a block shooting,
-	# or closing on its target) the slot grid follows the heading at a bounded rate (_reface)
-	# instead of swinging under the men; in contact it still turns with the heading.
+	# Small offset: snap and fight now, as before.
 	if offset <= ENGAGE_TURN_THRESHOLD:
-		_reface(dir)
+		_face_dir(dir)
 		return true
 	# Large offset: begin a turn-in-place. Men hold their positions (arrival frozen) while
 	# facing rotates; the strike is withheld until the front comes to bear. Capture the
@@ -4356,10 +4356,11 @@ func _settle_engage_turn() -> void:
 
 ## Snap `facing` to `dir` instantly. A change up to FACING_SNAP_ABSORB_THRESHOLD is not
 ## absorbed here, so soldier_world_slots' facing-relative grid turns about the anchor by the
-## whole change in one tick; the callers that correct a heading tick by tick (a moving unit's
-## travel direction, a close-quarters re-face) go through _reface instead, which keeps the
-## grid where the men stand and lets it follow at a bounded rate. A form-up hold still snaps
-## here, since its frontage reshapes in the same tick. A LARGE snap (e.g. an idle unit's
+## whole change in one tick; a march that corrects its heading tick by tick without a formed
+## pivot goes through _reface instead, which keeps the grid where the men stand and lets it
+## follow at a bounded rate. A combat re-face (_face_for_action) and a form-up hold still snap
+## here (TODO(#1792) for the combat re-face; a form-up reshapes its frontage in the same tick).
+## A LARGE snap (e.g. an idle unit's
 ## very first move order firing while it still faces its spawn heading, or a combat chase
 ## target appearing behind it) would instead swap every slot to the opposite side of the
 ## block in one tick --
@@ -4394,18 +4395,19 @@ func _face_dir(dir: Vector2) -> void:
 ## times that angle: for a deep block, hundreds of world units at a few tens of degrees, with
 ## every man then chasing his slot across the block. Here the change goes into _grid_lag
 ## instead, and _advance_grid_lag turns the grid after the heading no faster than the man on
-## the farthest slot can follow. The heading itself is not slowed, so a re-face in combat and a
-## march's travel direction answer exactly as before; only where the slots stand changes.
+## the farthest slot can follow. The heading itself is not slowed, so a march's travel
+## direction answers exactly as before; only where the slots stand changes.
 ## A lag that grows past the threshold (a heading swinging faster than the grid follows) is
 ## folded into _formation_angle, as a single snap that large is, so the men turn where they
 ## stand. A change past the threshold goes to _face_dir, and so does any change on a far-tier
 ## block, which has no bodies on its slots. So does any change while the block is in enemy
-## contact: there its front men are held against the enemy's, and a grid left trailing the
-## heading in a melee lets the two blocks grind into each other and holds a block that breaks
-## in the press (TODO(#1792) decides how a melee re-face should turn the grid). The callers
-## are the ones that correct a heading tick by tick: a fighting or shooting block re-facing
-## its enemy (_face_for_action), a march that does not pivot as a formation (an undisciplined
-## or hasty march, a held maneuver facing, a combat approach), and a hasty reform hold.
+## contact (an orderly march yielding to a press, a combat approach that has closed): a grid
+## left trailing the heading with the front men held against the enemy's lets the blocks
+## grind into each other, and a block that then breaks is held in the press. The callers are
+## the marches that do not pivot as a formation (an undisciplined or hasty march, a held
+## maneuver facing, a combat approach that does not pivot) and a hasty reform hold. A combat
+## re-face (_face_for_action) does not come here: TODO(#1792) decides how it should turn the
+## grid.
 func _reface(dir: Vector2) -> void:
 	if dir.length_squared() <= 0.0001:   # _face_dir's own zero-direction guard
 		return
@@ -5873,10 +5875,8 @@ var _engage_turn_enemy: Unit = null
 # a stance's own facing hold takes over in _face_for_action.
 var _streaming_router_uid: int = -1
 # Beyond this heading offset (radians) an engage/attack re-face turns in place gradually
-# instead of snapping. Below it a small correction snaps the heading (_reface), keeping
-# close-quarters combat responsive; out of contact the slot grid follows it at a bounded rate,
-# in contact it turns with it. Only a large
-# swing (roughly a quarter-turn or more) turns the men in place.
+# instead of snapping. Below it a small correction snaps, keeping close-quarters combat
+# responsive; only a large swing (roughly a quarter-turn or more) turns the men in place.
 const ENGAGE_TURN_THRESHOLD: float = deg_to_rad(75.0)
 # The unit strikes once its front is within this offset of the enemy — a turn-in-place brings
 # the line to bear before it fights, but it need not be dead-on. Slightly under a flank
@@ -5885,8 +5885,8 @@ const ENGAGE_TURN_FIGHT_TOLERANCE: float = deg_to_rad(50.0)
 # Beyond this heading offset (radians) an instant facing snap (_face_dir) folds the jump into
 # _formation_angle instead of leaving soldier_world_slots' facing-relative grid to swap every
 # slot to the new side of the block. Below it _face_dir leaves the change unfolded, so the
-# grid turns with the heading; a small correction (travel-direction drift, a re-face onto a
-# target) therefore goes through _reface, which out of contact holds the grid back as _grid_lag
+# grid turns with the heading; a march's small travel-direction correction therefore goes
+# through _reface, which out of contact holds the grid back as _grid_lag
 # and turns it after the heading at a bounded rate, folding the lag in once it passes this same
 # threshold.
 # Same threshold as ENGAGE_TURN_THRESHOLD (roughly a quarter-turn or more): past that angle
@@ -8520,7 +8520,7 @@ func _select_near_front_indices(count: int, max_selected: int = -1) -> PackedInt
 	var cutoff: int = mini(count, formation_files(count) * engaged_ranks())
 	if max_selected >= 0:
 		cutoff = mini(cutoff, max_selected)
-	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle   # the front the unit faces, not a trailing grid
+	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
 	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
 	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)
 
@@ -8583,7 +8583,7 @@ func near_front_soldier_indices(count: int) -> PackedInt32Array:
 	if not (is_engaged() or _in_enemy_contact) or count <= 0 or in_square():
 		return PackedInt32Array()
 	var cutoff: int = mini(count, formation_files(count) * ANCHOR_RANKS)
-	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle   # the front the unit faces, not a trailing grid
+	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
 	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
 	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)
 
