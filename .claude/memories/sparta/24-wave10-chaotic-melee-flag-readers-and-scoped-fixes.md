@@ -14,6 +14,7 @@ This holds whether or not the change does harm.
 
 - **Do:** before reading a single clip's changed router outcome as a regression, check whether a negligible perturbation of main moves it too,
   and report the mechanism you measured, not only the outcome.
+
 - **Don't:** treat "no router breaks later than main on any clip" as a pass or fail gate for a change to melee dynamics.
 
 (`Lacaedemon/sparta` #1792 and #1826, 2026-10-12.)
@@ -28,6 +29,7 @@ In `rout_rally` the router's bodies passed through its pursuer's on 133 routing 
 The merged fix put the gap on a separate anchor-only flag, and every physical reader still reads the unmodified one.
 
 - **Do:** `git grep` every reader of a flag before changing when it turns on, and put behaviour-specific hysteresis on a new flag read only by the behaviour it fixes.
+
 - **Don't:** add hysteresis to a shared state flag because the bug shows up in one of its readers.
 
 (`Lacaedemon/sparta` PR #1822, 2026-10-12.)
@@ -42,6 +44,7 @@ Each round narrowed the scope to what the issue needed: no lag in contact, then 
 The merged PR changes 6 clips, its other clips are bit-identical to main, and the issue stays open for the combat cases.
 
 - **Do:** when a fix trips acceptance checks on clips outside its target, shrink the fix's scope until those clips are bit-identical to main, and leave the remainder of the issue open.
+
 - **Don't:** exempt a new defect the change causes, or credit it to a cause the data contradicts.
 
 (`Lacaedemon/sparta` PR #1814, 2026-10-12.)
