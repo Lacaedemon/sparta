@@ -42,12 +42,13 @@ fightable --- for as long as it's plausibly still in view.
 A unit breaks with its ranks as they stand:
 each man runs from his own place in the block,
 whichever way the block had turned before it broke.
-One case still throws the men out of their places:
-a unit that breaks while still in contact with the enemy
-turns onto its flight at once,
-and a turn of less than about 75 degrees swings the whole block round under the men
-instead of each man turning where he stands
-([#1785](https://github.com/Lacaedemon/sparta/issues/1785)).
+A unit that breaks while still in contact with the enemy,
+facing within about 75 degrees of its way out,
+swings round onto its flight no faster than its outermost men can follow,
+as it does on any such turn in its flight,
+so its men keep their places and run at once, not waiting for the turn.
+A turn of more than about 75 degrees is made at once,
+each man turning where he stands.
 
 A routing unit runs faster than it marches. Unless it was already falling back, it
 starts its flight from a standstill (whatever broke it: a melee, missile fire, a
@@ -264,9 +265,10 @@ Routing beside terrain: a brittle cavalry troop starts just west of the
 impassable hill, every man clear of it, and meets a charge driven straight
 in from its western flank. Opening melee is per-soldier, so the troop fights for a
 while before it breaks;
-it then routs,
-is carried east to the hill's west face while the charge is still on it,
-and once clear flees north-west and then north, every man clear of the hill,
+it then routs
+and flees north, drifting slightly east, past the hill's west face, every man clear of it,
+with the charge's files still among its own and riding north with it,
+its ranks slanting across its flight as it swings slowly round onto it,
 while its nerve steadies,
 rallying near the end of the clip well past the hill's northern end.
 The clip does not show a detour around the hill.

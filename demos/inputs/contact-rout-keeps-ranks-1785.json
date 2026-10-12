@@ -1,0 +1,24 @@
+{
+  "_comment": "A deep cavalry squadron breaks while still locked in a melee and turns onto its flight without its slot grid swinging under its men (#1785). A brittle player squadron (48 mounts at morale 0.5) stands on open ground facing north-west (-135 degrees); an enemy cavalry squadron (80 mounts) 230 wu up that line charges it on its own (no player input). The charge carries the enemy's open files right through the player squadron, so from about tick 190 the two blocks stand interleaved, the player's men in diagonal ranks among the enemy's. The player squadron routs at tick 309 (FIGHTING at 308, ROUTING at 309), still in contact, and flees north, 45 degrees off its heading, which is under the 75 degree threshold above which a facing snap is folded into the grid. On main bb2a9e4f a router in contact snapped onto that heading, so the whole grid turned 45 degrees about the anchor in one tick: the mean body-to-slot gap goes from 0.1 wu at tick 309 to 174.3 at tick 310, 15 men's slots lie across the block's centreline from them at tick 310 (14 at 350, 12 at 400, 10 at 450, 7 at 500), and by tick 560 the men who have reached their new slots run as a block ahead of a ragged diagonal trail of men still crossing to theirs. Now the heading turns at the same bounded rate as every other flight turn (-134 degrees at tick 350, -120 at 450, -100 at 560, -90 at 660), and the squadron runs north as one block, its men keeping their diagonal ranks: on 2-tick samples from the rout to the clip's end no man's slot is across the centreline from him, and the mean gap stays at or under 35.8 wu (tick 660). Its men's centroid has moved 11 wu 60 ticks after tick 308, 63 wu after 150 and 315 wu after 300 (main: 4, 60 and 297). The enemy stays in the melee with it, FIGHTING and moving north with it, until about tick 508, then rides after it (MOVING from tick 510; the router's anchor is out of contact from tick 526); the squadron is still fleeing north when the clip ends at tick 660, before it rallies. On main the anchor, yanked south-west by the swung grid, was out of contact from tick 328 while the men were still among the enemy, flickered back from tick 348 and was in contact again from 398 to 506. Sampled with a full state dump; the slots_across_centreline expects fail on main.",
+  "seed": "17851",
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 900, "y": 900, "count": 48, "morale": 0.5, "facing": [-0.7071, -0.7071]},
+    {"team": 1, "type": "Cavalry", "x": 740, "y": 740}
+  ],
+  "camera": [{"tick": 0, "x": 870.0, "y": 720.0, "zoom": 0.65}],
+  "steps": [],
+  "state": [10, 180, 308, 309, 310, 350, 400, 450, 500, 600, 660],
+  "expect": [
+    {"tick": 10, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": 308, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 309, "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": 309, "uid": 0, "field": "in_enemy_contact", "value": true},
+    {"tick": 310, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 350, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 400, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 450, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 500, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 600, "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": 660, "uid": 0, "field": "state", "value": "ROUTING"}
+  ]
+}
