@@ -2924,6 +2924,8 @@ func _refresh_enemy_contact() -> void:
 ## flight-side ranks), or more than FACING_SNAP_ABSORB_THRESHOLD off it: that first flight
 ## turn snaps and folds at once (_turn_flight_toward), so the heading lands on the flight on
 ## the router's first tick and no bounded turn keeps its front in the melee.
+## TODO(#1825): a rout keeps the grid's fold, so after a snapped flight turn the
+## front ranks can be the trailing ranks, not the flight-side ones.
 func _arm_router_front_in_melee() -> void:
 	_router_front_in_melee = false
 	if not is_inside_tree() or facing == Vector2.ZERO:
@@ -2950,6 +2952,8 @@ func _arm_router_front_in_melee() -> void:
 ## router_front_in_melee() for the rest of the rout once the router leaves enemy contact or
 ## its heading lands on its flight line, when its front ranks become its flight-side ranks.
 ## Never re-armed within a rout, so an enemy passing alongside cannot switch it back and forth.
+## TODO(#1825): a rout keeps the grid's fold, so after a snapped flight turn the
+## front ranks can be the trailing ranks, not the flight-side ones.
 func _update_router_front_in_melee() -> void:
 	if not _router_front_in_melee:
 		return
@@ -8704,6 +8708,8 @@ func near_front_soldier_indices(count: int) -> PackedInt32Array:
 ## couple() tracks its whole block: anchoring on the men the melee holds would hold the whole
 ## router in the fight. A router caught from behind still anchors on its front ranks, which
 ## are then its flight-side ranks, the ones farthest from the pursuer.
+## TODO(#1825): a rout keeps the grid's fold, so after a snapped flight turn the
+## front ranks can be the trailing ranks, not the flight-side ones.
 func position_anchor_indices(count: int) -> PackedInt32Array:
 	if not (is_engaged() or _in_enemy_contact) or router_front_in_melee():
 		return PackedInt32Array()
@@ -8726,6 +8732,8 @@ func position_anchor_indices(count: int) -> PackedInt32Array:
 ## (position_anchor_indices). Otherwise its front ranks are its flight-side ranks and the
 ## rules for those apply: a router caught from behind anchors on them, and one fleeing
 ## straight into the enemy it broke from keeps its engaged front on the melee line.
+## TODO(#1825): a rout keeps the grid's fold, so after a snapped flight turn the
+## front ranks can be the trailing ranks, not the flight-side ones.
 func router_front_in_melee() -> bool:
 	return state == State.ROUTING and _router_front_in_melee
 

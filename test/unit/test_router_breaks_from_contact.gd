@@ -6,6 +6,8 @@ extends GutTest
 ## flight or contact ends), none of its men is held back as an engaged front and couple()
 ## anchors the block on all of them. A router caught from behind keeps its anchor on its
 ## front, flight-side ranks.
+## TODO(#1825): a rout keeps the grid's fold, so after a snapped flight turn the
+## front ranks can be the trailing ranks, not the flight-side ones.
 ##
 ## The regression the first test pins: with the bounded turn, couple() anchored a router
 ## breaking from a melee on its front ranks, the men the melee held, so the anchor followed
@@ -184,6 +186,8 @@ func test_a_router_pressed_beside_a_hill_is_not_carried_into_it() -> void:
 
 
 func test_a_router_caught_from_behind_anchors_on_its_flight_side_ranks() -> void:
+	# TODO(#1825): a rout keeps the grid's fold, so after a snapped flight turn the
+	# front ranks can be the trailing ranks, not the flight-side ones.
 	# A router caught by a pursuer from behind is in contact with its front, flight-side ranks
 	# farthest from the pursuer: couple() keeps anchoring on them rather than on the whole
 	# block, so the pursuer's press on its rear does not drag the anchor back.
@@ -298,6 +302,8 @@ func test_a_router_with_no_enemy_in_its_front_arc_is_not_armed() -> void:
 
 func test_a_router_already_facing_its_flight_is_not_armed() -> void:
 	# Its front ranks are its flight-side ranks, so the caught-router rules for those apply.
+	# TODO(#1825): a rout keeps the grid's fold, so after a snapped flight turn the
+	# front ranks can be the trailing ranks, not the flight-side ones.
 	assert_false(await _armed(0.0, [Vector2(ARM_OFFSET, 0.0)]),
 			"a router facing its flee heading, the enemy ahead, is not armed")
 

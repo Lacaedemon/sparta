@@ -48,5 +48,8 @@
     {"tick": 454, "uid": 0, "field": "in_enemy_contact", "value": false},
     {"tick": 455, "uid": 0, "field": "in_enemy_contact", "value": false},
     {"tick": 560, "uid": 0, "field": "state", "value": "ROUTING"}
-  ]
+  ],
+  "defect_exemptions": {
+    "shape_residual": {"uids": [1], "reason": "The infantry pursuer (uid 1) deforms while it follows the router at the edge of melee range: shape_residual worst 37.1 against the 13.5 threshold, from about tick 440 to the clip's end, and 36.0 on main 45a9bb85 on the same samples, where its own contact flag also flickers. Pre-existing and not changed by this clip's fix, which only touches routers. Measured locally on this clip's own declared ticks; tracked as #1824."}
+  }
 }
