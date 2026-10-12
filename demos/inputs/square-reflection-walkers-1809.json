@@ -1,0 +1,33 @@
+{
+  "_comment": "A squared block's hold-ground about-face: the traverse arcs bend exactly the men the reflection sends walking. uid 0: 60 Infantry in SQUARE (square_files lays them out on 8 files: seven full ranks and a centred 4-man rear rank), facing south at (640, 520), alone, in drill mode. It is selected at tick 12 and ordered to (640, 300), straight behind it, at tick 24, so it runs a rear move: an about-face (ticks 24 to 84), then the REFORM hold, whose hold-ground re-square reflects the grid in depth and composes the cancelling pairing onto the square's own pairing. 56 men keep their ground; four (soldier indices 0, 2, 6, 7) keep their cell and walk the block's depth, 63 wu, to its other end, swinging out round their own flank as they go. On the merge-base 9d39a353 the arcs picked the walkers by index over the square's pairing, which is not the identity: they bent indices 24, 25, 36 and 37, who stand on their ground, sending their slots up to 49.7 wu sideways of them at the start of the hold (tick 88), and they never bent walker 2. slot_lateral_excess is read from the full dump (DemoDefects.derived_field). At ticks 84 and 88, before any walker has started, nobody's slot is bent here. The pin's 22.5 wu bound is 2.5 file pitches: the short rear rank's indices 48 and 49 stand up to 2.4 pitches (21.8 wu) off their slots when the about-face ends, on both trees, a residue of the turn and not of the arcs; the half pitch is margin. Both trees read 20.9 or more from those two men, and the merge-base reads 50.0 at tick 84 and 49.7 at tick 88 from index 24. Each slot_lateral_excess pin fails on the merge-base.",
+  "seed": "18090",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 640, "y": 520, "count": 60, "formation": 3, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 640, "y": 470, "zoom": 1.4}
+  ],
+  "steps": [
+    {"tick": 12, "click": [640, 520]},
+    {"tick": 24, "rmb_click": [640, 300]}
+  ],
+  "frames": [24, 84, 116, 160, 220, 260],
+  "state": [8, 24, 84, 88, 100, 116, 140, 180, 220, 240, 260, 300],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "formation", "value": "SQUARE"},
+    {"tick": 84, "uid": 0, "field": "order_phase", "value": "REFORM"},
+    {"tick": 84, "uid": 0, "field": "slot_lateral_excess", "value": 0, "tol": 22.5},
+    {"tick": 88, "uid": 0, "field": "slot_lateral_excess", "value": 0, "tol": 22.5}
+  ],
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [0],
+      "reason": "Measured by analyze_transcript.gd on this tree: uid0 reads overlap 0.87 wu against its 2.25 wu floor at tick 300, and fails at ticks 180 (2.01, walker 0 against index 24 as he swings past the flank), 240 (1.57), 260 (1.06) and 300. From tick 220 the closest pair is walkers 0 and 2, who go round the same flank and jam against each other as they come back in to their slots (7.6 and 16.6 wu short of them at tick 300); walkers 6 and 7 close to 1.84 wu on the other flank. The merge-base 9d39a353 reads 0.26 wu at tick 300 (walkers 6 and 7) and fails at ticks 180, 220 and 300. Tracking issue: TO BE FILED (walkers who share a flank jam at the end of their arced walk)."
+    },
+    "shape_residual": {
+      "uids": [0],
+      "reason": "Measured by analyze_transcript.gd on this tree: uid0 reads shape_residual 19.06 wu at tick 116 against its 6.75 wu threshold, sustained over ticks 84 to 180 (16.39 at tick 84, 12.18 at tick 180) and passing from tick 240. Through that window the four walkers are still crossing the block's 63 wu depth, as the hold-ground re-square sends them, and the rear rank stands off its slots from the turn. The merge-base 9d39a353 reads 20.24 wu on the same samples. Tracking issue: TO BE FILED (same issue as the overlap exemption)."
+    }
+  }
+}
