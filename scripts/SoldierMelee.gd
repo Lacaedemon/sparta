@@ -372,6 +372,10 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 						unit._sim_soldier_square_slot, i)
 			if i < unit._sim_soldier_broken.size():
 				unit._sim_soldier_broken.remove_at(i)   # and the encirclement-broken flag
+			if i < unit._sim_soldier_reflect_walker.size():
+				# And the depth-reflection walker flags, so the men still walking are the ones
+				# the traverse arcs bend once the pairing has closed up over him.
+				unit._sim_soldier_reflect_walker.remove_at(i)
 			if i < unit._couple_transit.size():
 				# And a hold-ground re-square's walker flags, so a casualty mid re-square keeps
 				# every other walker out of the anchor coupling instead of dropping them all.

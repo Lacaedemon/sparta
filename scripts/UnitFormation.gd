@@ -28,6 +28,13 @@ static func _files(n: int) -> int:
 # back and forth tick to tick; it only re-widens once meaningfully recovered.
 const CLOSE_RANKS_CONTRACT_FRAC: float = 0.5
 const CLOSE_RANKS_RECOVER_FRAC: float = 0.65
+# How far outside the widest rank's outermost man, in file pitches, a hold-ground walker's path
+# runs at full strength when his own cell is on his rank's centre line (each pitch he stands off
+# that centre adds one more; see apply_traverse_flank_arcs). A gameplay tunable, the default of
+# Unit.traverse_arc_clearance. 2.0 keeps a full rank's outermost walker on the path the arcs gave
+# him when the distance was read from his own rank: twice its half-width plus 2.0 pitches from
+# the centre line.
+const TRAVERSE_ARC_CLEARANCE: float = 2.0
 
 
 ## Whether the auto frontage should currently be contracted a notch, with hysteresis:
@@ -775,50 +782,74 @@ static func permute_slots(slots: PackedVector2Array, perm: PackedInt32Array) -> 
 	return out
 
 
-## Applies outward lateral flank arcs to unpaired traversing soldiers during depth-reflection
-## reform, preventing them from interpenetrating stationary neighbours as they cross ranks.
+## Which men a hold-ground reform's depth reflection leaves to walk the block's depth, when it is
+## composed onto `held` (held[i] = the cell soldier i holds on a `block_slots(held.size(), files)`
+## grid): entry i is 1 when the reflection leaves soldier i on his own cell (depth_reflection_pairing
+## maps that cell to itself) outside the block's middle rank, so he keeps his file and swaps ends.
+## Every other man takes the cell that inherits the ground he stands on, and holds it. Read at the
+## moment of composing, against the pairing the reflection is composed onto, and then carried with
+## the men: a casualty, a close-up or an extension renumbers the cells under them, after which the
+## reflection's fixed cells at the new size are no longer the men who are walking. Empty for an
+## empty pairing or a non-positive file count.
+static func depth_reflection_walkers(held: PackedInt32Array, files: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	var n: int = held.size()
+	var pairing: PackedInt32Array = depth_reflection_pairing(n, files)
+	if pairing.size() != n:
+		return out
+	var ranks: int = ranks_for(n, files)
+	out.resize(n)
+	for i in range(n):
+		var cell: int = clampi(held[i], 0, n - 1)
+		var r: int = cell / files
+		out[i] = 1 if pairing[cell] == cell and r != ranks - 1 - r else 0
+	return out
+
+
+## Applies outward lateral flank arcs to the men a depth-reflection reform sends walking the
+## block's depth, so they do not walk through the stationary neighbours they cross.
 ##
-## A walker is a man the reflection left on his own cell, so he walks the block's depth to its
-## other end. By default that is read as `perm[i] == i`, which holds only when the reflection
-## was composed onto the identity layout. With `walkers_by_cell` the walker is instead a man
-## whose cell is one the reflection leaves fixed (depth_reflection_pairing maps it to itself),
-## with his rank and file read from that cell: right over any base the reflection was composed
-## onto, since composing keeps a man on his base cell exactly when that cell is fixed. That holds
-## only while the pairing is the one composed at `perm.size()`: a casualty during the reform
-## hold closes the pairing up onto a smaller grid, and the fixed cells of that grid's reflection
-## are not the men who were walking, so the gate then picks the wrong men (as the index read
-## does on that path too).
+## `walkers` names those men, index-aligned with `slots` (see depth_reflection_walkers): the set is
+## recorded when the reflection is composed and carried through casualties, because neither a
+## man's index nor his cell says whether he is walking once the pairing has been composed onto a
+## non-identity base or closed up under a casualty. A `walkers` array of another length arcs
+## nobody.
+##
+## A man swings out round his own flank, the side read from where the cell he now holds (perm[i])
+## stands in its own rank, measured in files from that rank's centre: a short rank is centred on
+## the block, so its file index alone would send the men right of its centre round the left
+## flank. At full strength every walker's path is moved out by the widest rank's half-width,
+## (files - 1) / 2 pitches, plus `clearance` pitches. That puts him `clearance` pitches, plus his
+## own distance from his rank's centre, outside the widest rank's outermost man, so he passes
+## outside every rank he crosses, and two men on one flank keep the lateral interval they had
+## (see TRAVERSE_ARC_CLEARANCE).
 static func apply_traverse_flank_arcs(slots: PackedVector2Array, world_positions: PackedVector2Array,
 		unit_pos: Vector2, unit_ang: float, perm: PackedInt32Array, files: int, spacing: float,
-		walkers_by_cell: bool = false) -> PackedVector2Array:
+		walkers: PackedByteArray, clearance: float = TRAVERSE_ARC_CLEARANCE) -> PackedVector2Array:
 	var n: int = slots.size()
-	if n <= 0 or files <= 0 or perm.size() != n or world_positions.size() != n:
+	if n <= 0 or files <= 0 or perm.size() != n or world_positions.size() != n \
+			or walkers.size() != n:
 		return slots
-	var ranks: int = ranks_for(n, files)
-	if ranks <= 1:
+	if ranks_for(n, files) <= 1:
 		return slots
-	var fixed: PackedInt32Array = depth_reflection_pairing(n, files) if walkers_by_cell \
-			else PackedInt32Array()
 	var out: PackedVector2Array = slots.duplicate()
 	for i in range(n):
-		var cell: int = clampi(perm[i], 0, n - 1) if walkers_by_cell else i
-		var walker: bool = fixed[cell] == cell if walkers_by_cell else perm[i] == i
-		if walker:
-			var r: int = cell / files
-			var r2: int = ranks - 1 - r
-			if r != r2:
-				var f: int = cell % files
-				var y_start: float = slots[i].y
-				var y_target: float = -y_start
-				var dy: float = y_target - y_start
-				if absf(dy) > 0.001:
-					var local_pos: Vector2 = (world_positions[i] - unit_pos).rotated(-unit_ang)
-					var t: float = clampf((local_pos.y - y_start) / dy, 0.0, 1.0)
-					var arc: float = smoothstep(0.0, 0.08, t) * (1.0 - smoothstep(0.92, 1.0, t))
-					var side: float = -1.0 if float(f) < (files * 0.5) else 1.0
-					var dist: float = (files * 0.5 - float(f)) if side < 0.0 else (float(f) - files * 0.5 + 1.0)
-					var flank_offset: float = side * (dist + 1.5) * spacing
-					out[i].x += arc * flank_offset
+		if walkers[i] != 0:
+			var cell: int = clampi(perm[i], 0, n - 1)
+			var rank_count: int = mini(files, n - (cell / files) * files)
+			# Files from the rank's centre: negative on the left flank. The centre man of an
+			# odd rank (0) goes round the left, as he did when the side was read by file index.
+			var lateral: float = float(cell % files) - float(rank_count - 1) * 0.5
+			var y_start: float = slots[i].y
+			var y_target: float = -y_start
+			var dy: float = y_target - y_start
+			if absf(dy) > 0.001:
+				var local_pos: Vector2 = (world_positions[i] - unit_pos).rotated(-unit_ang)
+				var t: float = clampf((local_pos.y - y_start) / dy, 0.0, 1.0)
+				var arc: float = smoothstep(0.0, 0.08, t) * (1.0 - smoothstep(0.92, 1.0, t))
+				var side: float = -1.0 if lateral <= 0.0 else 1.0
+				var flank_offset: float = side * (float(files - 1) * 0.5 + clearance) * spacing
+				out[i].x += arc * flank_offset
 	return out
 
 
