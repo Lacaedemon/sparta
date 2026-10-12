@@ -56,6 +56,9 @@ neighbour's rout), picks up speed over its first few seconds, and then flees at 
 1.3 times its own top speed. Once clear of its pursuers it pulls away from troops of
 its own type; a pursuer that stays in contact with it holds it to that pursuer's own
 pace.
+A router that slips out of a pursuer's reach stays clear of it
+until the pursuer closes in again,
+rather than flickering in and out of contact at the edge of that reach.
 
 ::: {#fig-router-outruns-pursuer .demo}
 

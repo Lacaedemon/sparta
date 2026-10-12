@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/router-contact-edge-1801.json",
+  "caption": "A brittle cavalry squadron (blue) is charged by an infantry block, breaks while still in contact and flees north, with the infantry following at the edge of melee range. Once the squadron gets clear of the infantry's reach it now leaves contact once and stays out. Before this fix it flipped in and out of contact 19 times in half a second as it crossed the edge of that reach, and each flip moved the point its formation is laid out from between its front ranks and its whole block, so its pace jerked from tick to tick as it pulled away. Both versions cover the same ground.",
+  "fixed_fps": 30,
+  "max_frames": 280,
+  "fps": 15,
+  "width": 720
+}
