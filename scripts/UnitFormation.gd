@@ -805,8 +805,13 @@ static func depth_reflection_walkers(held: PackedInt32Array, files: int) -> Pack
 ## `walkers` names those men, index-aligned with `slots` (see depth_reflection_walkers): the set is
 ## recorded when the reflection is composed and carried through casualties, because neither a
 ## man's index nor his cell says whether he is walking once the pairing has been composed onto a
-## non-identity base or closed up under a casualty. A man's flank side is read from the file of
-## the cell he now holds (perm[i]). A `walkers` array of another length arcs nobody.
+## non-identity base or closed up under a casualty. A `walkers` array of another length arcs
+## nobody.
+##
+## A man swings out round his own flank: the side, and how far out, are read from where the cell
+## he now holds (perm[i]) stands in its own rank, measured in files from that rank's centre. A
+## short rank is centred on the block, so its file index alone would send the men right of its
+## centre round the left flank.
 static func apply_traverse_flank_arcs(slots: PackedVector2Array, world_positions: PackedVector2Array,
 		unit_pos: Vector2, unit_ang: float, perm: PackedInt32Array, files: int, spacing: float,
 		walkers: PackedByteArray) -> PackedVector2Array:
@@ -819,7 +824,11 @@ static func apply_traverse_flank_arcs(slots: PackedVector2Array, world_positions
 	var out: PackedVector2Array = slots.duplicate()
 	for i in range(n):
 		if walkers[i] != 0:
-			var f: int = clampi(perm[i], 0, n - 1) % files
+			var cell: int = clampi(perm[i], 0, n - 1)
+			var rank_count: int = mini(files, n - (cell / files) * files)
+			# Files from the rank's centre: negative on the left flank. The centre man of an
+			# odd rank (0) goes round the left, as he did when the side was read by file index.
+			var lateral: float = float(cell % files) - float(rank_count - 1) * 0.5
 			var y_start: float = slots[i].y
 			var y_target: float = -y_start
 			var dy: float = y_target - y_start
@@ -827,9 +836,8 @@ static func apply_traverse_flank_arcs(slots: PackedVector2Array, world_positions
 				var local_pos: Vector2 = (world_positions[i] - unit_pos).rotated(-unit_ang)
 				var t: float = clampf((local_pos.y - y_start) / dy, 0.0, 1.0)
 				var arc: float = smoothstep(0.0, 0.08, t) * (1.0 - smoothstep(0.92, 1.0, t))
-				var side: float = -1.0 if float(f) < (files * 0.5) else 1.0
-				var dist: float = (files * 0.5 - float(f)) if side < 0.0 else (float(f) - files * 0.5 + 1.0)
-				var flank_offset: float = side * (dist + 1.5) * spacing
+				var side: float = -1.0 if lateral <= 0.0 else 1.0
+				var flank_offset: float = side * (absf(lateral) + 2.0) * spacing
 				out[i].x += arc * flank_offset
 	return out
 

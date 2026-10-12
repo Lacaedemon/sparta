@@ -1,23 +1,24 @@
 extends GutTest
 ## The traverse flank arcs bend exactly the men a hold-ground about-face sends walking the
-## block's depth, in a squared block as in a row-major one, and still do after a casualty during
-## the reform hold.
+## block's depth, each round his own flank, in a squared block as in a row-major one, and still
+## do after a casualty during the reform hold.
 ##
 ## A hold-ground re-square composes the depth reflection's cell pairing onto the pairing the block
 ## holds. Every man takes the cell that inherits the ground he stands on, except the men whose
 ## cell the reflection leaves fixed outside the middle rank: they keep their file and walk the
 ## block's depth to its other end. Those are the walkers. The oracle here reads them off the two
 ## pairings, before and after the reflection, and then follows the men by identity through a
-## casualty. Each test also checks the oracle against the geometry: with every man standing where
-## he stood before the re-square, a walker's slot is the block's full depth away from him and
-## every other man's is within a close-up step of him.
+## casualty. Where the men's walk can be read from where they stood before the re-square, a test
+## also checks the oracle against the geometry (_assert_walkers_walk): a walker's slot is the
+## block's full depth away from where he stood, and every other man's is within a close-up step.
 ##
 ## How a man reads as arced: with every body at the block's centre, halfway through any walk, the
 ## arc is at full strength, so a man is arced exactly when his slot is bent sideways off the plain
-## pairing's slot.
+## pairing's slot. Every arced man's bend must point out past his own flank: the side his plain
+## slot stands on, measured from the block's centre (_arced checks it).
 
 ## A slot bent sideways by more than this is arced. The arc at full strength moves a slot at
-## least 1.5 file pitches (13.5 wu on foot here); float residue is under 0.001 wu.
+## least 2 file pitches (18 wu on foot here); float residue is under 0.001 wu.
 const ARC_EPS := 0.01
 
 
@@ -65,6 +66,14 @@ func _grid(u: Unit, square: bool, n: int) -> PackedVector2Array:
 	return UnitFormation.slots(u, n)
 
 
+## Put a reform hold on: the about-face leaf a test settled, or a fresh one.
+func _hold(u: Unit) -> void:
+	if u.active_leaf() == null:
+		u.set_current_order(Order.new_about_face())
+	u.active_leaf().reform_timer = 1.0
+	assert_true(u._reform_holding(), "precondition: the reform hold is on")
+
+
 ## Settle an about-face, run the hold-ground re-square under a live reform hold, and return the
 ## walkers the reflection made, read off the pairings before and after it.
 func _re_square(u: Unit, square: bool) -> Array:
@@ -81,8 +90,7 @@ func _re_square(u: Unit, square: bool) -> Array:
 	assert_not_null(u.active_leaf(), "precondition: the about-face leaf is still current")
 	if u.active_leaf() == null:
 		return []
-	u.active_leaf().reform_timer = 1.0
-	assert_true(u._reform_holding(), "precondition: the reform hold is on")
+	_hold(u)
 	var after: PackedInt32Array = _pairing(u, square)
 	var ranks: int = UnitFormation.ranks_for(n, files)
 	var walkers: Array = []
@@ -109,7 +117,9 @@ func _survivors_of(walkers: Array, dead: Array) -> Array:
 	return out
 
 
-## The men whose slot the arcs bend, with every body at the block's centre.
+## The men whose slot the arcs bend, with every body at the block's centre. Each bend must point
+## out past the man's own flank: the side of the block's centre his plain slot stands on (a man
+## on the centre line may go either way).
 func _arced(u: Unit, square: bool) -> Array:
 	var n: int = u.soldiers
 	var saved: PackedVector2Array = u._sim_soldier_pos.duplicate()
@@ -120,36 +130,40 @@ func _arced(u: Unit, square: bool) -> Array:
 			_pairing(u, square))
 	u._sim_soldier_pos = saved
 	var out: Array = []
+	var inward: Array = []
 	for i in range(n):
-		if absf(arced_slots[i].x - plain[i].x) > ARC_EPS:
-			out.push_back(i)
+		var bend: float = arced_slots[i].x - plain[i].x
+		if absf(bend) <= ARC_EPS:
+			continue
+		out.push_back(i)
+		if absf(plain[i].x) > ARC_EPS and signf(bend) != signf(plain[i].x):
+			inward.push_back(i)
+	assert_eq(inward, [], "every arced man swings out round his own flank")
 	return out
 
 
-## The oracle against the geometry. `stood` is where each man stood before the re-square, indexed
-## as the live arrays are now. In these fixtures the walkers hold the front rank and the rear rank,
-## so a walker's slot is the block's whole depth, (ranks - 1) pitches, from where he stands. Any
-## other man's slot is where he stands, or a close-up step from it: at most one rank pitch and half
-## a file sideways, or a file pitch and half a rank. Half the depth span separates the two.
-func _assert_walkers_walk(u: Unit, square: bool, stood: PackedVector2Array, walkers: Array) -> void:
+## The oracle against the geometry. `stood` is where each of the first `count` men (every man,
+## by default) stood before the re-square, indexed as the live arrays are now. In these fixtures
+## the walkers hold the front rank and the rear rank, so a walker's slot is the block's whole
+## depth, (ranks - 1) pitches, from where he stood. Any other man's slot is where he stood, or a
+## close-up step from it: at most one rank pitch and half a file sideways, or a file pitch and
+## half a rank. Half the depth span separates the two.
+func _assert_walkers_walk(u: Unit, square: bool, stood: PackedVector2Array, walkers: Array,
+		count: int = -1) -> void:
 	var n: int = u.soldiers
 	var files: int = u.formation_files(n)
 	var depth: float = u.file_pitch_wu() if square else u.rank_pitch_wu()
 	var span: float = float(UnitFormation.ranks_for(n, files) - 1) * depth
 	var slots: PackedVector2Array = u.soldier_world_slots(n)
 	var far: Array = []
-	for i in range(n):
+	for i in range(n if count < 0 else count):
 		if stood[i].distance_to(slots[i]) > span * 0.5:
 			far.push_back(i)
 	assert_eq(far, walkers, "precondition: the oracle's walkers are the men whose slot is far off")
 
 
-func _stood(u: Unit, dead: Array) -> PackedVector2Array:
-	var out := PackedVector2Array()
-	for i in range(u._sim_soldier_pos.size()):
-		if not dead.has(i):
-			out.push_back(u._sim_soldier_pos[i])
-	return out
+func _stood(u: Unit) -> PackedVector2Array:
+	return u._sim_soldier_pos.duplicate()
 
 
 func _reap(u: Unit, dead: Array) -> void:
@@ -160,14 +174,14 @@ func _reap(u: Unit, dead: Array) -> void:
 
 ## A squared block holds a pairing dealt from where its men stood when it formed, not the
 ## identity, so a man's index does not say whether the reflection left him on his own cell.
-## Main read it by index and arced 7 men, 3 of them not walking, while missing a walker.
+## Main read it by index: it arced 7 men, 4 of them not walking, and missed walker 2.
 func test_a_square_re_square_arcs_exactly_its_walkers() -> void:
 	var u := _make(60, true)
 	assert_eq(u.formation_files(60), 8, "precondition: 60 men square onto 8 files")
 	var walkers: Array = _re_square(u, true)
 	assert_ne(u._sim_soldier_square_slot, UnitFormation.identity_assignment(60),
 		"precondition: the square's pairing is not the identity")
-	_assert_walkers_walk(u, true, _stood(u, []), walkers)
+	_assert_walkers_walk(u, true, _stood(u), walkers)
 	assert_eq(_arced(u, true), walkers, "the arcs bend exactly the walkers")
 
 
@@ -180,13 +194,15 @@ func test_a_square_casualty_during_the_hold_keeps_the_arcs_on_the_walkers() -> v
 	assert_eq(u.soldiers, 59, "precondition: the reap took the man")
 	assert_eq(u.formation_files(59), 8, "precondition: the square keeps its 8 files")
 	var left: Array = _survivors_of(walkers, [3])
-	_assert_walkers_walk(u, true, _stood(u, []), left)
+	_assert_walkers_walk(u, true, _stood(u), left)
 	assert_eq(_arced(u, true), left, "the arcs still bend exactly the walkers")
 
 
 ## A row-major casualty during the hold closes the pairing up after the reflection was composed.
 ## Read by the fixed cells of the smaller grid's reflection, the gate arced 11 men while 4 walked
-## (60 men), and 4 while 12 walked (61 men).
+## (60 men), and 4 while 12 walked (61 men). The 61-man block's rear rank holds 5 men, centred, so
+## its walkers also check that each swings out round his own flank, not the flank his file index
+## falls on in a full rank.
 func test_a_row_major_casualty_during_the_hold_keeps_the_arcs_on_the_walkers() -> void:
 	for count in [60, 61]:
 		var u := _make(count, false)
@@ -194,7 +210,7 @@ func test_a_row_major_casualty_during_the_hold_keeps_the_arcs_on_the_walkers() -
 		_reap(u, [3])
 		assert_eq(u.soldiers, count - 1, "precondition: the reap took the man")
 		var left: Array = _survivors_of(walkers, [3])
-		_assert_walkers_walk(u, false, _stood(u, []), left)
+		_assert_walkers_walk(u, false, _stood(u), left)
 		assert_eq(_arced(u, false), left,
 			"%d men, one lost in the hold: the arcs bend exactly the walkers" % count)
 
@@ -208,14 +224,18 @@ func test_a_regiment_path_casualty_during_the_hold_keeps_the_arcs_on_the_walkers
 	u.soldiers -= 3
 	u._sim_soldier_pos = u._sim_soldier_pos.slice(0, u.soldiers)
 	var left: Array = _survivors_of(walkers, tail)
+	_assert_walkers_walk(u, false, _stood(u), left)
 	assert_eq(_arced(u, false), left, "the arcs bend exactly the surviving walkers")
 
 
-## A gain during the hold (an absorb appends men at the tail): the newcomers take the tail cells
-## and walk to them from wherever they joined, not the block's depth, so they are not arced.
-func test_an_absorb_during_the_hold_does_not_arc_the_newcomers() -> void:
+## A gain during the hold (an absorb appends men at the tail): the pairing is extended at the
+## larger size, and the walkers are still the four men the reflection sent. The newcomers take
+## the tail cells and walk in from wherever they joined, not the block's depth. Read by the fixed
+## cells of the larger grid's reflection, main also arced old men 56 and 59, who hold their ground.
+func test_an_absorb_during_the_hold_keeps_the_arcs_on_the_walkers() -> void:
 	var u := _make(60, false)
 	var walkers: Array = _re_square(u, false)
+	var stood: PackedVector2Array = _stood(u)
 	var other: Unit = Unit.new()
 	other.max_soldiers = 6
 	add_child_autofree(other)
@@ -230,18 +250,26 @@ func test_an_absorb_during_the_hold_does_not_arc_the_newcomers() -> void:
 		SoldierBodies.step(u, 1.0 / 60.0)
 	assert_eq(u._sim_soldier_pos.size(), 66, "precondition: the body layer holds them")
 	assert_true(u._reform_holding(), "precondition: the reform hold is still on")
-	assert_eq(_arced(u, false), walkers, "the arcs bend the walkers and no newcomer")
+	_assert_walkers_walk(u, false, stood, walkers, 60)
+	assert_eq(_arced(u, false), walkers, "the arcs bend the walkers and nobody else")
 
 
-## A second hold-ground re-square composes the reflection again: the men it leaves on their own
-## cells walk back, so the walker set is read afresh, not carried over.
+## A second hold-ground re-square composes the reflection again, onto a closed-up pairing, and a
+## second casualty then falls during its hold. The walkers are the men the second reflection
+## sent, followed through that casualty: not the first reflection's walkers carried over, and not
+## the fixed cells of the smaller grid's reflection, which main read.
 func test_a_second_re_square_arcs_its_own_walkers() -> void:
 	var u := _make(61, false)
-	_re_square(u, false)
+	var first: Array = _re_square(u, false)
 	_reap(u, [3])
+	var carried: Array = _survivors_of(first, [3])
 	_stand_on_slots(u)
 	var walkers: Array = _re_square(u, false)
-	assert_eq(_arced(u, false), walkers, "the second re-square arcs its own walkers")
+	assert_ne(walkers, carried, "precondition: the second reflection sends other men")
+	_reap(u, [10])
+	var left: Array = _survivors_of(walkers, [10])
+	_assert_walkers_walk(u, false, _stood(u), left)
+	assert_eq(_arced(u, false), left, "the second re-square arcs its own walkers")
 
 
 ## The walker set rides the snapshot, so a restore mid re-square arcs the same men.
@@ -253,10 +281,7 @@ func test_the_walkers_survive_a_snapshot() -> void:
 	var restored := Unit.new()
 	add_child_autofree(restored)
 	restored.apply_snapshot_dict(u.to_snapshot_dict())
-	var leaf: Order = Order.new_about_face()
-	leaf.reform_timer = 1.0
-	restored.set_current_order(leaf)
-	assert_true(restored._reform_holding(), "precondition: the restored block holds")
+	_hold(restored)
 	assert_eq(_arced(restored, false), left, "the restored block arcs the same walkers")
 
 
@@ -270,6 +295,21 @@ func test_a_later_quarter_turn_re_square_drops_the_walkers() -> void:
 	u._formation_angle = PI * 0.5
 	assert_true(u.reform_ranks(true), "precondition: the quarter fold re-squares")
 	assert_true(u._reform_holding(), "precondition: the reform hold is still on")
+	assert_eq(_arced(u, true), [], "nobody is arced")
+
+
+## A rally re-squares a squared block by composing the reflection and then dealing its cells
+## again file by file from the slots the men held, so nobody is left walking the depth. A square
+## has no dealt flag to skip the arcs with, so the reflection's walkers must go with the deal.
+func test_a_square_rally_re_square_drops_the_walkers() -> void:
+	var u := _make(60, true)
+	u.facing = Vector2.UP
+	u._formation_angle = PI
+	_stand_on_slots(u)
+	var before: PackedInt32Array = _pairing(u, true)
+	u._rally_resquare()
+	assert_ne(_pairing(u, true), before, "precondition: the rally re-dealt the square")
+	_hold(u)
 	assert_eq(_arced(u, true), [], "nobody is arced")
 
 

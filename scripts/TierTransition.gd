@@ -139,7 +139,9 @@ static func demote(u: Unit) -> void:
 	# promote() rebuilds the bodies FROM the slots, so it re-pairs to identity there.
 	u._sim_soldier_square_slot = PackedInt32Array()
 	u._square_slot_files = -1
-	u._sim_soldier_reflect_walker = PackedByteArray()   # no bodies, so nobody is walking
+	# And the depth-reflection walker flags. Defensive: promote() builds the bodies on their
+	# slots, so no man is still walking the depth when the arcs could next read the flags.
+	u._sim_soldier_reflect_walker = PackedByteArray()
 	u._render_dirty = true   # the render swaps to the aggregate (formation-grid) marks
 
 

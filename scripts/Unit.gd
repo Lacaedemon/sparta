@@ -5080,6 +5080,9 @@ func set_formation(mode: int) -> void:
 		# A new stance re-deals every slot, so no man is still walking to the slot a
 		# hold-ground re-square gave him.
 		clear_couple_transit()
+		# The walkers a reflection recorded name cells of the layout being left. Defensive:
+		# leaving a square for the line finds no row pairing of the live count to arc over,
+		# and forming one re-pairs from the bodies, which clears them anyway.
 		_sim_soldier_reflect_walker = PackedByteArray()
 		# A deliberate reshape. The square slot pairing is taken from where the men
 		# stand at the moment the square forms (_ensure_square_slot_assignment), so a
@@ -6215,6 +6218,8 @@ func _ensure_square_slot_assignment(count: int, files: int, slots: PackedVector2
 		return
 	var live: PackedVector2Array = _slot_frame_positions(count)
 	# A re-pair hands every man a cell near where he stands, so nobody is left walking the depth.
+	# TODO(#1816): a regiment-path loss or an absorb during a hold-ground re-square also re-pairs
+	# here, so the arcs then follow the re-pair rather than the walkers the reflection sent.
 	_sim_soldier_reflect_walker = PackedByteArray()
 	if live.is_empty():
 		_sim_soldier_square_slot = _fallback_assignment(count, files)
@@ -6367,6 +6372,8 @@ func _ensure_row_slot_assignment(count: int, files: int, grid: PackedVector2Arra
 	_row_slot_files = files
 	_row_slot_dealt = true
 	_row_layout_files = files
+	# A deal leaves nobody walking the depth. Defensive: formation_slots already skips the arcs
+	# over a dealt pairing, and the next reflection records its own walkers.
 	_sim_soldier_reflect_walker = PackedByteArray()
 	return true
 
