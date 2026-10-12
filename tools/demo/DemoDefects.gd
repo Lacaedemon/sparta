@@ -820,8 +820,9 @@ const DERIVED_FIELDS: Array[String] = [
 ## Expectation fields derived offline from a FULL record (soldiers_full plus motion_ref), for
 ## claims about where each man is sent rather than where the unit is. Null when the record
 ## cannot supply the field (not one of these names, or a dump without soldiers_full), which
-## check_expectations reports as uncheckable. Each reads every man's body against his own
-## slot along the unit's lateral axis (its facing turned a quarter), from the unit's position:
+## check_expectations reports as uncheckable. Each measures along the unit's lateral axis (its
+## facing turned a quarter), from the unit's position. The first two read every man's body
+## against his own slot; the third reads every slot against the grid's own footprint:
 ##
 ## - slots_across_centreline: men whose slot lies across the centreline from them, each more
 ##   than half a file pitch off it -- the walk through the block a reshape must not send.
@@ -829,9 +830,13 @@ const DERIVED_FIELDS: Array[String] = [
 ##   block's own width to him (his own lateral position when he stands inside it), in world
 ##   units to 0.1. A man inside the block kept within a pitch of his place reads at most one
 ##   file pitch; one outside it is measured from the block's edge, which he has to reach anyway.
-## - slots_beyond_flanks: men whose slot lies sideways outside every body of the unit, more than
-##   half a file pitch beyond the farthest one on that side of the centreline -- the men a drill
-##   sends out round the block's flank rather than through it.
+## - slots_beyond_flanks: men whose slot lies more than half a file pitch outside the slot grid's
+##   own footprint (motion_ref.slot_grid_half_width, measured before any traverse arc bends a
+##   slot) -- the men a drill sends out round the block's flank rather than through it. It is
+##   measured against the grid, not the bodies: the men it counts are walking, so the outermost
+##   bodies would move with them (or with a straggler) and the count would change with how far
+##   they have got rather than with where they are sent. A dump without the half-width cannot
+##   supply it.
 ##
 ## Sampled the tick after a reshape, before the men have walked, they measure the deal itself.
 static func derived_field(u: Dictionary, field: String):
@@ -858,13 +863,10 @@ static func derived_field(u: Dictionary, field: String):
 	var width: float = 0.0
 	for i in range(n):
 		width = maxf(width, absf((Vector2(slots[i][0], slots[i][1]) - centre).dot(lateral)))
-	# The farthest body on each side of the centreline, for slots_beyond_flanks.
-	var body_left: float = 0.0
-	var body_right: float = 0.0
-	for i in range(n):
-		var a0: float = (Vector2(pos[i][0], pos[i][1]) - centre).dot(lateral)
-		body_left = minf(body_left, a0)
-		body_right = maxf(body_right, a0)
+	var grid_half = ref.get("slot_grid_half_width")
+	if field == "slots_beyond_flanks" and not (grid_half is float or grid_half is int):
+		return null
+	var reach: float = (float(grid_half) + half) if grid_half != null else 0.0
 	var crossed: int = 0
 	var beyond: int = 0
 	var excess: float = 0.0
@@ -873,7 +875,7 @@ static func derived_field(u: Dictionary, field: String):
 		var b: float = (Vector2(slots[i][0], slots[i][1]) - centre).dot(lateral)
 		if a * b < 0.0 and absf(a) > half and absf(b) > half:
 			crossed += 1
-		if b < body_left - half or b > body_right + half:
+		if absf(b) > reach:
 			beyond += 1
 		excess = maxf(excess, absf(b - clampf(a, -width, width)))
 	if field == "slots_across_centreline":

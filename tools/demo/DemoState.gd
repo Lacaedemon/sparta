@@ -536,7 +536,22 @@ static func motion_ref(u: Node) -> Dictionary:
 		"back_speed_fraction": round_to(u.back_speed_fraction, 2),
 		"pivot_radius": round_to(u._pivot_radius(), 2),
 		"turn_rate": round_to(u.TURN_RATE, 4),
+		"slot_grid_half_width": round_to(slot_grid_half_width(u), 2),
 	}
+
+
+## How far the unit's slot grid reaches sideways of its position, before any traverse arc bends
+## a slot: half the widest rank's span, (files - 1) / 2 file pitches over the live grid's file
+## count (or its headcount, when that is smaller), plus the size of any frontage anchor shift,
+## which moves a line or file-major grid sideways (a squared grid takes none). The shift counts
+## on both sides, so the reach is never short on the side the grid moved to. The footprint
+## DemoDefects' slots_beyond_flanks measures slots against.
+static func slot_grid_half_width(u: Node) -> float:
+	var widest: int = mini(u.formation_files(u.soldiers), u.soldiers)
+	var half: float = float(maxi(0, widest - 1)) * 0.5 * u.file_pitch_wu()
+	if not u.in_square():
+		half += absf(u.frontage_anchor_offset)
+	return half
 
 
 ## A PackedFloat32Array -> a plain Array of rounded floats, for JSON.

@@ -248,6 +248,37 @@ func test_motion_ref_reports_both_grid_pitches_and_their_min() -> void:
 			"the threshold base is the tighter axis")
 
 
+func test_motion_ref_reports_the_slot_grid_half_width() -> void:
+	# 60 men on 8 files: the widest rank spans 7 pitches, so the grid reaches 3.5 either side.
+	var u: Unit = Unit.new()
+	u.max_soldiers = 60
+	add_child_autofree(u)
+	u.frontage_override = 8
+	u.seed_sim_soldiers()
+	var p: float = u.file_pitch_wu()
+	assert_almost_eq(float(DemoState.motion_ref(u)["slot_grid_half_width"]), 3.5 * p, 0.01,
+			"half the widest rank's span")
+	# An anchor shift moves the line sideways; it counts on both sides.
+	u.frontage_anchor_offset = 2.0 * p
+	assert_almost_eq(float(DemoState.motion_ref(u)["slot_grid_half_width"]), 5.5 * p, 0.01,
+			"plus the anchor shift")
+	# A square takes no anchor shift, and squares 60 men onto 8 files too.
+	u.set_formation(Unit.FORMATION_SQUARE)
+	assert_almost_eq(float(DemoState.motion_ref(u)["slot_grid_half_width"]),
+			3.5 * u.file_pitch_wu(), 0.01, "a square's grid takes no anchor shift")
+	# Fewer men left than files (the frontage is read off the regiment's full strength): the
+	# one rank holds them all.
+	var few: Unit = Unit.new()
+	few.max_soldiers = 60
+	add_child_autofree(few)
+	few.frontage_override = 8
+	few.seed_sim_soldiers()
+	few.soldiers = 3
+	assert_eq(few.formation_files(3), 8, "precondition: the grid keeps its 8 files")
+	assert_almost_eq(float(DemoState.motion_ref(few)["slot_grid_half_width"]),
+			1.0 * few.file_pitch_wu(), 0.01, "a lone short rank spans its own men")
+
+
 func test_unit_record_dumps_pitches_at_top_level() -> void:
 	var u: Unit = Unit.new()
 	add_child_autofree(u)

@@ -954,19 +954,45 @@ func test_derived_slot_excess_measures_an_outside_man_from_the_block_edge() -> v
 			"the outside man reaches the near edge (0 excess); the inside man steps 10 wu")
 
 
-func test_derived_slots_beyond_flanks_counts_men_sent_round_the_outside() -> void:
-	# Bodies span x -15 to 15 (pitch 10, so half a pitch is 5). The first man's slot is out at
-	# -25, 10 wu beyond the left-hand body: counted. The second's is at 19, only 4 wu beyond the
-	# right-hand body: not counted. The third's is inside, and the fourth's out at 30: counted.
-	var u: Dictionary = _derived_record(
+## _derived_record with the slot grid's footprint: it reaches `half_width` either side.
+func _grid_record(pos: Array, slots: Array, half_width: float) -> Dictionary:
+	var u: Dictionary = _derived_record(pos, slots)
+	u["motion_ref"]["slot_grid_half_width"] = half_width
+	return u
+
+
+func test_derived_slots_beyond_flanks_counts_slots_outside_the_grid() -> void:
+	# A grid reaching 15 wu either side (pitch 10, so half a pitch is 5: the bound is 20 wu).
+	# The slots at -25 and 30 lie outside it and count; 19 lies 4 wu outside, within half a
+	# pitch, and 5 lies inside, so neither does.
+	var u: Dictionary = _grid_record(
 			[[-15.0, 0.0], [-5.0, 0.0], [5.0, 0.0], [15.0, 0.0]],
-			[[-25.0, 0.0], [19.0, 0.0], [5.0, 10.0], [30.0, 0.0]])
+			[[-25.0, 0.0], [19.0, 0.0], [5.0, 10.0], [30.0, 0.0]], 15.0)
 	assert_eq(DemoDefects.derived_field(u, "slots_beyond_flanks"), 2,
-			"two slots lie more than half a pitch outside the bodies")
-	var kept: Dictionary = _derived_record(
-			[[-15.0, 0.0], [15.0, 0.0]], [[15.0, 0.0], [-15.0, 0.0]])
-	assert_eq(DemoDefects.derived_field(kept, "slots_beyond_flanks"), 0,
+			"two slots lie more than half a pitch outside the grid")
+	var crossed: Dictionary = _grid_record(
+			[[-15.0, 0.0], [15.0, 0.0]], [[15.0, 0.0], [-15.0, 0.0]], 15.0)
+	assert_eq(DemoDefects.derived_field(crossed, "slots_beyond_flanks"), 0,
 			"men sent across the block, not round it, are not counted")
+
+
+func test_derived_slots_beyond_flanks_reads_the_grid_not_the_bodies() -> void:
+	# The two walkers have reached their slots out at -40 and 40. Measured against the
+	# outermost bodies they would no longer stand outside anyone; against the grid they do.
+	var arrived: Dictionary = _grid_record(
+			[[-40.0, 0.0], [-5.0, 0.0], [5.0, 0.0], [40.0, 0.0]],
+			[[-40.0, 0.0], [-5.0, 0.0], [5.0, 0.0], [40.0, 0.0]], 15.0)
+	assert_eq(DemoDefects.derived_field(arrived, "slots_beyond_flanks"), 2,
+			"walkers who have caught up with their slots still count")
+	# A straggler far out to the side widens the bodies' span, not the grid's.
+	var straggler: Dictionary = _grid_record(
+			[[-15.0, 0.0], [90.0, 0.0], [5.0, 0.0], [15.0, 0.0]],
+			[[-15.0, 0.0], [30.0, 0.0], [5.0, 0.0], [15.0, 0.0]], 15.0)
+	assert_eq(DemoDefects.derived_field(straggler, "slots_beyond_flanks"), 1,
+			"a straggler's body does not hide a slot outside the grid")
+	assert_null(DemoDefects.derived_field(
+			_derived_record([[0.0, 0.0]], [[30.0, 0.0]]), "slots_beyond_flanks"),
+			"a dump without the grid's footprint cannot supply the field")
 
 
 func test_derived_slot_fields_need_a_full_record() -> void:
