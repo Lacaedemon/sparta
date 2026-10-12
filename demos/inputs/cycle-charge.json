@@ -122,6 +122,12 @@
         3
       ],
       "reason": "Charging cavalry paths cross during the cycle-charge breakthrough, disengagement wheel, and realignment: in the turnaround mounts about 150 wu off their slots swap sides across each other (#1804)."
+    },
+    "shape_residual": {
+      "uids": [
+        4
+      ],
+      "reason": "uid4 (the player's 80-horse caracole cavalry) keeps a growing shape residual after its charge contact, tracked in #1820. The contact snaps that scatter it are the same on main 9d39a353 and on #1806's branch, and the residual rises identically through tick 1200 (24.6 wu on main, 24.9 on the branch, 4-tick samples). On main the troop re-contacts by about tick 1176-1200, so its later samples are masked as contact; it reaches 65.1 wu at tick 1296, and 2-tick scans fail the metric there too. On the branch a hasty march's grid lag keeps its men nearer their slots after the contact, the anchor takes a different line and the troop does not re-contact, so the clip's own ticks judge it: 104.3 wu against the 30 wu threshold (66.5 at tick 1260, 100.3 at 1296)."
     }
   }
 }
