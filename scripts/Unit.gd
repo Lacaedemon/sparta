@@ -1147,13 +1147,15 @@ var _under_fire_can_reply: bool = false
 # physically resist an enemy's bodies even while "disengaging" (a plain move order with no
 # attack target: see the disengage comment below) or otherwise not actively fighting --
 # contact is a physical fact, not a gameplay choice; see docs/individual-collision-design.md.
-# A router that has left contact in its current rout comes back into it only nearer, at
-# router_contact_reentry_frac of that range (_refresh_enemy_contact).
 var _in_enemy_contact: bool = false
-# Whether this router has left enemy contact since it routed: set on the routing tick
-# _in_enemy_contact falls, cleared by _rout(). While it is set and the router is out of
-# contact, _refresh_enemy_contact brings it back into contact only within
-# router_contact_reentry_frac of the range.
+# Whether couple() anchors this router as one in enemy contact (position_anchor_indices).
+# Recomputed with _in_enemy_contact by _refresh_enemy_contact, and the same while the router
+# has not left contact in its current rout; after that it comes back only within
+# router_contact_reentry_frac of the range, or to an enemy fighting the router. Only the
+# anchor reads it: every physical-contact reader keeps _in_enemy_contact.
+var _router_anchor_contact: bool = false
+# Whether this router has left anchor contact since it routed: set on the routing tick
+# _router_anchor_contact falls, cleared by _rout().
 var _router_left_contact: bool = false
 # Whether this router's front ranks are still the ones in the melee it broke from: armed
 # once, when it routs (_arm_router_front_in_melee), and cleared for the rest of that rout
@@ -1242,14 +1244,14 @@ var traverse_arc_clearance: float = UnitFormation.TRAVERSE_ARC_CLEARANCE
 const ROUTER_FRONT_ARC: float = PI / 3.0
 var router_front_arc: float = ROUTER_FRONT_ARC
 # The share of the melee contact range inside which a router that has already left enemy
-# contact in its current rout comes back into it (_refresh_enemy_contact). It still leaves
-# at the full range. Without the gap a router at the edge of contact range flips in and out
-# of contact every tick or two, and its couple() anchor flips with it between its front ranks
+# contact in its current rout anchors as one in contact again (_router_anchor_contact). It
+# still leaves at the full range, and its physical contact (_in_enemy_contact) keeps the full
+# range throughout. Without the gap a router at the edge of contact range flips in and out of
+# contact every tick or two, and its couple() anchor flips with it between its front ranks
 # and its whole block. In the stagings measured such a router came back into contact as far
 # out as 0.956 of the range, so 0.9 asks for over twice that depth. An enemy fighting the
-# router keeps the full range (_refresh_enemy_contact). A caller-configurable
-# parameter defaulting to ROUTER_CONTACT_REENTRY_FRAC, with rout_time's set-before-_ready
-# contract.
+# router keeps the full range. A caller-configurable parameter defaulting to
+# ROUTER_CONTACT_REENTRY_FRAC, with rout_time's set-before-_ready contract.
 const ROUTER_CONTACT_REENTRY_FRAC: float = 0.9
 var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
 # How long a non-fighting unit holds position to reform its ranks after a fresh move
@@ -2890,15 +2892,17 @@ func fresh_pick_allowed(candidate: Unit) -> bool:
 ## physical fact, so a router still pressed against an enemy keeps colliding with it, and one
 ## that has got clear stops.
 ##
-## A router that has already left contact in its current rout comes back into it only within
-## router_contact_reentry_frac of the range, so one at the edge of the range leaves contact
-## once rather than flipping in and out of it every tick or two. An enemy that is fighting the
-## router (_fighting_me) is measured at the full range all the same: a router held in a melee
-## is in contact wherever the edge of the range happens to fall.
+## For a router it also recomputes _router_anchor_contact, which couple()'s anchor reads in
+## place of _in_enemy_contact. Once the router has left anchor contact in its current rout it
+## comes back only within router_contact_reentry_frac of the range, so a router at the edge
+## of the range switches anchors once rather than every tick or two. An enemy that is fighting
+## the router (_fighting_me) counts at the full range all the same: a router held in a melee
+## anchors as one in contact wherever the edge of the range happens to fall.
 func _refresh_enemy_contact() -> void:
-	var was_in_contact: bool = _in_enemy_contact
 	var routing: bool = state == State.ROUTING
-	var reentering: bool = routing and _router_left_contact and not was_in_contact
+	var was_anchor_contact: bool = _router_anchor_contact
+	var reentering: bool = routing and _router_left_contact and not was_anchor_contact
+	var anchor_contact: bool = false
 	_in_enemy_contact = false
 	var contact_candidates: Array = get_tree().get_nodes_in_group("units")
 	contact_candidates.append_array(get_tree().get_nodes_in_group("routers"))
@@ -2909,14 +2913,23 @@ func _refresh_enemy_contact() -> void:
 		if u is Unit and u.team != team and u.state != State.DEAD:
 			contact_checks += 1
 			var c_dist: float = maxf(attack_range, u.attack_range) + RADIUS + u.RADIUS
+			var dist_sq: float = position.distance_squared_to(u.position)
+			if dist_sq > c_dist * c_dist:
+				continue
+			_in_enemy_contact = true
+			if not routing:
+				break
+			var a_dist: float = c_dist
 			if reentering and not _fighting_me(u):
-				c_dist *= router_contact_reentry_frac
-			if position.distance_squared_to(u.position) <= c_dist * c_dist:
-				_in_enemy_contact = true
+				a_dist *= router_contact_reentry_frac
+			if dist_sq <= a_dist * a_dist:
+				anchor_contact = true
 				break
 	SimOps.add(SimOps.REGIMENT_CHECK, contact_checks)
-	if routing and was_in_contact and not _in_enemy_contact:
-		_router_left_contact = true
+	if routing:
+		_router_anchor_contact = anchor_contact
+		if was_anchor_contact and not anchor_contact:
+			_router_left_contact = true
 
 
 ## Whether `enemy` is fighting this unit: FIGHTING, with this unit as its target.
@@ -8717,8 +8730,11 @@ func near_front_soldier_indices(count: int) -> PackedInt32Array:
 ## are then its flight-side ranks, the ones farthest from the pursuer.
 ## TODO(#1825): a rout keeps the grid's fold, so after a snapped flight turn the
 ## front ranks can be the trailing ranks, not the flight-side ones.
+## A router reads its anchor contact (_router_anchor_contact) here in place of
+## _in_enemy_contact, so one at the edge of contact range switches anchors once.
 func position_anchor_indices(count: int) -> PackedInt32Array:
-	if not (is_engaged() or _in_enemy_contact) or router_front_in_melee():
+	var in_contact: bool = _router_anchor_contact if state == State.ROUTING else _in_enemy_contact
+	if not (is_engaged() or in_contact) or router_front_in_melee():
 		return PackedInt32Array()
 	if in_square() or _position_anchor_unstable():
 		return contact_soldier_indices(count)
@@ -9570,6 +9586,7 @@ func _rout() -> void:
 	_bake_formation_mirror()
 	_arm_router_front_in_melee()
 	_router_left_contact = false
+	_router_anchor_contact = _in_enemy_contact
 	_drill_turn_fold = 0.0
 	_rally_resquare_pending = false
 	_rally_fold_unsquared = false
@@ -10991,7 +11008,7 @@ func to_snapshot_dict() -> Dictionary:
 		"sim_soldier_reflect_walker": _sim_soldier_reflect_walker.duplicate(),
 		"under_fire": _under_fire, "under_fire_can_reply": _under_fire_can_reply,
 		"in_enemy_contact": _in_enemy_contact, "router_front_in_melee": _router_front_in_melee,
-		"router_left_contact": _router_left_contact,
+		"router_left_contact": _router_left_contact, "router_anchor_contact": _router_anchor_contact,
 		"attack_cd": _attack_cd, "pin_down_exposure_cd": _pin_down_exposure_cd,
 		"rout_timer": _rout_timer, "shattered": _shattered,
 		"far_tier_casualty_carry": _far_tier_casualty_carry,
@@ -11240,6 +11257,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_in_enemy_contact = bool(d["in_enemy_contact"])
 	_router_front_in_melee = bool(d.get("router_front_in_melee", false))
 	_router_left_contact = bool(d.get("router_left_contact", false))
+	_router_anchor_contact = bool(d.get("router_anchor_contact", false))
 	_attack_cd = float(d["attack_cd"])
 	_pin_down_exposure_cd = float(d["pin_down_exposure_cd"])
 	_rout_timer = float(d["rout_timer"])

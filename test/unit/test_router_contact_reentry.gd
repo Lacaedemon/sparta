@@ -1,26 +1,24 @@
 extends GutTest
-## A router leaves enemy contact at the full melee contact range, as any unit does, but once it
-## has left contact in its current rout it comes back into it only within
-## router_contact_reentry_frac of that range (Unit._refresh_enemy_contact). Without that gap a
-## router at the edge of the range flipped in and out of contact every tick or two, and its
-## couple() anchor flipped with it between its front ranks and its whole block.
+## A router's couple() anchor reads its anchor contact (Unit._router_anchor_contact), not its
+## physical contact flag. The two agree until the router first leaves contact in its rout;
+## after that it anchors as one in contact again only within router_contact_reentry_frac of the
+## melee contact range, or to an enemy fighting it. Without that gap a router at the edge of
+## the range switched anchors every tick or two between its front ranks and its whole block.
+## Its physical contact (_in_enemy_contact, which gates body contact and separation) keeps the
+## full range throughout.
 
 # A 16-mount Cavalry squadron at morale 0.5, charged from the east by a 40-man Infantry block,
 # routs at tick 293 and outruns the block at the edge of contact range, its front not in the
-# melee.
+# melee. Without the gap it first leaves contact 141 ticks after the rout and switches anchors
+# 7 times by 148 ticks after it.
 const EDGE_SEED := 12345
 const EDGE_ROUTER := {"team": 0, "type": "Cavalry", "x": 1260, "y": 870, "count": 16, "morale": 0.5}
 const EDGE_PURSUER := {"team": 1, "type": "Infantry", "x": 1460, "y": 870, "count": 40, "frontage": 10,
 		"facing": [-1, 0]}
 const EDGE_ROUT_BY_TICK := 400
-# Ticks after the rout that the edge staging is watched for: contact ends 148 ticks after the
-# rout without the re-entry gap and 140 with it, so the watch runs well past both.
+# Ticks after the rout that the edge staging is watched for: well past the last tick of
+# physical contact on either tree.
 const EDGE_WATCH_TICKS := 300
-# The last tick, counted from the rout, on which the router may still be in contact. Without
-# the re-entry gap it first leaves contact 141 ticks after the rout and is last in contact
-# 148 ticks after it, after switching anchors 7 times. The gap must not keep it in contact any
-# longer than that.
-const EDGE_CONTACT_ENDS_BY := 148
 # A 16-mount squadron routing north with an enemy squadron behind it.
 const GAP_START := Vector2(700.0, 1300.0)
 
@@ -49,7 +47,11 @@ func _start(scenario: Array, seed_value: int, all_control: bool = false) -> Dict
 	return by_uid
 
 
-func test_a_router_at_the_edge_of_contact_leaves_it_once() -> void:
+func _anchored(router: Unit) -> bool:
+	return not router.position_anchor_indices(router._sim_soldier_pos.size()).is_empty()
+
+
+func test_a_router_at_the_edge_of_contact_switches_anchor_once() -> void:
 	var units: Dictionary = await _start([EDGE_ROUTER, EDGE_PURSUER], EDGE_SEED)
 	var router: Unit = units.get(0)
 	assert_not_null(router, "setup: the squadron deployed")
@@ -65,45 +67,46 @@ func test_a_router_at_the_edge_of_contact_leaves_it_once() -> void:
 	var rout_tick: int = _battle.current_tick()
 	var anchored_was: bool = true
 	var anchor_switches: int = 0
-	var contact_was: bool = router._in_enemy_contact
-	var contact_switches: int = 0
 	var last_contact: int = -1
+	var left_contact: bool = false
 	var front_in_melee: bool = false
-	var unanchored_in_contact: int = 0
+	var unanchored_before_leaving: int = 0
 	while _battle.current_tick() < rout_tick + EDGE_WATCH_TICKS and safety > 0:
 		safety -= 1
 		await get_tree().physics_frame
 		if not is_instance_valid(router) or router.state != Unit.State.ROUTING:
 			break
-		var anchored: bool = not router.position_anchor_indices(router._sim_soldier_pos.size()).is_empty()
+		var anchored: bool = _anchored(router)
 		if anchored != anchored_was:
 			anchor_switches += 1
 		anchored_was = anchored
-		if router._in_enemy_contact != contact_was:
-			contact_switches += 1
-		contact_was = router._in_enemy_contact
 		front_in_melee = front_in_melee or router.router_front_in_melee()
 		if router._in_enemy_contact:
 			last_contact = _battle.current_tick() - rout_tick
-			if not anchored:
-				unanchored_in_contact += 1
+			if not left_contact and not anchored:
+				unanchored_before_leaving += 1
+		else:
+			left_contact = true
 	assert_true(is_instance_valid(router) and router.state == Unit.State.ROUTING,
 			"setup: still routing at the end of the watch")
 	assert_false(front_in_melee, "setup: its front is not in the melee")
 	assert_gt(last_contact, 0, "setup: the router is in contact after the rout")
 	assert_lt(last_contact, EDGE_WATCH_TICKS - 60, "setup: and leaves it well inside the watch")
-	assert_eq(contact_switches, 1, "it leaves contact once (got %d switches)" % contact_switches)
+	assert_eq(unanchored_before_leaving, 0,
+			"it anchors on its front ranks on every tick in contact until it first leaves")
 	assert_eq(anchor_switches, 1,
-			"so it switches to its whole-block anchor once (got %d switches)" % anchor_switches)
-	assert_eq(unanchored_in_contact, 0, "it anchors on its front ranks on every tick in contact")
-	assert_lte(last_contact, EDGE_CONTACT_ENDS_BY,
-			"and leaves contact no later than without the gap (got %d ticks after the rout)" % last_contact)
+			"then switches to its whole-block anchor once (got %d switches)" % anchor_switches)
 
 
-## The router's re-entry share and its left-contact mark, read and written by name so this file
-## still loads on a tree without them (where the edge test above fails for its stated reason).
+## The router's re-entry share, its anchor contact and its left-contact mark, read and written
+## by name so this file still loads on a tree without them (where the edge test above fails
+## for its stated reason).
 func _frac(router: Unit) -> float:
 	return float(router.get("router_contact_reentry_frac"))
+
+
+func _anchor_contact(router: Unit) -> bool:
+	return bool(router.get("_router_anchor_contact"))
 
 
 func _left(router: Unit) -> bool:
@@ -136,35 +139,55 @@ func _router_and_enemy() -> Array:
 	return [router, enemy]
 
 
-## Place `enemy` `share` of the melee contact range behind `router` and refresh the router's
-## contact flag.
+## Place `enemy` `share` of the melee contact range behind `router`, refresh the router's
+## contact, and return its anchor contact.
 func _place(router: Unit, enemy: Unit, share: float) -> bool:
 	var reach: float = maxf(router.attack_range, enemy.attack_range) + router.RADIUS + enemy.RADIUS
 	enemy.position = router.position + Vector2.DOWN * reach * share
 	router._refresh_enemy_contact()
-	return router._in_enemy_contact
+	return _anchor_contact(router)
 
 
-func test_a_router_comes_back_into_contact_only_nearer_once_it_has_left() -> void:
+func test_a_router_anchors_in_contact_again_only_nearer_once_it_has_left() -> void:
 	var pair: Array = await _router_and_enemy()
 	if pair.is_empty():
 		return
 	var router: Unit = pair[0]
 	var enemy: Unit = pair[1]
 	var between: float = (1.0 + _frac(router)) * 0.5
-	assert_true(_place(router, enemy, between), "a fresh router meets the enemy at the full range")
-	assert_false(_place(router, enemy, 1.01), "and leaves contact just past it")
-	assert_true(_left(router), "which marks it as having left contact")
+	assert_true(_place(router, enemy, between), "a fresh router anchors in contact at the full range")
+	assert_true(_anchored(router), "on its front ranks")
+	assert_false(_place(router, enemy, 1.01), "and leaves anchor contact just past it")
+	assert_true(_left(router), "which marks it as having left")
 	assert_false(_place(router, enemy, between),
-			"then the enemy back inside the range but outside the re-entry share is not contact")
+			"then an enemy back inside the range but outside the re-entry share is not anchor contact")
+	assert_false(_anchored(router), "so it stays on its whole-block anchor")
 	assert_true(_place(router, enemy, _frac(router) * 0.99), "while one inside the re-entry share is")
 	assert_true(_place(router, enemy, between), "and it leaves again only at the full range")
 	assert_false(_place(router, enemy, 1.01), "as before")
 
 
-func test_a_router_held_by_an_enemy_fighting_it_stays_in_contact_at_the_full_range() -> void:
-	# A router caught again and held in a melee near the edge of the range is in contact: the
-	# re-entry share is only for an enemy hovering at the edge without fighting it.
+func test_a_router_outside_its_anchor_contact_is_still_in_physical_contact() -> void:
+	# The gap is the anchor's alone: inside the full range the router's bodies still meet the
+	# enemy's, whichever anchor couple() reads.
+	var pair: Array = await _router_and_enemy()
+	if pair.is_empty():
+		return
+	var router: Unit = pair[0]
+	var enemy: Unit = pair[1]
+	var between: float = (1.0 + _frac(router)) * 0.5
+	_place(router, enemy, 0.5)
+	_place(router, enemy, 1.01)
+	assert_false(_place(router, enemy, between), "setup: outside its anchor contact")
+	assert_true(router._in_enemy_contact, "it is in physical contact at the full range")
+	var n: int = router._sim_soldier_pos.size()
+	assert_false(router.contact_soldier_indices(n).is_empty(), "so its bodies are in the contact tier")
+	assert_false(_anchored(router), "while couple() anchors its whole block")
+
+
+func test_a_router_held_by_an_enemy_fighting_it_anchors_in_contact_at_the_full_range() -> void:
+	# A router caught again and held in a melee near the edge of the range anchors as one in
+	# contact: the re-entry share is only for an enemy hovering at the edge without fighting it.
 	var pair: Array = await _router_and_enemy()
 	if pair.is_empty():
 		return
@@ -176,7 +199,7 @@ func test_a_router_held_by_an_enemy_fighting_it_stays_in_contact_at_the_full_ran
 	enemy.state = Unit.State.FIGHTING
 	enemy.target_enemy = router
 	assert_true(_place(router, enemy, between),
-			"an enemy fighting it inside the full range puts it in contact")
+			"an enemy fighting it inside the full range puts it in anchor contact")
 	assert_false(_place(router, enemy, 1.01), "setup: it leaves contact again")
 	enemy.state = Unit.State.MOVING
 	assert_false(_place(router, enemy, between),
@@ -201,7 +224,7 @@ func test_the_reentry_share_is_caller_configurable() -> void:
 	assert_true(_place(router, enemy, 0.99), "a share of 1 lets it straight back in at the full range")
 
 
-func test_only_a_router_uses_the_reentry_share_and_a_fresh_rout_clears_it() -> void:
+func test_only_a_router_uses_its_anchor_contact_and_a_fresh_rout_resets_it() -> void:
 	var pair: Array = await _router_and_enemy()
 	if pair.is_empty():
 		return
@@ -212,23 +235,27 @@ func test_only_a_router_uses_the_reentry_share_and_a_fresh_rout_clears_it() -> v
 	_place(router, enemy, 1.01)
 	assert_true(_left(router), "setup: it has left contact")
 	router.state = Unit.State.IDLE
-	assert_true(_place(router, enemy, between), "out of the rout, contact is the full range again")
-	assert_false(_place(router, enemy, 1.01), "setup: out of contact")
+	_place(router, enemy, between)
+	assert_true(router._in_enemy_contact, "setup: an idle unit in contact")
+	assert_true(_anchored(router), "out of the rout, the anchor reads physical contact again")
+	_place(router, enemy, 1.01)
 	assert_true(_left(router), "and an idle unit leaving contact leaves the mark alone")
 	router.set("_router_left_contact", false)
-	assert_true(_place(router, enemy, 0.5), "setup: an idle unit back in contact")
+	_place(router, enemy, 0.5)
 	_place(router, enemy, 1.01)
 	assert_false(_left(router), "nor does an idle unit leaving contact set it")
 	router.set("_router_left_contact", true)
+	_place(router, enemy, between)
 	router._rout()
 	assert_eq(router.state, Unit.State.ROUTING, "setup: it routs again")
 	assert_false(_left(router), "a fresh rout clears the mark")
-	assert_true(_place(router, enemy, between), "so it meets the enemy at the full range again")
+	assert_true(_anchor_contact(router), "and starts its anchor contact from its physical contact")
+	assert_true(_place(router, enemy, between), "so it anchors in contact at the full range again")
 
 
 func test_a_router_with_its_front_in_the_melee_releases_it_at_the_full_range() -> void:
-	# The latch that anchors such a router on its whole block clears when it leaves contact,
-	# which is still at the full range, and stays clear when it comes back into contact.
+	# The latch that anchors such a router on its whole block reads physical contact, so it
+	# clears where it always did and stays clear when the router comes back into contact.
 	var pair: Array = await _router_and_enemy()
 	if pair.is_empty():
 		return
@@ -244,7 +271,7 @@ func test_a_router_with_its_front_in_the_melee_releases_it_at_the_full_range() -
 	_place(router, enemy, 1.01)
 	router._update_router_front_in_melee()
 	assert_false(router.router_front_in_melee(), "cleared once it leaves the full range")
-	_place(router, enemy, _frac(router) * 0.5)
+	_place(router, enemy, between)
 	router._update_router_front_in_melee()
-	assert_true(router._in_enemy_contact, "setup: back in contact")
+	assert_true(router._in_enemy_contact, "setup: back in physical contact")
 	assert_false(router.router_front_in_melee(), "and not re-armed by contact coming back")
