@@ -748,6 +748,17 @@ strict digest, a clip it calls `SAME` is genuinely unchanged and skips the expen
 -- each reported with its exact first divergent tick and tier. `UNKNOWN` (a tree lacking a stream,
 e.g. one predating the hashing) falls back to the full `jq` compare.
 
+### Judging a melee change: perturbed runs
+
+A clip's router and casualty outcomes are one draw from a chaotic fight.
+A 0.0001 rad facing nudge flips them, so a hash or defect delta that shows a router breaking later on one clip is not, by itself, evidence of a regression.
+For a change to melee dynamics, run `tools/ci/melee-outcome-delta.sh <base-tree> <head-tree> <out-dir>`.
+It plays every melee clip on K seeds per side and flags only the shifts in break, contact-break, travel, contact and headcount metrics that are both significant and large.
+Then paste its `melee-delta.md` into the PR.
+The seed comes from `SPARTA_DEMO_SEED_RUN`, which either demo scene accepts.
+Leave it unset for a recording: the clip then plays its own seed.
+See `tools/README.md`, "Perturbed melee-outcome delta", for the settings and the cost.
+
 ### Reproducing a sweep verdict
 
 The weekly absolute sweep (`.github/workflows/website-demo-defect-sweep.yml`,

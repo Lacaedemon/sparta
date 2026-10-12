@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Developer tooling only: a statistical check (tools/ci/melee-outcome-delta.sh) that compares melee outcomes across perturbed seeds. No clip plays differently: SPARTA_DEMO_SEED_RUN is unset in every recording, and the catalog hash compare against main reads every clip SAME."
+}
