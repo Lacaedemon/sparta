@@ -100,6 +100,16 @@ func test_a_router_at_the_edge_of_contact_leaves_it_once() -> void:
 			"and leaves contact no later than without the gap (got %d ticks after the rout)" % last_contact)
 
 
+## The router's re-entry share and its left-contact mark, read and written by name so this file
+## still loads on a tree without them (where the edge test above fails for its stated reason).
+func _frac(router: Unit) -> float:
+	return float(router.get("router_contact_reentry_frac"))
+
+
+func _left(router: Unit) -> bool:
+	return bool(router.get("_router_left_contact"))
+
+
 ## Rout a squadron with an enemy squadron behind it and clear its engaged latch. Returns
 ## [router, enemy], or an empty array when the staging failed.
 func _router_and_enemy() -> Array:
@@ -113,6 +123,9 @@ func _router_and_enemy() -> Array:
 	assert_not_null(router, "setup: the squadron deployed")
 	assert_not_null(enemy, "setup: the enemy deployed")
 	if router == null or enemy == null:
+		return []
+	assert_not_null(router.get("router_contact_reentry_frac"), "the router has a re-entry share")
+	if router.get("router_contact_reentry_frac") == null:
 		return []
 	router.rally_morale_threshold = 1000.0
 	router.rout_time = 1000.0
@@ -138,16 +151,39 @@ func test_a_router_comes_back_into_contact_only_nearer_once_it_has_left() -> voi
 		return
 	var router: Unit = pair[0]
 	var enemy: Unit = pair[1]
-	var between: float = (1.0 + router.router_contact_reentry_frac) * 0.5
+	var between: float = (1.0 + _frac(router)) * 0.5
 	assert_true(_place(router, enemy, between), "a fresh router meets the enemy at the full range")
 	assert_false(_place(router, enemy, 1.01), "and leaves contact just past it")
-	assert_true(router._router_left_contact, "which marks it as having left contact")
+	assert_true(_left(router), "which marks it as having left contact")
 	assert_false(_place(router, enemy, between),
 			"then the enemy back inside the range but outside the re-entry share is not contact")
-	assert_true(_place(router, enemy, router.router_contact_reentry_frac * 0.99),
-			"while one inside the re-entry share is")
+	assert_true(_place(router, enemy, _frac(router) * 0.99), "while one inside the re-entry share is")
 	assert_true(_place(router, enemy, between), "and it leaves again only at the full range")
 	assert_false(_place(router, enemy, 1.01), "as before")
+
+
+func test_a_router_held_by_an_enemy_fighting_it_stays_in_contact_at_the_full_range() -> void:
+	# A router caught again and held in a melee near the edge of the range is in contact: the
+	# re-entry share is only for an enemy hovering at the edge without fighting it.
+	var pair: Array = await _router_and_enemy()
+	if pair.is_empty():
+		return
+	var router: Unit = pair[0]
+	var enemy: Unit = pair[1]
+	var between: float = (1.0 + _frac(router)) * 0.5
+	_place(router, enemy, 0.5)
+	assert_false(_place(router, enemy, 1.01), "setup: it leaves contact")
+	enemy.state = Unit.State.FIGHTING
+	enemy.target_enemy = router
+	assert_true(_place(router, enemy, between),
+			"an enemy fighting it inside the full range puts it in contact")
+	assert_false(_place(router, enemy, 1.01), "setup: it leaves contact again")
+	enemy.state = Unit.State.MOVING
+	assert_false(_place(router, enemy, between),
+			"one chasing it without fighting it still has to come inside the re-entry share")
+	enemy.state = Unit.State.FIGHTING
+	enemy.target_enemy = null
+	assert_false(_place(router, enemy, between), "as does one fighting someone else")
 
 
 func test_the_reentry_share_is_caller_configurable() -> void:
@@ -156,9 +192,10 @@ func test_the_reentry_share_is_caller_configurable() -> void:
 		return
 	var router: Unit = pair[0]
 	var enemy: Unit = pair[1]
-	assert_almost_eq(router.router_contact_reentry_frac, Unit.ROUTER_CONTACT_REENTRY_FRAC, 1e-6,
+	var consts: Dictionary = (Unit as Script).get_script_constant_map()
+	assert_almost_eq(_frac(router), float(consts.get("ROUTER_CONTACT_REENTRY_FRAC", -1.0)), 1e-6,
 			"setup: the default")
-	router.router_contact_reentry_frac = 1.0
+	router.set("router_contact_reentry_frac", 1.0)
 	_place(router, enemy, 0.5)
 	assert_false(_place(router, enemy, 1.01), "setup: it leaves contact")
 	assert_true(_place(router, enemy, 0.99), "a share of 1 lets it straight back in at the full range")
@@ -170,22 +207,22 @@ func test_only_a_router_uses_the_reentry_share_and_a_fresh_rout_clears_it() -> v
 		return
 	var router: Unit = pair[0]
 	var enemy: Unit = pair[1]
-	var between: float = (1.0 + router.router_contact_reentry_frac) * 0.5
+	var between: float = (1.0 + _frac(router)) * 0.5
 	_place(router, enemy, 0.5)
 	_place(router, enemy, 1.01)
-	assert_true(router._router_left_contact, "setup: it has left contact")
+	assert_true(_left(router), "setup: it has left contact")
 	router.state = Unit.State.IDLE
 	assert_true(_place(router, enemy, between), "out of the rout, contact is the full range again")
 	assert_false(_place(router, enemy, 1.01), "setup: out of contact")
-	assert_true(router._router_left_contact, "and an idle unit leaving contact leaves the mark alone")
-	router._router_left_contact = false
+	assert_true(_left(router), "and an idle unit leaving contact leaves the mark alone")
+	router.set("_router_left_contact", false)
 	assert_true(_place(router, enemy, 0.5), "setup: an idle unit back in contact")
 	_place(router, enemy, 1.01)
-	assert_false(router._router_left_contact, "nor does an idle unit leaving contact set it")
-	router._router_left_contact = true
+	assert_false(_left(router), "nor does an idle unit leaving contact set it")
+	router.set("_router_left_contact", true)
 	router._rout()
 	assert_eq(router.state, Unit.State.ROUTING, "setup: it routs again")
-	assert_false(router._router_left_contact, "a fresh rout clears the mark")
+	assert_false(_left(router), "a fresh rout clears the mark")
 	assert_true(_place(router, enemy, between), "so it meets the enemy at the full range again")
 
 
@@ -197,7 +234,7 @@ func test_a_router_with_its_front_in_the_melee_releases_it_at_the_full_range() -
 		return
 	var router: Unit = pair[0]
 	var enemy: Unit = pair[1]
-	var between: float = (1.0 + router.router_contact_reentry_frac) * 0.5
+	var between: float = (1.0 + _frac(router)) * 0.5
 	router._router_front_in_melee = true
 	router._flee_velocity = Vector2.UP * router.flee_speed()
 	router.facing = Vector2.UP.rotated(0.5)
@@ -207,7 +244,7 @@ func test_a_router_with_its_front_in_the_melee_releases_it_at_the_full_range() -
 	_place(router, enemy, 1.01)
 	router._update_router_front_in_melee()
 	assert_false(router.router_front_in_melee(), "cleared once it leaves the full range")
-	_place(router, enemy, router.router_contact_reentry_frac * 0.5)
+	_place(router, enemy, _frac(router) * 0.5)
 	router._update_router_front_in_melee()
 	assert_true(router._in_enemy_contact, "setup: back in contact")
 	assert_false(router.router_front_in_melee(), "and not re-armed by contact coming back")

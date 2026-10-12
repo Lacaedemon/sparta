@@ -255,8 +255,6 @@ func test_a_router_clear_of_every_enemy_is_not_in_enemy_contact() -> void:
 
 
 func test_a_router_caught_by_a_pursuer_comes_into_enemy_contact_and_holds_together() -> void:
-	# TODO(#1825): a rout keeps the grid's fold, so after a snapped flight turn the
-	# front ranks can be the trailing ranks, not the flight-side ones.
 	# The rising edge of the router's contact flag: routed out of contact, it must come into
 	# contact when a pursuer catches it, since a router never runs _think() where the flag is
 	# otherwise refreshed. While caught, its anchor sits on its front (flight-side) ranks, the

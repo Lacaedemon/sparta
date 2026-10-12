@@ -1246,7 +1246,8 @@ var router_front_arc: float = ROUTER_FRONT_ARC
 # at the full range. Without the gap a router at the edge of contact range flips in and out
 # of contact every tick or two, and its couple() anchor flips with it between its front ranks
 # and its whole block. In the stagings measured such a router came back into contact as far
-# out as 0.956 of the range, so 0.9 asks for over twice that depth. A caller-configurable
+# out as 0.956 of the range, so 0.9 asks for over twice that depth. An enemy fighting the
+# router keeps the full range (_refresh_enemy_contact). A caller-configurable
 # parameter defaulting to ROUTER_CONTACT_REENTRY_FRAC, with rout_time's set-before-_ready
 # contract.
 const ROUTER_CONTACT_REENTRY_FRAC: float = 0.9
@@ -2891,12 +2892,13 @@ func fresh_pick_allowed(candidate: Unit) -> bool:
 ##
 ## A router that has already left contact in its current rout comes back into it only within
 ## router_contact_reentry_frac of the range, so one at the edge of the range leaves contact
-## once rather than flipping in and out of it every tick or two.
+## once rather than flipping in and out of it every tick or two. An enemy that is fighting the
+## router (_fighting_me) is measured at the full range all the same: a router held in a melee
+## is in contact wherever the edge of the range happens to fall.
 func _refresh_enemy_contact() -> void:
 	var was_in_contact: bool = _in_enemy_contact
 	var routing: bool = state == State.ROUTING
 	var reentering: bool = routing and _router_left_contact and not was_in_contact
-	var reach_scale: float = router_contact_reentry_frac if reentering else 1.0
 	_in_enemy_contact = false
 	var contact_candidates: Array = get_tree().get_nodes_in_group("units")
 	contact_candidates.append_array(get_tree().get_nodes_in_group("routers"))
@@ -2906,13 +2908,20 @@ func _refresh_enemy_contact() -> void:
 	for u in contact_candidates:
 		if u is Unit and u.team != team and u.state != State.DEAD:
 			contact_checks += 1
-			var c_dist: float = (maxf(attack_range, u.attack_range) + RADIUS + u.RADIUS) * reach_scale
+			var c_dist: float = maxf(attack_range, u.attack_range) + RADIUS + u.RADIUS
+			if reentering and not _fighting_me(u):
+				c_dist *= router_contact_reentry_frac
 			if position.distance_squared_to(u.position) <= c_dist * c_dist:
 				_in_enemy_contact = true
 				break
 	SimOps.add(SimOps.REGIMENT_CHECK, contact_checks)
 	if routing and was_in_contact and not _in_enemy_contact:
 		_router_left_contact = true
+
+
+## Whether `enemy` is fighting this unit: FIGHTING, with this unit as its target.
+func _fighting_me(enemy: Unit) -> bool:
+	return enemy.state == State.FIGHTING and enemy.target_enemy == self
 
 
 ## Arm router_front_in_melee() as this unit routs. It is armed when ANY enemy regiment within
@@ -2952,8 +2961,6 @@ func _arm_router_front_in_melee() -> void:
 ## router_front_in_melee() for the rest of the rout once the router leaves enemy contact or
 ## its heading lands on its flight line, when its front ranks become its flight-side ranks.
 ## Never re-armed within a rout, so an enemy passing alongside cannot switch it back and forth.
-## TODO(#1825): a rout keeps the grid's fold, so after a snapped flight turn the
-## front ranks can be the trailing ranks, not the flight-side ones.
 func _update_router_front_in_melee() -> void:
 	if not _router_front_in_melee:
 		return

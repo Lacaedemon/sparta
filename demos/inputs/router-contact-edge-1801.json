@@ -1,5 +1,5 @@
 {
-  "_comment": "A routed squadron at the edge of its pursuer's reach leaves contact once instead of flipping in and out of it (#1801). A brittle player squadron (16 Cavalry at morale 0.5) stands on open ground; an enemy Infantry block (40 men, 10 files) 210 wu to its east, facing it, charges it with no player input. The squadron turns to meet it and fights from tick 280, routs at tick 325 still in contact, and flees north with the infantry following at the edge of melee range. On main a58c122e the squadron's contact flag flipped 19 times between ticks 423 and 452, in contact on 18 of those 30 ticks, and its anchor switched each time between its front ranks and its whole block: the anchor's speed changed by 0.69 wu a tick on average over ticks 420-460. Now a router that has left contact comes back into it only within 0.9 of the contact range, so it leaves contact once, at tick 423, and stays out: the anchor's speed changes by 0.10 wu a tick on average over the same window. Its men's centroid has moved 82 wu 150 ticks after the rout and 326 wu after 300, as on main. The infantry block's own contact flag still flickers through that window, as it does on main. The squadron is still fleeing north when the clip ends at tick 560 (it rallies at tick 686). The in_enemy_contact expects from tick 423 to 455 fail on main at the 18 ticks it was back in contact.",
+  "_comment": "A routed squadron at the edge of its pursuer's reach leaves contact once instead of flipping in and out of it (#1801). A brittle player squadron (16 Cavalry at morale 0.5) stands on open ground; an enemy Infantry block (40 men, 10 files) 210 wu to its east, facing it, charges it with no player input. The squadron turns to meet it and fights from tick 280, routs at tick 325 still in contact, and flees north with the infantry following at the edge of melee range. On main a58c122e the squadron's contact flag flipped 19 times between ticks 423 and 452, in contact on 18 of those 30 ticks, and its anchor switched each time between its front ranks and its whole block: the anchor's speed changed by 0.69 wu a tick on average over ticks 420-460. Now a router that has left contact comes back into it only within 0.9 of the contact range, so it leaves contact once, at tick 423, and stays out: the anchor's speed changes by 0.10 wu a tick on average over the same window. Its men's centroid has moved 82 wu 150 ticks after the rout and 326 wu after 300, as on main. The infantry block's own contact flag still flickers through that window, as it does on main. The squadron is still fleeing north when the clip ends at tick 560 (it rallies at tick 686). The in_enemy_contact expects from tick 424 to 455 fail on main at the 18 ticks it was back in contact.",
   "seed": "18011",
   "scenario": [
     {"team": 0, "type": "Cavalry", "x": 520, "y": 980, "count": 16, "morale": 0.5},
@@ -13,8 +13,6 @@
     {"tick": 324, "uid": 0, "field": "state", "value": "FIGHTING"},
     {"tick": 325, "uid": 0, "field": "state", "value": "ROUTING"},
     {"tick": 325, "uid": 0, "field": "in_enemy_contact", "value": true},
-    {"tick": 422, "uid": 0, "field": "in_enemy_contact", "value": true},
-    {"tick": 423, "uid": 0, "field": "in_enemy_contact", "value": false},
     {"tick": 424, "uid": 0, "field": "in_enemy_contact", "value": false},
     {"tick": 425, "uid": 0, "field": "in_enemy_contact", "value": false},
     {"tick": 426, "uid": 0, "field": "in_enemy_contact", "value": false},
@@ -50,6 +48,6 @@
     {"tick": 560, "uid": 0, "field": "state", "value": "ROUTING"}
   ],
   "defect_exemptions": {
-    "shape_residual": {"uids": [1], "reason": "The infantry pursuer (uid 1) deforms while it follows the router at the edge of melee range: shape_residual worst 37.1 against the 13.5 threshold, from about tick 440 to the clip's end, and 36.0 on main 45a9bb85 on the same samples, where its own contact flag also flickers. Pre-existing and not changed by this clip's fix, which only touches routers. Measured locally on this clip's own declared ticks; tracked as #1824."}
+    "shape_residual": {"uids": [1], "reason": "The infantry pursuer (uid 1) deforms while it follows the router at the edge of melee range: shape_residual worst 37.1 against the 13.5 threshold on this clip's own declared ticks, from about tick 440 to the clip's end. The deformation is pre-existing (36.0 on main 45a9bb85 on the same samples), and the fix shifts it a little: the router now stays out of contact, which also changes the pursuer's contact state. Tracked as #1824."}
   }
 }
