@@ -94,6 +94,45 @@ func test_a_hasty_march_turns_its_heading_but_not_its_grid() -> void:
 			_slot_turn_bound(u), "the slots only carry along with the anchor")
 
 
+func test_a_combat_march_still_snaps_its_grid_with_the_heading() -> void:
+	# A chase or a caracole's peel follows a moving target; a grid trailing it changed where the
+	# body coupling drew the anchor, so a combat (not orderly) march keeps main's snap, which
+	# moves the farthest slot by the chord 2 R sin(theta / 2).
+	var u := _unit(Vector2.UP)
+	u.disciplined = false
+	var radius: float = u._formation_local_half_extents().length()
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var anchor_before: Vector2 = u.position
+	u._move_to(START + _bearing(TURN_DEG) * MARCH_RANGE, _tick())
+	assert_eq(u._grid_lag, 0.0, "a combat march leaves no lag")
+	assert_almost_eq(_worst_slot_turn(before, u.soldier_world_slots(u.soldiers), u.position - anchor_before),
+			2.0 * radius * sin(deg_to_rad(TURN_DEG) * 0.5), 0.5,
+			"the grid turned with the heading, as on main")
+
+
+func test_a_lag_carried_into_contact_is_folded_where_the_grid_stands() -> void:
+	# A hasty march that turns just before it meets the enemy arrives with its grid still
+	# trailing; in contact the grid must not keep turning under men whose front is held.
+	var u := _unit(Vector2.UP)
+	u.set_current_order(Order.new_move(START + _bearing(TURN_DEG) * MARCH_RANGE))
+	u.current_order.haste = true
+	u._move_to(START + _bearing(TURN_DEG) * MARCH_RANGE, _tick(), true)
+	var lag: float = u._grid_lag
+	assert_ne(lag, 0.0, "setup: the march arrives with its grid trailing the heading")
+	u._in_enemy_contact = true
+	var fold_before: float = u._formation_angle
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for t in range(TURN_TICKS):
+		u._advance_grid_lag(_tick())
+		var now: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+		assert_lte(_worst_slot_turn(slots, now, Vector2.ZERO), SLOT_EPS,
+				"tick %d: the grid does not turn under the men in contact" % t)
+		assert_eq(u._grid_lag_rate, 0.0, "tick %d: and feeds no turn forward" % t)
+		slots = now
+	assert_eq(u._grid_lag, 0.0, "the lag is folded")
+	assert_almost_eq(u._formation_angle, fold_before + lag, ANGLE_EPS, "into _formation_angle")
+
+
 func test_a_reface_in_contact_still_turns_the_grid_with_the_heading() -> void:
 	# With its front men held against the enemy's, a grid left trailing the heading lets the
 	# blocks grind into each other and holds a block that breaks in the press, so contact keeps

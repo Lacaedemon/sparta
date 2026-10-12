@@ -3903,10 +3903,13 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 	# still re-forms them onto the block as they arrive, so no separate "form up" step is
 	# needed. A disciplined unit given an in-haste order (a triple/quadruple-click
 	# RUN/SPRINT gait) temporarily marches the same undisciplined way -- there's no time
-	# to execute a formed turn. That heading goes through _reface, not a plain snap: a snap
-	# under _face_dir's absorb threshold rotates the whole slot grid in one tick (up to ~75
-	# deg), sweeping flank slots far faster than any body can run, so the grid instead
-	# follows the heading at a bounded rate.
+	# to execute a formed turn. On an orderly march that heading goes through _reface, not a
+	# plain snap: a snap under _face_dir's absorb threshold rotates the whole slot grid in one
+	# tick (up to ~75 deg), sweeping flank slots far faster than any body can run, so the grid
+	# instead follows the heading at a bounded rate. A combat march (a chase, a kite, a
+	# caracole's peel and re-charge) still snaps: its heading follows a moving target, and a
+	# trailing grid changed where its men stood and so where the body coupling drew its
+	# anchor (in the catalog cycle_charge clip the caracole stopped landing its re-charge).
 	var pivot_as_formation: bool = (orderly or formed_turn) and disciplined and not _is_move_order_in_haste()
 	# A formed_turn approach only pivots for bearings under the fold-absorb threshold. At or
 	# past it, the plain snap is already scramble-free by construction: _face_dir folds the
@@ -3979,8 +3982,10 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 			var turn_body_accel: float = maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR) * TURN_ACCEL_BUDGET_FRACTION
 			pivot_rate = minf(pivot_rate, UnitManeuver.max_turn_rate_for_speed(turn_body_accel, _current_speed))
 		_rotate_facing_toward(steer_dir, delta, pivot_rate)
-	else:
+	elif orderly:
 		_reface(steer_dir)
+	else:
+		_face_dir(steer_dir)
 	var effective_speed: float = _current_speed * terrain_speed
 	# Turn-before-march: while centre-pivoting a formed march, scale the advance by how
 	# far the unit has come onto its heading. A sharp turn (e.g. a 180° pivot to a rear
@@ -4404,12 +4409,12 @@ func _face_dir(dir: Vector2) -> void:
 ## folded into _formation_angle, as a single snap that large is, so the men turn where they
 ## stand. A change past the threshold goes to _face_dir, and so does any change on a far-tier
 ## block, which has no bodies on its slots. So does any change while the block is in enemy
-## contact (an orderly march yielding to a press, a combat approach that has closed): a grid
-## left trailing the heading with the front men held against the enemy's lets the blocks
-## grind into each other, and a block that then breaks is held in the press. The callers are
-## the marches that do not pivot as a formation (an undisciplined or hasty march, a held
-## maneuver facing, a combat approach that does not pivot) and a hasty reform hold. A combat
-## re-face (_face_for_action) does not come here.
+## contact (an orderly march yielding to a press): a grid left trailing the heading with the
+## front men held against the enemy's lets the blocks grind into each other, and a block that
+## then breaks is held in the press. The callers are the ordered marches that do not pivot as
+## a formation (an undisciplined or hasty move order, a held maneuver facing) and a hasty
+## reform hold. A combat re-face (_face_for_action) and a combat march (_move_to's chases and
+## caracole) do not come here.
 func _reface(dir: Vector2) -> void:
 	if dir.length_squared() <= 0.0001:   # _face_dir's own zero-direction guard
 		return
@@ -4443,8 +4448,14 @@ func _fold_grid_lag() -> void:
 ## one tick of a bounded turn (bounded_turn_step at bounded_turn_rate and bounded_turn_accel),
 ## easing to a stop as the lag closes, and record the rate in _grid_lag_rate for
 ## SoldierBodies.step to feed forward. A tick whose heading pivots or turns in place (is_turning)
-## already moves the grid, so the lag waits and its turn starts again from rest.
+## already moves the grid, so the lag waits and its turn starts again from rest. A lag the
+## block carries into enemy contact (a march that turned just before it met the enemy) is
+## folded into _formation_angle where the grid stands, as a rout folds it: a grid still turning
+## under men whose front is held against the enemy's is what _reface keeps out of contact.
 func _advance_grid_lag(delta: float) -> void:
+	if _grid_lag != 0.0 and _in_enemy_contact:
+		_fold_grid_lag()
+		return
 	if _grid_lag == 0.0 or delta <= 0.0 or is_turning():
 		_grid_lag_rate = 0.0
 		return
