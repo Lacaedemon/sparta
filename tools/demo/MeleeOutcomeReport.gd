@@ -73,8 +73,18 @@ static func _table(rows: Array) -> PackedStringArray:
 				MeleeOutcomeDelta.cell(r["shift"]), r["unit"],
 				MeleeOutcomeDelta.cell(r["threshold"]),
 				"n/a" if r["mds"] < 0.0 else MeleeOutcomeDelta.cell(r["mds"]),
-				str(snappedf(r["p"], 0.0001)), r["n_base"], r["n_head"]])
+				_p_cell(r["p"]), r["n_base"], r["n_head"]])
 	return out
+
+
+## A p-value with 4 decimals, or 2 significant digits in exponent form below 0.0001.
+static func _p_cell(p: float) -> String:
+	if p >= 0.0001:
+		return str(snappedf(p, 0.0001))
+	if p <= 0.0:
+		return "0"
+	var exponent: int = floori(log(p) / log(10.0))
+	return "%.1fe%d" % [p / pow(10.0, exponent), exponent]
 
 
 static func _median_cell(value: float, never: int, n: int) -> String:

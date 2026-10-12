@@ -19,8 +19,9 @@ class_name MeleeOutcomeDelta
 ## Every tested row also reports what it COULD detect: its smallest attainable p-value, and
 ## its minimum detectable shift, the smallest pure shift of its own base runs that would reach
 ## the level a single row must reach alone (alpha / m, divided again by the harmonic number
-## for BY). A row whose smallest attainable p is above that level cannot be flagged whatever
-## the change, so its silence says nothing.
+## for BY), with a head sample the size of the base one. A row whose smallest attainable p,
+## at its actual sample sizes, is above that level cannot be flagged whatever the change: its
+## minimum detectable shift is INF, and its silence says nothing.
 ##
 ## An event that never happened in a complete run ranks above every tick, so a change in
 ## how often it happens is tested along with when. An unobserved value (null) is dropped.
@@ -126,7 +127,12 @@ static func compare(base: Dictionary, head: Dictionary, config: Dictionary = {})
 		r["significant"] = rejected[i]
 		r["flag"] = rejected[i] and absf(r["shift"]) >= r["threshold"]
 		r["min_p"] = OutcomeStats.min_attainable_p(r["_b"], r["_h"])
-		r["mds"] = -1.0 if r["never_base"] > 0 else OutcomeStats.min_detectable_shift(r["_b"], level)
+		if r["never_base"] > 0:
+			r["mds"] = -1.0
+		elif r["min_p"] > level:
+			r["mds"] = INF
+		else:
+			r["mds"] = OutcomeStats.min_detectable_shift(r["_b"], level)
 	for r in rows:
 		r.erase("_b")
 		r.erase("_h")

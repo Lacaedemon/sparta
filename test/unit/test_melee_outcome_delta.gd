@@ -188,6 +188,8 @@ func test_report_names_flagged_rows_and_warns_about_silence() -> void:
 	assert_string_contains(md, "**1 flagged shift(s):**")
 	assert_string_contains(md, "| `c` | `uid1_break` | 635.0 | 735.0 | 100.0 ticks |")
 	assert_string_contains(md, "false discovery rate")
+	assert_string_contains(md, "| 0.0002 |", "a p of 2 / 12870 to 4 decimals")
+	assert_eq(MeleeOutcomeReport._p_cell(2.0 / 601080390.0), "3.3e-9", "a tiny p in exponent form")
 	var none: String = MeleeOutcomeReport.markdown(MeleeOutcomeDelta.compare(base, base), {}, base)
 	assert_string_contains(none, "**No flagged shifts.**")
 	assert_string_contains(none, "**No flag is not evidence of no effect.**")

@@ -340,82 +340,142 @@ and flags only the shifts that hold up across the runs.
 
 ```sh
 GODOT_BIN=godot tools/ci/melee-outcome-delta.sh <base-tree> <head-tree> <out-dir>
-MELEE_DELTA_SUBSET=quick tools/ci/melee-outcome-delta.sh <base-tree> <head-tree> <out-dir>
+MELEE_DELTA_CLIPS=spear_standoff,charge MELEE_DELTA_METRICS='uid[0-9]+_(break|contact_break|travel_300)$' \
+  tools/ci/melee-outcome-delta.sh <base-tree> <head-tree> <out-dir>
 ```
+
+**A clean report is not evidence of no regression.**
+It is evidence only for the rows whose minimum detectable shift (the MDS column) is smaller than the change you care about.
+At the defaults over all 50 clips, about 30% of tested rows cannot be flagged with any change at all.
+Ask a narrow question instead: name the clips and metrics the change is about, which keeps the row count small.
 
 ### Perturbation
 
 `SPARTA_DEMO_SEED_RUN=k` (`tools/demo/DemoSeed.gd`, read by `DemoInputRecorder` and `DemoRunner`) plays the clip on a seed hashed from its own seed and `k`.
 The scenario, orders and spawn are unchanged.
-Only draws from `Replay.rng` differ (melee land, fall and damage rolls, missile hits, far-tier promotion scatter), so each run is bit-identical to the clip until its first such roll.
+What differs is every draw from `Replay.rng` (melee land, fall and damage rolls, missile hits)
+and the scatter of a far-tier promotion, which comes from a local RNG seeded with `Replay.seed_value`.
+A run is bit-identical to the clip until the first of those, which can be a missile volley or a promotion before any melee contact.
 Unset, the clip's own seed plays, so every existing clip hash is unchanged.
 Both trees must carry `DemoSeed.gd`.
 
 ### Metrics per run
 
 `tools/demo/MeleeOutcomes.gd` reads compact state dumps taken every `MELEE_DELTA_STEP` ticks (default 5).
-Per run it records the first contact tick and each team's men on the field at the end (a unit cut down or escaped off the map counts zero).
-Per unit it records its first contact tick and its break tick (first `ROUTING` snapshot).
-After a break it also records the contact-break delay (ticks from the break until the unit is out of contact)
-and its men's centroid travel 60, 150 and 300 ticks after the break.
-An event that never happens ranks after every tick, so a change in how often a unit breaks is tested along with when.
+Per run it records the first contact tick and each team's men on the field at the end.
+Per unit it records its first contact tick, its break tick (first `ROUTING` snapshot) and the tick it left play.
+After a break it also records the contact-break delay (ticks from the break until the unit is out of contact),
+its men's centroid travel 60, 150 and 300 ticks after the break,
+and whether it had left play by each of those offsets.
+
+Each value is one of three things.
+A number means the event happened.
+"never" means the run was observed to its end (the clip's last tick, or a `battle_over` snapshot) and the event did not happen; it ranks after every tick.
+Unobserved means the stream was cut off first, or the question does not apply: travel after the unit left play is censored, and so is the break of a unit destroyed unbroken.
+Unobserved values are dropped, not ranked.
+Leaving play does not yet say whether the unit escaped or died (TODO(#1832)),
+and a replay clip's stream has no `battle_over` marker (#1831), so a replay battle that ends early reads as cut off.
 
 ### Comparison
 
 `tools/demo/MeleeOutcomeDelta.gd` and `OutcomeStats.gd` do the statistics.
 Each clip and metric gets an exact two-sided rank-sum (Mann-Whitney) test, with tied values sharing a mid-rank.
-Benjamini-Hochberg then runs across every metric tested in the report, at `MELEE_DELTA_ALPHA` (default 0.05).
-With no real change anywhere, the chance of any flag in the whole report is at most alpha.
-A significant row is flagged only when its Hodges-Lehmann shift is also at least
-`MELEE_DELTA_MIN_TICKS` (30), `MELEE_DELTA_MIN_METRES` (1) or `MELEE_DELTA_MIN_MEN` (2).
-A metric with fewer than `MELEE_DELTA_MIN_RUNS` (4) runs on a side, such as the contact-break delay of a unit that seldom breaks, is listed but not tested.
+Then Benjamini-Hochberg runs across every row tested in the report, at `MELEE_DELTA_ALPHA` (default 0.05).
+That bounds the false discovery rate: in expectation, at most 5% of the flags are false.
+It bounds the chance of any flag at all only when no row has a real change.
+BH's bound assumes the rows are independent or positively dependent.
+These rows are not independent: the travel offsets come from the same runs, and two teams' headcounts move against each other.
+`MELEE_DELTA_CORRECTION=by` uses Benjamini-Yekutieli, which holds under any dependence at the cost of dividing alpha by about 5.8 for 180 rows.
+BH stays the default because power, not false flags, is the binding limit (see the table below), and both measured nulls flagged nothing.
+Use `by` when a report gates a decision.
+
+A significant row is flagged only when its Hodges-Lehmann shift is also at least its threshold:
+`MELEE_DELTA_MIN_EFFECT` (default 0.5) times that row's own run-to-run spread,
+the robust standard deviation of its base runs (1.4826 times the median absolute deviation, or the sample standard deviation when that is 0).
+The criterion is a standardized effect size of half a standard deviation (Cohen's "medium"), fixed before any validation run.
+The floors are the measurement resolution: the snapshot cadence (5 ticks), 0.1 m (`MELEE_DELTA_FLOOR_METRES`), 1 man (`MELEE_DELTA_FLOOR_MEN`), and 0.5 for a removed-by indicator.
+The threshold does not screen noise on its own: in the null run below, 39 of 171 rows had a shift past it.
+The significance test screens noise, and the threshold then drops significant shifts too small to matter.
+
+Each tested row also reports its smallest attainable p-value and its minimum detectable shift:
+the smallest pure shift of its own base runs that would reach the p-value one row must reach alone (alpha divided by the row count, and by the harmonic number for `by`).
+The MDS is `inf` for a row that cannot reach that level whatever the change, typically a row with few runs, such as the travel of a unit that rarely breaks.
+A metric with fewer than `MELEE_DELTA_MIN_RUNS` (4) runs on a side is listed but not tested.
+
+### Power
+
+Measured 2026-10-12 by simulation (300 trials per cell; two normal samples of K, the head shifted by d standard deviations),
+the chance the exact test reaches the level one row needs alone among m rows:
+
+| K | d | m = 1 (p <= 0.05) | m = 10 (0.005) | m = 150 (0.00033) |
+|---|---|---|---|---|
+| 8 | 1.0 | 0.43 | 0.12 | 0.03 |
+| 8 | 2.0 | 0.96 | 0.69 | 0.23 |
+| 16 | 1.0 | 0.77 | 0.43 | 0.13 |
+| 16 | 1.5 | 0.98 | 0.82 | 0.58 |
+| 16 | 2.0 | 1.00 | 0.99 | 0.87 |
+| 24 | 1.0 | 0.90 | 0.66 | 0.34 |
+| 24 | 1.5 | 0.99 | 0.98 | 0.87 |
+
+So the default K is 16.
+A whole-catalog report (m about 170) reliably catches only shifts near 2 SD.
+A narrow question (m about 10 to 30) catches 1.5 SD.
+Pass a larger `MELEE_DELTA_K` when the change is subtle.
 
 ### Output
 
 `<out-dir>/melee-delta.md` is a summary to paste into a PR.
-It lists the flagged rows and, collapsed, the smallest p-values.
-`melee-delta.tsv` holds every row.
+It lists the flagged rows, says how many tested rows could not be flagged with any change, and, collapsed, the smallest p-values.
+`melee-delta.tsv` holds every row with its threshold, smallest attainable p and minimum detectable shift.
 Exit code 0 means nothing was flagged, 1 means at least one flagged shift, and 2 means a usage, input or run failure.
 
 ### Cost and subsets
 
-The defaults (`K=8`, all 50 clips in `tools/lib/melee-clips.sh`) make 800 Godot runs.
-Measured on a 20-thread Windows machine with another delta running beside it (2026-10-12),
-800 runs took 31 minutes at `MELEE_DELTA_JOBS=6`.
-`MELEE_DELTA_SUBSET=quick` runs the 6 clips whose outcomes flipped under the facing nudge:
-96 runs, 9 minutes at 3 jobs.
-`MELEE_DELTA_CLIPS=a,b` runs a list of your own.
+The defaults (`K=16`, all 50 clips in `tools/lib/melee-clips.sh`) make 1600 Godot runs.
+Measured on a 20-thread Windows machine with a second delta running beside it (2026-10-12),
+1600 runs took 58 minutes at `MELEE_DELTA_JOBS=8`, and 800 took 30.
+`MELEE_DELTA_CLIPS=a,b` runs a list of your own, and `MELEE_DELTA_SUBSET=quick` the 6 clips whose outcomes flipped under the facing nudge.
+`MELEE_DELTA_METRICS` narrows the rows without changing the runs.
 `MELEE_DELTA_JOBS` (default 2) sets how many runs go in parallel.
 
 Each run's metrics are extracted in the pool, right after its dump, into its own `metrics.json`,
 so the comparison itself takes seconds.
 The snapshots (about 5 MB a run) are then deleted unless `MELEE_DELTA_KEEP_DUMPS=1`.
-A re-run reuses every finished run, keyed on side, clip and seed,
-so change thresholds freely but use a fresh out-dir when a tree changes.
+A re-run reuses every finished run, keyed on side, clip and seed, and compares only the clips and seeds it selected,
+so change thresholds or questions freely, but use a fresh out-dir when a tree changes.
 
 ### Validation
 
-Measured 2026-10-12 at `K=8` over all 50 clips, with the defaults above:
+Measured 2026-10-12 at `K=16` over all 50 clips with the defaults above.
+The effect multiple, the floors and K were set before these runs, from the criteria above and the power table.
+The two known effects were new and not used to choose anything.
+(An earlier round fitted a fixed 1 m travel threshold to a routers-30%-slower run; that threshold is withdrawn.)
 
-- **Null:** the same tree against itself on disjoint seeds (`MELEE_DELTA_HEAD_RUN_OFFSET=8`) flagged nothing.
-  Of 138 tested rows, 7 had a raw p-value at or below 0.05, about the 5% chance predicts.
-  With no change at all, the Hodges-Lehmann shift reached 37.5 ticks in a break tick and 9 men in a team's headcount.
+- **Null:** the same tree against itself on disjoint seeds (`MELEE_DELTA_HEAD_RUN_OFFSET=16`) flagged 0 of 171 tested rows,
+  with BH and with BY. 6 rows had a raw p at or below 0.05.
+  The quick subset alone flagged 0 of 71.
 
-- **Known effect:** routers 30% slower (`flee_speed()` times 0.7) flagged `rout_rally`:
-  the router's travel 300 ticks after its break fell from 15.4 m to 13.7 m (median),
-  an enemy cavalry unit that never reached contact now does,
-  and its team's median end headcount rose from 140 to 152: the 12-man router, removed from play in most base runs, now stays on the field.
-  `trapped_routing`'s router travel also fell significantly, but by 0.6 m, under the 1 m threshold.
-  No other router metric moved significantly.
+- **Routers 15% slower** (`flee_speed()` times 0.85) flagged 3 rows, all in `rout_rally`:
+  team 0's median end headcount rose from 140 to 152, because the 12-man router, removed at a median tick 655, stayed on the field in all 16 runs,
+  and its travel 300 ticks after the break fell from 15.4 m to 14.8 m.
+  `trapped_routing`'s router travel also fell, by 0.05 m: significant, but under the 0.1 m floor.
+  No other row was significant.
 
-- **Back-test:** the first version of PR #1814 (581db291 against its base 9d39a353) flagged `cycle_charge`, the caracole regression with a traced mechanism,
-  and `pace_modes`, where contact came 70 ticks earlier in every run and both teams ended with about 10 more men.
-  It flagged no router metric in `file_major_reform_contrast`, `spear_standoff` or `last_unit_rally`, the three "held router" clips, and neither did a `K=16` run of just those three.
+- **Melee wounds 20% weaker** (the wound times 0.8 in `SoldierMelee`) flagged 36 rows in 27 clips: 31 team headcounts and 5 break ticks.
+  For example, `spear_standoff`'s router broke at a median tick 848 instead of 710, and `file_major_reform_contrast`'s at 925 instead of 745.
+
+- **Back-test:** the first version of PR #1814 (581db291 against its base 9d39a353) flagged 11 rows.
+  They are in `cycle_charge`, the caracole regression with a traced mechanism (contact timing and both headcounts),
+  in `pace_modes` (contact 70 ticks earlier in every run, and both teams about 10 men stronger),
+  and in `support` (a unit that made contact at tick 800 in every base run made none in 14 of 16).
+  It flagged no router row in `file_major_reform_contrast`, `spear_standoff` or `last_unit_rally`.
+  That is not evidence the routers were unaffected: a narrow report on those three clips' router metrics (27 rows) has minimum detectable shifts of
+  35 to 215 ticks on break ticks, 70 ticks on `spear_standoff`'s contact-break, 3.0 to 5.3 m on travel at 300 ticks,
+  and none at all (`inf`) for `file_major_reform_contrast`'s contact-break and later travel, which only 4 to 7 runs per side observe.
 
 ### Null calibration
 
-`MELEE_DELTA_HEAD_RUN_OFFSET=K` with the same tree on both sides compares disjoint seeds of identical code,
-which should flag nothing.
+`MELEE_DELTA_HEAD_RUN_OFFSET=K` with the same tree on both sides compares disjoint seeds of identical code.
 
 ### Clip list
 
