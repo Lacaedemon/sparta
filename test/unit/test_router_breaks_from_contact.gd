@@ -44,11 +44,15 @@ const CAUGHT_START := Vector2(700.0, 1300.0)
 const CAUGHT_PURSUER_GAP := 130.0
 const CAUGHT_ROUTER_MOVE_SPEED := 20.0   # tuned in wu/s, slow enough to be caught
 const CATCH_TICKS := 600
-# The arming stagings: a router facing east (off its northward flight) with enemy squadrons
-# ARM_OFFSET from its anchor, inside melee contact range, ahead (east), behind (west) or on
-# its flank (north, 90 degrees off its heading, outside the 60 degree front arc).
+# The arming stagings: a router whose heading is ARM_TILT_DEG off its northward flight (a
+# bounded first flight turn, under the 75 degree snap threshold), with enemy squadrons
+# ARM_OFFSET from its anchor, inside melee contact range: ahead along its heading, behind it,
+# or on its flank (90 degrees off its heading, outside the 60 degree front arc).
 const ARM_START := Vector2(700.0, 1300.0)
 const ARM_OFFSET := 40.0
+const ARM_TILT_DEG := 30.0
+# A heading this far off the flight (degrees) snaps onto it on the first tick instead.
+const ARM_SNAP_TILT_DEG := 90.0
 
 var _battle: Node = null
 
@@ -235,20 +239,27 @@ func test_a_router_caught_from_behind_anchors_on_its_flight_side_ranks() -> void
 	assert_lt(anchor.size(), n, "and on part of the block only")
 
 
-## Deploy a 48-mount squadron at ARM_START facing east, with an enemy squadron at each
-## `offsets` entry (relative to ARM_START, in that spawn order, all idle), rout it, and return
-## whether it broke with its front in the melee.
-func _armed_with_enemies_at(offsets: Array) -> bool:
+## Deploy a 48-mount squadron at ARM_START with its heading `tilt_deg` off its northward
+## flight, and an enemy squadron at each `offsets` entry (in the router's own frame: x along
+## its heading, y to its right; in that spawn order, all idle), then rout it. Returns the
+## router, or null when the staging failed.
+func _rout_with_enemies(tilt_deg: float, offsets: Array) -> Unit:
+	if is_instance_valid(_battle):
+		_battle.free()
+		_battle = null
+		await get_tree().physics_frame
+	var heading: Vector2 = Vector2.UP.rotated(deg_to_rad(tilt_deg))
 	var scenario: Array = [{"team": 0, "type": "Cavalry", "count": 48, "x": ARM_START.x,
-			"y": ARM_START.y, "facing": [1, 0]}]
+			"y": ARM_START.y, "facing": [heading.x, heading.y]}]
 	for off in offsets:
-		var at: Vector2 = ARM_START + (off as Vector2)
+		var o: Vector2 = off
+		var at: Vector2 = ARM_START + heading * o.x + heading.orthogonal() * o.y
 		scenario.append({"team": 1, "type": "Cavalry", "count": 24, "x": at.x, "y": at.y,
-				"facing": [-1, 0]})
+				"facing": [-heading.x, -heading.y]})
 	var router: Unit = await _start(scenario, 12345, true)
 	assert_not_null(router, "setup: the squadron deployed")
 	if router == null:
-		return false
+		return null
 	var in_contact: int = 0
 	for u in get_tree().get_nodes_in_group("units"):
 		var enemy: Unit = u as Unit
@@ -261,24 +272,73 @@ func _armed_with_enemies_at(offsets: Array) -> bool:
 	router.rout_time = 1000.0
 	router.morale = 0.0
 	router._rout()
-	var armed: bool = router.router_front_in_melee()
-	_battle.free()
-	_battle = null
-	return armed
+	return router
+
+
+func _armed(tilt_deg: float, offsets: Array) -> bool:
+	var router: Unit = await _rout_with_enemies(tilt_deg, offsets)
+	return router != null and router.router_front_in_melee()
 
 
 func test_a_router_arms_its_front_in_the_melee_from_any_enemy_in_its_front_arc() -> void:
 	var ahead := Vector2(ARM_OFFSET, 0.0)
 	var behind := Vector2(-ARM_OFFSET, 0.0)
-	assert_true(await _armed_with_enemies_at([ahead, behind]),
+	assert_true(await _armed(ARM_TILT_DEG, [ahead, behind]),
 			"an enemy ahead arms it with another behind, the one ahead spawned first")
-	assert_true(await _armed_with_enemies_at([behind, ahead]),
-			"and with the one behind spawned first")
-	assert_true(await _armed_with_enemies_at([ahead]), "an enemy ahead alone arms it")
+	assert_true(await _armed(ARM_TILT_DEG, [behind, ahead]), "and with the one behind spawned first")
+	assert_true(await _armed(ARM_TILT_DEG, [ahead]), "an enemy ahead alone arms it")
 
 
 func test_a_router_with_no_enemy_in_its_front_arc_is_not_armed() -> void:
-	assert_false(await _armed_with_enemies_at([Vector2(-ARM_OFFSET, 0.0)]),
+	assert_false(await _armed(ARM_TILT_DEG, [Vector2(-ARM_OFFSET, 0.0)]),
 			"an enemy only behind does not arm it")
-	assert_false(await _armed_with_enemies_at([Vector2(0.0, -ARM_OFFSET)]),
+	assert_false(await _armed(ARM_TILT_DEG, [Vector2(0.0, ARM_OFFSET)]),
 			"nor does an enemy only on its flank, 90 degrees off its heading")
+
+
+func test_a_router_already_facing_its_flight_is_not_armed() -> void:
+	# Its front ranks are its flight-side ranks, so the caught-router rules for those apply.
+	assert_false(await _armed(0.0, [Vector2(ARM_OFFSET, 0.0)]),
+			"a router facing its flee heading, the enemy ahead, is not armed")
+
+
+func test_a_router_whose_first_flight_turn_snaps_is_not_armed() -> void:
+	# A heading more than FACING_SNAP_ABSORB_THRESHOLD off the flight snaps onto it on the first
+	# tick, so no bounded turn keeps its front in the melee, not even for that tick.
+	assert_gt(deg_to_rad(ARM_SNAP_TILT_DEG), Unit.FACING_SNAP_ABSORB_THRESHOLD,
+			"setup: the staging's turn is past the snap threshold")
+	assert_false(await _armed(ARM_SNAP_TILT_DEG, [Vector2(ARM_OFFSET, 0.0)]),
+			"a router whose flight turn snaps is not armed, the enemy ahead")
+
+
+func test_the_latch_clears_when_the_heading_lands_on_the_flight_and_stays_clear() -> void:
+	var router: Unit = await _rout_with_enemies(ARM_TILT_DEG, [Vector2(ARM_OFFSET, 0.0)])
+	if router == null:
+		return
+	assert_true(router.router_front_in_melee(), "setup: armed at the break")
+	router._in_enemy_contact = true
+	router._flee_velocity = Vector2.UP * router.flee_speed()
+	router._update_router_front_in_melee()
+	assert_true(router.router_front_in_melee(), "held while the heading is still turning in contact")
+	router.facing = Vector2.UP
+	router._update_router_front_in_melee()
+	assert_false(router.router_front_in_melee(),
+			"cleared once the heading lands on the flight, with contact still held")
+	router.facing = Vector2.UP.rotated(deg_to_rad(ARM_TILT_DEG))
+	router._update_router_front_in_melee()
+	assert_false(router.router_front_in_melee(), "and not re-armed within the rout")
+
+
+func test_the_latch_clears_when_contact_ends() -> void:
+	var router: Unit = await _rout_with_enemies(ARM_TILT_DEG, [Vector2(ARM_OFFSET, 0.0)])
+	if router == null:
+		return
+	assert_true(router.router_front_in_melee(), "setup: armed at the break")
+	router._flee_velocity = Vector2.UP * router.flee_speed()
+	router._in_enemy_contact = false
+	router._update_router_front_in_melee()
+	assert_false(router.router_front_in_melee(),
+			"cleared once contact ends, with the heading still off the flight")
+	router._in_enemy_contact = true
+	router._update_router_front_in_melee()
+	assert_false(router.router_front_in_melee(), "and not re-armed by contact coming back")

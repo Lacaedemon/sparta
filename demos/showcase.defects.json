@@ -1,4 +1,11 @@
 {
-  "_comment": "Defect declarations for the showcase replay clip (demos/showcase.json); see demos/README.md, Sidecar declarations. None is needed now. uid 7 (an archer block that fights the routing uid 2, then turns and reforms on the replay's next move order) carried an overlap exemption: its closest body pair was 0.990 wu at tick 1183 on 2-tick samples, against the 2.25 wu floor. Since a router that breaks with its front in the melee stopped holding that front back and anchoring the block on it (#1785), the same scan from the divergence (tick 941) reads 6.91 wu, so the exemption went stale and was removed. A scrambled block reforming by array index on a new order is still tracked in #1791.",
-  "defect_exemptions": {}
+  "_comment": "Defect declarations for the showcase replay clip (demos/showcase.json); see demos/README.md, Sidecar declarations.",
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [
+        7
+      ],
+      "reason": "uid 7: an archer block that fights the routing uid 2, then turns and reforms on the replay's next move order. On a 2-tick scan from the divergence (tick 951): closest body pair 0.990 wu (tick 1183) against the 2.25 wu floor, and 0.667 wu (tick 1219) on main fa76accc. The block is already scrambled before the divergence: at tick 900, identical on both trees, its men stand a mean 122.9 wu from their own slots (106.6 wu at tick 951). It holds its facing while the router streams out through it (no swing, so its misslotted verdict now passes: 0.130 against 0.25, 0.478 on main). The move order then turns it (TURN phase from tick 1081; facing -175 to 95 degrees by tick 1125) and reforms it (REFORM by tick 1141), and two of its scrambled men cross 0.990 wu apart at tick 1183. A scrambled block reforming by array index on a new order is tracked in #1791."
+    }
+  }
 }

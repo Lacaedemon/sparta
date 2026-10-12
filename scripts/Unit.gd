@@ -2875,13 +2875,18 @@ func _refresh_enemy_contact() -> void:
 ## within router_front_arc of the heading: the unit broke facing that enemy, so its front ranks
 ## are the ones in the melee. Every contact enemy is checked, so the result does not depend on
 ## group order, and a contact only on a flank (outside the arc) or behind does not arm it.
+## Nor is it armed when the heading is already on the flee heading (its front ranks are its
+## flight-side ranks), or more than FACING_SNAP_ABSORB_THRESHOLD off it: that first flight
+## turn snaps and folds at once (_turn_flight_toward), so the heading lands on the flight on
+## the router's first tick and no bounded turn keeps its front in the melee.
 func _arm_router_front_in_melee() -> void:
 	_router_front_in_melee = false
 	if not is_inside_tree() or facing == Vector2.ZERO:
 		return
 	var heading: float = facing.angle()
-	if absf(angle_difference(heading, _flee_heading().angle())) <= FLIGHT_HEADING_EPS:
-		return   # already facing its flight: its front ranks are its flight-side ranks
+	var off_flight: float = absf(angle_difference(heading, _flee_heading().angle()))
+	if off_flight <= FLIGHT_HEADING_EPS or off_flight > FACING_SNAP_ABSORB_THRESHOLD:
+		return
 	var candidates: Array = get_tree().get_nodes_in_group("units")
 	candidates.append_array(get_tree().get_nodes_in_group("routers"))
 	for u in candidates:
@@ -8508,8 +8513,8 @@ func position_anchor_indices(count: int) -> PackedInt32Array:
 ## Whether this unit is a router whose front ranks are the ones in the melee it broke from
 ## rather than its flight-side ranks. The rule:
 ## - It is armed once, as the unit routs, when any enemy in melee contact stands within
-##   router_front_arc of its heading and its heading is not already on its flee heading
-##   (_arm_router_front_in_melee). A unit breaks facing the enemy it fought, and its flight
+##   router_front_arc of its heading and its heading is neither already on its flee heading
+##   nor so far off it that the first flight turn snaps (_arm_router_front_in_melee). A unit breaks facing the enemy it fought, and its flight
 ##   heading turns off that enemy at a bounded rate (_turn_flight_toward).
 ## - It holds until the heading lands on the flight line or the router leaves enemy contact,
 ##   and is never re-armed within that rout (_update_router_front_in_melee), so an enemy
