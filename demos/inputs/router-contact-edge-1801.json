@@ -1,0 +1,25 @@
+{
+  "_comment": "A routed squadron at the edge of its pursuer's reach switches its couple() anchor once instead of every tick or two (#1801). A brittle player squadron (16 Cavalry at morale 0.5) stands on open ground; an enemy Infantry block (40 men, 10 files) 210 wu to its east, facing it, charges it with no player input. The squadron turns to meet it and fights from tick 280, routs at tick 325 still in contact, and flees north with the infantry following at the edge of melee range. Its physical contact flag flips in and out between ticks 423 and 452 on both trees (19 flips on main a58c122e and 45a9bb85, 15 now), since contact stays a physical fact. On main its anchor flipped with it, between its front ranks and its whole block, and the anchor's speed changed by 0.55 wu a tick on average over ticks 420-470. Now its anchor reads a separate anchor contact, which, once the router has left contact, comes back only within 0.9 of the contact range: the anchor moves to its whole block at tick 423 and stays there, changing speed by 0.08 wu a tick on average over the same window. So from tick 424 the anchor sits about 2 to 10 wu west and north of main's: the position expects at ticks 430, 436, 442 and 448 (tol 3 wu) fail on main, where the anchor is 9.5, 9.5, 10.2 and 7.5 wu away. Its men's centroid has moved 82 wu 150 ticks after the rout and 326 wu after 300, as on main. The squadron is still fleeing north when the clip ends at tick 560 (it rallies at tick 686).",
+  "seed": "18011",
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 520, "y": 980, "count": 16, "morale": 0.5},
+    {"team": 1, "type": "Infantry", "x": 730, "y": 980, "count": 40, "frontage": 10, "facing": [-1, 0]}
+  ],
+  "camera": [{"tick": 0, "x": 600.0, "y": 860.0, "zoom": 0.8}],
+  "steps": [],
+  "state": [10, 280, 324, 325, 422, 423, 424, 425, 426, 427, 428, 429, 430, 431, 432, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 453, 454, 455, 500, 560],
+  "expect": [
+    {"tick": 10, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": 324, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 325, "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": 325, "uid": 0, "field": "in_enemy_contact", "value": true},
+    {"tick": 430, "uid": 0, "field": "position", "value": [581.15, 950.37], "tol": 3.0},
+    {"tick": 436, "uid": 0, "field": "position", "value": [578.68, 942.86], "tol": 3.0},
+    {"tick": 442, "uid": 0, "field": "position", "value": [578.18, 936.6], "tol": 3.0},
+    {"tick": 448, "uid": 0, "field": "position", "value": [578.65, 930.87], "tol": 3.0},
+    {"tick": 560, "uid": 0, "field": "state", "value": "ROUTING"}
+  ],
+  "defect_exemptions": {
+    "shape_residual": {"uids": [1], "reason": "The infantry pursuer (uid 1) deforms while it follows the router at the edge of melee range: shape_residual worst 37.1 against the 13.5 threshold on this clip's own declared ticks, from about tick 440 to the clip's end. The deformation is pre-existing (36.0 on main 45a9bb85 on the same samples), and the fix shifts it a little: the router's anchor no longer switches back and forth, which changes how the router, and so its pursuer, moves. Tracked as #1824."}
+  }
+}
