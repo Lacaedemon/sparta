@@ -248,6 +248,80 @@ func test_motion_ref_reports_both_grid_pitches_and_their_min() -> void:
 			"the threshold base is the tighter axis")
 
 
+## The footprint DemoState dumps for `u`, checked against the slots it actually lays out in
+## the world: every slot's offset from the unit along the footprint's axis spans exactly the
+## footprint's extent. With no traverse arcs in play, these are the same slots.
+func _assert_footprint_matches_the_slots(u: Unit, what: String) -> void:
+	var grid: Dictionary = DemoState.motion_ref(u)["slot_grid"]
+	var axis := Vector2(float(grid["axis"][0]), float(grid["axis"][1]))
+	var lo: float = INF
+	var hi: float = -INF
+	for s in u.soldier_world_slots(u.soldiers):
+		var b: float = (s - u.position).dot(axis)
+		lo = minf(lo, b)
+		hi = maxf(hi, b)
+	assert_almost_eq(float(grid["lateral_min"]), lo, 0.02, "%s: the near edge" % what)
+	assert_almost_eq(float(grid["lateral_max"]), hi, 0.02, "%s: the far edge" % what)
+
+
+func _reap_unit(u: Unit, dead: Array) -> void:
+	var killer: Unit = Unit.new()
+	killer.max_soldiers = 10
+	killer.team = 1
+	add_child_autofree(killer)
+	killer.seed_sim_soldiers()
+	for i in dead:
+		u._sim_soldier_hp[i] = 0.0
+	SoldierMelee.reap(u, killer)
+
+
+func _footprint_unit(count: int, files: int, mode: int) -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = count
+	add_child_autofree(u)
+	u.position = Vector2(300.0, 200.0)
+	u.facing = Vector2.DOWN
+	u.frontage_override = files
+	u.file_major_reform_mode = mode
+	u.seed_sim_soldiers()
+	return u
+
+
+func test_motion_ref_slot_grid_matches_the_slots_after_a_reap() -> void:
+	var row := _footprint_unit(60, 8, Unit.ReformMode.ROW_MAJOR)
+	_reap_unit(row, [3, 17])
+	_assert_footprint_matches_the_slots(row, "row major after two losses")
+	var square := _footprint_unit(60, 8, Unit.ReformMode.ROW_MAJOR)
+	square.set_formation(Unit.FORMATION_SQUARE)
+	_reap_unit(square, [3])
+	_assert_footprint_matches_the_slots(square, "square after a loss")
+	# A file-major block short of men keeps each file where it stands, so its grid is not
+	# centred on the unit: 8 men on 8 files lose two from one flank.
+	var short := _footprint_unit(8, 8, Unit.ReformMode.FILE_MAJOR)
+	assert_true(short._effective_file_major_reform(), "precondition: file major")
+	_reap_unit(short, [0, 1])
+	var grid: Dictionary = DemoState.motion_ref(short)["slot_grid"]
+	assert_ne(absf(float(grid["lateral_min"])), absf(float(grid["lateral_max"])),
+			"precondition: the short block's grid is off centre")
+	_assert_footprint_matches_the_slots(short, "file major short of men")
+
+
+func test_motion_ref_slot_grid_follows_a_fold_and_the_mirror() -> void:
+	# A quarter fold turns the grid off the facing: 60 men on 6 files, row major.
+	var folded := _footprint_unit(60, 6, Unit.ReformMode.ROW_MAJOR)
+	folded._formation_angle = PI * 0.5
+	_assert_footprint_matches_the_slots(folded, "a quarter fold")
+	# With the fold and no arcs, no slot lies outside the grid.
+	var rec: Dictionary = DemoState.unit_record(folded, {}, 1.0, true)
+	assert_eq(DemoDefects.derived_field(rec, "slots_beyond_flanks"), 0,
+			"a folded block with no arcs sends nobody round its flank")
+	# An anchored line, mirrored.
+	var mirrored := _footprint_unit(60, 8, Unit.ReformMode.ROW_MAJOR)
+	mirrored.frontage_anchor_offset = 2.0 * mirrored.file_pitch_wu()
+	mirrored._formation_mirror_x = true
+	_assert_footprint_matches_the_slots(mirrored, "an anchored, mirrored line")
+
+
 func test_unit_record_dumps_pitches_at_top_level() -> void:
 	var u: Unit = Unit.new()
 	add_child_autofree(u)
@@ -420,3 +494,39 @@ func test_build_snapshot_captures_fog_terrain_when_present() -> void:
 	assert_eq(snap["fog_terrain"]["visible_now_count"], 1, "records the currently-visible count")
 	assert_true(snap["fog_terrain"]["active"], "records the overlay's active flag")
 
+
+
+func test_motion_ref_slot_grid_leaves_out_the_traverse_arcs() -> void:
+	# A hold-ground re-square under its reform hold, with every body at the block's centre so
+	# the walkers' arcs are at full strength: their slots are bent out past the grid, but the
+	# footprint is the grid's own, 3.5 pitches either side of 61 men on 8 files, in a line and
+	# in a square alike.
+	for square in [false, true]:
+		var u := _footprint_unit(61, 8, Unit.ReformMode.ROW_MAJOR)
+		u.position = Vector2.ZERO
+		if square:
+			u.set_formation(Unit.FORMATION_SQUARE)
+		var leaf: Order = Order.new_about_face()
+		u.set_current_order(leaf)
+		leaf.turn_start_facing = u.facing
+		u.facing = u.facing.rotated(PI)
+		u._settle_order_turn()
+		var stand: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+		for i in range(stand.size()):
+			u._sim_soldier_pos[i] = stand[i]
+		assert_true(u.reform_ranks(true), "precondition: the about-face fold re-squares")
+		u.active_leaf().reform_timer = 1.0
+		for i in range(u.soldiers):
+			u._sim_soldier_pos[i] = u.position
+		var grid: Dictionary = DemoState.motion_ref(u)["slot_grid"]
+		var p: float = u.file_pitch_wu()
+		assert_almost_eq(float(grid["lateral_min"]), -3.5 * p, 0.02,
+				"square %s: the grid's near edge" % square)
+		assert_almost_eq(float(grid["lateral_max"]), 3.5 * p, 0.02,
+				"square %s: the grid's far edge" % square)
+		var axis := Vector2(float(grid["axis"][0]), float(grid["axis"][1]))
+		var widest: float = 0.0
+		for s in u.soldier_world_slots(u.soldiers):
+			widest = maxf(widest, absf((s - u.position).dot(axis)))
+		assert_gt(widest, 4.0 * p,
+				"square %s: precondition: the arcs bend slots out past the grid" % square)

@@ -905,7 +905,7 @@ func test_traverse_flank_arcs_offsets_unpaired_traversing_soldiers() -> void:
 	var positions := PackedVector2Array([Vector2(0, 0), Vector2(0, 10)])
 	var perm := PackedInt32Array([0, 1])
 	var result: PackedVector2Array = UnitFormation.apply_traverse_flank_arcs(
-		slots, positions, Vector2.ZERO, 0.0, perm, 1, 9.0)
+		slots, positions, Vector2.ZERO, 0.0, perm, 1, 9.0, PackedByteArray([1, 0]))
 	assert_eq(result.size(), 2, "returns slot array of same size")
 	assert_ne(result[0].x, slots[0].x, "traversing soldier at mid-traverse receives lateral flank arc")
 

@@ -954,13 +954,74 @@ func test_derived_slot_excess_measures_an_outside_man_from_the_block_edge() -> v
 			"the outside man reaches the near edge (0 excess); the inside man steps 10 wu")
 
 
+## _derived_record with the slot grid's footprint: along `axis` (world +X by default, the
+## record's lateral axis), from `lo` to `hi` (from -half_width to half_width when `lo` is null).
+func _grid_record(pos: Array, slots: Array, half_width: float, axis: Array = [1.0, 0.0],
+		lo = null) -> Dictionary:
+	var u: Dictionary = _derived_record(pos, slots)
+	u["motion_ref"]["slot_grid"] = {"axis": axis,
+			"lateral_min": -half_width if lo == null else lo, "lateral_max": half_width}
+	return u
+
+
+func test_derived_slots_beyond_flanks_counts_slots_outside_the_grid() -> void:
+	# A grid reaching 15 wu either side (pitch 10, so half a pitch is 5: the bound is 20 wu).
+	# The slots at -25 and 30 lie outside it and count; 19 lies 4 wu outside, within half a
+	# pitch, and 5 lies inside, so neither does.
+	var u: Dictionary = _grid_record(
+			[[-15.0, 0.0], [-5.0, 0.0], [5.0, 0.0], [15.0, 0.0]],
+			[[-25.0, 0.0], [19.0, 0.0], [5.0, 10.0], [30.0, 0.0]], 15.0)
+	assert_eq(DemoDefects.derived_field(u, "slots_beyond_flanks"), 2,
+			"two slots lie more than half a pitch outside the grid")
+	var crossed: Dictionary = _grid_record(
+			[[-15.0, 0.0], [15.0, 0.0]], [[15.0, 0.0], [-15.0, 0.0]], 15.0)
+	assert_eq(DemoDefects.derived_field(crossed, "slots_beyond_flanks"), 0,
+			"men sent across the block, not round it, are not counted")
+
+
+func test_derived_slots_beyond_flanks_reads_the_grid_not_the_bodies() -> void:
+	# The two walkers have reached their slots out at -40 and 40. Measured against the
+	# outermost bodies they would no longer stand outside anyone; against the grid they do.
+	var arrived: Dictionary = _grid_record(
+			[[-40.0, 0.0], [-5.0, 0.0], [5.0, 0.0], [40.0, 0.0]],
+			[[-40.0, 0.0], [-5.0, 0.0], [5.0, 0.0], [40.0, 0.0]], 15.0)
+	assert_eq(DemoDefects.derived_field(arrived, "slots_beyond_flanks"), 2,
+			"walkers who have caught up with their slots still count")
+	# A straggler far out to the side widens the bodies' span, not the grid's.
+	var straggler: Dictionary = _grid_record(
+			[[-15.0, 0.0], [90.0, 0.0], [5.0, 0.0], [15.0, 0.0]],
+			[[-15.0, 0.0], [30.0, 0.0], [5.0, 0.0], [15.0, 0.0]], 15.0)
+	assert_eq(DemoDefects.derived_field(straggler, "slots_beyond_flanks"), 1,
+			"a straggler's body does not hide a slot outside the grid")
+	assert_null(DemoDefects.derived_field(
+			_derived_record([[0.0, 0.0]], [[30.0, 0.0]]), "slots_beyond_flanks"),
+			"a dump without the grid's footprint cannot supply the field")
+
+
+func test_derived_slots_beyond_flanks_measures_along_the_grid_axis() -> void:
+	# A grid folded a quarter-turn off the unit's facing: its files run along world +Y, out to
+	# 45 wu either side, while the facing's lateral axis is world +X. Slots at y -40 and 40 are
+	# inside the grid; along the facing's axis every slot reads 0. The slot at y 60 is outside.
+	var folded: Dictionary = _grid_record(
+			[[0.0, -40.0], [0.0, 40.0], [0.0, 60.0]],
+			[[0.0, -40.0], [0.0, 40.0], [0.0, 60.0]], 45.0, [0.0, 1.0])
+	assert_eq(DemoDefects.derived_field(folded, "slots_beyond_flanks"), 1,
+			"only the slot past the grid's own edge counts")
+	# A grid that is not centred on the unit (a file-major block short of men keeps its files
+	# where they stand): it reaches from -63 to 45. A slot at -60 is inside it.
+	var shifted: Dictionary = _grid_record(
+			[[-60.0, 0.0], [40.0, 0.0]], [[-60.0, 0.0], [52.0, 0.0]], 45.0, [1.0, 0.0], -63.0)
+	assert_eq(DemoDefects.derived_field(shifted, "slots_beyond_flanks"), 1,
+			"each side is measured against its own edge")
+
+
 func test_derived_slot_fields_need_a_full_record() -> void:
 	var compact := {"uid": 0, "position": [0.0, 0.0], "facing": [0.0, 1.0]}
 	assert_null(DemoDefects.derived_field(compact, "slots_across_centreline"),
 			"a compact record cannot supply the field")
 	assert_null(DemoDefects.derived_field(_derived_record([], []), "state"),
-			"only the two named fields are derived")
-	for field in ["slots_across_centreline", "slot_lateral_excess"]:
+			"only the named fields are derived")
+	for field in ["slots_across_centreline", "slot_lateral_excess", "slots_beyond_flanks"]:
 		assert_null(DemoDefects.derived_field(_derived_record([], []), field),
 				"%s: no men to measure is uncheckable, not a pass" % field)
 		assert_null(DemoDefects.derived_field(
