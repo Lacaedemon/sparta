@@ -5080,6 +5080,7 @@ func set_formation(mode: int) -> void:
 		# A new stance re-deals every slot, so no man is still walking to the slot a
 		# hold-ground re-square gave him.
 		clear_couple_transit()
+		_sim_soldier_reflect_walker = PackedByteArray()
 		# A deliberate reshape. The square slot pairing is taken from where the men
 		# stand at the moment the square forms (_ensure_square_slot_assignment), so a
 		# pairing left over from an earlier square must not survive a spell back in
@@ -5722,10 +5723,19 @@ var _row_slot_files: int = -1
 var _row_layout_files: int = -1
 # Whether _sim_soldier_row_slot was dealt from where the men stood (a file-count or headcount
 # change, or a quarter-fold re-square) rather than composed from a depth reflection. The
-# traverse flank arcs a reform hold bends men's paths with read a pairing as a depth
-# reflection (a man on his own cell index is one the reflection left to walk the block's
-# depth), which a lateral deal is not, so they skip a dealt pairing.
+# traverse flank arcs a reform hold bends men's paths with apply to a depth reflection's walkers,
+# which a lateral deal has none of, so they skip a dealt pairing.
 var _row_slot_dealt: bool = false
+# Per-soldier flags (aligned to _sim_soldier_pos) for the men the last hold-ground depth
+# reflection left on their own cell, so they walk the block's depth to its other end
+# (UnitFormation.depth_reflection_walkers). The traverse flank arcs bend exactly these men. Recorded
+# when the reflection is composed, on whichever pairing it was composed onto (the row-major or the
+# square one), and carried with the men from then on: reap drops a dead man's flag, a regiment-path
+# close-up drops the tail men's, and a gain appends unflagged newcomers. Neither a man's index nor
+# the reflection's fixed cells at the current size can say who is walking once the pairing is
+# composed onto a non-identity base or a casualty has closed it up. Any re-deal of the slots (a
+# reform, a deal from the bodies, a stance change) clears it. Empty when nobody is walking.
+var _sim_soldier_reflect_walker: PackedByteArray = PackedByteArray()
 
 # Per-soldier facing (the drill-maneuver foundation), index-aligned with
 # _sim_soldier_pos. By default every body faces the unit heading (kept synced each
@@ -5956,7 +5966,9 @@ func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVe
 		var sq_slots: PackedVector2Array = UnitFormation.permute_slots(square_grid, _sim_soldier_square_slot)
 		if _sim_soldier_pos.size() == count and _sim_soldier_square_slot.size() == count and _reform_holding():
 			var sq_ang: float = facing.angle() + PI * 0.5 + _formation_angle
-			sq_slots = UnitFormation.apply_traverse_flank_arcs(sq_slots, _sim_soldier_pos, position, sq_ang, _sim_soldier_square_slot, square_file_count, file_pitch_wu())
+			sq_slots = UnitFormation.apply_traverse_flank_arcs(sq_slots, _sim_soldier_pos, position,
+					sq_ang, _sim_soldier_square_slot, square_file_count, file_pitch_wu(),
+					_sim_soldier_reflect_walker)
 		return sq_slots
 	var slots: PackedVector2Array
 	if _effective_file_major_reform():
@@ -5978,9 +5990,9 @@ func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVe
 			var r_slots: PackedVector2Array = UnitFormation.permute_slots(row_grid, _sim_soldier_row_slot)
 			if _sim_soldier_pos.size() == count and _reform_holding() and not _row_slot_dealt:
 				var r_ang: float = facing.angle() + PI * 0.5 + _formation_angle
-				# Walkers are read by cell: a casualty's close-up leaves a held pairing the
-				# reflection can be composed onto, so a walker's index no longer names his cell.
-				r_slots = UnitFormation.apply_traverse_flank_arcs(r_slots, _sim_soldier_pos, position, r_ang, _sim_soldier_row_slot, row_files, file_pitch_wu(), true)
+				r_slots = UnitFormation.apply_traverse_flank_arcs(r_slots, _sim_soldier_pos, position,
+						r_ang, _sim_soldier_row_slot, row_files, file_pitch_wu(),
+						_sim_soldier_reflect_walker)
 			slots = r_slots
 		else:
 			slots = UnitFormation.permute_slots(row_grid, _fallback_assignment(count, row_files))
@@ -6202,6 +6214,8 @@ func _ensure_square_slot_assignment(count: int, files: int, slots: PackedVector2
 	if _sim_soldier_square_slot.size() == count and _square_slot_files == files:
 		return
 	var live: PackedVector2Array = _slot_frame_positions(count)
+	# A re-pair hands every man a cell near where he stands, so nobody is left walking the depth.
+	_sim_soldier_reflect_walker = PackedByteArray()
 	if live.is_empty():
 		_sim_soldier_square_slot = _fallback_assignment(count, files)
 	else:
@@ -6325,12 +6339,14 @@ func _ensure_row_slot_assignment(count: int, files: int, grid: PackedVector2Arra
 			_sim_soldier_row_slot = _closed_up_row_slots(tail, files)
 		else:
 			_sim_soldier_row_slot = _extended_row_slots(count, files)
+		_resize_reflect_walkers(held_rows, count)
 		_row_layout_files = files
 		return false
 	var live: PackedVector2Array = _slot_frame_positions(count)
 	if live.is_empty():
 		if _sim_soldier_pos.is_empty():
 			_sim_soldier_row_slot = PackedInt32Array()
+			_sim_soldier_reflect_walker = PackedByteArray()
 			_row_slot_files = -1
 			_row_slot_dealt = false
 			_row_layout_files = files
@@ -6351,7 +6367,25 @@ func _ensure_row_slot_assignment(count: int, files: int, grid: PackedVector2Arra
 	_row_slot_files = files
 	_row_slot_dealt = true
 	_row_layout_files = files
+	_sim_soldier_reflect_walker = PackedByteArray()
 	return true
+
+
+## Keep the walker flags (_sim_soldier_reflect_walker) aligned with a row-major pairing that a
+## headcount change took from `held_rows` men to `count`: the tail men a regiment-path close-up
+## drops lose their flags, and the newcomers an extension appends take the tail unflagged (a man
+## who has just joined is walking to his cell, not the block's depth). Flags of another length
+## than `held_rows` were not recorded for this pairing and are left for nobody to read.
+func _resize_reflect_walkers(held_rows: int, count: int) -> void:
+	if _sim_soldier_reflect_walker.size() != held_rows:
+		return
+	if count < held_rows:
+		_sim_soldier_reflect_walker = _sim_soldier_reflect_walker.slice(0, count)
+		return
+	var start: int = _sim_soldier_reflect_walker.size()
+	_sim_soldier_reflect_walker.resize(count)
+	for i in range(start, count):
+		_sim_soldier_reflect_walker[i] = 0
 
 
 ## Close the row-major pairing up over the men SoldierMelee.reap() removes at the indices in
@@ -7061,6 +7095,9 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 	# now bound for a different slot: drop the old flags (the branch below re-arms its own).
 	# The early returns above re-deal nothing, so they leave a walk in progress flagged.
 	clear_couple_transit()
+	# Likewise the men an earlier depth reflection sent walking: the hold-ground branch below
+	# records its own.
+	_sim_soldier_reflect_walker = PackedByteArray()
 	# Past this point the reform re-slots the block (an about-face's depth reflection, or a
 	# quarter-turn's re-square) -- the file-crossing traversal the standoff pass exists to
 	# police, including the hasty variant's deferred call once the march that carried it
@@ -7290,6 +7327,7 @@ func _apply_row_slot_reflection(count: int, files: int) -> void:
 	var held: bool = _sim_soldier_row_slot.size() == count and _row_slot_files == files
 	var base: PackedInt32Array = _sim_soldier_row_slot if held \
 			else _fallback_assignment(count, files)
+	_sim_soldier_reflect_walker = UnitFormation.depth_reflection_walkers(base, files)
 	var out := PackedInt32Array()
 	out.resize(count)
 	for i in range(count):
@@ -7352,6 +7390,8 @@ func _apply_square_slot_reflection(count: int, files: int) -> void:
 	# through itself: the exact defect this reflection exists to prevent.
 	if not in_sync:
 		return
+	_sim_soldier_reflect_walker = UnitFormation.depth_reflection_walkers(
+			_sim_soldier_square_slot, files)
 	var out := PackedInt32Array()
 	out.resize(count)
 	for i in range(count):
@@ -9612,6 +9652,8 @@ func _rally_resquare() -> void:
 	# man a cell across the block. Each man's new cell is then at most a rank pitch from his old
 	# one, so his distance to it grows by at most a rank pitch.
 	var held: PackedVector2Array = to_slot_frame(slots_before)
+	# The column deal replaces the reflection reform_ranks just composed, walkers and all.
+	_sim_soldier_reflect_walker = PackedByteArray()
 	if in_square():
 		_sim_soldier_square_slot = UnitFormation.pair_slots_by_column(
 				held, UnitFormation.block_slots(soldiers, files, file_pitch_wu()), file_pitch_wu())
@@ -10746,6 +10788,7 @@ func to_snapshot_dict() -> Dictionary:
 		"row_slot_files": _row_slot_files,
 		"row_layout_files": _row_layout_files,
 		"row_slot_dealt": _row_slot_dealt,
+		"sim_soldier_reflect_walker": _sim_soldier_reflect_walker.duplicate(),
 		"under_fire": _under_fire, "under_fire_can_reply": _under_fire_can_reply,
 		"in_enemy_contact": _in_enemy_contact, "router_front_in_melee": _router_front_in_melee,
 		"attack_cd": _attack_cd, "pin_down_exposure_cd": _pin_down_exposure_cd,
@@ -10984,6 +11027,9 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_row_slot_files = int(d.get("row_slot_files", -1))
 	_row_layout_files = int(d.get("row_layout_files", -1))
 	_row_slot_dealt = bool(d.get("row_slot_dealt", false))
+	# An older snapshot carries no walker flags: a restore mid re-square arcs nobody.
+	_sim_soldier_reflect_walker = (d.get("sim_soldier_reflect_walker",
+			PackedByteArray()) as PackedByteArray).duplicate()
 	_under_fire = bool(d["under_fire"])
 	_under_fire_can_reply = bool(d.get("under_fire_can_reply", false))
 	_in_enemy_contact = bool(d["in_enemy_contact"])
