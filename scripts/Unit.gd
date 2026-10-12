@@ -4180,7 +4180,7 @@ func _flanking_maneuver_reflow(enemy: Unit = null, wrap_files: int = flanking_ma
 ## MATCH_TARGET -- see engage_reshape_mode). A small heading correction snaps (stays
 ## responsive at close quarters) through _reface, so the slot grid follows the heading at a
 ## bounded rate instead of swinging under the men; a large swing (>ENGAGE_TURN_THRESHOLD,
-## ~a quarter-turn or more) turns the men in place gradually instead — the line pivots to
+## ~a quarter-turn or more) turns the men in place gradually instead -- the line pivots to
 ## bring its front to bear without the grid collapsing and re-expanding. Returns whether the
 ## unit is faced enough to
 ## fight this tick (true when snapping, or once a turn has closed to within
