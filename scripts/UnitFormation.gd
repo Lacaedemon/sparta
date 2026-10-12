@@ -28,6 +28,13 @@ static func _files(n: int) -> int:
 # back and forth tick to tick; it only re-widens once meaningfully recovered.
 const CLOSE_RANKS_CONTRACT_FRAC: float = 0.5
 const CLOSE_RANKS_RECOVER_FRAC: float = 0.65
+# How far outside the widest rank's outermost man, in file pitches, a hold-ground walker's path
+# runs at full strength when his own cell is on his rank's centre line (each pitch he stands off
+# that centre adds one more; see apply_traverse_flank_arcs). A gameplay tunable, the default of
+# Unit.traverse_arc_clearance. 2.0 keeps a full rank's outermost walker on the path the arcs gave
+# him when the distance was read from his own rank: twice its half-width plus 2.0 pitches from
+# the centre line.
+const TRAVERSE_ARC_CLEARANCE: float = 2.0
 
 
 ## Whether the auto frontage should currently be contracted a notch, with hysteresis:
@@ -808,13 +815,17 @@ static func depth_reflection_walkers(held: PackedInt32Array, files: int) -> Pack
 ## non-identity base or closed up under a casualty. A `walkers` array of another length arcs
 ## nobody.
 ##
-## A man swings out round his own flank: the side, and how far out, are read from where the cell
-## he now holds (perm[i]) stands in its own rank, measured in files from that rank's centre. A
-## short rank is centred on the block, so its file index alone would send the men right of its
-## centre round the left flank.
+## A man swings out round his own flank, the side read from where the cell he now holds (perm[i])
+## stands in its own rank, measured in files from that rank's centre: a short rank is centred on
+## the block, so its file index alone would send the men right of its centre round the left
+## flank. At full strength every walker's path is moved out by the widest rank's half-width,
+## (files - 1) / 2 pitches, plus `clearance` pitches. That puts him `clearance` pitches, plus his
+## own distance from his rank's centre, outside the widest rank's outermost man, so he passes
+## outside every rank he crosses, and two men on one flank keep the lateral interval they had
+## (see TRAVERSE_ARC_CLEARANCE).
 static func apply_traverse_flank_arcs(slots: PackedVector2Array, world_positions: PackedVector2Array,
 		unit_pos: Vector2, unit_ang: float, perm: PackedInt32Array, files: int, spacing: float,
-		walkers: PackedByteArray) -> PackedVector2Array:
+		walkers: PackedByteArray, clearance: float = TRAVERSE_ARC_CLEARANCE) -> PackedVector2Array:
 	var n: int = slots.size()
 	if n <= 0 or files <= 0 or perm.size() != n or world_positions.size() != n \
 			or walkers.size() != n:
@@ -837,7 +848,7 @@ static func apply_traverse_flank_arcs(slots: PackedVector2Array, world_positions
 				var t: float = clampf((local_pos.y - y_start) / dy, 0.0, 1.0)
 				var arc: float = smoothstep(0.0, 0.08, t) * (1.0 - smoothstep(0.92, 1.0, t))
 				var side: float = -1.0 if lateral <= 0.0 else 1.0
-				var flank_offset: float = side * (absf(lateral) + 2.0) * spacing
+				var flank_offset: float = side * (float(files - 1) * 0.5 + clearance) * spacing
 				out[i].x += arc * flank_offset
 	return out
 

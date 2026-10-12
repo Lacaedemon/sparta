@@ -1211,6 +1211,10 @@ const FLEE_SPEED_MULTIPLIER: float = GaitLimitsRef.FLEE_SPEED_MULTIPLIER
 # already follow, so a demo/test/campaign unit can rout for a different duration
 # without touching the default every other unit relies on.
 var rout_time: float = ROUT_TIME
+# How far outside the block's widest rank, in file pitches, a hold-ground re-square's walkers swing
+# round their flank (UnitFormation.apply_traverse_flank_arcs). Caller-configurable, defaulting to
+# UnitFormation.TRAVERSE_ARC_CLEARANCE, with rout_time's set-before-_ready contract.
+var traverse_arc_clearance: float = UnitFormation.TRAVERSE_ARC_CLEARANCE
 # The half-angle (rad) of the front arc, off the heading, inside which an enemy in contact
 # makes a unit that routs break with its front in the melee (_arm_router_front_in_melee):
 # 60 degrees, so a contact on a flank or behind does not count. A caller-configurable
@@ -5971,7 +5975,7 @@ func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVe
 			var sq_ang: float = facing.angle() + PI * 0.5 + _formation_angle
 			sq_slots = UnitFormation.apply_traverse_flank_arcs(sq_slots, _sim_soldier_pos, position,
 					sq_ang, _sim_soldier_square_slot, square_file_count, file_pitch_wu(),
-					_sim_soldier_reflect_walker)
+					_sim_soldier_reflect_walker, traverse_arc_clearance)
 		return sq_slots
 	var slots: PackedVector2Array
 	if _effective_file_major_reform():
@@ -5995,7 +5999,7 @@ func formation_slots(count: int, apply_relief_corridor: bool = true) -> PackedVe
 				var r_ang: float = facing.angle() + PI * 0.5 + _formation_angle
 				r_slots = UnitFormation.apply_traverse_flank_arcs(r_slots, _sim_soldier_pos, position,
 						r_ang, _sim_soldier_row_slot, row_files, file_pitch_wu(),
-						_sim_soldier_reflect_walker)
+						_sim_soldier_reflect_walker, traverse_arc_clearance)
 			slots = r_slots
 		else:
 			slots = UnitFormation.permute_slots(row_grid, _fallback_assignment(count, row_files))
@@ -10842,6 +10846,7 @@ func to_snapshot_dict() -> Dictionary:
 		"rally_morale_threshold": rally_morale_threshold,
 		"rally_resume_radius_factor": rally_resume_radius_factor,
 		"rally_resume_clear_ticks": rally_resume_clear_ticks,
+		"traverse_arc_clearance": traverse_arc_clearance,
 		"flanking_maneuver_wrap_files": flanking_maneuver_wrap_files,
 		"flanking_maneuver_cooldown_ticks": flanking_maneuver_cooldown_ticks,
 		"flanking_maneuver_hysteresis": flanking_maneuver_hysteresis,
@@ -11094,6 +11099,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rally_morale_threshold = float(d.get("rally_morale_threshold", rally_morale_threshold))
 	rally_resume_radius_factor = float(d.get("rally_resume_radius_factor", rally_resume_radius_factor))
 	rally_resume_clear_ticks = int(d.get("rally_resume_clear_ticks", rally_resume_clear_ticks))
+	traverse_arc_clearance = float(d.get("traverse_arc_clearance", traverse_arc_clearance))
 	flanking_maneuver_wrap_files = int(d.get("flanking_maneuver_wrap_files", flanking_maneuver_wrap_files))
 	flanking_maneuver_cooldown_ticks = int(d.get("flanking_maneuver_cooldown_ticks", flanking_maneuver_cooldown_ticks))
 	flanking_maneuver_hysteresis = int(d.get("flanking_maneuver_hysteresis", flanking_maneuver_hysteresis))

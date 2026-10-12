@@ -954,13 +954,28 @@ func test_derived_slot_excess_measures_an_outside_man_from_the_block_edge() -> v
 			"the outside man reaches the near edge (0 excess); the inside man steps 10 wu")
 
 
+func test_derived_slots_beyond_flanks_counts_men_sent_round_the_outside() -> void:
+	# Bodies span x -15 to 15 (pitch 10, so half a pitch is 5). The first man's slot is out at
+	# -25, 10 wu beyond the left-hand body: counted. The second's is at 19, only 4 wu beyond the
+	# right-hand body: not counted. The third's is inside, and the fourth's out at 30: counted.
+	var u: Dictionary = _derived_record(
+			[[-15.0, 0.0], [-5.0, 0.0], [5.0, 0.0], [15.0, 0.0]],
+			[[-25.0, 0.0], [19.0, 0.0], [5.0, 10.0], [30.0, 0.0]])
+	assert_eq(DemoDefects.derived_field(u, "slots_beyond_flanks"), 2,
+			"two slots lie more than half a pitch outside the bodies")
+	var kept: Dictionary = _derived_record(
+			[[-15.0, 0.0], [15.0, 0.0]], [[15.0, 0.0], [-15.0, 0.0]])
+	assert_eq(DemoDefects.derived_field(kept, "slots_beyond_flanks"), 0,
+			"men sent across the block, not round it, are not counted")
+
+
 func test_derived_slot_fields_need_a_full_record() -> void:
 	var compact := {"uid": 0, "position": [0.0, 0.0], "facing": [0.0, 1.0]}
 	assert_null(DemoDefects.derived_field(compact, "slots_across_centreline"),
 			"a compact record cannot supply the field")
 	assert_null(DemoDefects.derived_field(_derived_record([], []), "state"),
-			"only the two named fields are derived")
-	for field in ["slots_across_centreline", "slot_lateral_excess"]:
+			"only the named fields are derived")
+	for field in ["slots_across_centreline", "slot_lateral_excess", "slots_beyond_flanks"]:
 		assert_null(DemoDefects.derived_field(_derived_record([], []), field),
 				"%s: no men to measure is uncheckable, not a pass" % field)
 		assert_null(DemoDefects.derived_field(

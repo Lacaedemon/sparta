@@ -543,7 +543,7 @@ Two optional keys widen what an entry can say:
   A uid that never appeared, or any snapshot inside the range with no `units` list,
   fails rather than passing.
 
-Two more fields are derived from a FULL dump (`SPARTA_DEMO_STATE_FULL=1`, which CI's
+Three more fields are derived from a FULL dump (`SPARTA_DEMO_STATE_FULL=1`, which CI's
 defect scan uses) rather than read from the compact record (`DemoDefects.derived_field`).
 Each compares every man's body with his own slot along the unit's lateral axis,
 measured from the unit's position.
@@ -568,7 +568,13 @@ Sampled the tick after a reshape, they show where the reshape sends the men befo
   State how much more and why in the script's `_comment`,
   rather than tuning the `tol` to the value one run reads.
 
-A dump without the full arrays cannot supply either field.
+- `slots_beyond_flanks` -- how many men have their slot sideways outside every body of the unit,
+  more than half a file pitch beyond the farthest one on that side of the centreline.
+  These are the men a drill sends out round the block's flank rather than through it,
+  such as a hold-ground about-face's walkers once their walk is under way.
+  It is an exact count, so pin it without a `tol`.
+
+A dump without the full arrays cannot supply any of these fields.
 Neither can one whose per-soldier bodies and slots are empty or differ in count
 (a casualty the body layer has not caught up with yet).
 The expectation then fails as uncheckable rather than passing on nothing.

@@ -14,8 +14,9 @@ extends GutTest
 ##
 ## How a man reads as arced: with every body at the block's centre, halfway through any walk, the
 ## arc is at full strength, so a man is arced exactly when his slot is bent sideways off the plain
-## pairing's slot. Every arced man's bend must point out past his own flank: the side his plain
-## slot stands on, measured from the block's centre (_arced checks it).
+## pairing's slot. Every arced man's bend must point out past his own flank (the side his plain
+## slot stands on, measured from the block's centre) and carry him outside the widest rank's edge
+## (_arced checks both).
 
 ## A slot bent sideways by more than this is arced. The arc at full strength moves a slot at
 ## least 2 file pitches (18 wu on foot here); float residue is under 0.001 wu.
@@ -119,7 +120,9 @@ func _survivors_of(walkers: Array, dead: Array) -> Array:
 
 ## The men whose slot the arcs bend, with every body at the block's centre. Each bend must point
 ## out past the man's own flank: the side of the block's centre his plain slot stands on (a man
-## on the centre line may go either way).
+## on the centre line may go either way). It must carry him at least half a pitch outside the
+## widest rank's outermost man, and its size must be that rank's half-width plus the unit's
+## configured clearance, whatever rank he stands in.
 func _arced(u: Unit, square: bool) -> Array:
 	var n: int = u.soldiers
 	var saved: PackedVector2Array = u._sim_soldier_pos.duplicate()
@@ -129,8 +132,16 @@ func _arced(u: Unit, square: bool) -> Array:
 	var plain: PackedVector2Array = UnitFormation.permute_slots(_grid(u, square, n),
 			_pairing(u, square))
 	u._sim_soldier_pos = saved
+	# The widest rank's outermost men stand (files - 1) / 2 pitches off the centre line.
+	var p: float = u.file_pitch_wu()
+	var edge: float = float(u.formation_files(n) - 1) * 0.5 * p
+	# Read by name, so this file loads on a tree without the field.
+	var configured = u.get("traverse_arc_clearance")
+	var clearance: float = float(configured) if configured != null else 2.0
 	var out: Array = []
 	var inward: Array = []
+	var inside: Array = []
+	var off_distance: Array = []
 	for i in range(n):
 		var bend: float = arced_slots[i].x - plain[i].x
 		if absf(bend) <= ARC_EPS:
@@ -138,7 +149,16 @@ func _arced(u: Unit, square: bool) -> Array:
 		out.push_back(i)
 		if absf(plain[i].x) > ARC_EPS and signf(bend) != signf(plain[i].x):
 			inward.push_back(i)
+		# Outside the widest rank's outermost man by at least half a pitch, so his path does
+		# not run through the men standing at that edge.
+		if absf(arced_slots[i].x) < edge + p * 0.5:
+			inside.push_back(i)
+		if absf(absf(bend) - (edge + clearance * p)) > ARC_EPS:
+			off_distance.push_back(i)
 	assert_eq(inward, [], "every arced man swings out round his own flank")
+	assert_eq(inside, [], "every arced man's path clears the widest rank's edge")
+	assert_eq(off_distance, [],
+		"every arced man is moved out by the widest rank's half-width plus the clearance")
 	return out
 
 
@@ -275,12 +295,14 @@ func test_a_second_re_square_arcs_its_own_walkers() -> void:
 ## The walker set rides the snapshot, so a restore mid re-square arcs the same men.
 func test_the_walkers_survive_a_snapshot() -> void:
 	var u := _make(61, false)
+	u.set("traverse_arc_clearance", 3.0)
 	var walkers: Array = _re_square(u, false)
 	_reap(u, [3])
 	var left: Array = _survivors_of(walkers, [3])
 	var restored := Unit.new()
 	add_child_autofree(restored)
 	restored.apply_snapshot_dict(u.to_snapshot_dict())
+	assert_eq(restored.get("traverse_arc_clearance"), 3.0, "the configured clearance round-trips")
 	_hold(restored)
 	assert_eq(_arced(restored, false), left, "the restored block arcs the same walkers")
 
@@ -344,3 +366,15 @@ func test_the_middle_rank_holds_its_ground() -> void:
 		if flags[i] != 0:
 			walkers.push_back(i)
 	assert_eq(walkers, [0, 1, 6, 7], "only the front rank's outer men walk")
+
+
+## The clearance is the unit's own setting: a wider one swings the same walkers further out
+## (_arced checks the distance against the configured value). Set by name, so this file loads on
+## a tree without the field.
+func test_a_configured_clearance_sets_how_far_the_walkers_swing_out() -> void:
+	for square in [false, true]:
+		var u := _make(61, square)
+		u.set("traverse_arc_clearance", 3.5)
+		assert_eq(u.get("traverse_arc_clearance"), 3.5, "the clearance is configurable")
+		var walkers: Array = _re_square(u, square)
+		assert_eq(_arced(u, square), walkers, "square %s: the arcs bend exactly the walkers" % square)
