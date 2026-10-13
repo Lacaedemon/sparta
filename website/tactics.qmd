@@ -94,11 +94,13 @@ its riders running together as a block.
   so once they have gone each man steps back to his own place.
   A block riding a rout down from behind still turns to keep its front on it.
 - **An enemy that pushes into your ranks doesn't spin them round either.**
-  Blocks locked in melee press deep into each other,
-  and a block whose enemy is pressed in among its own ranks
-  still turns to face it at once,
-  but its ranks keep their places instead of wheeling round under the men,
+  Blocks locked in melee press deep into each other.
+  While its enemy is pressed in among its own ranks,
+  a block keeps its facing and its ranks keep their places
+  instead of wheeling round after every small shift of the enemy,
   so the men don't have to chase new places across the block mid-fight.
+  If the enemy works round to its flank or rear,
+  the men still turn where they stand to face it.
 - **A "broken" unit can rally** if nothing catches it. As it flees, its nerve steadies
   --- morale climbs back toward a baseline, fast at first and levelling off. If it
   **breaks contact** (no enemy close enough to keep hitting it) and still fields enough
