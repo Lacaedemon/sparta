@@ -44,6 +44,8 @@ func _ready() -> void:
 	var replay_path := OS.get_environment("SPARTA_DEMO_REPLAY")
 	if replay_path != "":
 		if Replay.start_playback(replay_path):
+			if not _apply_seed_run():
+				return
 			# Reproduce the recorded camera framing (pan/zoom) in the clip; a replay with
 			# no presentation track still plays with the default static camera.
 			Replay.drive_camera = true
@@ -70,3 +72,20 @@ func _ready() -> void:
 
 func _enter_battle() -> void:
 	get_tree().change_scene_to_file(BATTLE_SCENE)
+
+
+## Replace the loaded replay's seed with SPARTA_DEMO_SEED_RUN's derived seed (DemoSeed), for
+## one draw of a perturbed comparison. Unset leaves the replay's own seed. A malformed value
+## quits with code 2 and returns false rather than silently playing the unperturbed seed.
+func _apply_seed_run() -> bool:
+	var spec: String = OS.get_environment(DemoSeed.ENV_VAR)
+	var run: int = DemoSeed.parse_run(spec)
+	if run < 0:
+		push_error("[demo] %s must be a non-negative integer, got '%s'" % [DemoSeed.ENV_VAR, spec])
+		get_tree().quit(2)
+		return false
+	if run > 0:
+		Replay.seed_value = DemoSeed.seed_for_run(Replay.seed_value, run)
+		Replay.rng.seed = Replay.seed_value
+		print("[demo] %s=%d: playing seed %d" % [DemoSeed.ENV_VAR, run, Replay.seed_value])
+	return true

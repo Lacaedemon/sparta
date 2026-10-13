@@ -447,6 +447,7 @@ func test_spawn_role_tunables_and_late_state_round_trip() -> void:
 		"rearguard_sacrifice_frac": 0.15, "rearguard_delay_sec": 6.5,
 		"rout_time": 9.0, "shatter_strength_frac": 0.11, "rally_morale_threshold": 33.0,
 		"rally_resume_radius_factor": 1.5, "rally_resume_clear_ticks": 45,
+		"router_contact_reentry_frac": 0.75, "_router_left_contact": true, "_router_anchor_contact": true,
 		"flanking_maneuver_wrap_files": 6, "flanking_maneuver_cooldown_ticks": 90,
 		"flanking_maneuver_hysteresis": 3,
 	}
@@ -475,11 +476,13 @@ func test_newly_captured_fields_default_for_older_snapshots() -> void:
 		"grid_lag": "_grid_lag", "grid_lag_rate": "_grid_lag_rate",
 		"moved_while_routing_pace": "_moved_while_routing_pace", "rally_halt": "_rally_halt",
 		"fallback_mirror_x": "_fallback_mirror_x",
+		"router_left_contact": "_router_left_contact", "router_anchor_contact": "_router_anchor_contact",
 	}
 	for tunable in ["order_clear_step", "order_clear_tolerance", "formed_turn_tracking_frac",
 			"melee_press_fraction", "routing_melee_press_fraction", "disengage_step_distance",
 			"rearguard_sacrifice_frac", "rearguard_delay_sec", "rout_time", "shatter_strength_frac",
 			"rally_morale_threshold", "rally_resume_radius_factor", "rally_resume_clear_ticks",
+			"router_contact_reentry_frac",
 			"flanking_maneuver_wrap_files",
 			"flanking_maneuver_cooldown_ticks", "flanking_maneuver_hysteresis"]:
 		fields[tunable] = tunable
