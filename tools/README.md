@@ -340,7 +340,7 @@ and flags only the shifts that hold up across the runs.
 
 ```sh
 GODOT_BIN=godot tools/ci/melee-outcome-delta.sh <base-tree> <head-tree> <out-dir>
-MELEE_DELTA_CLIPS=spear_standoff,charge MELEE_DELTA_METRICS='uid[0-9]+_(break|contact_break|travel_300)$' \
+MELEE_DELTA_CLIPS=spear_standoff,charge MELEE_DELTA_METRICS='uid[0-9]+_(break|contact_break|travel_300|removed_by_300)$' \
   tools/ci/melee-outcome-delta.sh <base-tree> <head-tree> <out-dir>
 ```
 
@@ -391,6 +391,9 @@ Whenever a metric has unobserved values on either side, a `<metric>:unobserved` 
 It counts only the nulls no other row tests already.
 A travel value is unobserved exactly when its removed-by indicator is 1 or itself unobserved,
 so travel gets no `:unobserved` row of its own: the indicator's row and its `:unobserved` row ask those questions once.
+For the same reason a travel row is "not comparable" whenever either of those indicator rows is significant,
+since its travel then describes different shares of survivors on the two sides,
+and a `MELEE_DELTA_METRICS` filter that keeps a travel row always keeps its removed-by row.
 That row is flagged on significance alone,
 and when it is significant the metric's own row is marked "not comparable", because its two sides dropped different shares of runs.
 Dropping censored runs is still a simplification: a censoring-aware rank test (Gehan) belongs here once escapes are told from deaths (TODO(#1832)).

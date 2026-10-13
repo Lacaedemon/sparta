@@ -16,7 +16,9 @@ class_name MeleeOutcomeDelta
 ##     unobserved (null) value on either side also gets a "<metric>:unobserved" row testing how
 ##     often the value went unobserved, flagged on significance alone, counting only the nulls
 ##     no other row already tests (see unexplained). When that row is significant, the value
-##     row is "not comparable": its two sides dropped different runs.
+##     row is "not comparable": its two sides dropped different runs. A travel row is also
+##     "not comparable" when its removed-by row, or that row's ":unobserved" row, is
+##     significant, and a metrics filter that keeps a travel row keeps its removed-by row.
 ##
 ## A row is significant when Benjamini-Hochberg (or, with correction "by",
 ## Benjamini-Yekutieli) rejects it at `alpha` across every row tested in the report. That
@@ -159,8 +161,17 @@ static func compare(base: Dictionary, head: Dictionary, config: Dictionary = {})
 				keys[k] = true
 		var names: Array = keys.keys()
 		names.sort()
+		var wanted: Dictionary = {}
 		for key in names:
 			if filter.is_valid() and filter.search(key) == null:
+				continue
+			wanted[key] = true
+			# A travel row only means something next to its removal indicator (unexplained,
+			# _withdraw_travel), so a filter that keeps travel keeps the indicator too.
+			if key.contains("_travel_"):
+				wanted[key.replace("_travel_", "_removed_by_")] = true
+		for key in names:
+			if not wanted.has(key):
 				continue
 			var b: Dictionary = sample(base[clip], key)
 			var h: Dictionary = sample(head[clip], key)
@@ -188,10 +199,30 @@ static func compare(base: Dictionary, head: Dictionary, config: Dictionary = {})
 		if r.has("_parent") and r["significant"]:
 			r["_parent"]["status"] = "not comparable"
 			r["_parent"]["flag"] = false
+	_withdraw_travel(rows)
 	for r in rows:
 		for k in ["_b", "_h", "_parent"]:
 			r.erase(k)
 	return {"rows": rows, "tested": tested.size(), "level": level}
+
+
+## Mark a travel_<n> row "not comparable" when its clip's removed_by_<n> row, or that row's
+## ":unobserved" row, is significant. Travel is measured only on the runs still on the field
+## at break + n, so when the two sides removed (or lost track of) different shares of their
+## units, the travel row compares different survivors, not the same units.
+static func _withdraw_travel(rows: Array) -> void:
+	var by_name: Dictionary = {}
+	for r in rows:
+		by_name["%s|%s" % [r["clip"], r["metric"]]] = r
+	for r in rows:
+		var metric: String = r["metric"]
+		if r["status"] != "tested" or not metric.contains("_travel_") or metric.ends_with(UNOBSERVED):
+			continue
+		var indicator: String = "%s|%s" % [r["clip"], metric.replace("_travel_", "_removed_by_")]
+		for other in [indicator, indicator + UNOBSERVED]:
+			if by_name.has(other) and by_name[other]["significant"]:
+				r["status"] = "not comparable"
+				r["flag"] = false
 
 
 static func _value_row(clip: String, key: String, b: Dictionary, h: Dictionary,

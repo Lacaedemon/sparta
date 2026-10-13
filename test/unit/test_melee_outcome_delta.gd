@@ -278,3 +278,38 @@ func test_report_does_not_count_a_not_comparable_row_as_significant_but_small() 
 	var md: String = MeleeOutcomeReport.markdown(result, {}, base_runs)
 	assert_false(md.contains("significant but below"), "a withdrawn row is not a small shift")
 	assert_string_contains(md, "1 row(s) are not comparable")
+
+
+## Runs of uid1 at +300: `observed` still on the field with travel `first`, `first` + 1, ...,
+## and `removed` taken out of play before the offset.
+func _travel_runs(observed: int, first: float, removed: int) -> Array:
+	var runs: Array = []
+	for i in range(observed):
+		runs.append({"uid1_travel_300": first + i, "uid1_removed_by_300": 0, "uid1_break": 100})
+	for i in range(removed):
+		runs.append({"uid1_travel_300": null, "uid1_removed_by_300": 1, "uid1_break": 100})
+	return runs
+
+
+func test_travel_is_withdrawn_when_the_removal_shares_differ() -> void:
+	# 2 of 16 removed on base against 12 of 16 on head: the head's travel describes 4
+	# survivors, not the same units, so its large shift is not comparable.
+	var result: Dictionary = MeleeOutcomeDelta.compare({"c": _travel_runs(14, 10.0, 2)},
+			{"c": _travel_runs(4, 100.0, 12)})
+	var by_metric: Dictionary = {}
+	for r in result["rows"]:
+		by_metric[r["metric"]] = r
+	assert_true(by_metric["uid1_removed_by_300"]["significant"])
+	assert_true(by_metric["uid1_removed_by_300"]["flag"], "the removal change is the finding")
+	assert_eq(by_metric["uid1_travel_300"]["status"], "not comparable")
+	assert_false(by_metric["uid1_travel_300"]["flag"])
+
+
+func test_a_metrics_filter_on_travel_keeps_its_removal_indicator() -> void:
+	var rows: Array = MeleeOutcomeDelta.compare({"c": _travel_runs(14, 10.0, 2)},
+			{"c": _travel_runs(4, 100.0, 12)}, {"metrics": "travel_300$"})["rows"]
+	var names: Array = rows.map(func(r: Dictionary) -> String: return r["metric"])
+	names.sort()
+	assert_eq(names, ["uid1_removed_by_300", "uid1_travel_300"],
+			"the indicator comes along; the unfiltered break row does not")
+	assert_false(rows.filter(func(r: Dictionary) -> bool: return r["metric"] == "uid1_travel_300")[0]["flag"])
