@@ -347,7 +347,7 @@ MELEE_DELTA_CLIPS=spear_standoff,charge MELEE_DELTA_METRICS='uid[0-9]+_(break|co
 **A clean report is not evidence of no regression.**
 A row's MDS column is the change it would flag 80% of the time, so a row is weak evidence of no effect only for changes larger than its MDS,
 and a change smaller than the MDS is usually missed.
-At the defaults over all 50 clips, about 40% of tested rows cannot be flagged with any change at all.
+At the defaults over all 50 clips, about a third of tested rows cannot be flagged with any change at all.
 Ask a narrow question instead: name the clips and metrics the change is about, which keeps the row count small.
 
 ### Perturbation
@@ -411,7 +411,7 @@ The floors are the measurement resolution: the snapshot cadence (5 ticks), 0.1 m
 A removed-by indicator is flagged when significant and at least `MELEE_DELTA_MIN_PP` (default 20) percentage points:
 a unit removed in roughly one more battle in five, a change a player would notice over a handful of battles.
 At K=16 it rarely binds: in the back-test's narrow report the 80%-power detectable change of a removed-by row was 69 points or more.
-The threshold does not screen noise on its own: in the null run below, 39 of the 222 rows had a shift past it.
+The threshold does not screen noise on its own: in the null run below, 39 of the 200 rows had a shift past it.
 The significance test screens noise, and the threshold then drops significant shifts too small to matter.
 
 Each tested row also reports its smallest attainable p-value and its minimum detectable change (the MDS column):
@@ -481,11 +481,11 @@ The two known effects were new and not used to choose anything.
 An earlier round fitted a fixed 1 m travel threshold to a routers-30%-slower run.
 That threshold is withdrawn.
 
-- **Null:** the same tree against itself on disjoint seeds (`MELEE_DELTA_HEAD_RUN_OFFSET=16`) flagged 0 of 222 tested rows,
-  51 of them `:unobserved` rows, and marked none "not comparable".
+- **Null:** the same tree against itself on disjoint seeds (`MELEE_DELTA_HEAD_RUN_OFFSET=16`) flagged 0 of 200 tested rows,
+  29 of them `:unobserved` rows, and marked none "not comparable".
   6 rows had a raw p at or below 0.05.
-  88 of the 222 could not be flagged with any change.
-  The quick subset alone flagged 0 of 108.
+  69 of the 200 could not be flagged with any change.
+  The quick subset alone flagged 0 of 92.
   (The previous round's code, without the proportion rows, also flagged 0 of 171 under BY.)
 
 - **Routers 15% slower** (`flee_speed()` times 0.85) flagged 3 of 219 rows, all in `rout_rally`:
