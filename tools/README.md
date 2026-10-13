@@ -347,7 +347,7 @@ MELEE_DELTA_CLIPS=spear_standoff,charge MELEE_DELTA_METRICS='uid[0-9]+_(break|co
 **A clean report is not evidence of no regression.**
 A row's MDS column is the change it would flag 80% of the time, so a row is weak evidence of no effect only for changes larger than its MDS,
 and a change smaller than the MDS is usually missed.
-At the defaults over all 50 clips, about 30% of tested rows cannot be flagged with any change at all.
+At the defaults over all 50 clips, about 40% of tested rows cannot be flagged with any change at all.
 Ask a narrow question instead: name the clips and metrics the change is about, which keeps the row count small.
 
 ### Perturbation
@@ -407,8 +407,8 @@ The criterion is a standardized effect size of half a standard deviation (Cohen'
 The floors are the measurement resolution: the snapshot cadence (5 ticks), 0.1 m (`MELEE_DELTA_FLOOR_METRES`) and 1 man (`MELEE_DELTA_FLOOR_MEN`).
 A removed-by indicator is flagged when significant and at least `MELEE_DELTA_MIN_PP` (default 20) percentage points:
 a unit removed in roughly one more battle in five, a change a player would notice over a handful of battles.
-At K=16 it rarely binds, since the 80%-power detectable change is larger (about 45 points from 0%).
-The threshold does not screen noise on its own: in the null run below, 39 of 171 rows had a shift past it.
+At K=16 it rarely binds: in the back-test's narrow report the 80%-power detectable change of a removed-by row was 69 points or more.
+The threshold does not screen noise on its own: in the null run below, 39 of the 222 rows had a shift past it.
 The significance test screens noise, and the threshold then drops significant shifts too small to matter.
 
 Each tested row also reports its smallest attainable p-value and its minimum detectable change (the MDS column):
@@ -468,32 +468,35 @@ so change thresholds or questions freely, but use a fresh out-dir when a tree ch
 ### Validation
 
 Measured 2026-10-12 at `K=16` over all 50 clips with the defaults above.
-The effect multiple, the floors and K were set before these runs, from the criteria above and the power table.
+The effect multiple, the floors, `MELEE_DELTA_MIN_PP` and K were set before these runs, from the criteria above and the power table.
 The two known effects were new and not used to choose anything.
 An earlier round fitted a fixed 1 m travel threshold to a routers-30%-slower run.
 That threshold is withdrawn.
 
-- **Null:** the same tree against itself on disjoint seeds (`MELEE_DELTA_HEAD_RUN_OFFSET=16`) flagged 0 of 171 tested rows,
-  with BH and with BY. 6 rows had a raw p at or below 0.05.
-  The quick subset alone flagged 0 of 71.
+- **Null:** the same tree against itself on disjoint seeds (`MELEE_DELTA_HEAD_RUN_OFFSET=16`) flagged 0 of 222 tested rows,
+  51 of them `:unobserved` rows, and marked none "not comparable".
+  6 rows had a raw p at or below 0.05.
+  88 of the 222 could not be flagged with any change.
+  The quick subset alone flagged 0 of 108.
+  (The previous round's code, without the proportion rows, also flagged 0 of 171 under BY.)
 
-- **Routers 15% slower** (`flee_speed()` times 0.85) flagged 3 rows, all in `rout_rally`:
+- **Routers 15% slower** (`flee_speed()` times 0.85) flagged 3 of 219 rows, all in `rout_rally`:
   team 0's median end headcount rose from 140 to 152, because the 12-man router, removed at a median tick 655, stayed on the field in all 16 runs,
   and its travel 300 ticks after the break fell from 15.4 m to 14.8 m.
   `trapped_routing`'s router travel also fell, by 0.05 m: significant, but under the 0.1 m floor.
-  No other row was significant.
 
-- **Melee wounds 20% weaker** (the wound times 0.8 in `SoldierMelee`) flagged 36 rows in 27 clips: 31 team headcounts and 5 break ticks.
-  For example, `spear_standoff`'s router broke at a median tick 848 instead of 710, and `file_major_reform_contrast`'s at 925 instead of 745.
+- **Melee wounds 20% weaker** (the wound times 0.8 in `SoldierMelee`) flagged 33 of 214 rows in 24 clips: 28 team headcounts and 5 break ticks.
+  For example, `spear_standoff`'s router broke at a median tick 847.5 instead of 710, and `file_major_reform_contrast`'s at 925 instead of 745.
 
-- **Back-test:** the first version of PR #1814 (581db291 against its base 9d39a353) flagged 11 rows.
+- **Back-test:** the first version of PR #1814 (581db291 against its base 9d39a353), run with the previous round's code over all 50 clips, flagged 11 rows.
   They are in `cycle_charge`, the caracole regression with a traced mechanism (contact timing and both headcounts),
   in `pace_modes` (contact 70 ticks earlier in every run, and both teams about 10 men stronger),
   and in `support` (a unit that made contact at tick 800 in every base run made none in 14 of 16).
-  It flagged no router row in `file_major_reform_contrast`, `spear_standoff` or `last_unit_rally`.
-  That is not evidence the routers were unaffected: a narrow report on those three clips' router metrics (27 rows) has minimum detectable shifts of
-  35 to 215 ticks on break ticks, 70 ticks on `spear_standoff`'s contact-break, 3.0 to 5.3 m on travel at 300 ticks,
-  and none at all (`inf`) for `file_major_reform_contrast`'s contact-break and later travel, which only 4 to 7 runs per side observe.
+  It flagged no router row in `file_major_reform_contrast`, `spear_standoff` or `last_unit_rally`,
+  and neither does this round's narrow report on those three clips' router metrics (43 rows).
+  That is not evidence the routers were unaffected: those rows' 80%-power minimum detectable changes are
+  54 to 265 ticks on break ticks, 63 ticks on `spear_standoff`'s contact-break, 3.3 to 7.6 m on travel at 300 ticks,
+  and none at all (`inf`) for `file_major_reform_contrast`'s contact-break and later travel, and for every removed-by row with a base rate between 35% and 60%.
 
 ### Null calibration
 
