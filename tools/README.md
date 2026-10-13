@@ -329,6 +329,198 @@ the checkout already matches the pin.
 The headless demo recorder used by the demo-video pipeline -- see
 [`demos/README.md`](../demos/README.md).
 
+## Perturbed melee-outcome delta (`ci/melee-outcome-delta.sh`)
+
+The acceptance check for a change to melee dynamics.
+Melee outcomes in the catalog clips are chaotic:
+nudging each unit's facing by 0.0001 rad once flips which routers escape and when units die.
+So "no router breaks later than main on any clip" cannot tell a regression from chance.
+This script runs each melee clip K times on both trees, each run on a different seed,
+and flags only the shifts that hold up across the runs.
+
+```sh
+GODOT_BIN=godot tools/ci/melee-outcome-delta.sh <base-tree> <head-tree> <out-dir>
+MELEE_DELTA_CLIPS=spear_standoff,charge MELEE_DELTA_METRICS='uid[0-9]+_(break|contact_break|travel_300|removed_by_300)$' \
+  tools/ci/melee-outcome-delta.sh <base-tree> <head-tree> <out-dir>
+```
+
+**A clean report is not evidence of no regression.**
+A row's MDS column is the change it would flag 80% of the time, so a row is weak evidence of no effect only for changes larger than its MDS,
+and a change smaller than the MDS is usually missed.
+At the defaults over all 50 clips, about a third of tested rows cannot be flagged with any change at all.
+Ask a narrow question instead: name the clips and metrics the change is about, which keeps the row count small.
+
+### Perturbation
+
+`SPARTA_DEMO_SEED_RUN=k` (`tools/demo/DemoSeed.gd`, read by `DemoInputRecorder` and `DemoRunner`) plays the clip on a seed hashed from its own seed and `k`.
+The scenario, orders and spawn are unchanged.
+What differs is every draw from `Replay.rng` (melee land, fall and damage rolls, missile hits)
+and the scatter of a far-tier promotion, which comes from a local RNG seeded with `Replay.seed_value`.
+A run is bit-identical to the clip until the first of those, which can be a missile volley or a promotion before any melee contact.
+Unset, the clip's own seed plays, so every existing clip hash is unchanged.
+Both trees must carry `DemoSeed.gd`.
+
+### Metrics per run
+
+`tools/demo/MeleeOutcomes.gd` reads compact state dumps taken every `MELEE_DELTA_STEP` ticks (default 5).
+Per run it records the first contact tick and each team's men on the field at the end.
+Per unit it records its first contact tick, its break tick (first `ROUTING` snapshot) and the tick it left play.
+After a break it also records the contact-break delay (ticks from the break until the unit is out of contact),
+its men's centroid travel 60, 150 and 300 ticks after the break,
+and whether it had left play by each of those offsets (a removed-by indicator).
+
+Each value is one of three things.
+A number means the event happened.
+"never" means the run was observed to its end (the last scheduled snapshot, or a `battle_over` snapshot) and the event did not happen.
+It ranks after every tick.
+Unobserved means the stream was cut off first, or the question does not apply: travel after the unit left play is censored, and so is the break of a unit destroyed unbroken.
+Unobserved values are dropped, not ranked, and every row reports how many it dropped on each side.
+Each run directory records its last scheduled tick and cadence in `run.json`,
+and a `metrics.json` is reused only when it was made with the same travel offsets, cadence and end,
+so a re-extraction from kept snapshots still tells a cut-off run from a complete one.
+Leaving play does not yet say whether the unit escaped or died (TODO(#1832)),
+and a replay clip's stream has no `battle_over` marker (#1831), so a replay battle that ends early reads as cut off.
+
+### Comparison
+
+`tools/demo/MeleeOutcomeDelta.gd`, `OutcomeStats.gd` and `OutcomePower.gd` do the statistics.
+Each clip and tick, metre or headcount metric gets an exact two-sided rank-sum (Mann-Whitney) test, with tied values sharing a mid-rank.
+A removed-by indicator is a proportion, so it gets Fisher's exact test, and its effect is the change in percentage points.
+A median of 0/1 values could not register a change from 0% to 40% at all.
+Whenever a metric has unobserved values on either side, a `<metric>:unobserved` row tests how often it went unobserved, also with Fisher's test.
+It counts only the nulls no other row tests already.
+A travel value is unobserved exactly when its removed-by indicator is 1 or itself unobserved,
+so travel gets no `:unobserved` row of its own: the indicator's row and its `:unobserved` row ask those questions once.
+For the same reason a travel row is "not comparable" whenever either of those indicator rows is significant,
+since its travel then describes different shares of survivors on the two sides,
+and a `MELEE_DELTA_METRICS` filter that keeps a travel row always keeps its removed-by row.
+That row is flagged on significance alone,
+and when it is significant the metric's own row is marked "not comparable", because its two sides dropped different shares of runs.
+Dropping censored runs is still a simplification: a censoring-aware rank test (Gehan) belongs here once escapes are told from deaths (TODO(#1832)).
+Then Benjamini-Hochberg runs across every row tested in the report, at `MELEE_DELTA_ALPHA` (default 0.05).
+That bounds the false discovery rate: in expectation, at most 5% of the flags are false.
+It bounds the chance of any flag at all only when no row has a real change.
+BH's bound assumes the rows are independent or positively dependent.
+These rows are not independent: the travel offsets come from the same runs, and two teams' headcounts move against each other.
+`MELEE_DELTA_CORRECTION=by` uses Benjamini-Yekutieli, which holds under any dependence at the cost of dividing alpha by about 5.8 for 180 rows.
+BH stays the default because power, not false flags, is the binding limit (see the table below), and both measured nulls flagged nothing.
+Use `by` when a report gates a decision.
+
+A significant rank row is flagged only when its Hodges-Lehmann shift is also at least its threshold:
+`MELEE_DELTA_MIN_EFFECT` (default 0.5) times that row's own run-to-run spread,
+the robust standard deviation of its base runs (1.4826 times the median absolute deviation, or the sample standard deviation when that is 0).
+The criterion is a standardized effect size of half a standard deviation (Cohen's "medium"), fixed before any validation run.
+The floors are the measurement resolution: the snapshot cadence (5 ticks), 0.1 m (`MELEE_DELTA_FLOOR_METRES`) and 1 man (`MELEE_DELTA_FLOOR_MEN`).
+A removed-by indicator is flagged when significant and at least `MELEE_DELTA_MIN_PP` (default 20) percentage points:
+a unit removed in roughly one more battle in five, a change a player would notice over a handful of battles.
+At K=16 it rarely binds: in the back-test's narrow report the 80%-power detectable change of a removed-by row was 69 points or more.
+The threshold does not screen noise on its own: in the null run below, 39 of the 200 rows had a shift past it.
+The significance test screens noise, and the threshold then drops significant shifts too small to matter.
+
+Each tested row also reports its smallest attainable p-value and its minimum detectable change (the MDS column):
+the change a fresh experiment of the row's own run counts would flag alone (at alpha divided by the row count, and by the harmonic number for `by`) with 80% probability,
+and never less than the row's threshold, since a smaller change is never flagged.
+It comes from simulation in `OutcomePower.gd` with a fixed seed.
+For a tick, metre or headcount row it is the normal-model shift in standard deviations times the row's robust spread,
+so on a heavily tied row the real power is lower and the MDS is a lower bound.
+For a row with "never" in its base runs it is the change in how often the event never happens, in percentage points,
+and for a proportion row the change in percentage points.
+`test/unit/test_outcome_power.gd` checks each against an independent simulation, which detects a change of that size 72% to 88% of the time.
+The MDS is `inf` for a row that cannot reach the level whatever the change, typically a row with few runs, such as the travel of a unit that rarely breaks.
+A metric with fewer than `MELEE_DELTA_MIN_RUNS` (4) runs on a side is listed but not tested.
+
+### Power
+
+Measured 2026-10-12 by simulation (300 trials per cell, two normal samples of K, the head shifted by d standard deviations),
+the chance the exact test reaches the level one row needs alone among m rows:
+
+| K | d | m = 1 (p <= 0.05) | m = 10 (0.005) | m = 150 (0.00033) |
+|---|---|---|---|---|
+| 8 | 1.0 | 0.43 | 0.12 | 0.03 |
+| 8 | 2.0 | 0.96 | 0.69 | 0.23 |
+| 16 | 1.0 | 0.77 | 0.43 | 0.13 |
+| 16 | 1.5 | 0.98 | 0.82 | 0.58 |
+| 16 | 2.0 | 1.00 | 0.99 | 0.87 |
+| 24 | 1.0 | 0.90 | 0.66 | 0.34 |
+| 24 | 1.5 | 0.99 | 0.98 | 0.87 |
+
+So the default K is 16.
+A whole-catalog report (m about 170) reliably catches only shifts near 2 SD.
+A narrow question (m about 10 to 30) catches 1.5 SD.
+Pass a larger `MELEE_DELTA_K` when the change is subtle.
+Rows that cannot reach the single-row level still count in m today,
+so a discrete-aware correction that drops them (Gilbert's, after Tarone) would raise the power of the rest (#1833).
+
+### Output
+
+`<out-dir>/melee-delta.md` is a summary to paste into a PR.
+It lists the flagged rows, says how many tested rows could not be flagged with any change, and, collapsed, the smallest p-values.
+`melee-delta.tsv` holds every row with its threshold, smallest attainable p, minimum detectable change and its unit, unobserved runs per side, and status.
+Exit code 0 means nothing was flagged, 1 means at least one flagged shift, and 2 means a usage, input or run failure.
+
+### Cost and subsets
+
+The defaults (`K=16`, all 50 clips in `tools/lib/melee-clips.sh`) make 1600 Godot runs.
+Measured on a 20-thread Windows machine with a second delta running beside it (2026-10-12),
+1600 runs took 58 minutes at `MELEE_DELTA_JOBS=8`, and 800 took 30.
+`MELEE_DELTA_CLIPS=a,b` runs a list of your own, and `MELEE_DELTA_SUBSET=quick` the 6 clips whose outcomes flipped under the facing nudge.
+`MELEE_DELTA_METRICS` narrows the rows without changing the runs.
+`MELEE_DELTA_JOBS` (default 2) sets how many runs go in parallel.
+
+Each run's metrics are extracted in the pool, right after its dump, into its own `metrics.json`,
+so the comparison itself takes seconds.
+The snapshots (about 5 MB a run) are then deleted unless `MELEE_DELTA_KEEP_DUMPS=1`.
+A re-run reuses every finished run, keyed on side, clip and seed, and compares only the clips and seeds it selected,
+so change thresholds or questions freely, but use a fresh out-dir when a tree changes.
+
+### Validation
+
+Measured 2026-10-12 at `K=16` with the defaults above.
+The known effects, the quick null and the three-clip back-test ran on the current code (bf08d7bd).
+The full null ran one commit earlier (8899866a), before travel rows could be withdrawn as not comparable, a change that can only remove flags.
+The whole-catalog back-test ran on older code (2eaac6df), so its flag set may differ under the current code.
+The effect multiple, the floors, `MELEE_DELTA_MIN_PP` and K were set before these runs, from the criteria above and the power table.
+The two known effects were new and not used to choose anything.
+An earlier round fitted a fixed 1 m travel threshold to a routers-30%-slower run.
+That threshold is withdrawn.
+
+- **Null:** the same tree against itself on disjoint seeds (`MELEE_DELTA_HEAD_RUN_OFFSET=16`), over all 50 clips, flagged 0 of 200 tested rows,
+  29 of them `:unobserved` rows, and marked none "not comparable".
+  6 rows had a raw p at or below 0.05.
+  69 of the 200 could not be flagged with any change.
+  The quick subset flagged 0 of 92.
+
+- **Routers 15% slower** (`flee_speed()` times 0.85), all 50 clips, flagged 3 of 197 rows, all in `rout_rally`:
+  team 0's median end headcount rose from 140 to 152, because the 12-man router, removed at a median tick 655, stayed on the field in all 16 runs,
+  and its travel 300 ticks after the break fell from 15.4 m to 14.8 m.
+  `trapped_routing`'s router travel also fell, by 0.05 m: significant, but under the 0.1 m floor.
+  No row was withdrawn as not comparable.
+
+- **Melee wounds 20% weaker** (the wound times 0.8 in `SoldierMelee`), all 50 clips, flagged 35 of 191 rows in 26 clips: 30 team headcounts and 5 break ticks.
+  For example, `spear_standoff`'s router broke at a median tick 847.5 instead of 710, and `file_major_reform_contrast`'s at 925 instead of 745.
+  No row was withdrawn as not comparable.
+
+- **Back-test:** the first version of PR #1814 (581db291 against its base 9d39a353).
+  Over all 50 clips with the older code it flagged 11 rows, in `cycle_charge` (the caracole regression with a traced mechanism: contact timing and both headcounts),
+  `pace_modes` (contact 70 ticks earlier in every run, and both teams about 10 men stronger)
+  and `support` (a unit that made contact at tick 800 in every base run made none in 14 of 16).
+  On the current code, the three "held router" clips (`file_major_reform_contrast`, `spear_standoff`, `last_unit_rally`) flag nothing:
+  0 of 42 rows over all their metrics, and 0 of 33 in a narrow report on their router metrics.
+  That is not evidence the routers were unaffected: those rows' 80%-power minimum detectable changes are
+  53 to 259 ticks on break ticks, 63 ticks on `spear_standoff`'s contact-break, 3.3 to 6.7 m on travel at 300 ticks,
+  and none at all (`inf`) for `file_major_reform_contrast`'s contact-break and later travel, and for every removed-by row with a base rate between 35% and 60%.
+
+### Null calibration
+
+`MELEE_DELTA_HEAD_RUN_OFFSET=K` with the same tree on both sides compares disjoint seeds of identical code.
+
+### Clip list
+
+`tools/ci/melee-outcome-delta.sh --derive-clips <tree> <out-dir>` runs every catalog clip once and prints those with any enemy contact.
+Paste its output into `MELEE_CLIPS` when the catalog gains a fighting clip.
+
+The script is not wired into CI: run it locally on any PR that changes melee dynamics and paste the summary into the PR.
+
 ## `perf/`
 
 Before/after graphs of **computations per tick** -- the evidence a backend-only

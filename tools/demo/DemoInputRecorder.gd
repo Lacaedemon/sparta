@@ -182,8 +182,15 @@ func _ready() -> void:
 	# so a developer's persisted preference cannot leak into the recorded demo.
 	# Scripted F7 steps in _fire() stay session-only too, avoiding disk writes.
 	Settings.set_fog_of_war_session(bool(script.get("fog_of_war", false)))
-	# Deterministic seed so the recorded battle is reproducible run to run.
-	Replay.forced_seed = int(str(script.get("seed", "12345")))
+	# Deterministic seed so the recorded battle is reproducible run to run. An opt-in
+	# SPARTA_DEMO_SEED_RUN swaps in a derived seed for one draw of a perturbed comparison
+	# (DemoSeed); unset, the script's own seed plays.
+	var seed_run: int = DemoSeed.parse_run(OS.get_environment(DemoSeed.ENV_VAR))
+	if seed_run < 0:
+		_fail(2, "[demo-input] %s must be a non-negative integer, got '%s'" % [
+			DemoSeed.ENV_VAR, OS.get_environment(DemoSeed.ENV_VAR)])
+		return
+	Replay.forced_seed = DemoSeed.seed_for_run(int(str(script.get("seed", "12345"))), seed_run)
 	# camera/frames/state go through script_array so a non-array typo degrades that one
 	# feature (with a warning) instead of crashing on a typed assignment/argument: a default
 	# camera, an unarmed capture, and default transcript ticks all still show the same battle.
