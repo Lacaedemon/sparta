@@ -236,12 +236,12 @@ func test_router_outside_the_block_reach_is_faced_as_before() -> void:
 		"a router beyond the block's reach is faced as before")
 
 
-func test_a_standing_enemy_inside_the_block_is_faced() -> void:
-	# Only a ROUTING target holds the facing. A standing enemy inside the block is faced; the
-	# slot grid then stays where the men stand (test_melee_reface_inside_block.gd).
+func test_a_standing_enemy_inside_the_block_is_faced_as_before() -> void:
 	var u := _make_unit()
 	u.uid = 1
 	var r := _make_router(u.position + ROUTER_INSIDE_OFFSET, Vector2(0.0, -80.0))
 	r.state = Unit.State.FIGHTING
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	u._face_for_action(r.position, DT, r)
-	assert_gt(absf(u.facing.angle_to(Vector2.DOWN)), 0.1, "only a ROUTING target holds the facing")
+	assert_gt(_max_slot_shift(before, u.soldier_world_slots(u.soldiers)), 1.0,
+		"only a ROUTING target holds the facing")
