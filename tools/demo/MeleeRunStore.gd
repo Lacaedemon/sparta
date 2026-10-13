@@ -50,6 +50,9 @@ static func run_metrics(dir: String, travel: Array, step: int) -> Dictionary:
 		return {"error": "%s needs re-extracting (other travel offsets or end) but has no snapshots left" % dir}
 	if not (info is Dictionary) or not info.has("end"):
 		return {"error": "%s has snapshots but no %s to say where the run should end" % [dir, RUN_FILE]}
+	if step >= 0 and int(info.get("step", -1)) != step:
+		return {"error": "%s was dumped at step %s, not %d; use a fresh out-dir"
+				% [dir, str(info.get("step")), step]}
 	return {"metrics": MeleeOutcomes.extract(snaps, travel, int(info["end"]))}
 
 

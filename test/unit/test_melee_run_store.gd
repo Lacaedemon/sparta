@@ -83,3 +83,11 @@ func test_extract_records_travel_end_and_step() -> void:
 	var saved = JSON.parse_string(FileAccess.get_file_as_string(_dir.path_join("metrics.json")))
 	assert_eq([saved["travel"], int(saved["end"]), int(saved["step"])], [[60.0], 100, 10])
 	assert_eq(MeleeRunStore.extract(_dir.path_join("missing"), [60], 100, 10).is_empty(), false)
+
+
+func test_reextraction_refuses_a_run_dumped_at_another_step() -> void:
+	_snapshots()
+	_write("run.json", {"end": 100, "step": 5})
+	assert_true(MeleeRunStore.run_metrics(_dir, [60], 10).has("error"),
+			"no metrics.json, and the snapshots were taken at step 5, not 10")
+	assert_false(MeleeRunStore.run_metrics(_dir, [60], 5).has("error"))

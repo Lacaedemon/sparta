@@ -15,7 +15,8 @@ static func markdown(result: Dictionary, config: Dictionary, base: Dictionary,
 	var rows: Array = result["rows"]
 	var tested: Array = rows.filter(func(r: Dictionary) -> bool: return r["status"] in ["tested", "not comparable"])
 	var flagged: Array = rows.filter(func(r: Dictionary) -> bool: return r["flag"])
-	var small: Array = rows.filter(func(r: Dictionary) -> bool: return r["significant"] and not r["flag"])
+	var small: Array = rows.filter(func(r: Dictionary) -> bool:
+			return r["significant"] and not r["flag"] and r["status"] != "not comparable")
 	var blind: Array = tested.filter(func(r: Dictionary) -> bool: return r["min_p"] > result["level"])
 	var runs: Array = []
 	for clip in base:

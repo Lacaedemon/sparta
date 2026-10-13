@@ -14,8 +14,9 @@ class_name MeleeOutcomeDelta
 ##   - proportion rows: Fisher's exact test, the change in percentage points as the effect.
 ##     A removed-by indicator's threshold is `min_pp`. Every rank or indicator row with an
 ##     unobserved (null) value on either side also gets a "<metric>:unobserved" row testing how
-##     often the value went unobserved, flagged on significance alone. When that row is
-##     significant, the value row is "not comparable": its two sides dropped different runs.
+##     often the value went unobserved, flagged on significance alone, counting only the nulls
+##     no other row already tests (see unexplained). When that row is significant, the value
+##     row is "not comparable": its two sides dropped different runs.
 ##
 ## A row is significant when Benjamini-Hochberg (or, with correction "by",
 ## Benjamini-Yekutieli) rejects it at `alpha` across every row tested in the report. That
@@ -107,6 +108,27 @@ static func sample(runs: Array, key: String) -> Dictionary:
 	return {"values": out, "dropped": dropped}
 
 
+## [unobserved, out of] for one side's runs of `key`, counting only the nulls no other row
+## already tests. A travel_<n> value is null exactly when its removed_by_<n> indicator is 1
+## (the unit left play first) or null (the stream was cut off first), and the indicator's
+## own row and its ":unobserved" row already test those two, so for travel those runs leave
+## both counts. Every other metric counts all its nulls.
+static func unexplained(runs: Array, key: String) -> Array:
+	var indicator: String = key.replace("_travel_", "_removed_by_") if key.contains("_travel_") else ""
+	var nulls: int = 0
+	var total: int = 0
+	for run in runs:
+		if not run.has(key):
+			continue
+		if run[key] == null and indicator != "" and run.has(indicator) \
+				and (run[indicator] == null or int(run[indicator]) == 1):
+			continue
+		total += 1
+		if run[key] == null:
+			nulls += 1
+	return [nulls, total]
+
+
 ## The p-value level one row must reach to be flagged on its own among `m` tested rows.
 static func single_row_level(m: int, config: Dictionary) -> float:
 	var cfg: Dictionary = DEFAULTS.merged(config, true)
@@ -144,10 +166,11 @@ static func compare(base: Dictionary, head: Dictionary, config: Dictionary = {})
 			var h: Dictionary = sample(head[clip], key)
 			var row: Dictionary = _value_row(clip, key, b, h, cfg)
 			rows.append(row)
-			if b["dropped"] + h["dropped"] > 0:
+			var bu: Array = unexplained(base[clip], key)
+			var hu: Array = unexplained(head[clip], key)
+			if bu[0] + hu[0] > 0:
 				var censor: Dictionary = _proportion_row(clip, key + UNOBSERVED,
-						b["dropped"], b["dropped"] + b["values"].size(),
-						h["dropped"], h["dropped"] + h["values"].size(), cfg)
+						bu[0], bu[1], hu[0], hu[1], cfg)
 				censor["_parent"] = row
 				rows.append(censor)
 	var tested: Array = rows.filter(func(r: Dictionary) -> bool: return r["status"] == "tested")

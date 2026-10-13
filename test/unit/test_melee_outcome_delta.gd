@@ -240,3 +240,41 @@ func test_report_names_flagged_rows_and_warns_about_silence() -> void:
 	var none: String = MeleeOutcomeReport.markdown(MeleeOutcomeDelta.compare(base, base), {}, base)
 	assert_string_contains(none, "**No flagged shifts.**")
 	assert_string_contains(none, "**No flag is not evidence of no effect.**")
+
+
+func test_travel_nulls_explained_by_the_indicator_add_no_second_test() -> void:
+	# Per side: 8 runs still on the field (travel observed, removed_by 0), 6 removed before the
+	# offset (travel null, removed_by 1) and 2 cut off (both null). Removal is tested by the
+	# removed_by row and the cut-off by removed_by's ":unobserved" row, so travel must not
+	# test either again.
+	var runs: Array = []
+	for i in range(8):
+		runs.append({"uid1_travel_150": 3.0 + i, "uid1_removed_by_150": 0})
+	for i in range(6):
+		runs.append({"uid1_travel_150": null, "uid1_removed_by_150": 1})
+	for i in range(2):
+		runs.append({"uid1_travel_150": null, "uid1_removed_by_150": null})
+	var rows: Array = MeleeOutcomeDelta.compare({"c": runs}, {"c": runs})["rows"]
+	var names: Array = rows.map(func(r: Dictionary) -> String: return r["metric"])
+	names.sort()
+	assert_eq(names, ["uid1_removed_by_150", "uid1_removed_by_150:unobserved", "uid1_travel_150"],
+			"one test per question: removal, cut-off, and the travel itself")
+	assert_eq(MeleeOutcomeDelta.unexplained(runs, "uid1_travel_150"), [0, 8])
+	assert_eq(MeleeOutcomeDelta.unexplained(runs, "uid1_removed_by_150"), [2, 16])
+
+
+func test_report_does_not_count_a_not_comparable_row_as_significant_but_small() -> void:
+	# The travel values differ hugely, but the two sides left very different shares unobserved.
+	var key: String = "uid1_travel_300"
+	var base: Array = _flags(key, 0, 0, 1)
+	var head: Array = _flags(key, 0, 0, 12)
+	for i in range(15):
+		base.append({key: 10.0 + i})
+	for i in range(4):
+		head.append({key: 100.0 + i})
+	var base_runs: Dictionary = {"c": base}
+	var result: Dictionary = MeleeOutcomeDelta.compare(base_runs, {"c": head})
+	assert_eq(result["rows"][0]["status"], "not comparable")
+	var md: String = MeleeOutcomeReport.markdown(result, {}, base_runs)
+	assert_false(md.contains("significant but below"), "a withdrawn row is not a small shift")
+	assert_string_contains(md, "1 row(s) are not comparable")

@@ -388,6 +388,9 @@ Each clip and tick, metre or headcount metric gets an exact two-sided rank-sum (
 A removed-by indicator is a proportion, so it gets Fisher's exact test, and its effect is the change in percentage points.
 A median of 0/1 values could not register a change from 0% to 40% at all.
 Whenever a metric has unobserved values on either side, a `<metric>:unobserved` row tests how often it went unobserved, also with Fisher's test.
+It counts only the nulls no other row tests already.
+A travel value is unobserved exactly when its removed-by indicator is 1 or itself unobserved,
+so travel gets no `:unobserved` row of its own: the indicator's row and its `:unobserved` row ask those questions once.
 That row is flagged on significance alone,
 and when it is significant the metric's own row is marked "not comparable", because its two sides dropped different shares of runs.
 Dropping censored runs is still a simplification: a censoring-aware rank test (Gehan) belongs here once escapes are told from deaths (TODO(#1832)).
@@ -442,6 +445,8 @@ So the default K is 16.
 A whole-catalog report (m about 170) reliably catches only shifts near 2 SD.
 A narrow question (m about 10 to 30) catches 1.5 SD.
 Pass a larger `MELEE_DELTA_K` when the change is subtle.
+Rows that cannot reach the single-row level still count in m today,
+so a discrete-aware correction that drops them (Gilbert's, after Tarone) would raise the power of the rest (#1833).
 
 ### Output
 
@@ -468,6 +473,9 @@ so change thresholds or questions freely, but use a fresh out-dir when a tree ch
 ### Validation
 
 Measured 2026-10-12 at `K=16` over all 50 clips with the defaults above.
+The null below is from the current code.
+The known effects and the back-test ran one round earlier (60941cec), which also gave each travel metric its own `:unobserved` row,
+so their row counts include those duplicates.
 The effect multiple, the floors, `MELEE_DELTA_MIN_PP` and K were set before these runs, from the criteria above and the power table.
 The two known effects were new and not used to choose anything.
 An earlier round fitted a fixed 1 m travel threshold to a routers-30%-slower run.
