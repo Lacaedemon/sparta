@@ -475,38 +475,39 @@ so change thresholds or questions freely, but use a fresh out-dir when a tree ch
 
 ### Validation
 
-Measured 2026-10-12 at `K=16` over all 50 clips with the defaults above.
-The null below is from the current code.
-The known effects and the back-test ran one round earlier (60941cec), which also gave each travel metric its own `:unobserved` row,
-so their row counts include those duplicates.
+Measured 2026-10-12 at `K=16` with the defaults above.
+The known effects, the quick null and the three-clip back-test ran on the current code (bf08d7bd).
+The full null ran one commit earlier (8899866a), before travel rows could be withdrawn as not comparable, a change that can only remove flags.
+The whole-catalog back-test ran on older code (2eaac6df), so its flag set may differ under the current code.
 The effect multiple, the floors, `MELEE_DELTA_MIN_PP` and K were set before these runs, from the criteria above and the power table.
 The two known effects were new and not used to choose anything.
 An earlier round fitted a fixed 1 m travel threshold to a routers-30%-slower run.
 That threshold is withdrawn.
 
-- **Null:** the same tree against itself on disjoint seeds (`MELEE_DELTA_HEAD_RUN_OFFSET=16`) flagged 0 of 200 tested rows,
+- **Null:** the same tree against itself on disjoint seeds (`MELEE_DELTA_HEAD_RUN_OFFSET=16`), over all 50 clips, flagged 0 of 200 tested rows,
   29 of them `:unobserved` rows, and marked none "not comparable".
   6 rows had a raw p at or below 0.05.
   69 of the 200 could not be flagged with any change.
-  The quick subset alone flagged 0 of 92.
-  (The previous round's code, without the proportion rows, also flagged 0 of 171 under BY.)
+  The quick subset flagged 0 of 92.
 
-- **Routers 15% slower** (`flee_speed()` times 0.85) flagged 3 of 219 rows, all in `rout_rally`:
+- **Routers 15% slower** (`flee_speed()` times 0.85), all 50 clips, flagged 3 of 197 rows, all in `rout_rally`:
   team 0's median end headcount rose from 140 to 152, because the 12-man router, removed at a median tick 655, stayed on the field in all 16 runs,
   and its travel 300 ticks after the break fell from 15.4 m to 14.8 m.
   `trapped_routing`'s router travel also fell, by 0.05 m: significant, but under the 0.1 m floor.
+  No row was withdrawn as not comparable.
 
-- **Melee wounds 20% weaker** (the wound times 0.8 in `SoldierMelee`) flagged 33 of 214 rows in 24 clips: 28 team headcounts and 5 break ticks.
+- **Melee wounds 20% weaker** (the wound times 0.8 in `SoldierMelee`), all 50 clips, flagged 35 of 191 rows in 26 clips: 30 team headcounts and 5 break ticks.
   For example, `spear_standoff`'s router broke at a median tick 847.5 instead of 710, and `file_major_reform_contrast`'s at 925 instead of 745.
+  No row was withdrawn as not comparable.
 
-- **Back-test:** the first version of PR #1814 (581db291 against its base 9d39a353), run with the previous round's code over all 50 clips, flagged 11 rows.
-  They are in `cycle_charge`, the caracole regression with a traced mechanism (contact timing and both headcounts),
-  in `pace_modes` (contact 70 ticks earlier in every run, and both teams about 10 men stronger),
-  and in `support` (a unit that made contact at tick 800 in every base run made none in 14 of 16).
-  It flagged no router row in `file_major_reform_contrast`, `spear_standoff` or `last_unit_rally`,
-  and neither does this round's narrow report on those three clips' router metrics (43 rows).
+- **Back-test:** the first version of PR #1814 (581db291 against its base 9d39a353).
+  Over all 50 clips with the older code it flagged 11 rows, in `cycle_charge` (the caracole regression with a traced mechanism: contact timing and both headcounts),
+  `pace_modes` (contact 70 ticks earlier in every run, and both teams about 10 men stronger)
+  and `support` (a unit that made contact at tick 800 in every base run made none in 14 of 16).
+  On the current code, the three "held router" clips (`file_major_reform_contrast`, `spear_standoff`, `last_unit_rally`) flag nothing:
+  0 of 42 rows over all their metrics, and 0 of 33 in a narrow report on their router metrics.
   That is not evidence the routers were unaffected: those rows' 80%-power minimum detectable changes are
-  54 to 265 ticks on break ticks, 63 ticks on `spear_standoff`'s contact-break, 3.3 to 7.6 m on travel at 300 ticks,
+  53 to 259 ticks on break ticks, 63 ticks on `spear_standoff`'s contact-break, 3.3 to 6.7 m on travel at 300 ticks,
   and none at all (`inf`) for `file_major_reform_contrast`'s contact-break and later travel, and for every removed-by row with a base rate between 35% and 60%.
 
 ### Null calibration
