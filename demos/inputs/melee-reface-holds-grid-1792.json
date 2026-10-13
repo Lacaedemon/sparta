@@ -1,0 +1,24 @@
+{
+  "_comment": "A combat re-face against an enemy inside the block keeps the men in their places. A 60-man Infantry block (10 files by 6 ranks) stands on Hold facing north, and a brittle 14-horse Cavalry troop (morale 3) charges it from the north-east. The riders push into the block, so the bearing from the block's anchor to their centre is taken from inside its own footprint and names no front. On main a3714751 each tick's small re-face (under the 75-degree snap threshold) turned the whole slot grid about the anchor with the heading: the men chasing their slots dragged the anchor, the bearing moved on, and the grid wound round from -90 to about -184 degrees by tick 600. The mean gap between a man and his slot reached 40 wu, and at ticks 520 and 580 seven and five men had their slots across the block's centreline from them. Now the heading still turns onto the riders at once (to about -58 degrees at contact), but the turn is folded into the grid, which stays where the men stand: no slot crosses the centreline at those ticks, and the block's anchor has not been dragged off its ground at tick 440 (900.0, 839.9 here; 893.3, 842.6 on main). Static camera. Deterministic (scenario + seed + scripted input). Measured with a 2-tick full state dump on main a3714751 and on this branch.",
+  "seed": "17922",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 900, "y": 840, "count": 60, "frontage": 10, "facing": [0, -1]},
+    {"team": 1, "type": "Cavalry", "x": 1080, "y": 560, "count": 14, "facing": [-0.54, 0.84], "morale": 3.0}
+  ],
+  "camera": [{"tick": 0, "x": 920, "y": 760, "zoom": 1.2}],
+  "steps": [
+    {"tick": 6, "click": [900, 840]},
+    {"tick": 14, "key": "H", "ctrl": true}
+  ],
+  "state": [8, 360, 400, 440, 520, 580, 600],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [900, 840]},
+    {"tick": 360, "uid": 0, "field": "order_mode", "value": "Hold"},
+    {"tick": 400, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 520, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 580, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 440, "uid": 0, "field": "position", "value": [900.0, 839.9], "tol": 2.0}
+  ],
+  "fixed_fps": 30,
+  "max_frames": 300
+}
