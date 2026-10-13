@@ -4443,7 +4443,8 @@ func _settle_engage_turn() -> void:
 	_engage_turn_enemy = null
 
 
-## Snap `facing` to `dir` instantly. A change up to FACING_SNAP_ABSORB_THRESHOLD is not
+## Snap `facing` to `dir` instantly. Unless `hold_grid` is set (see the end of this comment),
+## a change up to FACING_SNAP_ABSORB_THRESHOLD is not
 ## absorbed here, so soldier_world_slots' facing-relative grid turns about the anchor by the
 ## whole change in one tick; a march that corrects its heading tick by tick without a formed
 ## pivot goes through _reface instead, which keeps the grid where the men stand and lets it
