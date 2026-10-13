@@ -1255,9 +1255,9 @@ var router_front_arc: float = ROUTER_FRONT_ARC
 const ROUTER_CONTACT_REENTRY_FRAC: float = 0.9
 var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
 # How much of the block's own slot footprint (soldier_block_half_extents, per axis) its target's
-# centre must lie inside for a small combat re-face to turn the heading without turning the slot
-# grid (_enemy_centre_inside_footprint): 1.0, the footprint itself. 0 or less turns the hold
-# off, so every small re-face turns the grid with the heading. A caller-configurable parameter
+# centre must lie inside, with the block in enemy contact, for a small combat re-face to hold the
+# facing and the slot grid (_enemy_centre_inside_footprint): 1.0, the footprint itself. 0 or
+# less turns the hold off, so every small re-face turns the grid with the heading. A caller-configurable parameter
 # defaulting to MELEE_REFACE_HOLD_FOOTPRINT_SCALE, with rout_time's set-before-_ready contract.
 const MELEE_REFACE_HOLD_FOOTPRINT_SCALE: float = 1.0
 var melee_reface_hold_footprint_scale: float = MELEE_REFACE_HOLD_FOOTPRINT_SCALE
@@ -4324,16 +4324,21 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		if _advance_turn(_engage_turn_target, delta):
 			_settle_engage_turn()
 		return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
-	# Small offset: snap and fight now, as before. In enemy contact with the target's centre
-	# inside this block's own footprint, the bearing from the anchor names no front: each snap
-	# would turn the whole slot grid about the anchor, the men chasing their slots would drag
-	# the anchor, and the bearing would move on, so the grid would wind round under the men.
-	# There the heading still turns at once, but the grid stays where the men stand
-	# (_face_dir's fold). Out of contact the grid turns as before: a large block closing on a
-	# target that its own wide footprint already takes in has a front to bring round, and a
-	# grid held there leaves it charging across its own ranks.
+	# Small offset: snap and fight now, as before, unless the block is in enemy contact with
+	# the target's centre inside its own footprint. The bearing from the anchor then names no
+	# front: each snap would turn the whole slot grid about the anchor, the men chasing their
+	# slots would drag the anchor, and the bearing would move on, so the grid would wind round
+	# under the men. There the facing holds, as it does for a router streaming through, so the
+	# grid stays where the men stand and nothing is folded into _formation_angle for a later
+	# reform to undo. Folding each snap instead (turning the heading but not the grid) let the
+	# heading wander up to a half-turn off the ranks over a long melee, and the block then
+	# marched off, or was squared by its next order, across its own ranks. A bearing that moves
+	# past ENGAGE_TURN_THRESHOLD still arms the turn-in-place below, which turns the men where
+	# they stand. Out of contact the grid turns as before: a large block closing on a target
+	# that its own wide footprint already takes in has a front to bring round.
 	if offset <= ENGAGE_TURN_THRESHOLD:
-		_face_dir(dir, _in_enemy_contact and _enemy_centre_inside_footprint(enemy_unit))
+		if not (_in_enemy_contact and _enemy_centre_inside_footprint(enemy_unit)):
+			_face_dir(dir)
 		return true
 	# Large offset: begin a turn-in-place. Men hold their positions (arrival frozen) while
 	# facing rotates; the strike is withheld until the front comes to bear. Capture the
@@ -4382,8 +4387,7 @@ func _router_streaming_through(enemy_unit: Unit) -> bool:
 ## Blocks in an ordinary frontal melee press into each other far enough for this to hold, not
 ## only an enemy that has broken into the block. A ROUTING enemy does not count: one streaming
 ## out through the ranks holds the facing itself (_router_streaming_through), and one ridden
-## down from behind lies ahead on a steady bearing, so the grid follows the heading onto it as
-## before. A far-tier block has no bodies on its slots, so nothing to hold, and a scale of 0 or
+## down from behind lies ahead on a steady bearing, so the front follows it as before. A far-tier block has no bodies on its slots, so nothing to hold, and a scale of 0 or
 ## less turns the test off.
 func _enemy_centre_inside_footprint(enemy_unit: Unit) -> bool:
 	if enemy_unit == null or enemy_unit.state == State.ROUTING or tier == FormationTier.FAR \
@@ -4446,8 +4450,7 @@ func _settle_engage_turn() -> void:
 	_engage_turn_enemy = null
 
 
-## Snap `facing` to `dir` instantly. Unless `hold_grid` is set (see the end of this comment),
-## a change up to FACING_SNAP_ABSORB_THRESHOLD is not
+## Snap `facing` to `dir` instantly. A change up to FACING_SNAP_ABSORB_THRESHOLD is not
 ## absorbed here, so soldier_world_slots' facing-relative grid turns about the anchor by the
 ## whole change in one tick; a march that corrects its heading tick by tick without a formed
 ## pivot goes through _reface instead, which keeps the grid where the men stand and lets it
@@ -4471,14 +4474,11 @@ func _settle_engage_turn() -> void:
 ## exact point-reflection bug this file's countermarch fix exists to eliminate -- just via a
 ## large facing snap (e.g. a chase target appearing behind a unit still marching off a
 ## countermarched reform) instead of a reform.
-##
-## `hold_grid` folds a change of any size, so the grid stays where the men stand however small
-## the turn: a combat re-face whose target is inside the block passes it (_face_for_action).
-func _face_dir(dir: Vector2, hold_grid: bool = false) -> void:
+func _face_dir(dir: Vector2) -> void:
 	if dir.length_squared() <= 0.0001:
 		return
 	var new_facing: Vector2 = dir.normalized()
-	if hold_grid or absf(angle_difference(facing.angle(), new_facing.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
+	if absf(angle_difference(facing.angle(), new_facing.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
 		_formation_angle = wrapf(_formation_angle - angle_difference(facing.angle(), new_facing.angle()), -PI, PI)
 		_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
 		_render_dirty = true
