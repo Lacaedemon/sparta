@@ -1254,6 +1254,13 @@ var router_front_arc: float = ROUTER_FRONT_ARC
 # ROUTER_CONTACT_REENTRY_FRAC, with rout_time's set-before-_ready contract.
 const ROUTER_CONTACT_REENTRY_FRAC: float = 0.9
 var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
+# How much of the block's own slot footprint (soldier_block_half_extents, per axis) its target's
+# centre must lie inside for a small combat re-face to turn the heading without turning the slot
+# grid (_enemy_centre_inside_footprint): 1.0, the footprint itself. 0 or less turns the hold
+# off, so every small re-face turns the grid with the heading. A caller-configurable parameter
+# defaulting to MELEE_REFACE_HOLD_FOOTPRINT_SCALE, with rout_time's set-before-_ready contract.
+const MELEE_REFACE_HOLD_FOOTPRINT_SCALE: float = 1.0
+var melee_reface_hold_footprint_scale: float = MELEE_REFACE_HOLD_FOOTPRINT_SCALE
 # How long a non-fighting unit holds position to reform its ranks after a fresh move
 # order is issued with reform_before_move on. Runs concurrently with order_response_delay
 # (both count from zero); the effective delay before the march is max(order_response_delay,
@@ -4317,12 +4324,13 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		if _advance_turn(_engage_turn_target, delta):
 			_settle_engage_turn()
 		return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
-	# Small offset: snap and fight now, as before.
-	# TODO(#1792): the snap still swings the slot grid with the heading; holding the grid back
-	# as a march does (_reface) let blocks in a melee grind into each other and held a block
-	# that broke in the press, so how a combat re-face should turn the grid is left open.
+	# Small offset: snap and fight now, as before. With the target's centre inside this
+	# block's own footprint, the bearing from the anchor names no front: each snap would turn
+	# the whole slot grid about the anchor, the men chasing their slots would drag the anchor,
+	# and the bearing would move on, so the grid would wind round under the men. There the
+	# heading still turns at once, but the grid stays where the men stand (_face_dir's fold).
 	if offset <= ENGAGE_TURN_THRESHOLD:
-		_face_dir(dir)
+		_face_dir(dir, _enemy_centre_inside_footprint(enemy_unit))
 		return true
 	# Large offset: begin a turn-in-place. Men hold their positions (arrival frozen) while
 	# facing rotates; the strike is withheld until the front comes to bear. Capture the
@@ -4363,6 +4371,24 @@ func _router_streaming_through(enemy_unit: Unit) -> bool:
 			return false
 		_streaming_router_uid = enemy_unit.uid
 	return true
+
+
+## Whether `enemy_unit`'s centre lies inside this block's own slot footprint, scaled by
+## melee_reface_hold_footprint_scale: soldier_block_half_extents (the slot grid's half-width
+## and half-depth, padded by a mark radius) in the grid's own frame (soldier_block_world_angle).
+## Blocks in an ordinary frontal melee press into each other far enough for this to hold, not
+## only an enemy that has broken into the block. A ROUTING enemy does not count: one streaming
+## out through the ranks holds the facing itself (_router_streaming_through), and one ridden
+## down from behind lies ahead on a steady bearing, so the grid follows the heading onto it as
+## before. A far-tier block has no bodies on its slots, so nothing to hold, and a scale of 0 or
+## less turns the test off.
+func _enemy_centre_inside_footprint(enemy_unit: Unit) -> bool:
+	if enemy_unit == null or enemy_unit.state == State.ROUTING or tier == FormationTier.FAR \
+			or melee_reface_hold_footprint_scale <= 0.0:
+		return false
+	var half: Vector2 = soldier_block_half_extents() * melee_reface_hold_footprint_scale
+	var local: Vector2 = (enemy_unit.position - position).rotated(-soldier_block_world_angle())
+	return absf(local.x) <= half.x and absf(local.y) <= half.y
 
 
 ## Let go of the streaming-router latch.
@@ -4441,11 +4467,14 @@ func _settle_engage_turn() -> void:
 ## exact point-reflection bug this file's countermarch fix exists to eliminate -- just via a
 ## large facing snap (e.g. a chase target appearing behind a unit still marching off a
 ## countermarched reform) instead of a reform.
-func _face_dir(dir: Vector2) -> void:
+##
+## `hold_grid` folds a change of any size, so the grid stays where the men stand however small
+## the turn: a combat re-face whose target is inside the block passes it (_face_for_action).
+func _face_dir(dir: Vector2, hold_grid: bool = false) -> void:
 	if dir.length_squared() <= 0.0001:
 		return
 	var new_facing: Vector2 = dir.normalized()
-	if absf(angle_difference(facing.angle(), new_facing.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
+	if hold_grid or absf(angle_difference(facing.angle(), new_facing.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
 		_formation_angle = wrapf(_formation_angle - angle_difference(facing.angle(), new_facing.angle()), -PI, PI)
 		_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
 		_render_dirty = true
@@ -11050,6 +11079,7 @@ func to_snapshot_dict() -> Dictionary:
 		"rearguard_delay_sec": rearguard_delay_sec,
 		"rout_time": rout_time, "router_front_arc": router_front_arc,
 		"router_contact_reentry_frac": router_contact_reentry_frac,
+		"melee_reface_hold_footprint_scale": melee_reface_hold_footprint_scale,
 		"shatter_strength_frac": shatter_strength_frac,
 		"rally_morale_threshold": rally_morale_threshold,
 		"rally_resume_radius_factor": rally_resume_radius_factor,
@@ -11308,6 +11338,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rout_time = float(d.get("rout_time", rout_time))
 	router_front_arc = float(d.get("router_front_arc", router_front_arc))
 	router_contact_reentry_frac = float(d.get("router_contact_reentry_frac", router_contact_reentry_frac))
+	melee_reface_hold_footprint_scale = float(d.get("melee_reface_hold_footprint_scale",
+			melee_reface_hold_footprint_scale))
 	shatter_strength_frac = float(d.get("shatter_strength_frac", shatter_strength_frac))
 	rally_morale_threshold = float(d.get("rally_morale_threshold", rally_morale_threshold))
 	rally_resume_radius_factor = float(d.get("rally_resume_radius_factor", rally_resume_radius_factor))
