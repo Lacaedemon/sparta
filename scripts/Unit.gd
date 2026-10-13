@@ -4324,13 +4324,16 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		if _advance_turn(_engage_turn_target, delta):
 			_settle_engage_turn()
 		return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
-	# Small offset: snap and fight now, as before. With the target's centre inside this
-	# block's own footprint, the bearing from the anchor names no front: each snap would turn
-	# the whole slot grid about the anchor, the men chasing their slots would drag the anchor,
-	# and the bearing would move on, so the grid would wind round under the men. There the
-	# heading still turns at once, but the grid stays where the men stand (_face_dir's fold).
+	# Small offset: snap and fight now, as before. In enemy contact with the target's centre
+	# inside this block's own footprint, the bearing from the anchor names no front: each snap
+	# would turn the whole slot grid about the anchor, the men chasing their slots would drag
+	# the anchor, and the bearing would move on, so the grid would wind round under the men.
+	# There the heading still turns at once, but the grid stays where the men stand
+	# (_face_dir's fold). Out of contact the grid turns as before: a large block closing on a
+	# target that its own wide footprint already takes in has a front to bring round, and a
+	# grid held there leaves it charging across its own ranks.
 	if offset <= ENGAGE_TURN_THRESHOLD:
-		_face_dir(dir, _enemy_centre_inside_footprint(enemy_unit))
+		_face_dir(dir, _in_enemy_contact and _enemy_centre_inside_footprint(enemy_unit))
 		return true
 	# Large offset: begin a turn-in-place. Men hold their positions (arrival frozen) while
 	# facing rotates; the strike is withheld until the front comes to bear. Capture the

@@ -1,6 +1,6 @@
 extends GutTest
-## A fighting block whose target's centre lies inside its own slot footprint still turns its
-## heading onto each small re-face in _face_for_action, but folds the turn into
+## A fighting block in enemy contact whose target's centre lies inside its own slot footprint
+## still turns its heading onto each small re-face in _face_for_action, but folds the turn into
 ## _formation_angle, so the slot grid stays where the men stand. Before, a correction up to
 ## ENGAGE_TURN_THRESHOLD (75 degrees) turned the whole grid about the anchor unabsorbed, so
 ## an enemy among the ranks wound the grid round after its bearing tick by tick.
@@ -64,6 +64,7 @@ func _unabsorbed_shift_floor(u: Unit, theta: float) -> float:
 func test_an_enemy_inside_the_footprint_turns_the_heading_but_not_the_grid() -> void:
 	var u := _make_unit()
 	u.uid = 1
+	u._in_enemy_contact = true   # in melee contact, as the hold requires
 	var e := _make_enemy(u.position + INSIDE_OFFSET)
 	assert_true(_inside_footprint(u, e.position), "sanity: the enemy's centre is inside the footprint")
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
@@ -85,6 +86,7 @@ func test_the_grid_holds_through_an_orbit_of_an_enemy_inside_the_block() -> void
 	# round the anchor in steps far under the snap threshold.
 	var u := _make_unit()
 	u.uid = 1
+	u._in_enemy_contact = true   # in melee contact, as the hold requires
 	var e := _make_enemy(u.position + Vector2(0.0, 30.0))
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	for step in range(1, 91):
@@ -100,6 +102,7 @@ func test_the_grid_holds_through_an_orbit_of_an_enemy_inside_the_block() -> void
 func test_an_enemy_just_outside_the_footprint_turns_the_grid_as_before() -> void:
 	var u := _make_unit()
 	u.uid = 1
+	u._in_enemy_contact = true   # in melee contact, as the hold requires
 	var half: Vector2 = u.soldier_block_half_extents()
 	# 30 degrees off the heading, at a local depth 5% past the footprint's half-depth; its
 	# lateral offset (depth * tan 30) stays inside the half-width, so depth alone puts it out.
@@ -113,3 +116,18 @@ func test_an_enemy_just_outside_the_footprint_turns_the_grid_as_before() -> void
 	assert_eq(u._formation_angle, 0.0, "nothing is folded into the grid")
 	assert_gt(_max_slot_shift(before, u.soldier_world_slots(u.soldiers)),
 		_unabsorbed_shift_floor(u, deg_to_rad(30.0)), "the grid turns with the heading")
+
+
+func test_out_of_contact_the_grid_turns_as_before() -> void:
+	# A large block closing on a target its own footprint already takes in still has a front
+	# to bring round: out of enemy contact the snap turns the grid with the heading.
+	var u := _make_unit()
+	u.uid = 1
+	u._in_enemy_contact = false
+	var e := _make_enemy(u.position + INSIDE_OFFSET)
+	assert_true(_inside_footprint(u, e.position), "sanity: the enemy's centre is inside the footprint")
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	u._face_for_action(e.position, DT, e)
+	assert_eq(u._formation_angle, 0.0, "nothing is folded into the grid")
+	assert_gt(_max_slot_shift(before, u.soldier_world_slots(u.soldiers)),
+		_unabsorbed_shift_floor(u, Vector2.DOWN.angle_to(INSIDE_OFFSET)), "the grid turns with the heading")

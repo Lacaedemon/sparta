@@ -1,7 +1,7 @@
 extends GutTest
 ## The footprint a combat re-face holds the slot grid inside (Unit._enemy_centre_inside_footprint):
 ## its caller-configurable scale, the cases it leaves out, and its snapshot round trip. The hold
-## itself is covered in test_melee_reface_inside_block.gd.
+## itself, which also needs the block in enemy contact, is covered in test_melee_reface_inside_block.gd.
 
 const DT := 1.0 / 60.0
 # Inside a 60-man block's footprint at the default scale.
@@ -52,6 +52,7 @@ func test_the_footprint_scale_widens_the_hold() -> void:
 	# the default scale and inside at 1.1, so the grid holds only once the scale takes it in.
 	var u := _make_unit()
 	u.uid = 1
+	u._in_enemy_contact = true   # in melee contact, as the hold requires
 	var half: Vector2 = u.soldier_block_half_extents()
 	var dist: float = half.y * 1.05 / cos(deg_to_rad(30.0))
 	var e := _make_enemy(u.position + Vector2.DOWN.rotated(deg_to_rad(30.0)) * dist)
@@ -67,6 +68,7 @@ func test_the_footprint_scale_widens_the_hold() -> void:
 func test_a_zero_scale_turns_the_hold_off() -> void:
 	var u := _make_unit()
 	u.uid = 1
+	u._in_enemy_contact = true   # in melee contact, as the hold requires
 	u.melee_reface_hold_footprint_scale = 0.0
 	var e := _make_enemy(u.position)
 	assert_false(u._enemy_centre_inside_footprint(e), "an enemy on the anchor itself is not held at scale 0")
@@ -81,6 +83,7 @@ func test_a_zero_scale_turns_the_hold_off() -> void:
 func test_a_routing_enemy_is_left_to_the_router_rules() -> void:
 	var u := _make_unit()
 	u.uid = 1
+	u._in_enemy_contact = true   # in melee contact, as the hold requires
 	var e := _make_enemy(u.position + INSIDE_OFFSET)
 	assert_true(u._enemy_centre_inside_footprint(e), "sanity: a standing enemy there is held")
 	e.state = Unit.State.ROUTING
@@ -90,6 +93,7 @@ func test_a_routing_enemy_is_left_to_the_router_rules() -> void:
 func test_a_far_tier_block_is_not_held() -> void:
 	var u := _make_unit()
 	u.uid = 1
+	u._in_enemy_contact = true   # in melee contact, as the hold requires
 	var e := _make_enemy(u.position + INSIDE_OFFSET)
 	assert_true(u._enemy_centre_inside_footprint(e), "sanity: a close-tier block is held")
 	u.tier = FormationTier.FAR
