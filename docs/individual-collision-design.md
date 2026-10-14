@@ -450,8 +450,10 @@ with each grid's slots ordered most of a block deep inside the other.
 Over the catalog's melee clips on main a3714751,
 `tools/demo/melee-penetration.sh` (its `PEN-ALL foot` line) measured the median frontal foot pair
 standing 3.0 ranks inside the other block, with 77% of pairs more than a rank inside.
-With `MeleeFrontLine` the same measure reads 0.01 ranks and 29%;
-22 of the 34 pairs still past a rank were spawned inside each other, most of them in `cannae_scale`.
+With `MeleeFrontLine` the same measure reads 0.0 ranks and 25%;
+20 of the 28 frontal foot pairs still past a rank were spawned inside each other, 16 of them in `cannae_scale`.
+(The tool reads each block's front from its slot grid, `motion_ref.slot_grid.front`;
+main's dumps lack that field, so its figures sign the front by facing, as the tool always did.)
 
 `MeleeFrontLine` adds the missing depth back for a frontal pair:
 each block's front-rank depth beyond `Unit.RADIUS` to the close-tier melee contact ranges
