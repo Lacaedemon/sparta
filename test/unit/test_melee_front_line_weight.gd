@@ -46,6 +46,7 @@ func test_a_flank_or_rear_attack_weighs_nothing() -> void:
 
 
 func test_cavalry_far_tier_and_a_zero_scale_weigh_nothing() -> void:
+	# (A square is no longer excluded: it fronts every way. See the geometry tests.)
 	var p: Array = _frontal_pair()
 	p[1].is_cavalry = true
 	assert_eq(MeleeFrontLine.weight(p[0], p[1]), 0.0, "a pair with cavalry")
@@ -60,9 +61,9 @@ func test_cavalry_far_tier_and_a_zero_scale_weigh_nothing() -> void:
 	p[1].is_ranged = true
 	assert_eq(MeleeFrontLine.weight(p[0], p[1]), 0.0, "a pair with a missile unit")
 	p = _frontal_pair()
+	p[0].set_formation(Unit.FORMATION_SQUARE)
 	p[1].set_formation(Unit.FORMATION_SQUARE)
-	assert_true(p[1].in_square(), "setup: the block formed a square")
-	assert_eq(MeleeFrontLine.weight(p[0], p[1]), 0.0, "a pair with a square, which has no front")
+	assert_eq(MeleeFrontLine.weight(p[0], p[1]), 0.0, "two squares, neither of which leads")
 
 
 func test_a_scale_above_one_is_clamped() -> void:

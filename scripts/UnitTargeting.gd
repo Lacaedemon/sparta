@@ -140,6 +140,14 @@ static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 		predicate: Callable = Callable()) -> Unit:
 	var best: Unit = null
 	var best_d_sq: float = radius * radius
+	# An enemy past `radius` that is already in frontal melee contact with u (two deep blocks
+	# held at their front ranks can stand further apart than any detection radius): the
+	# nearest such one is returned only when nothing within `radius` qualifies, so a search
+	# that finds anyone inside its radius answers exactly as it always has. Only a search
+	# centred on u itself asks, since contact is measured from u.
+	var from_u: bool = center == u.position
+	var held: Unit = null
+	var held_d_sq: float = INF
 	var groups: Array = ["units", "routers"] if include_routing else ["units"]
 	for group in groups:
 		for o in u.get_tree().get_nodes_in_group(group):
@@ -155,7 +163,13 @@ static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 			if d_sq < best_d_sq or (inclusive and best == null and d_sq <= best_d_sq):
 				best_d_sq = d_sq
 				best = other
-	return best
+			elif from_u and d_sq < held_d_sq and d_sq >= radius * radius \
+					and MeleeFrontLine.within_contact(u, other,
+						melee_contact_distance(u.attack_range, Unit.RADIUS, other), d_sq,
+						melee_contact_attacker_radius(Unit.RADIUS, other)):
+				held_d_sq = d_sq
+				held = other
+	return best if best != null else held
 
 
 ## Whether this unit's SUPPORT order still has a valid ward to guard: a living,
@@ -174,9 +188,14 @@ static func support_valid(u: Unit) -> bool:
 ## closes to actual weapon reach before considering itself in contact or setting
 ## its flank/rear approach point.
 static func melee_contact_distance(attacker_range: float, attacker_radius: float, enemy: Unit) -> float:
-	if enemy.state == Unit.State.ROUTING:
-		return attacker_range + enemy.RADIUS
-	return attacker_range + attacker_radius + enemy.RADIUS
+	return attacker_range + melee_contact_attacker_radius(attacker_radius, enemy) + enemy.RADIUS
+
+
+## The attacker's radius melee_contact_distance counts against `enemy`: 0 against a router,
+## which it omits. MeleeFrontLine.within_contact takes it, so the frontal extension adds the
+## attacker's whole front-rank depth when the base range already left its radius out.
+static func melee_contact_attacker_radius(attacker_radius: float, enemy: Unit) -> float:
+	return 0.0 if enemy.state == Unit.State.ROUTING else attacker_radius
 
 
 ## Approach point for a flank/rear attack: a spot at melee-contact distance on the

@@ -5,8 +5,11 @@ Reads one or more dump directories (state_<tick>.json written with SPARTA_DEMO_S
 see tools/demo/dump-state.sh) and, for every ordered pair of opposing units (A, B) at every
 snapshot, measures B's men inside A's footprint:
 
-  frame      A's front direction is the normal of its slot grid's file axis
-             (motion_ref.slot_grid.axis), signed to agree with A's facing.
+  frame      A's front direction is the way its slot grid's front rank faces
+             (motion_ref.slot_grid.front), which stays on the men after a folded turn.
+             A dump from a tree without that field falls back to the normal of the
+             grid's file axis (motion_ref.slot_grid.axis) signed to agree with A's facing,
+             which reads a block folded half about as facing backwards.
   front line The median, along that front, of A's live front-rank men (those whose slot
              lies within half a rank pitch of the grid's front rank). The bodies, not the
              slots, since a front rank pushed back by contact is where the line really is.
@@ -58,10 +61,13 @@ def unit_frame(rec):
     if not full or not ref or not full.get("pos") or not ref.get("slot_grid"):
         return None
     ax, ay = ref["slot_grid"]["axis"]
-    fx, fy = -ay, ax
-    fac = rec.get("facing") or [0.0, 0.0]
-    if fx * fac[0] + fy * fac[1] < 0.0:
-        fx, fy = -fx, -fy
+    if "front" in ref["slot_grid"]:
+        fx, fy = ref["slot_grid"]["front"]
+    else:
+        fx, fy = -ay, ax
+        fac = rec.get("facing") or [0.0, 0.0]
+        if fx * fac[0] + fy * fac[1] < 0.0:
+            fx, fy = -fx, -fy
     return (fx, fy), (ax, ay), float(ref["rank_pitch"]), float(ref["file_pitch"])
 
 

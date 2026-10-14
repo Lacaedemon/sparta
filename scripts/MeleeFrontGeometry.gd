@@ -1,16 +1,23 @@
 class_name MeleeFrontGeometry
-## The block geometry MeleeFrontLine weighs and extends a frontal pair by: where a block's slot
-## grid faces, how deep its front rank stands and how wide it runs, and how far a neighbourhood
-## query has to reach to find every pair an extension can join. Reads each block's slot grid,
-## not its heading: a heading turn the grid absorbs (folded into Unit.grid_fold, so the slots
-## stay where the men stand) leaves the men's front rank where it was.
+## The block geometry MeleeFrontLine weighs and extends a pair by: where a block's men face,
+## how far its men reach from its centre toward the other block, how wide its front runs, and
+## how far a neighbourhood query has to reach to find every pair an extension can join.
+## Reads where the men stand, not the heading: a heading turn the grid absorbs (folded into
+## Unit.grid_fold) or one still in progress in place (the men stand fast until it settles)
+## leaves the front where the men are.
 
 
-## The direction `u`'s slot grid's front rank faces: its heading turned by grid_fold(), the
-## fold its men turned in place plus the lag the grid trails a small heading correction by.
-## The same rotation soldier_world_slots() lays the grid out at.
+## The direction `u`'s men face: the heading an in-place turn started from while one is in
+## progress (an engage turn, or an order's about-face or quarter-turn: the men hold their
+## ground and the fold is only written when the turn settles), else the heading, turned by
+## grid_fold() either way. The same rotation soldier_world_slots() lays a settled grid out at.
 static func grid_front(u: Unit) -> Vector2:
-	return u.facing.rotated(u.grid_fold())
+	var heading: Vector2 = u.facing
+	if u._engage_turn_target != Vector2.ZERO:
+		heading = u._engage_turn_start_facing
+	elif u.is_order_turning():
+		heading = u.active_leaf().turn_start_facing
+	return heading.rotated(u.grid_fold())
 
 
 ## The distance from `u`'s centre to its grid's front rank, in wu: half its live rank count
@@ -30,24 +37,41 @@ static func front_half_width(u: Unit) -> float:
 	return float(files - 1) * 0.5 * u.file_pitch_wu()
 
 
-## front_rank_depth for a unit that can take part in an extension, else 0: the most `u` can
-## add to any pair's range, which SpatialHash's neighbourhood query has to cover.
+## How far `u`'s men reach from its centre along `axis` (a unit vector), and how far across
+## it, in wu: a line's front-rank depth and front half-width, read along its own grid. A square
+## fronts every way, so it reaches its slot rectangle's extent along the axis whichever side
+## faces the other block. Returns Vector2(along, across).
+static func reach(u: Unit, axis: Vector2) -> Vector2:
+	var depth: float = front_rank_depth(u)
+	var half: float = front_half_width(u)
+	if not u.in_square():
+		return Vector2(depth, half)
+	var f: Vector2 = grid_front(u)
+	var along: float = depth * absf(axis.dot(f)) + half * absf(axis.dot(f.orthogonal()))
+	var across: float = half * absf(axis.dot(f)) + depth * absf(axis.dot(f.orthogonal()))
+	return Vector2(along, across)
+
+
+## The most `u` can add to any pair's range (its reach along any axis, bounded above), or 0
+## when it takes part in no extension. SpatialHash's neighbourhood query has to cover it.
 static func extension_depth(u: Unit) -> float:
-	return front_rank_depth(u) if MeleeFrontLine.eligible(u) else 0.0
+	if not MeleeFrontLine.eligible(u):
+		return 0.0
+	if u.in_square():
+		return front_rank_depth(u) + front_half_width(u)
+	return front_rank_depth(u)
 
 
 ## The radius a neighbourhood query around `u` must cover so it finds every unit `u` can
 ## pair with at an extended range, given `deepest`, the largest extension_depth of any unit
 ## it might pair with. SpatialHash.CELL_SIZE bounds every centre-based range (reach plus
-## Unit.RADIUS a side, or the capped engaged floor). An extended contact range adds each
-## block's depth beyond RADIUS, and an extended floor reaches the two front-rank depths, which
-## is never more, so the query widens by those two terms. It widens for an eligible unit even
-## when it is one rank deep: a deep partner's depth alone can carry the pair's range past one
-## cell, and the pair must find each other from both sides.
+## Unit.RADIUS a side, or the capped engaged floor); an extended range adds at most each
+## block's depth beyond RADIUS. It widens for an eligible unit even when it is one rank deep:
+## a deep partner alone can carry the pair's range past one cell.
 static func query_radius(u: Unit, deepest: float) -> float:
 	if not MeleeFrontLine.eligible(u):
 		return SpatialHash.CELL_SIZE
-	return SpatialHash.CELL_SIZE + maxf(0.0, front_rank_depth(u) - Unit.RADIUS) \
+	return SpatialHash.CELL_SIZE + maxf(0.0, extension_depth(u) - Unit.RADIUS) \
 			+ maxf(0.0, deepest - Unit.RADIUS)
 
 

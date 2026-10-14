@@ -1263,9 +1263,11 @@ var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
 const MELEE_FRONT_LINE_SCALE: float = 1.0
 var melee_front_line_scale: float = MELEE_FRONT_LINE_SCALE
 # The cosine at or below which a pair no longer counts as front to front for MeleeFrontLine:
-# its weight ramps from 0 here to 1 at a cosine of 1, on the angle between the two headings
-# and on each block's bearing to the other. 0.5 (60 degrees) lets an oblique frontal clash
-# keep part of the extension while a flank or rear attack keeps none. A pair uses the larger
+# its weight ramps from 0 here to 1 at a cosine of 1, on the angle between the two blocks'
+# fronts (where their men face, MeleeFrontGeometry.grid_front). The bearing between the
+# centres does not enter it; how far the fronts overlap does. 0.5 (60 degrees) lets an
+# oblique frontal clash keep part of the extension while a flank or rear attack keeps none.
+# A pair uses the larger
 # of its two values. A caller-configurable parameter defaulting to MELEE_FRONT_LINE_MIN_COS,
 # with rout_time's set-before-_ready contract.
 const MELEE_FRONT_LINE_MIN_COS: float = 0.5
@@ -1481,10 +1483,12 @@ const SEPARATION_RADIUS_MAX: float = 1.4 * WorldScaleRef.WU_PER_M
 # floors can produce. A frontal pair's floor also carries MeleeFrontLine.floor_extension,
 # up to the two blocks' front-rank depths (126 wu for two 8-rank blocks, more for deeper
 # ones). The cap is 100 wu a tick at 60 ticks/s and each block takes its share of the
-# deficit, so two co-located 8-rank blocks still part in one tick, 63 wu each. A deficit
-# past 200 wu (two blocks of more than 12 ranks each at an 18 wu rank pitch, spawned or
-# swung deep into each other) reaches the cap, which spreads the rest of the push over the
-# next ticks. Measured
+# deficit. Two 8-rank blocks spawned front to front with their centres a RADIUS apart (the
+# least separation at which the floor carries its whole extension; MeleeFrontLine.pair's
+# "ahead" term) have a deficit of 108 wu and part in one tick, 54 wu each. A deficit past
+# 200 wu (two blocks of more than 12 ranks each at an 18 wu rank pitch, spawned or swung deep
+# into each other) reaches the cap, which spreads the rest of the push over the next ticks.
+# Measured
 # real gameplay (a full-sprint cavalry-vs-spear-line hard block) sits far below this, at
 # ~100-200 wu/s.
 const SEPARATION_SPEED_CAP: float = 6000.0   # tuned in wu
@@ -2906,7 +2910,8 @@ func _enemy_is_perceived(enemy: Unit) -> bool:
 func fresh_pick_allowed(candidate: Unit) -> bool:
 	var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, candidate)
 	var in_contact: bool = MeleeFrontLine.within_contact(self, candidate, contact_dist,
-			position.distance_squared_to(candidate.position))
+			position.distance_squared_to(candidate.position),
+			UnitTargeting.melee_contact_attacker_radius(RADIUS, candidate))
 	return in_contact or _enemy_is_perceived(candidate)
 
 
@@ -2944,11 +2949,10 @@ func _refresh_enemy_contact() -> void:
 			var dist_sq: float = position.distance_squared_to(u.position)
 			if not MeleeFrontLine.within_contact(self, u, c_dist, dist_sq):
 				continue
-			c_dist += MeleeFrontLine.contact_extension(self, u)
 			_in_enemy_contact = true
 			if not routing:
 				break
-			var a_dist: float = c_dist
+			var a_dist: float = c_dist + MeleeFrontLine.contact_extension(self, u)
 			if reentering and not _fighting_me(u):
 				a_dist *= router_contact_reentry_frac
 			if dist_sq <= a_dist * a_dist:
@@ -3260,7 +3264,8 @@ func _think(delta: float) -> void:
 		# keep sprinting at full pace. Two blocks front to front reach further, to their
 		# real front ranks (MeleeFrontLine.contact_extension).
 		var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, enemy)
-		var in_contact: bool = MeleeFrontLine.within_contact(self, enemy, contact_dist, dist_sq)
+		var in_contact: bool = MeleeFrontLine.within_contact(self, enemy, contact_dist, dist_sq,
+				UnitTargeting.melee_contact_attacker_radius(RADIUS, enemy))
 		# Chase: relentless pursuit. Everywhere else in this branch gates fighting/closing
 		# on "target_enemy != null or not has_move_target" (an explicit attack order, or no
 		# move order at all) — that's what lets a plain move order pull a unit off a foe it
@@ -4613,14 +4618,19 @@ func _type_separation_radius() -> float:
 ## grid's depth on that file, and a casualty shortens only its own file, so a thinned
 ## file-major block stands deeper than the even split. Reads the assignment formation_slots
 ## last dealt, so it falls back to the even split until one exists for this headcount and
-## file count. Cached for the physics frame, keyed on the headcount and file count: within
-## one frame the assignment is only re-dealt when one of those two changes.
+## file count. With the dealt ranks (_sim_soldier_rank) it is the deepest rank plus one, the
+## figure file_major_block_slots itself centres on; without them, the fullest file.
+##
+## Cached on the assignment's own contents (both arrays' hashes, the headcount and the file
+## count), not on the frame: any writer that re-deals, installs, restores or splices the
+## assignment changes the key, so no writer has to remember to invalidate it, and an unchanged
+## assignment is read once across frames. The hashes are native, O(n) in C++.
 func live_rank_count(files: int) -> int:
 	var even: int = UnitFormation.ranks_for(soldiers, files)
 	if in_square() or not _effective_file_major_reform() or _sim_soldier_file.size() != soldiers \
 			or _file_assignment_files != files:
 		return even
-	var key := Vector3i(Engine.get_physics_frames(), soldiers, files)
+	var key: Array = [soldiers, files, hash(_sim_soldier_file), hash(_sim_soldier_rank)]
 	if key == _live_rank_count_key:
 		return _live_rank_count
 	var deepest: int = 0
@@ -4634,13 +4644,13 @@ func live_rank_count(files: int) -> int:
 			var c: int = clampi(f, 0, files - 1)
 			counts[c] += 1
 			deepest = maxi(deepest, counts[c])
-	_live_rank_count = maxi(even, deepest)
+	_live_rank_count = deepest if deepest > 0 else even
 	_live_rank_count_key = key
 	return _live_rank_count
 
 
-# live_rank_count's per-frame cache: (physics frame, headcount, files) and its value.
-var _live_rank_count_key := Vector3i(-1, -1, -1)
+# live_rank_count's cache: the key it was computed for (see there) and its value.
+var _live_rank_count_key: Array = []
 var _live_rank_count: int = 0
 
 
@@ -5652,8 +5662,14 @@ func _separate(delta: float) -> void:
 			# three ranks the capped floor alone lets the centres close until each grid is
 			# ordered most of its depth into the other. For blocks front to front,
 			# MeleeFrontLine.floor_extension adds the rest of each block's front depth back.
-			min_dist = _front_depth() + other._front_depth() \
-					+ MeleeFrontLine.floor_extension(self, other)
+			# Only a pair within the extension's upper bound pays for it: one past that bound
+			# is rejected below with or without it.
+			min_dist = _front_depth() + other._front_depth()
+			var floor_bound: float = min_dist + MeleeFrontGeometry.extension_depth(self) \
+					+ MeleeFrontGeometry.extension_depth(other)
+			if position.distance_squared_to(other.position) \
+					< floor_bound * floor_bound * SoldierEnemyContact.SQRT_SKIP_BAND:
+				min_dist += MeleeFrontLine.floor_extension(self, other)
 		else:
 			min_dist = separation_radius + other.separation_radius
 			if _is_melee_intermixing_with(other):

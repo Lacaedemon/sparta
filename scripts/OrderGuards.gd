@@ -104,13 +104,15 @@ static func ticks_elapsed(order: Order, ticks: float) -> bool:
 
 ## A live, non-routing enemy currently stands in u's flank/rear arc (the same dot-product
 ## geometry UnitCombat.flank_multiplier strikes with) within `range_units` of u.
-## range_units <= 0 falls back to melee contact distance, matching contact_made's default
-## reach. A unit in the anti-cavalry square has no exploitable flank (flank_multiplier
-## always reads frontal for it), so it can never be FLANKED.
+## range_units <= 0 falls back to melee contact, tested exactly as contact_made tests it
+## (MeleeFrontLine.within_contact), so the two guards agree on which enemies are in contact.
+## A unit in the anti-cavalry square has no exploitable flank (flank_multiplier always reads
+## frontal for it), so it can never be FLANKED.
 static func flanked(u: Unit, range_units: float) -> bool:
 	if u.in_square():
 		return false
-	var radius: float = range_units if range_units > 0.0 else (u.attack_range + Unit.RADIUS * 2.0)
+	var contact: bool = range_units <= 0.0
+	var radius: float = range_units if not contact else (u.attack_range + Unit.RADIUS * 2.0)
 	for o in u.get_tree().get_nodes_in_group("units"):
 		var other: Unit = o as Unit
 		if other == null or other.team == u.team:
@@ -118,7 +120,9 @@ static func flanked(u: Unit, range_units: float) -> bool:
 		if other.state == Unit.State.DEAD or other.state == Unit.State.ROUTING:
 			continue
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-		if u.position.distance_squared_to(other.position) > radius * radius:
+		var d_sq: float = u.position.distance_squared_to(other.position)
+		if d_sq > radius * radius and not (contact and MeleeFrontLine.within_contact(u, other,
+				u.attack_range + Unit.RADIUS + other.RADIUS, d_sq)):
 			continue
 		if UnitCombat.flank_multiplier(u, other) > 1.0:
 			return true

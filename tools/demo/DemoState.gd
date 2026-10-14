@@ -547,7 +547,10 @@ static func motion_ref(u: Node) -> Dictionary:
 ## actually lays out (Unit.formation_slots with the arcs off), so it holds for every layout: a
 ## file-major block keeps each file at its own place when it is short of men, a row-major or
 ## squared one centres its ranks, and a frontage anchor shifts a line sideways. Empty with no men.
-## The footprint DemoDefects' slots_beyond_flanks measures slots against.
+## The footprint DemoDefects' slots_beyond_flanks measures slots against. `front` is the world
+## direction the grid's front rank faces: local -y rotated by the block's angle (the mirror only
+## negates x, so it does not flip it), which the unit's facing cannot give once a turn is folded
+## into the grid.
 static func slot_grid_footprint(u: Node) -> Dictionary:
 	var n: int = u.soldiers
 	if n <= 0:
@@ -564,8 +567,10 @@ static func slot_grid_footprint(u: Node) -> Dictionary:
 	for p in local:
 		lo = minf(lo, p.x)
 		hi = maxf(hi, p.x)
+	var front: Vector2 = Vector2.UP.rotated(u.soldier_block_world_angle())
 	return {
 		"axis": [round_to(axis.x, 4), round_to(axis.y, 4)],
+		"front": [round_to(front.x, 4), round_to(front.y, 4)],
 		"lateral_min": round_to(lo, 2),
 		"lateral_max": round_to(hi, 2),
 	}
