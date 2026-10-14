@@ -139,9 +139,10 @@
     },
     "shape_residual": {
       "uids": [
+        0,
         5
       ],
-      "reason": "Measured on this tree's own seed, 2-tick samples from tick 844: uid5 (team 1's Spearmen) forms a square at tick 962, and from tick 1152 to 1222 the player Spearmen uid0 presses it out of unit contact. A square keeps the centre-based contact range (about 80 wu) while the two blocks' bodies hold their centres 85 to 95 wu apart, so neither reads in contact and uid5's men are shoved off their slots: residual 22.4 wu against 6.75 (merge-base a3714751: 6.62 on this seed). #1839 tracks a line attacking a square never registering contact."
+      "reason": "Measured on this tree's own seed, 2-tick samples from tick 844: uid5 (team 1's Spearmen) forms a square at tick 962, and from tick 1152 to 1222 the player Spearmen uid0 presses it out of unit contact. A square keeps the centre-based contact range (about 80 wu) while the two blocks' bodies hold their centres 85 to 95 wu apart, so neither reads in contact and uid5's men are shoved off their slots: residual 22.4 wu against 6.75 (merge-base a3714751: 6.62 on this seed). uid0, the line doing the pressing, is held off its own slots over the same ticks: 9.17 wu against 6.75 on this seed, read 9.12 on the declared state ticks. With the same declared ticks, merge-base a3714751 reads 0.63 on its own seed and on perturbed seeds 1 to 4; this tree reads 6.69 to 9.02 on those seeds, under the sustained-failure rule there. #1839 tracks a line attacking a square never registering contact."
     },
     "facing_flutter": {
       "uids": [
