@@ -214,7 +214,7 @@ static func _strike(attacker: Unit, ai: int, my_prof: Dictionary, defender: Unit
 	# The non-shield part of the defender's shield weight b: stance/training
 	# deflection, per type, constant across the cadence. The shield's own block
 	# value is read per strike through the struck soldier's shield id, so
-	# b = residual + block_value — bit-for-bit the pre-split per-type weight.
+	# b = residual + block_value -- bit-for-bit the pre-split per-type weight.
 	var en_shield_residual: float = en_prof["shield_residual"]
 
 	# Same per-soldier override on the defending side: a broken SHIELD_WALL soldier's
@@ -320,7 +320,7 @@ static func _strike(attacker: Unit, ai: int, my_prof: Dictionary, defender: Unit
 	# Newton's laws collision (bidirectional impulses): both attacker and defender
 	# exchange momentum. The impulse is split inversely by effective mass (which
 	# includes bracing). Bracing gates the DEFENDER's forward motion (via `cap`
-	# above), but does NOT reduce the attacker's recoil — a braced defender still
+	# above), but does NOT reduce the attacker's recoil -- a braced defender still
 	# pushes back with full force. Lighter units recoil harder; heavier units shrug
 	# off shoves. See SoldierCollision.bidirectional_impulse.
 	if impulse_mag > 0.0:
@@ -369,7 +369,7 @@ static func _strike(attacker: Unit, ai: int, my_prof: Dictionary, defender: Unit
 			and fall_roll < SoldierCombat.prone_chance(impulse_mag, en_prof["mass"], brace_d, is_moving):
 		defender._sim_prone[target] = SoldierCombat.PRONE_RISE_TIME
 	# Stamina drain: attacker pays KAPPA_A per strike thrown; defender pays KAPPA_D
-	# scaled by how much of the blow it had to meet (phi*(1+c) — zero for prone/flanked).
+	# scaled by how much of the blow it had to meet (phi*(1+c) -- zero for prone/flanked).
 	if ai < attacker._sim_soldier_stamina.size():
 		attacker._sim_soldier_stamina[ai] = maxf(0.0,
 			attacker._sim_soldier_stamina[ai] - SoldierCombat.KAPPA_A)
