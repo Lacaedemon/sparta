@@ -450,22 +450,34 @@ with each grid's slots ordered most of a block deep inside the other.
 Over the catalog's melee clips on main a3714751,
 `tools/demo/melee-penetration.sh` (its `PEN-ALL foot` line) measured the median frontal foot pair
 standing 3.0 ranks inside the other block, with 77% of pairs more than a rank inside.
-With `MeleeFrontLine` the same measure reads 0.06 ranks and 29%;
-most of the pairs still past a rank meet offset to one side,
-which the weight covers only in part,
-or were spawned inside each other.
+With `MeleeFrontLine` the same measure reads 0.01 ranks and 29%;
+22 of the 34 pairs still past a rank were spawned inside each other, most of them in `cannae_scale`.
 
 `MeleeFrontLine` adds the missing depth back for a frontal pair:
-each block's front-rank depth beyond `Unit.RADIUS` to every contact range,
+each block's front-rank depth beyond `Unit.RADIUS` to the close-tier melee contact ranges
+(every site that applies it goes through `MeleeFrontLine.within_contact`),
 and beyond its capped `_front_depth()` to the engaged floor,
 both weighted by how squarely the two blocks face each other (0 for a flank or rear attack).
 Contact then starts as the front ranks come within reach,
 and the press stops with them on one line.
 Pairs with cavalry, missile troops, a square or a far-tier block keep the centre-based ranges
 (`MeleeFrontLine`'s doc comment says why).
-The weight reads the bearing between the two centres,
-so a pair whose fronts overlap only partly, offset to one side, gets part of the extension
-and still presses some way into each other.
+
+The weight reads each block's slot grid, not its heading,
+so a heading turn the grid absorbs (an engage turn, a router's about-face)
+leaves the pair's ranges where its men still stand.
+It multiplies how directly the two grid fronts oppose each other
+by the share of the narrower front that overlaps the other's, across the pair's front axis.
+A pair offset to one side keeps that share of the extension however far the press closes it,
+so the floor cannot fall as the pair closes.
+The depth is a file-major block's deepest surviving file,
+which its grid centres on.
+The engaged fraction's neighbourhood lookup widens the same way.
+The morale's 6 m local-force radius and the rally check's `RALLY_CONTACT_RADIUS` stay as they were,
+and also count an enemy in melee contact at the pair's frontal range,
+so a frontal enemy held at its front rank, past either radius, still counts as close.
+`SoldierMelee`'s knockback "clear the line" distance keeps the capped `_front_depth()` sum:
+it is how far a struck man travels, not a distance between centres.
 
 ## Physical contact is proximity-based, not combat-state-based
 
