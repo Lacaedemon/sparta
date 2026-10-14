@@ -460,11 +460,15 @@ and beyond its capped `_front_depth()` to the engaged floor,
 both weighted by how squarely the two blocks face each other (0 for a flank or rear attack).
 Contact then starts as the front ranks come within reach,
 and the press stops with them on one line.
-Pairs with cavalry, missile troops, a square or a far-tier block keep the centre-based ranges
+Pairs with cavalry, missile troops or a far-tier block keep the centre-based ranges
 (`MeleeFrontLine`'s doc comment says why).
+A square fronts every way:
+a line meeting it frontally reaches its slot rectangle's extent toward the line,
+so the pair keeps its extended range when a block it was pressing forms square.
 
-The weight reads each block's slot grid, not its heading,
-so a heading turn the grid absorbs (an engage turn, a router's about-face)
+The weight reads where each block's men face, not its heading:
+a heading turn the grid absorbs (a router's about-face),
+or an engage or order turn still in progress (the men stand fast until it settles),
 leaves the pair's ranges where its men still stand.
 It multiplies how directly the two grid fronts oppose each other
 by the share of the narrower front that overlaps the other's, across the pair's front axis.
@@ -478,6 +482,17 @@ and also count an enemy in melee contact at the pair's frontal range,
 so a frontal enemy held at its front rank, past either radius, still counts as close.
 `SoldierMelee`'s knockback "clear the line" distance keeps the capped `_front_depth()` sum:
 it is how far a struck man travels, not a distance between centres.
+
+Holding the blocks at their front ranks lowers frontal lethality,
+since only the front ranks reach each other.
+Measured with two 120-man Tight blocks (`last_unit_rally`'s staging on main) and neither allowed to break (morale 100),
+casualties over the first 1150 ticks fell from a mean of 47 to 37 men over the clip's own seed and perturbed seeds 1 to 4.
+The block standing its ground lost 11 instead of 23,
+and the advancing block about the same (26 against 24).
+Units take correspondingly longer to break in a straight frontal fight:
+in the perturbed melee-outcome delta,
+`general_doctrine_reserves`' low-morale foot and `march_to_contact`'s unit 1 mostly no longer break inside their clips,
+and `file_major_reform_contrast` and `spear_standoff` break 100 to 145 ticks later.
 
 ## Physical contact is proximity-based, not combat-state-based
 
