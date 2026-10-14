@@ -145,3 +145,24 @@ func test_a_frontal_enemy_counts_in_the_local_force_ratio() -> void:
 	a.morale = 60.0
 	UnitMorale.tick_morale(a, 1.0)
 	assert_lt(frontal, a.morale, "the frontal enemy erodes the outnumbered block's morale")
+
+
+## A wide query over a sparse grid scans the occupied cells instead of the ring block, and
+## returns the same units in the same order as the ring scan would.
+func test_a_wide_query_returns_the_ring_scans_order() -> void:
+	var units: Array[Unit] = []
+	for p in [Vector2(600, 50), Vector2(10, 300), Vector2(-250, -260), Vector2(130, 10),
+			Vector2(-20, 520), Vector2(900, 900)]:
+		units.append(_make_unit(30, p, Vector2.DOWN))
+	SpatialHash.reset()
+	SpatialHash.rebuild(get_tree(), Engine.get_physics_frames())
+	var radius: float = SpatialHash.CELL_SIZE * 4.5   # 5 rings: 121 cells, far more than occupied
+	var expected: Array = []
+	for dx in range(-5, 6):
+		for dy in range(-5, 6):
+			var cell: Variant = SpatialHash._cells.get(Vector2i(dx, dy))
+			if cell != null:
+				expected.append_array(cell)
+	var got: Array = SpatialHash.query(Vector2(5.0, 5.0), radius)
+	assert_eq(got.size(), 5, "setup: the far unit at (900, 900) lies outside 5 rings")
+	assert_eq(got, expected, "same units, same order")

@@ -61,19 +61,23 @@ static func rebuild(tree: SceneTree, frame: int) -> void:
 ## for replays.
 ##
 ## A block wider than one ring scans whichever is fewer: the ring block's cells, or the
-## occupied cells (in insertion order), keeping those inside the ring block. A deep block
-## anywhere on the field widens every frontal query (MeleeFrontGeometry.query_radius), and a
-## few hundred empty cells would cost more than the handful of units there are. The
-## one-ring block keeps its fixed scan, so a plain query's order never changes.
+## occupied cells, keeping those inside the ring block. A deep block anywhere on the field
+## widens every frontal query (MeleeFrontGeometry.query_radius), and a few hundred empty
+## cells would cost more than the handful of units there are. The occupied cells are sorted
+## into the ring scan's own order (x, then y), so either scan returns the same list.
 static func query(pos: Vector2, radius: float = CELL_SIZE) -> Array:
 	var out: Array = []
 	var c := _key(pos)
 	var rings: int = maxi(1, ceili(radius / CELL_SIZE))
 	if rings > 1 and _cells.size() < (2 * rings + 1) * (2 * rings + 1):
+		var inside: Array[Vector2i] = []
 		for key in _cells:
 			var k: Vector2i = key
 			if absi(k.x - c.x) <= rings and absi(k.y - c.y) <= rings:
-				out.append_array(_cells[k])
+				inside.append(k)
+		inside.sort()
+		for k in inside:
+			out.append_array(_cells[k])
 		return out
 	for dx in range(-rings, rings + 1):
 		for dy in range(-rings, rings + 1):
