@@ -1,13 +1,13 @@
 {
-  "_comment": "A team's LAST unit routs, without instantly losing. Stages team 0's ONLY unit -- a full-strength (120) but shaken (morale 6) player infantry -- meeting a single enemy infantry head-on. Both blocks are pinned to Tight (formation 1) so packed files still produce the rout inside this clip -- default Normal 2x thins contact enough that onset misses the budget. Sustained frontal casualties erode its morale to 0 (the discipline-scaled rout retune, #529, made this actually reachable -- it used to sit near-immune to routing and simply grind to a stalemate), and it breaks and flees up (faded) while barely bloodied. It used to trigger instant defeat + a paused freeze the moment its last fightable unit left the line; now the battle stays live while it's routing. Routing units are still valid combat targets, and the enemy follows it as it flees -- state-dump verified: FIGHTING at tick 1150, ROUTING from tick 1199 with 105 of its 120 men, and still ROUTING at tick 1300, the clip's end, its anchor at (797.0, 496.7), with its pursuer (uid 1) MOVING after it. MORALE 6, NOT 15: since blocks front to front meet at their front ranks (#1827), only the front ranks trade blows, and at morale 15 this unit lost 13 men by tick 1150 instead of 24 and never broke inside the clip on its own seed or on perturbed seeds 1 to 3 (the merge-base breaks in 10 of 16 perturbed runs). At morale 6 it breaks on the next casualties after tick 1150 on its own seed, and inside the clip on each of perturbed seeds 1 to 3 (ticks 1130 to 1200). This clip only needs to show the rout starting and the battle staying live through it, not the whole grind. No player input needed.",
+  "_comment": "A team's LAST unit routs, without instantly losing. Stages team 0's ONLY unit -- a full-strength (120) but shaken (morale 10) player infantry -- meeting a single, slightly larger enemy infantry (130) head-on. Both blocks are pinned to Tight (formation 1) so packed files still produce the rout inside this clip -- default Normal 2x thins contact enough that onset misses the budget. Sustained frontal casualties and being outnumbered (the local force ratio, 120 to 130) erode its morale to 0 (the discipline-scaled rout retune, #529, made this actually reachable -- it used to sit near-immune to routing and simply grind to a stalemate), and it breaks and flees up (faded) while barely bloodied. It used to trigger instant defeat + a paused freeze the moment its last fightable unit left the line; now the battle stays live while it's routing. Routing units are still valid combat targets, and the enemy follows it as it flees -- state-dump verified on its own seed: FIGHTING at tick 950, ROUTING from tick 976 at (786.0, 506.9) with 108 of its 120 men, and still ROUTING at tick 1300, the clip's end, its anchor at (748.7, 224.0), 285 wu from where it broke, with its pursuer (uid 1) MOVING after it about 173 wu behind. STAGING (#1827): blocks front to front now meet at their front ranks, so only the front ranks trade blows, and against an equal 120 it no longer broke reliably inside the clip (at morale 6, not on its own seed). On perturbed seeds 1 to 4 this staging breaks at ticks 980 to 1270 and is still ROUTING at tick 1300 on each. This clip only needs to show the rout starting and the battle staying live through it, not the whole grind. No player input needed.",
   "seed": "12345",
   "fixed_fps": 30,
   "max_frames": 650,
   "fps": 15,
   "width": 640,
   "scenario": [
-    {"team": 0, "type": "Infantry", "x": 800, "y": 440, "count": 120, "morale": 6.0, "formation": 1},
-    {"team": 1, "type": "Infantry", "x": 800, "y": 560, "count": 120, "formation": 1}
+    {"team": 0, "type": "Infantry", "x": 800, "y": 440, "count": 120, "morale": 10.0, "formation": 1},
+    {"team": 1, "type": "Infantry", "x": 800, "y": 560, "count": 130, "formation": 1}
   ],
   "camera": [
     {"tick": 0, "x": 800.0, "y": 360.0, "zoom": 1.0}
@@ -15,8 +15,8 @@
   "steps": [],
   "frames": [60, 720],
   "expect": [
-    {"tick": 1150, "uid": 0, "field": "state", "value": "FIGHTING"},
-    {"tick": 1230, "uid": 0, "field": "state", "value": "ROUTING"},
-    {"tick": 1300, "uid": 0, "field": "position", "value": [797.0, 496.7], "tol": 5.0}
+    {"tick": 950, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 1000, "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": 1300, "uid": 0, "field": "position", "value": [748.7, 224.0], "tol": 5.0}
   ]
 }
