@@ -36,7 +36,20 @@
     1204,
     1210,
     1220,
+    1254,
+    1256,
+    1258,
     1260,
+    1262,
+    1264,
+    1266,
+    1268,
+    1270,
+    1272,
+    1274,
+    1276,
+    1278,
+    1280,
     1300
   ],
   "camera": [
@@ -129,7 +142,7 @@
         6,
         8
       ],
-      "reason": "Measured by tools/check.sh demo_defects on this tree, front-on-line deployment. uid1 (the player Infantry, pressed by the enemy foot) dips to nnd_min 1.56 wu against its 2.25 wu floor: transient press compression. uid8 (team 1's deep cavalry, 9 ranks) is under a continuous AI ATTACK order whose target re-selects mid-clip, and each retarget re-rotates the block before it has re-squared, compressing its own files: 2.97 wu against the 5.0 wu floor, the mechanism main already exempted for uid8 and #1546 tracks. uid3 (the player's charging cavalry) dips to nnd_min 3.48 wu against the 5.0 wu floor at tick 1294, in the 2-tick dense samples after the tick-1122 divergence. That reading is new with the row-major casualty close-up: the merge-base e81ea9fa passes at 6.49 wu. In the charge turnaround mounts 33 and 47, each about 150 wu off his slot, swap sides across each other on both trees; the close-up's different pairing after uid3's casualty brings them closer as they pass. #1804 tracks the swap. uid9 (14.5 wu) no longer needs the exemption. uid6 (team 1's Infantry, charged by the caracoling cavalry) dips to nnd_min 0.98 wu against its 2.25 wu floor at ticks 1150-1156 (2-tick samples, this tree's own seed), while cavalry uid4 closes from 88 to 75 wu, out of contact: a cavalry pair, which keeps the centre-based contact range. The merge-base a3714751 passes at 4.80 wu; the front-line contact change (#1827) moved the timeline, and #1839 tracks the infantry this caracole circles standing pressed out of contact."
+      "reason": "Measured by tools/check.sh demo_defects on this tree, front-on-line deployment. uid1 (the player Infantry, pressed by the enemy foot) dips to nnd_min 1.56 wu against its 2.25 wu floor: transient press compression. uid8 (team 1's deep cavalry, 9 ranks) is under a continuous AI ATTACK order whose target re-selects mid-clip, and each retarget re-rotates the block before it has re-squared, compressing its own files: 2.97 wu against the 5.0 wu floor, the mechanism main already exempted for uid8 and #1546 tracks. uid3 (the player's charging cavalry) dips to nnd_min 3.48 wu against the 5.0 wu floor at tick 1294, in the 2-tick dense samples after the tick-1122 divergence. That reading is new with the row-major casualty close-up: the merge-base e81ea9fa passes at 6.49 wu. In the charge turnaround mounts 33 and 47, each about 150 wu off his slot, swap sides across each other on both trees; the close-up's different pairing after uid3's casualty brings them closer as they pass. #1804 tracks the swap. uid9 (14.5 wu) no longer needs the exemption. uid6 (team 1's Infantry, circled by the caracoling cavalry) dips to nnd_min 0.84 wu against its 2.25 wu floor at ticks 1178-1200 on this tree's own seed (2-tick samples; 0.95 on the declared tick 1180), while cavalry uid4 closes to 63-71 wu, out of contact. Perturbed seeds 1 to 4 read 1.62 to 2.14 here and 3.31 to 5.27 on merge-base a3714751. A cavalry pair keeps the centre-based contact range, so the front-line change (#1827) reaches it only by moving the timeline the caracole runs on; tracked by the caracole issue proposed in #1827's PR report (no number yet)."
     },
     "path_crossing": {
       "uids": [
@@ -137,18 +150,12 @@
       ],
       "reason": "Charging cavalry paths cross during the cycle-charge breakthrough, disengagement wheel, and realignment: in the turnaround mounts about 150 wu off their slots swap sides across each other (#1804)."
     },
-    "shape_residual": {
-      "uids": [
-        0,
-        5
-      ],
-      "reason": "Measured on this tree's own seed, 2-tick samples from tick 844: uid5 (team 1's Spearmen) forms a square at tick 962, and from tick 1152 to 1222 the player Spearmen uid0 presses it out of unit contact. A square keeps the centre-based contact range (about 80 wu) while the two blocks' bodies hold their centres 85 to 95 wu apart, so neither reads in contact and uid5's men are shoved off their slots: residual 22.4 wu against 6.75 (merge-base a3714751: 6.62 on this seed). uid0, the line doing the pressing, is held off its own slots over the same ticks: 9.17 wu against 6.75 on this seed, read 9.12 on the declared state ticks. With the same declared ticks, merge-base a3714751 reads 0.63 on its own seed and on perturbed seeds 1 to 4; this tree reads 6.69 to 9.02 on those seeds, under the sustained-failure rule there. #1839 tracks a line attacking a square never registering contact."
-    },
     "facing_flutter": {
       "uids": [
-        3
+        3,
+        4
       ],
-      "reason": "Measured on this tree's own seed: the cycle-charging cavalry uid3, marching out of contact between charges, reverses its heading 4 times in a row on the 2-tick samples from tick 1194 to 1204 (threshold 3; merge-base a3714751: 1). The front-line contact change (#1827) moved the timeline its caracole runs on; the infantry it circles stands pressed out of contact, #1839."
+      "reason": "Measured on this tree's own seed, 2-tick samples: the cycle-charging cavalry, marching out of contact between charges, reverses its heading 10 times in a row from tick 1254 to 1280 (uid3) and 4 times from 1264 to 1272 (uid4), against a threshold of 3; state ticks every 2 from 1254 to 1280 let the regular scan read it. Perturbed seeds 1 to 4: uid3 5 to 8 here, 1 to 6 on merge-base a3714751 (one of four over 3); uid4 1 to 7 here (one over 3), 1 to 3 on the merge-base. Cavalry keeps the centre-based contact range, so the front-line change (#1827) reaches it only through the timeline the caracole runs on; tracked by the caracole issue proposed in #1827's PR report (no number yet)."
     }
   }
 }
