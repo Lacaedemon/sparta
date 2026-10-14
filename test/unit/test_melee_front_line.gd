@@ -100,7 +100,8 @@ func _clash(scale: float = -1.0) -> Dictionary:
 	a.target_enemy = b
 	b.target_enemy = a
 	var out := {"contact_tick": -1, "contact_gap": -1.0, "min_gap": INF, "deep": 0,
-		"fighting_tick": -1, "fronts": _front_rank_depth(a) + _front_rank_depth(b)}
+		"fighting_tick": -1, "fronts": _front_rank_depth(a) + _front_rank_depth(b),
+		"reach": maxf(a.attack_range, b.attack_range)}
 	var tick: int = 0
 	while tick < CONTACT_BUDGET_TICKS + WATCH_TICKS:
 		await get_tree().physics_frame
@@ -123,6 +124,7 @@ func _clash(scale: float = -1.0) -> Dictionary:
 			out["fighting_tick"] = tick
 		var deep: int = maxi(_men_deeper_than_a_rank(a, b), _men_deeper_than_a_rank(b, a))
 		out["deep"] = maxi(out["deep"], deep)
+	out["men"] = (a.soldiers if is_instance_valid(a) else 0) + (b.soldiers if is_instance_valid(b) else 0)
 	return out
 
 
@@ -138,6 +140,11 @@ func test_frontal_blocks_meet_at_their_front_ranks() -> void:
 	assert_gte(float(run["contact_gap"]), fronts,
 		"contact registers before the front ranks overlap (gap %.1f, front depths %.1f)"
 			% [run["contact_gap"], fronts])
+	# ...and no sooner than the front ranks come within weapon reach: an extension that
+	# overshot would put the blocks in contact with empty air between them.
+	assert_lte(float(run["contact_gap"]), fronts + float(run["reach"]) + 1.0,
+		"contact registers only within reach of the front ranks (gap %.1f, reach %.1f)"
+			% [run["contact_gap"], run["reach"]])
 	# Both blocks fight as soon as they are in contact, rather than going on closing until the
 	# centre-based range is reached. Measured: 1 tick here; with the extension left out of
 	# _think's own contact test they never fight inside the watch.
@@ -150,6 +157,11 @@ func test_frontal_blocks_meet_at_their_front_ranks() -> void:
 	assert_gte(float(run["min_gap"]), fronts - 9.0,
 		"the press stops at the front line (closest gap %.1f, front depths %.1f)"
 			% [run["min_gap"], fronts])
+	# ...and does close to it, rather than holding the blocks apart past the front line.
+	assert_lte(float(run["min_gap"]), fronts + 9.0,
+		"the press closes to the front line (closest gap %.1f)" % run["min_gap"])
+	# The front ranks reach each other: men fall on the watch.
+	assert_lt(int(run["men"]), 240, "the front ranks trade blows (%d men left)" % run["men"])
 	# Measured: 0 here, 75 on main a3714751 and with the scale at 0.
 	assert_lte(int(run["deep"]), 4,
 		"at most a handful of enemy men ever stand more than a rank inside a block (%d)"

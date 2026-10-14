@@ -1987,6 +1987,9 @@ func _physics_process(delta: float) -> void:
 	# distance triggers and promote/demote BEFORE the units act this tick, so both runs
 	# of a replay cross the tier boundary on the same tick from the same positions.
 	var live_units: Array = _tick_tier_transitions()
+	# The orders and tier transitions above can deepen a block (a narrowed frontage, a square
+	# re-formed into line, a far block promoted close) after the hash read every block's depth.
+	SpatialHash.refresh_extension_depth(get_tree())
 
 	# Far-tier combat resolution, immediately after the transitions that decide who is at
 	# which tier this tick, reusing the unit array that pass already fetched. Close-tier

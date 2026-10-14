@@ -69,10 +69,10 @@ static func contact_made(u: Unit) -> bool:
 			continue
 		if other.state == Unit.State.DEAD or other.state == Unit.State.ROUTING:
 			continue
-		var contact: float = u.attack_range + Unit.RADIUS + other.RADIUS \
-				+ MeleeFrontLine.contact_extension(u, other)
+		var contact: float = u.attack_range + Unit.RADIUS + other.RADIUS
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-		if u.position.distance_squared_to(other.position) <= contact * contact:
+		if MeleeFrontLine.within_contact(u, other, contact,
+				u.position.distance_squared_to(other.position)):
 			return true
 	return false
 
@@ -150,7 +150,9 @@ static func current_engaged_fraction(u: Unit) -> float:
 	var defenders: Array[Unit] = []
 	var has_live_enemy_in_tree: bool = false
 	if u.is_inside_tree():
-		var candidates: Array = u._separation_candidates()
+		# Widened for frontal pairs: two deep blocks front to front stand up to both front-rank
+		# depths apart, past the plain lookup's one cell.
+		var candidates: Array = u._separation_candidates(true)
 		var u_extent: float = u.separation_radius + u.render_block_extent() + u.block_centre_offset().length()
 		for o in candidates:
 			var other: Unit = o as Unit

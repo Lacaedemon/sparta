@@ -26,8 +26,13 @@ const THRESHOLD_FIRM: float = 75.0
 const THRESHOLD_HIGH: float = 90.0
 const THRESHOLD_IMPETUOUS: float = 98.0
 
-# 6m radius (120 WU) fits inside SpatialHash.CELL_SIZE (128 WU) so candidate queries stay complete
-const LOCAL_FORCE_RADIUS_SQ: float = (6.0 * WorldScaleRef.WU_PER_M) * (6.0 * WorldScaleRef.WU_PER_M)
+# 6m radius (120 WU) fits inside SpatialHash.CELL_SIZE (128 WU) so candidate queries stay complete.
+# An enemy block front to front with the unit counts out to this plus
+# MeleeFrontLine.contact_extension, the distance its frontal melee range grew by, which the
+# widened (front_line) lookup covers: two deep blocks pressed at their front ranks stand
+# further apart than 6 m, and are still locally engaged.
+const LOCAL_FORCE_RADIUS: float = 6.0 * WorldScaleRef.WU_PER_M
+const LOCAL_FORCE_RADIUS_SQ: float = LOCAL_FORCE_RADIUS * LOCAL_FORCE_RADIUS
 const UNOPPOSED_LOCAL_FORCE_RATIO: float = 2.0
 const OUTNUMBERED_MORALE_EROSION_PER_SEC: float = 2.0
 const UNDER_FIRE_MORALE_EROSION_PER_SEC: float = 1.5
@@ -154,7 +159,7 @@ static func tick_morale(u: Unit, delta: float) -> void:
 	var nearby_friendly_soldiers: int = u.soldiers
 	var nearby_enemy_soldiers: int = 0
 	if u.is_inside_tree():
-		var candidates: Array = u._separation_candidates()
+		var candidates: Array = u._separation_candidates(true)
 		var radius_sq := LOCAL_FORCE_RADIUS_SQ
 		for candidate in candidates:
 			if candidate == null or candidate == u:
@@ -162,11 +167,12 @@ static func tick_morale(u: Unit, delta: float) -> void:
 			if "soldiers" in candidate and "team" in candidate and "state" in candidate:
 				if candidate.state == Unit.State.DEAD or candidate.state == Unit.State.ROUTING:
 					continue
-				if u.position.distance_squared_to(candidate.position) <= radius_sq:
-					if candidate.team == u.team:
+				var d_sq: float = u.position.distance_squared_to(candidate.position)
+				if candidate.team == u.team:
+					if d_sq <= radius_sq:
 						nearby_friendly_soldiers += candidate.soldiers
-					else:
-						nearby_enemy_soldiers += candidate.soldiers
+				elif MeleeFrontLine.within_contact(u, candidate, LOCAL_FORCE_RADIUS, d_sq):
+					nearby_enemy_soldiers += candidate.soldiers
 
 	var local_force_ratio: float = 1.0
 	if nearby_enemy_soldiers > 0:

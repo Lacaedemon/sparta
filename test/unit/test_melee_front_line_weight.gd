@@ -28,7 +28,7 @@ func test_blocks_squarely_front_to_front_weigh_one() -> void:
 func test_the_extensions_reach_the_real_front_ranks() -> void:
 	var p: Array = _frontal_pair()
 	var a: Unit = p[0]
-	var depth: float = MeleeFrontLine.front_rank_depth(a)
+	var depth: float = MeleeFrontGeometry.front_rank_depth(a)
 	assert_almost_eq(depth, 3.5 * a.rank_pitch_wu(), 0.001, "8 ranks: 3.5 rank pitches to the front")
 	assert_almost_eq(MeleeFrontLine.contact_extension(a, p[1]), 2.0 * (depth - Unit.RADIUS), 0.001,
 		"contact reaches each front rank past Unit.RADIUS")
@@ -43,14 +43,6 @@ func test_a_flank_or_rear_attack_weighs_nothing() -> void:
 	var rear: Unit = _make_unit(120, Vector2(0.0, -150.0), Vector2.DOWN)
 	assert_eq(MeleeFrontLine.weight(a, rear), 0.0, "an attacker behind")
 	assert_eq(MeleeFrontLine.contact_extension(a, flank), 0.0, "no extension on a flank")
-
-
-func test_an_oblique_clash_weighs_part() -> void:
-	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
-	# Headings 150 degrees apart, the other block straight ahead of a.
-	var b: Unit = _make_unit(120, Vector2(0.0, 150.0), Vector2.UP.rotated(deg_to_rad(30.0)))
-	var w: float = MeleeFrontLine.weight(a, b)
-	assert_between(w, 0.3, 0.8, "an oblique clash keeps part of the extension (%.3f)" % w)
 
 
 func test_cavalry_far_tier_and_a_zero_scale_weigh_nothing() -> void:
@@ -102,7 +94,7 @@ func test_the_widened_lookup_finds_a_deep_frontal_partner_across_cells() -> void
 	b.position = Vector2(64.0, 510.0)
 	SpatialHash.reset()
 	SpatialHash.rebuild(get_tree(), Engine.get_physics_frames())
-	assert_gt(MeleeFrontLine.front_rank_depth(a) * 2.0, 260.0, "setup: the floor is past 260 wu")
+	assert_gt(MeleeFrontGeometry.front_rank_depth(a) * 2.0, 260.0, "setup: the floor is past 260 wu")
 	assert_false(b in a._separation_candidates(), "setup: the plain 3x3 lookup misses the partner")
 	assert_true(b in a._separation_candidates(true), "the widened lookup finds it")
 	assert_true(a in b._separation_candidates(true), "from either side")

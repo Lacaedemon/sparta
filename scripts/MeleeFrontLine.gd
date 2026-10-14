@@ -3,24 +3,19 @@ class_name MeleeFrontLine
 ## ordered most of its depth into the other.
 ##
 ## The regiment layer measures melee contact and the engaged separation floor between block
-## CENTRES. Contact range is weapon reach plus Unit.RADIUS (0.9 m) a side, and the floor is
-## each block's _front_depth(), capped at half its reach. Both stand in for the distance from
-## a block's centre to its front rank, which grows by half a rank pitch for every rank, so an
-## 8-rank block's front rank stands about 2.5 ranks beyond RADIUS. Two deep blocks closing
-## front to front therefore register contact only after their front ranks have walked into
-## each other (no body contact resists them before the flag), and the press then closes their
-## centres to the capped floor, with each grid's slots ordered most of a block deep inside the
-## other.
+## CENTRES: reach plus Unit.RADIUS (0.9 m) a side, and the two _front_depth() values, each
+## capped at half the reach. A block's real centre-to-front-rank distance grows by half a rank
+## pitch per rank, so two deep blocks closing front to front came into contact only after their
+## front ranks had walked into each other, and the press then ordered each grid most of a block
+## deep inside the other.
 ##
-## For a frontal pair this adds the missing front depth back: contact_extension to every
-## close-tier contact range, so contact starts as the front ranks come within reach, and
-## floor_extension to the engaged floor, so the press stops with the two front ranks on one
-## line. Both scale with weight(), 1 for blocks squarely front to front and 0 once either
-## turns a flank or its rear to the other, so flank and rear attacks keep the old ranges.
-## Pairs involving cavalry, a missile unit, a square or a far-tier block keep them too. A
-## cavalry block's ranks sit 6 m apart, so moving where its contact begins would move where
-## every charge lands. A missile unit shoots until an enemy is in contact, so moving its
-## contact out to its loose front rank would end its shooting earlier. A square has no front.
+## For a frontal pair this adds the missing depth back (MeleeFrontGeometry measures it):
+## contact_extension to the close-tier melee contact ranges (each site that reads it names it),
+## so contact starts as the front ranks come within reach, and floor_extension to the engaged
+## floor, so the press stops with the two front ranks on one line. Both scale with weight(),
+## 1 for grids squarely front to front and 0 for a flank or rear attack, which keeps the old
+## ranges. So do pairs with cavalry (6 m between ranks: where every charge lands would move), a
+## missile unit (it shoots until an enemy is in contact), a square (no front) or a far block.
 
 
 ## Whether `u` can take part in a frontal extension at all.
@@ -29,43 +24,32 @@ static func eligible(u: Unit) -> bool:
 			and u.tier != FormationTier.FAR and not u.in_square()
 
 
-## How squarely `a` and `b` meet front to front, from 0 to 1, times the pair's
-## melee_front_line_scale (the smaller of the two units' values, clamped to 0..1). The product
-## of three ramps, each 0 at or below melee_front_line_min_cos (the larger of the two) and 1 at
-## a cosine of 1: the two headings point against each other, `b` lies ahead of `a`, and `a`
-## lies ahead of `b`. Symmetric in a and b, so both units measure the same range.
+## How squarely `a` and `b` meet front to front, 0 to 1, times the smaller of their
+## melee_front_line_scale values (clamped to 0..1). The product of three terms. The two grid
+## fronts point against each other: a ramp, 0 at or below the larger melee_front_line_min_cos
+## and 1 at a cosine of 1. Their fronts overlap across the pair's front axis: the share of the
+## narrower front facing the other's. And each lies ahead of the other along that axis,
+## ramping to 1 within one Unit.RADIUS, so a pair that has passed each other weighs nothing.
+## None reads how far apart the centres are along the axis, so the weight holds while the
+## press closes the pair: a bearing term falls as an offset pair closes, lowering the floor
+## and closing them further. Symmetric in a and b.
 static func weight(a: Unit, b: Unit) -> float:
 	if not (eligible(a) and eligible(b)):
 		return 0.0
-	var scale: float = clampf(minf(a.melee_front_line_scale, b.melee_front_line_scale), 0.0, 1.0)
-	var to_b: Vector2 = b.position - a.position
-	if to_b.length_squared() < 0.0001:  # tuned in wu
-		return 0.0
-	var dir: Vector2 = to_b.normalized()
+	var fa: Vector2 = MeleeFrontGeometry.grid_front(a)
+	var fb: Vector2 = MeleeFrontGeometry.grid_front(b)
 	var lo: float = maxf(a.melee_front_line_min_cos, b.melee_front_line_min_cos)
-	return scale * _ramp(-a.facing.dot(b.facing), lo) * _ramp(dir.dot(a.facing), lo) \
-			* _ramp(-dir.dot(b.facing), lo)
-
-
-## 0 at or below `lo`, 1 at 1, linear between. A `lo` of 1 or more reads 1 only at 1.
-static func _ramp(c: float, lo: float) -> float:
-	if lo >= 1.0:
-		return 1.0 if c >= 1.0 else 0.0
-	return clampf((c - lo) / (1.0 - lo), 0.0, 1.0)
-
-
-## The distance from `u`'s centre to its front rank, in wu: half its rank count less one,
-## times its rank pitch, on its current grid. _front_depth() without its cap.
-static func front_rank_depth(u: Unit) -> float:
-	var files: int = maxi(1, u.formation_files(u.soldiers))
-	var ranks: int = UnitFormation.ranks_for(u.soldiers, files)
-	return float(maxi(0, ranks - 1)) * 0.5 * u.rank_pitch_wu()
-
-
-## front_rank_depth for a unit that can take part in an extension, else 0: the most `u` can
-## add to any pair's range, which SpatialHash's neighbourhood query has to cover.
-static func extension_depth(u: Unit) -> float:
-	return front_rank_depth(u) if eligible(u) else 0.0
+	var opposed: float = MeleeFrontGeometry.ramp(-fa.dot(fb), lo)
+	var axis: Vector2 = fa - fb   # the pair's front axis: a's front and b's reversed
+	if opposed <= 0.0 or axis.length_squared() < 0.000001:  # a min_cos below 0 passes parallels
+		return 0.0
+	axis = axis.normalized()
+	var to_b: Vector2 = b.position - a.position
+	var ahead: float = clampf(to_b.dot(axis) / Unit.RADIUS, 0.0, 1.0)
+	var overlap: float = MeleeFrontGeometry.front_overlap(MeleeFrontGeometry.front_half_width(a),
+			MeleeFrontGeometry.front_half_width(b), absf(to_b.dot(axis.orthogonal())))
+	var scale: float = clampf(minf(a.melee_front_line_scale, b.melee_front_line_scale), 0.0, 1.0)
+	return scale * opposed * ahead * overlap
 
 
 ## Added to a close-tier melee contact range (reach plus Unit.RADIUS a side): each block's
@@ -75,18 +59,35 @@ static func contact_extension(a: Unit, b: Unit) -> float:
 	var w: float = weight(a, b)
 	if w <= 0.0:
 		return 0.0
-	return w * (maxf(0.0, front_rank_depth(a) - Unit.RADIUS)
-			+ maxf(0.0, front_rank_depth(b) - Unit.RADIUS))
+	return w * (maxf(0.0, MeleeFrontGeometry.front_rank_depth(a) - Unit.RADIUS)
+			+ maxf(0.0, MeleeFrontGeometry.front_rank_depth(b) - Unit.RADIUS))
+
+
+## Whether `a` and `b`, centres sqrt(`dist_sq`) apart, are within `base` (a centre-based
+## contact range) plus contact_extension(a, b): the same answer as comparing against the full
+## range, but it answers from `base` alone, or rejects on the extension's upper bound (both
+## depths beyond Unit.RADIUS), before it pays for weight(). The contact sites that scan every
+## unit call this.
+static func within_contact(a: Unit, b: Unit, base: float, dist_sq: float) -> bool:
+	if dist_sq <= base * base:
+		return true
+	if not (eligible(a) and eligible(b)):
+		return false
+	var bound: float = base + maxf(0.0, MeleeFrontGeometry.front_rank_depth(a) - Unit.RADIUS) \
+			+ maxf(0.0, MeleeFrontGeometry.front_rank_depth(b) - Unit.RADIUS)
+	if dist_sq > bound * bound:
+		return false
+	var reach: float = base + contact_extension(a, b)
+	return dist_sq <= reach * reach
 
 
 ## Added to the engaged separation floor (the two _front_depth() values): each block's
-## front-rank depth beyond its capped _front_depth(), times weight(). Two blocks squarely
-## front to front then stop pressing with their front ranks on one line. At any one weight the
-## floor stays inside the contact range above; a weight that falls while a pair is pressed
-## (one block turning away) can still take it out of contact.
+## front-rank depth beyond its capped _front_depth(), times weight(), so two blocks squarely
+## front to front stop pressing with their front ranks on one line. At any one weight the floor
+## stays inside the contact range above.
 static func floor_extension(a: Unit, b: Unit) -> float:
 	var w: float = weight(a, b)
 	if w <= 0.0:
 		return 0.0
-	return w * (maxf(0.0, front_rank_depth(a) - a._front_depth())
-			+ maxf(0.0, front_rank_depth(b) - b._front_depth()))
+	return w * (maxf(0.0, MeleeFrontGeometry.front_rank_depth(a) - a._front_depth())
+			+ maxf(0.0, MeleeFrontGeometry.front_rank_depth(b) - b._front_depth()))

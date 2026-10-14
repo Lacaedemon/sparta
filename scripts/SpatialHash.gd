@@ -22,7 +22,7 @@ const CELL_SIZE := 128.0
 
 static var _frame: int = -1
 static var _cells: Dictionary = {}
-# The largest MeleeFrontLine.extension_depth of any unit in this frame's grid.
+# The largest MeleeFrontGeometry.extension_depth of any unit in this frame's grid.
 static var _max_extension_depth: float = 0.0
 
 
@@ -42,30 +42,39 @@ static func rebuild(tree: SceneTree, frame: int) -> void:
 		return
 	_frame = frame
 	_cells.clear()
-	_max_extension_depth = 0.0
 	var all: Array = tree.get_nodes_in_group("units")
 	all.append_array(tree.get_nodes_in_group("routers"))
+	_max_extension_depth = _deepest(all)
 	for o in all:
 		var n: Node2D = o as Node2D
 		if n == null:
 			continue
-		if n is Unit:
-			_max_extension_depth = maxf(_max_extension_depth,
-					MeleeFrontLine.extension_depth(n as Unit))
 		var key := _key(n.position)
 		if not _cells.has(key):
 			_cells[key] = []
 		_cells[key].append(n)
 
 
-## Candidate units in the cell block around `pos` — a superset of every unit within
+## Candidate units in the cell block around `pos`: a superset of every unit within
 ## `radius` (at least CELL_SIZE, the 3x3 block). Traversal order is deterministic (fixed
 ## dx/dy loop, then each cell's insertion order), so separation results are reproducible
 ## for replays.
+##
+## A block wider than one ring scans whichever is fewer: the ring block's cells, or the
+## occupied cells (in insertion order), keeping those inside the ring block. A deep block
+## anywhere on the field widens every frontal query (MeleeFrontGeometry.query_radius), and a
+## few hundred empty cells would cost more than the handful of units there are. The
+## one-ring block keeps its fixed scan, so a plain query's order never changes.
 static func query(pos: Vector2, radius: float = CELL_SIZE) -> Array:
 	var out: Array = []
 	var c := _key(pos)
 	var rings: int = maxi(1, ceili(radius / CELL_SIZE))
+	if rings > 1 and _cells.size() < (2 * rings + 1) * (2 * rings + 1):
+		for key in _cells:
+			var k: Vector2i = key
+			if absi(k.x - c.x) <= rings and absi(k.y - c.y) <= rings:
+				out.append_array(_cells[k])
+		return out
 	for dx in range(-rings, rings + 1):
 		for dy in range(-rings, rings + 1):
 			var cell: Variant = _cells.get(Vector2i(c.x + dx, c.y + dy))
@@ -81,6 +90,28 @@ static func reset() -> void:
 	_max_extension_depth = 0.0
 
 
-## The largest MeleeFrontLine.extension_depth of any unit in the current grid.
+## The largest MeleeFrontGeometry.extension_depth of any unit in the current grid.
 static func max_extension_depth() -> float:
 	return _max_extension_depth
+
+
+## Re-read max_extension_depth from the live units, for the current frame's grid. rebuild()
+## runs before the tick's orders and tier transitions, and an order that narrows a frontage
+## or leaves a square, or a far block promoted close, can deepen a block after it; Battle
+## calls this once those have run. A block deepened later in the tick (a reserve merging in)
+## is read by the next frame's rebuild: until then its own queries, which read its live
+## depth, still find its partners.
+static func refresh_extension_depth(tree: SceneTree) -> void:
+	var all: Array = tree.get_nodes_in_group("units")
+	all.append_array(tree.get_nodes_in_group("routers"))
+	_max_extension_depth = _deepest(all)
+
+
+## The largest MeleeFrontGeometry.extension_depth in `units`.
+static func _deepest(units: Array) -> float:
+	var deepest: float = 0.0
+	for o in units:
+		var u: Unit = o as Unit
+		if u != null:
+			deepest = maxf(deepest, MeleeFrontGeometry.extension_depth(u))
+	return deepest

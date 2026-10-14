@@ -238,6 +238,10 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 			if attacker.knockback_push_indefinite:
 				defender_speed_cap = SoldierCombat.KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP
 			else:
+				# A shove's length, not a centre-to-centre range, so it keeps the capped
+				# _front_depth() sum and no MeleeFrontLine.floor_extension: the struck man
+				# stands in the front rank, and clearing the line is a few ranks' travel for
+				# him however far apart the two block centres are held.
 				var clear_dist: float = attacker._front_depth() + defender._front_depth()
 				defender_speed_cap = SoldierCombat.knockback_focus_clear_line_cap(
 						clear_dist, SoldierBodies.BODY_ACCEL_FLOOR)
