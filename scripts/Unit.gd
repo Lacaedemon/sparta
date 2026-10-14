@@ -9880,11 +9880,10 @@ func _clear_flight() -> void:
 
 ## Whether a routed unit recovers rather than shatters when its rout times out:
 ## it must have broken contact (no living, non-routing enemy within RALLY_CONTACT_RADIUS)
-## and still field enough men to reform (>= shatter_strength_frac of its max). The radius
-## grows by MeleeFrontLine.contact_extension for a block whose grid still meets this one's
-## front to front: two deep blocks pressed at their front ranks stand further apart than
-## the radius while their men are still in the press. Positions + counts only, so it's
-## deterministic and replay-safe.
+## and still field enough men to reform (>= shatter_strength_frac of its max). An enemy in
+## frontal melee contact past the radius holds it too: two deep blocks pressed at their front
+## ranks (MeleeFrontLine) stand further apart than the radius while their men are still in
+## the press. Positions + counts only, so it's deterministic and replay-safe.
 func _can_rally() -> bool:
 	if soldiers < int(round(max_soldiers * shatter_strength_frac)):
 		return false
@@ -9892,12 +9891,11 @@ func _can_rally() -> bool:
 		var e: Unit = o as Unit
 		if e == null or e.team == team or e.state == State.DEAD:
 			continue
-		# Strictly inside the radius, as UnitTargeting.nearest_enemy_to reads it; past it, only
-		# within the frontal extension.
+		# Strictly inside the radius, as UnitTargeting.nearest_enemy_to reads it, or in melee
+		# contact at the pair's frontal range.
 		var d_sq: float = position.distance_squared_to(e.position)
-		var r_sq: float = RALLY_CONTACT_RADIUS * RALLY_CONTACT_RADIUS
-		if d_sq < r_sq or (d_sq > r_sq
-				and MeleeFrontLine.within_contact(self, e, RALLY_CONTACT_RADIUS, d_sq)):
+		if d_sq < RALLY_CONTACT_RADIUS * RALLY_CONTACT_RADIUS or MeleeFrontLine.within_contact(
+				self, e, maxf(attack_range, e.attack_range) + RADIUS + e.RADIUS, d_sq):
 			return false
 	return true
 

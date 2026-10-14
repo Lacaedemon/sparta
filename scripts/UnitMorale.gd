@@ -27,10 +27,9 @@ const THRESHOLD_HIGH: float = 90.0
 const THRESHOLD_IMPETUOUS: float = 98.0
 
 # 6m radius (120 WU) fits inside SpatialHash.CELL_SIZE (128 WU) so candidate queries stay complete.
-# An enemy block front to front with the unit counts out to this plus
-# MeleeFrontLine.contact_extension, the distance its frontal melee range grew by, which the
-# widened (front_line) lookup covers: two deep blocks pressed at their front ranks stand
-# further apart than 6 m, and are still locally engaged.
+# An enemy in frontal melee contact past it counts too: two deep blocks pressed at their front
+# ranks (MeleeFrontLine) stand further apart than 6 m, and the widened (front_line) lookup
+# finds them.
 const LOCAL_FORCE_RADIUS: float = 6.0 * WorldScaleRef.WU_PER_M
 const LOCAL_FORCE_RADIUS_SQ: float = LOCAL_FORCE_RADIUS * LOCAL_FORCE_RADIUS
 const UNOPPOSED_LOCAL_FORCE_RATIO: float = 2.0
@@ -171,7 +170,8 @@ static func tick_morale(u: Unit, delta: float) -> void:
 				if candidate.team == u.team:
 					if d_sq <= radius_sq:
 						nearby_friendly_soldiers += candidate.soldiers
-				elif MeleeFrontLine.within_contact(u, candidate, LOCAL_FORCE_RADIUS, d_sq):
+				elif d_sq <= radius_sq or MeleeFrontLine.within_contact(u, candidate,
+						maxf(u.attack_range, candidate.attack_range) + Unit.RADIUS * 2.0, d_sq):
 					nearby_enemy_soldiers += candidate.soldiers
 
 	var local_force_ratio: float = 1.0
