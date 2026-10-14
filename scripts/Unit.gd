@@ -1254,6 +1254,22 @@ var router_front_arc: float = ROUTER_FRONT_ARC
 # ROUTER_CONTACT_REENTRY_FRAC, with rout_time's set-before-_ready contract.
 const ROUTER_CONTACT_REENTRY_FRAC: float = 0.9
 var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
+# How far a frontal melee pair's contact range and engaged floor reach out to the blocks' real
+# front ranks (MeleeFrontLine): 1.0 adds each block's whole missing front depth, so two blocks
+# front to front meet at their front ranks; 0 keeps the centre-based ranges, under which deep
+# blocks interpenetrate by most of their depth. A pair uses the smaller of its two values. A
+# caller-configurable parameter defaulting to MELEE_FRONT_LINE_SCALE, with rout_time's
+# set-before-_ready contract.
+const MELEE_FRONT_LINE_SCALE: float = 1.0
+var melee_front_line_scale: float = MELEE_FRONT_LINE_SCALE
+# The cosine at or below which a pair no longer counts as front to front for MeleeFrontLine:
+# its weight ramps from 0 here to 1 at a cosine of 1, on the angle between the two headings
+# and on each block's bearing to the other. 0.5 (60 degrees) lets an oblique frontal clash
+# keep part of the extension while a flank or rear attack keeps none. A pair uses the larger
+# of its two values. A caller-configurable parameter defaulting to MELEE_FRONT_LINE_MIN_COS,
+# with rout_time's set-before-_ready contract.
+const MELEE_FRONT_LINE_MIN_COS: float = 0.5
+var melee_front_line_min_cos: float = MELEE_FRONT_LINE_MIN_COS
 # How long a non-fighting unit holds position to reform its ranks after a fresh move
 # order is issued with reform_before_move on. Runs concurrently with order_response_delay
 # (both count from zero); the effective delay before the march is max(order_response_delay,
@@ -1461,10 +1477,13 @@ const SEPARATION_RADIUS_MAX: float = 1.4 * WorldScaleRef.WU_PER_M
 # capped at 2*SEPARATION_RADIUS_MAX=56, or the engaged _front_depth() pair sum, each
 # half capped at attack_range*0.5) bounds the largest possible single-pair push to
 # roughly that same ~50-60 wu even in the fully-overlapping/co-located worst case, so
-# this cap -- comfortably above 60wu/(1/60s)=3600 wu/s -- never binds for any push a
-# legitimate min_dist can produce; it only ever bounds a genuinely pathological state
-# (a corrupted min_dist from a bug elsewhere). Measured real gameplay (a full-sprint
-# cavalry-vs-spear-line hard block) sits far below this, at ~100-200 wu/s.
+# this cap -- comfortably above 60wu/(1/60s)=3600 wu/s -- never binds for any push those
+# floors can produce. A frontal pair's floor also carries MeleeFrontLine.floor_extension,
+# up to the two blocks' front-rank depths (126 wu for two 8-rank blocks, more for deeper
+# ones), so a pair spawned or swung deep into each other can reach the cap: it then
+# spreads the push over a few ticks instead of moving a block 100+ wu in one. Measured
+# real gameplay (a full-sprint cavalry-vs-spear-line hard block) sits far below this, at
+# ~100-200 wu/s.
 const SEPARATION_SPEED_CAP: float = 6000.0   # tuned in wu
 # Cavalry charge: a physics-based bonus, not a one-shot token. The damage
 # multiplier scales with the rider's IMPACT VELOCITY at the moment of contact — the
@@ -2845,7 +2864,8 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ##   perception-gated at the time), or _think()'s melee-contact branch (target_enemy = enemy,
 ##   set when in contact outside HOLD/MARCH_TO_CONTACT/BRACE), which is deliberately NOT a
 ##   caller of this function: contact-exempt rather than perception-gated, benign because
-##   melee_contact_distance is far below any realistic sight range. Same already-committed
+##   melee contact means the enemy's front rank is within weapon reach of this unit's, however
+##   far apart two deep blocks' centres stand. Same already-committed
 ##   exemption the chase branch's target_enemy != null half relies on. See UnitRelief.begin's
 ##   own doc comment.
 ## - OrderGuards.enemy_in_range (scripts/OrderGuards.gd), which backs
@@ -2881,7 +2901,8 @@ func _enemy_is_perceived(enemy: Unit) -> bool:
 ## melee-contact-distance math. See _enemy_is_perceived's own doc comment (the authoritative
 ## caller list) for how each of those three sites fits in.
 func fresh_pick_allowed(candidate: Unit) -> bool:
-	var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, candidate)
+	var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, candidate) \
+			+ MeleeFrontLine.contact_extension(self, candidate)
 	var in_contact: bool = position.distance_squared_to(candidate.position) <= contact_dist * contact_dist
 	return in_contact or _enemy_is_perceived(candidate)
 
@@ -2898,6 +2919,10 @@ func fresh_pick_allowed(candidate: Unit) -> bool:
 ## of the range switches anchors once rather than every tick or two. An enemy that is fighting
 ## the router (_fighting_me) counts at the full range all the same: a router held in a melee
 ## anchors as one in contact wherever the edge of the range happens to fall.
+##
+## The range is the pair's melee contact range plus MeleeFrontLine.contact_extension, so two
+## blocks front to front come into contact as their front ranks come within reach, not after
+## their ranks have walked into each other.
 func _refresh_enemy_contact() -> void:
 	var routing: bool = state == State.ROUTING
 	var was_anchor_contact: bool = _router_anchor_contact
@@ -2912,7 +2937,8 @@ func _refresh_enemy_contact() -> void:
 	for u in contact_candidates:
 		if u is Unit and u.team != team and u.state != State.DEAD:
 			contact_checks += 1
-			var c_dist: float = maxf(attack_range, u.attack_range) + RADIUS + u.RADIUS
+			var c_dist: float = maxf(attack_range, u.attack_range) + RADIUS + u.RADIUS \
+					+ MeleeFrontLine.contact_extension(self, u)
 			var dist_sq: float = position.distance_squared_to(u.position)
 			if dist_sq > c_dist * c_dist:
 				continue
@@ -2961,7 +2987,8 @@ func _arm_router_front_in_melee() -> void:
 	for u in candidates:
 		if not (u is Unit) or u == self or u.team == team or u.state == State.DEAD:
 			continue
-		var c_dist: float = maxf(attack_range, u.attack_range) + RADIUS + u.RADIUS
+		var c_dist: float = maxf(attack_range, u.attack_range) + RADIUS + u.RADIUS \
+				+ MeleeFrontLine.contact_extension(self, u)
 		var to_enemy: Vector2 = u.position - position
 		if to_enemy.length_squared() > c_dist * c_dist or to_enemy == Vector2.ZERO:
 			continue
@@ -3227,8 +3254,10 @@ func _think(delta: float) -> void:
 		# fleeing target (ROUTING), the pursuer must reach weapon reach against the
 		# nearest fleeing bodies (attack_range + enemy.RADIUS) so soldiers can actually
 		# strike; outside that reach, the pursuer falls through to the chase branch to
-		# keep sprinting at full pace.
-		var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, enemy)
+		# keep sprinting at full pace. Two blocks front to front reach further, to their
+		# real front ranks (MeleeFrontLine.contact_extension).
+		var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, enemy) \
+				+ MeleeFrontLine.contact_extension(self, enemy)
 		var in_contact: bool = dist_sq <= contact_dist * contact_dist
 		# Chase: relentless pursuit. Everywhere else in this branch gates fighting/closing
 		# on "target_enemy != null or not has_move_target" (an explicit attack order, or no
@@ -3405,7 +3434,8 @@ func _think(delta: float) -> void:
 			# above (target_enemy = enemy, set when in contact outside HOLD/MARCH_TO_CONTACT/
 			# BRACE, on some earlier tick), which is deliberately NOT a caller of
 			# _enemy_is_perceived: contact-exempt rather than perception-gated, benign because
-			# melee_contact_distance is far below any realistic sight range. Either way, this
+			# melee contact means the enemy's front rank is within weapon reach of this unit's,
+			# however far apart two deep blocks' centres stand. Either way, this
 			# branch then keeps closing on that same target's CURRENT live position every
 			# tick with no re-check -- so a unit can keep chasing a target that has since
 			# dropped out of its side's own current perception (it slipped behind occluding
@@ -3639,8 +3669,9 @@ func _support_tick(delta: float) -> void:
 	# threat from ever being considered at all -- the closer-hidden-shadows-farther-visible
 	# fog-of-war gap UnitTargeting.nearest_enemy_to's own `predicate` parameter closes (see
 	# its doc comment). fresh_pick_allowed's own contact math (attack_range + RADIUS +
-	# candidate.RADIUS, against THIS unit's own position) is exactly this function's own
-	# `contact_dist`/`in_contact` check just below -- identical because nearest_enemy_to's
+	# candidate.RADIUS + MeleeFrontLine.contact_extension, against THIS unit's own position)
+	# is exactly this function's own `contact_dist`/`in_contact` check just below --
+	# identical because nearest_enemy_to's
 	# default include_routing (false, unchanged here) means a candidate reaching this
 	# predicate is never ROUTING, so fresh_pick_allowed's own ROUTING special case never
 	# triggers either.
@@ -3648,7 +3679,8 @@ func _support_tick(delta: float) -> void:
 			false, false, Callable(self, "fresh_pick_allowed"))
 	if threat != null:
 		var dist_sq: float = position.distance_squared_to(threat.position)
-		var contact_dist: float = attack_range + RADIUS + threat.RADIUS
+		var contact_dist: float = attack_range + RADIUS + threat.RADIUS \
+				+ MeleeFrontLine.contact_extension(self, threat)
 		var in_contact: bool = dist_sq <= contact_dist * contact_dist
 		if in_contact:
 			state = State.FIGHTING
@@ -3755,7 +3787,8 @@ func _pursuit_stance() -> bool:
 ## command a step through a body that is already in physical contact. Returns
 ## Vector2.ZERO when `dir` is fully into contact. `dir` is a unit vector;
 ## the leftover's length is the remaining (tangential) fraction, 0..1.
-## Matches `_think`'s proximity check (`maxf` of both reaches + both RADII).
+## Matches `_think`'s proximity check (`maxf` of both reaches + both RADII +
+## MeleeFrontLine.contact_extension).
 func _yield_step_away_from_contact(dir: Vector2) -> Vector2:
 	if not is_inside_tree():
 		return dir
@@ -3768,7 +3801,8 @@ func _yield_step_away_from_contact(dir: Vector2) -> Vector2:
 		if u is Unit and u.team != team and u.state != State.DEAD:
 			contact_checks += 1
 			var other: Unit = u
-			var c_dist: float = maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS
+			var c_dist: float = maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS \
+					+ MeleeFrontLine.contact_extension(self, other)
 			if position.distance_squared_to(other.position) <= c_dist * c_dist:
 				var toward: Vector2 = other.position - position
 				if toward.length_squared() < 0.0001:  # tuned in wu
@@ -4142,7 +4176,8 @@ var _adjacent_engaged_cache_frame: int = -1
 ## Distinct enemy Unit instances currently within melee contact range of this regiment --
 ## i.e. close enough for genuine simultaneous engagement, not merely detected at long range.
 ## "Contact range" is melee reach plus both bodies' collision radii
-## (maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS), the symmetric form of
+## (maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS, plus
+## MeleeFrontLine.contact_extension for a frontal pair), the symmetric form of
 ## the reach-plus-radii rule the other contact checks in this file use, rather than inventing
 ## a second distance rule for what "adjacent" means.
 ##
@@ -4159,13 +4194,14 @@ func _adjacent_engaged_enemy_units() -> Array[Unit]:
 	if not is_inside_tree():
 		return _adjacent_engaged_cache
 	var out: Array[Unit] = []
-	for o in _separation_candidates():
+	for o in _separation_candidates(true):
 		var other := o as Unit
 		if other == null or other == self or other.state == State.DEAD:
 			continue
 		if other.team == team:
 			continue
-		var contact: float = maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS
+		var contact: float = maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS \
+				+ MeleeFrontLine.contact_extension(self, other)
 		if position.distance_squared_to(other.position) <= contact * contact:
 			out.append(other)
 	_adjacent_engaged_cache = out
@@ -5550,7 +5586,7 @@ func _separate(delta: float) -> void:
 	# earlier pair already shifted this same tick).
 	var speed_budget: float = SEPARATION_SPEED_CAP
 	# Consider living units and routers alike: nobody gets walked through.
-	for o in _separation_candidates():
+	for o in _separation_candidates(true):
 		var other: Unit = o as Unit
 		# DEAD: queue_free'd but not yet removed from its group this frame.
 		if other == null or other == self or other.state == State.DEAD:
@@ -5575,7 +5611,12 @@ func _separate(delta: float) -> void:
 			# pass holds the contact and packs the soldiers — so the spacing emerges from
 			# the bodies, not a fixed enemy gap. No type-specific standoff here: a spear's
 			# reach standoff is meant to emerge from knockback, not a separation rule.
-			min_dist = _front_depth() + other._front_depth()
+			# _front_depth() is capped at half the reach, so for blocks deeper than about
+			# three ranks the capped floor alone lets the centres close until each grid is
+			# ordered most of its depth into the other. For blocks front to front,
+			# MeleeFrontLine.floor_extension adds the rest of each block's front depth back.
+			min_dist = _front_depth() + other._front_depth() \
+					+ MeleeFrontLine.floor_extension(self, other)
 		else:
 			min_dist = separation_radius + other.separation_radius
 			if _is_melee_intermixing_with(other):
@@ -9380,9 +9421,18 @@ func _push_share(other: Unit) -> float:
 ## neighbourhood rather than O(n) over all units); falls back to a full
 ## units+routers group scan when no grid is current for this frame — e.g. a unit
 ## test that calls _separate() directly with no Battle running.
-func _separation_candidates() -> Array:
+##
+## The lookup covers every unit within SpatialHash.CELL_SIZE, which bounds the centre-based
+## floors and contact ranges. A frontal pair's MeleeFrontLine extensions reach up to the two
+## blocks' front-rank depths further, so `front_line` (for a caller that applies them) widens
+## the lookup by this unit's own front-rank depth plus the deepest in the grid.
+func _separation_candidates(front_line: bool = false) -> Array:
 	if SpatialHash.is_current(Engine.get_physics_frames()):
-		return SpatialHash.query(position)
+		var radius: float = SpatialHash.CELL_SIZE
+		var own: float = MeleeFrontLine.extension_depth(self) if front_line else 0.0
+		if own > 0.0:
+			radius += own + SpatialHash.max_extension_depth()
+		return SpatialHash.query(position, radius)
 	var all: Array = get_tree().get_nodes_in_group("units")
 	all.append_array(get_tree().get_nodes_in_group("routers"))
 	return all
@@ -11050,6 +11100,8 @@ func to_snapshot_dict() -> Dictionary:
 		"rearguard_delay_sec": rearguard_delay_sec,
 		"rout_time": rout_time, "router_front_arc": router_front_arc,
 		"router_contact_reentry_frac": router_contact_reentry_frac,
+		"melee_front_line_scale": melee_front_line_scale,
+		"melee_front_line_min_cos": melee_front_line_min_cos,
 		"shatter_strength_frac": shatter_strength_frac,
 		"rally_morale_threshold": rally_morale_threshold,
 		"rally_resume_radius_factor": rally_resume_radius_factor,
@@ -11308,6 +11360,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rout_time = float(d.get("rout_time", rout_time))
 	router_front_arc = float(d.get("router_front_arc", router_front_arc))
 	router_contact_reentry_frac = float(d.get("router_contact_reentry_frac", router_contact_reentry_frac))
+	melee_front_line_scale = float(d.get("melee_front_line_scale", melee_front_line_scale))
+	melee_front_line_min_cos = float(d.get("melee_front_line_min_cos", melee_front_line_min_cos))
 	shatter_strength_frac = float(d.get("shatter_strength_frac", shatter_strength_frac))
 	rally_morale_threshold = float(d.get("rally_morale_threshold", rally_morale_threshold))
 	rally_resume_radius_factor = float(d.get("rally_resume_radius_factor", rally_resume_radius_factor))

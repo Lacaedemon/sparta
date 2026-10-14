@@ -432,6 +432,41 @@ an aggregate of how many engaged soldiers are currently prone, applied uniformly
 than body-by-body) is still a possible follow-up if the reactive nuance is worth
 pursuing.
 
+## Blocks front to front meet at their front ranks
+
+The margin above limits how far bodies mix once the two front ranks touch.
+It cannot stop the larger interpenetration the regiment layer itself orders.
+The regiment-level melee contact ranges (`_in_enemy_contact` and the others built the same way)
+are weapon reach plus `Unit.RADIUS` (0.9 m) a side, measured centre to centre,
+and the engaged floor in `_separate` is the two `_front_depth()` values,
+each capped at half the unit's reach.
+A block's real centre-to-front-rank distance grows by half a rank pitch for every rank,
+so for an 8-rank block both fall short of it by two to three ranks.
+Two such blocks closing front to front therefore came into contact
+only after their front ranks had walked into each other
+(no body contact resists them before the flag),
+and the press then closed the centres to the capped floor,
+with each grid's slots ordered most of a block deep inside the other.
+Over the catalog's melee clips on main a3714751,
+`tools/demo/melee-penetration.sh` (its `PEN-ALL foot` line) measured the median frontal foot pair
+standing 3.0 ranks inside the other block, with 77% of pairs more than a rank inside.
+With `MeleeFrontLine` the same measure reads 0.06 ranks and 29%;
+most of the pairs still past a rank meet offset to one side,
+which the weight covers only in part,
+or were spawned inside each other.
+
+`MeleeFrontLine` adds the missing depth back for a frontal pair:
+each block's front-rank depth beyond `Unit.RADIUS` to every contact range,
+and beyond its capped `_front_depth()` to the engaged floor,
+both weighted by how squarely the two blocks face each other (0 for a flank or rear attack).
+Contact then starts as the front ranks come within reach,
+and the press stops with them on one line.
+Pairs with cavalry, missile troops, a square or a far-tier block keep the centre-based ranges
+(`MeleeFrontLine`'s doc comment says why).
+The weight reads the bearing between the two centres,
+so a pair whose fronts overlap only partly, offset to one side, gets part of the extension
+and still presses some way into each other.
+
 ## Physical contact is proximity-based, not combat-state-based
 
 Both the margin above and the underlying soldier-level pass it widens

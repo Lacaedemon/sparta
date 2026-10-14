@@ -173,7 +173,8 @@ static func _flank_threat(u: Unit, all_units: Array) -> Unit:
 		if e == null or e.team == u.team or e.state == Unit.State.DEAD \
 				or e.state == Unit.State.ROUTING:
 			continue
-		var contact: float = u.attack_range + Unit.RADIUS + e.RADIUS
+		var contact: float = u.attack_range + Unit.RADIUS + e.RADIUS \
+				+ MeleeFrontLine.contact_extension(u, e)
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		if u.position.distance_squared_to(e.position) > contact * contact:
 			continue

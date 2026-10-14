@@ -60,8 +60,8 @@ static func enemy_in_range(u: Unit, range_units: float) -> bool:
 
 
 ## A live, non-routing enemy is within melee contact distance: u's attack_range plus both
-## units' radii. Distinct from enemy_in_range -- contact is a fixed geometric distance, not
-## a caller-chosen radius.
+## units' radii, plus MeleeFrontLine.contact_extension for blocks front to front. Distinct
+## from enemy_in_range -- contact is a fixed geometric distance, not a caller-chosen radius.
 static func contact_made(u: Unit) -> bool:
 	for o in u.get_tree().get_nodes_in_group("units"):
 		var other: Unit = o as Unit
@@ -69,7 +69,8 @@ static func contact_made(u: Unit) -> bool:
 			continue
 		if other.state == Unit.State.DEAD or other.state == Unit.State.ROUTING:
 			continue
-		var contact: float = u.attack_range + Unit.RADIUS + other.RADIUS
+		var contact: float = u.attack_range + Unit.RADIUS + other.RADIUS \
+				+ MeleeFrontLine.contact_extension(u, other)
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 		if u.position.distance_squared_to(other.position) <= contact * contact:
 			return true

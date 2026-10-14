@@ -365,7 +365,8 @@ static func _flank_is_outflanked(flank: Unit, outward: Vector2, all_units: Array
 		# Already at melee-contact distance: the flank unit's own UnitLeader flank-threat
 		# reaction already owns this case (see UnitLeader._flank_threat) -- the
 		# subcommander only reacts to a flank an enemy hasn't closed on yet.
-		var contact: float = flank.attack_range + Unit.RADIUS + e.RADIUS
+		var contact: float = flank.attack_range + Unit.RADIUS + e.RADIUS \
+				+ MeleeFrontLine.contact_extension(flank, e)
 		if d <= contact:
 			continue
 		if to_e.dot(outward) > 0.0:
