@@ -899,6 +899,15 @@ one soldier going down doesn't open a seam. Normal order holds a couple of ranks
 of the line before it starts to give; Loose order has no such discipline, so
 soldiers there can end up more deeply mixed with the enemy.
 
+An enemy who gets right inside a block, past the ranks that are fighting,
+is not safe there.
+Only a block's front few ranks normally strike,
+but any man of the block with such an enemy within his reach strikes him too,
+whatever rank he stands in,
+so a few men who have broken into the middle of a block are cut down quickly.
+An enemy pressing on a flank or the rear from outside still faces only the ranks
+turned towards him, so a flank or rear attack keeps its edge.
+
 Only the men actually in bodily contact get shoved about by the fighting.
 A spear reaches several ranks deep, so rank-four and rank-five spearmen
 strike over the heads of the men in front --- but nothing is touching them,
