@@ -22,7 +22,20 @@
     1020,
     1080,
     1140,
+    1152,
+    1154,
+    1160,
+    1170,
+    1180,
+    1190,
+    1194,
+    1196,
+    1198,
     1200,
+    1202,
+    1204,
+    1210,
+    1220,
     1260,
     1300
   ],
@@ -113,15 +126,28 @@
       "uids": [
         1,
         3,
+        6,
         8
       ],
-      "reason": "Measured by tools/check.sh demo_defects on this tree, front-on-line deployment. uid1 (the player Infantry, pressed by the enemy foot) dips to nnd_min 1.56 wu against its 2.25 wu floor: transient press compression. uid8 (team 1's deep cavalry, 9 ranks) is under a continuous AI ATTACK order whose target re-selects mid-clip, and each retarget re-rotates the block before it has re-squared, compressing its own files: 2.97 wu against the 5.0 wu floor, the mechanism main already exempted for uid8 and #1546 tracks. uid3 (the player's charging cavalry) dips to nnd_min 3.48 wu against the 5.0 wu floor at tick 1294, in the 2-tick dense samples after the tick-1122 divergence. That reading is new with the row-major casualty close-up: the merge-base e81ea9fa passes at 6.49 wu. In the charge turnaround mounts 33 and 47, each about 150 wu off his slot, swap sides across each other on both trees; the close-up's different pairing after uid3's casualty brings them closer as they pass. #1804 tracks the swap. uid9 (14.5 wu) no longer needs the exemption."
+      "reason": "Measured by tools/check.sh demo_defects on this tree, front-on-line deployment. uid1 (the player Infantry, pressed by the enemy foot) dips to nnd_min 1.56 wu against its 2.25 wu floor: transient press compression. uid8 (team 1's deep cavalry, 9 ranks) is under a continuous AI ATTACK order whose target re-selects mid-clip, and each retarget re-rotates the block before it has re-squared, compressing its own files: 2.97 wu against the 5.0 wu floor, the mechanism main already exempted for uid8 and #1546 tracks. uid3 (the player's charging cavalry) dips to nnd_min 3.48 wu against the 5.0 wu floor at tick 1294, in the 2-tick dense samples after the tick-1122 divergence. That reading is new with the row-major casualty close-up: the merge-base e81ea9fa passes at 6.49 wu. In the charge turnaround mounts 33 and 47, each about 150 wu off his slot, swap sides across each other on both trees; the close-up's different pairing after uid3's casualty brings them closer as they pass. #1804 tracks the swap. uid9 (14.5 wu) no longer needs the exemption. uid6 (team 1's Infantry, charged by the caracoling cavalry) dips to nnd_min 0.98 wu against its 2.25 wu floor at ticks 1150-1156 (2-tick samples, this tree's own seed), while cavalry uid4 closes from 88 to 75 wu, out of contact: a cavalry pair, which keeps the centre-based contact range. The merge-base a3714751 passes at 4.80 wu; the front-line contact change (#1827) moved the timeline, and #1839 tracks the infantry this caracole circles standing pressed out of contact."
     },
     "path_crossing": {
       "uids": [
         3
       ],
       "reason": "Charging cavalry paths cross during the cycle-charge breakthrough, disengagement wheel, and realignment: in the turnaround mounts about 150 wu off their slots swap sides across each other (#1804)."
+    },
+    "shape_residual": {
+      "uids": [
+        5
+      ],
+      "reason": "Measured on this tree's own seed, 2-tick samples from tick 844: uid5 (team 1's Spearmen) forms a square at tick 962, and from tick 1152 to 1222 the player Spearmen uid0 presses it out of unit contact. A square keeps the centre-based contact range (about 80 wu) while the two blocks' bodies hold their centres 85 to 95 wu apart, so neither reads in contact and uid5's men are shoved off their slots: residual 22.4 wu against 6.75 (merge-base a3714751: 6.62 on this seed). #1839 tracks a line attacking a square never registering contact."
+    },
+    "facing_flutter": {
+      "uids": [
+        3
+      ],
+      "reason": "Measured on this tree's own seed: the cycle-charging cavalry uid3, marching out of contact between charges, reverses its heading 4 times in a row on the 2-tick samples from tick 1194 to 1204 (threshold 3; merge-base a3714751: 1). The front-line contact change (#1827) moved the timeline its caracole runs on; the infantry it circles stands pressed out of contact, #1839."
     }
   }
 }

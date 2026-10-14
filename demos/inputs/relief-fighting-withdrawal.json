@@ -65,8 +65,8 @@
   ],
   "defect_exemptions": {
     "overlap": {
-      "uids": [0],
-      "reason": "The relieved unit peels out of a still-pressed melee; one judged sample catches bodies closer than the infantry overlap threshold while it is leaving the fight. Merge-base of this clip already failed overlap on uid0; the facing pin this edit updates is a separate, passing expect."
+      "uids": [0, 1],
+      "reason": "The relieved unit peels out of a still-pressed melee; one judged sample catches bodies closer than the infantry overlap threshold while it is leaving the fight. Merge-base of this clip already failed overlap on uid0; the facing pin this edit updates is a separate, passing expect. uid1 (the fresh unit) dips to nnd_min 1.14 wu against its 2.25 wu floor at ticks 337-361 and 393-411 on this tree's own seed (2-tick samples), and below that floor on the declared state ticks too: the RELIEF never forms on Windows (both player units end up selected), so its ground order walks it into the back of its fighting ally. The merge-base a3714751 passes at 5.22 wu on this seed; #1840 tracks the RELIEF."
     }
   },
   "expect": [
