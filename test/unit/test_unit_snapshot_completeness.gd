@@ -35,6 +35,8 @@ const EXCLUDED := {
 	"_relief_reverse_scan_count": COUNTER,
 	"_adjacent_engaged_cache": CACHE,
 	"_adjacent_engaged_cache_frame": CACHE,
+	"_live_rank_count_key": CACHE,
+	"_live_rank_count": CACHE,
 	"_engaged_indices_cache": CACHE,
 	"_engaged_indices_cache_frame": CACHE,
 	"_engaged_indices_cache_count": CACHE,
