@@ -1,20 +1,15 @@
 class_name MeleeFrontLine
-## Where two blocks fighting front to front meet: at their front ranks, not with each grid
-## ordered most of its depth into the other.
-##
-## The regiment layer measures melee contact and the engaged separation floor between block
-## CENTRES: reach plus Unit.RADIUS (0.9 m) a side, and the two _front_depth() values, each
-## capped at half the reach. A block's centre-to-front-rank distance grows by half a rank pitch
-## per rank, so two deep blocks closing front to front came into contact only after their front
-## ranks had walked into each other, and the press then ordered each grid deep into the other.
+## Where two blocks fighting front to front meet: at their front ranks. The regiment layer
+## measures contact and the engaged floor between CENTRES (reach plus Unit.RADIUS a side; the
+## _front_depth() pair, capped at half the reach), so deep blocks met only after their front
+## ranks had walked into each other, and the press ordered each grid deep into the other.
 ##
 ## For a frontal pair this adds the missing reach back (MeleeFrontGeometry measures it):
-## contact_extension to the close-tier melee contact ranges, which test it through
-## within_contact, and floor_extension to the engaged floor. Both scale with weight(): 1 for
-## men squarely front to front, 0 for a flank or rear attack, which keeps the old ranges. So do
-## pairs with cavalry (6 m between ranks: where every charge lands would move), a missile unit
-## (it shoots until an enemy is in contact) or a far block. A square fronts every way, so a
-## line meeting it frontally meets its outer rank, whichever side.
+## contact_extension to the close-tier contact ranges, tested through within_contact, and
+## floor_extension to the engaged floor, both times weight(): 1 for men squarely front to
+## front, 0 for a flank or rear attack, which keeps the old ranges. So do pairs with cavalry
+## (6 m between ranks: where every charge lands would move), a missile unit (it shoots until
+## an enemy is in contact) or a far block. A square fronts every way.
 
 
 ## Whether `u` can take part in a frontal extension at all.
@@ -29,8 +24,7 @@ static func eligible(u: Unit) -> bool:
 ## square opposes any front), each block's men lie ahead of the other's along the pair's front
 ## axis (ramping to 1 within one Unit.RADIUS, so a pair that has passed each other weighs
 ## nothing), and the share of the narrower front facing the other across that axis. Past one
-## RADIUS no term reads the distance along the axis, so the weight holds while the press closes
-## a pair. The men's centre is position plus block_centre_offset (an anchored frontage).
+## RADIUS no term reads the axial distance, so the weight holds while the press closes a pair.
 static func pair(a: Unit, b: Unit) -> Vector3:
 	if not (eligible(a) and eligible(b)) or (a.in_square() and b.in_square()):
 		return Vector3.ZERO
@@ -48,6 +42,7 @@ static func pair(a: Unit, b: Unit) -> Vector3:
 	if opposed <= 0.0 or axis.length_squared() < 0.000001:  # a min_cos below 0 passes parallels
 		return Vector3.ZERO
 	axis = axis.normalized()
+	# The men's centres: an anchored frontage shifts a block's men off its position.
 	var to_b: Vector2 = (b.position + b.block_centre_offset()) \
 			- (a.position + a.block_centre_offset())
 	var ahead: float = clampf(to_b.dot(axis) / Unit.RADIUS, 0.0, 1.0)
@@ -97,8 +92,7 @@ static func within_contact(a: Unit, b: Unit, base: float, dist_sq: float,
 	return dist_sq <= reach * reach
 
 
-## Added to the engaged floor (the two _front_depth() values): each block's reach beyond its
-## capped _front_depth(), times weight(). It stays inside the contact range at any one weight.
+## Added to the engaged floor: each block's reach past its capped _front_depth(), times weight().
 static func floor_extension(a: Unit, b: Unit) -> float:
 	var p: Vector3 = pair(a, b)
 	if p.x <= 0.0:
