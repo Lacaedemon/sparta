@@ -1254,6 +1254,16 @@ var router_front_arc: float = ROUTER_FRONT_ARC
 # ROUTER_CONTACT_REENTRY_FRAC, with rout_time's set-before-_ready contract.
 const ROUTER_CONTACT_REENTRY_FRAC: float = 0.9
 var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
+# How far outside the block's live footprint, on its flanks and rear, an enemy soldier may
+# stand and still count as inside it for the interior strike (SoldierInteriorStrike): only
+# the near-front ranks strike, so an enemy that has got in behind them would otherwise never
+# be struck, and any man of the block within reach of such an enemy strikes it. 0 keeps the
+# footprint to the box round its men's centres, so an enemy pressing on a flank or the rear
+# from outside stays the near-front ranks' business; a negative value shrinks the box. A
+# caller-configurable parameter defaulting to INTERIOR_STRIKE_MARGIN, with rout_time's
+# set-before-_ready contract.
+const INTERIOR_STRIKE_MARGIN: float = 0.0   # tuned in wu
+var interior_strike_margin: float = INTERIOR_STRIKE_MARGIN
 # How long a non-fighting unit holds position to reform its ranks after a fresh move
 # order is issued with reform_before_move on. Runs concurrently with order_response_delay
 # (both count from zero); the effective delay before the march is max(order_response_delay,
@@ -8642,9 +8652,14 @@ func _select_near_front_indices(count: int, max_selected: int = -1) -> PackedInt
 	var cutoff: int = mini(count, formation_files(count) * engaged_ranks())
 	if max_selected >= 0:
 		cutoff = mini(cutoff, max_selected)
+	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, near_front_forward())
+
+
+## The direction the near-front selections rank soldiers along: the slot grid's own front
+## (the heading turned by _formation_angle), so "front" follows the grid the men stand on.
+func near_front_forward() -> Vector2:
 	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
-	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
-	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)
+	return Vector2(0.0, -1.0).rotated(world_angle)
 
 
 ## True while an in-place reshape or turn is actively changing what "the front" even means:
@@ -8705,9 +8720,7 @@ func near_front_soldier_indices(count: int) -> PackedInt32Array:
 	if not (is_engaged() or _in_enemy_contact) or count <= 0 or in_square():
 		return PackedInt32Array()
 	var cutoff: int = mini(count, formation_files(count) * ANCHOR_RANKS)
-	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
-	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
-	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)
+	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, near_front_forward())
 
 
 ## The soldier-index selection `SoldierBodies.couple()` anchors `position` on: the live
@@ -11050,6 +11063,7 @@ func to_snapshot_dict() -> Dictionary:
 		"rearguard_delay_sec": rearguard_delay_sec,
 		"rout_time": rout_time, "router_front_arc": router_front_arc,
 		"router_contact_reentry_frac": router_contact_reentry_frac,
+		"interior_strike_margin": interior_strike_margin,
 		"shatter_strength_frac": shatter_strength_frac,
 		"rally_morale_threshold": rally_morale_threshold,
 		"rally_resume_radius_factor": rally_resume_radius_factor,
@@ -11308,6 +11322,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rout_time = float(d.get("rout_time", rout_time))
 	router_front_arc = float(d.get("router_front_arc", router_front_arc))
 	router_contact_reentry_frac = float(d.get("router_contact_reentry_frac", router_contact_reentry_frac))
+	interior_strike_margin = float(d.get("interior_strike_margin", interior_strike_margin))
 	shatter_strength_frac = float(d.get("shatter_strength_frac", shatter_strength_frac))
 	rally_morale_threshold = float(d.get("rally_morale_threshold", rally_morale_threshold))
 	rally_resume_radius_factor = float(d.get("rally_resume_radius_factor", rally_resume_radius_factor))
