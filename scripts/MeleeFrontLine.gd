@@ -1,9 +1,6 @@
 class_name MeleeFrontLine
-## Where two blocks fighting front to front meet: at their front ranks. The regiment layer
-## measures contact and the engaged floor between CENTRES (reach plus Unit.RADIUS a side; the
-## _front_depth() pair, capped at half the reach), so deep blocks met only after their front
-## ranks had walked into each other, and the press ordered each grid deep into the other.
-##
+## Where two blocks fighting front to front meet: at their front ranks, not with each grid
+## ordered deep into the other, as centre-to-centre contact and floor ranges left them.
 ## For a frontal pair this adds the missing reach back (MeleeFrontGeometry measures it):
 ## contact_extension to the close-tier contact ranges, tested through within_contact, and
 ## floor_extension to the engaged floor, both times weight(): 1 for men squarely front to
@@ -17,16 +14,20 @@ static func eligible(u: Unit) -> bool:
 	return MeleeFrontProfile.of(u).eligible
 
 
-## Vector3(w, reach_a, reach_b): the pair's weight and each block's reach toward the other.
-## w is the smaller melee_front_line_scale (clamped to 0..1) times three terms: the fronts
-## oppose (a ramp, 0 at or below the larger melee_front_line_min_cos, 1 at a cosine of 1; a
-## square opposes any front), each block's men lie ahead of the other's along the pair's front
-## axis (ramping to 1 within one Unit.RADIUS, so a pair that has passed each other weighs
-## nothing), and the share of the narrower front facing the other across that axis. Past one
-## RADIUS no term reads the axial distance, so the weight holds while the press closes a pair.
+## Vector3(w, reach_a, reach_b). w: the smaller melee_front_line_scale (0..1) times the fronts'
+## opposition (a ramp from the larger melee_front_line_min_cos to 1; a square opposes any
+## front), each block's men lying ahead of the other's along the pair's axis (a ramp over one
+## Unit.RADIUS), and the share of the narrower front facing the other. Past one RADIUS no term
+## reads the axial distance, so the weight holds while the press closes a pair.
 static func pair(a: Unit, b: Unit) -> Vector3:
-	var pa: MeleeFrontProfile = MeleeFrontProfile.of(a)
-	var pb: MeleeFrontProfile = MeleeFrontProfile.of(b)
+	return _pair(a, b, MeleeFrontProfile.of(a), MeleeFrontProfile.of(b))
+
+
+# The gap between the men's centres _pair last measured (b's minus a's).
+static var _gap := Vector2.ZERO
+
+
+static func _pair(a: Unit, b: Unit, pa: MeleeFrontProfile, pb: MeleeFrontProfile) -> Vector3:
 	if not (pa.eligible and pb.eligible) or (a.in_square() and b.in_square()):
 		return Vector3.ZERO
 	var fa: Vector2 = MeleeFrontGeometry.grid_front(a)
@@ -45,6 +46,7 @@ static func pair(a: Unit, b: Unit) -> Vector3:
 	axis = axis.normalized()
 	var to_b: Vector2 = b.position + MeleeFrontGeometry.men_offset(b, fb) \
 			- (a.position + MeleeFrontGeometry.men_offset(a, fa))
+	_gap = to_b
 	var ahead: float = clampf(to_b.dot(axis) / Unit.RADIUS, 0.0, 1.0)
 	var ra: Vector2 = MeleeFrontGeometry.reach(a, pa, fa, axis)
 	var rb: Vector2 = MeleeFrontGeometry.reach(b, pb, fb, axis)
@@ -72,8 +74,8 @@ static func contact_extension(a: Unit, b: Unit, ra: float = Unit.RADIUS,
 
 ## Whether `a` and `b` are in contact: their positions within `base` (`dist_sq` is their squared
 ## distance), or, for a frontal pair, their men's centres within `base` plus
-## contact_extension(a, b, ra, rb). It rejects on both blocks' cached extension bounds
-## (MeleeFrontProfile.ext) before it pays for pair().
+## contact_extension(a, b, ra, rb) (the men's centres: an anchored frontage stands its men off
+## its position). It rejects on both cached extension bounds before it pays for _pair().
 static func within_contact(a: Unit, b: Unit, base: float, dist_sq: float,
 		ra: float = Unit.RADIUS, rb: float = Unit.RADIUS) -> bool:
 	if dist_sq <= base * base:
@@ -83,13 +85,11 @@ static func within_contact(a: Unit, b: Unit, base: float, dist_sq: float,
 	var bound: float = base + pa.ext + pb.ext
 	if not (pa.eligible and pb.eligible) or dist_sq > bound * bound:
 		return false
-	var ext: float = contact_extension(a, b, ra, rb)
-	return ext > 0.0 and men_gap(a, b).length_squared() <= (base + ext) * (base + ext)
-
-
-## From `a`'s men's centre to `b`'s (Unit.men_centre_offset: an anchored frontage).
-static func men_gap(a: Unit, b: Unit) -> Vector2:
-	return (b.position + b.men_centre_offset()) - (a.position + a.men_centre_offset())
+	var p: Vector3 = _pair(a, b, pa, pb)
+	if p.x <= 0.0:
+		return false
+	var reach: float = base + p.x * (maxf(0.0, p.y - ra) + maxf(0.0, p.z - rb))
+	return _gap.length_squared() <= reach * reach
 
 
 ## Added to the engaged floor: each block's reach past its capped _front_depth(), times weight().

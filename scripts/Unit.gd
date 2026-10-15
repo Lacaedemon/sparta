@@ -5677,7 +5677,7 @@ func _separate(delta: float) -> void:
 			# MeleeFrontLine.floor_extension adds the rest of each block's front depth back.
 			# Only a pair within the extension's upper bound pays for it: one past that bound
 			# is rejected below with or without it. An extended floor holds the two blocks' men
-			# apart, so it is measured between the men's centres (MeleeFrontLine.men_gap).
+			# apart, so it is measured between the men's centres (Unit.men_centre_offset).
 			min_dist = _front_depth() + other._front_depth()
 			var floor_bound: float = min_dist + MeleeFrontGeometry.extension_depth(self) \
 					+ MeleeFrontGeometry.extension_depth(other)
