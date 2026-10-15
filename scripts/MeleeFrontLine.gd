@@ -42,9 +42,7 @@ static func pair(a: Unit, b: Unit) -> Vector3:
 	if opposed <= 0.0 or axis.length_squared() < 0.000001:  # a min_cos below 0 passes parallels
 		return Vector3.ZERO
 	axis = axis.normalized()
-	# The men's centres: an anchored frontage shifts a block's men off its position.
-	var to_b: Vector2 = (b.position + b.block_centre_offset()) \
-			- (a.position + a.block_centre_offset())
+	var to_b: Vector2 = men_gap(a, b)
 	var ahead: float = clampf(to_b.dot(axis) / Unit.RADIUS, 0.0, 1.0)
 	var ra: Vector2 = MeleeFrontGeometry.reach(a, axis)
 	var rb: Vector2 = MeleeFrontGeometry.reach(b, axis)
@@ -70,26 +68,28 @@ static func contact_extension(a: Unit, b: Unit, ra: float = Unit.RADIUS,
 	return p.x * (maxf(0.0, p.y - ra) + maxf(0.0, p.z - rb))
 
 
-## Whether `a` and `b`, centres sqrt(`dist_sq`) apart, are within `base` plus
-## contact_extension(a, b, ra, rb): the same answer as the full range. It answers from `base`,
-## rejects against the deepest block on the field (SpatialHash.max_extension_depth, when a
-## grid is current) and then both blocks' own depths before it pays for pair().
+## Whether `a` and `b` are in contact: their positions within `base` (`dist_sq` is their squared
+## distance), or, for a frontal pair, their men's centres within `base` plus
+## contact_extension(a, b, ra, rb). It rejects on both blocks' extension_depth bound (O(1))
+## before it pays for pair().
 static func within_contact(a: Unit, b: Unit, base: float, dist_sq: float,
 		ra: float = Unit.RADIUS, rb: float = Unit.RADIUS) -> bool:
 	if dist_sq <= base * base:
 		return true
-	if SpatialHash.is_current(Engine.get_physics_frames()):
-		var field: float = base + 2.0 * SpatialHash.max_extension_depth()
-		if dist_sq > field * field:
-			return false
 	if not (eligible(a) and eligible(b)):
 		return false
 	var bound: float = base + MeleeFrontGeometry.extension_depth(a) \
 			+ MeleeFrontGeometry.extension_depth(b)
 	if dist_sq > bound * bound:
 		return false
-	var reach: float = base + contact_extension(a, b, ra, rb)
-	return dist_sq <= reach * reach
+	var ext: float = contact_extension(a, b, ra, rb)
+	return ext > 0.0 and men_gap(a, b).length_squared() <= (base + ext) * (base + ext)
+
+
+## From `a`'s men's centre to `b`'s: their positions plus each block's men_centre_offset (an
+## anchored frontage stands its men off its position).
+static func men_gap(a: Unit, b: Unit) -> Vector2:
+	return (b.position + b.men_centre_offset()) - (a.position + a.men_centre_offset())
 
 
 ## Added to the engaged floor: each block's reach past its capped _front_depth(), times weight().

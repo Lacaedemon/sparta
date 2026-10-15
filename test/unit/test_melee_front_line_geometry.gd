@@ -85,6 +85,7 @@ func test_a_file_major_block_measures_its_deepest_file() -> void:
 	u._sim_soldier_file = files
 	u._sim_soldier_rank = PackedInt32Array()
 	u._file_assignment_files = 15
+	u.note_file_assignment_changed()
 	assert_eq(UnitFormation.ranks_for(90, 15), 6, "setup: an even split is 6 ranks")
 	assert_eq(u.live_rank_count(15), 8, "the deepest file is 8")
 	assert_almost_eq(MeleeFrontGeometry.front_rank_depth(u), 3.5 * u.rank_pitch_wu(), 0.001,

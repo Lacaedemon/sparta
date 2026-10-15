@@ -41,7 +41,10 @@ static func satisfied(u: Unit, order: Order) -> bool:
 
 
 ## A live, non-routing enemy is within `range_units` of `u`. range_units <= 0 falls back to
-## u's own detection_range (a caller-configurable field, default Unit.DETECTION_RANGE).
+## u's own detection_range (a caller-configurable field, default Unit.DETECTION_RANGE), and
+## then, like auto-acquisition, also counts an enemy past it in frontal melee contact with u
+## (UnitTargeting.nearest_enemy_to's contact_fallback). A positive range_units is a hard
+## upper bound.
 ## Unlike combat auto-acquisition (UnitTargeting.nearest_enemy), this guard does NOT count a
 ## routing enemy --- it gates order transitions ("enemy sighted"), where a fleeing regiment
 ## isn't the kind of threat that should re-trigger a scripted order.
@@ -56,7 +59,7 @@ static func satisfied(u: Unit, order: Order) -> bool:
 static func enemy_in_range(u: Unit, range_units: float) -> bool:
 	var radius: float = range_units if range_units > 0.0 else u.detection_range
 	return UnitTargeting.nearest_enemy_to(u, u.position, radius, false, false,
-		Callable(u, "fresh_pick_allowed")) != null
+		Callable(u, "fresh_pick_allowed"), range_units <= 0.0) != null
 
 
 ## A live, non-routing enemy is within melee contact distance: u's attack_range plus both

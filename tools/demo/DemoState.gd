@@ -548,9 +548,9 @@ static func motion_ref(u: Node) -> Dictionary:
 ## file-major block keeps each file at its own place when it is short of men, a row-major or
 ## squared one centres its ranks, and a frontage anchor shifts a line sideways. Empty with no men.
 ## The footprint DemoDefects' slots_beyond_flanks measures slots against. `front` is the world
-## direction the grid's front rank faces: local -y rotated by the block's angle (the mirror only
-## negates x, so it does not flip it), which the unit's facing cannot give once a turn is folded
-## into the grid.
+## direction the men's front rank faces (MeleeFrontGeometry.grid_front: the heading turned by the
+## grid's fold, or the start heading while an in-place turn is still in progress), which the
+## unit's facing cannot give once a turn is folded into the grid.
 static func slot_grid_footprint(u: Node) -> Dictionary:
 	var n: int = u.soldiers
 	if n <= 0:
@@ -567,7 +567,7 @@ static func slot_grid_footprint(u: Node) -> Dictionary:
 	for p in local:
 		lo = minf(lo, p.x)
 		hi = maxf(hi, p.x)
-	var front: Vector2 = Vector2.UP.rotated(u.soldier_block_world_angle())
+	var front: Vector2 = MeleeFrontGeometry.grid_front(u as Unit)
 	return {
 		"axis": [round_to(axis.x, 4), round_to(axis.y, 4)],
 		"front": [round_to(front.x, 4), round_to(front.y, 4)],

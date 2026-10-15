@@ -4621,17 +4621,16 @@ func _type_separation_radius() -> float:
 ## file count. With the dealt ranks (_sim_soldier_rank) it is the deepest rank plus one, the
 ## figure file_major_block_slots itself centres on; without them, the fullest file.
 ##
-## Cached on the assignment's own contents (both arrays' hashes, the headcount and the file
-## count), not on the frame: any writer that re-deals, installs, restores or splices the
-## assignment changes the key, so no writer has to remember to invalidate it, and an unchanged
-## assignment is read once across frames. The hashes are native, O(n) in C++.
+## Cached against the assignment's generation (_file_assignment_gen, which every writer of
+## _sim_soldier_file or _sim_soldier_rank bumps through note_file_assignment_changed), the
+## headcount and the file count: O(1) while nothing re-deals, installs, restores or reaps.
 func live_rank_count(files: int) -> int:
 	var even: int = UnitFormation.ranks_for(soldiers, files)
 	if in_square() or not _effective_file_major_reform() or _sim_soldier_file.size() != soldiers \
 			or _file_assignment_files != files:
 		return even
-	var key: Array = [soldiers, files, hash(_sim_soldier_file), hash(_sim_soldier_rank)]
-	if key == _live_rank_count_key:
+	if _live_rank_count_gen == _file_assignment_gen and _live_rank_count_soldiers == soldiers \
+			and _live_rank_count_files == files:
 		return _live_rank_count
 	var deepest: int = 0
 	if _sim_soldier_rank.size() == soldiers:
@@ -4645,12 +4644,25 @@ func live_rank_count(files: int) -> int:
 			counts[c] += 1
 			deepest = maxi(deepest, counts[c])
 	_live_rank_count = deepest if deepest > 0 else even
-	_live_rank_count_key = key
+	_live_rank_count_gen = _file_assignment_gen
+	_live_rank_count_soldiers = soldiers
+	_live_rank_count_files = files
 	return _live_rank_count
 
 
-# live_rank_count's cache: the key it was computed for (see there) and its value.
-var _live_rank_count_key: Array = []
+## Record that _sim_soldier_file or _sim_soldier_rank was written. Every writer calls it
+## (a deal, an install, a snapshot restore, a reap's splice, a rank reversal, a tier
+## demotion's clear), so live_rank_count's cache is never read against another assignment.
+func note_file_assignment_changed() -> void:
+	_file_assignment_gen += 1
+
+
+# The file assignment's generation (note_file_assignment_changed) and live_rank_count's
+# cache: the generation, headcount and file count it was computed for, and its value.
+var _file_assignment_gen: int = 0
+var _live_rank_count_gen: int = -1
+var _live_rank_count_soldiers: int = -1
+var _live_rank_count_files: int = -1
 var _live_rank_count: int = 0
 
 
@@ -5651,6 +5663,7 @@ func _separate(delta: float) -> void:
 		# are skipped there's nothing left to exempt here -- the checks re-home to the
 		# steering pass. _separation_exempt is still used there.)
 		var min_dist: float
+		var men_shift := Vector2.ZERO
 		if (is_engaged() or _in_enemy_contact) and (other.is_engaged() or other._in_enemy_contact):
 			# Lines in melee contact (fighting, or merely physically close -- see
 			# _in_enemy_contact's own doc comment) close until their FRONT RANKS meet
@@ -5663,19 +5676,23 @@ func _separate(delta: float) -> void:
 			# ordered most of its depth into the other. For blocks front to front,
 			# MeleeFrontLine.floor_extension adds the rest of each block's front depth back.
 			# Only a pair within the extension's upper bound pays for it: one past that bound
-			# is rejected below with or without it.
+			# is rejected below with or without it. An extended floor holds the two blocks' men
+			# apart, so it is measured between the men's centres (MeleeFrontLine.men_gap).
 			min_dist = _front_depth() + other._front_depth()
 			var floor_bound: float = min_dist + MeleeFrontGeometry.extension_depth(self) \
 					+ MeleeFrontGeometry.extension_depth(other)
 			if position.distance_squared_to(other.position) \
 					< floor_bound * floor_bound * SoldierEnemyContact.SQRT_SKIP_BAND:
-				min_dist += MeleeFrontLine.floor_extension(self, other)
+				var floor_ext: float = MeleeFrontLine.floor_extension(self, other)
+				if floor_ext > 0.0:
+					min_dist += floor_ext
+					men_shift = men_centre_offset() - other.men_centre_offset()
 		else:
 			min_dist = separation_radius + other.separation_radius
 			if _is_melee_intermixing_with(other):
 				var dissolve := minf(_combat_intermixing, other._combat_intermixing)
 				min_dist *= (1.0 - dissolve)
-		var offset: Vector2 = position - other.position
+		var offset: Vector2 = position - other.position + men_shift
 		# Squared reject skips the square root for clearly separated pairs;
 		# in-band survivors take the exact test so rounding never flips a push.
 		if offset.length_squared() >= min_dist * min_dist * SoldierEnemyContact.SQRT_SKIP_BAND:
@@ -6353,6 +6370,7 @@ func _ensure_file_assignment(count: int, files: int) -> void:
 		else:
 			_sim_soldier_file = UnitFormation.deal_file_ids_by_lateral_order(live, capacities)
 			_sim_soldier_rank = UnitFormation.deal_ranks_by_depth(live, _sim_soldier_file)
+	note_file_assignment_changed()
 	# _slot_frame_positions returns nothing unless the body layer holds at least `count`
 	# entries, so a reshape can find FEWER bodies than live soldiers -- `count` having run
 	# ahead of the bodies, as a reinforcement does before SoldierBodies.step resizes them to
@@ -6448,6 +6466,7 @@ func install_file_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array
 	clear_couple_transit()   # a fresh file assignment re-deals every slot (see set_formation)
 	_sim_soldier_file = file_ids
 	_sim_soldier_rank = ranks
+	note_file_assignment_changed()
 	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
 	_file_assignment_files = frontage_override
 	if frontage_anchor_offset != 0.0:
@@ -7431,6 +7450,7 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 			_ensure_file_assignment(soldiers, files)
 			_sim_soldier_rank = UnitFormation.reversed_ranks_within_files(
 					_sim_soldier_file, _sim_soldier_rank)
+			note_file_assignment_changed()
 		else:
 			# Row-major has no per-soldier depth array to reverse, so the same cancellation
 			# is expressed as a slot pairing instead: each man takes the cell whose reflected
@@ -8238,6 +8258,18 @@ func _slot_anchor_centre() -> Vector2:
 	if frontage_anchor_offset == 0.0 or in_square():
 		return Vector2.ZERO
 	return Vector2(frontage_anchor_offset, 0.0)
+
+
+## block_centre_offset() laid out at the angle the men stand at (MeleeFrontGeometry.grid_front)
+## rather than the heading's: during an in-place turn the men, and so their centre, stand fast
+## while the heading turns. MeleeFrontLine measures a frontal pair between these centres.
+func men_centre_offset() -> Vector2:
+	var local: Vector2 = _slot_anchor_centre()
+	if local == Vector2.ZERO:
+		return Vector2.ZERO
+	if _formation_mirror_x:
+		local.x = -local.x
+	return local.rotated(MeleeFrontGeometry.grid_front(self).angle() + PI * 0.5)
 
 
 ## World-aligned offset of the soldier block's footprint centre from `position`: the
@@ -9481,15 +9513,32 @@ func _push_share(other: Unit) -> float:
 ## widens the lookup to MeleeFrontGeometry.query_radius against the deepest block in the grid.
 ## It widens for every eligible unit, a one-rank block included, so a pair finds each other
 ## from both sides.
+##
+## A front-line lookup reports this unit's live depth to the hash first, and is kept for the
+## frame: four callers ask each tick (_separate, the engaged fraction, the morale tick and
+## _adjacent_engaged_enemy_units), and the grid is fixed for the frame, so the same cell and
+## ring count return the same list.
 func _separation_candidates(front_line: bool = false) -> Array:
-	if SpatialHash.is_current(Engine.get_physics_frames()):
-		var radius: float = SpatialHash.CELL_SIZE
-		if front_line:
-			radius = MeleeFrontGeometry.query_radius(self, SpatialHash.max_extension_depth())
-		return SpatialHash.query(position, radius)
+	var frame: int = Engine.get_physics_frames()
+	if SpatialHash.is_current(frame):
+		if not front_line:
+			return SpatialHash.query(position)
+		SpatialHash.note_extension_depth(MeleeFrontGeometry.extension_depth(self))
+		var radius: float = MeleeFrontGeometry.query_radius(self, SpatialHash.max_extension_depth())
+		var cell: Vector2i = SpatialHash._key(position)
+		var key := Vector4i(frame, cell.x, cell.y, maxi(1, ceili(radius / SpatialHash.CELL_SIZE)))
+		if key != _front_line_candidates_key:
+			_front_line_candidates = SpatialHash.query(position, radius)
+			_front_line_candidates_key = key
+		return _front_line_candidates
 	var all: Array = get_tree().get_nodes_in_group("units")
 	all.append_array(get_tree().get_nodes_in_group("routers"))
 	return all
+
+
+# _separation_candidates' front-line lookup for the frame: (frame, cell, rings) and the list.
+var _front_line_candidates_key := Vector4i(-1, 0, 0, 0)
+var _front_line_candidates: Array = []
 
 
 # --- Combat -----------------------------------------------------------------
@@ -11457,6 +11506,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_sim_soldier_facing = (d["sim_soldier_facing"] as PackedVector2Array).duplicate()
 	_sim_soldier_file = (d["sim_soldier_file"] as PackedInt32Array).duplicate()
 	_sim_soldier_rank = (d["sim_soldier_rank"] as PackedInt32Array).duplicate()
+	note_file_assignment_changed()
 	# An older snapshot without the pairing restores none, and the first step re-pairs. So
 	# does a restore into an engine younger than the pairing's age (the frame would be
 	# negative, which SoldierBodies reads as no pairing): a fresh pairing, not a crash.

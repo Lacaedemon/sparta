@@ -42,7 +42,7 @@ static func current_target(u: Unit, predicate: Callable = Callable()) -> Unit:
 static func nearest_enemy(u: Unit, predicate: Callable = Callable()) -> Unit:
 	var inclusive: bool = \
 		u != null and u.carries_non_default_missile_profile()
-	return nearest_enemy_to(u, u.position, u.detection_range, true, inclusive, predicate)
+	return nearest_enemy_to(u, u.position, u.detection_range, true, inclusive, predicate, true)
 
 
 ## Nearest routing enemy for SWEEP_ROUTERS stance: the closest routing (broken/shattered)
@@ -102,7 +102,7 @@ static func roll_the_line_target(u: Unit, predicate: Callable = Callable()) -> U
 	u.target_enemy = null
 	var inclusive: bool = \
 		u != null and u.carries_non_default_missile_profile()
-	return nearest_enemy_to(u, u.position, u.detection_range, false, inclusive, predicate)
+	return nearest_enemy_to(u, u.position, u.detection_range, false, inclusive, predicate, true)
 
 
 ## Nearest living enemy within `radius` of `center`. Backs both normal auto-acquisition
@@ -137,15 +137,18 @@ static func roll_the_line_target(u: Unit, predicate: Callable = Callable()) -> U
 static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 		include_routing: bool = false,
 		inclusive: bool = false,
-		predicate: Callable = Callable()) -> Unit:
+		predicate: Callable = Callable(),
+		contact_fallback: bool = false) -> Unit:
 	var best: Unit = null
 	var best_d_sq: float = radius * radius
-	# An enemy past `radius` that is already in frontal melee contact with u (two deep blocks
-	# held at their front ranks can stand further apart than any detection radius): the
-	# nearest such one is returned only when nothing within `radius` qualifies, so a search
-	# that finds anyone inside its radius answers exactly as it always has. Only a search
-	# centred on u itself asks, since contact is measured from u.
-	var from_u: bool = center == u.position
+	# `contact_fallback` (auto-acquisition only: nearest_enemy, roll_the_line_target, and
+	# OrderGuards.enemy_in_range at its default detection radius): an enemy past `radius`
+	# that is already in frontal melee contact with u (two deep blocks held at their front
+	# ranks can stand further apart than the detection radius) is returned when nothing
+	# within `radius` qualifies, so a search that finds anyone inside its radius answers as
+	# it always has. A caller-chosen radius stays an upper bound: it does not pass the flag.
+	# Contact is measured from u, so only a search centred on u asks.
+	var from_u: bool = contact_fallback and center == u.position
 	var held: Unit = null
 	var held_d_sq: float = INF
 	var groups: Array = ["units", "routers"] if include_routing else ["units"]

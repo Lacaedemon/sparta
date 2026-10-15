@@ -366,6 +366,7 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				unit._sim_soldier_rank = UnitFormation.drop_rank_assignment(
 						unit._sim_soldier_rank, unit._sim_soldier_file, i)
 				unit._sim_soldier_file.remove_at(i)
+				unit.note_file_assignment_changed()
 			if i < unit._sim_soldier_square_slot.size():
 				# Keep the square slot pairing index-aligned AND still a permutation:
 				# dropping this man's entry and stepping every later cell id down is

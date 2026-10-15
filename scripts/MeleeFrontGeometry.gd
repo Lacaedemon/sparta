@@ -23,11 +23,12 @@ static func grid_front(u: Unit) -> Vector2:
 ## The distance from `u`'s centre to its grid's front rank, in wu: half its live rank count
 ## less one, times its rank pitch, along the grid's own rank axis. The live rank count is a
 ## file-major block's deepest surviving file (Unit.live_rank_count), since its grid centres on
-## that file. Unit._front_depth() without its cap.
+## that file. A square lays both axes at its file pitch. Unit._front_depth() without its cap.
 static func front_rank_depth(u: Unit) -> float:
 	var files: int = maxi(1, u.formation_files(u.soldiers))
 	var ranks: int = u.live_rank_count(files)
-	return float(maxi(0, ranks - 1)) * 0.5 * u.rank_pitch_wu()
+	var pitch: float = u.file_pitch_wu() if u.in_square() else u.rank_pitch_wu()
+	return float(maxi(0, ranks - 1)) * 0.5 * pitch
 
 
 ## Half the width of `u`'s front rank, centre file to end file, in wu: its file count (or its
@@ -52,14 +53,16 @@ static func reach(u: Unit, axis: Vector2) -> Vector2:
 	return Vector2(along, across)
 
 
-## The most `u` can add to any pair's range (its reach along any axis, bounded above), or 0
+## The most `u` can add to any pair's range, measured from its position: its reach along any
+## axis plus how far its men's centre stands off its position (an anchored frontage), or 0
 ## when it takes part in no extension. SpatialHash's neighbourhood query has to cover it.
 static func extension_depth(u: Unit) -> float:
 	if not MeleeFrontLine.eligible(u):
 		return 0.0
+	var reach_max: float = front_rank_depth(u)
 	if u.in_square():
-		return front_rank_depth(u) + front_half_width(u)
-	return front_rank_depth(u)
+		reach_max += front_half_width(u)
+	return reach_max + absf(u.frontage_anchor_offset)
 
 
 ## The radius a neighbourhood query around `u` must cover so it finds every unit `u` can

@@ -102,13 +102,20 @@ static func max_extension_depth() -> float:
 ## Re-read max_extension_depth from the live units, for the current frame's grid. rebuild()
 ## runs before the tick's orders and tier transitions, and an order that narrows a frontage
 ## or leaves a square, or a far block promoted close, can deepen a block after it; Battle
-## calls this once those have run. A block deepened later in the tick (a reserve merging in)
-## is read by the next frame's rebuild: until then its own queries, which read its live
-## depth, still find its partners.
+## calls this once those have run, and again after the AI. A block deepened later in the tick
+## (a reserve merging in) reports its live depth when it next queries (note_extension_depth);
+## a partner that queried before that reads it from the next frame's rebuild.
 static func refresh_extension_depth(tree: SceneTree) -> void:
 	var all: Array = tree.get_nodes_in_group("units")
 	all.append_array(tree.get_nodes_in_group("routers"))
 	_max_extension_depth = _deepest(all)
+
+
+## Raise max_extension_depth to `depth` if it is larger: a unit that has deepened since the
+## last rebuild or refresh reports its live depth before it queries, so a partner that
+## queries after it widens enough to find it.
+static func note_extension_depth(depth: float) -> void:
+	_max_extension_depth = maxf(_max_extension_depth, depth)
 
 
 ## The largest MeleeFrontGeometry.extension_depth in `units`.
