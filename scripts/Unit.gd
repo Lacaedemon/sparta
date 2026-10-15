@@ -3632,7 +3632,9 @@ func _cycle_charge_tick(enemy: Unit, in_contact: bool, delta: float) -> bool:
 		# on the gap the extension measures, so an anchored block backs straight off.
 		var standoff: float = CYCLE_CHARGE_STANDOFF + MeleeFrontLine.contact_extension(self, enemy)
 		var away: Vector2 = -MeleeFrontLine.last_gap
-		var dist: float = away.length()
+		# The square root in double precision, as the centre distance this replaced was read
+		# (Vector2.length() rounds to single): a pair with no extension pulls back unchanged.
+		var dist: float = sqrt(away.length_squared())
 		if dist < standoff - CYCLE_CHARGE_STANDOFF_EPS:
 			if away.length_squared() < 0.000001:
 				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
