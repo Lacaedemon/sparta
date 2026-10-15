@@ -125,7 +125,7 @@ So round 4's code changes did not move perf.
 Round 3's +3.9% was a single-batch, single-order reading that later balanced batches did not reproduce.
 Main vs 09ad356b read +9.2% with main first and +10.7% with head first, so order alone cannot explain the gap.
 The handback also notes session noise: main itself ranged from 38 to 46 ms across batches, and between-session noise is the likely cause.
-The order effect is real, as the head-to-head shows (+8% against -1% for the same two trees).
+The head-to-head swung from +8% to -1% depending on which tree ran first, so a single-order figure is unreliable whether the cause is order or noise.
 The branch also kept about 4.3% more close-tier soldiers alive, so the per-soldier cost is about +5%.
 Cannae measured about 0 and was noisy.
 
