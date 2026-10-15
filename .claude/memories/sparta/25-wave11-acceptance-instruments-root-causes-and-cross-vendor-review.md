@@ -9,11 +9,13 @@ It took five review rounds to get a defensible instrument:
 - K=16 seeds by default, and a minimum detectable shift (MDS) reported per row;
 - the MDS set at 80% power, since round 2 found the first one was 50% power;
 - thresholds taken from the null spread (0.5x robust SD), not from a run that already showed the effect;
-- Fisher's exact test for indicator rows, where the rank test is blind, and a "not comparable" mark where the MDS is undefined.
+- Fisher's exact test for indicator rows, where the Hodges-Lehmann shift gate is blind, and a "not comparable" mark where the MDS is undefined.
 
 The figures that survived review: null 0/200, flee x0.85 flagged 3 of 197 rows, wound x0.8 flagged 35 of 191, and the #1806 back-test flagged 0 of 42.
 The instrument then paid for itself on #1792.
-Its first fix (62c5fc40) flagged 41 of 180 rows, a router regression that a single-seed comparison would have called noise.
+Its first fix (62c5fc40) flagged 41 of 180 rows.
+The flags included a trapped_routing router regression, fewer breaks (charge uid7 never breaks) and lower losses on both sides.
+Single-seed comparison is what part 24 and #1826 set out to replace, because per-clip outcomes there can be chance.
 
 - **Do:** make an acceptance instrument print the smallest shift it can detect for each row, and validate it on known effects (and a null) that were not used to choose its thresholds.
 
@@ -24,13 +26,16 @@ Its first fix (62c5fc40) flagged 41 of 180 rows, a router regression that a sing
 ## When two fixes fail on the same upstream condition, fix the condition
 
 #1792 (hold the slot grid on a small in-contact re-face) failed acceptance: trapped_routing routers regressed and the swing in `coast_to_stop` turned out to be accidental lethality.
-The cause traced to #1834: only front ranks strike, so a man inside the footprint was never struck.
+Only front ranks strike, so a man inside the footprint was never struck (#1834).
 The first #1834 fix, an all-ranks interior strike, failed too: 52 of 210 rows flagged and lethality up broadly (`fighting_withdrawal` t1 56 to 7.5).
-Both failures had one cause.
-Blocks interpenetrate 3 to 4 ranks from first contact in about 25 clips, so every rule keyed on rank position fires constantly.
+The `coast_to_stop` result and #1834's over-lethality share one cause.
+Blocks interpenetrate 3 to 4 ranks from first contact in about 25 clips, so every all-ranks rule fires constantly.
 #1827 is that condition.
-On #1827's branch the median penetration fell from 2.98 to 0.06 ranks, and with #1834 on top the over-lethality went away.
-PR #1838 (#1827) is still open, so #1792 and #1834 have not landed: their commits stay local.
+On 2026-10-14, on d129a960 (#1827's first version, before the review rounds changed it), the median penetration fell from 2.98 to 0.06 ranks.
+With #1834 on top of d129a960 the over-lethality went away.
+#1792's own regressions did not share that cause.
+The trapped_routing router regression and the charge/showcase uid7 never-break persisted with #1834 combined, and again on #1827's branch, because those are cavalry and archer pairs that #1827 does not cover.
+As of 2026-10-15, PR #1838 (#1827) is open, so #1792 and #1834 have not landed: their commits stay local.
 
 - **Do:** when a second fix fails the same acceptance check as the first, ask what condition both depend on, and measure it directly (here, penetration in ranks) before adding a third fix.
 
@@ -38,9 +43,10 @@ PR #1838 (#1827) is still open, so #1792 and #1834 have not landed: their commit
 
 (`Lacaedemon/sparta` #1792, #1834, #1827, PR #1838, 2026-10-13.)
 
-## Cross-vendor review finds complementary defects, but verify each finding against the code
+## Cross-vendor review found complementary defects on one PR, and its findings needed verifying
 
-On #1827 the same head was reviewed by agy (Gemini, `gemini-4-argon-high`, read-only plan mode) and by a Claude adversarial reviewer, for 5 rounds.
+This was observed on one PR (#1838, for #1827) over five rounds.
+Each round, the same head was reviewed by agy (Gemini, `gemini-4-argon-high`, read-only plan mode) and by a Claude adversarial reviewer.
 Their findings only partly overlapped each round:
 
 | Round | agy | Claude | Shared |
@@ -51,11 +57,18 @@ Their findings only partly overlapped each round:
 | 4 | 8 | 8 | 6 |
 | 5 | 4 | 4 | 3 |
 
-agy found more code-path and contact-site defects, such as contact sites that were never extended and an acquisition cap in `nearest_enemy_to`.
-Claude found more data and prose inconsistencies, such as stale docs and exemption reasons that contradicted the cited issue numbers.
-agy twice cited functions that do not exist, and the finisher rebutted those findings after checking.
-The two reviewers also disagreed once directly: Claude said no other site was missed while agy listed several.
-A grep settled it.
+The split was clearest in round 2.
+There agy found more code-path defects, such as an acquisition cap in `nearest_enemy_to`.
+Claude found more data and prose problems, such as stale docs and exemption reasons that contradicted the cited issue numbers.
+Claude's round 1 and round 3 findings were code findings: the offset ratchet, per-pair cost before the distance reject, and the eager fallback calls.
+agy's round 1 list was mostly unextended contact sites.
+One round 1 finding of agy's named two functions that do not exist.
+The two reviewers also disagreed in round 1: Claude said no other contact site was missed while agy listed several.
+The finisher grepped in response and reported in round 2:
+"Engaged fraction, morale and rally were genuinely missed and are fixed;
+the other two agy names don't exist;
+clear_dist is a shove length."
+So agy was partly right (3 real misses), and its list also held 2 functions that do not exist.
 
 - **Do:** run a second-vendor reviewer on a large change, send both lists to the implementer, and check every finding against the code (grep the cited function) before acting on it.
 
@@ -65,7 +78,7 @@ A grep settled it.
 
 ## A rebuttal is a claim to verify, like any finding
 
-In round 3 the implementing agent rebutted a finding on `nearest_routing_enemy` with "sweep-routers is cavalry-only".
+In round 3 the implementing agent rebutted a finding on `nearest_routing_enemy`, saying the sweep-routers stance was cavalry-only.
 The rebuttal was relayed unchecked into the next round.
 In round 4 both reviewers independently showed it false: sweep-routers is not cavalry-only.
 The rebuttal was withdrawn and a fallback was added.
@@ -104,9 +117,11 @@ The RELIEF in `relief-fighting-withdrawal.json` never forms on any platform: the
 
 ## Balance run order in A/B performance comparisons
 
-On #1827 the round-3 perf figure for large-battle was +3.9% against main, from a single run order.
-Running both orders gave about +10% on large-battle in each order.
-The round-3 figure was an order artefact.
+On #1827 the round-3 perf figure for large-battle (f370562d) was +3.9% against main, from a single run order.
+Running both orders on 09ad356b gave about +10% on large-battle in each order.
+The round-4 report compared 09ad356b and f370562d head to head on large-battle in both orders: +8% with f370562d first, and -1% in reverse (46.7 vs 47.2 ms).
+Both trees had an identical close-tier trajectory (mean 1285.44).
+So round 4's code changes did not move perf, and the difference between +3.9% and +10% comes from run order.
 The branch also kept about 4.3% more close-tier soldiers alive, so the per-soldier cost is about +5%.
 Cannae measured about 0 and was noisy.
 
