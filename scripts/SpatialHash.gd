@@ -105,8 +105,9 @@ static func max_query_extension() -> float:
 ## or leaves a square, or a far block promoted close, can deepen a block after it; Battle
 ## calls this once those have run, and again after the AI. Within the units' own ticks, a
 ## unit reports its live reading (Unit.note_front_depth) before each front-line query and at
-## the end of its tick, and a merge reports the host it deepens, so every unit that ticks
-## after a deepening reads it. One that ticked before it reads it from the next rebuild.
+## the end of its tick, set_frontage and set_formation report it at once, and a merge reports
+## the host it deepens, so every unit that ticks after a deepening reads it. One that ticked
+## before it reads it from the next rebuild.
 static func refresh_query_extension(tree: SceneTree) -> void:
 	var all: Array = tree.get_nodes_in_group("units")
 	all.append_array(tree.get_nodes_in_group("routers"))

@@ -122,13 +122,33 @@ func test_a_reentering_router_uses_the_shrunk_range() -> void:
 	assert_true(a._router_anchor_contact, "anchored within it")
 
 
-## within_contact with a current grid agrees with the full test for an anchored pair too.
-func test_within_contact_matches_for_an_anchored_pair_with_a_current_hash() -> void:
+## The same with deep blocks, whose extension the shrunk range scales too: past the shrunk
+## extended range on the gap, no anchor; within it, an anchor, though both are past the base.
+func test_a_reentering_router_shrinks_the_extended_range() -> void:
+	var a: Unit = _make_unit(160, Vector2.ZERO, Vector2.DOWN, 0, 10)
+	var b: Unit = _make_unit(160, Vector2(0.0, 250.0), Vector2.UP, 1, 10)
+	a.state = Unit.State.ROUTING
+	a._router_left_contact = true
+	a.router_contact_reentry_frac = 0.8
+	var c_dist: float = maxf(a.attack_range, b.attack_range) + 2.0 * Unit.RADIUS
+	var ext: float = MeleeFrontLine.contact_extension(a, b)
+	assert_gt(ext, 0.0, "setup: deep blocks")
+	var shrunk: float = (c_dist + ext) * 0.8
+	assert_gt(shrunk, c_dist, "setup: the shrunk range is past the base")
+	b.position = Vector2(0.0, shrunk + 5.0)
+	a._refresh_enemy_contact()
+	assert_true(a._in_enemy_contact, "in contact at the full extended range")
+	assert_false(a._router_anchor_contact, "not anchored past the shrunk extended range")
+	b.position = Vector2(0.0, shrunk - 5.0)
+	a._refresh_enemy_contact()
+	assert_true(a._router_anchor_contact, "anchored within it")
+
+
+## within_contact's bound-rejected fast path agrees with the full test for an anchored pair.
+func test_within_contact_matches_the_full_test_for_an_anchored_pair() -> void:
 	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
 	a.set_frontage(15, 60.0)
 	var b: Unit = _make_unit(120, Vector2(0.0, 100.0), Vector2.UP, 1)
-	SpatialHash.reset()
-	SpatialHash.rebuild(get_tree(), Engine.get_physics_frames())
 	var base: float = 62.0
 	for x in [-80.0, -40.0, 0.0, 40.0]:
 		for y in [40.0, 120.0, 150.0, 180.0, 300.0]:
@@ -169,14 +189,89 @@ func test_support_finds_a_threat_in_contact_with_the_ward() -> void:
 		ward), e, "the ward's frontal contact finds it")
 
 
-## A block deepened mid-tick reports itself, so a lookup after it widens to find it.
-func test_a_mid_tick_deepening_is_noted() -> void:
-	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
+# A current grid read before `u` deepens, so its reading starts stale.
+func _stale_grid(u: Unit) -> float:
 	SpatialHash.reset()
 	SpatialHash.rebuild(get_tree(), Engine.get_physics_frames())
-	var before: float = SpatialHash.max_query_extension()
-	a.set_frontage(5)   # 24 ranks, with no rebuild
-	assert_eq(SpatialHash.max_query_extension(), before, "setup: stale")
-	a.note_front_depth()
-	assert_almost_eq(SpatialHash.max_query_extension(), MeleeFrontGeometry.query_extension(a), 0.001,
-		"the noted depth")
+	return MeleeFrontGeometry.query_extension(u)
+
+
+## A narrowed frontage reports the deeper block to the frame's grid at once.
+func test_set_frontage_notes_the_deeper_block() -> void:
+	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
+	var before: float = _stale_grid(a)
+	a.set_frontage(5)   # 24 ranks
+	assert_gt(MeleeFrontGeometry.query_extension(a), before, "setup: deeper")
+	assert_almost_eq(SpatialHash.max_query_extension(), MeleeFrontGeometry.query_extension(a),
+		0.001, "noted")
+
+
+## Pooled strength (a merge, a reinforcement) reports the deeper host.
+func test_pooled_strength_notes_the_deeper_host() -> void:
+	var host: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
+	var other: Unit = _make_unit(120, Vector2(0.0, -300.0), Vector2.DOWN)
+	var before: float = _stale_grid(host)
+	assert_true(host.pool_strength(other, 0.5), "setup: pooled")
+	assert_gt(MeleeFrontGeometry.query_extension(host), before, "setup: 240 men on 15 files")
+	assert_almost_eq(SpatialHash.max_query_extension(), MeleeFrontGeometry.query_extension(host),
+		0.001, "noted")
+
+
+## The ranks closing at the end of a tick (after the tick's own front-line lookups) deepen the
+## block; the end of that tick reports it.
+func test_the_end_of_a_tick_notes_the_ranks_closing() -> void:
+	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
+	a.frontage_override = 0   # the automatic frontage, which closing the ranks halves
+	a.soldiers = 40           # a third of its strength: the ranks close this tick
+	var before: float = _stale_grid(a)
+	assert_false(a._ranks_closed, "setup: open")
+	a._physics_process(1.0 / 60.0)
+	assert_true(a._ranks_closed, "setup: closed by the tick")
+	assert_gt(MeleeFrontGeometry.query_extension(a), before, "setup: deeper")
+	assert_almost_eq(SpatialHash.max_query_extension(), MeleeFrontGeometry.query_extension(a),
+		0.001, "noted by the tick")
+
+
+## Auto-acquisition's contact fallback reads the pair's contact from the longer reach, as
+## _refresh_enemy_contact does: a block a longer weapon is already fighting is found.
+func test_the_contact_fallback_reads_the_longer_reach() -> void:
+	var a: Unit = _make_unit(160, Vector2.ZERO, Vector2.DOWN, 0, 10)
+	var b: Unit = _make_unit(160, Vector2(0.0, 300.0), Vector2.UP, 1, 10)
+	a.attack_range = 20.0
+	b.attack_range = 60.0
+	var ext: float = MeleeFrontLine.contact_extension(a, b)
+	b.position = Vector2(0.0, b.attack_range + 2.0 * Unit.RADIUS + ext - 1.0)
+	assert_gt(b.position.length(), a.detection_range, "setup: past detection")
+	var d_sq: float = b.position.length_squared()
+	assert_false(MeleeFrontLine.within_contact(a, b, a.attack_range + 2.0 * Unit.RADIUS, d_sq),
+		"setup: past a's own reach")
+	assert_eq(UnitTargeting.nearest_enemy(a), b, "found at the longer reach")
+
+
+## A charge into a deep block opens its sprint window past the pair's contact extension, so the
+## runway before contact matches a centre-based contact's; no extension leaves it unchanged.
+func test_the_sprint_window_opens_past_the_contact_extension() -> void:
+	var a: Unit = _make_unit(160, Vector2.ZERO, Vector2.DOWN, 0, 10)
+	var b: Unit = _make_unit(160, Vector2(0.0, 300.0), Vector2.UP, 1, 10)
+	var ext: float = MeleeFrontLine.contact_extension(a, b)
+	assert_gt(ext, 0.0, "setup: deep blocks front to front")
+	var start: float = sqrt(a._sprint_start_sq(b))
+	assert_almost_eq(start, Unit.SPRINT_START_DISTANCE + ext, 0.001, "past the extension")
+	assert_eq(a._sprint_start_sq(null), Unit.SPRINT_START_DISTANCE_SQ, "no target: unchanged")
+	b.facing = Vector2.LEFT
+	assert_eq(a._sprint_start_sq(b), Unit.SPRINT_START_DISTANCE_SQ, "not frontal: unchanged")
+
+
+## An infantry cycle charge against a deep block pulls back to its standoff past the contact
+## extension: at a centre distance past the bare standoff it is still pulling back.
+func test_an_infantry_cycle_charge_opens_past_the_extension() -> void:
+	var a: Unit = _make_unit(160, Vector2.ZERO, Vector2.DOWN, 0, 10)
+	var b: Unit = _make_unit(160, Vector2(0.0, Unit.CYCLE_CHARGE_STANDOFF + 20.0), Vector2.UP, 1, 10)
+	var ext: float = MeleeFrontLine.contact_extension(a, b)
+	assert_gt(ext, 20.0, "setup: the standoff reaches past this distance")
+	a.order_mode = Unit.ORDER_CYCLE_CHARGE
+	a._cycle_recharging = true
+	var before: Vector2 = a.position
+	a._cycle_charge_tick(b, false, 1.0 / 60.0)
+	assert_true(a._cycle_recharging, "still pulling back")
+	assert_lt(a.position.y, before.y + 0.0001, "away from b, not toward it")

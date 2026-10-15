@@ -497,6 +497,9 @@ so the floor cannot fall as the pair closes.
 The depth is a file-major block's deepest surviving file,
 which its grid centres on.
 The engaged fraction's neighbourhood lookup widens the same way.
+Auto-acquisition, the router sweep and the support stance's guard also count an enemy in frontal contact past their search radius
+(the support stance measures that contact from its ward),
+when nothing inside the radius qualifies.
 The morale's 6 m local-force radius and the rally check's `RALLY_CONTACT_RADIUS` stay as they were,
 and also count an enemy in melee contact at the pair's frontal range,
 so a frontal enemy held at its front rank, past either radius, still counts as close.

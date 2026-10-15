@@ -159,6 +159,8 @@ static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 	# ranks can stand further apart than the detection radius) is returned when nothing
 	# within `radius` qualifies, so a search that finds anyone inside its radius answers as
 	# it always has. A caller-chosen radius stays an upper bound unless it passes the flag.
+	# Contact here is the pair's, from the longer of the two reaches (as
+	# Unit._refresh_enemy_contact reads it): a block a longer weapon is already fighting.
 	# Contact is measured from `contact_unit` (default u), the unit standing at `center`: the
 	# support stance passes its ward, so a threat pressing the ward's front counts.
 	var from: Unit = contact_unit if contact_unit != null else u
@@ -183,8 +185,8 @@ static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 			# Once anything inside the radius has qualified, `held` can no longer be returned, so
 			# the contact test is skipped from then on.
 			elif from_u and best == null and d_sq < held_d_sq and d_sq >= radius * radius \
-					and MeleeFrontLine.within_contact(from, other,
-						melee_contact_distance(from.attack_range, Unit.RADIUS, other), d_sq,
+					and MeleeFrontLine.within_contact(from, other, melee_contact_distance(
+						maxf(from.attack_range, other.attack_range), Unit.RADIUS, other), d_sq,
 						melee_contact_attacker_radius(Unit.RADIUS, other)):
 				held_d_sq = d_sq
 				held = other

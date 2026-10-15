@@ -120,7 +120,7 @@ func test_refresh_reads_a_block_deepened_after_the_rebuild() -> void:
 	SpatialHash.reset()
 	SpatialHash.rebuild(get_tree(), Engine.get_physics_frames())
 	var before: float = SpatialHash.max_query_extension()
-	a.set_frontage(5)   # 24 ranks
+	a.frontage_override = 5   # 24 ranks, written past the setters (which note it)
 	assert_eq(SpatialHash.max_query_extension(), before, "setup: the rebuild's reading is stale")
 	SpatialHash.refresh_query_extension(get_tree())
 	assert_almost_eq(SpatialHash.max_query_extension(), MeleeFrontGeometry.query_extension(a), 0.001,
