@@ -166,7 +166,9 @@ static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 			if d_sq < best_d_sq or (inclusive and best == null and d_sq <= best_d_sq):
 				best_d_sq = d_sq
 				best = other
-			elif from_u and d_sq < held_d_sq and d_sq >= radius * radius \
+			# Once anything inside the radius has qualified, `held` can no longer be returned, so
+			# the contact test is skipped from then on.
+			elif from_u and best == null and d_sq < held_d_sq and d_sq >= radius * radius \
 					and MeleeFrontLine.within_contact(u, other,
 						melee_contact_distance(u.attack_range, Unit.RADIUS, other), d_sq,
 						melee_contact_attacker_radius(Unit.RADIUS, other)):

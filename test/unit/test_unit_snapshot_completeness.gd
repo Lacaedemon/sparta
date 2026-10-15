@@ -42,6 +42,7 @@ const EXCLUDED := {
 	"_live_rank_count": CACHE,
 	"_front_line_candidates_key": CACHE,
 	"_front_line_candidates": CACHE,
+	"_front_profile": CACHE,
 	"_engaged_indices_cache": CACHE,
 	"_engaged_indices_cache_frame": CACHE,
 	"_engaged_indices_cache_count": CACHE,

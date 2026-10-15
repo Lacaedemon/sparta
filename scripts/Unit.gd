@@ -8264,12 +8264,9 @@ func _slot_anchor_centre() -> Vector2:
 ## rather than the heading's: during an in-place turn the men, and so their centre, stand fast
 ## while the heading turns. MeleeFrontLine measures a frontal pair between these centres.
 func men_centre_offset() -> Vector2:
-	var local: Vector2 = _slot_anchor_centre()
-	if local == Vector2.ZERO:
+	if frontage_anchor_offset == 0.0:
 		return Vector2.ZERO
-	if _formation_mirror_x:
-		local.x = -local.x
-	return local.rotated(MeleeFrontGeometry.grid_front(self).angle() + PI * 0.5)
+	return MeleeFrontGeometry.men_offset(self, MeleeFrontGeometry.grid_front(self))
 
 
 ## World-aligned offset of the soldier block's footprint centre from `position`: the
@@ -9539,6 +9536,8 @@ func _separation_candidates(front_line: bool = false) -> Array:
 # _separation_candidates' front-line lookup for the frame: (frame, cell, rings) and the list.
 var _front_line_candidates_key := Vector4i(-1, 0, 0, 0)
 var _front_line_candidates: Array = []
+# MeleeFrontLine's cached measurements of this block (MeleeFrontProfile.of).
+var _front_profile: MeleeFrontProfile = null
 
 
 # --- Combat -----------------------------------------------------------------

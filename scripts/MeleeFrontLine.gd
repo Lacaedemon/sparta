@@ -12,10 +12,9 @@ class_name MeleeFrontLine
 ## an enemy is in contact) or a far block. A square fronts every way.
 
 
-## Whether `u` can take part in a frontal extension at all.
+## Whether `u` can take part in a frontal extension at all (see MeleeFrontProfile).
 static func eligible(u: Unit) -> bool:
-	return u.melee_front_line_scale > 0.0 and not u.is_cavalry and not u.is_ranged \
-			and u.tier != FormationTier.FAR
+	return MeleeFrontProfile.of(u).eligible
 
 
 ## Vector3(w, reach_a, reach_b): the pair's weight and each block's reach toward the other.
@@ -26,7 +25,9 @@ static func eligible(u: Unit) -> bool:
 ## nothing), and the share of the narrower front facing the other across that axis. Past one
 ## RADIUS no term reads the axial distance, so the weight holds while the press closes a pair.
 static func pair(a: Unit, b: Unit) -> Vector3:
-	if not (eligible(a) and eligible(b)) or (a.in_square() and b.in_square()):
+	var pa: MeleeFrontProfile = MeleeFrontProfile.of(a)
+	var pb: MeleeFrontProfile = MeleeFrontProfile.of(b)
+	if not (pa.eligible and pb.eligible) or (a.in_square() and b.in_square()):
 		return Vector3.ZERO
 	var fa: Vector2 = MeleeFrontGeometry.grid_front(a)
 	var fb: Vector2 = MeleeFrontGeometry.grid_front(b)
@@ -42,10 +43,11 @@ static func pair(a: Unit, b: Unit) -> Vector3:
 	if opposed <= 0.0 or axis.length_squared() < 0.000001:  # a min_cos below 0 passes parallels
 		return Vector3.ZERO
 	axis = axis.normalized()
-	var to_b: Vector2 = men_gap(a, b)
+	var to_b: Vector2 = b.position + MeleeFrontGeometry.men_offset(b, fb) \
+			- (a.position + MeleeFrontGeometry.men_offset(a, fa))
 	var ahead: float = clampf(to_b.dot(axis) / Unit.RADIUS, 0.0, 1.0)
-	var ra: Vector2 = MeleeFrontGeometry.reach(a, axis)
-	var rb: Vector2 = MeleeFrontGeometry.reach(b, axis)
+	var ra: Vector2 = MeleeFrontGeometry.reach(a, pa, fa, axis)
+	var rb: Vector2 = MeleeFrontGeometry.reach(b, pb, fb, axis)
 	var overlap: float = MeleeFrontGeometry.front_overlap(ra.y, rb.y,
 			absf(to_b.dot(axis.orthogonal())))
 	var scale: float = clampf(minf(a.melee_front_line_scale, b.melee_front_line_scale), 0.0, 1.0)
@@ -70,24 +72,22 @@ static func contact_extension(a: Unit, b: Unit, ra: float = Unit.RADIUS,
 
 ## Whether `a` and `b` are in contact: their positions within `base` (`dist_sq` is their squared
 ## distance), or, for a frontal pair, their men's centres within `base` plus
-## contact_extension(a, b, ra, rb). It rejects on both blocks' extension_depth bound (O(1))
-## before it pays for pair().
+## contact_extension(a, b, ra, rb). It rejects on both blocks' cached extension bounds
+## (MeleeFrontProfile.ext) before it pays for pair().
 static func within_contact(a: Unit, b: Unit, base: float, dist_sq: float,
 		ra: float = Unit.RADIUS, rb: float = Unit.RADIUS) -> bool:
 	if dist_sq <= base * base:
 		return true
-	if not (eligible(a) and eligible(b)):
-		return false
-	var bound: float = base + MeleeFrontGeometry.extension_depth(a) \
-			+ MeleeFrontGeometry.extension_depth(b)
-	if dist_sq > bound * bound:
+	var pa: MeleeFrontProfile = MeleeFrontProfile.of(a)
+	var pb: MeleeFrontProfile = MeleeFrontProfile.of(b)
+	var bound: float = base + pa.ext + pb.ext
+	if not (pa.eligible and pb.eligible) or dist_sq > bound * bound:
 		return false
 	var ext: float = contact_extension(a, b, ra, rb)
 	return ext > 0.0 and men_gap(a, b).length_squared() <= (base + ext) * (base + ext)
 
 
-## From `a`'s men's centre to `b`'s: their positions plus each block's men_centre_offset (an
-## anchored frontage stands its men off its position).
+## From `a`'s men's centre to `b`'s (Unit.men_centre_offset: an anchored frontage).
 static func men_gap(a: Unit, b: Unit) -> Vector2:
 	return (b.position + b.men_centre_offset()) - (a.position + a.men_centre_offset())
 

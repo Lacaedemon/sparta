@@ -4,7 +4,7 @@ class_name MeleeFrontGeometry
 ## how far a neighbourhood query has to reach to find every pair an extension can join.
 ## Reads where the men stand, not the heading: a heading turn the grid absorbs (folded into
 ## Unit.grid_fold) or one still in progress in place (the men stand fast until it settles)
-## leaves the front where the men are.
+## leaves the front where the men are. The size measurements come from MeleeFrontProfile.
 
 
 ## The direction `u`'s men face: the heading an in-place turn started from while one is in
@@ -21,61 +21,59 @@ static func grid_front(u: Unit) -> Vector2:
 
 
 ## The distance from `u`'s centre to its grid's front rank, in wu: half its live rank count
-## less one, times its rank pitch, along the grid's own rank axis. The live rank count is a
-## file-major block's deepest surviving file (Unit.live_rank_count), since its grid centres on
-## that file. A square lays both axes at its file pitch. Unit._front_depth() without its cap.
+## less one, times its rank pitch (a square's file pitch, as its grid lays it). The live rank
+## count is a file-major block's deepest surviving file (Unit.live_rank_count), since its grid
+## centres on that file. Unit._front_depth() without its cap.
 static func front_rank_depth(u: Unit) -> float:
-	var files: int = maxi(1, u.formation_files(u.soldiers))
-	var ranks: int = u.live_rank_count(files)
-	var pitch: float = u.file_pitch_wu() if u.in_square() else u.rank_pitch_wu()
-	return float(maxi(0, ranks - 1)) * 0.5 * pitch
+	return MeleeFrontProfile.of(u).depth
 
 
 ## Half the width of `u`'s front rank, centre file to end file, in wu: its file count (or its
 ## headcount, when that is fewer) less one, times half its file pitch.
 static func front_half_width(u: Unit) -> float:
-	var files: int = mini(maxi(1, u.formation_files(u.soldiers)), maxi(1, u.soldiers))
-	return float(files - 1) * 0.5 * u.file_pitch_wu()
+	return MeleeFrontProfile.of(u).half
 
 
-## How far `u`'s men reach from its centre along `axis` (a unit vector), and how far across
-## it, in wu: a line's front-rank depth and front half-width, read along its own grid. A square
-## fronts every way, so it reaches its slot rectangle's extent along the axis whichever side
-## faces the other block. Returns Vector2(along, across).
-static func reach(u: Unit, axis: Vector2) -> Vector2:
-	var depth: float = front_rank_depth(u)
-	var half: float = front_half_width(u)
+## How far `u`'s men (profile `p`, men facing `front`) reach from their centre along `axis` (a
+## unit vector), and how far across it, in wu: a line's front-rank depth and front half-width,
+## read along its own grid. A square fronts every way, so it reaches its slot rectangle's
+## extent along the axis whichever side faces the other block. Returns Vector2(along, across).
+static func reach(u: Unit, p: MeleeFrontProfile, front: Vector2, axis: Vector2) -> Vector2:
 	if not u.in_square():
-		return Vector2(depth, half)
-	var f: Vector2 = grid_front(u)
-	var along: float = depth * absf(axis.dot(f)) + half * absf(axis.dot(f.orthogonal()))
-	var across: float = half * absf(axis.dot(f)) + depth * absf(axis.dot(f.orthogonal()))
-	return Vector2(along, across)
+		return Vector2(p.depth, p.half)
+	var c: float = absf(axis.dot(front))
+	var s: float = absf(axis.dot(front.orthogonal()))
+	return Vector2(p.depth * c + p.half * s, p.half * c + p.depth * s)
+
+
+## The offset of `u`'s men's centre from its position (a flank-anchored frontage shifts them),
+## laid out at the angle the men face (`front`): Unit.men_centre_offset with the front given.
+static func men_offset(u: Unit, front: Vector2) -> Vector2:
+	if u.frontage_anchor_offset == 0.0:
+		return Vector2.ZERO
+	var local: Vector2 = u._slot_anchor_centre()
+	if u._formation_mirror_x:
+		local.x = -local.x
+	return local.rotated(front.angle() + PI * 0.5)
 
 
 ## The most `u` can add to any pair's range, measured from its position: its reach along any
 ## axis plus how far its men's centre stands off its position (an anchored frontage), or 0
 ## when it takes part in no extension. SpatialHash's neighbourhood query has to cover it.
 static func extension_depth(u: Unit) -> float:
-	if not MeleeFrontLine.eligible(u):
-		return 0.0
-	var reach_max: float = front_rank_depth(u)
-	if u.in_square():
-		reach_max += front_half_width(u)
-	return reach_max + absf(u.frontage_anchor_offset)
+	return MeleeFrontProfile.of(u).ext
 
 
 ## The radius a neighbourhood query around `u` must cover so it finds every unit `u` can
 ## pair with at an extended range, given `deepest`, the largest extension_depth of any unit
-## it might pair with. SpatialHash.CELL_SIZE bounds every centre-based range (reach plus
-## Unit.RADIUS a side, or the capped engaged floor); an extended range adds at most each
-## block's depth beyond RADIUS. It widens for an eligible unit even when it is one rank deep:
-## a deep partner alone can carry the pair's range past one cell.
+## it might pair with. SpatialHash.CELL_SIZE bounds every centre-based range; an extended
+## range adds at most each block's extension_depth beyond Unit.RADIUS. It widens for an
+## eligible unit even when it is one rank deep: a deep partner alone can carry the range.
 static func query_radius(u: Unit, deepest: float) -> float:
-	if not MeleeFrontLine.eligible(u):
+	var p: MeleeFrontProfile = MeleeFrontProfile.of(u)
+	if not p.eligible:
 		return SpatialHash.CELL_SIZE
-	return SpatialHash.CELL_SIZE + maxf(0.0, extension_depth(u) - Unit.RADIUS) \
-			+ maxf(0.0, deepest - Unit.RADIUS)
+	return SpatialHash.CELL_SIZE + maxf(0.0, p.ext - Unit.RADIUS) + maxf(0.0, deepest - Unit.RADIUS)
 
 
 ## The share of the narrower of two fronts, of half-widths `ha` and `hb`, that faces the other
