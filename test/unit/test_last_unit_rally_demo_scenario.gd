@@ -40,9 +40,9 @@ func _spawn_last_unit_rally_battle() -> void:
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	_battle = battle
 	# The exact matchup from demos/inputs/last-unit-rally.json. Since blocks front to front
-	# meet at their front ranks (#1827) only the front ranks trade blows, so the clip and this
-	# test stage a shaken unit (morale 10) against a slightly larger enemy (130); the old morale
-	# 15 against an equal 120 no longer broke inside the onset budget.
+	# meet at their front ranks (MeleeFrontLine) only the front ranks trade blows, so the clip
+	# and this test stage a shaken unit (morale 10) against a slightly larger enemy (130); the
+	# old morale 15 against an equal 120 no longer broke inside the onset budget.
 	battle.scenario = [
 		{"team": 0, "type": "Infantry", "x": 800, "y": 440, "count": 120, "morale": 10.0,
 				"formation": Unit.FORMATION_TIGHT},
