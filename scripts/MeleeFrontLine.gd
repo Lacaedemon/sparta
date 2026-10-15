@@ -14,16 +14,15 @@ static func pair(a: Unit, b: Unit) -> Vector3:
 	return _pair(a, b, MeleeFrontProfile.of(a), MeleeFrontProfile.of(b))
 
 
-# What _pair last measured: the shift toward the men's centres (an anchored frontage stands its men
-# off its position) times the weight, so every distance the extension reads moves from the
-# positions at weight 0 to the men's centres at 1; and the positions' gap plus that shift.
-static var _shift := Vector2.ZERO
-static var _gap := Vector2.ZERO
+## What _pair last measured, from a to b: the positions' gap plus the shift toward the men's
+## centres (an anchored frontage stands its men off its position) times the weight, so every
+## distance the extension reads moves from the positions at weight 0 to the men's centres at 1.
+## Read it right after pair(), contact_extension() or toward() for the same a and b.
+static var last_gap := Vector2.ZERO
 
 
 static func _pair(a: Unit, b: Unit, pa: MeleeFrontProfile, pb: MeleeFrontProfile) -> Vector3:
-	_shift = Vector2.ZERO
-	_gap = b.position - a.position
+	last_gap = b.position - a.position
 	if not (pa.eligible and pb.eligible) or (a.in_square() and b.in_square()):
 		return Vector3.ZERO
 	var fa: Vector2 = MeleeFrontGeometry.grid_front(a)
@@ -41,7 +40,7 @@ static func _pair(a: Unit, b: Unit, pa: MeleeFrontProfile, pb: MeleeFrontProfile
 		return Vector3.ZERO
 	axis = axis.normalized()
 	var shift: Vector2 = MeleeFrontGeometry.men_offset(b, fb) - MeleeFrontGeometry.men_offset(a, fa)
-	var to_b: Vector2 = _gap + shift
+	var to_b: Vector2 = last_gap + shift
 	var ahead: float = clampf(to_b.dot(axis) / Unit.RADIUS, 0.0, 1.0)
 	var ra: Vector2 = MeleeFrontGeometry.reach(a, pa, fa, axis)
 	var rb: Vector2 = MeleeFrontGeometry.reach(b, pb, fb, axis)
@@ -49,8 +48,7 @@ static func _pair(a: Unit, b: Unit, pa: MeleeFrontProfile, pb: MeleeFrontProfile
 			absf(to_b.dot(axis.orthogonal())))
 	var scale: float = clampf(minf(a.melee_front_line_scale, b.melee_front_line_scale), 0.0, 1.0)
 	var w: float = scale * opposed * ahead * overlap
-	_shift = shift * w
-	_gap += _shift
+	last_gap += shift * w
 	return Vector3(w, ra.x, rb.x)
 
 
@@ -68,7 +66,7 @@ static func contact_extension(a: Unit, b: Unit, ra: float = Unit.RADIUS,
 
 
 ## Whether `a` and `b` are in contact: positions within `base` (`dist_sq` their squared distance),
-## or within `base` plus contact_extension on the weighted gap (see _shift), after a reject on
+## or within `base` plus contact_extension on the weighted gap (last_gap), after a reject on
 ## both blocks' cached extension bounds (each covers its anchor shift).
 static func within_contact(a: Unit, b: Unit, base: float, dist_sq: float,
 		ra: float = Unit.RADIUS, rb: float = Unit.RADIUS) -> bool:
@@ -81,7 +79,7 @@ static func within_contact(a: Unit, b: Unit, base: float, dist_sq: float,
 		return false
 	var p: Vector3 = _pair(a, b, pa, pb)
 	var reach: float = base + p.x * (maxf(0.0, p.y - ra) + maxf(0.0, p.z - rb))
-	return p.x > 0.0 and _gap.length_squared() <= reach * reach
+	return p.x > 0.0 and last_gap.length_squared() <= reach * reach
 
 
 ## The floor's extension for pair `p` (pair(a, b)): each reach past its capped _front_depth().
@@ -93,5 +91,5 @@ static func floor_from(p: Vector3, a: Unit, b: Unit) -> float:
 static func toward(a: Unit, b: Unit) -> Vector2:
 	if a.frontage_anchor_offset != 0.0 or b.frontage_anchor_offset != 0.0:
 		pair(a, b)
-		return _gap
+		return last_gap
 	return b.position - a.position

@@ -1,7 +1,8 @@
 class_name MeleeFrontProfile
 extends RefCounted
 ## A block's front-line measurements (MeleeFrontGeometry): whether it can take part in an
-## extension, its front-rank depth, its front half-width and its extension bound. Every contact
+## extension, its front-rank depth, its front half-width, its extension bound and how far that
+## reaches past a centre-based contact range (MeleeFrontGeometry.query_extension). Every contact
 ## scan reads them for every pair, so each unit keeps one profile, recomputed when an input it
 ## was computed from changes. Every call compares, without allocating, every input an order or
 ## the sim changes (headcount, file assignment generation and file count, formation, frontage,
@@ -13,6 +14,7 @@ var eligible: bool = false
 var depth: float = 0.0
 var half: float = 0.0
 var ext: float = 0.0
+var beyond: float = 0.0
 
 var _soldiers: int = -1
 var _gen: int = -1
@@ -81,5 +83,8 @@ func _compute(u: Unit) -> void:
 	depth = float(maxi(0, ranks - 1)) * 0.5 * pitch
 	half = float(mini(files, maxi(1, u.soldiers)) - 1) * 0.5 * u.file_pitch_wu()
 	ext = 0.0
+	beyond = 0.0
 	if eligible:
-		ext = depth + (half if u.in_square() else 0.0) + absf(u.frontage_anchor_offset)
+		var reach: float = depth + (half if u.in_square() else 0.0)
+		ext = reach + absf(u.frontage_anchor_offset)
+		beyond = maxf(0.0, reach - Unit.RADIUS) + absf(u.frontage_anchor_offset)

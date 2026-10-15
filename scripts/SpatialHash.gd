@@ -22,7 +22,7 @@ const CELL_SIZE := 128.0
 
 static var _frame: int = -1
 static var _cells: Dictionary = {}
-# The largest MeleeFrontGeometry.extension_depth of any unit in this frame's grid.
+# The largest MeleeFrontGeometry.query_extension of any unit in this frame's grid.
 static var _max_extension_depth: float = 0.0
 
 
@@ -94,7 +94,7 @@ static func reset() -> void:
 	_max_extension_depth = 0.0
 
 
-## The largest MeleeFrontGeometry.extension_depth of any unit in the current grid.
+## The largest MeleeFrontGeometry.query_extension of any unit in the current grid.
 static func max_extension_depth() -> float:
 	return _max_extension_depth
 
@@ -118,11 +118,11 @@ static func note_extension_depth(depth: float) -> void:
 	_max_extension_depth = maxf(_max_extension_depth, depth)
 
 
-## The largest MeleeFrontGeometry.extension_depth in `units`.
+## The largest MeleeFrontGeometry.query_extension in `units`.
 static func _deepest(units: Array) -> float:
 	var deepest: float = 0.0
 	for o in units:
 		var u: Unit = o as Unit
 		if u != null:
-			deepest = maxf(deepest, MeleeFrontGeometry.extension_depth(u))
+			deepest = maxf(deepest, MeleeFrontGeometry.query_extension(u))
 	return deepest

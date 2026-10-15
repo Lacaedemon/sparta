@@ -118,7 +118,7 @@ func test_refresh_reads_a_block_deepened_after_the_rebuild() -> void:
 	a.set_frontage(5)   # 24 ranks
 	assert_eq(SpatialHash.max_extension_depth(), before, "setup: the rebuild's reading is stale")
 	SpatialHash.refresh_extension_depth(get_tree())
-	assert_almost_eq(SpatialHash.max_extension_depth(), MeleeFrontGeometry.extension_depth(a), 0.001,
+	assert_almost_eq(SpatialHash.max_extension_depth(), MeleeFrontGeometry.query_extension(a), 0.001,
 		"the refresh reads the deepened block")
 	assert_gt(SpatialHash.max_extension_depth(), before, "deeper than before")
 

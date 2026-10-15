@@ -2952,11 +2952,13 @@ func _refresh_enemy_contact() -> void:
 			_in_enemy_contact = true
 			if not routing:
 				break
-			var a_dist: float = c_dist + MeleeFrontLine.contact_extension(self, u)
-			if reentering and not _fighting_me(u):
-				a_dist *= router_contact_reentry_frac
-			# Measured on the gap the extension measures (MeleeFrontLine.toward), as within_contact is.
-			if MeleeFrontLine.toward(self, u).length_squared() <= a_dist * a_dist:
+			# As within_contact: the positions within the base range, or the gap the extension
+			# measures (MeleeFrontLine.last_gap) within the extended one, both shrunk on re-entry.
+			var frac: float = router_contact_reentry_frac if reentering and not _fighting_me(u) \
+					else 1.0
+			var a_dist: float = (c_dist + MeleeFrontLine.contact_extension(self, u)) * frac
+			if dist_sq <= c_dist * c_dist * frac * frac \
+					or MeleeFrontLine.last_gap.length_squared() <= a_dist * a_dist:
 				anchor_contact = true
 				break
 	SimOps.add(SimOps.REGIMENT_CHECK, contact_checks)
@@ -3405,7 +3407,7 @@ func _think(delta: float) -> void:
 			# place gradually (they hold their ground) before the line strikes; a small
 			# correction snaps and fights now. _face_for_action reports when the front is
 			# brought to bear — the strike is withheld until then.
-			var faced: bool = _face_for_action(enemy.position, delta, enemy)
+			var faced: bool = _face_for_action(contact_point(enemy), delta, enemy)
 			if faced and _attack_cd <= 0.0:
 				_start_attack_cd(melee_attack_interval())
 				# resolve_soldier_melee (via UnitCombat.strike's engaged branch) already fights
@@ -3430,7 +3432,7 @@ func _think(delta: float) -> void:
 			# press waits until the turn fully finishes.
 			if _engage_turn_target == Vector2.ZERO and not is_ranged \
 					and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
-				_press_into(enemy.position, delta, enemy.state == State.ROUTING)
+				_press_into(contact_point(enemy), delta, enemy.state == State.ROUTING)
 			return
 		elif target_enemy != null or (chasing and not in_contact and _enemy_is_perceived(enemy)):
 			# Explicit attack order (or a CHASE unit's auto-acquired quarry), not yet in
@@ -3644,7 +3646,7 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 	# through so the normal approach closes on the enemy and carries a charge velocity.
 	if in_contact:
 		state = State.FIGHTING
-		_face(enemy.position)
+		_face(contact_point(enemy))
 		# Only peel back once a hit actually lands: flipping to recharging is gated on the
 		# strike so a contact that arrives mid-cooldown holds and fights until the cooldown
 		# clears, rather than retreating without having landed the charge. (For current
@@ -3694,7 +3696,7 @@ func _support_tick(delta: float) -> void:
 		var in_contact: bool = MeleeFrontLine.within_contact(self, threat, contact_dist, dist_sq)
 		if in_contact:
 			state = State.FIGHTING
-			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
+			if _face_for_action(contact_point(threat), delta, threat) and _attack_cd <= 0.0:
 				_attack_cd = melee_attack_interval()
 				UnitCombat.strike(self, threat)
 			return
@@ -5692,7 +5694,7 @@ func _separate(delta: float) -> void:
 				var p: Vector3 = MeleeFrontLine.pair(self, other)
 				if p.x > 0.0:
 					min_dist += MeleeFrontLine.floor_from(p, self, other)
-					men_shift = (men_centre_offset() - other.men_centre_offset()) * p.x
+					men_shift = -MeleeFrontLine.last_gap - (position - other.position)
 		else:
 			min_dist = separation_radius + other.separation_radius
 			if _is_melee_intermixing_with(other):
@@ -8276,6 +8278,14 @@ func men_centre_offset() -> Vector2:
 	return MeleeFrontGeometry.men_offset(self, MeleeFrontGeometry.grid_front(self))
 
 
+## The point to face and press toward against `enemy` in melee contact: this unit's position
+## plus the gap MeleeFrontLine measures the pair on (MeleeFrontLine.toward). For an anchored
+## frontage meeting `enemy` front to front that gap runs between the two blocks' men; otherwise
+## it is the positions' own gap, and the point is the enemy's position.
+func contact_point(enemy: Unit) -> Vector2:
+	return position + MeleeFrontLine.toward(self, enemy)
+
+
 ## World-aligned offset of the soldier block's footprint centre from `position`: the
 ## standing frontage anchor shift (an asymmetric explicatio/duplicatio, or a
 ## flank-anchored grip resize), expressed through the same local-to-world mapping
@@ -9527,7 +9537,7 @@ func _separation_candidates(front_line: bool = false) -> Array:
 	if SpatialHash.is_current(frame):
 		if not front_line:
 			return SpatialHash.query(position)
-		SpatialHash.note_extension_depth(MeleeFrontGeometry.extension_depth(self))
+		SpatialHash.note_extension_depth(MeleeFrontGeometry.query_extension(self))
 		var radius: float = MeleeFrontGeometry.query_radius(self, SpatialHash.max_extension_depth())
 		var cell: Vector2i = SpatialHash._key(position)
 		var key := Vector4i(frame, cell.x, cell.y, maxi(1, ceili(radius / SpatialHash.CELL_SIZE)))

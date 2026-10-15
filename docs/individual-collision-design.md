@@ -465,9 +465,17 @@ A flank-anchored frontage stands its men off the block's position,
 so the ranges are measured between the men's centres;
 the gap moves from the positions to the men's centres by the same weight,
 so it does not jump as a pair starts to face.
-Every direction read from a pair in contact
-(the steering yield, the router's front arc, the flank-threat bearing)
-takes the bearing of that same gap (`MeleeFrontLine.toward`).
+The directions read from a melee pair in contact take the bearing of that same gap
+(`MeleeFrontLine.toward`):
+the steering yield, the router's front arc, the leader's flank-threat bearing,
+the flank multiplier (`UnitCombat.flank_multiplier`, which `OrderGuards.flanked` reads),
+and the point a fighting unit faces and presses toward (`Unit.contact_point`).
+Two reads keep the positions:
+a missile unit's facing as it shoots, since a missile unit takes no extension,
+and the subcommander's outflanking bearing, which reads only enemies not yet in contact.
+The engaged floor pushes along that gap too.
+The neighbourhood lookup that finds a pair adds each block's whole anchor shift to its reach past the radius,
+since no contact range counts the shift.
 Contact then starts as the front ranks come within reach,
 and the press stops with them on one line.
 Pairs with cavalry, missile troops or a far-tier block keep the centre-based ranges

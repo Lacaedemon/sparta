@@ -59,21 +59,27 @@ static func men_offset(u: Unit, front: Vector2) -> Vector2:
 
 ## The most `u` can add to any pair's range, measured from its position: its reach along any
 ## axis plus how far its men's centre stands off its position (an anchored frontage), or 0
-## when it takes part in no extension. SpatialHash's neighbourhood query has to cover it.
+## when it takes part in no extension.
 static func extension_depth(u: Unit) -> float:
 	return MeleeFrontProfile.of(u).ext
 
 
-## The radius a neighbourhood query around `u` must cover so it finds every unit `u` can
-## pair with at an extended range, given `deepest`, the largest extension_depth of any unit
-## it might pair with. SpatialHash.CELL_SIZE bounds every centre-based range; an extended
-## range adds at most each block's extension_depth beyond Unit.RADIUS. It widens for an
-## eligible unit even when it is one rank deep: a deep partner alone can carry the range.
+## How far `u` can carry a pair past a centre-based contact range: its reach beyond the
+## Unit.RADIUS that range counts for it (a router's range leaves the radius out and adds the
+## whole reach: the same total), plus its whole anchor shift, which no range counts.
+static func query_extension(u: Unit) -> float:
+	return MeleeFrontProfile.of(u).beyond
+
+
+## The radius a neighbourhood query around `u` must cover to find every unit `u` can pair
+## with at an extended range, given `deepest`, the largest query_extension of any partner.
+## SpatialHash.CELL_SIZE bounds every centre-based range; an extended pair reaches at most the
+## two blocks' query_extension past it. A deep partner alone can carry the range.
 static func query_radius(u: Unit, deepest: float) -> float:
 	var p: MeleeFrontProfile = MeleeFrontProfile.of(u)
 	if not p.eligible:
 		return SpatialHash.CELL_SIZE
-	return SpatialHash.CELL_SIZE + maxf(0.0, p.ext - Unit.RADIUS) + maxf(0.0, deepest - Unit.RADIUS)
+	return SpatialHash.CELL_SIZE + p.beyond + deepest
 
 
 ## The share of the narrower of two fronts, of half-widths `ha` and `hb`, that faces the other
