@@ -1831,6 +1831,9 @@ func _physics_process(delta: float) -> void:
 	# flip re-slots nothing there and arms nothing.
 	if _ranks_closed != was_ranks_closed and frontage_override == 0 and not in_square():
 		_arm_standoff_settle_window(_reshape_timeout(pre_flip_files))
+	# Whatever this tick did to the block (a casualty reshape, the ranks closing above), units
+	# that tick after it this frame widen their front-line lookups enough to find it.
+	note_front_depth()
 
 	# A stationary, non-fighting unit's momentum bleeds off under the same friction as an
 	# orderly arrival (arrival_brake_rate(), the rate _move_to's own braking branch uses) —
@@ -3285,7 +3288,7 @@ func _think(delta: float) -> void:
 		# plain disengage move order fall through to the normal paths.
 		if not is_ranged and order_mode == ORDER_CYCLE_CHARGE \
 				and (target_enemy != null or not has_move_target):
-			if _cycle_charge_tick(enemy, sqrt(dist_sq), in_contact, delta):
+			if _cycle_charge_tick(enemy, in_contact, delta):
 				return
 		# Skirmish: a ranged unit kites — if a threat is inside the kite
 		# distance it backs off (away from the threat, clamped to the field) rather
@@ -3615,7 +3618,7 @@ func _think(delta: float) -> void:
 ## through to the normal chase/melee paths (e.g. still closing on a distant target, so
 ## the ordinary approach builds _approach_velocity for the charge). Deterministic — pure
 ## geometry plus the shared strike cadence, so live play and replay stay in lockstep.
-func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float) -> bool:
+func _cycle_charge_tick(enemy: Unit, in_contact: bool, delta: float) -> bool:
 	# Recharging: peel back to the standoff so the next run rebuilds closing speed. The
 	# retire BRAKES onto the standoff (brake_arrival) rather than galloping through it:
 	# the standoff is a turn-around point, and a rider cannot reverse a gallop in place --
@@ -3624,11 +3627,16 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 	# a fleeing target opened a lead the walk-pace stern chase could never close. The
 	# trot pace for this leg lives in _move_to's own ladder (the _cycle_recharging arm).
 	if _cycle_recharging:
-		if dist < CYCLE_CHARGE_STANDOFF - CYCLE_CHARGE_STANDOFF_EPS:
-			var away: Vector2 = position - enemy.position
+		# Measured as contact is (MeleeFrontLine): the standoff opens past the pair's contact
+		# extension, so two deep blocks keep the runway a centre-based contact would leave,
+		# on the gap the extension measures, so an anchored block backs straight off.
+		var standoff: float = CYCLE_CHARGE_STANDOFF + MeleeFrontLine.contact_extension(self, enemy)
+		var away: Vector2 = -MeleeFrontLine.last_gap
+		var dist: float = away.length()
+		if dist < standoff - CYCLE_CHARGE_STANDOFF_EPS:
 			if away.length_squared() < 0.000001:
 				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
-			var goal: Vector2 = position + away.normalized() * (CYCLE_CHARGE_STANDOFF - dist)
+			var goal: Vector2 = position + away.normalized() * (standoff - dist)
 			_move_to(UnitTargeting.clamp_to_field(self, goal), delta, false, false, true)
 			# Cornered against the field edge with no room to peel off: give up the
 			# retreat and fight in place so the unit isn't frozen.
@@ -3688,8 +3696,10 @@ func _support_tick(delta: float) -> void:
 	# default include_routing (false, unchanged here) means a candidate reaching this
 	# predicate is never ROUTING, so fresh_pick_allowed's own ROUTING special case never
 	# triggers either.
+	# A threat in frontal melee contact with the ward past the guard radius (two deep blocks
+	# held at their front ranks) still counts, when nothing inside the radius does.
 	var threat: Unit = UnitTargeting.nearest_enemy_to(self, ward.position, SUPPORT_GUARD_RADIUS,
-			false, false, Callable(self, "fresh_pick_allowed"))
+			false, false, Callable(self, "fresh_pick_allowed"), true, ward)
 	if threat != null:
 		var dist_sq: float = position.distance_squared_to(threat.position)
 		var contact_dist: float = attack_range + RADIUS + threat.RADIUS
@@ -5552,7 +5562,9 @@ func formation_speed_factor() -> float:
 func _is_frontal_attack(attacker: Unit) -> bool:
 	if attacker == null or not is_instance_valid(attacker):
 		return true
-	var to_attacker: Vector2 = attacker.position - position
+	# The bearing of the gap a frontal pair is measured on (MeleeFrontLine.toward), as
+	# UnitCombat.flank_multiplier reads it.
+	var to_attacker: Vector2 = MeleeFrontLine.toward(self, attacker)
 	if to_attacker.length_squared() < 0.000001:
 		return true
 	return facing.dot(to_attacker.normalized()) > 0.0
@@ -5684,8 +5696,8 @@ func _separate(delta: float) -> void:
 			# MeleeFrontLine.floor_from adds the rest of each block's front depth back.
 			# Only a pair within the extension's upper bound pays for it: one past that bound
 			# is rejected below with or without it. An extended floor holds the two blocks' men
-			# apart, so the gap moves toward the men's centres (Unit.men_centre_offset) by the
-			# same weight, as MeleeFrontLine measures it: no jump as the weight leaves 0.
+			# apart, so the push runs along the gap MeleeFrontLine measured (last_gap), which
+			# moves toward the men's centres by the same weight: no jump as the weight leaves 0.
 			min_dist = _front_depth() + other._front_depth()
 			var floor_bound: float = min_dist + MeleeFrontGeometry.extension_depth(self) \
 					+ MeleeFrontGeometry.extension_depth(other)
@@ -8269,13 +8281,12 @@ func _slot_anchor_centre() -> Vector2:
 	return Vector2(frontage_anchor_offset, 0.0)
 
 
-## block_centre_offset() laid out at the angle the men stand at (MeleeFrontGeometry.grid_front)
-## rather than the heading's: during an in-place turn the men, and so their centre, stand fast
-## while the heading turns. MeleeFrontLine measures a frontal pair between these centres.
-func men_centre_offset() -> Vector2:
-	if frontage_anchor_offset == 0.0:
-		return Vector2.ZERO
-	return MeleeFrontGeometry.men_offset(self, MeleeFrontGeometry.grid_front(self))
+## Report this block's live MeleeFrontGeometry.query_extension to the frame's grid, so a
+## front-line lookup that runs after a mid-tick deepening widens enough to find it (see
+## SpatialHash.refresh_query_extension). A no-op without a current grid.
+func note_front_depth() -> void:
+	if SpatialHash.is_current(Engine.get_physics_frames()):
+		SpatialHash.note_query_extension(MeleeFrontGeometry.query_extension(self))
 
 
 ## The point to face and press toward against `enemy` in melee contact: this unit's position
@@ -9537,9 +9548,8 @@ func _separation_candidates(front_line: bool = false) -> Array:
 	if SpatialHash.is_current(frame):
 		if not front_line:
 			return SpatialHash.query(position)
-		SpatialHash.note_extension_depth(MeleeFrontGeometry.query_extension(self),
-				MeleeFrontGeometry.extension_depth(self))
-		var radius: float = MeleeFrontGeometry.query_radius(self, SpatialHash.max_extension_depth())
+		note_front_depth()
+		var radius: float = MeleeFrontGeometry.query_radius(self, SpatialHash.max_query_extension())
 		var cell: Vector2i = SpatialHash._key(position)
 		var key := Vector4i(frame, cell.x, cell.y, maxi(1, ceili(radius / SpatialHash.CELL_SIZE)))
 		if key != _front_line_candidates_key:
@@ -9679,6 +9689,7 @@ func pool_strength(other: Unit, cohesion_floor: float) -> bool:
 	separation_radius = minf(maxf(separation_radius, other.separation_radius) + 2.0,
 		SEPARATION_RADIUS_MAX)
 	_base_separation_radius = separation_radius
+	note_front_depth()   # pooled strength deepens the block mid-tick
 	return true
 
 

@@ -469,6 +469,8 @@ The directions read from a melee pair in contact take the bearing of that same g
 (`MeleeFrontLine.toward`):
 the steering yield, the router's front arc, the leader's flank-threat bearing,
 the flank multiplier (`UnitCombat.flank_multiplier`, which `OrderGuards.flanked` reads),
+the shield wall's frontal test (`Unit._is_frontal_attack`),
+the cycle charge's pull-back (which also opens its standoff past the contact extension),
 and the point a fighting unit faces and presses toward (`Unit.contact_point`).
 Two reads keep the positions:
 a missile unit's facing as it shoots, since a missile unit takes no extension,

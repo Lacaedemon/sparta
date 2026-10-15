@@ -14,18 +14,17 @@ extends RefCounted
 # The cell size must exceed the widest centre-based separation floor (cavalry+cavalry
 # = 48) and melee contact range plus a unit's per-frame drift, so querying the 3x3
 # block around a position is a guaranteed superset of every unit within those
-# distances. A frontal pair's MeleeFrontLine extensions reach further, up to the two
-# blocks' front-rank depths, so query() takes a radius and widens the block to cover
-# it. The per-pair distance check in _separate() then filters that superset down to
+# distances. A frontal pair's MeleeFrontLine extensions reach further, up to each
+# block's front-rank reach past its radius plus its anchor shift
+# (MeleeFrontGeometry.query_extension), so query() takes a radius and widens the block to
+# cover it. The per-pair distance check in _separate() then filters that superset down to
 # the exact same set of overlaps a brute-force scan would find.
 const CELL_SIZE := 128.0
 
 static var _frame: int = -1
 static var _cells: Dictionary = {}
 # The largest MeleeFrontGeometry.query_extension of any unit in this frame's grid.
-static var _max_extension_depth: float = 0.0
-# The largest MeleeFrontGeometry.extension_depth of any unit in this frame's grid.
-static var _max_front_ext: float = 0.0
+static var _max_query_extension: float = 0.0
 
 
 static func _key(p: Vector2) -> Vector2i:
@@ -46,7 +45,7 @@ static func rebuild(tree: SceneTree, frame: int) -> void:
 	_cells.clear()
 	var all: Array = tree.get_nodes_in_group("units")
 	all.append_array(tree.get_nodes_in_group("routers"))
-	_read_deepest(all)
+	_max_query_extension = _deepest(all)
 	for o in all:
 		var n: Node2D = o as Node2D
 		if n == null:
@@ -93,48 +92,37 @@ static func query(pos: Vector2, radius: float = CELL_SIZE) -> Array:
 static func reset() -> void:
 	_frame = -1
 	_cells.clear()
-	_max_extension_depth = 0.0
-	_max_front_ext = 0.0
-
-
-## The largest MeleeFrontGeometry.extension_depth of any unit in the current grid, as of the
-## last rebuild or refresh or the latest note_extension_depth (see refresh_extension_depth).
-static func max_front_ext() -> float:
-	return _max_front_ext
+	_max_query_extension = 0.0
 
 
 ## The largest MeleeFrontGeometry.query_extension of any unit in the current grid.
-static func max_extension_depth() -> float:
-	return _max_extension_depth
+static func max_query_extension() -> float:
+	return _max_query_extension
 
 
-## Re-read max_extension_depth from the live units, for the current frame's grid. rebuild()
+## Re-read max_query_extension from the live units, for the current frame's grid. rebuild()
 ## runs before the tick's orders and tier transitions, and an order that narrows a frontage
 ## or leaves a square, or a far block promoted close, can deepen a block after it; Battle
-## calls this once those have run, and again after the AI. A block deepened later in the tick
-## (a reserve merging in) reports its live depth when it next queries (note_extension_depth);
-## a partner that queried before that reads it from the next frame's rebuild.
-static func refresh_extension_depth(tree: SceneTree) -> void:
+## calls this once those have run, and again after the AI. Within the units' own ticks, a
+## unit reports its live reading (Unit.note_front_depth) before each front-line query and at
+## the end of its tick, and a merge reports the host it deepens, so every unit that ticks
+## after a deepening reads it. One that ticked before it reads it from the next rebuild.
+static func refresh_query_extension(tree: SceneTree) -> void:
 	var all: Array = tree.get_nodes_in_group("units")
 	all.append_array(tree.get_nodes_in_group("routers"))
-	_read_deepest(all)
+	_max_query_extension = _deepest(all)
 
 
-## Raise max_extension_depth to `depth` if it is larger: a unit that has deepened since the
-## last rebuild or refresh reports its live depth before it queries, so a partner that
-## queries after it widens enough to find it.
-static func note_extension_depth(depth: float, ext: float) -> void:
-	_max_extension_depth = maxf(_max_extension_depth, depth)
-	_max_front_ext = maxf(_max_front_ext, ext)
+## Raise max_query_extension to `extension` if it is larger (see refresh_query_extension).
+static func note_query_extension(extension: float) -> void:
+	_max_query_extension = maxf(_max_query_extension, extension)
 
 
-## Read the largest MeleeFrontGeometry.query_extension and extension_depth in `units`.
-static func _read_deepest(units: Array) -> void:
-	_max_extension_depth = 0.0
-	_max_front_ext = 0.0
+## The largest MeleeFrontGeometry.query_extension in `units`.
+static func _deepest(units: Array) -> float:
+	var deepest: float = 0.0
 	for o in units:
 		var u: Unit = o as Unit
 		if u != null:
-			var p: MeleeFrontProfile = MeleeFrontProfile.of(u)
-			_max_extension_depth = maxf(_max_extension_depth, p.beyond)
-			_max_front_ext = maxf(_max_front_ext, p.ext)
+			deepest = maxf(deepest, MeleeFrontGeometry.query_extension(u))
+	return deepest

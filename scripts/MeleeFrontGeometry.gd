@@ -47,7 +47,7 @@ static func reach(u: Unit, p: MeleeFrontProfile, front: Vector2, axis: Vector2) 
 
 
 ## The offset of `u`'s men's centre from its position (a flank-anchored frontage shifts them),
-## laid out at the angle the men face (`front`): Unit.men_centre_offset with the front given.
+## laid out at the angle the men face (`front`, usually grid_front(u)), not the heading's.
 static func men_offset(u: Unit, front: Vector2) -> Vector2:
 	if u.frontage_anchor_offset == 0.0:
 		return Vector2.ZERO

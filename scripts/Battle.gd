@@ -1989,7 +1989,7 @@ func _physics_process(delta: float) -> void:
 	var live_units: Array = _tick_tier_transitions()
 	# The orders and tier transitions above can deepen a block (a narrowed frontage, a square
 	# re-formed into line, a far block promoted close) after the hash read every block's depth.
-	SpatialHash.refresh_extension_depth(get_tree())
+	SpatialHash.refresh_query_extension(get_tree())
 
 	# Far-tier combat resolution, immediately after the transitions that decide who is at
 	# which tier this tick, reusing the unit array that pass already fetched. Close-tier
@@ -2009,7 +2009,7 @@ func _physics_process(delta: float) -> void:
 		_run_player_delegated_ai()
 		# The AI can form a square or narrow a frontage, deepening a block after the hash
 		# read every block's depth above.
-		SpatialHash.refresh_extension_depth(get_tree())
+		SpatialHash.refresh_query_extension(get_tree())
 
 	# Fog of war is a rendering pass over the finished tick, after every sim step above.
 	_tick_fog()

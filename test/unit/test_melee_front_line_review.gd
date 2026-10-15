@@ -18,6 +18,11 @@ func _make_unit(max_soldiers: int, pos: Vector2, facing: Vector2, team: int = 0,
 	return u
 
 
+# The offset of `u`'s men's centre from its position, at the angle its men face.
+func _men(u: Unit) -> Vector2:
+	return MeleeFrontGeometry.men_offset(u, MeleeFrontGeometry.grid_front(u))
+
+
 func after_each() -> void:
 	SpatialHash.reset()
 
@@ -114,13 +119,13 @@ func test_refresh_reads_a_block_deepened_after_the_rebuild() -> void:
 	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
 	SpatialHash.reset()
 	SpatialHash.rebuild(get_tree(), Engine.get_physics_frames())
-	var before: float = SpatialHash.max_extension_depth()
+	var before: float = SpatialHash.max_query_extension()
 	a.set_frontage(5)   # 24 ranks
-	assert_eq(SpatialHash.max_extension_depth(), before, "setup: the rebuild's reading is stale")
-	SpatialHash.refresh_extension_depth(get_tree())
-	assert_almost_eq(SpatialHash.max_extension_depth(), MeleeFrontGeometry.query_extension(a), 0.001,
+	assert_eq(SpatialHash.max_query_extension(), before, "setup: the rebuild's reading is stale")
+	SpatialHash.refresh_query_extension(get_tree())
+	assert_almost_eq(SpatialHash.max_query_extension(), MeleeFrontGeometry.query_extension(a), 0.001,
 		"the refresh reads the deepened block")
-	assert_gt(SpatialHash.max_extension_depth(), before, "deeper than before")
+	assert_gt(SpatialHash.max_query_extension(), before, "deeper than before")
 
 
 ## With dealt ranks, the count is the deepest rank plus one; a re-deal at the same headcount
@@ -178,7 +183,7 @@ func test_a_square_on_either_side_pairs_the_same() -> void:
 func test_contact_is_measured_between_the_mens_centres() -> void:
 	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
 	a.set_frontage(15, 100.0)
-	var b: Unit = _make_unit(120, a.men_centre_offset() + Vector2(0.0, 150.0), Vector2.UP, 1)
+	var b: Unit = _make_unit(120, _men(a) + Vector2(0.0, 150.0), Vector2.UP, 1)
 	var base: float = a.attack_range + 2.0 * Unit.RADIUS
 	var reach: float = base + MeleeFrontLine.contact_extension(a, b)
 	var d_sq: float = a.position.distance_squared_to(b.position)

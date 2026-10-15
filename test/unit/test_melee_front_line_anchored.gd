@@ -17,6 +17,11 @@ func _make_unit(max_soldiers: int, pos: Vector2, facing: Vector2, team: int = 0,
 	return u
 
 
+# The offset of `u`'s men's centre from its position, at the angle its men face.
+func _men(u: Unit) -> Vector2:
+	return MeleeFrontGeometry.men_offset(u, MeleeFrontGeometry.grid_front(u))
+
+
 func after_each() -> void:
 	SpatialHash.reset()
 
@@ -42,7 +47,7 @@ func test_a_router_keeps_anchor_contact_within_the_base_range() -> void:
 func test_the_engaged_floor_pushes_along_the_measured_gap() -> void:
 	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
 	a.set_frontage(15, 100.0)
-	var men: Vector2 = a.men_centre_offset()
+	var men: Vector2 = _men(a)
 	var b: Unit = _make_unit(120, men + Vector2(20.0, 60.0), Vector2.UP, 1)
 	a.state = Unit.State.FIGHTING
 	b.state = Unit.State.FIGHTING
@@ -71,7 +76,7 @@ func test_the_engaged_floor_pushes_along_the_measured_gap() -> void:
 func test_the_flank_bearing_reads_the_measured_gap() -> void:
 	var u: Unit = _make_unit(60, Vector2.ZERO, Vector2.DOWN)
 	u.set_frontage(15, 150.0)
-	var men: Vector2 = u.men_centre_offset()
+	var men: Vector2 = _men(u)
 	var other: Unit = _make_unit(60, men + Vector2(0.0, 54.0), Vector2.UP, 1)
 	assert_almost_eq(MeleeFrontLine.weight(u, other), 1.0, 0.0001, "setup: front to front")
 	assert_lt(u.facing.dot((other.position - u.position).normalized()), 0.35,
@@ -89,10 +94,89 @@ func test_the_query_radius_covers_the_anchor_shift() -> void:
 	var b: Unit = _make_unit(15, Vector2.ZERO, Vector2.UP, 1)
 	b.set_frontage(15, 20.0)
 	var base: float = maxf(a.attack_range, b.attack_range) + 2.0 * Unit.RADIUS
-	b.position = a.men_centre_offset() - b.men_centre_offset() + Vector2(0.0, base - 1.0)
+	b.position = _men(a) - _men(b) + Vector2(0.0, base - 1.0)
 	var d_sq: float = a.position.distance_squared_to(b.position)
 	assert_true(MeleeFrontLine.within_contact(a, b, base, d_sq), "setup: the men are in contact")
 	var deepest: float = MeleeFrontGeometry.query_extension(b)
 	var slack: float = SpatialHash.CELL_SIZE - base   # what the cell leaves past the base range
 	assert_lt(sqrt(d_sq), MeleeFrontGeometry.query_radius(a, deepest) - slack,
 		"the radius covers the positions' gap with no help from the cell's slack")
+
+
+## A router re-entering contact counts its anchor only within router_contact_reentry_frac of
+## the range, on the positions' branch as on the gap's.
+func test_a_reentering_router_uses_the_shrunk_range() -> void:
+	var a: Unit = _make_unit(30, Vector2.ZERO, Vector2.DOWN)
+	var b: Unit = _make_unit(30, Vector2(0.0, 50.0), Vector2.UP, 1)
+	a.state = Unit.State.ROUTING
+	a._router_left_contact = true
+	a.router_contact_reentry_frac = 0.5
+	var c_dist: float = maxf(a.attack_range, b.attack_range) + 2.0 * Unit.RADIUS
+	assert_almost_eq(MeleeFrontLine.contact_extension(a, b), 0.0, 0.0001, "setup: shallow blocks")
+	assert_gt(50.0, 0.5 * c_dist, "setup: past the shrunk range")
+	a._refresh_enemy_contact()
+	assert_true(a._in_enemy_contact, "in contact at the full range")
+	assert_false(a._router_anchor_contact, "but not anchored past the shrunk range")
+	b.position = Vector2(0.0, 0.5 * c_dist - 1.0)
+	a._refresh_enemy_contact()
+	assert_true(a._router_anchor_contact, "anchored within it")
+
+
+## within_contact with a current grid agrees with the full test for an anchored pair too.
+func test_within_contact_matches_for_an_anchored_pair_with_a_current_hash() -> void:
+	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
+	a.set_frontage(15, 60.0)
+	var b: Unit = _make_unit(120, Vector2(0.0, 100.0), Vector2.UP, 1)
+	SpatialHash.reset()
+	SpatialHash.rebuild(get_tree(), Engine.get_physics_frames())
+	var base: float = 62.0
+	for x in [-80.0, -40.0, 0.0, 40.0]:
+		for y in [40.0, 120.0, 150.0, 180.0, 300.0]:
+			b.position = Vector2(x, y)
+			var d_sq: float = a.position.distance_squared_to(b.position)
+			var reach: float = base + MeleeFrontLine.contact_extension(a, b)
+			var gap_sq: float = MeleeFrontLine.toward(a, b).length_squared()
+			var want: bool = d_sq <= base * base or (MeleeFrontLine.weight(a, b) > 0.0
+					and gap_sq <= reach * reach)
+			assert_eq(MeleeFrontLine.within_contact(a, b, base, d_sq), want,
+				"at (%.0f, %.0f)" % [x, y])
+
+
+## A shield wall keeps its frontal cover against an attacker whose anchored men stand before it,
+## though the attacker's position lies behind its front.
+func test_a_shield_wall_keeps_its_front_against_anchored_men() -> void:
+	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.UP)
+	a.set_formation(Unit.FORMATION_SHIELD_WALL)
+	var b: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN.rotated(deg_to_rad(30.0)), 1)
+	b.set_frontage(15, 150.0)
+	b.position = Vector2(0.0, -60.0) - _men(b)
+	assert_lt(a.facing.dot(b.position - a.position), 0.0, "setup: the position is behind a's front")
+	assert_gt(MeleeFrontLine.weight(a, b), 0.0, "setup: the men meet a's front")
+	assert_almost_eq(a.melee_defense_factor(b), 1.0 - Unit.SHIELD_WALL_MELEE_DEFENSE, 0.0001,
+		"the shield wall's frontal cover holds")
+
+
+## The support stance's search finds a threat pressing its ward's front past the guard radius,
+## and the ward's contact, not the supporter's, decides it.
+func test_support_finds_a_threat_in_contact_with_the_ward() -> void:
+	var ward: Unit = _make_unit(160, Vector2.ZERO, Vector2.DOWN, 0, 10)
+	var e: Unit = _make_unit(160, Vector2(0.0, 260.0), Vector2.UP, 1, 10)
+	var s: Unit = _make_unit(60, Vector2(0.0, -200.0), Vector2.DOWN)
+	var r: float = Unit.SUPPORT_GUARD_RADIUS
+	assert_gt(ward.position.distance_to(e.position), r, "setup: past the guard radius")
+	assert_null(UnitTargeting.nearest_enemy_to(s, ward.position, r), "a hard radius misses it")
+	assert_eq(UnitTargeting.nearest_enemy_to(s, ward.position, r, false, false, Callable(), true,
+		ward), e, "the ward's frontal contact finds it")
+
+
+## A block deepened mid-tick reports itself, so a lookup after it widens to find it.
+func test_a_mid_tick_deepening_is_noted() -> void:
+	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
+	SpatialHash.reset()
+	SpatialHash.rebuild(get_tree(), Engine.get_physics_frames())
+	var before: float = SpatialHash.max_query_extension()
+	a.set_frontage(5)   # 24 ranks, with no rebuild
+	assert_eq(SpatialHash.max_query_extension(), before, "setup: stale")
+	a.note_front_depth()
+	assert_almost_eq(SpatialHash.max_query_extension(), MeleeFrontGeometry.query_extension(a), 0.001,
+		"the noted depth")

@@ -17,6 +17,11 @@ func _make_unit(max_soldiers: int, pos: Vector2, facing: Vector2, team: int = 0,
 	return u
 
 
+# The offset of `u`'s men's centre from its position, at the angle its men face.
+func _men(u: Unit) -> Vector2:
+	return MeleeFrontGeometry.men_offset(u, MeleeFrontGeometry.grid_front(u))
+
+
 func after_each() -> void:
 	SpatialHash.reset()
 
@@ -91,7 +96,7 @@ func test_the_candidate_memo_follows_the_ring_count() -> void:
 	SpatialHash.rebuild(get_tree(), Engine.get_physics_frames())
 	assert_false(a._separation_candidates(true).has(b), "setup: one ring misses b")
 	a.melee_front_line_scale = 1.0
-	var radius: float = MeleeFrontGeometry.query_radius(a, SpatialHash.max_extension_depth())
+	var radius: float = MeleeFrontGeometry.query_radius(a, SpatialHash.max_query_extension())
 	assert_gt(radius, SpatialHash.CELL_SIZE, "setup: the widened radius spans two rings")
 	assert_true(a._separation_candidates(true).has(b), "the wider query finds b")
 
@@ -101,7 +106,7 @@ func test_the_candidate_memo_follows_the_ring_count() -> void:
 func test_the_anchored_gap_moves_with_the_weight() -> void:
 	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
 	a.set_frontage(15, 100.0)
-	var men: Vector2 = a.men_centre_offset()
+	var men: Vector2 = _men(a)
 	var b: Unit = _make_unit(120, men + Vector2(0.0, 150.0), Vector2.UP, 1)
 	var positions: Vector2 = b.position - a.position
 	for scale in [1.0, 0.5, 0.001]:

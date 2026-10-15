@@ -66,17 +66,12 @@ static func contact_extension(a: Unit, b: Unit, ra: float = Unit.RADIUS,
 
 
 ## Whether `a` and `b` are in contact: positions within `base` (`dist_sq` their squared distance),
-## or within `base` plus contact_extension on the weighted gap (last_gap). Rejects first past
-## the grid's deepest pair (SpatialHash.max_front_ext, as current as its depth reading), then
-## past both blocks' own extension bounds (each covers its anchor shift).
+## or within `base` plus contact_extension on the weighted gap (last_gap), after a reject on
+## both blocks' own live extension bounds (each covers its anchor shift).
 static func within_contact(a: Unit, b: Unit, base: float, dist_sq: float,
 		ra: float = Unit.RADIUS, rb: float = Unit.RADIUS) -> bool:
 	if dist_sq <= base * base:
 		return true
-	if SpatialHash.is_current(Engine.get_physics_frames()):
-		var far: float = base + 2.0 * SpatialHash.max_front_ext()
-		if dist_sq > far * far:
-			return false
 	var pa: MeleeFrontProfile = MeleeFrontProfile.of(a)
 	var pb: MeleeFrontProfile = MeleeFrontProfile.of(b)
 	var bound: float = base + pa.ext + pb.ext
@@ -96,5 +91,6 @@ static func floor_from(p: Vector3, a: Unit, b: Unit) -> float:
 static func toward(a: Unit, b: Unit) -> Vector2:
 	if a.frontage_anchor_offset != 0.0 or b.frontage_anchor_offset != 0.0:
 		pair(a, b)
-		return last_gap
-	return b.position - a.position
+	else:
+		last_gap = b.position - a.position
+	return last_gap

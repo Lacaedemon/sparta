@@ -76,6 +76,7 @@ static func commit(reserve: Unit, host: Unit) -> void:
 		host._arm_standoff_settle_window(host._reshape_timeout(files))
 	reserve.current_order.friendly_target = null
 	reserve._merged_away()
+	host.note_front_depth()   # deeper by the merge, mid-tick
 	host.queue_redraw()
 
 static func _aim(reserve: Unit, host: Unit) -> void:
