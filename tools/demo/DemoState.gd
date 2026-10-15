@@ -559,15 +559,17 @@ static func slot_grid_footprint(u: Node) -> Dictionary:
 	if local.is_empty():
 		return {}
 	var sign: float = -1.0 if u._formation_mirror_x else 1.0
-	var axis: Vector2 = Vector2.RIGHT.rotated(u.soldier_block_world_angle()) * sign
-	# Unit.soldier_world_slots negates a slot's local x under the mirror and rotates it by the
-	# block angle, so its world offset along `axis` (which carries the same sign) is its local x.
+	var front: Vector2 = MeleeFrontGeometry.grid_front(u as Unit)
+	# The grid's lateral axis, square to `front`: outside a turn it is the block angle's x axis
+	# (soldier_block_world_angle is the front's angle plus a quarter turn). Unit.soldier_world_slots
+	# negates a slot's local x under the mirror, so its offset along `axis` (which carries the same
+	# sign) is its local x. During an in-place turn the axis stays square to the men's front.
+	var axis: Vector2 = front.orthogonal() * -sign
 	var lo: float = INF
 	var hi: float = -INF
 	for p in local:
 		lo = minf(lo, p.x)
 		hi = maxf(hi, p.x)
-	var front: Vector2 = MeleeFrontGeometry.grid_front(u as Unit)
 	return {
 		"axis": [round_to(axis.x, 4), round_to(axis.y, 4)],
 		"front": [round_to(front.x, 4), round_to(front.y, 4)],

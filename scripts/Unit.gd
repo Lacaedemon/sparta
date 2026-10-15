@@ -1480,7 +1480,7 @@ const SEPARATION_RADIUS_MAX: float = 1.4 * WorldScaleRef.WU_PER_M
 # half capped at attack_range*0.5) bounds the largest possible single-pair push to
 # roughly that same ~50-60 wu even in the fully-overlapping/co-located worst case, so
 # this cap -- comfortably above 60wu/(1/60s)=3600 wu/s -- never binds for any push those
-# floors can produce. A frontal pair's floor also carries MeleeFrontLine.floor_extension,
+# floors can produce. A frontal pair's floor also carries MeleeFrontLine.floor_from,
 # up to the two blocks' front-rank depths (126 wu for two 8-rank blocks, more for deeper
 # ones). The cap is 100 wu a tick at 60 ticks/s and each block takes its share of the
 # deficit. Two 8-rank blocks spawned front to front with their centres a RADIUS apart (the
@@ -2807,8 +2807,8 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ## own missile_range, precisely because it is not yet in melee contact.
 ##
 ## Also deliberately not a caller, for a related but distinct reason -- proximity rather than
-## a targeting commit: _can_rally's broken-contact check (UnitTargeting.nearest_enemy_to
-## within RALLY_CONTACT_RADIUS) decides only whether a routed unit rallies or shatters; there
+## a targeting commit: _can_rally's broken-contact check (its own scan of the non-routing
+## enemies, within RALLY_CONTACT_RADIUS or in frontal melee contact) decides only whether a routed unit rallies or shatters; there
 ## is no target_enemy assignment downstream of it at all. It is also not a genuine
 ## melee-contact-distance check the way the combat-resolution exemption above is
 ## (RALLY_CONTACT_RADIUS is a fixed proximity radius, not attack_range + both radii): at 8 m
@@ -2955,7 +2955,8 @@ func _refresh_enemy_contact() -> void:
 			var a_dist: float = c_dist + MeleeFrontLine.contact_extension(self, u)
 			if reentering and not _fighting_me(u):
 				a_dist *= router_contact_reentry_frac
-			if dist_sq <= a_dist * a_dist:
+			# Measured on the gap the extension measures (MeleeFrontLine.toward), as within_contact is.
+			if MeleeFrontLine.toward(self, u).length_squared() <= a_dist * a_dist:
 				anchor_contact = true
 				break
 	SimOps.add(SimOps.REGIMENT_CHECK, contact_checks)
@@ -2995,9 +2996,12 @@ func _arm_router_front_in_melee() -> void:
 		if not (u is Unit) or u == self or u.team == team or u.state == State.DEAD:
 			continue
 		var c_dist: float = maxf(attack_range, u.attack_range) + RADIUS + u.RADIUS
-		var to_enemy: Vector2 = u.position - position
-		if to_enemy == Vector2.ZERO \
-				or not MeleeFrontLine.within_contact(self, u, c_dist, to_enemy.length_squared()):
+		var dist_sq: float = position.distance_squared_to(u.position)
+		if not MeleeFrontLine.within_contact(self, u, c_dist, dist_sq):
+			continue
+		# The bearing of the gap the contact test measured (MeleeFrontLine.toward).
+		var to_enemy: Vector2 = MeleeFrontLine.toward(self, u)
+		if to_enemy == Vector2.ZERO:
 			continue
 		if absf(angle_difference(heading, to_enemy.angle())) <= router_front_arc:
 			_router_front_in_melee = true
@@ -3810,7 +3814,8 @@ func _yield_step_away_from_contact(dir: Vector2) -> Vector2:
 			var c_dist: float = maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS
 			if MeleeFrontLine.within_contact(self, other, c_dist,
 					position.distance_squared_to(other.position)):
-				var toward: Vector2 = other.position - position
+				# Away from the gap the contact test measured (MeleeFrontLine.toward).
+				var toward: Vector2 = MeleeFrontLine.toward(self, other)
 				if toward.length_squared() < 0.0001:  # tuned in wu
 					continue
 				normals.append(toward.normalized())
@@ -5674,19 +5679,20 @@ func _separate(delta: float) -> void:
 			# _front_depth() is capped at half the reach, so for blocks deeper than about
 			# three ranks the capped floor alone lets the centres close until each grid is
 			# ordered most of its depth into the other. For blocks front to front,
-			# MeleeFrontLine.floor_extension adds the rest of each block's front depth back.
+			# MeleeFrontLine.floor_from adds the rest of each block's front depth back.
 			# Only a pair within the extension's upper bound pays for it: one past that bound
 			# is rejected below with or without it. An extended floor holds the two blocks' men
-			# apart, so it is measured between the men's centres (Unit.men_centre_offset).
+			# apart, so the gap moves toward the men's centres (Unit.men_centre_offset) by the
+			# same weight, as MeleeFrontLine measures it: no jump as the weight leaves 0.
 			min_dist = _front_depth() + other._front_depth()
 			var floor_bound: float = min_dist + MeleeFrontGeometry.extension_depth(self) \
 					+ MeleeFrontGeometry.extension_depth(other)
 			if position.distance_squared_to(other.position) \
 					< floor_bound * floor_bound * SoldierEnemyContact.SQRT_SKIP_BAND:
-				var floor_ext: float = MeleeFrontLine.floor_extension(self, other)
-				if floor_ext > 0.0:
-					min_dist += floor_ext
-					men_shift = men_centre_offset() - other.men_centre_offset()
+				var p: Vector3 = MeleeFrontLine.pair(self, other)
+				if p.x > 0.0:
+					min_dist += MeleeFrontLine.floor_from(p, self, other)
+					men_shift = (men_centre_offset() - other.men_centre_offset()) * p.x
 		else:
 			min_dist = separation_radius + other.separation_radius
 			if _is_melee_intermixing_with(other):
@@ -7547,6 +7553,7 @@ func _bake_formation_mirror() -> void:
 	if _file_assignment_files > 0 and _sim_soldier_file.size() == count:
 		for i in range(count):
 			_sim_soldier_file[i] = _file_assignment_files - 1 - _sim_soldier_file[i]
+		note_file_assignment_changed()
 	if _square_slot_files > 0 and _sim_soldier_square_slot.size() == count:
 		_sim_soldier_square_slot = _composed_pairing(
 				UnitFormation.lateral_reflection_pairing(count, _square_slot_files),
@@ -9955,8 +9962,7 @@ func _can_rally() -> bool:
 		var e: Unit = o as Unit
 		if e == null or e.team == team or e.state == State.DEAD:
 			continue
-		# Strictly inside the radius, as UnitTargeting.nearest_enemy_to reads it, or in melee
-		# contact at the pair's frontal range.
+		# Strictly inside the radius, or in melee contact at the pair's frontal range.
 		var d_sq: float = position.distance_squared_to(e.position)
 		if d_sq < RALLY_CONTACT_RADIUS * RALLY_CONTACT_RADIUS or MeleeFrontLine.within_contact(
 				self, e, maxf(attack_range, e.attack_range) + RADIUS + e.RADIUS, d_sq):
@@ -10224,7 +10230,7 @@ func _cut_rally_halt_on_enemy() -> void:
 
 
 ## Whether a living enemy (fighting or routing) stands within `radius` of the segment
-## `from`-`to`. Centre distances, as _can_rally reads contact. False outside the scene tree.
+## `from`-`to`. Centre distances, as _can_rally's radius test reads them. False outside the tree.
 func _enemy_near_leg(from: Vector2, to: Vector2, radius: float) -> bool:
 	if not is_inside_tree():
 		return false

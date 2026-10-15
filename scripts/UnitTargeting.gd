@@ -59,9 +59,15 @@ static func nearest_enemy(u: Unit, predicate: Callable = Callable()) -> Unit:
 ## afterward -- see nearest_enemy_to's own doc comment for why that distinction matters (a
 ## closer rejected candidate must not be able to shadow a farther accepted one out of
 ## consideration).
+##
+## A router past detection_range that u is already in frontal melee contact with is returned
+## when no router within it qualifies, as nearest_enemy_to's `contact_fallback` does.
 static func nearest_routing_enemy(u: Unit, predicate: Callable = Callable()) -> Unit:
 	var best_router: Unit = null
 	var best_router_d_sq: float = u.detection_range * u.detection_range
+	var range_sq: float = best_router_d_sq
+	var held: Unit = null
+	var held_d_sq: float = INF
 	var inclusive: bool = \
 		u != null and u.carries_non_default_missile_profile()
 
@@ -79,8 +85,14 @@ static func nearest_routing_enemy(u: Unit, predicate: Callable = Callable()) -> 
 		if d_sq < best_router_d_sq or (inclusive and best_router == null and d_sq <= best_router_d_sq):
 			best_router_d_sq = d_sq
 			best_router = other
+		# A router: its base range omits u's radius, so the extension counts all of u's reach.
+		elif best_router == null and d_sq < held_d_sq and d_sq >= range_sq \
+				and MeleeFrontLine.within_contact(u, other,
+					melee_contact_distance(u.attack_range, Unit.RADIUS, other), d_sq, 0.0):
+			held_d_sq = d_sq
+			held = other
 
-	return best_router
+	return best_router if best_router != null else held
 
 
 ## ROLL_THE_LINE re-target: like current_target, but a target that has routed or died no
@@ -114,9 +126,8 @@ static func roll_the_line_target(u: Unit, predicate: Callable = Callable()) -> U
 ## shattered --- still on the field, in the "routers" group, until it escapes or is
 ## annihilated) counts as a candidate, at the same `radius` as everyone else --- no
 ## separate leash. Combat auto-acquisition wants routing enemies included (a fleeing
-## regiment can still be run down, relentlessly if the pursuer can keep pace); the rally
-## contact-check (Unit._can_rally) wants them excluded --- a routing enemy passing nearby
-## shouldn't itself count as "still in contact" blocking this unit's own rally.
+## regiment can still be run down, relentlessly if the pursuer can keep pace); the support
+## stance's ward scan leaves them out.
 ##
 ## `inclusive` (default false) allows candidates sitting at exact boundary radius to
 ## be acquired, scoped to non-default missile profile auto-acquisition.

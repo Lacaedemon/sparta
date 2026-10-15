@@ -1,33 +1,29 @@
 class_name MeleeFrontLine
-## Where two blocks fighting front to front meet: at their front ranks, not with each grid
-## ordered deep into the other, as centre-to-centre contact and floor ranges left them.
-## For a frontal pair this adds the missing reach back (MeleeFrontGeometry measures it):
-## contact_extension to the close-tier contact ranges, tested through within_contact, and
-## floor_extension to the engaged floor, both times weight(): 1 for men squarely front to
-## front, 0 for a flank or rear attack, which keeps the old ranges. So do pairs with cavalry
-## (6 m between ranks: where every charge lands would move), a missile unit (it shoots until
-## an enemy is in contact) or a far block. A square fronts every way.
-
-
-## Whether `u` can take part in a frontal extension at all (see MeleeFrontProfile).
-static func eligible(u: Unit) -> bool:
-	return MeleeFrontProfile.of(u).eligible
+## Two blocks front to front meet at their front ranks, not each grid ordered deep into the
+## other as centre-to-centre ranges left them: contact_extension (via within_contact) and
+## floor_from add the missing reach back, times weight(): 1 squarely front to front, 0 for a
+## flank or rear attack. Cavalry, missile and far blocks keep the old ranges; a square fronts
+## every way. MeleeFrontGeometry and MeleeFrontProfile measure the blocks.
 
 
 ## Vector3(w, reach_a, reach_b). w: the smaller melee_front_line_scale (0..1) times the fronts'
-## opposition (a ramp from the larger melee_front_line_min_cos to 1; a square opposes any
-## front), each block's men lying ahead of the other's along the pair's axis (a ramp over one
-## Unit.RADIUS), and the share of the narrower front facing the other. Past one RADIUS no term
-## reads the axial distance, so the weight holds while the press closes a pair.
+## opposition (a ramp from the larger melee_front_line_min_cos to 1; a square opposes any front),
+## each block's men lying ahead of the other's along the pair's axis (a ramp over one RADIUS, so
+## the weight holds while the press closes), and the share of the narrower front facing the other.
 static func pair(a: Unit, b: Unit) -> Vector3:
 	return _pair(a, b, MeleeFrontProfile.of(a), MeleeFrontProfile.of(b))
 
 
-# The gap between the men's centres _pair last measured (b's minus a's).
+# What _pair last measured: the shift toward the men's centres (an anchored frontage stands its men
+# off its position) times the weight, so every distance the extension reads moves from the
+# positions at weight 0 to the men's centres at 1; and the positions' gap plus that shift.
+static var _shift := Vector2.ZERO
 static var _gap := Vector2.ZERO
 
 
 static func _pair(a: Unit, b: Unit, pa: MeleeFrontProfile, pb: MeleeFrontProfile) -> Vector3:
+	_shift = Vector2.ZERO
+	_gap = b.position - a.position
 	if not (pa.eligible and pb.eligible) or (a.in_square() and b.in_square()):
 		return Vector3.ZERO
 	var fa: Vector2 = MeleeFrontGeometry.grid_front(a)
@@ -44,16 +40,18 @@ static func _pair(a: Unit, b: Unit, pa: MeleeFrontProfile, pb: MeleeFrontProfile
 	if opposed <= 0.0 or axis.length_squared() < 0.000001:  # a min_cos below 0 passes parallels
 		return Vector3.ZERO
 	axis = axis.normalized()
-	var to_b: Vector2 = b.position + MeleeFrontGeometry.men_offset(b, fb) \
-			- (a.position + MeleeFrontGeometry.men_offset(a, fa))
-	_gap = to_b
+	var shift: Vector2 = MeleeFrontGeometry.men_offset(b, fb) - MeleeFrontGeometry.men_offset(a, fa)
+	var to_b: Vector2 = _gap + shift
 	var ahead: float = clampf(to_b.dot(axis) / Unit.RADIUS, 0.0, 1.0)
 	var ra: Vector2 = MeleeFrontGeometry.reach(a, pa, fa, axis)
 	var rb: Vector2 = MeleeFrontGeometry.reach(b, pb, fb, axis)
 	var overlap: float = MeleeFrontGeometry.front_overlap(ra.y, rb.y,
 			absf(to_b.dot(axis.orthogonal())))
 	var scale: float = clampf(minf(a.melee_front_line_scale, b.melee_front_line_scale), 0.0, 1.0)
-	return Vector3(scale * opposed * ahead * overlap, ra.x, rb.x)
+	var w: float = scale * opposed * ahead * overlap
+	_shift = shift * w
+	_gap += _shift
+	return Vector3(w, ra.x, rb.x)
 
 
 ## How squarely `a` and `b` meet front to front, 0 to 1 (see pair()). Symmetric in a and b.
@@ -61,21 +59,17 @@ static func weight(a: Unit, b: Unit) -> float:
 	return pair(a, b).x
 
 
-## Added to a close-tier contact range: each block's reach beyond the radius the base range
-## already counts for it (`ra`, `rb`: Unit.RADIUS, or 0 for a side the base leaves out, as
-## melee_contact_distance does for a pursuer against a router), times weight().
+## Added to a close-tier contact range: each block's reach beyond the radius its base range
+## counts for it (`ra`, `rb`; 0 for a pursuer's own, which a router's range leaves out).
 static func contact_extension(a: Unit, b: Unit, ra: float = Unit.RADIUS,
 		rb: float = Unit.RADIUS) -> float:
 	var p: Vector3 = pair(a, b)
-	if p.x <= 0.0:
-		return 0.0
-	return p.x * (maxf(0.0, p.y - ra) + maxf(0.0, p.z - rb))
+	return p.x * (maxf(0.0, p.y - ra) + maxf(0.0, p.z - rb)) if p.x > 0.0 else 0.0
 
 
-## Whether `a` and `b` are in contact: their positions within `base` (`dist_sq` is their squared
-## distance), or, for a frontal pair, their men's centres within `base` plus
-## contact_extension(a, b, ra, rb) (the men's centres: an anchored frontage stands its men off
-## its position). It rejects on both cached extension bounds before it pays for _pair().
+## Whether `a` and `b` are in contact: positions within `base` (`dist_sq` their squared distance),
+## or within `base` plus contact_extension on the weighted gap (see _shift), after a reject on
+## both blocks' cached extension bounds (each covers its anchor shift).
 static func within_contact(a: Unit, b: Unit, base: float, dist_sq: float,
 		ra: float = Unit.RADIUS, rb: float = Unit.RADIUS) -> bool:
 	if dist_sq <= base * base:
@@ -86,15 +80,18 @@ static func within_contact(a: Unit, b: Unit, base: float, dist_sq: float,
 	if not (pa.eligible and pb.eligible) or dist_sq > bound * bound:
 		return false
 	var p: Vector3 = _pair(a, b, pa, pb)
-	if p.x <= 0.0:
-		return false
 	var reach: float = base + p.x * (maxf(0.0, p.y - ra) + maxf(0.0, p.z - rb))
-	return _gap.length_squared() <= reach * reach
+	return p.x > 0.0 and _gap.length_squared() <= reach * reach
 
 
-## Added to the engaged floor: each block's reach past its capped _front_depth(), times weight().
-static func floor_extension(a: Unit, b: Unit) -> float:
-	var p: Vector3 = pair(a, b)
-	if p.x <= 0.0:
-		return 0.0
+## The floor's extension for pair `p` (pair(a, b)): each reach past its capped _front_depth().
+static func floor_from(p: Vector3, a: Unit, b: Unit) -> float:
 	return p.x * (maxf(0.0, p.y - a._front_depth()) + maxf(0.0, p.z - b._front_depth()))
+
+
+## From `a` toward `b` as the extension measures it: the positions' gap plus the weighted shift.
+static func toward(a: Unit, b: Unit) -> Vector2:
+	if a.frontage_anchor_offset != 0.0 or b.frontage_anchor_offset != 0.0:
+		pair(a, b)
+		return _gap
+	return b.position - a.position

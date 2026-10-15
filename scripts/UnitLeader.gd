@@ -178,7 +178,8 @@ static func _flank_threat(u: Unit, all_units: Array) -> Unit:
 		if not MeleeFrontLine.within_contact(u, e, contact,
 				u.position.distance_squared_to(e.position)):
 			continue
-		var to_e: Vector2 = (e.position - u.position).normalized()
+		# The bearing of the gap the contact test measured (MeleeFrontLine.toward).
+		var to_e: Vector2 = MeleeFrontLine.toward(u, e).normalized()
 		var d: float = u.facing.dot(to_e)
 		if d < best_dot:
 			best_dot = d

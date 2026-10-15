@@ -457,9 +457,17 @@ main's dumps lack that field, so its figures sign the front by facing, as the to
 
 `MeleeFrontLine` adds the missing depth back for a frontal pair:
 each block's front-rank depth beyond `Unit.RADIUS` to the close-tier melee contact ranges
-(every site that applies it goes through `MeleeFrontLine.within_contact`),
+(each contact test goes through `MeleeFrontLine.within_contact`;
+a router's anchor test, which shrinks the range on re-entry, measures the same gap),
 and beyond its capped `_front_depth()` to the engaged floor,
 both weighted by how squarely the two blocks face each other (0 for a flank or rear attack).
+A flank-anchored frontage stands its men off the block's position,
+so the ranges are measured between the men's centres;
+the gap moves from the positions to the men's centres by the same weight,
+so it does not jump as a pair starts to face.
+Every direction read from a pair in contact
+(the steering yield, the router's front arc, the flank-threat bearing)
+takes the bearing of that same gap (`MeleeFrontLine.toward`).
 Contact then starts as the front ranks come within reach,
 and the press stops with them on one line.
 Pairs with cavalry, missile troops or a far-tier block keep the centre-based ranges

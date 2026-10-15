@@ -32,7 +32,8 @@ func test_the_extensions_reach_the_real_front_ranks() -> void:
 	assert_almost_eq(depth, 3.5 * a.rank_pitch_wu(), 0.001, "8 ranks: 3.5 rank pitches to the front")
 	assert_almost_eq(MeleeFrontLine.contact_extension(a, p[1]), 2.0 * (depth - Unit.RADIUS), 0.001,
 		"contact reaches each front rank past Unit.RADIUS")
-	assert_almost_eq(a._front_depth() + p[1]._front_depth() + MeleeFrontLine.floor_extension(a, p[1]),
+	var floor_ext: float = MeleeFrontLine.floor_from(MeleeFrontLine.pair(a, p[1]), a, p[1])
+	assert_almost_eq(a._front_depth() + p[1]._front_depth() + floor_ext,
 		2.0 * depth, 0.001, "the engaged floor holds the centres two front depths apart")
 
 
