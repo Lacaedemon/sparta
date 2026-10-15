@@ -9537,7 +9537,8 @@ func _separation_candidates(front_line: bool = false) -> Array:
 	if SpatialHash.is_current(frame):
 		if not front_line:
 			return SpatialHash.query(position)
-		SpatialHash.note_extension_depth(MeleeFrontGeometry.query_extension(self))
+		SpatialHash.note_extension_depth(MeleeFrontGeometry.query_extension(self),
+				MeleeFrontGeometry.extension_depth(self))
 		var radius: float = MeleeFrontGeometry.query_radius(self, SpatialHash.max_extension_depth())
 		var cell: Vector2i = SpatialHash._key(position)
 		var key := Vector4i(frame, cell.x, cell.y, maxi(1, ceili(radius / SpatialHash.CELL_SIZE)))
