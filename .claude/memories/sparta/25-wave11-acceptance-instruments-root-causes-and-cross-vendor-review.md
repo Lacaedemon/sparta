@@ -41,7 +41,7 @@ As of 2026-10-15, PR #1838 (#1827) is open, so #1792 and #1834 have not landed: 
 
 - **Don't:** stack a compensation on a compensation, or tune a rule's gate until one clip passes while the upstream condition is untouched.
 
-(`Lacaedemon/sparta` #1792, #1834, #1827, PR #1838, 2026-10-13.)
+(`Lacaedemon/sparta` #1792, #1834, #1827, PR #1838, 2026-10-13 to 2026-10-15.)
 
 ## Cross-vendor review found complementary defects on one PR, and its findings needed verifying
 
@@ -60,14 +60,14 @@ Their findings only partly overlapped each round:
 The split was clearest in round 2.
 There agy found more code-path defects, such as an acquisition cap in `nearest_enemy_to`.
 Claude found more data and prose problems, such as stale docs and exemption reasons that contradicted the cited issue numbers.
-Claude's round 1 and round 3 findings were code findings: the offset ratchet, per-pair cost before the distance reject, and the eager fallback calls.
-agy's round 1 list was mostly unextended contact sites.
+Claude's round 1 and round 3 findings were mostly code findings: the offset ratchet, per-pair cost before the distance reject, and the eager fallback calls.
+agy's round 1 list included several unextended contact sites.
 One round 1 finding of agy's named two functions that do not exist.
 The two reviewers also disagreed in round 1: Claude said no other contact site was missed while agy listed several.
-The finisher grepped in response and reported in round 2:
-"Engaged fraction, morale and rally were genuinely missed and are fixed;
-the other two agy names don't exist;
-clear_dist is a shove length."
+The finisher grepped in response and reported after round 1 (head 7d9e0ac0, 2026-10-14):
+"Engaged fraction, morale and rally were genuinely missed and are fixed.
+The other two agy names don't exist.
+`clear_dist` is a shove length."
 So agy was partly right (3 real misses), and its list also held 2 functions that do not exist.
 
 - **Do:** run a second-vendor reviewer on a large change, send both lists to the implementer, and check every finding against the code (grep the cited function) before acting on it.
@@ -115,18 +115,22 @@ The RELIEF in `relief-fighting-withdrawal.json` never forms on any platform: the
 
 (`Lacaedemon/sparta` #1840, 2026-10-15.)
 
-## Balance run order in A/B performance comparisons
+## Balance run order and repeat batches in A/B performance comparisons
 
 On #1827 the round-3 perf figure for large-battle (f370562d) was +3.9% against main, from a single run order.
 Running both orders on 09ad356b gave about +10% on large-battle in each order.
 The round-4 report compared 09ad356b and f370562d head to head on large-battle in both orders: +8% with f370562d first, and -1% in reverse (46.7 vs 47.2 ms).
 Both trees had an identical close-tier trajectory (mean 1285.44).
-So round 4's code changes did not move perf, and the difference between +3.9% and +10% comes from run order.
+So round 4's code changes did not move perf.
+Round 3's +3.9% was a single-batch, single-order reading that later balanced batches did not reproduce.
+Main vs 09ad356b read +9.2% with main first and +10.7% with head first, so order alone cannot explain the gap.
+The handback also notes session noise: main itself ranged from 38 to 46 ms across batches, and between-session noise is the likely cause.
+The order effect is real, as the head-to-head shows (+8% against -1% for the same two trees).
 The branch also kept about 4.3% more close-tier soldiers alive, so the per-soldier cost is about +5%.
 Cannae measured about 0 and was noisy.
 
-- **Do:** run branch-first and main-first, report both, and normalise by the work done (here, soldiers alive in the close tier).
+- **Do:** run branch-first and main-first, repeat the batches, report all of them, and normalise by the work done (here, soldiers alive in the close tier).
 
-- **Don't:** report a single-order A/B figure as the cost of a change.
+- **Don't:** report a single-batch or single-order A/B figure as the cost of a change.
 
 (`Lacaedemon/sparta` PR #1838, 2026-10-15.)
