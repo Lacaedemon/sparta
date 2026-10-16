@@ -69,7 +69,7 @@
       "uids": [
         3
       ],
-      "reason": "uid 3 (the 10-horse cavalry): a block that leaves a melee scrambled stays scrambled while it marches off (#1837). It is scrambled in the melee on both trees (residual about 100 wu at t360 on main, in contact). With the interior strike (#1834) the one-man unit uid 1 inside it is cut down, its fight ends (it leaves contact at t336 on the clip seed) and it is judged as it moves off. Worst, clip seed and seeds 1 to 4: head 94.0, 53.5, 64.7, 96.0, 54.7 against 30; main pass, 112.4, pass, pass, pass, seed 1 being the one main run whose fight ends inside the clip. Measured 2026-10-16 on dense 2-tick dumps of the clip seed and perturbed seeds 1 to 4 (SPARTA_DEMO_SEED_RUN), main 2c2955cc against the #1834 head."
+      "reason": "uid 3 (the 10-horse cavalry): a block that leaves a melee scrambled stays scrambled while it marches off (#1837). It is scrambled in the melee on both trees (residual about 100 wu at t360 on main, in contact). With the interior strike (#1834) the one-man unit uid 1 inside it is cut down, its fight ends (it leaves contact about t420 on the clip seed) and it is judged as it moves off. Worst, clip seed and seeds 1 to 4: head 110.6, 103.2, 48.7, 114.7, 52.6 against 30; main pass, 112.4, pass, pass, pass, seed 1 being the one main run whose fight ends inside the clip. Measured 2026-10-16 on dense 2-tick dumps of the clip seed and perturbed seeds 1 to 4 (SPARTA_DEMO_SEED_RUN), main 2c2955cc against the #1834 head a366c90e."
     }
   }
 }
