@@ -934,8 +934,12 @@ so a flank or rear attack keeps its edge.
 Routing troops are left out of this.
 A routing enemy caught inside a block is struck only by its fighting ranks,
 and the men of a routing block never turn on an enemy inside it.
-Two blocks that meet squarely front to front stay out of each other,
-so this does not make a straight frontal fight any deadlier.
+Two blocks in Normal or Tight order that meet squarely front to front stay out of each other,
+so for them this does not make a straight frontal fight any deadlier.
+In Loose order the two lines mix,
+and the men who end up among the enemy's ranks are struck by them:
+in a fight of 120 men against 120, both in Loose order and neither breaking,
+about two fifths more men fell in the first 19 seconds than without this.
 
 Only the men actually in bodily contact get shoved about by the fighting.
 A spear reaches several ranks deep, so rank-four and rank-five spearmen
