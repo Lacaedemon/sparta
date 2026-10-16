@@ -843,6 +843,8 @@ const MELEE_INTERMIX_MAX: float = 0.85
 # inside its missile_range (jog_speed, under fire), and sprints (move_speed) once within
 # SPRINT_START_DISTANCE of the target. WALK mode holds walk pace throughout —
 # mandatory for formed stances (shield wall, pike phalanx) that break on a jog.
+# Measured centre to centre: a charge into a deep block front to front meets its front ranks
+# (MeleeFrontLine's extended contact) sooner, with that much less of the sprint behind it.
 const SPRINT_START_DISTANCE: float = 200.0   # tuned in wu: gameplay pacing distance from target to start the full-speed charge
 const SPRINT_START_DISTANCE_SQ: float = SPRINT_START_DISTANCE * SPRINT_START_DISTANCE
 # Below this current speed a unit counts as stopped for arrival purposes -- small enough
@@ -1888,19 +1890,6 @@ func _physics_process(delta: float) -> void:
 	# (nothing in combat/movement/morale reads _sim_soldier_pos), so it changes no
 	# gameplay; the debug overlay in _draw shows it. See docs/individual-collision-design.md.
 	queue_redraw()
-
-
-## SPRINT_START_DISTANCE squared, measured as contact is when charging `charge_target`: the
-## window opens past the pair's MeleeFrontLine.contact_extension, so a charge into a deep block
-## keeps the runway a centre-based contact leaves. 0 extension (cavalry, no target) reads
-## SPRINT_START_DISTANCE_SQ itself.
-func _sprint_start_sq(charge_target: Unit) -> float:
-	if charge_target == null or not is_instance_valid(charge_target):
-		return SPRINT_START_DISTANCE_SQ
-	var ext: float = MeleeFrontLine.contact_extension(self, charge_target)
-	if ext <= 0.0:
-		return SPRINT_START_DISTANCE_SQ
-	return (SPRINT_START_DISTANCE + ext) * (SPRINT_START_DISTANCE + ext)
 
 
 ## The idle coast-to-stop _physics_process runs every non-routing tick (see the comment at
@@ -3488,7 +3477,7 @@ func _think(delta: float) -> void:
 			var goal: Vector2 = enemy.position
 			if order_mode == ORDER_ATTACK_FLANK or order_mode == ORDER_ATTACK_REAR:
 				goal = UnitTargeting.attack_approach_point(self, enemy)
-			_move_to(goal, delta, false, true, false, enemy)
+			_move_to(goal, delta, false, true)
 			return
 
 	# Obey a move order (disengaging if needed), else auto-advance on a near enemy.
@@ -3609,7 +3598,7 @@ func _think(delta: float) -> void:
 		# keep up with the march.
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
-		_move_to(enemy.position, delta, false, true, false, enemy)
+		_move_to(enemy.position, delta, false, true)
 	else:
 		# Idle: no enemy; a HOLD/BRACE stance that won't chase; or a directly
 		# player-commanded unit holding formation (auto_advance_on_detect false) with nothing
@@ -3753,7 +3742,7 @@ func _support_tick(delta: float) -> void:
 			# the march (the turn re-arms on the next contact).
 			if _engage_turn_target != Vector2.ZERO:
 				_settle_engage_turn()
-			_move_to(threat.position, delta, false, true, false, threat)
+			_move_to(threat.position, delta, false, true)
 			return
 	# No threat near the ward (none detected, or one out of weapon range that this unit's
 	# side does not yet perceive): shadow it, holding station a short distance off so the
@@ -3867,7 +3856,7 @@ func _yield_step_away_from_contact(dir: Vector2) -> Vector2:
 	return yielded
 
 
-func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: bool = false, brake_arrival: bool = false, charge_target: Unit = null) -> void:
+func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: bool = false, brake_arrival: bool = false) -> void:
 	# Route around terrain via the pathfinding layer when one is active; with no
 	# obstacles registered the next step is the target itself (straight line).
 	var step: Vector2 = point
@@ -3962,7 +3951,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# recovery leg and arriving at the turn-around point with the most momentum
 		# exactly where the flip back toward the enemy needs the least.
 		pace_speed = jog_speed
-	elif position.distance_squared_to(point) <= _sprint_start_sq(charge_target):
+	elif position.distance_squared_to(point) <= SPRINT_START_DISTANCE_SQ:
 		pace_speed = move_speed  # sprint distance beats under-fire: charge through the kill zone at full speed
 	elif _under_fire:
 		pace_speed = jog_speed

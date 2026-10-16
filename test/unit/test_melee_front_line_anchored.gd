@@ -248,20 +248,6 @@ func test_the_contact_fallback_reads_the_longer_reach() -> void:
 	assert_eq(UnitTargeting.nearest_enemy(a), b, "found at the longer reach")
 
 
-## A charge into a deep block opens its sprint window past the pair's contact extension, so the
-## runway before contact matches a centre-based contact's; no extension leaves it unchanged.
-func test_the_sprint_window_opens_past_the_contact_extension() -> void:
-	var a: Unit = _make_unit(160, Vector2.ZERO, Vector2.DOWN, 0, 10)
-	var b: Unit = _make_unit(160, Vector2(0.0, 300.0), Vector2.UP, 1, 10)
-	var ext: float = MeleeFrontLine.contact_extension(a, b)
-	assert_gt(ext, 0.0, "setup: deep blocks front to front")
-	var start: float = sqrt(a._sprint_start_sq(b))
-	assert_almost_eq(start, Unit.SPRINT_START_DISTANCE + ext, 0.001, "past the extension")
-	assert_eq(a._sprint_start_sq(null), Unit.SPRINT_START_DISTANCE_SQ, "no target: unchanged")
-	b.facing = Vector2.LEFT
-	assert_eq(a._sprint_start_sq(b), Unit.SPRINT_START_DISTANCE_SQ, "not frontal: unchanged")
-
-
 ## An infantry cycle charge against a deep block pulls back to its standoff past the contact
 ## extension: at a centre distance past the bare standoff it is still pulling back.
 func test_an_infantry_cycle_charge_opens_past_the_extension() -> void:

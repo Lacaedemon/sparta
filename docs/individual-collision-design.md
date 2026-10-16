@@ -506,6 +506,13 @@ so a frontal enemy held at its front rank, past either radius, still counts as c
 `SoldierMelee`'s knockback "clear the line" distance keeps the capped `_front_depth()` sum:
 it is how far a struck man travels, not a distance between centres.
 
+The sprint window (`Unit.SPRINT_START_DISTANCE`) stays measured centre to centre,
+so a charge into a deep block meets its front ranks with that much less of the sprint behind it,
+and the charge bonus is lower for it.
+Opening the window past the contact extension moved first contact up to 165 ticks earlier than main in `cycle_charge`
+and added defect candidates in `charge` and `knockback_focus`,
+so it is left for a follow-up.
+
 Holding the blocks at their front ranks lowers frontal lethality,
 since only the front ranks reach each other.
 Measured with two 120-man Tight blocks (`last_unit_rally`'s staging on main) and neither allowed to break (morale 100),
