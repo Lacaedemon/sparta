@@ -1,0 +1,24 @@
+{
+  "_comment": "Two Infantry blocks meet front to front and hold a line. Team 0's 100 men stand 12 files by 9 ranks, so their front rank is 72 wu ahead of their centre; team 1's 90 men stand 15 files by 6 ranks, 45 wu deep to the front. Team 0 is ordered to attack at tick 12 and team 1's AI advances to meet it. Now contact begins once the centres are within 143 wu (reach 26 plus the two front depths), as the two front ranks come within reach of each other: in contact by tick 240 (not yet at tick 210). The press then stops with the centres 117 wu apart (72 plus 45), so the front ranks fight on one line and neither block's ranks stand inside the other's. On main a3714751 contact began only within 62 wu (reach plus 0.9 m a side), when the front ranks were already 55 wu, about three ranks, into each other (not yet in contact at tick 240); the press closed the centres to 17.5 wu by tick 330, and by tick 540 the two centres had passed each other. Measured with a 10-tick full state dump on main a3714751 and on this branch (tools/demo/melee-penetration.sh measures the same thing over the catalog). Static camera. Deterministic (scenario + seed + scripted input).",
+  "seed": "18270",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 650, "y": 800, "count": 100, "frontage": 12, "facing": [1, 0]},
+    {"team": 1, "type": "Infantry", "x": 950, "y": 800, "count": 90, "frontage": 15, "facing": [-1, 0]}
+  ],
+  "camera": [{"tick": 0, "x": 800, "y": 800, "zoom": 1.4}],
+  "steps": [
+    {"tick": 6, "click": [650, 800]},
+    {"tick": 12, "rmb_click": [950, 800]}
+  ],
+  "state": [8, 210, 240, 270, 300, 330, 360, 420, 480, 540, 600],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [650, 800]},
+    {"tick": 210, "uid": 0, "field": "in_enemy_contact", "value": false},
+    {"tick": 240, "uid": 0, "field": "in_enemy_contact", "value": true},
+    {"tick": 330, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 330, "uid": 0, "field": "position", "value": [740.2, 800.2], "tol": 4.0},
+    {"tick": 330, "uid": 1, "field": "position", "value": [857.2, 798.3], "tol": 4.0}
+  ],
+  "fixed_fps": 30,
+  "max_frames": 300
+}

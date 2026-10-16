@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/frontal-melee-front-line-1827.json",
+  "caption": "Two infantry blocks of different depths meet front to front. They now come into contact as their front ranks close to within reach, and the press stops there: the two front ranks fight along one line and neither block's ranks end up inside the other's. Before this fix contact began only after the front ranks had walked about three ranks into each other, and the press then drove the two blocks' centres together until they passed each other.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}

@@ -42,6 +42,12 @@ const SHRUNK_SIGHT: float = 50.0
 ## anything within detection_range regardless of whether it was actually perceived.
 const DETECTED_NOT_PERCEIVED_POS := WATCHER_POS \
 		- Vector2(0.0, (SHRUNK_SIGHT + Unit.DETECTION_RANGE) * 0.5)
+## The facing a hidden enemy staged at DETECTED_NOT_PERCEIVED_POS takes in the tests whose premise
+## is that it is not in melee contact: across the watcher's front rather than toward it. Two
+## default Infantry blocks squarely front to front 120 wu apart already have their front ranks
+## overlapping, so MeleeFrontLine puts them in contact; turned across the front, the pair is not
+## frontal and keeps the centre-based contact range these tests were staged against.
+const HIDDEN_ENEMY_FACING := [1, 0]
 
 
 func after_each() -> void:
@@ -352,7 +358,8 @@ func test_idle_ai_unit_does_not_auto_advance_on_a_detected_but_unperceived_enemy
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	battle.scenario = [
 		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
-		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y,
+				"facing": HIDDEN_ENEMY_FACING},
 	]
 	add_child_autofree(battle)
 	var watcher: Unit = _team_units(1)[0]
@@ -1004,7 +1011,8 @@ func test_sweep_routers_fallback_does_not_commit_to_a_fresh_unperceived_enemy() 
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	battle.scenario = [
 		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
-		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y,
+				"facing": HIDDEN_ENEMY_FACING},
 	]
 	add_child_autofree(battle)
 	var sweeper: Unit = _team_units(1)[0]
@@ -1117,7 +1125,8 @@ func test_chase_does_not_close_on_a_fresh_unperceived_enemy_with_no_committed_ta
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	battle.scenario = [
 		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
-		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y,
+				"facing": HIDDEN_ENEMY_FACING},
 	]
 	add_child_autofree(battle)
 	var u: Unit = _team_units(1)[0]
@@ -1177,7 +1186,8 @@ func test_start_promoted_attack_does_not_resolve_to_a_fresh_unperceived_standoff
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	battle.scenario = [
 		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
-		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y,
+				"facing": HIDDEN_ENEMY_FACING},
 	]
 	add_child_autofree(battle)
 	var u: Unit = _team_units(1)[0]
@@ -1186,7 +1196,8 @@ func test_start_promoted_attack_does_not_resolve_to_a_fresh_unperceived_standoff
 	u.current_order = Order.new_attack(-1)   # unresolved: target_uid stays -1
 	assert_false(battle.ai_team_perceives(1, enemy),
 		"sanity check on the staged distance: team 1 does not perceive this enemy")
-	var contact: float = UnitTargeting.melee_contact_distance(u.attack_range, Unit.RADIUS, enemy)
+	var contact: float = UnitTargeting.melee_contact_distance(u.attack_range, Unit.RADIUS, enemy) \
+			+ MeleeFrontLine.contact_extension(u, enemy)
 	assert_gt(u.position.distance_to(enemy.position), contact,
 		"sanity check: the enemy is not in melee contact, so this is the standoff case")
 
@@ -1722,7 +1733,7 @@ func test_idle_ai_unit_auto_advances_on_a_farther_perceived_enemy_past_a_closer_
 		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
 		{"team": 1, "type": "Infantry", "x": SPOTTER_POS.x, "y": SPOTTER_POS.y},   # spotter
 		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x,
-				"y": DETECTED_NOT_PERCEIVED_POS.y},   # closer, hidden
+				"y": DETECTED_NOT_PERCEIVED_POS.y, "facing": HIDDEN_ENEMY_FACING},   # closer, hidden
 		{"team": 0, "type": "Infantry", "x": FARTHER_VISIBLE_POS.x,
 				"y": FARTHER_VISIBLE_POS.y},   # farther, perceived
 	]
@@ -2141,7 +2152,8 @@ func _stage_guard_battle(fog: bool, extra: Array = []) -> Node:
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	battle.scenario = [
 		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
-		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y},
+		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y,
+				"facing": HIDDEN_ENEMY_FACING},
 	] + extra
 	add_child_autofree(battle)
 	return battle
@@ -2154,7 +2166,8 @@ func test_enemy_in_range_guard_ignores_an_unperceived_enemy_under_fog() -> void:
 	u.sight_range = SHRUNK_SIGHT
 	assert_false(battle.ai_team_perceives(1, enemy),
 		"sanity check on the staged distance: team 1 does not perceive this enemy")
-	var contact: float = UnitTargeting.melee_contact_distance(u.attack_range, Unit.RADIUS, enemy)
+	var contact: float = UnitTargeting.melee_contact_distance(u.attack_range, Unit.RADIUS, enemy) \
+			+ MeleeFrontLine.contact_extension(u, enemy)
 	assert_gt(u.position.distance_to(enemy.position), contact,
 		"sanity check: the enemy is not in melee contact")
 	assert_false(OrderGuards.enemy_in_range(u, GUARD_RANGE),

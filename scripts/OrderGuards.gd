@@ -41,7 +41,10 @@ static func satisfied(u: Unit, order: Order) -> bool:
 
 
 ## A live, non-routing enemy is within `range_units` of `u`. range_units <= 0 falls back to
-## u's own detection_range (a caller-configurable field, default Unit.DETECTION_RANGE).
+## u's own detection_range (a caller-configurable field, default Unit.DETECTION_RANGE), and
+## then, like auto-acquisition, also counts an enemy past it in frontal melee contact with u
+## (UnitTargeting.nearest_enemy_to's contact_fallback). A positive range_units is a hard
+## upper bound.
 ## Unlike combat auto-acquisition (UnitTargeting.nearest_enemy), this guard does NOT count a
 ## routing enemy --- it gates order transitions ("enemy sighted"), where a fleeing regiment
 ## isn't the kind of threat that should re-trigger a scripted order.
@@ -56,12 +59,12 @@ static func satisfied(u: Unit, order: Order) -> bool:
 static func enemy_in_range(u: Unit, range_units: float) -> bool:
 	var radius: float = range_units if range_units > 0.0 else u.detection_range
 	return UnitTargeting.nearest_enemy_to(u, u.position, radius, false, false,
-		Callable(u, "fresh_pick_allowed")) != null
+		Callable(u, "fresh_pick_allowed"), range_units <= 0.0) != null
 
 
 ## A live, non-routing enemy is within melee contact distance: u's attack_range plus both
-## units' radii. Distinct from enemy_in_range -- contact is a fixed geometric distance, not
-## a caller-chosen radius.
+## units' radii, plus MeleeFrontLine.contact_extension for blocks front to front. Distinct
+## from enemy_in_range -- contact is a fixed geometric distance, not a caller-chosen radius.
 static func contact_made(u: Unit) -> bool:
 	for o in u.get_tree().get_nodes_in_group("units"):
 		var other: Unit = o as Unit
@@ -71,7 +74,8 @@ static func contact_made(u: Unit) -> bool:
 			continue
 		var contact: float = u.attack_range + Unit.RADIUS + other.RADIUS
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-		if u.position.distance_squared_to(other.position) <= contact * contact:
+		if MeleeFrontLine.within_contact(u, other, contact,
+				u.position.distance_squared_to(other.position)):
 			return true
 	return false
 
@@ -103,13 +107,15 @@ static func ticks_elapsed(order: Order, ticks: float) -> bool:
 
 ## A live, non-routing enemy currently stands in u's flank/rear arc (the same dot-product
 ## geometry UnitCombat.flank_multiplier strikes with) within `range_units` of u.
-## range_units <= 0 falls back to melee contact distance, matching contact_made's default
-## reach. A unit in the anti-cavalry square has no exploitable flank (flank_multiplier
-## always reads frontal for it), so it can never be FLANKED.
+## range_units <= 0 falls back to melee contact, tested exactly as contact_made tests it
+## (MeleeFrontLine.within_contact), so the two guards agree on which enemies are in contact.
+## A unit in the anti-cavalry square has no exploitable flank (flank_multiplier always reads
+## frontal for it), so it can never be FLANKED.
 static func flanked(u: Unit, range_units: float) -> bool:
 	if u.in_square():
 		return false
-	var radius: float = range_units if range_units > 0.0 else (u.attack_range + Unit.RADIUS * 2.0)
+	var contact: bool = range_units <= 0.0
+	var radius: float = range_units if not contact else (u.attack_range + Unit.RADIUS * 2.0)
 	for o in u.get_tree().get_nodes_in_group("units"):
 		var other: Unit = o as Unit
 		if other == null or other.team == u.team:
@@ -117,7 +123,9 @@ static func flanked(u: Unit, range_units: float) -> bool:
 		if other.state == Unit.State.DEAD or other.state == Unit.State.ROUTING:
 			continue
 		# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-		if u.position.distance_squared_to(other.position) > radius * radius:
+		var d_sq: float = u.position.distance_squared_to(other.position)
+		if d_sq > radius * radius and not (contact and MeleeFrontLine.within_contact(u, other,
+				u.attack_range + Unit.RADIUS + other.RADIUS, d_sq)):
 			continue
 		if UnitCombat.flank_multiplier(u, other) > 1.0:
 			return true
@@ -149,7 +157,9 @@ static func current_engaged_fraction(u: Unit) -> float:
 	var defenders: Array[Unit] = []
 	var has_live_enemy_in_tree: bool = false
 	if u.is_inside_tree():
-		var candidates: Array = u._separation_candidates()
+		# Widened for frontal pairs: two deep blocks front to front stand up to both front-rank
+		# depths apart, past the plain lookup's one cell.
+		var candidates: Array = u._separation_candidates(true)
 		var u_extent: float = u.separation_radius + u.render_block_extent() + u.block_centre_offset().length()
 		for o in candidates:
 			var other: Unit = o as Unit

@@ -38,8 +38,9 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 	# now-gated fresh-pick commits (both perception-gated at the time), or Unit._think()'s
 	# melee-contact branch (target_enemy = enemy, set when in contact outside HOLD/
 	# MARCH_TO_CONTACT/BRACE), which is deliberately NOT a caller of _enemy_is_perceived:
-	# contact-exempt rather than perception-gated, benign because melee_contact_distance is
-	# far below any realistic sight range. Same already-committed exemption _think()'s own
+	# contact-exempt rather than perception-gated, benign because melee contact means the
+	# enemy's front rank is within weapon reach of this unit's, however far apart two deep
+	# blocks' centres stand. Same already-committed exemption _think()'s own
 	# chase branch relies on.
 	var foe: Unit = tired.target_enemy
 	if foe == null:

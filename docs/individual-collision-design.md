@@ -432,6 +432,98 @@ an aggregate of how many engaged soldiers are currently prone, applied uniformly
 than body-by-body) is still a possible follow-up if the reactive nuance is worth
 pursuing.
 
+## Blocks front to front meet at their front ranks
+
+The margin above limits how far bodies mix once the two front ranks touch.
+It cannot stop the larger interpenetration the regiment layer itself orders.
+The regiment-level melee contact ranges (`_in_enemy_contact` and the others built the same way)
+are weapon reach plus `Unit.RADIUS` (0.9 m) a side, measured centre to centre,
+and the engaged floor in `_separate` is the two `_front_depth()` values,
+each capped at half the unit's reach.
+A block's real centre-to-front-rank distance grows by half a rank pitch for every rank,
+so for an 8-rank block both fall short of it by two to three ranks.
+Two such blocks closing front to front therefore came into contact
+only after their front ranks had walked into each other
+(no body contact resists them before the flag),
+and the press then closed the centres to the capped floor,
+with each grid's slots ordered most of a block deep inside the other.
+Over the catalog's melee clips on main a3714751,
+`tools/demo/melee-penetration.sh` (its `PEN-ALL foot` line) measured the median frontal foot pair
+standing 3.0 ranks inside the other block, with 77% of pairs more than a rank inside.
+With `MeleeFrontLine` the same measure reads 0.0 ranks and 25%;
+20 of the 28 frontal foot pairs still past a rank were spawned inside each other, 16 of them in `cannae_scale`.
+(The tool reads each block's front from its slot grid, `motion_ref.slot_grid.front`;
+main's dumps lack that field, so its figures sign the front by facing, as the tool always did.)
+
+`MeleeFrontLine` adds the missing depth back for a frontal pair:
+each block's front-rank depth beyond `Unit.RADIUS` to the close-tier melee contact ranges
+(each contact test goes through `MeleeFrontLine.within_contact`;
+a router's anchor test, which shrinks the range on re-entry, measures the same gap),
+and beyond its capped `_front_depth()` to the engaged floor,
+both weighted by how squarely the two blocks face each other (0 for a flank or rear attack).
+A flank-anchored frontage stands its men off the block's position,
+so the ranges are measured between the men's centres;
+the gap moves from the positions to the men's centres by the same weight,
+so it does not jump as a pair starts to face.
+The directions read from a melee pair in contact take the bearing of that same gap
+(`MeleeFrontLine.toward`):
+the steering yield, the router's front arc, the leader's flank-threat bearing,
+the flank multiplier (`UnitCombat.flank_multiplier`, which `OrderGuards.flanked` reads),
+the shield wall's frontal test (`Unit._is_frontal_attack`),
+the cycle charge's pull-back (which also opens its standoff past the contact extension),
+and the point a fighting unit faces and presses toward (`Unit.contact_point`).
+Two reads keep the positions:
+a missile unit's facing as it shoots, since a missile unit takes no extension,
+and the subcommander's outflanking bearing, which reads only enemies not yet in contact.
+The engaged floor pushes along that gap too.
+The neighbourhood lookup that finds a pair adds each block's whole anchor shift to its reach past the radius,
+since no contact range counts the shift.
+Contact then starts as the front ranks come within reach,
+and the press stops with them on one line.
+Pairs with cavalry, missile troops or a far-tier block keep the centre-based ranges
+(`MeleeFrontLine`'s doc comment says why).
+A square fronts every way:
+a line meeting it frontally reaches its slot rectangle's extent toward the line,
+so the pair keeps its extended range when a block it was pressing forms square.
+
+The weight reads where each block's men face, not its heading:
+a heading turn the grid absorbs (a router's about-face),
+or an engage or order turn still in progress (the men stand fast until it settles),
+leaves the pair's ranges where its men still stand.
+It multiplies how directly the two grid fronts oppose each other
+by the share of the narrower front that overlaps the other's, across the pair's front axis.
+A pair offset to one side keeps that share of the extension however far the press closes it,
+so the floor cannot fall as the pair closes.
+The depth is a file-major block's deepest surviving file,
+which its grid centres on.
+The engaged fraction's neighbourhood lookup widens the same way.
+Auto-acquisition, the router sweep and the support stance's guard also count an enemy in frontal contact past their search radius
+(the support stance measures that contact from its ward),
+when nothing inside the radius qualifies.
+The morale's 6 m local-force radius and the rally check's `RALLY_CONTACT_RADIUS` stay as they were,
+and also count an enemy in melee contact at the pair's frontal range,
+so a frontal enemy held at its front rank, past either radius, still counts as close.
+`SoldierMelee`'s knockback "clear the line" distance keeps the capped `_front_depth()` sum:
+it is how far a struck man travels, not a distance between centres.
+
+The sprint window (`Unit.SPRINT_START_DISTANCE`) stays measured centre to centre,
+so a charge into a deep block meets its front ranks with that much less of the sprint behind it,
+and the charge bonus is lower for it.
+Opening the window past the contact extension moved first contact up to 165 ticks earlier than main in `cycle_charge`
+and added defect candidates in `charge` and `knockback_focus`,
+so it is left for a follow-up.
+
+Holding the blocks at their front ranks lowers frontal lethality,
+since only the front ranks reach each other.
+Measured with two 120-man Tight blocks (`last_unit_rally`'s staging on main) and neither allowed to break (morale 100),
+casualties over the first 1150 ticks fell from a mean of 47 to 37 men over the clip's own seed and perturbed seeds 1 to 4.
+The block standing its ground lost 11 instead of 23,
+and the advancing block about the same (26 against 24).
+Units take correspondingly longer to break in a straight frontal fight:
+in the perturbed melee-outcome delta,
+`general_doctrine_reserves`' low-morale foot and `march_to_contact`'s unit 1 mostly no longer break inside their clips,
+and `file_major_reform_contrast` and `spear_standoff` break 100 to 145 ticks later.
+
 ## Physical contact is proximity-based, not combat-state-based
 
 Both the margin above and the underlying soldier-level pass it widens
