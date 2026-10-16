@@ -187,3 +187,33 @@ func test_an_enemy_among_the_striking_ranks_is_left_to_them() -> void:
 	for i in range(before.size()):
 		if not front.has(i):
 			assert_eq(a._sim_soldier_stamina[i], before[i], "soldier %d behind the striking set held his blow" % i)
+
+
+func test_a_routing_enemy_inside_the_block_is_left_to_the_striking_ranks() -> void:
+	# A router overrun by the block is the pursuit's: the interior pass leaves him alone.
+	var a := _block()
+	var p := Vector2(0.0, _front_depth(a) - REACH - 4.0)
+	var e := _lone_enemy_at(p)
+	var front := a.engaged_soldier_indices(a._sim_soldier_pos.size())
+	var defenders: Array[Unit] = [e]
+	var indices: Array[PackedInt32Array] = [PackedInt32Array([0])]
+	assert_false(SoldierInteriorStrike.inside_candidates(a, front, defenders, indices).is_empty(),
+			"precondition: while he fights he counts as inside")
+	e.state = Unit.State.ROUTING
+	assert_true(SoldierInteriorStrike.inside_candidates(a, front, defenders, indices).is_empty(),
+			"a routing enemy is never inside")
+	assert_eq(_wounds(a, e), 0.0, "nobody behind the striking set strikes the router")
+
+
+func test_a_routing_block_has_no_interior_pass() -> void:
+	var a := _block()
+	var p := Vector2(0.0, _front_depth(a) - REACH - 4.0)
+	var e := _lone_enemy_at(p)
+	var front := a.engaged_soldier_indices(a._sim_soldier_pos.size())
+	var defenders: Array[Unit] = [e]
+	var indices: Array[PackedInt32Array] = [PackedInt32Array([0])]
+	assert_false(SoldierInteriorStrike.inside_candidates(a, front, defenders, indices).is_empty(),
+			"precondition: while the block fights the enemy counts as inside")
+	a.state = Unit.State.ROUTING
+	assert_true(SoldierInteriorStrike.inside_candidates(a, front, defenders, indices).is_empty(),
+			"a routing block finds nobody inside it")

@@ -10,7 +10,10 @@ class_name SoldierInteriorStrike
 ## the live men's centres and padded on the flanks and rear by Unit.interior_strike_margin.
 ## An enemy pressing on a flank or the rear from outside is not inside, so a flank or rear
 ## attack keeps its edge over the ranks facing away. A square already strikes with whoever
-## is threatened, so it has no interior pass. Pure geometry, no RNG.
+## is threatened, so it has no interior pass. A routing block is a fleeing crowd with no ranks
+## to be behind, so it has none either, and a routing enemy is never inside: a router overrun
+## by its pursuer is the pursuit's to cut down, through the pursuer's own striking ranks.
+## Pure geometry, no RNG.
 
 
 ## Per defender (aligned with `defenders` and `def_indices`), the indices of its living
@@ -20,7 +23,8 @@ static func inside_candidates(attacker: Unit, front: PackedInt32Array, defenders
 		def_indices: Array[PackedInt32Array]) -> Array[PackedInt32Array]:
 	var none: Array[PackedInt32Array] = []
 	var n: int = mini(attacker._sim_soldier_pos.size(), attacker._sim_soldier_hp.size())
-	if front.is_empty() or front.size() >= n or attacker.in_square():
+	if front.is_empty() or front.size() >= n or attacker.in_square() \
+			or attacker.state == Unit.State.ROUTING:
 		return none
 	var origin: Vector2 = attacker.position
 	var fwd: Vector2 = attacker.near_front_forward()
@@ -49,6 +53,9 @@ static func inside_candidates(attacker: Unit, front: PackedInt32Array, defenders
 	for dj in range(defenders.size()):
 		var inside := PackedInt32Array()
 		var d: Unit = defenders[dj]
+		if d.state == Unit.State.ROUTING:
+			out.append(inside)
+			continue
 		scanned += def_indices[dj].size()
 		for di in def_indices[dj]:
 			var rel: Vector2 = d._sim_soldier_pos[di] - origin
