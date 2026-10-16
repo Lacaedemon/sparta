@@ -261,3 +261,36 @@ func test_an_infantry_cycle_charge_opens_past_the_extension() -> void:
 	a._cycle_charge_tick(b, false, 1.0 / 60.0)
 	assert_true(a._cycle_recharging, "still pulling back")
 	assert_lt(a.position.y, before.y + 0.0001, "away from b, not toward it")
+
+
+## A formation change that deepens the block (here into a square) reports it at once.
+func test_set_formation_notes_the_deeper_block() -> void:
+	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
+	var before: float = _stale_grid(a)
+	a.set_formation(Unit.FORMATION_SQUARE)
+	assert_gt(MeleeFrontGeometry.query_extension(a), before, "setup: deeper")
+	assert_almost_eq(SpatialHash.max_query_extension(), MeleeFrontGeometry.query_extension(a),
+		0.001, "noted")
+
+
+## A rally's re-square that deepens the block runs after the tick's own front-line lookups; the
+## end of that tick reports it. The file-major assignment here holds every man in the first rank
+## (a deliberately shallow reading), and the about-face re-square reverses each file's ranks,
+## dealing the block its full depth.
+func test_the_end_of_a_tick_notes_a_rally_resquare() -> void:
+	var a: Unit = _make_unit(118, Vector2.ZERO, Vector2.DOWN)   # short files: a re-square runs
+	a.file_major_reform_mode = Unit.ReformMode.FILE_MAJOR
+	var files := PackedInt32Array()
+	var ranks := PackedInt32Array()
+	for i in a.soldiers:
+		files.append(i % 15)
+		ranks.append(0)
+	a.install_file_assignment(files, ranks, 15, 15)
+	a._formation_angle = PI   # an about-face folded into the grid
+	a._rally_resquare_pending = true
+	var before: float = _stale_grid(a)
+	a._physics_process(1.0 / 60.0)
+	assert_false(a._rally_resquare_pending, "setup: the re-square ran this tick")
+	assert_gt(MeleeFrontGeometry.query_extension(a), before, "setup: deeper")
+	assert_almost_eq(SpatialHash.max_query_extension(), MeleeFrontGeometry.query_extension(a),
+		0.001, "noted by the tick")

@@ -153,8 +153,9 @@ static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 		contact_unit: Unit = null) -> Unit:
 	var best: Unit = null
 	var best_d_sq: float = radius * radius
-	# `contact_fallback` (auto-acquisition only: nearest_enemy, roll_the_line_target, and
-	# OrderGuards.enemy_in_range at its default detection radius): an enemy past `radius`
+	# `contact_fallback` (auto-acquisition: nearest_enemy, roll_the_line_target and
+	# OrderGuards.enemy_in_range at its default detection radius; and Unit._support_tick's
+	# guard around the ward, measured from the ward): an enemy past `radius`
 	# that is already in frontal melee contact with u (two deep blocks held at their front
 	# ranks can stand further apart than the detection radius) is returned when nothing
 	# within `radius` qualifies, so a search that finds anyone inside its radius answers as
