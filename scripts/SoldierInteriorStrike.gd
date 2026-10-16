@@ -5,9 +5,13 @@ class_name SoldierInteriorStrike
 ## where no striker can reach him and is never struck. Every other man of the block within
 ## reach of such an enemy strikes him instead (SoldierMelee's interior pass).
 ##
-## Inside means: deeper than the rearmost man of the striking set along the grid's front, no
-## deeper than the block's rearmost man, and between its outermost files, the box taken over
-## the live men's centres and padded on the flanks and rear by Unit.interior_strike_margin.
+## Inside means: behind the rearmost man of the striking set, along the axis that set is
+## ranked on (Unit.near_front_forward), and within the block's footprint. The footprint is the
+## grid's own rectangle in the frame its men stand in (MeleeFrontGeometry.grid_front, which
+## holds through a turn still in progress): its front-rank depth and front half-width
+## (MeleeFrontProfile) about the live men's mean, padded on the flanks and rear by
+## Unit.interior_strike_margin. Taken from the grid rather than from the men's extremes, it
+## neither swells into a turning block's corners nor follows one man knocked out of the ranks.
 ## An enemy pressing on a flank or the rear from outside is not inside, so a flank or rear
 ## attack keeps its edge over the ranks facing away. A square already strikes with whoever
 ## is threatened, so it has no interior pass. A routing block is a fleeing crowd with no ranks
@@ -28,25 +32,24 @@ static func inside_candidates(attacker: Unit, front: PackedInt32Array, defenders
 		return none
 	var origin: Vector2 = attacker.position
 	var fwd: Vector2 = attacker.near_front_forward()
-	var right: Vector2 = Vector2(-fwd.y, fwd.x)
 	var front_depth: float = INF
 	for i in front:
 		front_depth = minf(front_depth, (attacker._sim_soldier_pos[i] - origin).dot(fwd))
-	var rear: float = INF
-	var left_edge: float = INF
-	var right_edge: float = -INF
+	var centre := Vector2.ZERO
+	var live: int = 0
 	for i in range(n):
-		if attacker._sim_soldier_hp[i] <= 0.0:
-			continue
-		var rel: Vector2 = attacker._sim_soldier_pos[i] - origin
-		rear = minf(rear, rel.dot(fwd))
-		var side: float = rel.dot(right)
-		left_edge = minf(left_edge, side)
-		right_edge = maxf(right_edge, side)
+		if attacker._sim_soldier_hp[i] > 0.0:
+			centre += attacker._sim_soldier_pos[i]
+			live += 1
+	if live == 0:
+		return none
+	centre /= float(live)
+	var grid: Vector2 = MeleeFrontGeometry.grid_front(attacker)
+	var across: Vector2 = grid.orthogonal()
+	var prof: MeleeFrontProfile = MeleeFrontProfile.of(attacker)
 	var margin: float = attacker.interior_strike_margin
-	rear -= margin
-	left_edge -= margin
-	right_edge += margin
+	var rear: float = -prof.depth - margin
+	var half_width: float = prof.half + margin
 	var out: Array[PackedInt32Array] = []
 	var any_inside := false
 	var scanned: int = n
@@ -58,12 +61,12 @@ static func inside_candidates(attacker: Unit, front: PackedInt32Array, defenders
 			continue
 		scanned += def_indices[dj].size()
 		for di in def_indices[dj]:
-			var rel: Vector2 = d._sim_soldier_pos[di] - origin
-			var depth: float = rel.dot(fwd)
-			if depth >= front_depth or depth < rear:
+			var pos: Vector2 = d._sim_soldier_pos[di]
+			if (pos - origin).dot(fwd) >= front_depth:
 				continue
-			var side: float = rel.dot(right)
-			if side >= left_edge and side <= right_edge:
+			var rel: Vector2 = pos - centre
+			var along: float = rel.dot(grid)
+			if along >= rear and along <= prof.depth and absf(rel.dot(across)) <= half_width:
 				inside.push_back(di)
 		any_inside = any_inside or not inside.is_empty()
 		out.append(inside)

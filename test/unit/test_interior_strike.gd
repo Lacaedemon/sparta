@@ -3,7 +3,8 @@ extends GutTest
 ## near-front ranks strike, so without the interior pass nobody ever strikes him. These pin
 ## that the block's other men within reach do, and that an enemy pressing on the rear or a
 ## flank from outside, or one out of everyone's reach, still is not struck by them.
-## The fixtures only use API main already has, so on main they fail on their assertions.
+## Most fixtures only use API main already has, so on main they fail on their assertions;
+## the router and turned-block tests also call SoldierInteriorStrike, which main lacks.
 
 const SEED: int = 7654321
 const REACH: float = 26.0          # sword reach (1.3 m * 20)
@@ -35,9 +36,13 @@ func _unit(uid: int, team: int, n: int, pos: Vector2, face: Vector2) -> Unit:
 
 
 ## A 4-file, 10-rank block at the origin facing down (+y is its front), its men laid out
-## on the fixture's own grid so the geometry does not depend on the spawn spacing.
+## on the fixture's own grid so the geometry does not depend on the spawn spacing. The unit
+## is given that grid's file count and pitches, which its footprint is measured by.
 func _block() -> Unit:
 	var a := _unit(1, 0, FILES * RANKS, Vector2.ZERO, Vector2.DOWN)
+	a.frontage_override = FILES
+	a.file_pitch = PITCH / a.spacing_scale
+	a.rank_pitch = PITCH / a.spacing_scale
 	var i: int = 0
 	for r in range(RANKS):
 		for f in range(FILES):
@@ -137,13 +142,18 @@ func test_a_striking_rank_man_strikes_once_per_cadence_when_an_enemy_is_inside()
 	e._sim_soldier_hp[0] = 1.0e6   # survives the cadence, so every pass gets its turn at him
 	var before := PackedFloat32Array(a._sim_soldier_stamina)
 	a.resolve_soldier_melee(e)
+	var front := a.engaged_soldier_indices(a._sim_soldier_pos.size())
 	var strikes: int = 0
+	var behind_strikes: int = 0
 	for i in range(before.size()):
 		var spent: float = before[i] - a._sim_soldier_stamina[i]
 		assert_lte(spent, SoldierCombat.KAPPA_A + 0.0001, "soldier %d struck at most once" % i)
 		if spent > 0.0:
 			strikes += 1
+			if not front.has(i):
+				behind_strikes += 1
 	assert_gt(strikes, 0, "the enemy behind the striking set was struck")
+	assert_gt(behind_strikes, 0, "men behind the striking set joined in")
 
 
 func test_the_footprint_margin_is_a_snapshotted_parameter_that_widens_the_box() -> void:
@@ -217,3 +227,85 @@ func test_a_routing_block_has_no_interior_pass() -> void:
 	a.state = Unit.State.ROUTING
 	assert_true(SoldierInteriorStrike.inside_candidates(a, front, defenders, indices).is_empty(),
 			"a routing block finds nobody inside it")
+
+
+## Health the lone enemy at `p` would lose to `a`, after checking he stands outside the
+## block's grid, within reach of one of its men and out of reach of its striking set.
+func _wounds_outside(a: Unit, p: Vector2, what: String) -> float:
+	var e := _lone_enemy_at(p)
+	assert_lt(_nearest_man_distance(a, p), REACH, "precondition: a man of the block reaches him " + what)
+	assert_gt(_nearest_striker_distance(a, p), REACH, "precondition: the striking set cannot " + what)
+	return _wounds(a, e)
+
+
+func test_a_block_turning_in_place_does_not_take_in_an_enemy_off_its_flank() -> void:
+	# Mid-turn the heading has swung 45 degrees while the men still stand on the old grid. The
+	# men's extremes along the new heading would bound a diamond reaching far past the grid's
+	# flank; the footprint keeps to the grid the men stand on.
+	var a := _block()
+	a._engage_turn_start_facing = Vector2.DOWN
+	a._engage_turn_target = Vector2.DOWN.rotated(deg_to_rad(90.0))
+	a.facing = Vector2.DOWN.rotated(deg_to_rad(45.0))
+	var p := Vector2(-(FILES - 1) * 0.5 * PITCH - 12.0, -20.0)
+	assert_lt((p - a.position).dot(a.near_front_forward()), _front_depth_along(a),
+			"precondition: he is behind the striking set along the new heading")
+	assert_eq(_wounds_outside(a, p, "off the flank"), 0.0, "a flank attacker outside the turning block keeps his edge")
+
+
+func test_one_man_knocked_out_of_the_ranks_does_not_widen_the_footprint() -> void:
+	var a := _block()
+	var moved: int = (RANKS - 3) * FILES + FILES - 1   # the right-hand file, three ranks from the rear
+	a._sim_soldier_pos[moved] += Vector2(40.0, 0.0)
+	var p := Vector2((FILES - 1) * 0.5 * PITCH + 12.0, a._sim_soldier_pos[moved].y)
+	assert_eq(_wounds_outside(a, p, "off the flank"), 0.0, "one straggler does not move the block's flank")
+
+
+## Depth (along the block's near_front_forward) of the rearmost man of its striking set.
+func _front_depth_along(a: Unit) -> float:
+	var fwd: Vector2 = a.near_front_forward()
+	var depth: float = INF
+	for i in a.engaged_soldier_indices(a._sim_soldier_pos.size()):
+		depth = minf(depth, (a._sim_soldier_pos[i] - a.position).dot(fwd))
+	return depth
+
+
+func test_with_nobody_inside_the_pass_draws_nothing_and_changes_nothing() -> void:
+	# Two blocks front to front, the enemy's front rank one pitch ahead of the block's: only the
+	# striking ranks strike, each strike draws exactly its land and fall rolls, and no man
+	# behind the striking set moves, tires or is touched.
+	var a := _block()
+	var e := _unit(2, 1, FILES * 3, Vector2(0.0, (RANKS - 1) * 0.5 * PITCH + 2.0 * PITCH), Vector2.UP)
+	var k: int = 0
+	for r in range(3):
+		for f in range(FILES):
+			e._sim_soldier_pos[k] = Vector2((f - (FILES - 1) * 0.5) * PITCH,
+					(RANKS - 1) * 0.5 * PITCH + PITCH * (1 + r))
+			k += 1
+	var front := a.engaged_soldier_indices(a._sim_soldier_pos.size())
+	var defenders: Array[Unit] = [e]
+	var indices: Array[PackedInt32Array] = [PackedInt32Array(range(e._sim_soldier_pos.size()))]
+	assert_true(SoldierInteriorStrike.inside_candidates(a, front, defenders, indices).is_empty(),
+			"precondition: nobody is inside the block")
+	var pos := PackedVector2Array(a._sim_soldier_pos)
+	var vel := PackedVector2Array(a._sim_body_vel)
+	var stam := PackedFloat32Array(a._sim_soldier_stamina)
+	var hp := PackedFloat32Array(a._sim_soldier_hp)
+	var prone := PackedFloat32Array(a._sim_prone)
+	a.resolve_soldier_melee(e)
+	var strikes: int = 0
+	for i in range(stam.size()):
+		if a._sim_soldier_stamina[i] < stam[i]:
+			strikes += 1
+		if front.has(i):
+			continue
+		assert_eq(a._sim_soldier_pos[i], pos[i], "soldier %d behind the striking set stood still" % i)
+		assert_eq(a._sim_body_vel[i], vel[i], "soldier %d behind the striking set was not shoved" % i)
+		assert_eq(a._sim_soldier_stamina[i], stam[i], "soldier %d behind the striking set held his blow" % i)
+		assert_eq(a._sim_soldier_hp[i], hp[i], "soldier %d behind the striking set was not hurt" % i)
+		assert_eq(a._sim_prone[i], prone[i], "soldier %d behind the striking set kept his feet" % i)
+	assert_gt(strikes, 0, "precondition: the striking ranks struck")
+	var ref := RandomNumberGenerator.new()
+	ref.seed = SEED
+	for _d in range(2 * strikes):
+		ref.randf()
+	assert_eq(Replay.rng.state, ref.state, "the cadence drew exactly two rolls per strike")

@@ -201,8 +201,8 @@ static func _strike_interior(attacker: Unit, front: PackedInt32Array, live_defen
 ## and fall rolls (always both, in that order), the wound, the knockback impulse pair, the
 ## prone timer and the stamina drain. `my_prof` and `en_prof` are the two sides' combat
 ## profiles, `mods` is UnitCombat.order_mode_modifiers(attacker, defender), and
-## `atk_formation_scale` and
-## `atk_melee_scale` are the attacker-side wound scales resolve() computes.
+## `atk_formation_scale` and `atk_melee_scale` are the attacker-side wound scales resolve()
+## computes.
 static func _strike(attacker: Unit, ai: int, my_prof: Dictionary, defender: Unit, target: int,
 		en_prof: Dictionary, mods: Vector2, atk_formation_scale: float,
 		atk_melee_scale: float) -> void:
