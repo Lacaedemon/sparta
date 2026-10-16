@@ -18,5 +18,13 @@
     {"tick": 10, "key": "Comma", "ctrl": true}
   ],
   "state": [10, 40, 70, 100, 160, 220, 240],
-  "frames": [10, 70, 100, 160, 220]
+  "frames": [10, 70, 100, 160, 220],
+  "defect_exemptions": {
+    "shape_residual": {
+      "uids": [
+        4
+      ],
+      "reason": "uid 4: a block that leaves a melee scrambled stays scrambled while it marches off (#1837). The clip diverges at tick 1, where the interior strike (#1834) acts on two blocks spawned inside each other. With it, uid 4 meets cavalry uid 2 at about t122, inside it and struck by its men, and its residual then grows from about 4 to 14 to 20 wu as it marches on out of contact; on main its contact comes at t182 and lasts to the clip's end, so it is not judged. Worst, clip seed and seeds 1 to 4: head 14.3, 20.3, 17.8, 14.1, 15.8 against 13.5; main passes all five. Measured 2026-10-16 on dense 2-tick dumps of the clip seed and perturbed seeds 1 to 4 (SPARTA_DEMO_SEED_RUN), main 2c2955cc against the #1834 head."
+    }
+  }
 }
