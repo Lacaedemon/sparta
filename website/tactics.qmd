@@ -899,6 +899,26 @@ one soldier going down doesn't open a seam. Normal order holds a couple of ranks
 of the line before it starts to give; Loose order has no such discipline, so
 soldiers there can end up more deeply mixed with the enemy.
 
+Two infantry blocks that meet squarely front to front fight along one line.
+They come into contact as their front ranks close to within weapon reach,
+and the press stops there,
+so each block's ranks stay behind its own front rank
+instead of being drawn in among the enemy's.
+Blocks that meet only partly face to face, offset to one side, still press some way in.
+A square faces every way, so a line attacking it also stops at its outer rank.
+A cavalry charge, a fight with missile troops,
+and an attack on a flank or the rear are still measured centre to centre,
+so there the attackers can end up among the defenders' ranks.
+
+Because only the front ranks reach each other,
+a frontal fight between two such blocks is slower to kill than it used to be.
+In a fight of 120 men against 120,
+each in tight order and neither breaking,
+about a fifth fewer men fell in the first 19 seconds than when the blocks pressed into each other.
+The block standing its ground lost about half as many as before,
+while the block that advanced lost about the same.
+Units therefore take longer to break in a straight-up frontal fight.
+
 Only the men actually in bodily contact get shoved about by the fighting.
 A spear reaches several ranks deep, so rank-four and rank-five spearmen
 strike over the heads of the men in front --- but nothing is touching them,

@@ -446,7 +446,8 @@ static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flan
 static func flank_multiplier(u: Unit, attacker: Unit) -> float:
 	if u.in_square():
 		return 1.0
-	var to_attacker: Vector2 = (attacker.position - u.position).normalized()
+	# The bearing of the gap a frontal pair is measured on (MeleeFrontLine.toward).
+	var to_attacker: Vector2 = MeleeFrontLine.toward(u, attacker).normalized()
 	var d: float = u.facing.dot(to_attacker)
 	if d >= 0.35:
 		return 1.0

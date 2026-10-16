@@ -11,15 +11,20 @@ extends RefCounted
 ## _separate() directly, with no Battle running), callers fall back to a full
 ## group scan — see Unit._separation_candidates().
 
-# The cell size must exceed the widest separation floor (cavalry+cavalry = 48)
-# plus a unit's per-frame drift, so querying the 3x3 block around a position is a
-# guaranteed superset of every unit within separation distance. The per-pair
-# distance check in _separate() then filters that superset down to the exact same
-# set of overlaps a brute-force scan would find.
+# The cell size must exceed the widest centre-based separation floor (cavalry+cavalry
+# = 48) and melee contact range plus a unit's per-frame drift, so querying the 3x3
+# block around a position is a guaranteed superset of every unit within those
+# distances. A frontal pair's MeleeFrontLine extensions reach further, up to each
+# block's front-rank reach past its radius plus its anchor shift
+# (MeleeFrontGeometry.query_extension), so query() takes a radius and widens the block to
+# cover it. The per-pair distance check in _separate() then filters that superset down to
+# the exact same set of overlaps a brute-force scan would find.
 const CELL_SIZE := 128.0
 
 static var _frame: int = -1
 static var _cells: Dictionary = {}
+# The largest MeleeFrontGeometry.query_extension of any unit in this frame's grid.
+static var _max_query_extension: float = 0.0
 
 
 static func _key(p: Vector2) -> Vector2i:
@@ -40,6 +45,7 @@ static func rebuild(tree: SceneTree, frame: int) -> void:
 	_cells.clear()
 	var all: Array = tree.get_nodes_in_group("units")
 	all.append_array(tree.get_nodes_in_group("routers"))
+	_max_query_extension = _deepest(all)
 	for o in all:
 		var n: Node2D = o as Node2D
 		if n == null:
@@ -50,14 +56,32 @@ static func rebuild(tree: SceneTree, frame: int) -> void:
 		_cells[key].append(n)
 
 
-## Candidate units in the 3x3 cell block around `pos` — a superset of every unit
-## within CELL_SIZE. Traversal order is deterministic (fixed dx/dy loop, then each
-## cell's insertion order), so separation results are reproducible for replays.
-static func query(pos: Vector2) -> Array:
+## Candidate units in the cell block around `pos`: a superset of every unit within
+## `radius` (at least CELL_SIZE, the 3x3 block). Traversal order is deterministic (fixed
+## dx/dy loop, then each cell's insertion order), so separation results are reproducible
+## for replays.
+##
+## A block wider than one ring scans whichever is fewer: the ring block's cells, or the
+## occupied cells, keeping those inside the ring block. A deep block anywhere on the field
+## widens every frontal query (MeleeFrontGeometry.query_radius), and a few hundred empty
+## cells would cost more than the handful of units there are. The occupied cells are sorted
+## into the ring scan's own order (x, then y), so either scan returns the same list.
+static func query(pos: Vector2, radius: float = CELL_SIZE) -> Array:
 	var out: Array = []
 	var c := _key(pos)
-	for dx in range(-1, 2):
-		for dy in range(-1, 2):
+	var rings: int = maxi(1, ceili(radius / CELL_SIZE))
+	if rings > 1 and _cells.size() < (2 * rings + 1) * (2 * rings + 1):
+		var inside: Array[Vector2i] = []
+		for key in _cells:
+			var k: Vector2i = key
+			if absi(k.x - c.x) <= rings and absi(k.y - c.y) <= rings:
+				inside.append(k)
+		inside.sort()
+		for k in inside:
+			out.append_array(_cells[k])
+		return out
+	for dx in range(-rings, rings + 1):
+		for dy in range(-rings, rings + 1):
 			var cell: Variant = _cells.get(Vector2i(c.x + dx, c.y + dy))
 			if cell != null:
 				out.append_array(cell)
@@ -68,3 +92,38 @@ static func query(pos: Vector2) -> Array:
 static func reset() -> void:
 	_frame = -1
 	_cells.clear()
+	_max_query_extension = 0.0
+
+
+## The largest MeleeFrontGeometry.query_extension of any unit in the current grid.
+static func max_query_extension() -> float:
+	return _max_query_extension
+
+
+## Re-read max_query_extension from the live units, for the current frame's grid. rebuild()
+## runs before the tick's orders and tier transitions, and an order that narrows a frontage
+## or leaves a square, or a far block promoted close, can deepen a block after it; Battle
+## calls this once those have run, and again after the AI. Within the units' own ticks, a
+## unit reports its live reading (Unit.note_front_depth) before each front-line query and at
+## the end of its tick, set_frontage and set_formation report it at once, and a merge reports
+## the host it deepens, so every unit that ticks after a deepening reads it. One that ticked
+## before it reads it from the next rebuild.
+static func refresh_query_extension(tree: SceneTree) -> void:
+	var all: Array = tree.get_nodes_in_group("units")
+	all.append_array(tree.get_nodes_in_group("routers"))
+	_max_query_extension = _deepest(all)
+
+
+## Raise max_query_extension to `extension` if it is larger (see refresh_query_extension).
+static func note_query_extension(extension: float) -> void:
+	_max_query_extension = maxf(_max_query_extension, extension)
+
+
+## The largest MeleeFrontGeometry.query_extension in `units`.
+static func _deepest(units: Array) -> float:
+	var deepest: float = 0.0
+	for o in units:
+		var u: Unit = o as Unit
+		if u != null:
+			deepest = maxf(deepest, MeleeFrontGeometry.query_extension(u))
+	return deepest

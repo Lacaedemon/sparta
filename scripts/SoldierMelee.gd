@@ -238,6 +238,10 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 			if attacker.knockback_push_indefinite:
 				defender_speed_cap = SoldierCombat.KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP
 			else:
+				# A shove's length, not a centre-to-centre range, so it keeps the capped
+				# _front_depth() sum and no MeleeFrontLine.floor_from: the struck man
+				# stands in the front rank, and clearing the line is a few ranks' travel for
+				# him however far apart the two block centres are held.
 				var clear_dist: float = attacker._front_depth() + defender._front_depth()
 				defender_speed_cap = SoldierCombat.knockback_focus_clear_line_cap(
 						clear_dist, SoldierBodies.BODY_ACCEL_FLOOR)
@@ -362,6 +366,7 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				unit._sim_soldier_rank = UnitFormation.drop_rank_assignment(
 						unit._sim_soldier_rank, unit._sim_soldier_file, i)
 				unit._sim_soldier_file.remove_at(i)
+				unit.note_file_assignment_changed()
 			if i < unit._sim_soldier_square_slot.size():
 				# Keep the square slot pairing index-aligned AND still a permutation:
 				# dropping this man's entry and stepping every later cell id down is

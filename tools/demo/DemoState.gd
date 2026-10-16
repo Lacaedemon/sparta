@@ -547,7 +547,10 @@ static func motion_ref(u: Node) -> Dictionary:
 ## actually lays out (Unit.formation_slots with the arcs off), so it holds for every layout: a
 ## file-major block keeps each file at its own place when it is short of men, a row-major or
 ## squared one centres its ranks, and a frontage anchor shifts a line sideways. Empty with no men.
-## The footprint DemoDefects' slots_beyond_flanks measures slots against.
+## The footprint DemoDefects' slots_beyond_flanks measures slots against. `front` is the world
+## direction the men's front rank faces (MeleeFrontGeometry.grid_front: the heading turned by the
+## grid's fold, or the start heading while an in-place turn is still in progress), which the
+## unit's facing cannot give once a turn is folded into the grid.
 static func slot_grid_footprint(u: Node) -> Dictionary:
 	var n: int = u.soldiers
 	if n <= 0:
@@ -556,9 +559,12 @@ static func slot_grid_footprint(u: Node) -> Dictionary:
 	if local.is_empty():
 		return {}
 	var sign: float = -1.0 if u._formation_mirror_x else 1.0
-	var axis: Vector2 = Vector2.RIGHT.rotated(u.soldier_block_world_angle()) * sign
-	# Unit.soldier_world_slots negates a slot's local x under the mirror and rotates it by the
-	# block angle, so its world offset along `axis` (which carries the same sign) is its local x.
+	var front: Vector2 = MeleeFrontGeometry.grid_front(u as Unit)
+	# The grid's lateral axis, square to `front`: outside a turn it is the block angle's x axis
+	# (soldier_block_world_angle is the front's angle plus a quarter turn). Unit.soldier_world_slots
+	# negates a slot's local x under the mirror, so its offset along `axis` (which carries the same
+	# sign) is its local x. During an in-place turn the axis stays square to the men's front.
+	var axis: Vector2 = front.orthogonal() * -sign
 	var lo: float = INF
 	var hi: float = -INF
 	for p in local:
@@ -566,6 +572,7 @@ static func slot_grid_footprint(u: Node) -> Dictionary:
 		hi = maxf(hi, p.x)
 	return {
 		"axis": [round_to(axis.x, 4), round_to(axis.y, 4)],
+		"front": [round_to(front.x, 4), round_to(front.y, 4)],
 		"lateral_min": round_to(lo, 2),
 		"lateral_max": round_to(hi, 2),
 	}
