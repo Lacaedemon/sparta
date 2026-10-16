@@ -929,6 +929,8 @@ whatever rank he stands in,
 so a few men who have broken into the middle of a block are cut down quickly.
 An enemy pressing on a flank or the rear from outside still faces only the ranks
 turned towards him, so a flank or rear attack keeps its edge.
+Two blocks that meet squarely front to front stay out of each other,
+so this does not make a straight frontal fight any deadlier.
 
 Only the men actually in bodily contact get shoved about by the fighting.
 A spear reaches several ranks deep, so rank-four and rank-five spearmen
