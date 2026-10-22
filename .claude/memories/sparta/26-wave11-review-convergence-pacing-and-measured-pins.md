@@ -22,7 +22,7 @@ Because B findings stopped blocking, the round-8 agy CLEAN is partly true by def
 It was agy's first CLEAN in eight rounds.
 Claude's round 8 still had A:0 and C:2, and needed a confirmation pass, which was CLEAN on f54859ef.
 PR #1838 then merged as 2c2955cc.
-The cause (rule versus shrinking findings) was not separated by this one PR.
+The cause (the rule versus other changes between rounds 7 and 8) was not separated by this one PR.
 
 - **Do:** when review findings drift to ever-narrower sites on a large diff, write the A/B/C rule into the review prompt and file the B list as one issue, so each B finding has a place to go.
 
@@ -109,7 +109,7 @@ Part 25 recorded the same thing in round 1, where two named functions did not ex
 Findings also needed measuring: in round 6 the two reviewers disagreed on the shield-wall case from lesson 2 (`_is_frontal_attack`).
 Agy said a shield wall loses its frontal defence against an anchored attacker.
 Claude said the sign test was barely affected.
-The round-6 finisher report measured `melee_defense_factor` in one constructed test: a shield wall facing up, and an attacker turned 30 degrees with a 150 wu anchor whose men are 60 wu ahead.
+The round-6 finisher report measured `melee_defense_factor` in one constructed test: a shield wall facing up, and an attacker turned 30 degrees with a 150 wu anchor whose men stand 60 wu ahead of the wall.
 The factor was 1.0 with the old position-based test (frontal cover lost) and 0.65 with the fix, so agy was right.
 That is one constructed case, not a sweep.
 The fix is a7d8be1a.
