@@ -9,9 +9,10 @@
     },
     "shape_residual": {
       "uids": [
+        2,
         8
       ],
-      "reason": "Team 1's cavalry squadron (uid 8, 9 ranks, 960 wu deep) now deploys with its front rank on its line and marches a long diagonal toward its target, so the deep block spends the clip mid-turn and its rear ranks trail its grid: the same deep-block mid-turn mechanism declared for uid 8 in cycle-charge.json (#1546). CI website demo-diff on PR #1677: worst 77.78 wu against the 30 wu floor, merge-base 3.199."
+      "reason": "Team 1's cavalry squadron (uid 8, 9 ranks, 960 wu deep) now deploys with its front rank on its line and marches a long diagonal toward its target, so the deep block spends the clip mid-turn and its rear ranks trail its grid: the same deep-block mid-turn mechanism declared for uid 8 in cycle-charge.json (#1546). CI website demo-diff on PR #1677: worst 77.78 wu against the 30 wu floor, merge-base 3.199. Uid 2 (team 0's archers) is tracked in #1847: marching with its grid folded, its men drift off their slots on main 2c2955cc too, where contact comes first and hides the check. With flank and rear contact at the defender's edge (#1845) the archers stay out of contact longer. Measured 2026-10-22 with 2-tick samples from tick 2 on the clip seed and perturbed seeds 1 to 4: branch 75adf609 reads 30.7, 30.3, 30.9, 29.4 and 30.1 wu against the 27 wu threshold; main passes on all five."
     }
   }
 }
