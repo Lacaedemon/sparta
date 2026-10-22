@@ -2,10 +2,11 @@
 
 This was observed on one PR (#1838, for #1827) over 8 rounds.
 Rounds 1 to 4 were about other things: contact sites, caches, perf and replay.
-In rounds 6 and 7 the findings were mostly corner cases of anchored blocks.
-The 2026-10-15 notebook says round 6 was "converging on anchored-block corner cases", and round 7 still had agy finding new sites: fog filter in support, one-sided reach, rally coast, cycle-charge target commit, demo comments.
-Findings were already shrinking: Claude's round 7 was down to 5 low findings.
-For round 8 the round-8 review prompt defined three classes:
+In round 6 the findings were mostly corner cases of anchored blocks;
+the 2026-10-15 notebook says they were "converging on anchored-block corner cases".
+Round 7's agy findings were mostly other sites: the fog filter in support, one-sided reach, the rally coast and the cycle-charge target.
+Finding counts for rounds 5, 6 and 7 were Claude 4, 5, 5 and agy 4, 4, 7.
+The round-8 review prompt defined three classes:
 
 - (A) "a regression this PR introduces vs main a3714751, or a defect in code this PR adds
   -- these block;"
@@ -34,7 +35,8 @@ The cause (rule versus shrinking findings) was not separated by this one PR.
 The round-4 fix on #1827 changed which gap is measured at contact.
 The 2026-10-15 notebook records that it "missed five" consumers, found by later review rather than by the author.
 Round 5 (044b1ff8) fixed them: the router anchor now mirrors `within_contact`, and `contact_point()`/`toward()` are used at the facing, press and flank sites.
-Round 6 then found the shield wall still read the old measure (see the `_is_frontal_attack` case in the last lesson), and the cycle-charge recharge and the support guard needed the same extension.
+Round 6 then found that the shield wall's frontal test (`_is_frontal_attack`) still read the old position-based measure, so an attacker whose anchored men stood before the wall stripped its frontal cover.
+The cycle-charge recharge and the support guard needed the same extension.
 
 - **Do:** when a fix changes which quantity is measured, grep for every reader of the old quantity and decide each one, then list them in the handback, instead of fixing only the sites a review named.
 
@@ -104,11 +106,12 @@ As of 2026-10-21, no second-vendor review of #1834 has been possible.
 
 In the round-6 reviews of #1827, the notebook notes that agy "quoted constants/functions not in the tree again".
 Part 25 recorded the same thing in round 1, where two named functions did not exist.
-Findings also needed measuring: in round 6 the two reviewers disagreed on `_is_frontal_attack`.
+Findings also needed measuring: in round 6 the two reviewers disagreed on the shield-wall case from lesson 2 (`_is_frontal_attack`).
 Agy said a shield wall loses its frontal defence against an anchored attacker.
 Claude said the sign test was barely affected.
-The quantity measured was `melee_defense_factor`, which returned 1.0 with the old position-based test (frontal cover lost) and 0.65 with the fix, so agy was right.
-The source is the round-6 finisher report as summarised in the notebook.
+The round-6 finisher report measured `melee_defense_factor` in one constructed test: a shield wall facing up, and an attacker turned 30 degrees with a 150 wu anchor whose men are 60 wu ahead.
+The factor was 1.0 with the old position-based test (frontal cover lost) and 0.65 with the fix, so agy was right.
+That is one constructed case, not a sweep.
 The fix is a7d8be1a.
 
 - **Do:** grep the tree for each constant, function and line a finding quotes before acting, and measure a finding when the reviewers disagree.
