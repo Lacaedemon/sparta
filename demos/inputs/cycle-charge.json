@@ -137,9 +137,10 @@
   "defect_exemptions": {
     "shape_residual": {
       "uids": [
+        3,
         4
       ],
-      "reason": "Tracked in #1841: the caracoling cavalry's turnaround at the end of the clip, the window where its heading flutters (the facing_flutter entry). Uid 4's men fall off their slots there on main too. Measured 2026-10-22 with 2-tick samples from tick 2 (even ticks): on main 2c2955cc uid 4's residual passes 25 wu at tick 1270 and reaches 31.3 at tick 1292 against the 30 wu threshold, failing on the clip seed and perturbed seeds 1 and 4 (31.3, 34.3, 52.2); on the branch with flank and rear contact at the defender's edge (#1845) it passes 25 wu at tick 1258 and reaches 56.3 at tick 1300, failing on all five (56.3 to 66.1). CI's dense delta, sampling odd ticks from the divergence at tick 953, reads main at 21.35, so there only the branch fails."
+      "reason": "Tracked in #1841: the caracoling cavalry's turnaround at the end of the clip, the window where its heading flutters (the facing_flutter entry). Uids 3 and 4's men fall off their slots there on main too. Uid 3 fails on main 2c2955cc already, at this script's own state ticks (254.9 wu against the 30 wu threshold; the branch reads 162.5) and with 2-tick samples from tick 2 on the clip seed and perturbed seeds 1 to 4 (main 250.8 to 259.9, branch 162.5 to 221.9). Measured 2026-10-22 with 2-tick samples from tick 2 (even ticks): on main 2c2955cc uid 4's residual passes 25 wu at tick 1270 and reaches 31.3 at tick 1292 against the 30 wu threshold, failing on the clip seed and perturbed seeds 1 and 4 (31.3, 34.3, 52.2); on the branch with flank and rear contact at the defender's edge (#1845) it passes 25 wu at tick 1258 and reaches 56.3 at tick 1300, failing on all five (56.3 to 66.1). CI's dense delta, sampling odd ticks from the divergence at tick 953, reads main at 21.35, so there only the branch fails."
     },
     "overlap": {
       "uids": [
