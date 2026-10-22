@@ -912,6 +912,24 @@ and fights it from outside the block.
 A cavalry charge and a fight with missile troops are still measured centre to centre,
 so there the attackers can end up among the defenders' ranks.
 
+::: {#fig-rear-attack-edge .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/rear_attack_edge.jpg">
+  <source src="media/rear_attack_edge.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+An infantry block attacks another block from behind.
+It comes into contact as its front rank closes to within reach of the defender's rear rank,
+and the press stops there:
+it fights the defender's rear rank from outside the block,
+and neither block's men end up inside the other.
+:::
+
 Stopping at the edge makes a flank or rear attack cheaper for the attacker,
 since the defender's men facing away from it cannot strike back.
 In a test of 120 men against 120 in tight order, over the first 19 seconds,
