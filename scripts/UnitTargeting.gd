@@ -60,7 +60,7 @@ static func nearest_enemy(u: Unit, predicate: Callable = Callable()) -> Unit:
 ## closer rejected candidate must not be able to shadow a farther accepted one out of
 ## consideration).
 ##
-## A router past detection_range that u is already in frontal melee contact with is returned
+## A router past detection_range that u is already in frontal or side melee contact with is returned
 ## when no router within it qualifies, as nearest_enemy_to's `contact_fallback` does.
 static func nearest_routing_enemy(u: Unit, predicate: Callable = Callable()) -> Unit:
 	var best_router: Unit = null
@@ -156,8 +156,9 @@ static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 	# `contact_fallback` (auto-acquisition: nearest_enemy, roll_the_line_target and
 	# OrderGuards.enemy_in_range at its default detection radius; and Unit._support_tick's
 	# guard around the ward, measured from the ward): an enemy past `radius`
-	# that is already in frontal melee contact with u (two deep blocks held at their front
-	# ranks can stand further apart than the detection radius) is returned when nothing
+	# that is already in frontal or side melee contact with u (two deep blocks held at their
+	# front ranks, or a block held at a wide line's end file, can stand further apart than the
+	# detection radius) is returned when nothing
 	# within `radius` qualifies, so a search that finds anyone inside its radius answers as
 	# it always has. A caller-chosen radius stays an upper bound unless it passes the flag.
 	# Contact here is the pair's, from the longer of the two reaches (as
@@ -214,8 +215,8 @@ static func melee_contact_distance(attacker_range: float, attacker_radius: float
 
 
 ## The attacker's radius melee_contact_distance counts against `enemy`: 0 against a router,
-## which it omits. MeleeFrontLine.within_contact takes it, so the frontal extension adds the
-## attacker's whole front-rank depth when the base range already left its radius out.
+## which it omits. MeleeFrontLine.within_contact takes it, so the extension (frontal or side)
+## adds the attacker's whole reach when the base range already left its radius out.
 static func melee_contact_attacker_radius(attacker_radius: float, enemy: Unit) -> float:
 	return 0.0 if enemy.state == Unit.State.ROUTING else attacker_radius
 

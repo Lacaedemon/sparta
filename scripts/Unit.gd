@@ -1492,13 +1492,17 @@ const SEPARATION_RADIUS_MAX: float = 1.4 * WorldScaleRef.WU_PER_M
 # half capped at attack_range*0.5) bounds the largest possible single-pair push to
 # roughly that same ~50-60 wu even in the fully-overlapping/co-located worst case, so
 # this cap -- comfortably above 60wu/(1/60s)=3600 wu/s -- never binds for any push those
-# floors can produce. A frontal pair's floor also carries MeleeFrontLine.floor_from,
-# up to the two blocks' front-rank depths (126 wu for two 8-rank blocks, more for deeper
-# ones). The cap is 100 wu a tick at 60 ticks/s and each block takes its share of the
-# deficit. Two 8-rank blocks spawned front to front with their centres a RADIUS apart (the
-# least separation at which the floor carries its whole extension; MeleeFrontLine.pair's
-# "ahead" term) have a deficit of 108 wu and part in one tick, 54 wu each. A deficit past
-# 200 wu (two blocks of more than 12 ranks each at an 18 wu rank pitch, spawned or swung deep
+# floors can produce. A pair in frontal or side contact also carries
+# MeleeFrontLine.floor_from: front to front, up to the two blocks' front-rank depths (126 wu
+# for two 8-rank blocks, more for deeper ones); on a flank, the attacker's front-rank depth
+# plus the defender's front half-width (189 wu for two 15-file, 8-rank blocks at an 18 wu
+# pitch); in the rear, the two depths again. The cap is 100 wu a tick at 60 ticks/s and each
+# block takes its share of the deficit. Two 8-rank blocks spawned front to front with their
+# centres a RADIUS apart (the least separation at which the floor carries its whole
+# extension; MeleeFrontLine.pair's "ahead" term) have a deficit of 108 wu and part in one
+# tick, 54 wu each; the 15-file flank pair has 171 wu, 85.5 each, also one tick. A deficit
+# past 200 wu (two blocks of more than 12 ranks each at an 18 wu rank pitch, or an 8-rank
+# block on the flank of a 32-file line, whose half-width is 279 wu, spawned or swung deep
 # into each other) reaches the cap, which spreads the rest of the push over the next ticks.
 # Measured
 # real gameplay (a full-sprint cavalry-vs-spear-line hard block) sits far below this, at
@@ -2823,7 +2827,7 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ##
 ## Also deliberately not a caller, for a related but distinct reason -- proximity rather than
 ## a targeting commit: _can_rally's broken-contact check (its own scan of the non-routing
-## enemies, within RALLY_CONTACT_RADIUS or in frontal melee contact) decides only whether a routed unit rallies or shatters; there
+## enemies, within RALLY_CONTACT_RADIUS or in frontal or side melee contact) decides only whether a routed unit rallies or shatters; there
 ## is no target_enemy assignment downstream of it at all. It is also not a genuine
 ## melee-contact-distance check the way the combat-resolution exemption above is
 ## (RALLY_CONTACT_RADIUS is a fixed proximity radius, not attack_range + both radii): at 8 m
@@ -2944,8 +2948,9 @@ func fresh_pick_allowed(candidate: Unit) -> bool:
 ## anchors as one in contact wherever the edge of the range happens to fall.
 ##
 ## The range is the pair's melee contact range plus MeleeFrontLine.contact_extension, so two
-## blocks front to front come into contact as their front ranks come within reach, not after
-## their ranks have walked into each other.
+## blocks front to front come into contact as their front ranks come within reach, and a block
+## on another's flank or rear as its front rank reaches that block's end file or rear rank,
+## not after their ranks have walked into each other.
 func _refresh_enemy_contact() -> void:
 	var routing: bool = state == State.ROUTING
 	var was_anchor_contact: bool = _router_anchor_contact
@@ -3282,8 +3287,10 @@ func _think(delta: float) -> void:
 		# fleeing target (ROUTING), the pursuer must reach weapon reach against the
 		# nearest fleeing bodies (attack_range + enemy.RADIUS) so soldiers can actually
 		# strike; outside that reach, the pursuer falls through to the chase branch to
-		# keep sprinting at full pace. Two blocks front to front reach further, to their
-		# real front ranks (MeleeFrontLine.contact_extension).
+		# keep sprinting at full pace. Two blocks front to front reach further, to their real
+		# front ranks, and a block on another's flank or rear to that block's end file or rear
+		# rank (MeleeFrontLine.contact_extension); a router's flank or rear is met centre to
+		# centre, since the side contact leaves a routing defender out.
 		var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, enemy)
 		var in_contact: bool = MeleeFrontLine.within_contact(self, enemy, contact_dist, dist_sq,
 				UnitTargeting.melee_contact_attacker_radius(RADIUS, enemy))
@@ -3710,8 +3717,9 @@ func _support_tick(delta: float) -> void:
 	# default include_routing (false, unchanged here) means a candidate reaching this
 	# predicate is never ROUTING, so fresh_pick_allowed's own ROUTING special case never
 	# triggers either.
-	# A threat in frontal melee contact with the ward past the guard radius (two deep blocks
-	# held at their front ranks) still counts, when nothing inside the radius does.
+	# A threat in frontal or side melee contact with the ward past the guard radius (two deep
+	# blocks held at their front ranks, or a block held at the ward's flank file or rear rank)
+	# still counts, when nothing inside the radius does.
 	var threat: Unit = UnitTargeting.nearest_enemy_to(self, ward.position, SUPPORT_GUARD_RADIUS,
 			false, false, Callable(self, "fresh_pick_allowed"), true, ward)
 	if threat != null:
@@ -4214,7 +4222,7 @@ var _adjacent_engaged_cache_frame: int = -1
 ## i.e. close enough for genuine simultaneous engagement, not merely detected at long range.
 ## "Contact range" is melee reach plus both bodies' collision radii
 ## (maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS, plus
-## MeleeFrontLine.contact_extension for a frontal pair), the symmetric form of
+## MeleeFrontLine.contact_extension for a pair in frontal or side contact), the symmetric form of
 ## the reach-plus-radii rule the other contact checks in this file use, rather than inventing
 ## a second distance rule for what "adjacent" means.
 ##
@@ -5578,7 +5586,7 @@ func formation_speed_factor() -> float:
 func _is_frontal_attack(attacker: Unit) -> bool:
 	if attacker == null or not is_instance_valid(attacker):
 		return true
-	# The bearing of the gap a frontal pair is measured on (MeleeFrontLine.toward), as
+	# The bearing of the gap a pair in contact is measured on (MeleeFrontLine.toward), as
 	# UnitCombat.flank_multiplier reads it.
 	var to_attacker: Vector2 = MeleeFrontLine.toward(self, attacker)
 	if to_attacker.length_squared() < 0.000001:
@@ -5708,8 +5716,9 @@ func _separate(delta: float) -> void:
 			# reach standoff is meant to emerge from knockback, not a separation rule.
 			# _front_depth() is capped at half the reach, so for blocks deeper than about
 			# three ranks the capped floor alone lets the centres close until each grid is
-			# ordered most of its depth into the other. For blocks front to front,
-			# MeleeFrontLine.floor_from adds the rest of each block's front depth back.
+			# ordered most of its depth into the other. For blocks in frontal or side contact,
+			# MeleeFrontLine.floor_from adds the rest of each block's reach back: its front
+			# depth, or the defender's end file or rear rank on a flank or rear.
 			# Only a pair within the extension's upper bound pays for it: one past that bound
 			# is rejected below with or without it. An extended floor holds the two blocks' men
 			# apart, so the push runs along the gap MeleeFrontLine measured (last_gap), which
@@ -8307,7 +8316,7 @@ func note_front_depth() -> void:
 
 ## The point to face and press toward against `enemy` in melee contact: this unit's position
 ## plus the gap MeleeFrontLine measures the pair on (MeleeFrontLine.toward). For an anchored
-## frontage meeting `enemy` front to front that gap runs between the two blocks' men; otherwise
+## frontage in frontal or side contact with `enemy` that gap runs between the two blocks' men; otherwise
 ## it is the positions' own gap, and the point is the enemy's position.
 func contact_point(enemy: Unit) -> Vector2:
 	return position + MeleeFrontLine.toward(self, enemy)
@@ -9549,8 +9558,10 @@ func _push_share(other: Unit) -> float:
 ## test that calls _separate() directly with no Battle running.
 ##
 ## The lookup covers every unit within SpatialHash.CELL_SIZE, which bounds the centre-based
-## floors and contact ranges. A frontal pair's MeleeFrontLine extensions reach further, by
-## up to both blocks' front-rank depths, so `front_line` (for a caller that applies them)
+## floors and contact ranges. A pair's MeleeFrontLine extensions (frontal or side contact)
+## reach further, by up to each block's reach past its radius along any axis (a line's
+## half-diagonal, a square's depth plus half-width) plus its anchor shift, so `front_line`
+## (for a caller that applies them)
 ## widens the lookup to MeleeFrontGeometry.query_radius against the deepest block in the grid.
 ## It widens for every eligible unit, a one-rank block included, so a pair finds each other
 ## from both sides.
@@ -9990,9 +10001,12 @@ func _clear_flight() -> void:
 ## Whether a routed unit recovers rather than shatters when its rout times out:
 ## it must have broken contact (no living, non-routing enemy within RALLY_CONTACT_RADIUS)
 ## and still field enough men to reform (>= shatter_strength_frac of its max). An enemy in
-## frontal melee contact past the radius holds it too: two deep blocks pressed at their front
-## ranks (MeleeFrontLine) stand further apart than the radius while their men are still in
-## the press. Positions + counts only, so it's deterministic and replay-safe.
+## frontal or side melee contact past the radius holds it too: two deep blocks pressed at
+## their front ranks, or the router's front pressed on an enemy's flank (MeleeFrontLine),
+## stand further apart than the radius while their men are still in the press. An enemy on
+## the router's own flank or rear is measured centre to centre (MeleeFrontLine._side_part
+## leaves a routing defender out). Positions + counts only, so it's deterministic and
+## replay-safe.
 func _can_rally() -> bool:
 	if soldiers < int(round(max_soldiers * shatter_strength_frac)):
 		return false
@@ -10000,7 +10014,7 @@ func _can_rally() -> bool:
 		var e: Unit = o as Unit
 		if e == null or e.team == team or e.state == State.DEAD:
 			continue
-		# Strictly inside the radius, or in melee contact at the pair's frontal range.
+		# Strictly inside the radius, or in melee contact at the pair's frontal or side range.
 		var d_sq: float = position.distance_squared_to(e.position)
 		if d_sq < RALLY_CONTACT_RADIUS * RALLY_CONTACT_RADIUS or MeleeFrontLine.within_contact(
 				self, e, maxf(attack_range, e.attack_range) + RADIUS + e.RADIUS, d_sq):

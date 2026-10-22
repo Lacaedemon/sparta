@@ -3,7 +3,8 @@ class_name MeleeFrontLine
 ## centre-to-centre ranges left them: contact_extension (via within_contact) and floor_from add
 ## the missing reach back, times weight(). Front to front, each block reaches its front rank. A
 ## block whose front faces the other's flank or rear reaches its own front rank and the other's
-## outer file or rank: the defender fronts every way, as a square does. Cavalry, missile and far
+## outer file or rank: the defender fronts every way, as a square does, unless it is routing
+## (a fleeing block's back is met centre to centre, as before). Cavalry, missile and far
 ## blocks keep the old ranges. MeleeFrontGeometry and MeleeFrontProfile measure the blocks.
 
 
@@ -13,8 +14,8 @@ class_name MeleeFrontLine
 ## the other's along the pair's axis (a ramp over one RADIUS, so the weight holds while the
 ## press closes), and the share of the narrower front facing the other. The side part, for fronts
 ## too far from opposed (side_gate): the same ahead and overlap terms with one block's front as
-## the axis and the other met on whatever side faces it (MeleeFrontGeometry.outline). The reaches
-## are the two parts' reaches averaged by their weights.
+## the axis and the other met on whatever side faces it (MeleeFrontGeometry.outline), unless
+## that other is routing. The reaches are the two parts' reaches averaged by their weights.
 static func pair(a: Unit, b: Unit) -> Vector3:
 	return _pair(a, b, MeleeFrontProfile.of(a), MeleeFrontProfile.of(b))
 
@@ -65,7 +66,8 @@ static func _pair(a: Unit, b: Unit, pa: MeleeFrontProfile, pb: MeleeFrontProfile
 		ra = reach_a.x
 		rb = reach_b.x
 	if side > 0.0:
-		var s: Vector3 = _side_part(pa, pb, fa, fb, to_b)
+		var s: Vector3 = _side_part(pa, pb, fa, fb, to_b, a.state == Unit.State.ROUTING,
+				b.state == Unit.State.ROUTING)
 		var w_side: float = scale * side * s.x
 		if w_side > 0.0:
 			var total: float = w + w_side
@@ -78,10 +80,25 @@ static func _pair(a: Unit, b: Unit, pa: MeleeFrontProfile, pb: MeleeFrontProfile
 
 ## How much of a pair's weight the side part can carry, from `c`, the cosine between one front
 ## and the other reversed: 0 at or above `hi` (fronts near enough opposed that the frontal part
-## alone weighs them), rising to 1 at `lo` (where the frontal part reaches 0) and below. Beside
-## the frontal part's ramp the two never sum past 1. A `hi` of -1 or less turns the side part off.
+## alone weighs them), rising to 1 at `lo` (where the frontal part, MeleeFrontGeometry.ramp,
+## reaches 0) and below. `hi` is capped at 1. A `hi` at or below `lo` (a min cos tuned past the
+## side contact's start) leaves a band with neither part whole: the gate is 0 at or above `lo`,
+## where the frontal part ends, rising to 1 at `hi`, or SIDE_GATE_MIN_SPAN below `lo` if that is
+## lower. Either way the gate is continuous in `c`, and beside the frontal ramp it never sums
+## past 1: on [lo, hi] it falls from 1 to 0 no slower than the ramp's complement
+## (1 - c) / (1 - lo), and otherwise one of the two is 0. A `hi` of -1 or less turns it off.
 static func side_gate(c: float, lo: float, hi: float) -> float:
-	return clampf((hi - c) / maxf(hi - lo, 0.000001), 0.0, 1.0)
+	if hi <= -1.0:
+		return 0.0
+	var top: float = minf(hi, 1.0)
+	if top > lo:
+		return clampf((top - c) / (top - lo), 0.0, 1.0)
+	return clampf((lo - c) / maxf(lo - top, SIDE_GATE_MIN_SPAN), 0.0, 1.0)
+
+
+## The narrowest cosine span side_gate ramps over when `hi` is at or below `lo`, so equal
+## tunings still give a ramp rather than a step: the defaults' own span, 0.75 down to 0.5.
+const SIDE_GATE_MIN_SPAN: float = Unit.MELEE_SIDE_CONTACT_MAX_COS - Unit.MELEE_FRONT_LINE_MIN_COS
 
 
 ## The side part of a pair (profiles `pa`, `pb`, men facing `fa`, `fb`, b's men `to_b` from
@@ -91,13 +108,17 @@ static func side_gate(c: float, lo: float, hi: float) -> float:
 ## whichever side faces it). A block reaches its front rank along its own front and its outline
 ## along the other's. The weight is the larger of the two orientations; the reaches are their
 ## average by weight, so an L-shaped meeting where both fronts bear blends smoothly.
+## An orientation whose defender is routing (`a_routing` for b's front on a, `b_routing` for
+## a's on b) weighs 0: a pursuer keeps the centre-based range on a fleeing block's back, so it
+## presses in among its ranks rather than striking only its rear rank, and the router's anchor
+## and rally contact read the range they did before the side contact.
 static func _side_part(pa: MeleeFrontProfile, pb: MeleeFrontProfile, fa: Vector2,
-		fb: Vector2, to_b: Vector2) -> Vector3:
+		fb: Vector2, to_b: Vector2, a_routing: bool = false, b_routing: bool = false) -> Vector3:
 	var ob: Vector2 = MeleeFrontGeometry.outline(pb, fb, fa)
-	var w_ab: float = clampf(to_b.dot(fa) / Unit.RADIUS, 0.0, 1.0) \
+	var w_ab: float = 0.0 if b_routing else clampf(to_b.dot(fa) / Unit.RADIUS, 0.0, 1.0) \
 			* MeleeFrontGeometry.front_overlap(pa.half, ob.y, absf(to_b.dot(fa.orthogonal())))
 	var oa: Vector2 = MeleeFrontGeometry.outline(pa, fa, fb)
-	var w_ba: float = clampf(-to_b.dot(fb) / Unit.RADIUS, 0.0, 1.0) \
+	var w_ba: float = 0.0 if a_routing else clampf(-to_b.dot(fb) / Unit.RADIUS, 0.0, 1.0) \
 			* MeleeFrontGeometry.front_overlap(pb.half, oa.y, absf(to_b.dot(fb.orthogonal())))
 	var w_sum: float = w_ab + w_ba
 	if w_sum <= 0.0:

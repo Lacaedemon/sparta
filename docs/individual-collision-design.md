@@ -545,8 +545,23 @@ The side part is gated on the angle between the two fronts (`MeleeFrontLine.side
 It is 0 down to a cosine of `melee_side_contact_max_cos` (0.75, about 41 degrees off square)
 and reaches its whole weight at `melee_front_line_min_cos` (0.5),
 where the frontal part has fallen to 0.
-The frontal part's ramp and the side gate never sum past 1,
-so the weight does not jump as a clash turns from oblique to flank.
+Two separate properties follow.
+The weight is continuous in the angle:
+both parts are continuous and they hand over at the ends of the gate,
+the frontal part falling to 0 at the cosine where the gate reaches 1,
+so the weight does not jump as a clash turns from oblique to flank
+(a test sampling every degree finds no step above 0.05 at the default values).
+And the frontal ramp plus the side gate never exceeds 1:
+between the two cosines the gate falls from 1 to 0 at least as fast as the ramp's complement rises,
+and outside them one of the two is 0,
+so the pair's weight, which multiplies each by terms of at most 1, is at most 1 too.
+The bound holds for any tuning, and continuity for any `melee_front_line_min_cos` below 1
+(at 1 the frontal ramp is itself a step at square):
+`side_gate` caps `melee_side_contact_max_cos` at 1,
+and when it is tuned at or below `melee_front_line_min_cos`
+the gate rises from 0 at the min cosine to 1 at the max cosine,
+or over at least `MeleeFrontLine.SIDE_GATE_MIN_SPAN` (0.25, the defaults' own span),
+instead of stepping at the min cosine.
 A clash within about 41 degrees of square is weighed by the frontal part alone,
 exactly as before:
 the frontal lethality probe (two 120-man blocks, Tight, Normal and Loose order,
@@ -567,6 +582,25 @@ The attacker's losses fall from 11.0 to 0 men in the rear and from 18.2 to 2.6 o
 since the defender's men facing away cannot strike back,
 and the defender's from 46.4 to 39.4 and from 20.0 to 17.6,
 since only the attacker's front rank reaches it.
+
+A routing defender is left out: `_side_part` weighs 0 any orientation whose defender is `ROUTING`,
+so a pursuer behind or beside a fleeing block keeps the centre-based range and presses in among its ranks,
+and the router's anchor contact and `_can_rally`'s contact read the ranges they read on main.
+A router whose own front bears on an enemy's flank still meets it there.
+Without this exception a pursuer stopped at the router's rear rank and struck only that rank.
+Measured with a brittle 120-man Infantry block (morale 0.5) in Tight order
+between two 120-man Infantry blocks at morale 100,
+one 120 wu south of it facing it and one 190 wu north of it facing it,
+over the clip's seed and perturbed seeds 1 to 4:
+it breaks at tick 270 to 300, flees past them and leaves the field by tick 1474 to 1634.
+At tick 900 it fields on average 105.6 men on main 2c2955cc,
+111.2 with the side contact applied to routers,
+and 97.6 with routers left out.
+With a single Infantry pursuer (the router an Infantry or a Spearmen block, otherwise the same staging)
+the pursuer does not catch the router while it routs:
+the rout and rally are identical to main's at every 30-tick sample on all five seeds,
+with or without the exception, and the runs diverge only after the router rallies,
+when the pursuer meets the rallied block's rear.
 
 ## Physical contact is proximity-based, not combat-state-based
 
