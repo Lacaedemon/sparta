@@ -81,8 +81,9 @@ static func _pair(a: Unit, b: Unit, pa: MeleeFrontProfile, pb: MeleeFrontProfile
 ## How much of a pair's weight the side part can carry, from `c`, the cosine between one front
 ## and the other reversed: 0 at or above `hi` (fronts near enough opposed that the frontal part
 ## alone weighs them), rising to 1 at `lo` (where the frontal part, MeleeFrontGeometry.ramp,
-## reaches 0) and below. `hi` and `lo` are both capped at 1 (a `lo` of 1 or more leaves the
-## frontal ramp a step, 1 head on and 0 otherwise, so the gate ends at 1 as the ramp does). A
+## reaches 0) and below. `hi` and `lo` are both capped at 1: a `lo` of 1 or more leaves the
+## frontal ramp a step, 1 head on and 0 otherwise, and the cap puts the gate's 0 end at a cosine
+## of 1, where that step is, so the gate is 0 head on, where the ramp is 1, and rises below. A
 ## `hi` at or below `lo` (a min cos tuned past the side contact's start) leaves a band with
 ## neither part whole: the gate is 0 at or above `lo`, where the frontal part ends, rising to 1
 ## at `hi`, or SIDE_GATE_MIN_SPAN below `lo` if that is lower. Either way the gate is continuous

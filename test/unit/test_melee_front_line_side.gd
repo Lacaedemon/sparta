@@ -185,6 +185,31 @@ func test_tuned_pairs_keep_the_weight_continuous_and_within_one() -> void:
 	# itself a step at 1 (MeleeFrontGeometry.ramp), which the gate does not change.
 
 
+## Through a rear attack (b turning through 180 degrees ahead of a, 60 wu to either side of a's
+## centre line) the weight is continuous for a min cos from -1 to below 1: the frontal ramp is 0
+## at 180 degrees, where the pair's front axis (a's front and b's reversed) vanishes and flips
+## side. Below -1 the ramp is still above 0 there, so the frontal part steps at exactly 180
+## degrees: the one exception to the weight's continuity below a min cos of 1.
+func test_the_weight_is_continuous_through_a_rear_attack_from_a_min_cos_of_minus_one() -> void:
+	for x: float in [60.0, -60.0]:
+		for min_cos: float in [-1.0, -0.5, Unit.MELEE_FRONT_LINE_MIN_COS, 0.9, -1.5]:
+			var a: Unit = _make_unit(Vector2.ZERO, Vector2.DOWN)
+			var b: Unit = _make_unit(Vector2(x, 180.0), Vector2.UP, 1)
+			for u: Unit in [a, b]:
+				u.melee_front_line_min_cos = min_cos
+			var w: Array = []
+			for deg: float in [179.9, 180.0, 180.1]:
+				b.facing = Vector2.UP.rotated(deg_to_rad(deg))
+				w.append(MeleeFrontLine.weight(a, b))
+			var step: float = maxf(absf(w[1] - w[0]), absf(w[2] - w[1]))
+			if min_cos >= -1.0:
+				assert_lte(step, 0.005, "no step through 180 degrees (min cos %s, x %s): %s"
+						% [min_cos, x, str(w)])
+			else:
+				assert_gt(step, 0.05, "below -1 the frontal part steps at 180 degrees (x %s): %s"
+						% [x, str(w)])
+
+
 ## An L-shaped meeting: a's front faces b's flank and b's front faces a's flank at once (b ahead
 ## of a and to its side, facing across a's front). Both orientations weigh, and each reach is
 ## their average by weight, between the block's front-rank depth and its half-width.

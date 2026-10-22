@@ -930,10 +930,12 @@ then broke and fled past the one behind,
 it had lost about 22 men 15 seconds into the battle,
 against about 14 before this change;
 had the pursuers stopped at its rear rank, it would have lost about 9.
-Almost all of the extra 8 come from before it broke, not from the pursuit:
+The extra 8 fall in the pursuit, but what costs them comes before it:
 the block behind now meets its rear rank sooner, without walking in among its ranks first,
-so its men lose heart sooner and it breaks half a second earlier, still inside the trap,
-before losing a man.
+so its men lose heart sooner and it breaks half a second earlier, before losing a man,
+while it is still inside the trap.
+With that earlier contact taken away, and the pursuit left as it is,
+it would have lost about as many as before the change.
 
 Because only the front ranks reach each other,
 a frontal fight between two such blocks is slower to kill than it used to be.

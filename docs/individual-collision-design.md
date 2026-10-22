@@ -556,9 +556,14 @@ as the cosine rises between the two values the gate falls from 1 to 0 at least a
 and outside them one of the two is 0,
 so the pair's weight, which multiplies each by terms of at most 1, is at most 1 too.
 The bound holds at every angle for any values of the two parameters,
-and continuity for any `melee_front_line_min_cos` below 1
-(at 1 or above, the frontal ramp is itself a step at square: 1 head on, 0 at any other angle):
-`side_gate` caps both parameters at 1,
+and continuity for any `melee_front_line_min_cos` from -1 to below 1.
+At 1 or above, the frontal ramp is itself a step at square: 1 head on, 0 at any other angle.
+Below -1 the ramp is still above 0 when both fronts point the same way,
+where the pair's front axis (one front and the other reversed) vanishes and flips side,
+so the frontal part steps at exactly 180 degrees
+(a test turns the defender through 180 degrees 60 wu to either side of the attacker's centre line
+and asserts a step of more than 0.05 at a min cosine of -1.5 and of at most 0.005 from -1 up).
+Two details of `side_gate` keep them under other tunings: it caps both parameters at 1,
 so with the min cosine above 1 the gate still reaches 0 head on, where the ramp is 1
 (a test sweeps the gate plus the ramp over cosines from 1 to -1 for ten tunings,
 among them a min cosine of 1.2 and of -1.5, and a head-on pair with the min cosine at 1.2 weighs exactly 1);
@@ -600,7 +605,9 @@ it turns north on breaking, flees past the north block and leaves the field by t
 At tick 900 it fields on average 105.6 men on main 2c2955cc,
 111.2 with the side contact applied to routers,
 and 97.6 with routers left out.
-The 8 men it loses beyond main's come almost all from before the rout, which the exception does not touch.
+By its first routing sample it has lost 0 to 2 men on main (tick 300) and none with the side contact (tick 270),
+so the 8 men it loses beyond main's fall in the pursuit,
+but what costs them comes before the rout, where the exception does not reach: it breaks sooner.
 The north block comes on against the router's rear,
 and with the side contact it is in contact at the tick-210 sample (30-tick samples), 80 to 83 wu from the router's centre,
 at the router's rear rank, where on main its first contact sample is tick 240, 46 to 53 wu from the centre;
