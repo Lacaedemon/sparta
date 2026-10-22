@@ -1256,24 +1256,34 @@ var router_front_arc: float = ROUTER_FRONT_ARC
 # ROUTER_CONTACT_REENTRY_FRAC, with rout_time's set-before-_ready contract.
 const ROUTER_CONTACT_REENTRY_FRAC: float = 0.9
 var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
-# How far a frontal melee pair's contact range and engaged floor reach out to the blocks' real
-# front ranks (MeleeFrontLine): 1.0 adds each block's whole missing front depth, so two blocks
-# front to front meet at their front ranks; 0 keeps the centre-based ranges, under which deep
-# blocks interpenetrate by most of their depth. A pair uses the smaller of its two values. A
-# caller-configurable parameter defaulting to MELEE_FRONT_LINE_SCALE, with rout_time's
-# set-before-_ready contract.
+# How far a melee pair's contact range and engaged floor reach out to the blocks' real outer
+# ranks (MeleeFrontLine): 1.0 adds each block's whole missing depth, so two blocks front to
+# front meet at their front ranks and a block attacking another's flank or rear stops at its
+# outer file or rank; 0 keeps the centre-based ranges, under which deep blocks interpenetrate
+# by most of their depth. A pair uses the smaller of its two values. A caller-configurable
+# parameter defaulting to MELEE_FRONT_LINE_SCALE, with rout_time's set-before-_ready contract.
 const MELEE_FRONT_LINE_SCALE: float = 1.0
 var melee_front_line_scale: float = MELEE_FRONT_LINE_SCALE
 # The cosine at or below which a pair no longer counts as front to front for MeleeFrontLine:
-# its weight ramps from 0 here to 1 at a cosine of 1, on the angle between the two blocks'
-# fronts (where their men face, MeleeFrontGeometry.grid_front). The bearing between the
+# its frontal weight ramps from 0 here to 1 at a cosine of 1, on the angle between the two
+# blocks' fronts (where their men face, MeleeFrontGeometry.grid_front). The bearing between the
 # centres does not enter it; how far the fronts overlap does. 0.5 (60 degrees) lets an
-# oblique frontal clash keep part of the extension while a flank or rear attack keeps none.
-# A pair uses the larger
-# of its two values. A caller-configurable parameter defaulting to MELEE_FRONT_LINE_MIN_COS,
-# with rout_time's set-before-_ready contract.
+# oblique frontal clash keep part of the frontal extension; past it the side contact
+# (melee_side_contact_max_cos) carries the pair. A pair uses the larger of its two values. A
+# caller-configurable parameter defaulting to MELEE_FRONT_LINE_MIN_COS, with rout_time's
+# set-before-_ready contract.
 const MELEE_FRONT_LINE_MIN_COS: float = 0.5
 var melee_front_line_min_cos: float = MELEE_FRONT_LINE_MIN_COS
+# The cosine between the two fronts at or above which MeleeFrontLine weighs a pair on its
+# frontal part alone. Below it the side contact (a block whose front faces the other's flank or
+# rear stops at that block's outer file or rank) ramps in, reaching its whole weight at
+# melee_front_line_min_cos, where the frontal part has none (MeleeFrontLine.side_gate). 0.75
+# (about 41 degrees) leaves a clash within that of square exactly as the frontal part weighs
+# it. -1 turns the side contact off. A pair uses the smaller of its two values. A
+# caller-configurable parameter defaulting to MELEE_SIDE_CONTACT_MAX_COS, with rout_time's
+# set-before-_ready contract.
+const MELEE_SIDE_CONTACT_MAX_COS: float = 0.75
+var melee_side_contact_max_cos: float = MELEE_SIDE_CONTACT_MAX_COS
 # How long a non-fighting unit holds position to reform its ranks after a fresh move
 # order is issued with reform_before_move on. Runs concurrently with order_response_delay
 # (both count from zero); the effective delay before the march is max(order_response_delay,
@@ -11250,6 +11260,7 @@ func to_snapshot_dict() -> Dictionary:
 		"router_contact_reentry_frac": router_contact_reentry_frac,
 		"melee_front_line_scale": melee_front_line_scale,
 		"melee_front_line_min_cos": melee_front_line_min_cos,
+		"melee_side_contact_max_cos": melee_side_contact_max_cos,
 		"shatter_strength_frac": shatter_strength_frac,
 		"rally_morale_threshold": rally_morale_threshold,
 		"rally_resume_radius_factor": rally_resume_radius_factor,
@@ -11510,6 +11521,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	router_contact_reentry_frac = float(d.get("router_contact_reentry_frac", router_contact_reentry_frac))
 	melee_front_line_scale = float(d.get("melee_front_line_scale", melee_front_line_scale))
 	melee_front_line_min_cos = float(d.get("melee_front_line_min_cos", melee_front_line_min_cos))
+	melee_side_contact_max_cos = float(d.get("melee_side_contact_max_cos",
+			melee_side_contact_max_cos))
 	shatter_strength_frac = float(d.get("shatter_strength_frac", shatter_strength_frac))
 	rally_morale_threshold = float(d.get("rally_morale_threshold", rally_morale_threshold))
 	rally_resume_radius_factor = float(d.get("rally_resume_radius_factor", rally_resume_radius_factor))
