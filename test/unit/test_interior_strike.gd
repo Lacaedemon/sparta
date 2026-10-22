@@ -1,10 +1,12 @@
 extends GutTest
 ## An enemy soldier that has got inside a block behind its striking ranks: only the
 ## near-front ranks strike, so without the interior pass nobody ever strikes him. These pin
-## that the block's other men within reach do, and that an enemy pressing on the rear or a
-## flank from outside, or one out of everyone's reach, still is not struck by them.
-## Most fixtures only use API main already has, so on main they fail on their assertions;
-## the router and turned-block tests also call SoldierInteriorStrike, which main lacks.
+## that the block's other men within reach do, that an enemy block pressing into its rear is
+## struck by the rear ranks it has pressed in among, and that an enemy pressing on the rear or
+## a flank from outside, or one out of everyone's reach, still is not struck by them.
+## On main 2c2955cc this script does not load at all: it names SoldierInteriorStrike and
+## Unit.near_front_forward, which main lacks, so GDScript rejects it with a parse error and
+## none of its tests runs.
 
 const SEED: int = 7654321
 const REACH: float = 26.0          # sword reach (1.3 m * 20)
@@ -107,6 +109,50 @@ func test_an_enemy_pressing_on_the_rear_from_outside_is_not_struck_by_the_rear_r
 	assert_lt(_nearest_man_distance(a, p), REACH, "precondition: the rear rank could reach him")
 	assert_gt(_nearest_striker_distance(a, p), REACH, "precondition: the striking set cannot")
 	assert_eq(_wounds(a, e), 0.0, "a rear attacker outside the block keeps his edge")
+
+
+func test_a_block_pressed_into_the_rear_is_struck_by_the_rear_ranks_it_presses_among() -> void:
+	# A 4-file, 3-rank enemy block attacking the rear, its front rank pressed two ranks in past
+	# the block's rear rank, as two deep blocks settle in a rear fight. The block's striking set
+	# faces the other way, but its rear ranks have the enemy's leading men among them and strike
+	# back; the enemy's last rank, still outside the grid, is left alone. So a rear attack does
+	# not keep its edge once it presses in (website/tactics.qmd gives the measured figures).
+	var a := _block()
+	var rear_rank: float = -(RANKS - 1) * 0.5 * PITCH
+	var e := _unit(2, 1, FILES * 3, Vector2(0.0, rear_rank + PITCH), Vector2.UP)
+	var k: int = 0
+	for r in range(3):
+		for f in range(FILES):
+			# Half a pitch off the block's ranks, so each sits between two of its men.
+			e._sim_soldier_pos[k] = Vector2((f - (FILES - 1) * 0.5) * PITCH,
+					rear_rank + 1.5 * PITCH - PITCH * r)
+			k += 1
+	var front := a.engaged_soldier_indices(a._sim_soldier_pos.size())
+	for i in range(e._sim_soldier_pos.size()):
+		assert_gt(_nearest_striker_distance(a, e._sim_soldier_pos[i]), REACH,
+				"precondition: the striking set cannot reach enemy soldier %d" % i)
+	var defenders: Array[Unit] = [e]
+	var indices: Array[PackedInt32Array] = [PackedInt32Array(range(e._sim_soldier_pos.size()))]
+	var found: Array[PackedInt32Array] = SoldierInteriorStrike.inside_candidates(a, front, defenders, indices)
+	assert_eq(found.size(), 1, "somebody of the enemy block is inside")
+	var inside: PackedInt32Array = found[0] if found.size() == 1 else PackedInt32Array()
+	for i in range(e._sim_soldier_pos.size()):
+		var in_grid: bool = e._sim_soldier_pos[i].y >= rear_rank
+		assert_eq(inside.has(i), in_grid, "enemy soldier %d counts as inside exactly when he is past the rear rank" % i)
+	var hp_before: float = 0.0
+	for h in e._sim_soldier_hp:
+		hp_before += h
+	var stam := PackedFloat32Array(a._sim_soldier_stamina)
+	a.resolve_soldier_melee(e)
+	var behind_strikes: int = 0
+	for i in range(stam.size()):
+		if not front.has(i) and a._sim_soldier_stamina[i] < stam[i]:
+			behind_strikes += 1
+	var hp_after: float = 0.0
+	for h in e._sim_soldier_hp:
+		hp_after += maxf(h, 0.0)
+	assert_gt(behind_strikes, 0, "the rear ranks strike the enemy pressed in among them")
+	assert_lt(hp_after, hp_before, "the enemy pressed into the rear takes wounds")
 
 
 func test_an_enemy_on_a_flank_from_outside_is_not_struck_by_the_inner_ranks() -> void:
@@ -250,6 +296,55 @@ func test_a_block_turning_in_place_does_not_take_in_an_enemy_off_its_flank() -> 
 	assert_lt((p - a.position).dot(a.near_front_forward()), _front_depth_along(a),
 			"precondition: he is behind the striking set along the new heading")
 	assert_eq(_wounds_outside(a, p, "off the flank"), 0.0, "a flank attacker outside the turning block keeps his edge")
+
+
+## The block of the turning tests, mid-turn: its heading has swung 45 degrees while its men
+## still stand on the old grid, which faces down.
+func _turning_block() -> Unit:
+	var a := _block()
+	a._engage_turn_start_facing = Vector2.DOWN
+	a._engage_turn_target = Vector2.DOWN.rotated(deg_to_rad(90.0))
+	a.facing = Vector2.DOWN.rotated(deg_to_rad(45.0))
+	return a
+
+
+## Whether `p` lies in the box the footprint would be if it were built along the block's
+## current heading (near_front_forward) instead of its grid: the same depth and half-width,
+## about the same centre (the fixture's men centre on the origin).
+func _in_heading_box(a: Unit, p: Vector2) -> bool:
+	var fwd: Vector2 = a.near_front_forward()
+	var prof: MeleeFrontProfile = MeleeFrontProfile.of(a)
+	return absf(p.dot(fwd)) <= prof.depth and absf(p.dot(fwd.orthogonal())) <= prof.half
+
+
+func test_a_turning_block_strikes_an_enemy_inside_its_grid_off_its_new_heading() -> void:
+	# Inside the grid the men stand on, near its rear corner, but outside the box the new
+	# heading would draw: the footprint is the grid's, so he is inside and is struck.
+	var a := _turning_block()
+	var p := Vector2(12.0, -40.0)
+	assert_lt(absf(p.x), (FILES - 1) * 0.5 * PITCH, "precondition: he is inside the grid's files")
+	assert_lt(absf(p.y), (RANKS - 1) * 0.5 * PITCH, "precondition: he is inside the grid's ranks")
+	assert_false(_in_heading_box(a, p), "precondition: he is outside the new heading's box")
+	assert_lt((p - a.position).dot(a.near_front_forward()), _front_depth_along(a),
+			"precondition: he is behind the striking set along the new heading")
+	var e := _lone_enemy_at(p)
+	assert_lt(_nearest_man_distance(a, p), REACH, "precondition: a man of the block reaches him")
+	assert_gt(_nearest_striker_distance(a, p), REACH, "precondition: the striking set cannot")
+	assert_gt(_wounds(a, e), 0.0, "an enemy inside the turning block's grid is struck")
+
+
+func test_a_turning_block_leaves_an_enemy_on_its_new_heading_outside_its_grid() -> void:
+	# Inside the box the new heading would draw, behind the striking set, but past the grid's
+	# flank: the footprint is the grid's, so he is outside and nobody behind the striking set
+	# strikes him.
+	var a := _turning_block()
+	var p := -40.0 * a.near_front_forward()
+	assert_gt(absf(p.x), (FILES - 1) * 0.5 * PITCH, "precondition: he is past the grid's flank")
+	assert_true(_in_heading_box(a, p), "precondition: he is inside the new heading's box")
+	assert_lt((p - a.position).dot(a.near_front_forward()), _front_depth_along(a),
+			"precondition: he is behind the striking set along the new heading")
+	assert_eq(_wounds_outside(a, p, "past the grid's flank"), 0.0,
+			"an enemy outside the turning block's grid keeps his edge")
 
 
 func test_one_man_knocked_out_of_the_ranks_does_not_widen_the_footprint() -> void:

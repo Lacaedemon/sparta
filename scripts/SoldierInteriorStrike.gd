@@ -12,8 +12,10 @@ class_name SoldierInteriorStrike
 ## (MeleeFrontProfile) about the live men's mean, padded on the flanks and rear by
 ## Unit.interior_strike_margin. Taken from the grid rather than from the men's extremes, it
 ## neither swells into a turning block's corners nor follows one man knocked out of the ranks.
-## An enemy pressing on a flank or the rear from outside is not inside, so a flank or rear
-## attack keeps its edge over the ranks facing away. A square already strikes with whoever
+## An enemy pressing on a flank or the rear from outside is not inside. A deep block attacking a
+## flank or the rear does press its leading ranks in past that edge, though, and the ranks they
+## press among strike them, so such an attack loses much of its edge (website/tactics.qmd gives
+## the measured figures). A square already strikes with whoever
 ## is threatened, so it has no interior pass. A routing block is a fleeing crowd with no ranks
 ## to be behind, so it has none either, and a routing enemy is never inside: a router overrun
 ## by its pursuer is the pursuit's to cut down, through the pursuer's own striking ranks.
