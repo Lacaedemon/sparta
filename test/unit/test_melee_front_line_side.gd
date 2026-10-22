@@ -105,18 +105,21 @@ func _largest_step(min_cos: float, max_cos: float) -> float:
 		u.melee_front_line_min_cos = min_cos
 		u.melee_side_contact_max_cos = max_cos
 	frontal_only.melee_side_contact_max_cos = -1.0
-	var last: float = MeleeFrontLine.weight(a, b)
+	var last: float = 0.0
 	var largest: float = 0.0
-	for deg in range(1, 181):
+	for deg in range(0, 181):
 		b.facing = Vector2.UP.rotated(deg_to_rad(float(deg)))
 		frontal_only.facing = b.facing
 		var w: float = MeleeFrontLine.weight(a, b)
-		largest = maxf(largest, absf(w - last))
+		if deg > 0:
+			largest = maxf(largest, absf(w - last))
 		assert_lte(w, 1.0 + 0.000001, "never past 1 at %d degrees (%s, %s)" % [deg, min_cos, max_cos])
 		assert_gte(w, MeleeFrontLine.weight(a, frontal_only) - 0.000001,
 			"never below the frontal part alone at %d degrees" % deg)
 		last = w
-	assert_almost_eq(last, 1.0, 0.0001, "the rear attack weighs 1 (%s, %s)" % [min_cos, max_cos])
+	# A min cos below -1 never lets the gate reach 1 (it reaches 1 only at the min cos itself).
+	if min_cos >= -1.0:
+		assert_almost_eq(last, 1.0, 0.0001, "the rear attack weighs 1 (%s, %s)" % [min_cos, max_cos])
 	return largest
 
 
@@ -137,23 +140,27 @@ func test_the_weight_is_continuous_at_the_hand_over_angles() -> void:
 
 ## Tuned values outside the defaults' order: a max cos above 1 (where a head-on pair once
 ## weighed about 1.67), a min cos at or above the max cos (where the gate was once a step at min
-## cos), equal values, and a min cos of 1. The gate stays continuous in the cosine and, beside
-## the frontal ramp, within 1; the pair's weight stays within 1 at every facing.
+## cos), equal values, a min cos of 1, a min cos above 1 (where a head-on pair once weighed
+## about 1.44: the frontal ramp's step read 1 while the gate, ramping down to the uncapped min
+## cos, read 0.44) and a min cos below -1. The gate stays continuous in the cosine and, beside
+## the frontal ramp, within 1 from a cosine of 1 (head on) to -1; the pair's weight stays
+## within 1 at every facing, head on included.
 func test_tuned_pairs_keep_the_weight_continuous_and_within_one() -> void:
 	var tunings: Array = [[0.5, 1.5], [0.9, 0.75], [0.5, 0.5], [0.0, 1.0], [-0.5, 0.2],
-			[0.95, 0.96], [1.0, 0.75]]
+			[0.95, 0.96], [1.0, 0.75], [1.2, 0.75], [1.2, 1.5], [-1.5, 0.75]]
 	for t: Array in tunings:
 		var lo: float = t[0]
 		var hi: float = t[1]
-		var last: float = MeleeFrontLine.side_gate(1.0, lo, hi)
-		for i in range(1, 2001):
+		var last: float = 0.0
+		for i in range(0, 2001):
 			var c: float = 1.0 - float(i) * 0.001
 			var g: float = MeleeFrontLine.side_gate(c, lo, hi)
 			assert_lte(g + MeleeFrontGeometry.ramp(c, lo), 1.0 + 0.000001,
 				"gate plus ramp within 1 at c %.3f (%s, %s)" % [c, lo, hi])
 			# A 0.001 step in the cosine: the steepest tuning here (0.95, 0.96) moves 0.1.
-			assert_lte(absf(g - last), 0.1 + 0.000001,
-				"gate continuous at c %.3f (%s, %s)" % [c, lo, hi])
+			if i > 0:
+				assert_lte(absf(g - last), 0.1 + 0.000001,
+					"gate continuous at c %.3f (%s, %s)" % [c, lo, hi])
 			last = g
 		gut.p("largest 1-degree weight step, min cos %s, max cos %s: %.4f" % [lo, hi,
 				_largest_step(lo, hi)])
@@ -163,6 +170,14 @@ func test_tuned_pairs_keep_the_weight_continuous_and_within_one() -> void:
 	a.melee_side_contact_max_cos = 1.5
 	b.melee_side_contact_max_cos = 1.5
 	assert_almost_eq(MeleeFrontLine.weight(a, b), 1.0, 0.0001, "head on, max cos 1.5")
+	# And with the min cos tuned above 1 (the frontal ramp a step that is 1 head on).
+	for lo_hi: Array in [[1.2, 0.75], [1.2, 1.5]]:
+		for u: Unit in [a, b]:
+			u.melee_front_line_min_cos = lo_hi[0]
+			u.melee_side_contact_max_cos = lo_hi[1]
+		assert_eq(MeleeFrontLine.side_gate(1.0, lo_hi[0], lo_hi[1]), 0.0,
+			"no side gate head on (%s, %s)" % lo_hi)
+		assert_almost_eq(MeleeFrontLine.weight(a, b), 1.0, 0.0001, "head on (%s, %s)" % lo_hi)
 	assert_lte(_largest_step(0.9, 0.75), 0.1, "a min cos above the max cos")
 	assert_lte(_largest_step(0.5, 1.5), 0.1, "a max cos above 1")
 	assert_lte(_largest_step(0.5, 0.5), 0.1, "equal values: the gate spans SIDE_GATE_MIN_SPAN")

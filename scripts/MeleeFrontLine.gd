@@ -81,19 +81,22 @@ static func _pair(a: Unit, b: Unit, pa: MeleeFrontProfile, pb: MeleeFrontProfile
 ## How much of a pair's weight the side part can carry, from `c`, the cosine between one front
 ## and the other reversed: 0 at or above `hi` (fronts near enough opposed that the frontal part
 ## alone weighs them), rising to 1 at `lo` (where the frontal part, MeleeFrontGeometry.ramp,
-## reaches 0) and below. `hi` is capped at 1. A `hi` at or below `lo` (a min cos tuned past the
-## side contact's start) leaves a band with neither part whole: the gate is 0 at or above `lo`,
-## where the frontal part ends, rising to 1 at `hi`, or SIDE_GATE_MIN_SPAN below `lo` if that is
-## lower. Either way the gate is continuous in `c`, and beside the frontal ramp it never sums
-## past 1: on [lo, hi] it falls from 1 to 0 no slower than the ramp's complement
-## (1 - c) / (1 - lo), and otherwise one of the two is 0. A `hi` of -1 or less turns it off.
+## reaches 0) and below. `hi` and `lo` are both capped at 1 (a `lo` of 1 or more leaves the
+## frontal ramp a step, 1 head on and 0 otherwise, so the gate ends at 1 as the ramp does). A
+## `hi` at or below `lo` (a min cos tuned past the side contact's start) leaves a band with
+## neither part whole: the gate is 0 at or above `lo`, where the frontal part ends, rising to 1
+## at `hi`, or SIDE_GATE_MIN_SPAN below `lo` if that is lower. Either way the gate is continuous
+## in `c`, and for any `lo` and `hi` and every `c` from -1 to 1 the gate plus the frontal ramp is
+## at most 1: from `lo` to `hi` the gate falls from 1 to 0 no slower than the ramp rises from 0
+## (at slope 1 / (1 - lo)), and elsewhere one of the two is 0. A `hi` of -1 or less turns it off.
 static func side_gate(c: float, lo: float, hi: float) -> float:
 	if hi <= -1.0:
 		return 0.0
 	var top: float = minf(hi, 1.0)
-	if top > lo:
-		return clampf((top - c) / (top - lo), 0.0, 1.0)
-	return clampf((lo - c) / maxf(lo - top, SIDE_GATE_MIN_SPAN), 0.0, 1.0)
+	var bottom: float = minf(lo, 1.0)
+	if top > bottom:
+		return clampf((top - c) / (top - bottom), 0.0, 1.0)
+	return clampf((bottom - c) / maxf(bottom - top, SIDE_GATE_MIN_SPAN), 0.0, 1.0)
 
 
 ## The narrowest cosine span side_gate ramps over when `hi` is at or below `lo`, so equal
@@ -127,7 +130,8 @@ static func _side_part(pa: MeleeFrontProfile, pb: MeleeFrontProfile, fa: Vector2
 			(w_ab * ob.x + w_ba * pb.depth) / w_sum)
 
 
-## How squarely `a` and `b` meet front to front, 0 to 1 (see pair()). Symmetric in a and b.
+## How fully `a` and `b` meet at their outer ranks, 0 to 1: front to front (the frontal part)
+## or one front on the other's flank or rear (the side part); see pair(). Symmetric in a and b.
 static func weight(a: Unit, b: Unit) -> float:
 	return pair(a, b).x
 

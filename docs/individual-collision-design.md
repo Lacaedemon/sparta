@@ -552,13 +552,17 @@ the frontal part falling to 0 at the cosine where the gate reaches 1,
 so the weight does not jump as a clash turns from oblique to flank
 (a test sampling every degree finds no step above 0.05 at the default values).
 And the frontal ramp plus the side gate never exceeds 1:
-between the two cosines the gate falls from 1 to 0 at least as fast as the ramp's complement rises,
+as the cosine rises between the two values the gate falls from 1 to 0 at least as fast as the ramp rises from 0,
 and outside them one of the two is 0,
 so the pair's weight, which multiplies each by terms of at most 1, is at most 1 too.
-The bound holds for any tuning, and continuity for any `melee_front_line_min_cos` below 1
-(at 1 the frontal ramp is itself a step at square):
-`side_gate` caps `melee_side_contact_max_cos` at 1,
-and when it is tuned at or below `melee_front_line_min_cos`
+The bound holds at every angle for any values of the two parameters,
+and continuity for any `melee_front_line_min_cos` below 1
+(at 1 or above, the frontal ramp is itself a step at square: 1 head on, 0 at any other angle):
+`side_gate` caps both parameters at 1,
+so with the min cosine above 1 the gate still reaches 0 head on, where the ramp is 1
+(a test sweeps the gate plus the ramp over cosines from 1 to -1 for ten tunings,
+among them a min cosine of 1.2 and of -1.5, and a head-on pair with the min cosine at 1.2 weighs exactly 1);
+and when the max cosine is tuned at or below the min cosine
 the gate rises from 0 at the min cosine to 1 at the max cosine,
 or over at least `MeleeFrontLine.SIDE_GATE_MIN_SPAN` (0.25, the defaults' own span),
 instead of stepping at the min cosine.
@@ -592,10 +596,22 @@ Measured with a brittle 120-man Infantry block (morale 0.5) in Tight order
 between two 120-man Infantry blocks at morale 100,
 one 120 wu south of it facing it and one 190 wu north of it facing it,
 over the clip's seed and perturbed seeds 1 to 4:
-it breaks at tick 270 to 300, flees past them and leaves the field by tick 1474 to 1634.
+it turns north on breaking, flees past the north block and leaves the field by tick 1474 to 1634.
 At tick 900 it fields on average 105.6 men on main 2c2955cc,
 111.2 with the side contact applied to routers,
 and 97.6 with routers left out.
+The 8 men it loses beyond main's come almost all from before the rout, which the exception does not touch.
+The north block comes on against the router's rear,
+and with the side contact it is in contact at the tick-210 sample (30-tick samples), 80 to 83 wu from the router's centre,
+at the router's rear rank, where on main its first contact sample is tick 240, 46 to 53 wu from the centre;
+the router's morale falls faster (1.6 or 1.7 at tick 240 against 2.2 on main),
+and it breaks at tick 270 instead of 300 on all five seeds, before losing a man.
+With the side contact turned off for the north block's pairs until the router breaks
+(and on for them after, a probe-only change), it breaks at tick 300 as on main and fields 104.8 men at tick 900;
+turned off for them only after it breaks, it breaks at 270 and fields 98.8.
+Turning it off for the south block's pairs changes no sample:
+the south block stands in front of the router until the rout and behind it after,
+where the exception already has it press in centre to centre.
 With a single Infantry pursuer (the router an Infantry or a Spearmen block, otherwise the same staging)
 the pursuer does not catch the router while it routs:
 the rout and rally are identical to main's at every 30-tick sample on all five seeds,

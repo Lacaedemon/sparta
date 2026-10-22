@@ -222,20 +222,25 @@ func test_pooled_strength_notes_the_deeper_host() -> void:
 
 
 ## The ranks closing at the end of a tick (after the tick's own front-line lookups) deepen the
-## block; the tick reports it, so the grid's reading covers the block's new bound. (Here the
-## halved frontage also shortens the half-diagonal the bound reads, so the grid starts cleared
-## to show that the tick reports at all.)
+## block; the tick reports it, so the grid's reading grows to the block's new bound. The block
+## is files of 32 men (a declared subunit size), 4 files at full strength and 2 once the ranks
+## close: at 40 men its 10 ranks become 20, so the half-diagonal the bound reads grows although
+## the frontage halves.
 func test_the_end_of_a_tick_notes_the_ranks_closing() -> void:
 	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
+	a.subunit_structure = Unit.SubunitStructure.FILE_GROUP
+	a.subunit_size = 32
 	a.frontage_override = 0   # the automatic frontage, which closing the ranks halves
 	a.soldiers = 40           # a third of its strength: the ranks close this tick
-	var before: float = _stale_grid(a, true)
+	var before: float = _stale_grid(a)
 	assert_false(a._ranks_closed, "setup: open")
+	assert_almost_eq(SpatialHash.max_query_extension(), before, 0.001, "setup: the grid's reading")
 	a._physics_process(1.0 / 60.0)
 	assert_true(a._ranks_closed, "setup: closed by the tick")
-	assert_ne(MeleeFrontGeometry.query_extension(a), before, "setup: the bound moved")
-	assert_gte(SpatialHash.max_query_extension(), MeleeFrontGeometry.query_extension(a) - 0.001,
-		"noted by the tick")
+	assert_eq(a.formation_files(a.soldiers), 2, "setup: 2 files")
+	assert_gt(MeleeFrontGeometry.query_extension(a), before + 1.0, "setup: the bound grew")
+	assert_almost_eq(SpatialHash.max_query_extension(), MeleeFrontGeometry.query_extension(a),
+		0.001, "noted by the tick")
 
 
 ## Auto-acquisition's contact fallback reads the pair's contact from the longer reach, as
