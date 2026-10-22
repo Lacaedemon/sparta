@@ -1,20 +1,31 @@
-## An explicit A/B/C triage rule, paired with a follow-up issue, made two reviewers converge
+## An A/B/C triage rule with a follow-up issue preceded the round-8 CLEAN on #1827
 
-Each review round on #1827 (PR #1838) kept finding new sites, mostly corner cases of anchored blocks.
-The 2026-10-15 notebook notes that round 6 was "converging on anchored-block corner cases", and round 7 still had agy finding new sites: fog filter in support, one-sided reach, rally coast, cycle-charge target commit, demo comments.
-On 2026-10-15 the review prompt gained a triage rule:
+This was observed on one PR (#1838, for #1827) over 8 rounds.
+Rounds 1 to 4 were about other things: contact sites, caches, perf and replay.
+In rounds 6 and 7 the findings were mostly corner cases of anchored blocks.
+The 2026-10-15 notebook says round 6 was "converging on anchored-block corner cases", and round 7 still had agy finding new sites: fog filter in support, one-sided reach, rally coast, cycle-charge target commit, demo comments.
+Findings were already shrinking: Claude's round 7 was down to 5 low findings.
+For round 8 the round-8 review prompt defined three classes:
 
-- **A**: a regression against main, or a defect in the PR's own code. Blocks.
-- **B**: already so on main, or a scope extension. Goes to one follow-up issue, #1843. Does not block.
-- **C**: the PR's own docs and tests. Blocks.
+- (A) "a regression this PR introduces vs main a3714751, or a defect in code this PR adds
+  -- these block;"
 
-Only A and C counted toward CLEAN.
-Round 8 then returned agy CLEAN, the first clean verdict from agy in eight rounds, and Claude reported A:0 with C:2.
-Claude's confirmation review on f54859ef was CLEAN, and PR #1838 merged as 2c2955cc.
+- (B) "behaviour identical on main, or a request to extend the new gap/extension to more call sites
+  -- list these separately as NON-BLOCKING;
+  they belong in follow-up issue #1843 ...
+  and must not be re-raised if #1843 already covers them;"
+
+- (C) "docs/tests/naming in this PR's own code -- these block."
+
+Because B findings stopped blocking, the round-8 agy CLEAN is partly true by definition, not only by convergence.
+It was agy's first CLEAN in eight rounds.
+Claude's round 8 still had A:0 and C:2, and needed a confirmation pass, which was CLEAN on f54859ef.
+PR #1838 then merged as 2c2955cc.
+The cause (rule versus shrinking findings) was not separated by this one PR.
 
 - **Do:** when review findings drift to ever-narrower sites on a large diff, write the A/B/C rule into the review prompt and file the B list as one issue, so each B finding has a place to go.
 
-- **Don't:** keep running rounds with an open-ended "any finding blocks" prompt, or defer B findings without the tracking issue.
+- **Don't:** keep running rounds with an open-ended "any finding blocks" prompt, defer B findings without the tracking issue, or read the resulting CLEAN as proof the diff has no B-class problems.
 
 (`Lacaedemon/sparta` #1827, PR #1838, #1843, 2026-10-15.)
 
@@ -23,7 +34,7 @@ Claude's confirmation review on f54859ef was CLEAN, and PR #1838 merged as 2c295
 The round-4 fix on #1827 changed which gap is measured at contact.
 The 2026-10-15 notebook records that it "missed five" consumers, found by later review rather than by the author.
 Round 5 (044b1ff8) fixed them: the router anchor now mirrors `within_contact`, and `contact_point()`/`toward()` are used at the facing, press and flank sites.
-Round 6 then found the shield wall still read the old measure (measured 1.0 to 0.65), and the cycle-charge recharge and the support guard needed the same extension.
+Round 6 then found the shield wall still read the old measure (see the `_is_frontal_attack` case in the last lesson), and the cycle-charge recharge and the support guard needed the same extension.
 
 - **Do:** when a fix changes which quantity is measured, grep for every reader of the old quantity and decide each one, then list them in the handback, instead of fixing only the sites a review named.
 
@@ -34,10 +45,11 @@ Round 6 then found the shield wall still read the old measure (measured 1.0 to 0
 ## A fix that changes pacing needs a hash and delta check before it is reported done
 
 Round-7 fix e365f549 opened a charge's sprint window past the pair's contact extension.
-It looked like a plain A-class correction.
-Measuring it showed otherwise: first contact moved up to 165 ticks earlier than main in `cycle_charge`, 7 new melee-delta rows were flagged (charge, cycle_charge, roll_the_line, ai_honors_fog), and new defect candidates appeared in `charge` (uid9 overlap, uid0 shape_residual) and `knockback_focus` (uid7 flutter).
+Measuring it showed: first contact moved up to 165 ticks earlier than main in `cycle_charge`, 7 new melee-delta rows were flagged (charge, cycle_charge, roll_the_line, ai_honors_fog), and new defect candidates appeared in `charge` (uid9 overlap, uid0 shape_residual) and `knockback_focus` (uid7 flutter).
 The notebook counts 13 clips moved.
-It was reverted in a8ec459f ("keep the sprint window centre to centre; document the shorter runway"), and the sprint window became item 6 of #1843.
+It was reverted in a8ec459f ("keep the sprint window centre to centre;
+  document the shorter runway"),
+and the sprint window became item 6 of #1843.
 The doc and the `SPRINT_START_DISTANCE` comment now say a charge into a deep block sprints over a shorter runway.
 
 - **Do:** after a change to when a unit sprints, when contact lands, or any other pacing, compare per-clip hash streams and the melee delta against the previous head before calling it done.
@@ -48,9 +60,10 @@ The doc and the `SPRINT_START_DISTANCE` comment now say a charge into a deep blo
 
 ## A float-precision change can move clips the change should not touch
 
-In the round-6 fixes (2e8e41cf), replacing `sqrt(dist_sq)` with `Vector2.length()` moved two cavalry clips.
+In a7d8be1a (the round-6 fixes), the cycle charge's pull-back replaced `sqrt(dist_sq)` with `Vector2.length()`, which moved two cavalry clips.
 `length()` is single precision where the `sqrt` call is double.
-The notebook records the "precision slip" and its fix; hash streams were then equal to round 5.
+The fix, 2e8e41cf, reads the distance as `sqrt(length_squared())`.
+Its message names the clips `cycle_charge` (from tick 1075) and `cycle_charge_flee` (from tick 472), whose pairs take no extension, and says both hash-match the parent round's streams afterwards.
 
 - **Do:** when a change should be neutral for some clips (here cavalry), check the hash streams on those clips too, and keep `sqrt(dist_sq)` where precision matters to the stream.
 
@@ -72,23 +85,31 @@ The notebook records the padded value as fabricated, and the fix: read `headRefO
 
 ## A cross-vendor reviewer's quota can run out mid-wave
 
-On 2026-10-16 agy returned a 429 ("Individual quota reached ... Resets in 108h30m") for both `gemini-4-argon-high` and `gemini-3.8-flash-high`.
+On 2026-10-16 02:32 PDT agy returned a 429
+(the message said "Individual quota reached" and gave "Resets in 108h30m")
+for both `gemini-4-argon-high` and `gemini-3.8-flash-high`.
 The #1834 review (PR #1836) went ahead with the Claude reviewer only.
-On 2026-10-21 agy was still 429, with a reset the notebook estimates at about 2026-10-24 01:30 PDT, so review stayed Claude-only.
-These dates describe that moment.
+That message implied a reset at about 2026-10-20 15:00 PDT.
+It did not hold: agy still returned 429 on 2026-10-21, with a new estimate in the notebook of about 2026-10-24 01:30 PDT, so review stayed Claude-only.
 As of 2026-10-21, no second-vendor review of #1834 has been possible.
 
-- **Do:** plan a long wave for the case where the second vendor goes away, say plainly in the PR when a round had one reviewer, and date the statement.
+- **Do:** probe the second vendor at the start of a wave and record the result in the notebook.
+  Re-probe the quota before planning a round on it rather than trusting the reset message.
 
-- **Don't:** count a single-vendor CLEAN as the same evidence as the two-vendor CLEAN #1838 had.
+- **Don't:** count a single-vendor CLEAN as the same evidence as the two-vendor CLEAN #1838 had, or leave a single-vendor round unstated in the PR.
 
 (`Lacaedemon/sparta` PR #1836, #1834, 2026-10-16 to 2026-10-21.)
 
 ## Reviewers quote code that does not exist
 
-In the round-6 and round-7 reviews of #1827, the notebook notes that agy "quoted constants/functions not in the tree again".
+In the round-6 reviews of #1827, the notebook notes that agy "quoted constants/functions not in the tree again".
 Part 25 recorded the same thing in round 1, where two named functions did not exist.
-Findings also needed measuring: in round 6 the two reviewers disagreed on `_is_frontal_attack`, and measurement showed agy right (shield wall 1.0 to 0.65).
+Findings also needed measuring: in round 6 the two reviewers disagreed on `_is_frontal_attack`.
+Agy said a shield wall loses its frontal defence against an anchored attacker.
+Claude said the sign test was barely affected.
+The quantity measured was `melee_defense_factor`, which returned 1.0 with the old position-based test (frontal cover lost) and 0.65 with the fix, so agy was right.
+The source is the round-6 finisher report as summarised in the notebook.
+The fix is a7d8be1a.
 
 - **Do:** grep the tree for each constant, function and line a finding quotes before acting, and measure a finding when the reviewers disagree.
 
