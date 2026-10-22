@@ -460,7 +460,9 @@ each block's front-rank depth beyond `Unit.RADIUS` to the close-tier melee conta
 (each contact test goes through `MeleeFrontLine.within_contact`;
 a router's anchor test, which shrinks the range on re-entry, measures the same gap),
 and beyond its capped `_front_depth()` to the engaged floor,
-both weighted by how squarely the two blocks face each other (0 for a flank or rear attack).
+both weighted by how squarely the two blocks face each other
+(a flank or rear attack has its own weight, in
+[Flank and rear attacks stop at the defender's edge](#flank-and-rear-attacks-stop-at-the-defenders-edge)).
 A flank-anchored frontage stands its men off the block's position,
 so the ranges are measured between the men's centres;
 the gap moves from the positions to the men's centres by the same weight,
@@ -523,6 +525,48 @@ Units take correspondingly longer to break in a straight frontal fight:
 in the perturbed melee-outcome delta,
 `general_doctrine_reserves`' low-morale foot and `march_to_contact`'s unit 1 mostly no longer break inside their clips,
 and `file_major_reform_contrast` and `spear_standoff` break 100 to 145 ticks later.
+
+### Flank and rear attacks stop at the defender's edge
+
+A block whose front faces another block's flank or rear is met the way a square is:
+the attacker reaches its own front rank,
+and the defender reaches its slot rectangle's extent along the attacker's front
+(`MeleeFrontGeometry.outline`): its front-rank depth for a rear attack,
+its front half-width for a flank attack.
+So the attacker's front rank stops on the defender's rear rank or end file.
+This side part of the weight multiplies the same two terms as the frontal part,
+with the attacker's front as the axis:
+how far the defender lies ahead of that front (a ramp over one `Unit.RADIUS`)
+and how much of that front overlaps the defender's outline across it.
+When both blocks' fronts bear on each other (an L-shaped meeting),
+the pair takes the larger of the two orientations' weights and their reaches averaged by weight.
+
+The side part is gated on the angle between the two fronts (`MeleeFrontLine.side_gate`).
+It is 0 down to a cosine of `melee_side_contact_max_cos` (0.75, about 41 degrees off square)
+and reaches its whole weight at `melee_front_line_min_cos` (0.5),
+where the frontal part has fallen to 0.
+The frontal part's ramp and the side gate never sum past 1,
+so the weight does not jump as a clash turns from oblique to flank.
+A clash within about 41 degrees of square is weighed by the frontal part alone,
+exactly as before:
+the frontal lethality probe (two 120-man blocks, Tight, Normal and Loose order,
+the clip's seed and perturbed seeds 1 to 4) reads a bit-identical per-tick hash stream to main 2c2955cc's.
+A line's extension bound (`MeleeFrontProfile.ext`, which the contact reject and the
+neighbourhood lookup read) is its slot rectangle's half-diagonal,
+the farthest its outline reaches along any axis.
+
+Measured with two 120-man Infantry blocks in Tight order, neither allowed to break,
+the defender spawned facing away (rear) or side-on (flank),
+over the first 1150 ticks on the clip's seed and perturbed seeds 1 to 4.
+On main 2c2955cc the attacker's front-rank slots settled 3.9 ranks inside the defender in a rear attack
+and 8.1 file pitches inside it on a flank;
+with the side contact their slots settle on average 0.8 and 0.9 ranks short of the defender's edge.
+The attacker's front-rank men then stand 1.7 (rear) and 2.7 (flank) ranks from the defender's outermost men,
+as a frontal pair's front ranks stand 2.4 ranks apart in the same probe.
+The attacker's losses fall from 11.0 to 0 men in the rear and from 18.2 to 2.6 on a flank,
+since the defender's men facing away cannot strike back,
+and the defender's from 46.4 to 39.4 and from 20.0 to 17.6,
+since only the attacker's front rank reaches it.
 
 ## Physical contact is proximity-based, not combat-state-based
 

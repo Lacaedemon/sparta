@@ -906,9 +906,21 @@ so each block's ranks stay behind its own front rank
 instead of being drawn in among the enemy's.
 Blocks that meet only partly face to face, offset to one side, still press some way in.
 A square faces every way, so a line attacking it also stops at its outer rank.
-A cavalry charge, a fight with missile troops,
-and an attack on a flank or the rear are still measured centre to centre,
+An infantry block that attacks another's flank or rear stops the same way,
+at the defender's end file or rear rank,
+and fights it from outside the block.
+A cavalry charge and a fight with missile troops are still measured centre to centre,
 so there the attackers can end up among the defenders' ranks.
+
+Stopping at the edge makes a flank or rear attack cheaper for the attacker,
+since the defender's men facing away from it cannot strike back.
+In a test of 120 men against 120 in tight order, over the first 19 seconds,
+an attack on the rear cost the attacker no men
+and an attack on a flank about 3,
+where pushing in among the defender's ranks had cost it about 11 and 18.
+The defender lost a little fewer than before (about 39 instead of 46 in the rear,
+18 instead of 20 on a flank),
+because only the attacker's front rank now reaches it.
 
 Because only the front ranks reach each other,
 a frontal fight between two such blocks is slower to kill than it used to be.

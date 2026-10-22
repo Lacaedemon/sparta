@@ -1,0 +1,25 @@
+{
+  "_comment": "An infantry block attacks another block in the rear and stops at its rear rank. Team 0's 80 men stand 10 files by 8 ranks, 63 wu from centre to front rank; team 1's 96 men stand 12 files by 8 ranks, its rear rank also 63 wu behind its centre. Team 1 stands with its back to team 0 (all_teams_control, so it is not ordered to turn). Team 0 is ordered to attack it at tick 12. Contact now begins with the centres about 150 wu apart, as team 0's front rank comes within reach of team 1's rear rank (in contact by tick 390, not yet at tick 360), and the press holds the centres about 142 wu apart from tick 420 to 600 (the pair has turned about 14 degrees, so that is team 1's outline along team 0's front): team 0's front-rank slots stand within 0.1 rank of team 1's rear-rank slots, and neither block's men stand inside the other. On main 2c2955cc contact began only within 62 wu (still out of contact at tick 420, in contact at tick 450), and by tick 540 the centres stood 25 wu apart, team 0's front-rank slots 6 ranks inside team 1. Measured with state dumps on main 2c2955cc and on this branch (the overlap read along team 0's slot-grid front, from full dumps). Static camera. Deterministic (scenario + seed + scripted input).",
+  "seed": "18450",
+  "all_teams_control": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 800, "y": 1010, "count": 80, "frontage": 10, "facing": [0, -1]},
+    {"team": 1, "type": "Infantry", "x": 800, "y": 700, "count": 96, "frontage": 12, "facing": [0, -1]}
+  ],
+  "camera": [{"tick": 0, "x": 800, "y": 820, "zoom": 1.4}],
+  "steps": [
+    {"tick": 6, "click": [800, 1010]},
+    {"tick": 12, "rmb_click": [800, 700]}
+  ],
+  "state": [8, 120, 240, 360, 390, 420, 480, 540, 600],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [800, 1010]},
+    {"tick": 360, "uid": 0, "field": "in_enemy_contact", "value": false},
+    {"tick": 390, "uid": 0, "field": "in_enemy_contact", "value": true},
+    {"tick": 540, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 540, "uid": 0, "field": "position", "value": [828.8, 827.6], "tol": 6.0},
+    {"tick": 540, "uid": 1, "field": "position", "value": [795.4, 689.6], "tol": 6.0}
+  ],
+  "fixed_fps": 30,
+  "max_frames": 300
+}
