@@ -4702,8 +4702,8 @@ func _advance_grid_lag(delta: float) -> void:
 ## pivot alone already turns the grid that fast against the lag. The speed bound wins where the
 ## two disagree: only the pivot's own rate can change faster than bounded_turn_accel. A pivot
 ## the same way the lag closes was already held back to what this tick's lag turn leaves of the
-## bound (_hold_pivot_for_resquare), so the clamp binds only on a pivot this tick that did not
-## go through that hold.
+## bound (_hold_pivot_for_resquare), so the clamp binds only on a pivot the hold did not limit
+## (one back toward the grid, or one taken before this tick's re-square started).
 func _close_resquare_lag_in_pivot(delta: float) -> void:
 	var radius: float = _formation_local_half_extents().length()
 	var max_rate: float = bounded_turn_rate(radius)
@@ -4758,7 +4758,11 @@ func _rotate_facing_toward(target_dir: Vector2, delta: float, rate: float = TURN
 ## (bounded_turn_step, as _close_resquare_lag_in_pivot reckons it) leaves of the bound, less any
 ## pivot already taken this tick. The heading waits for the grid instead of the grid chasing
 ## the heading; the grid itself turns no slower toward the pivot's goal, since it was held to
-## the bound either way. A pivot back toward the grid, a lag in a turn in place (which waits
+## the bound either way. This holds every pivot through _rotate_facing_toward, not only a chase:
+## a formed march or a reform-hold pivot the same way waits too, and turn-before-march scales a
+## march's speed by the held heading, so a march ordered far off the heading the way the lag
+## closes makes little headway until the ranks come round. A pivot back toward the grid, a lag
+## in a turn in place (which waits
 ## the turn out, _advance_grid_lag) and a march lag are not held.
 func _hold_pivot_for_resquare(step: float, delta: float) -> float:
 	if _grid_lag == 0.0 or not _grid_lag_resquare or delta <= 0.0 or is_maneuver_turning():
@@ -9006,7 +9010,8 @@ func grid_front_forward() -> Vector2:
 ##
 ## It has no hysteresis, and needs none: the fold does not drift across the threshold. It moves
 ## only when something writes it (an engage turn or a drill settling, an order's re-square, a
-## lag folded in, the rally), and the grid's lag, which does turn tick by tick, is not read here.
+## lag folded in, a large re-face absorbed into the fold by _face_dir, a file-doubling transpose,
+## the rally), and the grid's lag, which does turn tick by tick, is not read here.
 ## On the seed-0 catalog at b236be47 the reversal flipped 63 times on 38 blocks; 6 flips came
 ## within 5 degrees of the threshold (the nearest 0.2 degrees off it), and none of those 6 blocks
 ## flipped back within 60 ticks. Every quick re-flip there was the fold jumping by about a

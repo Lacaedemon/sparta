@@ -1798,7 +1798,7 @@ a unit chasing its enemy squares up on the move.
 When it squares up, on leaving the fight or for an order given out of contact,
 the ranks come round onto the heading no faster than the men on its far corners can jog.
 Until they do, the unit **holds its heading for its ranks**:
-a chase that would turn it further away from them is slowed until the ranks catch up,
+a chase or march that would turn it further away from them is slowed until the ranks catch up,
 and the unit is not left marching ever further crabwise.
 A drill ordered while a unit still waits to square up cancels the squaring,
 so the ranks keep the turn the drill gave them.
