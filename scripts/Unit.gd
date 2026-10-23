@@ -1584,6 +1584,9 @@ var _shattered: bool = false
 var _order_response_timer: float = 0.0
 var _moved_last_frame: bool = false
 var _is_facing_turning: bool = false
+# How far (rad, signed) _rotate_facing_toward turned the heading this tick; cleared with
+# _is_facing_turning at the top of each tick, so a snapshot never needs it.
+var _facing_turn_step: float = 0.0
 # This unit's actual travel velocity (direction + magnitude, world units/s) — not a
 # combat-only quantity, just historically under-documented as one: the cavalry charge
 # bonus (UnitCombat.charge_multiplier) reads it at contact, but so does the soldier-body
@@ -1839,6 +1842,7 @@ func _physics_process(delta: float) -> void:
 			UnitCombat.register_casualties(self, lost, null, 1.0)
 	_moved_last_frame = false
 	_is_facing_turning = false
+	_facing_turn_step = 0.0
 
 	_cut_rally_halt_on_enemy()
 	_think(delta)
@@ -4627,6 +4631,10 @@ func _advance_grid_lag(delta: float) -> void:
 		return
 	if _resquare_pending and not _in_enemy_contact and not is_turning():
 		_square_fold_for_order(true)
+	if _grid_lag != 0.0 and delta > 0.0 and _grid_lag_resquare and _is_facing_turning \
+			and not is_maneuver_turning():
+		_close_resquare_lag_in_pivot(delta)
+		return
 	if _grid_lag == 0.0 or delta <= 0.0 or is_turning():
 		_grid_lag_rate = 0.0
 		return
@@ -4642,6 +4650,27 @@ func _advance_grid_lag(delta: float) -> void:
 	else:
 		_grid_lag_rate = rate
 		_grid_lag += turn
+	_render_dirty = true
+
+
+## One tick of an order's re-square (_grid_lag_resquare) while the heading pivots
+## (_rotate_facing_toward this tick). A march lag waits out a pivot, which moves the grid at its
+## own bounded rate, but a chase re-aims its heading a fraction of a degree nearly every tick, so
+## a re-square that waited would leave the grid turned off its heading for the whole chase. The
+## lag instead closes by whatever keeps the grid's own turn this tick (the pivot's step plus the
+## lag's) within bounded_turn_rate, and by nothing when the pivot alone already turns it that
+## fast against the lag.
+func _close_resquare_lag_in_pivot(delta: float) -> void:
+	var room: float = bounded_turn_rate(_formation_local_half_extents().length()) * delta
+	var step: float = clampf(-_grid_lag, -room - _facing_turn_step, room - _facing_turn_step)
+	if signf(step) != signf(-_grid_lag):
+		step = 0.0
+	if absf(step) >= absf(_grid_lag):
+		step = -_grid_lag
+	_grid_lag_rate = step / delta
+	_grid_lag += step
+	if _grid_lag == 0.0:
+		_grid_lag_resquare = false
 	_render_dirty = true
 
 
@@ -4664,6 +4693,7 @@ func _rotate_facing_toward(target_dir: Vector2, delta: float, rate: float = TURN
 	if absf(diff) > 0.001:
 		_is_facing_turning = true
 	var step: float = clampf(diff, -rate * delta, rate * delta)
+	_facing_turn_step += step
 	facing = Vector2.from_angle(cur + step)
 
 

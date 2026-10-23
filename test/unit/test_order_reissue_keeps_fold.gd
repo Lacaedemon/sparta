@@ -159,6 +159,25 @@ func test_an_order_out_of_contact_turns_a_skewed_fold_out_gradually() -> void:
 	assert_almost_eq(u.grid_fold(), 0.0, ANGLE_EPS, "the grid ends square to the heading")
 
 
+func test_a_resquare_still_closes_while_a_chase_re_aims_every_tick() -> void:
+	# A chase pivots its heading a fraction of a degree nearly every tick; a re-square that
+	# waited out every pivot, as a march lag does, would never close.
+	var u := _unit()
+	_fold(u, SKEW_DEG)
+	_reissue(u)
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for t in range(TURN_TICKS):
+		u._is_facing_turning = false
+		u._facing_turn_step = 0.0
+		u._rotate_facing_toward(u.facing.rotated(deg_to_rad(0.1)), _tick(), PI)
+		u._advance_grid_lag(_tick())
+		var now: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+		assert_lte(_worst_move(slots, now), _turn_bound(u), "tick %d: a bounded turn" % t)
+		slots = now
+	assert_eq(u._grid_lag, 0.0, "the re-square closed during the pivots")
+	assert_false(u._grid_lag_resquare, "and is done")
+
+
 func test_an_engage_turn_in_progress_is_folded_where_the_men_stand() -> void:
 	var u := _unit()
 	var held: PackedVector2Array = u.soldier_world_slots(u.soldiers)
