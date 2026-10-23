@@ -101,7 +101,9 @@ its riders running together as a block.
   instead of wheeling round after every small shift of the riders,
   so the men don't have to chase new places across the block mid-fight.
   If the riders work round to its flank or rear,
-  the men still turn where they stand to face them.
+  or once they ride back out of its ranks,
+  the men turn where they stand to face them
+  rather than the whole formation swinging round at once.
   Horsemen hold no such line:
   a troop of cavalry with foot or other horsemen among it
   still turns to follow its enemy.
