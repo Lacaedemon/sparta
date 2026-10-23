@@ -8930,7 +8930,8 @@ func _select_near_front_indices(count: int, max_selected: int = -1) -> PackedInt
 	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, near_front_forward())
 
 
-## The direction the near-front selections rank soldiers along: the slot grid's depth axis
+## The direction the striking, contact and body-tier selections (_select_near_front_indices)
+## and the interior-strike footprint rank soldiers along: the slot grid's depth axis
 ## (the heading turned by _formation_angle), so the selection takes whole ranks of the grid the
 ## men stand on, toward whichever of its front and rear ranks the men face. Every man faces
 ## the heading (soldier_world_facings), so once the fold is past a quarter-turn -- an engage
@@ -8941,10 +8942,17 @@ func _select_near_front_indices(count: int, max_selected: int = -1) -> PackedInt
 ## itself included (the same 0.01 rad tolerance reform_ranks reads one with), keeps the grid's
 ## own front.
 func near_front_forward() -> Vector2:
-	var fold: float = _formation_angle
-	if near_front_reversed():
-		fold = wrapf(fold - PI, -PI, PI)
-	var world_angle: float = facing.angle() + PI * 0.5 + fold
+	if not near_front_reversed():
+		return grid_front_forward()
+	var world_angle: float = facing.angle() + PI * 0.5 + wrapf(_formation_angle - PI, -PI, PI)
+	return Vector2(0.0, -1.0).rotated(world_angle)
+
+
+## The slot grid's own front along its depth axis (the heading turned by _formation_angle),
+## whichever way the men face: what near_front_forward reads within a quarter-turn fold, and
+## what the position anchor (near_front_soldier_indices) reads at any fold.
+func grid_front_forward() -> Vector2:
+	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
 	return Vector2(0.0, -1.0).rotated(world_angle)
 
 
@@ -9013,7 +9021,14 @@ func near_front_soldier_indices(count: int) -> PackedInt32Array:
 	if not (is_engaged() or _in_enemy_contact) or count <= 0 or in_square():
 		return PackedInt32Array()
 	var cutoff: int = mini(count, formation_files(count) * ANCHOR_RANKS)
-	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, near_front_forward())
+	# The anchor reads the grid's own front ranks even once the fold is past a quarter-turn,
+	# where the striking selections rank toward its rear (near_front_forward). Anchoring on the
+	# rear ranks there changed the testudo_under_fire clip (seed 0) from no contact between the
+	# archers and the testudo to the archers' block running into it, centre to centre within
+	# about 10 wu, with the testudo's heading flicking about 23 degrees each way every tick from
+	# tick 86: 664 one-tick grid turns over 20 degrees in the clip, against 3 with this front
+	# (and 3 on main 799b0bca).
+	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, grid_front_forward())
 
 
 ## The soldier-index selection `SoldierBodies.couple()` anchors `position` on: the live
