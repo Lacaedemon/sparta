@@ -8796,7 +8796,7 @@ func engaged_soldier_indices(count: int, use_cache: bool = true) -> PackedInt32A
 func _compute_engaged_soldier_indices(count: int) -> PackedInt32Array:
 	if not is_engaged() or count <= 0:
 		return PackedInt32Array()
-	return _select_near_front_indices(count)
+	return _select_near_front_indices(count, near_front_forward())
 
 
 ## Which of this regiment's own soldiers get soldier-level contact/melee resolution, for
@@ -8811,7 +8811,7 @@ func _compute_engaged_soldier_indices(count: int) -> PackedInt32Array:
 func contact_soldier_indices(count: int) -> PackedInt32Array:
 	if not (is_engaged() or _in_enemy_contact) or count <= 0:
 		return PackedInt32Array()
-	return _select_near_front_indices(count)
+	return _select_near_front_indices(count, grid_front_forward())
 
 
 ## Which of this regiment's own soldiers get ENGAGED BODY DYNAMICS in SoldierBodies.step()
@@ -8853,7 +8853,7 @@ func contact_soldier_indices(count: int) -> PackedInt32Array:
 func body_tier_soldier_indices(count: int) -> PackedInt32Array:
 	if not is_engaged() or count <= 0 or router_front_in_melee():
 		return PackedInt32Array()
-	return _select_near_front_indices(count, body_tier_cap(count))
+	return _select_near_front_indices(count, grid_front_forward(), body_tier_cap(count))
 
 
 ## How many ranks deep this regiment's soldiers are actually in BODILY contact with an enemy
@@ -8886,14 +8886,24 @@ func body_tier_cap(count: int) -> int:
 ## indices to select, given this regiment already qualifies for soldier-level resolution.
 ## Shared by engaged_soldier_indices() (combat-state-gated), contact_soldier_indices()
 ## (proximity-gated) and body_tier_soldier_indices() (combat-state-gated, capped) so all
-## three use identical selection logic -- only the GATE and the cap differ.
+## three use identical selection logic -- only the GATE, the cap and the axis differ.
+##
+## `forward` is the axis a line ranks its men along (a square ignores it). The striking set
+## (engaged_soldier_indices) takes near_front_forward, the ranks facing the enemy once the fold is
+## past a quarter-turn. The contact and body-tier sets keep the grid's own front
+## (grid_front_forward), as the position anchor does: ranking them toward the grid's rear rank too
+## stopped every blow of a rear attack once the defender had turned about
+## (test_melee_side_contact_battle's rear case lost 0 men against 7 with the strikers alone
+## reversed) and carried a router pressed beside a hill into fighting to the death
+## (test_router_breaks_from_contact).
 ##
 ## `max_selected` bounds how many indices come back; -1 (the default) means "no bound", the
 ## historical behaviour every caller but body_tier_soldier_indices() still wants. A bound is
 ## applied by NARROWING the selection itself, not by trimming the result, so what comes back
 ## is still the most-forward (or, in square, most-exposed) soldiers rather than an arbitrary
 ## subset -- both underlying selections take the target count as an input.
-func _select_near_front_indices(count: int, max_selected: int = -1) -> PackedInt32Array:
+func _select_near_front_indices(count: int, forward: Vector2,
+		max_selected: int = -1) -> PackedInt32Array:
 	if in_square():
 		var all_units: Array = get_tree().get_nodes_in_group("units")
 		all_units.append_array(get_tree().get_nodes_in_group("routers"))
@@ -8927,11 +8937,11 @@ func _select_near_front_indices(count: int, max_selected: int = -1) -> PackedInt
 	var cutoff: int = mini(count, formation_files(count) * engaged_ranks())
 	if max_selected >= 0:
 		cutoff = mini(cutoff, max_selected)
-	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, near_front_forward())
+	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)
 
 
-## The direction the striking, contact and body-tier selections (_select_near_front_indices)
-## and the interior-strike footprint rank soldiers along: the slot grid's depth axis
+## The direction the striking set (engaged_soldier_indices) and the interior-strike footprint
+## rank soldiers along: the slot grid's depth axis
 ## (the heading turned by _formation_angle), so the selection takes whole ranks of the grid the
 ## men stand on, toward whichever of its front and rear ranks the men face. Every man faces
 ## the heading (soldier_world_facings), so once the fold is past a quarter-turn -- an engage
