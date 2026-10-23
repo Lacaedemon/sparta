@@ -1,7 +1,9 @@
 extends GutTest
-## The footprint a combat re-face holds the slot grid inside (Unit._enemy_centre_inside_footprint):
-## its caller-configurable scale, the cases it leaves out, and its snapshot round trip. The hold
-## itself, which also needs the block in enemy contact, is covered in test_melee_reface_inside_block.gd.
+## The footprint inside which a foot block's combat re-face on cavalry holds the slot grid
+## (Unit._cavalry_inside_foot_footprint): its caller-configurable scale, the cases it leaves
+## out, and its snapshot round trip. The hold itself, which also needs the block in enemy
+## contact, is covered in test_melee_reface_inside_block.gd, and the unit pairings in
+## test_melee_reface_hold_pairings.gd.
 
 const DT := 1.0 / 60.0
 # Inside a 60-man block's footprint at the default scale.
@@ -25,6 +27,7 @@ func _make_enemy(pos: Vector2) -> Unit:
 	e.team = 1
 	e.position = pos
 	e.state = Unit.State.FIGHTING
+	e.is_cavalry = true   # the hold covers riders inside a foot block
 	return e
 
 
@@ -56,9 +59,9 @@ func test_the_footprint_scale_widens_the_hold() -> void:
 	var half: Vector2 = u.soldier_block_half_extents()
 	var dist: float = half.y * 1.05 / cos(deg_to_rad(30.0))
 	var e := _make_enemy(u.position + Vector2.DOWN.rotated(deg_to_rad(30.0)) * dist)
-	assert_false(u._enemy_centre_inside_footprint(e), "sanity: outside at the default scale")
+	assert_false(u._cavalry_inside_foot_footprint(e), "sanity: outside at the default scale")
 	u.melee_reface_hold_footprint_scale = 1.1
-	assert_true(u._enemy_centre_inside_footprint(e), "the scaled footprint takes the enemy in")
+	assert_true(u._cavalry_inside_foot_footprint(e), "the scaled footprint takes the enemy in")
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	u._face_for_action(e.position, DT, e)
 	assert_lt(_max_slot_shift(before, u.soldier_world_slots(u.soldiers)), SLOT_HOLD_TOL,
@@ -71,7 +74,7 @@ func test_a_zero_scale_turns_the_hold_off() -> void:
 	u._in_enemy_contact = true   # in melee contact, as the hold requires
 	u.melee_reface_hold_footprint_scale = 0.0
 	var e := _make_enemy(u.position)
-	assert_false(u._enemy_centre_inside_footprint(e), "an enemy on the anchor itself is not held at scale 0")
+	assert_false(u._cavalry_inside_foot_footprint(e), "an enemy on the anchor itself is not held at scale 0")
 	e.position = u.position + INSIDE_OFFSET
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	u._face_for_action(e.position, DT, e)
@@ -85,9 +88,9 @@ func test_a_routing_enemy_is_left_to_the_router_rules() -> void:
 	u.uid = 1
 	u._in_enemy_contact = true   # in melee contact, as the hold requires
 	var e := _make_enemy(u.position + INSIDE_OFFSET)
-	assert_true(u._enemy_centre_inside_footprint(e), "sanity: a standing enemy there is held")
+	assert_true(u._cavalry_inside_foot_footprint(e), "sanity: a standing enemy there is held")
 	e.state = Unit.State.ROUTING
-	assert_false(u._enemy_centre_inside_footprint(e), "a router there is not")
+	assert_false(u._cavalry_inside_foot_footprint(e), "a router there is not")
 
 
 func test_a_far_tier_block_is_not_held() -> void:
@@ -95,14 +98,14 @@ func test_a_far_tier_block_is_not_held() -> void:
 	u.uid = 1
 	u._in_enemy_contact = true   # in melee contact, as the hold requires
 	var e := _make_enemy(u.position + INSIDE_OFFSET)
-	assert_true(u._enemy_centre_inside_footprint(e), "sanity: a close-tier block is held")
+	assert_true(u._cavalry_inside_foot_footprint(e), "sanity: a close-tier block is held")
 	u.tier = FormationTier.FAR
-	assert_false(u._enemy_centre_inside_footprint(e), "a far-tier block has no bodies on its slots to hold")
+	assert_false(u._cavalry_inside_foot_footprint(e), "a far-tier block has no bodies on its slots to hold")
 
 
 func test_no_target_is_not_inside() -> void:
 	var u := _make_unit()
-	assert_false(u._enemy_centre_inside_footprint(null), "a re-face with no enemy unit holds nothing")
+	assert_false(u._cavalry_inside_foot_footprint(null), "a re-face with no enemy unit holds nothing")
 
 
 func test_the_footprint_scale_round_trips_through_a_snapshot() -> void:

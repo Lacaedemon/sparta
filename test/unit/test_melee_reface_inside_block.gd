@@ -1,11 +1,12 @@
 extends GutTest
-## A fighting block in enemy contact whose target's centre lies inside its own slot footprint
-## holds its facing on a small re-face in _face_for_action: neither the heading nor
-## _formation_angle changes, so the slot grid stays where the men stand and nothing is left
+## A fighting foot block in enemy contact whose cavalry target's centre lies inside its own
+## slot footprint holds its facing on a small re-face in _face_for_action: neither the heading
+## nor _formation_angle changes, so the slot grid stays where the men stand and nothing is left
 ## for a later reform to undo. Before, a correction up to ENGAGE_TURN_THRESHOLD (75 degrees)
-## turned the whole grid about the anchor unabsorbed, so an enemy among the ranks wound the
-## grid round after its bearing tick by tick.
-## The footprint's own tunables are covered in test_melee_reface_footprint_config.gd.
+## turned the whole grid about the anchor unabsorbed, so riders among the ranks wound the
+## grid round after their bearing tick by tick.
+## The footprint's own tunables are covered in test_melee_reface_footprint_config.gd, and the
+## pairings the hold leaves out in test_melee_reface_hold_pairings.gd.
 
 const DT := 1.0 / 60.0
 # Inside a 60-man block's footprint (sanity-checked in each test that uses it): 39.8 degrees
@@ -44,6 +45,7 @@ func _make_enemy(pos: Vector2) -> Unit:
 	e.team = 1
 	e.position = pos
 	e.state = Unit.State.FIGHTING
+	e.is_cavalry = true   # the hold covers riders inside a foot block
 	return e
 
 
