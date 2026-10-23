@@ -1,0 +1,48 @@
+{
+  "_comment": "An order re-issued to a block in a fight (#1852). A 96-man Infantry block stands facing north; a 48-man Infantry block (all_teams_control, ordered at tick 30) attacks it from the south-east, about 135 degrees off its front. On contact (about tick 350) the block turns in place to face its attacker, 138 degrees by tick 378, and the turn settles into the fold, so the ranks stay where the men stand. At tick 452 the player re-issues the attack on the same enemy, as the AI does every few seconds. On main 799b0bca that order dropped the fold in one tick: the slot grid swung 144 degrees about the anchor, 75 of the 96 men's slots lay across the block's centreline from them at tick 454 (73 at 480, 68 at 540), the block left FIGHTING for MOVING until about tick 531, and shape_residual fails at 22.9 against 13.5 on a 2-tick dump with exemptions removed. Now the block keeps its fold while it is in contact (the re-square waits until it is out): no man's slot is across the centreline at 454, 480 or 540, the block stays FIGHTING throughout, and every defect verdict passes on a 2-tick dump of ticks 2 to 600 with no exemptions, on #1852's head. The slots_across_centreline and tick-470 state expects fail on main.",
+  "seed": "18520",
+  "all_teams_control": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 640,
+      "y": 470,
+      "facing": [0.0, -1.0],
+      "count": 96,
+      "morale": 100.0
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 860,
+      "y": 690,
+      "facing": [-0.7071, -0.7071],
+      "count": 48,
+      "morale": 100.0
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 700.0,
+      "y": 540.0,
+      "zoom": 1.0
+    }
+  ],
+  "steps": [
+    {"tick": 10, "box": {"from": [800, 630], "to": [920, 750]}},
+    {"tick": 30, "rmb_click": [640, 470]},
+    {"tick": 450, "click": [600, 450]},
+    {"tick": 452, "rmb_click": [755, 582]}
+  ],
+  "state": [8, 30, 120, 240, 330, 360, 380, 400, 420, 440, 450, 452, 454, 456, 460, 470, 480, 500, 520, 540, 560, 580, 600],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [640.0, 470.0]},
+    {"tick": 440, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 454, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 480, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 540, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 470, "uid": 0, "field": "state", "value": "FIGHTING"}
+  ]
+}

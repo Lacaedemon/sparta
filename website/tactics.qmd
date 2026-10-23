@@ -1786,6 +1786,18 @@ had before turning, or to match the frontage of the enemy it turned to face
 reshape never teleports the ranks. There's no in-game control to pick a
 non-default reshape yet, so every unit still fights this out today.
 
+A turn in place leaves the ranks lying where the men stood when it began,
+so a unit that has come about to fight is no longer square to the way it faces.
+A fresh order squares it again, but **never while it is still in contact**:
+an order given to a unit that is fighting, such as a new attack on the same enemy
+(the AI re-issues its orders every few seconds), leaves the ranks where the men stand,
+and the unit squares up only once it is out of the fight.
+When it squares up, on leaving the fight or for an order given out of contact,
+the ranks come round onto the heading no faster than the men on its far corners can jog.
+Two cases still square at once:
+a unit standing a quarter-turn off its ranks, whose men each step to the nearest place
+in the squared block, and a distant unit drawn as a grid mark, which has no men to move.
+
 The pivot itself also **slows as the unit picks up speed** --- a unit turns
 fastest from a stand and tightens its turn rate the faster it's already moving
 (down to 40% of the stationary rate at a full sprint), reflecting the real
