@@ -44,7 +44,8 @@ func test_an_offset_pair_keeps_its_weight_as_it_closes() -> void:
 	assert_almost_eq(MeleeFrontLine.weight(a, b), far, 0.0001, "unchanged as the centres close")
 
 
-## Each term zeroes the weight on its own, with the other two at 1.
+## Each term zeroes the frontal weight on its own, with the other two at 1. The side contact
+## (test_melee_front_line_side.gd) is off: a rear attack is its case.
 func test_each_term_can_zero_the_weight_alone() -> void:
 	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
 	# Opposed fronts, b ahead, but clear of a's front sideways (300 wu > 252).
@@ -55,6 +56,7 @@ func test_each_term_can_zero_the_weight_alone() -> void:
 	assert_eq(MeleeFrontLine.weight(a, passed), 0.0, "not ahead of each other")
 	# Ahead and overlapping, but heading the same way (a rear attack).
 	var rear: Unit = _make_unit(120, Vector2(0.0, 150.0), Vector2.DOWN, 1)
+	rear.melee_side_contact_max_cos = -1.0
 	assert_eq(MeleeFrontLine.weight(a, rear), 0.0, "fronts not opposed")
 
 
@@ -142,7 +144,10 @@ func test_a_frontal_enemy_counts_in_the_local_force_ratio() -> void:
 	a.morale = 60.0
 	UnitMorale.tick_morale(a, 1.0)
 	var frontal: float = a.morale
-	b.facing = Vector2.LEFT   # no longer front to front: the plain radius applies
+	# No longer front to front, and the side contact off (a's front would meet b's flank): the
+	# plain radius applies.
+	b.facing = Vector2.LEFT
+	b.melee_side_contact_max_cos = -1.0
 	a.morale = 60.0
 	UnitMorale.tick_morale(a, 1.0)
 	assert_lt(frontal, a.morale, "the frontal enemy erodes the outnumbered block's morale")

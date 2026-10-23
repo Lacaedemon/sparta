@@ -53,6 +53,9 @@ func test_an_engage_turn_in_progress_keeps_the_front() -> void:
 	a.facing = Vector2.DOWN.rotated(deg_to_rad(70.0))   # partway through the turn
 	assert_almost_eq(MeleeFrontLine.weight(a, b), 1.0, 0.0001, "the men still face b")
 	a._engage_turn_target = Vector2.ZERO
+	# The heading 70 degrees off b now leaves the fronts too far from opposed for the frontal
+	# part; the side contact would still weigh it (b's front faces a's flank), so it is off here.
+	a.melee_side_contact_max_cos = -1.0
 	assert_lt(MeleeFrontLine.weight(a, b), 0.5, "a settled-less heading turn would have dropped it")
 
 

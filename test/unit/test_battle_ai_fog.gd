@@ -42,12 +42,17 @@ const SHRUNK_SIGHT: float = 50.0
 ## anything within detection_range regardless of whether it was actually perceived.
 const DETECTED_NOT_PERCEIVED_POS := WATCHER_POS \
 		- Vector2(0.0, (SHRUNK_SIGHT + Unit.DETECTION_RANGE) * 0.5)
-## The facing a hidden enemy staged at DETECTED_NOT_PERCEIVED_POS takes in the tests whose premise
-## is that it is not in melee contact: across the watcher's front rather than toward it. Two
-## default Infantry blocks squarely front to front 120 wu apart already have their front ranks
-## overlapping, so MeleeFrontLine puts them in contact; turned across the front, the pair is not
-## frontal and keeps the centre-based contact range these tests were staged against.
-const HIDDEN_ENEMY_FACING := [1, 0]
+## The facing and headcount a hidden enemy staged at DETECTED_NOT_PERCEIVED_POS takes in the
+## tests whose premise is that it is not in melee contact. A default 120-man Infantry block
+## stands its front rank 63 wu ahead of its centre and its end files 126 wu to either side, so
+## at 120 wu a full block overlaps the watcher's front rank whichever way it faces: front to
+## front its front rank, side-on its end file, facing away its rear rank. MeleeFrontLine reads
+## each of those as contact (side-on, a 215 wu range). A 16-man enemy facing away stands its
+## rear rank 18 wu behind its centre, 102 wu from the watcher's centre and 39 wu beyond the
+## watcher's front rank: a contact range of 107 wu, so the two stay out of contact. The tests
+## that compare against contact assert the premise.
+const HIDDEN_ENEMY_FACING := [0, -1]
+const HIDDEN_ENEMY_COUNT := 16
 
 
 func after_each() -> void:
@@ -359,7 +364,7 @@ func test_idle_ai_unit_does_not_auto_advance_on_a_detected_but_unperceived_enemy
 	battle.scenario = [
 		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
 		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y,
-				"facing": HIDDEN_ENEMY_FACING},
+				"facing": HIDDEN_ENEMY_FACING, "count": HIDDEN_ENEMY_COUNT},
 	]
 	add_child_autofree(battle)
 	var watcher: Unit = _team_units(1)[0]
@@ -1012,7 +1017,7 @@ func test_sweep_routers_fallback_does_not_commit_to_a_fresh_unperceived_enemy() 
 	battle.scenario = [
 		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
 		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y,
-				"facing": HIDDEN_ENEMY_FACING},
+				"facing": HIDDEN_ENEMY_FACING, "count": HIDDEN_ENEMY_COUNT},
 	]
 	add_child_autofree(battle)
 	var sweeper: Unit = _team_units(1)[0]
@@ -1126,7 +1131,7 @@ func test_chase_does_not_close_on_a_fresh_unperceived_enemy_with_no_committed_ta
 	battle.scenario = [
 		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
 		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y,
-				"facing": HIDDEN_ENEMY_FACING},
+				"facing": HIDDEN_ENEMY_FACING, "count": HIDDEN_ENEMY_COUNT},
 	]
 	add_child_autofree(battle)
 	var u: Unit = _team_units(1)[0]
@@ -1187,7 +1192,7 @@ func test_start_promoted_attack_does_not_resolve_to_a_fresh_unperceived_standoff
 	battle.scenario = [
 		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
 		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y,
-				"facing": HIDDEN_ENEMY_FACING},
+				"facing": HIDDEN_ENEMY_FACING, "count": HIDDEN_ENEMY_COUNT},
 	]
 	add_child_autofree(battle)
 	var u: Unit = _team_units(1)[0]
@@ -1733,7 +1738,8 @@ func test_idle_ai_unit_auto_advances_on_a_farther_perceived_enemy_past_a_closer_
 		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
 		{"team": 1, "type": "Infantry", "x": SPOTTER_POS.x, "y": SPOTTER_POS.y},   # spotter
 		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x,
-				"y": DETECTED_NOT_PERCEIVED_POS.y, "facing": HIDDEN_ENEMY_FACING},   # closer, hidden
+				"y": DETECTED_NOT_PERCEIVED_POS.y, "facing": HIDDEN_ENEMY_FACING,
+				"count": HIDDEN_ENEMY_COUNT},   # closer, hidden
 		{"team": 0, "type": "Infantry", "x": FARTHER_VISIBLE_POS.x,
 				"y": FARTHER_VISIBLE_POS.y},   # farther, perceived
 	]
@@ -2153,7 +2159,7 @@ func _stage_guard_battle(fog: bool, extra: Array = []) -> Node:
 	battle.scenario = [
 		{"team": 1, "type": "Infantry", "x": WATCHER_POS.x, "y": WATCHER_POS.y},
 		{"team": 0, "type": "Infantry", "x": DETECTED_NOT_PERCEIVED_POS.x, "y": DETECTED_NOT_PERCEIVED_POS.y,
-				"facing": HIDDEN_ENEMY_FACING},
+				"facing": HIDDEN_ENEMY_FACING, "count": HIDDEN_ENEMY_COUNT},
 	] + extra
 	add_child_autofree(battle)
 	return battle

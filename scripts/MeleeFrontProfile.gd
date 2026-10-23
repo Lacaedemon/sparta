@@ -85,6 +85,9 @@ func _compute(u: Unit) -> void:
 	ext = 0.0
 	beyond = 0.0
 	if eligible:
-		var reach: float = depth + (half if u.in_square() else 0.0)
+		# The farthest it reaches along any axis. A line met in flank or rear reaches its
+		# outline (MeleeFrontGeometry.outline), at most its slot rectangle's half-diagonal; a
+		# square keeps its looser bound.
+		var reach: float = depth + half if u.in_square() else sqrt(depth * depth + half * half)
 		ext = reach + absf(u.frontage_anchor_offset)
 		beyond = maxf(0.0, reach - Unit.RADIUS) + absf(u.frontage_anchor_offset)

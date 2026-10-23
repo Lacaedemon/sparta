@@ -8,10 +8,13 @@ extends GutTest
 
 const BattleScript = preload("res://scripts/Battle.gd")
 
-## DETECTION_RANGE is 190 wu; melee contact is attack_range + RADIUS + enemy.RADIUS
-## (~62 wu for the default loadout), so a foe 120 wu away is detected yet well outside
-## weapon range -- exactly the reactive close-the-distance case this behaviour governs.
-const DETECTED_OUT_OF_RANGE_GAP := 120.0
+## DETECTION_RANGE is 190 wu. Melee contact is attack_range + RADIUS + enemy.RADIUS (~62 wu
+## for the default loadout) plus MeleeFrontLine.contact_extension: both 120-man blocks face
+## DOWN, so the unit's front meets the foe's rear, and each block's depth past its RADIUS
+## extends the range (at 120 wu the unit's front rank would stand among the foe's rear
+## ranks). A foe 170 wu away is detected yet outside that range -- exactly the reactive
+## close-the-distance case this behaviour governs.
+const DETECTED_OUT_OF_RANGE_GAP := 170.0
 
 
 func _make_unit() -> Unit:

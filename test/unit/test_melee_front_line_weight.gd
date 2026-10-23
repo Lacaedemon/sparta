@@ -37,13 +37,15 @@ func test_the_extensions_reach_the_real_front_ranks() -> void:
 		2.0 * depth, 0.001, "the engaged floor holds the centres two front depths apart")
 
 
-func test_a_flank_or_rear_attack_weighs_nothing() -> void:
+## A flank or rear attack weighs in (test_melee_front_line_side.gd); a block beside or behind
+## another whose front faces neither does not.
+func test_blocks_whose_fronts_face_neither_weigh_nothing() -> void:
 	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
-	var flank: Unit = _make_unit(120, Vector2(150.0, 0.0), Vector2.LEFT)
-	assert_eq(MeleeFrontLine.weight(a, flank), 0.0, "an attacker on the flank")
-	var rear: Unit = _make_unit(120, Vector2(0.0, -150.0), Vector2.DOWN)
-	assert_eq(MeleeFrontLine.weight(a, rear), 0.0, "an attacker behind")
-	assert_eq(MeleeFrontLine.contact_extension(a, flank), 0.0, "no extension on a flank")
+	var flank: Unit = _make_unit(120, Vector2(150.0, 0.0), Vector2.RIGHT)
+	assert_eq(MeleeFrontLine.weight(a, flank), 0.0, "on the flank, facing away")
+	var rear: Unit = _make_unit(120, Vector2(0.0, -150.0), Vector2.UP)
+	assert_eq(MeleeFrontLine.weight(a, rear), 0.0, "behind, back to back")
+	assert_eq(MeleeFrontLine.contact_extension(a, flank), 0.0, "no extension")
 
 
 func test_cavalry_far_tier_and_a_zero_scale_weigh_nothing() -> void:

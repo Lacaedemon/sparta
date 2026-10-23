@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/rear-attack-edge-1845.json",
+  "caption": "An infantry block attacks another block from behind. It now comes into contact as its front rank closes to within reach of the defender's rear rank, and the press stops there: it fights the defender's rear rank from outside the block, and neither block's men end up inside the other. Before this fix a flank or rear attack used the old centre-to-centre ranges, so the attacker walked most of the defender's depth into it before the press stopped.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}
