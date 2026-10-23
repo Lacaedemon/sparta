@@ -1256,11 +1256,12 @@ var router_front_arc: float = ROUTER_FRONT_ARC
 # ROUTER_CONTACT_REENTRY_FRAC, with rout_time's set-before-_ready contract.
 const ROUTER_CONTACT_REENTRY_FRAC: float = 0.9
 var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
-# How much of the block's own slot footprint (soldier_block_half_extents, per axis) its target's
-# centre must lie inside, with the block in enemy contact, for a small combat re-face to hold the
-# facing and the slot grid (_enemy_centre_inside_footprint): 1.0, the footprint itself. 0 or
-# less turns the hold off, so every small re-face turns the grid with the heading. A caller-configurable parameter
-# defaulting to MELEE_REFACE_HOLD_FOOTPRINT_SCALE, with rout_time's set-before-_ready contract.
+# How much of a foot block's own slot footprint (soldier_block_half_extents, per axis) its
+# cavalry target's centre must lie inside, with the block in enemy contact, for a small combat
+# re-face to hold the facing and the slot grid (_cavalry_inside_foot_footprint): 1.0, the
+# footprint itself. 0 or less turns the hold off, so every small re-face turns the grid with
+# the heading. A caller-configurable parameter defaulting to MELEE_REFACE_HOLD_FOOTPRINT_SCALE,
+# with rout_time's set-before-_ready contract.
 const MELEE_REFACE_HOLD_FOOTPRINT_SCALE: float = 1.0
 var melee_reface_hold_footprint_scale: float = MELEE_REFACE_HOLD_FOOTPRINT_SCALE
 # How far outside the block's footprint, on its flanks and rear, an enemy soldier, and the
@@ -4418,20 +4419,21 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		if _advance_turn(_engage_turn_target, delta):
 			_settle_engage_turn()
 		return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
-	# Small offset: snap and fight now, as before, unless the block is in enemy contact with
-	# the target's centre inside its own footprint. The bearing from the anchor then names no
-	# front: each snap would turn the whole slot grid about the anchor, the men chasing their
-	# slots would drag the anchor, and the bearing would move on, so the grid would wind round
-	# under the men. There the facing holds, as it does for a router streaming through, so the
-	# grid stays where the men stand and nothing is folded into _formation_angle for a later
-	# reform to undo. Folding each snap instead (turning the heading but not the grid) let the
-	# heading wander up to a half-turn off the ranks over a long melee, and the block then
-	# marched off, or was squared by its next order, across its own ranks. A bearing that moves
-	# past ENGAGE_TURN_THRESHOLD still arms the turn-in-place below, which turns the men where
-	# they stand. Out of contact the grid turns as before: a large block closing on a target
-	# that its own wide footprint already takes in has a front to bring round.
+	# Small offset: snap and fight now, as before, unless this is a foot block in enemy contact
+	# with a cavalry target whose centre has ridden inside its own footprint. The bearing from
+	# the anchor then names no front: each snap would turn the whole slot grid about the anchor,
+	# the men chasing their slots would drag the anchor, and the bearing would move on, so the
+	# grid would wind round under the men. There the facing holds, as it does for a router
+	# streaming through, so the grid stays where the men stand and nothing is folded into
+	# _formation_angle for a later reform to undo. Folding each snap instead (turning the
+	# heading but not the grid) let the heading wander up to a half-turn off the ranks over a
+	# long melee, and the block then marched off, or was squared by its next order, across its
+	# own ranks. A bearing that moves past ENGAGE_TURN_THRESHOLD still arms the turn-in-place
+	# below, which turns the men where they stand. Out of contact the grid turns as before: a
+	# large block closing on a target that its own wide footprint already takes in has a front
+	# to bring round.
 	if offset <= ENGAGE_TURN_THRESHOLD:
-		if not (_in_enemy_contact and _enemy_centre_inside_footprint(enemy_unit)):
+		if not (_in_enemy_contact and _cavalry_inside_foot_footprint(enemy_unit)):
 			_face_dir(dir)
 		return true
 	# Large offset: begin a turn-in-place. Men hold their positions (arrival frozen) while
@@ -4475,16 +4477,21 @@ func _router_streaming_through(enemy_unit: Unit) -> bool:
 	return true
 
 
-## Whether `enemy_unit`'s centre lies inside this block's own slot footprint, scaled by
-## melee_reface_hold_footprint_scale: soldier_block_half_extents (the slot grid's half-width
-## and half-depth, padded by a mark radius) in the grid's own frame (soldier_block_world_angle).
-## Blocks in an ordinary frontal melee press into each other far enough for this to hold, not
-## only an enemy that has broken into the block. A ROUTING enemy does not count: one streaming
-## out through the ranks holds the facing itself (_router_streaming_through), and one ridden
-## down from behind lies ahead on a steady bearing, so the front follows it as before. A far-tier block has no bodies on its slots, so nothing to hold, and a scale of 0 or
-## less turns the test off.
-func _enemy_centre_inside_footprint(enemy_unit: Unit) -> bool:
-	if enemy_unit == null or enemy_unit.state == State.ROUTING or tier == FormationTier.FAR \
+## Whether this is a foot block and `enemy_unit` a cavalry unit whose centre lies inside the
+## block's own slot footprint, scaled by melee_reface_hold_footprint_scale:
+## soldier_block_half_extents (the slot grid's half-width and half-depth, padded by a mark
+## radius) in the grid's own frame (soldier_block_world_angle). Only riders inside a foot block
+## count. Foot blocks fighting each other stop at each other's front and outer ranks
+## (MeleeFrontLine), so their centres rarely lie inside a footprint, and two archer blocks in
+## melee flick their re-face tens of degrees a tick, a fault of its own that a hold would only
+## mask. A troop of horse riding through foot, or into other horse, keeps its own front to
+## follow. A ROUTING enemy does not count: one streaming out through the ranks holds the
+## facing itself (_router_streaming_through), and one ridden down from behind lies ahead on a
+## steady bearing, so the front follows it as before. A far-tier block has no bodies on its
+## slots, so nothing to hold, and a scale of 0 or less turns the test off.
+func _cavalry_inside_foot_footprint(enemy_unit: Unit) -> bool:
+	if enemy_unit == null or is_cavalry or not enemy_unit.is_cavalry \
+			or enemy_unit.state == State.ROUTING or tier == FormationTier.FAR \
 			or melee_reface_hold_footprint_scale <= 0.0:
 		return false
 	var half: Vector2 = soldier_block_half_extents() * melee_reface_hold_footprint_scale
