@@ -507,6 +507,11 @@ var _formation_angle: float = 0.0
 # to square. _reface folds a lag that grows past the threshold into _formation_angle, and a
 # rout folds whatever is left, so the grid stays where it stands in both cases.
 var _grid_lag: float = 0.0
+# True while _grid_lag holds a fresh order's re-square of the fold (_square_fold_for_order)
+# rather than a march's heading correction. Such a lag may stand at up to a quarter-turn,
+# waits while the block is in enemy contact instead of being folded there, and is not folded by
+# _reface for standing past the threshold. Cleared when the lag closes or is folded.
+var _grid_lag_resquare: bool = false
 # The rate (rad/s, signed like an angle) _advance_grid_lag turned the slot grid about the anchor
 # this tick, and carries to the next. SoldierBodies.step feeds it forward to a non-routing
 # unit's bodies the way it feeds a router's _flight_turn_rate. Zero while no lag is left.
@@ -4572,10 +4577,13 @@ func _reface(dir: Vector2) -> void:
 	if absf(turn) > FACING_SNAP_ABSORB_THRESHOLD or tier == FormationTier.FAR or _in_enemy_contact:
 		_face_dir(dir)
 		return
+	var lag_before: float = _grid_lag
 	_grid_lag = wrapf(_grid_lag - turn, -PI, PI)
 	facing = new_facing
 	_render_dirty = true
-	if absf(_grid_lag) > FACING_SNAP_ABSORB_THRESHOLD:
+	# Only a correction that grows the lag past the threshold folds it: an order's re-square
+	# (_grid_lag_resquare) may already stand past it, and a turn that shrinks it closes it.
+	if absf(_grid_lag) > FACING_SNAP_ABSORB_THRESHOLD and absf(_grid_lag) > absf(lag_before):
 		_fold_grid_lag()
 
 
@@ -4585,6 +4593,7 @@ func _reface(dir: Vector2) -> void:
 ## to the fold that is not a drill turn, it drops the drill record.
 func _fold_grid_lag() -> void:
 	_grid_lag_rate = 0.0
+	_grid_lag_resquare = false
 	if _grid_lag == 0.0:
 		return
 	_formation_angle = wrapf(_formation_angle + _grid_lag, -PI, PI)
@@ -4603,7 +4612,10 @@ func _fold_grid_lag() -> void:
 ## under men whose front is held against the enemy's is what _reface keeps out of contact.
 func _advance_grid_lag(delta: float) -> void:
 	if _grid_lag != 0.0 and _in_enemy_contact:
-		_fold_grid_lag()
+		if _grid_lag_resquare:
+			_grid_lag_rate = 0.0   # an order's re-square waits the contact out
+		else:
+			_fold_grid_lag()
 		return
 	if _grid_lag == 0.0 or delta <= 0.0 or is_turning():
 		_grid_lag_rate = 0.0
@@ -4616,6 +4628,7 @@ func _advance_grid_lag(delta: float) -> void:
 		# Closes the lag this tick: turn exactly the rest of the way.
 		_grid_lag_rate = -_grid_lag / delta
 		_grid_lag = 0.0
+		_grid_lag_resquare = false
 	else:
 		_grid_lag_rate = rate
 		_grid_lag += turn
@@ -9649,24 +9662,72 @@ func start_order_response() -> void:
 	_square_cancelled_rally_fold()
 	_order_response_timer = order_response_delay
 	_release_streaming_router()   # a fresh order is a fresh action; no fight's latch carries
-	# A move/attack order reforms a quarter-turned unit back square to its heading, so it
-	# marches as a proper line rather than crabbing sideways. The bodies ease onto the
-	# reformed slots via the arrival dynamics (a future turn-and-widen move maneuver will make
-	# this a deliberate reshape; until then a clean reform is the safe default). Re-square via
-	# reform_ranks() -- the same countermarch-aware path _finish_order_turn takes -- NOT a naked
-	# _formation_angle = 0.0: a bare reset point-reflects an about-faced (±PI-folded) block,
-	# swapping every soldier to the OPPOSITE flank AND rank at once. A full centre-symmetric
-	# block rests validly at ±PI after one about-face, so zeroing it there strands every body a
-	# full block-diagonal off its index-matched slot; a second consecutive reversal then blobs
-	# as the bodies all cross the centre back to their slots. reform_ranks() instead leaves a
-	# full block's ±PI fold in place and arms the depth-only mirror for a partial one, so
-	# bodies keep their flank; a quarter-turn fold still drops cleanly to 0.
-	# Also drop any in-flight engage re-face turn: the order supersedes it and the reform
-	# squares the block.
+	# A move/attack order squares a folded unit back to its heading, so it marches as a proper
+	# line rather than crabbing sideways, without swinging the slot grid under the men in one
+	# tick (_square_fold_for_order). An engage re-face turn still in flight is superseded by
+	# the order: its partial turn is folded in where the men stand, since dropping it would
+	# leave the grid turned by it with nobody on it.
+	_fold_engage_turn_in_progress()
 	# Hold ground for an ordinary response unless the pending order is a countermarch.
-	reform_ranks(current_order == null or current_order.countermarch_variant < 0)
+	_square_fold_for_order(current_order == null or current_order.countermarch_variant < 0)
+
+
+## Square the fold for a fresh order (start_order_response) without stepping the slot grid in
+## one tick.
+##
+## The grid's whole turn off the heading (grid_fold: the fold plus any lag) splits into its
+## nearer whole or half turn and a residue of at most a quarter-turn. reform_ranks() takes the
+## half, through the same countermarch-aware path _finish_order_turn takes -- NOT a naked
+## `_formation_angle = 0.0`, which point-reflects an about-faced block and swaps every man to
+## the opposite flank and rank at once. It leaves a full block's +-PI fold in place and
+## reflects a partial one in depth, holding ground (or, for a countermarch, running the drill),
+## so no man is sent across the block. The residue goes to the slot grid's lag as a re-square
+## (_grid_lag_resquare): out of enemy contact the grid turns after the heading no faster than
+## the man on its farthest slot can jog (_advance_grid_lag); in contact it waits, since the men
+## are held against the enemy's where they stand, and it resumes once the block is out, so an
+## order that marches a block out of a melee still squares it on the way.
+##
+## Two cases keep the one-tick re-square. A quarter-turn fold out of contact (one measuring a
+## quarter, or whose drills net one, as reform_ranks reads both) is dealt again from where the
+## men stand (_pair_after_quarter_fold): the grid's axes swap, but each man takes the cell
+## nearest him and none crosses the block, as in a frontage reshape, where a quarter-turn wheel
+## about the centre would march the far files round the whole block. A far-tier block has no
+## bodies on its slots to strand. `hold_ground` as for reform_ranks.
+func _square_fold_for_order(hold_ground: bool) -> void:
+	var fold: float = wrapf(_formation_angle, -PI, PI)
+	var quarter: bool = absf(absf(fold) - PI * 0.5) < 0.01 or (
+			absf(absf(_drill_turn_fold) - PI * 0.5) < 0.01 and absf(absf(fold) - PI) >= 0.01)
+	if tier == FormationTier.FAR or (quarter and not _in_enemy_contact):
+		reform_ranks(hold_ground)
+		return
+	var total: float = wrapf(_formation_angle + _grid_lag, -PI, PI)
+	var half: float = 0.0 if absf(total) <= PI * 0.5 else signf(total) * PI
+	var residue: float = wrapf(total - half, -PI, PI)
+	if residue != 0.0 or _grid_lag != 0.0:
+		_formation_angle = half
+		_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
+		_grid_lag = residue
+		_grid_lag_resquare = residue != 0.0
+		_render_dirty = true
+	reform_ranks(hold_ground)
+
+
+## Fold an engage turn-in-place still in progress into _formation_angle where the men stand, and
+## clear it. The men hold their places while the heading turns (the slot grid turns with it and
+## the bodies wait), so dropping the turn instead would leave the grid turned by the partial
+## turn with every man off his slot. No frontage reshape follows (_settle_engage_turn's): the
+## turn did not finish. A no-op when no engage turn is in progress.
+func _fold_engage_turn_in_progress() -> void:
+	if _engage_turn_target == Vector2.ZERO:
+		return
+	var turned: float = angle_difference(_engage_turn_start_facing.angle(), facing.angle())
+	if turned != 0.0:
+		_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
+		_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
+		_render_dirty = true
 	_engage_turn_target = Vector2.ZERO
 	_engage_turn_enemy = null
+	_engage_turn_old_files = 0
 
 
 ## Arm the atomic-drill response beat: the unit holds for atomic_response_delay seconds
@@ -11228,6 +11289,7 @@ func to_snapshot_dict() -> Dictionary:
 		"standoff_prev_state": _standoff_prev_state,
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
 		"grid_lag": _grid_lag, "grid_lag_rate": _grid_lag_rate,
+		"grid_lag_resquare": _grid_lag_resquare,
 		"drill_turn_fold": _drill_turn_fold,
 		"formation_mirror_x": _formation_mirror_x,
 		"fallback_mirror_x": _fallback_mirror_x,
@@ -11475,6 +11537,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_formation_angle = float(d["formation_angle"])
 	_grid_lag = float(d.get("grid_lag", _grid_lag))
 	_grid_lag_rate = float(d.get("grid_lag_rate", _grid_lag_rate))
+	_grid_lag_resquare = bool(d.get("grid_lag_resquare", false))
 	# A snapshot from before the rename carries the quarter-turn-only record under its old key.
 	_drill_turn_fold = float(d.get("drill_turn_fold", d.get("quarter_turn_fold", 0.0)))
 	_formation_mirror_x = bool(d["formation_mirror_x"])
