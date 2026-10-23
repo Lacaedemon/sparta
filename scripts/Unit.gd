@@ -495,7 +495,8 @@ var _ranks_closed: bool = false
 # A quarter-turn turns every soldier in place WITHOUT reorganising the grid: each man
 # faces a new way but stands where he stood. unit.facing rotates 90°, and this offset cancels
 # that rotation in soldier_world_slots so the slots stay put -- the men don't drift. 0 = the
-# grid is square to the heading (the default). A fresh move order reforms it to 0. A rout
+# grid is square to the heading (the default). A fresh move order squares it, without moving the
+# grid in one tick (_square_fold_for_order). A rout
 # keeps it, and the rally squares it to the heading.
 var _formation_angle: float = 0.0
 # How far (rad) the slot grid still trails a small heading correction (_reface): the grid
@@ -4615,7 +4616,9 @@ func _fold_grid_lag() -> void:
 ## already moves the grid, so the lag waits and its turn starts again from rest. A lag the
 ## block carries into enemy contact (a march that turned just before it met the enemy) is
 ## folded into _formation_angle where the grid stands, as a rout folds it: a grid still turning
-## under men whose front is held against the enemy's is what _reface keeps out of contact.
+## under men whose front is held against the enemy's is what _reface keeps out of contact. An
+## order's re-square folded that way waits again (_resquare_pending), and a waiting re-square
+## runs here on the first tick out of contact that does not turn, before this tick's lag turn.
 func _advance_grid_lag(delta: float) -> void:
 	if _grid_lag != 0.0 and _in_enemy_contact:
 		# An order's re-square carried into contact waits it out like one ordered there.
