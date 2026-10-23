@@ -448,6 +448,8 @@ func test_spawn_role_tunables_and_late_state_round_trip() -> void:
 		"rout_time": 9.0, "shatter_strength_frac": 0.11, "rally_morale_threshold": 33.0,
 		"rally_resume_radius_factor": 1.5, "rally_resume_clear_ticks": 45,
 		"router_contact_reentry_frac": 0.75, "_router_left_contact": true, "_router_anchor_contact": true,
+		"melee_front_line_scale": 0.25, "melee_front_line_min_cos": 0.8,
+		"melee_side_contact_max_cos": 0.6, "interior_strike_margin": 7.5,
 		"flanking_maneuver_wrap_files": 6, "flanking_maneuver_cooldown_ticks": 90,
 		"flanking_maneuver_hysteresis": 3,
 	}
@@ -482,7 +484,8 @@ func test_newly_captured_fields_default_for_older_snapshots() -> void:
 			"melee_press_fraction", "routing_melee_press_fraction", "disengage_step_distance",
 			"rearguard_sacrifice_frac", "rearguard_delay_sec", "rout_time", "shatter_strength_frac",
 			"rally_morale_threshold", "rally_resume_radius_factor", "rally_resume_clear_ticks",
-			"router_contact_reentry_frac",
+			"router_contact_reentry_frac", "melee_front_line_scale", "melee_front_line_min_cos",
+			"melee_side_contact_max_cos", "interior_strike_margin",
 			"flanking_maneuver_wrap_files",
 			"flanking_maneuver_cooldown_ticks", "flanking_maneuver_hysteresis"]:
 		fields[tunable] = tunable

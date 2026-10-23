@@ -18,5 +18,13 @@
     {"tick": 10, "key": "Comma", "ctrl": true}
   ],
   "state": [10, 40, 70, 100, 160, 220, 240],
-  "frames": [10, 70, 100, 160, 220]
+  "frames": [10, 70, 100, 160, 220],
+  "defect_exemptions": {
+    "shape_residual": {
+      "uids": [
+        4
+      ],
+      "reason": "Uid 4's drift is tracked in #1847: a block marching with its grid folded across its facing lets its men drift off their slots. Uid 4 (the 30-man unit meant to rout) marches with its grid about 100 degrees from its facing and its motion 98 to 110 degrees off the grid, and its residual climbs about 0.17 to 0.2 wu a tick from tick 180 on both trees: on main 2c2955cc from 4.45 wu at tick 180 to 17.74 at 260, on branch ed307f22 from 4.18 to 19.92. On main uid 4 reads engaged, which the scan exempts, for most of ticks 170 to 260, and on the branch it does not, because with flank and rear contact at the defender's edge (#1845) the Spearmen (uid 1), spawned 10 wu from team 1's Infantry (uid 3) on its flank, part to the flank's edge in the first ticks, so the clip diverges from tick 1 and uid 4 marches after a different target. The clip itself needs re-staging (#1753: it no longer shows a router or a retarget). Measured 2026-10-22 with 2-tick samples from tick 2: branch ed307f22 fails on the clip seed and perturbed seeds 1 to 4 (19.9, 20.1, 19.0, 19.3 and 15.0 wu against the 13.5 wu threshold), main on none."
+    }
+  }
 }

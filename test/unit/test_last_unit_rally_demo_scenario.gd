@@ -1,8 +1,8 @@
 extends GutTest
 ## Regression guard for the last-unit-rally demo (demos/inputs/last-unit-rally.json): staging
 ## that exact matchup in a live Battle produces a visible rout, without the battle instantly
-## declaring defeat. Team 0 fields a single full-strength (120) but jittery (morale 15)
-## infantry block against an enemy infantry of equal size; contact breaks its brittle morale
+## declaring defeat. Team 0 fields a single full-strength (120) but shaken (morale 10)
+## infantry block against a slightly larger enemy infantry (130); contact breaks its morale
 ## and it flees (drawn faded) while barely bloodied. Losing its last fightable unit must NOT
 ## end the battle outright -- the sim stays live while the router is still on the field. This
 ## pins the demo's determinism against a future morale retune: if a balance change ever stops
@@ -39,11 +39,14 @@ func _spawn_last_unit_rally_battle() -> void:
 	Replay.forced_seed = 12345
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	_battle = battle
-	# The exact matchup from demos/inputs/last-unit-rally.json.
+	# The exact matchup from demos/inputs/last-unit-rally.json. Since blocks front to front
+	# meet at their front ranks (MeleeFrontLine) only the front ranks trade blows, so the clip
+	# and this test stage a shaken unit (morale 10) against a slightly larger enemy (130); the
+	# old morale 15 against an equal 120 no longer broke inside the onset budget.
 	battle.scenario = [
-		{"team": 0, "type": "Infantry", "x": 800, "y": 440, "count": 120, "morale": 15.0,
+		{"team": 0, "type": "Infantry", "x": 800, "y": 440, "count": 120, "morale": 10.0,
 				"formation": Unit.FORMATION_TIGHT},
-		{"team": 1, "type": "Infantry", "x": 800, "y": 560, "count": 120,
+		{"team": 1, "type": "Infantry", "x": 800, "y": 560, "count": 130,
 				"formation": Unit.FORMATION_TIGHT},
 	]
 	add_child_autofree(battle)

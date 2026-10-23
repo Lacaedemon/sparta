@@ -432,6 +432,277 @@ an aggregate of how many engaged soldiers are currently prone, applied uniformly
 than body-by-body) is still a possible follow-up if the reactive nuance is worth
 pursuing.
 
+## Blocks front to front meet at their front ranks
+
+The margin above limits how far bodies mix once the two front ranks touch.
+It cannot stop the larger interpenetration the regiment layer itself orders.
+The regiment-level melee contact ranges (`_in_enemy_contact` and the others built the same way)
+are weapon reach plus `Unit.RADIUS` (0.9 m) a side, measured centre to centre,
+and the engaged floor in `_separate` is the two `_front_depth()` values,
+each capped at half the unit's reach.
+A block's real centre-to-front-rank distance grows by half a rank pitch for every rank,
+so for an 8-rank block both fall short of it by two to three ranks.
+Two such blocks closing front to front therefore came into contact
+only after their front ranks had walked into each other
+(no body contact resists them before the flag),
+and the press then closed the centres to the capped floor,
+with each grid's slots ordered most of a block deep inside the other.
+Over the catalog's melee clips on main a3714751,
+`tools/demo/melee-penetration.sh` (its `PEN-ALL foot` line) measured the median frontal foot pair
+standing 3.0 ranks inside the other block, with 77% of pairs more than a rank inside.
+With `MeleeFrontLine` the same measure reads 0.0 ranks and 25%;
+20 of the 28 frontal foot pairs still past a rank were spawned inside each other, 16 of them in `cannae_scale`.
+(The tool reads each block's front from its slot grid, `motion_ref.slot_grid.front`;
+main's dumps lack that field, so its figures sign the front by facing, as the tool always did.)
+
+`MeleeFrontLine` adds the missing depth back for a frontal pair:
+each block's front-rank depth beyond `Unit.RADIUS` to the close-tier melee contact ranges
+(each contact test goes through `MeleeFrontLine.within_contact`;
+a router's anchor test, which shrinks the range on re-entry, measures the same gap),
+and beyond its capped `_front_depth()` to the engaged floor,
+both weighted by how squarely the two blocks face each other
+(a flank or rear attack has its own weight, in
+[Flank and rear attacks stop at the defender's edge](#flank-and-rear-attacks-stop-at-the-defenders-edge)).
+A flank-anchored frontage stands its men off the block's position,
+so the ranges are measured between the men's centres;
+the gap moves from the positions to the men's centres by the same weight,
+so it does not jump as a pair starts to face.
+The directions read from a melee pair in contact take the bearing of that same gap
+(`MeleeFrontLine.toward`):
+the steering yield, the router's front arc, the leader's flank-threat bearing,
+the flank multiplier (`UnitCombat.flank_multiplier`, which `OrderGuards.flanked` reads),
+the shield wall's frontal test (`Unit._is_frontal_attack`),
+the cycle charge's pull-back (which also opens its standoff past the contact extension),
+and the point a fighting unit faces and presses toward (`Unit.contact_point`).
+Two reads keep the positions:
+a missile unit's facing as it shoots, since a missile unit takes no extension,
+and the subcommander's outflanking bearing, which reads only enemies not yet in contact.
+The engaged floor pushes along that gap too.
+The neighbourhood lookup that finds a pair adds each block's whole anchor shift to its reach past the radius,
+since no contact range counts the shift.
+Contact then starts as the front ranks come within reach,
+and the press stops with them on one line.
+Pairs with cavalry, missile troops or a far-tier block keep the centre-based ranges
+(`MeleeFrontLine`'s doc comment says why).
+A square fronts every way:
+a line meeting it frontally reaches its slot rectangle's extent toward the line,
+so the pair keeps its extended range when a block it was pressing forms square.
+
+The weight reads where each block's men face, not its heading:
+a heading turn the grid absorbs (a router's about-face),
+or an engage or order turn still in progress (the men stand fast until it settles),
+leaves the pair's ranges where its men still stand.
+It multiplies how directly the two grid fronts oppose each other
+by the share of the narrower front that overlaps the other's, across the pair's front axis.
+A pair offset to one side keeps that share of the extension however far the press closes it,
+so the floor cannot fall as the pair closes.
+The depth is a file-major block's deepest surviving file,
+which its grid centres on.
+The engaged fraction's neighbourhood lookup widens the same way.
+Auto-acquisition, the router sweep and the support stance's guard also count an enemy in frontal contact past their search radius
+(the support stance measures that contact from its ward),
+when nothing inside the radius qualifies.
+The morale's 6 m local-force radius and the rally check's `RALLY_CONTACT_RADIUS` stay as they were,
+and also count an enemy in melee contact at the pair's frontal range,
+so a frontal enemy held at its front rank, past either radius, still counts as close.
+`SoldierMelee`'s knockback "clear the line" distance keeps the capped `_front_depth()` sum:
+it is how far a struck man travels, not a distance between centres.
+
+The sprint window (`Unit.SPRINT_START_DISTANCE`) stays measured centre to centre,
+so a charge into a deep block meets its front ranks with that much less of the sprint behind it,
+and the charge bonus is lower for it.
+Opening the window past the contact extension moved first contact up to 165 ticks earlier than main in `cycle_charge`
+and added defect candidates in `charge` and `knockback_focus`,
+so it is left for a follow-up.
+
+Holding the blocks at their front ranks lowers frontal lethality,
+since only the front ranks reach each other.
+Measured with two 120-man Tight blocks (`last_unit_rally`'s staging on main) and neither allowed to break (morale 100),
+casualties over the first 1150 ticks fell from a mean of 47 to 37 men over the clip's own seed and perturbed seeds 1 to 4.
+The block standing its ground lost 11 instead of 23,
+and the advancing block about the same (26 against 24).
+Units take correspondingly longer to break in a straight frontal fight:
+in the perturbed melee-outcome delta,
+`general_doctrine_reserves`' low-morale foot and `march_to_contact`'s unit 1 mostly no longer break inside their clips,
+and `file_major_reform_contrast` and `spear_standoff` break 100 to 145 ticks later.
+
+### Flank and rear attacks stop at the defender's edge
+
+A block whose front faces another block's flank or rear is met the way a square is:
+the attacker reaches its own front rank,
+and the defender reaches its slot rectangle's extent along the attacker's front
+(`MeleeFrontGeometry.outline`): its front-rank depth for a rear attack,
+its front half-width for a flank attack.
+So the attacker's front rank stops on the defender's rear rank or end file.
+This side part of the weight multiplies the same two terms as the frontal part,
+with the attacker's front as the axis:
+how far the defender lies ahead of that front (a ramp over one `Unit.RADIUS`)
+and how much of that front overlaps the defender's outline across it.
+When both blocks' fronts bear on each other (an L-shaped meeting),
+the pair takes the larger of the two orientations' weights and their reaches averaged by weight.
+
+The side part is gated on the angle between the two fronts (`MeleeFrontLine.side_gate`).
+It is 0 down to a cosine of `melee_side_contact_max_cos` (0.75, about 41 degrees off square)
+and reaches its whole weight at `melee_front_line_min_cos` (0.5),
+where the frontal part has fallen to 0.
+Two separate properties follow.
+The weight is continuous in the angle:
+both parts are continuous and they hand over at the ends of the gate,
+the frontal part falling to 0 at the cosine where the gate reaches 1,
+so the weight does not jump as a clash turns from oblique to flank
+(a test sampling every degree finds no step above 0.05 at the default values).
+And the frontal ramp plus the side gate never exceeds 1:
+as the cosine rises between the two values the gate falls from 1 to 0 at least as fast as the ramp rises from 0,
+and outside them one of the two is 0,
+so the pair's weight, which multiplies each by terms of at most 1, is at most 1 too.
+The bound holds at every angle for any values of the two parameters,
+and continuity for any `melee_front_line_min_cos` from -1 to below 1.
+At 1 or above, the frontal ramp is itself a step at square: 1 head on, 0 at any other angle.
+Below -1 the ramp is still above 0 when both fronts point the same way,
+where the pair's front axis (one front and the other reversed) vanishes and flips side,
+so the frontal part steps at exactly 180 degrees
+(a test turns the defender through 180 degrees 60 wu to either side of the attacker's centre line
+and asserts a step of more than 0.05 at a min cosine of -1.5 and of at most 0.005 from -1 up).
+Two details of `side_gate` keep them under other tunings: it caps both parameters at 1,
+so with the min cosine above 1 the gate still reaches 0 head on, where the ramp is 1
+(a test sweeps the gate plus the ramp over cosines from 1 to -1 for ten tunings,
+among them a min cosine of 1.2 and of -1.5, and a head-on pair with the min cosine at 1.2 weighs exactly 1);
+and when the max cosine is tuned at or below the min cosine
+the gate rises from 0 at the min cosine to 1 at the max cosine,
+or over at least `MeleeFrontLine.SIDE_GATE_MIN_SPAN` (0.25, the defaults' own span),
+instead of stepping at the min cosine.
+A clash within about 41 degrees of square is weighed by the frontal part alone,
+exactly as before:
+the frontal lethality probe (two 120-man blocks, Tight, Normal and Loose order,
+the clip's seed and perturbed seeds 1 to 4) reads a bit-identical per-tick hash stream to main 2c2955cc's.
+A line's extension bound (`MeleeFrontProfile.ext`, which the contact reject and the
+neighbourhood lookup read) is its slot rectangle's half-diagonal,
+the farthest its outline reaches along any axis.
+
+Measured with two 120-man Infantry blocks in Tight order, neither allowed to break,
+the defender spawned facing away (rear) or side-on (flank),
+over the first 1150 ticks on the clip's seed and perturbed seeds 1 to 4.
+On main 2c2955cc the attacker's front-rank slots settled 3.9 ranks inside the defender in a rear attack
+and 8.1 file pitches inside it on a flank;
+with the side contact their slots settle on average 0.8 and 0.9 ranks short of the defender's edge.
+The attacker's front-rank men then stand 1.7 (rear) and 2.7 (flank) ranks from the defender's outermost men,
+as a frontal pair's front ranks stand 2.4 ranks apart in the same probe.
+The attacker's losses fall from 11.0 to 0 men in the rear and from 18.2 to 2.6 on a flank,
+since the defender's men facing away cannot strike back,
+and the defender's from 46.4 to 39.4 and from 20.0 to 17.6,
+since only the attacker's front rank reaches it.
+
+A routing defender is left out: `_side_part` weighs 0 any orientation whose defender is `ROUTING`,
+so a pursuer behind or beside a fleeing block keeps the centre-based range and presses in among its ranks,
+and the router's anchor contact and `_can_rally`'s contact read the ranges they read on main.
+A router whose own front bears on an enemy's flank still meets it there.
+Without this exception a pursuer stopped at the router's rear rank and struck only that rank.
+Measured with a brittle 120-man Infantry block (morale 0.5) in Tight order
+between two 120-man Infantry blocks at morale 100,
+one 120 wu south of it facing it and one 190 wu north of it facing it,
+over the clip's seed and perturbed seeds 1 to 4:
+it turns north on breaking, flees past the north block and leaves the field by tick 1474 to 1634.
+At tick 900 it fields on average 105.6 men on main 2c2955cc,
+111.2 with the side contact applied to routers,
+and 97.6 with routers left out.
+By its first routing sample it has lost 0 to 2 men on main (tick 300) and none with the side contact (tick 270),
+so the 8 men it loses beyond main's fall in the pursuit,
+but what costs them comes before the rout, where the exception does not reach: it breaks sooner.
+The north block comes on against the router's rear,
+and with the side contact it is in contact at the tick-210 sample (30-tick samples), 80 to 83 wu from the router's centre,
+at the router's rear rank, where on main its first contact sample is tick 240, 46 to 53 wu from the centre;
+the router's morale falls faster (1.6 or 1.7 at tick 240 against 2.2 on main),
+and it breaks at tick 270 instead of 300 on all five seeds, before losing a man.
+With the side contact turned off for the north block's pairs until the router breaks
+(and on for them after, a probe-only change), it breaks at tick 300 as on main and fields 104.8 men at tick 900;
+turned off for them only after it breaks, it breaks at 270 and fields 98.8.
+Turning it off for the south block's pairs changes no sample:
+the south block stands in front of the router until the rout and behind it after,
+where the exception already has it press in centre to centre.
+With a single Infantry pursuer (the router an Infantry or a Spearmen block, otherwise the same staging)
+the pursuer does not catch the router while it routs:
+the rout and rally are identical to main's at every 30-tick sample on all five seeds,
+with or without the exception, and the runs diverge only after the router rallies,
+when the pursuer meets the rallied block's rear.
+
+### An enemy inside a block is struck by the men around him
+
+Only a block's near-front ranks strike (`Unit.engaged_soldier_indices`),
+and the front follows the slot grid,
+so an enemy that has got in behind those ranks would never be struck.
+`SoldierInteriorStrike` finds such enemies, and `SoldierMelee`'s interior pass,
+after the striking ranks have struck, has every other man of the block strike the nearest one within his reach.
+It draws nothing when nobody is inside, so a fight without one is bit-identical to one without the pass.
+
+A point is inside a block when it lies behind the rearmost man of the striking set along `Unit.near_front_forward`
+and within the block's footprint:
+the grid's own rectangle (`MeleeFrontGeometry.grid_front`, `MeleeFrontProfile`) about the live men's mean,
+padded on the flanks and rear by `Unit.interior_strike_margin` (0 by default).
+An enemy soldier counts when both he and his unit's centre are inside,
+the unit's centre being its live men's mean, taken as the block's own footprint centre is
+(`InteriorStrikeFootprint.live_centre`).
+The unit's `position` is not used:
+a standing `frontage_anchor_offset` shifts it off the men,
+and it can stand well off them while a block turns.
+The unit test is what keeps the pass to intruders.
+Without it, any enemy man behind the rearmost striker counted,
+and in ordinary clashes the enemy's front-rank men,
+which jitter level with and a little past a block's striking ranks,
+were struck by the ranks behind for the whole fight.
+A Loose block's striking set is its front rank alone, so this was worst there:
+on the merge of #1834 onto #1845 (5edea880),
+two 120-man Loose blocks spawned 120 wu apart lost 14.0 and 9.0 men by tick 1150 (seed runs 0 to 4) against 8.4 and 7.8 on main 82991008,
+and the pass fired in 23 of 117 catalog clips.
+Requiring the man to stand a whole rank pitch or more behind the rearmost striker was tried first
+and did not separate the cases:
+at one and at one and a half pitches the pass still fired in 22 of the 117 clips,
+since in a deep clash the enemy's leading men are pushed several ranks in.
+Testing the unit's position against the footprint alone, without the striking set,
+still took in a small unit fighting front to front whose centre had reached the block's front ranks:
+in `general_doctrine_reserves` a 30-man block's few men pushed past the striking ranks were struck from behind,
+and its three 30-man blocks broke in 12 or 13 of 16 perturbed runs where on main they broke in 2 (on 6ed15a50).
+
+With both tests, on d067d21a against main 82991008, over seed runs 0 to 4:
+two 120-man blocks closing front to front from 400 wu apart, in Tight, Normal and Loose order,
+the same blocks spawned 120 wu apart in Tight and Normal order,
+and the rear and flank probes of the previous section,
+re-run in Normal order as well as Tight,
+never fire the pass and end bit-identical to main.
+Re-run in Loose order, those probes start the blocks on top of each other:
+a Loose block of 120 is about 250 wu deep, so blocks spawned 120 wu apart overlap by half their depth.
+Front to front the pass fires once on each run, at tick 2,
+and the defender and the attacker lose 5.6 and 9.6 men by tick 1150 against 8.4 and 7.8 on main.
+With the defender facing away it fires once on each run, at tick 32,
+as the defender turns about with its men's centre about 2 wu behind the attacker's front rank,
+and the defender loses 2.4 men against 1.8 on main.
+With the defender side-on it fires four times on each run, at ticks 8, 32, 80 and 152,
+and the two lose 5.8 and 0.4 men against 7.4 and 0.2.
+Testing the unit's `position` instead (5679cf3c), the facing-away probe never fired
+and the side-on one fired once, at tick 80:
+the turning defender's position stood 138 wu off its men's centre at tick 32.
+In the catalog it fires in 19 of the 117 clips (18 of which change, the same clips as with the position test),
+each time on an enemy unit whose centre is behind the striking ranks:
+an infantry block among a cavalry squadron, whose single striking rank stands well ahead of its roomy footprint's centre
+(`schiltron`, `square`, `charge`, `cycle_charge`, and in `battle_ai_leaders`),
+blocks spawned on top of each other (`cannae_scale`, `sweep_routers`),
+blocks that have run more than half their depth into each other (`battle_ai_leaders`' infantry),
+small parties and lone men among a block (`small_unit_melee`, `coast_to_stop`, `subcommander_mutual_support`),
+and a block that routs and rallies with its pursuer pressed in among it.
+In the router probe of the previous section without the north block,
+the rout and the rally are unchanged on all five seeds,
+and the rallied block, striking the pursuer inside it, costs it 30.4 men by tick 2400 against 24.8 on main.
+The perturbed melee-outcome delta (K 16, Benjamini-Yekutieli) against main flags 7 rows in five clips,
+against 5 with the unit's position tested (5679cf3c) and 13 with the position tested against the footprint alone (6ed15a50).
+Two rows are `subcommander_mutual_support`'s one-man unit inside the cavalry,
+which is cut down in 14 of 16 runs where it survived in 14,
+and so leaves play unbroken in 14 where it did in 2.
+Two are `battle_ai_leaders`, which loses 4 and 12 more men a side.
+The other three are `cannae_scale`'s team 1, which loses 11 more,
+`sweep_routers`' team 1, 3 more, and `cycle_charge_flee`'s team 0, 2 more.
+A square has no interior pass, since it already strikes with whoever is threatened;
+nor has a routing block, and a routing enemy is never inside,
+so a router overrun by its pursuer is cut down only by the pursuer's own striking ranks.
+
 ## Physical contact is proximity-based, not combat-state-based
 
 Both the margin above and the underlying soldier-level pass it widens

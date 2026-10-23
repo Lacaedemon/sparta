@@ -42,7 +42,7 @@ static func current_target(u: Unit, predicate: Callable = Callable()) -> Unit:
 static func nearest_enemy(u: Unit, predicate: Callable = Callable()) -> Unit:
 	var inclusive: bool = \
 		u != null and u.carries_non_default_missile_profile()
-	return nearest_enemy_to(u, u.position, u.detection_range, true, inclusive, predicate)
+	return nearest_enemy_to(u, u.position, u.detection_range, true, inclusive, predicate, true)
 
 
 ## Nearest routing enemy for SWEEP_ROUTERS stance: the closest routing (broken/shattered)
@@ -59,9 +59,15 @@ static func nearest_enemy(u: Unit, predicate: Callable = Callable()) -> Unit:
 ## afterward -- see nearest_enemy_to's own doc comment for why that distinction matters (a
 ## closer rejected candidate must not be able to shadow a farther accepted one out of
 ## consideration).
+##
+## A router past detection_range that u is already in frontal or side melee contact with is returned
+## when no router within it qualifies, as nearest_enemy_to's `contact_fallback` does.
 static func nearest_routing_enemy(u: Unit, predicate: Callable = Callable()) -> Unit:
 	var best_router: Unit = null
 	var best_router_d_sq: float = u.detection_range * u.detection_range
+	var range_sq: float = best_router_d_sq
+	var held: Unit = null
+	var held_d_sq: float = INF
 	var inclusive: bool = \
 		u != null and u.carries_non_default_missile_profile()
 
@@ -79,8 +85,14 @@ static func nearest_routing_enemy(u: Unit, predicate: Callable = Callable()) -> 
 		if d_sq < best_router_d_sq or (inclusive and best_router == null and d_sq <= best_router_d_sq):
 			best_router_d_sq = d_sq
 			best_router = other
+		# A router: its base range omits u's radius, so the extension counts all of u's reach.
+		elif best_router == null and d_sq < held_d_sq and d_sq >= range_sq \
+				and MeleeFrontLine.within_contact(u, other,
+					melee_contact_distance(u.attack_range, Unit.RADIUS, other), d_sq, 0.0):
+			held_d_sq = d_sq
+			held = other
 
-	return best_router
+	return best_router if best_router != null else held
 
 
 ## ROLL_THE_LINE re-target: like current_target, but a target that has routed or died no
@@ -102,7 +114,7 @@ static func roll_the_line_target(u: Unit, predicate: Callable = Callable()) -> U
 	u.target_enemy = null
 	var inclusive: bool = \
 		u != null and u.carries_non_default_missile_profile()
-	return nearest_enemy_to(u, u.position, u.detection_range, false, inclusive, predicate)
+	return nearest_enemy_to(u, u.position, u.detection_range, false, inclusive, predicate, true)
 
 
 ## Nearest living enemy within `radius` of `center`. Backs both normal auto-acquisition
@@ -114,9 +126,8 @@ static func roll_the_line_target(u: Unit, predicate: Callable = Callable()) -> U
 ## shattered --- still on the field, in the "routers" group, until it escapes or is
 ## annihilated) counts as a candidate, at the same `radius` as everyone else --- no
 ## separate leash. Combat auto-acquisition wants routing enemies included (a fleeing
-## regiment can still be run down, relentlessly if the pursuer can keep pace); the rally
-## contact-check (Unit._can_rally) wants them excluded --- a routing enemy passing nearby
-## shouldn't itself count as "still in contact" blocking this unit's own rally.
+## regiment can still be run down, relentlessly if the pursuer can keep pace); the support
+## stance's ward scan leaves them out.
 ##
 ## `inclusive` (default false) allows candidates sitting at exact boundary radius to
 ## be acquired, scoped to non-default missile profile auto-acquisition.
@@ -137,9 +148,27 @@ static func roll_the_line_target(u: Unit, predicate: Callable = Callable()) -> U
 static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 		include_routing: bool = false,
 		inclusive: bool = false,
-		predicate: Callable = Callable()) -> Unit:
+		predicate: Callable = Callable(),
+		contact_fallback: bool = false,
+		contact_unit: Unit = null) -> Unit:
 	var best: Unit = null
 	var best_d_sq: float = radius * radius
+	# `contact_fallback` (auto-acquisition: nearest_enemy, roll_the_line_target and
+	# OrderGuards.enemy_in_range at its default detection radius; and Unit._support_tick's
+	# guard around the ward, measured from the ward): an enemy past `radius`
+	# that is already in frontal or side melee contact with u (two deep blocks held at their
+	# front ranks, or a block held at a wide line's end file, can stand further apart than the
+	# detection radius) is returned when nothing
+	# within `radius` qualifies, so a search that finds anyone inside its radius answers as
+	# it always has. A caller-chosen radius stays an upper bound unless it passes the flag.
+	# Contact here is the pair's, from the longer of the two reaches (as
+	# Unit._refresh_enemy_contact reads it): a block a longer weapon is already fighting.
+	# Contact is measured from `contact_unit` (default u), the unit standing at `center`: the
+	# support stance passes its ward, so a threat pressing the ward's front counts.
+	var from: Unit = contact_unit if contact_unit != null else u
+	var from_u: bool = contact_fallback and center == from.position
+	var held: Unit = null
+	var held_d_sq: float = INF
 	var groups: Array = ["units", "routers"] if include_routing else ["units"]
 	for group in groups:
 		for o in u.get_tree().get_nodes_in_group(group):
@@ -155,7 +184,15 @@ static func nearest_enemy_to(u: Unit, center: Vector2, radius: float,
 			if d_sq < best_d_sq or (inclusive and best == null and d_sq <= best_d_sq):
 				best_d_sq = d_sq
 				best = other
-	return best
+			# Once anything inside the radius has qualified, `held` can no longer be returned, so
+			# the contact test is skipped from then on.
+			elif from_u and best == null and d_sq < held_d_sq and d_sq >= radius * radius \
+					and MeleeFrontLine.within_contact(from, other, melee_contact_distance(
+						maxf(from.attack_range, other.attack_range), Unit.RADIUS, other), d_sq,
+						melee_contact_attacker_radius(Unit.RADIUS, other)):
+				held_d_sq = d_sq
+				held = other
+	return best if best != null else held
 
 
 ## Whether this unit's SUPPORT order still has a valid ward to guard: a living,
@@ -174,9 +211,14 @@ static func support_valid(u: Unit) -> bool:
 ## closes to actual weapon reach before considering itself in contact or setting
 ## its flank/rear approach point.
 static func melee_contact_distance(attacker_range: float, attacker_radius: float, enemy: Unit) -> float:
-	if enemy.state == Unit.State.ROUTING:
-		return attacker_range + enemy.RADIUS
-	return attacker_range + attacker_radius + enemy.RADIUS
+	return attacker_range + melee_contact_attacker_radius(attacker_radius, enemy) + enemy.RADIUS
+
+
+## The attacker's radius melee_contact_distance counts against `enemy`: 0 against a router,
+## which it omits. MeleeFrontLine.within_contact takes it, so the extension (frontal or side)
+## adds the attacker's whole reach when the base range already left its radius out.
+static func melee_contact_attacker_radius(attacker_radius: float, enemy: Unit) -> float:
+	return 0.0 if enemy.state == Unit.State.ROUTING else attacker_radius
 
 
 ## Approach point for a flank/rear attack: a spot at melee-contact distance on the

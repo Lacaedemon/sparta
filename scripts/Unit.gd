@@ -843,6 +843,8 @@ const MELEE_INTERMIX_MAX: float = 0.85
 # inside its missile_range (jog_speed, under fire), and sprints (move_speed) once within
 # SPRINT_START_DISTANCE of the target. WALK mode holds walk pace throughout —
 # mandatory for formed stances (shield wall, pike phalanx) that break on a jog.
+# Measured centre to centre: a charge into a deep block front to front meets its front ranks
+# (MeleeFrontLine's extended contact) sooner, with that much less of the sprint behind it.
 const SPRINT_START_DISTANCE: float = 200.0   # tuned in wu: gameplay pacing distance from target to start the full-speed charge
 const SPRINT_START_DISTANCE_SQ: float = SPRINT_START_DISTANCE * SPRINT_START_DISTANCE
 # Below this current speed a unit counts as stopped for arrival purposes -- small enough
@@ -1261,6 +1263,47 @@ var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
 # defaulting to MELEE_REFACE_HOLD_FOOTPRINT_SCALE, with rout_time's set-before-_ready contract.
 const MELEE_REFACE_HOLD_FOOTPRINT_SCALE: float = 1.0
 var melee_reface_hold_footprint_scale: float = MELEE_REFACE_HOLD_FOOTPRINT_SCALE
+# How far outside the block's footprint, on its flanks and rear, an enemy soldier, and the
+# centre of his unit, may stand and still count as inside it for the interior strike
+# (SoldierInteriorStrike): only the near-front ranks strike, so an enemy that has got in
+# behind them would otherwise never be struck, and any man of the block within reach of such
+# an enemy strikes it. 0 keeps the footprint to the grid's own rectangle about the block's
+# live men; a positive value takes in men standing just off it, and a negative value
+# shrinks it. The unit-centre test, not the margin, is what keeps an enemy line fighting the
+# block from outside out of the pass: that line's centre stands outside the footprint or
+# among the striking ranks, though its leading men may be pushed in, until a margin as wide
+# as its distance off the edge takes the centre in. A caller-configurable parameter
+# defaulting to INTERIOR_STRIKE_MARGIN, with rout_time's set-before-_ready contract.
+const INTERIOR_STRIKE_MARGIN: float = 0.0   # tuned in wu
+var interior_strike_margin: float = INTERIOR_STRIKE_MARGIN
+# How far a melee pair's contact range and engaged floor reach out to the blocks' real outer
+# ranks (MeleeFrontLine): 1.0 adds each block's whole missing depth, so two blocks front to
+# front meet at their front ranks and a block attacking another's flank or rear stops at its
+# outer file or rank; 0 keeps the centre-based ranges, under which deep blocks interpenetrate
+# by most of their depth. A pair uses the smaller of its two values. A caller-configurable
+# parameter defaulting to MELEE_FRONT_LINE_SCALE, with rout_time's set-before-_ready contract.
+const MELEE_FRONT_LINE_SCALE: float = 1.0
+var melee_front_line_scale: float = MELEE_FRONT_LINE_SCALE
+# The cosine at or below which a pair no longer counts as front to front for MeleeFrontLine:
+# its frontal weight ramps from 0 here to 1 at a cosine of 1, on the angle between the two
+# blocks' fronts (where their men face, MeleeFrontGeometry.grid_front). The bearing between the
+# centres does not enter it; how far the fronts overlap does. 0.5 (60 degrees) lets an
+# oblique frontal clash keep part of the frontal extension; past it the side contact
+# (melee_side_contact_max_cos) carries the pair. A pair uses the larger of its two values. A
+# caller-configurable parameter defaulting to MELEE_FRONT_LINE_MIN_COS, with rout_time's
+# set-before-_ready contract.
+const MELEE_FRONT_LINE_MIN_COS: float = 0.5
+var melee_front_line_min_cos: float = MELEE_FRONT_LINE_MIN_COS
+# The cosine between the two fronts at or above which MeleeFrontLine weighs a pair on its
+# frontal part alone. Below it the side contact (a block whose front faces the other's flank or
+# rear stops at that block's outer file or rank) ramps in, reaching its whole weight at
+# melee_front_line_min_cos, where the frontal part has none (MeleeFrontLine.side_gate). 0.75
+# (about 41 degrees) leaves a clash within that of square exactly as the frontal part weighs
+# it. -1 turns the side contact off. A pair uses the smaller of its two values. A
+# caller-configurable parameter defaulting to MELEE_SIDE_CONTACT_MAX_COS, with rout_time's
+# set-before-_ready contract.
+const MELEE_SIDE_CONTACT_MAX_COS: float = 0.75
+var melee_side_contact_max_cos: float = MELEE_SIDE_CONTACT_MAX_COS
 # How long a non-fighting unit holds position to reform its ranks after a fresh move
 # order is issued with reform_before_move on. Runs concurrently with order_response_delay
 # (both count from zero); the effective delay before the march is max(order_response_delay,
@@ -1468,10 +1511,22 @@ const SEPARATION_RADIUS_MAX: float = 1.4 * WorldScaleRef.WU_PER_M
 # capped at 2*SEPARATION_RADIUS_MAX=56, or the engaged _front_depth() pair sum, each
 # half capped at attack_range*0.5) bounds the largest possible single-pair push to
 # roughly that same ~50-60 wu even in the fully-overlapping/co-located worst case, so
-# this cap -- comfortably above 60wu/(1/60s)=3600 wu/s -- never binds for any push a
-# legitimate min_dist can produce; it only ever bounds a genuinely pathological state
-# (a corrupted min_dist from a bug elsewhere). Measured real gameplay (a full-sprint
-# cavalry-vs-spear-line hard block) sits far below this, at ~100-200 wu/s.
+# this cap -- comfortably above 60wu/(1/60s)=3600 wu/s -- never binds for any push those
+# floors can produce. A pair in frontal or side contact also carries
+# MeleeFrontLine.floor_from: front to front, up to the two blocks' front-rank depths (126 wu
+# for two 8-rank blocks, more for deeper ones); on a flank, the attacker's front-rank depth
+# plus the defender's front half-width (189 wu for two 15-file, 8-rank blocks at an 18 wu
+# pitch); in the rear, the two depths again. The cap is 100 wu a tick at 60 ticks/s and each
+# block takes its share of the deficit. Two 8-rank blocks spawned front to front with their
+# centres a RADIUS apart (the least separation at which the floor carries its whole
+# extension; MeleeFrontLine.pair's "ahead" term) have a deficit of 108 wu and part in one
+# tick, 54 wu each; the 15-file flank pair has 171 wu, 85.5 each, also one tick. A deficit
+# past 200 wu (two blocks of more than 12 ranks each at an 18 wu rank pitch, or an 8-rank
+# block on the flank of a 32-file line, whose half-width is 279 wu, spawned or swung deep
+# into each other) reaches the cap, which spreads the rest of the push over the next ticks.
+# Measured
+# real gameplay (a full-sprint cavalry-vs-spear-line hard block) sits far below this, at
+# ~100-200 wu/s.
 const SEPARATION_SPEED_CAP: float = 6000.0   # tuned in wu
 # Cavalry charge: a physics-based bonus, not a one-shot token. The damage
 # multiplier scales with the rider's IMPACT VELOCITY at the moment of contact — the
@@ -1859,6 +1914,9 @@ func _physics_process(delta: float) -> void:
 	_advance_rally_resquare(delta)
 
 	_tick_far_stamina(delta)
+	# Whatever this tick did to the block (a casualty reshape, the ranks closing, a rally
+	# re-square), units that tick after it this frame widen their front-line lookups to find it.
+	note_front_depth()
 
 	# The parallel soldier-body layer (seeding + the global engaged-soldier
 	# separation) is orchestrated once per tick by Battle, AFTER every unit has
@@ -2788,8 +2846,8 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ## own missile_range, precisely because it is not yet in melee contact.
 ##
 ## Also deliberately not a caller, for a related but distinct reason -- proximity rather than
-## a targeting commit: _can_rally's broken-contact check (UnitTargeting.nearest_enemy_to
-## within RALLY_CONTACT_RADIUS) decides only whether a routed unit rallies or shatters; there
+## a targeting commit: _can_rally's broken-contact check (its own scan of the non-routing
+## enemies, within RALLY_CONTACT_RADIUS or in frontal or side melee contact) decides only whether a routed unit rallies or shatters; there
 ## is no target_enemy assignment downstream of it at all. It is also not a genuine
 ## melee-contact-distance check the way the combat-resolution exemption above is
 ## (RALLY_CONTACT_RADIUS is a fixed proximity radius, not attack_range + both radii): at 8 m
@@ -2852,7 +2910,8 @@ func _start_attack_cd(baseline_interval: float) -> void:
 ##   perception-gated at the time), or _think()'s melee-contact branch (target_enemy = enemy,
 ##   set when in contact outside HOLD/MARCH_TO_CONTACT/BRACE), which is deliberately NOT a
 ##   caller of this function: contact-exempt rather than perception-gated, benign because
-##   melee_contact_distance is far below any realistic sight range. Same already-committed
+##   melee contact means the enemy's front rank is within weapon reach of this unit's, however
+##   far apart two deep blocks' centres stand. Same already-committed
 ##   exemption the chase branch's target_enemy != null half relies on. See UnitRelief.begin's
 ##   own doc comment.
 ## - OrderGuards.enemy_in_range (scripts/OrderGuards.gd), which backs
@@ -2889,7 +2948,9 @@ func _enemy_is_perceived(enemy: Unit) -> bool:
 ## caller list) for how each of those three sites fits in.
 func fresh_pick_allowed(candidate: Unit) -> bool:
 	var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, candidate)
-	var in_contact: bool = position.distance_squared_to(candidate.position) <= contact_dist * contact_dist
+	var in_contact: bool = MeleeFrontLine.within_contact(self, candidate, contact_dist,
+			position.distance_squared_to(candidate.position),
+			UnitTargeting.melee_contact_attacker_radius(RADIUS, candidate))
 	return in_contact or _enemy_is_perceived(candidate)
 
 
@@ -2905,6 +2966,11 @@ func fresh_pick_allowed(candidate: Unit) -> bool:
 ## of the range switches anchors once rather than every tick or two. An enemy that is fighting
 ## the router (_fighting_me) counts at the full range all the same: a router held in a melee
 ## anchors as one in contact wherever the edge of the range happens to fall.
+##
+## The range is the pair's melee contact range plus MeleeFrontLine.contact_extension, so two
+## blocks front to front come into contact as their front ranks come within reach, and a block
+## on another's flank or rear as its front rank reaches that block's end file or rear rank,
+## not after their ranks have walked into each other.
 func _refresh_enemy_contact() -> void:
 	var routing: bool = state == State.ROUTING
 	var was_anchor_contact: bool = _router_anchor_contact
@@ -2921,15 +2987,18 @@ func _refresh_enemy_contact() -> void:
 			contact_checks += 1
 			var c_dist: float = maxf(attack_range, u.attack_range) + RADIUS + u.RADIUS
 			var dist_sq: float = position.distance_squared_to(u.position)
-			if dist_sq > c_dist * c_dist:
+			if not MeleeFrontLine.within_contact(self, u, c_dist, dist_sq):
 				continue
 			_in_enemy_contact = true
 			if not routing:
 				break
-			var a_dist: float = c_dist
-			if reentering and not _fighting_me(u):
-				a_dist *= router_contact_reentry_frac
-			if dist_sq <= a_dist * a_dist:
+			# As within_contact: the positions within the base range, or the gap the extension
+			# measures (MeleeFrontLine.last_gap) within the extended one, both shrunk on re-entry.
+			var frac: float = router_contact_reentry_frac if reentering and not _fighting_me(u) \
+					else 1.0
+			var a_dist: float = (c_dist + MeleeFrontLine.contact_extension(self, u)) * frac
+			if dist_sq <= c_dist * c_dist * frac * frac \
+					or MeleeFrontLine.last_gap.length_squared() <= a_dist * a_dist:
 				anchor_contact = true
 				break
 	SimOps.add(SimOps.REGIMENT_CHECK, contact_checks)
@@ -2969,8 +3038,12 @@ func _arm_router_front_in_melee() -> void:
 		if not (u is Unit) or u == self or u.team == team or u.state == State.DEAD:
 			continue
 		var c_dist: float = maxf(attack_range, u.attack_range) + RADIUS + u.RADIUS
-		var to_enemy: Vector2 = u.position - position
-		if to_enemy.length_squared() > c_dist * c_dist or to_enemy == Vector2.ZERO:
+		var dist_sq: float = position.distance_squared_to(u.position)
+		if not MeleeFrontLine.within_contact(self, u, c_dist, dist_sq):
+			continue
+		# The bearing of the gap the contact test measured (MeleeFrontLine.toward).
+		var to_enemy: Vector2 = MeleeFrontLine.toward(self, u)
+		if to_enemy == Vector2.ZERO:
 			continue
 		if absf(angle_difference(heading, to_enemy.angle())) <= router_front_arc:
 			_router_front_in_melee = true
@@ -3234,9 +3307,13 @@ func _think(delta: float) -> void:
 		# fleeing target (ROUTING), the pursuer must reach weapon reach against the
 		# nearest fleeing bodies (attack_range + enemy.RADIUS) so soldiers can actually
 		# strike; outside that reach, the pursuer falls through to the chase branch to
-		# keep sprinting at full pace.
+		# keep sprinting at full pace. Two blocks front to front reach further, to their real
+		# front ranks, and a block on another's flank or rear to that block's end file or rear
+		# rank (MeleeFrontLine.contact_extension); a router's flank or rear is met centre to
+		# centre, since the side contact leaves a routing defender out.
 		var contact_dist: float = UnitTargeting.melee_contact_distance(attack_range, RADIUS, enemy)
-		var in_contact: bool = dist_sq <= contact_dist * contact_dist
+		var in_contact: bool = MeleeFrontLine.within_contact(self, enemy, contact_dist, dist_sq,
+				UnitTargeting.melee_contact_attacker_radius(RADIUS, enemy))
 		# Chase: relentless pursuit. Everywhere else in this branch gates fighting/closing
 		# on "target_enemy != null or not has_move_target" (an explicit attack order, or no
 		# move order at all) — that's what lets a plain move order pull a unit off a foe it
@@ -3250,7 +3327,7 @@ func _think(delta: float) -> void:
 		# plain disengage move order fall through to the normal paths.
 		if not is_ranged and order_mode == ORDER_CYCLE_CHARGE \
 				and (target_enemy != null or not has_move_target):
-			if _cycle_charge_tick(enemy, sqrt(dist_sq), in_contact, delta):
+			if _cycle_charge_tick(enemy, in_contact, delta):
 				return
 		# Skirmish: a ranged unit kites — if a threat is inside the kite
 		# distance it backs off (away from the threat, clamped to the field) rather
@@ -3372,7 +3449,7 @@ func _think(delta: float) -> void:
 			# place gradually (they hold their ground) before the line strikes; a small
 			# correction snaps and fights now. _face_for_action reports when the front is
 			# brought to bear — the strike is withheld until then.
-			var faced: bool = _face_for_action(enemy.position, delta, enemy)
+			var faced: bool = _face_for_action(contact_point(enemy), delta, enemy)
 			if faced and _attack_cd <= 0.0:
 				_start_attack_cd(melee_attack_interval())
 				# resolve_soldier_melee (via UnitCombat.strike's engaged branch) already fights
@@ -3397,7 +3474,7 @@ func _think(delta: float) -> void:
 			# press waits until the turn fully finishes.
 			if _engage_turn_target == Vector2.ZERO and not is_ranged \
 					and order_mode != ORDER_HOLD and order_mode != ORDER_BRACE:
-				_press_into(enemy.position, delta, enemy.state == State.ROUTING)
+				_press_into(contact_point(enemy), delta, enemy.state == State.ROUTING)
 			return
 		elif target_enemy != null or (chasing and not in_contact and _enemy_is_perceived(enemy)):
 			# Explicit attack order (or a CHASE unit's auto-acquired quarry), not yet in
@@ -3412,7 +3489,8 @@ func _think(delta: float) -> void:
 			# above (target_enemy = enemy, set when in contact outside HOLD/MARCH_TO_CONTACT/
 			# BRACE, on some earlier tick), which is deliberately NOT a caller of
 			# _enemy_is_perceived: contact-exempt rather than perception-gated, benign because
-			# melee_contact_distance is far below any realistic sight range. Either way, this
+			# melee contact means the enemy's front rank is within weapon reach of this unit's,
+			# however far apart two deep blocks' centres stand. Either way, this
 			# branch then keeps closing on that same target's CURRENT live position every
 			# tick with no re-check -- so a unit can keep chasing a target that has since
 			# dropped out of its side's own current perception (it slipped behind occluding
@@ -3579,7 +3657,7 @@ func _think(delta: float) -> void:
 ## through to the normal chase/melee paths (e.g. still closing on a distant target, so
 ## the ordinary approach builds _approach_velocity for the charge). Deterministic — pure
 ## geometry plus the shared strike cadence, so live play and replay stay in lockstep.
-func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float) -> bool:
+func _cycle_charge_tick(enemy: Unit, in_contact: bool, delta: float) -> bool:
 	# Recharging: peel back to the standoff so the next run rebuilds closing speed. The
 	# retire BRAKES onto the standoff (brake_arrival) rather than galloping through it:
 	# the standoff is a turn-around point, and a rider cannot reverse a gallop in place --
@@ -3588,11 +3666,18 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 	# a fleeing target opened a lead the walk-pace stern chase could never close. The
 	# trot pace for this leg lives in _move_to's own ladder (the _cycle_recharging arm).
 	if _cycle_recharging:
-		if dist < CYCLE_CHARGE_STANDOFF - CYCLE_CHARGE_STANDOFF_EPS:
-			var away: Vector2 = position - enemy.position
+		# Measured as contact is (MeleeFrontLine): the standoff opens past the pair's contact
+		# extension, so two deep blocks keep the runway a centre-based contact would leave,
+		# on the gap the extension measures, so an anchored block backs straight off.
+		var standoff: float = CYCLE_CHARGE_STANDOFF + MeleeFrontLine.contact_extension(self, enemy)
+		var away: Vector2 = -MeleeFrontLine.last_gap
+		# The square root in double precision, as the centre distance this replaced was read
+		# (Vector2.length() rounds to single): a pair with no extension pulls back unchanged.
+		var dist: float = sqrt(away.length_squared())
+		if dist < standoff - CYCLE_CHARGE_STANDOFF_EPS:
 			if away.length_squared() < 0.000001:
 				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
-			var goal: Vector2 = position + away.normalized() * (CYCLE_CHARGE_STANDOFF - dist)
+			var goal: Vector2 = position + away.normalized() * (standoff - dist)
 			_move_to(UnitTargeting.clamp_to_field(self, goal), delta, false, false, true)
 			# Cornered against the field edge with no room to peel off: give up the
 			# retreat and fight in place so the unit isn't frozen.
@@ -3610,7 +3695,7 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 	# through so the normal approach closes on the enemy and carries a charge velocity.
 	if in_contact:
 		state = State.FIGHTING
-		_face(enemy.position)
+		_face(contact_point(enemy))
 		# Only peel back once a hit actually lands: flipping to recharging is gated on the
 		# strike so a contact that arrives mid-cooldown holds and fights until the cooldown
 		# clears, rather than retreating without having landed the charge. (For current
@@ -3646,20 +3731,24 @@ func _support_tick(delta: float) -> void:
 	# threat from ever being considered at all -- the closer-hidden-shadows-farther-visible
 	# fog-of-war gap UnitTargeting.nearest_enemy_to's own `predicate` parameter closes (see
 	# its doc comment). fresh_pick_allowed's own contact math (attack_range + RADIUS +
-	# candidate.RADIUS, against THIS unit's own position) is exactly this function's own
-	# `contact_dist`/`in_contact` check just below -- identical because nearest_enemy_to's
+	# candidate.RADIUS + MeleeFrontLine.contact_extension, against THIS unit's own position)
+	# is exactly this function's own `contact_dist`/`in_contact` check just below --
+	# identical because nearest_enemy_to's
 	# default include_routing (false, unchanged here) means a candidate reaching this
 	# predicate is never ROUTING, so fresh_pick_allowed's own ROUTING special case never
 	# triggers either.
+	# A threat in frontal or side melee contact with the ward past the guard radius (two deep
+	# blocks held at their front ranks, or a block held at the ward's flank file or rear rank)
+	# still counts, when nothing inside the radius does.
 	var threat: Unit = UnitTargeting.nearest_enemy_to(self, ward.position, SUPPORT_GUARD_RADIUS,
-			false, false, Callable(self, "fresh_pick_allowed"))
+			false, false, Callable(self, "fresh_pick_allowed"), true, ward)
 	if threat != null:
 		var dist_sq: float = position.distance_squared_to(threat.position)
 		var contact_dist: float = attack_range + RADIUS + threat.RADIUS
-		var in_contact: bool = dist_sq <= contact_dist * contact_dist
+		var in_contact: bool = MeleeFrontLine.within_contact(self, threat, contact_dist, dist_sq)
 		if in_contact:
 			state = State.FIGHTING
-			if _face_for_action(threat.position, delta, threat) and _attack_cd <= 0.0:
+			if _face_for_action(contact_point(threat), delta, threat) and _attack_cd <= 0.0:
 				_attack_cd = melee_attack_interval()
 				UnitCombat.strike(self, threat)
 			return
@@ -3762,7 +3851,8 @@ func _pursuit_stance() -> bool:
 ## command a step through a body that is already in physical contact. Returns
 ## Vector2.ZERO when `dir` is fully into contact. `dir` is a unit vector;
 ## the leftover's length is the remaining (tangential) fraction, 0..1.
-## Matches `_think`'s proximity check (`maxf` of both reaches + both RADII).
+## Matches _refresh_enemy_contact's range (`maxf` of both reaches + both RADII +
+## MeleeFrontLine.contact_extension, tested through MeleeFrontLine.within_contact).
 func _yield_step_away_from_contact(dir: Vector2) -> Vector2:
 	if not is_inside_tree():
 		return dir
@@ -3776,8 +3866,10 @@ func _yield_step_away_from_contact(dir: Vector2) -> Vector2:
 			contact_checks += 1
 			var other: Unit = u
 			var c_dist: float = maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS
-			if position.distance_squared_to(other.position) <= c_dist * c_dist:
-				var toward: Vector2 = other.position - position
+			if MeleeFrontLine.within_contact(self, other, c_dist,
+					position.distance_squared_to(other.position)):
+				# Away from the gap the contact test measured (MeleeFrontLine.toward).
+				var toward: Vector2 = MeleeFrontLine.toward(self, other)
 				if toward.length_squared() < 0.0001:  # tuned in wu
 					continue
 				normals.append(toward.normalized())
@@ -4149,7 +4241,8 @@ var _adjacent_engaged_cache_frame: int = -1
 ## Distinct enemy Unit instances currently within melee contact range of this regiment --
 ## i.e. close enough for genuine simultaneous engagement, not merely detected at long range.
 ## "Contact range" is melee reach plus both bodies' collision radii
-## (maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS), the symmetric form of
+## (maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS, plus
+## MeleeFrontLine.contact_extension for a pair in frontal or side contact), the symmetric form of
 ## the reach-plus-radii rule the other contact checks in this file use, rather than inventing
 ## a second distance rule for what "adjacent" means.
 ##
@@ -4166,14 +4259,15 @@ func _adjacent_engaged_enemy_units() -> Array[Unit]:
 	if not is_inside_tree():
 		return _adjacent_engaged_cache
 	var out: Array[Unit] = []
-	for o in _separation_candidates():
+	for o in _separation_candidates(true):
 		var other := o as Unit
 		if other == null or other == self or other.state == State.DEAD:
 			continue
 		if other.team == team:
 			continue
 		var contact: float = maxf(attack_range, other.attack_range) + RADIUS + other.RADIUS
-		if position.distance_squared_to(other.position) <= contact * contact:
+		if MeleeFrontLine.within_contact(self, other, contact,
+				position.distance_squared_to(other.position)):
 			out.append(other)
 	_adjacent_engaged_cache = out
 	_adjacent_engaged_cache_frame = frame
@@ -4602,6 +4696,59 @@ func _type_separation_radius() -> float:
 	if anti_cavalry:
 		return SEPARATION_RADIUS_SPEARMEN
 	return SEPARATION_RADIUS_INFANTRY
+
+
+## The live slot grid's rank count on `files` files: UnitFormation.ranks_for's even split,
+## or, for a file-major block, its deepest surviving file. file_major_block_slots centres the
+## grid's depth on that file, and a casualty shortens only its own file, so a thinned
+## file-major block stands deeper than the even split. Reads the assignment formation_slots
+## last dealt, so it falls back to the even split until one exists for this headcount and
+## file count. With the dealt ranks (_sim_soldier_rank) it is the deepest rank plus one, the
+## figure file_major_block_slots itself centres on; without them, the fullest file.
+##
+## Cached against the assignment's generation (_file_assignment_gen, which every writer of
+## _sim_soldier_file or _sim_soldier_rank bumps through note_file_assignment_changed), the
+## headcount and the file count: O(1) while nothing re-deals, installs, restores or reaps.
+func live_rank_count(files: int) -> int:
+	var even: int = UnitFormation.ranks_for(soldiers, files)
+	if in_square() or not _effective_file_major_reform() or _sim_soldier_file.size() != soldiers \
+			or _file_assignment_files != files:
+		return even
+	if _live_rank_count_gen == _file_assignment_gen and _live_rank_count_soldiers == soldiers \
+			and _live_rank_count_files == files:
+		return _live_rank_count
+	var deepest: int = 0
+	if _sim_soldier_rank.size() == soldiers:
+		for r in _sim_soldier_rank:
+			deepest = maxi(deepest, r + 1)
+	else:
+		var counts := PackedInt32Array()
+		counts.resize(files)
+		for f in _sim_soldier_file:
+			var c: int = clampi(f, 0, files - 1)
+			counts[c] += 1
+			deepest = maxi(deepest, counts[c])
+	_live_rank_count = deepest if deepest > 0 else even
+	_live_rank_count_gen = _file_assignment_gen
+	_live_rank_count_soldiers = soldiers
+	_live_rank_count_files = files
+	return _live_rank_count
+
+
+## Record that _sim_soldier_file or _sim_soldier_rank was written. Every writer calls it
+## (a deal, an install, a snapshot restore, a reap's splice, a rank reversal, a tier
+## demotion's clear), so live_rank_count's cache is never read against another assignment.
+func note_file_assignment_changed() -> void:
+	_file_assignment_gen += 1
+
+
+# The file assignment's generation (note_file_assignment_changed) and live_rank_count's
+# cache: the generation, headcount and file count it was computed for, and its value.
+var _file_assignment_gen: int = 0
+var _live_rank_count_gen: int = -1
+var _live_rank_count_soldiers: int = -1
+var _live_rank_count_files: int = -1
+var _live_rank_count: int = 0
 
 
 ## The block's depth from its centre to its FRONT rank, in world units: how far the
@@ -5318,6 +5465,7 @@ func set_formation(mode: int) -> void:
 		separation_radius = base
 	spacing_scale = spacing_scale_for_mode(mode)
 	_reset_shield_hold_angles()
+	note_front_depth()   # a square or a narrower stance can deepen the block
 
 
 ## Penalize mid-move formation density, stance, or frontage changes when moving
@@ -5395,6 +5543,7 @@ func set_frontage(files: int, anchor_offset: float = 0.0) -> void:
 		# arm the watch using the reshape-specific bound (old shape's diagonal plus the
 		# new one's), captured before the frontage actually changes underneath it.
 		_arm_standoff_settle_window(_reshape_timeout(old_files))
+	note_front_depth()   # a narrower frontage deepens the block
 
 
 ## Multiplier applied to incoming ranged damage. Shielded stances raise shields to
@@ -5483,7 +5632,9 @@ func formation_speed_factor() -> float:
 func _is_frontal_attack(attacker: Unit) -> bool:
 	if attacker == null or not is_instance_valid(attacker):
 		return true
-	var to_attacker: Vector2 = attacker.position - position
+	# The bearing of the gap a pair in contact is measured on (MeleeFrontLine.toward), as
+	# UnitCombat.flank_multiplier reads it.
+	var to_attacker: Vector2 = MeleeFrontLine.toward(self, attacker)
 	if to_attacker.length_squared() < 0.000001:
 		return true
 	return facing.dot(to_attacker.normalized()) > 0.0
@@ -5583,7 +5734,7 @@ func _separate(delta: float) -> void:
 	# earlier pair already shifted this same tick).
 	var speed_budget: float = SEPARATION_SPEED_CAP
 	# Consider living units and routers alike: nobody gets walked through.
-	for o in _separation_candidates():
+	for o in _separation_candidates(true):
 		var other: Unit = o as Unit
 		# DEAD: queue_free'd but not yet removed from its group this frame.
 		if other == null or other == self or other.state == State.DEAD:
@@ -5601,6 +5752,7 @@ func _separate(delta: float) -> void:
 		# are skipped there's nothing left to exempt here -- the checks re-home to the
 		# steering pass. _separation_exempt is still used there.)
 		var min_dist: float
+		var men_shift := Vector2.ZERO
 		if (is_engaged() or _in_enemy_contact) and (other.is_engaged() or other._in_enemy_contact):
 			# Lines in melee contact (fighting, or merely physically close -- see
 			# _in_enemy_contact's own doc comment) close until their FRONT RANKS meet
@@ -5608,13 +5760,30 @@ func _separate(delta: float) -> void:
 			# pass holds the contact and packs the soldiers — so the spacing emerges from
 			# the bodies, not a fixed enemy gap. No type-specific standoff here: a spear's
 			# reach standoff is meant to emerge from knockback, not a separation rule.
+			# _front_depth() is capped at half the reach, so for blocks deeper than about
+			# three ranks the capped floor alone lets the centres close until each grid is
+			# ordered most of its depth into the other. For blocks in frontal or side contact,
+			# MeleeFrontLine.floor_from adds the rest of each block's reach back: its front
+			# depth, or the defender's end file or rear rank on a flank or rear.
+			# Only a pair within the extension's upper bound pays for it: one past that bound
+			# is rejected below with or without it. An extended floor holds the two blocks' men
+			# apart, so the push runs along the gap MeleeFrontLine measured (last_gap), which
+			# moves toward the men's centres by the same weight: no jump as the weight leaves 0.
 			min_dist = _front_depth() + other._front_depth()
+			var floor_bound: float = min_dist + MeleeFrontGeometry.extension_depth(self) \
+					+ MeleeFrontGeometry.extension_depth(other)
+			if position.distance_squared_to(other.position) \
+					< floor_bound * floor_bound * SoldierEnemyContact.SQRT_SKIP_BAND:
+				var p: Vector3 = MeleeFrontLine.pair(self, other)
+				if p.x > 0.0:
+					min_dist += MeleeFrontLine.floor_from(p, self, other)
+					men_shift = -MeleeFrontLine.last_gap - (position - other.position)
 		else:
 			min_dist = separation_radius + other.separation_radius
 			if _is_melee_intermixing_with(other):
 				var dissolve := minf(_combat_intermixing, other._combat_intermixing)
 				min_dist *= (1.0 - dissolve)
-		var offset: Vector2 = position - other.position
+		var offset: Vector2 = position - other.position + men_shift
 		# Squared reject skips the square root for clearly separated pairs;
 		# in-band survivors take the exact test so rounding never flips a push.
 		if offset.length_squared() >= min_dist * min_dist * SoldierEnemyContact.SQRT_SKIP_BAND:
@@ -6292,6 +6461,7 @@ func _ensure_file_assignment(count: int, files: int) -> void:
 		else:
 			_sim_soldier_file = UnitFormation.deal_file_ids_by_lateral_order(live, capacities)
 			_sim_soldier_rank = UnitFormation.deal_ranks_by_depth(live, _sim_soldier_file)
+	note_file_assignment_changed()
 	# _slot_frame_positions returns nothing unless the body layer holds at least `count`
 	# entries, so a reshape can find FEWER bodies than live soldiers -- `count` having run
 	# ahead of the bodies, as a reinforcement does before SoldierBodies.step resizes them to
@@ -6387,6 +6557,7 @@ func install_file_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array
 	clear_couple_transit()   # a fresh file assignment re-deals every slot (see set_formation)
 	_sim_soldier_file = file_ids
 	_sim_soldier_rank = ranks
+	note_file_assignment_changed()
 	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
 	_file_assignment_files = frontage_override
 	if frontage_anchor_offset != 0.0:
@@ -7370,6 +7541,7 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 			_ensure_file_assignment(soldiers, files)
 			_sim_soldier_rank = UnitFormation.reversed_ranks_within_files(
 					_sim_soldier_file, _sim_soldier_rank)
+			note_file_assignment_changed()
 		else:
 			# Row-major has no per-soldier depth array to reverse, so the same cancellation
 			# is expressed as a slot pairing instead: each man takes the cell whose reflected
@@ -7466,6 +7638,7 @@ func _bake_formation_mirror() -> void:
 	if _file_assignment_files > 0 and _sim_soldier_file.size() == count:
 		for i in range(count):
 			_sim_soldier_file[i] = _file_assignment_files - 1 - _sim_soldier_file[i]
+		note_file_assignment_changed()
 	if _square_slot_files > 0 and _sim_soldier_square_slot.size() == count:
 		_sim_soldier_square_slot = _composed_pairing(
 				UnitFormation.lateral_reflection_pairing(count, _square_slot_files),
@@ -8179,6 +8352,22 @@ func _slot_anchor_centre() -> Vector2:
 	return Vector2(frontage_anchor_offset, 0.0)
 
 
+## Report this block's live MeleeFrontGeometry.query_extension to the frame's grid, so a
+## front-line lookup that runs after a mid-tick deepening widens enough to find it (see
+## SpatialHash.refresh_query_extension). A no-op without a current grid.
+func note_front_depth() -> void:
+	if SpatialHash.is_current(Engine.get_physics_frames()):
+		SpatialHash.note_query_extension(MeleeFrontGeometry.query_extension(self))
+
+
+## The point to face and press toward against `enemy` in melee contact: this unit's position
+## plus the gap MeleeFrontLine measures the pair on (MeleeFrontLine.toward). For an anchored
+## frontage in frontal or side contact with `enemy` that gap runs between the two blocks' men; otherwise
+## it is the positions' own gap, and the point is the enemy's position.
+func contact_point(enemy: Unit) -> Vector2:
+	return position + MeleeFrontLine.toward(self, enemy)
+
+
 ## World-aligned offset of the soldier block's footprint centre from `position`: the
 ## standing frontage anchor shift (an asymmetric explicatio/duplicatio, or a
 ## flank-anchored grip resize), expressed through the same local-to-world mapping
@@ -8675,9 +8864,14 @@ func _select_near_front_indices(count: int, max_selected: int = -1) -> PackedInt
 	var cutoff: int = mini(count, formation_files(count) * engaged_ranks())
 	if max_selected >= 0:
 		cutoff = mini(cutoff, max_selected)
+	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, near_front_forward())
+
+
+## The direction the near-front selections rank soldiers along: the slot grid's own front
+## (the heading turned by _formation_angle), so "front" follows the grid the men stand on.
+func near_front_forward() -> Vector2:
 	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
-	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
-	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)
+	return Vector2(0.0, -1.0).rotated(world_angle)
 
 
 ## True while an in-place reshape or turn is actively changing what "the front" even means:
@@ -8738,9 +8932,7 @@ func near_front_soldier_indices(count: int) -> PackedInt32Array:
 	if not (is_engaged() or _in_enemy_contact) or count <= 0 or in_square():
 		return PackedInt32Array()
 	var cutoff: int = mini(count, formation_files(count) * ANCHOR_RANKS)
-	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
-	var forward: Vector2 = Vector2(0.0, -1.0).rotated(world_angle)
-	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, forward)
+	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, near_front_forward())
 
 
 ## The soldier-index selection `SoldierBodies.couple()` anchors `position` on: the live
@@ -9413,12 +9605,43 @@ func _push_share(other: Unit) -> float:
 ## neighbourhood rather than O(n) over all units); falls back to a full
 ## units+routers group scan when no grid is current for this frame — e.g. a unit
 ## test that calls _separate() directly with no Battle running.
-func _separation_candidates() -> Array:
-	if SpatialHash.is_current(Engine.get_physics_frames()):
-		return SpatialHash.query(position)
+##
+## The lookup covers every unit within SpatialHash.CELL_SIZE, which bounds the centre-based
+## floors and contact ranges. A pair's MeleeFrontLine extensions (frontal or side contact)
+## reach further, by up to each block's reach past its radius along any axis (a line's
+## half-diagonal, a square's depth plus half-width) plus its anchor shift, so `front_line`
+## (for a caller that applies them)
+## widens the lookup to MeleeFrontGeometry.query_radius against the deepest block in the grid.
+## It widens for every eligible unit, a one-rank block included, so a pair finds each other
+## from both sides.
+##
+## A front-line lookup reports this unit's live depth to the hash first, and is kept for the
+## frame: four callers ask each tick (_separate, the engaged fraction, the morale tick and
+## _adjacent_engaged_enemy_units), and the grid is fixed for the frame, so the same cell and
+## ring count return the same list.
+func _separation_candidates(front_line: bool = false) -> Array:
+	var frame: int = Engine.get_physics_frames()
+	if SpatialHash.is_current(frame):
+		if not front_line:
+			return SpatialHash.query(position)
+		note_front_depth()
+		var radius: float = MeleeFrontGeometry.query_radius(self, SpatialHash.max_query_extension())
+		var cell: Vector2i = SpatialHash._key(position)
+		var key := Vector4i(frame, cell.x, cell.y, maxi(1, ceili(radius / SpatialHash.CELL_SIZE)))
+		if key != _front_line_candidates_key:
+			_front_line_candidates = SpatialHash.query(position, radius)
+			_front_line_candidates_key = key
+		return _front_line_candidates
 	var all: Array = get_tree().get_nodes_in_group("units")
 	all.append_array(get_tree().get_nodes_in_group("routers"))
 	return all
+
+
+# _separation_candidates' front-line lookup for the frame: (frame, cell, rings) and the list.
+var _front_line_candidates_key := Vector4i(-1, 0, 0, 0)
+var _front_line_candidates: Array = []
+# MeleeFrontLine's cached measurements of this block (MeleeFrontProfile.of).
+var _front_profile: MeleeFrontProfile = null
 
 
 # --- Combat -----------------------------------------------------------------
@@ -9542,6 +9765,7 @@ func pool_strength(other: Unit, cohesion_floor: float) -> bool:
 	separation_radius = minf(maxf(separation_radius, other.separation_radius) + 2.0,
 		SEPARATION_RADIUS_MAX)
 	_base_separation_radius = separation_radius
+	note_front_depth()   # pooled strength deepens the block mid-tick
 	return true
 
 
@@ -9824,13 +10048,27 @@ func _clear_flight() -> void:
 
 
 ## Whether a routed unit recovers rather than shatters when its rout times out:
-## it must have broken contact — no living enemy within RALLY_CONTACT_RADIUS — and still
-## field enough men to reform (>= shatter_strength_frac of its max). Positions + counts
-## only, so it's deterministic and replay-safe.
+## it must have broken contact (no living, non-routing enemy within RALLY_CONTACT_RADIUS)
+## and still field enough men to reform (>= shatter_strength_frac of its max). An enemy in
+## frontal or side melee contact past the radius holds it too: two deep blocks pressed at
+## their front ranks, or the router's front pressed on an enemy's flank (MeleeFrontLine),
+## stand further apart than the radius while their men are still in the press. An enemy on
+## the router's own flank or rear is measured centre to centre (MeleeFrontLine._side_part
+## leaves a routing defender out). Positions + counts only, so it's deterministic and
+## replay-safe.
 func _can_rally() -> bool:
 	if soldiers < int(round(max_soldiers * shatter_strength_frac)):
 		return false
-	return UnitTargeting.nearest_enemy_to(self, position, RALLY_CONTACT_RADIUS) == null
+	for o in get_tree().get_nodes_in_group("units"):
+		var e: Unit = o as Unit
+		if e == null or e.team == team or e.state == State.DEAD:
+			continue
+		# Strictly inside the radius, or in melee contact at the pair's frontal or side range.
+		var d_sq: float = position.distance_squared_to(e.position)
+		if d_sq < RALLY_CONTACT_RADIUS * RALLY_CONTACT_RADIUS or MeleeFrontLine.within_contact(
+				self, e, maxf(attack_range, e.attack_range) + RADIUS + e.RADIUS, d_sq):
+			return false
+	return true
 
 
 ## Recover from a rout: the unit reforms under the player's control at low,
@@ -10093,7 +10331,7 @@ func _cut_rally_halt_on_enemy() -> void:
 
 
 ## Whether a living enemy (fighting or routing) stands within `radius` of the segment
-## `from`-`to`. Centre distances, as _can_rally reads contact. False outside the scene tree.
+## `from`-`to`. Centre distances, as _can_rally's radius test reads them. False outside the tree.
 func _enemy_near_leg(from: Vector2, to: Vector2, radius: float) -> bool:
 	if not is_inside_tree():
 		return false
@@ -11084,6 +11322,10 @@ func to_snapshot_dict() -> Dictionary:
 		"rout_time": rout_time, "router_front_arc": router_front_arc,
 		"router_contact_reentry_frac": router_contact_reentry_frac,
 		"melee_reface_hold_footprint_scale": melee_reface_hold_footprint_scale,
+		"interior_strike_margin": interior_strike_margin,
+		"melee_front_line_scale": melee_front_line_scale,
+		"melee_front_line_min_cos": melee_front_line_min_cos,
+		"melee_side_contact_max_cos": melee_side_contact_max_cos,
 		"shatter_strength_frac": shatter_strength_frac,
 		"rally_morale_threshold": rally_morale_threshold,
 		"rally_resume_radius_factor": rally_resume_radius_factor,
@@ -11344,6 +11586,11 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	router_contact_reentry_frac = float(d.get("router_contact_reentry_frac", router_contact_reentry_frac))
 	melee_reface_hold_footprint_scale = float(d.get("melee_reface_hold_footprint_scale",
 			melee_reface_hold_footprint_scale))
+	interior_strike_margin = float(d.get("interior_strike_margin", interior_strike_margin))
+	melee_front_line_scale = float(d.get("melee_front_line_scale", melee_front_line_scale))
+	melee_front_line_min_cos = float(d.get("melee_front_line_min_cos", melee_front_line_min_cos))
+	melee_side_contact_max_cos = float(d.get("melee_side_contact_max_cos",
+			melee_side_contact_max_cos))
 	shatter_strength_frac = float(d.get("shatter_strength_frac", shatter_strength_frac))
 	rally_morale_threshold = float(d.get("rally_morale_threshold", rally_morale_threshold))
 	rally_resume_radius_factor = float(d.get("rally_resume_radius_factor", rally_resume_radius_factor))
@@ -11373,6 +11620,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_sim_soldier_facing = (d["sim_soldier_facing"] as PackedVector2Array).duplicate()
 	_sim_soldier_file = (d["sim_soldier_file"] as PackedInt32Array).duplicate()
 	_sim_soldier_rank = (d["sim_soldier_rank"] as PackedInt32Array).duplicate()
+	note_file_assignment_changed()
 	# An older snapshot without the pairing restores none, and the first step re-pairs. So
 	# does a restore into an engine younger than the pairing's age (the frame would be
 	# negative, which SoldierBodies reads as no pairing): a fresh pairing, not a crash.

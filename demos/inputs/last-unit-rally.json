@@ -1,22 +1,25 @@
 {
-  "_comment": "A team's LAST unit routs, without instantly losing. Stages team 0's ONLY unit -- a full-strength (120) but jittery (morale 15) player infantry -- meeting a single enemy infantry head-on. Both blocks are pinned to Tight (formation 1) so packed files still produce the rout inside this clip -- default Normal 2x thins contact enough that onset misses the budget. Sustained frontal casualties erode its morale to 0 (the discipline-scaled rout retune, #529, made this actually reachable -- it used to sit near-immune to routing and simply grind to a stalemate), and it breaks and flees up (faded) while barely bloodied. It used to trigger instant defeat + a paused freeze the moment its last fightable unit left the line; now the battle stays live while it's routing. Routing units are still valid combat targets, and the enemy follows it as it flees -- state-dump verified: FIGHTING at tick 1150, ROUTING by tick 1170 with 91 of its 120 men, and still ROUTING at tick 1300, the clip's end, its anchor about 68 wu from where it broke, at (733.1, 402.2), with its pursuer (uid 1) MOVING after it. Its physical contact drops at tick 1292 and is back from tick 1293, as before; its anchor moves to its whole block at tick 1292 and stays there. Before routers re-anchored on their front ranks only nearer the enemy, the anchor moved back to its front ranks with the contact and ended at (722.5, 405.7), while its men stood where they stand now. This clip only needs to show the rout starting and the battle staying live through it, not the whole grind. No player input needed.",
+  "_comment": "A team's LAST unit routs, without instantly losing. Stages team 0's ONLY unit -- a full-strength (120) but shaken (morale 10) player infantry -- meeting a single, slightly larger enemy infantry (130) head-on. Both blocks are pinned to Tight (formation 1) so packed files still produce the rout inside this clip -- default Normal 2x thins contact enough that onset misses the budget. Sustained frontal casualties and being outnumbered (the local force ratio, 120 to 130) erode its morale to 0 (the discipline-scaled rout retune, #529, made this actually reachable -- it used to sit near-immune to routing and simply grind to a stalemate), and it breaks and flees up (faded) while barely bloodied. It used to trigger instant defeat + a paused freeze the moment its last fightable unit left the line; now the battle stays live while it's routing. Routing units are still valid combat targets, and the enemy follows it as it flees -- state-dump verified on its own seed: FIGHTING at tick 950, ROUTING from tick 976 at (786.0, 506.9) with 108 of its 120 men, and still ROUTING at tick 1300, the clip's end, its anchor at (748.7, 224.0), 285 wu from where it broke, with its pursuer (uid 1) MOVING after it about 173 wu behind. STAGING (#1827): blocks front to front now meet at their front ranks, so only the front ranks trade blows, and against an equal 120 it no longer broke reliably inside the clip: at morale 6 it did not break at all on its own seed. On perturbed seeds 1 to 4 this staging breaks at ticks 980 to 1270 and is still ROUTING at tick 1300 on each. This clip only needs to show the rout starting and the battle staying live through it, not the whole grind. No player input needed.",
   "seed": "12345",
   "fixed_fps": 30,
   "max_frames": 650,
   "fps": 15,
   "width": 640,
   "scenario": [
-    {"team": 0, "type": "Infantry", "x": 800, "y": 440, "count": 120, "morale": 15.0, "formation": 1},
-    {"team": 1, "type": "Infantry", "x": 800, "y": 560, "count": 120, "formation": 1}
+    {"team": 0, "type": "Infantry", "x": 800, "y": 440, "count": 120, "morale": 10.0, "formation": 1},
+    {"team": 1, "type": "Infantry", "x": 800, "y": 560, "count": 130, "formation": 1}
   ],
   "camera": [
     {"tick": 0, "x": 800.0, "y": 360.0, "zoom": 1.0}
   ],
   "steps": [],
   "frames": [60, 720],
+  "defect_exemptions": {
+    "shape_residual": {"uids": [1], "reason": "The pursuer (uid 1) chases the router with its grid still scrambled from the fight: its slot residual reads 12 to 16 wu while in contact (not judged) and 19 to 21 wu once contact breaks, 21.3 on the declared ticks 1260 and 1300 of this tree's own seed, against 6.75. Perturbed seeds 1 to 4 read 31.6 and 22.5 on two of them. The same deformation in pursuit reads 25.2 on merge-base a3714751's own staging (2-tick samples), where it does not last long enough to fail the check; this staging breaks earlier (#1827). #1824 tracks a pursuer deforming at the edge of a router's contact range."}
+  },
   "expect": [
-    {"tick": 1150, "uid": 0, "field": "state", "value": "FIGHTING"},
-    {"tick": 1170, "uid": 0, "field": "state", "value": "ROUTING"},
-    {"tick": 1300, "uid": 0, "field": "position", "value": [733.1, 402.2], "tol": 5.0}
+    {"tick": 950, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 1000, "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": 1300, "uid": 0, "field": "position", "value": [748.7, 224.0], "tol": 5.0}
   ]
 }

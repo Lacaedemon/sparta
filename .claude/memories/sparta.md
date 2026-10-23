@@ -36,3 +36,5 @@ imports below.
 @.claude/memories/sparta/22-wave8-cache-grow-paths-phase-gates-lazy-getters-and-relayed-claims.md
 @.claude/memories/sparta/23-wave9-tool-sources-sibling-state-deferral-exits-and-tunables.md
 @.claude/memories/sparta/24-wave10-chaotic-melee-flag-readers-and-scoped-fixes.md
+@.claude/memories/sparta/25-wave11-acceptance-instruments-root-causes-and-cross-vendor-review.md
+@.claude/memories/sparta/26-wave11-review-convergence-pacing-and-measured-pins.md

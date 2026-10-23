@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/interior-strike-1834.json",
+  "caption": "A block strikes an enemy that has got inside it. A 6-man enemy squad stands at the centre of a 144-man infantry block, five or six ranks in from every edge. Only a block's front ranks strike, so before this fix the men all around the squad never struck it, and only the front ranks cut down 4 of its 6 men over the ten-second clip. Now every man of the block within reach of an enemy inside it strikes him, and the squad is cut down in under three seconds without the block losing a man.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}

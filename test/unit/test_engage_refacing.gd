@@ -83,6 +83,11 @@ func test_large_reface_rotates_gradually() -> void:
 func test_men_hold_positions_during_reface() -> void:
 	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
 	var _enemy := _unit(2, 1, Vector2(0, 40), Vector2.UP)
+	# The enemy's front ranks stand inside this block's flank files, so the interior strike
+	# would also strike them, and its knockback recoil moves the striking men (the footprint
+	# drift reads 2.04 instead of 1.60). A footprint margin that shrinks the box to nothing
+	# turns the pass off, so this measures the turn alone.
+	a.interior_strike_margin = -1.0e6
 
 	var start_bbox: Vector2 = _bbox(a._sim_soldier_pos)
 	var start_center: Vector2 = a.position

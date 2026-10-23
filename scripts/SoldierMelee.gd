@@ -9,6 +9,9 @@ class_name SoldierMelee
 ## and a soldier whose health reaches 0 dies and is removed, re-packing the formation.
 ## Flanking (facing), the spear-vs-sword reach standoff, the charge, and compounding
 ## wounds all emerge here, not from modifiers.
+## An enemy soldier that has got inside the attacker's block behind those front ranks is out
+## of their reach, so after them every other man of the block within reach of such an enemy
+## strikes him (the interior pass, SoldierInteriorStrike); with no enemy inside it does nothing.
 ## The strike's loadout stats resolve through the per-soldier id arrays: the attacker's
 ## weapon id sets the blow's lethality, and the struck soldier's shield id adds its
 ## block value to the type's stance residual (see LoadoutRegistry / soldier-loadout
@@ -75,8 +78,6 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 		return
 
 	var my_prof: Dictionary = attacker.combat_profile()
-	var my_maxhp: float = my_prof["max_health"]
-	var my_maxstam: float = my_prof["max_stamina"]
 	var reach: float = attacker.soldier_reach()
 	# formation_attack_factor has no per-soldier override (it's SQUARE/SCHILTRON's own
 	# offence penalty, and neither formation ever marks a soldier broken -- see
@@ -133,179 +134,17 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 		if target < 0:
 			continue   # nothing in reach this strike — no RNG drawn, so order stays stable
 
-		var defender: Unit = live_defenders[target_def]
-		var en_prof: Dictionary = def_prof[target_def]
-		var en_maxhp: float = en_prof["max_health"]
-		var en_maxstam: float = en_prof["max_stamina"]
-		# The non-shield part of the defender's shield weight b: stance/training
-		# deflection, per type, constant across the cadence. The shield's own block
-		# value is read per strike through the struck soldier's shield id, so
-		# b = residual + block_value — bit-for-bit the pre-split per-type weight.
-		var en_shield_residual: float = en_prof["shield_residual"]
-		var mods: Vector2 = def_mods[target_def]
-
-		# Same per-soldier override on the defending side: a broken SHIELD_WALL soldier's
-		# frontal melee bonus assumed its shield was still locked with its neighbours, which
-		# is exactly what being surrounded breaks.
-		var defender_broken: bool = defender.is_soldier_broken(target)
-		var def_defense_scale: float = 1.0 if defender_broken else defender.melee_defense_factor(attacker)
-		var wound_scale: float = atk_formation_scale * atk_melee_scale * def_defense_scale * mods.x / mods.y
-
-		var dpos: Vector2 = defender._sim_soldier_pos[target]
-		var axis: Vector2 = dpos - apos
-		var push_dir: Vector2 = axis.normalized() if axis.length_squared() > 0.000001 else Vector2.ZERO
-		# Closing speed along the strike axis -> the charge term c (bind on its own
-		# line; an inline ternary as a call arg can mis-evaluate in GDScript).
-		var closing: float = attacker._approach_velocity.dot(push_dir)
-		var c: float = SoldierCombat.charge_factor(closing)
-		# A prone defender has no active defence (phi -> 0): only its armour saves it.
-		var prone_d: bool = target < defender._sim_prone.size() and defender._sim_prone[target] > 0.0
-		var phi: float = 0.0 if prone_d else SoldierCombat.facing_gate(defender.facing, apos - dpos)
-		var stam_a: float = attacker._sim_soldier_stamina[ai] \
-				if ai < attacker._sim_soldier_stamina.size() else my_maxstam
-		var stam_d: float = defender._sim_soldier_stamina[target] \
-				if target < defender._sim_soldier_stamina.size() else en_maxstam
-		var cond_a: float = SoldierCombat.condition(attacker._sim_soldier_hp[ai], my_maxhp) \
-				* SoldierCombat.stamina_factor(stam_a, my_maxstam)
-		var cond_d: float = SoldierCombat.condition(defender._sim_soldier_hp[target], en_maxhp) \
-				* SoldierCombat.stamina_factor(stam_d, en_maxstam)
-		# Strike-time loadout reads, through the per-soldier id arrays: the
-		# attacker's weapon sets the blow's lethality and piercing nature, the struck
-		# soldier's shield adds its block value to the defender's stance residual.
-		var lethality_a: float = attacker.soldier_lethality(ai)
-		var is_piercing: bool = attacker.soldier_is_piercing(ai)
-		var shield_d: float = en_shield_residual + defender.soldier_shield_block(target)
-		var p_land: float = SoldierCombat.land_chance(my_prof["skill"], en_prof["skill"], shield_d, phi, c, cond_a, cond_d)
-		# One seeded draw per striking attacker, in id order, after the target is fixed.
-		var landed: bool = Replay.rng.randf() < p_land
-		# Knockback is the enemy collision response (no separation pass): every in-reach strike
-		# imparts a momentum impulse away from the attacker -- a clean landing transmits full
-		# momentum (eta 1), a turned-aside blow a fraction (ETA_DEFENDED), and a heavier body
-		# (high mass) is shoved less. So a charging horse throws foot back hard while shrugging
-		# off shoves, and a blocked spear wall still pushes a stalled enemy back. The body holds
-		# the push, then decelerates and returns to its slot under bounded arrival force.
-		# Velocity only -- never a position snap.
-		var eta: float = 1.0 if landed else SoldierCombat.ETA_DEFENDED
-		# Knockback focus (UnitCombat.KNOCKBACK_FOCUS_DAMAGE_MULT's counterpart): a much
-		# bigger impulse in exchange for the attack_mult penalty already folded into
-		# wound_scale above. Boosting the raw impulse (rather than only the capped speed
-		# below) also raises the prone_chance draw further down, so "higher intensity" and
-		# "higher probability" both fall out of this one multiplier.
-		var kb_focus: bool = attacker.order_mode == Unit.ORDER_KNOCKBACK_FOCUS
-		var impulse_mult: float = SoldierCombat.KNOCKBACK_FOCUS_IMPULSE_MULT if kb_focus else 1.0
-		var impulse_mag: float = SoldierCombat.knockback_impulse(
-				lethality_a, c, en_prof["mass"], eta, impulse_mult, is_piercing)
-		# Bracing: a front-facing, set, deep file resists a shove with the whole column's
-		# footing (docs/combat-model.md "Bracing"). Walk the target's file rearward (phi > 0 only:
-		# a flank/rear blow gets no buttress), stopping at the first dead/missing rank. A
-		# sub-capacity shove dies on the depth; only the surplus moves the front man. The depth
-		# sum also raises the prone threshold so a set phalanx is harder to fell.
-		var file_braces: PackedFloat32Array
-		if phi > 0.0:
-			# The defender's CURRENT grid file count (formation_files), not the wide-line
-			# frontage() -- a SQUARE defender's file-stride must match the square grid its
-			# soldiers are actually laid out on, or this walks the wrong rank_idx sequence.
-			var frontage: int = defender.formation_files(defender._sim_soldier_pos.size())
-			var n_def: int = defender._sim_soldier_pos.size()
-			var br: float = defender.soldier_brace()
-			var rank_idx: int = target
-			while rank_idx < n_def:
-				if defender._sim_soldier_hp[rank_idx] <= 0.0:
-					break
-				file_braces.append(br)
-				rank_idx += frontage
-		var brace_d: float = SoldierCombat.brace_depth(file_braces)
-		# Weapon-differentiated ceiling (docs/combat-model.md "Bracing"): a grounded spear/pike
-		# resists via an independent leveraged strut, so it absorbs more than a shield-only
-		# soldier's friction/mass-stacking alone -- see SoldierCombat.brace_capacity_for_type.
-		var j_cap: float = SoldierCombat.brace_capacity_for_type(
-				defender.is_cavalry, defender.anti_cavalry, defender.is_ranged)
-		var cap: float = j_cap * brace_d   # avoids a second walk of file_braces via brace_capacity()
-		var received: float = maxf(0.0, impulse_mag - cap)
-		# Knockback focus's own per-order push-distance parameter (Unit.
-		# knockback_push_indefinite): "just clear the line" (the default) caps the shoved
-		# body's speed so it coasts roughly past both blocks' combined front depth before
-		# SoldierBodies.BODY_ACCEL_FLOOR's arrival recovery reins it back in -- floored at
-		# KNOCKBACK_SPEED_MAX (SoldierCombat.knockback_focus_clear_line_cap) so a strong/
-		# charging hit is never shoved LESS far by this default variant than a plain
-		# attack already would be; "indefinite" uses a much higher fixed cap instead, so
-		# the shove clearly outruns that. Only the struck DEFENDER's cap changes -- the
-		# attacker's own recoil below keeps the ordinary KNOCKBACK_SPEED_MAX default,
-		# since the push-distance parameter is about how far the struck body travels,
-		# not the striker's own stagger.
-		var defender_speed_cap: float = SoldierCombat.KNOCKBACK_SPEED_MAX
-		if kb_focus:
-			if attacker.knockback_push_indefinite:
-				defender_speed_cap = SoldierCombat.KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP
-			else:
-				var clear_dist: float = attacker._front_depth() + defender._front_depth()
-				defender_speed_cap = SoldierCombat.knockback_focus_clear_line_cap(
-						clear_dist, SoldierBodies.BODY_ACCEL_FLOOR)
-		# Pre-strike defender motion status (read before this blow's velocity mutations).
-		var defender_speed_sq: float = defender._sim_body_vel[target].length_squared()
-		var is_moving: bool = defender_speed_sq > SoldierCombat.STATIC_FRICTION_VELOCITY_GATE * SoldierCombat.STATIC_FRICTION_VELOCITY_GATE
-		# Newton's laws collision (bidirectional impulses): both attacker and defender
-		# exchange momentum. The impulse is split inversely by effective mass (which
-		# includes bracing). Bracing gates the DEFENDER's forward motion (via `cap`
-		# above), but does NOT reduce the attacker's recoil — a braced defender still
-		# pushes back with full force. Lighter units recoil harder; heavier units shrug
-		# off shoves. See SoldierCollision.bidirectional_impulse.
-		if impulse_mag > 0.0:
-			var attacker_brace: float = attacker.soldier_brace()
-			var impulses: Array = SoldierCollision.bidirectional_impulse(
-				impulse_mag,
-				push_dir,
-				my_prof["mass"],
-				attacker_brace,
-				en_prof["mass"],
-				brace_d
-			)
-			var impulse_attacker: Vector2 = impulses[0]
-			var impulse_defender: Vector2 = impulses[1]
-			# Apply recoil to attacker (always, even if bracing absorbs the defender's motion).
-			if impulse_attacker.length_squared() > 0.0001:
-				attacker._sim_body_vel[ai] = SoldierCombat.capped_knockback_velocity(
-					attacker._sim_body_vel[ai], impulse_attacker)
-			# Torque vs. translation partition (docs/combat-model.md "Coupling the slide and the fall:
-			# a friction-anchored pivot"):
-			# A defender's footing anchors the impulse up to J_anchor (mass & bracing scaled).
-			# The anchored share J_rot turns into tipping torque; only the surplus J_trans breaks
-			# the footing loose to translate/shove the body.
-			var j_trans: float = SoldierCombat.translational_impulse(received, en_prof["mass"], brace_d, is_moving)
-			if j_trans > 0.0:
-				var braced_impulse_defender: Vector2 = SoldierCollision.braced_defender_impulse(
-						impulse_defender, j_trans, impulse_mag)
-				defender._sim_body_vel[target] = SoldierCombat.capped_knockback_velocity(
-						defender._sim_body_vel[target], braced_impulse_defender, defender_speed_cap)
-		# Accumulate under a clamp: impulses from every attacker shoving this body this
-		# cadence accumulate in its velocity, and each application clamps the summed result
-		# (SoldierCombat.capped_knockback_velocity) -- a pile-on in an intermixed press
-		# knocks a man back body-lengths, never launches him across the field.
-		if landed:
-			defender._sim_soldier_hp[target] -= \
-					SoldierCombat.wound(lethality_a, c, en_prof["armour"], cond_a, is_piercing) * wound_scale
-		# Going prone: a big enough impulse delivers tipping torque that fells the defender
-		# (docs/combat-model.md "Going prone and getting up" and "Coupling the slide and the fall").
-		# The fall roll is a second seeded draw per striking attacker, ALWAYS drawn (after the
-		# land roll, in id order) so the draw count per in-reach strike is fixed -- the size guard
-		# gates only the assignment, never the draw, so an out-of-sync array can't silently shift
-		# the RNG stream. A felled body loses active defence and can't strike until it rises; a
-		# fresh blow on a downed man refreshes the timer, keeping him down under assault.
-		var fall_roll: float = Replay.rng.randf()
-		if target < defender._sim_prone.size() \
-				and fall_roll < SoldierCombat.prone_chance(impulse_mag, en_prof["mass"], brace_d, is_moving):
-			defender._sim_prone[target] = SoldierCombat.PRONE_RISE_TIME
-		# Stamina drain: attacker pays KAPPA_A per strike thrown; defender pays KAPPA_D
-		# scaled by how much of the blow it had to meet (phi*(1+c) — zero for prone/flanked).
-		if ai < attacker._sim_soldier_stamina.size():
-			attacker._sim_soldier_stamina[ai] = maxf(0.0,
-				attacker._sim_soldier_stamina[ai] - SoldierCombat.KAPPA_A)
-		if target < defender._sim_soldier_stamina.size():
-			defender._sim_soldier_stamina[target] = maxf(0.0,
-				defender._sim_soldier_stamina[target]
-					- SoldierCombat.KAPPA_D * phi * (1.0 + maxf(0.0, c)))
+		_strike(attacker, ai, my_prof, live_defenders[target_def], target, def_prof[target_def],
+				def_mods[target_def], atk_formation_scale, atk_melee_scale)
 
 	SimOps.add(SimOps.MELEE_CHECK, searchers * candidates_per_attacker)
+
+	# The interior pass: an enemy that has got inside the block behind the striking ranks is
+	# out of their reach, so every other man of the block within reach of him strikes him
+	# (SoldierInteriorStrike). It runs after the striking ranks, so their draws keep their
+	# order, and draws nothing when no enemy is inside.
+	_strike_interior(attacker, attackers, live_defenders, def_indices, def_prof, def_mods,
+			my_prof, reach, atk_formation_scale)
 
 	# reap() no-ops immediately when a given unit had zero deaths this cadence, so it's safe
 	# (and simplest) to call it once per distinct defender in the candidate set, unconditionally
@@ -313,6 +152,235 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 	# always made once regardless of whether that one defender actually lost anyone this tick.
 	for d in live_defenders:
 		reap(d, attacker)
+
+
+## The interior pass of resolve(): each man of `attacker` outside the striking set `front`
+## strikes the nearest living enemy soldier within reach that is inside the block behind
+## that set (SoldierInteriorStrike.inside_candidates), in soldier-id order, with the same
+## per-strike resolution as the striking ranks. Nothing is searched or drawn when no enemy
+## is inside.
+static func _strike_interior(attacker: Unit, front: PackedInt32Array, live_defenders: Array[Unit],
+		def_indices: Array[PackedInt32Array], def_prof: Array[Dictionary], def_mods: Array[Vector2],
+		my_prof: Dictionary, reach: float, atk_formation_scale: float) -> void:
+	var inside: Array[PackedInt32Array] = SoldierInteriorStrike.inside_candidates(
+			attacker, front, live_defenders, def_indices)
+	if inside.is_empty():
+		return
+	var inside_count: int = 0
+	for di_list in inside:
+		inside_count += di_list.size()
+	var searchers: int = 0
+	for ai in SoldierInteriorStrike.interior_strikers(attacker, front):
+		if ai < attacker._sim_prone.size() and attacker._sim_prone[ai] > 0.0:
+			continue
+		searchers += 1
+		var apos: Vector2 = attacker._sim_soldier_pos[ai]
+		var target: int = -1
+		var target_def: int = -1
+		var best_d_sq: float = reach * reach
+		for dj in range(live_defenders.size()):
+			var d: Unit = live_defenders[dj]
+			for di in inside[dj]:
+				if d._sim_soldier_hp[di] <= 0.0:
+					continue
+				var d_sq: float = apos.distance_squared_to(d._sim_soldier_pos[di])
+				if d_sq <= best_d_sq:
+					best_d_sq = d_sq
+					target = di
+					target_def = dj
+		if target < 0:
+			continue
+		var atk_melee_scale: float = 1.0 if attacker.is_soldier_broken(ai) \
+				else attacker.formation_melee_attack_factor()
+		_strike(attacker, ai, my_prof, live_defenders[target_def], target, def_prof[target_def],
+				def_mods[target_def], atk_formation_scale, atk_melee_scale)
+	SimOps.add(SimOps.MELEE_CHECK, searchers * inside_count)
+
+
+## One strike of `attacker`'s soldier `ai` on `defender`'s soldier `target`: the seeded land
+## and fall rolls (always both, in that order), the wound, the knockback impulse pair, the
+## prone timer and the stamina drain. `my_prof` and `en_prof` are the two sides' combat
+## profiles, `mods` is UnitCombat.order_mode_modifiers(attacker, defender), and
+## `atk_formation_scale` and `atk_melee_scale` are the attacker-side wound scales resolve()
+## computes.
+static func _strike(attacker: Unit, ai: int, my_prof: Dictionary, defender: Unit, target: int,
+		en_prof: Dictionary, mods: Vector2, atk_formation_scale: float,
+		atk_melee_scale: float) -> void:
+	var my_maxhp: float = my_prof["max_health"]
+	var my_maxstam: float = my_prof["max_stamina"]
+	var apos: Vector2 = attacker._sim_soldier_pos[ai]
+	var en_maxhp: float = en_prof["max_health"]
+	var en_maxstam: float = en_prof["max_stamina"]
+	# The non-shield part of the defender's shield weight b: stance/training
+	# deflection, per type, constant across the cadence. The shield's own block
+	# value is read per strike through the struck soldier's shield id, so
+	# b = residual + block_value -- bit-for-bit the pre-split per-type weight.
+	var en_shield_residual: float = en_prof["shield_residual"]
+
+	# Same per-soldier override on the defending side: a broken SHIELD_WALL soldier's
+	# frontal melee bonus assumed its shield was still locked with its neighbours, which
+	# is exactly what being surrounded breaks.
+	var defender_broken: bool = defender.is_soldier_broken(target)
+	var def_defense_scale: float = 1.0 if defender_broken else defender.melee_defense_factor(attacker)
+	var wound_scale: float = atk_formation_scale * atk_melee_scale * def_defense_scale * mods.x / mods.y
+
+	var dpos: Vector2 = defender._sim_soldier_pos[target]
+	var axis: Vector2 = dpos - apos
+	var push_dir: Vector2 = axis.normalized() if axis.length_squared() > 0.000001 else Vector2.ZERO
+	# Closing speed along the strike axis -> the charge term c (bind on its own
+	# line; an inline ternary as a call arg can mis-evaluate in GDScript).
+	var closing: float = attacker._approach_velocity.dot(push_dir)
+	var c: float = SoldierCombat.charge_factor(closing)
+	# A prone defender has no active defence (phi -> 0): only its armour saves it.
+	var prone_d: bool = target < defender._sim_prone.size() and defender._sim_prone[target] > 0.0
+	var phi: float = 0.0 if prone_d else SoldierCombat.facing_gate(defender.facing, apos - dpos)
+	var stam_a: float = attacker._sim_soldier_stamina[ai] \
+			if ai < attacker._sim_soldier_stamina.size() else my_maxstam
+	var stam_d: float = defender._sim_soldier_stamina[target] \
+			if target < defender._sim_soldier_stamina.size() else en_maxstam
+	var cond_a: float = SoldierCombat.condition(attacker._sim_soldier_hp[ai], my_maxhp) \
+			* SoldierCombat.stamina_factor(stam_a, my_maxstam)
+	var cond_d: float = SoldierCombat.condition(defender._sim_soldier_hp[target], en_maxhp) \
+			* SoldierCombat.stamina_factor(stam_d, en_maxstam)
+	# Strike-time loadout reads, through the per-soldier id arrays: the
+	# attacker's weapon sets the blow's lethality and piercing nature, the struck
+	# soldier's shield adds its block value to the defender's stance residual.
+	var lethality_a: float = attacker.soldier_lethality(ai)
+	var is_piercing: bool = attacker.soldier_is_piercing(ai)
+	var shield_d: float = en_shield_residual + defender.soldier_shield_block(target)
+	var p_land: float = SoldierCombat.land_chance(my_prof["skill"], en_prof["skill"], shield_d, phi, c, cond_a, cond_d)
+	# One seeded draw per striking attacker, in id order, after the target is fixed.
+	var landed: bool = Replay.rng.randf() < p_land
+	# Knockback is the enemy collision response (no separation pass): every in-reach strike
+	# imparts a momentum impulse away from the attacker -- a clean landing transmits full
+	# momentum (eta 1), a turned-aside blow a fraction (ETA_DEFENDED), and a heavier body
+	# (high mass) is shoved less. So a charging horse throws foot back hard while shrugging
+	# off shoves, and a blocked spear wall still pushes a stalled enemy back. The body holds
+	# the push, then decelerates and returns to its slot under bounded arrival force.
+	# Velocity only -- never a position snap.
+	var eta: float = 1.0 if landed else SoldierCombat.ETA_DEFENDED
+	# Knockback focus (UnitCombat.KNOCKBACK_FOCUS_DAMAGE_MULT's counterpart): a much
+	# bigger impulse in exchange for the attack_mult penalty already folded into
+	# wound_scale above. Boosting the raw impulse (rather than only the capped speed
+	# below) also raises the prone_chance draw further down, so "higher intensity" and
+	# "higher probability" both fall out of this one multiplier.
+	var kb_focus: bool = attacker.order_mode == Unit.ORDER_KNOCKBACK_FOCUS
+	var impulse_mult: float = SoldierCombat.KNOCKBACK_FOCUS_IMPULSE_MULT if kb_focus else 1.0
+	var impulse_mag: float = SoldierCombat.knockback_impulse(
+			lethality_a, c, en_prof["mass"], eta, impulse_mult, is_piercing)
+	# Bracing: a front-facing, set, deep file resists a shove with the whole column's
+	# footing (docs/combat-model.md "Bracing"). Walk the target's file rearward (phi > 0 only:
+	# a flank/rear blow gets no buttress), stopping at the first dead/missing rank. A
+	# sub-capacity shove dies on the depth; only the surplus moves the front man. The depth
+	# sum also raises the prone threshold so a set phalanx is harder to fell.
+	var file_braces: PackedFloat32Array
+	if phi > 0.0:
+		# The defender's CURRENT grid file count (formation_files), not the wide-line
+		# frontage() -- a SQUARE defender's file-stride must match the square grid its
+		# soldiers are actually laid out on, or this walks the wrong rank_idx sequence.
+		var frontage: int = defender.formation_files(defender._sim_soldier_pos.size())
+		var n_def: int = defender._sim_soldier_pos.size()
+		var br: float = defender.soldier_brace()
+		var rank_idx: int = target
+		while rank_idx < n_def:
+			if defender._sim_soldier_hp[rank_idx] <= 0.0:
+				break
+			file_braces.append(br)
+			rank_idx += frontage
+	var brace_d: float = SoldierCombat.brace_depth(file_braces)
+	# Weapon-differentiated ceiling (docs/combat-model.md "Bracing"): a grounded spear/pike
+	# resists via an independent leveraged strut, so it absorbs more than a shield-only
+	# soldier's friction/mass-stacking alone -- see SoldierCombat.brace_capacity_for_type.
+	var j_cap: float = SoldierCombat.brace_capacity_for_type(
+			defender.is_cavalry, defender.anti_cavalry, defender.is_ranged)
+	var cap: float = j_cap * brace_d   # avoids a second walk of file_braces via brace_capacity()
+	var received: float = maxf(0.0, impulse_mag - cap)
+	# Knockback focus's own per-order push-distance parameter (Unit.
+	# knockback_push_indefinite): "just clear the line" (the default) caps the shoved
+	# body's speed so it coasts roughly past both blocks' combined front depth before
+	# SoldierBodies.BODY_ACCEL_FLOOR's arrival recovery reins it back in -- floored at
+	# KNOCKBACK_SPEED_MAX (SoldierCombat.knockback_focus_clear_line_cap) so a strong/
+	# charging hit is never shoved LESS far by this default variant than a plain
+	# attack already would be; "indefinite" uses a much higher fixed cap instead, so
+	# the shove clearly outruns that. Only the struck DEFENDER's cap changes -- the
+	# attacker's own recoil below keeps the ordinary KNOCKBACK_SPEED_MAX default,
+	# since the push-distance parameter is about how far the struck body travels,
+	# not the striker's own stagger.
+	var defender_speed_cap: float = SoldierCombat.KNOCKBACK_SPEED_MAX
+	if kb_focus:
+		if attacker.knockback_push_indefinite:
+			defender_speed_cap = SoldierCombat.KNOCKBACK_FOCUS_INDEFINITE_SPEED_CAP
+		else:
+			# A shove's length, not a centre-to-centre range, so it keeps the capped
+			# _front_depth() sum and no MeleeFrontLine.floor_from: the struck man
+			# stands in the front rank, and clearing the line is a few ranks' travel for
+			# him however far apart the two block centres are held.
+			var clear_dist: float = attacker._front_depth() + defender._front_depth()
+			defender_speed_cap = SoldierCombat.knockback_focus_clear_line_cap(
+					clear_dist, SoldierBodies.BODY_ACCEL_FLOOR)
+	# Pre-strike defender motion status (read before this blow's velocity mutations).
+	var defender_speed_sq: float = defender._sim_body_vel[target].length_squared()
+	var is_moving: bool = defender_speed_sq > SoldierCombat.STATIC_FRICTION_VELOCITY_GATE * SoldierCombat.STATIC_FRICTION_VELOCITY_GATE
+	# Newton's laws collision (bidirectional impulses): both attacker and defender
+	# exchange momentum. The impulse is split inversely by effective mass (which
+	# includes bracing). Bracing gates the DEFENDER's forward motion (via `cap`
+	# above), but does NOT reduce the attacker's recoil -- a braced defender still
+	# pushes back with full force. Lighter units recoil harder; heavier units shrug
+	# off shoves. See SoldierCollision.bidirectional_impulse.
+	if impulse_mag > 0.0:
+		var attacker_brace: float = attacker.soldier_brace()
+		var impulses: Array = SoldierCollision.bidirectional_impulse(
+			impulse_mag,
+			push_dir,
+			my_prof["mass"],
+			attacker_brace,
+			en_prof["mass"],
+			brace_d
+		)
+		var impulse_attacker: Vector2 = impulses[0]
+		var impulse_defender: Vector2 = impulses[1]
+		# Apply recoil to attacker (always, even if bracing absorbs the defender's motion).
+		if impulse_attacker.length_squared() > 0.0001:
+			attacker._sim_body_vel[ai] = SoldierCombat.capped_knockback_velocity(
+				attacker._sim_body_vel[ai], impulse_attacker)
+		# Torque vs. translation partition (docs/combat-model.md "Coupling the slide and the fall:
+		# a friction-anchored pivot"):
+		# A defender's footing anchors the impulse up to J_anchor (mass & bracing scaled).
+		# The anchored share J_rot turns into tipping torque; only the surplus J_trans breaks
+		# the footing loose to translate/shove the body.
+		var j_trans: float = SoldierCombat.translational_impulse(received, en_prof["mass"], brace_d, is_moving)
+		if j_trans > 0.0:
+			var braced_impulse_defender: Vector2 = SoldierCollision.braced_defender_impulse(
+					impulse_defender, j_trans, impulse_mag)
+			defender._sim_body_vel[target] = SoldierCombat.capped_knockback_velocity(
+					defender._sim_body_vel[target], braced_impulse_defender, defender_speed_cap)
+	# Accumulate under a clamp: impulses from every attacker shoving this body this
+	# cadence accumulate in its velocity, and each application clamps the summed result
+	# (SoldierCombat.capped_knockback_velocity) -- a pile-on in an intermixed press
+	# knocks a man back body-lengths, never launches him across the field.
+	if landed:
+		defender._sim_soldier_hp[target] -= \
+				SoldierCombat.wound(lethality_a, c, en_prof["armour"], cond_a, is_piercing) * wound_scale
+	# Going prone: a big enough impulse delivers tipping torque that fells the defender
+	# (docs/combat-model.md "Going prone and getting up" and "Coupling the slide and the fall").
+	# The fall roll is a second seeded draw per striking attacker, ALWAYS drawn (after the
+	# land roll, in id order) so the draw count per in-reach strike is fixed -- the size guard
+	# gates only the assignment, never the draw, so an out-of-sync array can't silently shift
+	# the RNG stream. A felled body loses active defence and can't strike until it rises; a
+	# fresh blow on a downed man refreshes the timer, keeping him down under assault.
+	var fall_roll: float = Replay.rng.randf()
+	if target < defender._sim_prone.size() \
+			and fall_roll < SoldierCombat.prone_chance(impulse_mag, en_prof["mass"], brace_d, is_moving):
+		defender._sim_prone[target] = SoldierCombat.PRONE_RISE_TIME
+	# Stamina drain: attacker pays KAPPA_A per strike thrown; defender pays KAPPA_D
+	# scaled by how much of the blow it had to meet (phi*(1+c) -- zero for prone/flanked).
+	if ai < attacker._sim_soldier_stamina.size():
+		attacker._sim_soldier_stamina[ai] = maxf(0.0,
+			attacker._sim_soldier_stamina[ai] - SoldierCombat.KAPPA_A)
+	if target < defender._sim_soldier_stamina.size():
+		defender._sim_soldier_stamina[target] = maxf(0.0,
+			defender._sim_soldier_stamina[target]
+				- SoldierCombat.KAPPA_D * phi * (1.0 + maxf(0.0, c)))
 
 
 ## Remove `unit`'s soldiers whose health has reached 0: compact them out of the
@@ -362,6 +430,7 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				unit._sim_soldier_rank = UnitFormation.drop_rank_assignment(
 						unit._sim_soldier_rank, unit._sim_soldier_file, i)
 				unit._sim_soldier_file.remove_at(i)
+				unit.note_file_assignment_changed()
 			if i < unit._sim_soldier_square_slot.size():
 				# Keep the square slot pairing index-aligned AND still a permutation:
 				# dropping this man's entry and stepping every later cell id down is
