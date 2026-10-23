@@ -508,10 +508,16 @@ var _formation_angle: float = 0.0
 # rout folds whatever is left, so the grid stays where it stands in both cases.
 var _grid_lag: float = 0.0
 # True while _grid_lag holds a fresh order's re-square of the fold (_square_fold_for_order)
-# rather than a march's heading correction. Such a lag may stand at up to a quarter-turn,
-# waits while the block is in enemy contact instead of being folded there, and is not folded by
-# _reface for standing past the threshold. Cleared when the lag closes or is folded.
+# rather than a march's heading correction. Such a lag may stand at up to a quarter-turn and is
+# not folded by _reface for standing past the threshold; carried into enemy contact, it is
+# folded as any lag is and the re-square waits again (_resquare_pending). Cleared when the lag
+# closes or is folded.
 var _grid_lag_resquare: bool = false
+# True while a fresh order's re-square of the fold waits for the block to leave enemy contact
+# (_square_fold_for_order): it runs, holding ground, on the first tick the block is out of contact
+# and not turning (_advance_grid_lag). A later order decides afresh; a rout drops it, since the
+# rally squares the fold.
+var _resquare_pending: bool = false
 # The rate (rad/s, signed like an angle) _advance_grid_lag turned the slot grid about the anchor
 # this tick, and carries to the next. SoldierBodies.step feeds it forward to a non-routing
 # unit's bodies the way it feeds a router's _flight_turn_rate. Zero while no lag is left.
@@ -4612,11 +4618,12 @@ func _fold_grid_lag() -> void:
 ## under men whose front is held against the enemy's is what _reface keeps out of contact.
 func _advance_grid_lag(delta: float) -> void:
 	if _grid_lag != 0.0 and _in_enemy_contact:
-		if _grid_lag_resquare:
-			_grid_lag_rate = 0.0   # an order's re-square waits the contact out
-		else:
-			_fold_grid_lag()
+		# An order's re-square carried into contact waits it out like one ordered there.
+		_resquare_pending = _resquare_pending or _grid_lag_resquare
+		_fold_grid_lag()
 		return
+	if _resquare_pending and not _in_enemy_contact and not is_turning():
+		_square_fold_for_order(true)
 	if _grid_lag == 0.0 or delta <= 0.0 or is_turning():
 		_grid_lag_rate = 0.0
 		return
@@ -9675,29 +9682,37 @@ func start_order_response() -> void:
 ## Square the fold for a fresh order (start_order_response) without stepping the slot grid in
 ## one tick.
 ##
-## The grid's whole turn off the heading (grid_fold: the fold plus any lag) splits into its
-## nearer whole or half turn and a residue of at most a quarter-turn. reform_ranks() takes the
-## half, through the same countermarch-aware path _finish_order_turn takes -- NOT a naked
-## `_formation_angle = 0.0`, which point-reflects an about-faced block and swaps every man to
-## the opposite flank and rank at once. It leaves a full block's +-PI fold in place and
-## reflects a partial one in depth, holding ground (or, for a countermarch, running the drill),
-## so no man is sent across the block. The residue goes to the slot grid's lag as a re-square
-## (_grid_lag_resquare): out of enemy contact the grid turns after the heading no faster than
-## the man on its farthest slot can jog (_advance_grid_lag); in contact it waits, since the men
-## are held against the enemy's where they stand, and it resumes once the block is out, so an
-## order that marches a block out of a melee still squares it on the way.
+## A block in enemy contact keeps its fold for now: its men are held against the enemy's where
+## they stand, and the fold is what keeps the grid under them, so the re-square waits
+## (_resquare_pending) and runs, holding ground, on the first tick the block is out of contact
+## and not turning (_advance_grid_lag). An order that marches a block out of a melee still
+## squares it, once it is clear; one re-issued to a block that fights on changes nothing.
 ##
-## Two cases keep the one-tick re-square. A quarter-turn fold out of contact (one measuring a
-## quarter, or whose drills net one, as reform_ranks reads both) is dealt again from where the
-## men stand (_pair_after_quarter_fold): the grid's axes swap, but each man takes the cell
-## nearest him and none crosses the block, as in a frontage reshape, where a quarter-turn wheel
-## about the centre would march the far files round the whole block. A far-tier block has no
-## bodies on its slots to strand. `hold_ground` as for reform_ranks.
+## Out of contact, the grid's whole turn off the heading (grid_fold: the fold plus any lag)
+## splits into its nearer whole or half turn and a residue of at most a quarter-turn.
+## reform_ranks() takes the half, through the same countermarch-aware path _finish_order_turn
+## takes -- NOT a naked `_formation_angle = 0.0`, which point-reflects an about-faced block and
+## swaps every man to the opposite flank and rank at once. It leaves a full block's +-PI fold in
+## place and reflects a partial one in depth, holding ground (or, for a countermarch, running
+## the drill), so no man is sent across the block. The residue goes to the slot grid's lag as a
+## re-square (_grid_lag_resquare), which turns the grid after the heading no faster than the man
+## on its farthest slot can jog (_advance_grid_lag).
+##
+## Two cases keep the one-tick re-square. A quarter-turn fold (one measuring a quarter, or whose
+## drills net one, as reform_ranks reads both) is dealt again from where the men stand
+## (_pair_after_quarter_fold): the grid's axes swap, but each man takes the cell nearest him and
+## none crosses the block, as in a frontage reshape, where a quarter-turn wheel about the centre
+## would march the far files round the whole block. A far-tier block has no bodies on its slots
+## to strand. `hold_ground` as for reform_ranks.
 func _square_fold_for_order(hold_ground: bool) -> void:
+	_resquare_pending = false
 	var fold: float = wrapf(_formation_angle, -PI, PI)
+	if tier != FormationTier.FAR and _in_enemy_contact and (absf(fold) >= 0.01 or _grid_lag != 0.0):
+		_resquare_pending = true
+		return
 	var quarter: bool = absf(absf(fold) - PI * 0.5) < 0.01 or (
 			absf(absf(_drill_turn_fold) - PI * 0.5) < 0.01 and absf(absf(fold) - PI) >= 0.01)
-	if tier == FormationTier.FAR or (quarter and not _in_enemy_contact):
+	if tier == FormationTier.FAR or quarter or _in_enemy_contact:
 		reform_ranks(hold_ground)
 		return
 	var total: float = wrapf(_formation_angle + _grid_lag, -PI, PI)
@@ -9866,8 +9881,10 @@ func _rout() -> void:
 	# the heading (see _rally). The drill record still goes: the rally squares the fold by its
 	# angle alone, whatever turns made it. The flight's first heading, still in contact, turns
 	# onto the flight at a bounded rate like any later flight turn (see _turn_flight_toward). A
-	# grid still trailing a small heading correction (_grid_lag) is folded in where it stands.
+	# grid still trailing a small heading correction (_grid_lag) is folded in where it stands,
+	# and an order's re-square still waiting on contact is dropped with the order.
 	_fold_grid_lag()
+	_resquare_pending = false
 	_bake_formation_mirror()
 	_arm_router_front_in_melee()
 	_router_left_contact = false
@@ -11289,7 +11306,7 @@ func to_snapshot_dict() -> Dictionary:
 		"standoff_prev_state": _standoff_prev_state,
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
 		"grid_lag": _grid_lag, "grid_lag_rate": _grid_lag_rate,
-		"grid_lag_resquare": _grid_lag_resquare,
+		"grid_lag_resquare": _grid_lag_resquare, "resquare_pending": _resquare_pending,
 		"drill_turn_fold": _drill_turn_fold,
 		"formation_mirror_x": _formation_mirror_x,
 		"fallback_mirror_x": _fallback_mirror_x,
@@ -11538,6 +11555,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_grid_lag = float(d.get("grid_lag", _grid_lag))
 	_grid_lag_rate = float(d.get("grid_lag_rate", _grid_lag_rate))
 	_grid_lag_resquare = bool(d.get("grid_lag_resquare", false))
+	_resquare_pending = bool(d.get("resquare_pending", false))
 	# A snapshot from before the rename carries the quarter-turn-only record under its old key.
 	_drill_turn_fold = float(d.get("drill_turn_fold", d.get("quarter_turn_fold", 0.0)))
 	_formation_mirror_x = bool(d["formation_mirror_x"])
