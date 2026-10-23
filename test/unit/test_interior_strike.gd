@@ -1,9 +1,10 @@
 extends GutTest
 ## An enemy soldier that has got inside a block behind its striking ranks: only the
 ## near-front ranks strike, so without the interior pass nobody ever strikes him. These pin
-## that the block's other men within reach do, that an enemy block pressing into its rear is
-## struck by the rear ranks it has pressed in among, and that an enemy pressing on the rear or
-## a flank from outside, or one out of everyone's reach, still is not struck by them.
+## that the block's other men within reach do, that an enemy block overrun as far as its own
+## centre is struck by the ranks it stands among, and that an enemy line fighting the block
+## from outside (on the rear, a flank, or front to front in Loose order, its leading men
+## pushed in past the striking ranks), or a man out of everyone's reach, still is not.
 ## On main 2c2955cc this script does not load at all: it names SoldierInteriorStrike and
 ## Unit.near_front_forward, which main lacks, so GDScript rejects it with a parse error and
 ## none of its tests runs.
@@ -111,48 +112,139 @@ func test_an_enemy_pressing_on_the_rear_from_outside_is_not_struck_by_the_rear_r
 	assert_eq(_wounds(a, e), 0.0, "a rear attacker outside the block keeps his edge")
 
 
-func test_a_block_pressed_into_the_rear_is_struck_by_the_rear_ranks_it_presses_among() -> void:
-	# A 4-file, 3-rank enemy block attacking the rear, its front rank pressed two ranks in past
-	# the block's rear rank, as two deep blocks settle in a rear fight. The block's striking set
-	# faces the other way, but its rear ranks have the enemy's leading men among them and strike
-	# back; the enemy's last rank, still outside the grid, is left alone. So a rear attack does
-	# not keep its edge once it presses in (website/tactics.qmd gives the measured figures).
-	var a := _block()
+## A 4-file enemy block of `ranks` ranks attacking the block's rear, its front rank pressed
+## `lead` pitches in past the block's rear rank and each man half a pitch off the block's
+## ranks, so he sits between two of its men. Its position is its men's centre, as a block's
+## position follows its men.
+func _rear_presser(a: Unit, ranks: int, lead: float) -> Unit:
 	var rear_rank: float = -(RANKS - 1) * 0.5 * PITCH
-	var e := _unit(2, 1, FILES * 3, Vector2(0.0, rear_rank + PITCH), Vector2.UP)
+	var e := _unit(2, 1, FILES * ranks, Vector2.ZERO, Vector2.UP)
 	var k: int = 0
-	for r in range(3):
+	var sum := Vector2.ZERO
+	for r in range(ranks):
 		for f in range(FILES):
-			# Half a pitch off the block's ranks, so each sits between two of its men.
 			e._sim_soldier_pos[k] = Vector2((f - (FILES - 1) * 0.5) * PITCH,
-					rear_rank + 1.5 * PITCH - PITCH * r)
+					rear_rank + lead * PITCH - PITCH * r)
+			sum += e._sim_soldier_pos[k]
 			k += 1
-	var front := a.engaged_soldier_indices(a._sim_soldier_pos.size())
+	e.position = sum / float(k)
 	for i in range(e._sim_soldier_pos.size()):
 		assert_gt(_nearest_striker_distance(a, e._sim_soldier_pos[i]), REACH,
 				"precondition: the striking set cannot reach enemy soldier %d" % i)
-	var defenders: Array[Unit] = [e]
-	var indices: Array[PackedInt32Array] = [PackedInt32Array(range(e._sim_soldier_pos.size()))]
-	var found: Array[PackedInt32Array] = SoldierInteriorStrike.inside_candidates(a, front, defenders, indices)
-	assert_eq(found.size(), 1, "somebody of the enemy block is inside")
-	var inside: PackedInt32Array = found[0] if found.size() == 1 else PackedInt32Array()
-	for i in range(e._sim_soldier_pos.size()):
-		var in_grid: bool = e._sim_soldier_pos[i].y >= rear_rank
-		assert_eq(inside.has(i), in_grid, "enemy soldier %d counts as inside exactly when he is past the rear rank" % i)
-	var hp_before: float = 0.0
-	for h in e._sim_soldier_hp:
-		hp_before += h
+	return e
+
+
+## How many of `a`'s men behind its striking set strike `e` in one cadence.
+func _strikes_from_behind(a: Unit, e: Unit) -> int:
+	var front := a.engaged_soldier_indices(a._sim_soldier_pos.size())
 	var stam := PackedFloat32Array(a._sim_soldier_stamina)
 	a.resolve_soldier_melee(e)
 	var behind_strikes: int = 0
 	for i in range(stam.size()):
 		if not front.has(i) and a._sim_soldier_stamina[i] < stam[i]:
 			behind_strikes += 1
+	return behind_strikes
+
+
+func test_a_line_pressing_into_the_rear_from_outside_is_left_to_the_fighting_ranks() -> void:
+	# A 6-rank enemy line attacking the rear, its front rank pressed 1.5 ranks in past the
+	# block's rear rank but its centre still outside the block. Its leading men are behind the
+	# striking set and within the rear ranks' reach, but the line is fighting the block from
+	# outside, so they are not inside and the rear ranks do not strike them.
+	var a := _block()
+	var e := _rear_presser(a, 6, 1.5)
+	var prof: MeleeFrontProfile = MeleeFrontProfile.of(a)
+	assert_lt(e.position.y, -prof.depth, "precondition: the line's centre is outside the block")
+	assert_lt(_nearest_man_distance(a, e._sim_soldier_pos[0]), REACH, "precondition: a man of the block reaches its leading man")
+	var front := a.engaged_soldier_indices(a._sim_soldier_pos.size())
+	var defenders: Array[Unit] = [e]
+	var indices: Array[PackedInt32Array] = [PackedInt32Array(range(e._sim_soldier_pos.size()))]
+	assert_true(SoldierInteriorStrike.inside_candidates(a, front, defenders, indices).is_empty(),
+			"no man of a line whose centre is outside counts as inside")
+	assert_eq(_strikes_from_behind(a, e), 0, "the rear ranks leave the line to the fighting ranks")
+
+
+func test_a_block_overrun_as_far_as_its_centre_is_struck_by_the_ranks_it_is_among() -> void:
+	# A 5-rank enemy block pressed 2.5 ranks in past the block's rear rank, so its centre is
+	# inside the block: it has got in, and the ranks it stands among strike its men there. Its
+	# last ranks, still outside the footprint, are left alone.
+	var a := _block()
+	var e := _rear_presser(a, 5, 2.5)
+	var prof: MeleeFrontProfile = MeleeFrontProfile.of(a)
+	assert_gt(e.position.y, -prof.depth, "precondition: the enemy block's centre is inside")
+	var front := a.engaged_soldier_indices(a._sim_soldier_pos.size())
+	var defenders: Array[Unit] = [e]
+	var indices: Array[PackedInt32Array] = [PackedInt32Array(range(e._sim_soldier_pos.size()))]
+	var found: Array[PackedInt32Array] = SoldierInteriorStrike.inside_candidates(a, front, defenders, indices)
+	assert_eq(found.size(), 1, "somebody of the enemy block is inside")
+	var inside: PackedInt32Array = found[0] if found.size() == 1 else PackedInt32Array()
+	for i in range(e._sim_soldier_pos.size()):
+		var in_grid: bool = e._sim_soldier_pos[i].y >= -prof.depth
+		assert_eq(inside.has(i), in_grid, "enemy soldier %d counts as inside exactly when he is in the grid" % i)
+	assert_true(inside.size() < e._sim_soldier_pos.size(), "precondition: some of its men are still outside")
+	var hp_before: float = 0.0
+	for h in e._sim_soldier_hp:
+		hp_before += h
+	assert_gt(_strikes_from_behind(a, e), 0, "the rear ranks strike the enemy that has got in among them")
 	var hp_after: float = 0.0
 	for h in e._sim_soldier_hp:
 		hp_after += maxf(h, 0.0)
-	assert_gt(behind_strikes, 0, "the rear ranks strike the enemy pressed in among them")
-	assert_lt(hp_after, hp_before, "the enemy pressed into the rear takes wounds")
+	assert_lt(hp_after, hp_before, "the enemy inside takes wounds")
+
+
+func test_a_loose_block_leaves_enemy_front_rank_jitter_to_its_front_rank() -> void:
+	# In Loose order a block's striking set is its front rank alone, and the enemy's front-rank
+	# men, pressed against it, jitter level with it or a little behind it. The second rank has
+	# them within reach, but the enemy line's centre is outside the block, so they are the front
+	# rank's fight and the second rank does not strike them.
+	var a := _unit(1, 0, FILES * 4, Vector2.ZERO, Vector2.DOWN)
+	a.set_formation(Unit.FORMATION_LOOSE)
+	a.frontage_override = FILES
+	var fp: float = a.file_pitch_wu()
+	var rp: float = a.rank_pitch_wu()
+	assert_eq(a.engaged_ranks(), 1, "precondition: a Loose block strikes with its front rank alone")
+	var i: int = 0
+	for r in range(4):
+		for f in range(FILES):
+			a._sim_soldier_pos[i] = Vector2((f - (FILES - 1) * 0.5) * fp, (1.5 - r) * rp)
+			i += 1
+	var front := a.engaged_soldier_indices(a._sim_soldier_pos.size())
+	assert_eq(front.size(), FILES, "precondition: the striking set is the front rank")
+	var front_y: float = 1.5 * rp
+	# The enemy's front rank a quarter of a file off the block's files, alternately level with
+	# the front rank and 0.4 of a rank behind it; its other three ranks a rank apart further out.
+	var e := _unit(2, 1, 4 * FILES, Vector2.ZERO, Vector2.UP)
+	e.set_formation(Unit.FORMATION_LOOSE)
+	var k: int = 0
+	var sum := Vector2.ZERO
+	for r in range(4):
+		for f in range(FILES):
+			var jitter: float = -0.4 * rp if r == 0 and f % 2 == 0 else 0.0
+			e._sim_soldier_pos[k] = Vector2((f - (FILES - 1) * 0.5 + 0.25) * fp, front_y + jitter + r * rp)
+			sum += e._sim_soldier_pos[k]
+			k += 1
+	e.position = sum / float(k)
+	var behind_in_reach: int = 0
+	for ai in range(a._sim_soldier_pos.size()):
+		if front.has(ai):
+			continue
+		for q in e._sim_soldier_pos:
+			if a._sim_soldier_pos[ai].distance_to(q) <= a.soldier_reach():
+				behind_in_reach += 1
+				break
+	assert_gt(behind_in_reach, 0, "precondition: second-rank men reach the enemy's front rank")
+	var defenders: Array[Unit] = [e]
+	var indices: Array[PackedInt32Array] = [PackedInt32Array(range(e._sim_soldier_pos.size()))]
+	assert_true(SoldierInteriorStrike.inside_candidates(a, front, defenders, indices).is_empty(),
+			"no jittering front-rank man counts as inside")
+	for q in range(e._sim_soldier_hp.size()):
+		e._sim_soldier_hp[q] = 1.0e6   # every man survives the cadence
+	assert_eq(_strikes_from_behind(a, e), 0, "the second rank holds its blows")
+	# The same men with their unit's centre moved inside the block would be struck: it is the
+	# unit test, not the men's depth, that leaves them to the front rank.
+	e.position = Vector2(0.0, front_y - rp)
+	assert_false(SoldierInteriorStrike.inside_candidates(a, front, defenders, indices).is_empty(),
+			"with the enemy unit's centre inside, its men behind the front rank count as inside")
 
 
 func test_an_enemy_on_a_flank_from_outside_is_not_struck_by_the_inner_ranks() -> void:

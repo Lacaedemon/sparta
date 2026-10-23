@@ -1256,10 +1256,11 @@ var router_front_arc: float = ROUTER_FRONT_ARC
 # ROUTER_CONTACT_REENTRY_FRAC, with rout_time's set-before-_ready contract.
 const ROUTER_CONTACT_REENTRY_FRAC: float = 0.9
 var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
-# How far outside the block's live footprint, on its flanks and rear, an enemy soldier may
-# stand and still count as inside it for the interior strike (SoldierInteriorStrike): only
-# the near-front ranks strike, so an enemy that has got in behind them would otherwise never
-# be struck, and any man of the block within reach of such an enemy strikes it. 0 keeps the
+# How far outside the block's live footprint, on its flanks and rear, an enemy soldier, and
+# the position of his unit, may stand and still count as inside it for the interior strike
+# (SoldierInteriorStrike): only the near-front ranks strike, so an enemy that has got in
+# behind them would otherwise never be struck, and any man of the block within reach of such
+# an enemy strikes it. 0 keeps the
 # footprint to the box round its men's centres, so an enemy pressing on a flank or the rear
 # from outside stays the near-front ranks' business; a negative value shrinks the box. A
 # caller-configurable parameter defaulting to INTERIOR_STRIKE_MARGIN, with rout_time's
