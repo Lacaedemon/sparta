@@ -1,6 +1,12 @@
 {
   "_comment": "Defect declarations for the support replay clip (demos/support_demo.json); see demos/README.md, Sidecar declarations.",
   "defect_exemptions": {
+    "facing_flutter": {
+      "uids": [
+        9
+      ],
+      "reason": "uid 9: its chase alternates between two opposite path detours while its anchor sits on a step row, so its facing flicks about 174 degrees for a tick and back (#1854). On main 799b0bca this happens once (ticks 474 to 475); at sim commits e55342c1 and b236be47 (#1852) its trajectory stays near that row and it happens again at ticks 504 to 505 and 508 to 509 (1-tick trace, seed 0). Dense 2-tick FULL dumps, all exemptions removed, seeds 0 to 4, Windows: facing_flutter 4 against 3 on every seed here, 1 on main; facing_whipsaw 4 against 4 here (passes), 0 on main. The grid does not move. Measured 2026-10-23."
+    },
     "overlap": {
       "uids": [
         6

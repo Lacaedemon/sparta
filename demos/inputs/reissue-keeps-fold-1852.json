@@ -1,0 +1,48 @@
+{
+  "_comment": "An order re-issued to a block in a fight (#1852). A 96-man Infantry block stands facing north; a 48-man Infantry block (all_teams_control, ordered at tick 30) attacks it from the south-east, about 135 degrees off its front. On contact (about tick 354) the block turns in place to face its attacker, its heading 144 degrees round by tick 378, and the turn settles into the fold, so the ranks stay where the men stand (its slot grid turns back under the men by 138 degrees that tick). At tick 452 the player re-issues the attack on the same enemy, as the AI does every few seconds. Measured on Windows at sim commits 799b0bca (main) and e55342c1 (this PR; re-run at b236be47, whose 601-tick hash stream is identical), with FULL dumps at the state ticks and at every 2 ticks from 2 to 600. On main the order dropped the fold in one tick: the slot grid swung 143.8 degrees about its centre at tick 453, 76 of the 96 men's slots lay across the block's centreline from them at 452 (75 at 454, 73 at 480, 68 at 540), the block left FIGHTING for MOVING from tick 454 until 534, and shape_residual fails at 22.92 against 13.5 on the 2-tick dump with no exemptions; until the order its strikers were the grid's front ranks, which the turn had left behind the men. Here the block keeps its fold while it is in contact: no one-tick grid turn over 20 degrees follows the turn's settling, no man's slot is across the centreline at any state tick from 400 to 600, the block stays FIGHTING throughout, its strikers are the grid's rear ranks, the men facing the enemy, at every engaged tick, and every defect verdict passes on the 2-tick dump with no exemptions. The slots_across_centreline and tick-470 state expects fail on main.",
+  "seed": "18520",
+  "all_teams_control": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 640,
+      "y": 470,
+      "facing": [0.0, -1.0],
+      "count": 96,
+      "morale": 100.0
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 860,
+      "y": 690,
+      "facing": [-0.7071, -0.7071],
+      "count": 48,
+      "morale": 100.0
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 700.0,
+      "y": 540.0,
+      "zoom": 1.0
+    }
+  ],
+  "steps": [
+    {"tick": 10, "box": {"from": [800, 630], "to": [920, 750]}},
+    {"tick": 30, "rmb_click": [640, 470]},
+    {"tick": 450, "click": [600, 450]},
+    {"tick": 452, "rmb_click": [755, 582]}
+  ],
+  "state": [8, 30, 120, 240, 330, 360, 380, 400, 420, 440, 450, 452, 454, 456, 460, 470, 480, 500, 520, 540, 560, 580, 600],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [640.0, 470.0]},
+    {"tick": 440, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 454, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 480, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 540, "uid": 0, "field": "slots_across_centreline", "value": 0},
+    {"tick": 470, "uid": 0, "field": "state", "value": "FIGHTING"}
+  ]
+}

@@ -32,6 +32,7 @@ const EXCLUDED := {
 	"_reported_request": REPORT,
 	"_owning_battle": LINK,
 	"_formation_slots_call_count": COUNTER,
+	"_facing_turn_step": "this tick's heading pivot, cleared at the top of every tick and read only later in the same tick (_hold_pivot_for_resquare, _advance_grid_lag), so no snapshot taken between ticks needs it",
 	"_relief_reverse_scan_count": COUNTER,
 	"_adjacent_engaged_cache": CACHE,
 	"_adjacent_engaged_cache_frame": CACHE,

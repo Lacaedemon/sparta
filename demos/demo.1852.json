@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/reissue-keeps-fold-1852.json",
+  "caption": "An order re-issued mid-fight no longer swings a block's ranks. A 96-man infantry block attacked from behind its right flank turns in place to face the enemy, and its ranks stay where the men stand. Halfway through the fight the attack on the same enemy is ordered again, as the AI does every few seconds. Before this fix that order re-squared the block in one tick: its slot grid swung 144 degrees, three quarters of its men were sent across the block, and it stopped fighting for over a second. Now a block in contact keeps its ranks as they stand and only squares them once it is out of the fight, so it fights on without a stir.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}
