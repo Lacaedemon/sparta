@@ -691,11 +691,14 @@ and a block that routs and rallies with its pursuer pressed in among it.
 In the router probe of the previous section without the north block,
 the rout and the rally are unchanged on all five seeds,
 and the rallied block, striking the pursuer inside it, costs it 30.4 men by tick 2400 against 24.8 on main.
-The perturbed melee-outcome delta (K 16, Benjamini-Yekutieli) against main flags 7 rows,
-against 5 with the unit's position tested (5679cf3c) and 13 with the position tested against the footprint alone (6ed15a50):
-`subcommander_mutual_support`'s one-man unit inside the cavalry is cut down in 14 of 16 runs where it survived in 14,
-`battle_ai_leaders` loses 4 and 12 more men a side, `cannae_scale`'s team 1 loses 11 more,
-`sweep_routers`' team 1 3 more and `cycle_charge_flee`'s team 0 2 more.
+The perturbed melee-outcome delta (K 16, Benjamini-Yekutieli) against main flags 7 rows in five clips,
+against 5 with the unit's position tested (5679cf3c) and 13 with the position tested against the footprint alone (6ed15a50).
+Two rows are `subcommander_mutual_support`'s one-man unit inside the cavalry,
+which is cut down in 14 of 16 runs where it survived in 14,
+and so leaves play unbroken in 14 where it did in 2.
+Two are `battle_ai_leaders`, which loses 4 and 12 more men a side.
+The other three are `cannae_scale`'s team 1, which loses 11 more,
+`sweep_routers`' team 1, 3 more, and `cycle_charge_flee`'s team 0, 2 more.
 A square has no interior pass, since it already strikes with whoever is threatened;
 nor has a routing block, and a routing enemy is never inside,
 so a router overrun by its pursuer is cut down only by the pursuer's own striking ranks.

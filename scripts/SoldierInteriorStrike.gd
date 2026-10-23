@@ -31,7 +31,9 @@ class_name SoldierInteriorStrike
 
 ## Per defender (aligned with `defenders` and `def_indices`), the indices of its living
 ## soldiers inside `attacker`'s block behind the striking set `front`. Returns an empty array
-## when nothing is inside, so the caller's interior pass costs one footprint scan.
+## when nothing is inside, so the caller's interior pass then costs one scan of the block's own
+## men (its footprint's centre) and one of each non-routing defender's men (that unit's
+## centre), all counted in SimOps.MELEE_CHECK.
 static func inside_candidates(attacker: Unit, front: PackedInt32Array, defenders: Array[Unit],
 		def_indices: Array[PackedInt32Array]) -> Array[PackedInt32Array]:
 	var none: Array[PackedInt32Array] = []
@@ -40,6 +42,11 @@ static func inside_candidates(attacker: Unit, front: PackedInt32Array, defenders
 			or attacker.state == Unit.State.ROUTING:
 		return none
 	var box: InteriorStrikeFootprint = InteriorStrikeFootprint.of(attacker, front)
+	# InteriorStrikeFootprint.of is null only for a block with no living man. SoldierMelee
+	# cannot get here with one: every pass that drops a man's hp to zero (a strike, a volley,
+	# an arrow, a collision) reaps him before it returns, and resolve() strikes only the
+	# defenders, so the attacker's `n` > `front.size()` >= 1 entries are all alive. The guard
+	# keeps that reap invariant's breach a no-op here rather than a null dereference.
 	if box == null:
 		return none
 	var out: Array[PackedInt32Array] = []
@@ -48,8 +55,10 @@ static func inside_candidates(attacker: Unit, front: PackedInt32Array, defenders
 	for dj in range(defenders.size()):
 		var inside := PackedInt32Array()
 		var d: Unit = defenders[dj]
-		var d_centre: Variant = null if d.state == Unit.State.ROUTING \
-				else InteriorStrikeFootprint.live_centre(d)
+		var d_centre: Variant = null
+		if d.state != Unit.State.ROUTING:
+			d_centre = InteriorStrikeFootprint.live_centre(d)
+			scanned += mini(d._sim_soldier_pos.size(), d._sim_soldier_hp.size())
 		if d_centre == null or not box.has(d_centre):
 			out.append(inside)
 			continue
