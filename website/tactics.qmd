@@ -930,6 +930,32 @@ it fights the defender's rear rank from outside the block,
 and neither block's men end up inside the other.
 :::
 
+When horsemen do ride in among a foot block's ranks,
+the block keeps its ranks where its men stand.
+Its men still turn to face the riders,
+but the formation does not wheel round its centre after them,
+so no man is sent across the block to a new place in the middle of the fight.
+The block's next order squares its ranks to its new heading
+once it is clear of the fight, turning them round gradually.
+A cavalry troop with foot or other horsemen among it
+still wheels its formation to follow its enemy.
+
+::: {#fig-cavalry-inside-foot .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/cavalry_inside_foot.jpg">
+  <source src="media/cavalry_inside_foot.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A brittle cavalry troop charges an infantry block standing on Hold and pushes into its ranks.
+The infantry turns to face the riders,
+but its ranks stay where its men stand rather than wheeling round after them.
+:::
+
 Stopping at the edge makes a flank or rear attack cheaper for the attacker,
 since the defender's men facing away from it cannot strike back.
 In a test of 120 men against 120 in tight order, over the first 19 seconds,
