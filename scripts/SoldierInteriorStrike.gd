@@ -12,8 +12,9 @@ class_name SoldierInteriorStrike
 ## front-rank depth and front half-width (MeleeFrontProfile) about the live men's mean, padded
 ## on the flanks and rear by Unit.interior_strike_margin. Taken from the grid rather than from
 ## the men's extremes, it neither swells into a turning block's corners nor follows one man
-## knocked out of the ranks. An enemy soldier counts when both he and his unit's position are
-## inside.
+## knocked out of the ranks (InteriorStrikeFootprint). An enemy soldier counts when both he
+## and his unit's centre (its live men's mean, as the block's own footprint is centred) are
+## inside: not the unit's position, which a standing frontage_anchor_offset shifts off its men.
 ##
 ## The unit test is what keeps this to intruders. An enemy line fighting the block from
 ## outside has its centre outside, or among the striking ranks, however far its leading men
@@ -38,34 +39,18 @@ static func inside_candidates(attacker: Unit, front: PackedInt32Array, defenders
 	if front.is_empty() or front.size() >= n or attacker.in_square() \
 			or attacker.state == Unit.State.ROUTING:
 		return none
-	var box := _Footprint.new()
-	box.origin = attacker.position
-	box.fwd = attacker.near_front_forward()
-	box.front_depth = INF
-	for i in front:
-		box.front_depth = minf(box.front_depth, (attacker._sim_soldier_pos[i] - box.origin).dot(box.fwd))
-	var live: int = 0
-	for i in range(n):
-		if attacker._sim_soldier_hp[i] > 0.0:
-			box.centre += attacker._sim_soldier_pos[i]
-			live += 1
-	if live == 0:
+	var box: InteriorStrikeFootprint = InteriorStrikeFootprint.of(attacker, front)
+	if box == null:
 		return none
-	box.centre /= float(live)
-	box.grid = MeleeFrontGeometry.grid_front(attacker)
-	box.across = box.grid.orthogonal()
-	var prof: MeleeFrontProfile = MeleeFrontProfile.of(attacker)
-	var margin: float = attacker.interior_strike_margin
-	box.rear = -prof.depth - margin
-	box.depth = prof.depth
-	box.half_width = prof.half + margin
 	var out: Array[PackedInt32Array] = []
 	var any_inside := false
 	var scanned: int = n
 	for dj in range(defenders.size()):
 		var inside := PackedInt32Array()
 		var d: Unit = defenders[dj]
-		if d.state == Unit.State.ROUTING or not box.has(d.position):
+		var d_centre: Variant = null if d.state == Unit.State.ROUTING \
+				else InteriorStrikeFootprint.live_centre(d)
+		if d_centre == null or not box.has(d_centre):
 			out.append(inside)
 			continue
 		scanned += def_indices[dj].size()
@@ -76,28 +61,6 @@ static func inside_candidates(attacker: Unit, front: PackedInt32Array, defenders
 		out.append(inside)
 	SimOps.add(SimOps.MELEE_CHECK, scanned)
 	return out if any_inside else none
-
-
-## The region inside_candidates calls inside: behind the striking set's rearmost man along
-## `fwd` (depths measured from `origin`, the block's position), and within the grid's
-## rectangle about `centre`, from `rear` to `depth` along `grid` and `half_width` across it.
-class _Footprint:
-	var origin := Vector2.ZERO
-	var fwd := Vector2.ZERO
-	var front_depth: float = 0.0
-	var centre := Vector2.ZERO
-	var grid := Vector2.ZERO
-	var across := Vector2.ZERO
-	var rear: float = 0.0
-	var depth: float = 0.0
-	var half_width: float = 0.0
-
-	func has(p: Vector2) -> bool:
-		if (p - origin).dot(fwd) >= front_depth:
-			return false
-		var rel: Vector2 = p - centre
-		var along: float = rel.dot(grid)
-		return along >= rear and along <= depth and absf(rel.dot(across)) <= half_width
 
 
 ## The block's men who may strike an inside enemy: every living man outside the striking set

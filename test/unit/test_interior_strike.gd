@@ -5,9 +5,9 @@ extends GutTest
 ## centre is struck by the ranks it stands among, and that an enemy line fighting the block
 ## from outside (on the rear, a flank, or front to front in Loose order, its leading men
 ## pushed in past the striking ranks), or a man out of everyone's reach, still is not.
-## On main 2c2955cc this script does not load at all: it names SoldierInteriorStrike and
-## Unit.near_front_forward, which main lacks, so GDScript rejects it with a parse error and
-## none of its tests runs.
+## On main 82991008 this script does not load at all: it names SoldierInteriorStrike,
+## InteriorStrikeFootprint and Unit.near_front_forward, which main lacks, so GDScript rejects
+## it with a parse error and none of its tests runs.
 
 const SEED: int = 7654321
 const REACH: float = 26.0          # sword reach (1.3 m * 20)
@@ -240,9 +240,12 @@ func test_a_loose_block_leaves_enemy_front_rank_jitter_to_its_front_rank() -> vo
 	for q in range(e._sim_soldier_hp.size()):
 		e._sim_soldier_hp[q] = 1.0e6   # every man survives the cadence
 	assert_eq(_strikes_from_behind(a, e), 0, "the second rank holds its blows")
-	# The same men with their unit's centre moved inside the block would be struck: it is the
-	# unit test, not the men's depth, that leaves them to the front rank.
-	e.position = Vector2(0.0, front_y - rp)
+	# The same front-rank men with the ranks behind them down, so that their unit's centre is
+	# among them, inside the block, would be struck: it is the unit test, not the men's depth,
+	# that leaves them to the front rank.
+	for q in range(FILES, e._sim_soldier_hp.size()):
+		e._sim_soldier_hp[q] = 0.0
+	assert_true(_footprint(a).has(_centre(e)), "precondition: the enemy unit's centre is now inside")
 	assert_false(SoldierInteriorStrike.inside_candidates(a, front, defenders, indices).is_empty(),
 			"with the enemy unit's centre inside, its men behind the front rank count as inside")
 
@@ -299,7 +302,7 @@ func test_the_footprint_margin_is_a_snapshotted_parameter_that_widens_the_box() 
 	assert_not_null(a.get("interior_strike_margin"), "the block carries an interior-strike margin")
 	if a.get("interior_strike_margin") == null:
 		return
-	assert_eq(float(a.get("interior_strike_margin")), 0.0, "the default keeps the box to the men's centres")
+	assert_eq(float(a.get("interior_strike_margin")), 0.0, "the default is no margin")
 	# Widened past the rear attacker's distance, the rear ranks count him as inside.
 	a.set("interior_strike_margin", 15.0)
 	var p := Vector2(0.0, -(RANKS - 1) * 0.5 * PITCH - 12.0)
@@ -331,8 +334,8 @@ func test_a_small_unit_centred_among_the_striking_ranks_is_left_to_them() -> voi
 	e._sim_soldier_pos[2] = Vector2(PITCH, fd + 8.0)
 	e._sim_soldier_pos[3] = Vector2(0.0, fd + 16.0)
 	var prof: MeleeFrontProfile = MeleeFrontProfile.of(a)
-	assert_lt(e.position.y, prof.depth, "precondition: the party's centre is inside the footprint")
-	assert_gt(e.position.y, fd, "precondition: ... but ahead of the rearmost striker")
+	assert_lt(_centre(e).y, prof.depth, "precondition: the party's centre is inside the footprint")
+	assert_gt(_centre(e).y, fd, "precondition: ... but ahead of the rearmost striker")
 	var behind_in_reach: int = 0
 	for i in range(a._sim_soldier_pos.size()):
 		if not front.has(i) and a._sim_soldier_pos[i].distance_to(e._sim_soldier_pos[0]) <= REACH:
@@ -342,7 +345,10 @@ func test_a_small_unit_centred_among_the_striking_ranks_is_left_to_them() -> voi
 	var indices: Array[PackedInt32Array] = [PackedInt32Array(range(4))]
 	assert_true(SoldierInteriorStrike.inside_candidates(a, front, defenders, indices).is_empty(),
 			"no man of a party centred among the striking ranks counts as inside")
-	e.position = Vector2(0.0, fd - 4.0)
+	# With its other three men down, the party's centre is the man pushed in.
+	for q in range(1, 4):
+		e._sim_soldier_hp[q] = 0.0
+	assert_lt(_centre(e).y, fd, "precondition: the party's centre is now behind the striking ranks")
 	assert_false(SoldierInteriorStrike.inside_candidates(a, front, defenders, indices).is_empty(),
 			"with its centre behind the striking ranks, the man pushed in counts as inside")
 
@@ -526,3 +532,110 @@ func test_with_nobody_inside_the_pass_draws_nothing_and_changes_nothing() -> voi
 	for _d in range(2 * strikes):
 		ref.randf()
 	assert_eq(Replay.rng.state, ref.state, "the cadence drew exactly two rolls per strike")
+
+
+func _centre(u: Unit) -> Vector2:
+	return InteriorStrikeFootprint.live_centre(u)
+
+
+func _footprint(a: Unit) -> InteriorStrikeFootprint:
+	return InteriorStrikeFootprint.of(a, a.engaged_soldier_indices(a._sim_soldier_pos.size()))
+
+
+## An 8-file, 2-rank enemy line on the fixture's pitch, facing the block's rear, its men
+## seeded on its own slots with a standing frontage_anchor_offset of `offset` wu, then moved
+## so that its men's centre is at `centre` (the unit's position moves with them, so it stays
+## `offset` off that centre, as an anchored unit's does).
+func _anchored_line(centre: Vector2, offset: float) -> Unit:
+	var e: Unit = Unit.new()
+	e.max_soldiers = 16
+	add_child_autofree(e)
+	e.uid = 2
+	e.team = 1
+	e.position = Vector2.ZERO
+	e.facing = Vector2.UP
+	e.training = 0.5
+	e.file_major_reform = false
+	e.attack_range = REACH
+	e.state = Unit.State.FIGHTING
+	e.frontage_override = 8
+	e.file_pitch = PITCH / e.spacing_scale
+	e.rank_pitch = PITCH / e.spacing_scale
+	e.frontage_anchor_offset = offset
+	e.tick_engaged(0.1)
+	e.seed_sim_soldiers()
+	var shift: Vector2 = centre - _centre(e)
+	e.position += shift
+	for i in range(e._sim_soldier_pos.size()):
+		e._sim_soldier_pos[i] += shift
+	assert_almost_eq(e.position.distance_to(_centre(e)), absf(offset), 0.5,
+			"precondition: the line's position stands its anchor offset off its men's centre")
+	return e
+
+
+func _inside_of(a: Unit, e: Unit) -> PackedInt32Array:
+	var defenders: Array[Unit] = [e]
+	var indices: Array[PackedInt32Array] = [PackedInt32Array(range(e._sim_soldier_pos.size()))]
+	var found: Array[PackedInt32Array] = SoldierInteriorStrike.inside_candidates(
+			a, a.engaged_soldier_indices(a._sim_soldier_pos.size()), defenders, indices)
+	return found[0] if found.size() == 1 else PackedInt32Array()
+
+
+func test_an_anchored_enemy_is_inside_by_its_mens_centre_not_its_position() -> void:
+	# An anchored line whose men's centre is inside the block, behind the striking ranks, but
+	# whose position, its anchor offset off that centre, is out past the block's flank. Its men
+	# have got in, and the men around them strike them.
+	var a := _block()
+	var box := _footprint(a)
+	var e := _anchored_line(Vector2(0.0, _front_depth(a) - REACH - 4.0), 60.0)
+	assert_true(box.has(_centre(e)), "precondition: the line's men's centre is inside")
+	assert_false(box.has(e.position), "precondition: the line's position is outside")
+	assert_false(_inside_of(a, e).is_empty(), "the anchored line's men inside count as inside")
+
+
+func test_an_anchored_enemy_centred_off_the_flank_is_not_inside_whatever_its_position() -> void:
+	# The reverse: the line's men's centre is out past the block's flank, its inner men pressed
+	# in over the edge, and its anchor offset puts its position inside the block. The line is
+	# fighting the flank from outside, so none of its men counts as inside.
+	var a := _block()
+	var box := _footprint(a)
+	# An anchor offset as long as the centre's distance off the block's centre line puts the
+	# line's position on that line.
+	var offset: float = box.half_width + 25.0
+	var probe := _anchored_line(Vector2.ZERO, offset)
+	var side: float = signf((_centre(probe) - probe.position).x)
+	var e := _anchored_line(Vector2(side * offset, _front_depth(a) - REACH - 4.0), offset)
+	assert_false(box.has(_centre(e)), "precondition: the line's men's centre is outside")
+	assert_true(box.has(e.position), "precondition: the line's position is inside")
+	var men_in := 0
+	for q in e._sim_soldier_pos:
+		if box.has(q):
+			men_in += 1
+	assert_gt(men_in, 0, "precondition: some of the line's men are over the edge")
+	assert_true(_inside_of(a, e).is_empty(), "no man of a line centred outside counts as inside")
+
+
+func test_each_defender_is_judged_by_its_own_centre() -> void:
+	# Two enemy units against one block: a lone man inside it, behind the striking ranks, and a
+	# line pressing on its rear from outside. The result is aligned with the defenders: the man
+	# inside is listed against his own unit, and the line, whose leading men are behind the
+	# striking set too, gets an empty entry.
+	var a := _block()
+	var inner := _lone_enemy_at(Vector2(0.0, _front_depth(a) - REACH - 4.0))
+	var outer := _rear_presser(a, 6, 1.5)
+	outer.uid = 3
+	assert_false(_footprint(a).has(_centre(outer)), "precondition: the line's centre is outside")
+	var front := a.engaged_soldier_indices(a._sim_soldier_pos.size())
+	for order in [[inner, outer], [outer, inner]]:
+		var defenders: Array[Unit] = []
+		var indices: Array[PackedInt32Array] = []
+		for d in order:
+			defenders.append(d)
+			indices.append(PackedInt32Array(range(d._sim_soldier_pos.size())))
+		var found: Array[PackedInt32Array] = SoldierInteriorStrike.inside_candidates(a, front, defenders, indices)
+		assert_eq(found.size(), 2, "one entry per defender")
+		if found.size() != 2:
+			continue
+		for dj in range(2):
+			var expected := PackedInt32Array([0]) if defenders[dj] == inner else PackedInt32Array()
+			assert_eq(found[dj], expected, "defender %d's entry is its own men inside" % defenders[dj].uid)

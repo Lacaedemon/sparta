@@ -1256,15 +1256,17 @@ var router_front_arc: float = ROUTER_FRONT_ARC
 # ROUTER_CONTACT_REENTRY_FRAC, with rout_time's set-before-_ready contract.
 const ROUTER_CONTACT_REENTRY_FRAC: float = 0.9
 var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
-# How far outside the block's live footprint, on its flanks and rear, an enemy soldier, and
-# the position of his unit, may stand and still count as inside it for the interior strike
+# How far outside the block's footprint, on its flanks and rear, an enemy soldier, and the
+# centre of his unit, may stand and still count as inside it for the interior strike
 # (SoldierInteriorStrike): only the near-front ranks strike, so an enemy that has got in
 # behind them would otherwise never be struck, and any man of the block within reach of such
-# an enemy strikes it. 0 keeps the
-# footprint to the box round its men's centres, so an enemy pressing on a flank or the rear
-# from outside stays the near-front ranks' business; a negative value shrinks the box. A
-# caller-configurable parameter defaulting to INTERIOR_STRIKE_MARGIN, with rout_time's
-# set-before-_ready contract.
+# an enemy strikes it. 0 keeps the footprint to the grid's own rectangle about the block's
+# live men; a positive value takes in men standing just off it, and a negative value
+# shrinks it. The unit-centre test, not the margin, is what keeps an enemy line fighting the
+# block from outside out of the pass: that line's centre stands outside the footprint or
+# among the striking ranks, though its leading men may be pushed in, until a margin as wide
+# as its distance off the edge takes the centre in. A caller-configurable parameter
+# defaulting to INTERIOR_STRIKE_MARGIN, with rout_time's set-before-_ready contract.
 const INTERIOR_STRIKE_MARGIN: float = 0.0   # tuned in wu
 var interior_strike_margin: float = INTERIOR_STRIKE_MARGIN
 # How far a melee pair's contact range and engaged floor reach out to the blocks' real outer
