@@ -529,7 +529,8 @@ var _resquare_pending: bool = false
 # on 67cbaa99, where a re-square ran on the first tick clear, the seed-0 catalog had waiting
 # re-squares meet breaks of 1, 1, 2, 2, 21, 22 and 41 ticks, and each of its 4 re-squares that ran
 # (all battle_ai_leaders uid 4) was back in contact 1 to 11 ticks later, cut short where it stood.
-# At 30 ticks the same catalog runs one (cannae_scale uid 14, back in contact 11 ticks later).
+# At 30 ticks the seed-0 catalog at b236be47 runs one (cannae_scale uid 14 at tick 270, back in
+# contact 12 ticks later).
 const RESQUARE_CONTACT_CLEAR_TIME: float = ENGAGED_LINGER
 # Float slack (s) on reaching RESQUARE_CONTACT_CLEAR_TIME: thirty 1/60 s ticks sum to
 # 0.49999999999999994, short of 0.5, so without it the gate first passes on tick 31.
@@ -9002,6 +9003,14 @@ func grid_front_forward() -> Vector2:
 ## True while near_front_forward ranks toward the slot grid's rear rank rather than its front:
 ## the fold (_formation_angle) is past a quarter-turn, so the men, who face the heading, have the
 ## grid's rear rank in front of them.
+##
+## It has no hysteresis, and needs none: the fold does not drift across the threshold. It moves
+## only when something writes it (an engage turn or a drill settling, an order's re-square, a
+## lag folded in, the rally), and the grid's lag, which does turn tick by tick, is not read here.
+## On the seed-0 catalog at b236be47 the reversal flipped 63 times on 38 blocks; 6 flips came
+## within 5 degrees of the threshold (the nearest 0.2 degrees off it), and none of those 6 blocks
+## flipped back within 60 ticks. Every quick re-flip there was the fold jumping by about a
+## half-turn, which no band about a quarter-turn would hold.
 func near_front_reversed() -> bool:
 	return absf(wrapf(_formation_angle, -PI, PI)) > PI * 0.5 + 0.01
 
