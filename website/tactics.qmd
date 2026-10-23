@@ -95,7 +95,8 @@ its riders running together as a block.
   A block riding a rout down from behind still turns to keep its front on it.
 - **Cavalry that rides into your foot doesn't spin them round either.**
   A charge can carry horsemen deep into an infantry or archer block.
-  While the riders are among its own ranks,
+  While the riders are fighting among its own ranks
+  (not just riding through, as a caracole does),
   the block keeps its facing and its ranks keep their places
   instead of wheeling round after every small shift of the riders,
   so the men don't have to chase new places across the block mid-fight.
