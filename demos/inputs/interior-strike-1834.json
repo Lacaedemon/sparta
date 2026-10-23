@@ -1,0 +1,100 @@
+{
+  "_comment": "Interior strike demo (#1834). A 144-man Infantry block (12 files by 12 ranks) stands with a 6-man enemy Infantry squad spawned at its centre, five or six ranks in from every edge. Only a block's near-front ranks strike (three ranks for a 1.3 m gladius at a 0.45 m rank pitch), and 'front' follows the slot grid, so before this fix the men around the squad never struck it. The front-line contact of #1827 does not change that: the two blocks share a centre, so neither lies ahead of the other and the pair keeps its centre-based range. On main 82991008 the block's striking ranks cut 4 of the squad's men down by tick 362, but 2 are still standing at tick 600. With the fix the squad's own centre is inside the block behind its striking ranks, so every man of the block within reach of one of its men there strikes him: the squad is down to 4 at tick 74 and gone at tick 146, and the block loses nobody, as on main. drill:true keeps the battle running after the squad is gone, so the clip shows the block standing afterwards. Deterministic: seed + a custom scenario, no input steps. Verified by a 2-tick state dump of ticks 2 to 600 on head d067d21a (squad at 4 from tick 74, absent from tick 146, the block at 144 men throughout; with the soldier bodies dumped, every defect verdict passes but the exempted shape_residual below) and on main 82991008 (squad at 6 to tick 288, 4 from 290, 2 from 362 to 600; the block at 144 throughout). The first expect below fails on main (the squad is present through tick 600); the second passes on both and guards the block's losses.",
+  "seed": "18340",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 640,
+      "y": 520,
+      "count": 144
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 640,
+      "y": 520,
+      "count": 6,
+      "morale": 100.0
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 640.0,
+      "y": 520.0,
+      "zoom": 2.0
+    }
+  ],
+  "steps": [],
+  "state": [
+    8,
+    40,
+    80,
+    120,
+    160,
+    200,
+    220,
+    230,
+    240,
+    250,
+    260,
+    270,
+    280,
+    290,
+    300,
+    310,
+    320,
+    330,
+    340,
+    350,
+    360,
+    370,
+    380,
+    390,
+    400,
+    410,
+    420,
+    430,
+    440,
+    450,
+    460,
+    470,
+    480,
+    490,
+    500,
+    510,
+    520,
+    530,
+    540,
+    550,
+    560,
+    570,
+    580,
+    590,
+    600
+  ],
+  "expect": [
+    {
+      "tick": [
+        150,
+        300
+      ],
+      "uid": 1,
+      "absent": true
+    },
+    {
+      "tick": 600,
+      "uid": 0,
+      "field": "soldiers",
+      "value": 144
+    }
+  ],
+  "defect_exemptions": {
+    "shape_residual": {
+      "uids": [0],
+      "reason": "After the squad dies (tick 146) the block leaves contact and is judged while it recovers from its slot grid having wound round under the men during the fight: with the enemy at its centre, each small combat re-face snaps the heading toward a moving bearing and turns the whole grid (#1792); its facing goes from (0.10, 0.99) at tick 2 to (0.76, 0.65) at tick 146. Worst 41.8 against 13.5, both on a 2-tick dump of ticks 2 to 600 and on a dump of the declared ticks, with the soldier bodies dumped (SPARTA_DEMO_STATE_FULL), on the #1834 head d067d21a; 48.4 on the 2-tick dump on 5679cf3c, where the squad dies at tick 218. Main 82991008 never leaves contact in this clip, so it is never judged. Measured 2026-10-23. Remove once #1792 lands."
+    }
+  }
+}

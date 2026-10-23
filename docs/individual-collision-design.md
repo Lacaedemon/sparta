@@ -625,6 +625,84 @@ the rout and rally are identical to main's at every 30-tick sample on all five s
 with or without the exception, and the runs diverge only after the router rallies,
 when the pursuer meets the rallied block's rear.
 
+### An enemy inside a block is struck by the men around him
+
+Only a block's near-front ranks strike (`Unit.engaged_soldier_indices`),
+and the front follows the slot grid,
+so an enemy that has got in behind those ranks would never be struck.
+`SoldierInteriorStrike` finds such enemies, and `SoldierMelee`'s interior pass,
+after the striking ranks have struck, has every other man of the block strike the nearest one within his reach.
+It draws nothing when nobody is inside, so a fight without one is bit-identical to one without the pass.
+
+A point is inside a block when it lies behind the rearmost man of the striking set along `Unit.near_front_forward`
+and within the block's footprint:
+the grid's own rectangle (`MeleeFrontGeometry.grid_front`, `MeleeFrontProfile`) about the live men's mean,
+padded on the flanks and rear by `Unit.interior_strike_margin` (0 by default).
+An enemy soldier counts when both he and his unit's centre are inside,
+the unit's centre being its live men's mean, taken as the block's own footprint centre is
+(`InteriorStrikeFootprint.live_centre`).
+The unit's `position` is not used:
+a standing `frontage_anchor_offset` shifts it off the men,
+and it can stand well off them while a block turns.
+The unit test is what keeps the pass to intruders.
+Without it, any enemy man behind the rearmost striker counted,
+and in ordinary clashes the enemy's front-rank men,
+which jitter level with and a little past a block's striking ranks,
+were struck by the ranks behind for the whole fight.
+A Loose block's striking set is its front rank alone, so this was worst there:
+on the merge of #1834 onto #1845 (5edea880),
+two 120-man Loose blocks spawned 120 wu apart lost 14.0 and 9.0 men by tick 1150 (seed runs 0 to 4) against 8.4 and 7.8 on main 82991008,
+and the pass fired in 23 of 117 catalog clips.
+Requiring the man to stand a whole rank pitch or more behind the rearmost striker was tried first
+and did not separate the cases:
+at one and at one and a half pitches the pass still fired in 22 of the 117 clips,
+since in a deep clash the enemy's leading men are pushed several ranks in.
+Testing the unit's position against the footprint alone, without the striking set,
+still took in a small unit fighting front to front whose centre had reached the block's front ranks:
+in `general_doctrine_reserves` a 30-man block's few men pushed past the striking ranks were struck from behind,
+and its three 30-man blocks broke in 12 or 13 of 16 perturbed runs where on main they broke in 2 (on 6ed15a50).
+
+With both tests, on d067d21a against main 82991008, over seed runs 0 to 4:
+two 120-man blocks closing front to front from 400 wu apart, in Tight, Normal and Loose order,
+the same blocks spawned 120 wu apart in Tight and Normal order,
+and the rear and flank probes of the previous section,
+re-run in Normal order as well as Tight,
+never fire the pass and end bit-identical to main.
+Re-run in Loose order, those probes start the blocks on top of each other:
+a Loose block of 120 is about 250 wu deep, so blocks spawned 120 wu apart overlap by half their depth.
+Front to front the pass fires once on each run, at tick 2,
+and the defender and the attacker lose 5.6 and 9.6 men by tick 1150 against 8.4 and 7.8 on main.
+With the defender facing away it fires once on each run, at tick 32,
+as the defender turns about with its men's centre about 2 wu behind the attacker's front rank,
+and the defender loses 2.4 men against 1.8 on main.
+With the defender side-on it fires four times on each run, at ticks 8, 32, 80 and 152,
+and the two lose 5.8 and 0.4 men against 7.4 and 0.2.
+Testing the unit's `position` instead (5679cf3c), the facing-away probe never fired
+and the side-on one fired once, at tick 80:
+the turning defender's position stood 138 wu off its men's centre at tick 32.
+In the catalog it fires in 19 of the 117 clips (18 of which change, the same clips as with the position test),
+each time on an enemy unit whose centre is behind the striking ranks:
+an infantry block among a cavalry squadron, whose single striking rank stands well ahead of its roomy footprint's centre
+(`schiltron`, `square`, `charge`, `cycle_charge`, and in `battle_ai_leaders`),
+blocks spawned on top of each other (`cannae_scale`, `sweep_routers`),
+blocks that have run more than half their depth into each other (`battle_ai_leaders`' infantry),
+small parties and lone men among a block (`small_unit_melee`, `coast_to_stop`, `subcommander_mutual_support`),
+and a block that routs and rallies with its pursuer pressed in among it.
+In the router probe of the previous section without the north block,
+the rout and the rally are unchanged on all five seeds,
+and the rallied block, striking the pursuer inside it, costs it 30.4 men by tick 2400 against 24.8 on main.
+The perturbed melee-outcome delta (K 16, Benjamini-Yekutieli) against main flags 7 rows in five clips,
+against 5 with the unit's position tested (5679cf3c) and 13 with the position tested against the footprint alone (6ed15a50).
+Two rows are `subcommander_mutual_support`'s one-man unit inside the cavalry,
+which is cut down in 14 of 16 runs where it survived in 14,
+and so leaves play unbroken in 14 where it did in 2.
+Two are `battle_ai_leaders`, which loses 4 and 12 more men a side.
+The other three are `cannae_scale`'s team 1, which loses 11 more,
+`sweep_routers`' team 1, 3 more, and `cycle_charge_flee`'s team 0, 2 more.
+A square has no interior pass, since it already strikes with whoever is threatened;
+nor has a routing block, and a routing enemy is never inside,
+so a router overrun by its pursuer is cut down only by the pursuer's own striking ranks.
+
 ## Physical contact is proximity-based, not combat-state-based
 
 Both the margin above and the underlying soldier-level pass it widens
