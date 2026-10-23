@@ -41,6 +41,15 @@ static func front_half_width(u: Unit) -> float:
 static func reach(u: Unit, p: MeleeFrontProfile, front: Vector2, axis: Vector2) -> Vector2:
 	if not u.in_square():
 		return Vector2(p.depth, p.half)
+	return outline(p, front, axis)
+
+
+## How far a block's men (profile `p`, men facing `front`) reach from their centre along `axis`
+## (a unit vector) whichever of its sides faces that way, and how far across it, in wu: its
+## slot rectangle's extent, front-rank depth by front half-width, read along the axis. Along its
+## own front or back that is its front-rank depth; along a flank, its front half-width. Returns
+## Vector2(along, across).
+static func outline(p: MeleeFrontProfile, front: Vector2, axis: Vector2) -> Vector2:
 	var c: float = absf(axis.dot(front))
 	var s: float = absf(axis.dot(front.orthogonal()))
 	return Vector2(p.depth * c + p.half * s, p.half * c + p.depth * s)

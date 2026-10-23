@@ -189,10 +189,14 @@ func test_support_finds_a_threat_in_contact_with_the_ward() -> void:
 		ward), e, "the ward's frontal contact finds it")
 
 
-# A current grid read before `u` deepens, so its reading starts stale.
-func _stale_grid(u: Unit) -> float:
+# A current grid read before `u` deepens, so its reading starts stale. With `cleared`, the grid
+# also forgets every reading, so a report shows whichever way the block's bound then moves: a
+# deeper block can reach less far along its half-diagonal when it also narrows.
+func _stale_grid(u: Unit, cleared: bool = false) -> float:
 	SpatialHash.reset()
 	SpatialHash.rebuild(get_tree(), Engine.get_physics_frames())
+	if cleared:
+		SpatialHash._max_query_extension = 0.0
 	return MeleeFrontGeometry.query_extension(u)
 
 
@@ -218,16 +222,23 @@ func test_pooled_strength_notes_the_deeper_host() -> void:
 
 
 ## The ranks closing at the end of a tick (after the tick's own front-line lookups) deepen the
-## block; the end of that tick reports it.
+## block; the tick reports it, so the grid's reading grows to the block's new bound. The block
+## is files of 32 men (a declared subunit size), 4 files at full strength and 2 once the ranks
+## close: at 40 men its 10 ranks become 20, so the half-diagonal the bound reads grows although
+## the frontage halves.
 func test_the_end_of_a_tick_notes_the_ranks_closing() -> void:
 	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
+	a.subunit_structure = Unit.SubunitStructure.FILE_GROUP
+	a.subunit_size = 32
 	a.frontage_override = 0   # the automatic frontage, which closing the ranks halves
 	a.soldiers = 40           # a third of its strength: the ranks close this tick
 	var before: float = _stale_grid(a)
 	assert_false(a._ranks_closed, "setup: open")
+	assert_almost_eq(SpatialHash.max_query_extension(), before, 0.001, "setup: the grid's reading")
 	a._physics_process(1.0 / 60.0)
 	assert_true(a._ranks_closed, "setup: closed by the tick")
-	assert_gt(MeleeFrontGeometry.query_extension(a), before, "setup: deeper")
+	assert_eq(a.formation_files(a.soldiers), 2, "setup: 2 files")
+	assert_gt(MeleeFrontGeometry.query_extension(a), before + 1.0, "setup: the bound grew")
 	assert_almost_eq(SpatialHash.max_query_extension(), MeleeFrontGeometry.query_extension(a),
 		0.001, "noted by the tick")
 
@@ -266,9 +277,9 @@ func test_an_infantry_cycle_charge_opens_past_the_extension() -> void:
 ## A formation change that deepens the block (here into a square) reports it at once.
 func test_set_formation_notes_the_deeper_block() -> void:
 	var a: Unit = _make_unit(120, Vector2.ZERO, Vector2.DOWN)
-	var before: float = _stale_grid(a)
+	var before: float = _stale_grid(a, true)
 	a.set_formation(Unit.FORMATION_SQUARE)
-	assert_gt(MeleeFrontGeometry.query_extension(a), before, "setup: deeper")
+	assert_ne(MeleeFrontGeometry.query_extension(a), before, "setup: the bound moved")
 	assert_almost_eq(SpatialHash.max_query_extension(), MeleeFrontGeometry.query_extension(a),
 		0.001, "noted")
 

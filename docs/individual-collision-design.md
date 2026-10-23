@@ -460,7 +460,9 @@ each block's front-rank depth beyond `Unit.RADIUS` to the close-tier melee conta
 (each contact test goes through `MeleeFrontLine.within_contact`;
 a router's anchor test, which shrinks the range on re-entry, measures the same gap),
 and beyond its capped `_front_depth()` to the engaged floor,
-both weighted by how squarely the two blocks face each other (0 for a flank or rear attack).
+both weighted by how squarely the two blocks face each other
+(a flank or rear attack has its own weight, in
+[Flank and rear attacks stop at the defender's edge](#flank-and-rear-attacks-stop-at-the-defenders-edge)).
 A flank-anchored frontage stands its men off the block's position,
 so the ranges are measured between the men's centres;
 the gap moves from the positions to the men's centres by the same weight,
@@ -523,6 +525,105 @@ Units take correspondingly longer to break in a straight frontal fight:
 in the perturbed melee-outcome delta,
 `general_doctrine_reserves`' low-morale foot and `march_to_contact`'s unit 1 mostly no longer break inside their clips,
 and `file_major_reform_contrast` and `spear_standoff` break 100 to 145 ticks later.
+
+### Flank and rear attacks stop at the defender's edge
+
+A block whose front faces another block's flank or rear is met the way a square is:
+the attacker reaches its own front rank,
+and the defender reaches its slot rectangle's extent along the attacker's front
+(`MeleeFrontGeometry.outline`): its front-rank depth for a rear attack,
+its front half-width for a flank attack.
+So the attacker's front rank stops on the defender's rear rank or end file.
+This side part of the weight multiplies the same two terms as the frontal part,
+with the attacker's front as the axis:
+how far the defender lies ahead of that front (a ramp over one `Unit.RADIUS`)
+and how much of that front overlaps the defender's outline across it.
+When both blocks' fronts bear on each other (an L-shaped meeting),
+the pair takes the larger of the two orientations' weights and their reaches averaged by weight.
+
+The side part is gated on the angle between the two fronts (`MeleeFrontLine.side_gate`).
+It is 0 down to a cosine of `melee_side_contact_max_cos` (0.75, about 41 degrees off square)
+and reaches its whole weight at `melee_front_line_min_cos` (0.5),
+where the frontal part has fallen to 0.
+Two separate properties follow.
+The weight is continuous in the angle:
+both parts are continuous and they hand over at the ends of the gate,
+the frontal part falling to 0 at the cosine where the gate reaches 1,
+so the weight does not jump as a clash turns from oblique to flank
+(a test sampling every degree finds no step above 0.05 at the default values).
+And the frontal ramp plus the side gate never exceeds 1:
+as the cosine rises between the two values the gate falls from 1 to 0 at least as fast as the ramp rises from 0,
+and outside them one of the two is 0,
+so the pair's weight, which multiplies each by terms of at most 1, is at most 1 too.
+The bound holds at every angle for any values of the two parameters,
+and continuity for any `melee_front_line_min_cos` from -1 to below 1.
+At 1 or above, the frontal ramp is itself a step at square: 1 head on, 0 at any other angle.
+Below -1 the ramp is still above 0 when both fronts point the same way,
+where the pair's front axis (one front and the other reversed) vanishes and flips side,
+so the frontal part steps at exactly 180 degrees
+(a test turns the defender through 180 degrees 60 wu to either side of the attacker's centre line
+and asserts a step of more than 0.05 at a min cosine of -1.5 and of at most 0.005 from -1 up).
+Two details of `side_gate` keep them under other tunings: it caps both parameters at 1,
+so with the min cosine above 1 the gate still reaches 0 head on, where the ramp is 1
+(a test sweeps the gate plus the ramp over cosines from 1 to -1 for ten tunings,
+among them a min cosine of 1.2 and of -1.5, and a head-on pair with the min cosine at 1.2 weighs exactly 1);
+and when the max cosine is tuned at or below the min cosine
+the gate rises from 0 at the min cosine to 1 at the max cosine,
+or over at least `MeleeFrontLine.SIDE_GATE_MIN_SPAN` (0.25, the defaults' own span),
+instead of stepping at the min cosine.
+A clash within about 41 degrees of square is weighed by the frontal part alone,
+exactly as before:
+the frontal lethality probe (two 120-man blocks, Tight, Normal and Loose order,
+the clip's seed and perturbed seeds 1 to 4) reads a bit-identical per-tick hash stream to main 2c2955cc's.
+A line's extension bound (`MeleeFrontProfile.ext`, which the contact reject and the
+neighbourhood lookup read) is its slot rectangle's half-diagonal,
+the farthest its outline reaches along any axis.
+
+Measured with two 120-man Infantry blocks in Tight order, neither allowed to break,
+the defender spawned facing away (rear) or side-on (flank),
+over the first 1150 ticks on the clip's seed and perturbed seeds 1 to 4.
+On main 2c2955cc the attacker's front-rank slots settled 3.9 ranks inside the defender in a rear attack
+and 8.1 file pitches inside it on a flank;
+with the side contact their slots settle on average 0.8 and 0.9 ranks short of the defender's edge.
+The attacker's front-rank men then stand 1.7 (rear) and 2.7 (flank) ranks from the defender's outermost men,
+as a frontal pair's front ranks stand 2.4 ranks apart in the same probe.
+The attacker's losses fall from 11.0 to 0 men in the rear and from 18.2 to 2.6 on a flank,
+since the defender's men facing away cannot strike back,
+and the defender's from 46.4 to 39.4 and from 20.0 to 17.6,
+since only the attacker's front rank reaches it.
+
+A routing defender is left out: `_side_part` weighs 0 any orientation whose defender is `ROUTING`,
+so a pursuer behind or beside a fleeing block keeps the centre-based range and presses in among its ranks,
+and the router's anchor contact and `_can_rally`'s contact read the ranges they read on main.
+A router whose own front bears on an enemy's flank still meets it there.
+Without this exception a pursuer stopped at the router's rear rank and struck only that rank.
+Measured with a brittle 120-man Infantry block (morale 0.5) in Tight order
+between two 120-man Infantry blocks at morale 100,
+one 120 wu south of it facing it and one 190 wu north of it facing it,
+over the clip's seed and perturbed seeds 1 to 4:
+it turns north on breaking, flees past the north block and leaves the field by tick 1474 to 1634.
+At tick 900 it fields on average 105.6 men on main 2c2955cc,
+111.2 with the side contact applied to routers,
+and 97.6 with routers left out.
+By its first routing sample it has lost 0 to 2 men on main (tick 300) and none with the side contact (tick 270),
+so the 8 men it loses beyond main's fall in the pursuit,
+but what costs them comes before the rout, where the exception does not reach: it breaks sooner.
+The north block comes on against the router's rear,
+and with the side contact it is in contact at the tick-210 sample (30-tick samples), 80 to 83 wu from the router's centre,
+at the router's rear rank, where on main its first contact sample is tick 240, 46 to 53 wu from the centre;
+the router's morale falls faster (1.6 or 1.7 at tick 240 against 2.2 on main),
+and it breaks at tick 270 instead of 300 on all five seeds, before losing a man.
+With the side contact turned off for the north block's pairs until the router breaks
+(and on for them after, a probe-only change), it breaks at tick 300 as on main and fields 104.8 men at tick 900;
+turned off for them only after it breaks, it breaks at 270 and fields 98.8.
+Turning it off for the south block's pairs changes no sample:
+the south block stands in front of the router until the rout and behind it after,
+where the exception already has it press in centre to centre.
+With a single Infantry pursuer (the router an Infantry or a Spearmen block, otherwise the same staging)
+the pursuer does not catch the router while it routs:
+the rout and rally are identical to main's at every 30-tick sample on all five seeds,
+with or without the exception, and the runs diverge only after the router rallies,
+when the pursuer meets the rallied block's rear.
 
 ## Physical contact is proximity-based, not combat-state-based
 

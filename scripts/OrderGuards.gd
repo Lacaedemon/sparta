@@ -42,7 +42,7 @@ static func satisfied(u: Unit, order: Order) -> bool:
 
 ## A live, non-routing enemy is within `range_units` of `u`. range_units <= 0 falls back to
 ## u's own detection_range (a caller-configurable field, default Unit.DETECTION_RANGE), and
-## then, like auto-acquisition, also counts an enemy past it in frontal melee contact with u
+## then, like auto-acquisition, also counts an enemy past it in frontal or side melee contact with u
 ## (UnitTargeting.nearest_enemy_to's contact_fallback). A positive range_units is a hard
 ## upper bound.
 ## Unlike combat auto-acquisition (UnitTargeting.nearest_enemy), this guard does NOT count a
@@ -63,7 +63,7 @@ static func enemy_in_range(u: Unit, range_units: float) -> bool:
 
 
 ## A live, non-routing enemy is within melee contact distance: u's attack_range plus both
-## units' radii, plus MeleeFrontLine.contact_extension for blocks front to front. Distinct
+## units' radii, plus MeleeFrontLine.contact_extension for blocks in frontal or side contact. Distinct
 ## from enemy_in_range -- contact is a fixed geometric distance, not a caller-chosen radius.
 static func contact_made(u: Unit) -> bool:
 	for o in u.get_tree().get_nodes_in_group("units"):
@@ -157,8 +157,9 @@ static func current_engaged_fraction(u: Unit) -> float:
 	var defenders: Array[Unit] = []
 	var has_live_enemy_in_tree: bool = false
 	if u.is_inside_tree():
-		# Widened for frontal pairs: two deep blocks front to front stand up to both front-rank
-		# depths apart, past the plain lookup's one cell.
+		# Widened for pairs in frontal or side contact: two deep blocks front to front, or a block
+		# on a wide line's flank, stand up to both blocks' reaches apart, past the plain
+		# lookup's one cell.
 		var candidates: Array = u._separation_candidates(true)
 		var u_extent: float = u.separation_radius + u.render_block_extent() + u.block_centre_offset().length()
 		for o in candidates:
