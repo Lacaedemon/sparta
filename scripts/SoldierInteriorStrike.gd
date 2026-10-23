@@ -1,14 +1,15 @@
 class_name SoldierInteriorStrike
 ## Which enemy soldiers have got inside a block behind its striking ranks, for
 ## SoldierMelee.resolve. Only a block's near-front ranks strike (Unit.engaged_soldier_indices),
-## and "front" follows the slot grid, so an enemy that has worked in past those ranks stands
-## where no striker can reach him and is never struck. Every other man of the block within
-## reach of such an enemy strikes him instead (SoldierMelee's interior pass).
+## and "front" follows the slot grid (its front rank, or its rear rank once the men have turned
+## in place more than a quarter of the way round), so an enemy that has worked in past those
+## ranks stands where no striker can reach him and is never struck. Every other man of the
+## block within reach of such an enemy strikes him instead (SoldierMelee's interior pass).
 ##
 ## A point is inside when it lies behind the rearmost man of the striking set, along the axis
 ## that set is ranked on (Unit.near_front_forward), and within the block's footprint. The
 ## footprint is the grid's own rectangle in the frame its men stand in
-## (MeleeFrontGeometry.grid_front, which holds through a turn still in progress): its
+## (MeleeFrontGeometry.facing_front, which holds through a turn still in progress): its
 ## front-rank depth and front half-width (MeleeFrontProfile) about the live men's mean, padded
 ## on the flanks and rear by Unit.interior_strike_margin. Taken from the grid rather than from
 ## the men's extremes, it neither swells into a turning block's corners nor follows one man

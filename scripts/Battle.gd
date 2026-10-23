@@ -3615,8 +3615,10 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 					order._active_child = 0
 					u.has_move_target = false   # stop any prior march while reforming
 				elif not turn_armed:
-					# A fresh order responds (re-squaring a quarter fold) before the write,
-					# so the destination is validated in the grid the block will march in.
+					# A fresh order responds (settling the fold) before the write, so the
+					# destination is validated in the grid the block marches in. A block in
+					# contact keeps its fold for now; its re-square, once it is clear,
+					# validates the destination again (Unit._run_waiting_resquare).
 					u.start_order_response()
 					responded = true
 					u.move_target = point

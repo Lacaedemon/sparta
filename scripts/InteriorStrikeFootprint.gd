@@ -2,7 +2,10 @@ class_name InteriorStrikeFootprint
 ## The region SoldierInteriorStrike calls inside a block: behind its striking set's rearmost
 ## man along Unit.near_front_forward (depths measured from `origin`, the block's position),
 ## and within the grid's rectangle about `centre`, the live men's mean, from `rear` to
-## `depth` along `grid` and `half_width` across it. Pure geometry, no RNG.
+## `depth` along `grid` and `half_width` across it. `grid` is the way the men face along the
+## grid's depth axis (MeleeFrontGeometry.facing_front), the grid's rear rank for a fold past a
+## quarter-turn, as the striking set is ranked (Unit.near_front_reversed), so `rear` is always
+## behind the strikers. Pure geometry, no RNG.
 
 var origin := Vector2.ZERO
 var fwd := Vector2.ZERO
@@ -29,7 +32,9 @@ static func of(block: Unit, front: PackedInt32Array) -> InteriorStrikeFootprint:
 	for i in front:
 		box.front_depth = minf(box.front_depth, (block._sim_soldier_pos[i] - box.origin).dot(box.fwd))
 	box.centre = mean
-	box.grid = MeleeFrontGeometry.grid_front(block)
+	# The rear padding goes behind the striking set, so a set ranked toward the grid's rear rank
+	# (Unit.near_front_reversed) reads the box from that end.
+	box.grid = MeleeFrontGeometry.facing_front(block)
 	box.across = box.grid.orthogonal()
 	var prof: MeleeFrontProfile = MeleeFrontProfile.of(block)
 	var margin: float = block.interior_strike_margin

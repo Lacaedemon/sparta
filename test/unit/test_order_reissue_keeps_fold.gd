@@ -14,7 +14,8 @@ const START := Vector2(500.0, 500.0)
 const MEN := 120
 # A block with a short rear rank: the half-turn part of its fold is reflected in depth.
 const PARTIAL_MEN := 116
-# An engage re-face fold near a half-turn: a 180-degree half and a -24 degree residue.
+# An engage re-face fold near a half-turn: the heading turned +156 degrees, so a fold of -156,
+# split into a -180 degree half and a +24 degree residue.
 const FOLD_DEG := 156.0
 # A fold well off any whole, half or quarter turn: all residue.
 const SKEW_DEG := 40.0
@@ -222,3 +223,141 @@ func test_a_reface_shrinking_a_resquare_lag_past_the_threshold_keeps_it() -> voi
 	u._reface(u.facing.rotated(signf(lag) * deg_to_rad(5.0)))
 	assert_true(u._grid_lag_resquare, "a correction that closes the lag does not fold it")
 	assert_lt(absf(u._grid_lag), absf(lag), "and shrinks it")
+
+
+## Ticks a block spends in contact before it breaks, so the contact has been seen.
+const CONTACT_TICKS := 5
+# Ticks out of contact a waiting re-square is given to run: past the 30-tick clear time.
+const CLEAR_TICKS := 40
+# How far a chase re-aims its heading each tick (deg).
+const CHASE_STEP_DEG := 0.1
+
+
+## How far man `i` of `u` stands from its anchor along `axis` (wu).
+func _depth_along(u: Unit, i: int, axis: Vector2) -> float:
+	return (u._sim_soldier_pos[i] - u.position).dot(axis)
+
+
+## One tick of `u` in or out of contact, with nothing else moving.
+func _contact_tick(u: Unit, contact: bool) -> void:
+	u._in_enemy_contact = contact
+	u._advance_grid_lag(_tick())
+
+
+## One tick of a chase: the heading re-aims a fraction of a degree, then the grid's lag advances.
+func _chase_tick(u: Unit) -> void:
+	u._is_facing_turning = false
+	u._facing_turn_step = 0.0
+	u._rotate_facing_toward(u.facing.rotated(deg_to_rad(CHASE_STEP_DEG)), _tick(), PI)
+	u._advance_grid_lag(_tick())
+
+
+## A fighting block re-ordered in contact, then marching on after its enemy out of contact.
+func test_a_waiting_resquare_runs_while_the_block_chases() -> void:
+	var u := _unit()
+	_fold(u, FOLD_DEG)
+	u._in_enemy_contact = true
+	_reissue(u)
+	for t in range(CONTACT_TICKS):
+		_contact_tick(u, true)
+	u._in_enemy_contact = false
+	for t in range(TURN_TICKS):
+		_chase_tick(u)
+	# The pivot sets _is_facing_turning every tick; a re-square that waited for a tick with no
+	# turn at all would wait for the whole chase.
+	assert_false(u._resquare_pending, "the re-square ran during the chase")
+	assert_almost_eq(absf(u._formation_angle), PI, ANGLE_EPS, "its half-turn left folded")
+	assert_eq(u._grid_lag, 0.0, "and its residue turned out through the pivots")
+
+
+## Through a chase's pivots the re-square's turn builds and sheds its rate no faster than the
+## bounded acceleration, as it does with no pivot, rather than jumping to the speed bound.
+func test_the_resquare_turn_through_pivots_is_accel_bounded() -> void:
+	var u := _unit()
+	_fold(u, SKEW_DEG)
+	_reissue(u)
+	var radius: float = u._formation_local_half_extents().length()
+	var bound: float = u.bounded_turn_accel(radius) * _tick() + ANGLE_EPS
+	var prev: float = u._grid_lag_rate
+	for t in range(TURN_TICKS):
+		_chase_tick(u)
+		# The closing tick turns exactly the rest of the way, as the lag's own turn does.
+		if u._grid_lag != 0.0:
+			assert_lte(absf(u._grid_lag_rate - prev), bound, "tick %d: an accel-bounded rate" % t)
+		prev = u._grid_lag_rate
+	assert_eq(u._grid_lag, 0.0, "setup: the re-square closed")
+
+
+## A fight lets go of a block for a tick or a few between bouts: a waiting re-square holds
+## through those, and a partial block is not reflected in depth at each break.
+func test_a_contact_break_between_bouts_does_not_run_the_resquare() -> void:
+	var u := _unit(PARTIAL_MEN)
+	_fold(u, FOLD_DEG)
+	u._in_enemy_contact = true
+	_reissue(u)
+	var mirror: bool = u._formation_mirror_x
+	var fold: float = u._formation_angle
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	# Breaks of 1, 2 and 22 ticks: the longest measured is 22 (battle_ai_leaders uid 4).
+	for gap in [1, 2, 22]:
+		for t in range(CONTACT_TICKS):
+			_contact_tick(u, true)
+		for t in range(gap):
+			_contact_tick(u, false)
+		assert_true(u._resquare_pending, "a %d-tick break leaves the re-square waiting" % gap)
+	_contact_tick(u, true)
+	assert_eq(u._formation_mirror_x, mirror, "no break reflected the block in depth")
+	assert_eq(u._formation_angle, fold, "the fold stands as it was")
+	assert_lte(_worst_move(before, u.soldier_world_slots(u.soldiers)), SLOT_EPS, "no slot moved")
+	for t in range(CLEAR_TICKS):
+		_contact_tick(u, false)
+	assert_false(u._resquare_pending, "the re-square runs once the block is clear")
+
+
+## A march's heading correction that grows an order's re-square lag past the snap-absorb
+## threshold keeps it a re-square, and past a quarter-turn re-runs it from the grown fold.
+func test_a_march_correction_keeps_the_resquare() -> void:
+	var u := _unit()
+	_fold(u, 85.0)   # all residue, past the threshold
+	_reissue(u)
+	var lag: float = u._grid_lag
+	assert_gt(absf(lag), Unit.FACING_SNAP_ABSORB_THRESHOLD, "setup: the lag stands past the threshold")
+	u._reface(u.facing.rotated(-signf(lag) * deg_to_rad(3.0)))   # grows it to 88 degrees
+	assert_gt(absf(u._grid_lag), absf(lag), "setup: the correction grew the lag")
+	assert_true(u._grid_lag_resquare, "the grown lag is still the order's re-square")
+	u._reface(u.facing.rotated(-signf(lag) * deg_to_rad(7.0)))   # and past a quarter-turn
+	assert_true(u._resquare_pending, "past a quarter-turn the re-square waits to run again")
+	_contact_tick(u, false)
+	assert_false(u._resquare_pending, "it runs on the next tick")
+	assert_true(u._grid_lag_resquare, "and turns out its new residue")
+	assert_lte(absf(u._grid_lag), PI * 0.5, "of at most a quarter-turn")
+
+
+## After an engage turn the block keeps (a re-issued order in contact leaves the fold where
+## it is), the strikers are the men facing the enemy -- the heading's side of the block -- not
+## the grid's own front rank, which the turn left behind them.
+func test_the_strikers_after_an_engage_turn_are_the_men_facing_the_enemy() -> void:
+	var u := _unit()
+	_fold(u, FOLD_DEG)
+	u._in_enemy_contact = true
+	u.state = Unit.State.FIGHTING
+	_reissue(u)
+	assert_almost_eq(u._formation_angle, deg_to_rad(-FOLD_DEG), ANGLE_EPS, "setup: fold kept")
+	var strikers: PackedInt32Array = u.engaged_soldier_indices(u.soldiers, false)
+	assert_gt(strikers.size(), 0, "setup: a striking set")
+	assert_lt(strikers.size(), u.soldiers, "setup: not the whole block")
+	# Depth toward the enemy along the grid's depth axis: the grid's front turned the turn's
+	# way round, its rear rank's side, which lies within a quarter-turn of the heading.
+	var toward: Vector2 = -u.facing.rotated(u._formation_angle)
+	assert_gt(toward.dot(u.facing), 0.0, "setup: the grid's rear rank faces the enemy")
+	var shallowest_striker: float = INF
+	var in_set := {}
+	for i in strikers:
+		in_set[i] = true
+		shallowest_striker = minf(shallowest_striker, _depth_along(u, i, toward))
+	assert_gt(shallowest_striker, 0.0, "every striker stands in the enemy's half of the block")
+	var nearer: int = 0
+	for i in range(u.soldiers):
+		if not in_set.has(i) and _depth_along(u, i, toward) > shallowest_striker + SLOT_EPS:
+			nearer += 1
+	assert_eq(nearer, 0, "no man left out stands nearer the enemy than a striker")

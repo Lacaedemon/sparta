@@ -7,10 +7,12 @@ class_name MeleeFrontGeometry
 ## leaves the front where the men are. The size measurements come from MeleeFrontProfile.
 
 
-## The direction `u`'s men face: the heading an in-place turn started from while one is in
-## progress (an engage turn, or an order's about-face or quarter-turn: the men hold their
+## The direction `u`'s slot grid fronts: the heading an in-place turn started from while one is
+## in progress (an engage turn, or an order's about-face or quarter-turn: the men hold their
 ## ground and the fold is only written when the turn settles), else the heading, turned by
-## grid_fold() either way. The same rotation soldier_world_slots() lays a settled grid out at.
+## grid_fold() either way. The same rotation soldier_world_slots() lays a settled grid out at,
+## so it is the frame the grid's own offsets are read in (men_offset). Where the men face is
+## facing_front: the same axis, reversed for a fold past a quarter-turn.
 static func grid_front(u: Unit) -> Vector2:
 	var heading: Vector2 = u.facing
 	if u._engage_turn_target != Vector2.ZERO:
@@ -18,6 +20,15 @@ static func grid_front(u: Unit) -> Vector2:
 	elif u.is_order_turning():
 		heading = u.active_leaf().turn_start_facing
 	return heading.rotated(u.grid_fold())
+
+
+## The direction `u`'s men face, along the grid's depth axis: grid_front, reversed while the fold
+## is past a quarter-turn (Unit.near_front_reversed). Every man faces the heading, so a block that
+## turned in place more than a quarter of the way round (an engage re-face, an about-face) has
+## the grid's rear rank in front of it, and its men face away from the grid's own front.
+static func facing_front(u: Unit) -> Vector2:
+	var front: Vector2 = grid_front(u)
+	return -front if u.near_front_reversed() else front
 
 
 ## The distance from `u`'s centre to its grid's front rank, in wu: half its live rank count
