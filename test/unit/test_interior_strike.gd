@@ -317,6 +317,36 @@ func test_the_footprint_margin_is_a_snapshotted_parameter_that_widens_the_box() 
 	older.free()
 
 
+func test_a_small_unit_centred_among_the_striking_ranks_is_left_to_them() -> void:
+	# A 4-man enemy party fighting the block front to front, its centre inside the footprint
+	# but among the striking ranks, and one of its men pushed in just past them. The party has
+	# not got in behind the striking ranks, so that man is still theirs: the men behind, though
+	# in reach of him, do not strike him.
+	var a := _block()
+	var front := a.engaged_soldier_indices(a._sim_soldier_pos.size())
+	var fd: float = _front_depth(a)
+	var e := _unit(2, 1, 4, Vector2(0.0, fd + 6.0), Vector2.UP)
+	e._sim_soldier_pos[0] = Vector2(0.0, fd - 4.0)
+	e._sim_soldier_pos[1] = Vector2(-PITCH, fd + 8.0)
+	e._sim_soldier_pos[2] = Vector2(PITCH, fd + 8.0)
+	e._sim_soldier_pos[3] = Vector2(0.0, fd + 16.0)
+	var prof: MeleeFrontProfile = MeleeFrontProfile.of(a)
+	assert_lt(e.position.y, prof.depth, "precondition: the party's centre is inside the footprint")
+	assert_gt(e.position.y, fd, "precondition: ... but ahead of the rearmost striker")
+	var behind_in_reach: int = 0
+	for i in range(a._sim_soldier_pos.size()):
+		if not front.has(i) and a._sim_soldier_pos[i].distance_to(e._sim_soldier_pos[0]) <= REACH:
+			behind_in_reach += 1
+	assert_gt(behind_in_reach, 0, "precondition: men behind the striking set reach the man pushed in")
+	var defenders: Array[Unit] = [e]
+	var indices: Array[PackedInt32Array] = [PackedInt32Array(range(4))]
+	assert_true(SoldierInteriorStrike.inside_candidates(a, front, defenders, indices).is_empty(),
+			"no man of a party centred among the striking ranks counts as inside")
+	e.position = Vector2(0.0, fd - 4.0)
+	assert_false(SoldierInteriorStrike.inside_candidates(a, front, defenders, indices).is_empty(),
+			"with its centre behind the striking ranks, the man pushed in counts as inside")
+
+
 func test_an_enemy_among_the_striking_ranks_is_left_to_them() -> void:
 	# An enemy pressed in among the striking ranks is theirs: the men behind them, though in
 	# reach, do not join in, so an ordinary intermixed front keeps its usual striking depth.
