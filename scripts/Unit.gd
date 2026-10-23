@@ -531,6 +531,9 @@ var _resquare_pending: bool = false
 # (all battle_ai_leaders uid 4) was back in contact 1 to 11 ticks later, cut short where it stood.
 # At 30 ticks the same catalog runs one (cannae_scale uid 14, back in contact 11 ticks later).
 const RESQUARE_CONTACT_CLEAR_TIME: float = ENGAGED_LINGER
+# Float slack (s) on reaching RESQUARE_CONTACT_CLEAR_TIME: thirty 1/60 s ticks sum to
+# 0.49999999999999994, short of 0.5, so without it the gate first passes on tick 31.
+const RESQUARE_CONTACT_CLEAR_EPS: float = 1.0e-6   # solver epsilon
 # How long (s) the block has been out of enemy contact, counted by _advance_grid_lag on every
 # non-routing tick and held at RESQUARE_CONTACT_CLEAR_TIME once it gets there. A fight lets go
 # of a block for a tick or a few between bouts (_in_enemy_contact has no hysteresis of its own),
@@ -4620,8 +4623,9 @@ func _reface(dir: Vector2) -> void:
 	# An order's re-square stays a lag up to a quarter-turn, which is as far as its residue
 	# can stand (_square_fold_for_order). Grown past that, its nearer half-turn has changed, so
 	# it is folded where it stands and the re-square waits to run again from the new fold: the
-	# block is out of contact here (_face_dir took the turn otherwise), so it runs on the next
-	# tick that does not turn in place once the contact has cleared (_advance_grid_lag).
+	# block is out of contact here (_face_dir took the turn otherwise). _advance_grid_lag runs it
+	# once the contact has cleared, on a tick that does not turn in place: this same tick, since
+	# it runs right after _think, when the block is already clear and not turning in place.
 	if absf(_grid_lag) > PI * 0.5:
 		_fold_grid_lag()
 		_resquare_pending = true
@@ -4695,7 +4699,10 @@ func _advance_grid_lag(delta: float) -> void:
 ## bounded_turn_accel and eases to a stop), held to whatever keeps the grid's own turn this tick
 ## (the pivot's step plus the lag's) within bounded_turn_rate, and turns by nothing when the
 ## pivot alone already turns the grid that fast against the lag. The speed bound wins where the
-## two disagree: only the pivot's own rate can change faster than bounded_turn_accel.
+## two disagree: only the pivot's own rate can change faster than bounded_turn_accel. A pivot
+## the same way the lag closes was already held back to what this tick's lag turn leaves of the
+## bound (_hold_pivot_for_resquare), so the clamp binds only on a pivot this tick that did not
+## go through that hold.
 func _close_resquare_lag_in_pivot(delta: float) -> void:
 	var radius: float = _formation_local_half_extents().length()
 	var max_rate: float = bounded_turn_rate(radius)
@@ -4734,9 +4741,36 @@ func _rotate_facing_toward(target_dir: Vector2, delta: float, rate: float = TURN
 	var diff: float = angle_difference(cur, target_dir.angle())
 	if absf(diff) > 0.001:
 		_is_facing_turning = true
-	var step: float = clampf(diff, -rate * delta, rate * delta)
+	var step: float = _hold_pivot_for_resquare(clampf(diff, -rate * delta, rate * delta), delta)
 	_facing_turn_step += step
 	facing = Vector2.from_angle(cur + step)
+
+
+## A heading pivot's step this tick (rad, from _rotate_facing_toward), held back while an order's
+## re-square turns out (_grid_lag_resquare) so the re-square closes as fast as it would with no
+## pivot. A pivot moves the slot grid with the heading, and the grid's whole turn is bounded at
+## bounded_turn_rate (_close_resquare_lag_in_pivot). A pivot the same way the grid must turn to
+## close the lag turns the heading away from the grid and spends that bound: a chase pivoting
+## that way at nearly the bound left the lag closing at a few degrees a second, a deep block
+## crabbing far off its heading for the whole chase (knockback_focus uid 8 at e55342c1: ordered
+## at tick 361, still 71.6 degrees off at tick 660). So such a pivot gets only what the lag's own turn this tick
+## (bounded_turn_step, as _close_resquare_lag_in_pivot reckons it) leaves of the bound, less any
+## pivot already taken this tick. The heading waits for the grid instead of the grid chasing
+## the heading; the grid itself turns no slower toward the pivot's goal, since it was held to
+## the bound either way. A pivot back toward the grid, a lag in a turn in place (which waits
+## the turn out, _advance_grid_lag) and a march lag are not held.
+func _hold_pivot_for_resquare(step: float, delta: float) -> float:
+	if _grid_lag == 0.0 or not _grid_lag_resquare or delta <= 0.0 or is_maneuver_turning():
+		return step
+	var close: float = signf(-_grid_lag)
+	if signf(step) != close:
+		return step
+	var radius: float = _formation_local_half_extents().length()
+	var max_rate: float = bounded_turn_rate(radius)
+	var lag_rate: float = bounded_turn_step(_grid_lag_rate, -_grid_lag, max_rate,
+			bounded_turn_accel(radius), delta)
+	var room: float = maxf(max_rate - absf(lag_rate), 0.0) * delta - close * _facing_turn_step
+	return close * minf(absf(step), maxf(room, 0.0))
 
 
 ## The type multiplier on the battle's sight scale (fog of war):
@@ -8954,10 +8988,7 @@ func _select_near_front_indices(count: int, forward: Vector2,
 ## itself included (the same 0.01 rad tolerance reform_ranks reads one with), keeps the grid's
 ## own front.
 func near_front_forward() -> Vector2:
-	if not near_front_reversed():
-		return grid_front_forward()
-	var world_angle: float = facing.angle() + PI * 0.5 + wrapf(_formation_angle - PI, -PI, PI)
-	return Vector2(0.0, -1.0).rotated(world_angle)
+	return -grid_front_forward() if near_front_reversed() else grid_front_forward()
 
 
 ## The slot grid's own front along its depth axis (the heading turned by _formation_angle),
@@ -9855,7 +9886,8 @@ func _square_fold_for_order(hold_ground: bool) -> void:
 ## True once the block has been out of enemy contact for RESQUARE_CONTACT_CLEAR_TIME
 ## (_contact_clear_time), so a re-square of its fold no longer counts it as in the fight.
 func _contact_cleared() -> bool:
-	return not _in_enemy_contact and _contact_clear_time >= RESQUARE_CONTACT_CLEAR_TIME
+	return not _in_enemy_contact \
+			and _contact_clear_time >= RESQUARE_CONTACT_CLEAR_TIME - RESQUARE_CONTACT_CLEAR_EPS
 
 
 ## Run a fresh order's re-square that waited for the block to leave enemy contact
@@ -9895,9 +9927,20 @@ func _fold_engage_turn_in_progress() -> void:
 ## freeze's existing contract (a fighting unit is never gated -- _can_drill refuses
 ## drills in combat anyway). Unlike start_order_response this does NOT re-square the
 ## grid or drop an engage turn: a drill manages its own geometry.
+##
+## It drops an order's re-square still waiting on contact (_resquare_pending). The drill is the
+## later order, and a later order decides afresh. Left waiting, the re-square would run once the
+## drill settles and square the whole fold, the drill's turn with it (_square_fold_for_order
+## cannot tell the two apart), undoing the drill. It cannot run first: a re-square still waiting
+## when the drill is ordered is one whose block has not been clear of contact for
+## RESQUARE_CONTACT_CLEAR_TIME (or one held by an engage turn), since a cleared one runs on the
+## tick it clears (_advance_grid_lag). The next move or attack order squares whatever fold then
+## stands. A re-square already turning out (_grid_lag_resquare) is kept: it is a lag behind the
+## heading, which the drill turns along with the fold, so it squares only its own residue.
 func _start_atomic_response() -> void:
 	_finish_rally_resquare()   # a drill turns the block from a squared grid, not a rally's fold
 	_square_cancelled_rally_fold()
+	_resquare_pending = false
 	_order_response_timer = maxf(_order_response_timer, atomic_response_delay)
 
 

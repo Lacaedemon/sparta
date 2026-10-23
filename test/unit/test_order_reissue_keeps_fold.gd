@@ -327,8 +327,9 @@ func test_a_march_correction_keeps_the_resquare() -> void:
 	assert_true(u._grid_lag_resquare, "the grown lag is still the order's re-square")
 	u._reface(u.facing.rotated(-signf(lag) * deg_to_rad(7.0)))   # and past a quarter-turn
 	assert_true(u._resquare_pending, "past a quarter-turn the re-square waits to run again")
-	_contact_tick(u, false)
-	assert_false(u._resquare_pending, "it runs on the next tick")
+	# _advance_grid_lag follows _think (where a march's _reface runs) in the same tick.
+	u._advance_grid_lag(_tick())
+	assert_false(u._resquare_pending, "it runs in the same tick's grid advance")
 	assert_true(u._grid_lag_resquare, "and turns out its new residue")
 	assert_lte(absf(u._grid_lag), PI * 0.5, "of at most a quarter-turn")
 
@@ -361,3 +362,91 @@ func test_the_strikers_after_an_engage_turn_are_the_men_facing_the_enemy() -> vo
 		if not in_set.has(i) and _depth_along(u, i, toward) > shallowest_striker + SLOT_EPS:
 			nearer += 1
 	assert_eq(nearer, 0, "no man left out stands nearer the enemy than a striker")
+
+
+## The clear time is ENGAGED_LINGER, thirty ticks at 60 Hz. Thirty 1/60 s ticks sum to just short
+## of 0.5 s, and the gate still passes on the thirtieth, not the thirty-first.
+func test_a_waiting_resquare_runs_on_the_thirtieth_clear_tick() -> void:
+	var u := _unit()
+	_fold(u, FOLD_DEG)
+	u._in_enemy_contact = true
+	_reissue(u)
+	_contact_tick(u, true)
+	var gate: int = roundi(Unit.RESQUARE_CONTACT_CLEAR_TIME * float(Engine.physics_ticks_per_second))
+	for t in range(gate - 1):
+		_contact_tick(u, false)
+	assert_true(u._resquare_pending, "still waiting after %d clear ticks" % (gate - 1))
+	_contact_tick(u, false)
+	assert_false(u._resquare_pending, "the re-square runs on clear tick %d" % gate)
+
+
+# Ticks to run a drill for: its response beat, the quarter-turn and the clear time, with margin.
+const DRILL_TICKS := 120
+
+
+## A drill ordered while an order's re-square still waits on contact drops it. Left waiting, it
+## would run once the drill settled and square the drill's own turn back out of the fold.
+func test_a_drill_drops_a_waiting_resquare_and_keeps_its_own_fold() -> void:
+	var u := _unit()
+	_fold(u, SKEW_DEG)
+	u._in_enemy_contact = true
+	_reissue(u)
+	_contact_tick(u, true)
+	assert_true(u._resquare_pending, "setup: the re-square waits on the contact")
+	var fold: float = u._formation_angle
+	u._in_enemy_contact = false
+	u.quarter_turn(1)
+	assert_true(u.is_order_turning(), "setup: the quarter-turn is ordered")
+	assert_false(u._resquare_pending, "the drill drops the waiting re-square")
+	for t in range(DRILL_TICKS):
+		u._physics_process(_tick())
+		u.step_sim_soldiers(_tick())
+	assert_false(u.is_order_turning(), "setup: the drill settled")
+	assert_eq(u._grid_lag, 0.0, "nothing turns the grid after the drill")
+	assert_almost_eq(u.grid_fold(), wrapf(fold - PI * 0.5, -PI, PI), ANGLE_EPS,
+			"the drill's quarter-turn stands in the fold")
+
+
+# A chase pivot's rate, as a share of the grid's bounded turn rate: nearly all of it.
+const PIVOT_SHARE := 0.95
+
+
+## Ticks `u`'s re-square takes to close with no pivot.
+func _ticks_to_close(u: Unit) -> int:
+	var ticks: int = 0
+	while u._grid_lag != 0.0 and ticks < TURN_TICKS:
+		u._advance_grid_lag(_tick())
+		ticks += 1
+	return ticks
+
+
+## A chase pivoting its heading the same way the re-square closes, at nearly the grid's bounded
+## rate, turns the heading away from the grid. The heading waits for the grid instead: the
+## re-square closes no later than with no pivot, and the grid still turns within the bound.
+func test_a_pivot_away_from_the_grid_waits_for_the_resquare() -> void:
+	var still := _unit()
+	_fold(still, SKEW_DEG)
+	_reissue(still)
+	var still_ticks: int = _ticks_to_close(still)
+	assert_eq(still._grid_lag, 0.0, "setup: with no pivot the re-square closes")
+	var u := _unit()
+	_fold(u, SKEW_DEG)
+	_reissue(u)
+	var close: float = signf(-u._grid_lag)
+	var pivot_rate: float = PIVOT_SHARE * u.bounded_turn_rate()
+	var heading: float = u.facing.angle()
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var ticks: int = 0
+	while u._grid_lag != 0.0 and ticks < TURN_TICKS:
+		u._is_facing_turning = false
+		u._facing_turn_step = 0.0
+		u._rotate_facing_toward(u.facing.rotated(close * PI * 0.25), _tick(), pivot_rate)
+		u._advance_grid_lag(_tick())
+		var now: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+		assert_lte(_worst_move(slots, now), _turn_bound(u), "tick %d: a bounded turn" % ticks)
+		slots = now
+		ticks += 1
+	assert_eq(u._grid_lag, 0.0, "the re-square closed during the pivots")
+	assert_lte(ticks, still_ticks, "no later than with no pivot")
+	assert_lt(absf(angle_difference(heading, u.facing.angle())), pivot_rate * _tick() * ticks,
+			"the heading was held back while it closed")
