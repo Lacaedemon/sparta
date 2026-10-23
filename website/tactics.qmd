@@ -1792,11 +1792,20 @@ A fresh order squares it again, but **never while it is still in contact**:
 an order given to a unit that is fighting, such as a new attack on the same enemy
 (the AI re-issues its orders every few seconds), leaves the ranks where the men stand,
 and the unit squares up only once it is out of the fight.
+A fight lets go of a unit for a moment between bouts,
+so the unit counts as out of it only after half a second clear of the enemy;
+a unit chasing its enemy squares up on the move.
 When it squares up, on leaving the fight or for an order given out of contact,
 the ranks come round onto the heading no faster than the men on its far corners can jog.
 Two cases still square at once:
 a unit standing a quarter-turn off its ranks, whose men each step to the nearest place
 in the squared block, and a distant unit drawn as a grid mark, which has no men to move.
+
+While a unit that has come more than a quarter of the way round stays unsquared,
+its **men facing the enemy do the fighting**:
+the ranks that strike are the ones nearest the enemy in the direction the men face,
+which after such a turn are the rear ranks of the block as it stood,
+not the front ranks the turn has left behind them.
 
 The pivot itself also **slows as the unit picks up speed** --- a unit turns
 fastest from a stand and tightens its turn rate the faster it's already moving

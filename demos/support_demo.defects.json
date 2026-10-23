@@ -5,13 +5,7 @@
       "uids": [
         9
       ],
-      "reason": "uid 9: its chase alternates between two opposite path detours while its anchor sits on a step row, so its facing flicks for a tick and back (#1854). On main 799b0bca this happens once (ticks 473 to 474); on #1852's head 68785bcc its trajectory stays on that row and it repeats about 12 times. Dense 2-tick FULL dumps with no exemptions, seeds 0 to 4: facing_flutter 10 to 11 and facing_whipsaw 8 on every seed on head, against 3; main 1. The grid does not move. Measured 2026-10-23."
-    },
-    "facing_whipsaw": {
-      "uids": [
-        9
-      ],
-      "reason": "uid 9: its chase alternates between two opposite path detours while its anchor sits on a step row, so its facing flicks for a tick and back (#1854). On main 799b0bca this happens once (ticks 473 to 474); on #1852's head 68785bcc its trajectory stays on that row and it repeats about 12 times. Dense 2-tick FULL dumps with no exemptions, seeds 0 to 4: facing_flutter 10 to 11 and facing_whipsaw 8 on every seed on head, against 3; main 1. The grid does not move. Measured 2026-10-23."
+      "reason": "uid 9: its chase alternates between two opposite path detours while its anchor sits on a step row, so its facing flicks about 174 degrees for a tick and back (#1854). On main 799b0bca this happens once (ticks 474 to 475); at sim commit e55342c1 (#1852) its trajectory stays near that row and it happens again at ticks 504 to 505 and 508 to 509 (1-tick trace, seed 0). Dense 2-tick FULL dumps, all exemptions removed, seeds 0 to 4, Windows: facing_flutter 4 against 3 on every seed here, 1 on main; facing_whipsaw 4 against 4 here (passes), 0 on main. The grid does not move. Measured 2026-10-23."
     },
     "overlap": {
       "uids": [

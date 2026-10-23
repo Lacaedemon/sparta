@@ -298,7 +298,7 @@ func test_a_contact_break_between_bouts_does_not_run_the_resquare() -> void:
 	var mirror: bool = u._formation_mirror_x
 	var fold: float = u._formation_angle
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
-	# Breaks of 1, 2 and 22 ticks: the longest measured is 22 (battle_ai_leaders uid 4).
+	# Breaks of 1, 2 and 22 ticks, as battle_ai_leaders uid 4 meets between bouts (seed 0).
 	for gap in [1, 2, 22]:
 		for t in range(CONTACT_TICKS):
 			_contact_tick(u, true)

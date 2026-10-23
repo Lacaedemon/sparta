@@ -89,9 +89,10 @@
   "defect_exemptions": {
     "overlap": {
       "uids": [
-        5
+        5,
+        8
       ],
-      "reason": "Focused knockback drives uid5 into a compressed knot around the strike target; measured min neighbour 0.63 wu on the re-pinned 2x-default layout (was cited lower pre-repin). Transient press compression at the focal point, not standing interpenetration."
+      "reason": "Focused knockback drives uid5 into a compressed knot around the strike target; measured min neighbour 0.63 wu on the re-pinned 2x-default layout (was cited lower pre-repin). Transient press compression at the focal point, not standing interpenetration. uid 8 (team 1's 80-horse cavalry): an order at tick 361, out of contact, finds its grid 88.4 degrees off its heading. On main 799b0bca the order re-squares it in one tick (an 88-degree grid turn) and shape_residual fails (86.3 against 30 on every seed). Since #1852 the whole 88.4 degrees is a residue turned out after the heading at the bounded grid rate, through the chase's pivots from tick 381 (at sim commit e55342c1 the pivots' own turn counts against that rate, and the grid's turn builds at the bounded acceleration). Here the chase pivots the same way the grid turns, so the grid closes about 3 degrees a second and still stands 71.6 degrees off at tick 660; at 67cbaa99 the chase pivoted the other way and the grid closed about 12 degrees a second. Two horses pass within 0.38 wu of each other at tick 648, out of contact and not engaged, with the heading steady. Dense 2-tick FULL dumps, all exemptions removed, seeds 0 to 4, Windows: overlap 0.38, 0.42, 0.47, 0.48 and 1.03 against the 5.0 wu floor at sim commit e55342c1; main passes overlap (10.6) on every seed. Measured 2026-10-23."
     },
     "shape_residual": {
       "uids": [

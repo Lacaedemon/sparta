@@ -525,9 +525,11 @@ var _grid_lag_resquare: bool = false
 var _resquare_pending: bool = false
 # How long (s) a block must have been out of enemy contact before a fresh order's re-square of
 # its fold runs (_contact_clear_time). The fight's own measure of having let go of a block,
-# ENGAGED_LINGER (30 ticks): between bouts a fight lets go of a block for up to 22 ticks at a time
-# while it fights on (battle_ai_leaders uid 4, seeds 0 and 4), and a re-square started there
-# would be cut short where it stood when the contact resumed.
+# ENGAGED_LINGER (30 ticks). Between bouts a fight lets go of a block for a few ticks at a time:
+# on 67cbaa99, where a re-square ran on the first tick clear, the seed-0 catalog had waiting
+# re-squares meet breaks of 1, 1, 2, 2, 21, 22 and 41 ticks, and each of its 4 re-squares that ran
+# (all battle_ai_leaders uid 4) was back in contact 1 to 11 ticks later, cut short where it stood.
+# At 30 ticks the same catalog runs one (cannae_scale uid 14, back in contact 11 ticks later).
 const RESQUARE_CONTACT_CLEAR_TIME: float = ENGAGED_LINGER
 # How long (s) the block has been out of enemy contact, counted by _advance_grid_lag on every
 # non-routing tick and held at RESQUARE_CONTACT_CLEAR_TIME once it gets there. A fight lets go
