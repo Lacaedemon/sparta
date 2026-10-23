@@ -970,7 +970,7 @@ two blocks that start a battle on top of each other,
 or a block overrun by a cavalry charge or a pursuit.
 He is not safe there.
 Only a block's front few ranks normally strike,
-but once an enemy unit's own centre has got inside a block, past its fighting ranks,
+but once the centre of an enemy unit's men has got inside a block, past its fighting ranks,
 any man of the block with one of its men within reach strikes him too,
 whatever rank he stands in,
 so a few men who have broken into the middle of a block are cut down quickly.
@@ -993,7 +993,7 @@ and the men of a routing block never turn on an enemy inside it.
 But a block that breaks, flees and rallies with its pursuer pressed in among its ranks
 has that pursuer inside it, and strikes back:
 in a test where a block of 120 broke in front of another block of 120 and rallied,
-the pursuer lost about 29 men in the first 40 seconds where it lost about 25 without this.
+the pursuer lost about 30 men in the first 40 seconds where it lost about 25 without this.
 
 Only the men actually in bodily contact get shoved about by the fighting.
 A spear reaches several ranks deep, so rank-four and rank-five spearmen

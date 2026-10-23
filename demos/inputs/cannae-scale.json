@@ -44,9 +44,10 @@
     },
     "shape_residual": {
       "uids": [
+        6,
         7
       ],
-      "reason": "Flank cavalry formation distorts during the violent mounted clash. Measured on the density re-pin."
+      "reason": "uid 7: flank cavalry formation distorts during the violent mounted clash. Measured on the density re-pin. uid 6: its grid is scrambled in the opening melee on both trees, and whether the scan fails it turns on which of its out-of-contact samples a run happens to judge. On the clip seed the dense defect delta reads a worst of 124.1 against 30 on the #1834 head d067d21a, which fails, and 89.2 on main 82991008, which passes. Worst over the clip seed and seeds 1 to 4: head pass, 114.4, 120.0, 121.7, 122.0; main 119.4, pass, 119.5, 124.5, 123.7. Measured 2026-10-22 on dense 2-tick dumps of the clip seed and perturbed seeds 1 to 4 (SPARTA_DEMO_SEED_RUN), main 82991008 against the #1834 head d067d21a, judged with no exemption."
     }
   }
 }

@@ -638,7 +638,12 @@ A point is inside a block when it lies behind the rearmost man of the striking s
 and within the block's footprint:
 the grid's own rectangle (`MeleeFrontGeometry.grid_front`, `MeleeFrontProfile`) about the live men's mean,
 padded on the flanks and rear by `Unit.interior_strike_margin` (0 by default).
-An enemy soldier counts when both he and his unit's position are inside.
+An enemy soldier counts when both he and his unit's centre are inside,
+the unit's centre being its live men's mean, taken as the block's own footprint centre is
+(`InteriorStrikeFootprint.live_centre`).
+The unit's `position` is not used:
+a standing `frontage_anchor_offset` shifts it off the men,
+and it can stand well off them while a block turns.
 The unit test is what keeps the pass to intruders.
 Without it, any enemy man behind the rearmost striker counted,
 and in ordinary clashes the enemy's front-rank men,
@@ -657,14 +662,25 @@ still took in a small unit fighting front to front whose centre had reached the 
 in `general_doctrine_reserves` a 30-man block's few men pushed past the striking ranks were struck from behind,
 and its three 30-man blocks broke in 12 or 13 of 16 perturbed runs where on main they broke in 2 (on 6ed15a50).
 
-With both tests, on 5679cf3c against main 82991008, over seed runs 0 to 4:
+With both tests, on d067d21a against main 82991008, over seed runs 0 to 4:
 two 120-man blocks closing front to front from 400 wu apart, in Tight, Normal and Loose order,
 the same blocks spawned 120 wu apart in Tight and Normal order,
-and the rear and flank probes of the previous section in Tight and Normal order (and the rear in Loose)
+and the rear and flank probes of the previous section,
+re-run in Normal order as well as Tight,
 never fire the pass and end bit-identical to main.
-Two Loose blocks spawned 120 wu apart start inside each other, and the pass fires once on each run, at tick 2;
-a Loose block spawned on another's flank fires it once, at tick 80.
-In the catalog it fires in 19 of the 117 clips (18 of which change),
+Re-run in Loose order, those probes start the blocks on top of each other:
+a Loose block of 120 is about 250 wu deep, so blocks spawned 120 wu apart overlap by half their depth.
+Front to front the pass fires once on each run, at tick 2,
+and the defender and the attacker lose 5.6 and 9.6 men by tick 1150 against 8.4 and 7.8 on main.
+With the defender facing away it fires once on each run, at tick 32,
+as the defender turns about with its men's centre about 2 wu behind the attacker's front rank,
+and the defender loses 2.4 men against 1.8 on main.
+With the defender side-on it fires four times on each run, at ticks 8, 32, 80 and 152,
+and the two lose 5.8 and 0.4 men against 7.4 and 0.2.
+Testing the unit's `position` instead (5679cf3c), the facing-away probe never fired
+and the side-on one fired once, at tick 80:
+the turning defender's position stood 138 wu off its men's centre at tick 32.
+In the catalog it fires in 19 of the 117 clips (18 of which change, the same clips as with the position test),
 each time on an enemy unit whose centre is behind the striking ranks:
 an infantry block among a cavalry squadron, whose single striking rank stands well ahead of its roomy footprint's centre
 (`schiltron`, `square`, `charge`, `cycle_charge`, and in `battle_ai_leaders`),
@@ -674,10 +690,12 @@ small parties and lone men among a block (`small_unit_melee`, `coast_to_stop`, `
 and a block that routs and rallies with its pursuer pressed in among it.
 In the router probe of the previous section without the north block,
 the rout and the rally are unchanged on all five seeds,
-and the rallied block, striking the pursuer inside it, costs it 29.4 men by tick 2400 against 24.8 on main.
-The perturbed melee-outcome delta (K 16, Benjamini-Yekutieli) against main flags 5 rows, against 13 with the unit's position tested against the footprint alone (6ed15a50):
+and the rallied block, striking the pursuer inside it, costs it 30.4 men by tick 2400 against 24.8 on main.
+The perturbed melee-outcome delta (K 16, Benjamini-Yekutieli) against main flags 7 rows,
+against 5 with the unit's position tested (5679cf3c) and 13 with the position tested against the footprint alone (6ed15a50):
 `subcommander_mutual_support`'s one-man unit inside the cavalry is cut down in 14 of 16 runs where it survived in 14,
-`battle_ai_leaders` loses 7 and 8 more men a side, and `cycle_charge_flee` one more.
+`battle_ai_leaders` loses 4 and 12 more men a side, `cannae_scale`'s team 1 loses 11 more,
+`sweep_routers`' team 1 3 more and `cycle_charge_flee`'s team 0 2 more.
 A square has no interior pass, since it already strikes with whoever is threatened;
 nor has a routing block, and a routing enemy is never inside,
 so a router overrun by its pursuer is cut down only by the pursuer's own striking ranks.
