@@ -4432,13 +4432,23 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	# below, which turns the men where they stand. Out of contact the grid turns as before: a
 	# large block closing on a target that its own wide footprint already takes in has a front
 	# to bring round.
+	# The hold lets the facing fall behind the bearing (up to ENGAGE_TURN_THRESHOLD), so the
+	# first tick it no longer applies (the rider leaves the footprint, contact drops, the
+	# target changes) must not snap that whole offset unabsorbed: _cavalry_reface_held marks
+	# a held facing, and that tick arms the turn-in-place instead, which turns the men where
+	# they stand at CONVERSIO_TURN_RATE and folds the turn into _formation_angle on settle.
 	if offset <= ENGAGE_TURN_THRESHOLD:
-		if not (_in_enemy_contact and _cavalry_inside_foot_footprint(enemy_unit)):
+		if _in_enemy_contact and _cavalry_inside_foot_footprint(enemy_unit):
+			_cavalry_reface_held = true
+			return true
+		if not _cavalry_reface_held:
 			_face_dir(dir)
-		return true
-	# Large offset: begin a turn-in-place. Men hold their positions (arrival frozen) while
-	# facing rotates; the strike is withheld until the front comes to bear. Capture the
-	# pre-turn frontage and the enemy now, before anything reshapes or the target changes.
+			return true
+	# Large offset, or the first tick after a held facing: begin a turn-in-place. Men hold
+	# their positions (arrival frozen) while facing rotates; the strike is withheld until the
+	# front comes to bear. Capture the pre-turn frontage and the enemy now, before anything
+	# reshapes or the target changes.
+	_cavalry_reface_held = false
 	_engage_turn_start_facing = facing
 	_engage_turn_target = dir.normalized()
 	_engage_turn_old_files = formation_files(soldiers)
@@ -6167,6 +6177,12 @@ var _engage_turn_enemy: Unit = null
 # (tick_engaged), takes a new order (start_order_response) or routes itself (_rout), or when
 # a stance's own facing hold takes over in _face_for_action.
 var _streaming_router_uid: int = -1
+# Whether _face_for_action's small re-face is holding the facing against a rider inside this
+# foot block (_cavalry_inside_foot_footprint), so the facing may lag the bearing: the first
+# small re-face that no longer holds turns in place rather than snapping. Cleared when
+# _face_for_action arms a turn-in-place, and, as the streaming-router latch is, when the block
+# leaves the engaged tier, takes a new order or routs. A stance's own facing hold leaves it set.
+var _cavalry_reface_held: bool = false
 # Beyond this heading offset (radians) an engage/attack re-face turns in place gradually
 # instead of snapping. Below it a small correction snaps, keeping close-quarters combat
 # responsive; only a large swing (roughly a quarter-turn or more) turns the men in place.
@@ -8556,6 +8572,7 @@ func tick_engaged(delta: float) -> void:
 		# re-entry, while a block that has left the fight lets it go.
 		if _engaged_linger <= 0.0:
 			_release_streaming_router()
+			_cavalry_reface_held = false
 
 
 ## True while this regiment is in the engaged tier (its front ranks run the full
@@ -9692,6 +9709,7 @@ func start_order_response() -> void:
 	_square_cancelled_rally_fold()
 	_order_response_timer = order_response_delay
 	_release_streaming_router()   # a fresh order is a fresh action; no fight's latch carries
+	_cavalry_reface_held = false
 	# A move/attack order reforms a quarter-turned unit back square to its heading, so it
 	# marches as a proper line rather than crabbing sideways. The bodies ease onto the
 	# reformed slots via the arrival dynamics (a future turn-and-widen move maneuver will make
@@ -9811,6 +9829,7 @@ func _rout() -> void:
 	if state == State.ROUTING:
 		return
 	_release_streaming_router()
+	_cavalry_reface_held = false
 	# The flight builds up from whatever speed the unit was already carrying AWAY from the
 	# enemy -- the component of its travel velocity along its flee heading, read before
 	# anything below clears the orders. A unit caught advancing (or in a melee its charge
@@ -11345,6 +11364,7 @@ func to_snapshot_dict() -> Dictionary:
 		"flanking_maneuver_cooldown_ticks": flanking_maneuver_cooldown_ticks,
 		"flanking_maneuver_hysteresis": flanking_maneuver_hysteresis,
 		"streaming_router_uid": _streaming_router_uid,
+		"cavalry_reface_held": _cavalry_reface_held,
 
 		# Unit references, resolved by uid after every unit in the snapshot is restored.
 		"target_enemy_uid": target_enemy.uid if is_instance_valid(target_enemy) else -1,
@@ -11610,6 +11630,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	flanking_maneuver_cooldown_ticks = int(d.get("flanking_maneuver_cooldown_ticks", flanking_maneuver_cooldown_ticks))
 	flanking_maneuver_hysteresis = int(d.get("flanking_maneuver_hysteresis", flanking_maneuver_hysteresis))
 	_streaming_router_uid = int(d.get("streaming_router_uid", -1))
+	_cavalry_reface_held = bool(d.get("cavalry_reface_held", false))
 
 	var restored: Array[Order] = []
 	for od in d.get("orders", []):

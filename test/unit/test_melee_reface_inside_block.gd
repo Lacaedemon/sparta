@@ -107,6 +107,36 @@ func test_the_grid_holds_while_an_enemy_works_round_inside_the_block() -> void:
 		"after 60 one-degree steps every slot is where it started")
 
 
+func test_the_hold_ends_in_a_turn_in_place_not_a_grid_swing() -> void:
+	# The held facing lags the bearing; the first tick the hold no longer applies (here the
+	# rider leaves the footprint on the same bearing) must not snap that whole lag
+	# unabsorbed, which would swing every slot about the anchor in one tick. It arms the
+	# turn-in-place instead: the men hold their ground while the heading turns, and on settle
+	# the turn folds into _formation_angle so the grid is back where the men stand.
+	var u := _make_block()
+	var lag := deg_to_rad(40.0)
+	var e := _make_enemy(u.position + Vector2(0.0, 30.0).rotated(lag))
+	assert_true(_inside_footprint(u, e.position), "sanity: the rider starts inside the footprint")
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	u._face_for_action(e.position, DT, e)
+	_assert_facing_down(u, "sanity: the hold lets the facing lag the bearing")
+	e.position = u.position + Vector2(0.0, 3.0 * u.soldier_block_extent()).rotated(lag)
+	assert_false(_inside_footprint(u, e.position), "sanity: the rider has left the footprint")
+	u._face_for_action(e.position, DT, e)
+	assert_ne(u._engage_turn_target, Vector2.ZERO, "the release arms a turn-in-place")
+	assert_true(u.is_maneuver_turning(), "the men hold their ground while the heading turns")
+	assert_lt(_max_slot_shift(before, u.soldier_world_slots(u.soldiers)),
+		0.5 * _unabsorbed_shift_floor(u, lag), "the release tick does not swing the grid")
+	for _i in range(60):
+		if u._engage_turn_target == Vector2.ZERO:
+			break
+		u._face_for_action(e.position, DT, e)
+	assert_eq(u._engage_turn_target, Vector2.ZERO, "the turn settles")
+	assert_almost_eq(u.facing.angle(), Vector2.DOWN.rotated(lag).angle(), FACING_TOL,
+		"the heading is on the rider")
+	assert_lt(_max_slot_shift(before, u.soldier_world_slots(u.soldiers)), SLOT_HOLD_TOL,
+		"once settled every slot is where the men stood")
+
 func test_a_bearing_past_the_threshold_still_turns_the_men_in_place() -> void:
 	# The hold covers the small snap only: a bearing 120 degrees off the facing arms the
 	# turn-in-place, as before.
