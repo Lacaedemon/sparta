@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/melee-reface-holds-grid-1792.json",
-  "caption": "A brittle cavalry troop charges a 60-man infantry block standing on Hold and pushes into its ranks. With the riders among its own ranks, the block now keeps its facing and its formation stays where its men stand. Before this fix, every small turn toward riders inside the block swung the whole formation round its centre: the men chased their places, dragged the block's centre with them, and the bearing to the riders moved on, so the formation wound about 90 degrees round under the men and several men's places ended up across the block from them.",
+  "caption": "A brittle cavalry troop charges a 60-man infantry block standing on Hold and pushes into its ranks. With the riders among its own ranks, the infantry now keeps its facing and its formation stays where its men stand. Before this fix, every small turn toward riders inside the block swung the whole formation round its centre: the men chased their places, dragged the block's centre with them, and the bearing to the riders moved on, so the formation wound about 75 degrees round under the men and several men's places ended up across the block from them. Only a foot block hosting cavalry holds this way; horsemen, and foot fighting foot, turn as before.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 15,
