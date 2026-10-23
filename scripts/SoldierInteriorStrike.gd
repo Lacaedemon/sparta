@@ -31,10 +31,10 @@ class_name SoldierInteriorStrike
 
 ## Per defender (aligned with `defenders` and `def_indices`), the indices of its living
 ## soldiers inside `attacker`'s block behind the striking set `front`. Returns an empty array
-## when nothing is inside. A call that gets past the early outs scans the block's own men (its
+## when nothing is inside. Past the first early out it scans the block's own men (its
 ## footprint's centre), each non-routing defender's men (that unit's centre), and the
-## candidates of each defender whose centre is inside the footprint; the early outs scan
-## nothing. All of it is counted in SimOps.MELEE_CHECK.
+## candidates of each defender whose centre is inside the footprint, and counts those scans in
+## SimOps.MELEE_CHECK; the first early out scans nothing.
 static func inside_candidates(attacker: Unit, front: PackedInt32Array, defenders: Array[Unit],
 		def_indices: Array[PackedInt32Array]) -> Array[PackedInt32Array]:
 	var none: Array[PackedInt32Array] = []

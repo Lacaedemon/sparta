@@ -69,7 +69,7 @@
       "uids": [
         3
       ],
-      "reason": "uid 3 (the 10-horse cavalry): the same scrambled-after-melee block as its shape_residual entry below (#1837). Once the interior strike (#1834) cuts down the one-man unit inside it and its fight ends, its men are still bunched from the melee as it moves off, and on one perturbed seed the overlap check fails. Worst, clip seed and seeds 1 to 4, judged with no exemption on dense 2-tick FULL dumps: head (d77a9a67 tree, sim = d067d21a) pass, pass, pass, pass, 4.64 failing on seed 4; main 82991008 passes all five. Measured 2026-10-23."
+      "reason": "uid 3 (the 10-horse cavalry), the same block as its shape_residual entry below (#1837): with the interior strike (#1834) the overlap check fails on one perturbed seed. That the failure falls in the same window, after the one-man unit inside it is cut down and its fight ends, is inferred: the re-judge recorded only the worst value, not its tick. Worst, clip seed and seeds 1 to 4, judged with no exemption on dense 2-tick FULL dumps: head (d067d21a) pass, pass, pass, pass, 4.64 failing on seed 4; main 82991008 passes all five. Measured 2026-10-23."
     },
     "shape_residual": {
       "uids": [
