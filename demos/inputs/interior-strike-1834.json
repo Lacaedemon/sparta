@@ -1,5 +1,5 @@
 {
-  "_comment": "Interior strike demo (#1834). A 144-man Infantry block (12 files by 12 ranks) stands with a 6-man enemy Infantry squad spawned at its centre, five or six ranks in from every edge. Only a block's near-front ranks strike (three ranks for a 1.3 m gladius at a 0.45 m rank pitch), and 'front' follows the slot grid, so before this fix the men around the squad never struck it. The front-line contact of #1827 does not change that: the two blocks share a centre, so neither lies ahead of the other and the pair keeps its centre-based range. On main 2c2955cc the squad still has all 6 men at tick 600, and the block has lost a man by tick 250 and 2 by tick 400. With the fix every man of the block within reach of an enemy inside it, behind the striking ranks, strikes him: the squad is gone at tick 218 and the block loses nobody. drill:true keeps the battle running after the squad is gone, so the clip shows the block standing afterwards. Deterministic: seed + a custom scenario, no input steps. Verified by a 10-tick and a 2-tick state dump on head (last re-measured on 305edd32: squad absent from tick 218, the block at 144 men through tick 600) and a 10-tick dump on main (re-checked on 2c2955cc: 143 men at tick 250, 142 at 400 and 600, the squad at 6); both expects below fail on main (the squad is present through tick 600, and the block has 142 men at tick 600).",
+  "_comment": "Interior strike demo (#1834). A 144-man Infantry block (12 files by 12 ranks) stands with a 6-man enemy Infantry squad spawned at its centre, five or six ranks in from every edge. Only a block's near-front ranks strike (three ranks for a 1.3 m gladius at a 0.45 m rank pitch), and 'front' follows the slot grid, so before this fix the men around the squad never struck it. The front-line contact of #1827 does not change that: the two blocks share a centre, so neither lies ahead of the other and the pair keeps its centre-based range. On main 82991008 the block's striking ranks cut 4 of the squad's men down by tick 362, but 2 are still standing at tick 600. With the fix the squad's own centre is inside the block behind its striking ranks, so every man of the block within reach of one of its men there strikes him: the squad is down to 4 at tick 74, 3 at tick 146 and gone at tick 218, and the block loses nobody, as on main. drill:true keeps the battle running after the squad is gone, so the clip shows the block standing afterwards. Deterministic: seed + a custom scenario, no input steps. Verified by a 2-tick state dump of ticks 2 to 600 on head 5679cf3c (squad at 4 from tick 74, 3 from 146, absent from tick 218, the block at 144 men throughout; no defect verdict fails) and on main 82991008 (squad at 6 to tick 288, 4 from 290, 2 from 362 to 600; the block at 144 throughout). The first expect below fails on main (the squad is present through tick 600); the second passes on both and guards the block's losses.",
   "seed": "18340",
   "drill": true,
   "scenario": [
@@ -90,13 +90,5 @@
       "field": "soldiers",
       "value": 144
     }
-  ],
-  "defect_exemptions": {
-    "shape_residual": {
-      "uids": [
-        0
-      ],
-      "reason": "After the squad dies (tick 218) the block is judged out of contact while it recovers from its slot grid winding round under the men during the fight: with the enemy at its centre, each small combat re-face snaps the heading toward a moving bearing and turns the whole grid (#1792), 110 degrees of facing travel between ticks 2 and 218. Dense 2-tick worst 18.5 against 13.5 over ticks 218 to 600; the 10-tick declared samples here read 18.4. Re-measured on 305edd32 (grid-frame footprint): every figure here unchanged from cf524f87, from a 2-tick dump of ticks 2 to 600 and a dump of the declared ticks. Main never leaves contact in this clip, so it is never judged. Remove once #1792 lands."
-    }
-  }
+  ]
 }

@@ -965,36 +965,35 @@ while the block that advanced lost about the same.
 Units therefore take longer to break in a straight-up frontal fight.
 
 An enemy can still end up inside a block, past the ranks that are fighting:
-in an offset clash, after a cavalry charge,
-or when an attack on a flank or the rear presses in.
+a lone man or a small party cut off in the press,
+two blocks that start a battle on top of each other,
+or a block overrun by a cavalry charge or a pursuit.
 He is not safe there.
 Only a block's front few ranks normally strike,
-but any man of the block with such an enemy within his reach strikes him too,
+but once an enemy unit's own centre has got inside a block, past its fighting ranks,
+any man of the block with one of its men within reach strikes him too,
 whatever rank he stands in,
 so a few men who have broken into the middle of a block are cut down quickly.
-An enemy pressing on a flank or the rear from outside is not inside the block,
-so the men he presses against do not join in.
-But a deep block attacking a flank or the rear does not stop at the edge:
-its leading ranks press in among the ranks there,
-and those men strike back.
-In a fight of 120 men against 120, both in Normal order and neither breaking,
-with one block attacking the other's rear,
-the attacker lost about 43 men in the first 19 seconds where it lost about 11 without this,
-and the block it attacked lost about 70 where it lost about 46.
-Attacking a flank instead, the attacker lost about 29 where it lost about 18,
-and the block it attacked about 56 where it lost about 20.
-So a rear attack loses most of its edge,
-and a flank attack, though it still costs the block attacked about twice what it costs the attacker,
-costs both sides more.
+An enemy unit fighting a block from outside, or from among its fighting ranks, is not inside it,
+even where its leading men are pushed in past those ranks.
+Front to front, the ranks in contact are never quite level,
+and in Loose order the two lines mix,
+but the fighting ranks deal with the men pushed in among them,
+and the ranks behind do not join in.
+An attack on a flank or the rear stops at the block's edge,
+so there too the men it presses on fight it as before.
+So none of this makes a straight frontal fight,
+or an attack on a flank or the rear, any deadlier:
+two blocks of 120 meeting front to front, in Tight, Normal or Loose order,
+or one attacking the other's flank or rear in Tight or Normal order,
+fight exactly as they did without it.
 Routing troops are left out of this.
 A routing enemy caught inside a block is struck only by its fighting ranks,
 and the men of a routing block never turn on an enemy inside it.
-Two blocks in Normal or Tight order that meet squarely front to front stay out of each other,
-so for them this does not make a straight frontal fight any deadlier.
-In Loose order the two lines mix,
-and the men who end up among the enemy's ranks are struck by them:
-in a fight of 120 men against 120, both in Loose order and neither breaking,
-about two fifths more men fell in the first 19 seconds than without this.
+But a block that breaks, flees and rallies with its pursuer pressed in among its ranks
+has that pursuer inside it, and strikes back:
+in a test where a block of 120 broke in front of another block of 120 and rallied,
+the pursuer lost about 29 men in the first 40 seconds where it lost about 25 without this.
 
 Only the men actually in bodily contact get shoved about by the fighting.
 A spear reaches several ranks deep, so rank-four and rank-five spearmen

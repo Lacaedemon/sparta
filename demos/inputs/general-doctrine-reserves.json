@@ -14,19 +14,5 @@
     {"tick": 0, "x": 650.0, "y": 570.0, "zoom": 0.42}
   ],
   "steps": [],
-  "state": [0, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900],
-  "defect_exemptions": {
-    "shape_residual": {
-      "uids": [
-        1
-      ],
-      "reason": "uid 1: a block that leaves a melee scrambled stays scrambled while it marches off (#1837). Its residual climbs in contact on both trees (t600 on the clip seed: 38.7 on main, 29.1 with the interior strike, #1834). With the interior strike its fight ends inside the clip (it leaves contact about t660) and it is judged at 24 to 32 wu while it stands and then marches; on main it is back in contact by t720 and stays there, so it is not judged. Worst, clip seed and seeds 1 to 4: head 32.5, 22.8, pass, 30.0, 30.8 against 13.5; main pass, 34.4, pass, pass, pass. Measured 2026-10-16 on dense 2-tick dumps of the clip seed and perturbed seeds 1 to 4 (SPARTA_DEMO_SEED_RUN), main 2c2955cc against the #1834 head a366c90e; re-measured 2026-10-21 on 6ccccf19, whose dumps are byte-identical."
-    },
-    "overlap": {
-      "uids": [
-        1
-      ],
-      "reason": "uid 1, same window as its shape_residual exemption (#1837): two of its scrambled men pass 2.04 wu apart against the 2.25 wu floor once, after it leaves contact on the clip seed. Seeds 1 to 4 pass on the head. On main the clip seed and seeds 2 to 4 pass, since it stays in contact; seed 1, whose fight ends inside the clip, reads 0.94. Measured 2026-10-16 on dense 2-tick dumps of the clip seed and perturbed seeds 1 to 4 (SPARTA_DEMO_SEED_RUN), main 2c2955cc against the #1834 head a366c90e; re-measured 2026-10-21 on 6ccccf19, whose dumps are byte-identical."
-    }
-  }
+  "state": [0, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900]
 }
