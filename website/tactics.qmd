@@ -940,10 +940,14 @@ This does not apply to a troop on the cycle-charge stance,
 which rides in and out again by design,
 or to riders whose centre is still outside the block.
 The block's next order squares its ranks to its new heading
-once it is clear of the fight.
-It turns them round no faster than the men can follow,
-except that a quarter-turn or a half-turn of it is re-dealt in one step,
-without sending any man across the block.
+once the block has been clear of the fight for half a second,
+turning them round no faster than the men can follow.
+Ranks turned more than a quarter-turn off are first reflected in place by a half-turn,
+and ranks a quarter-turn drill left a quarter-turn off
+are dealt to the nearest places in one step;
+neither sends any man across the block.
+Until that order comes, the block keeps its ranks as they stand,
+even if it moves off after another enemy.
 A cavalry troop with foot or other horsemen among it
 still wheels its formation to follow its enemy.
 

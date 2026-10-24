@@ -4,8 +4,7 @@ extends GutTest
 ## cavalry hosting foot, cavalry hosting cavalry, foot hosting foot, and foot with a troop on
 ## the cycle-charge stance (a caracole) inside it all re-face as before, turning the slot grid
 ## with the heading, while riders still moving in a plain charge are folded. The fold itself is
-## covered in
-## test_melee_reface_inside_block.gd.
+## covered in test_melee_reface_inside_block.gd.
 
 const DT := 1.0 / 60.0
 # 39.8 degrees off the block's DOWN heading; each test checks it lies inside the footprint.

@@ -556,7 +556,10 @@ var _grid_lag_rate: float = 0.0
 # what the angle alone cannot tell: a fold whose drills net a quarter is re-paired, and one whose
 # drills net a half-turn is reflected like an about-face, even when a leftover snap-absorb fold
 # underneath puts the angle off a quarter or a half-turn. A snap-absorb or engage fold made after
-# the drill drops the record first.
+# the drill drops the record first. The one exception is a combat re-face folded on riders inside
+# a foot block (_face_dir's absorb), which keeps it: like a snap-absorb fold underneath, it is
+# squared away with the fold, and a drilled quarter or half-turn under it is still dealt in one
+# step.
 var _drill_turn_fold: float = 0.0
 # True for exactly one thing: a re-square performed by reform_ranks() of an about-face fold --
 # _formation_angle at +-PI, or a fold whose drills net a half-turn (_drill_turn_fold) while it is
@@ -4464,8 +4467,9 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	# turning the grid with it would swing every slot about the anchor, the men chasing their
 	# slots would drag the anchor, and the bearing would move on, so the grid would wind round
 	# under the men. The heading is not held back, so nothing is stored to give back later: the
-	# fold left behind is squared by the next order once the block is clear of the fight, a
-	# bounded turn at a time (_square_fold_for_order), or by the rally. Every other small
+	# fold left behind is squared by the block's next order once it is clear of the fight
+	# (_square_fold_for_order), or by the rally; until then a chase or march carries it.
+	# Every other small
 	# re-face turns the grid with the heading, as before: holding the grid back as a march does
 	# (_reface) let foot blocks in a melee grind into each other and held a block that broke in
 	# the press, and a troop of horse keeps its own front to follow.
@@ -4523,12 +4527,12 @@ func _router_streaming_through(enemy_unit: Unit) -> bool:
 ## TODO(#1858): fold a small re-face on a foot squad inside a foot block too.
 ## Two archer blocks in melee flick their re-face tens of degrees a tick, a fault of its own.
 ## A troop of horse riding through foot, or into other horse, keeps its own front to follow.
-## A troop on the
-## cycle-charge stance does not count: it rides in, strikes and peels back out by design, so its
-## bearing does name the front it will come from again. A ROUTING enemy does not count either:
-## one streaming out through the ranks holds the facing itself (_router_streaming_through), and
-## one ridden down from behind lies ahead on a steady bearing. A far-tier block has no bodies on
-## its slots, so nothing to keep, and a scale of 0 or less turns the test off.
+## A troop on the cycle-charge stance does not count: it rides in, strikes and peels back out
+## by design, so its bearing does name the front it will come from again. A ROUTING enemy does
+## not count either: one streaming out through the ranks holds the facing itself
+## (_router_streaming_through), and one ridden down from behind lies ahead on a steady bearing.
+## A far-tier block has no bodies on its slots, so nothing to keep, and a scale of 0 or less
+## turns the test off.
 func _cavalry_inside_foot_footprint(enemy_unit: Unit) -> bool:
 	if enemy_unit == null or is_cavalry or not enemy_unit.is_cavalry \
 			or enemy_unit.order_mode == ORDER_CYCLE_CHARGE \
@@ -4593,11 +4597,12 @@ func _settle_engage_turn() -> void:
 
 
 ## Snap `facing` to `dir` instantly. Unless `absorb` is set (see below), a change up to
-## FACING_SNAP_ABSORB_THRESHOLD is not absorbed here, so soldier_world_slots' facing-relative grid turns about the anchor by the
-## whole change in one tick; a march that corrects its heading tick by tick without a formed
-## pivot goes through _reface instead, which keeps the grid where the men stand and lets it
-## follow at a bounded rate. A combat re-face (_face_for_action) and a form-up hold still snap
-## here (a form-up reshapes its frontage in the same tick).
+## FACING_SNAP_ABSORB_THRESHOLD is not absorbed here, so soldier_world_slots' facing-relative
+## grid turns about the anchor by the whole change in one tick; a march that corrects its
+## heading tick by tick without a formed pivot goes through _reface instead, which keeps the
+## grid where the men stand and lets it follow at a bounded rate. A combat re-face
+## (_face_for_action) and a form-up hold still snap here (a form-up reshapes its frontage in
+## the same tick), except a combat re-face on riders inside a foot block, which sets `absorb`.
 ## A LARGE snap (e.g. an idle unit's
 ## very first move order firing while it still faces its spawn heading, or a combat chase
 ## target appearing behind it) would instead swap every slot to the opposite side of the
@@ -4618,14 +4623,22 @@ func _settle_engage_turn() -> void:
 ## countermarched reform) instead of a reform.
 ##
 ## `absorb` folds the change into _formation_angle whatever its size, so no slot moves: a combat
-## re-face against riders inside a foot block (_face_for_action).
+## re-face against riders inside a foot block (_face_for_action). The fold it leaves stays until
+## something squares it: the block's next order (_square_fold_for_order, which waits until the
+## block is clear of the fight and then turns it out at a bounded rate) or the rally. A chase or
+## march the block makes before then carries it. It keeps the drill record (_drill_turn_fold),
+## so that re-square still deals a drilled quarter or half-turn under it in one step, as it does
+## under a leftover snap-absorb fold, rather than wheeling the grid round.
 func _face_dir(dir: Vector2, absorb: bool = false) -> void:
 	if dir.length_squared() <= 0.0001:
 		return
 	var new_facing: Vector2 = dir.normalized()
 	var turn: float = angle_difference(facing.angle(), new_facing.angle())
-	# An absorbed turn of exactly zero writes nothing, so it leaves the drill record alone.
-	if (absorb and turn != 0.0) or absf(turn) > FACING_SNAP_ABSORB_THRESHOLD:
+	if absorb:
+		if turn != 0.0:
+			_formation_angle = wrapf(_formation_angle - turn, -PI, PI)
+			_render_dirty = true
+	elif absf(turn) > FACING_SNAP_ABSORB_THRESHOLD:
 		_formation_angle = wrapf(_formation_angle - turn, -PI, PI)
 		_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
 		_render_dirty = true
