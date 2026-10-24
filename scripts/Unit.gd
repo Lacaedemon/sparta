@@ -8083,7 +8083,8 @@ func arm_couple_transit(slots_before: PackedVector2Array, timeout_sec: float,
 	var centroid := Vector2.ZERO
 	for p in slots:
 		centroid += p
-	if (centroid / float(n)).distance_to(position) <= COUPLE_TRANSIT_CENTRED_EPS:
+	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
+	if (centroid / float(n)).distance_squared_to(position) <= COUPLE_TRANSIT_CENTRED_EPS * COUPLE_TRANSIT_CENTRED_EPS:
 		return
 	var flags := PackedByteArray()
 	flags.resize(n)
