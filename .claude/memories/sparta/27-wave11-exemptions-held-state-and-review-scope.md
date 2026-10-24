@@ -3,11 +3,11 @@
 `DemoDefects.apply_exemptions` sets an exempted verdict's JSON `pass` field to `true`, although the printed label reads `EXEMPT`.
 A script that reads the JSON therefore sees an exempted failure as a pass.
 On #1834 (PR #1836) exemptions were dropped in db60d424 on that evidence and restored in 09ea6a35 once dense FULL dumps were judged with all exemptions removed (#1851).
-A later overlap reading of 4.64 on uid 3 was taken for a pass because overlap is a floor; the judge's `pass == false` filter showed it failing.
+A reviewer later took an overlap reading of 4.64 on uid 3 for a pass because overlap is a floor; the judge's `pass == false` filter showed it failing.
 
 - **Do:** judge every exemption add or drop on dense 2-tick FULL dumps with all exemptions removed, quote main's figures from the same kind of run, and read the judge's pass flag rather than inferring a pass from a threshold.
 
-- **Don't:** treat `pass: true` in the JSON of an exempted run, or your own reading of a threshold, as a pass.
+- **Don't:** treat `pass: true` in the JSON of an exempted run, or a reading of a threshold (yours or a reviewer's), as a pass.
 
 (`Lacaedemon/sparta` #1834, PR #1836, #1851, db60d424, 09ea6a35, 2026-10-22 to 2026-10-23.)
 
@@ -27,7 +27,7 @@ That turned a doc fix into a design question for Ezra, and flank and rear contac
 ## Stamp every exemption figure with the commit it was measured at
 
 On #1845 (PR #1846) a later commit (51b0de2b) changed the sim after the exemption figures were written, and the figures named no commit.
-Re-measuring on ed307f22 found them unchanged, and 270d2e33 labelled them with that commit.
+Re-measuring on ed307f22 found the support, sweep_routers and cycle_charge figures unchanged, and 270d2e33 labelled them with that commit.
 
 - **Do:** after any behaviour change, re-measure each exemption figure the PR carries and name the commit it was measured at.
 
@@ -66,7 +66,7 @@ The fold is still state, but #1852's bounded re-square gives it back gradually w
 On the #1792 rebuild (PR #1823), round 2 flagged as non-blocking (B) that a drilled quarter-turn under an absorbed fold loses its one-step re-deal.
 I asked for a change anyway: 37d6ebfd kept the drill record under an absorbed fold.
 Round 3 then raised blocking findings against that, and the responses grew into a gate with a new tunable (5842aa01) and a re-tuned default (4521cd4c), each followed by more blocking findings in rounds 4 and 5.
-c6aebce2 cut the gate back out and #1860 took the measurements; the next round found no blocking findings.
+c6aebce2 cut the gate back out and #1860 took the measurements; the next local adversarial review, on c6aebce2, found no blocking findings (its non-blocking doc notes became 0811f24d), and the CI review of 0811f24d on PR #1861 was CLEAN.
 
 - **Do:** file a B finding that needs a design decision or a new tunable as its own issue, with the measurements, and keep the PR to its scope.
 
