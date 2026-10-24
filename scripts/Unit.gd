@@ -546,21 +546,21 @@ var _contact_clear_time: float = RESQUARE_CONTACT_CLEAR_TIME
 # unit's bodies the way it feeds a router's _flight_turn_rate. Zero while no lag is left.
 var _grid_lag_rate: float = 0.0
 # The net turn of the in-place drill leaves -- QUARTER_TURN (a Q/E drill, or a lateral pivot's
-# legs) and ABOUT_FACE (a V drill, or a rear move's turn) -- that have settled into
-# _formation_angle since anything else last moved it: _settle_order_turn adds each such leaf's
-# turn (every turn that settles there is one of these two leaf types), and every other write to
-# the fold -- a snap-absorb, an engage re-face, a reform, a quarter-fold file double, the
-# rally's squaring of the fold -- clears it, and so does a rout, which keeps the fold itself (a
-# snapshot restore restores it with the fold). A new write to _formation_angle must do one or the other. So it only ever
-# describes drill turns made on top of whatever fold was already there. reform_ranks reads it for
-# what the angle alone cannot tell: a fold whose drills net a quarter is re-paired, and one whose
-# drills net a half-turn is reflected like an about-face, even when a leftover snap-absorb fold
-# underneath puts the angle off a quarter or a half-turn. A snap-absorb or engage fold made after
-# the drill drops the record first. The one exception is a combat re-face folded on riders inside
-# a foot block (_face_dir's absorb): it keeps the record unless it brings the fold within
-# melee_reface_drill_record_square_tol of square. A drilled quarter under such a fold is still
-# re-paired in one step, which was measured to send men a shorter way than wheeling the grid
-# round at every fold but one that near square.
+# legs) and ABOUT_FACE (a V drill, or a rear move's turn) -- whose turn the slot grid still
+# carries under the men: _settle_order_turn adds each such leaf's turn (every turn that settles
+# there is one of these two leaf types). Every other write to _formation_angle clears it -- a
+# snap-absorb, an engage re-face, a reform, a quarter-fold file double, the rally's squaring of
+# the fold -- and so does a rout, which keeps the fold itself (a snapshot restore restores it
+# with the fold), with one exception: a combat re-face absorbed on riders inside a foot block
+# (_face_dir's absorb) keeps a quarter record, unless it brings the fold within
+# melee_reface_drill_record_square_tol of square. That write turns the heading but not the
+# grid, so the drilled quarter is still under the men. A new write to _formation_angle must
+# add a drill turn, clear the record, or be that absorb. So the record describes drill turns
+# made on top of whatever fold was already there, plus at most absorbed re-faces on top of a
+# drilled quarter. reform_ranks reads it for what the angle alone cannot tell: a fold whose
+# drills net a quarter is re-paired, and one whose drills net a half-turn is reflected like an
+# about-face, even when a leftover snap-absorb fold underneath (or, on a quarter, absorbed
+# re-faces on top) puts the angle off a quarter or a half-turn.
 var _drill_turn_fold: float = 0.0
 # True for exactly one thing: a re-square performed by reform_ranks() of an about-face fold --
 # _formation_angle at +-PI, or a fold whose drills net a half-turn (_drill_turn_fold) while it is
@@ -1302,19 +1302,22 @@ var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
 # defaulting to MELEE_REFACE_FOLD_FOOTPRINT_SCALE, with rout_time's set-before-_ready contract.
 const MELEE_REFACE_FOLD_FOOTPRINT_SCALE: float = 1.0
 var melee_reface_fold_footprint_scale: float = MELEE_REFACE_FOLD_FOOTPRINT_SCALE
-# How near square (rad) an absorbed combat re-face (_face_dir's absorb) may bring a fold that
-# a quarter-turn or about-face drill made before the drill record (_drill_turn_fold) is dropped.
-# While the record stands, the next order's re-square deals a drilled quarter in one step by
-# lateral order (_pair_after_quarter_fold), which beats wheeling the grid round at any fold
-# but one this near square, where that re-deal reshuffles a block standing almost square.
-# Measured on a 60-man, 8-file block on both reform layouts (crossings are men whose new slot
-# lies across a centreline from them; walks are mean body-to-slot distance after squaring):
-# kept record against dropped, a fold 30 degrees off square crossed 0 to 2 against 8 and
-# walked 12 to 15 wu against 27; 20 degrees off, 0 crossings either way, 15 wu against 18
-# (row major); 10 degrees off, 8 to 10 wu against 9; 5 or 1 degree off, up to 12 wu against
-# 1 to 5. A caller-configurable parameter defaulting to MELEE_REFACE_DRILL_RECORD_SQUARE_TOL,
-# with rout_time's set-before-_ready contract.
-const MELEE_REFACE_DRILL_RECORD_SQUARE_TOL: float = PI / 8.0
+# How near square (rad) absorbed combat re-faces (_face_dir's absorb) may bring a fold that a
+# quarter-turn drill made before the quarter drill record (_drill_turn_fold) is dropped. While
+# the record stands, the next order's re-square deals the men onto the squared grid in one
+# step by lateral file order (_pair_after_quarter_fold); once it is dropped, the fold is turned
+# out at a bounded rate like any other. Measured on a 60-man, 8-file block with every man on
+# his drilled slot, as the mean walk from each man to his slot once squared, kept record
+# against dropped, at folds this many degrees off square:
+#   row major:  25: 13.2 / 22.9, 20: 15.0 / 18.4, 15: 13.2 / 13.8, 12: 13.1 / 11.1,
+#               10: 10.2 / 9.2, 8: 11.8 / 7.4, 5: 11.8 / 4.6, 1: 12.1 / 0.9
+#   file major: 25: 12.9 / 22.9, 20: 10.8 / 18.4, 15: 10.6 / 13.8, 12: 8.7 / 11.1,
+#               10: 8.0 / 9.2, 8 and below: equal (7.4 / 7.4 down to 0.9 / 0.9)
+# At 15 degrees and more keeping is shorter on both layouts; at 8 and less dropping is shorter
+# on row major and the same on file major; 10 and 12 split by layout. The default, 9 degrees,
+# sits in that crossover. A caller-configurable parameter defaulting to
+# MELEE_REFACE_DRILL_RECORD_SQUARE_TOL, with rout_time's set-before-_ready contract.
+const MELEE_REFACE_DRILL_RECORD_SQUARE_TOL: float = PI / 20.0
 var melee_reface_drill_record_square_tol: float = MELEE_REFACE_DRILL_RECORD_SQUARE_TOL
 # How far outside the block's footprint, on its flanks and rear, an enemy soldier, and the
 # centre of his unit, may stand and still count as inside it for the interior strike
@@ -4644,11 +4647,11 @@ func _settle_engage_turn() -> void:
 ## re-face against riders inside a foot block (_face_for_action). The fold it leaves stays until
 ## something squares it: the block's next order (_square_fold_for_order, which waits until the
 ## block is clear of the fight and then turns it out at a bounded rate) or the rally. A chase or
-## march the block makes before then carries it. It keeps the drill record (_drill_turn_fold)
-## unless it brings the fold within melee_reface_drill_record_square_tol of square, so that
-## re-square still deals a drilled quarter under it in one step by lateral order (and reflects a
-## drilled about-face) rather than wheeling the grid round. A fold that near square is squared
-## by the bounded turn instead, as any other fold is.
+## march the block makes before then carries it. It keeps a quarter drill record
+## (_drill_turn_fold) unless it brings the fold within melee_reface_drill_record_square_tol of
+## square, so that re-square still deals the men in one step by lateral file order rather than
+## wheeling the grid round; any other record it clears, as a snap-absorb does. A fold that near
+## square is turned out at the bounded rate instead, as any other fold is.
 func _face_dir(dir: Vector2, absorb: bool = false) -> void:
 	if dir.length_squared() <= 0.0001:
 		return
@@ -4657,8 +4660,9 @@ func _face_dir(dir: Vector2, absorb: bool = false) -> void:
 	if absorb:
 		if turn != 0.0:
 			_formation_angle = wrapf(_formation_angle - turn, -PI, PI)
-			if absf(_formation_angle) < melee_reface_drill_record_square_tol:
-				_drill_turn_fold = 0.0   # near square: no drilled turn is left to deal
+			if absf(absf(_drill_turn_fold) - PI * 0.5) >= 0.01 \
+					or absf(_formation_angle) < melee_reface_drill_record_square_tol:
+				_drill_turn_fold = 0.0   # only a drilled quarter, not yet near square, is kept
 			_render_dirty = true
 	elif absf(turn) > FACING_SNAP_ABSORB_THRESHOLD:
 		_formation_angle = wrapf(_formation_angle - turn, -PI, PI)
@@ -7760,12 +7764,12 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 ## engage re-face is not, unless it measures a quarter: those can be any angle, and re-dealing them
 ## by lateral order reshuffled blocks that were not crossing (68, 112 and 156 degree folds on two
 ## catalog clips), so that write drops the drill record (see _drill_turn_fold). Those folds had
-## not turned the grid under the men by a quarter, as a drill does. A combat re-face absorbed on
-## riders inside a foot block (_face_dir's absorb) is the exception: it lands on top of a drill
-## whose quarter is still under the men, so it keeps the record unless it brings the fold within
-## melee_reface_drill_record_square_tol of square. Nor is an about-face
-## fold, whatever turns made it: that one is reflected, not paired. A squared block keeps its own
-## square assignment.
+## no drilled quarter under them. A combat re-face absorbed on riders inside a foot block
+## (_face_dir's absorb) is the exception: it turns the heading but not the grid, so a drilled
+## quarter under it is still under the men, and it keeps a quarter record unless it brings the
+## fold within melee_reface_drill_record_square_tol of square (that tolerance's own doc has the
+## measured walks for both paths). Nor is an about-face fold, whatever turns made it: that one
+## is reflected, not paired. A squared block keeps its own square assignment.
 ## A row-major unit with no bodies to read (far tier, not yet seeded) keeps its pairing; a
 ## file-major one gets _ensure_file_assignment's own no-body fill. A FILE_GROUP
 ## unit's files are re-dealt too, not carried by subunit: after a quarter-turn its old file
