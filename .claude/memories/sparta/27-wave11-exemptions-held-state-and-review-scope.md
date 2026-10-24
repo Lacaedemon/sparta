@@ -3,7 +3,8 @@
 `DemoDefects.apply_exemptions` sets an exempted verdict's JSON `pass` field to `true`, although the printed label reads `EXEMPT`.
 A script that reads the JSON therefore sees an exempted failure as a pass.
 On #1834 (PR #1836) exemptions were dropped in db60d424 on that evidence and restored in 09ea6a35 once dense FULL dumps were judged with all exemptions removed (#1851).
-A reviewer later took an overlap reading of 4.64 on uid 3 for a pass because overlap is a floor; the judge's `pass == false` filter showed it failing.
+A reviewer later took an overlap reading of 4.64 on uid 3 for a pass because overlap is a floor;
+the judge's `pass == false` filter showed it failing.
 
 - **Do:** judge every exemption add or drop on dense 2-tick FULL dumps with all exemptions removed, quote main's figures from the same kind of run, and read the judge's pass flag rather than inferring a pass from a threshold.
 
@@ -39,7 +40,8 @@ Re-measuring on ed307f22 found the support, sweep_routers and cycle_charge figur
 
 On #1852 (PR #1853), the round-1 fix commit f8489a19 carried a new overlap exemption for knockback_focus uid 8: its grid crabbed off its heading, closing at about 3 degrees a second (71.6 degrees off at tick 660 on the clip seed), and overlap failed on every seed.
 Round 2 treated it as a regression.
-b236be47 made a heading pivot wait for the grid while the re-square closes, and uid 8 then passed both overlap (5.29 to 5.44 against a 5.0 floor) and shape_residual (24.9 against a limit of 30; main 86.3), so e0377cdb removed both of its exemptions.
+b236be47 made a heading pivot wait for the grid while the re-square closes, and uid 8 then passed both overlap (5.29 to 5.44 against a 5.0 floor) and shape_residual (24.9 against a limit of 30;
+main 86.3), so e0377cdb removed both of its exemptions.
 
 - **Do:** fix a defect that appears on every seed and comes from the PR's own mechanism, and keep exemptions for perturbed-seed chaos or a tracked pre-existing defect.
 
@@ -50,7 +52,8 @@ b236be47 made a heading pivot wait for the grid while the re-square closes, and 
 ## Test the exits from a held state, and look for the shared root when review keeps finding new ones
 
 The first #1792 designs (up to 2b20b903) held a melee re-face back from the grid.
-Round 1 found the held offset released in one tick when the hold ended; the fix (96edcdc6) latched it and released it with a turn in place.
+Round 1 found the held offset released in one tick when the hold ended;
+the fix (96edcdc6) latched it and released it with a turn in place.
 Round 2 then found two more exits: a chase on contact loss, and a later order re-squaring the fold the release left.
 The design was parked, #1852 was fixed first, and #1792 was rebuilt to fold each small re-face into the formation (PR #1861).
 The fold is still state, but #1852's bounded re-square gives it back gradually when the next order comes, instead of each exit needing its own release.
@@ -66,7 +69,8 @@ The fold is still state, but #1852's bounded re-square gives it back gradually w
 On the #1792 rebuild (PR #1823), round 2 flagged as non-blocking (B) that a drilled quarter-turn under an absorbed fold loses its one-step re-deal.
 I asked for a change anyway: 37d6ebfd kept the drill record under an absorbed fold.
 Round 3 then raised blocking findings against that, and the responses grew into a gate with a new tunable (5842aa01) and a re-tuned default (4521cd4c), each followed by more blocking findings in rounds 4 and 5.
-c6aebce2 cut the gate back out and #1860 took the measurements; the next local adversarial review, on c6aebce2, found no blocking findings (its non-blocking doc notes became 0811f24d), and the CI review of 0811f24d on PR #1861 was CLEAN.
+c6aebce2 cut the gate back out and #1860 took the measurements;
+the next local adversarial review, on c6aebce2, found no blocking findings (its non-blocking doc notes became 0811f24d), and the CI review of 0811f24d on PR #1861 was CLEAN.
 
 - **Do:** file a B finding that needs a design decision or a new tunable as its own issue, with the measurements, and keep the PR to its scope.
 
