@@ -549,7 +549,8 @@ var _grid_lag_rate: float = 0.0
 # legs) and ABOUT_FACE (a V drill, or a rear move's turn) -- that have settled into
 # _formation_angle since anything else last moved it: _settle_order_turn adds each such leaf's
 # turn (every turn that settles there is one of these two leaf types), and every other write to
-# the fold -- a snap-absorb, an engage re-face, a reform, a quarter-fold file double, the
+# the fold -- a snap-absorb, a combat re-face absorbed on riders inside a foot block
+# (_face_dir's absorb), an engage re-face, a reform, a quarter-fold file double, the
 # rally's squaring of the fold -- clears it, and so does a rout, which keeps the fold itself (a
 # snapshot restore restores it with the fold). A new write to _formation_angle must do one or the other. So it only ever
 # describes drill turns made on top of whatever fold was already there. reform_ranks reads it for
@@ -1290,6 +1291,14 @@ var router_front_arc: float = ROUTER_FRONT_ARC
 # ROUTER_CONTACT_REENTRY_FRAC, with rout_time's set-before-_ready contract.
 const ROUTER_CONTACT_REENTRY_FRAC: float = 0.9
 var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
+# How much of a foot block's own slot footprint (soldier_block_half_extents, per axis) its
+# cavalry target's centre must lie inside, with the block in enemy contact, for a small combat
+# re-face to be folded into _formation_angle rather than turn the slot grid
+# (_cavalry_inside_foot_footprint): 1.0, the footprint itself. 0 or less turns the fold off, so
+# every small re-face turns the grid with the heading. A caller-configurable parameter
+# defaulting to MELEE_REFACE_FOLD_FOOTPRINT_SCALE, with rout_time's set-before-_ready contract.
+const MELEE_REFACE_FOLD_FOOTPRINT_SCALE: float = 1.0
+var melee_reface_fold_footprint_scale: float = MELEE_REFACE_FOLD_FOOTPRINT_SCALE
 # How far outside the block's footprint, on its flanks and rear, an enemy soldier, and the
 # centre of his unit, may stand and still count as inside it for the interior strike
 # (SoldierInteriorStrike): only the near-front ranks strike, so an enemy that has got in
@@ -4449,12 +4458,21 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		if _advance_turn(_engage_turn_target, delta):
 			_settle_engage_turn()
 		return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
-	# Small offset: snap and fight now, as before.
-	# TODO(#1792): the snap still swings the slot grid with the heading; holding the grid back
-	# as a march does (_reface) let blocks in a melee grind into each other and held a block
-	# that broke in the press, so how a combat re-face should turn the grid is left open.
+	# Small offset: snap and fight now. A foot block in enemy contact whose cavalry target's
+	# centre has ridden inside its own footprint folds the snap into _formation_angle instead
+	# (_face_dir's absorb), so the heading follows the riders while the slot grid stays where
+	# the men stand. The bearing from the anchor to a point inside the block names no front:
+	# turning the grid with it would swing every slot about the anchor, the men chasing their
+	# slots would drag the anchor, and the bearing would move on, so the grid would wind round
+	# under the men. The heading is not held back, so nothing is stored to give back later: the
+	# fold left behind is squared by the block's next order once it is clear of the fight
+	# (_square_fold_for_order), or by the rally; until then a chase or march carries it.
+	# TODO(#1859): square an absorbed fold once the block is clear, without an order.
+	# Every other small re-face turns the grid with the heading, as before: holding the grid
+	# back as a march does (_reface) let foot blocks in a melee grind into each other and held
+	# a block that broke in the press, and a troop of horse keeps its own front to follow.
 	if offset <= ENGAGE_TURN_THRESHOLD:
-		_face_dir(dir)
+		_face_dir(dir, _in_enemy_contact and _cavalry_inside_foot_footprint(enemy_unit))
 		return true
 	# Large offset: begin a turn-in-place. Men hold their positions (arrival frozen) while
 	# facing rotates; the strike is withheld until the front comes to bear. Capture the
@@ -4495,6 +4513,36 @@ func _router_streaming_through(enemy_unit: Unit) -> bool:
 			return false
 		_streaming_router_uid = enemy_unit.uid
 	return true
+
+
+## Whether this is a foot block and `enemy_unit` a cavalry unit whose centre lies inside the
+## block's own slot footprint, scaled by melee_reface_fold_footprint_scale:
+## soldier_block_half_extents (the slot grid's half-width and half-depth, padded by a mark
+## radius) in the grid's own frame (soldier_block_world_angle). The box is centred on the
+## anchor and spans the largest |x| and |y| of any slot about it, so for a block laid out with
+## a frontage_anchor_offset, whose slots reach less far on one side of the anchor, the box
+## reaches slightly past the block on that side, plus the mark padding. Only riders inside
+## a foot block count. Foot blocks fighting each other mostly stop at each other's front and
+## outer ranks (MeleeFrontLine), but a small foot squad can still stand at a block's centre
+## and wind its grid round the same way; that case is left out here.
+## TODO(#1858): fold a small re-face on a foot squad inside a foot block too.
+## Two archer blocks in melee flick their re-face tens of degrees a tick, a fault of its own.
+## A troop of horse riding through foot, or into other horse, keeps its own front to follow.
+## A troop on the cycle-charge stance does not count: it rides in, strikes and peels back out
+## by design, so its bearing does name the front it will come from again. A ROUTING enemy does
+## not count either: one streaming out through the ranks holds the facing itself
+## (_router_streaming_through), and one ridden down from behind lies ahead on a steady bearing.
+## A far-tier block has no bodies on its slots, so nothing to keep, and a scale of 0 or less
+## turns the test off.
+func _cavalry_inside_foot_footprint(enemy_unit: Unit) -> bool:
+	if enemy_unit == null or is_cavalry or not enemy_unit.is_cavalry \
+			or enemy_unit.order_mode == ORDER_CYCLE_CHARGE \
+			or enemy_unit.state == State.ROUTING or tier == FormationTier.FAR \
+			or melee_reface_fold_footprint_scale <= 0.0:
+		return false
+	var half: Vector2 = soldier_block_half_extents() * melee_reface_fold_footprint_scale
+	var local: Vector2 = (enemy_unit.position - position).rotated(-soldier_block_world_angle())
+	return absf(local.x) <= half.x and absf(local.y) <= half.y
 
 
 ## Let go of the streaming-router latch.
@@ -4549,12 +4597,13 @@ func _settle_engage_turn() -> void:
 	_engage_turn_enemy = null
 
 
-## Snap `facing` to `dir` instantly. A change up to FACING_SNAP_ABSORB_THRESHOLD is not
-## absorbed here, so soldier_world_slots' facing-relative grid turns about the anchor by the
-## whole change in one tick; a march that corrects its heading tick by tick without a formed
-## pivot goes through _reface instead, which keeps the grid where the men stand and lets it
-## follow at a bounded rate. A combat re-face (_face_for_action) and a form-up hold still snap
-## here (a form-up reshapes its frontage in the same tick).
+## Snap `facing` to `dir` instantly. Unless `absorb` is set (see below), a change up to
+## FACING_SNAP_ABSORB_THRESHOLD is not absorbed here, so soldier_world_slots' facing-relative
+## grid turns about the anchor by the whole change in one tick; a march that corrects its
+## heading tick by tick without a formed pivot goes through _reface instead, which keeps the
+## grid where the men stand and lets it follow at a bounded rate. A combat re-face
+## (_face_for_action) and a form-up hold still snap here (a form-up reshapes its frontage in
+## the same tick), except a combat re-face on riders inside a foot block, which sets `absorb`.
 ## A LARGE snap (e.g. an idle unit's
 ## very first move order firing while it still faces its spawn heading, or a combat chase
 ## target appearing behind it) would instead swap every slot to the opposite side of the
@@ -4573,12 +4622,26 @@ func _settle_engage_turn() -> void:
 ## exact point-reflection bug this file's countermarch fix exists to eliminate -- just via a
 ## large facing snap (e.g. a chase target appearing behind a unit still marching off a
 ## countermarched reform) instead of a reform.
-func _face_dir(dir: Vector2) -> void:
+##
+## `absorb` folds the change into _formation_angle whatever its size, so no slot moves: a combat
+## re-face against riders inside a foot block (_face_for_action). The fold it leaves stays until
+## something squares it: the block's next order (_square_fold_for_order, which waits until the
+## block is clear of the fight and then turns it out at a bounded rate) or the rally. A chase or
+## march the block makes before then carries it. Like a snap-absorb, it clears the drill record
+## (_drill_turn_fold).
+## TODO(#1860): a drilled quarter under an absorbed fold loses its one-step re-deal.
+func _face_dir(dir: Vector2, absorb: bool = false) -> void:
 	if dir.length_squared() <= 0.0001:
 		return
 	var new_facing: Vector2 = dir.normalized()
-	if absf(angle_difference(facing.angle(), new_facing.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
-		_formation_angle = wrapf(_formation_angle - angle_difference(facing.angle(), new_facing.angle()), -PI, PI)
+	var turn: float = angle_difference(facing.angle(), new_facing.angle())
+	if absorb:
+		if turn != 0.0:
+			_formation_angle = wrapf(_formation_angle - turn, -PI, PI)
+			_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
+			_render_dirty = true
+	elif absf(turn) > FACING_SNAP_ABSORB_THRESHOLD:
+		_formation_angle = wrapf(_formation_angle - turn, -PI, PI)
 		_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
 		_render_dirty = true
 	facing = new_facing
@@ -7673,9 +7736,10 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 ## each man near his cell. reform_ranks gates the call on a quarter-turn's origin as well as its
 ## angle: it re-pairs a fold within 0.01 rad of a quarter, or one whose drills net a
 ## quarter (_drill_turn_fold), so a drill composed onto a leftover snap-absorb fold (a 25 degree
-## residue plus 90 lands at 115) is still re-paired. A fold whose last change was a snap-absorb or
-## engage re-face is not, unless it measures a quarter: those can be any angle, and re-dealing them
-## by lateral order reshuffled blocks that were not crossing (68, 112 and 156 degree folds on two
+## residue plus 90 lands at 115) is still re-paired. A fold whose last change was a snap-absorb,
+## an absorbed combat re-face (_face_dir's absorb) or an engage re-face is not, unless it
+## measures a quarter: those can be any angle, and re-dealing them by lateral order reshuffled
+## blocks that were not crossing (68, 112 and 156 degree folds on two
 ## catalog clips), so that write drops the drill record (see _drill_turn_fold). Nor is an about-face
 ## fold, whatever turns made it: that one is reflected, not paired. A squared block keeps its own
 ## square assignment.
@@ -11569,6 +11633,7 @@ func to_snapshot_dict() -> Dictionary:
 		"rearguard_delay_sec": rearguard_delay_sec,
 		"rout_time": rout_time, "router_front_arc": router_front_arc,
 		"router_contact_reentry_frac": router_contact_reentry_frac,
+		"melee_reface_fold_footprint_scale": melee_reface_fold_footprint_scale,
 		"interior_strike_margin": interior_strike_margin,
 		"melee_front_line_scale": melee_front_line_scale,
 		"melee_front_line_min_cos": melee_front_line_min_cos,
@@ -11834,6 +11899,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rout_time = float(d.get("rout_time", rout_time))
 	router_front_arc = float(d.get("router_front_arc", router_front_arc))
 	router_contact_reentry_frac = float(d.get("router_contact_reentry_frac", router_contact_reentry_frac))
+	melee_reface_fold_footprint_scale = float(d.get("melee_reface_fold_footprint_scale",
+			melee_reface_fold_footprint_scale))
 	interior_strike_margin = float(d.get("interior_strike_margin", interior_strike_margin))
 	melee_front_line_scale = float(d.get("melee_front_line_scale", melee_front_line_scale))
 	melee_front_line_min_cos = float(d.get("melee_front_line_min_cos", melee_front_line_min_cos))

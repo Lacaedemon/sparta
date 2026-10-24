@@ -930,6 +930,42 @@ it fights the defender's rear rank from outside the block,
 and neither block's men end up inside the other.
 :::
 
+When a cavalry troop rides so far into a foot block
+that the troop's centre is inside the block's ranks,
+the block keeps its ranks where its men stand while it fights the troop.
+Its men still turn to face the riders,
+but the formation does not wheel round its centre after them,
+so no man is sent across the block to a new place in the middle of the fight.
+This does not apply to a troop on the cycle-charge stance,
+which rides in and out again by design,
+or to riders whose centre is still outside the block.
+The block's next order squares its ranks to its new heading
+once the block has been clear of the fight for half a second.
+Ranks turned more than a quarter-turn off are first reflected in place by a half-turn,
+and the rest of the turn is made no faster than the men can follow,
+except that ranks left exactly a quarter-turn off are dealt out in one step.
+Until that order comes, or the block routs and rallies,
+it keeps its ranks as they stand,
+even if it moves off after another enemy.
+A cavalry troop with foot or other horsemen among it
+still wheels its formation to follow its enemy.
+
+::: {#fig-cavalry-inside-foot .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/cavalry_inside_foot.jpg">
+  <source src="media/cavalry_inside_foot.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A brittle cavalry troop charges an infantry block standing on Hold and pushes into its ranks.
+The infantry turns to face the riders,
+but its ranks stay where its men stand rather than wheeling round after them.
+:::
+
 Stopping at the edge makes a flank or rear attack cheaper for the attacker,
 since the defender's men facing away from it cannot strike back.
 In a test of 120 men against 120 in tight order, over the first 19 seconds,

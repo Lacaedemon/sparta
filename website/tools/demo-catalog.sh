@@ -129,6 +129,7 @@ DEMOS=(
   "ai_honors_fog|demos/inputs/ai-honors-fog-of-war.json|30|280|640|input"
   "side_step_hill_footprint|demos/inputs/side-step-hill-footprint-1667.json|30|300|720|input"
   "rear_attack_edge|demos/inputs/rear-attack-edge-1845.json|30|300|640|input"
+  "cavalry_inside_foot|demos/inputs/melee-reface-keeps-grid-1792.json|30|300|720|input"
 )
 
 # The SPARTA_DUMP_CLIPS narrowing helpers (demo_catalog_selected,

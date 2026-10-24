@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/melee-reface-keeps-grid-1792.json",
+  "caption": "A brittle cavalry troop charges a 60-man infantry block standing on Hold and pushes into its ranks. With the riders among its own ranks, the infantry still turns to face them, but its formation now stays where its men stand. Before this fix, every small turn toward riders inside the block swung the whole formation round its centre: the men chased their places, dragged the block's centre with them, and the bearing to the riders moved on, so the formation wound about 75 degrees round under the men and several men's places ended up across the block from them. The block's next order squares its ranks to its new heading once it is out of the fight, no faster than the men can follow. Only a foot block whose cavalry enemy's centre has ridden inside its ranks does this; horsemen, and foot fighting foot, turn as before.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}

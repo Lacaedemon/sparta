@@ -94,7 +94,7 @@
   "defect_exemptions": {
     "shape_residual": {
       "uids": [0],
-      "reason": "After the squad dies (tick 146) the block leaves contact and is judged while it recovers from its slot grid having wound round under the men during the fight: with the enemy at its centre, each small combat re-face snaps the heading toward a moving bearing and turns the whole grid (#1792); its facing goes from (0.10, 0.99) at tick 2 to (0.76, 0.65) at tick 146. Worst 41.8 against 13.5, both on a 2-tick dump of ticks 2 to 600 and on a dump of the declared ticks, with the soldier bodies dumped (SPARTA_DEMO_STATE_FULL), on the #1834 head d067d21a; 48.4 on the 2-tick dump on 5679cf3c, where the squad dies at tick 218. Main 82991008 never leaves contact in this clip, so it is never judged. Measured 2026-10-23. Remove once #1792 lands."
+      "reason": "After the squad dies (tick 146) the block leaves contact and is judged while it recovers from its slot grid having wound round under the men during the fight: with the enemy at its centre, each small combat re-face snaps the heading toward a moving bearing and turns the whole grid (#1858); its facing goes from (0.10, 0.99) at tick 2 to (0.76, 0.65) at tick 146. Worst 41.8 against 13.5, both on a 2-tick dump of ticks 2 to 600 and on a dump of the declared ticks, with the soldier bodies dumped (SPARTA_DEMO_STATE_FULL), on the #1834 head d067d21a; 48.4 on the 2-tick dump on 5679cf3c, where the squad dies at tick 218. Main 82991008 never leaves contact in this clip, so it is never judged. Measured 2026-10-23. The enemy here is foot, so #1792's fold, which covers only cavalry inside a foot block, leaves this clip unchanged; the foot-inside-foot case is #1858. Remove once #1858 lands."
     }
   }
 }
