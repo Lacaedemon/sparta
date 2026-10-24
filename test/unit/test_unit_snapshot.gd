@@ -451,7 +451,7 @@ func test_spawn_role_tunables_and_late_state_round_trip() -> void:
 		"router_contact_reentry_frac": 0.75, "_router_left_contact": true, "_router_anchor_contact": true,
 		"melee_front_line_scale": 0.25, "melee_front_line_min_cos": 0.8,
 		"melee_side_contact_max_cos": 0.6, "interior_strike_margin": 7.5,
-		"melee_reface_fold_footprint_scale": 0.5, "melee_reface_drill_record_square_tol": 0.25,
+		"melee_reface_fold_footprint_scale": 0.5,
 		"flanking_maneuver_wrap_files": 6, "flanking_maneuver_cooldown_ticks": 90,
 		"flanking_maneuver_hysteresis": 3,
 	}
@@ -489,8 +489,7 @@ func test_newly_captured_fields_default_for_older_snapshots() -> void:
 			"rally_morale_threshold", "rally_resume_radius_factor", "rally_resume_clear_ticks",
 			"router_contact_reentry_frac", "melee_front_line_scale", "melee_front_line_min_cos",
 			"melee_side_contact_max_cos", "interior_strike_margin",
-			"melee_reface_fold_footprint_scale", "melee_reface_drill_record_square_tol",
-			"flanking_maneuver_wrap_files",
+			"melee_reface_fold_footprint_scale", "flanking_maneuver_wrap_files",
 			"flanking_maneuver_cooldown_ticks", "flanking_maneuver_hysteresis"]:
 		fields[tunable] = tunable
 	for key in fields:
