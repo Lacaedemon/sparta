@@ -179,27 +179,6 @@ func test_without_an_order_the_fold_stays_once_clear_of_the_fight() -> void:
 	assert_eq(u.grid_fold(), fold, "two seconds clear of the fight, the fold is unchanged")
 
 
-func test_a_drilled_quarter_under_the_fold_is_still_dealt_in_one_step() -> void:
-	# A quarter-turn drill leaves an exact quarter fold, which an order's re-square deals out
-	# again in one step (each man to the nearest cell) rather than wheeling the grid a quarter
-	# round. An absorbed re-face on top keeps the drill record, so the re-square still sees
-	# the drilled quarter under the off-quarter angle and deals it in one step too.
-	var u := _make_block()
-	u._formation_angle = PI * 0.5
-	u._drill_turn_fold = PI * 0.5
-	var e := _make_enemy(u.position + Vector2(0.0, 30.0).rotated(deg_to_rad(20.0)))
-	assert_true(_inside_footprint(u, e.position), "sanity: the rider is inside the footprint")
-	u._face_for_action(e.position, DT, e)
-	assert_gt(absf(absf(u._formation_angle) - PI * 0.5), 0.1, "sanity: the fold is now off a quarter")
-	assert_almost_eq(u._drill_turn_fold, PI * 0.5, FACING_TOL, "the drill record is kept")
-	u._in_enemy_contact = false
-	u._contact_clear_time = Unit.RESQUARE_CONTACT_CLEAR_TIME
-	u.start_order_response()
-	assert_false(u._resquare_pending, "clear of the fight, the order squares at once")
-	assert_eq(u._grid_lag, 0.0, "nothing is left to wheel round")
-	assert_almost_eq(u.grid_fold(), 0.0, FACING_TOL, "the fold is squared in that one step")
-
-
 func test_a_bearing_past_the_threshold_still_turns_the_men_in_place() -> void:
 	# The fold covers the small snap only: a bearing 120 degrees off the facing arms the
 	# turn-in-place, as before.

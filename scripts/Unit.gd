@@ -557,9 +557,10 @@ var _grid_lag_rate: float = 0.0
 # drills net a half-turn is reflected like an about-face, even when a leftover snap-absorb fold
 # underneath puts the angle off a quarter or a half-turn. A snap-absorb or engage fold made after
 # the drill drops the record first. The one exception is a combat re-face folded on riders inside
-# a foot block (_face_dir's absorb), which keeps it: like a snap-absorb fold underneath, it is
-# squared away with the fold, and a drilled quarter or half-turn under it is still dealt in one
-# step.
+# a foot block (_face_dir's absorb): it keeps the record unless it brings the fold within
+# melee_reface_drill_record_square_tol of square. A drilled quarter under such a fold is still
+# re-paired in one step, which was measured to send men a shorter way than wheeling the grid
+# round at every fold but one that near square.
 var _drill_turn_fold: float = 0.0
 # True for exactly one thing: a re-square performed by reform_ranks() of an about-face fold --
 # _formation_angle at +-PI, or a fold whose drills net a half-turn (_drill_turn_fold) while it is
@@ -1301,6 +1302,20 @@ var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
 # defaulting to MELEE_REFACE_FOLD_FOOTPRINT_SCALE, with rout_time's set-before-_ready contract.
 const MELEE_REFACE_FOLD_FOOTPRINT_SCALE: float = 1.0
 var melee_reface_fold_footprint_scale: float = MELEE_REFACE_FOLD_FOOTPRINT_SCALE
+# How near square (rad) an absorbed combat re-face (_face_dir's absorb) may bring a fold that
+# a quarter-turn or about-face drill made before the drill record (_drill_turn_fold) is dropped.
+# While the record stands, the next order's re-square deals a drilled quarter in one step by
+# lateral order (_pair_after_quarter_fold), which beats wheeling the grid round at any fold
+# but one this near square, where that re-deal reshuffles a block standing almost square.
+# Measured on a 60-man, 8-file block on both reform layouts (crossings are men whose new slot
+# lies across a centreline from them; walks are mean body-to-slot distance after squaring):
+# kept record against dropped, a fold 30 degrees off square crossed 0 to 2 against 8 and
+# walked 12 to 15 wu against 27; 20 degrees off, 0 crossings either way, 15 wu against 18
+# (row major); 10 degrees off, 8 to 10 wu against 9; 5 or 1 degree off, up to 12 wu against
+# 1 to 5. A caller-configurable parameter defaulting to MELEE_REFACE_DRILL_RECORD_SQUARE_TOL,
+# with rout_time's set-before-_ready contract.
+const MELEE_REFACE_DRILL_RECORD_SQUARE_TOL: float = PI / 8.0
+var melee_reface_drill_record_square_tol: float = MELEE_REFACE_DRILL_RECORD_SQUARE_TOL
 # How far outside the block's footprint, on its flanks and rear, an enemy soldier, and the
 # centre of his unit, may stand and still count as inside it for the interior strike
 # (SoldierInteriorStrike): only the near-front ranks strike, so an enemy that has got in
@@ -4470,10 +4485,9 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	# fold left behind is squared by the block's next order once it is clear of the fight
 	# (_square_fold_for_order), or by the rally; until then a chase or march carries it.
 	# TODO(#1859): square an absorbed fold once the block is clear, without an order.
-	# Every other small
-	# re-face turns the grid with the heading, as before: holding the grid back as a march does
-	# (_reface) let foot blocks in a melee grind into each other and held a block that broke in
-	# the press, and a troop of horse keeps its own front to follow.
+	# Every other small re-face turns the grid with the heading, as before: holding the grid
+	# back as a march does (_reface) let foot blocks in a melee grind into each other and held
+	# a block that broke in the press, and a troop of horse keeps its own front to follow.
 	if offset <= ENGAGE_TURN_THRESHOLD:
 		_face_dir(dir, _in_enemy_contact and _cavalry_inside_foot_footprint(enemy_unit))
 		return true
@@ -4521,8 +4535,11 @@ func _router_streaming_through(enemy_unit: Unit) -> bool:
 ## Whether this is a foot block and `enemy_unit` a cavalry unit whose centre lies inside the
 ## block's own slot footprint, scaled by melee_reface_fold_footprint_scale:
 ## soldier_block_half_extents (the slot grid's half-width and half-depth, padded by a mark
-## radius) in the grid's own frame (soldier_block_world_angle). Only riders inside a foot block
-## count. Foot blocks fighting each other mostly stop at each other's front and outer ranks
+## radius) in the grid's own frame (soldier_block_world_angle). The box is centred on the
+## anchor and spans the largest |x| and |y| of any slot about it, so for a block laid out with
+## a frontage_anchor_offset, whose slots reach less far on one side of the anchor, the box
+## reaches slightly past the block on that side, plus the mark padding. Only riders inside
+## a foot block count. Foot blocks fighting each other mostly stop at each other's front and outer ranks
 ## (MeleeFrontLine), but a small foot squad can still stand at a block's centre and wind its
 ## grid round the same way; that case is left out here.
 ## TODO(#1858): fold a small re-face on a foot squad inside a foot block too.
@@ -4627,9 +4644,11 @@ func _settle_engage_turn() -> void:
 ## re-face against riders inside a foot block (_face_for_action). The fold it leaves stays until
 ## something squares it: the block's next order (_square_fold_for_order, which waits until the
 ## block is clear of the fight and then turns it out at a bounded rate) or the rally. A chase or
-## march the block makes before then carries it. It keeps the drill record (_drill_turn_fold),
-## so that re-square still deals a drilled quarter or half-turn under it in one step, as it does
-## under a leftover snap-absorb fold, rather than wheeling the grid round.
+## march the block makes before then carries it. It keeps the drill record (_drill_turn_fold)
+## unless it brings the fold within melee_reface_drill_record_square_tol of square, so that
+## re-square still deals a drilled quarter under it in one step by lateral order (and reflects a
+## drilled about-face) rather than wheeling the grid round. A fold that near square is squared
+## by the bounded turn instead, as any other fold is.
 func _face_dir(dir: Vector2, absorb: bool = false) -> void:
 	if dir.length_squared() <= 0.0001:
 		return
@@ -4638,6 +4657,8 @@ func _face_dir(dir: Vector2, absorb: bool = false) -> void:
 	if absorb:
 		if turn != 0.0:
 			_formation_angle = wrapf(_formation_angle - turn, -PI, PI)
+			if absf(_formation_angle) < melee_reface_drill_record_square_tol:
+				_drill_turn_fold = 0.0   # near square: no drilled turn is left to deal
 			_render_dirty = true
 	elif absf(turn) > FACING_SNAP_ABSORB_THRESHOLD:
 		_formation_angle = wrapf(_formation_angle - turn, -PI, PI)
@@ -7738,7 +7759,11 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 ## residue plus 90 lands at 115) is still re-paired. A fold whose last change was a snap-absorb or
 ## engage re-face is not, unless it measures a quarter: those can be any angle, and re-dealing them
 ## by lateral order reshuffled blocks that were not crossing (68, 112 and 156 degree folds on two
-## catalog clips), so that write drops the drill record (see _drill_turn_fold). Nor is an about-face
+## catalog clips), so that write drops the drill record (see _drill_turn_fold). Those folds had
+## not turned the grid under the men by a quarter, as a drill does. A combat re-face absorbed on
+## riders inside a foot block (_face_dir's absorb) is the exception: it lands on top of a drill
+## whose quarter is still under the men, so it keeps the record unless it brings the fold within
+## melee_reface_drill_record_square_tol of square. Nor is an about-face
 ## fold, whatever turns made it: that one is reflected, not paired. A squared block keeps its own
 ## square assignment.
 ## A row-major unit with no bodies to read (far tier, not yet seeded) keeps its pairing; a
@@ -11632,6 +11657,7 @@ func to_snapshot_dict() -> Dictionary:
 		"rout_time": rout_time, "router_front_arc": router_front_arc,
 		"router_contact_reentry_frac": router_contact_reentry_frac,
 		"melee_reface_fold_footprint_scale": melee_reface_fold_footprint_scale,
+		"melee_reface_drill_record_square_tol": melee_reface_drill_record_square_tol,
 		"interior_strike_margin": interior_strike_margin,
 		"melee_front_line_scale": melee_front_line_scale,
 		"melee_front_line_min_cos": melee_front_line_min_cos,
@@ -11899,6 +11925,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	router_contact_reentry_frac = float(d.get("router_contact_reentry_frac", router_contact_reentry_frac))
 	melee_reface_fold_footprint_scale = float(d.get("melee_reface_fold_footprint_scale",
 			melee_reface_fold_footprint_scale))
+	melee_reface_drill_record_square_tol = float(d.get("melee_reface_drill_record_square_tol",
+			melee_reface_drill_record_square_tol))
 	interior_strike_margin = float(d.get("interior_strike_margin", interior_strike_margin))
 	melee_front_line_scale = float(d.get("melee_front_line_scale", melee_front_line_scale))
 	melee_front_line_min_cos = float(d.get("melee_front_line_min_cos", melee_front_line_min_cos))
