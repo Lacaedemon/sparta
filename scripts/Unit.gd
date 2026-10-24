@@ -4469,6 +4469,7 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	# under the men. The heading is not held back, so nothing is stored to give back later: the
 	# fold left behind is squared by the block's next order once it is clear of the fight
 	# (_square_fold_for_order), or by the rally; until then a chase or march carries it.
+	# TODO(#1859): square an absorbed fold once the block is clear, without an order.
 	# Every other small
 	# re-face turns the grid with the heading, as before: holding the grid back as a march does
 	# (_reface) let foot blocks in a melee grind into each other and held a block that broke in
