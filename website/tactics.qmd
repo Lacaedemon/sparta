@@ -930,13 +930,20 @@ it fights the defender's rear rank from outside the block,
 and neither block's men end up inside the other.
 :::
 
-When horsemen do ride in among a foot block's ranks,
-the block keeps its ranks where its men stand.
+When a cavalry troop rides so far into a foot block
+that the troop's centre is inside the block's ranks,
+the block keeps its ranks where its men stand while it fights the troop.
 Its men still turn to face the riders,
 but the formation does not wheel round its centre after them,
 so no man is sent across the block to a new place in the middle of the fight.
+This does not apply to a troop on the cycle-charge stance,
+which rides in and out again by design,
+or to riders whose centre is still outside the block.
 The block's next order squares its ranks to its new heading
-once it is clear of the fight, turning them round gradually.
+once it is clear of the fight.
+It turns them round no faster than the men can follow,
+except that a quarter-turn or a half-turn of it is re-dealt in one step,
+without sending any man across the block.
 A cavalry troop with foot or other horsemen among it
 still wheels its formation to follow its enemy.
 

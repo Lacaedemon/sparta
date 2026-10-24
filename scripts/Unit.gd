@@ -4517,9 +4517,10 @@ func _router_streaming_through(enemy_unit: Unit) -> bool:
 ## block's own slot footprint, scaled by melee_reface_fold_footprint_scale:
 ## soldier_block_half_extents (the slot grid's half-width and half-depth, padded by a mark
 ## radius) in the grid's own frame (soldier_block_world_angle). Only riders inside a foot block
-## count. Foot blocks fighting each other stop at each other's front and outer ranks
-## (MeleeFrontLine), so their centres rarely lie inside a footprint, and two archer blocks in
-## melee flick their re-face tens of degrees a tick, a fault of its own. A troop of horse riding
+## count. Foot blocks fighting each other mostly stop at each other's front and outer ranks
+## (MeleeFrontLine), but a small foot squad can still stand at a block's centre and wind its
+## grid round the same way; that case is left out here and tracked on its own (TODO(#1858)).
+## Two archer blocks in melee flick their re-face tens of degrees a tick, a fault of its own. A troop of horse riding
 ## through foot, or into other horse, keeps its own front to follow. A troop on the
 ## cycle-charge stance does not count: it rides in, strikes and peels back out by design, so its
 ## bearing does name the front it will come from again. A ROUTING enemy does not count either:
@@ -4589,8 +4590,8 @@ func _settle_engage_turn() -> void:
 	_engage_turn_enemy = null
 
 
-## Snap `facing` to `dir` instantly. A change up to FACING_SNAP_ABSORB_THRESHOLD is not
-## absorbed here, so soldier_world_slots' facing-relative grid turns about the anchor by the
+## Snap `facing` to `dir` instantly. Unless `absorb` is set (see below), a change up to
+## FACING_SNAP_ABSORB_THRESHOLD is not absorbed here, so soldier_world_slots' facing-relative grid turns about the anchor by the
 ## whole change in one tick; a march that corrects its heading tick by tick without a formed
 ## pivot goes through _reface instead, which keeps the grid where the men stand and lets it
 ## follow at a bounded rate. A combat re-face (_face_for_action) and a form-up hold still snap
@@ -4620,8 +4621,10 @@ func _face_dir(dir: Vector2, absorb: bool = false) -> void:
 	if dir.length_squared() <= 0.0001:
 		return
 	var new_facing: Vector2 = dir.normalized()
-	if absorb or absf(angle_difference(facing.angle(), new_facing.angle())) > FACING_SNAP_ABSORB_THRESHOLD:
-		_formation_angle = wrapf(_formation_angle - angle_difference(facing.angle(), new_facing.angle()), -PI, PI)
+	var turn: float = angle_difference(facing.angle(), new_facing.angle())
+	# An absorbed turn of exactly zero writes nothing, so it leaves the drill record alone.
+	if (absorb and turn != 0.0) or absf(turn) > FACING_SNAP_ABSORB_THRESHOLD:
+		_formation_angle = wrapf(_formation_angle - turn, -PI, PI)
 		_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
 		_render_dirty = true
 	facing = new_facing
