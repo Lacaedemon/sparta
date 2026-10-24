@@ -942,8 +942,10 @@ or to riders whose centre is still outside the block.
 The block's next order squares its ranks to its new heading
 once the block has been clear of the fight for half a second.
 Ranks turned more than a quarter-turn off are first reflected in place by a half-turn,
-and the rest of the turn is made no faster than the men can follow.
-Until that order comes, the block keeps its ranks as they stand,
+and the rest of the turn is made no faster than the men can follow,
+except that ranks left exactly a quarter-turn off are dealt out in one step.
+Until that order comes, or the block routs and rallies,
+it keeps its ranks as they stand,
 even if it moves off after another enemy.
 A cavalry troop with foot or other horsemen among it
 still wheels its formation to follow its enemy.
