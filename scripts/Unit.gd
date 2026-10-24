@@ -4519,9 +4519,11 @@ func _router_streaming_through(enemy_unit: Unit) -> bool:
 ## radius) in the grid's own frame (soldier_block_world_angle). Only riders inside a foot block
 ## count. Foot blocks fighting each other mostly stop at each other's front and outer ranks
 ## (MeleeFrontLine), but a small foot squad can still stand at a block's centre and wind its
-## grid round the same way; that case is left out here and tracked on its own (TODO(#1858)).
-## Two archer blocks in melee flick their re-face tens of degrees a tick, a fault of its own. A troop of horse riding
-## through foot, or into other horse, keeps its own front to follow. A troop on the
+## grid round the same way; that case is left out here.
+## TODO(#1858): fold a small re-face on a foot squad inside a foot block too.
+## Two archer blocks in melee flick their re-face tens of degrees a tick, a fault of its own.
+## A troop of horse riding through foot, or into other horse, keeps its own front to follow.
+## A troop on the
 ## cycle-charge stance does not count: it rides in, strikes and peels back out by design, so its
 ## bearing does name the front it will come from again. A ROUTING enemy does not count either:
 ## one streaming out through the ranks holds the facing itself (_router_streaming_through), and
