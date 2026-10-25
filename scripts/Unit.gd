@@ -4486,7 +4486,8 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	# under the men. The heading is not held back, so nothing is stored to give back later: the
 	# fold left behind (counted in _absorbed_fold) is squared on its own, a bounded turn at a
 	# time, on every tick the block is out of contact (_bleed_absorbed_fold), or with the rest of
-	# the fold by an order (_square_fold_for_order) or the rally.
+	# the fold by an order (_square_fold_for_order) or the rally. A later engage settle, snap or
+	# folded lag drops the count, and then only an order or the rally squares the fold.
 	# Every other small re-face turns the grid with the heading, as before: holding the grid
 	# back as a march does (_reface) let foot blocks in a melee grind into each other and held
 	# a block that broke in the press, and a troop of horse keeps its own front to follow.

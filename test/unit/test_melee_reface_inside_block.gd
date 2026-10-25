@@ -5,8 +5,8 @@ extends GutTest
 ## to ENGAGE_TURN_THRESHOLD (75 degrees) turned the whole grid about the anchor unabsorbed, so
 ## riders among the ranks wound the grid round after their bearing tick by tick. The heading is
 ## not held back, so there is no stored turn to give back when the fold stops applying; the fold
-## left behind is squared a bounded turn at a time once the block is clear, with or without an
-## order (test_absorbed_fold_squares_when_clear.gd).
+## left behind is squared a bounded turn at a time once the block is clear, unless a later turn
+## folded on top of it leaves it for an order (test_absorbed_fold_squares_when_clear.gd).
 ## The footprint's own tunables are covered in test_melee_reface_footprint_config.gd, and the
 ## pairings the fold leaves out in test_melee_reface_fold_pairings.gd.
 
