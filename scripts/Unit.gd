@@ -532,8 +532,8 @@ var _resquare_pending: bool = false
 # bounded step of it out of the fold (_bleed_absorbed_fold), turning the slot grid onto the
 # heading no faster than the man on the farthest slot can jog; back in contact the steps stop
 # and the rest waits. Squaring the whole fold instead, as an order does, reflects a fold near a
-# quarter-turn by a half-turn and leaves a residue near a quarter for the grid to turn out
-# (#1859). Zeroed by whatever squares the whole fold: an order's re-square (reform_ranks), a
+# quarter-turn by a half-turn and leaves a residue near a quarter for the grid to turn out.
+# Zeroed by whatever squares the whole fold: an order's re-square (reform_ranks), a
 # quarter-fold file double, the rally's heading turn, and a rout (the rally squares the fold).
 var _absorbed_fold: float = 0.0
 # How long (s) a block must have been out of enemy contact before a fresh order's re-square of
@@ -565,8 +565,8 @@ var _grid_lag_rate: float = 0.0
 # the fold -- a snap-absorb, a combat re-face absorbed on riders inside a foot block
 # (_face_dir's absorb) and its later squaring (_bleed_absorbed_fold), an engage re-face, a
 # reform, a quarter-fold file double, the rally's squaring of the fold -- clears it, and so
-# does a rout, which keeps the fold itself (a snapshot restore restores it with the fold). A new write to _formation_angle must do one or the other. So it only ever
-# describes drill turns made on top of whatever fold was already there. reform_ranks reads it for
+# does a rout, which keeps the fold itself (a snapshot restore restores it with the fold). A
+# new write to _formation_angle must do one or the other. So it only ever describes drill turns made on top of whatever fold was already there. reform_ranks reads it for
 # what the angle alone cannot tell: a fold whose drills net a quarter is re-paired, and one whose
 # drills net a half-turn is reflected like an about-face, even when a leftover snap-absorb fold
 # underneath puts the angle off a quarter or a half-turn. A snap-absorb or engage fold made after
@@ -4818,7 +4818,7 @@ func _close_resquare_lag_in_pivot(delta: float) -> void:
 ## (the anchor's near-front ranks among them) sees it turn smoothly; handing tens of degrees to
 ## the lag in one tick moved those readers, and the anchor with them, by several world units in
 ## that tick. The rest of the fold (an engage re-face, a drill) stays where it stands, so a fold
-## near a quarter-turn is never reflected by a half-turn to square a few degrees of it (#1859).
+## near a quarter-turn is never reflected by a half-turn to square a few degrees of it.
 ## Clears the drill record, as every write to the fold that is not a drill turn does.
 func _bleed_absorbed_fold(delta: float) -> void:
 	var radius: float = _formation_local_half_extents().length()

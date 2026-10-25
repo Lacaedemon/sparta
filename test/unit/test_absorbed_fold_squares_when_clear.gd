@@ -4,7 +4,7 @@ extends GutTest
 ## contact and not turning in place, _advance_grid_lag squares that part alone, with no order,
 ## a bounded step at a time straight off the fold (_bleed_absorbed_fold). The rest of the fold
 ## (an engage re-face, a drill) stays, so a block whose fold sits near a quarter-turn is not
-## reflected by a half-turn to square a few degrees of it (#1859). The absorb itself is covered
+## reflected by a half-turn to square a few degrees of it. The absorb itself is covered
 ## in test_melee_reface_inside_block.gd.
 
 const DT := 1.0 / 60.0
@@ -12,7 +12,7 @@ const DT := 1.0 / 60.0
 const INSIDE_OFFSET := Vector2(-20.0, 24.0)
 const SLOT_KEEP_TOL := 0.01
 const ANGLE_TOL := 1e-5
-# An engage fold just past a quarter-turn, as sweep_routers uid 4 carries one (#1847).
+# An engage fold just past a quarter-turn, as sweep_routers uid 4 carries one.
 const NEAR_QUARTER_FOLD := -1.736   # -99.5 degrees
 
 
