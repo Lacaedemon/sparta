@@ -5,7 +5,8 @@ extends GutTest
 ## to ENGAGE_TURN_THRESHOLD (75 degrees) turned the whole grid about the anchor unabsorbed, so
 ## riders among the ranks wound the grid round after their bearing tick by tick. The heading is
 ## not held back, so there is no stored turn to give back when the fold stops applying; the fold
-## left behind is squared later by an order, a bounded turn at a time once the block is clear.
+## left behind is squared a bounded turn at a time once the block is clear, with or without an
+## order (test_absorbed_fold_squares_when_clear.gd).
 ## The footprint's own tunables are covered in test_melee_reface_footprint_config.gd, and the
 ## pairings the fold leaves out in test_melee_reface_fold_pairings.gd.
 
@@ -160,23 +161,6 @@ func test_a_reissued_order_squares_the_fold_a_bounded_turn_at_a_time() -> void:
 		worst = maxf(worst, _max_slot_shift(prev, u.soldier_world_slots(u.soldiers)))
 	assert_almost_eq(u.grid_fold(), 0.0, FACING_TOL, "the fold is squared out of the fight")
 	assert_lt(worst, 1.01 * per_tick, "no tick moves a slot further than the bounded turn allows")
-
-
-func test_without_an_order_the_fold_stays_once_clear_of_the_fight() -> void:
-	# Pins a trade-off: the absorbed fold waits for an order (or the rally) to square it, so a
-	# block clear of the fight with no new order keeps it, and a chase or march carries it.
-	# Squaring it as soon as the block is clear was measured and made sweep_routers worse:
-	# the re-square reflected a near-quarter fold by a half-turn and left the same near-quarter
-	# residue, with new overlap failures on two perturbed seeds.
-	var u := _make_block()
-	var e := _make_enemy(u.position + INSIDE_OFFSET)
-	u._face_for_action(e.position, DT, e)
-	var fold: float = u.grid_fold()
-	assert_false(u._resquare_pending, "no re-square is armed without an order")
-	u._in_enemy_contact = false
-	for _i in range(120):
-		u._advance_grid_lag(DT)
-	assert_eq(u.grid_fold(), fold, "two seconds clear of the fight, the fold is unchanged")
 
 
 func test_a_bearing_past_the_threshold_still_turns_the_men_in_place() -> void:

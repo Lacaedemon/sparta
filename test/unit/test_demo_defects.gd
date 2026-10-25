@@ -1015,6 +1015,26 @@ func test_derived_slots_beyond_flanks_measures_along_the_grid_axis() -> void:
 			"each side is measured against its own edge")
 
 
+## A compact-shaped record carrying only what grid_off_heading reads.
+func _heading_record(facing: Array, front) -> Dictionary:
+	var grid: Dictionary = {} if front == null else {"front": front}
+	return {"uid": 0, "facing": facing, "motion_ref": {"slot_grid": grid}}
+
+
+func test_derived_grid_off_heading_reads_the_fold_in_degrees() -> void:
+	assert_eq(DemoDefects.derived_field(_heading_record([0.0, -1.0], [0.0, -1.0]), "grid_off_heading"),
+			0.0, "a grid square to its heading")
+	var folded: Dictionary = _heading_record([1.0, 0.0], [cos(deg_to_rad(-37.0)), sin(deg_to_rad(-37.0))])
+	assert_almost_eq(float(DemoDefects.derived_field(folded, "grid_off_heading")), 37.0, 0.051,
+			"a 37 degree fold reads 37 whichever way it turns")
+	assert_almost_eq(float(DemoDefects.derived_field(_heading_record([0.0, 1.0], [0.0, -1.0]),
+			"grid_off_heading")), 180.0, 0.051, "an about-faced grid reads a half-turn")
+	assert_null(DemoDefects.derived_field(_heading_record([0.0, 1.0], null), "grid_off_heading"),
+			"a record without the grid's front is uncheckable")
+	assert_null(DemoDefects.derived_field({"uid": 0, "facing": [0.0, 1.0]}, "grid_off_heading"),
+			"a compact record without motion_ref is uncheckable")
+
+
 func test_derived_slot_fields_need_a_full_record() -> void:
 	var compact := {"uid": 0, "position": [0.0, 0.0], "facing": [0.0, 1.0]}
 	assert_null(DemoDefects.derived_field(compact, "slots_across_centreline"),

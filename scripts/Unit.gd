@@ -500,7 +500,9 @@ var _ranks_closed: bool = false
 # its nearer half-turn in place and turning the residue out at a bounded rate. A quarter fold and
 # a far-tier block are still squared in one tick (the men of a quarter fold take the nearest
 # cells of the squared grid; a far block has no bodies on its slots). A rout
-# keeps it, and the rally squares it to the heading.
+# keeps it, and the rally squares it to the heading. The part a combat re-face on riders inside a
+# foot block folded in (_absorbed_fold) is also squared on its own, with no order, once the
+# block is out of contact (_bleed_absorbed_fold).
 var _formation_angle: float = 0.0
 # How far (rad) the slot grid still trails a small heading correction (_reface): the grid
 # stands at facing + _formation_angle + _grid_lag (grid_fold). A correction under
@@ -523,6 +525,17 @@ var _grid_lag_resquare: bool = false
 # (_advance_grid_lag). A later order decides afresh; a rout drops it, since the rally squares
 # the fold.
 var _resquare_pending: bool = false
+# The part of _formation_angle (rad, signed like it) that combat re-faces on riders inside a
+# foot block folded in (_face_dir's absorb), counted apart from the rest of the fold (an engage
+# re-face, a drill, a snap-absorb) so it can be squared on its own and without an order. On a
+# tick the block is out of enemy contact and not turning in place, _advance_grid_lag takes a
+# bounded step of it out of the fold (_bleed_absorbed_fold), turning the slot grid onto the
+# heading no faster than the man on the farthest slot can jog; back in contact the steps stop
+# and the rest waits. Squaring the whole fold instead, as an order does, reflects a fold near a
+# quarter-turn by a half-turn and leaves a residue near a quarter for the grid to turn out
+# (#1859). Zeroed by whatever squares the whole fold: an order's re-square (reform_ranks), a
+# quarter-fold file double, the rally's heading turn, and a rout (the rally squares the fold).
+var _absorbed_fold: float = 0.0
 # How long (s) a block must have been out of enemy contact before a fresh order's re-square of
 # its fold runs (_contact_clear_time). The fight's own measure of having let go of a block,
 # ENGAGED_LINGER (30 ticks). Between bouts a fight lets go of a block for a few ticks at a time:
@@ -550,9 +563,9 @@ var _grid_lag_rate: float = 0.0
 # _formation_angle since anything else last moved it: _settle_order_turn adds each such leaf's
 # turn (every turn that settles there is one of these two leaf types), and every other write to
 # the fold -- a snap-absorb, a combat re-face absorbed on riders inside a foot block
-# (_face_dir's absorb), an engage re-face, a reform, a quarter-fold file double, the
-# rally's squaring of the fold -- clears it, and so does a rout, which keeps the fold itself (a
-# snapshot restore restores it with the fold). A new write to _formation_angle must do one or the other. So it only ever
+# (_face_dir's absorb) and its later squaring (_bleed_absorbed_fold), an engage re-face, a
+# reform, a quarter-fold file double, the rally's squaring of the fold -- clears it, and so
+# does a rout, which keeps the fold itself (a snapshot restore restores it with the fold). A new write to _formation_angle must do one or the other. So it only ever
 # describes drill turns made on top of whatever fold was already there. reform_ranks reads it for
 # what the angle alone cannot tell: a fold whose drills net a quarter is re-paired, and one whose
 # drills net a half-turn is reflected like an about-face, even when a leftover snap-absorb fold
@@ -4465,9 +4478,9 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	# turning the grid with it would swing every slot about the anchor, the men chasing their
 	# slots would drag the anchor, and the bearing would move on, so the grid would wind round
 	# under the men. The heading is not held back, so nothing is stored to give back later: the
-	# fold left behind is squared by the block's next order once it is clear of the fight
-	# (_square_fold_for_order), or by the rally; until then a chase or march carries it.
-	# TODO(#1859): square an absorbed fold once the block is clear, without an order.
+	# fold left behind (counted in _absorbed_fold) is squared on its own, a bounded turn at a
+	# time, on every tick the block is out of contact (_bleed_absorbed_fold), or with the rest of
+	# the fold by an order (_square_fold_for_order) or the rally.
 	# Every other small re-face turns the grid with the heading, as before: holding the grid
 	# back as a march does (_reface) let foot blocks in a melee grind into each other and held
 	# a block that broke in the press, and a troop of horse keeps its own front to follow.
@@ -4624,11 +4637,11 @@ func _settle_engage_turn() -> void:
 ## countermarched reform) instead of a reform.
 ##
 ## `absorb` folds the change into _formation_angle whatever its size, so no slot moves: a combat
-## re-face against riders inside a foot block (_face_for_action). The fold it leaves stays until
-## something squares it: the block's next order (_square_fold_for_order, which waits until the
-## block is clear of the fight and then turns it out at a bounded rate) or the rally. A chase or
-## march the block makes before then carries it. Like a snap-absorb, it clears the drill record
-## (_drill_turn_fold).
+## re-face against riders inside a foot block (_face_for_action). The change is also counted in
+## _absorbed_fold, and _advance_grid_lag squares that part of the fold on its own, a bounded turn
+## at a time, on every tick the block is out of contact and not turning in place
+## (_bleed_absorbed_fold); an order (_square_fold_for_order) or the rally squares it sooner with
+## the rest of the fold. Like a snap-absorb, it clears the drill record (_drill_turn_fold).
 ## TODO(#1860): a drilled quarter under an absorbed fold loses its one-step re-deal.
 func _face_dir(dir: Vector2, absorb: bool = false) -> void:
 	if dir.length_squared() <= 0.0001:
@@ -4638,6 +4651,7 @@ func _face_dir(dir: Vector2, absorb: bool = false) -> void:
 	if absorb:
 		if turn != 0.0:
 			_formation_angle = wrapf(_formation_angle - turn, -PI, PI)
+			_absorbed_fold = wrapf(_absorbed_fold - turn, -PI, PI)
 			_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
 			_render_dirty = true
 	elif absf(turn) > FACING_SNAP_ABSORB_THRESHOLD:
@@ -4722,7 +4736,10 @@ func _fold_grid_lag() -> void:
 ## here, before this tick's lag turn, once the block has been out of contact for
 ## RESQUARE_CONTACT_CLEAR_TIME (_contact_clear_time, counted here) on a tick it does not turn in
 ## place (is_maneuver_turning). A heading pivot does not hold it back: a chase re-aims nearly
-## every tick, and _close_resquare_lag_in_pivot turns the residue out through the pivots.
+## every tick, and _close_resquare_lag_in_pivot turns the residue out through the pivots. With
+## no lag and no order's re-square waiting, a fold absorbed onto riders inside the block
+## (_absorbed_fold) is squared here a bounded step a tick on every tick out of contact
+## (_bleed_absorbed_fold).
 func _advance_grid_lag(delta: float) -> void:
 	_contact_clear_time = 0.0 if _in_enemy_contact \
 			else minf(_contact_clear_time + maxf(delta, 0.0), RESQUARE_CONTACT_CLEAR_TIME)
@@ -4733,6 +4750,10 @@ func _advance_grid_lag(delta: float) -> void:
 		return
 	if _resquare_pending and _contact_cleared() and not is_maneuver_turning():
 		_run_waiting_resquare()
+	if _grid_lag == 0.0 and _absorbed_fold != 0.0 and delta > 0.0 and not _in_enemy_contact \
+			and not _resquare_pending and not is_maneuver_turning():
+		_bleed_absorbed_fold(delta)
+		return
 	if _grid_lag != 0.0 and delta > 0.0 and _grid_lag_resquare and _is_facing_turning \
 			and not is_maneuver_turning():
 		_close_resquare_lag_in_pivot(delta)
@@ -4784,6 +4805,38 @@ func _close_resquare_lag_in_pivot(delta: float) -> void:
 	_grid_lag += step
 	if _grid_lag == 0.0:
 		_grid_lag_resquare = false
+	_render_dirty = true
+
+
+## One tick of squaring a fold absorbed onto riders inside the block (_absorbed_fold), and only
+## that part of the fold: the slot grid turns onto the heading by a bounded turn, its rate
+## building and shedding at bounded_turn_accel and easing to a stop (bounded_turn_step), recorded
+## in _grid_lag_rate for SoldierBodies.step to feed forward as a lag's turn is. A heading pivot
+## this tick turns the grid too, so the step is held to what keeps the grid's own turn within
+## bounded_turn_rate, as _close_resquare_lag_in_pivot holds an order's re-square. The step comes
+## straight off _formation_angle rather than going through the lag, so every reader of the fold
+## (the anchor's near-front ranks among them) sees it turn smoothly; handing tens of degrees to
+## the lag in one tick moved those readers, and the anchor with them, by several world units in
+## that tick. The rest of the fold (an engage re-face, a drill) stays where it stands, so a fold
+## near a quarter-turn is never reflected by a half-turn to square a few degrees of it (#1859).
+## Clears the drill record, as every write to the fold that is not a drill turn does.
+func _bleed_absorbed_fold(delta: float) -> void:
+	var radius: float = _formation_local_half_extents().length()
+	var max_rate: float = bounded_turn_rate(radius)
+	var pivot_rate: float = _facing_turn_step / delta
+	var rate: float = bounded_turn_step(_grid_lag_rate, -_absorbed_fold, max_rate,
+			bounded_turn_accel(radius), delta)
+	rate = clampf(rate, -max_rate - pivot_rate, max_rate - pivot_rate)
+	if signf(rate) != signf(-_absorbed_fold):
+		rate = 0.0
+	var step: float = rate * delta
+	if absf(step) >= absf(_absorbed_fold):
+		step = -_absorbed_fold
+		rate = step / delta
+	_grid_lag_rate = rate
+	_formation_angle = wrapf(_formation_angle + step, -PI, PI)
+	_absorbed_fold = 0.0 if step == -_absorbed_fold else _absorbed_fold + step
+	_drill_turn_fold = 0.0
 	_render_dirty = true
 
 
@@ -7235,6 +7288,7 @@ func _apply_file_double_step(step: Order) -> void:
 		if _holds_quarter_fold():
 			current = UnitFormation.transposed_files(soldiers, current)
 			_formation_angle = 0.0
+			_absorbed_fold = 0.0
 			_drill_turn_fold = 0.0
 			_render_dirty = true
 		files = UnitFormation.widened_files(soldiers, current) if step.dir > 0 \
@@ -7615,6 +7669,7 @@ func _finish_order_turn() -> void:
 ## the bodies and no pre-deal slots could be read: it then judges the walkers by where the men
 ## stand, which would flag every man of a block still braking out of a flight. Default false.
 func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) -> bool:
+	_absorbed_fold = 0.0   # the whole fold is squared here (or reads square), absorbed part too
 	var angle: float = wrapf(_formation_angle, -PI, PI)
 	if absf(angle) < 0.01:
 		_drill_turn_fold = 0.0
@@ -10149,6 +10204,7 @@ func _rout() -> void:
 	# and an order's re-square still waiting on contact is dropped with the order.
 	_fold_grid_lag()
 	_resquare_pending = false
+	_absorbed_fold = 0.0   # the rally squares the whole fold
 	_contact_clear_time = 0.0   # a router's ticks do not count it (_advance_grid_lag)
 	_bake_formation_mirror()
 	_arm_router_front_in_melee()
@@ -10579,6 +10635,7 @@ func _turn_heading_onto_fold_half() -> void:
 		return
 	facing = facing.rotated(residue)
 	_formation_angle = half
+	_absorbed_fold = 0.0
 	_drill_turn_fold = 0.0
 	_render_dirty = true
 
@@ -11572,7 +11629,7 @@ func to_snapshot_dict() -> Dictionary:
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
 		"grid_lag": _grid_lag, "grid_lag_rate": _grid_lag_rate,
 		"grid_lag_resquare": _grid_lag_resquare, "resquare_pending": _resquare_pending,
-		"contact_clear_time": _contact_clear_time,
+		"absorbed_fold": _absorbed_fold, "contact_clear_time": _contact_clear_time,
 		"drill_turn_fold": _drill_turn_fold,
 		"formation_mirror_x": _formation_mirror_x,
 		"fallback_mirror_x": _fallback_mirror_x,
@@ -11823,6 +11880,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_grid_lag_rate = float(d.get("grid_lag_rate", _grid_lag_rate))
 	_grid_lag_resquare = bool(d.get("grid_lag_resquare", false))
 	_resquare_pending = bool(d.get("resquare_pending", false))
+	_absorbed_fold = float(d.get("absorbed_fold", 0.0))
 	_contact_clear_time = float(d.get("contact_clear_time", RESQUARE_CONTACT_CLEAR_TIME))
 	# A snapshot from before the rename carries the quarter-turn-only record under its old key.
 	_drill_turn_fold = float(d.get("drill_turn_fold", d.get("quarter_turn_fold", 0.0)))

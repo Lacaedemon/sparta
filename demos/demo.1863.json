@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/absorbed-fold-squares-1859.json",
+  "caption": "A foot block now squares its ranks after riders have been inside them, without waiting for an order. A brittle cavalry troop charges a 48-man infantry block standing on Hold, rides into its ranks, breaks and flees. While the riders are among them, the men turn to face them where they stand, and the ranks stay put rather than wheeling round after them, so the ranks end up about 60 degrees off the way the block faces. Before this fix the ranks stayed turned like that until the block was given an order. Now, once the riders are gone, the block turns its ranks back square to its heading on its own, no faster than the men on the far corners can follow.",
+  "fixed_fps": 30,
+  "max_frames": 450,
+  "fps": 15,
+  "width": 720
+}

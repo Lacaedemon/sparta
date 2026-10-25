@@ -1,0 +1,26 @@
+{
+  "_comment": "A foot block squares the turn it made onto riders inside its ranks once they are gone, without an order (#1859). A 48-man Infantry block (8 files by 6 ranks) stands on Hold facing east, and a brittle 12-horse Cavalry troop (morale 3) charges it from the north-east, rides into its ranks, breaks and flees south. While the riders are inside the block, each small re-face onto them is folded into the formation (#1792), so the men turn to face them where they stand and the ranks do not wheel round after them: by tick 680, still in contact, the ranks stand 64.5 degrees off the block's heading (36.9 to 64.5 over the clip seed and perturbed seeds 1 to 4). On main f12d083f that fold then stays for as long as the block gets no order: at tick 900, three and a half seconds after the block left contact (ticks 684 to 710 by seed), it still reads 64.5 degrees (57.1, 61.6, 57.6, 36.9 on seeds 1 to 4). Now the turn made onto the riders is squared on its own once the block is out of contact, no faster than the men on the far corners can jog: it is done by tick 820 to 884 by seed, and at tick 900 the ranks read 0.1 to 0.3 degrees off the heading on all five seeds. The tick-900 claim's 1-degree tolerance covers the dump's 4-decimal rounding of the heading and the grid's front. The tick-680 check (50 +/- 15 degrees) only shows the fold is there to square and passes on both trees; the tick-8 position, tick-360 Hold, tick-440 FIGHTING and tick-720 ROUTING checks are setup, also passing on both, and tick 900 still reads Hold, so no order squared it. The clip ends at tick 900, before the troop rallies (tick 918 on the clip seed, 886 on perturbed seed 4), since a rallying troop's re-form is not what this clip shows. Static camera. Deterministic (scenario + seed + scripted input). Measured with full state dumps every 2 ticks on main f12d083f and on the #1859 change (Windows).",
+  "seed": "18591",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 620, "y": 520, "count": 48, "frontage": 8, "facing": [1, 0]},
+    {"team": 1, "type": "Cavalry", "x": 900, "y": 300, "count": 12, "facing": [-0.79, 0.62], "morale": 3.0}
+  ],
+  "camera": [
+    {"tick": 0, "x": 660.0, "y": 520.0, "zoom": 1.4}
+  ],
+  "steps": [
+    {"tick": 4, "click": [620, 520]},
+    {"tick": 10, "key": "H", "ctrl": true}
+  ],
+  "state": [8, 360, 440, 600, 680, 720, 760, 800, 840, 880, 900],
+  "frames": [440, 600, 720, 800, 900],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [620, 520]},
+    {"tick": 360, "uid": 0, "field": "order_mode", "value": "Hold"},
+    {"tick": 440, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 680, "uid": 0, "field": "grid_off_heading", "value": 50, "tol": 15.0},
+    {"tick": 720, "uid": 1, "field": "state", "value": "ROUTING"},
+    {"tick": 900, "uid": 0, "field": "order_mode", "value": "Hold"},
+    {"tick": 900, "uid": 0, "field": "grid_off_heading", "value": 0, "tol": 1.0}
+  ]
+}
