@@ -841,10 +841,11 @@ const DERIVED_FIELDS: Array[String] = [
 ##   own axis, not the facing's, so a block whose grid is folded off its facing (a quarter-turn)
 ##   reads its own width. A dump without the footprint cannot supply it.
 ## - grid_off_heading: how far (degrees, 0 to 180, to 0.1) the slot grid's front rank faces off
-##   the unit's heading: the angle between motion_ref.slot_grid.front and `facing`. 0 for a grid
-##   square to its heading; a fold the men turned in place (an engage re-face, a drill, a re-face
-##   absorbed on riders inside the block) reads as its size. A dump without the footprint cannot
-##   supply it.
+##   the unit's heading: the angle between motion_ref.slot_grid.front and `facing`. A grid square
+##   to its heading reads a few tenths of a degree rather than exactly 0, since the dump rounds
+##   `facing` to 2 decimals (DemoState.POSITION_DECIMAL_PLACES), up to about 0.4 degrees on its
+##   own; a fold the men turned in place (an engage re-face, a drill, a re-face absorbed on riders
+##   inside the block) reads as its size. A dump without the footprint cannot supply it.
 ##
 ## Sampled the tick after a reshape, before the men have walked, they measure the deal itself.
 static func derived_field(u: Dictionary, field: String):

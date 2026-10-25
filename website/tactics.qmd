@@ -947,6 +947,10 @@ ranks it had already turned in place on another enemy stay as they are,
 so a block whose ranks stand near a quarter-turn off is not swung round by a half-turn
 to straighten a few degrees.
 If it comes back into contact before it has finished, it stops and finishes once clear again.
+If it turns its ranks in place onto another enemy before it has finished,
+or a sudden large turn is folded into its ranks,
+the rest is left as it stands rather than undone on top of that turn,
+and only an order squares it.
 An order given in the meantime squares all of its ranks to its new heading
 once the block has been clear of the fight for half a second.
 Ranks turned more than a quarter-turn off are first reflected in place by a half-turn,

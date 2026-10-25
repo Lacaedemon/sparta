@@ -583,10 +583,13 @@ Sampled the tick after a reshape, they show where the reshape sends the men befo
 - `grid_off_heading` -- how far the slot grid's front rank faces off the unit's heading,
   in degrees from 0 to 180, rounded to 0.1:
   the angle between `motion_ref.slot_grid.front` and `facing`.
-  A grid square to its heading reads 0;
-  a turn the men made in place without turning the grid (an engage re-face, a drill,
+  A grid square to its heading reads close to 0 but not exactly:
+  `facing` is dumped to 2 decimals (`DemoState.POSITION_DECIMAL_PLACES`),
+  which alone moves the reading by up to about 0.4 degrees,
+  so a square grid can read a few tenths of a degree.
+  A turn the men made in place without turning the grid (an engage re-face, a drill,
   a re-face onto riders inside the block) reads its size.
-  Pin a squared grid with `"value": 0` and a small `tol` with a stated basis.
+  Pin a squared grid with `"value": 0` and a `tol` of at least half a degree, with a stated basis.
 
 A dump without the full arrays cannot supply any of the first three fields,
 and one without `motion_ref.slot_grid` cannot supply `grid_off_heading`.

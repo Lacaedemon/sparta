@@ -194,6 +194,77 @@ func test_an_order_squares_the_whole_fold_and_drops_the_absorbed_count() -> void
 	assert_lt(worst, _per_tick_bound(u), "a bounded turn at a time")
 
 
+## Settle an engage turn-in-place that turned the heading by `turned` (rad) from where it stands.
+func _settle_engage(u: Unit, turned: float) -> void:
+	u._engage_turn_start_facing = u.facing
+	u.facing = u.facing.rotated(turned)
+	u._engage_turn_target = u.facing
+	u._settle_engage_turn()
+
+
+func test_an_engage_settle_past_square_drops_the_absorbed_count() -> void:
+	# Absorb -39.8 degrees, then an engage turn takes the fold to +40 degrees: taking the absorbed
+	# part back out would turn the grid to +80, away from square.
+	var u := _make_block()
+	var absorbed: float = _absorb_reface(u)
+	_settle_engage(u, absorbed - deg_to_rad(40.0))
+	var fold: float = u._formation_angle
+	assert_almost_eq(fold, deg_to_rad(40.0), 1e-4, "sanity: the engage turn left a +40 degree fold")
+	var worst: float = _run_clear(u, 600)
+	assert_almost_eq(u.grid_fold(), fold, ANGLE_TOL, "the grid is not turned away from square")
+	assert_eq(u._absorbed_fold, 0.0, "the count is dropped")
+	assert_lt(worst, SLOT_KEEP_TOL, "no slot moves")
+
+
+func test_an_engage_settle_toward_square_drops_the_count_too() -> void:
+	# Absorb -39.8 degrees, then an engage turn takes half of it back. Taking the whole absorbed
+	# turn out would carry the grid 19.9 degrees past square; the engage settle drops the count,
+	# so the fold stays where the engage turn left it, as any engage fold does.
+	var u := _make_block()
+	var absorbed: float = _absorb_reface(u)
+	_settle_engage(u, absorbed * 0.5)
+	var fold: float = u._formation_angle
+	assert_almost_eq(fold, absorbed * 0.5, 1e-4, "sanity: half the fold is left")
+	assert_eq(u._absorbed_fold, 0.0, "the engage settle drops the count")
+	_run_clear(u, 600)
+	assert_almost_eq(u.grid_fold(), fold, ANGLE_TOL, "the grid is not carried past square")
+
+
+func test_a_folded_lag_drops_the_count() -> void:
+	var u := _make_block()
+	_absorb_reface(u)
+	u._grid_lag = 0.05
+	u._fold_grid_lag()
+	assert_eq(u._absorbed_fold, 0.0, "a lag folded into the fold drops the count")
+
+
+func test_a_snap_absorb_past_square_drops_the_absorbed_count() -> void:
+	# Absorb -39.8 degrees, then a large unabsorbed re-face snap folds 92 degrees in the other
+	# way: the fold is +52, and taking the absorbed part out would turn it to +92.
+	var u := _make_block()
+	_absorb_reface(u)
+	u._face_dir(u.facing.rotated(deg_to_rad(-92.0)))
+	var fold: float = u._formation_angle
+	assert_gt(fold, deg_to_rad(45.0), "sanity: the snap folded past square the other way")
+	var worst: float = _run_clear(u, 600)
+	assert_almost_eq(u.grid_fold(), fold, ANGLE_TOL, "the grid is not turned away from square")
+	assert_lt(worst, SLOT_KEEP_TOL, "no slot moves")
+
+
+func test_a_drilled_quarter_after_the_absorb_keeps_its_record_and_its_quarter() -> void:
+	# A quarter-turn drill settled on top of the absorbed fold: the squaring takes back the absorb
+	# only, leaving an exact quarter fold and the drill record that says so.
+	var u := _make_block()
+	var absorbed: float = _absorb_reface(u)
+	var q: float = PI * 0.5
+	u._formation_angle = wrapf(u._formation_angle - q, -PI, PI)
+	u._drill_turn_fold = -q
+	_run_clear(u, 600)
+	assert_almost_eq(u.grid_fold(), -q, ANGLE_TOL, "the fold is the drill's quarter")
+	assert_almost_eq(u._drill_turn_fold, -q, ANGLE_TOL, "and the drill record still says so")
+	assert_ne(absorbed, 0.0, "sanity")
+
+
 func test_reform_ranks_drops_the_absorbed_count_even_when_the_fold_reads_square() -> void:
 	# An engage fold the other way can cancel the absorbed part, so the fold reads square and
 	# reform_ranks returns early. Squaring the count afterwards would turn the grid off square.

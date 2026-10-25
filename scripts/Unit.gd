@@ -535,6 +535,9 @@ var _resquare_pending: bool = false
 # quarter-turn by a half-turn and leaves a residue near a quarter for the grid to turn out.
 # Zeroed by whatever squares the whole fold: an order's re-square (reform_ranks), a
 # quarter-fold file double, the rally's heading turn, and a rout (the rally squares the fold).
+# Every other write to the fold but a drill settling (an engage re-face, a snap-absorb, a folded
+# lag) drops it too, so it never takes back more than the absorbed turns and never carries the
+# grid past a turn made on top of them.
 var _absorbed_fold: float = 0.0
 # How long (s) a block must have been out of enemy contact before a fresh order's re-square of
 # its fold runs (_contact_clear_time). The fight's own measure of having let go of a block,
@@ -563,11 +566,14 @@ var _grid_lag_rate: float = 0.0
 # _formation_angle since anything else last moved it: _settle_order_turn adds each such leaf's
 # turn (every turn that settles there is one of these two leaf types), and every other write to
 # the fold -- a snap-absorb, a combat re-face absorbed on riders inside a foot block
-# (_face_dir's absorb) and its later squaring (_bleed_absorbed_fold), an engage re-face, a
-# reform, a quarter-fold file double, the rally's squaring of the fold -- clears it, and so
-# does a rout, which keeps the fold itself (a snapshot restore restores it with the fold). A
-# new write to _formation_angle must do one or the other. So it only ever describes drill turns made on top of whatever fold was already there. reform_ranks reads it for
-# what the angle alone cannot tell: a fold whose drills net a quarter is re-paired, and one whose
+# (_face_dir's absorb), an engage re-face, a reform, a quarter-fold file double, the rally's
+# squaring of the fold -- clears it, and so does a rout, which keeps the fold itself (a
+# snapshot restore restores it with the fold). A new write to _formation_angle must do one or
+# the other, with one exception: squaring an absorbed fold (_bleed_absorbed_fold) takes back
+# only a turn made under any drills since (a drill settling keeps the absorbed count, and an
+# absorb after the drill clears the record), so it leaves the record standing. So it only ever
+# describes drill turns made on top of whatever fold was already there. reform_ranks reads it
+# for what the angle alone cannot tell: a fold whose drills net a quarter is re-paired, and one whose
 # drills net a half-turn is reflected like an about-face, even when a leftover snap-absorb fold
 # underneath puts the angle off a quarter or a half-turn. A snap-absorb or engage fold made after
 # the drill drops the record first.
@@ -4592,6 +4598,7 @@ func _settle_engage_turn() -> void:
 	var turned: float = angle_difference(_engage_turn_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
 	_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
+	_absorbed_fold = 0.0   # nor from absorbs alone (_bleed_absorbed_fold)
 	_engage_turn_target = Vector2.ZERO
 	_render_dirty = true
 	match engage_reshape_mode:
@@ -4657,6 +4664,7 @@ func _face_dir(dir: Vector2, absorb: bool = false) -> void:
 	elif absf(turn) > FACING_SNAP_ABSORB_THRESHOLD:
 		_formation_angle = wrapf(_formation_angle - turn, -PI, PI)
 		_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
+		_absorbed_fold = 0.0   # nor from absorbs alone (_bleed_absorbed_fold)
 		_render_dirty = true
 	facing = new_facing
 
@@ -4720,6 +4728,7 @@ func _fold_grid_lag() -> void:
 		return
 	_formation_angle = wrapf(_formation_angle + _grid_lag, -PI, PI)
 	_drill_turn_fold = 0.0
+	_absorbed_fold = 0.0   # the fold no longer comes from absorbs alone (_bleed_absorbed_fold)
 	_grid_lag = 0.0
 	_render_dirty = true
 
@@ -4819,7 +4828,11 @@ func _close_resquare_lag_in_pivot(delta: float) -> void:
 ## the lag in one tick moved those readers, and the anchor with them, by several world units in
 ## that tick. The rest of the fold (an engage re-face, a drill) stays where it stands, so a fold
 ## near a quarter-turn is never reflected by a half-turn to square a few degrees of it.
-## Clears the drill record, as every write to the fold that is not a drill turn does.
+## Every other write to the fold since the absorb but a drill settling (an engage re-face, a
+## snap-absorb, a folded lag, a re-square) drops the count, so the step only ever takes back the
+## absorbed turns themselves and cannot carry the grid past a turn made on top of them. It keeps
+## the drill record: it takes back only a turn made under any drills since, which leaves those
+## drills' net turn standing.
 func _bleed_absorbed_fold(delta: float) -> void:
 	var radius: float = _formation_local_half_extents().length()
 	var max_rate: float = bounded_turn_rate(radius)
@@ -4836,7 +4849,6 @@ func _bleed_absorbed_fold(delta: float) -> void:
 	_grid_lag_rate = rate
 	_formation_angle = wrapf(_formation_angle + step, -PI, PI)
 	_absorbed_fold = 0.0 if step == -_absorbed_fold else _absorbed_fold + step
-	_drill_turn_fold = 0.0
 	_render_dirty = true
 
 
@@ -10047,6 +10059,7 @@ func _fold_engage_turn_in_progress() -> void:
 	if turned != 0.0:
 		_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
 		_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
+		_absorbed_fold = 0.0   # nor from absorbs alone (_bleed_absorbed_fold)
 		_render_dirty = true
 	_engage_turn_target = Vector2.ZERO
 	_engage_turn_enemy = null
@@ -10550,6 +10563,7 @@ func _advance_rally_resquare(delta: float) -> void:
 		facing = facing.rotated(step)
 		_formation_angle = wrapf(_formation_angle - step, -PI, PI)
 		_drill_turn_fold = 0.0   # a heading turn absorbed into the fold, not a drill turn
+		_absorbed_fold = 0.0
 		_render_dirty = true
 		return
 	_finish_rally_resquare()
