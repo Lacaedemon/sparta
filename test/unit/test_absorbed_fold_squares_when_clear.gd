@@ -111,16 +111,20 @@ func test_each_tick_turns_the_fold_by_a_bounded_step() -> void:
 func test_only_the_absorbed_part_squares_and_a_near_quarter_fold_is_not_reflected() -> void:
 	# The earlier attempt squared the whole fold: -99.5 plus a few absorbed degrees is past a
 	# quarter, so the order's re-square reflected it by a half-turn and left a residue near a
-	# quarter-turn for the grid to turn out. Squaring only the absorbed part leaves the engage
-	# fold where it stands.
+	# quarter-turn for the grid to turn out. Squaring only the absorbed part never reflects. Here
+	# the absorb (-39.8) took the fold to -139.3, nearer its half-turn square than the engage fold
+	# was, so giving it back would turn the grid off square, and the fold stays.
 	var u := _make_block()
 	u._formation_angle = NEAR_QUARTER_FOLD
-	_absorb_reface(u)
+	var absorbed: float = _absorb_reface(u)
+	var fold: float = u._formation_angle
+	assert_almost_eq(fold, NEAR_QUARTER_FOLD + absorbed, ANGLE_TOL, "sanity: past the engage fold")
 	var mirror: bool = u._formation_mirror_x
 	var worst: float = _run_clear(u, 600)
-	assert_almost_eq(u.grid_fold(), NEAR_QUARTER_FOLD, ANGLE_TOL, "the engage fold is left as it was")
+	assert_almost_eq(u.grid_fold(), fold, ANGLE_TOL, "the grid is not turned off square")
+	assert_eq(u._absorbed_fold, 0.0, "and the count is dropped")
 	assert_eq(u._formation_mirror_x, mirror, "no half-turn reflection ran")
-	assert_lt(worst, _per_tick_bound(u), "no tick moves a slot further than the bounded turn allows")
+	assert_lt(worst, SLOT_KEEP_TOL, "no slot moves")
 
 
 func test_back_in_contact_the_squaring_stops_and_the_rest_waits() -> void:

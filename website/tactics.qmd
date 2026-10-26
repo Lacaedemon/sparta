@@ -946,6 +946,10 @@ Only that part is undone:
 ranks it had already turned in place on another enemy stay as they are,
 so a block whose ranks stand near a quarter-turn off is not swung round by a half-turn
 to straighten a few degrees.
+The ranks only ever turn toward square with the heading, never away from it:
+if turning toward the riders had partly undone a turn made earlier on another enemy,
+undoing it would turn the ranks further off, so they stay where they stand,
+and ranks that come square before the whole turn is undone stop there.
 If it comes back into contact before it has finished, it stops and finishes once clear again.
 If it turns its ranks in place onto another enemy before it has finished,
 or a sudden large turn is folded into its ranks,

@@ -531,7 +531,10 @@ var _resquare_pending: bool = false
 # tick the block is out of enemy contact and not turning in place, _advance_grid_lag takes a
 # bounded step of it out of the fold (_bleed_absorbed_fold), turning the slot grid onto the
 # heading no faster than the man on the farthest slot can jog; back in contact the steps stop
-# and the rest waits. Squaring the whole fold instead, as an order does, reflects a fold near a
+# and the rest waits. A step is taken only while it brings the grid nearer its nearest square
+# line (0 or a half-turn), and the rest is dropped once it cannot: an absorb that ran against an
+# earlier engage fold undid part of it, and giving that back would turn the grid off square.
+# Squaring the whole fold instead, as an order does, reflects a fold near a
 # quarter-turn by a half-turn and leaves a residue near a quarter for the grid to turn out.
 # Zeroed by whatever squares the whole fold: an order's re-square (reform_ranks), a
 # quarter-fold file double, the rally's heading turn, and a rout (the rally squares the fold).
@@ -4829,28 +4832,57 @@ func _close_resquare_lag_in_pivot(delta: float) -> void:
 ## the lag in one tick moved those readers, and the anchor with them, by several world units in
 ## that tick. The rest of the fold (an engage re-face, a drill) stays where it stands, so a fold
 ## near a quarter-turn is never reflected by a half-turn to square a few degrees of it.
+## The absorbed turns are given back only while that brings the grid nearer its nearest square
+## line (square_reach): an absorb that ran against an engage fold made before it undid part of
+## that fold, and giving it back would turn the grid further off its heading. The turn eases to a
+## stop on the square line, and once it can bring the grid no nearer the rest of the count is
+## dropped: it could only turn the grid off square, and an order squares the whole fold without
+## it. The grid never turns away from square, so it never crosses a quarter-turn, and the gate
+## cannot flip back and forth across one.
 ## Every other write to the fold since the absorb but a drill settling (an engage re-face, a
 ## snap-absorb, a folded lag, a re-square) drops the count, so the step only ever takes back the
 ## absorbed turns themselves and cannot carry the grid past a turn made on top of them. It keeps
 ## the drill record: it takes back only a turn made under any drills since, which leaves those
-## drills' net turn standing.
+## drills' net turn standing, so the square line is measured on the fold net of those drills.
 func _bleed_absorbed_fold(delta: float) -> void:
+	var reach: float = square_reach(_formation_angle - _drill_turn_fold, -_absorbed_fold)
+	var target: float = signf(-_absorbed_fold) * minf(absf(_absorbed_fold), reach)
+	if target == 0.0:
+		_absorbed_fold = 0.0   # no nearer square to give back toward
+		_grid_lag_rate = 0.0
+		return
 	var radius: float = _formation_local_half_extents().length()
 	var max_rate: float = bounded_turn_rate(radius)
 	var pivot_rate: float = _facing_turn_step / delta
-	var rate: float = bounded_turn_step(_grid_lag_rate, -_absorbed_fold, max_rate,
+	var rate: float = bounded_turn_step(_grid_lag_rate, target, max_rate,
 			bounded_turn_accel(radius), delta)
 	rate = clampf(rate, -max_rate - pivot_rate, max_rate - pivot_rate)
-	if signf(rate) != signf(-_absorbed_fold):
+	if signf(rate) != signf(target):
 		rate = 0.0
 	var step: float = rate * delta
-	if absf(step) >= absf(_absorbed_fold):
-		step = -_absorbed_fold
+	if absf(step) >= absf(target):
+		step = target
 		rate = step / delta
 	_grid_lag_rate = rate
 	_formation_angle = wrapf(_formation_angle + step, -PI, PI)
-	_absorbed_fold = 0.0 if step == -_absorbed_fold else _absorbed_fold + step
+	# Reaching the target either gives back the whole count or puts the grid on its square line.
+	_absorbed_fold = 0.0 if step == target else _absorbed_fold + step
 	_render_dirty = true
+
+
+## How far (rad, >= 0) a grid folded `fold` off its heading can turn the way `dir` points
+## before it lies on its nearest square line (0 or +-PI): 0 when turning that way takes it
+## further from square. A fold exactly a quarter-turn off lies as far from either line, so
+## either way brings it nearer.
+static func square_reach(fold: float, dir: float) -> float:
+	var f: float = wrapf(fold, -PI, PI)
+	var toward_zero: float = absf(f) if dir * f < 0.0 else 0.0
+	var toward_half: float = PI - absf(f) if dir * f > 0.0 else 0.0
+	if absf(f) < PI * 0.5:
+		return toward_zero
+	if absf(f) > PI * 0.5:
+		return toward_half
+	return maxf(toward_zero, toward_half)
 
 
 ## The slot grid's turn off the heading (rad): the fold the men turned in place
