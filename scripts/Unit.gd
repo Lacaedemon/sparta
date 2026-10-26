@@ -577,12 +577,16 @@ const RESQUARE_CONTACT_CLEAR_EPS: float = 1.0e-6   # solver epsilon
 # How close (rad) to a quarter-turn the grid of a block an order squares must stand for the
 # re-square to deal the quarter again from where the men stand in one step and turn out only the
 # rest (order_square_line), rather than turning out the whole fold off square or a half-turn.
-# Measured on lone blocks of 30, 48, 60, 96, 120 and 200 men in both reform layouts, each folded
-# 5 to 175 degrees off its heading and squared holding ground: at every fold within 15 degrees of
-# a quarter the re-deal walks each man less on average than the wheel, in every block and layout,
-# and crosses fewer men over the centreline (0 to 13 against the wheel's 7 to 78). At 20 degrees
-# the wheel walks less for 30, 48 and 200 men in row-major order (57.4 against 63.8 wu for 30).
-const QUARTER_REDEAL_BAND: float = deg_to_rad(15.0)
+# Measured on lone 18 wu-pitch foot blocks of 30 to 200 men at their own frontage (8 to 19 files),
+# a 4-file column and a 9-file troop of 80 horse, in both reform layouts, each folded 5 to 20
+# degrees either side of a quarter and squared holding ground, counting each man's walk until the
+# block settles: within 10 degrees the re-deal walks the men 2 to 91 percent less than the wheel,
+# save one block 8 degrees off (48 men in row-major order, 6 percent more), and it crosses 0 to 7
+# men over the centreline against the wheel's 7 to 78. At 12 degrees blocks of 48, 72, 84 and 200
+# men walk 2 to 14 percent more re-dealt. A block three or more times as wide as it is deep (15 or
+# 20 files on 4 to 6 ranks) walks more re-dealt at every distance, as it does at an exact quarter:
+# the lateral order it is dealt by runs along its short side once the grid's axes swap.
+const QUARTER_REDEAL_BAND: float = deg_to_rad(10.0)
 # How long (s) the block has been out of enemy contact, counted by _advance_grid_lag on every
 # non-routing tick and held at RESQUARE_CONTACT_CLEAR_TIME once it gets there. A fight lets go
 # of a block for a tick or a few between bouts (_in_enemy_contact has no hysteresis of its own),
