@@ -31,7 +31,7 @@ That holds when another writer ended the count, but not when the squaring itself
 A local trial on top of PR #1863 (9c6cd751), extending #1792's fold to foot enemies, left the clip failing on every seed (best 30.7 against a 13.5 limit); draft PR #1867 held only the claim.
 On seed 0 the residual was the same on both trees through tick 142, although one grid turned 17 degrees and the other none: the six attackers push the block's men apart, and the residual is the men walking back.
 The trial also flagged 6 of 186 rows in the melee-outcome delta, and PR #1867 was closed without a change, with the findings on #1858.
-Part 25's lesson on issue text inherited from an agent's numbers is the same failure one step earlier.
+Part 25's lesson on issue text copied from an agent's numbers is the same failure with a different source.
 
 - **Do:** before fixing the cause an exemption reason names, check it on a dense dump: does the defect move with that cause?
 
