@@ -4746,15 +4746,15 @@ func _reface(dir: Vector2) -> void:
 	facing = new_facing
 	_render_dirty = true
 	# Only a correction that grows the lag past the threshold folds it: an order's re-square
-	# (_grid_lag_resquare) grown past it is kept (below), and a turn that shrinks it closes it.
+	# (_grid_lag_resquare) may already stand past it, and a turn that shrinks it closes it.
 	if absf(_grid_lag) <= FACING_SNAP_ABSORB_THRESHOLD or absf(_grid_lag) <= absf(lag_before):
 		return
 	if not _grid_lag_resquare:
 		_fold_grid_lag()
 		return
-	# An order's re-square stays a lag up to a quarter-turn. It starts at most a quarter-turn less
-	# QUARTER_REDEAL_BAND (_square_fold_for_order), so only corrections that grew it reach the
-	# threshold. Grown past a quarter-turn, the line it would square to has changed, so
+	# An order's re-square stays a lag up to a quarter-turn; it starts at most a quarter-turn less
+	# QUARTER_REDEAL_BAND (_square_fold_for_order). Grown past a quarter-turn, the line it would
+	# square to has changed, so
 	# it is folded where it stands and the re-square waits to run again from the new fold: the
 	# block is out of contact here (_face_dir took the turn otherwise). _advance_grid_lag runs it
 	# once the contact has cleared, on a tick that does not turn in place: this same tick, since

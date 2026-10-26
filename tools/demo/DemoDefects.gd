@@ -504,8 +504,9 @@ static func reshape_timeout(old_files: int, new_files: int, soldiers: int,
 ## Which samples are judged for shape_residual: starts with judged_mask(), and additionally
 ## exempts samples inside a unit's post-reshape transit window (e.g. while bodies walk onto
 ## newly expanded/contracted slots after a frontage change, formation change, reinforcement
-## insertion, or quarter-turn re-deal). The exemption window extends from the reshape tick for reshape_timeout() seconds
-## (or while anchor_held is true), ending early once the bodies settle onto the new grid.
+## insertion, or quarter-turn re-deal). The exemption window extends from the reshape tick for
+## reshape_timeout() seconds (or while anchor_held is true), ending early once the bodies settle
+## onto the new grid.
 static func shape_residual_mask(s: Dictionary, base_mask: Array = []) -> Array:
 	var n: int = s["ticks"].size()
 	var mask: Array = base_mask.duplicate() if not base_mask.is_empty() else judged_mask(s)
