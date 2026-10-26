@@ -323,25 +323,30 @@ func test_a_contact_break_between_bouts_does_not_run_the_resquare() -> void:
 
 
 ## A march's heading correction that grows an order's re-square lag past the snap-absorb
-## threshold keeps it a re-square, and past a quarter-turn re-runs it from the grown fold, which
-## now stands near a quarter and is dealt again there.
+## threshold keeps it a re-square, inside the near-quarter band as outside it: a march re-deals
+## nothing. Past a quarter-turn the re-square re-runs from the grown fold, again splitting about
+## the nearer whole or half turn (the re-run, like any march's, never re-deals at the quarter).
 func test_a_march_correction_keeps_the_resquare() -> void:
 	var u := _unit()
 	_fold(u, 70.0)   # outside the quarter re-deal's band: all residue
 	_reissue(u)
 	var lag: float = u._grid_lag
-	u._reface(u.facing.rotated(-signf(lag) * deg_to_rad(10.0)))   # grows it to 80 degrees
+	u._reface(u.facing.rotated(-signf(lag) * deg_to_rad(15.0)))   # grows it to 85 degrees
 	assert_gt(absf(u._grid_lag), Unit.FACING_SNAP_ABSORB_THRESHOLD,
 			"setup: the correction grew the lag past the threshold")
-	assert_true(u._grid_lag_resquare, "the grown lag is still the order's re-square")
-	u._reface(u.facing.rotated(-signf(lag) * deg_to_rad(15.0)))   # and past a quarter-turn
+	assert_almost_eq(absf(u._grid_lag), deg_to_rad(85.0), ANGLE_EPS,
+			"inside the band the grown lag stands as it is")
+	assert_true(u._grid_lag_resquare, "and is still the order's re-square")
+	assert_false(u._resquare_pending, "nothing re-runs it")
+	u._reface(u.facing.rotated(-signf(lag) * deg_to_rad(10.0)))   # and past a quarter-turn, 95
 	assert_true(u._resquare_pending, "past a quarter-turn the re-square waits to run again")
 	# _advance_grid_lag follows _think (where a march's _reface runs) in the same tick.
 	u._advance_grid_lag(_tick())
 	assert_false(u._resquare_pending, "it runs in the same tick's grid advance")
-	assert_true(u._grid_lag_resquare, "and turns out its new residue")
-	assert_lte(absf(u._grid_lag), Unit.QUARTER_REDEAL_BAND,
-			"of at most the band, the grown fold standing near a quarter")
+	assert_eq(u._last_redeal_tick, -1, "without a re-deal at the quarter")
+	assert_almost_eq(absf(u._formation_angle), PI, ANGLE_EPS, "taking the half-turn")
+	assert_almost_eq(absf(u._grid_lag), deg_to_rad(85.0), ANGLE_EPS,
+			"and turning out the rest, now the other way")
 
 
 ## After an engage turn the block keeps (a re-issued order in contact leaves the fold where

@@ -965,10 +965,11 @@ the rest is left as it stands rather than undone on top of that turn,
 and only an order squares it.
 An order given in the meantime squares all of its ranks to its new heading
 once the block has been clear of the fight for half a second.
-Ranks turned within 10 degrees of a quarter-turn off are first dealt out again at the quarter-turn in one step,
-unless the block is a line more than about 2.8 times as wide as it is deep,
-and other ranks turned more than a quarter-turn off are first reflected in place by a half-turn;
-either way, the rest of the turn is made no faster than the men can follow.
+Ranks turned more than a quarter-turn off are first reflected in place by a half-turn,
+and the rest of the turn is made no faster than the men can follow,
+except that ranks left exactly a quarter-turn off are dealt out in one step,
+and so, at the quarter-turn, are ranks within 10 degrees of it
+when the order comes to a block that is not marching (described with re-facing to fight, below).
 A cavalry troop with foot or other horsemen among it
 still wheels its formation to follow its enemy.
 
@@ -1880,15 +1881,18 @@ so the ranks keep the turn the drill gave them.
 Two cases still square at once:
 a unit standing a quarter-turn off its ranks, whose men each step to the nearest place
 in the squared block, and a distant unit drawn as a grid mark, which has no men to move.
-A unit whose ranks stand within 10 degrees of a quarter-turn off is dealt out the same way,
-at the quarter-turn, and only the last few degrees come round at the jogging pace.
-For a block up to about 2.8 times as wide as it is deep, or deeper,
-wheeling its ranks nearly a quarter-turn round its centre walks its men further,
-and sends more of them across the block, than letting each step to his nearest place;
-past 10 degrees from the quarter-turn the wheel is the shorter walk for some blocks, so it is kept there.
-A line wider than that walks further when dealt out,
-so near a quarter-turn it wheels instead
-(at exactly a quarter-turn it is still dealt out).
+A unit whose ranks stand within 10 degrees of a quarter-turn off,
+given an order out of contact while it is not marching,
+is dealt out the same way at the quarter-turn,
+and only the last few degrees come round at the jogging pace.
+Measured on blocks squaring while they hold their ground,
+up to about 2.8 times as wide as they are deep (or deeper),
+wheeling the ranks nearly a quarter-turn round the centre walked the men further,
+and sent more of them across the block, than letting each step to his nearest place;
+past 10 degrees from the quarter-turn the wheel was the shorter walk for some blocks, so it is kept there.
+A wider line walked further when dealt out, so near a quarter-turn it wheels instead,
+as does a unit already marching when the order comes;
+either is still dealt out at exactly a quarter-turn, as above.
 
 ::: {#fig-near-quarter-redeal .demo}
 

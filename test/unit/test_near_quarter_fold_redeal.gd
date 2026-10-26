@@ -1,8 +1,8 @@
 extends GutTest
-## An order squaring a grid that stands within QUARTER_REDEAL_BAND of a quarter-turn off its
-## heading deals the ranks again at that quarter in one step, from where the men stand, and
-## turns out only the rest at the bounded rate (Unit.order_square_line,
-## Unit._square_fold_for_order).
+## An order squaring a block that is not marching, whose grid stands within QUARTER_REDEAL_BAND
+## of a quarter-turn off its heading, deals the ranks again at that quarter in one step, from
+## where the men stand, and turns out only the rest at the bounded rate (Unit.order_square_line,
+## Unit._square_fold_for_order), when the block is not too wide for it.
 ##
 ## The regression this pins: the re-square split every fold about its nearer whole or half turn,
 ## so a fold a few degrees short of a quarter wheeled nearly a quarter-turn about the block's
@@ -63,7 +63,24 @@ func test_folds_either_side_of_a_quarter_take_the_same_quarter() -> void:
 	assert_lt(float(lags[0]) * float(lags[1]), 0.0, "the two turn out the same way back to it")
 
 
-func test_a_waiting_resquare_of_a_near_quarter_fold_redeals_once_clear() -> void:
+## The band and the shape cut were measured on blocks squared holding ground: a block already
+## marching when the order comes keeps the split about the nearer whole or half turn.
+func test_a_marching_block_keeps_the_nearer_half_turn_split() -> void:
+	for marching in [false, true]:
+		var u := _unit()
+		_fold(u, 90.0 - NEAR_DEG)
+		u.move_target = START + Vector2(300.0, 0.0)
+		u.has_move_target = marching
+		_reissue(u)
+		var what: String = "marching" if marching else "standing"
+		assert_eq(u._last_redeal_tick != -1, not marching, "%s: re-dealt only standing" % what)
+		var off_quarter: float = deg_to_rad(NEAR_DEG) if not marching else deg_to_rad(90.0 - NEAR_DEG)
+		assert_almost_eq(absf(u._grid_lag), off_quarter, ANGLE_EPS, "%s: the lag left to turn" % what)
+
+
+## A re-square that waited for the contact to clear is not the order's own response to a block
+## standing clear, so it too keeps the nearer whole or half turn.
+func test_a_waiting_resquare_of_a_near_quarter_fold_keeps_the_half_turn_split() -> void:
 	var u := _unit()
 	_fold(u, 90.0 + NEAR_DEG)
 	u._in_enemy_contact = true
@@ -73,8 +90,20 @@ func test_a_waiting_resquare_of_a_near_quarter_fold_redeals_once_clear() -> void
 	for t in range(CLEAR_TICKS):
 		u._advance_grid_lag(TICK)
 	assert_false(u._resquare_pending, "the re-square ran once the block was clear")
-	assert_eq(u._formation_angle, 0.0, "dealt again at the quarter")
-	assert_lte(absf(u._grid_lag), deg_to_rad(NEAR_DEG) + ANGLE_EPS, "turning out only the rest")
+	assert_eq(u._last_redeal_tick, -1, "without a re-deal at the quarter")
+	assert_almost_eq(absf(u._formation_angle), PI, ANGLE_EPS, "taking the half-turn")
+
+
+## A block in square keeps its own square assignment through a quarter re-square
+## (_pair_after_quarter_fold deals nothing from the men), so it is never re-dealt at the quarter.
+func test_a_block_in_square_is_not_redealt() -> void:
+	var u := _unit()
+	u.formation_mode = Unit.FORMATION_SQUARE
+	assert_true(u.in_square(), "setup: the block stands in square")
+	assert_false(u._quarter_redeal_suits_shape(), "a square never suits the re-deal")
+	_fold(u, 90.0 - NEAR_DEG)
+	_reissue(u)
+	assert_eq(u._last_redeal_tick, -1, "nothing is dealt again")
 
 
 ## The near-quarter re-deal is stamped for the demo defect scan, which judges the men's walk to
@@ -110,7 +139,9 @@ func test_a_wide_line_inside_the_band_turns_out_whole() -> void:
 
 
 func test_the_shape_gate_cuts_between_the_measured_blocks() -> void:
-	for c in [[60, 12, true], [84, 14, true], [MEN, 15, true], [MEN, 18, false], [48, 12, false]]:
+	# 90 men on 15 files stand on 6 ranks: 14 file pitches against 5 rank pitches, exactly 2.8.
+	for c in [[60, 12, true], [84, 14, true], [MEN, 15, true], [90, 15, true], [MEN, 18, false],
+			[48, 12, false]]:
 		var u := _unit(int(c[0]), int(c[1]))
 		assert_eq(u._quarter_redeal_suits_shape(), bool(c[2]),
 				"%d men on %d files" % [int(c[0]), int(c[1])])
@@ -129,7 +160,7 @@ func test_a_fold_outside_the_band_still_turns_out_whole() -> void:
 func _squared_walk(u: Unit) -> Dictionary:
 	var start: PackedVector2Array = u._sim_soldier_pos.duplicate()
 	var prev: PackedVector2Array = start
-	u._square_fold_for_order(true)
+	u._square_fold_for_order(true, true)
 	var total: float = 0.0
 	for t in range(SETTLE_TICKS):
 		u._physics_process(TICK)
