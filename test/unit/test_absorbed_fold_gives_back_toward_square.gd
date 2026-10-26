@@ -102,7 +102,27 @@ func test_an_absorb_past_square_is_given_back_only_to_square() -> void:
 	assert_almost_eq(u.grid_fold(), 0.0, ANGLE_TOL, "the grid ends square")
 	assert_eq(u._absorbed_fold, 0.0, "and the rest of the count is dropped")
 	assert_lt(worst, bound, "no tick moves a slot further than the bounded turn allows")
-	assert_eq(u._grid_lag_rate, 0.0, "the turn eased to a stop on the square line")
+
+
+func test_the_turn_eases_to_a_stop_on_the_square_line() -> void:
+	# Same fold as above: the turn slows to a stop on the square line rather than arriving at
+	# speed, as it would if it aimed past square at the whole count and was cut off there.
+	var u := _make_block()
+	_engage_fold(u, 20.0)
+	_absorb_reface(u, INSIDE_LEFT)
+	u._in_enemy_contact = false
+	var rates: Array[float] = []
+	for _i in range(600):
+		if u.grid_fold() == 0.0:
+			break
+		u._advance_grid_lag(DT)
+		rates.append(absf(u._grid_lag_rate))
+	assert_almost_eq(u.grid_fold(), 0.0, ANGLE_TOL, "sanity: the grid reached square")
+	var peak: float = rates.max()
+	assert_gt(peak, 0.0, "sanity: the grid turned")
+	assert_lt(rates[rates.size() - 1], 0.25 * peak, "the last tick turns at a fraction of the peak")
+	for i in range(rates.find(peak) + 1, rates.size()):
+		assert_lte(rates[i], rates[i - 1] + 1e-6, "after the peak the turn only slows")
 
 
 func test_past_a_quarter_the_absorb_is_given_back_toward_the_half_turn() -> void:
@@ -131,6 +151,50 @@ func test_each_tick_brings_the_grid_no_further_from_square() -> void:
 				assert_lte(_off_square_deg(u.grid_fold()), before + 1e-4,
 					"engage %.0f, absorb %s: a step turned the grid off square" % [fold_deg, offset])
 
+
+## Settle a quarter-turn drill: the heading turns a quarter and the men turn in place, so the
+## fold takes the quarter and the drill record says so (as _settle_order_turn does).
+func _drill_quarter(u: Unit) -> void:
+	var q: float = PI * 0.5
+	u.facing = u.facing.rotated(q)
+	u._formation_angle = wrapf(u._formation_angle - q, -PI, PI)
+	u._drill_turn_fold = wrapf(u._drill_turn_fold - q, -PI, PI)
+
+
+func test_a_quarter_drilled_before_the_absorb_squares_back_to_the_quarter() -> void:
+	# A Q drill to -90, then riders inside absorb 39.8 either way: -129.8 or -50.2. The absorb
+	# clears the drill record, but the drilled quarter is still the line to square back to, so
+	# the whole count is given back and the next order finds an exact quarter to re-deal.
+	for offset in [INSIDE_LEFT, INSIDE_RIGHT]:
+		var u := _make_block()
+		_drill_quarter(u)
+		_absorb_reface(u, offset)
+		assert_eq(u._drill_turn_fold, 0.0, "sanity: the absorb cleared the drill record")
+		assert_almost_eq(absf(rad_to_deg(u.grid_fold()) + 90.0), ABSORB_DEG, 0.1,
+			"sanity: the absorb turned the grid off the quarter")
+		_run_clear(u, 900)
+		assert_almost_eq(u.grid_fold(), -PI * 0.5, ANGLE_TOL,
+			"absorb %s: the grid is back on the drilled quarter" % offset)
+		assert_eq(u._absorbed_fold, 0.0, "absorb %s: all of it was given back" % offset)
+
+
+func test_a_fresh_count_does_not_reuse_an_earlier_drill() -> void:
+	# A quarter drilled before an absorb whose count was later dropped (here by an engage settle)
+	# is not a line for the next count: once the fold is square again, a fresh absorb squares
+	# back to 0, not to the old quarter.
+	var u := _make_block()
+	_drill_quarter(u)
+	_absorb_reface(u, INSIDE_LEFT)
+	u._engage_turn_start_facing = u.facing
+	u._engage_turn_target = u.facing
+	u._settle_engage_turn()
+	assert_eq(u._absorbed_fold, 0.0, "sanity: the engage settle dropped the count")
+	assert_ne(u._absorbed_drill_turn, 0.0, "sanity: the old drill is still recorded")
+	u._formation_angle = 0.0   # as an order's re-square would leave it
+	_absorb_reface(u, INSIDE_LEFT)
+	assert_eq(u._absorbed_drill_turn, 0.0, "the fresh count carries no drill")
+	_run_clear(u, 900)
+	assert_almost_eq(u.grid_fold(), 0.0, ANGLE_TOL, "it squares to 0, not to the old quarter")
 
 
 func test_square_reach_measures_to_the_nearest_square_line() -> void:

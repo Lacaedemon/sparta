@@ -950,6 +950,9 @@ The ranks only ever turn toward square with the heading, never away from it:
 if turning toward the riders had partly undone a turn made earlier on another enemy,
 undoing it would turn the ranks further off, so they stay where they stand,
 and ranks that come square before the whole turn is undone stop there.
+Ranks you had drilled a quarter-turn round count as square at that quarter-turn,
+whether you drilled them before or after the riders came in,
+so they turn back onto it.
 If it comes back into contact before it has finished, it stops and finishes once clear again.
 If it turns its ranks in place onto another enemy before it has finished,
 or a sudden large turn is folded into its ranks,
@@ -977,6 +980,23 @@ still wheels its formation to follow its enemy.
 A brittle cavalry troop charges an infantry block standing on Hold and pushes into its ranks.
 The infantry turns to face the riders,
 but its ranks stay where its men stand rather than wheeling round after them.
+:::
+
+::: {#fig-absorb-toward-square .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/absorb_toward_square.jpg">
+  <source src="media/absorb_toward_square.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+An infantry block on Hold first snaps round toward a cavalry charge,
+then turns back as the riders come inside its ranks, until its ranks are square again.
+Once the riders have broken and gone, its ranks stay square
+rather than wheeling back off its heading.
 :::
 
 Stopping at the edge makes a flank or rear attack cheaper for the attacker,

@@ -542,6 +542,12 @@ var _resquare_pending: bool = false
 # lag) drops it too, so it never takes back more than the absorbed turns and never carries the
 # grid past a turn made on top of them.
 var _absorbed_fold: float = 0.0
+# The net drill turn (rad) that absorbs counted in _absorbed_fold cleared from the drill record
+# (_drill_turn_fold): an absorb clears the record, as reform_ranks needs, but a quarter drilled
+# before the absorbs is still a line the squaring should bring the grid back to. Read by
+# _bleed_absorbed_fold only, and only while the count is set; the first absorb of a fresh count
+# starts it again from that absorb's record.
+var _absorbed_drill_turn: float = 0.0
 # How long (s) a block must have been out of enemy contact before a fresh order's re-square of
 # its fold runs (_contact_clear_time). The fight's own measure of having let go of a block,
 # ENGAGED_LINGER (30 ticks). Between bouts a fight lets go of a block for a few ticks at a time:
@@ -4661,6 +4667,10 @@ func _face_dir(dir: Vector2, absorb: bool = false) -> void:
 	var turn: float = angle_difference(facing.angle(), new_facing.angle())
 	if absorb:
 		if turn != 0.0:
+			if _absorbed_fold == 0.0:
+				_absorbed_drill_turn = 0.0   # a fresh count: no drill under it yet
+			# The drill record this clears is kept for the squaring to measure against.
+			_absorbed_drill_turn = wrapf(_absorbed_drill_turn + _drill_turn_fold, -PI, PI)
 			_formation_angle = wrapf(_formation_angle - turn, -PI, PI)
 			_absorbed_fold = wrapf(_absorbed_fold - turn, -PI, PI)
 			_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
@@ -4843,9 +4853,12 @@ func _close_resquare_lag_in_pivot(delta: float) -> void:
 ## snap-absorb, a folded lag, a re-square) drops the count, so the step only ever takes back the
 ## absorbed turns themselves and cannot carry the grid past a turn made on top of them. It keeps
 ## the drill record: it takes back only a turn made under any drills since, which leaves those
-## drills' net turn standing, so the square line is measured on the fold net of those drills.
+## drills' net turn standing, so the square line is measured on the fold net of those drills,
+## and of any drills made before the absorbs that an absorb cleared from the record
+## (_absorbed_drill_turn): a drilled quarter is a line to square to whichever came first.
 func _bleed_absorbed_fold(delta: float) -> void:
-	var reach: float = square_reach(_formation_angle - _drill_turn_fold, -_absorbed_fold)
+	var reach: float = square_reach(_formation_angle - _drill_turn_fold - _absorbed_drill_turn,
+			-_absorbed_fold)
 	var target: float = signf(-_absorbed_fold) * minf(absf(_absorbed_fold), reach)
 	if target == 0.0:
 		_absorbed_fold = 0.0   # no nearer square to give back toward
@@ -11676,7 +11689,8 @@ func to_snapshot_dict() -> Dictionary:
 		"ranks_closed": _ranks_closed, "formation_angle": _formation_angle,
 		"grid_lag": _grid_lag, "grid_lag_rate": _grid_lag_rate,
 		"grid_lag_resquare": _grid_lag_resquare, "resquare_pending": _resquare_pending,
-		"absorbed_fold": _absorbed_fold, "contact_clear_time": _contact_clear_time,
+		"absorbed_fold": _absorbed_fold, "absorbed_drill_turn": _absorbed_drill_turn,
+		"contact_clear_time": _contact_clear_time,
 		"drill_turn_fold": _drill_turn_fold,
 		"formation_mirror_x": _formation_mirror_x,
 		"fallback_mirror_x": _fallback_mirror_x,
@@ -11928,6 +11942,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_grid_lag_resquare = bool(d.get("grid_lag_resquare", false))
 	_resquare_pending = bool(d.get("resquare_pending", false))
 	_absorbed_fold = float(d.get("absorbed_fold", 0.0))
+	_absorbed_drill_turn = float(d.get("absorbed_drill_turn", 0.0))
 	_contact_clear_time = float(d.get("contact_clear_time", RESQUARE_CONTACT_CLEAR_TIME))
 	# A snapshot from before the rename carries the quarter-turn-only record under its old key.
 	_drill_turn_fold = float(d.get("drill_turn_fold", d.get("quarter_turn_fold", 0.0)))

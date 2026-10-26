@@ -108,7 +108,7 @@ func test_each_tick_turns_the_fold_by_a_bounded_step() -> void:
 	assert_lt(worst, bound, "no tick turns the fold past the bounded rate")
 
 
-func test_only_the_absorbed_part_squares_and_a_near_quarter_fold_is_not_reflected() -> void:
+func test_an_absorb_past_a_near_quarter_fold_toward_square_stays_and_is_not_reflected() -> void:
 	# The earlier attempt squared the whole fold: -99.5 plus a few absorbed degrees is past a
 	# quarter, so the order's re-square reflected it by a half-turn and left a residue near a
 	# quarter-turn for the grid to turn out. Squaring only the absorbed part never reflects. Here
