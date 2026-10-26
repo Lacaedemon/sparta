@@ -92,12 +92,6 @@
         5
       ],
       "reason": "Focused knockback drives uid5 into a compressed knot around the strike target; measured min neighbour 0.63 wu on the re-pinned 2x-default layout (was cited lower pre-repin). Transient press compression at the focal point, not standing interpenetration."
-    },
-    "facing_flutter": {
-      "uids": [
-        5
-      ],
-      "reason": "Uid 5 marches on its ATTACK order out of contact and its heading saws back and forth by about half a degree every 2 to 6 ticks, the marching-attack jitter tracked in #1764, which the dumped facing's 2-decimal rounding turns into runs of reversals. It fails on main as well: on dense 2-tick FULL dumps from tick 2, judged with no exemption against a run of 3, uid 5 reads 2, 9, 6, 9, 3, 9, 8, 6 and 6 on main 47a316a0 at seeds 0 to 8 (7 of 9 fail), and 6, 17, 4, 9, 6, 3, 4, 6 and 3 with #1865 (d25c4a4f; 7 of 9 fail), measured 2026-10-26 on Windows. #1865 changes this clip from tick 361, where uid 8 (80 horse, 9 files) squares a fold of 88.3 degrees by dealing its ranks again at the quarter instead of turning the whole fold out (main still has its ranks 42.6 degrees off its heading at tick 760); uid 5 is not re-squared, and its runs move with the rest of the melee. On seed 0 the longest run is 6 at ticks 676 to 692 with #1865 against 2 at 670 to 678 on main, the heading stepping 0.28 to 0.78 degrees a sample with #1865 and 0.29 on main. #1865 does not make it worse across seeds: the nine runs total 58 on both trees and 7 of 9 fail on both. Seed 1's 17 (main 9) is one run in the same phase of the fight, ticks 722 to 790 against main's 724 to 754, and #1865 reaches uid 5 there only through a chain of other units: uid 8 first differs at tick 362, uids 7 and 9 at 366, uid 6 at 420, uid 1 at 422, and uid 5, which is attacking uid 1, at 434. So uid 5's runs move with its quarry's path, not with any re-square of its own. Remove this exemption once #1764 lands."
     }
   }
 }
