@@ -369,7 +369,7 @@ static func analyze(snapshots: Array) -> Dictionary:
 					"formation": [], "frontage": [],
 					"last_reshape_tick": [], "last_redeal_tick": [], "anchor_held": [],
 					"nnd_min": [], "nnd_med": [], "angle": [], "residual": [],
-					"misslotted": [], "facing_angle": [], "pos": [],
+					"misslotted": [], "facing_angle": [], "pos": [], "slot_far": [],
 					"motion_ref": u["motion_ref"],
 				}
 			var s: Dictionary = series[uid]
@@ -413,6 +413,7 @@ static func analyze(snapshots: Array) -> Dictionary:
 			var fa: Array = u.get("facing", [0.0, 1.0])
 			s["facing_angle"].append(atan2(float(fa[1]), float(fa[0])))
 			s["pos"].append(u["soldiers_full"]["pos"])
+			s["slot_far"].append(_farthest_from_slot(slots, bodies))
 	var verdicts: Array = []
 	for uid in series:
 		verdicts.append_array(_unit_verdicts(int(uid), series[uid]))
@@ -501,6 +502,24 @@ static func reshape_timeout(old_files: int, new_files: int, soldiers: int,
 	return (old_crossing + new_crossing) / slowest * 2.0 + 1.0
 
 
+## Transit timeout (seconds) after a near-quarter re-deal: twice the time the man farthest from
+## his new slot (`farthest`, wu, read at the first sample after the re-deal) needs at jog speed,
+## plus a second, as reshape_timeout allows. reshape_timeout's crossing of the whole old and new
+## grids is far longer for a deep block, and would keep the window open well past the men's own
+## walk: 58.8 s for an 80-horse squadron of 9 files 40 wu and 9 ranks 120 wu apart, against
+## 14.6 s here for its farthest man 475 wu from his slot.
+static func redeal_timeout(farthest: float, jog_speed: float) -> float:
+	return farthest / maxf(1.0, jog_speed) * 2.0 + 1.0
+
+
+## The farthest any body stands from its own slot (wu), unfitted: index-aligned, as dumped.
+static func _farthest_from_slot(slots: Array, bodies: Array) -> float:
+	var far: float = 0.0
+	for k in range(mini(slots.size(), bodies.size())):
+		far = maxf(far, _vec(slots[k]).distance_to(_vec(bodies[k])))
+	return far
+
+
 ## Which samples are judged for shape_residual: starts with judged_mask(), and additionally
 ## exempts samples inside a unit's post-reshape transit window (e.g. while bodies walk onto
 ## newly expanded/contracted slots after a frontage change, formation change, reinforcement
@@ -539,7 +558,8 @@ static func shape_residual_mask(s: Dictionary, base_mask: Array = []) -> Array:
 		var cur_redeal: int = int(s["last_redeal_tick"][i]) if has_redeal else -1
 		var prev_redeal: int = int(s["last_redeal_tick"][i - 1]) if (has_redeal and i > 0) else -1
 
-		if cur_redeal >= 0 and cur_redeal != prev_redeal:
+		var redeal_event: bool = cur_redeal >= 0 and cur_redeal != prev_redeal
+		if redeal_event:
 			reshape_event = true
 			cur_last_tick = maxi(cur_last_tick, cur_redeal)
 		elif cur_last_tick >= 0 and cur_last_tick != prev_last_tick:
@@ -554,6 +574,8 @@ static func shape_residual_mask(s: Dictionary, base_mask: Array = []) -> Array:
 			var start_tick: int = cur_last_tick if cur_last_tick >= 0 else tick
 			var count: int = int(s["counts"][i]) if (s.has("counts") and s["counts"].size() > i) else 1
 			var timeout_sec: float = reshape_timeout(old_files, new_files, count, fp, rp, jog, back_frac)
+			if redeal_event and s.has("slot_far") and s["slot_far"].size() > i:
+				timeout_sec = redeal_timeout(float(s["slot_far"][i]), jog)
 			var timeout_ticks: int = int(ceil(timeout_sec * 60.0))
 			transit_until_tick = start_tick + timeout_ticks
 			transit_active = true

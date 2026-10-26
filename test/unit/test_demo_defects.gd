@@ -385,15 +385,15 @@ func test_post_reshape_transit_window_exempts_shape_residual_over_multiple_sampl
 			"unreshaped block holding high residual fails shape_residual")
 
 
-## `snap` with its unit's last quarter-turn re-deal stamped at `tick`.
+## `snap` with its unit's last near-quarter re-deal stamped at `tick`.
 func _redealt(snap: Dictionary, tick: int) -> Dictionary:
 	snap["units"][0]["last_redeal_tick"] = tick
 	return snap
 
 
-## A quarter-turn re-deal keeps the file count, so neither the frontage nor the reshape stamp
+## A near-quarter re-deal keeps the file count, so neither the frontage nor the reshape stamp
 ## changes, but the men still walk to a reshaped footprint: its own stamp opens the transit window.
-func test_a_quarter_turn_redeal_opens_the_transit_window() -> void:
+func test_a_near_quarter_redeal_opens_the_transit_window() -> void:
 	var slots: Array = _grid(6, 4, SPACING)
 	var transit: Array = []
 	for i in range(slots.size()):
@@ -407,6 +407,26 @@ func test_a_quarter_turn_redeal_opens_the_transit_window() -> void:
 		snaps.append(_redealt(last, 20) if redealt else last)
 		var passed: bool = bool(_verdict(DemoDefects.analyze(snaps), "shape_residual")["pass"])
 		assert_eq(passed, redealt, "a re-deal's walk is judged as transit, the same walk without one fails")
+
+
+## A re-deal's window lasts as long as its farthest man needs (redeal_timeout), not the crossing of
+## the whole grid a frontage change allows: men one file from their slots who stay there long after
+## they could have arrived are judged.
+func test_a_redeal_window_is_bounded_by_its_farthest_walk() -> void:
+	var slots: Array = _grid(6, 4, SPACING)
+	var swapped: Array = []
+	for i in range(slots.size()):
+		swapped.append(slots[i ^ 1])   # each man one file from his slot
+	var count: int = slots.size()
+	var reshape_ticks: float = DemoDefects.reshape_timeout(6, 6, count, SPACING, SPACING, 64.0) * 60.0
+	var redeal_ticks: float = DemoDefects.redeal_timeout(SPACING, 64.0) * 60.0
+	assert_gt(20.0 + reshape_ticks, 240.0, "setup: a frontage change's window would cover every sample")
+	assert_lt(redeal_ticks, 100.0, "setup: the farthest man needs well under 100 ticks")
+	var snaps: Array = [_snapshot(0, slots.duplicate(), slots)]
+	for t in [20, 120, 160, 200, 240]:
+		snaps.append(_redealt(_snapshot(t, swapped.duplicate(), slots), 20))
+	assert_false(bool(_verdict(DemoDefects.analyze(snaps), "shape_residual")["pass"]),
+			"men still off their slots past the farthest walk's window fail")
 
 
 func test_a_stuck_redeal_past_its_timeout_fails_shape_residual() -> void:
