@@ -90,6 +90,26 @@ func test_the_redeal_is_stamped_and_a_wheel_is_not() -> void:
 	assert_eq(outside._last_redeal_tick, -1, "a wheel is not")
 
 
+## A line much wider than it is deep walks further re-dealt than turned out (120 men on 20 files
+## near a quarter: 1.37 times as far on average over the band), so it turns its whole fold out
+## even inside the band.
+func test_a_wide_line_inside_the_band_turns_out_whole() -> void:
+	var u := _unit(MEN, 20)
+	assert_false(u._quarter_redeal_suits_shape(), "setup: 20 files on 6 ranks is too wide")
+	_fold(u, 90.0 - NEAR_DEG)
+	_reissue(u)
+	assert_eq(u._last_redeal_tick, -1, "nothing is dealt again")
+	assert_eq(u._formation_angle, 0.0, "the fold is all residue")
+	assert_almost_eq(u._grid_lag, deg_to_rad(NEAR_DEG - 90.0), ANGLE_EPS, "the whole fold turns out")
+
+
+func test_the_shape_gate_cuts_between_the_measured_blocks() -> void:
+	for c in [[60, 12, true], [84, 14, true], [MEN, 15, true], [MEN, 18, false], [48, 12, false]]:
+		var u := _unit(int(c[0]), int(c[1]))
+		assert_eq(u._quarter_redeal_suits_shape(), bool(c[2]),
+				"%d men on %d files" % [int(c[0]), int(c[1])])
+
+
 func test_a_fold_outside_the_band_still_turns_out_whole() -> void:
 	var u := _unit()
 	_fold(u, OUTSIDE_DEG)
