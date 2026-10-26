@@ -438,11 +438,14 @@ var frontage_anchor_offset: float = 0.0
 # -1 means "never" (Engine.get_physics_frames() starts at 0, so 0 alone isn't a safe sentinel).
 var _last_reshape_tick: int = -1
 var _last_reshape_widened: bool = false
-# Physics-frame stamp of the last quarter-turn re-deal (_pair_after_quarter_fold), -1 for never.
+# Physics-frame stamp of the last near-quarter re-deal an order's re-square made
+# (_square_fold_for_order taking a quarter line off a fold not already at one), -1 for never.
 # The re-deal swaps the grid's axes, so the men walk to a reshaped footprint as after a frontage
 # change; the demo state dump carries it so the defect scan judges that walk as a reshape's
-# transit. Nothing in the sim reads it: a re-deal is not a frontage change, so it must not
-# start the frontage cooldowns or report a file-doubling maneuver as _last_reshape_tick does.
+# transit. A fold already at a quarter (an exact quarter, or a drilled one) is re-dealt as before
+# and not stamped, so the scan judges those re-deals as it always has. Nothing in the sim reads
+# it: a re-deal is not a frontage change, so it must not start the frontage cooldowns or report
+# a file-doubling maneuver as _last_reshape_tick does.
 var _last_redeal_tick: int = -1
 # Physics-frame deadline through which SoldierBodies._separate_same_unit keeps running its
 # full same-unit standoff scan for this unit while NOT fighting (a FIGHTING unit always runs
@@ -7926,7 +7929,6 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 func _pair_after_quarter_fold(count: int) -> void:
 	if count <= 0 or in_square():
 		return
-	_last_redeal_tick = Engine.get_physics_frames()
 	var files: int = maxi(1, formation_files(count))
 	if _effective_file_major_reform():
 		# An invalid file count reads as a reshape, which deals files and ranks from the
@@ -10142,6 +10144,8 @@ func _square_fold_for_order(hold_ground: bool) -> void:
 		_grid_lag = residue
 		_grid_lag_resquare = residue != 0.0
 		_render_dirty = true
+		if absf(line) == PI * 0.5 and not in_square():
+			_last_redeal_tick = Engine.get_physics_frames()   # reform_ranks re-deals it below
 	reform_ranks(hold_ground)
 
 

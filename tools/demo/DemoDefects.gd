@@ -504,7 +504,7 @@ static func reshape_timeout(old_files: int, new_files: int, soldiers: int,
 ## Which samples are judged for shape_residual: starts with judged_mask(), and additionally
 ## exempts samples inside a unit's post-reshape transit window (e.g. while bodies walk onto
 ## newly expanded/contracted slots after a frontage change, formation change, reinforcement
-## insertion, or quarter-turn re-deal). The exemption window extends from the reshape tick for
+## insertion, or near-quarter re-deal). The exemption window extends from the reshape tick for
 ## reshape_timeout() seconds (or while anchor_held is true), ending early once the bodies settle
 ## onto the new grid.
 static func shape_residual_mask(s: Dictionary, base_mask: Array = []) -> Array:
@@ -533,8 +533,8 @@ static func shape_residual_mask(s: Dictionary, base_mask: Array = []) -> Array:
 		var old_files: int = int(s["frontage"][i - 1]) if (i > 0 and s.has("frontage") and s["frontage"].size() > i) else 1
 		var new_files: int = int(s["frontage"][i]) if (s.has("frontage") and s["frontage"].size() > i) else old_files
 
-		# A quarter-turn re-deal swaps the grid's axes under the men, so they walk to a reshaped
-		# footprint as after a frontage change, at an unchanged file count.
+		# A near-quarter re-deal (Unit._last_redeal_tick) swaps the grid's axes under the men, so
+		# they walk to a reshaped footprint as after a frontage change, at an unchanged file count.
 		var has_redeal: bool = s.has("last_redeal_tick") and s["last_redeal_tick"].size() > i
 		var cur_redeal: int = int(s["last_redeal_tick"][i]) if has_redeal else -1
 		var prev_redeal: int = int(s["last_redeal_tick"][i - 1]) if (has_redeal and i > 0) else -1

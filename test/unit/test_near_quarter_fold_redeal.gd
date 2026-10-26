@@ -77,9 +77,10 @@ func test_a_waiting_resquare_of_a_near_quarter_fold_redeals_once_clear() -> void
 	assert_lte(absf(u._grid_lag), deg_to_rad(NEAR_DEG) + ANGLE_EPS, "turning out only the rest")
 
 
-## The re-deal is stamped for the demo defect scan, which judges the men's walk to the reshaped
-## footprint as a reshape's transit; a wheel re-deals nothing and stamps nothing.
-func test_the_redeal_is_stamped_and_a_wheel_is_not() -> void:
+## The near-quarter re-deal is stamped for the demo defect scan, which judges the men's walk to
+## the reshaped footprint as a reshape's transit. A wheel re-deals nothing and stamps nothing, and
+## a fold already at a quarter is re-dealt as before and judged as before, unstamped.
+func test_the_redeal_is_stamped_and_a_wheel_or_exact_quarter_is_not() -> void:
 	var near := _unit()
 	_fold(near, 90.0 - NEAR_DEG)
 	_reissue(near)
@@ -88,6 +89,11 @@ func test_the_redeal_is_stamped_and_a_wheel_is_not() -> void:
 	_fold(outside, OUTSIDE_DEG)
 	_reissue(outside)
 	assert_eq(outside._last_redeal_tick, -1, "a wheel is not")
+	var exact := _unit()
+	_fold(exact, 90.0)
+	_reissue(exact)
+	assert_eq(exact._formation_angle, 0.0, "setup: the exact quarter is squared")
+	assert_eq(exact._last_redeal_tick, -1, "nor is a fold already at a quarter")
 
 
 ## A line much wider than it is deep walks further re-dealt than turned out (120 men on 20 files
