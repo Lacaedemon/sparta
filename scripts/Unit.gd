@@ -499,7 +499,9 @@ var _ranks_closed: bool = false
 # (_square_fold_for_order): in contact, not until the block is clear; otherwise by reflecting
 # its nearer half-turn in place and turning the residue out at a bounded rate. A quarter fold and
 # a far-tier block are still squared in one tick (the men of a quarter fold take the nearest
-# cells of the squared grid; a far block has no bodies on its slots). A rout
+# cells of the squared grid; a far block has no bodies on its slots), and a grid within
+# QUARTER_REDEAL_BAND of a quarter is dealt again at the quarter in one tick, with only the
+# rest turned out at the bounded rate. A rout
 # keeps it, and the rally squares it to the heading. The part a combat re-face on riders inside a
 # foot block folded in (_absorbed_fold) is also squared on its own, with no order, once the
 # block is out of contact (_bleed_absorbed_fold).
@@ -566,6 +568,15 @@ const RESQUARE_CONTACT_CLEAR_TIME: float = ENGAGED_LINGER
 # Float slack (s) on reaching RESQUARE_CONTACT_CLEAR_TIME: thirty 1/60 s ticks sum to
 # 0.49999999999999994, short of 0.5, so without it the gate first passes on tick 31.
 const RESQUARE_CONTACT_CLEAR_EPS: float = 1.0e-6   # solver epsilon
+# How close (rad) to a quarter-turn the grid of a block an order squares must stand for the
+# re-square to deal the quarter again from where the men stand in one step and turn out only the
+# rest (order_square_line), rather than turning out the whole fold off square or a half-turn.
+# Measured on lone blocks of 30, 48, 60, 96, 120 and 200 men in both reform layouts, each folded
+# 5 to 175 degrees off its heading and squared holding ground: at every fold within 15 degrees of
+# a quarter the re-deal walks each man less on average than the wheel, in every block and layout,
+# and crosses fewer men over the centreline (0 to 13 against the wheel's 7 to 78). At 20 degrees
+# the wheel walks less for 30, 48 and 200 men in row-major order (57.4 against 63.8 wu for 30).
+const QUARTER_REDEAL_BAND: float = deg_to_rad(15.0)
 # How long (s) the block has been out of enemy contact, counted by _advance_grid_lag on every
 # non-routing tick and held at RESQUARE_CONTACT_CLEAR_TIME once it gets there. A fight lets go
 # of a block for a tick or a few between bouts (_in_enemy_contact has no hysteresis of its own),
@@ -4725,14 +4736,15 @@ func _reface(dir: Vector2) -> void:
 	facing = new_facing
 	_render_dirty = true
 	# Only a correction that grows the lag past the threshold folds it: an order's re-square
-	# (_grid_lag_resquare) may already stand past it, and a turn that shrinks it closes it.
+	# (_grid_lag_resquare) grown past it is kept (below), and a turn that shrinks it closes it.
 	if absf(_grid_lag) <= FACING_SNAP_ABSORB_THRESHOLD or absf(_grid_lag) <= absf(lag_before):
 		return
 	if not _grid_lag_resquare:
 		_fold_grid_lag()
 		return
-	# An order's re-square stays a lag up to a quarter-turn, which is as far as its residue
-	# can stand (_square_fold_for_order). Grown past that, its nearer half-turn has changed, so
+	# An order's re-square stays a lag up to a quarter-turn. It starts at most a quarter-turn less
+	# QUARTER_REDEAL_BAND (_square_fold_for_order), so only corrections that grew it reach the
+	# threshold. Grown past a quarter-turn, the line it would square to has changed, so
 	# it is folded where it stands and the re-square waits to run again from the new fold: the
 	# block is out of contact here (_face_dir took the turn otherwise). _advance_grid_lag runs it
 	# once the contact has cleared, on a tick that does not turn in place: this same tick, since
@@ -7881,7 +7893,10 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 ## an absorbed combat re-face (_face_dir's absorb) or an engage re-face is not, unless it
 ## measures a quarter: those can be any angle, and re-dealing them by lateral order reshuffled
 ## blocks that were not crossing (68, 112 and 156 degree folds on two
-## catalog clips), so that write drops the drill record (see _drill_turn_fold). Nor is an about-face
+## catalog clips), so that write drops the drill record (see _drill_turn_fold). An order's
+## re-square of such a fold within QUARTER_REDEAL_BAND of a quarter first moves the part off the
+## quarter into the grid's lag (order_square_line), so the fold reform_ranks reads then measures a
+## quarter and is re-paired at it, and the lag turns the rest out. Nor is an about-face
 ## fold, whatever turns made it: that one is reflected, not paired. A squared block keeps its own
 ## square assignment.
 ## A row-major unit with no bodies to read (far tier, not yet seeded) keeps its pairing; a
@@ -10063,7 +10078,8 @@ func start_order_response() -> void:
 ## it, once it is clear; one re-issued to a block that fights on changes nothing.
 ##
 ## Out of contact, the grid's whole turn off the heading (grid_fold: the fold plus any lag)
-## splits into its nearer whole or half turn and a residue of at most a quarter-turn.
+## splits into its nearer whole or half turn and a residue of at most a quarter-turn less
+## QUARTER_REDEAL_BAND.
 ## reform_ranks() takes the half, through the same countermarch-aware path _finish_order_turn
 ## takes -- NOT a naked `_formation_angle = 0.0`, which point-reflects an about-faced block and
 ## swaps every man to the opposite flank and rank at once. It leaves a full block's +-PI fold in
@@ -10072,12 +10088,17 @@ func start_order_response() -> void:
 ## re-square (_grid_lag_resquare), which turns the grid after the heading no faster than the man
 ## on its farthest slot can jog (_advance_grid_lag).
 ##
-## Two cases keep the one-tick re-square. A quarter-turn fold (one measuring a quarter, or whose
-## drills net one, as reform_ranks reads both) is dealt again from where the men stand
-## (_pair_after_quarter_fold): the grid's axes swap, but each man takes the cell nearest him and
-## none crosses the block, as in a frontage reshape, where a quarter-turn wheel about the centre
-## would march the far files round the whole block. A far-tier block has no bodies on its slots
-## to strand. `hold_ground` as for reform_ranks.
+## A grid turned within QUARTER_REDEAL_BAND of a quarter-turn splits about that quarter instead
+## (order_square_line): the quarter is dealt again from where the men stand
+## (_pair_after_quarter_fold) in one step, and only the residue, at most the band, is turned out
+## after the heading. The re-deal swaps the grid's axes, but each man takes the cell nearest him
+## and few cross the block, as in a frontage reshape, where a quarter-turn wheel about the centre
+## would march the far files round the whole block.
+##
+## Two cases keep the whole re-square in one tick. A quarter-turn fold (one measuring a quarter,
+## or whose drills net one, as reform_ranks reads both) is dealt again with nothing lagged, even
+## when its drills sit on a residue. A far-tier block has no bodies on its slots to strand.
+## `hold_ground` as for reform_ranks.
 func _square_fold_for_order(hold_ground: bool) -> void:
 	_resquare_pending = false
 	var fold: float = wrapf(_formation_angle, -PI, PI)
@@ -10091,15 +10112,29 @@ func _square_fold_for_order(hold_ground: bool) -> void:
 		reform_ranks(hold_ground)
 		return
 	var total: float = wrapf(_formation_angle + _grid_lag, -PI, PI)
-	var half: float = 0.0 if absf(total) <= PI * 0.5 else signf(total) * PI
-	var residue: float = wrapf(total - half, -PI, PI)
+	var line: float = order_square_line(total)
+	var residue: float = wrapf(total - line, -PI, PI)
 	if residue != 0.0 or _grid_lag != 0.0:
-		_formation_angle = half
+		_formation_angle = line
 		_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
 		_grid_lag = residue
 		_grid_lag_resquare = residue != 0.0
 		_render_dirty = true
 	reform_ranks(hold_ground)
+
+
+## The line an order's re-square (_square_fold_for_order) takes in one step out of a grid turned
+## `total` (rad) off its heading, leaving the rest to turn out at the bounded rate: the quarter
+## turn on `total`'s side when `total` lies within QUARTER_REDEAL_BAND of it, otherwise the nearer
+## of square (0) and the half-turn (+-PI). reform_ranks re-deals a quarter from where the men stand
+## (_pair_after_quarter_fold) and reflects a half-turn in depth. Folds a few degrees either side of
+## a quarter therefore take the same quarter and turn out residues of opposite sign, rather than
+## one wheeling nearly a quarter-turn and the other reflecting by a half-turn and wheeling back.
+static func order_square_line(total: float) -> float:
+	var t: float = wrapf(total, -PI, PI)
+	if absf(absf(t) - PI * 0.5) <= QUARTER_REDEAL_BAND:
+		return signf(t) * PI * 0.5
+	return 0.0 if absf(t) <= PI * 0.5 else signf(t) * PI
 
 
 ## True once the block has been out of enemy contact for RESQUARE_CONTACT_CLEAR_TIME
