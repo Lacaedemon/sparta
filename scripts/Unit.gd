@@ -545,8 +545,14 @@ var _absorbed_fold: float = 0.0
 # The net drill turn (rad) that absorbs counted in _absorbed_fold cleared from the drill record
 # (_drill_turn_fold): an absorb clears the record, as reform_ranks needs, but a quarter drilled
 # before the absorbs is still a line the squaring should bring the grid back to. Read by
-# _bleed_absorbed_fold only, and only while the count is set; the first absorb of a fresh count
-# starts it again from that absorb's record.
+# _bleed_absorbed_fold only, and only while the count is set. Handed back to the record
+# (_restore_absorbed_drill_turn) when the count ends with the fold back where the drills left
+# it: the squaring gives the whole count back, or stops on the drilled line, or later absorbs
+# cancel the count exactly; the fold then comes from drills alone again, so a later bout of
+# absorbs squares to the same drilled line. Dropped instead when the squaring stops short of the
+# line, where the fold no longer comes from drills alone, as after a snap-absorb. Any other end
+# of the count leaves it stale, so the first absorb of a fresh count starts it again from that
+# absorb's record.
 var _absorbed_drill_turn: float = 0.0
 # How long (s) a block must have been out of enemy contact before a fresh order's re-square of
 # its fold runs (_contact_clear_time). The fight's own measure of having let go of a block,
@@ -4674,6 +4680,8 @@ func _face_dir(dir: Vector2, absorb: bool = false) -> void:
 			_formation_angle = wrapf(_formation_angle - turn, -PI, PI)
 			_absorbed_fold = wrapf(_absorbed_fold - turn, -PI, PI)
 			_drill_turn_fold = 0.0   # the fold no longer comes from drills alone
+			if _absorbed_fold == 0.0:
+				_restore_absorbed_drill_turn()   # the absorbs cancelled: back where the drills left it
 			_render_dirty = true
 	elif absf(turn) > FACING_SNAP_ABSORB_THRESHOLD:
 		_formation_angle = wrapf(_formation_angle - turn, -PI, PI)
@@ -4855,13 +4863,19 @@ func _close_resquare_lag_in_pivot(delta: float) -> void:
 ## the drill record: it takes back only a turn made under any drills since, which leaves those
 ## drills' net turn standing, so the square line is measured on the fold net of those drills,
 ## and of any drills made before the absorbs that an absorb cleared from the record
-## (_absorbed_drill_turn): a drilled quarter is a line to square to whichever came first.
+## (_absorbed_drill_turn): a drilled quarter is a line to square to whichever came first. When
+## the step reaches its target, the whole count given back or the grid on that line, the fold
+## stands where the drills left it, so the drill record is restored for a later bout and an
+## order's quarter re-deal. When the squaring stops short of the line (no step brings it nearer)
+## the record stays cleared and the drills' turn is dropped with the count: the fold no longer
+## comes from drills alone.
 func _bleed_absorbed_fold(delta: float) -> void:
 	var reach: float = square_reach(_formation_angle - _drill_turn_fold - _absorbed_drill_turn,
 			-_absorbed_fold)
 	var target: float = signf(-_absorbed_fold) * minf(absf(_absorbed_fold), reach)
 	if target == 0.0:
 		_absorbed_fold = 0.0   # no nearer square to give back toward
+		_absorbed_drill_turn = 0.0   # and the fold stands off the drilled line
 		_grid_lag_rate = 0.0
 		return
 	var radius: float = _formation_local_half_extents().length()
@@ -4879,8 +4893,19 @@ func _bleed_absorbed_fold(delta: float) -> void:
 	_grid_lag_rate = rate
 	_formation_angle = wrapf(_formation_angle + step, -PI, PI)
 	# Reaching the target either gives back the whole count or puts the grid on its square line.
-	_absorbed_fold = 0.0 if step == target else _absorbed_fold + step
+	if step == target:
+		_absorbed_fold = 0.0
+		_restore_absorbed_drill_turn()
+	else:
+		_absorbed_fold += step
 	_render_dirty = true
+
+
+## Hand the drill turn the absorbs cleared (_absorbed_drill_turn) back to the drill record, once
+## the fold stands where the drills left it again.
+func _restore_absorbed_drill_turn() -> void:
+	_drill_turn_fold = wrapf(_drill_turn_fold + _absorbed_drill_turn, -PI, PI)
+	_absorbed_drill_turn = 0.0
 
 
 ## How far (rad, >= 0) a grid folded `fold` off its heading can turn the way `dir` points

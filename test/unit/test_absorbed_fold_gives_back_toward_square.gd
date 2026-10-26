@@ -176,6 +176,58 @@ func test_a_quarter_drilled_before_the_absorb_squares_back_to_the_quarter() -> v
 		assert_almost_eq(u.grid_fold(), -PI * 0.5, ANGLE_TOL,
 			"absorb %s: the grid is back on the drilled quarter" % offset)
 		assert_eq(u._absorbed_fold, 0.0, "absorb %s: all of it was given back" % offset)
+		assert_almost_eq(u._drill_turn_fold, -PI * 0.5, ANGLE_TOL,
+			"absorb %s: and the drill record is back" % offset)
+		assert_eq(u._absorbed_drill_turn, 0.0, "absorb %s: handed back to the record" % offset)
+
+
+func test_a_second_bout_squares_back_to_the_same_drilled_quarter() -> void:
+	# The squaring ending the first count must not lose the drill: a second troop inside the
+	# ranks after the grid is back on the quarter squares back onto it again.
+	var u := _make_block()
+	_drill_quarter(u)
+	_absorb_reface(u, INSIDE_LEFT)
+	_run_clear(u, 900)
+	assert_almost_eq(u.grid_fold(), -PI * 0.5, ANGLE_TOL, "sanity: the first bout squared back")
+	u._in_enemy_contact = true
+	_absorb_reface(u, INSIDE_LEFT)
+	assert_almost_eq(absf(rad_to_deg(u.grid_fold()) + 90.0), ABSORB_DEG, 0.1,
+		"sanity: the second bout turned the grid off the quarter")
+	_run_clear(u, 900)
+	assert_almost_eq(u.grid_fold(), -PI * 0.5, ANGLE_TOL, "the second bout squares back too")
+	assert_almost_eq(u._drill_turn_fold, -PI * 0.5, ANGLE_TOL, "and the record says so")
+
+
+func test_absorbs_that_cancel_keep_the_drill_for_a_third() -> void:
+	# Two absorbs that cancel exactly end the count with the fold back on the drilled quarter, so
+	# a third absorb is a fresh count that still squares back onto that quarter.
+	var u := _make_block()
+	_drill_quarter(u)
+	var drilled: Vector2 = u.facing
+	_absorb_reface(u, INSIDE_LEFT)
+	u._face_dir(drilled, true)
+	assert_eq(u._absorbed_fold, 0.0, "sanity: the two absorbs cancelled exactly")
+	assert_almost_eq(u._drill_turn_fold, -PI * 0.5, ANGLE_TOL, "the drill record is back")
+	_absorb_reface(u, INSIDE_RIGHT)
+	_run_clear(u, 900)
+	assert_almost_eq(u.grid_fold(), -PI * 0.5, ANGLE_TOL, "the third squares back to the quarter")
+
+
+func test_stopping_short_of_the_drilled_line_drops_the_drill() -> void:
+	# Engage fold +60, then a Q drill: fold -30 with the drill on top. An absorb of -39.8 leaves
+	# the fold net of the drill at +20.2, and giving it back would turn it to +60, off square, so
+	# the squaring stops at once. The fold stands off the drilled line, so the drill is dropped
+	# with the count rather than handed back to the record.
+	var u := _make_block()
+	_engage_fold(u, 60.0)
+	_drill_quarter(u)
+	_absorb_reface(u, INSIDE_LEFT)
+	var fold: float = u.grid_fold()
+	_run_clear(u, 60)
+	assert_almost_eq(u.grid_fold(), fold, ANGLE_TOL, "the grid stays where the absorb left it")
+	assert_eq(u._absorbed_fold, 0.0, "the count is dropped")
+	assert_eq(u._absorbed_drill_turn, 0.0, "and the drill with it")
+	assert_eq(u._drill_turn_fold, 0.0, "the record stays cleared")
 
 
 func test_a_fresh_count_does_not_reuse_an_earlier_drill() -> void:

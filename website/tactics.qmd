@@ -952,7 +952,12 @@ undoing it would turn the ranks further off, so they stay where they stand,
 and ranks that come square before the whole turn is undone stop there.
 Ranks you had drilled a quarter-turn round count as square at that quarter-turn,
 whether you drilled them before or after the riders came in,
-so they turn back onto it.
+so they turn back onto it,
+and once back on it they count as drilled again,
+so riders inside the ranks in a later fight are undone onto the same quarter-turn.
+Ranks that cannot be brought nearer that quarter-turn stay where they stand,
+and no longer count as drilled:
+the next order squares them as it would any other turn.
 If it comes back into contact before it has finished, it stops and finishes once clear again.
 If it turns its ranks in place onto another enemy before it has finished,
 or a sudden large turn is folded into its ranks,
