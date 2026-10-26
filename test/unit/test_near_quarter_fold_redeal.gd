@@ -77,6 +77,19 @@ func test_a_waiting_resquare_of_a_near_quarter_fold_redeals_once_clear() -> void
 	assert_lte(absf(u._grid_lag), deg_to_rad(NEAR_DEG) + ANGLE_EPS, "turning out only the rest")
 
 
+## The re-deal is stamped for the demo defect scan, which judges the men's walk to the reshaped
+## footprint as a reshape's transit; a wheel re-deals nothing and stamps nothing.
+func test_the_redeal_is_stamped_and_a_wheel_is_not() -> void:
+	var near := _unit()
+	_fold(near, 90.0 - NEAR_DEG)
+	_reissue(near)
+	assert_eq(near._last_redeal_tick, Engine.get_physics_frames(), "the re-deal is stamped")
+	var outside := _unit()
+	_fold(outside, OUTSIDE_DEG)
+	_reissue(outside)
+	assert_eq(outside._last_redeal_tick, -1, "a wheel is not")
+
+
 func test_a_fold_outside_the_band_still_turns_out_whole() -> void:
 	var u := _unit()
 	_fold(u, OUTSIDE_DEG)

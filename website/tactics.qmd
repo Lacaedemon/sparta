@@ -965,9 +965,9 @@ the rest is left as it stands rather than undone on top of that turn,
 and only an order squares it.
 An order given in the meantime squares all of its ranks to its new heading
 once the block has been clear of the fight for half a second.
-Ranks turned more than a quarter-turn off are first reflected in place by a half-turn,
-and the rest of the turn is made no faster than the men can follow,
-except that ranks left exactly a quarter-turn off are dealt out in one step.
+Ranks turned within 15 degrees of a quarter-turn off are first dealt out again at the quarter-turn in one step,
+and ranks turned further than that past a quarter-turn are first reflected in place by a half-turn;
+either way, the rest of the turn is made no faster than the men can follow.
 A cavalry troop with foot or other horsemen among it
 still wheels its formation to follow its enemy.
 
@@ -1879,6 +1879,29 @@ so the ranks keep the turn the drill gave them.
 Two cases still square at once:
 a unit standing a quarter-turn off its ranks, whose men each step to the nearest place
 in the squared block, and a distant unit drawn as a grid mark, which has no men to move.
+A unit whose ranks stand within 15 degrees of a quarter-turn off is dealt out the same way,
+at the quarter-turn, and only the last few degrees come round at the jogging pace.
+Wheeling ranks nearly a quarter-turn round the block's centre walks its men further,
+and sends more of them across the block, than letting each step to his nearest place;
+past 15 degrees from the quarter-turn the wheel is the shorter walk for some blocks, so it is kept there.
+
+::: {#fig-near-quarter-redeal .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/near_quarter_redeal.jpg">
+  <source src="media/near_quarter_redeal.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+An infantry block on Hold turns in place to face an attack from the east,
+which leaves its ranks 85 degrees off the way it faces.
+Ordered on along its new heading once the attackers have routed,
+its men each step to the nearest place in the squared block,
+rather than wheeling the ranks the whole 85 degrees round its centre.
+:::
 
 While a unit that has come more than a quarter of the way round stays unsquared,
 its **men facing the enemy do the fighting**:

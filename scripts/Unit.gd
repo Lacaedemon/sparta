@@ -438,6 +438,12 @@ var frontage_anchor_offset: float = 0.0
 # -1 means "never" (Engine.get_physics_frames() starts at 0, so 0 alone isn't a safe sentinel).
 var _last_reshape_tick: int = -1
 var _last_reshape_widened: bool = false
+# Physics-frame stamp of the last quarter-turn re-deal (_pair_after_quarter_fold), -1 for never.
+# The re-deal swaps the grid's axes, so the men walk to a reshaped footprint as after a frontage
+# change; the demo state dump carries it so the defect scan judges that walk as a reshape's
+# transit. Nothing in the sim reads it: a re-deal is not a frontage change, so it must not
+# start the frontage cooldowns or report a file-doubling maneuver as _last_reshape_tick does.
+var _last_redeal_tick: int = -1
 # Physics-frame deadline through which SoldierBodies._separate_same_unit keeps running its
 # full same-unit standoff scan for this unit while NOT fighting (a FIGHTING unit always runs
 # it, regardless of this deadline -- see that function's own doc comment). A body's target
@@ -7906,6 +7912,7 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 func _pair_after_quarter_fold(count: int) -> void:
 	if count <= 0 or in_square():
 		return
+	_last_redeal_tick = Engine.get_physics_frames()
 	var files: int = maxi(1, formation_files(count))
 	if _effective_file_major_reform():
 		# An invalid file count reads as a reshape, which deals files and ranks from the
@@ -11729,6 +11736,7 @@ func to_snapshot_dict() -> Dictionary:
 		"frontage_anchor_offset": frontage_anchor_offset,
 		"last_reshape_tick": _last_reshape_tick,
 		"last_reshape_widened": _last_reshape_widened,
+		"last_redeal_tick": _last_redeal_tick,
 		"standoff_settle_until_tick": _standoff_settle_until_tick,
 		"standoff_settle_remaining_ticks": (
 				_standoff_settle_until_tick - Engine.get_physics_frames()
@@ -11970,6 +11978,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	frontage_anchor_offset = float(d["frontage_anchor_offset"])
 	_last_reshape_tick = int(d["last_reshape_tick"])
 	_last_reshape_widened = bool(d["last_reshape_widened"])
+	_last_redeal_tick = int(d.get("last_redeal_tick", -1))
 	if d.has("standoff_settle_remaining_ticks"):
 		var rem_standoff: int = int(d["standoff_settle_remaining_ticks"])
 		_standoff_settle_until_tick = (

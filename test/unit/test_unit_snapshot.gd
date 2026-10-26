@@ -64,6 +64,7 @@ func _sample_unit() -> Unit:
 	u.frontage_anchor_offset = 3.5
 	u._last_reshape_tick = 42
 	u._last_reshape_widened = true
+	u._last_redeal_tick = 43
 	u._ranks_closed = true
 	u._formation_angle = 1.2
 	u._formation_mirror_x = true

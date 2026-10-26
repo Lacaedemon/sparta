@@ -367,7 +367,7 @@ static func analyze(snapshots: Array) -> Dictionary:
 					"ticks": [], "engaged": [], "in_enemy_contact": [],
 					"moving": [], "routing": [], "rally_halting": [], "counts": [],
 					"formation": [], "frontage": [],
-					"last_reshape_tick": [], "anchor_held": [],
+					"last_reshape_tick": [], "last_redeal_tick": [], "anchor_held": [],
 					"nnd_min": [], "nnd_med": [], "angle": [], "residual": [],
 					"misslotted": [], "facing_angle": [], "pos": [],
 					"motion_ref": u["motion_ref"],
@@ -391,6 +391,8 @@ static func analyze(snapshots: Array) -> Dictionary:
 			s["formation"].append(String(u.get("formation", "")))
 			s["frontage"].append(int(u.get("frontage", 0)))
 			s["last_reshape_tick"].append(int(u.get("last_reshape_tick", -1)))
+			# Absent from transcripts dumped before the field existed: never re-dealt there.
+			s["last_redeal_tick"].append(int(u.get("last_redeal_tick", -1)))
 			s["anchor_held"].append(bool(u.get("anchor_held", false)))
 			s["nnd_min"].append(nnd["min"])
 			s["nnd_med"].append(nnd["median"])
@@ -501,8 +503,8 @@ static func reshape_timeout(old_files: int, new_files: int, soldiers: int,
 
 ## Which samples are judged for shape_residual: starts with judged_mask(), and additionally
 ## exempts samples inside a unit's post-reshape transit window (e.g. while bodies walk onto
-## newly expanded/contracted slots after a frontage change, formation change, or reinforcement
-## insertion). The exemption window extends from the reshape tick for reshape_timeout() seconds
+## newly expanded/contracted slots after a frontage change, formation change, reinforcement
+## insertion, or quarter-turn re-deal). The exemption window extends from the reshape tick for reshape_timeout() seconds
 ## (or while anchor_held is true), ending early once the bodies settle onto the new grid.
 static func shape_residual_mask(s: Dictionary, base_mask: Array = []) -> Array:
 	var n: int = s["ticks"].size()
@@ -530,7 +532,16 @@ static func shape_residual_mask(s: Dictionary, base_mask: Array = []) -> Array:
 		var old_files: int = int(s["frontage"][i - 1]) if (i > 0 and s.has("frontage") and s["frontage"].size() > i) else 1
 		var new_files: int = int(s["frontage"][i]) if (s.has("frontage") and s["frontage"].size() > i) else old_files
 
-		if cur_last_tick >= 0 and cur_last_tick != prev_last_tick:
+		# A quarter-turn re-deal swaps the grid's axes under the men, so they walk to a reshaped
+		# footprint as after a frontage change, at an unchanged file count.
+		var has_redeal: bool = s.has("last_redeal_tick") and s["last_redeal_tick"].size() > i
+		var cur_redeal: int = int(s["last_redeal_tick"][i]) if has_redeal else -1
+		var prev_redeal: int = int(s["last_redeal_tick"][i - 1]) if (has_redeal and i > 0) else -1
+
+		if cur_redeal >= 0 and cur_redeal != prev_redeal:
+			reshape_event = true
+			cur_last_tick = maxi(cur_last_tick, cur_redeal)
+		elif cur_last_tick >= 0 and cur_last_tick != prev_last_tick:
 			reshape_event = true
 		elif i > 0:
 			if (s.has("frontage") and s["frontage"].size() > i and int(s["frontage"][i]) != int(s["frontage"][i - 1])):

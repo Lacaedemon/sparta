@@ -385,6 +385,42 @@ func test_post_reshape_transit_window_exempts_shape_residual_over_multiple_sampl
 			"unreshaped block holding high residual fails shape_residual")
 
 
+## `snap` with its unit's last quarter-turn re-deal stamped at `tick`.
+func _redealt(snap: Dictionary, tick: int) -> Dictionary:
+	snap["units"][0]["last_redeal_tick"] = tick
+	return snap
+
+
+## A quarter-turn re-deal keeps the file count, so neither the frontage nor the reshape stamp
+## changes, but the men still walk to a reshaped footprint: its own stamp opens the transit window.
+func test_a_quarter_turn_redeal_opens_the_transit_window() -> void:
+	var slots: Array = _grid(6, 4, SPACING)
+	var transit: Array = []
+	for i in range(slots.size()):
+		transit.append(slots[(i * 7 + 3) % slots.size()])
+	for redealt in [false, true]:
+		var snaps: Array = [_snapshot(0, slots.duplicate(), slots)]
+		for t in [20, 40, 60]:
+			var snap: Dictionary = _snapshot(t, transit.duplicate(), slots)
+			snaps.append(_redealt(snap, 20) if redealt else snap)
+		var last: Dictionary = _snapshot(80, slots.duplicate(), slots)
+		snaps.append(_redealt(last, 20) if redealt else last)
+		var passed: bool = bool(_verdict(DemoDefects.analyze(snaps), "shape_residual")["pass"])
+		assert_eq(passed, redealt, "a re-deal's walk is judged as transit, the same walk without one fails")
+
+
+func test_a_stuck_redeal_past_its_timeout_fails_shape_residual() -> void:
+	var slots: Array = _grid(6, 4, SPACING)
+	var scrambled: Array = []
+	for i in range(slots.size()):
+		scrambled.append(slots[(i * 7 + 3) % slots.size()])
+	var snaps: Array = [_snapshot(0, slots.duplicate(), slots)]
+	for t in [20, 120, 240, 360, 480]:
+		snaps.append(_redealt(_snapshot(t, scrambled.duplicate(), slots), 20))
+	assert_false(bool(_verdict(DemoDefects.analyze(snaps), "shape_residual")["pass"]),
+			"a scramble that outlasts the re-deal's timeout still fails")
+
+
 func test_stuck_reshape_past_timeout_fails_shape_residual() -> void:
 	var slots: Array = _grid(6, 4, SPACING)
 	var scrambled: Array = []
