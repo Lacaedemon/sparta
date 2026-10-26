@@ -780,8 +780,8 @@ static func router_terrain_avoid(pos: Vector2, vel: Vector2, slot: Vector2, desi
 
 ## How far it is from `corner` (one end of a face of `rect`) on to `slot`: straight there,
 ## unless that line would cross the rect's interior, in which case on round `far` (the same
-## end's corner on the rect's opposite face) first. Returns Vector2(distance, sqrts_used),
-## saving two square roots when the straight line is clear.
+## end's corner on the rect's opposite face) first. Returns Vector2(distance, sqrts_used) to
+## save two square roots when the straight line is clear.
 static func _way_round(corner: Vector2, far: Vector2, slot: Vector2, rect: Rect2) -> Vector2:
 	var direct: float = corner.distance_to(slot)
 	if PathField.segment_intersects_rect(corner, slot, rect.grow(-INTERIOR_EPS)):
