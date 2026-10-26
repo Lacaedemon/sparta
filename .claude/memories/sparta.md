@@ -39,3 +39,4 @@ imports below.
 @.claude/memories/sparta/25-wave11-acceptance-instruments-root-causes-and-cross-vendor-review.md
 @.claude/memories/sparta/26-wave11-review-convergence-pacing-and-measured-pins.md
 @.claude/memories/sparta/27-wave11-exemptions-held-state-and-review-scope.md
+@.claude/memories/sparta/28-wave12-mirrored-state-and-measured-premises.md
