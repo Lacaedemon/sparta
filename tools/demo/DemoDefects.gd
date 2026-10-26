@@ -813,7 +813,7 @@ static func _is_numeric_value(v) -> bool:
 
 ## The expectation fields derived_field supplies.
 const DERIVED_FIELDS: Array[String] = [
-	"slots_across_centreline", "slot_lateral_excess", "slots_beyond_flanks",
+	"slots_across_centreline", "slot_lateral_excess", "slots_beyond_flanks", "grid_off_heading",
 ]
 
 
@@ -840,11 +840,19 @@ const DERIVED_FIELDS: Array[String] = [
 ##   how far they have got rather than with where they are sent. It is measured along the grid's
 ##   own axis, not the facing's, so a block whose grid is folded off its facing (a quarter-turn)
 ##   reads its own width. A dump without the footprint cannot supply it.
+## - grid_off_heading: how far (degrees, 0 to 180, to 0.1) the slot grid's front rank faces off
+##   the unit's heading: the angle between motion_ref.slot_grid.front and `facing`. A grid square
+##   to its heading reads a few tenths of a degree rather than exactly 0, since the dump rounds
+##   `facing` to 2 decimals (DemoState.POSITION_DECIMAL_PLACES), up to about 0.4 degrees on its
+##   own; a fold the men turned in place (an engage re-face, a drill, a re-face absorbed on riders
+##   inside the block) reads as its size. A dump without the footprint cannot supply it.
 ##
 ## Sampled the tick after a reshape, before the men have walked, they measure the deal itself.
 static func derived_field(u: Dictionary, field: String):
 	if not DERIVED_FIELDS.has(field):
 		return null
+	if field == "grid_off_heading":
+		return _grid_off_heading(u)
 	var full = u.get("soldiers_full")
 	var ref = u.get("motion_ref")
 	if not (full is Dictionary) or not (ref is Dictionary):
@@ -879,6 +887,24 @@ static func derived_field(u: Dictionary, field: String):
 	if field == "slots_across_centreline":
 		return crossed
 	return snappedf(excess, 0.1)
+
+
+## grid_off_heading (see derived_field): the angle in degrees, to 0.1, between the unit record's
+## motion_ref.slot_grid.front and its facing. Null when either is missing or malformed.
+static func _grid_off_heading(u: Dictionary):
+	var ref = u.get("motion_ref")
+	if not (ref is Dictionary) or not (ref.get("slot_grid") is Dictionary):
+		return null
+	var front_pair = ref["slot_grid"].get("front")
+	var facing_pair = u.get("facing")
+	if not (front_pair is Array) or (front_pair as Array).size() != 2 \
+			or not (facing_pair is Array) or (facing_pair as Array).size() != 2:
+		return null
+	var front := Vector2(float(front_pair[0]), float(front_pair[1]))
+	var heading := Vector2(float(facing_pair[0]), float(facing_pair[1]))
+	if front.length_squared() == 0.0 or heading.length_squared() == 0.0:
+		return null
+	return snappedf(rad_to_deg(absf(heading.angle_to(front))), 0.1)
 
 
 ## slots_beyond_flanks (see derived_field): how many of `slots` lie more than half a file pitch
