@@ -40,3 +40,7 @@ Stop, and let the other author's PR continue instead.
 **Learning:** In GDScript, a ratio of two vector lengths `a.length() / b.length()` incurs two expensive square root operations.
 This can be optimized to a single square root operation by computing `sqrt(a.length_squared() / b.length_squared())`, cutting the `sqrt` cost in half.
 **Action:** When computing the ratio of vector lengths in a hot loop, use the `length_squared()` on both vectors and apply a single `sqrt()` to the ratio.
+
+## 2025-02-12 - Lazy Evaluate Multiple Square Roots using Vector2 Packed Return
+**Learning:** In GDScript, returning multiple distinct values (like a computed distance and an integer count of square roots used) via an array or dictionary incurs heap allocation overhead, making it too slow for hot loops or per-soldier logic. Instead, returning a `Vector2` allows you to safely pack two floats as a built-in value type (struct) and gracefully defer/skip expensive computations without overhead.
+**Action:** When a helper function conditionally avoids expensive evaluations (like `distance_to`) but its caller needs to know both the final result and how much work was performed (e.g., to tally into `SimOps`), return those two components packed inside a `Vector2` to prevent memory allocations.
