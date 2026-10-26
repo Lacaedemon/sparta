@@ -584,9 +584,12 @@ var _grid_lag_rate: float = 0.0
 # (_face_dir's absorb), an engage re-face, a reform, a quarter-fold file double, the rally's
 # squaring of the fold -- clears it, and so does a rout, which keeps the fold itself (a
 # snapshot restore restores it with the fold). A new write to _formation_angle must do one or
-# the other, with one exception: squaring an absorbed fold (_bleed_absorbed_fold) takes back
+# the other, with two exceptions. Squaring an absorbed fold (_bleed_absorbed_fold) takes back
 # only a turn made under any drills since (a drill settling keeps the absorbed count, and an
-# absorb after the drill clears the record), so it leaves the record standing. So it only ever
+# absorb after the drill clears the record), so it leaves the record standing. And the drill
+# turns an absorb cleared are held in _absorbed_drill_turn and put back into this record by
+# _restore_absorbed_drill_turn when the fold returns onto them: when the squaring reaches its
+# target, or when absorbs cancel to a count of zero in _face_dir. So it only ever
 # describes drill turns made on top of whatever fold was already there. reform_ranks reads it
 # for what the angle alone cannot tell: a fold whose drills net a quarter is re-paired, and one whose
 # drills net a half-turn is reflected like an about-face, even when a leftover snap-absorb fold
