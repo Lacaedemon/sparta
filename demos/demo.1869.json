@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/absorb-against-engage-fold-1868.json",
+  "caption": "A foot block no longer turns its ranks further off its heading when it straightens up after riders have been inside it. A brittle cavalry troop charges a 48-man infantry block standing on Hold. The block first snaps round toward the riders, turning its men in place so its ranks stand about 66 degrees off the way it faces. Then the riders ride into its ranks, and as the men turn to face them where they stand, the block's heading swings back until its ranks are square to it again. Before this fix, once the riders had broken and gone, the block undid every turn it had made toward them, which wheeled its ranks back to about 66 degrees off its heading with no order given. Now it turns its ranks back only while that brings them nearer square, so here they simply stay square.",
+  "fixed_fps": 30,
+  "max_frames": 550,
+  "fps": 15,
+  "width": 720
+}

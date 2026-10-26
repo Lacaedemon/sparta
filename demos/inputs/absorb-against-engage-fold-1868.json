@@ -1,0 +1,26 @@
+{
+  "_comment": "A foot block gives back the turn it made onto riders inside its ranks only while that brings its ranks nearer square, never further off (#1868). A 48-man Infantry block (8 files by 6 ranks) stands on Hold facing east, and a brittle 12-horse Cavalry troop (morale 3) charges it from the south. On the clip seed the block first snaps round toward the riders, a turn the men make in place, so its ranks stand about 66 degrees off its heading (tick 618). The riders then ride into its ranks, and each small re-face onto them is folded into the formation, turning the heading back the other way, until the ranks read square to the heading again (tick 748, and 2.3 degrees at tick 900). The troop breaks at tick 758 and the block is last in contact at tick 916. On main 60edb9de the block then gave back every turn it made onto the riders, undoing their squaring of the earlier turn: at tick 1100 its ranks stand 65.8 degrees off its heading, with no order given. Now a turn is given back only while it brings the ranks nearer square, so they stay square: 0.2 degrees at tick 1100. Perturbed seeds 1 to 4 at tick 1100 read 29.1, 35.6, 15.0 and 69.1 on main and 0.1, 0.2, 16.8 and 19.9 here: on seeds 1 and 2 the riders had carried the ranks past square, and they now turn back only as far as square; on seed 4 they stop where the riders left them; on seed 3 the fight lasts to tick 984 and neither tree has finished by tick 1100. The tick-1100 claim's 2-degree tolerance covers the dump's rounding, which keeps a square grid from reading exactly 0 (up to about 0.4 degrees). The tick-900 check (the ranks square before the block is clear) and the tick-8 position, tick-360 Hold, tick-620 FIGHTING and tick-760 ROUTING checks are setup and pass on both trees on the clip seed, and tick 1100 still reads Hold, so no order squared the ranks. The clip ends at tick 1100, before the troop rallies (tick 1118 on the clip seed), since a rallying troop's re-form is not what this clip shows. Static camera. Deterministic (scenario + seed + scripted input). Measured with full state dumps every 2 ticks on main 60edb9de and on the #1868 change (Windows); the defect scan of those dumps to tick 1110 is clean on both trees on all five seeds.",
+  "seed": "18681",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 640, "y": 540, "count": 48, "frontage": 8, "facing": [1, 0]},
+    {"team": 1, "type": "Cavalry", "x": 760, "y": 1000, "count": 12, "facing": [-0.25, -0.97], "morale": 3.0}
+  ],
+  "camera": [
+    {"tick": 0, "x": 660.0, "y": 640.0, "zoom": 1.3}
+  ],
+  "steps": [
+    {"tick": 4, "click": [640, 540]},
+    {"tick": 10, "key": "H", "ctrl": true}
+  ],
+  "state": [8, 360, 620, 700, 760, 900, 960, 1000, 1040, 1080, 1100],
+  "frames": [620, 750, 900, 1000, 1100],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [640, 540]},
+    {"tick": 360, "uid": 0, "field": "order_mode", "value": "Hold"},
+    {"tick": 620, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 760, "uid": 1, "field": "state", "value": "ROUTING"},
+    {"tick": 900, "uid": 0, "field": "grid_off_heading", "value": 0, "tol": 5.0},
+    {"tick": 1100, "uid": 0, "field": "order_mode", "value": "Hold"},
+    {"tick": 1100, "uid": 0, "field": "grid_off_heading", "value": 0, "tol": 2.0}
+  ]
+}
