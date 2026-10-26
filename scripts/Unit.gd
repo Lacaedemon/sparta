@@ -10098,10 +10098,11 @@ func start_order_response() -> void:
 	# leave the grid turned by it with nobody on it.
 	_fold_engage_turn_in_progress()
 	# Hold ground for an ordinary response unless the pending order is a countermarch. The order's
-	# own march target is written after this response, so has_move_target here still says whether
-	# the block was marching when the order came.
+	# own march target is written after this response, so has_move_target and state here still say
+	# whether the block was marching when the order came: on a move (a march target) or on an
+	# attack or chase (MOVING with no march target).
 	_square_fold_for_order(current_order == null or current_order.countermarch_variant < 0,
-			not has_move_target)
+			not has_move_target and state != State.MOVING)
 
 
 ## Square the fold for a fresh order (start_order_response) without stepping the slot grid in

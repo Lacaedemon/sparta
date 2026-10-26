@@ -66,16 +66,19 @@ func test_folds_either_side_of_a_quarter_take_the_same_quarter() -> void:
 ## The band and the shape cut were measured on blocks squared holding ground: a block already
 ## marching when the order comes keeps the split about the nearer whole or half turn.
 func test_a_marching_block_keeps_the_nearer_half_turn_split() -> void:
-	for marching in [false, true]:
+	# Standing; on a move (a march target); on an attack or chase (MOVING, no march target).
+	for how in ["standing", "on a move", "on a chase"]:
 		var u := _unit()
 		_fold(u, 90.0 - NEAR_DEG)
 		u.move_target = START + Vector2(300.0, 0.0)
-		u.has_move_target = marching
+		u.has_move_target = how == "on a move"
+		if how == "on a chase":
+			u.state = Unit.State.MOVING
 		_reissue(u)
-		var what: String = "marching" if marching else "standing"
-		assert_eq(u._last_redeal_tick != -1, not marching, "%s: re-dealt only standing" % what)
-		var off_quarter: float = deg_to_rad(NEAR_DEG) if not marching else deg_to_rad(90.0 - NEAR_DEG)
-		assert_almost_eq(absf(u._grid_lag), off_quarter, ANGLE_EPS, "%s: the lag left to turn" % what)
+		var standing: bool = how == "standing"
+		assert_eq(u._last_redeal_tick != -1, standing, "%s: re-dealt only standing" % how)
+		var off_quarter: float = deg_to_rad(NEAR_DEG) if standing else deg_to_rad(90.0 - NEAR_DEG)
+		assert_almost_eq(absf(u._grid_lag), off_quarter, ANGLE_EPS, "%s: the lag left to turn" % how)
 
 
 ## A re-square that waited for the contact to clear is not the order's own response to a block
