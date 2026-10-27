@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/near-quarter-redeal-1865.json",
+  "caption": "An order now squares a block whose ranks stand near a quarter-turn off its heading by dealing the ranks again at the quarter, then turning out only the few degrees left. A 60-man infantry block on Hold turns in place to face an attack from the east, which leaves its ranks 85 degrees off the way it faces. Once the attackers have routed, it is ordered on along its new heading. Before this fix the ranks wheeled the whole 85 degrees round the block's centre as it set off, still 70 degrees off its heading more than a second later, and 16 of the 60 men ended across the block from where they began. Now each man steps to the nearest place in the squared block, the ranks stand 5 degrees off at once and square within about a second, each man walks less than half as far, and none crosses the block.",
+  "fixed_fps": 30,
+  "max_frames": 500,
+  "fps": 15,
+  "width": 720
+}

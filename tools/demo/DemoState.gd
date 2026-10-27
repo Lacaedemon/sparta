@@ -363,6 +363,10 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		"frontage": UnitFormation.frontage(u),
 		# Physics-frame stamp of the last set_frontage() or reinforcement insertion call.
 		"last_reshape_tick": u._last_reshape_tick,
+		# Physics-frame stamp of the last near-quarter re-deal an order made
+		# (Unit._last_redeal_tick), which DemoDefects judges as a reshape's transit like the stamp
+		# above.
+		"last_redeal_tick": u._last_redeal_tick,
 		# True while a hold_position_anchor window is in effect (e.g. during reinforcement arrival).
 		"anchor_held": u.position_anchor_held(),
 		# True while a rallied unit's anchor is still coasting to a stop on its flight
