@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "No battle shows this change. It makes the readers that rank a block's men along its slot grid (its own front, which ranks face the enemy, and the anchor's near-front ranks) read the grid's angle with its lag, so they no longer jump when an order's re-square or a small heading correction hands a large turn to the lag in one tick while the grid stands still. The lag is folded on contact, so the readers only differ on the few ticks a block is engaged and out of contact with a lag standing. Every catalog clip plays identically to main on its own seed, and on perturbed seeds 1 to 4 only 3 of 200 melee runs change, each from tick 252 or later. Unit tests cover the jump directly."
+}

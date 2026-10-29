@@ -3,8 +3,9 @@ class_name InteriorStrikeFootprint
 ## man along Unit.near_front_forward (depths measured from `origin`, the block's position),
 ## and within the grid's rectangle about `centre`, the live men's mean, from `rear` to
 ## `depth` along `grid` and `half_width` across it. `grid` is the way the men face along the
-## grid's depth axis (MeleeFrontGeometry.facing_front), the grid's rear rank for a fold past a
-## quarter-turn, as the striking set is ranked (Unit.near_front_reversed), so `rear` is always
+## grid's depth axis (MeleeFrontGeometry.facing_front), the grid's rear rank while the grid's
+## turn off the heading (Unit.grid_fold) is past a quarter-turn, as the striking set is ranked
+## (Unit.near_front_reversed), so `rear` is always
 ## behind the strikers. Pure geometry, no RNG.
 
 var origin := Vector2.ZERO
