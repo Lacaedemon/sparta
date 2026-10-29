@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/relief-fighting-withdrawal.json",
+  "caption": "The RELIEF order now forms in the relief demos (#1840). The fighting-withdrawal clip's selection box used to take in the tired front unit's rear ranks as well as the fresh unit, so both were selected and the right-click on the tired unit became a plain ground MOVE for both: no relief happened on any seed. Here the box takes only the fresh unit, and the three blocks deploy with clear ground between them. Watch the fresh unit (behind) march up through its tired ally and take over the fight, while the tired unit backs out to the rear still facing the enemy instead of turning round. The same selection fault, a box catching the tired unit's raised standard, also stopped the relief in the line-relief and passage-of-lines clips; their boxes are fixed too. Input-only: no sim code changed.",
+  "fixed_fps": 30,
+  "max_frames": 280,
+  "fps": 12,
+  "width": 640
+}
