@@ -1,5 +1,5 @@
 {
-  "_comment": "Line relief via the orders queue: a tired, THINNED player infantry line holds an engaged enemy while a fresh, full-strength unit waits behind it. The front block's no-order default is to hold, so the two player centres sit 190 wu apart (uid0 at y=470, uid1 at y=280) -- close enough that the reliever's march is still readable, far enough that the two footprints do not overlap while the front waits for the enemy to close. The enemy deploys at y=610, its front rank 41 wu short of uid0's, so the front does wait for it: at y=570 the two front ranks stood 1 wu apart at deployment, which under the front-line contact range (#1827) put the pair in contact on tick 1 and moved uid0 off its deployed position by tick 8. The player box-selects the fresh unit and right-clicks the engaged friendly -- a RELIEF order: the fresh unit advances THROUGH its tired ally (the swap's pass-through exemption lives on the order) and takes over the fight, while the tired unit gets a queue-visible MOVE order and peels back to the rear. The clip's subject is the ORDER QUEUE, so the expect block pins exactly that, by exact value. TIMING IS LOAD-BEARING: the right-click must land AFTER the enemy reaches the tired unit, because a right-click on a friendly that is not yet fighting resolves to a plain ground MOVE instead of a RELIEF -- there is nothing to relieve yet, and the clip then shows one unit walking past another, which is what the published clip used to show. STAGED TO DIFFER FROM relief-fighting-withdrawal.json, which demonstrates a different thing (the relieved block holding its facing) and must not become this clip's twin: this one runs down-field at x=650 with a genuinely under-strength front block (60 men relieved by 120), so the strength disparity the relief exists to answer is visible in the clip rather than only asserted in prose. Record at fixed_fps 60 so the step ticks line up with the 60/s headless state dump.",
+  "_comment": "Line relief via the orders queue: a tired, THINNED player infantry line holds an engaged enemy while a fresh, full-strength unit waits behind it. The front block's no-order default is to hold, so the two player centres sit 190 wu apart (uid0 at y=470, uid1 at y=280) -- close enough that the reliever's march is still readable, far enough that the two footprints do not overlap while the front waits for the enemy to close. The enemy deploys at y=610, its front rank 41 wu short of uid0's, so the front does wait for it: at y=570 the two front ranks stood 1 wu apart at deployment, which under the front-line contact range (#1827) put the pair in contact on tick 1 and moved uid0 off its deployed position by tick 8. The player box-selects the fresh unit and right-clicks the engaged friendly -- a RELIEF order: the fresh unit advances THROUGH its tired ally (the swap's pass-through exemption lives on the order) and takes over the fight, while the tired unit gets a queue-visible MOVE order and peels back to the rear. The clip's subject is the ORDER QUEUE, so the expect block pins exactly that, by exact value. TIMING IS LOAD-BEARING: the right-click must land AFTER the enemy reaches the tired unit, because a right-click on a friendly that is not yet fighting resolves to a plain ground MOVE instead of a RELIEF -- there is nothing to relieve yet, and the clip then shows one unit walking past another, which is what the published clip used to show. STAGED TO DIFFER FROM relief-fighting-withdrawal.json, which demonstrates a different thing (the relieved block holding its facing) and must not become this clip's twin: this one runs down-field at x=650 with a genuinely under-strength front block (60 men relieved by 120), so the strength disparity the relief exists to answer is visible in the clip rather than only asserted in prose. Record at fixed_fps 60 so the step ticks line up with the 60/s headless state dump. THE BOX IS LOAD-BEARING TOO: a box selects a unit whose men (grown by a body radius), regiment point, block centre or raised standard falls inside it, and uid0's standard is drawn above its block, over uid1's ground. The old box [550,200]..[750,340] took in that standard, so both player units were selected (the HUD read two) and the click became a plain ground MOVE for both, with no RELIEF. The box [530,210]..[620,340] takes only uid1's left files, west of the standard, and the expects at tick 460 pin the outcome: uid1 still on its RELIEF and FIGHTING, uid0 still on its MOVE.",
   "seed": "12345",
   "scenario": [
     {
@@ -36,11 +36,11 @@
       "tick": 30,
       "box": {
         "from": [
-          550,
-          200
+          530,
+          210
         ],
         "to": [
-          750,
+          620,
           340
         ]
       }
@@ -100,6 +100,24 @@
         220,
         280
       ],
+      "uid": 0,
+      "field": "current_order",
+      "value": "MOVE"
+    },
+    {
+      "tick": 460,
+      "uid": 1,
+      "field": "current_order",
+      "value": "RELIEF"
+    },
+    {
+      "tick": 460,
+      "uid": 1,
+      "field": "state",
+      "value": "FIGHTING"
+    },
+    {
+      "tick": 460,
       "uid": 0,
       "field": "current_order",
       "value": "MOVE"

@@ -1,5 +1,5 @@
 {
-  "_comment": "INTENDED STAGING (what the clip is meant to show; as staged it does not, see KNOWN STAGING DEFECT at the end): a relieved regiment backs out of the line facing the enemy. A tired player Infantry unit (uid0) holds an engaged enemy while a fresh one (uid1) waits behind it; the player box-selects the fresh unit and right-clicks the engaged ally at tick 200 -- a RELIEF order. The reliever takes over the fight and the relieved unit peels back to its own rear. Watch uid0's heading: it stays fronted on the enemy for the whole withdrawal instead of pivoting 180 degrees and marching off, so the slot grid never sweeps through a half-turn the soldier bodies cannot follow. TIMING IS LOAD-BEARING: the right-click must land AFTER the enemy reaches the tired unit, because a right-click on a friendly that is not yet fighting resolves to a plain ground MOVE instead of a RELIEF -- there is nothing to relieve yet. With centre-to-centre contact ranges contact came around tick 128; with the front-rank reach MeleeFrontLine adds, the 100 wu spawn gap between uid0 and uid2 is already contact, and the two are FIGHTING by the first sample (tick 8). KNOWN STAGING DEFECT (#1840): the tick-30 box [700,350]..[900,430] also takes in uid0's rear ranks (y about 407-425), so both player units are selected and no RELIEF forms on any platform; the RELIEF and MOVE expects at ticks 205-240 fail on the merge-base a3714751 as well.",
+  "_comment": "A relieved regiment backs out of the line facing the enemy. A tired player Infantry unit (uid0) holds an engaged enemy while a fresh one (uid1) waits behind it; the player box-selects the fresh unit and right-clicks the engaged ally at tick 200 -- a RELIEF order. The reliever takes over the fight and the relieved unit peels back to its own rear. Watch uid0's heading: it stays fronted on the enemy for the whole withdrawal instead of pivoting 180 degrees and marching off, so the slot grid never sweeps through a half-turn the soldier bodies cannot follow. TIMING IS LOAD-BEARING: the right-click must land AFTER the enemy reaches the tired unit, because a right-click on a friendly that is not yet fighting resolves to a plain ground MOVE instead of a RELIEF -- there is nothing to relieve yet. SPACING: the three blocks deploy with clear ground between them. uid1 at y=300 stands on y 237-363 and uid0 at y=470 on y 407-533, so the reliever no longer deploys inside the tired unit's rear ranks (at y=390 the two overlapped by about 46 wu). The enemy at y=620 stands on y 566-674, 33 wu short of uid0's front rank, so the pair are not in contact at deployment (at y=570 they were, from the first sample); the enemy closes and uid0 is FIGHTING from tick 72 on seeds 0-4, well before the tick-200 click. SELECTION IS LOAD-BEARING: a box selects a unit whose men (grown by a body radius), regiment point, block centre or raised standard falls inside it, and uid0's standard is drawn above its block, over uid1's ground near x=805. The old box [700,350]..[900,430] took in uid0's rear ranks, so both player units were selected and the click became a ground MOVE for both, with no RELIEF on any seed. The box [690,250]..[760,350] takes only uid1's left files, west of that standard. The expects pin the outcome: uid1 on a RELIEF from the click and still on it, FIGHTING, at tick 500, with the enemy's target moved onto it; uid0 on its MOVE and still MOVING at tick 500; and uid0's facing within 0.05 of (0, 1) at every sampled tick from 300 to 500. The 0.05 tolerance is about 3 degrees: facing is dumped to 2 decimals and uid0's x component read -0.02 to 0.01 on seeds 0-4, while a 180-degree pivot reads (0, -1) and the unrelieved block on main drifts to an x of 0.13-0.79 by tick 500.",
   "seed": "12345",
   "scenario": [
     {
@@ -12,13 +12,13 @@
       "team": 0,
       "type": "Infantry",
       "x": 800,
-      "y": 390
+      "y": 300
     },
     {
       "team": 1,
       "type": "Infantry",
       "x": 800,
-      "y": 570,
+      "y": 620,
       "count": 70
     }
   ],
@@ -35,12 +35,12 @@
       "tick": 30,
       "box": {
         "from": [
-          700,
-          350
+          690,
+          250
         ],
         "to": [
-          900,
-          430
+          760,
+          350
         ]
       }
     },
@@ -63,12 +63,6 @@
     460,
     500
   ],
-  "defect_exemptions": {
-    "overlap": {
-      "uids": [0, 1],
-      "reason": "uid0, pre-existing: the merge-base of this clip already failed overlap on uid0, one judged sample catching bodies closer than the infantry overlap threshold while it backs out of the press; the facing pin this edit updates is a separate, passing expect. uid1 (the fresh unit) dips to nnd_min 1.14 wu against its 2.25 wu floor at ticks 337-361 and 393-411 on this tree's own seed (2-tick samples), and below that floor on the declared state ticks too: the tick-30 box also takes in uid0's rear ranks (y about 407-425), so both player units are selected and no RELIEF forms, on every platform (selection is position math). On the merge-base a3714751 the blocks close to y 489 and 515 before the tick-200 click, which lands on the enemy and becomes an ATTACK; on this tree they are in contact from the spawn (the 100 wu gap is inside the front-rank reach) and hold at y 469 and 585, so the click lands on uid0 and both selected units take a ground MOVE to (800, 470), which walks uid1 into the back of its fighting ally. The merge-base passes at 5.22 wu on this seed and dips to 0.11 wu on perturbed seed 3 (one of four); this tree dips below the floor on two of the four (0.19, 1.27). #1840 tracks the staging (the box and the spawn gap); remove uid1 here with it."
-    }
-  },
   "expect": [
     {
       "tick": 190,
@@ -95,16 +89,94 @@
       "value": "MOVE"
     },
     {
-      "tick": [
-        300,
-        500
-      ],
+      "tick": 500,
+      "uid": 1,
+      "field": "current_order",
+      "value": "RELIEF"
+    },
+    {
+      "tick": 500,
+      "uid": 1,
+      "field": "state",
+      "value": "FIGHTING"
+    },
+    {
+      "tick": 500,
+      "uid": 2,
+      "field": "target_enemy_uid",
+      "value": 1
+    },
+    {
+      "tick": 500,
+      "uid": 0,
+      "field": "current_order",
+      "value": "MOVE"
+    },
+    {
+      "tick": 500,
+      "uid": 0,
+      "field": "state",
+      "value": "MOVING"
+    },
+    {
+      "tick": 300,
       "uid": 0,
       "field": "facing",
       "value": [
-        0.01,
+        0.0,
         1.0
-      ]
+      ],
+      "tol": 0.05
+    },
+    {
+      "tick": 340,
+      "uid": 0,
+      "field": "facing",
+      "value": [
+        0.0,
+        1.0
+      ],
+      "tol": 0.05
+    },
+    {
+      "tick": 380,
+      "uid": 0,
+      "field": "facing",
+      "value": [
+        0.0,
+        1.0
+      ],
+      "tol": 0.05
+    },
+    {
+      "tick": 420,
+      "uid": 0,
+      "field": "facing",
+      "value": [
+        0.0,
+        1.0
+      ],
+      "tol": 0.05
+    },
+    {
+      "tick": 460,
+      "uid": 0,
+      "field": "facing",
+      "value": [
+        0.0,
+        1.0
+      ],
+      "tol": 0.05
+    },
+    {
+      "tick": 500,
+      "uid": 0,
+      "field": "facing",
+      "value": [
+        0.0,
+        1.0
+      ],
+      "tol": 0.05
     }
   ]
 }

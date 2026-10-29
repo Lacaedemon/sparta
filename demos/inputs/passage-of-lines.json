@@ -1,5 +1,5 @@
 {
-  "_comment": "Passage of lines (triplex acies): a fresh player reserve line stands behind a thinned player front line already fighting an enemy line. The player box-selects the three fresh units, presses X to switch the group-order mode to Distributed, then right-clicks the CENTER tired unit. Distributed relief pairs each fresh unit with its own nearby engaged tired unit -- sorted by proximity to the CLICKED unit, not to the reliever's own position, so a pairing can cross rather than always matching the nearest fresh unit to the nearest tired one -- instead of every reliever piling onto the single fight clicked. All three tired units get a real retreat order and all three fresh units close on their own partner's fight by the end of the clip.",
+  "_comment": "Passage of lines (triplex acies): a fresh player reserve line stands behind a thinned player front line already fighting an enemy line. The player box-selects the three fresh units, presses X to switch the group-order mode to Distributed, then right-clicks the CENTER tired unit. Distributed relief pairs each fresh unit with its own nearby engaged tired unit -- sorted by proximity to the CLICKED unit, not to the reliever's own position, so a pairing can cross rather than always matching the nearest fresh unit to the nearest tired one -- instead of every reliever piling onto the single fight clicked. All three tired units get a real retreat order and all three fresh units close on their own partner's fight by the end of the clip. SELECTION AND CLICK ARE LOAD-BEARING: a box selects a unit whose men (grown by a body radius), regiment point, block centre or raised standard falls inside it, and each tired unit's standard is drawn above its block, over the fresh line's ground, so the old box [520,320]..[1120,420] also took in all three tired units (the HUD read six selected) and the right-click becomes a plain ground MOVE for six units. The box [520,372]..[1120,422] takes only the fresh units' front ranks (y 372-406) and stops short of the tired units' rear ranks (y 435 and down). The click lands on the centre tired unit at y 470 rather than in the seam above the enemy front, where on some seeds it resolved to an ATTACK on the enemy. The expects pin the outcome: all three fresh units carry a RELIEF order at ticks 145 and 215, and all three tired units a MOVE.",
   "seed": "471377",
   "scenario": [
     {"team": 0, "type": "Infantry", "count": 40, "x": 600, "y": 370},
@@ -16,9 +16,20 @@
     {"tick": 0, "x": 820.0, "y": 430.0, "zoom": 0.85}
   ],
   "steps": [
-    {"tick": 20, "box": {"from": [520, 320], "to": [1120, 420]}},
+    {"tick": 20, "box": {"from": [520, 372], "to": [1120, 422]}},
     {"tick": 30, "key": "X"},
-    {"tick": 135, "rmb_click": [820, 512]}
+    {"tick": 135, "rmb_click": [820, 470]}
   ],
-  "state": [20, 130, 145, 160, 200, 215]
+  "state": [20, 130, 145, 160, 200, 215],
+  "expect": [
+    {"tick": 145, "uid": 0, "field": "current_order", "value": "RELIEF"},
+    {"tick": 145, "uid": 1, "field": "current_order", "value": "RELIEF"},
+    {"tick": 145, "uid": 2, "field": "current_order", "value": "RELIEF"},
+    {"tick": 145, "uid": 3, "field": "current_order", "value": "MOVE"},
+    {"tick": 145, "uid": 4, "field": "current_order", "value": "MOVE"},
+    {"tick": 145, "uid": 5, "field": "current_order", "value": "MOVE"},
+    {"tick": 215, "uid": 0, "field": "current_order", "value": "RELIEF"},
+    {"tick": 215, "uid": 1, "field": "current_order", "value": "RELIEF"},
+    {"tick": 215, "uid": 2, "field": "current_order", "value": "RELIEF"}
+  ]
 }
