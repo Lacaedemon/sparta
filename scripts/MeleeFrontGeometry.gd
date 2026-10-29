@@ -25,8 +25,9 @@ static func grid_front(u: Unit) -> Vector2:
 
 ## The direction `u`'s men face, along the grid's depth axis: grid_front, reversed while the grid's
 ## turn off the heading (grid_fold) is past a quarter-turn (Unit.near_front_reversed). Every man
-## faces the heading, so a block that turned in place more than a quarter of the way round (an engage re-face, an about-face) has
-## the grid's rear rank in front of it, and its men face away from the grid's own front.
+## faces the heading, so a block that turned in place more than a quarter of the way round (an
+## engage re-face, an about-face) has the grid's rear rank in front of it, and its men face away
+## from the grid's own front.
 static func facing_front(u: Unit) -> Vector2:
 	var front: Vector2 = grid_front(u)
 	return -front if u.near_front_reversed() else front
