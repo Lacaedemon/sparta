@@ -4897,8 +4897,8 @@ func _close_resquare_lag_in_pivot(delta: float) -> void:
 ## straight off _formation_angle rather than going through the lag, so the readers that mean
 ## the fold itself (reform_ranks, the drill record, the order footprint) see it turn smoothly as
 ## well as the readers of the grid (grid_fold). The rest of the fold (an engage re-face, a drill)
-## stays where it stands, so a fold
-## near a quarter-turn is never reflected by a half-turn to square a few degrees of it.
+## stays where it stands, so a fold near a quarter-turn is never reflected by a half-turn to
+## square a few degrees of it.
 ## The absorbed turns are given back only while that brings the grid nearer its nearest square
 ## line (square_reach): an absorb that ran against an engage fold made before it undid part of
 ## that fold, and giving it back would turn the grid further off its heading. The turn eases to a
@@ -9187,9 +9187,10 @@ func body_tier_cap(count: int) -> int:
 ## three use identical selection logic -- only the GATE, the cap and the axis differ.
 ##
 ## `forward` is the axis a line ranks its men along (a square ignores it). The striking set
-## (engaged_soldier_indices) takes near_front_forward, the ranks facing the enemy once the fold is
-## past a quarter-turn. The contact and body-tier sets keep the grid's own front
-## (grid_front_forward), as the position anchor does: ranking them toward the grid's rear rank too
+## (engaged_soldier_indices) takes near_front_forward, the ranks facing the enemy once the grid's
+## turn off the heading (grid_fold) is past a quarter-turn. The contact and body-tier sets keep
+## the grid's own front (grid_front_forward), as the position anchor does: ranking them toward
+## the grid's rear rank too
 ## stopped every blow of a rear attack once the defender had turned about
 ## (test_melee_side_contact_battle's rear case lost 0 men against 7 with the strikers alone
 ## reversed) and carried a router pressed beside a hill into fighting to the death
@@ -9242,13 +9243,15 @@ func _select_near_front_indices(count: int, forward: Vector2,
 ## rank soldiers along: the slot grid's depth axis
 ## (the heading turned by grid_fold), so the selection takes whole ranks of the grid the
 ## men stand on, toward whichever of its front and rear ranks the men face. Every man faces
-## the heading (soldier_world_facings), so once the fold is past a quarter-turn -- an engage
-## re-face or an about-face that turned the men in place more than a quarter of the way round --
-## the grid's own front rank is behind them and its rear rank is the one facing the enemy, and
-## the axis is taken toward that rear rank instead (as _wheel_pivot_point keeps "front"
-## facing-relative for an about-faced block). A fold within a quarter-turn, a quarter fold
-## itself included (the same 0.01 rad tolerance reform_ranks reads one with), keeps the grid's
-## own front.
+## the heading (soldier_world_facings), so once the grid's turn off the heading (grid_fold, the
+## fold plus any lag) is past a quarter-turn -- an engage re-face or an about-face that turned
+## the men in place more than a quarter of the way round, say -- the grid's own front rank is
+## behind them and its rear rank is the one facing the enemy, and the axis is taken toward that
+## rear rank instead (as _wheel_pivot_point keeps "front" facing-relative for an about-faced
+## block). A grid turned within a quarter-turn, a quarter itself included (the same 0.01 rad
+## tolerance reform_ranks reads a quarter fold with), keeps the grid's own front. The fold and
+## the lag count only together: a 100 degree fold with 20 degrees of it handed to the lag still
+## reads as reversed, as the grid stands.
 func near_front_forward() -> Vector2:
 	return -grid_front_forward() if near_front_reversed() else grid_front_forward()
 
@@ -9268,12 +9271,14 @@ func grid_front_forward() -> Vector2:
 ## rather than the fold alone, so it agrees with grid_front_forward and does not flip when an
 ## order's re-square hands the fold to the lag in one tick while the grid stands still.
 ##
-## It has no hysteresis. The lag turns tick by tick and could carry the grid across the
-## threshold, but it closes toward the heading and is folded on contact, so in practice it does
-## not: on the seed-0 catalog at 3183eecf the reversal, sampled once a tick, flipped 82 times on
-## 42 blocks, on the same ticks and to the same values as when it read the fold alone (main
-## ec95f85f), so none of those flips came from the lag turning. 18 came within 5 degrees of the
-## threshold.
+## It has no hysteresis. The lag turns tick by tick and closes onto the heading turned by the
+## fold, so it carries the grid across the threshold only when the fold and the grid stand on
+## opposite sides of a quarter-turn: an out-of-contact _reface on top of an engage fold near a
+## quarter, for one, can flip the reversal as its lag closes. A lag is folded on contact, and in
+## practice none flipped it: on the seed-0 catalog at 3183eecf the reversal, sampled once a
+## tick, flipped 82 times on 42 blocks, on the same ticks and to the same values as when it read
+## the fold alone (main ec95f85f), so none of those flips came from the lag turning. 18 came
+## within 5 degrees of the threshold.
 func near_front_reversed() -> bool:
 	return absf(wrapf(grid_fold(), -PI, PI)) > PI * 0.5 + 0.01
 
