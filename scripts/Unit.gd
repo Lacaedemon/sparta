@@ -4894,10 +4894,10 @@ func _close_resquare_lag_in_pivot(delta: float) -> void:
 ## in _grid_lag_rate for SoldierBodies.step to feed forward as a lag's turn is. A heading pivot
 ## this tick turns the grid too, so the step is held to what keeps the grid's own turn within
 ## bounded_turn_rate, as _close_resquare_lag_in_pivot holds an order's re-square. The step comes
-## straight off _formation_angle rather than going through the lag, so every reader of the fold
-## (the anchor's near-front ranks among them) sees it turn smoothly; handing tens of degrees to
-## the lag in one tick moved those readers, and the anchor with them, by several world units in
-## that tick. The rest of the fold (an engage re-face, a drill) stays where it stands, so a fold
+## straight off _formation_angle rather than going through the lag, so the readers that mean
+## the fold itself (reform_ranks, the drill record, the order footprint) see it turn smoothly as
+## well as the readers of the grid (grid_fold). The rest of the fold (an engage re-face, a drill)
+## stays where it stands, so a fold
 ## near a quarter-turn is never reflected by a half-turn to square a few degrees of it.
 ## The absorbed turns are given back only while that brings the grid nearer its nearest square
 ## line (square_reach): an absorb that ran against an engage fold made before it undid part of
@@ -5296,7 +5296,9 @@ func _formation_local_half_extents() -> Vector2:
 ## by the soldiers' body radius, laid out in the grid the men will stand in on arrival:
 ## the facing the unit will hold there (see _order_held_facing()) turned by the standing
 ## _formation_angle fold, which a march carries along -- the same rotation
-## soldier_world_slots() applies. A half-turn fold maps the rectangle onto itself. Every
+## soldier_world_slots() applies. The grid's lag (grid_fold less the fold) is left out: it is a
+## grid still turning onto its heading, which it closes on the way, so the grid arrives at the
+## fold. A half-turn fold maps the rectangle onto itself. Every
 ## writer that responds to a fresh order (Battle's plain march and nudge, disengage(),
 ## disengage_with_sacrifice()) calls start_order_response() before the write, so a quarter
 ## fold it re-squares is already gone when the footprint is laid out; writers that never
@@ -9238,7 +9240,7 @@ func _select_near_front_indices(count: int, forward: Vector2,
 
 ## The direction the striking set (engaged_soldier_indices) and the interior-strike footprint
 ## rank soldiers along: the slot grid's depth axis
-## (the heading turned by _formation_angle), so the selection takes whole ranks of the grid the
+## (the heading turned by grid_fold), so the selection takes whole ranks of the grid the
 ## men stand on, toward whichever of its front and rear ranks the men face. Every man faces
 ## the heading (soldier_world_facings), so once the fold is past a quarter-turn -- an engage
 ## re-face or an about-face that turned the men in place more than a quarter of the way round --
@@ -9251,12 +9253,13 @@ func near_front_forward() -> Vector2:
 	return -grid_front_forward() if near_front_reversed() else grid_front_forward()
 
 
-## The slot grid's own front along its depth axis (the heading turned by _formation_angle),
-## whichever way the men face: what near_front_forward reads within a quarter-turn fold, and
-## what the position anchor (near_front_soldier_indices) reads at any fold.
+## The slot grid's own front along its depth axis, whichever way the men face: the heading
+## turned by grid_fold (the fold plus any lag), the same rotation soldier_world_slots lays the
+## grid out at, so it moves only when the grid does. An order's re-square that hands most of
+## the fold to the lag in one tick leaves it where it was. What near_front_forward reads within
+## a quarter-turn, and what the position anchor (near_front_soldier_indices) reads at any turn.
 func grid_front_forward() -> Vector2:
-	var world_angle: float = facing.angle() + PI * 0.5 + _formation_angle
-	return Vector2(0.0, -1.0).rotated(world_angle)
+	return Vector2(0.0, -1.0).rotated(soldier_block_world_angle())
 
 
 ## True while near_front_forward ranks toward the slot grid's rear rank rather than its front:
@@ -9272,7 +9275,7 @@ func grid_front_forward() -> Vector2:
 ## flipped back within 60 ticks. Every quick re-flip there was the fold jumping by about a
 ## half-turn, which no band about a quarter-turn would hold.
 func near_front_reversed() -> bool:
-	return absf(wrapf(_formation_angle, -PI, PI)) > PI * 0.5 + 0.01
+	return absf(wrapf(grid_fold(), -PI, PI)) > PI * 0.5 + 0.01
 
 
 ## True while an in-place reshape or turn is actively changing what "the front" even means:
