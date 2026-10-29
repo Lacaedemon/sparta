@@ -9263,17 +9263,17 @@ func grid_front_forward() -> Vector2:
 
 
 ## True while near_front_forward ranks toward the slot grid's rear rank rather than its front:
-## the fold (_formation_angle) is past a quarter-turn, so the men, who face the heading, have the
-## grid's rear rank in front of them.
+## the grid's turn off the heading (grid_fold, the fold plus any lag) is past a quarter-turn, so
+## the men, who face the heading, have the grid's rear rank in front of them. Read from the grid
+## rather than the fold alone, so it agrees with grid_front_forward and does not flip when an
+## order's re-square hands the fold to the lag in one tick while the grid stands still.
 ##
-## It has no hysteresis, and needs none: the fold does not drift across the threshold. It moves
-## only when something writes it (an engage turn or a drill settling, an order's re-square, a
-## lag folded in, a large re-face absorbed into the fold by _face_dir, a file-doubling transpose,
-## the rally), and the grid's lag, which does turn tick by tick, is not read here.
-## On the seed-0 catalog at b236be47 the reversal flipped 63 times on 38 blocks; 6 flips came
-## within 5 degrees of the threshold (the nearest 0.2 degrees off it), and none of those 6 blocks
-## flipped back within 60 ticks. Every quick re-flip there was the fold jumping by about a
-## half-turn, which no band about a quarter-turn would hold.
+## It has no hysteresis. The lag turns tick by tick and could carry the grid across the
+## threshold, but it closes toward the heading and is folded on contact, so in practice it does
+## not: on the seed-0 catalog at 3183eecf the reversal, sampled once a tick, flipped 82 times on
+## 42 blocks, on the same ticks and to the same values as when it read the fold alone (main
+## ec95f85f), so none of those flips came from the lag turning. 18 came within 5 degrees of the
+## threshold.
 func near_front_reversed() -> bool:
 	return absf(wrapf(grid_fold(), -PI, PI)) > PI * 0.5 + 0.01
 
