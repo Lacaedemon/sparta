@@ -211,7 +211,7 @@ Three layers keep that from piling up:
    the likely explanation for slow or flaky local runs).
 
 `../website/tools/dump-demo-states.sh` adds two guards for running many dumps
-in parallel against one project (#1882).
+in parallel against one project.
 Its import goes through `lib/godot-import-lock.sh`:
 one per-project lock that serialises imports against each other (not against dumps),
 and no import at all while the `.godot/` cache is current for the tree and the Godot binary.
@@ -221,6 +221,9 @@ and none on a warm one.
 Unguarded concurrent imports of a cold project logged
 `Cannot open file 'res://.godot/imported/...'` errors
 and rewrote tracked `*.import` sidecars with default settings.
+An import that times out fails the dump.
+Any other non-zero import status, a crash included, prints a `::warning::`
+with the tail of `.godot/sparta-import.log`, writes no stamp, and the dumps go on.
 A clip dump killed by its timeout is retried from an empty output dir
 (`SPARTA_DUMP_ATTEMPTS`, default 3, or 1 when `CI` is set,
 through `run_bounded_retry` in `lib/run-bounded.sh`),

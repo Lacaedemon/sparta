@@ -32,7 +32,7 @@
 #                            and rerun from scratch; after this many timed-out attempts the
 #                            run fails. Only a timeout is retried -- any other failure
 #                            fails at once. Under parallel load on Windows about 1 dump in
-#                            40 hung and then passed on a plain rerun (#1882).
+#                            40 hung and then passed on a plain rerun.
 #   SPARTA_STATE_TICK_STEP   Tick sampling cadence (default 60 -- once per sim second).
 #   SPARTA_STATE_DENSE_FROM  When set, also sample every SPARTA_STATE_DENSE_STEP ticks
 #                            (default 2) from this tick through the clip's end, on top of
@@ -127,9 +127,11 @@ GODOT_VERSION="$("$GODOT_BIN" --version 2>/dev/null | tail -n1 || true)"
 # project's import lock, and only when the cache is stale for this tree and this Godot,
 # so parallel dumps of one project never import at the same time: at most two imports,
 # one after the other, on a cold project and none on a warm one. The lock serialises
-# imports only, not an import against another run's dump (#1882;
-# tools/lib/godot-import-lock.sh has the measurements). An import that times
-# out or crashes fails the run here (it used to be ignored). With the version unknown the
+# imports only, not an import against another run's dump
+# (tools/lib/godot-import-lock.sh has the measurements). An import that times out fails
+# the run here (it used to be ignored); any other non-zero import status prints a
+# ::warning:: with the tail of .godot/sparta-import.log and the dumps go on, as before.
+# With the version unknown the
 # stamp content is empty, which always imports rather than trust a cache it cannot match.
 IMPORT_STAMP=""
 if [ -n "$GODOT_VERSION" ]; then

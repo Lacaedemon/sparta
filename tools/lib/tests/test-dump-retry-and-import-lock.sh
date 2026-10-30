@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Self-contained unit test for the #1882 parallel-load guards behind
+# Self-contained unit test for the parallel-load guards behind
 # website/tools/dump-demo-states.sh:
 #
 # run_bounded_retry() (tools/lib/run-bounded.sh):
@@ -27,8 +27,10 @@
 #      already broke and retook the lock leaves it alone; an abandoned .break lock fails
 #      loudly and is not cleared; one held by a live holder is waited for and then
 #      refused loudly when the wait runs out
-#   8. an import killed by the timeout, or one that dies on a signal, fails and leaves
-#      no stamp, so the next run imports
+#   8. an import killed by the timeout fails and leaves no stamp, so the next run
+#      imports; any other non-zero status (a signal death included) warns with the
+#      log's tail, writes no stamp, and does not fail
+#   8b. a .gdignore at the project root does not blind the freshness scan
 #
 # website/tools/dump-demo-states.sh end to end, with a stub Godot:
 #   9. a dump whose first attempt hangs (after writing part of its hash stream) is
@@ -149,6 +151,8 @@ cat > "$TMP/godot-import-stub" <<'EOF'
 log="$STUB_LOG"
 if ! mkdir "$log.busy" 2>/dev/null; then echo overlap >> "$log"; fi
 echo import >> "$log"
+# Godot's own output, which godot_import_once sends to .godot/sparta-import.log.
+echo "stub import output"
 sleep "${STUB_SLEEP:-0}"
 # STUB_EDIT_DURING names a file to edit mid-import (an edit racing the import).
 if [ -n "${STUB_EDIT_DURING:-}" ]; then echo '# mid-import edit' >> "$STUB_EDIT_DURING"; fi
@@ -215,6 +219,22 @@ assert_eq "a source edited during the import forces the next import" 7 "$(import
 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "" 2>/dev/null
 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "" 2>/dev/null
 assert_eq "an empty stamp content always imports" 9 "$(imports)"
+
+# A .gdignore at the project root must not prune the scan at its start node, or every
+# check would say "nothing changed". Its own project, stamped by hand, so the import
+# count above is untouched.
+ROOTG="$TMP/rootg"
+mkdir -p "$ROOTG/scripts" "$ROOTG/.godot"
+echo 'extends Node' > "$ROOTG/scripts/a.gd"
+: > "$ROOTG/.gdignore"
+printf '%s' "stub|v1" > "$(godot_import_stamp_path "$ROOTG")"
+find "$ROOTG" -exec touch -d '10 minutes ago' {} +
+touch -d '5 minutes ago' "$(godot_import_stamp_path "$ROOTG")"
+assert_eq "an untouched project with a root .gdignore is current" yes \
+  "$(godot_import_is_current "$ROOTG" "stub|v1" && echo yes || echo no)"
+echo '# edit' >> "$ROOTG/scripts/a.gd"
+assert_eq "an edit under a root .gdignore is still seen" no \
+  "$(godot_import_is_current "$ROOTG" "stub|v1" && echo yes || echo no)"
 
 # Concurrent callers on a cold project: one import, never two at once.
 rm -rf "$PROJ/.godot" "$STUB_LOG"
@@ -335,17 +355,26 @@ assert_eq "a hung import leaves no stamp" no "$([ -f "$(godot_import_stamp_path 
 assert_eq "a hung import releases the lock" no "$([ -e "$PROJ/.godot/sparta-import.lock" ] && echo yes || echo no)"
 rmdir "$STUB_LOG.busy" 2>/dev/null || true
 
-# An import that dies on a signal (status >= 128, here a segfault's 139) fails too.
+# An import that dies on a signal (here 134, the abort a Linux CI import hit) is not
+# fatal: Godot's --import status is unreliable and the cache it leaves works. It warns
+# with its status and the log's tail, writes no stamp, and returns 0.
 rc=0
-STUB_EXIT=139 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v1" 2>"$TMP/crash.err" || rc=$?
-assert_eq "a crashed import fails" 1 "$rc"
-assert_eq "a crashed import leaves no stamp" no "$([ -f "$(godot_import_stamp_path "$PROJ")" ] && echo yes || echo no)"
-assert_eq "the crash is reported" 1 "$(grep -c 'died with status 139' "$TMP/crash.err" || true)"
-# A plain non-zero (Godot's unreliable --import status) still stamps.
+STUB_EXIT=134 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v1" 2>"$TMP/crash.err" || rc=$?
+assert_eq "an import that aborts (134) does not fail" 0 "$rc"
+assert_eq "an aborted import leaves no stamp" no "$([ -f "$(godot_import_stamp_path "$PROJ")" ] && echo yes || echo no)"
+assert_eq "the abort is a warning naming the status" 1 \
+  "$(grep -c '^::warning::godot --import of .* exited with status 134' "$TMP/crash.err" || true)"
+assert_eq "the warning carries the log tail" 1 "$(grep -c '^  | stub import output$' "$TMP/crash.err" || true)"
+assert_eq "an aborted import releases the lock" no "$([ -e "$PROJ/.godot/sparta-import.lock" ] && echo yes || echo no)"
+godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v1" 2>/dev/null
+assert_eq "the next call imports again and stamps" "stub|v1" \
+  "$(cat "$(godot_import_stamp_path "$PROJ")" 2>/dev/null || echo missing)"
+# A plain non-zero status takes the same path: no failure, no stamp.
+rm -f "$(godot_import_stamp_path "$PROJ")"
 rc=0
 STUB_EXIT=1 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v1" 2>/dev/null || rc=$?
 assert_eq "a plain non-zero import status is not a failure" 0 "$rc"
-assert_eq "a plain non-zero import status still writes the stamp" "stub|v1" \
+assert_eq "a plain non-zero import status writes no stamp" missing \
   "$(cat "$(godot_import_stamp_path "$PROJ")" 2>/dev/null || echo missing)"
 
 # --- dump-demo-states.sh end to end -----------------------------------------------

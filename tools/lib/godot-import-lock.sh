@@ -4,7 +4,7 @@
 # Sourced by website/tools/dump-demo-states.sh (after tools/lib/run-bounded.sh, whose
 # run_bounded / run_bounded_timed_out this builds on); not executable on its own.
 #
-# Why (#1882): every dump-demo-states.sh run used to start with its own unguarded
+# Why: every dump-demo-states.sh run used to start with its own unguarded
 # `godot --headless --import`, so N dumps started in parallel against one project ran N
 # imports at once. Measured on Windows (Godot 4.7, 2026-10-30): 8 concurrent imports of
 # a project with no .godot/ cache, 5 rounds, logged errors in 34 of 40 imports ("Cannot
@@ -52,8 +52,12 @@ godot_import_is_current() {
   # .gdignore is itself a dot-file, so it is exempted from the hidden-path prune here.
   ignores="$(find "$project" \( -name '.*' ! -name .gdignore ! -path "$project" \) -prune \
     -o -name .gdignore -print)" || return 1
+  # The project root itself is never pruned: a root .gdignore would otherwise prune the
+  # scan at its start node, and every check would report "nothing changed".
   while IFS= read -r g; do
-    [ -n "$g" ] && prune+=( -o -path "${g%/.gdignore}" )
+    [ -n "$g" ] || continue
+    [ "${g%/.gdignore}" = "$project" ] && continue
+    prune+=( -o -path "${g%/.gdignore}" )
   done <<<"$ignores"
   newer="$(find "$project" \( "${prune[@]}" \) -prune -o -newer "$stamp" -print)" || return 1
   [ -z "$newer" ]
@@ -139,9 +143,12 @@ godot_lock_release() {
 # predates the import: a source edited while the import runs is newer than the stamp and
 # is imported next time. Godot's output goes to .godot/sparta-import.log.
 #
-# Fails (status 1, no stamp) when the import is killed by the timeout, or dies on a signal
-# (status 128 or more -- a crash). Any other non-zero status is not trusted either way:
-# Godot's --import exit code is unreliable, so a plain non-zero is not treated as failure.
+# Only a timeout (run_bounded's 124/137) fails the call: status 1, no stamp. Any other
+# non-zero status, a signal death included, is not fatal: Godot's --import exit code is
+# unreliable, and on Linux CI a headless import that aborts at exit (status 134) still
+# leaves a cache the dumps run fine against. Such an import prints a ::warning:: with
+# its status and the tail of the log, so the errors are no longer hidden, writes no
+# stamp, so the next caller imports again rather than trusting it, and returns 0.
 godot_import_once() {
   local secs="$1" godot="$2" project="$3" want="$4"
   local lockdir="$project/.godot/sparta-import.lock" rc=0
@@ -166,11 +173,12 @@ godot_import_once() {
     echo "::error::godot --import of $project timed out after ${secs}s and was killed (output: $log)" >&2
     return 1
   fi
-  if [ "$rc" -ge 128 ]; then
+  if [ "$rc" -ne 0 ]; then
     rm -f "$pending"
     godot_lock_release "$lockdir"
-    echo "::error::godot --import of $project died with status $rc (output: $log)" >&2
-    return 1
+    echo "::warning::godot --import of $project exited with status $rc; no stamp written, so the next run imports again (last lines of $log follow)" >&2
+    tail -n 20 "$log" | sed 's/^/  | /' >&2
+    return 0
   fi
   mv "$pending" "$stamp"
   godot_lock_release "$lockdir"
