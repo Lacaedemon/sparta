@@ -62,34 +62,38 @@ godot_import_is_current() {
 # Atomic mkdir lock (mkdir is atomic on every platform this runs on, and Git Bash has no
 # flock). The holder's PID goes in <lockdir>/pid. A lock is stale when its holder PID is
 # no longer alive, or when it has no PID at all and is over a minute old (a holder killed
-# between its mkdir and its PID write). A stale lock is broken with a message: it is first
-# renamed to a name unique to this caller, which only one breaker can win, and the
-# renamed copy is checked to be the stale lock that was read -- so two waiters can never
-# both break it, and a breaker that loses the race never deletes the winner's fresh lock.
+# between its mkdir and its PID write).
+#
+# Breaking a stale lock is itself serialised by a second mkdir lock, <lockdir>.break.
+# The one waiter holding it re-reads the PID and removes the lock only if it still names
+# the same dead holder. Nothing else removes a dead holder's lock, so the lock cannot
+# change between that re-read and the removal, and no waiter can delete a lock another
+# waiter has just taken. A breaker killed mid-break leaves <lockdir>.break behind; one
+# over a minute old is cleared.
+#
 # A live holder is waited for up to <wait-secs>, after which this fails loudly rather
 # than importing under someone else's import.
 godot_lock_acquire() {
-  local lockdir="$1" wait_secs="$2" waited=0 holder grave
+  local lockdir="$1" wait_secs="$2" waited=0 holder now
+  local breaker="$lockdir.break"
   while ! mkdir "$lockdir" 2>/dev/null; do
     holder="$(cat "$lockdir/pid" 2>/dev/null || true)"
     if godot_lock_is_stale "$lockdir" "$holder"; then
-      grave="$lockdir.stale.${BASHPID:-$$}.$RANDOM"
-      if mv "$lockdir" "$grave" 2>/dev/null; then
-        if [ "$(cat "$grave/pid" 2>/dev/null || true)" = "$holder" ]; then
+      if mkdir "$breaker" 2>/dev/null; then
+        now="$(cat "$lockdir/pid" 2>/dev/null || true)"
+        if [ -d "$lockdir" ] && [ "$now" = "$holder" ] && godot_lock_is_stale "$lockdir" "$now"; then
+          rm -rf "$lockdir"
           echo "godot-import-lock: broke stale lock $lockdir (holder PID ${holder:-none} is gone)" >&2
-          rm -rf "$grave"
-          continue
         fi
-        # The lock was replaced between the read and the rename: put the new holder's
-        # lock back. If that cannot be done, stop rather than run two imports at once.
-        # (The existence check comes first because mv onto an existing directory would
-        # move the lock INSIDE it instead of failing.)
-        if [ -e "$lockdir" ] || ! mv "$grave" "$lockdir" 2>/dev/null; then
-          echo "::error::godot-import-lock: lost a race breaking $lockdir and could not restore it" >&2
-          return 1
-        fi
+        rmdir "$breaker"
+        continue
       fi
-      continue
+      if [ -n "$(find "$breaker" -maxdepth 0 -mmin +1 2>/dev/null)" ]; then
+        echo "godot-import-lock: clearing abandoned $breaker" >&2
+        rm -rf "$breaker"
+        continue
+      fi
+      # Another waiter is breaking it: wait like for a live holder.
     fi
     if [ "$waited" -ge "$wait_secs" ]; then
       echo "::error::godot-import-lock: gave up after ${wait_secs}s waiting for $lockdir (holder PID ${holder:-unknown})" >&2

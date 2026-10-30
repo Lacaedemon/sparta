@@ -22,8 +22,10 @@
 #   6. several calls started at once run at most one import, and never two at the same
 #      time -- also when they all start against a stale lock they race to break
 #   7. a lock left by a dead holder, or with no holder PID and over a minute old, is
-#      broken; a fresh PID-less one is not; one held by a live holder is waited for and
-#      then refused loudly when the wait runs out
+#      broken; a fresh PID-less one is not; a breaker that arrives after another caller
+#      already broke and retook the lock leaves it alone; an abandoned .break lock is
+#      cleared; one held by a live holder is waited for and then refused loudly when the
+#      wait runs out
 #   8. an import killed by the timeout, or one that dies on a signal, fails and leaves
 #      no stamp, so the next run imports
 #
@@ -258,10 +260,11 @@ assert_eq "a dead holder's lock is taken over" 0 "$rc"
 assert_eq "the takeover is reported" 1 "$(grep -c 'broke stale lock' "$TMP/stale.err" || true)"
 godot_lock_release "$LOCK"
 
-# The losing breaker: it read the dead PID, but before its rename another caller broke
-# the lock and took it. Forced deterministically by a staleness check that swaps in a
-# live holder's lock (this shell's PID) right after the read. The breaker must put that
-# lock back and keep waiting -- not delete it and take the lock alongside its holder.
+# The late breaker: it read the dead PID, but before it got to break the lock another
+# caller broke it and took it. Forced deterministically by a staleness check that swaps
+# in a live holder's lock (this shell's PID) right after the read. The breaker's re-read
+# must see the new holder and leave the lock alone -- not delete it and take the lock
+# alongside its holder.
 eval "orig_$(declare -f godot_lock_is_stale)"
 swapped=0
 godot_lock_is_stale() {
@@ -276,11 +279,21 @@ mkdir "$LOCK"
 echo "$dead" > "$LOCK/pid"
 rc=0
 godot_lock_acquire "$LOCK" 1 2>/dev/null || rc=$?
-assert_eq "a breaker that lost the race does not take the lock" 1 "$rc"
-assert_eq "the winner's lock is put back intact" "$$" "$(cat "$LOCK/pid" 2>/dev/null || echo missing)"
+assert_eq "a late breaker does not take the lock" 1 "$rc"
+assert_eq "the new holder's lock is left intact" "$$" "$(cat "$LOCK/pid" 2>/dev/null || echo missing)"
 eval "$(declare -f orig_godot_lock_is_stale | sed '1s/^orig_//')"
 godot_lock_release "$LOCK"
-rm -rf "$LOCK".stale.*
+
+# A breaker killed mid-break leaves <lock>.break behind; once it is over a minute old it
+# is cleared and the stale lock under it broken.
+mkdir "$LOCK" "$LOCK.break"
+echo "$dead" > "$LOCK/pid"
+touch -d '2 minutes ago' "$LOCK.break"
+rc=0
+godot_lock_acquire "$LOCK" 3 2>"$TMP/breaker.err" || rc=$?
+assert_eq "an abandoned breaker lock does not block forever" 0 "$rc"
+assert_eq "clearing it is reported" 1 "$(grep -c 'clearing abandoned' "$TMP/breaker.err" || true)"
+godot_lock_release "$LOCK"
 
 # A lock with no PID: a fresh one may be a holder about to write its PID, so it is
 # waited for; one over a minute old is a holder that died first, so it is broken.
