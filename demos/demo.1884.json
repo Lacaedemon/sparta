@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Tooling only (#1882). The diff touches website/tools/dump-demo-states.sh, tools/lib/run-bounded.sh, a new tools/lib/godot-import-lock.sh and its shell test -- no scenes/, scripts/, assets/, project.godot, or demos/inputs/ change. It changes how the state dump imports the project and retries a hung run, not what any battle does, so there is no behaviour or rendered pixel for a clip to show; sampled hash streams are unchanged."
+}
