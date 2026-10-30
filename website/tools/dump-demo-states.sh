@@ -24,7 +24,10 @@
 #   GODOT_BIN                Godot 4.7 binary (default: godot).
 #   SPARTA_DUMP_STATE_TIMEOUT   Hard per-attempt timeout in seconds (default 300); also
 #                            bounds the import.
-#   SPARTA_DUMP_ATTEMPTS     Attempts per clip (default 3). A clip dump killed by the
+#   SPARTA_DUMP_ATTEMPTS     Attempts per clip (default 3, or 1 when CI is set: a
+#                            deterministic hang retried at 300 s a time would outlast a CI
+#                            step's own time limit before the clean error printed, and
+#                            CI runners do not share the parallel load). A clip dump killed by the
 #                            timeout is logged as a ::warning::, its partial output wiped,
 #                            and rerun from scratch; after this many timed-out attempts the
 #                            run fails. Only a timeout is retried -- any other failure
@@ -80,7 +83,11 @@ if [ $(( 10#$DENSE_STEP )) -le 0 ]; then
 fi
 DENSE_STEP=$(( 10#$DENSE_STEP ))
 ONLY_CLIPS="${SPARTA_DUMP_CLIPS:-}"
-DUMP_ATTEMPTS="${SPARTA_DUMP_ATTEMPTS:-3}"
+if [ -n "${CI:-}" ]; then
+  DUMP_ATTEMPTS="${SPARTA_DUMP_ATTEMPTS:-1}"
+else
+  DUMP_ATTEMPTS="${SPARTA_DUMP_ATTEMPTS:-3}"
+fi
 case "$DUMP_ATTEMPTS" in
   ''|*[!0-9]*) echo "SPARTA_DUMP_ATTEMPTS must be a positive attempt count, got '$DUMP_ATTEMPTS'" >&2; exit 2 ;;
 esac
@@ -118,8 +125,10 @@ GODOT_VERSION="$("$GODOT_BIN" --version 2>/dev/null | tail -n1 || true)"
 
 # Import so autoloads / class_name globals resolve in the target project -- under the
 # project's import lock, and only when the cache is stale for this tree and this Godot,
-# so parallel dumps of one project run one import between them instead of N colliding
-# ones (#1882; tools/lib/godot-import-lock.sh has the measurements). An import that times
+# so parallel dumps of one project never import at the same time: at most two imports,
+# one after the other, on a cold project and none on a warm one. The lock serialises
+# imports only, not an import against another run's dump (#1882;
+# tools/lib/godot-import-lock.sh has the measurements). An import that times
 # out or crashes fails the run here (it used to be ignored). With the version unknown the
 # stamp content is empty, which always imports rather than trust a cache it cannot match.
 IMPORT_STAMP=""
@@ -173,13 +182,21 @@ fresh_clip_out() {
     echo "dump-demo-states: the killed attempt for '$NAME' had written $got of $armed state snapshot(s)" >&2
   fi
   CLIP_ATTEMPTED=1
-  # A killed Godot on Windows can still hold a file open for a moment, so a failed wipe
-  # is reported and fails the attempt (run_bounded_retry stops on it) rather than
-  # letting the next attempt append to the last one's hash_stream.jsonl.
-  if ! rm -rf "$CLIP_OUT" || [ -e "$CLIP_OUT" ]; then
-    echo "::error::could not clear $CLIP_OUT before dumping '$NAME'" >&2
-    return 1
-  fi
+  # A killed Godot on Windows can still hold a file open for a moment, so the wipe is
+  # tried 3 times, 1 s apart. If it still fails, that fails the whole run
+  # (run_bounded_retry stops on a failed prepare step) rather than letting the next
+  # attempt append to the last one's hash_stream.jsonl.
+  local try
+  for try in 1 2 3; do
+    if rm -rf "$CLIP_OUT" 2>/dev/null && [ ! -e "$CLIP_OUT" ]; then
+      break
+    fi
+    if [ "$try" -eq 3 ]; then
+      echo "::error::could not clear $CLIP_OUT before dumping '$NAME' (3 tries); failing the run" >&2
+      return 1
+    fi
+    sleep 1
+  done
   mkdir -p "$CLIP_OUT"
 }
 

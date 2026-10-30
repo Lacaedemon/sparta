@@ -14,18 +14,19 @@
 #
 # godot_import_once() (tools/lib/godot-import-lock.sh):
 #   4. the first call imports and stamps; a second call with nothing changed skips the
-#      import -- a warm cache is never rewritten under a running reader
+#      import -- a warm cache is not rewritten at all
 #   5. a source file newer than the stamp, a deleted file, or a different Godot binary or
 #      version each force a fresh import; a write under a .gdignore'd or hidden
 #      directory (where the dumps land) does not; a source edited WHILE the import runs
 #      forces the next one; an empty stamp content (unknown version) always imports
-#   6. several calls started at once run at most one import, and never two at the same
+#   6. several calls started at once (on a stub that writes no sidecars) run one
+#      import, and never two at the same
 #      time -- also when they all start against a stale lock they race to break
 #   7. a lock left by a dead holder, or with no holder PID and over a minute old, is
 #      broken; a fresh PID-less one is not; a breaker that arrives after another caller
-#      already broke and retook the lock leaves it alone; an abandoned .break lock is
-#      cleared; one held by a live holder is waited for and then refused loudly when the
-#      wait runs out
+#      already broke and retook the lock leaves it alone; an abandoned .break lock fails
+#      loudly and is not cleared; one held by a live holder is waited for and then
+#      refused loudly when the wait runs out
 #   8. an import killed by the timeout, or one that dies on a signal, fails and leaves
 #      no stamp, so the next run imports
 #
@@ -33,6 +34,9 @@
 #   9. a dump whose first attempt hangs (after writing part of its hash stream) is
 #      retried, and the retried transcript is byte-identical to a clean run's
 #   10. with SPARTA_DUMP_ATTEMPTS=1 the same hang fails the run, naming the timeout
+#   11. with CI set (and no SPARTA_DUMP_ATTEMPTS) the default is one attempt
+#   12. a clip-dir wipe that fails twice is retried; one that fails three times fails
+#       the run, naming the dir
 #
 # No Godot binary is needed: every Godot call goes to a stub. Needs coreutils `timeout`
 # (as run_bounded does) and a `touch -d` that reads relative dates (GNU touch, as in
@@ -284,15 +288,20 @@ assert_eq "the new holder's lock is left intact" "$$" "$(cat "$LOCK/pid" 2>/dev/
 eval "$(declare -f orig_godot_lock_is_stale | sed '1s/^orig_//')"
 godot_lock_release "$LOCK"
 
-# A breaker killed mid-break leaves <lock>.break behind; once it is over a minute old it
-# is cleared and the stale lock under it broken.
+# A breaker killed mid-break leaves <lock>.break behind. It is never cleared
+# automatically (two waiters could both clear it and break concurrently): once over a
+# minute old it fails the caller loudly, naming the directory, and is left in place.
 mkdir "$LOCK" "$LOCK.break"
 echo "$dead" > "$LOCK/pid"
 touch -d '2 minutes ago' "$LOCK.break"
 rc=0
 godot_lock_acquire "$LOCK" 3 2>"$TMP/breaker.err" || rc=$?
-assert_eq "an abandoned breaker lock does not block forever" 0 "$rc"
-assert_eq "clearing it is reported" 1 "$(grep -c 'clearing abandoned' "$TMP/breaker.err" || true)"
+assert_eq "an abandoned breaker lock fails the caller" 1 "$rc"
+assert_eq "the failure names the .break dir to remove" 1 \
+  "$(grep -c "::error::.*$LOCK.break is over a minute old" "$TMP/breaker.err" || true)"
+assert_eq "the abandoned breaker lock is left in place" yes "$([ -d "$LOCK.break" ] && echo yes || echo no)"
+assert_eq "the stale lock under it is not broken" "$dead" "$(cat "$LOCK/pid" 2>/dev/null || echo missing)"
+rm -rf "$LOCK.break"
 godot_lock_release "$LOCK"
 
 # A lock with no PID: a fresh one may be a holder about to write its PID, so it is
@@ -336,6 +345,8 @@ assert_eq "the crash is reported" 1 "$(grep -c 'died with status 139' "$TMP/cras
 rc=0
 STUB_EXIT=1 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v1" 2>/dev/null || rc=$?
 assert_eq "a plain non-zero import status is not a failure" 0 "$rc"
+assert_eq "a plain non-zero import status still writes the stamp" "stub|v1" \
+  "$(cat "$(godot_import_stamp_path "$PROJ")" 2>/dev/null || echo missing)"
 
 # --- dump-demo-states.sh end to end -----------------------------------------------
 
@@ -374,7 +385,9 @@ chmod +x "$TMP/godot-dump-stub"
 
 dump() {
   # 5 s, not 1: a clean stub run on a loaded machine must never use up a retry.
-  GODOT_BIN="$TMP/godot-dump-stub" SPARTA_DUMP_STATE_TIMEOUT=5 \
+  # CI is unset so the local default (3 attempts) applies even when this test itself
+  # runs in CI; the CI default is its own case below.
+  env -u CI GODOT_BIN="$TMP/godot-dump-stub" SPARTA_DUMP_STATE_TIMEOUT=5 \
     bash "$REPO_ROOT/website/tools/dump-demo-states.sh" "$1" "$TREE"
 }
 
@@ -395,6 +408,43 @@ rc=0
 STUB_HANG_FIRST="$TMP/hang.count" SPARTA_DUMP_ATTEMPTS=1 dump "$TMP/once" >"$TMP/once.log" 2>&1 || rc=$?
 assert_eq "with one attempt a hung dump fails" 1 "$rc"
 assert_eq "the failure names the timeout" 1 "$(grep -c "timed out on all 1 attempts" "$TMP/once.log" || true)"
+
+# Under CI the default is one attempt, so a deterministic hang fails within one timeout
+# instead of outlasting the CI step's own limit.
+rm -f "$TMP/hang.count"
+rc=0
+STUB_HANG_FIRST="$TMP/hang.count" CI=true GODOT_BIN="$TMP/godot-dump-stub" SPARTA_DUMP_STATE_TIMEOUT=5 \
+  bash "$REPO_ROOT/website/tools/dump-demo-states.sh" "$TMP/ci" "$TREE" >"$TMP/ci.log" 2>&1 || rc=$?
+assert_eq "under CI a hung dump fails without a retry" 1 "$rc"
+assert_eq "under CI the default is one attempt" 1 "$(grep -c "timed out on all 1 attempts" "$TMP/ci.log" || true)"
+
+# A wipe that fails (a killed Godot on Windows still holding a file) is retried, and
+# only a wipe that keeps failing fails the run. A fake `rm` first on PATH fails its
+# first RM_FAILS calls on the clip dir, then hands over to the real rm.
+REAL_RM="$(command -v rm)"
+mkdir -p "$TMP/fakebin"
+cat > "$TMP/fakebin/rm" <<EOF
+#!/usr/bin/env bash
+case "\$*" in
+  *"/wipe-"*"/alpha"*)
+    n=\$(( \$(cat "$TMP/rm.count" 2>/dev/null || echo 0) + 1 ))
+    echo "\$n" > "$TMP/rm.count"
+    if [ "\$n" -le "\${RM_FAILS:-0}" ]; then exit 1; fi ;;
+esac
+exec "$REAL_RM" "\$@"
+EOF
+chmod +x "$TMP/fakebin/rm"
+"$REAL_RM" -f "$TMP/rm.count"
+rc=0
+RM_FAILS=2 PATH="$TMP/fakebin:$PATH" dump "$TMP/wipe-ok" >"$TMP/wipe-ok.log" 2>&1 || rc=$?
+assert_eq "a wipe that fails twice is retried and the dump succeeds" 0 "$rc"
+assert_eq "the retried wipe still yields a clean transcript" same \
+  "$(cmp -s "$TMP/clean/alpha/hash_stream.jsonl" "$TMP/wipe-ok/alpha/hash_stream.jsonl" && echo same || echo differs)"
+"$REAL_RM" -f "$TMP/rm.count"
+rc=0
+RM_FAILS=3 PATH="$TMP/fakebin:$PATH" dump "$TMP/wipe-bad" >"$TMP/wipe-bad.log" 2>&1 || rc=$?
+assert_eq "a wipe that fails three times fails the run" 1 "$rc"
+assert_eq "the wipe failure is named" 1 "$(grep -c "could not clear .* (3 tries); failing the run" "$TMP/wipe-bad.log" || true)"
 
 if [ "$FAILURES" -ne 0 ]; then
   echo "$FAILURES failure(s)" >&2

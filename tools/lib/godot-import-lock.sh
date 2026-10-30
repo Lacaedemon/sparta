@@ -14,12 +14,14 @@
 # tries, but they still rewrite .godot/global_script_class_cache.cfg, uid_cache.bin and
 # editor/filesystem_cache10 on every run, so they are pure churn under a running dump.
 #
-# godot_import_once serialises the import behind a per-project mkdir lock and skips it
-# when the cache is already current for this tree and this Godot, so N parallel runs
-# never import at the same time and a warm project is not re-imported at all. A cold
+# godot_import_once serialises imports against each other behind a per-project mkdir
+# lock (it does not hold dumps off while an import runs) and skips the import when the
+# cache is already current for this tree and this Godot, so N parallel runs never
+# import at the same time and a warm project is not re-imported at all. A cold
 # project imports twice, one after the other: the first import writes new *.import
 # sidecars after the stamp's (pre-import) mtime, so the next caller imports once more,
-# and every caller after that skips. Measured: 16 staggered dense dumps x 8, cold start,
+# and every caller after that skips. That second import can run while the first
+# caller's dump is already reading the cache. Measured: 16 staggered dense dumps x 8, cold start,
 # ran 2 imports in 128 runs, with no import errors and no tracked file changed.
 
 # godot_import_stamp_path <project> -- the stamp godot_import_once writes after a
@@ -68,8 +70,11 @@ godot_import_is_current() {
 # The one waiter holding it re-reads the PID and removes the lock only if it still names
 # the same dead holder. Nothing else removes a dead holder's lock, so the lock cannot
 # change between that re-read and the removal, and no waiter can delete a lock another
-# waiter has just taken. A breaker killed mid-break leaves <lockdir>.break behind; one
-# over a minute old is cleared.
+# waiter has just taken. A breaker killed mid-break leaves <lockdir>.break behind.
+# That is never cleared automatically: two waiters that both saw it abandoned could
+# both clear it and then break concurrently, which is the race the breaker exists to
+# prevent. Once it is over a minute old this fails with an ::error:: naming the
+# directory to remove by hand.
 #
 # A live holder is waited for up to <wait-secs>, after which this fails loudly rather
 # than importing under someone else's import.
@@ -89,9 +94,8 @@ godot_lock_acquire() {
         continue
       fi
       if [ -n "$(find "$breaker" -maxdepth 0 -mmin +1 2>/dev/null)" ]; then
-        echo "godot-import-lock: clearing abandoned $breaker" >&2
-        rm -rf "$breaker"
-        continue
+        echo "::error::godot-import-lock: $breaker is over a minute old, so the waiter breaking $lockdir died mid-break; check no dump is running, then remove $breaker by hand" >&2
+        return 1
       fi
       # Another waiter is breaking it: wait like for a live holder.
     fi
