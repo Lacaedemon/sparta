@@ -52,10 +52,14 @@ run_bounded_timed_out() {
 # from the same state as a first one.
 #
 # Only a timeout is retried. A command that exits non-zero on its own is returned at
-# once with its own status: a deterministic failure would just fail again.
+# once with its own status: a deterministic failure would just fail again. "Timeout"
+# here is run_bounded_timed_out's reading, so a run SIGKILLed from outside (status 137,
+# e.g. an out-of-memory kill) is retried too. A retry that passes also hides an
+# intermittent hang in the command itself; the ::warning:: is the trace it leaves.
 #
 # Exit status: the last attempt's. When every attempt timed out it is the timeout's (124
 # or 137, so run_bounded_timed_out still reads it), after a ::error:: saying so. A
+# prepare step that fails stops the loop with status 1 before that attempt runs. A
 # non-positive or non-numeric <attempts> is refused with status 2.
 run_bounded_retry() {
   local attempts="$1" secs="$2" label="$3" prep="$4"; shift 4
@@ -69,8 +73,11 @@ run_bounded_retry() {
   fi
   local n=1 rc
   while :; do
-    if [ -n "$prep" ]; then
-      "$prep"
+    # Checked explicitly: callers run this as `run_bounded_retry ... || rc=$?`, where
+    # errexit is off, and an attempt on unwiped output must never run.
+    if [ -n "$prep" ] && ! "$prep"; then
+      echo "::error::$label: the prepare step failed before attempt $n; not running it" >&2
+      return 1
     fi
     rc=0
     run_bounded "$secs" "$@" || rc=$?

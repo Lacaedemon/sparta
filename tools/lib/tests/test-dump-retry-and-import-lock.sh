@@ -10,18 +10,22 @@
 #   3. a command that fails WITHOUT timing out is not retried -- a deterministic failure
 #      would only fail again, and retrying it would hide nothing but cost time
 #   3b. a non-numeric or zero attempt count is refused, not treated as "never run"
+#   3c. a failing prepare hook stops the loop before the attempt runs
 #
 # godot_import_once() (tools/lib/godot-import-lock.sh):
 #   4. the first call imports and stamps; a second call with nothing changed skips the
 #      import -- a warm cache is never rewritten under a running reader
 #   5. a source file newer than the stamp, a deleted file, or a different Godot binary or
 #      version each force a fresh import; a write under a .gdignore'd or hidden
-#      directory (where the dumps land) does not
+#      directory (where the dumps land) does not; a source edited WHILE the import runs
+#      forces the next one; an empty stamp content (unknown version) always imports
 #   6. several calls started at once run at most one import, and never two at the same
-#      time
-#   7. a lock left by a dead holder is broken; one held by a live holder is waited for
-#      and then refused loudly when the wait runs out
-#   8. an import killed by the timeout fails and leaves no stamp, so the next run imports
+#      time -- also when they all start against a stale lock they race to break
+#   7. a lock left by a dead holder, or with no holder PID and over a minute old, is
+#      broken; a fresh PID-less one is not; one held by a live holder is waited for and
+#      then refused loudly when the wait runs out
+#   8. an import killed by the timeout, or one that dies on a signal, fails and leaves
+#      no stamp, so the next run imports
 #
 # website/tools/dump-demo-states.sh end to end, with a stub Godot:
 #   9. a dump whose first attempt hangs (after writing part of its hash stream) is
@@ -29,8 +33,8 @@
 #   10. with SPARTA_DUMP_ATTEMPTS=1 the same hang fails the run, naming the timeout
 #
 # No Godot binary is needed: every Godot call goes to a stub. Needs coreutils `timeout`
-# (as run_bounded does); skips the timeout-dependent cases with a clear message without
-# it.
+# (as run_bounded does) and a `touch -d` that reads relative dates (GNU touch, as in
+# Git Bash and Ubuntu CI); skips with a clear message without either.
 #
 # Run by tools/check.sh's shell_tests check, alongside every other tools/lib/tests/test-*.sh.
 #
@@ -63,6 +67,11 @@ fi
 
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/dump-retry-lock.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
+
+if ! touch -d '2 minutes ago' "$TMP/probe" 2>/dev/null; then
+  echo "skip: this touch cannot set a relative date (BSD touch?); the freshness cases need it" >&2
+  exit 0
+fi
 
 # --- run_bounded_retry ------------------------------------------------------------
 
@@ -117,6 +126,15 @@ rc=0
 run_bounded_retry x 5 "case-3b" "" true 2>/dev/null || rc=$?
 assert_eq "a non-numeric attempt count is refused" 2 "$rc"
 
+failing_prep() { return 1; }
+rm -f "$TMP/c3c"
+rc=0
+run_bounded_retry 3 5 "case-3c" failing_prep "$TMP/fail-3" "$TMP/c3c" 2>"$TMP/c3c.err" || rc=$?
+assert_eq "a failing prepare hook fails the call" 1 "$rc"
+assert_eq "a failing prepare hook stops the attempt from running" no \
+  "$([ -e "$TMP/c3c" ] && echo yes || echo no)"
+assert_eq "the prepare failure is logged" 1 "$(grep -c 'prepare step failed before attempt 1' "$TMP/c3c.err" || true)"
+
 # --- godot_import_once ------------------------------------------------------------
 
 # A stub Godot for --import: logs each import, and fails the test if two overlap.
@@ -126,7 +144,10 @@ log="$STUB_LOG"
 if ! mkdir "$log.busy" 2>/dev/null; then echo overlap >> "$log"; fi
 echo import >> "$log"
 sleep "${STUB_SLEEP:-0}"
+# STUB_EDIT_DURING names a file to edit mid-import (an edit racing the import).
+if [ -n "${STUB_EDIT_DURING:-}" ]; then echo '# mid-import edit' >> "$STUB_EDIT_DURING"; fi
 rmdir "$log.busy" 2>/dev/null || true
+exit "${STUB_EXIT:-0}"
 EOF
 chmod +x "$TMP/godot-import-stub"
 export STUB_LOG="$TMP/imports.log"
@@ -135,7 +156,11 @@ PROJ="$TMP/proj"
 mkdir -p "$PROJ/scripts"
 echo 'extends Node' > "$PROJ/scripts/a.gd"
 echo 'extends Node' > "$PROJ/scripts/b.gd"
-imports() { grep -c '^import$' "$STUB_LOG" 2>/dev/null || echo 0; }
+# grep -c prints 0 itself (and exits 1) on a log with no match; only a missing log needs
+# the fallback.
+imports() {
+  if [ -f "$STUB_LOG" ]; then grep -c '^import$' "$STUB_LOG" || true; else echo 0; fi
+}
 
 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v1" 2>/dev/null
 assert_eq "the first call imports" 1 "$(imports)"
@@ -172,6 +197,19 @@ echo x > "$PROJ/.claude/note"
 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v2" 2>/dev/null
 assert_eq "writes under .gdignore'd and hidden dirs do not force an import" 5 "$(imports)"
 
+# A source edited while the import runs is newer than the stamp (which predates the
+# import), so the next call imports again rather than trusting a cache built before it.
+find "$PROJ" -exec touch -d '10 minutes ago' {} +
+STUB_SLEEP=1 STUB_EDIT_DURING="$PROJ/scripts/a.gd" godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v3" 2>/dev/null
+assert_eq "an import runs for the new version" 6 "$(imports)"
+godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v3" 2>/dev/null
+assert_eq "a source edited during the import forces the next import" 7 "$(imports)"
+
+# An unknown Godot version (empty stamp content) never matches, even itself.
+godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "" 2>/dev/null
+godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "" 2>/dev/null
+assert_eq "an empty stamp content always imports" 9 "$(imports)"
+
 # Concurrent callers on a cold project: one import, never two at once.
 rm -rf "$PROJ/.godot" "$STUB_LOG"
 pids=()
@@ -179,22 +217,82 @@ for _ in 1 2 3 4 5; do
   STUB_SLEEP=2 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v1" 2>/dev/null &
   pids+=($!)
 done
-for p in "${pids[@]}"; do wait "$p"; done
+failed_callers=0
+for p in "${pids[@]}"; do wait "$p" || failed_callers=$((failed_callers + 1)); done
+assert_eq "five concurrent callers all succeed" 0 "$failed_callers"
 assert_eq "five concurrent callers run one import" 1 "$(imports)"
 assert_eq "no two imports overlapped" 0 "$(grep -c '^overlap$' "$STUB_LOG" || true)"
 assert_eq "the lock is released afterwards" no "$([ -e "$PROJ/.godot/sparta-import.lock" ] && echo yes || echo no)"
 
-# A dead holder's lock is broken. A PID from a finished background job is dead.
-LOCK="$TMP/lock.d"
+# A PID from a finished background job is dead.
 sh -c 'exit 0' &
 dead=$!
 wait "$dead"
+
+# Five callers that all find a stale lock race to break it: still exactly one import,
+# never two at once, and the stale lock is broken exactly once.
+rm -rf "$PROJ/.godot" "$STUB_LOG"
+mkdir -p "$PROJ/.godot/sparta-import.lock"
+echo "$dead" > "$PROJ/.godot/sparta-import.lock/pid"
+pids=()
+for i in 1 2 3 4 5; do
+  STUB_SLEEP=2 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v1" 2>"$TMP/race-$i.err" &
+  pids+=($!)
+done
+failed_callers=0
+for p in "${pids[@]}"; do wait "$p" || failed_callers=$((failed_callers + 1)); done
+assert_eq "callers racing to break a stale lock all succeed" 0 "$failed_callers"
+assert_eq "callers racing to break a stale lock run one import" 1 "$(imports)"
+assert_eq "no two imports overlapped after the race" 0 "$(grep -c '^overlap$' "$STUB_LOG" || true)"
+assert_eq "the stale lock was broken once" 1 "$(cat "$TMP"/race-*.err | grep -c 'broke stale lock' || true)"
+assert_eq "no stale-lock leftovers remain" 0 \
+  "$(find "$PROJ/.godot" -maxdepth 1 -name 'sparta-import.lock*' | wc -l | tr -d ' ')"
+
+# A dead holder's lock is broken.
+LOCK="$TMP/lock.d"
 mkdir "$LOCK"
 echo "$dead" > "$LOCK/pid"
 rc=0
 godot_lock_acquire "$LOCK" 5 2>"$TMP/stale.err" || rc=$?
 assert_eq "a dead holder's lock is taken over" 0 "$rc"
-assert_eq "the takeover is reported" 1 "$(grep -c 'breaking stale lock' "$TMP/stale.err" || true)"
+assert_eq "the takeover is reported" 1 "$(grep -c 'broke stale lock' "$TMP/stale.err" || true)"
+godot_lock_release "$LOCK"
+
+# The losing breaker: it read the dead PID, but before its rename another caller broke
+# the lock and took it. Forced deterministically by a staleness check that swaps in a
+# live holder's lock (this shell's PID) right after the read. The breaker must put that
+# lock back and keep waiting -- not delete it and take the lock alongside its holder.
+eval "orig_$(declare -f godot_lock_is_stale)"
+swapped=0
+godot_lock_is_stale() {
+  if [ "$swapped" -eq 0 ]; then
+    swapped=1
+    rm -rf "$1"; mkdir "$1"; echo "$$" > "$1/pid"
+    return 0
+  fi
+  orig_godot_lock_is_stale "$@"
+}
+mkdir "$LOCK"
+echo "$dead" > "$LOCK/pid"
+rc=0
+godot_lock_acquire "$LOCK" 1 2>/dev/null || rc=$?
+assert_eq "a breaker that lost the race does not take the lock" 1 "$rc"
+assert_eq "the winner's lock is put back intact" "$$" "$(cat "$LOCK/pid" 2>/dev/null || echo missing)"
+eval "$(declare -f orig_godot_lock_is_stale | sed '1s/^orig_//')"
+godot_lock_release "$LOCK"
+rm -rf "$LOCK".stale.*
+
+# A lock with no PID: a fresh one may be a holder about to write its PID, so it is
+# waited for; one over a minute old is a holder that died first, so it is broken.
+mkdir "$LOCK"
+rc=0
+godot_lock_acquire "$LOCK" 1 2>/dev/null || rc=$?
+assert_eq "a fresh PID-less lock is not broken" 1 "$rc"
+touch -d '2 minutes ago' "$LOCK"
+rc=0
+godot_lock_acquire "$LOCK" 1 2>"$TMP/nopid.err" || rc=$?
+assert_eq "an old PID-less lock is broken" 0 "$rc"
+assert_eq "the PID-less takeover is reported" 1 "$(grep -c 'holder PID none is gone' "$TMP/nopid.err" || true)"
 godot_lock_release "$LOCK"
 
 # A live holder (this shell) is waited for, then refused.
@@ -214,6 +312,17 @@ assert_eq "a hung import fails" 1 "$rc"
 assert_eq "a hung import leaves no stamp" no "$([ -f "$(godot_import_stamp_path "$PROJ")" ] && echo yes || echo no)"
 assert_eq "a hung import releases the lock" no "$([ -e "$PROJ/.godot/sparta-import.lock" ] && echo yes || echo no)"
 rmdir "$STUB_LOG.busy" 2>/dev/null || true
+
+# An import that dies on a signal (status >= 128, here a segfault's 139) fails too.
+rc=0
+STUB_EXIT=139 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v1" 2>"$TMP/crash.err" || rc=$?
+assert_eq "a crashed import fails" 1 "$rc"
+assert_eq "a crashed import leaves no stamp" no "$([ -f "$(godot_import_stamp_path "$PROJ")" ] && echo yes || echo no)"
+assert_eq "the crash is reported" 1 "$(grep -c 'died with status 139' "$TMP/crash.err" || true)"
+# A plain non-zero (Godot's unreliable --import status) still stamps.
+rc=0
+STUB_EXIT=1 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v1" 2>/dev/null || rc=$?
+assert_eq "a plain non-zero import status is not a failure" 0 "$rc"
 
 # --- dump-demo-states.sh end to end -----------------------------------------------
 
@@ -251,7 +360,8 @@ EOF
 chmod +x "$TMP/godot-dump-stub"
 
 dump() {
-  GODOT_BIN="$TMP/godot-dump-stub" SPARTA_DUMP_STATE_TIMEOUT=1 \
+  # 5 s, not 1: a clean stub run on a loaded machine must never use up a retry.
+  GODOT_BIN="$TMP/godot-dump-stub" SPARTA_DUMP_STATE_TIMEOUT=5 \
     bash "$REPO_ROOT/website/tools/dump-demo-states.sh" "$1" "$TREE"
 }
 

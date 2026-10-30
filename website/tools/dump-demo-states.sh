@@ -119,9 +119,14 @@ GODOT_VERSION="$("$GODOT_BIN" --version 2>/dev/null | tail -n1 || true)"
 # Import so autoloads / class_name globals resolve in the target project -- under the
 # project's import lock, and only when the cache is stale for this tree and this Godot,
 # so parallel dumps of one project run one import between them instead of N colliding
-# ones (#1882; tools/lib/godot-import-lock.sh has the measurements).
-godot_import_once "$DUMP_TIMEOUT" "$GODOT_BIN" "$PROJECT_DIR" \
-  "godot=$GODOT_BIN version=${GODOT_VERSION:-unknown}"
+# ones (#1882; tools/lib/godot-import-lock.sh has the measurements). An import that times
+# out or crashes fails the run here (it used to be ignored). With the version unknown the
+# stamp content is empty, which always imports rather than trust a cache it cannot match.
+IMPORT_STAMP=""
+if [ -n "$GODOT_VERSION" ]; then
+  IMPORT_STAMP="godot=$GODOT_BIN version=$GODOT_VERSION"
+fi
+godot_import_once "$DUMP_TIMEOUT" "$GODOT_BIN" "$PROJECT_DIR" "$IMPORT_STAMP"
 {
   printf 'os=%s\n' "$(uname -s)"
   printf 'godot=%s\n' "${GODOT_VERSION:-unknown}"
@@ -168,7 +173,13 @@ fresh_clip_out() {
     echo "dump-demo-states: the killed attempt for '$NAME' had written $got of $armed state snapshot(s)" >&2
   fi
   CLIP_ATTEMPTED=1
-  rm -rf "$CLIP_OUT"
+  # A killed Godot on Windows can still hold a file open for a moment, so a failed wipe
+  # is reported and fails the attempt (run_bounded_retry stops on it) rather than
+  # letting the next attempt append to the last one's hash_stream.jsonl.
+  if ! rm -rf "$CLIP_OUT" || [ -e "$CLIP_OUT" ]; then
+    echo "::error::could not clear $CLIP_OUT before dumping '$NAME'" >&2
+    return 1
+  fi
   mkdir -p "$CLIP_OUT"
 }
 
