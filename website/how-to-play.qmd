@@ -196,6 +196,10 @@ turn: a fresh order that roughly continues the current travel carries the column
 momentum straight through, while one that turns it sharply back bleeds that speed off
 during the hold, so the block comes about from a stand instead of carrying its pace
 into the turn (@fig-reversal-march).
+Men still walking to their places when the block steps off keep closing on them as it
+gathers pace: each man speeds up with the march and still has his own pace to spare for
+catching up, and the way he walks onto his place changes gradually as the block speeds up
+rather than all at once on its first step.
 To make a unit move immediately without the pause, uncheck **Reform before move** in
 its unit settings panel, or click **Reform** in the control bar --- either applies to every
 currently selected unit. Cavalry starts with the setting off (immediate
