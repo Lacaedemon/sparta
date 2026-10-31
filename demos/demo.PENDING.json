@@ -1,0 +1,8 @@
+{
+  "replay": "demos/support_demo.json",
+  "caption": "Team 0's archers (the wide 90-man block shadowing the infantry in front of them) shoot on the march near the end of the clip: the re-face turns their whole block about its centre at once, leaving the men at its two ends far from their places. Before this fix the block was marching and turning while they walked back, so each of those men was sent the long way round the block's edge, and the archers stayed out of shape for the rest of the clip (worst shape residual 29.9 to 32.3 across five seeds, against a limit of 27). Now the men walk straight back to their places and the block re-forms on the march (17.6 to 17.7).",
+  "fixed_fps": 30,
+  "max_frames": 400,
+  "fps": 12,
+  "width": 640
+}
