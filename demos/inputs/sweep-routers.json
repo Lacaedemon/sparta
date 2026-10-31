@@ -26,7 +26,7 @@
     },
     "overlap": {
       "uids": [4],
-      "reason": "Uid 4, overlap: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, 0.28, pass; with the march share given only to orderly marches (#1880) it reads 0.76, pass, pass, 1.18, pass, against 2.25. Not traced; the battle runs on a different trajectory from 9f9bddee's, and men of one block crossing while they re-form is the likely mechanism (#1791). Measured 2026-10-31."
+      "reason": "Uid 4, overlap: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, 0.28, pass; 903ca538 (#1880) reads 1.32, pass, pass, 0.41, pass, against 2.25. Not traced; the battle runs on a different trajectory from 9f9bddee's, and men of one block crossing while they re-form is the likely mechanism (#1791). Measured 2026-10-31."
     }
   }
 }
