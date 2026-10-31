@@ -184,10 +184,43 @@ func test_a_stop_switches_his_target_back_at_once() -> void:
 	for _t in range(ceili(SoldierBodies.march_target_ramp_s(u) / TICK) + 1):
 		_target_after_tick(u, slot)
 	u._approach_velocity = Vector2.ZERO
-	var stopped: Vector2 = _target_after_tick(u, slot)
+	assert_eq(SoldierBodies.advance_march_target_frac(u, TICK), 0.0,
+		"the blend is 0 the step the march stops")
+	var stopped: Vector2 = SoldierBodies.arrival_target(u, 0, slot, u.soldiers, 0.0, false)
+	assert_eq(_target_after_tick(u, slot), stopped, "and on the next stopped step")
 	var standing: Vector2 = SoldierBodies.arrival_target(u, 0, slot, u.soldiers, 0.0, false)
-	assert_eq(u._march_target_frac, 0.0, "the blend drops to 0 the step the march stops")
 	assert_eq(stopped, standing, "and his target is the standing one")
+	# Once the stop outlasts its grace, the ramp itself is gone too: the next march starts it
+	# again from nothing.
+	_target_after_tick(u, slot)
+	assert_eq(u._march_target_frac, 0.0, "a stop of three steps drops the ramp to 0")
+
+
+func test_a_one_or_two_tick_dip_does_not_restart_the_ramp() -> void:
+	# A march that dips to a standstill for a tick or two and goes on picks its ramp up where
+	# it left it; only a real stop (longer than MARCH_TARGET_STOP_GRACE_S) starts it again.
+	# During the dip the target is the standing one, as on any stop.
+	for dip in [1, 2, 3]:
+		var u := _make_block()
+		u.state = Unit.State.MOVING
+		var ramp_ticks: int = ceili(SoldierBodies.march_target_ramp_s(u) / TICK)
+		u._approach_velocity = u.facing * u.walk_speed
+		var before: float = 0.0
+		for _t in range(ramp_ticks / 2):
+			before = SoldierBodies.advance_march_target_frac(u, TICK)
+		u._approach_velocity = Vector2.ZERO
+		for _t in range(dip):
+			assert_eq(SoldierBodies.advance_march_target_frac(u, TICK), 0.0,
+				"a %d-tick dip: the target is the standing one while it lasts" % dip)
+		u._approach_velocity = u.facing * u.walk_speed
+		var after: float = SoldierBodies.advance_march_target_frac(u, TICK)
+		var step_frac: float = TICK / SoldierBodies.march_target_ramp_s(u)
+		if dip <= 2:
+			assert_almost_eq(after, before + step_frac, 1e-5,
+				"a %d-tick dip keeps the ramp: %.3f before, %.3f after" % [dip, before, after])
+		else:
+			assert_almost_eq(after, step_frac, 1e-5,
+				"a %d-tick stop restarts the ramp: %.3f after" % [dip, after])
 
 
 func test_march_target_frac_ramps_by_time_not_by_speed() -> void:
@@ -232,14 +265,50 @@ func test_the_blended_target_keeps_its_length() -> void:
 	# Lengths that differ blend linearly.
 	assert_almost_eq(SoldierBodies.blend_targets(Vector2(10, 0), Vector2(0, 30), 0.25).length(),
 			15.0, 1e-3, "a quarter of the way from 10 to 30 wu is 15 wu")
-	# Two targets pointing straight apart keep the nearer end's direction.
+	# Two targets pointing exactly apart turn through the half-turn at the same constant rate,
+	# their length still running linearly.
 	assert_almost_eq(SoldierBodies.blend_targets(Vector2(10, 0), Vector2(-20, 0), 0.5),
-			Vector2(-15, 0), Vector2(1e-3, 1e-3), "opposed targets, halfway: the marching direction")
+			Vector2(0, 15), Vector2(1e-3, 1e-3), "opposed targets, halfway: a quarter-turn, 15 wu")
 	assert_almost_eq(SoldierBodies.blend_targets(Vector2(10, 0), Vector2(-20, 0), 0.25),
-			Vector2(12.5, 0), Vector2(1e-3, 1e-3), "opposed targets, a quarter: the standing direction")
+			Vector2.from_angle(PI / 4.0) * 12.5, Vector2(1e-3, 1e-3),
+			"opposed targets, a quarter: an eighth-turn, 12.5 wu")
 	# A zero-length end blends to the other end's direction, linearly in length.
 	assert_almost_eq(SoldierBodies.blend_targets(Vector2.ZERO, Vector2(0, 20), 0.5),
 			Vector2(0, 10), Vector2(1e-3, 1e-3), "from nothing, halfway")
+	assert_almost_eq(SoldierBodies.blend_targets(Vector2(0, 20), Vector2.ZERO, 0.75),
+			Vector2(0, 5), Vector2(1e-3, 1e-3), "to nothing, three quarters")
+
+
+func test_the_blended_target_turns_at_a_constant_rate() -> void:
+	# Over the ramp the target turns from the standing direction to the marching one by the
+	# same angle every tick, however far apart the two point: two targets 170 degrees apart
+	# turn 170 / 90 = 1.9 degrees a tick over a 90-tick ramp. A normalized lerp of the two
+	# turns 14.3 degrees in its worst tick, near halfway, and barely at all near the ends.
+	var u := _make_block()
+	u.state = Unit.State.MOVING
+	u._approach_velocity = u.facing * u.walk_speed
+	var ramp_ticks: int = ceili(SoldierBodies.march_target_ramp_s(u) / TICK)
+	for spread in [90.0, 170.0, 179.9, 180.0]:
+		u._march_target_frac = 0.0
+		var a := Vector2(25, 0)
+		var b := Vector2.from_angle(deg_to_rad(spread)) * 25.0
+		var even: float = spread * TICK / SoldierBodies.march_target_ramp_s(u)
+		var prev: Vector2 = a
+		var worst: float = 0.0
+		var total: float = 0.0
+		for _t in range(ramp_ticks):
+			var t: Vector2 = SoldierBodies.blend_targets(a, b,
+					SoldierBodies.advance_march_target_frac(u, TICK))
+			var turn: float = rad_to_deg(absf(prev.angle_to(t)))
+			worst = maxf(worst, turn)
+			total += turn
+			prev = t
+		assert_lt(worst, even * 1.01 + 1e-3,
+			"targets %.1f degrees apart: the worst tick turns %.3f degrees, an even turn is %.3f"
+			% [spread, worst, even])
+		assert_almost_eq(total, spread, 0.01,
+			"targets %.1f degrees apart: the ramp turns %.3f degrees in all" % [spread, total])
+		assert_almost_eq(prev, b, Vector2(1e-3, 1e-3), "and ends on the marching target")
 
 
 func test_the_blended_target_keeps_its_length_in_step() -> void:

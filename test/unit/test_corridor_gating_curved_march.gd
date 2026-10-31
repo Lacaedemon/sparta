@@ -149,7 +149,7 @@ func test_shallow_turning_march_uses_wide_proximity_for_direct_arrival() -> void
 	# block's whole slot grid in one tick, leaving its end men ranks across and files along
 	# from their slots; with the narrow band each was sent round the perimeter corridor while
 	# the block kept turning, and the block did not re-form (the support clip's archers, see
-	# SoldierBodies.march_target_frac's doc comment for the measurement).
+	# SoldierBodies.advance_march_target_frac's doc comment for the measurement).
 	var shallow_unit: Unit = _make_shallow_infantry_60()
 	shallow_unit._approach_velocity = Vector2(100, 100)
 	shallow_unit.state = Unit.State.MOVING

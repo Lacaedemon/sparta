@@ -1746,8 +1746,15 @@ var _body_march_ff_prev: Vector2 = Vector2.ZERO
 var _body_march_orderly: bool = false
 # How far this unit's soldier bodies' arrival target has gone from the standing one toward
 # the marching one, 0 to 1 (SoldierBodies.advance_march_target_frac, which ramps it up by
-# time while the block marches and drops it to 0 when the march stops).
+# time while the block marches and drops it to 0 once the march has stood still for longer
+# than its grace, _march_stopped_s).
 var _march_target_frac: float = 0.0
+# How long this unit's march has stood still, in seconds
+# (SoldierBodies.advance_march_target_frac): its bodies' arrival target switches back to the
+# standing one the tick the march stops, but _march_target_frac only drops to 0 once the stop
+# outlasts SoldierBodies.MARCH_TARGET_STOP_GRACE_S, so a march that dips for a tick or two
+# keeps its ramp.
+var _march_stopped_s: float = 0.0
 # Velocity the regiment center followed its soldiers' centroid at this tick (phase 5):
 # the soldier->regiment coupling slides the center toward where its bodies actually are,
 # so friendly collision (and later all collision) emerges from the soldier layer. Stored
@@ -11996,6 +12003,7 @@ func to_snapshot_dict() -> Dictionary:
 		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity, "flight_turn_rate": _flight_turn_rate,
 		"body_march_ff_prev": _body_march_ff_prev, "body_march_orderly": _body_march_orderly,
 		"march_target_frac": _march_target_frac,
+		"march_stopped_s": _march_stopped_s,
 		"rally_halt": _rally_halt, "rally_resquare_pending": _rally_resquare_pending,
 		"rally_fold_unsquared": _rally_fold_unsquared, "rally_clear_ticks": _rally_clear_ticks,
 		# Not reset before a routing unit's early return, so a router keeps reading it.
@@ -12272,6 +12280,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_body_march_ff_prev = d.get("body_march_ff_prev", _body_march_ff_prev)
 	_body_march_orderly = bool(d.get("body_march_orderly", _body_march_orderly))
 	_march_target_frac = float(d.get("march_target_frac", _march_target_frac))
+	_march_stopped_s = float(d.get("march_stopped_s", _march_stopped_s))
 	_rally_halt = bool(d.get("rally_halt", _rally_halt))
 	_rally_resquare_pending = bool(d.get("rally_resquare_pending", false))
 	_rally_fold_unsquared = bool(d.get("rally_fold_unsquared", false))

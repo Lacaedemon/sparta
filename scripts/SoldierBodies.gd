@@ -63,9 +63,15 @@ const CORRIDOR_PROXIMITY_MULT: float = 1.5
 # A stationary reform (drill/frontage-fold, _approach_velocity zero) keeps the plain,
 # narrower radius, so a genuine casualty-thinned or frontage-fold reform still corridors
 # around its own formation's interior exactly as before. A march that turns keeps this
-# wider band too, whatever the block's depth -- see advance_march_target_frac's doc comment, which
-# also covers how a block setting off or pulling up blends the two (arrival_target).
+# wider band too, whatever the block's depth -- see advance_march_target_frac's doc comment,
+# which also covers how a block setting off blends the two (arrival_target) and why one that
+# stops switches straight back to the narrow band.
 const MARCHING_CORRIDOR_PROXIMITY_MULT: float = 4.5
+# How long a march may stand still, in seconds, before the ramp of its bodies' arrival
+# target (advance_march_target_frac) starts again from nothing: a little over two ticks at
+# 60 ticks/s, so a march that dips to a standstill for one or two ticks and goes on picks its
+# ramp up where it left it.
+const MARCH_TARGET_STOP_GRACE_S: float = 2.5 / 60.0
 # Lateral clearance beyond outer formed file for perimeter corridor routing.
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
 # Stagger fraction between alternate soldier lanes in perimeter corridor.
@@ -129,6 +135,7 @@ static func seed(unit: Unit) -> void:
 	# standing one.
 	unit._body_march_ff_prev = Vector2.ZERO
 	unit._march_target_frac = 0.0
+	unit._march_stopped_s = 0.0
 	unit._render_dirty = true   # fresh bodies need an initial draw
 
 
@@ -1214,10 +1221,15 @@ static func couple(unit: Unit, delta: float) -> void:
 ## toward the marching one (see arrival_target), 0 to 1, kept on the unit
 ## (Unit._march_target_frac). While the block marches it moves toward 1 by at most `delta` /
 ## march_target_ramp_s(unit) a step, so it covers the whole way in the time the march takes
-## to reach Unit.march_target_full_speed() from rest at the unit's own acceleration; the
-## step the march stops it drops to 0. Depends only on unit-level state, so step() advances
-## it once per unit-step and hands it to every body's arrival_target call (the same hoisting
-## mass, body_radius and turning get above the per-soldier loop).
+## to reach Unit.march_target_full_speed() from rest at the unit's own acceleration. The
+## step the march stops it returns 0, so the target switches straight back to the standing
+## one. Only a stop that lasts longer than MARCH_TARGET_STOP_GRACE_S drops the stored ramp
+## (Unit._march_target_frac) to 0 as well: a march that dips to a standstill for a tick or
+## two and goes on picks its ramp up where it left it, instead of starting it again from
+## nothing each time (Unit._march_stopped_s counts the stop). Depends only on unit-level
+## state, so step() advances it once per unit-step and hands it to every body's
+## arrival_target call (the same hoisting mass, body_radius and turning get above the
+## per-soldier loop).
 ##
 ## The ramp keeps the target moving smoothly as a march begins: a hard switch at the first
 ## tick of the march swung the target of every man between the two bands round by tens of
@@ -1251,12 +1263,17 @@ static func couple(unit: Unit, delta: float) -> void:
 ## shallow cavalry troop in rout_rally, one of the clips the depth gate was kept for (its
 ## residual of 41.8 now passes).
 static func advance_march_target_frac(unit: Unit, delta: float) -> float:
-	var goal: float = 1.0 if is_marching(unit) else 0.0
+	if not is_marching(unit):
+		unit._march_stopped_s += delta
+		if unit._march_stopped_s > MARCH_TARGET_STOP_GRACE_S:
+			unit._march_target_frac = 0.0
+		return 0.0
+	unit._march_stopped_s = 0.0
 	var ramp_s: float = march_target_ramp_s(unit)
-	if ramp_s <= 0.0 or goal <= 0.0:
-		unit._march_target_frac = goal
+	if ramp_s <= 0.0:
+		unit._march_target_frac = 1.0
 	else:
-		unit._march_target_frac = move_toward(unit._march_target_frac, goal, delta / ramp_s)
+		unit._march_target_frac = move_toward(unit._march_target_frac, 1.0, delta / ramp_s)
 	return unit._march_target_frac
 
 
@@ -1281,8 +1298,9 @@ static func is_marching(unit: Unit) -> bool:
 ## corridors outside the narrow CORRIDOR_PROXIMITY_MULT band; the marching one walks direct
 ## inside the wide MARCHING_CORRIDOR_PROXIMITY_MULT band and, on a straight march
 ## (`straight_march`: the block is not turning), takes _corridor_to_slot's radial-scaling
-## branch. At 0 and 1 the target is exactly the one end; only a block setting off or pulling
-## up, below its full march speed, pays for both (blend_targets).
+## branch. At 0 and 1 the target is exactly the one end; only a block setting off, while its
+## ramp is under way, pays for both (blend_targets). A block that slows keeps the marching
+## target, and one that stops switches straight back to the standing one.
 static func arrival_target(unit: Unit, i: int, own_slot: Vector2, n: int, march_frac: float,
 		straight_march: bool) -> Vector2:
 	if march_frac <= 0.0:
@@ -1295,22 +1313,19 @@ static func arrival_target(unit: Unit, i: int, own_slot: Vector2, n: int, march_
 	return blend_targets(standing, marching, march_frac)
 
 
-## The target `frac` of the way from `a` to `b`, blending direction and length apart: its
-## direction turns from a's toward b's and its length runs from a's to b's. step() reads the
-## man's desired speed off the target's length, and a plain lerp of two targets that point
-## apart is shorter than either (two at right angles, halfway, are 0.71 of their length), so
-## he would ask for less speed just because the two targets disagree. Two targets pointing
-## straight apart leave no direction to blend toward, so the nearer end's direction is kept.
+## The target `frac` of the way from `a` to `b`: its direction turns from a's to b's at a
+## constant rate, frac times the angle between them, and its length runs linearly from a's
+## to b's (Vector2.slerp). step() reads the man's desired speed off the target's length, and
+## a plain lerp of two targets that point apart is shorter than either (two at right angles,
+## halfway, are 0.71 of their length), so he would ask for less speed just because the two
+## targets disagree. Normalizing that lerp keeps the length but not the rate: its direction
+## barely moves near either end and swings round in the middle, 14.3 degrees in one tick of
+## a 90-tick ramp for two targets 170 degrees apart, against 1.9 at the constant rate. Two
+## targets pointing exactly apart turn through the half-turn at the same constant rate, on
+## the side Vector2.angle_to's sign picks (counter-clockwise from +x to -x). A zero-length
+## end has no direction, so there the blend is the plain lerp.
 static func blend_targets(a: Vector2, b: Vector2, frac: float) -> Vector2:
-	var la: float = a.length()
-	var lb: float = b.length()
-	var length: float = lerpf(la, lb, frac)
-	if la <= 0.0 or lb <= 0.0:
-		return a.lerp(b, frac)
-	var dir: Vector2 = (a / la).lerp(b / lb, frac)
-	if dir.length_squared() < 1e-8:
-		dir = b / lb if frac >= 0.5 else a / la
-	return dir.normalized() * length
+	return a.slerp(b, frac)
 
 
 ## Computes the immediate arrival target vector for soldier `i` towards `own_slot`, routing
