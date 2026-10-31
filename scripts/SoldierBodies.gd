@@ -63,7 +63,8 @@ const CORRIDOR_PROXIMITY_MULT: float = 1.5
 # A stationary reform (drill/frontage-fold, _approach_velocity zero) keeps the plain,
 # narrower radius, so a genuine casualty-thinned or frontage-fold reform still corridors
 # around its own formation's interior exactly as before. A march that turns keeps this
-# wider band too, whatever the block's depth -- see corridor_proximity_mult's doc comment.
+# wider band too, whatever the block's depth -- see march_target_frac's doc comment, which
+# also covers how a block setting off or pulling up blends the two (arrival_target).
 const MARCHING_CORRIDOR_PROXIMITY_MULT: float = 4.5
 # Lateral clearance beyond outer formed file for perimeter corridor routing.
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
@@ -123,6 +124,9 @@ static func seed(unit: Unit) -> void:
 	# behaviour), with no maneuver active.
 	unit._sim_soldier_facing = unit.soldier_world_facings(unit._sim_soldier_pos.size())
 	unit._per_soldier_facing = false
+	# Bodies seeded at rest have taken no march yet: measure the next step's march change
+	# from rest, as from any other standstill.
+	unit._body_march_ff_prev = Vector2.ZERO
 	unit._render_dirty = true   # fresh bodies need an initial draw
 
 
@@ -318,10 +322,10 @@ static func step(unit: Unit, delta: float) -> void:
 	var body_radius: float = unit.soldier_body_radius()
 	var two_bodies: float = body_radius * 2.0
 	var turning: bool = unit.is_maneuver_turning()
-	# The per-body loop below skips _corridor_to_slot entirely during a maneuver turn, so
-	# the band is only derived when a body will use it.
-	var proximity_mult: float = CORRIDOR_PROXIMITY_MULT if turning else corridor_proximity_mult(unit)
-	var straight_march: bool = false if turning else is_straight_march(unit)
+	# The per-body loop below skips arrival_target entirely during a maneuver turn, so the
+	# blend is only derived when a body will use it.
+	var march_frac: float = 0.0 if turning else march_target_frac(unit)
+	var straight_march: bool = not turning and not unit.is_turning()
 	# Precompute true file-column front and rear neighbors in O(n) for lane follower speed damping
 	# (exempting maneuver turns, stationary/reform-holding units, and square/schiltron formations):
 	var file_front_neighbor: PackedInt32Array = PackedInt32Array()
@@ -372,6 +376,10 @@ static func step(unit: Unit, delta: float) -> void:
 	var routing: bool = unit.state == Unit.State.ROUTING
 	var halting: bool = unit.is_rally_halting()
 	var march_vel: Vector2 = unit._flee_velocity if routing else unit._approach_velocity
+	# The velocity change the march itself took since the last step, which each unengaged body
+	# may take on top of its own body_accel (see march_accel_budget).
+	var march_budget: float = march_accel_budget(unit, march_vel, body_accel, delta)
+	unit._body_march_ff_prev = march_vel
 	# A router turning its flight, or any other block whose slot grid is turning after a small
 	# heading correction, turns its grid about the anchor at this rate (rad/s;
 	# Unit._turn_flight_toward, Unit._advance_grid_lag): each unengaged slot also moves at
@@ -414,7 +422,7 @@ static func step(unit: Unit, delta: float) -> void:
 			var arm: Vector2 = own_slot - unit.position
 			feed_forward += Vector2(-arm.y, arm.x) * turn_rate
 		var to_slot: Vector2 = Vector2.ZERO if turning \
-				else _corridor_to_slot(unit, i, own_slot, n, proximity_mult, straight_march)
+				else arrival_target(unit, i, own_slot, n, march_frac, straight_march)
 		# Arrival: approach the slot at a speed that decelerates to 0 by the time the body
 		# reaches it (v = sqrt(2 a d)), capped at the unit's jog pace, then move the body's
 		# velocity toward that desired velocity at the bounded acceleration. No spring, so no
@@ -458,9 +466,14 @@ static func step(unit: Unit, delta: float) -> void:
 		# See SoldierCollision.apply_kinetic_friction and SoldierCombat friction constants.
 		var damped_vel: Vector2 = SoldierCollision.apply_kinetic_friction(
 				unit._sim_body_vel[i], mass, 0.0, delta)
-		var new_vel: Vector2 = damped_vel.move_toward(desired_vel, body_accel * delta) \
-				if brake_accel <= body_accel \
-				else brake_biased_step(damped_vel, desired_vel, body_accel, brake_accel, delta)
+		# An unengaged body's slot moves with the march, so the march's own acceleration this
+		# tick is velocity change the body needs just to keep pace with its slot. It gets that
+		# much on top of body_accel, which stays free for closing on the slot; an engaged body
+		# takes no march feed-forward and so gets no share of it.
+		var accel_i: float = body_accel if is_engaged[i] == 1 else body_accel + march_budget
+		var new_vel: Vector2 = damped_vel.move_toward(desired_vel, accel_i * delta) \
+				if brake_accel <= accel_i \
+				else brake_biased_step(damped_vel, desired_vel, accel_i, brake_accel, delta)
 		# The sqrt(2 a d) arrival profile decelerates to 0 at the slot in continuous time, but
 		# its slope steepens near the slot faster than a bounded decel can follow, so a body
 		# arriving with residual inbound speed (built up from the previous tick's move_toward)
@@ -576,6 +589,23 @@ static func step(unit: Unit, delta: float) -> void:
 	SimOps.add(SimOps.BODY_STEP, n)
 	SimOps.add(SimOps.SQRT_EVAL, n)
 	_keep_out_of_terrain(unit, n, terrain_guard, delta)
+
+
+## The extra acceleration (world units/s^2) each unengaged body may take this tick: the rate
+## the march velocity it is fed forward changed since the last step (Unit._body_march_ff_prev),
+## capped at `body_accel`. A body's own velocity changes at body_accel, the rate the march
+## ramps the slots too; without this share a man behind his slot spends all of it keeping
+## pace with the accelerating slot and never gains on it. With it he keeps pace on the share
+## and closes on the slot at his full body_accel. While the march runs at a steady velocity
+## the share is zero, and a body that already tracks its slot reaches its desired velocity
+## either way, so only a man still closing on his slot moves differently. The cap keeps a
+## march that jumps in one tick (a stop on contact, the first step after a far-tier return)
+## from granting more than double a body's ordinary acceleration.
+static func march_accel_budget(unit: Unit, march_vel: Vector2, body_accel: float,
+		delta: float) -> float:
+	if delta <= 0.0:
+		return 0.0
+	return minf((march_vel - unit._body_march_ff_prev).length() / delta, body_accel)
 
 
 ## The rate this unit's bodies may shed speed at: their ordinary max(unit.accel,
@@ -1136,11 +1166,19 @@ static func couple(unit: Unit, delta: float) -> void:
 	unit.position += follow_step
 
 
-## Direct-arrival band multiplier for _corridor_to_slot, in units of the file pitch. Depends
-## only on unit-level state, so step() computes it once per unit-step and hands it to every
-## body's _corridor_to_slot call rather than re-deriving it per soldier (the same hoisting
-## mass, body_radius and turning get above the per-soldier loop). The wider
-## MARCHING_CORRIDOR_PROXIMITY_MULT applies while the unit is actively marching (own_slot is
+## How far a body's arrival target has gone from the standing one toward the marching one
+## (see arrival_target): 0 for a block not marching, rising with the march speed to 1 at
+## Unit.march_target_full_speed() and held there. Depends only on unit-level state, so step()
+## computes it once per unit-step and hands it to every body's arrival_target call rather
+## than re-deriving it per soldier (the same hoisting mass, body_radius and turning get above
+## the per-soldier loop). The march speed ramps at the unit's own acceleration, so the
+## target moves smoothly from one to the other as the block sets off or pulls up: a hard
+## switch at the first tick of the march swung the target of every man between the two
+## bands round by tens of degrees at once (on the seed-0 catalog, 540 of 895 such switches
+## swung a man's target more than 30 degrees), and he spent his acceleration turning instead
+## of closing on his slot.
+##
+## The marching target uses the wider MARCHING_CORRIDOR_PROXIMITY_MULT band (own_slot is
 ## a moving point, not a fixed reform target -- see that const's own doc comment), straight
 ## or turning, whatever the block's depth: a lagging body keeps walking direct instead of
 ## being diverted into a perimeter corridor detour it would never catch up from. A turning
@@ -1156,10 +1194,13 @@ static func couple(unit: Unit, delta: float) -> void:
 ## to 17.7 with the wide band). On the seed-0 catalog the wide band also re-formed the
 ## shallow cavalry troop in rout_rally, one of the clips the depth gate was kept for (its
 ## residual of 41.8 now passes).
-static func corridor_proximity_mult(unit: Unit) -> float:
-	if is_marching(unit):
-		return MARCHING_CORRIDOR_PROXIMITY_MULT
-	return CORRIDOR_PROXIMITY_MULT
+static func march_target_frac(unit: Unit) -> float:
+	if not is_marching(unit):
+		return 0.0
+	var full: float = unit.march_target_full_speed()
+	if full <= 0.0:
+		return 1.0
+	return minf(unit._approach_velocity.length() / full, 1.0)
 
 
 ## Whether the unit is actively marching this tick (its approach velocity is non-zero), a
@@ -1168,10 +1209,23 @@ static func is_marching(unit: Unit) -> bool:
 	return unit._approach_velocity.length_squared() > 0.0001
 
 
-## A straight (non-turning) march: the only case _corridor_to_slot's radial-scaling branch
-## applies to. Unit-level, so step() reads it once and hands it to every body.
-static func is_straight_march(unit: Unit) -> bool:
-	return is_marching(unit) and not unit.is_turning()
+## Soldier `i`'s arrival target vector, `march_frac` (march_target_frac) of the way from the
+## standing target to the marching one. The standing target routes round the perimeter
+## corridors outside the narrow CORRIDOR_PROXIMITY_MULT band; the marching one walks direct
+## inside the wide MARCHING_CORRIDOR_PROXIMITY_MULT band and, on a straight march
+## (`straight_march`: the block is not turning), takes _corridor_to_slot's radial-scaling
+## branch. At 0 and 1 the target is exactly the one end; only a block setting off or pulling
+## up, below its full march speed, pays for both.
+static func arrival_target(unit: Unit, i: int, own_slot: Vector2, n: int, march_frac: float,
+		straight_march: bool) -> Vector2:
+	if march_frac <= 0.0:
+		return _corridor_to_slot(unit, i, own_slot, n, CORRIDOR_PROXIMITY_MULT, false)
+	var marching: Vector2 = _corridor_to_slot(unit, i, own_slot, n,
+			MARCHING_CORRIDOR_PROXIMITY_MULT, straight_march)
+	if march_frac >= 1.0:
+		return marching
+	var standing: Vector2 = _corridor_to_slot(unit, i, own_slot, n, CORRIDOR_PROXIMITY_MULT, false)
+	return standing.lerp(marching, march_frac)
 
 
 ## Computes the immediate arrival target vector for soldier `i` towards `own_slot`, routing
