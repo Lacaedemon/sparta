@@ -18,11 +18,11 @@
   "defect_exemptions": {
     "facing_flutter": {
       "uids": [5],
-      "reason": "Uid 5 (team 1's reserve Infantry) chases uid 0 with its heading stepping one pivot step (0.36 to 0.45 degrees) back and forth every few ticks, the marching ATTACK heading dither tracked in #1764. Dense 2-tick FULL dumps judged with no exemption, Windows: main b1d5822b reads 1, 1, 2, 9 and 2 on seeds 0 to 4; with the wide marching corridor band (#1847) the battle's trajectories differ from tick 71 and it reads 4, 3, 11, 2 and 2 against 3. The run on the clip seed falls between ticks 600 and 780, which the state list samples every 2 ticks so the regular scan sees it. Measured 2026-10-30."
+      "reason": "Uid 5 (team 1's reserve Infantry) chases uid 0 with its heading stepping one pivot step (0.36 to 0.45 degrees) back and forth every few ticks, the marching ATTACK heading dither tracked in #1764. Dense 2-tick FULL dumps judged with no exemption, Windows: main b1d5822b reads 1, 1, 2, 9 and 2 on seeds 0 to 4; on this branch (#1847 and #1878) the battle's trajectories differ from tick 71 and it reads 4, 3, 11, 2 and 2 against 3. The run on the clip seed falls between ticks 600 and 780, which the state list samples every 2 ticks so the regular scan sees it. Measured 2026-10-30."
     },
     "overlap": {
       "uids": [4],
-      "reason": "Uid 4 (team 1's 80-horse Cavalry) marches out of contact with two riders passing within 1.69 wu at ticks 440 to 460 on the clip seed (floor 5.0). The block is deep enough that its turning march already had the wide corridor band on main, so its own steering is unchanged by #1847; the battle around it diverges from tick 71. Main b1d5822b has the same defect on perturbed seed 4 (0.58 wu), so it is seed-dependent and pre-existing: on dense 2-tick FULL dumps with no exemption, Windows, main fails on seed 4 only and #1847's branch on seed 0 only. Tracked in #1889. The state list samples ticks 440 to 460 every 2 ticks so the regular scan sees it. Measured 2026-10-30."
+      "reason": "Uid 4 (team 1's 80-horse Cavalry) marches out of contact with two riders passing within 1.69 wu at ticks 440 to 460 on the clip seed (floor 5.0). The block is deep enough that its turning march already had the wide corridor band on main, so its own steering is unchanged by this branch (#1847 and #1878); the battle around it diverges from tick 71. Main b1d5822b has the same defect on perturbed seed 4 (0.58 wu), so it is seed-dependent and pre-existing: on dense 2-tick FULL dumps with no exemption, Windows, main fails on seed 4 only and this branch on seed 0 only. Tracked in #1889. The state list samples ticks 440 to 460 every 2 ticks so the regular scan sees it. Measured 2026-10-30."
     }
   }
 }

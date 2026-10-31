@@ -1,8 +1,4 @@
 {
-  "replay": "demos/support_demo.json",
-  "caption": "Team 0's archers (the wide 90-man block shadowing the infantry in front of them) shoot on the march near the end of the clip: the re-face turns their whole block about its centre at once, leaving the men at its two ends far from their places. Before this fix the block was marching and turning while they walked back, so each of those men was sent the long way round the block's edge, and the archers stayed out of shape for the rest of the clip (worst shape residual 29.9 to 32.3 across five seeds, against a limit of 27). Now the men walk straight back to their places and the block re-forms on the march (17.6 to 17.7).",
-  "fixed_fps": 30,
-  "max_frames": 400,
-  "fps": 12,
-  "width": 640
+  "skip": true,
+  "reason": "No freshly authored clip isolates either change. #1847: the wide corridor band only matters for a shallow block whose men are thrown far off their slots while it marches and turns. The trigger found in the catalog is a combat re-face: archers shooting on the march turn their whole slot grid about the anchor at once, and the support clip shows it (its archers' worst shape residual falls from 29.9-32.3 to 17.6-17.7 over five seeds). Eight fresh stagings were tried: six of archers supporting a marching ward past a held enemy, and two of a lone archer block re-ordered and widened mid-turn. The re-order goes through a standing reform, so the band never decides. In the support stagings, whether the archers end in contact decides the residual, so the two trees differ by chance as much as by the band: one staging read 31.2 on main and 27.4 here, another a pass on main and 32.9 here, another 48.5 and 121.7. #1878: the file double over a standing re-square lag, and the clearance under one, need an order's re-square still turning when a quarter-turn and explicatio arrive, or a narrow pass while one stands; no input sequence found during this work reached either. Unit tests cover both (test_grid_lag_readers.gd, test_corridor_gating_curved_march.gd)."
 }
