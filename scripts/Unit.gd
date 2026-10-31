@@ -1052,8 +1052,8 @@ const FORMED_TURN_DEPTH_RATIO_REF: float = 2.810913
 # formed_turn_tracking_frac x FORMED_TURN_DEPTH_RATIO_REF above -- the depth ratio at which
 # the continuous ramp below would still read frac 1.0 -- so at the default tracking
 # fraction, 0.6 x 2.810913 = 1.686548. Below this ratio a formation's own footprint spans
-# too few marching-bands for a lagging body to ever need diverting into a perimeter
-# corridor (or blobbing) before it catches its moving slot, so no derate is needed there.
+# too few marching-bands for the pivot alone to leave a body so far behind its moving slot
+# that it blobs before catching up, so no derate is needed there.
 # Between here and FORMED_TURN_DEPTH_RATIO_REF the ramp is continuous and monotone
 # (inversely in the depth ratio), reaching formed_turn_tracking_frac exactly at the
 # reference ratio and staying there for any deeper block still -- a plain Infantry line
@@ -4211,9 +4211,11 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# as a blob until they catch up. Derating the corner slot's tangential pace below
 		# the jog arrival cap reserves headroom for lagging bodies to close their distance
 		# to moving slots and hold formation dressing -- but only once the formation is deep
-		# enough to actually need that headroom (see _formed_turn_gait_frac): a shallow line
-		# never lags far enough to divert into a perimeter corridor before catching up, so it
-		# keeps its full jog pace, and only a genuinely deep/wide block pays this fix's cost.
+		# enough to actually need that headroom (see _formed_turn_gait_frac): the pivot alone
+		# never leaves a shallow line's men far behind their swinging slots, so it keeps its
+		# full jog pace, and only a genuinely deep/wide block pays this fix's cost. (Men a
+		# combat re-face throws far off their slots walk back direct on any march: see
+		# SoldierBodies.corridor_proximity_mult.)
 		# _formed_turn_gait_frac already clamps its result to (0, 1] with a small positive
 		# floor, not 0.0, so a caller-supplied formed_turn_tracking_frac outside that range
 		# still produces a slow, real pivot -- never a stalled one, and never one that lets
@@ -5468,6 +5470,13 @@ func _far_tier_half_extents() -> Vector2:
 ## this whole fix exists to protect, in precisely the maneuver where the block is
 ## already at its most vulnerable to a routing mistake.
 ##
+## The grid's lag behind the fold (_grid_lag) is read only while it is an order's re-square
+## (_grid_lag_resquare), which can stand at up to a quarter-turn: the clearance is then the
+## widest swept width over every angle the grid has still to turn through, from where it
+## stands back to the fold (max_swept_width), which narrows smoothly onto the fold's own
+## width as the re-square closes. A march's small heading lag is left out, as reading it
+## steered the march off the heading the lag was closing on and fed the lag back.
+##
 ## Deliberately NOT the flat corner_clearance() (the corner man's full half-diagonal,
 ## folding in BOTH width and depth unconditionally) for a KNOWN travel direction: a
 ## straight, unturning leg only needs the width actually swept along that specific
@@ -5498,14 +5507,39 @@ func terrain_clearance(travel_dir: Vector2 = Vector2.ZERO, extents: Vector2 = UN
 	# lag is still closing on, which turns the heading again and feeds the lag back.
 	# An order's re-square (_grid_lag_resquare) is different: its lag can stand at up to a
 	# quarter-turn, so the fold alone can name the wrong one of the two half-extents while the
-	# grid turns out. The grid then passes through every angle between where it stands and the
-	# fold, so the clearance is the corner man's, which bounds the swept width at any of them.
-	# It does not depend on how far the lag has closed, so it cannot feed the lag back.
+	# grid turns out. The grid still has to pass through every angle between where it stands
+	# and the fold, so the clearance is the widest swept width over those angles
+	# (max_swept_width). That interval only narrows onto the fold as the re-square turns out,
+	# so the clearance shrinks smoothly to the fold's own swept width as the lag closes,
+	# rather than jumping, and a few degrees of residue clear about what the fold alone does.
 	if _grid_lag_resquare and _grid_lag != 0.0:
-		return corner_clearance(half_extents)
+		var fold_axis: float = facing.angle() + PI * 0.5 + _formation_angle - dir.angle()
+		return max_swept_width(half_extents, fold_axis, _grid_lag) + soldier_body_radius()
 	var u_axis: Vector2 = Vector2.RIGHT.rotated(facing.angle() + PI * 0.5 + _formation_angle)
 	var swept: float = half_extents.x * absf(u_axis.cross(dir)) + half_extents.y * absf(u_axis.dot(dir))
 	return swept + soldier_body_radius()
+
+
+## The widest a rectangle of half-extents `he` (local x, local y) sweeps across a line of
+## travel while its local x axis turns from `from_angle` (rad, measured from the travel
+## direction) through `sweep` more: he.x * |sin| + he.y * |cos| over that interval. It peaks
+## at the rectangle's diagonal, so it is the larger end unless a diagonal angle lies within.
+static func max_swept_width(he: Vector2, from_angle: float, sweep: float) -> float:
+	var best: float = maxf(_swept_width(he, from_angle), _swept_width(he, from_angle + sweep))
+	if sweep == 0.0:
+		return best
+	var lo: float = minf(from_angle, from_angle + sweep)
+	var hi: float = maxf(from_angle, from_angle + sweep)
+	var diag: float = atan2(he.x, he.y)
+	for peak in [diag, PI - diag, PI + diag, -diag]:
+		var k: float = ceilf((lo - peak) / TAU)
+		if peak + k * TAU <= hi:
+			return he.length()
+	return best
+
+
+static func _swept_width(he: Vector2, angle: float) -> float:
+	return he.x * absf(sin(angle)) + he.y * absf(cos(angle))
 
 
 ## The margin PathField.next_step() uses for every detour leg -- rounding a blocking
@@ -7406,11 +7440,18 @@ func _arm_combo_step(step: Order) -> bool:
 ## about-face fold (+-PI) needs no such step: files stay lateral under a half-turn. An
 ## absolute step (dir == 0, `frontage` set) applies as-is. Either way the bodies ease onto
 ## the reshaped slots at velocity (set_frontage); nothing snaps.
-## The grid is judged where it stands, the fold plus any lag it still trails (grid_fold): an
-## order's re-square can leave the fold square with the grid still a quarter-turn off it, and
-## the files then run along the depth all the same. The transposition squares the whole grid,
-## so it drops the lag with the fold, and with it a re-square still turning or waiting to run.
-## A grid that stands nearer square or a half-turn keeps its lag, which goes on closing.
+## A lag the grid still trails (grid_fold less the fold) closes onto the fold, so the files must
+## lie across the facing both where the grid stands now and where it ends. The live file count
+## is read where the grid stands (_holds_quarter_fold), since that is the axis the men are on:
+## - Standing a quarter off (an order's re-square can leave the fold square with the grid still
+##   a quarter-turn off it): the files run along the depth now, so they are transposed, and the
+##   whole grid is squared to the heading -- the fold and the lag, and with the lag any
+##   re-square still turning or waiting to run.
+## - Standing square or a half-turn off, but over a fold a quarter off (a re-square lag turning
+##   the grid back from a quarter fold the other way): the files lie across the facing now, but
+##   would run along the depth once the lag closed. The lag is folded where the grid stands
+##   (_fold_grid_lag), so the grid stays put and the widened files stay across the facing.
+## - Otherwise the fold and the grid agree, and a lag goes on closing.
 func _apply_file_double_step(step: Order) -> void:
 	var files: int = step.frontage
 	if step.dir != 0:
@@ -7425,6 +7466,8 @@ func _apply_file_double_step(step: Order) -> void:
 			_grid_lag_resquare = false
 			_resquare_pending = false
 			_render_dirty = true
+		elif _grid_lag != 0.0 and is_quarter_turn_off(_formation_angle):
+			_fold_grid_lag()
 		files = UnitFormation.widened_files(soldiers, current) if step.dir > 0 \
 				else UnitFormation.narrowed_files(current)
 	set_frontage(files, step.frontage_anchor_offset)
@@ -7443,7 +7486,13 @@ func _apply_file_double_step(step: Order) -> void:
 ## A fold exactly between two quarters falls to roundi's tie-break, half away from zero: 45
 ## degrees reads as a quarter and 135 as a half-turn.
 func _holds_quarter_fold() -> bool:
-	var quarters: int = roundi(wrapf(grid_fold(), -PI, PI) / (PI * 0.5))
+	return is_quarter_turn_off(grid_fold())
+
+
+## True when a grid turned `turn` (rad) off its heading lies nearer a quarter turn either way
+## than a square or a half-turn (the tie-break as _holds_quarter_fold describes).
+static func is_quarter_turn_off(turn: float) -> bool:
+	var quarters: int = roundi(wrapf(turn, -PI, PI) / (PI * 0.5))
 	return quarters % 2 != 0
 
 
