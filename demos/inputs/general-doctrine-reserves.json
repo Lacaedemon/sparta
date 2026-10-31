@@ -22,7 +22,7 @@
     },
     "overlap": {
       "uids": [4],
-      "reason": "Uid 4 (team 1's 80-horse Cavalry) marches out of contact with two riders passing within 1.69 wu at ticks 440 to 460 on the clip seed (floor 5.0). The block is deep enough that its turning march already had the wide corridor band on main, so its own steering is unchanged by #1847; the battle around it diverges from tick 71. Main b1d5822b has the same defect on perturbed seed 4 (0.58 wu), so it is seed-dependent and pre-existing: on dense 2-tick FULL dumps with no exemption, Windows, main fails on seed 4 only and #1847's branch on seed 0 only. Tracked in #TBD-1847-overlap. The state list samples ticks 440 to 460 every 2 ticks so the regular scan sees it. Measured 2026-10-30."
+      "reason": "Uid 4 (team 1's 80-horse Cavalry) marches out of contact with two riders passing within 1.69 wu at ticks 440 to 460 on the clip seed (floor 5.0). The block is deep enough that its turning march already had the wide corridor band on main, so its own steering is unchanged by #1847; the battle around it diverges from tick 71. Main b1d5822b has the same defect on perturbed seed 4 (0.58 wu), so it is seed-dependent and pre-existing: on dense 2-tick FULL dumps with no exemption, Windows, main fails on seed 4 only and #1847's branch on seed 0 only. Tracked in #1889. The state list samples ticks 440 to 460 every 2 ticks so the regular scan sees it. Measured 2026-10-30."
     }
   }
 }
