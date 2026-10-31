@@ -27,7 +27,7 @@
     },
     "overlap": {
       "uids": [0, 1],
-      "reason": "The 70-man infantry is in melee contact at the peel samples (t300-330); nearest-neighbour distance dips under the infantry overlap threshold while bodies are still in the press. Pre-existing on the merge-base of this clip; not a new formation bug. Cavalry troopers (uid 0) also compress laterally during the post-impact peel-back. Uid 0, overlap: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads 0.55, 3.57, pass, 3.44, 3.47; 2ad42a83 (#1880) reads 3.28, 4.35, 2.64, 2.27, 3.73, against 5.0. Not traced; the clip runs on a different trajectory once men walking back to their slots catch up faster, and the crossing knockback_focus uid 8 shows is the likely mechanism (#1791). Measured 2026-10-31."
+      "reason": "The 70-man infantry is in melee contact at the peel samples (t300-330); nearest-neighbour distance dips under the infantry overlap threshold while bodies are still in the press. Pre-existing on the merge-base of this clip; not a new formation bug. Cavalry troopers (uid 0) also compress laterally during the post-impact peel-back. Uid 0, overlap: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads 0.55, 3.57, pass, 3.44, 3.47; with the march share given only to orderly marches (#1880) it reads 0.62, 4.44, 4.03, 4.34, 3.70, against 5.0. Not traced; the battle runs on a different trajectory from 9f9bddee's, and men of one block crossing while they re-form is the likely mechanism (#1791). Measured 2026-10-31."
     },
     "path_crossing": {
       "uids": [0, 1],

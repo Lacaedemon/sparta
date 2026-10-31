@@ -13,15 +13,5 @@
     {"tick": 6,  "click": [800, 400]},
     {"tick": 20, "key": "BackSlash"},
     {"tick": 34, "rmb_click": [800, 560]}
-  ],
-  "defect_exemptions": {
-    "shape_residual": {
-      "uids": [0, 1],
-      "reason": "Uid 0, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, 31.07; 2ad42a83 (#1880) reads 33.14, 188.37, 206.94, 211.58, 210.59, against 30.0. The cavalry block re-faces in contact and its slot grid stands about 90 degrees off its men (#1837, third cause); men walking back to slots that far off now close on them faster, so the block passes through its scrambled transition sooner and is judged mid-way when contact ends. Measured 2026-10-31. Uid 1, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, 15.39, 15.55, 18.94, pass; 2ad42a83 (#1880) reads pass, 31.24, 19.91, 31.99, 32.66, against 13.5. The cavalry block re-faces in contact and its slot grid stands about 90 degrees off its men (#1837, third cause); men walking back to slots that far off now close on them faster, so the block passes through its scrambled transition sooner and is judged mid-way when contact ends. Measured 2026-10-31."
-    },
-    "misslotted": {
-      "uids": [1],
-      "reason": "Uid 1, misslotted: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; 2ad42a83 (#1880) reads pass, pass, 0.28, pass, pass, against 0.25. The cavalry block re-faces in contact and its slot grid stands about 90 degrees off its men (#1837, third cause); men walking back to slots that far off now close on them faster, so the block passes through its scrambled transition sooner and is judged mid-way when contact ends. Measured 2026-10-31."
-    }
-  }
+  ]
 }

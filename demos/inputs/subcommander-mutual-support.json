@@ -66,12 +66,22 @@
   "state": [1, 60, 120, 180, 240, 300, 360, 420, 480],
   "defect_exemptions": {
     "overlap": {
-      "uids": [3],
-      "reason": "uid 3 (the 10-horse cavalry), the same block as its shape_residual entry below (#1837): with the interior strike (#1834) the overlap check fails on one perturbed seed. That the failure falls in the same window, after the one-man unit inside it is cut down and its fight ends, is inferred: the re-judge recorded only the worst value, not its tick. Worst, clip seed and seeds 1 to 4, judged with no exemption on dense 2-tick FULL dumps: head (d067d21a) pass, pass, pass, pass, 4.64 failing on seed 4; main 82991008 passes all five. Measured 2026-10-23. Uid 3, overlap: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, 2.40; 2ad42a83 (#1880) reads 4.74, pass, pass, pass, 4.16, against 5.0. Not traced; the clip runs on a different trajectory once men walking back to their slots catch up faster, and the crossing knockback_focus uid 8 shows is the likely mechanism (#1791). Measured 2026-10-31."
+      "uids": [
+        3
+      ],
+      "reason": "uid 3 (the 10-horse cavalry), the same block as its shape_residual entry below (#1837): with the interior strike (#1834) the overlap check fails on one perturbed seed. That the failure falls in the same window, after the one-man unit inside it is cut down and its fight ends, is inferred: the re-judge recorded only the worst value, not its tick. Worst, clip seed and seeds 1 to 4, judged with no exemption on dense 2-tick FULL dumps: head (d067d21a) pass, pass, pass, pass, 4.64 failing on seed 4; main 82991008 passes all five. Measured 2026-10-23."
     },
     "shape_residual": {
-      "uids": [3],
+      "uids": [
+        3
+      ],
       "reason": "uid 3 (the 10-horse cavalry): a block that leaves a melee scrambled stays scrambled while it marches off (#1837). With the interior strike (#1834) the one-man unit uid 1 inside it is cut down (t336 on the clip seed), its fight ends (it leaves contact at t338) and it is judged as it moves off. Worst, clip seed and seeds 1 to 4: head 93.4, 78.8, 123.7, 98.0, 59.6 against 30; main pass, 112.4, pass, pass, pass, seed 1 being the one main run whose fight ends inside the clip. Measured 2026-10-22 on dense 2-tick dumps of the clip seed and perturbed seeds 1 to 4 (SPARTA_DEMO_SEED_RUN), main 82991008 against the #1834 head d067d21a, judged with no exemption. The gating scan at this script's declared state ticks (FULL dump, all exemptions removed, the d77a9a67 tree with sim = d067d21a, Windows) passes this uid; the exemption covers the dense 2-tick delta, where the head fails more seed runs than main."
+    },
+    "facing_flutter": {
+      "uids": [
+        3
+      ],
+      "reason": "uid 3 (the 10-horse cavalry) riding off on its ATTACK order saws its heading by about 0.25 degrees every 4 ticks (#1764), and the dump's 2-decimal facing turns that into steps of about 0.57 degrees whose run length depends on where the heading sits against a rounding boundary. Reading the grid's lag in the near-front ranks (#1866) changes only perturbed seed 4 from tick 258, after the fight, and moves uid 3's heading by about 0.1 to 0.2 degrees. Dense 2-tick FULL dumps from tick 250, all exemptions removed, seeds 0 to 4, Windows: head 3183eecf reads 0, 0, 2, 0, 5 against 3 (failing on seed 4), main ec95f85f 0, 0, 2, 0, 2. A per-tick print of the unrounded heading on seed 4, ticks 370 to 393, shows the same sawtooth on both trees (main -175.06 to -175.73, head -175.21 to -175.93). Measured 2026-10-29."
     }
   }
 }

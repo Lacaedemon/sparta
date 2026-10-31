@@ -1734,6 +1734,15 @@ var current_speed: float:
 # body that much velocity change on top of its own, so a man behind his slot still gains on
 # it while the block accelerates (see SoldierBodies.march_accel_budget).
 var _body_march_ff_prev: Vector2 = Vector2.ZERO
+# Whether this tick's march is an orderly one (_move_to's `orderly`: a player move order or
+# a withdrawal) marched in good time (not a hasty MOVE). Only such a march grants its
+# unengaged bodies a share of its acceleration (SoldierBodies.march_accel_budget): a
+# pursuit, a charge, a combat approach, a hasty move and a rout keep the ordinary rate, so
+# the fights they close into come out as they did before the share. A withdrawal still in
+# contact keeps it, since its engaged men take none anyway (SoldierBodies.step). Cleared at
+# the top of every _physics_process and set by _move_to, so it always describes the march
+# that last set _approach_velocity; the snapshot carries it beside that velocity.
+var _body_march_orderly: bool = false
 # Velocity the regiment center followed its soldiers' centroid at this tick (phase 5):
 # the soldier->regiment coupling slides the center toward where its bodies actually are,
 # so friendly collision (and later all collision) emerges from the soldier layer. Stored
@@ -1930,6 +1939,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_moved_while_routing = false
 	_moved_while_routing_pace = 0.0
+	_body_march_orderly = false
 
 	# Before the rout branch below returns, so a routing tick records ROUTING as the
 	# previous-tick reading and the rally that _process_rout performs is seen on the next
@@ -4031,6 +4041,7 @@ func _yield_step_away_from_contact(dir: Vector2) -> Vector2:
 
 
 func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: bool = false, brake_arrival: bool = false) -> void:
+	_body_march_orderly = orderly and not _is_move_order_in_haste()
 	# Route around terrain via the pathfinding layer when one is active; with no
 	# obstacles registered the next step is the target itself (straight line).
 	var step: Vector2 = point
@@ -11978,7 +11989,7 @@ func to_snapshot_dict() -> Dictionary:
 		"moved_while_routing": _moved_while_routing,
 		"moved_while_routing_pace": _moved_while_routing_pace,
 		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity, "flight_turn_rate": _flight_turn_rate,
-		"body_march_ff_prev": _body_march_ff_prev,
+		"body_march_ff_prev": _body_march_ff_prev, "body_march_orderly": _body_march_orderly,
 		"rally_halt": _rally_halt, "rally_resquare_pending": _rally_resquare_pending,
 		"rally_fold_unsquared": _rally_fold_unsquared, "rally_clear_ticks": _rally_clear_ticks,
 		# Not reset before a routing unit's early return, so a router keeps reading it.
@@ -12253,6 +12264,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_flee_velocity = d.get("flee_velocity", _flee_velocity)
 	_flight_turn_rate = float(d.get("flight_turn_rate", _flight_turn_rate))
 	_body_march_ff_prev = d.get("body_march_ff_prev", _body_march_ff_prev)
+	_body_march_orderly = bool(d.get("body_march_orderly", _body_march_orderly))
 	_rally_halt = bool(d.get("rally_halt", _rally_halt))
 	_rally_resquare_pending = bool(d.get("rally_resquare_pending", false))
 	_rally_fold_unsquared = bool(d.get("rally_fold_unsquared", false))

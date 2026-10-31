@@ -88,8 +88,10 @@
   "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9",
   "defect_exemptions": {
     "overlap": {
-      "uids": [5, 8],
-      "reason": "Focused knockback drives uid5 into a compressed knot around the strike target; measured min neighbour 0.63 wu on the re-pinned 2x-default layout (was cited lower pre-repin). Transient press compression at the focal point, not standing interpenetration. Uid 8, overlap: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; 2ad42a83 (#1880) reads 1.27, 1.26, 1.52, 1.39, 1.32, against 5.0. Men walking back to their slots now catch up faster and pass close by men still walking out; nothing keeps two men of one block apart while they cross (#1791). Traced on knockback_focus uid 8 only: a rider closing on his slot at about 115 wu/s passes 1.3 wu from one at about 60 wu/s. Measured 2026-10-31."
+      "uids": [
+        5
+      ],
+      "reason": "Focused knockback drives uid5 into a compressed knot around the strike target; measured min neighbour 0.63 wu on the re-pinned 2x-default layout (was cited lower pre-repin). Transient press compression at the focal point, not standing interpenetration."
     }
   }
 }

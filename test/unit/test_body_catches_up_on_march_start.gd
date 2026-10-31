@@ -23,14 +23,17 @@ func _make_block() -> Unit:
 
 ## March `u` straight ahead for `ticks` ticks from a standstill, its speed ramping at its own
 ## accel up to walk pace as _move_to ramps it, stepping the bodies each tick. Returns the
-## distance from body `i` to its slot after each tick.
-func _set_off(u: Unit, i: int, ticks: int) -> PackedFloat32Array:
+## distance from body `i` to its slot after each tick. `orderly` stands in for _move_to's own
+## flag (Unit._body_march_orderly): true for a player move order, false for a pursuit or a
+## charge.
+func _set_off(u: Unit, i: int, ticks: int, orderly: bool = true) -> PackedFloat32Array:
 	var dists := PackedFloat32Array()
 	u.state = Unit.State.MOVING
 	var speed: float = 0.0
 	for _t in range(ticks):
 		speed = minf(speed + u.accel * TICK, u.walk_speed)
 		u._approach_velocity = u.facing * speed
+		u._body_march_orderly = orderly
 		u.position += u._approach_velocity * TICK
 		SoldierBodies.step(u, TICK)
 		var slot: Vector2 = u.soldier_world_slots(u.soldiers)[i]
@@ -58,6 +61,22 @@ func test_a_man_behind_his_slot_gains_on_it_while_the_block_sets_off() -> void:
 	var halfway: float = dists[ticks / 2]
 	assert_lt(halfway, gap * 0.75,
 		"he is already gaining halfway through the ramp (%.2f wu of %.1f)" % [halfway, gap])
+
+
+func test_a_pursuit_or_charge_grants_no_share() -> void:
+	# The same man on a march that is not an orderly one -- a pursuit, a charge, a combat
+	# approach, a hasty move -- keeps the ordinary rate, so he only keeps pace with his slot
+	# and the fights such a march closes into come out as they did before the share.
+	var u := _make_block()
+	var i: int = u.soldiers - 1
+	var gap: float = 20.0
+	u._sim_soldier_pos[i] -= u.facing * gap
+	u._sim_body_vel[i] = Vector2.ZERO
+	var ticks: int = ceili(u.walk_speed / u.accel / TICK)
+	var dists: PackedFloat32Array = _set_off(u, i, ticks, false)
+	assert_gt(dists[dists.size() - 1], gap * 0.75,
+		"with no share he is still %.2f wu of %.1f behind after the ramp"
+		% [dists[dists.size() - 1], gap])
 
 
 func test_march_accel_budget_is_the_march_change_rate_capped_at_body_accel() -> void:
@@ -91,6 +110,7 @@ func test_an_engaged_body_takes_no_share_of_the_march_acceleration() -> void:
 		assert_false(front.is_empty(), "precondition: the fighting block has an engaged tier")
 		# Shoved sideways along his own rank, so he stays in the front the tier selects.
 		u._sim_soldier_pos[front[0]] += u.facing.orthogonal() * 20.0
+		u._body_march_orderly = true
 	var i: int = front[0]
 	assert_true(ramp.body_tier_soldier_indices(ramp.soldiers).has(i),
 		"precondition: the shoved man is still in the engaged tier")
@@ -182,6 +202,7 @@ func test_a_man_near_his_slot_moves_as_he_did_without_the_share() -> void:
 	var off: float = ramp.file_pitch_wu() * 0.3
 	for u in [ramp, flat]:
 		u.state = Unit.State.MOVING
+		u._body_march_orderly = true
 		u._sim_soldier_pos[i] -= u.facing * off
 	ramp._body_march_ff_prev = Vector2.ZERO
 	ramp._approach_velocity = ramp.facing * (ramp.accel * TICK)

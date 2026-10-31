@@ -77,5 +77,11 @@
         300
       ]
     }
-  ]
+  ],
+  "defect_exemptions": {
+    "misslotted": {
+      "uids": [2],
+      "reason": "Uid 2, misslotted: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; with the march share given only to orderly marches (#1880) it reads pass, pass, pass, pass, 0.28, against 0.25. Not traced; the battle runs on a different trajectory from 9f9bddee's, and this is a block scrambled by a melee and judged out of contact (#1837). Measured 2026-10-31."
+    }
+  }
 }

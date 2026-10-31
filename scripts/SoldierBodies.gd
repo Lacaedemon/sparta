@@ -377,11 +377,14 @@ static func step(unit: Unit, delta: float) -> void:
 	var halting: bool = unit.is_rally_halting()
 	var march_vel: Vector2 = unit._flee_velocity if routing else unit._approach_velocity
 	# The velocity change the march itself took since the last step, which each unengaged body
-	# may take on top of its own body_accel (see march_accel_budget). A router's flight gets
-	# none: its men keep the ordinary rate, so a flight still builds up as it always has (the
-	# share let a routing block keep up with its anchor and carried it measurably farther).
-	var march_budget: float = 0.0 if routing \
-			else march_accel_budget(unit, march_vel, body_accel, delta)
+	# may take on top of its own body_accel (see march_accel_budget). Only an orderly march
+	# grants it (Unit._body_march_orderly). A router's flight gets none: its men keep the
+	# ordinary rate, so a flight still builds up as it always has (the share let a routing
+	# block keep up with its anchor and carried it measurably farther). Nor does a pursuit,
+	# a charge or a hasty move: there the share closed every fight sooner, and the fights'
+	# outcomes moved with it.
+	var march_budget: float = march_accel_budget(unit, march_vel, body_accel, delta) \
+			if unit._body_march_orderly and not routing else 0.0
 	var share_pitch: float = unit.file_pitch_wu()
 	unit._body_march_ff_prev = march_vel
 	# A router turning its flight, or any other block whose slot grid is turning after a small
@@ -610,9 +613,11 @@ static func step(unit: Unit, delta: float) -> void:
 ## (march_share_frac), so a block marching in good order moves exactly as before. That gate
 ## matters: without it the share also took up the small lag kinetic friction leaves a body
 ## behind an accelerating march, so every charge and pursuit closed faster than before and
-## the outcomes of fights the issue never touched moved with it. A routing block takes none
-## (see step()). A march that slows grants none either: pulling up is not what leaves a man
-## behind, and a man braking harder than the neighbour behind him in his file was run into
+## the outcomes of fights the issue never touched moved with it. step() grants the share only
+## on an orderly march (Unit._body_march_orderly): never on a router's flight, a pursuit, a
+## charge, a combat approach or a hasty move. A march that slows grants none either: pulling
+## up is not what leaves a man behind, and a man braking harder than the neighbour behind him
+## in his file was run into
 ## (sprint_reshape's 180-degree reversal: two men of one file 0.14 wu apart as the block
 ## pulled up, 2.65 without the share). The cap keeps a march that turns sharply in one tick
 ## (the first step after a far-tier return) from granting more than double a body's
