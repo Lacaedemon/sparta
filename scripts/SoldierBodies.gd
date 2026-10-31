@@ -611,12 +611,17 @@ static func step(unit: Unit, delta: float) -> void:
 ## matters: without it the share also took up the small lag kinetic friction leaves a body
 ## behind an accelerating march, so every charge and pursuit closed faster than before and
 ## the outcomes of fights the issue never touched moved with it. A routing block takes none
-## (see step()). The cap keeps a
-## march that jumps in one tick (a stop on contact, the first step after a far-tier return)
-## from granting more than double a body's ordinary acceleration.
+## (see step()). A march that slows grants none either: pulling up is not what leaves a man
+## behind, and a man braking harder than the neighbour behind him in his file was run into
+## (sprint_reshape's 180-degree reversal: two men of one file 0.14 wu apart as the block
+## pulled up, 2.65 without the share). The cap keeps a march that turns sharply in one tick
+## (the first step after a far-tier return) from granting more than double a body's
+## ordinary acceleration.
 static func march_accel_budget(unit: Unit, march_vel: Vector2, body_accel: float,
 		delta: float) -> float:
 	if delta <= 0.0:
+		return 0.0
+	if march_vel.length_squared() < unit._body_march_ff_prev.length_squared():
 		return 0.0
 	return minf((march_vel - unit._body_march_ff_prev).length() / delta, body_accel)
 

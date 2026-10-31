@@ -68,8 +68,10 @@ func test_march_accel_budget_is_the_march_change_rate_capped_at_body_accel() -> 
 		"a steady march grants nothing")
 	assert_almost_eq(SoldierBodies.march_accel_budget(u, Vector2(0, 10.5), body_accel, TICK), 30.0, 1e-3,
 		"a march gaining 0.5 wu/s in one tick grants 30 wu/s^2")
-	assert_almost_eq(SoldierBodies.march_accel_budget(u, Vector2(0, -50), body_accel, TICK), body_accel, 1e-4,
-		"a march that jumps in one tick grants no more than the body's own acceleration")
+	assert_almost_eq(SoldierBodies.march_accel_budget(u, Vector2(0, 9.5), body_accel, TICK), 0.0, 1e-4,
+		"a march that slows grants nothing")
+	assert_almost_eq(SoldierBodies.march_accel_budget(u, Vector2(10, 0), body_accel, TICK), body_accel, 1e-4,
+		"a march that turns sharply in one tick grants no more than the body's own acceleration")
 	assert_almost_eq(SoldierBodies.march_accel_budget(u, Vector2(0, -50), body_accel, 0.0), 0.0, 1e-4,
 		"a zero-length step grants nothing")
 
