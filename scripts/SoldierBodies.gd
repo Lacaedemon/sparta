@@ -762,11 +762,11 @@ static func router_terrain_avoid(pos: Vector2, vel: Vector2, slot: Vector2, desi
 		# His slot lies beyond the face: the shorter way round, by either end. Each end's far
 		# corner is the same corner of the rect on its opposite face.
 		var depth: float = absf(hit.size.dot(outward))
-		var via_a: float = pos.distance_to(end_a) \
-				+ _way_round(end_a, end_a - outward * depth, slot, hit)
-		var via_b: float = pos.distance_to(end_b) \
-				+ _way_round(end_b, end_b - outward * depth, slot, hit)
-		sqrts += 8
+		var way_a: Vector2 = _way_round(end_a, end_a - outward * depth, slot, hit)
+		var way_b: Vector2 = _way_round(end_b, end_b - outward * depth, slot, hit)
+		var via_a: float = pos.distance_to(end_a) + way_a.x
+		var via_b: float = pos.distance_to(end_b) + way_b.x
+		sqrts += 2 + int(way_a.y) + int(way_b.y)
 		SimOps.add(SimOps.TERRAIN_PROJECT, 2)
 		toward_a = via_a <= via_b
 	var along: Vector2 = (end_a - end_b) if toward_a else (end_b - end_a)
@@ -780,14 +780,13 @@ static func router_terrain_avoid(pos: Vector2, vel: Vector2, slot: Vector2, desi
 
 ## How far it is from `corner` (one end of a face of `rect`) on to `slot`: straight there,
 ## unless that line would cross the rect's interior, in which case on round `far` (the same
-## end's corner on the rect's opposite face) first. Always three square roots and one rect
-## clip, so the caller can count them.
-static func _way_round(corner: Vector2, far: Vector2, slot: Vector2, rect: Rect2) -> float:
+## end's corner on the rect's opposite face) first. Returns Vector2(distance, sqrts_used) to
+## save two square roots when the straight line is clear.
+static func _way_round(corner: Vector2, far: Vector2, slot: Vector2, rect: Rect2) -> Vector2:
 	var direct: float = corner.distance_to(slot)
-	var round_far: float = corner.distance_to(far) + far.distance_to(slot)
 	if PathField.segment_intersects_rect(corner, slot, rect.grow(-INTERIOR_EPS)):
-		return round_far
-	return direct
+		return Vector2(corner.distance_to(far) + far.distance_to(slot), 3.0)
+	return Vector2(direct, 1.0)
 
 
 ## Cap a stationary/reforming body's velocity to its unit's jog pace, but to the slower
