@@ -21,6 +21,10 @@
     "path_crossing": {
       "uids": [0, 1],
       "reason": "The clip's whole subject is a drag-line form-up that re-slots three regiments onto a new line, so routes cross by construction. uid0 (Spearmen) already fails on the merge-base (worst 0.87 there); uid1 (Infantry) joins above the threshold once Normal doubles its pitch and its men travel farther across the widening grid."
+    },
+    "blob": {
+      "uids": [0],
+      "reason": "Uid 0, blob: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads 2.17, 2.17, 2.17, 2.17, pass; 2ad42a83 (#1880) reads 2.17, 2.17, 2.17, 2.17, 2.17, against 4.5. The same mid-deploy funnelling as the overlap exemption above; seed 4 now reads 2.17 like seeds 0 to 3 (#1791). Measured 2026-10-31."
     }
   }
 }

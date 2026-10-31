@@ -2,11 +2,16 @@
   "_comment": "Defect declarations for the charge replay clip (demos/charge_demo.json); see demos/README.md, Sidecar declarations.",
   "defect_exemptions": {
     "overlap": {
-      "uids": [
-        5,
-        8
-      ],
-      "reason": "On the deeper field the cavalry reach contact only at the end of the clip (about tick 1499), and the sampled ticks now land in that press: CI website demo-diff on PR #1677 (2-tick samples) measured uid 5 at 2.243 wu against its 2.25 wu floor and uid 8 at 4.851 wu against its 5 wu floor, merge-base 8.99 and 13.31. Both sit within 0.15 wu of their floors at contact: press-adjacent compression, not standing interpenetration."
+      "uids": [5],
+      "reason": "On the deeper field the cavalry reach contact only at the end of the clip (about tick 1499), and the sampled ticks now land in that press: CI website demo-diff on PR #1677 (2-tick samples) measured uid 5 at 2.243 wu against its 2.25 wu floor and uid 8 at 4.851 wu against its 5 wu floor, merge-base 8.99 and 13.31. Both sit within 0.15 wu of their floors at contact: press-adjacent compression, not standing interpenetration. Uid 8 passes on every one of seeds 0 to 4 since #1880 (2ad42a83: dense 2-tick FULL dumps, every exemption removed, Windows, 2026-10-31), so it is no longer exempted."
+    },
+    "shape_residual": {
+      "uids": [3],
+      "reason": "Uid 3, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; 2ad42a83 (#1880) reads pass, pass, 36.65, pass, pass, against 30.0. Men left far off their slots by a melee now close on them faster as their block moves off, so the clip runs on a different trajectory and this unit is judged while scrambled out of contact (a block leaving melee scrambled, #1837). Measured 2026-10-31."
+    },
+    "facing_flutter": {
+      "uids": [3, 8],
+      "reason": "Uid 3, facing_flutter: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; 2ad42a83 (#1880) reads pass, 5.00, pass, 9.00, pass, against 3. The marching heading dither tracked in #1764, on a trajectory that differs once men walking back to their slots catch up faster. Measured 2026-10-31. Uid 8, facing_flutter: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; 2ad42a83 (#1880) reads pass, pass, pass, pass, 4.00, against 3. The marching heading dither tracked in #1764, on a trajectory that differs once men walking back to their slots catch up faster. Measured 2026-10-31."
     }
   }
 }

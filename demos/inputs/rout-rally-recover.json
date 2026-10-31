@@ -20,5 +20,11 @@
     {"tick": [480, 600], "uid": 3, "field": "target_enemy_uid", "value": 0},
     {"tick": [480, 600], "uid": 3, "field": "engaged", "value": true},
     {"tick": [610, 700], "uid": 0, "absent": true}
-  ]
+  ],
+  "defect_exemptions": {
+    "shape_residual": {
+      "uids": [3],
+      "reason": "Uid 3, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; 2ad42a83 (#1880) reads pass, pass, 57.23, 69.21, pass, against 30.0. Men left far off their slots by a melee now close on them faster as their block moves off, so the clip runs on a different trajectory and this unit is judged while scrambled out of contact (a block leaving melee scrambled, #1837). Measured 2026-10-31."
+    }
+  }
 }

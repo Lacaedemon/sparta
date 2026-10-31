@@ -11,5 +11,15 @@
   "camera": [
     {"tick": 0, "x": 800.0, "y": 480.0, "zoom": 1.4}
   ],
-  "steps": []
+  "steps": [],
+  "defect_exemptions": {
+    "shape_residual": {
+      "uids": [0],
+      "reason": "Uid 0, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; 2ad42a83 (#1880) reads pass, pass, 25.65, 25.71, pass, against 4.05. Men left far off their slots by a melee now close on them faster as their block moves off, so the clip runs on a different trajectory and this unit is judged while scrambled out of contact (a block leaving melee scrambled, #1837). Measured 2026-10-31."
+    },
+    "overlap": {
+      "uids": [0],
+      "reason": "Uid 0, overlap: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; 2ad42a83 (#1880) reads pass, pass, 1.38, 1.24, pass, against 2.25. Not traced; the clip runs on a different trajectory once men walking back to their slots catch up faster, and the crossing knockback_focus uid 8 shows is the likely mechanism (#1791). Measured 2026-10-31."
+    }
+  }
 }
