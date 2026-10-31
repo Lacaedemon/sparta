@@ -1,8 +1,8 @@
 # tools/lib/run-bounded.sh — shared helper: run a command under a hard timeout.
 #
 # Sourced by the repo's Godot-launching shell scripts (tools/check.sh,
-# tools/demo/*.sh, tools/benchmark/run-benchmark.sh, website/tools/record-demos.sh);
-# not executable on its own.
+# tools/demo/*.sh, tools/benchmark/run-benchmark.sh, website/tools/record-demos.sh,
+# website/tools/dump-demo-states.sh); not executable on its own.
 #
 # Why: when the calling shell dies (harness command timeout, session end), a
 # child Godot process survives on Windows — no process-tree kill — and a hung
@@ -40,4 +40,55 @@ run_bounded() {
 # kill (124 = TERM on expiry, 137 = 128+9, the follow-up KILL).
 run_bounded_timed_out() {
   [ "$1" -eq 124 ] || [ "$1" -eq 137 ]
+}
+
+# run_bounded_retry <attempts> <secs> <label> <prepare-fn> <cmd...>
+#
+# run_bounded with a fixed attempt budget for a run that HANGS rather than fails: each
+# attempt is bounded by <secs>; an attempt killed by the timeout is logged (a
+# ::warning:: naming <label> and the attempt number) and retried, up to <attempts> in
+# all. <prepare-fn> (a function or command name; empty for none) runs before every
+# attempt, so a caller can wipe a killed attempt's partial output and each attempt starts
+# from the same state as a first one.
+#
+# Only a timeout is retried. A command that exits non-zero on its own is returned at
+# once with its own status: a deterministic failure would just fail again. "Timeout"
+# here is run_bounded_timed_out's reading, so a run SIGKILLed from outside (status 137,
+# e.g. an out-of-memory kill) is retried too. A retry that passes also hides an
+# intermittent hang in the command itself; the ::warning:: is the trace it leaves.
+#
+# Exit status: the last attempt's. When every attempt timed out it is the timeout's (124
+# or 137, so run_bounded_timed_out still reads it), after a ::error:: saying so. A
+# prepare step that fails stops the loop with status 1 before that attempt runs. A
+# non-positive or non-numeric <attempts> is refused with status 2.
+run_bounded_retry() {
+  local attempts="$1" secs="$2" label="$3" prep="$4"; shift 4
+  case "$attempts" in
+    ''|*[!0-9]*) echo "run_bounded_retry: attempt count must be a positive integer, got '$attempts'" >&2; return 2 ;;
+  esac
+  attempts=$(( 10#$attempts ))
+  if [ "$attempts" -le 0 ]; then
+    echo "run_bounded_retry: attempt count must be a positive integer, got '$attempts'" >&2
+    return 2
+  fi
+  local n=1 rc
+  while :; do
+    # Checked explicitly: callers run this as `run_bounded_retry ... || rc=$?`, where
+    # errexit is off, and an attempt on unwiped output must never run.
+    if [ -n "$prep" ] && ! "$prep"; then
+      echo "::error::$label: the prepare step failed before attempt $n; not running it" >&2
+      return 1
+    fi
+    rc=0
+    run_bounded "$secs" "$@" || rc=$?
+    if ! run_bounded_timed_out "$rc"; then
+      return "$rc"
+    fi
+    if [ "$n" -ge "$attempts" ]; then
+      echo "::error::$label timed out on all $attempts attempts (${secs}s each)" >&2
+      return "$rc"
+    fi
+    echo "::warning::$label: attempt $n/$attempts timed out after ${secs}s and was killed; retrying" >&2
+    n=$(( n + 1 ))
+  done
 }

@@ -22,7 +22,17 @@
 #
 # Environment:
 #   GODOT_BIN                Godot 4.7 binary (default: godot).
-#   SPARTA_DUMP_STATE_TIMEOUT   Hard per-clip timeout in seconds (default 300).
+#   SPARTA_DUMP_STATE_TIMEOUT   Hard per-attempt timeout in seconds (default 300); also
+#                            bounds the import.
+#   SPARTA_DUMP_ATTEMPTS     Attempts per clip (default 3, or 1 when CI is set: a
+#                            deterministic hang retried at 300 s a time would outlast a CI
+#                            step's own time limit before the clean error printed, and
+#                            CI runners do not share the parallel load). A clip dump killed by the
+#                            timeout is logged as a ::warning::, its partial output wiped,
+#                            and rerun from scratch; after this many timed-out attempts the
+#                            run fails. Only a timeout is retried -- any other failure
+#                            fails at once. Under parallel load on Windows about 1 dump in
+#                            40 hung and then passed on a plain rerun.
 #   SPARTA_STATE_TICK_STEP   Tick sampling cadence (default 60 -- once per sim second).
 #   SPARTA_STATE_DENSE_FROM  When set, also sample every SPARTA_STATE_DENSE_STEP ticks
 #                            (default 2) from this tick through the clip's end, on top of
@@ -73,9 +83,24 @@ if [ $(( 10#$DENSE_STEP )) -le 0 ]; then
 fi
 DENSE_STEP=$(( 10#$DENSE_STEP ))
 ONLY_CLIPS="${SPARTA_DUMP_CLIPS:-}"
+if [ -n "${CI:-}" ]; then
+  DUMP_ATTEMPTS="${SPARTA_DUMP_ATTEMPTS:-1}"
+else
+  DUMP_ATTEMPTS="${SPARTA_DUMP_ATTEMPTS:-3}"
+fi
+case "$DUMP_ATTEMPTS" in
+  ''|*[!0-9]*) echo "SPARTA_DUMP_ATTEMPTS must be a positive attempt count, got '$DUMP_ATTEMPTS'" >&2; exit 2 ;;
+esac
+if [ $(( 10#$DUMP_ATTEMPTS )) -le 0 ]; then
+  echo "SPARTA_DUMP_ATTEMPTS must be a positive attempt count, got '$DUMP_ATTEMPTS'" >&2
+  exit 2
+fi
+DUMP_ATTEMPTS=$(( 10#$DUMP_ATTEMPTS ))
 
 # shellcheck source=../../tools/lib/run-bounded.sh
 . "$DEFAULT_ROOT/tools/lib/run-bounded.sh"
+# shellcheck source=../../tools/lib/godot-import-lock.sh
+. "$DEFAULT_ROOT/tools/lib/godot-import-lock.sh"
 # shellcheck source=../../tools/lib/demo-catalog-selection.sh
 . "$DEFAULT_ROOT/tools/lib/demo-catalog-selection.sh"
 # Each tree's OWN catalog decides what it dumps (falling back to this script's sibling
@@ -94,12 +119,25 @@ demo_catalog_check_selection "$ONLY_CLIPS"
 
 mkdir -p "$OUT_DIR"
 
-# Import once so autoloads / class_name globals resolve in the target project.
-run_bounded "$DUMP_TIMEOUT" "$GODOT_BIN" --headless --import --path "$PROJECT_DIR" >/dev/null 2>&1 || true
-
 # Godot prints its version as the last line of --version (a console wrapper may print
 # more before it).
 GODOT_VERSION="$("$GODOT_BIN" --version 2>/dev/null | tail -n1 || true)"
+
+# Import so autoloads / class_name globals resolve in the target project -- under the
+# project's import lock, and only when the cache is stale for this tree and this Godot,
+# so parallel dumps of one project never import at the same time: at most two imports,
+# one after the other, on a cold project and none on a warm one. The lock serialises
+# imports only, not an import against another run's dump
+# (tools/lib/godot-import-lock.sh has the measurements). An import that times out fails
+# the run here (it used to be ignored); any other non-zero import status prints a
+# ::warning:: with the tail of .godot/sparta-import.log and the dumps go on, as before.
+# With the version unknown the
+# stamp content is empty, which always imports rather than trust a cache it cannot match.
+IMPORT_STAMP=""
+if [ -n "$GODOT_VERSION" ]; then
+  IMPORT_STAMP="godot=$GODOT_BIN version=$GODOT_VERSION"
+fi
+godot_import_once "$DUMP_TIMEOUT" "$GODOT_BIN" "$PROJECT_DIR" "$IMPORT_STAMP"
 {
   printf 'os=%s\n' "$(uname -s)"
   printf 'godot=%s\n' "${GODOT_VERSION:-unknown}"
@@ -134,6 +172,36 @@ tick_list() {
   echo "$ticks"
 }
 
+# Before every dump attempt: start the clip's output dir empty. When a timed-out attempt
+# left files there, say how many state snapshots it got through first -- a hang after the
+# last armed tick (a stuck exit) and one mid-battle are different bugs.
+# CLIP_ATTEMPTED is reset per clip, so the first attempt reports nothing.
+fresh_clip_out() {
+  if [ "$CLIP_ATTEMPTED" -eq 1 ] && [ -d "$CLIP_OUT" ]; then
+    local got armed
+    got="$(find "$CLIP_OUT" -maxdepth 1 -name 'state_*.json' | wc -l | tr -d ' ')"
+    armed="$(printf '%s\n' "$TICKS" | tr ',' '\n' | wc -l | tr -d ' ')"
+    echo "dump-demo-states: the killed attempt for '$NAME' had written $got of $armed state snapshot(s)" >&2
+  fi
+  CLIP_ATTEMPTED=1
+  # A killed Godot on Windows can still hold a file open for a moment, so the wipe is
+  # tried 3 times, 1 s apart. If it still fails, that fails the whole run
+  # (run_bounded_retry stops on a failed prepare step) rather than letting the next
+  # attempt append to the last one's hash_stream.jsonl.
+  local try
+  for try in 1 2 3; do
+    if rm -rf "$CLIP_OUT" 2>/dev/null && [ ! -e "$CLIP_OUT" ]; then
+      break
+    fi
+    if [ "$try" -eq 3 ]; then
+      echo "::error::could not clear $CLIP_OUT before dumping '$NAME' (3 tries); failing the run" >&2
+      return 1
+    fi
+    sleep 1
+  done
+  mkdir -p "$CLIP_OUT"
+}
+
 for spec in "${DEMOS[@]}"; do
   IFS='|' read -r NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE <<<"$spec"
   TYPE="${TYPE:-replay}"
@@ -163,8 +231,7 @@ for spec in "${DEMOS[@]}"; do
   fi
   TICKS="$(tick_list "$FIXED_FPS" "$MAX_FRAMES")"
   CLIP_OUT="$OUT_DIR/$NAME"
-  rm -rf "$CLIP_OUT"
-  mkdir -p "$CLIP_OUT"
+  CLIP_ATTEMPTED=0
   echo "== Dumping '$NAME' ($TYPE: res://$SOURCE) at ticks $TICKS =="
   rc=0
   # FULL dumps (per-soldier arrays + ordered slots + motion_ref, where the tree's
@@ -172,13 +239,17 @@ for spec in "${DEMOS[@]}"; do
   # projects them back out before comparing, so the transcript-diff semantics stay
   # exactly the compact fields they always were. A tree predating the full-dump
   # schema just emits compact records; the delta pass degrades to "n/a" there.
-  run_bounded "$DUMP_TIMEOUT" \
+  #
+  # A hung attempt is killed, its partial output wiped by fresh_clip_out, and rerun, so a
+  # retried clip's transcripts (hash_stream.jsonl included, which the sink appends to)
+  # are byte-identical to a clean first attempt's.
+  run_bounded_retry "$DUMP_ATTEMPTS" "$DUMP_TIMEOUT" "dumping '$NAME'" fresh_clip_out \
     env "${ENV_KEY}=res://${SOURCE}" \
         SPARTA_DEMO_STATE="$TICKS" SPARTA_DEMO_STATE_DIR="$CLIP_OUT" \
         SPARTA_DEMO_STATE_FULL=1 \
     "$GODOT_BIN" --headless --fixed-fps 60 --path "$PROJECT_DIR" "$SCENE" || rc=$?
   if run_bounded_timed_out "$rc"; then
-    echo "ERROR: dumping '$NAME' timed out after ${DUMP_TIMEOUT}s and was killed (no orphan left behind)." >&2
+    echo "ERROR: dumping '$NAME' timed out on all $DUMP_ATTEMPTS attempt(s) of ${DUMP_TIMEOUT}s each and was killed (no orphan left behind)." >&2
     exit 1
   fi
   if [ "$rc" -ne 0 ]; then

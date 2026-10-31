@@ -210,6 +210,28 @@ Three layers keep that from piling up:
    processes are already running -- the early signal of a leak building up (and
    the likely explanation for slow or flaky local runs).
 
+`../website/tools/dump-demo-states.sh` adds two guards for running many dumps
+in parallel against one project.
+Its import goes through `lib/godot-import-lock.sh`:
+one per-project lock that serialises imports against each other (not against dumps),
+and no import at all while the `.godot/` cache is current for the tree and the Godot binary.
+N parallel dumps never import at the same time, and run at most two imports on a cold project
+(the second picks up the sidecars the first wrote, and may overlap the first caller's dump)
+and none on a warm one.
+Unguarded concurrent imports of a cold project logged
+`Cannot open file 'res://.godot/imported/...'` errors
+and rewrote tracked `*.import` sidecars with default settings.
+An import that times out fails the dump.
+Any other non-zero import status, a crash included, prints a `::warning::`
+with the tail of `.godot/sparta-import.log`, writes no stamp, and the dumps go on.
+A clip dump killed by its timeout is retried from an empty output dir
+(`SPARTA_DUMP_ATTEMPTS`, default 3, or 1 when `CI` is set,
+through `run_bounded_retry` in `lib/run-bounded.sh`),
+each retry logged as a `::warning::`,
+and the run fails once every attempt has timed out.
+A retry that passes can also hide an intermittent hang in the game itself,
+so treat repeated `::warning::` lines as a bug report.
+
 ### `kill-orphan-godot.ps1` / `kill-orphan-godot.sh` -- sweep script
 
 Lists Godot processes whose command line matches a **non-interactive run
