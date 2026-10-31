@@ -167,3 +167,62 @@ func test_a_file_double_keeps_a_lag_that_closes_onto_a_square_fold() -> void:
 			"the files widen as they stand")
 	assert_almost_eq(u._grid_lag, deg_to_rad(20.0), 0.0001, "the lag still stands")
 	assert_true(u._grid_lag_resquare, "as the order's re-square")
+
+
+func test_a_file_double_over_a_folded_re_square_arms_it_to_run_again() -> void:
+	# A quarter fold with a 60 degree re-square lag back toward square: the grid stands 30
+	# degrees off, neither square nor a quarter. The files widen across the facing, the lag is
+	# folded where the grid stands, and the re-square waits to run again from the new fold;
+	# once it has run and turned out, the grid stands square with its files still across.
+	var u := _unit()
+	_stand_resquare(u, -PI * 0.5, PI / 3.0)
+	u._apply_file_double_step(Order.new_file_double(1))
+	var files: int = UnitFormation.frontage(u)
+	assert_eq(files, UnitFormation.widened_files(MEN, FILES), "the files widen as they stand")
+	assert_almost_eq(u.grid_fold(), -PI / 6.0, 0.0001, "the grid stays where it stood")
+	assert_true(u._resquare_pending, "the folded re-square waits to run again")
+	u._run_waiting_resquare()
+	_close_lag(u)
+	assert_almost_eq(wrapf(u.grid_fold(), -PI, PI), 0.0, 0.0001,
+			"once it has run and closed the grid stands square")
+	assert_eq(UnitFormation.frontage(u), files, "with its files still across the facing")
+
+
+func test_a_transposition_off_a_half_turn_fold_turns_the_grid_as_the_whole_fold_would() -> void:
+	# A half-turn fold with a re-square lag of minus 60 degrees stands the grid 120 degrees
+	# off. The file double turns it onto the heading exactly as it would a 120 degree fold:
+	# the same files on the same slots, with no point reflection of the half-turn.
+	var split := _unit()
+	_stand_resquare(split, PI, -PI / 3.0)
+	var whole := _unit()
+	whole._formation_angle = PI * 2.0 / 3.0
+	for u in [split, whole]:
+		u._apply_file_double_step(Order.new_file_double(1))
+	assert_eq(UnitFormation.frontage(split), UnitFormation.frontage(whole), "the same files")
+	assert_eq(split._formation_mirror_x, whole._formation_mirror_x, "the same mirroring")
+	var a: PackedVector2Array = split.soldier_world_slots(split.soldiers)
+	var b: PackedVector2Array = whole.soldier_world_slots(whole.soldiers)
+	var worst: float = 0.0
+	for i in range(a.size()):
+		worst = maxf(worst, a[i].distance_to(b[i]))
+	assert_lt(worst, CLEAR_EPS, "every man on the same slot")
+
+
+func test_a_formed_pivot_never_writes_the_lag_the_clearance_reads() -> void:
+	# The clearance reads a re-square lag only on a disciplined march, which turns its heading
+	# by a formed pivot: the grid turns with the heading and the lag is left alone, so the
+	# clearance cannot steer the lag. A re-face onto the bearing (an undisciplined or hasty
+	# march) writes every correction into the lag, so such a block reads the fold alone.
+	var u := _unit()
+	_stand_resquare(u, 0.0, PI / 3.0)
+	assert_true(u.lag_reading_cannot_feed_back(), "setup: a disciplined block, not in haste")
+	u._rotate_facing_toward(u.facing.rotated(-0.3), 1.0 / 60.0, 2.0)
+	assert_almost_eq(u._grid_lag, PI / 3.0, 0.0001, "a pivot leaves the lag where it was")
+	u._reface(u.facing.rotated(0.2))
+	assert_ne(u._grid_lag, PI / 3.0, "a re-face onto a bearing moves it")
+	var loose := _unit()
+	loose.disciplined = false
+	_stand_resquare(loose, 0.0, PI / 3.0)
+	var travel: Vector2 = loose.facing.orthogonal()
+	assert_almost_eq(loose.terrain_clearance(travel), _swept(loose, 0.0, travel), CLEAR_EPS,
+			"an undisciplined block reads the fold alone, lag or no lag")

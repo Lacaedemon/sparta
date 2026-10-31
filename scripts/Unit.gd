@@ -5476,6 +5476,14 @@ func _far_tier_half_extents() -> Vector2:
 ## stands back to the fold (max_swept_width), which narrows smoothly onto the fold's own
 ## width as the re-square closes. A march's small heading lag is left out, as reading it
 ## steered the march off the heading the lag was closing on and fed the lag back.
+## The re-square lag is read only by a disciplined block not marching in haste
+## (lag_reading_cannot_feed_back). Such a block's march turns its heading by a formed pivot
+## (_rotate_facing_toward), which turns the slot grid with the heading and leaves the lag
+## alone, or, while a maneuver holds its facing, through _reface onto a facing the order fixed;
+## either way the heading the clearance steers never writes the lag, so the loop a march lag
+## closes cannot form. An undisciplined or hasty march turns its heading onto the
+## path's bearing through _reface, which writes every correction into the lag, so it reads
+## the fold alone, as before.
 ##
 ## Deliberately NOT the flat corner_clearance() (the corner man's full half-diagonal,
 ## folding in BOTH width and depth unconditionally) for a KNOWN travel direction: a
@@ -5512,12 +5520,22 @@ func terrain_clearance(travel_dir: Vector2 = Vector2.ZERO, extents: Vector2 = UN
 	# (max_swept_width). That interval only narrows onto the fold as the re-square turns out,
 	# so the clearance shrinks smoothly to the fold's own swept width as the lag closes,
 	# rather than jumping, and a few degrees of residue clear about what the fold alone does.
-	if _grid_lag_resquare and _grid_lag != 0.0:
+	# Only where the march's heading cannot write the lag (see the doc comment above).
+	if _grid_lag_resquare and _grid_lag != 0.0 and lag_reading_cannot_feed_back():
 		var fold_axis: float = facing.angle() + PI * 0.5 + _formation_angle - dir.angle()
 		return max_swept_width(half_extents, fold_axis, _grid_lag) + soldier_body_radius()
 	var u_axis: Vector2 = Vector2.RIGHT.rotated(facing.angle() + PI * 0.5 + _formation_angle)
 	var swept: float = half_extents.x * absf(u_axis.cross(dir)) + half_extents.y * absf(u_axis.dot(dir))
 	return swept + soldier_body_radius()
+
+
+## Whether this block's march turns its heading without writing the turn into the grid's lag:
+## a disciplined block not marching in haste pivots as a formation (_move_to's
+## pivot_as_formation), and a pivot turns the slot grid with the heading. An undisciplined or
+## hasty march re-faces onto its path's bearing through _reface instead, which moves the lag
+## by every heading correction, so a clearance that read the lag could steer it.
+func lag_reading_cannot_feed_back() -> bool:
+	return disciplined and not _is_move_order_in_haste()
 
 
 ## The widest a rectangle of half-extents `he` (local x, local y) sweeps across a line of
@@ -7450,7 +7468,13 @@ func _arm_combo_step(step: Order) -> bool:
 ## - Standing square or a half-turn off, but over a fold a quarter off (a re-square lag turning
 ##   the grid back from a quarter fold the other way): the files lie across the facing now, but
 ##   would run along the depth once the lag closed. The lag is folded where the grid stands
-##   (_fold_grid_lag), so the grid stays put and the widened files stay across the facing.
+##   (_fold_grid_lag), so the grid stays put and the widened files stay across the facing. A
+##   re-square folded so waits to run again (_resquare_pending) and squares whatever the new
+##   fold leaves off square or a half-turn, at a bounded rate.
+## - The transposition turns the grid from where it stands onto the heading, which is a quarter
+##   turn plus the grid's residue however the fold and lag split it (a fold of a half-turn with
+##   a lag of minus 60 degrees turns the grid by 120, exactly as a 120 degree fold would): the
+##   fold never drops a half-turn as a point reflection here.
 ## - Otherwise the fold and the grid agree, and a lag goes on closing.
 func _apply_file_double_step(step: Order) -> void:
 	var files: int = step.frontage
@@ -7467,7 +7491,12 @@ func _apply_file_double_step(step: Order) -> void:
 			_resquare_pending = false
 			_render_dirty = true
 		elif _grid_lag != 0.0 and is_quarter_turn_off(_formation_angle):
+			# An order's re-square folded this way waits to run again from the new fold, as
+			# _reface and a lag carried into contact leave it, so a grid left between square
+			# and a quarter is still squared.
+			var was_resquare: bool = _grid_lag_resquare
 			_fold_grid_lag()
+			_resquare_pending = _resquare_pending or was_resquare
 		files = UnitFormation.widened_files(soldiers, current) if step.dir > 0 \
 				else UnitFormation.narrowed_files(current)
 	set_frontage(files, step.frontage_anchor_offset)
