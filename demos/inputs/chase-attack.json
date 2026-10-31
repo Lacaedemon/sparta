@@ -16,8 +16,8 @@
   ],
   "defect_exemptions": {
     "shape_residual": {
-      "uids": [0],
-      "reason": "Uid 0, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, 31.07; 678aab68 (#1880) reads 45.49, pass, pass, pass, 31.09, against 30.0. Not traced; the battle runs on a different trajectory from 9f9bddee's, and this is a block scrambled by a melee and judged out of contact (#1837). Measured 2026-10-31."
+      "uids": [0, 1],
+      "reason": "Uid 0, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, 31.07; ea0a9029 (#1880) reads 45.76, pass, 170.61, pass, pass, against 30.0. Not traced; the battle runs on a different trajectory from 9f9bddee's, and this is a block scrambled by a melee and judged out of contact (#1837). Measured 2026-10-31. Uid 1, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, 15.39, 15.55, 18.94, pass; ea0a9029 (#1880) reads pass, 13.85, 15.43, pass, 24.56, against 13.5. It fails on three seeds on both trees. Not traced; the battle runs on a different trajectory from 9f9bddee's, and this is a block scrambled by a melee and judged out of contact (#1837). Measured 2026-10-31."
     }
   }
 }

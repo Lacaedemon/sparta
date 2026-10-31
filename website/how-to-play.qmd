@@ -196,11 +196,13 @@ turn: a fresh order that roughly continues the current travel carries the column
 momentum straight through, while one that turns it sharply back bleeds that speed off
 during the hold, so the block comes about from a stand instead of carrying its pace
 into the turn (@fig-reversal-march).
-Men still walking to their places when the block steps off on a move order keep closing
-on them as it gathers pace: each man speeds up with the march and still has his own pace
-to spare for catching up (a charge, a pursuit, a run or sprint order and a rout give no
-such spare pace), and the way he walks onto his place changes over gradually as the block
-gets under way rather than all at once on its first step.
+Men still walking to their places when the block steps off on a move order or a
+withdrawal keep closing on them as it gathers pace: each man speeds up with the march and
+still has his own pace to spare for catching up. Only those two orderly marches give that
+spare pace. A combat approach --- the march of an attack or support order, a charge or a
+pursuit --- gives none, and neither does a run or sprint move order or a rout. On every
+march, the way a man walks onto his place changes over gradually as the block gets under
+way rather than all at once on its first step (@fig-march-start-catch-up).
 To make a unit move immediately without the pause, uncheck **Reform before move** in
 its unit settings panel, or click **Reform** in the control bar --- either applies to every
 currently selected unit. Cavalry starts with the setting off (immediate
@@ -223,6 +225,22 @@ at the moment you issued each order.
 A marching column ordered sharply back the way it came: it brakes during its
 reform hold, comes about no faster than its corner man can run, and steps off on
 the new heading in good order.
+:::
+
+::: {#fig-march-start-catch-up .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/march_start_catch_up.jpg">
+  <source src="media/march_start_catch_up.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A 96-man block loosens its spacing and is ordered south while its men are still
+walking out to their new places. It steps off with them far from their places, and
+the rear and flank men close on them as the block gathers pace.
 :::
 
 **Side-step (small lateral moves).** A move order that only shifts a unit a short way

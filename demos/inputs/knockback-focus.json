@@ -88,12 +88,10 @@
   "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9",
   "defect_exemptions": {
     "overlap": {
-      "uids": [5],
+      "uids": [
+        5
+      ],
       "reason": "Focused knockback drives uid5 into a compressed knot around the strike target; measured min neighbour 0.63 wu on the re-pinned 2x-default layout (was cited lower pre-repin). Transient press compression at the focal point, not standing interpenetration."
-    },
-    "facing_flutter": {
-      "uids": [5],
-      "reason": "Uid 5, facing_flutter: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, 9.00, 6.00, 9.00, pass; 678aab68 (#1880) reads 6.00, 4.00, 6.00, 5.00, 7.00, against 3. Not traced; the battle runs on a different trajectory from 9f9bddee's, and the marching heading dither tracked in #1764 is the likely mechanism. Measured 2026-10-31."
     }
   }
 }
