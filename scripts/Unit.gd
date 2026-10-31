@@ -136,6 +136,12 @@ var _cached_combat_profile: Dictionary = {}
 # SoldierBodies.march_target_frac): below it the two are blended by speed, so the target
 # moves smoothly as the block sets off or pulls up instead of switching on the first tick.
 @export var march_target_walk_frac: float = 1.0
+# How far off his own slot, in file pitches, a soldier body must stand to take a share of
+# the march's acceleration on top of his own (SoldierBodies.march_share_frac): none within
+# march_share_from_pitches, all of it from march_share_full_pitches out. A man nearer his
+# slot already keeps pace with it, so a block marching in good order is untouched.
+@export var march_share_from_pitches: float = 0.5
+@export var march_share_full_pitches: float = 1.0
 # Effective melee reach, in world units (Battle sets it per weapon from reach_m;
 # the 26 default is the infantry/sword baseline). A unit counts as in melee
 # contact when the gap to its target closes within attack_range + both RADII, so a
@@ -11854,7 +11860,9 @@ func to_snapshot_dict() -> Dictionary:
 		"stamina_sprint_drain_per_s": stamina_sprint_drain_per_s,
 		"back_speed_fraction": back_speed_fraction,
 		"superphysical_speed_frac": superphysical_speed_frac,
-		"accel": accel, "decel": decel,
+		"accel": accel, "decel": decel, "march_target_walk_frac": march_target_walk_frac,
+		"march_share_from_pitches": march_share_from_pitches,
+		"march_share_full_pitches": march_share_full_pitches,
 		"attack_range": attack_range, "sight_range": sight_range,
 		"weapon_type_id": weapon_type_id, "shield_type_id": shield_type_id,
 		# The deployed weapon and the carried second one travel with the clone too: a
@@ -12078,6 +12086,9 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 			d.get("superphysical_speed_frac", GaitLimitsRef.SUPERPHYSICAL_SPEED_FRAC))
 	accel = float(d["accel"])
 	decel = float(d["decel"])
+	march_target_walk_frac = float(d.get("march_target_walk_frac", march_target_walk_frac))
+	march_share_from_pitches = float(d.get("march_share_from_pitches", march_share_from_pitches))
+	march_share_full_pitches = float(d.get("march_share_full_pitches", march_share_full_pitches))
 	attack_range = float(d["attack_range"])
 	weapon_type_id = int(d["weapon_type_id"])
 	shield_type_id = int(d["shield_type_id"])

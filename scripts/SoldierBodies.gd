@@ -377,8 +377,12 @@ static func step(unit: Unit, delta: float) -> void:
 	var halting: bool = unit.is_rally_halting()
 	var march_vel: Vector2 = unit._flee_velocity if routing else unit._approach_velocity
 	# The velocity change the march itself took since the last step, which each unengaged body
-	# may take on top of its own body_accel (see march_accel_budget).
-	var march_budget: float = march_accel_budget(unit, march_vel, body_accel, delta)
+	# may take on top of its own body_accel (see march_accel_budget). A router's flight gets
+	# none: its men keep the ordinary rate, so a flight still builds up as it always has (the
+	# share let a routing block keep up with its anchor and carried it measurably farther).
+	var march_budget: float = 0.0 if routing \
+			else march_accel_budget(unit, march_vel, body_accel, delta)
+	var share_pitch: float = unit.file_pitch_wu()
 	unit._body_march_ff_prev = march_vel
 	# A router turning its flight, or any other block whose slot grid is turning after a small
 	# heading correction, turns its grid about the anchor at this rate (rad/s;
@@ -467,10 +471,15 @@ static func step(unit: Unit, delta: float) -> void:
 		var damped_vel: Vector2 = SoldierCollision.apply_kinetic_friction(
 				unit._sim_body_vel[i], mass, 0.0, delta)
 		# An unengaged body's slot moves with the march, so the march's own acceleration this
-		# tick is velocity change the body needs just to keep pace with its slot. It gets that
-		# much on top of body_accel, which stays free for closing on the slot; an engaged body
-		# takes no march feed-forward and so gets no share of it.
-		var accel_i: float = body_accel if is_engaged[i] == 1 else body_accel + march_budget
+		# tick is velocity change the body needs just to keep pace with its slot. A man walking
+		# back to a slot he stands well off gets that much on top of body_accel, which stays
+		# free for closing on the slot (march_share_frac); an engaged body takes no march
+		# feed-forward and so gets no share of it.
+		var accel_i: float = body_accel
+		if is_engaged[i] == 0 and march_budget > 0.0:
+			accel_i += march_budget * march_share_frac(
+					own_slot.distance_to(unit._sim_soldier_pos[i]), share_pitch,
+					unit.march_share_from_pitches, unit.march_share_full_pitches)
 		var new_vel: Vector2 = damped_vel.move_toward(desired_vel, accel_i * delta) \
 				if brake_accel <= accel_i \
 				else brake_biased_step(damped_vel, desired_vel, accel_i, brake_accel, delta)
@@ -597,8 +606,12 @@ static func step(unit: Unit, delta: float) -> void:
 ## ramps the slots too; without this share a man behind his slot spends all of it keeping
 ## pace with the accelerating slot and never gains on it. With it he keeps pace on the share
 ## and closes on the slot at his full body_accel. While the march runs at a steady velocity
-## the share is zero, and a body that already tracks its slot reaches its desired velocity
-## either way, so only a man still closing on his slot moves differently. The cap keeps a
+## the share is zero, and step() grants it only to a man well off his slot
+## (march_share_frac), so a block marching in good order moves exactly as before. That gate
+## matters: without it the share also took up the small lag kinetic friction leaves a body
+## behind an accelerating march, so every charge and pursuit closed faster than before and
+## the outcomes of fights the issue never touched moved with it. A routing block takes none
+## (see step()). The cap keeps a
 ## march that jumps in one tick (a stop on contact, the first step after a far-tier return)
 ## from granting more than double a body's ordinary acceleration.
 static func march_accel_budget(unit: Unit, march_vel: Vector2, body_accel: float,
@@ -606,6 +619,22 @@ static func march_accel_budget(unit: Unit, march_vel: Vector2, body_accel: float
 	if delta <= 0.0:
 		return 0.0
 	return minf((march_vel - unit._body_march_ff_prev).length() / delta, body_accel)
+
+
+## How much of march_accel_budget a body `dist` from its own slot takes, 0 to 1: none
+## within `from_pitches` file pitches of the slot, all of it from `full_pitches` out, and a
+## straight ramp between. A man on or near his slot already keeps pace with it, so he moves
+## exactly as he did before the share existed and a block marching in good order is
+## untouched; only a man well off his slot, walking back to it, gets the extra.
+static func march_share_frac(dist: float, pitch: float, from_pitches: float,
+		full_pitches: float) -> float:
+	var lo: float = pitch * from_pitches
+	var hi: float = pitch * full_pitches
+	if dist <= lo:
+		return 0.0
+	if hi <= lo or dist >= hi:
+		return 1.0
+	return (dist - lo) / (hi - lo)
 
 
 ## The rate this unit's bodies may shed speed at: their ordinary max(unit.accel,
@@ -1174,7 +1203,7 @@ static func couple(unit: Unit, delta: float) -> void:
 ## the per-soldier loop). The march speed ramps at the unit's own acceleration, so the
 ## target moves smoothly from one to the other as the block sets off or pulls up: a hard
 ## switch at the first tick of the march swung the target of every man between the two
-## bands round by tens of degrees at once (on the seed-0 catalog, 540 of 895 such switches
+## bands round by tens of degrees at once (on the seed-0 catalog, 543 of 895 such switches
 ## swung a man's target more than 30 degrees), and he spent his acceleration turning instead
 ## of closing on his slot.
 ##

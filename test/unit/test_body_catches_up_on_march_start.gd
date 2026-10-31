@@ -159,3 +159,34 @@ func test_march_target_frac_rises_with_the_march_to_its_full_speed() -> void:
 		"the full speed follows the unit's own march_target_walk_frac")
 	u.march_target_walk_frac = 0.0
 	assert_eq(SoldierBodies.march_target_frac(u), 1.0, "a zero full speed marches at once")
+
+
+func test_march_share_frac_ramps_from_half_a_pitch_to_a_pitch() -> void:
+	assert_eq(SoldierBodies.march_share_frac(4.0, 18.0, 0.5, 1.0), 0.0, "inside half a pitch: none")
+	assert_eq(SoldierBodies.march_share_frac(9.0, 18.0, 0.5, 1.0), 0.0, "at half a pitch: none")
+	assert_almost_eq(SoldierBodies.march_share_frac(13.5, 18.0, 0.5, 1.0), 0.5, 1e-6, "halfway: half")
+	assert_eq(SoldierBodies.march_share_frac(18.0, 18.0, 0.5, 1.0), 1.0, "at a pitch: all")
+	assert_eq(SoldierBodies.march_share_frac(90.0, 18.0, 0.5, 1.0), 1.0, "beyond: all")
+	assert_eq(SoldierBodies.march_share_frac(5.0, 18.0, 0.5, 0.5), 0.0, "a step at the edge: none inside")
+	assert_eq(SoldierBodies.march_share_frac(10.0, 18.0, 0.5, 0.5), 1.0, "a step at the edge: all outside")
+
+
+func test_a_man_near_his_slot_moves_as_he_did_without_the_share() -> void:
+	# A block marching in good order is untouched: a man a few world units off his slot (under
+	# half a file pitch) steps exactly as he would with the march holding its speed.
+	var ramp := _make_block()
+	var flat := _make_block()
+	var i: int = ramp.soldiers - 1
+	var off: float = ramp.file_pitch_wu() * 0.3
+	for u in [ramp, flat]:
+		u.state = Unit.State.MOVING
+		u._sim_soldier_pos[i] -= u.facing * off
+	ramp._body_march_ff_prev = Vector2.ZERO
+	ramp._approach_velocity = ramp.facing * (ramp.accel * TICK)
+	flat._body_march_ff_prev = flat.facing * (flat.accel * TICK)
+	flat._approach_velocity = flat.facing * (flat.accel * TICK)
+	SoldierBodies.step(ramp, TICK)
+	SoldierBodies.step(flat, TICK)
+	assert_eq(ramp._sim_body_vel[i], flat._sim_body_vel[i],
+		"a man %.1f wu off his slot takes no share of the march's acceleration" % off)
+	assert_eq(ramp._sim_soldier_pos[i], flat._sim_soldier_pos[i], "and steps to the same place")
