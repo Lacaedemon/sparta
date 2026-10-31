@@ -1459,8 +1459,6 @@ func test_formed_turn_gait_frac_guards_a_zero_pivot_radius() -> void:
 		"a 1-soldier, 1-file, 1-rank unit has no arm to pivot about")
 	assert_almost_eq(u._formed_turn_gait_frac(), 1.0, 0.0001,
 		"the zero-pivot-radius guard returns 1.0 rather than dividing by zero")
-	assert_false(u.is_deep_for_formed_turn(),
-		"a guarded frac of 1.0 is never derated, so this unit is never deep for a formed turn")
 
 
 ## Depth ratio (u._pivot_radius() / (u.file_pitch_wu() x MARCHING_CORRIDOR_PROXIMITY_MULT))

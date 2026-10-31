@@ -1,12 +1,10 @@
 extends GutTest
 ## Verifies that _corridor_to_slot uses the wider MARCHING_CORRIDOR_PROXIMITY_MULT
 ## during active marching (a straight march, a held-facing retreat, or a lateral side-step),
-## and falls back to standard CORRIDOR_PROXIMITY_MULT while stationary. A TURNING march is
-## gated further, on Unit.is_deep_for_formed_turn: only a block deep/wide enough for its
-## corner-slot pace to actually be derated (an 80-mount cavalry block, depth ratio ~2.81 --
-## see Unit.FORMED_TURN_DEPTH_RATIO_REF's own doc comment) keeps the wide band through its
-## turn; an ordinary shallow line (default 30-soldier fixture, or the 60-man infantry fixture
-## below) keeps the plain, narrower band through its turn exactly as it does while stationary.
+## and falls back to standard CORRIDOR_PROXIMITY_MULT while stationary. A TURNING march keeps
+## the wide band whatever the block's depth: a deep 80-mount cavalry block (depth ratio ~2.81
+## -- see Unit.FORMED_TURN_DEPTH_RATIO_REF's own doc comment) and a shallow 60-man infantry
+## line alike.
 ## On extreme lag the code still tests the wide band first and, when a body is too far behind
 ## for even that band to cover, falls through to perimeter routing directly -- it never
 ## recomputes against the narrow multiplier.
@@ -24,8 +22,8 @@ func before_each() -> void:
 
 
 ## A 60-man infantry line, matching test_wheel_turn_maneuver.gd's own shallow fixture --
-## its depth ratio stays well under FORMED_TURN_FREE_DEPTH_RATIO, so
-## Unit.is_deep_for_formed_turn is false for it.
+## its depth ratio stays well under FORMED_TURN_FREE_DEPTH_RATIO, so its formed turn is not
+## derated (Unit._formed_turn_gait_frac is 1.0).
 func _make_shallow_infantry_60(pos: Vector2 = Vector2(500, 500)) -> Unit:
 	var u: Unit = Unit.new()
 	u.max_soldiers = 60
@@ -38,8 +36,8 @@ func _make_shallow_infantry_60(pos: Vector2 = Vector2(500, 500)) -> Unit:
 
 ## An 80-mount cavalry block, matching test_wheel_turn_maneuver.gd's own
 ## _make_cavalry_80 -- the exact fixture FORMED_TURN_DEPTH_RATIO_REF is calibrated against
-## (pivot radius 505.9644 wu, depth ratio 2.810913), so Unit.is_deep_for_formed_turn is
-## true for it.
+## (pivot radius 505.9644 wu, depth ratio 2.810913), so its formed turn is derated
+## (Unit._formed_turn_gait_frac under 1.0).
 func _make_deep_cavalry_80(pos: Vector2 = Vector2(500, 500)) -> Unit:
 	var u: Unit = Unit.new()
 	u.is_cavalry = true
@@ -113,16 +111,15 @@ func test_held_facing_lateral_sidestep_uses_wide_proximity() -> void:
 
 func test_deep_turning_march_uses_wide_proximity_for_direct_arrival() -> void:
 	# Curved march / active rotation on a DEEP block (80-mount cavalry, depth ratio 2.81):
-	# a block deep/wide enough for Unit.is_deep_for_formed_turn to derate its corner-slot
-	# pace retains the wide marching corridor proximity through its turn, not just while
-	# marching straight -- see MARCHING_CORRIDOR_PROXIMITY_MULT's own doc comment.
+	# the wide marching corridor proximity holds through the turn, not just while marching
+	# straight -- see MARCHING_CORRIDOR_PROXIMITY_MULT's own doc comment.
 	var deep_unit: Unit = _make_deep_cavalry_80()
 	deep_unit._approach_velocity = Vector2(100, 100)
 	deep_unit.state = Unit.State.MOVING
 	# Simulate active turn steering
 	deep_unit._rotate_facing_toward(Vector2.RIGHT, 0.016, 2.0)
 	assert_true(deep_unit.is_turning(), "unit reports is_turning while rotating facing")
-	assert_true(deep_unit.is_deep_for_formed_turn(),
+	assert_lt(deep_unit._formed_turn_gait_frac(), 1.0,
 		"80-mount cavalry block is deep enough to derate its corner-slot pace")
 
 	var spacing: float = deep_unit.file_pitch_wu()
@@ -137,36 +134,34 @@ func test_deep_turning_march_uses_wide_proximity_for_direct_arrival() -> void:
 	assert_almost_eq(target_vec.y, expected_direct.y, 1e-3, "deep block's curved march allows direct arrival within wide threshold (y)")
 
 
-func test_shallow_turning_march_keeps_narrow_proximity() -> void:
+func test_shallow_turning_march_uses_wide_proximity_for_direct_arrival() -> void:
 	# Curved march / active rotation on a SHALLOW block (60-man infantry line, far below
-	# FORMED_TURN_FREE_DEPTH_RATIO): a block whose corner-slot pace is never derated
-	# (Unit.is_deep_for_formed_turn false) keeps the plain, narrower CORRIDOR_PROXIMITY_MULT
-	# radius through its turn exactly as it does while stationary -- it never lags far enough
-	# behind its own slot's swinging arc to need the wider band a deep block needs. This is
-	# the shape of the regression an unconditional (turning-alone) widening produced on the
-	# website demo clips coast_to_stop and rout_rally (shallow cavalry troops, see
+	# FORMED_TURN_FREE_DEPTH_RATIO): its formed turn is never derated, and it keeps the wide
+	# marching band through the turn all the same. A combat re-face can turn a marching
+	# block's whole slot grid in one tick, leaving its end men ranks across and files along
+	# from their slots; with the narrow band each was sent round the perimeter corridor while
+	# the block kept turning, and the block did not re-form (the support clip's archers, see
 	# SoldierBodies.corridor_proximity_mult's doc comment for the measurement).
 	var shallow_unit: Unit = _make_shallow_infantry_60()
 	shallow_unit._approach_velocity = Vector2(100, 100)
 	shallow_unit.state = Unit.State.MOVING
 	shallow_unit._rotate_facing_toward(Vector2.RIGHT, 0.016, 2.0)
 	assert_true(shallow_unit.is_turning(), "unit reports is_turning while rotating facing")
-	assert_false(shallow_unit.is_deep_for_formed_turn(),
+	assert_eq(shallow_unit._formed_turn_gait_frac(), 1.0,
 		"60-man infantry line is not deep enough to derate its corner-slot pace")
 
 	var spacing: float = shallow_unit.file_pitch_wu()
 	var slot_pos: Vector2 = shallow_unit._sim_soldier_pos[0]
 	# Place soldier at distance 2.83 * spacing -- beyond the narrow CORRIDOR_PROXIMITY_MULT
-	# (1.5x) band but still well within the wide MARCHING_CORRIDOR_PROXIMITY_MULT (4.5x)
-	# band, so this only routes through the perimeter corridor if the shallow turning march
-	# is actually using the narrow band.
+	# (1.5x) band but well within the wide MARCHING_CORRIDOR_PROXIMITY_MULT (4.5x) band, so
+	# this walks direct only if the shallow turning march uses the wide band.
 	var soldier_pos: Vector2 = slot_pos + Vector2(spacing * 2.0, spacing * 2.0)
 	shallow_unit._sim_soldier_pos[0] = soldier_pos
 
 	var target_vec: Vector2 = SoldierBodies._corridor_to_slot(shallow_unit, 0, slot_pos, shallow_unit.soldiers, SoldierBodies.corridor_proximity_mult(shallow_unit), SoldierBodies.is_straight_march(shallow_unit))
-	var direct_vec: Vector2 = slot_pos - soldier_pos
-	var diff_len_sq: float = (target_vec - direct_vec).length_squared()
-	assert_gt(diff_len_sq, 1.0, "shallow turning march routes through perimeter corridor at distance 2.83 * pitch (narrow band)")
+	var expected_direct: Vector2 = slot_pos - soldier_pos
+	assert_almost_eq(target_vec.x, expected_direct.x, 1e-3, "shallow block's curved march walks direct within the wide band (x)")
+	assert_almost_eq(target_vec.y, expected_direct.y, 1e-3, "shallow block's curved march walks direct within the wide band (y)")
 
 
 func test_turning_march_extreme_lag_falls_back_to_perimeter_corridor() -> void:
@@ -177,7 +172,7 @@ func test_turning_march_extreme_lag_falls_back_to_perimeter_corridor() -> void:
 	deep_unit.state = Unit.State.MOVING
 	deep_unit._rotate_facing_toward(Vector2.RIGHT, 0.016, 2.0)
 	assert_true(deep_unit.is_turning(), "unit reports is_turning while rotating facing")
-	assert_true(deep_unit.is_deep_for_formed_turn(),
+	assert_lt(deep_unit._formed_turn_gait_frac(), 1.0,
 		"80-mount cavalry block is deep enough to derate its corner-slot pace")
 
 	var spacing: float = deep_unit.file_pitch_wu()
