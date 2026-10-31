@@ -135,7 +135,7 @@ var _cached_combat_profile: Dictionary = {}
 # target takes to go all the way from the standing one to the marching one: the time the
 # march takes to reach that speed from rest at `accel` (see
 # SoldierBodies.advance_march_target_frac). The target moves smoothly over that time as the
-# block sets off or stops, instead of switching on the first tick.
+# block sets off, instead of switching on the first tick.
 @export var march_target_walk_frac: float = 1.0
 # How far off his own slot, in file pitches, a soldier body must stand to take a share of
 # the march's acceleration on top of his own (SoldierBodies.march_share_frac): none within
@@ -1745,8 +1745,8 @@ var _body_march_ff_prev: Vector2 = Vector2.ZERO
 # that last set _approach_velocity; the snapshot carries it beside that velocity.
 var _body_march_orderly: bool = false
 # How far this unit's soldier bodies' arrival target has gone from the standing one toward
-# the marching one, 0 to 1 (SoldierBodies.advance_march_target_frac, which ramps it by time
-# while the block marches or stands).
+# the marching one, 0 to 1 (SoldierBodies.advance_march_target_frac, which ramps it up by
+# time while the block marches and drops it to 0 when the march stops).
 var _march_target_frac: float = 0.0
 # Velocity the regiment center followed its soldiers' centroid at this tick (phase 5):
 # the soldier->regiment coupling slides the center toward where its bodies actually are,

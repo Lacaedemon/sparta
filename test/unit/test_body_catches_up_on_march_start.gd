@@ -173,21 +173,21 @@ func test_his_arrival_target_does_not_jump_when_the_march_begins() -> void:
 	assert_almost_eq(prev.y, direct.y, 1e-3, "after the ramp he walks direct (y)")
 
 
-func test_a_march_zeroed_at_once_eases_his_target_back() -> void:
-	# A march stopped outright (its velocity zeroed in one tick, as a move that runs into
-	# contact or a spent charge does) still moves his target back to the standing one by small
-	# steps.
+func test_a_stop_switches_his_target_back_at_once() -> void:
+	# A march that stops (here zeroed in one tick, as a move that runs into contact is) puts
+	# him straight back on the standing target, as before the blend: easing it back there kept
+	# an attacker's men walking direct into the press.
 	var u := _make_block()
 	var slot: Vector2 = _place_between_bands(u)
 	u.state = Unit.State.MOVING
 	u._approach_velocity = u.facing * u.walk_speed
-	var prev: Vector2 = Vector2.ZERO
 	for _t in range(ceili(SoldierBodies.march_target_ramp_s(u) / TICK) + 1):
-		prev = _target_after_tick(u, slot)
+		_target_after_tick(u, slot)
 	u._approach_velocity = Vector2.ZERO
-	var first: Vector2 = _target_after_tick(u, slot)
-	assert_lt((first - prev).length(), 2.0,
-		"the tick the march stops moves his target by %.3f wu" % (first - prev).length())
+	var stopped: Vector2 = _target_after_tick(u, slot)
+	var standing: Vector2 = SoldierBodies.arrival_target(u, 0, slot, u.soldiers, 0.0, false)
+	assert_eq(u._march_target_frac, 0.0, "the blend drops to 0 the step the march stops")
+	assert_eq(stopped, standing, "and his target is the standing one")
 
 
 func test_march_target_frac_ramps_by_time_not_by_speed() -> void:
@@ -210,8 +210,7 @@ func test_march_target_frac_ramps_by_time_not_by_speed() -> void:
 		frac = SoldierBodies.advance_march_target_frac(u, TICK)
 	assert_eq(frac, 1.0, "after the ramp's time, all the way")
 	u._approach_velocity = Vector2.ZERO
-	assert_almost_eq(SoldierBodies.advance_march_target_frac(u, TICK), 1.0 - TICK / ramp_s, 1e-5,
-		"a stop eases it back at the same rate")
+	assert_eq(SoldierBodies.advance_march_target_frac(u, TICK), 0.0, "a stop drops it at once")
 	u.march_target_walk_frac = 0.0
 	u._approach_velocity = u.facing * 5.0
 	assert_eq(SoldierBodies.advance_march_target_frac(u, TICK), 1.0,

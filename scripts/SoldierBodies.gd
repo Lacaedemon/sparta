@@ -1212,24 +1212,27 @@ static func couple(unit: Unit, delta: float) -> void:
 
 ## Advances and returns how far a body's arrival target has gone from the standing one
 ## toward the marching one (see arrival_target), 0 to 1, kept on the unit
-## (Unit._march_target_frac). It moves toward 1 while the block marches and toward 0 while
-## it does not, by at most `delta` / march_target_ramp_s(unit) a step, so it covers the
-## whole way in the time the march takes to reach Unit.march_target_full_speed() from rest
-## at the unit's own acceleration. Depends only on unit-level state, so step() advances it
-## once per unit-step and hands it to every body's arrival_target call (the same hoisting
+## (Unit._march_target_frac). While the block marches it moves toward 1 by at most `delta` /
+## march_target_ramp_s(unit) a step, so it covers the whole way in the time the march takes
+## to reach Unit.march_target_full_speed() from rest at the unit's own acceleration; the
+## step the march stops it drops to 0. Depends only on unit-level state, so step() advances
+## it once per unit-step and hands it to every body's arrival_target call (the same hoisting
 ## mass, body_radius and turning get above the per-soldier loop).
 ##
-## Ramping by time, not reading it off the march speed, keeps the target moving smoothly
-## however the march starts or stops, including a march zeroed in one tick (a move that runs
-## fully into contact, a wheel step, a rout's start, a charge spent on its contact strike):
-## a hard switch at the first tick of the march swung the target of every man between the
-## two bands round by tens of degrees at once (on the seed-0 catalog, 543 of 895 such
-## switches swung a man's target more than 30 degrees), and he spent his acceleration turning
-## instead of closing on his slot. Nor does a block that marches steadily below its full
-## speed hold a target part way between the two for the whole march: a speed-read blend left
-## a 30-man block marching at 26 wu/s (general_doctrine_reserves, after its first melee)
-## with men half sent round the perimeter corridor, and the block stayed scrambled out of
-## contact (fitted residual 23.5 to 33.9 wu).
+## The ramp keeps the target moving smoothly as a march begins: a hard switch at the first
+## tick of the march swung the target of every man between the two bands round by tens of
+## degrees at once (on the seed-0 catalog, 543 of 895 such switches swung a man's target
+## more than 30 degrees), and he spent his acceleration turning instead of closing on his
+## slot. Ramping by time, not reading the blend off the march speed, keeps a block that
+## marches steadily below its full speed from holding a target part way between the two
+## for the whole march: a speed-read blend left a 30-man block marching at 26 wu/s
+## (general_doctrine_reserves, after its first melee) with men half sent round the
+## perimeter corridor, and the block stayed scrambled out of contact (fitted residual 23.5
+## to 33.9 wu). A stop is not ramped: the target switches back to the standing one at once,
+## as it always has. A march stops outright when it runs into contact, and easing the target
+## back there kept an attacker's men walking direct onto slots in the press: in the rear
+## attack of test_melee_side_contact_battle, 10 attackers stood more than a rank inside the
+## defender against none with the switch.
 ##
 ## The marching target uses the wider MARCHING_CORRIDOR_PROXIMITY_MULT band (own_slot is
 ## a moving point, not a fixed reform target -- see that const's own doc comment), straight
@@ -1250,7 +1253,7 @@ static func couple(unit: Unit, delta: float) -> void:
 static func advance_march_target_frac(unit: Unit, delta: float) -> float:
 	var goal: float = 1.0 if is_marching(unit) else 0.0
 	var ramp_s: float = march_target_ramp_s(unit)
-	if ramp_s <= 0.0:
+	if ramp_s <= 0.0 or goal <= 0.0:
 		unit._march_target_frac = goal
 	else:
 		unit._march_target_frac = move_toward(unit._march_target_frac, goal, delta / ramp_s)

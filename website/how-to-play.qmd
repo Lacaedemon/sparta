@@ -200,7 +200,7 @@ Men still walking to their places when the block steps off on a move order keep 
 on them as it gathers pace: each man speeds up with the march and still has his own pace
 to spare for catching up (a charge, a pursuit, a run or sprint order and a rout give no
 such spare pace), and the way he walks onto his place changes over gradually as the block
-gets under way, and back as it stops, rather than all at once.
+gets under way rather than all at once on its first step.
 To make a unit move immediately without the pause, uncheck **Reform before move** in
 its unit settings panel, or click **Reform** in the control bar --- either applies to every
 currently selected unit. Cavalry starts with the setting off (immediate
