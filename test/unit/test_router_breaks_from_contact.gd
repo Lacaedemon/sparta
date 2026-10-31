@@ -126,7 +126,7 @@ func test_a_router_pressed_beside_a_hill_is_not_carried_into_it() -> void:
 	# rate while the pursuer still presses it. An earlier bounded turn in contact let the
 	# press carry the anchor east into the hill, where the router counted as trapped and turned
 	# to fight (TODO(#1788): that mechanism is undiagnosed). Its anchor and every man must stay
-	# out of the hill, and it must flee on rather than stand and fight.
+	# out of the hill, and it must flee on to its rally rather than stand and fight.
 	var router: Unit = await _start([PRESS_ROUTER, PRESS_ENEMY], PRESS_SEED)
 	assert_not_null(router, "setup: the player squadron deployed")
 	if router == null:
@@ -179,16 +179,8 @@ func test_a_router_pressed_beside_a_hill_is_not_carried_into_it() -> void:
 			% transitions)
 	assert_eq(anchor_in_hill, 0, "the press never carries the router's anchor into the hill")
 	assert_eq(men_in_hill, 0, "nor any of its men")
-	# A router the hill traps stops its flight to fight to the death (_stop_rout_and_fight:
-	# shattered, and out of ROUTING). One whose rout timer runs out while the pursuer is still
-	# on it shatters too, but flees on. Which of rally and that shatter this staging ends in
-	# turns on a few ticks: on 9f9bddee the timer runs out at tick 710 just clear of the
-	# pursuer and it rallies; with men who catch up with their slots the pursuer is still on it
-	# then. Either way it flees on, which is what this test pins.
-	assert_false(router._shattered and router.state != Unit.State.ROUTING,
-			"it is never trapped into fighting to the death")
-	assert_true(router.state == Unit.State.ROUTING or router.state == Unit.State.IDLE,
-			"it flees on: still in flight, or rallied, at the end of the watch")
+	assert_false(router._shattered, "it is never trapped into fighting to the death")
+	assert_eq(router.state, Unit.State.IDLE, "it flees on and rallies inside the watch")
 
 
 func test_a_router_caught_from_behind_anchors_on_its_flight_side_ranks() -> void:

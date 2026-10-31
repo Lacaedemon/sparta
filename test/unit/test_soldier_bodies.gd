@@ -21,6 +21,13 @@ func _make_unit(uid: int, max_soldiers: int = 120) -> Unit:
 	return u
 
 
+## The arrival-target blend of a march long under way (SoldierBodies.advance_march_target_frac
+## ramps it to 1 over the march's first moments): wholly the marching target while the unit
+## marches, wholly the standing one while it does not.
+func _settled_frac(u: Unit) -> float:
+	return 1.0 if SoldierBodies.is_marching(u) else 0.0
+
+
 func test_soldier_layer_is_active_but_non_authoritative() -> void:
 	assert_true(Unit.INDIVIDUAL_COLLISION,
 		"the soldier layer is on — seeded, separated, and debug-rendered in parallel")
@@ -225,7 +232,7 @@ func test_corridor_to_slot_monotonic_scaling_routes_direct() -> void:
 	var u := _make_unit(55, 60)
 	u.state = Unit.State.MOVING
 	u.facing = Vector2.DOWN
-	u._approach_velocity = Vector2.DOWN * u.walk_speed   # full march speed: the marching target
+	u._approach_velocity = Vector2.DOWN * 40.0
 	u.seed_sim_soldiers()
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	var slot_idx: int = 0
@@ -239,7 +246,7 @@ func test_corridor_to_slot_monotonic_scaling_routes_direct() -> void:
 	var p_local: Vector2 = Vector2(t_local.x * 1.5, t_local.y * 1.5)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, SoldierBodies.march_target_frac(u), not u.is_turning())
+	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, _settled_frac(u), not u.is_turning())
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -253,7 +260,7 @@ func test_corridor_to_slot_tight_to_loose_extreme_ratio_routes_direct() -> void:
 	var u := _make_unit(55, 60)
 	u.state = Unit.State.MOVING
 	u.facing = Vector2.DOWN
-	u._approach_velocity = Vector2.DOWN * u.walk_speed   # full march speed: the marching target
+	u._approach_velocity = Vector2.DOWN * 40.0
 	u.seed_sim_soldiers()
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	var slot_idx: int = 0
@@ -265,7 +272,7 @@ func test_corridor_to_slot_tight_to_loose_extreme_ratio_routes_direct() -> void:
 	var p_local: Vector2 = Vector2(t_local.x * 0.25, t_local.y * 0.25)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, SoldierBodies.march_target_frac(u), not u.is_turning())
+	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, _settled_frac(u), not u.is_turning())
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -279,7 +286,7 @@ func test_corridor_to_slot_loose_to_tight_extreme_ratio_routes_direct() -> void:
 	var u := _make_unit(55, 60)
 	u.state = Unit.State.MOVING
 	u.facing = Vector2.DOWN
-	u._approach_velocity = Vector2.DOWN * u.walk_speed   # full march speed: the marching target
+	u._approach_velocity = Vector2.DOWN * 40.0
 	u.seed_sim_soldiers()
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	var slot_idx: int = 0
@@ -291,7 +298,7 @@ func test_corridor_to_slot_loose_to_tight_extreme_ratio_routes_direct() -> void:
 	var p_local: Vector2 = Vector2(t_local.x * 4.0, t_local.y * 4.0)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, SoldierBodies.march_target_frac(u), not u.is_turning())
+	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, _settled_frac(u), not u.is_turning())
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -305,7 +312,7 @@ func test_corridor_to_slot_loose_to_testudo_extreme_ratio_routes_direct() -> voi
 	var u := _make_unit(55, 60)
 	u.state = Unit.State.MOVING
 	u.facing = Vector2.DOWN
-	u._approach_velocity = Vector2.DOWN * u.walk_speed   # full march speed: the marching target
+	u._approach_velocity = Vector2.DOWN * 40.0
 	u.seed_sim_soldiers()
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	var slot_idx: int = 0
@@ -317,7 +324,7 @@ func test_corridor_to_slot_loose_to_testudo_extreme_ratio_routes_direct() -> voi
 	var p_local: Vector2 = Vector2(t_local.x * 0.15, t_local.y * 0.15)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, SoldierBodies.march_target_frac(u), not u.is_turning())
+	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, _settled_frac(u), not u.is_turning())
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -331,7 +338,7 @@ func test_corridor_to_slot_testudo_to_loose_extreme_ratio_routes_direct() -> voi
 	var u := _make_unit(55, 60)
 	u.state = Unit.State.MOVING
 	u.facing = Vector2.DOWN
-	u._approach_velocity = Vector2.DOWN * u.walk_speed   # full march speed: the marching target
+	u._approach_velocity = Vector2.DOWN * 40.0
 	u.seed_sim_soldiers()
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	var slot_idx: int = 0
@@ -343,7 +350,7 @@ func test_corridor_to_slot_testudo_to_loose_extreme_ratio_routes_direct() -> voi
 	var p_local: Vector2 = Vector2(t_local.x * (4.0 / 0.6), t_local.y * (4.0 / 0.6))
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, SoldierBodies.march_target_frac(u), not u.is_turning())
+	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, _settled_frac(u), not u.is_turning())
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 

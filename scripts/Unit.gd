@@ -131,10 +131,11 @@ var _cached_combat_profile: Dictionary = {}
 # Defaults are a middling (infantry-like) value for bare test units without a loadout.
 @export var accel: float = 30.0
 @export var decel: float = 60.0
-# The march speed, as a fraction of walk_speed, at which a soldier body's arrival target has
-# gone all the way from the standing one to the marching one (see
-# SoldierBodies.march_target_frac): below it the two are blended by speed, so the target
-# moves smoothly as the block sets off or pulls up instead of switching on the first tick.
+# The march speed, as a fraction of walk_speed, that sets how long a soldier body's arrival
+# target takes to go all the way from the standing one to the marching one: the time the
+# march takes to reach that speed from rest at `accel` (see
+# SoldierBodies.advance_march_target_frac). The target moves smoothly over that time as the
+# block sets off or stops, instead of switching on the first tick.
 @export var march_target_walk_frac: float = 1.0
 # How far off his own slot, in file pitches, a soldier body must stand to take a share of
 # the march's acceleration on top of his own (SoldierBodies.march_share_frac): none within
@@ -1743,6 +1744,10 @@ var _body_march_ff_prev: Vector2 = Vector2.ZERO
 # the top of every _physics_process and set by _move_to, so it always describes the march
 # that last set _approach_velocity; the snapshot carries it beside that velocity.
 var _body_march_orderly: bool = false
+# How far this unit's soldier bodies' arrival target has gone from the standing one toward
+# the marching one, 0 to 1 (SoldierBodies.advance_march_target_frac, which ramps it by time
+# while the block marches or stands).
+var _march_target_frac: float = 0.0
 # Velocity the regiment center followed its soldiers' centroid at this tick (phase 5):
 # the soldier->regiment coupling slides the center toward where its bodies actually are,
 # so friendly collision (and later all collision) emerges from the soldier layer. Stored
@@ -4243,7 +4248,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# never leaves a shallow line's men far behind their swinging slots, so it keeps its
 		# full jog pace, and only a genuinely deep/wide block pays this fix's cost. (Men a
 		# combat re-face throws far off their slots walk back direct on any march: see
-		# SoldierBodies.march_target_frac.)
+		# SoldierBodies.advance_march_target_frac.)
 		# _formed_turn_gait_frac already clamps its result to (0, 1] with a small positive
 		# floor, not 0.0, so a caller-supplied formed_turn_tracking_frac outside that range
 		# still produces a slow, real pivot -- never a stalled one, and never one that lets
@@ -9699,7 +9704,7 @@ func flee_speed() -> float:
 
 
 ## The march speed at which a soldier body's arrival target is wholly the marching one
-## (walk_speed * march_target_walk_frac; see SoldierBodies.march_target_frac).
+## (walk_speed * march_target_walk_frac; see SoldierBodies.march_target_ramp_s).
 func march_target_full_speed() -> float:
 	return walk_speed * march_target_walk_frac
 
@@ -11990,6 +11995,7 @@ func to_snapshot_dict() -> Dictionary:
 		"moved_while_routing_pace": _moved_while_routing_pace,
 		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity, "flight_turn_rate": _flight_turn_rate,
 		"body_march_ff_prev": _body_march_ff_prev, "body_march_orderly": _body_march_orderly,
+		"march_target_frac": _march_target_frac,
 		"rally_halt": _rally_halt, "rally_resquare_pending": _rally_resquare_pending,
 		"rally_fold_unsquared": _rally_fold_unsquared, "rally_clear_ticks": _rally_clear_ticks,
 		# Not reset before a routing unit's early return, so a router keeps reading it.
@@ -12265,6 +12271,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_flight_turn_rate = float(d.get("flight_turn_rate", _flight_turn_rate))
 	_body_march_ff_prev = d.get("body_march_ff_prev", _body_march_ff_prev)
 	_body_march_orderly = bool(d.get("body_march_orderly", _body_march_orderly))
+	_march_target_frac = float(d.get("march_target_frac", _march_target_frac))
 	_rally_halt = bool(d.get("rally_halt", _rally_halt))
 	_rally_resquare_pending = bool(d.get("rally_resquare_pending", false))
 	_rally_fold_unsquared = bool(d.get("rally_fold_unsquared", false))

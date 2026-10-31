@@ -2,9 +2,10 @@ extends GutTest
 ## A man walking back to his slot as his block sets off. Two things decide whether he
 ## catches up: his velocity has to change faster than his slot's does while the march speeds
 ## up (SoldierBodies.march_accel_budget), and his arrival target must not swing round the
-## instant the march begins (SoldierBodies.march_target_frac and arrival_target). These drive
+## instant the march begins (SoldierBodies.advance_march_target_frac and arrival_target). These drive
 ## SoldierBodies.step directly, with the anchor marched by hand at the unit's own
-## acceleration, so the march ramp is exactly the one _move_to gives a block from a standstill.
+## acceleration up to walk pace. That ramp approximates the one _move_to gives a block from a
+## standstill on open ground: _set_off leaves out terrain, travel_frac and the gait ladder.
 
 const TICK: float = 1.0 / 60.0
 
@@ -125,62 +126,138 @@ func test_an_engaged_body_takes_no_share_of_the_march_acceleration() -> void:
 		"the engaged man's velocity is the same whether or not the march is speeding up")
 
 
+## Man 0 of `u` set two pitches across files and two across ranks off his slot (2.83 pitches):
+## outside the standing band, so standing he walks the perimeter corridor; inside the
+## marching band, so on the march he walks direct. That is the man whose target the march
+## start used to swing. Returns his slot.
+func _place_between_bands(u: Unit) -> Vector2:
+	var spacing: float = u.file_pitch_wu()
+	var slot: Vector2 = u._sim_soldier_pos[0]
+	u._sim_soldier_pos[0] = slot + Vector2(spacing * 2.0, -spacing * 2.0)
+	return slot
+
+
+## Man 0's arrival target on `u` after advancing the blend one tick.
+func _target_after_tick(u: Unit, slot: Vector2) -> Vector2:
+	return SoldierBodies.arrival_target(u, 0, slot, u.soldiers,
+			SoldierBodies.advance_march_target_frac(u, TICK), not u.is_turning())
+
+
 func test_his_arrival_target_does_not_jump_when_the_march_begins() -> void:
 	var u := _make_block()
-	var spacing: float = u.file_pitch_wu()
-	var i: int = 0
-	var slot: Vector2 = u._sim_soldier_pos[i]
-	# Two pitches across files and two across ranks (2.83 pitches off): outside the standing
-	# band, so standing he walks the perimeter corridor; inside the marching band, so on the
-	# march he walks direct. That is the man whose target the march start used to swing.
-	u._sim_soldier_pos[i] = slot + Vector2(spacing * 2.0, -spacing * 2.0)
-	var direct: Vector2 = slot - u._sim_soldier_pos[i]
+	var slot: Vector2 = _place_between_bands(u)
+	var direct: Vector2 = slot - u._sim_soldier_pos[0]
 	u.state = Unit.State.MOVING
 	u._approach_velocity = Vector2.ZERO
-	var standing: Vector2 = SoldierBodies.arrival_target(u, i, slot, u.soldiers,
-			SoldierBodies.march_target_frac(u), not u.is_turning())
+	var standing: Vector2 = _target_after_tick(u, slot)
 	assert_gt(rad_to_deg(absf(standing.angle_to(direct))), 10.0,
 		"precondition: standing, he is routed round the corridor, not sent direct")
 	# The first tick of a march from a standstill: speed accel * TICK.
 	u._approach_velocity = u.facing * (u.accel * TICK)
-	var first: Vector2 = SoldierBodies.arrival_target(u, i, slot, u.soldiers,
-			SoldierBodies.march_target_frac(u), not u.is_turning())
+	var first: Vector2 = _target_after_tick(u, slot)
 	var swing: float = rad_to_deg(absf(standing.angle_to(first)))
 	assert_lt(swing, 1.0,
 		"the first tick of the march turns his target by %.3f degrees, not round to the direct line" % swing)
 	assert_lt((first - standing).length(), 1.0,
 		"the first tick of the march moves his target by %.3f wu" % (first - standing).length())
-	# Every tick of the ramp moves the target by a small step, and at walk pace it is the
-	# marching (direct) target.
+	# Every tick of the ramp moves the target by a small step, and once the ramp is over it is
+	# the marching (direct) target.
 	var prev: Vector2 = first
-	var speed: float = u.accel * TICK
 	var worst: float = 0.0
-	while speed < u.walk_speed:
-		speed = minf(speed + u.accel * TICK, u.walk_speed)
-		u._approach_velocity = u.facing * speed
-		var t: Vector2 = SoldierBodies.arrival_target(u, i, slot, u.soldiers,
-				SoldierBodies.march_target_frac(u), not u.is_turning())
+	for _t in range(ceili(SoldierBodies.march_target_ramp_s(u) / TICK) + 1):
+		var t: Vector2 = _target_after_tick(u, slot)
 		worst = maxf(worst, (t - prev).length())
 		prev = t
 	assert_lt(worst, 2.0, "no tick of the ramp moves his target by more than %.3f wu" % worst)
-	assert_almost_eq(prev.x, direct.x, 1e-3, "at walk pace he walks direct (x)")
-	assert_almost_eq(prev.y, direct.y, 1e-3, "at walk pace he walks direct (y)")
+	assert_almost_eq(prev.x, direct.x, 1e-3, "after the ramp he walks direct (x)")
+	assert_almost_eq(prev.y, direct.y, 1e-3, "after the ramp he walks direct (y)")
 
 
-func test_march_target_frac_rises_with_the_march_to_its_full_speed() -> void:
+func test_a_march_zeroed_at_once_eases_his_target_back() -> void:
+	# A march stopped outright (its velocity zeroed in one tick, as a move that runs into
+	# contact or a spent charge does) still moves his target back to the standing one by small
+	# steps.
 	var u := _make_block()
+	var slot: Vector2 = _place_between_bands(u)
+	u.state = Unit.State.MOVING
+	u._approach_velocity = u.facing * u.walk_speed
+	var prev: Vector2 = Vector2.ZERO
+	for _t in range(ceili(SoldierBodies.march_target_ramp_s(u) / TICK) + 1):
+		prev = _target_after_tick(u, slot)
 	u._approach_velocity = Vector2.ZERO
-	assert_eq(SoldierBodies.march_target_frac(u), 0.0, "a block standing still has the standing target")
-	u._approach_velocity = u.facing * (u.march_target_full_speed() * 0.5)
-	assert_almost_eq(SoldierBodies.march_target_frac(u), 0.5, 1e-5, "half the full speed, half the way")
-	u._approach_velocity = u.facing * (u.march_target_full_speed() * 3.0)
-	assert_eq(SoldierBodies.march_target_frac(u), 1.0, "past the full speed, all the way")
-	u.march_target_walk_frac = 0.5
-	u._approach_velocity = u.facing * (u.walk_speed * 0.25)
-	assert_almost_eq(SoldierBodies.march_target_frac(u), 0.5, 1e-5,
-		"the full speed follows the unit's own march_target_walk_frac")
+	var first: Vector2 = _target_after_tick(u, slot)
+	assert_lt((first - prev).length(), 2.0,
+		"the tick the march stops moves his target by %.3f wu" % (first - prev).length())
+
+
+func test_march_target_frac_ramps_by_time_not_by_speed() -> void:
+	var u := _make_block()
+	var ramp_s: float = SoldierBodies.march_target_ramp_s(u)
+	assert_almost_eq(ramp_s, u.march_target_full_speed() / u.accel, 1e-5,
+		"the ramp takes as long as the march takes to reach its full speed from rest")
+	u._approach_velocity = Vector2.ZERO
+	assert_eq(SoldierBodies.advance_march_target_frac(u, TICK), 0.0,
+		"a block standing still has the standing target")
+	# A march held well below the full speed still reaches the marching target, in the ramp's
+	# time: a block marching steadily at a slow pace has its men walk direct like any other.
+	u._approach_velocity = u.facing * (u.march_target_full_speed() * 0.2)
+	var half_ticks: int = roundi(ramp_s * 0.5 / TICK)
+	var frac: float = 0.0
+	for _t in range(half_ticks):
+		frac = SoldierBodies.advance_march_target_frac(u, TICK)
+	assert_almost_eq(frac, 0.5, 0.02, "half the ramp's time, half the way, whatever the speed")
+	for _t in range(half_ticks + 2):
+		frac = SoldierBodies.advance_march_target_frac(u, TICK)
+	assert_eq(frac, 1.0, "after the ramp's time, all the way")
+	u._approach_velocity = Vector2.ZERO
+	assert_almost_eq(SoldierBodies.advance_march_target_frac(u, TICK), 1.0 - TICK / ramp_s, 1e-5,
+		"a stop eases it back at the same rate")
 	u.march_target_walk_frac = 0.0
-	assert_eq(SoldierBodies.march_target_frac(u), 1.0, "a zero full speed marches at once")
+	u._approach_velocity = u.facing * 5.0
+	assert_eq(SoldierBodies.advance_march_target_frac(u, TICK), 1.0,
+		"a zero full speed switches at once")
+
+
+func test_the_blended_target_keeps_its_length() -> void:
+	# step() reads a man's desired speed off his target's length, so the blend of two targets
+	# that point apart must not be shorter than both: two 30 wu targets at right angles keep
+	# 30 wu at every point of the blend (a plain lerp would give 21.2 wu halfway).
+	var a := Vector2(30, 0)
+	var b := Vector2(0, 30)
+	for k in range(11):
+		var f: float = k / 10.0
+		var t: Vector2 = SoldierBodies.blend_targets(a, b, f)
+		assert_almost_eq(t.length(), 30.0, 1e-3, "at %.1f of the way the target is %.3f wu long" % [f, t.length()])
+	var half: Vector2 = SoldierBodies.blend_targets(a, b, 0.5)
+	assert_almost_eq(rad_to_deg(half.angle()), 45.0, 1e-3, "and halfway it points halfway between them")
+	# Lengths that differ blend linearly.
+	assert_almost_eq(SoldierBodies.blend_targets(Vector2(10, 0), Vector2(0, 30), 0.25).length(),
+			15.0, 1e-3, "a quarter of the way from 10 to 30 wu is 15 wu")
+	# Two targets pointing straight apart keep the nearer end's direction.
+	assert_almost_eq(SoldierBodies.blend_targets(Vector2(10, 0), Vector2(-20, 0), 0.5),
+			Vector2(-15, 0), Vector2(1e-3, 1e-3), "opposed targets, halfway: the marching direction")
+	assert_almost_eq(SoldierBodies.blend_targets(Vector2(10, 0), Vector2(-20, 0), 0.25),
+			Vector2(12.5, 0), Vector2(1e-3, 1e-3), "opposed targets, a quarter: the standing direction")
+	# A zero-length end blends to the other end's direction, linearly in length.
+	assert_almost_eq(SoldierBodies.blend_targets(Vector2.ZERO, Vector2(0, 20), 0.5),
+			Vector2(0, 10), Vector2(1e-3, 1e-3), "from nothing, halfway")
+
+
+func test_the_blended_target_keeps_its_length_in_step() -> void:
+	# The same, on a man between the two bands as his block sets off: at every tick of the
+	# ramp his target is at least as long as the shorter of the standing and marching ones.
+	var u := _make_block()
+	var slot: Vector2 = _place_between_bands(u)
+	u.state = Unit.State.MOVING
+	u._approach_velocity = u.facing * (u.accel * TICK)
+	var worst: float = INF
+	for _t in range(ceili(SoldierBodies.march_target_ramp_s(u) / TICK)):
+		var frac: float = SoldierBodies.advance_march_target_frac(u, TICK)
+		var standing: Vector2 = SoldierBodies.arrival_target(u, 0, slot, u.soldiers, 0.0, true)
+		var marching: Vector2 = SoldierBodies.arrival_target(u, 0, slot, u.soldiers, 1.0, true)
+		var t: Vector2 = SoldierBodies.arrival_target(u, 0, slot, u.soldiers, frac, true)
+		worst = minf(worst, t.length() - minf(standing.length(), marching.length()))
+	assert_gt(worst, -1e-3, "the blended target is never shorter than both ends (worst %.4f wu)" % worst)
 
 
 func test_march_share_frac_ramps_from_half_a_pitch_to_a_pitch() -> void:

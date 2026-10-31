@@ -58,6 +58,13 @@ func _make_deep_cavalry_80(pos: Vector2 = Vector2(500, 500)) -> Unit:
 	return u
 
 
+## The arrival-target blend of a march long under way (SoldierBodies.advance_march_target_frac
+## ramps it to 1 over the march's first moments): wholly the marching target while the unit
+## marches, wholly the standing one while it does not.
+func _settled_frac(u: Unit) -> float:
+	return 1.0 if SoldierBodies.is_marching(u) else 0.0
+
+
 func test_straight_march_uses_wide_proximity_for_direct_arrival() -> void:
 	# Straight march down: approach velocity aligned with facing, not turning
 	_unit.facing = Vector2.DOWN
@@ -70,7 +77,7 @@ func test_straight_march_uses_wide_proximity_for_direct_arrival() -> void:
 	var soldier_pos: Vector2 = slot_pos + Vector2(spacing * 2.0, spacing * 2.0)
 	_unit._sim_soldier_pos[0] = soldier_pos
 
-	var target_vec: Vector2 = SoldierBodies.arrival_target(_unit, 0, slot_pos, _unit.soldiers, SoldierBodies.march_target_frac(_unit), not _unit.is_turning())
+	var target_vec: Vector2 = SoldierBodies.arrival_target(_unit, 0, slot_pos, _unit.soldiers, _settled_frac(_unit), not _unit.is_turning())
 	var expected_direct: Vector2 = slot_pos - soldier_pos
 	assert_almost_eq(target_vec.x, expected_direct.x, 1e-3, "straight march allows direct arrival within wide threshold (x)")
 	assert_almost_eq(target_vec.y, expected_direct.y, 1e-3, "straight march allows direct arrival within wide threshold (y)")
@@ -87,7 +94,7 @@ func test_held_facing_retreat_uses_wide_proximity() -> void:
 	var soldier_pos: Vector2 = slot_pos + Vector2(spacing * 2.0, spacing * 2.0)
 	_unit._sim_soldier_pos[0] = soldier_pos
 
-	var target_vec: Vector2 = SoldierBodies.arrival_target(_unit, 0, slot_pos, _unit.soldiers, SoldierBodies.march_target_frac(_unit), not _unit.is_turning())
+	var target_vec: Vector2 = SoldierBodies.arrival_target(_unit, 0, slot_pos, _unit.soldiers, _settled_frac(_unit), not _unit.is_turning())
 	var expected_direct: Vector2 = slot_pos - soldier_pos
 	assert_almost_eq(target_vec.x, expected_direct.x, 1e-3, "held-facing retreat allows direct arrival (x)")
 	assert_almost_eq(target_vec.y, expected_direct.y, 1e-3, "held-facing retreat allows direct arrival (y)")
@@ -104,7 +111,7 @@ func test_held_facing_lateral_sidestep_uses_wide_proximity() -> void:
 	var soldier_pos: Vector2 = slot_pos + Vector2(spacing * 2.0, spacing * 2.0)
 	_unit._sim_soldier_pos[0] = soldier_pos
 
-	var target_vec: Vector2 = SoldierBodies.arrival_target(_unit, 0, slot_pos, _unit.soldiers, SoldierBodies.march_target_frac(_unit), not _unit.is_turning())
+	var target_vec: Vector2 = SoldierBodies.arrival_target(_unit, 0, slot_pos, _unit.soldiers, _settled_frac(_unit), not _unit.is_turning())
 	var expected_direct: Vector2 = slot_pos - soldier_pos
 	assert_almost_eq(target_vec.x, expected_direct.x, 1e-3, "lateral sidestep allows direct arrival (x)")
 	assert_almost_eq(target_vec.y, expected_direct.y, 1e-3, "lateral sidestep allows direct arrival (y)")
@@ -129,7 +136,7 @@ func test_deep_turning_march_uses_wide_proximity_for_direct_arrival() -> void:
 	var soldier_pos: Vector2 = slot_pos + Vector2(spacing * 2.0, spacing * 2.0)
 	deep_unit._sim_soldier_pos[0] = soldier_pos
 
-	var target_vec: Vector2 = SoldierBodies.arrival_target(deep_unit, 0, slot_pos, deep_unit.soldiers, SoldierBodies.march_target_frac(deep_unit), not deep_unit.is_turning())
+	var target_vec: Vector2 = SoldierBodies.arrival_target(deep_unit, 0, slot_pos, deep_unit.soldiers, _settled_frac(deep_unit), not deep_unit.is_turning())
 	var expected_direct: Vector2 = slot_pos - soldier_pos
 	assert_almost_eq(target_vec.x, expected_direct.x, 1e-3, "deep block's curved march allows direct arrival within wide threshold (x)")
 	assert_almost_eq(target_vec.y, expected_direct.y, 1e-3, "deep block's curved march allows direct arrival within wide threshold (y)")
@@ -159,7 +166,7 @@ func test_shallow_turning_march_uses_wide_proximity_for_direct_arrival() -> void
 	var soldier_pos: Vector2 = slot_pos + Vector2(spacing * 2.0, spacing * 2.0)
 	shallow_unit._sim_soldier_pos[0] = soldier_pos
 
-	var target_vec: Vector2 = SoldierBodies.arrival_target(shallow_unit, 0, slot_pos, shallow_unit.soldiers, SoldierBodies.march_target_frac(shallow_unit), not shallow_unit.is_turning())
+	var target_vec: Vector2 = SoldierBodies.arrival_target(shallow_unit, 0, slot_pos, shallow_unit.soldiers, _settled_frac(shallow_unit), not shallow_unit.is_turning())
 	var expected_direct: Vector2 = slot_pos - soldier_pos
 	assert_almost_eq(target_vec.x, expected_direct.x, 1e-3, "shallow block's curved march walks direct within the wide band (x)")
 	assert_almost_eq(target_vec.y, expected_direct.y, 1e-3, "shallow block's curved march walks direct within the wide band (y)")
@@ -181,7 +188,7 @@ func test_turning_march_extreme_lag_falls_back_to_perimeter_corridor() -> void:
 	var soldier_pos: Vector2 = slot_pos + Vector2(spacing * 3.5, spacing * 3.5)
 	deep_unit._sim_soldier_pos[0] = soldier_pos
 
-	var target_vec: Vector2 = SoldierBodies.arrival_target(deep_unit, 0, slot_pos, deep_unit.soldiers, SoldierBodies.march_target_frac(deep_unit), not deep_unit.is_turning())
+	var target_vec: Vector2 = SoldierBodies.arrival_target(deep_unit, 0, slot_pos, deep_unit.soldiers, _settled_frac(deep_unit), not deep_unit.is_turning())
 	var direct_vec: Vector2 = slot_pos - soldier_pos
 	var diff_len_sq: float = (target_vec - direct_vec).length_squared()
 	assert_gt(diff_len_sq, 1.0, "curved march routes through perimeter corridor when exceeding wide threshold")
@@ -199,7 +206,7 @@ func test_stationary_unit_uses_standard_proximity() -> void:
 	var soldier_pos: Vector2 = slot_pos + Vector2(spacing * 2.0, spacing * 2.0)
 	_unit._sim_soldier_pos[0] = soldier_pos
 
-	var target_vec: Vector2 = SoldierBodies.arrival_target(_unit, 0, slot_pos, _unit.soldiers, SoldierBodies.march_target_frac(_unit), not _unit.is_turning())
+	var target_vec: Vector2 = SoldierBodies.arrival_target(_unit, 0, slot_pos, _unit.soldiers, _settled_frac(_unit), not _unit.is_turning())
 	var direct_vec: Vector2 = slot_pos - soldier_pos
 	var diff_len_sq: float = (target_vec - direct_vec).length_squared()
 	assert_gt(diff_len_sq, 1.0, "stationary unit routes through corridor at distance 3.0 * pitch")

@@ -17,14 +17,13 @@ extends GutTest
 ## judged_mask() (see .claude/skills/verify-via-state-dump/SKILL.md).
 
 ## Ticks to clear the opening charge, its per-soldier melee exchange, and the subsequent
-## re-spread while the (still-engaged) infantry tracks/pursues the peeling cavalry at a walk
-## (see the walk_advance note in the test). Measured empirically on this exact matchup/seed:
-## melee ends by ~t420, and with the fix the settle streak completes by t1133 (t957 to
-## t1049 on perturbed seeds 1 to 4). Deliberately NOT a generous multiple of that -- the
-## whole point of this regression is that the pre-fix block eventually staggers back into
-## spacing too, just far too slowly, so a loose budget would pass on the broken code by
-## simply waiting it out. With the narrow band restored it completes at t1272 here (t1175 to
-## t1272 on seeds 1 to 4), so 1150 sits between the two on every one of those seeds.
+## re-spread while the (still-engaged) infantry tracks/pursues the peeling cavalry. Measured
+## empirically on this exact matchup/seed: melee ends by ~t420, and with the fix the settle
+## streak completes by ~t1000. Deliberately NOT a generous multiple of that -- the whole
+## point of this regression is that the pre-fix block eventually staggers back into spacing
+## too (measured ~t1290), just far too slowly, so a loose budget would pass on the broken
+## code by simply waiting it out. 1150 sits with real margin over the fixed settle time and
+## well under the broken one.
 const REFORM_BUDGET: int = 1150
 ## Once the worst (minimum) pairwise nearest-neighbour distance first reaches the settle
 ## floor, it must HOLD there for this many consecutive judged ticks before counting as
@@ -70,11 +69,6 @@ func test_infantry_block_respreads_after_melee_exit() -> void:
 	# test_cycle_charge_flee_battle.gd's own setup for the identical matchup).
 	cav.order_mode = Unit.ORDER_CYCLE_CHARGE
 	cav.target_enemy = inf
-	# The infantry pursues at a walk. Left on AUTO pace, a pursuer whose men keep up with its
-	# march closes on the circling cavalry and sprints after it, and no block re-spreads at a
-	# sprint with its men a hundred world units behind: the spacing would then measure the
-	# pursuit's pace, not the corridor routing this test guards.
-	inf.walk_advance = true
 
 	var pitch: float = inf.file_pitch_wu()
 	assert_gt(pitch, 0.0, "the infantry has a real commanded formation pitch to re-spread to")
