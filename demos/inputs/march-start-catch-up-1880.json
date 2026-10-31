@@ -26,7 +26,7 @@
   "defect_exemptions": {
     "misslotted": {
       "uids": [0],
-      "reason": "Loosening the spacing doubles every man's distance from the pivot, so while the men walk out to their new slots most stand nearer another man's slot than their own: misslotted reads 0.4375 on 9f9bddee and 0.396 with this change, against 0.25. The scan has a transit window for shape_residual after a reshape but none for misslotted. Tracked in #TBD-1880-b. Measured 2026-10-31 on FULL dumps every 2 ticks, Windows."
+      "reason": "Loosening the spacing doubles every man's distance from the pivot, so while the men walk out to their new slots most stand nearer another man's slot than their own: misslotted reads 0.4375 on 9f9bddee and 0.396 with this change, against 0.25. The scan has a transit window for shape_residual after a reshape but none for misslotted. Tracked in #1892. Measured 2026-10-31 on FULL dumps every 2 ticks, Windows."
     }
   }
 }
