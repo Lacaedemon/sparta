@@ -5512,6 +5512,13 @@ func terrain_clearance(travel_dir: Vector2 = Vector2.ZERO, extents: Vector2 = UN
 	# small heading correction left trailing (_grid_lag) is left out: it closes within a
 	# bounded turn, and a clearance that read it would steer the march off the heading the
 	# lag is still closing on, which turns the heading again and feeds the lag back.
+	# An order's re-square (_grid_lag_resquare) is different: its lag can stand at up to a
+	# quarter-turn, so the fold alone can name the wrong one of the two half-extents while the
+	# grid turns out. The grid then passes through every angle between where it stands and the
+	# fold, so the clearance is the corner man's, which bounds the swept width at any of them.
+	# It does not depend on how far the lag has closed, so it cannot feed the lag back.
+	if _grid_lag_resquare and _grid_lag != 0.0:
+		return corner_clearance(half_extents)
 	var u_axis: Vector2 = Vector2.RIGHT.rotated(facing.angle() + PI * 0.5 + _formation_angle)
 	var swept: float = half_extents.x * absf(u_axis.cross(dir)) + half_extents.y * absf(u_axis.dot(dir))
 	return swept + soldier_body_radius()
@@ -7415,6 +7422,11 @@ func _arm_combo_step(step: Order) -> bool:
 ## about-face fold (+-PI) needs no such step: files stay lateral under a half-turn. An
 ## absolute step (dir == 0, `frontage` set) applies as-is. Either way the bodies ease onto
 ## the reshaped slots at velocity (set_frontage); nothing snaps.
+## The grid is judged where it stands, the fold plus any lag it still trails (grid_fold): an
+## order's re-square can leave the fold square with the grid still a quarter-turn off it, and
+## the files then run along the depth all the same. The transposition squares the whole grid,
+## so it drops the lag with the fold, and with it a re-square still turning or waiting to run.
+## A grid that stands nearer square or a half-turn keeps its lag, which goes on closing.
 func _apply_file_double_step(step: Order) -> void:
 	var files: int = step.frontage
 	if step.dir != 0:
@@ -7424,15 +7436,22 @@ func _apply_file_double_step(step: Order) -> void:
 			_formation_angle = 0.0
 			_absorbed_fold = 0.0
 			_drill_turn_fold = 0.0
+			_grid_lag = 0.0
+			_grid_lag_rate = 0.0
+			_grid_lag_resquare = false
+			_resquare_pending = false
 			_render_dirty = true
 		files = UnitFormation.widened_files(soldiers, current) if step.dir > 0 \
 				else UnitFormation.narrowed_files(current)
 	set_frontage(files, step.frontage_anchor_offset)
 
 
-## True while the folded maneuver rotation is nearer a quarter turn either way than a square or
+## True while the slot grid's turn off the heading (grid_fold: the folded maneuver rotation plus
+## any lag the grid still trails) is nearer a quarter turn either way than a square or
 ## a half-turn -- the grid's file axis then runs nearer the block's depth than across its
 ## facing. False for a square grid and for an about-face fold, whose file axis is still lateral.
+## Read from the grid rather than the fold alone, since an order's re-square can stand the fold
+## on its square line with the grid still turning out up to a quarter-turn from it (the lag).
 ## Read from the fold's nearest quarter, not from an exact quarter, because a quarter-turn
 ## composed onto a leftover snap-absorb fold lands off one (a 25 degree residue plus 90 is 115)
 ## while its files still run along the depth. Nor from the drills that made it: a quarter-turn
@@ -7440,7 +7459,7 @@ func _apply_file_double_step(step: Order) -> void:
 ## A fold exactly between two quarters falls to roundi's tie-break, half away from zero: 45
 ## degrees reads as a quarter and 135 as a half-turn.
 func _holds_quarter_fold() -> bool:
-	var quarters: int = roundi(wrapf(_formation_angle, -PI, PI) / (PI * 0.5))
+	var quarters: int = roundi(wrapf(grid_fold(), -PI, PI) / (PI * 0.5))
 	return quarters % 2 != 0
 
 
