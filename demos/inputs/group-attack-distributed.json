@@ -59,11 +59,11 @@
   "defect_exemptions": {
     "overlap": {
       "uids": [8],
-      "reason": "Uid 8, overlap: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; 903ca538 (#1880) reads 3.59, 3.59, 3.58, pass, 3.59, against 5.0. Traced on the clip seed: two riders (5 and 6) walking back to slots 40 to 80 wu away, along one line, while the block marches on an ATTACK out of contact, close from 10.4 wu at tick 680 to 3.59 wu at tick 710 and part again by tick 730; on 9f9bddee the same two close only to 10.2 wu. Men of one block crossing while they re-form (#1791). Measured 2026-10-31."
+      "reason": "Uid 8, overlap: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; 678aab68 (#1880) reads 3.59, 3.59, 3.58, pass, 3.59, against 5.0. Traced on the clip seed: two riders (5 and 6) walking back to slots 40 to 80 wu away, along one line, while the block marches on an ATTACK out of contact, close from 10.4 wu at tick 680 to 3.59 wu at tick 710 and part again by tick 730; on 9f9bddee the same two close only to 10.2 wu. Men of one block crossing while they re-form (#1791). Measured 2026-10-31."
     },
     "facing_flutter": {
       "uids": [9],
-      "reason": "Uid 9, facing_flutter: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; 903ca538 (#1880) reads pass, pass, pass, pass, 4.00, against 3. Not traced; the battle runs on a different trajectory from 9f9bddee's, and the marching heading dither tracked in #1764 is the likely mechanism. Measured 2026-10-31."
+      "reason": "Uid 9, facing_flutter: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; 678aab68 (#1880) reads pass, pass, pass, pass, 4.00, against 3. Not traced; the battle runs on a different trajectory from 9f9bddee's, and the marching heading dither tracked in #1764 is the likely mechanism. Measured 2026-10-31."
     }
   }
 }

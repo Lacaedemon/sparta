@@ -20,5 +20,11 @@
     {"tick": [480, 600], "uid": 3, "field": "target_enemy_uid", "value": 0},
     {"tick": [480, 600], "uid": 3, "field": "engaged", "value": true},
     {"tick": [610, 700], "uid": 0, "absent": true}
-  ]
+  ],
+  "defect_exemptions": {
+    "shape_residual": {
+      "uids": [3],
+      "reason": "Uid 3, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; 678aab68 (#1880) reads 41.26, 41.26, 41.26, 41.26, 41.26, against 30.0. Traced on the clip seed: the shallow cavalry troop marches on an ATTACK scrambled by its first melee, and its fitted residual is lower here than on 9f9bddee at every sampled tick from 272 to 380 (37.8 against 43.6 wu at tick 340, 46.9 against 53.0 at 380). On 9f9bddee its contact reading flickers on and off every few ticks there, which breaks every out-of-contact run short; here it stays out of contact from tick 328 to 352, so the run is long enough to judge. A block that leaves melee scrambled stays scrambled while it marches off (#1837). Measured 2026-10-31."
+    }
+  }
 }

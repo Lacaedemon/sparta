@@ -20,13 +20,13 @@
       "uids": [5],
       "reason": "Uid 5 (team 1's reserve Infantry) chases uid 0 with its heading stepping one pivot step (0.36 to 0.45 degrees) back and forth every few ticks, the marching ATTACK heading dither tracked in #1764. Dense 2-tick FULL dumps judged with no exemption, Windows: main b1d5822b reads 1, 1, 2, 9 and 2 on seeds 0 to 4; on 16b003c7 (#1847 and #1878) the battle's trajectories differ from tick 71 and it reads 4, 3, 11, 2 and 2 against 3. The run on the clip seed falls between ticks 600 and 780, which the state list samples every 2 ticks so the regular scan sees it. Measured 2026-10-30."
     },
-    "misslotted": {
-      "uids": [1],
-      "reason": "Uid 1, misslotted: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; 903ca538 (#1880) reads pass, pass, pass, pass, 0.30, against 0.25. Not traced; the battle runs on a different trajectory from 9f9bddee's, and this is a block scrambled by a melee and judged out of contact (#1837). Measured 2026-10-31."
-    },
     "shape_residual": {
-      "uids": [1, 3],
-      "reason": "Uid 1, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, 36.99, 30.44, 16.66, 36.10; 903ca538 (#1880) reads 43.04, pass, pass, pass, pass, against 13.5. It fails on one seed here against four on 9f9bddee. Not traced; the battle runs on a different trajectory from 9f9bddee's, and this is a block scrambled by a melee and judged out of contact (#1837). Measured 2026-10-31. Uid 3, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, 14.39; 903ca538 (#1880) reads 14.54, pass, pass, pass, pass, against 13.5. It fails on one seed on both trees. Not traced; the battle runs on a different trajectory from 9f9bddee's, and this is a block scrambled by a melee and judged out of contact (#1837). Measured 2026-10-31."
+      "uids": [3],
+      "reason": "Uid 3, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, 14.39; 678aab68 (#1880) reads 14.43, 14.58, pass, pass, pass, against 13.5. Not traced; the battle runs on a different trajectory from 9f9bddee's, and this is a block scrambled by a melee and judged out of contact (#1837). Measured 2026-10-31."
+    },
+    "overlap": {
+      "uids": [5],
+      "reason": "Uid 5, overlap: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, 1.52, pass; 678aab68 (#1880) reads pass, 1.52, pass, pass, pass, against 2.25. It fails on one seed on both trees, by the same margin. Not traced; the battle runs on a different trajectory from 9f9bddee's, and men of one block crossing while they re-form is the likely mechanism (#1791). Measured 2026-10-31."
     }
   }
 }

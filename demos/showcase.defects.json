@@ -2,12 +2,10 @@
   "_comment": "Defect declarations for the showcase replay clip (demos/showcase.json); see demos/README.md, Sidecar declarations.",
   "defect_exemptions": {
     "overlap": {
-      "uids": [7, 9],
-      "reason": "uid 7: an archer block that fights the routing uid 2, then turns and reforms on the replay's next move order. On a 2-tick scan from the divergence (tick 951): closest body pair 0.990 wu (tick 1183) against the 2.25 wu floor, and 0.667 wu (tick 1219) on main fa76accc. The block is already scrambled before the divergence: at tick 900, identical on both trees, its men stand a mean 122.9 wu from their own slots (106.6 wu at tick 951). It holds its facing while the router streams out through it (no swing, so its misslotted verdict now passes: 0.130 against 0.25, 0.478 on main). The move order then turns it (TURN phase from tick 1081; facing -175 to 95 degrees by tick 1125) and reforms it (REFORM by tick 1141), and two of its scrambled men cross 0.990 wu apart at tick 1183. A scrambled block reforming by array index on a new order is tracked in #1791. Uid 9, overlap: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, 1.78, pass, pass, pass; 903ca538 (#1880) reads pass, 4.07, pass, pass, 1.16, against 5.0. Not traced; the battle runs on a different trajectory from 9f9bddee's, and men of one block crossing while they re-form is the likely mechanism (#1791). Measured 2026-10-31."
-    },
-    "facing_flutter": {
-      "uids": [9],
-      "reason": "Uid 9, facing_flutter: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, 4.00, pass; 903ca538 (#1880) reads pass, pass, 4.00, 6.00, pass, against 3. Not traced; the battle runs on a different trajectory from 9f9bddee's, and the marching heading dither tracked in #1764 is the likely mechanism. Measured 2026-10-31."
+      "uids": [
+        7
+      ],
+      "reason": "uid 7: an archer block that fights the routing uid 2, then turns and reforms on the replay's next move order. On a 2-tick scan from the divergence (tick 951): closest body pair 0.990 wu (tick 1183) against the 2.25 wu floor, and 0.667 wu (tick 1219) on main fa76accc. The block is already scrambled before the divergence: at tick 900, identical on both trees, its men stand a mean 122.9 wu from their own slots (106.6 wu at tick 951). It holds its facing while the router streams out through it (no swing, so its misslotted verdict now passes: 0.130 against 0.25, 0.478 on main). The move order then turns it (TURN phase from tick 1081; facing -175 to 95 degrees by tick 1125) and reforms it (REFORM by tick 1141), and two of its scrambled men cross 0.990 wu apart at tick 1183. A scrambled block reforming by array index on a new order is tracked in #1791."
     }
   }
 }

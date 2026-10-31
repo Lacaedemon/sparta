@@ -17,7 +17,7 @@
   "defect_exemptions": {
     "shape_residual": {
       "uids": [0],
-      "reason": "Uid 0, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, 31.07; 903ca538 (#1880) reads 45.76, pass, pass, pass, 31.64, against 30.0. Not traced; the battle runs on a different trajectory from 9f9bddee's, and this is a block scrambled by a melee and judged out of contact (#1837). Measured 2026-10-31."
+      "reason": "Uid 0, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, 31.07; 678aab68 (#1880) reads 45.49, pass, pass, pass, 31.09, against 30.0. Not traced; the battle runs on a different trajectory from 9f9bddee's, and this is a block scrambled by a melee and judged out of contact (#1837). Measured 2026-10-31."
     }
   }
 }
