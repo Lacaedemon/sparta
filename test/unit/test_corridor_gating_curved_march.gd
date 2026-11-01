@@ -1,7 +1,8 @@
 extends GutTest
 ## Verifies that a soldier body's arrival target (SoldierBodies.arrival_target) uses the
-## wider MARCHING_CORRIDOR_PROXIMITY_MULT at full march speed (a straight march, a
-## held-facing retreat, or a lateral side-step), and falls back to standard
+## wider MARCHING_CORRIDOR_PROXIMITY_MULT once the march is under way, with the ramp from the
+## standing target complete (a straight march, a held-facing retreat, or a lateral
+## side-step), and falls back to standard
 ## CORRIDOR_PROXIMITY_MULT while stationary. A TURNING march keeps
 ## the wide band whatever the block's depth: a deep 80-mount cavalry block (depth ratio ~2.81
 ## -- see Unit.FORMED_TURN_DEPTH_RATIO_REF's own doc comment) and a shallow 60-man infantry

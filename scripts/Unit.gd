@@ -136,13 +136,13 @@ var _cached_combat_profile: Dictionary = {}
 # march takes to reach that speed from rest at `accel` (see
 # SoldierBodies.advance_march_target_frac). The target moves smoothly over that time as the
 # block sets off, instead of switching on the first tick.
-@export var march_target_walk_frac: float = 1.0
+@export var march_target_walk_frac: float = SoldierBodies.MARCH_TARGET_WALK_FRAC
 # How far off his own slot, in file pitches, a soldier body must stand to take a share of
 # the march's acceleration on top of his own (SoldierBodies.march_share_frac): none within
 # march_share_from_pitches, all of it from march_share_full_pitches out. A man nearer his
 # slot already keeps pace with it, so a block marching in good order is untouched.
-@export var march_share_from_pitches: float = 0.5
-@export var march_share_full_pitches: float = 1.0
+@export var march_share_from_pitches: float = SoldierBodies.MARCH_SHARE_FROM_PITCHES
+@export var march_share_full_pitches: float = SoldierBodies.MARCH_SHARE_FULL_PITCHES
 # The most extra acceleration that share grants a body, as a multiple of its own
 # acceleration (SoldierBodies.march_accel_budget), so a march that changes sharply in one
 # tick cannot hand its men an unbounded kick.

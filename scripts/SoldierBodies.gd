@@ -76,6 +76,15 @@ const MARCH_TARGET_STOP_GRACE_TICKS: int = 2
 # Default for Unit.march_share_max_accel_mult: the most extra acceleration
 # march_accel_budget grants a body, as a multiple of the body's own body_accel.
 const MARCH_SHARE_MAX_ACCEL_MULT: float = 1.0
+# Default for Unit.march_target_walk_frac: the march speed, as a fraction of walk_speed,
+# whose time to reach from rest at the unit's accel sets how long a body's arrival target
+# takes to move from the standing one to the marching one (advance_march_target_frac).
+const MARCH_TARGET_WALK_FRAC: float = 1.0
+# Defaults for Unit.march_share_from_pitches and Unit.march_share_full_pitches: how far off
+# his own slot, in file pitches, a body takes none of march_accel_budget and all of it
+# (march_share_frac).
+const MARCH_SHARE_FROM_PITCHES: float = 0.5
+const MARCH_SHARE_FULL_PITCHES: float = 1.0
 # Lateral clearance beyond outer formed file for perimeter corridor routing.
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
 # Stagger fraction between alternate soldier lanes in perimeter corridor.
@@ -621,23 +630,24 @@ static func step(unit: Unit, delta: float) -> void:
 ## The extra acceleration (world units/s^2) each unengaged body may take this tick: the rate
 ## the march velocity it is fed forward changed since the last step (Unit._body_march_ff_prev),
 ## capped at Unit.march_share_max_accel_mult times `body_accel`. A body's own velocity
-## changes at body_accel, the rate the march ramps the slots too; without this share a man behind his slot spends all of it keeping
-## pace with the accelerating slot and never gains on it. With it he keeps pace on the share
-## and closes on the slot at his full body_accel. The rate is of the whole velocity vector,
-## so a march that swings its heading at an unchanged speed grants it too. While the march
-## runs at a steady velocity the share is zero, and step() grants it only to a man well off his slot
-## (march_share_frac), so a block marching in good order moves exactly as before. That gate
-## matters: without it the share also took up the small lag kinetic friction leaves a body
-## behind an accelerating march, so every charge and pursuit closed faster than before and
-## the outcomes of fights the issue never touched moved with it. step() grants the share only
-## on an orderly march (Unit._body_march_orderly): never on a router's flight, a pursuit, a
-## charge, a combat approach or a hasty move. A march that slows grants none either: pulling
-## up is not what leaves a man behind, and a man braking harder than the neighbour behind him
-## in his file was run into
-## (sprint_reshape's 180-degree reversal: two men of one file 0.14 wu apart as the block
-## pulled up, 2.65 without the share). The cap keeps a march that turns sharply in one tick
-## (the first step after a far-tier return) from granting more than a set multiple of a
-## body's ordinary acceleration (at the default of 1, no more than double it in all).
+## changes at body_accel (unit.accel, raised to BODY_ACCEL_FLOOR), while the march ramps its
+## slots at unit.accel, so without this share a man behind his slot spends all or most of
+## body_accel keeping pace with the accelerating slot and gains on it little or not at all.
+## With it he keeps pace on the share and closes on the slot at his full body_accel. The
+## rate is of the whole velocity vector, so a march that swings its heading at an unchanged
+## speed grants it too. While the march runs at a steady velocity the share is zero, and
+## step() grants it only to a man well off his slot (march_share_frac), so a block marching
+## in good order moves exactly as before. That gate matters: without it the share also took
+## up the small lag kinetic friction leaves a body behind an accelerating march, so every
+## charge and pursuit closed faster than before. step() grants the share only on an orderly
+## march (Unit._body_march_orderly): never on a router's flight, a pursuit, a charge, a
+## combat approach or a hasty move. A march that slows grants none either: pulling up is not
+## what leaves a man behind, and a man braking harder than the neighbour behind him in his
+## file was run into (sprint_reshape's 180-degree reversal: two men of one file 0.14 wu
+## apart as the block pulled up, 2.65 without the share). The cap keeps a march that turns
+## sharply in one tick (the first step after a far-tier return) from granting more than a
+## set multiple of a body's ordinary acceleration (at the default of 1, no more than double
+## it in all).
 static func march_accel_budget(unit: Unit, march_vel: Vector2, body_accel: float,
 		delta: float) -> float:
 	if delta <= 0.0:

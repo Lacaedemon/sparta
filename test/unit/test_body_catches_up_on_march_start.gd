@@ -79,6 +79,35 @@ func test_a_pursuit_or_charge_grants_no_share() -> void:
 		% [dists[dists.size() - 1], gap])
 
 
+func test_a_routing_block_grants_no_share_even_with_the_orderly_flag_set() -> void:
+	# A router's bodies take the flight velocity as their feed-forward, and the flight speeds
+	# up like a march does, but a rout is not an orderly march: two identical routing blocks,
+	# one with the orderly flag set and one without, flee on the same ramp with the same man
+	# displaced, and he moves the same in both.
+	var flagged := _make_block()
+	var plain := _make_block()
+	var i: int = flagged.soldiers - 1
+	for u in [flagged, plain]:
+		u.state = Unit.State.ROUTING
+		u._sim_soldier_pos[i] -= u.facing * 20.0
+		u._sim_body_vel[i] = Vector2.ZERO
+	var speed: float = 0.0
+	for _t in range(30):
+		speed = minf(speed + flagged.accel * TICK, flagged.walk_speed)
+		for u in [flagged, plain]:
+			u._flee_velocity = u.facing * speed
+			u._body_march_orderly = u == flagged
+			u.position += u._flee_velocity * TICK
+			SoldierBodies.step(u, TICK)
+	var slot: Vector2 = flagged.soldier_world_slots(flagged.soldiers)[i]
+	assert_gt(flagged._sim_soldier_pos[i].distance_to(slot), flagged.file_pitch_wu() * 0.5,
+		"precondition: he is still far enough off his slot to take a share")
+	assert_eq(flagged._sim_soldier_pos[i], plain._sim_soldier_pos[i],
+		"the routing man moves the same whether or not the orderly flag is set")
+	assert_eq(flagged._sim_body_vel[i], plain._sim_body_vel[i],
+		"and his velocity is the same")
+
+
 func test_march_accel_budget_is_the_march_change_rate_capped_at_body_accel() -> void:
 	var u := _make_block()
 	var body_accel: float = maxf(u.accel, SoldierBodies.BODY_ACCEL_FLOOR)
