@@ -143,6 +143,14 @@ var _cached_combat_profile: Dictionary = {}
 # slot already keeps pace with it, so a block marching in good order is untouched.
 @export var march_share_from_pitches: float = 0.5
 @export var march_share_full_pitches: float = 1.0
+# The most extra acceleration that share grants a body, as a multiple of its own
+# acceleration (SoldierBodies.march_accel_budget), so a march that changes sharply in one
+# tick cannot hand its men an unbounded kick.
+@export var march_share_max_accel_mult: float = SoldierBodies.MARCH_SHARE_MAX_ACCEL_MULT
+# How many body steps in a row a march may stand still before its bodies' arrival target
+# ramp starts again from nothing (SoldierBodies.advance_march_target_frac), so a march that
+# dips to a standstill for a step or two keeps its ramp.
+@export var march_target_stop_grace_ticks: int = SoldierBodies.MARCH_TARGET_STOP_GRACE_TICKS
 # Effective melee reach, in world units (Battle sets it per weapon from reach_m;
 # the 26 default is the infantry/sword baseline). A unit counts as in melee
 # contact when the gap to its target closes within attack_range + both RADII, so a
@@ -1735,26 +1743,30 @@ var current_speed: float:
 # body that much velocity change on top of its own, so a man behind his slot still gains on
 # it while the block accelerates (see SoldierBodies.march_accel_budget).
 var _body_march_ff_prev: Vector2 = Vector2.ZERO
-# Whether this tick's march is an orderly one (_move_to's `orderly`: a player move order or
-# a withdrawal) marched in good time (not a hasty MOVE). Only such a march grants its
-# unengaged bodies a share of its acceleration (SoldierBodies.march_accel_budget): a
-# pursuit, a charge, a combat approach, a hasty move and a rout keep the ordinary rate, so
-# the fights they close into come out as they did before the share. A withdrawal still in
-# contact keeps it, since its engaged men take none anyway (SoldierBodies.step). Cleared at
-# the top of every _physics_process and set by _move_to, so it always describes the march
-# that last set _approach_velocity; the snapshot carries it beside that velocity.
+# Whether this tick's march is an orderly one (_move_to's `orderly`: a MOVE order marching
+# to its destination, whether the player or the AI issued it, or a fighting withdrawal's
+# peel) marched in good time (not a hasty MOVE). Only such a march grants its unengaged
+# bodies a share of its acceleration (SoldierBodies.march_accel_budget): a pursuit, a
+# charge, a combat approach, a hasty move and a rout keep the ordinary rate, so the fights
+# they close into come out as they did before the share. A withdrawal still in contact keeps
+# it, since its engaged men take none anyway (SoldierBodies.step). Cleared at the top of
+# every _physics_process and set only by _move_to, so it is true only after a tick in which
+# _move_to steered the march with `orderly` set. The other writers of _approach_velocity
+# leave it as they find it: the idle coast and the rally coast run on ticks _move_to does
+# not, so there it stays false, and _apply_moving_reshape_penalty only shortens the velocity
+# already there. The snapshot carries it beside that velocity.
 var _body_march_orderly: bool = false
 # How far this unit's soldier bodies' arrival target has gone from the standing one toward
 # the marching one, 0 to 1 (SoldierBodies.advance_march_target_frac, which ramps it up by
 # time while the block marches and drops it to 0 once the march has stood still for longer
-# than its grace, _march_stopped_s).
+# than its grace, _march_stopped_ticks).
 var _march_target_frac: float = 0.0
-# How long this unit's march has stood still, in seconds
+# How many body steps in a row this unit's march has stood still
 # (SoldierBodies.advance_march_target_frac): its bodies' arrival target switches back to the
 # standing one the tick the march stops, but _march_target_frac only drops to 0 once the stop
-# outlasts SoldierBodies.MARCH_TARGET_STOP_GRACE_S, so a march that dips for a tick or two
-# keeps its ramp.
-var _march_stopped_s: float = 0.0
+# outlasts march_target_stop_grace_ticks, so a march that dips for a tick or two keeps its
+# ramp.
+var _march_stopped_ticks: int = 0
 # Velocity the regiment center followed its soldiers' centroid at this tick (phase 5):
 # the soldier->regiment coupling slides the center toward where its bodies actually are,
 # so friendly collision (and later all collision) emerges from the soldier layer. Stored
@@ -11886,6 +11898,8 @@ func to_snapshot_dict() -> Dictionary:
 		"accel": accel, "decel": decel, "march_target_walk_frac": march_target_walk_frac,
 		"march_share_from_pitches": march_share_from_pitches,
 		"march_share_full_pitches": march_share_full_pitches,
+		"march_share_max_accel_mult": march_share_max_accel_mult,
+		"march_target_stop_grace_ticks": march_target_stop_grace_ticks,
 		"attack_range": attack_range, "sight_range": sight_range,
 		"weapon_type_id": weapon_type_id, "shield_type_id": shield_type_id,
 		# The deployed weapon and the carried second one travel with the clone too: a
@@ -12003,7 +12017,7 @@ func to_snapshot_dict() -> Dictionary:
 		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity, "flight_turn_rate": _flight_turn_rate,
 		"body_march_ff_prev": _body_march_ff_prev, "body_march_orderly": _body_march_orderly,
 		"march_target_frac": _march_target_frac,
-		"march_stopped_s": _march_stopped_s,
+		"march_stopped_ticks": _march_stopped_ticks,
 		"rally_halt": _rally_halt, "rally_resquare_pending": _rally_resquare_pending,
 		"rally_fold_unsquared": _rally_fold_unsquared, "rally_clear_ticks": _rally_clear_ticks,
 		# Not reset before a routing unit's early return, so a router keeps reading it.
@@ -12114,6 +12128,10 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	march_target_walk_frac = float(d.get("march_target_walk_frac", march_target_walk_frac))
 	march_share_from_pitches = float(d.get("march_share_from_pitches", march_share_from_pitches))
 	march_share_full_pitches = float(d.get("march_share_full_pitches", march_share_full_pitches))
+	march_share_max_accel_mult = float(d.get("march_share_max_accel_mult",
+			march_share_max_accel_mult))
+	march_target_stop_grace_ticks = int(d.get("march_target_stop_grace_ticks",
+			march_target_stop_grace_ticks))
 	attack_range = float(d["attack_range"])
 	weapon_type_id = int(d["weapon_type_id"])
 	shield_type_id = int(d["shield_type_id"])
@@ -12280,7 +12298,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_body_march_ff_prev = d.get("body_march_ff_prev", _body_march_ff_prev)
 	_body_march_orderly = bool(d.get("body_march_orderly", _body_march_orderly))
 	_march_target_frac = float(d.get("march_target_frac", _march_target_frac))
-	_march_stopped_s = float(d.get("march_stopped_s", _march_stopped_s))
+	_march_stopped_ticks = int(d.get("march_stopped_ticks", _march_stopped_ticks))
 	_rally_halt = bool(d.get("rally_halt", _rally_halt))
 	_rally_resquare_pending = bool(d.get("rally_resquare_pending", false))
 	_rally_fold_unsquared = bool(d.get("rally_fold_unsquared", false))

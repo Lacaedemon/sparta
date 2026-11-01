@@ -67,11 +67,15 @@ const CORRIDOR_PROXIMITY_MULT: float = 1.5
 # which also covers how a block setting off blends the two (arrival_target) and why one that
 # stops switches straight back to the narrow band.
 const MARCHING_CORRIDOR_PROXIMITY_MULT: float = 4.5
-# How long a march may stand still, in seconds, before the ramp of its bodies' arrival
-# target (advance_march_target_frac) starts again from nothing: a little over two ticks at
-# 60 ticks/s, so a march that dips to a standstill for one or two ticks and goes on picks its
-# ramp up where it left it.
-const MARCH_TARGET_STOP_GRACE_S: float = 2.5 / 60.0
+# Default for Unit.march_target_stop_grace_ticks: how many body steps in a row a march may
+# stand still before the ramp of its bodies' arrival target (advance_march_target_frac)
+# starts again from nothing. Counted in steps, not seconds, because what it forgives is a
+# step artifact -- a march velocity that reads zero for one or two integration steps and
+# goes on -- so it means the same thing at any physics rate.
+const MARCH_TARGET_STOP_GRACE_TICKS: int = 2
+# Default for Unit.march_share_max_accel_mult: the most extra acceleration
+# march_accel_budget grants a body, as a multiple of the body's own body_accel.
+const MARCH_SHARE_MAX_ACCEL_MULT: float = 1.0
 # Lateral clearance beyond outer formed file for perimeter corridor routing.
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
 # Stagger fraction between alternate soldier lanes in perimeter corridor.
@@ -135,7 +139,7 @@ static func seed(unit: Unit) -> void:
 	# standing one.
 	unit._body_march_ff_prev = Vector2.ZERO
 	unit._march_target_frac = 0.0
-	unit._march_stopped_s = 0.0
+	unit._march_stopped_ticks = 0
 	unit._render_dirty = true   # fresh bodies need an initial draw
 
 
@@ -617,8 +621,8 @@ static func step(unit: Unit, delta: float) -> void:
 
 ## The extra acceleration (world units/s^2) each unengaged body may take this tick: the rate
 ## the march velocity it is fed forward changed since the last step (Unit._body_march_ff_prev),
-## capped at `body_accel`. A body's own velocity changes at body_accel, the rate the march
-## ramps the slots too; without this share a man behind his slot spends all of it keeping
+## capped at Unit.march_share_max_accel_mult times `body_accel`. A body's own velocity
+## changes at body_accel, the rate the march ramps the slots too; without this share a man behind his slot spends all of it keeping
 ## pace with the accelerating slot and never gains on it. With it he keeps pace on the share
 ## and closes on the slot at his full body_accel. While the march runs at a steady velocity
 ## the share is zero, and step() grants it only to a man well off his slot
@@ -632,15 +636,16 @@ static func step(unit: Unit, delta: float) -> void:
 ## in his file was run into
 ## (sprint_reshape's 180-degree reversal: two men of one file 0.14 wu apart as the block
 ## pulled up, 2.65 without the share). The cap keeps a march that turns sharply in one tick
-## (the first step after a far-tier return) from granting more than double a body's
-## ordinary acceleration.
+## (the first step after a far-tier return) from granting more than a set multiple of a
+## body's ordinary acceleration (at the default of 1, no more than double it in all).
 static func march_accel_budget(unit: Unit, march_vel: Vector2, body_accel: float,
 		delta: float) -> float:
 	if delta <= 0.0:
 		return 0.0
 	if march_vel.length_squared() < unit._body_march_ff_prev.length_squared():
 		return 0.0
-	return minf((march_vel - unit._body_march_ff_prev).length() / delta, body_accel)
+	return minf((march_vel - unit._body_march_ff_prev).length() / delta,
+			body_accel * maxf(unit.march_share_max_accel_mult, 0.0))
 
 
 ## How much of march_accel_budget a body `dist` from its own slot takes, 0 to 1: none
@@ -1223,13 +1228,13 @@ static func couple(unit: Unit, delta: float) -> void:
 ## march_target_ramp_s(unit) a step, so it covers the whole way in the time the march takes
 ## to reach Unit.march_target_full_speed() from rest at the unit's own acceleration. The
 ## step the march stops it returns 0, so the target switches straight back to the standing
-## one. Only a stop that lasts longer than MARCH_TARGET_STOP_GRACE_S drops the stored ramp
-## (Unit._march_target_frac) to 0 as well: a march that dips to a standstill for a tick or
-## two and goes on picks its ramp up where it left it, instead of starting it again from
-## nothing each time (Unit._march_stopped_s counts the stop). Depends only on unit-level
-## state, so step() advances it once per unit-step and hands it to every body's
-## arrival_target call (the same hoisting mass, body_radius and turning get above the
-## per-soldier loop).
+## one. Only a stop that lasts more than Unit.march_target_stop_grace_ticks steps drops the
+## stored ramp (Unit._march_target_frac) to 0 as well: a march that dips to a standstill for
+## a tick or two and goes on picks its ramp up where it left it, instead of starting it
+## again from nothing each time (Unit._march_stopped_ticks counts the stop). Depends only
+## on unit-level state, so step() advances it once per unit-step and hands it to every
+## body's arrival_target call (the same hoisting mass, body_radius and turning get above
+## the per-soldier loop).
 ##
 ## The ramp keeps the target moving smoothly as a march begins: a hard switch at the first
 ## tick of the march swung the target of every man between the two bands round by tens of
@@ -1264,11 +1269,11 @@ static func couple(unit: Unit, delta: float) -> void:
 ## residual of 41.8 now passes).
 static func advance_march_target_frac(unit: Unit, delta: float) -> float:
 	if not is_marching(unit):
-		unit._march_stopped_s += delta
-		if unit._march_stopped_s > MARCH_TARGET_STOP_GRACE_S:
+		unit._march_stopped_ticks += 1
+		if unit._march_stopped_ticks > unit.march_target_stop_grace_ticks:
 			unit._march_target_frac = 0.0
 		return 0.0
-	unit._march_stopped_s = 0.0
+	unit._march_stopped_ticks = 0
 	var ramp_s: float = march_target_ramp_s(unit)
 	if ramp_s <= 0.0:
 		unit._march_target_frac = 1.0

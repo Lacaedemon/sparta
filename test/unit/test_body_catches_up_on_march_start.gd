@@ -94,6 +94,15 @@ func test_march_accel_budget_is_the_march_change_rate_capped_at_body_accel() -> 
 		"a march that turns sharply in one tick grants no more than the body's own acceleration")
 	assert_almost_eq(SoldierBodies.march_accel_budget(u, Vector2(0, -50), body_accel, 0.0), 0.0, 1e-4,
 		"a zero-length step grants nothing")
+	# The cap is the unit's own knob, a multiple of body_accel.
+	u.march_share_max_accel_mult = 0.5
+	assert_almost_eq(SoldierBodies.march_accel_budget(u, Vector2(10, 0), body_accel, TICK),
+			body_accel * 0.5, 1e-4, "a cap of half a body_accel grants at most half of it")
+	assert_almost_eq(SoldierBodies.march_accel_budget(u, Vector2(0, 10.25), body_accel, TICK), 15.0, 1e-3,
+		"a change under the cap is granted in full")
+	u.march_share_max_accel_mult = 0.0
+	assert_almost_eq(SoldierBodies.march_accel_budget(u, Vector2(10, 0), body_accel, TICK), 0.0, 1e-4,
+		"a cap of 0 grants nothing")
 
 
 func test_an_engaged_body_takes_no_share_of_the_march_acceleration() -> void:
@@ -186,10 +195,15 @@ func test_a_stop_switches_his_target_back_at_once() -> void:
 	u._approach_velocity = Vector2.ZERO
 	assert_eq(SoldierBodies.advance_march_target_frac(u, TICK), 0.0,
 		"the blend is 0 the step the march stops")
-	var stopped: Vector2 = SoldierBodies.arrival_target(u, 0, slot, u.soldiers, 0.0, false)
-	assert_eq(_target_after_tick(u, slot), stopped, "and on the next stopped step")
-	var standing: Vector2 = SoldierBodies.arrival_target(u, 0, slot, u.soldiers, 0.0, false)
-	assert_eq(stopped, standing, "and his target is the standing one")
+	# The standing target, computed straight from the corridor router with the narrow band,
+	# not through arrival_target.
+	var standing: Vector2 = SoldierBodies._corridor_to_slot(u, 0, slot, u.soldiers,
+			SoldierBodies.CORRIDOR_PROXIMITY_MULT, false)
+	var direct: Vector2 = slot - u._sim_soldier_pos[0]
+	assert_gt(rad_to_deg(absf(standing.angle_to(direct))), 10.0,
+		"precondition: the standing target routes him round the corridor, not direct")
+	assert_eq(_target_after_tick(u, slot), standing,
+		"on the next stopped step his target is the standing one")
 	# Once the stop outlasts its grace, the ramp itself is gone too: the next march starts it
 	# again from nothing.
 	_target_after_tick(u, slot)
@@ -198,7 +212,8 @@ func test_a_stop_switches_his_target_back_at_once() -> void:
 
 func test_a_one_or_two_tick_dip_does_not_restart_the_ramp() -> void:
 	# A march that dips to a standstill for a tick or two and goes on picks its ramp up where
-	# it left it; only a real stop (longer than MARCH_TARGET_STOP_GRACE_S) starts it again.
+	# it left it; only a real stop (more than Unit.march_target_stop_grace_ticks steps) starts
+	# it again.
 	# During the dip the target is the standing one, as on any stop.
 	for dip in [1, 2, 3]:
 		var u := _make_block()
@@ -221,6 +236,30 @@ func test_a_one_or_two_tick_dip_does_not_restart_the_ramp() -> void:
 		else:
 			assert_almost_eq(after, step_frac, 1e-5,
 				"a %d-tick stop restarts the ramp: %.3f after" % [dip, after])
+
+
+func test_the_stop_grace_is_the_units_own_knob() -> void:
+	# With no grace, a one-tick dip restarts the ramp; with a grace of three, a three-tick dip
+	# keeps it.
+	for grace in [0, 3]:
+		var u := _make_block()
+		u.march_target_stop_grace_ticks = grace
+		u.state = Unit.State.MOVING
+		var ramp_ticks: int = ceili(SoldierBodies.march_target_ramp_s(u) / TICK)
+		u._approach_velocity = u.facing * u.walk_speed
+		var before: float = 0.0
+		for _t in range(ramp_ticks / 2):
+			before = SoldierBodies.advance_march_target_frac(u, TICK)
+		u._approach_velocity = Vector2.ZERO
+		var dip: int = maxi(grace, 1)
+		for _t in range(dip):
+			SoldierBodies.advance_march_target_frac(u, TICK)
+		u._approach_velocity = u.facing * u.walk_speed
+		var after: float = SoldierBodies.advance_march_target_frac(u, TICK)
+		var step_frac: float = TICK / SoldierBodies.march_target_ramp_s(u)
+		var want: float = step_frac if grace == 0 else before + step_frac
+		assert_almost_eq(after, want, 1e-5,
+			"grace %d, a %d-tick dip: %.3f before, %.3f after" % [grace, dip, before, after])
 
 
 func test_march_target_frac_ramps_by_time_not_by_speed() -> void:
