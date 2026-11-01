@@ -202,20 +202,22 @@ whenever the block speeds up, or swings its heading without slowing, each man we
 place may change his own speed and direction at his usual rate plus the rate the march is
 changing at (that extra is capped at his usual rate). The extra keeps him level with his
 moving place and his usual rate still closes on it, so he gains on his place instead of
-only keeping pace with it, though he still walks onto it no faster than his usual jog. A march that slows gives none.
-Only those orderly marches give that extra acceleration. A combat approach --- the march of
-an attack or support order, a charge or a pursuit --- gives none, and neither does an
-**in-haste** move order (a triple- or quadruple-click) or a rout. On every
-march, the way a man walks onto his place changes over gradually as the block gets under
-way rather than all at once on its first step (@fig-march-start-catch-up). A block that
-halts to fight does not start that change-over again when it marches off: its men, thrown
-about by the fight, go back to their places as they did before it halted. Once that
-change-over is complete, a man within about four and a half file widths of his place walks
-straight to it; while the block is still getting under way, his way there is a blend of
-that straight walk and the way he would take if the block stood still, which can lead round
-the outside of the block. One farther off whose way back crosses both the block's files and
-its ranks may still be sent round the outside of the block, as on any march.
-To make a unit move immediately without the pause, uncheck **Reform before move** in
+only keeping pace with it, though he still walks onto it no faster than his usual jog. A
+march that slows gives none. Only those orderly marches give that extra acceleration. A
+combat approach --- the march of an attack or support order, a charge or a pursuit ---
+gives none, and neither does an **in-haste** move order (a triple- or quadruple-click) or
+a rout. On every march, the way a man walks onto his place changes over gradually as the
+block gets under way rather than all at once on its first step
+(@fig-march-start-catch-up). A block that halts in a fight and marches off straight from
+it takes the change-over up where it left off, so its men, thrown about by the fight, go
+back to their places as they did before the block halted.
+Once that change-over is complete, a man within about four and a half file widths of his
+place walks straight to it; while the block is still getting under way, his way there is
+a blend of that straight walk and the way he would take if the block stood still, which
+can lead round the outside of the block. One farther off whose way back crosses both the
+block's files and its ranks may still be sent round the outside of the block, as on any
+march.
+To make a unit move immediately without the reform hold, uncheck **Reform before move** in
 its unit settings panel, or click **Reform** in the control bar --- either applies to every
 currently selected unit. Cavalry starts with the setting off (immediate
 responsiveness matters more to a mounted regiment than settling ranks); every other

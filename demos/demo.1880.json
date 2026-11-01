@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/march-start-catch-up-1880.json",
-  "caption": "A 96-man block loosens its spacing and is ordered south while its men are still walking out to their new places. It steps off with them far from their slots; watch the rear and flank men close on their places as the block gathers pace, instead of only keeping pace with them. The block is in good order about two seconds after it steps off (fitted shape residual 6.9 wu at tick 200, against 10.2 on 9f9bddee, measured on e57be4c6 on 2026-11-01).",
+  "caption": "A 96-man block loosens its spacing and is ordered south while its men are still walking out to their new places. It steps off with them far from their slots; watch the rear and flank men close on their places as the block gathers pace, instead of only keeping pace with them. The block is in good order about two seconds after it steps off (fitted shape residual 6.9 wu at tick 200, measured 2026-11-01 on the branch at 7b5053d6, whose scripts match e57be4c6's; 10.2 on 9f9bddee, measured 2026-10-31).",
   "fixed_fps": 30,
   "max_frames": 160,
   "fps": 12,

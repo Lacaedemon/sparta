@@ -551,9 +551,9 @@ func test_same_unit_standoff_runs_while_a_man_stands_well_off_his_slot() -> void
 	var d_start: float = 0.05
 	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
 	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
-	assert_gt(u._sim_soldier_pos[0].distance_to(u.position),
+	assert_gt(u._sim_soldier_pos[0].distance_to(u.soldier_world_slots(u.soldiers)[0]),
 		SoldierBodies.STANDOFF_OFF_SLOT_PITCHES * u.file_pitch_wu(),
-		"sanity: the pair stands well off its slots")
+		"sanity: man 0 stands well off his slot")
 	SoldierBodies.step(u, 1.0 / 60.0)
 	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
 	assert_gt(dx_after, d_start + 0.1,

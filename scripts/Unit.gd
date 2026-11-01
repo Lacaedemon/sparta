@@ -151,7 +151,7 @@ var _cached_combat_profile: Dictionary = {}
 # again from nothing (SoldierBodies.advance_march_target_frac), so a march that dips to a
 # standstill for a step or two keeps its ramp. Steps stood in enemy contact or engaged are
 # not counted, nor do they reset the count: it counts the steps stood still out of contact
-# since the march last moved (Unit._march_stopped_ticks).
+# and unengaged since the march last moved (Unit._march_stopped_ticks).
 @export var march_target_stop_grace_ticks: int = SoldierBodies.MARCH_TARGET_STOP_GRACE_TICKS
 # Effective melee reach, in world units (Battle sets it per weapon from reach_m;
 # the 26 default is the infantry/sword baseline). A unit counts as in melee
@@ -1740,12 +1740,17 @@ var _current_speed: float = 0.0
 var current_speed: float:
 	get: return _current_speed
 # The march velocity SoldierBodies.step fed forward to this unit's unengaged bodies on its
-# last step (_approach_velocity, or _flee_velocity while routing). The step reads how far
-# the march velocity has changed since then, in speed or in heading -- the velocity change
-# the slots took -- and, unless the march speed fell, grants each body that much velocity
-# change on top of its own (capped at march_share_max_accel_mult), so a man behind his slot
-# still gains on it while the march speeds up or swings round at the same speed (see
-# SoldierBodies.march_accel_budget).
+# last step (_approach_velocity, or _flee_velocity while routing). From this velocity the
+# step reads the rate the march velocity changed at since then, in speed or in heading
+# (capped at march_share_max_accel_mult times the body's own acceleration;
+# SoldierBodies.march_accel_budget). Only on an orderly march (_body_march_orderly) that
+# is not a rout, and only when the march speed did not fall, does the step grant that much
+# extra acceleration to each unengaged body, on top of its own body_accel, scaled by how
+# far the body stands off its slot (SoldierBodies.march_share_frac: none within
+# march_share_from_pitches, half a file pitch by default, all of it from
+# march_share_full_pitches out). Engaged bodies take none. So a man well behind his slot
+# still gains on it while the march speeds up or swings round without losing speed (see
+# march_accel_budget for how exactly that is judged).
 var _body_march_ff_prev: Vector2 = Vector2.ZERO
 # Whether this tick's march is an orderly one (_move_to's `orderly`: a MOVE order marching
 # to its destination, whether the player or the AI issued it, or a fighting withdrawal's

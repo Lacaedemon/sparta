@@ -15,7 +15,7 @@
   "defect_exemptions": {
     "superphysical_speed": {
       "uids": [4],
-      "reason": "Uid 4, superphysical_speed: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads 136.56, pass, pass, 136.57, 136.84; eb8b0995 and e57be4c6 (#1880) read 136.22, 136.52, pass, 136.52, 136.22, against 103.92. It fails on four seeds here against three on 9f9bddee, by the same margin. Not traced; the battle runs on a different trajectory from 9f9bddee's, and this is the same pre-existing defect, seen on other seeds (#1893). Measured 2026-10-31, e57be4c6's seed figures included."
+      "reason": "Uid 4, superphysical_speed: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads 136.56, pass, pass, 136.57, 136.84; eb8b0995 and e57be4c6 (#1880) read 136.22, 136.52, pass, 136.52, 136.22, against 103.92. It fails on four seeds here against three on 9f9bddee, by the same margin. Not traced; the battle runs on a different trajectory from 9f9bddee's, and this is the same pre-existing defect, seen on other seeds (#1893). Measured 2026-10-31, e57be4c6's seed figures included (on the tree later committed as e57be4c6; seed 0 re-checked on e57be4c6 2026-11-01)."
     }
   }
 }
