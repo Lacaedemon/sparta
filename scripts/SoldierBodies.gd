@@ -397,8 +397,7 @@ static func step(unit: Unit, delta: float) -> void:
 	# grants it (Unit._body_march_orderly). A router's flight gets none: its men keep the
 	# ordinary rate, so a flight still builds up as it always has (the share let a routing
 	# block keep up with its anchor and carried it measurably farther). Nor does a pursuit,
-	# a charge or a hasty move: there the share closed every fight sooner, and the fights'
-	# outcomes moved with it.
+	# a charge or a hasty move: their men close at the ordinary rate.
 	var march_budget: float = march_accel_budget(unit, march_vel, body_accel, delta) \
 			if unit._body_march_orderly and not routing else 0.0
 	var share_pitch: float = unit.file_pitch_wu()
@@ -624,8 +623,9 @@ static func step(unit: Unit, delta: float) -> void:
 ## capped at Unit.march_share_max_accel_mult times `body_accel`. A body's own velocity
 ## changes at body_accel, the rate the march ramps the slots too; without this share a man behind his slot spends all of it keeping
 ## pace with the accelerating slot and never gains on it. With it he keeps pace on the share
-## and closes on the slot at his full body_accel. While the march runs at a steady velocity
-## the share is zero, and step() grants it only to a man well off his slot
+## and closes on the slot at his full body_accel. The rate is of the whole velocity vector,
+## so a march that swings its heading at an unchanged speed grants it too. While the march
+## runs at a steady velocity the share is zero, and step() grants it only to a man well off his slot
 ## (march_share_frac), so a block marching in good order moves exactly as before. That gate
 ## matters: without it the share also took up the small lag kinetic friction leaves a body
 ## behind an accelerating march, so every charge and pursuit closed faster than before and

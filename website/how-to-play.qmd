@@ -197,9 +197,11 @@ momentum straight through, while one that turns it sharply back bleeds that spee
 during the hold, so the block comes about from a stand instead of carrying its pace
 into the turn (@fig-reversal-march).
 Men still walking to their places when the block steps off on a move order (yours, or one
-the AI gives) or a withdrawal out of a fight keep closing on them as it gathers pace: each
-man well off his place picks up speed faster than his place does, so he gains on it instead
-of only keeping pace with it, though he still walks onto it no faster than his usual jog.
+the AI gives) or a withdrawal out of a fight keep closing on them while the march changes:
+whenever the block speeds up, or swings its heading without slowing, each man well off his
+place may change his own speed and direction faster than his place does, by as much as the
+march changed (up to a cap), so he gains on his place instead of only keeping pace with it,
+though he still walks onto it no faster than his usual jog. A march that slows gives none.
 Only those orderly marches give that extra acceleration. A combat approach --- the march of
 an attack or support order, a charge or a pursuit --- gives none, and neither does an
 **in-haste** move order (a triple- or quadruple-click) or a rout. On every

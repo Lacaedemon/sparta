@@ -1739,16 +1739,18 @@ var current_speed: float:
 	get: return _current_speed
 # The march velocity SoldierBodies.step fed forward to this unit's unengaged bodies on its
 # last step (_approach_velocity, or _flee_velocity while routing). The step reads how far
-# the march has changed since then -- the acceleration the slots took -- and grants each
-# body that much velocity change on top of its own, so a man behind his slot still gains on
-# it while the block accelerates (see SoldierBodies.march_accel_budget).
+# the march velocity has changed since then, in speed or in heading -- the velocity change
+# the slots took -- and, unless the march speed fell, grants each body that much velocity
+# change on top of its own (capped at march_share_max_accel_mult), so a man behind his slot
+# still gains on it while the march speeds up or swings round at the same speed (see
+# SoldierBodies.march_accel_budget).
 var _body_march_ff_prev: Vector2 = Vector2.ZERO
 # Whether this tick's march is an orderly one (_move_to's `orderly`: a MOVE order marching
 # to its destination, whether the player or the AI issued it, or a fighting withdrawal's
 # peel) marched in good time (not a hasty MOVE). Only such a march grants its unengaged
-# bodies a share of its acceleration (SoldierBodies.march_accel_budget): a pursuit, a
-# charge, a combat approach, a hasty move and a rout keep the ordinary rate, so the fights
-# they close into come out as they did before the share. A withdrawal still in contact keeps
+# bodies a share of its velocity change (SoldierBodies.march_accel_budget): a pursuit, a
+# charge, a combat approach, a hasty move and a rout take no share, so their men close at
+# the ordinary rate. A withdrawal still in contact keeps
 # it, since its engaged men take none anyway (SoldierBodies.step). Cleared at the top of
 # every _physics_process and set only by _move_to, so it is true only after a tick in which
 # _move_to steered the march with `orderly` set. The other writers of _approach_velocity

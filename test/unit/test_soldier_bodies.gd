@@ -10,6 +10,8 @@ extends GutTest
 ## and morale still read the regiment circle, so gameplay is unchanged. These call
 ## the seeding functions directly, as the separation tests call _separate() directly.
 
+const SettledFrac = preload("res://test/helpers/settled_march_target_frac.gd")
+
 
 func _make_unit(uid: int, max_soldiers: int = 120) -> Unit:
 	var u: Unit = Unit.new()
@@ -19,13 +21,6 @@ func _make_unit(uid: int, max_soldiers: int = 120) -> Unit:
 	u.facing = Vector2.DOWN
 	u.position = Vector2.ZERO
 	return u
-
-
-## The arrival-target blend of a march long under way (SoldierBodies.advance_march_target_frac
-## ramps it to 1 over the march's first moments): wholly the marching target while the unit
-## marches, wholly the standing one while it does not.
-func _settled_frac(u: Unit) -> float:
-	return 1.0 if SoldierBodies.is_marching(u) else 0.0
 
 
 func test_soldier_layer_is_active_but_non_authoritative() -> void:
@@ -246,7 +241,7 @@ func test_corridor_to_slot_monotonic_scaling_routes_direct() -> void:
 	var p_local: Vector2 = Vector2(t_local.x * 1.5, t_local.y * 1.5)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, _settled_frac(u), not u.is_turning())
+	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, SettledFrac.settled_frac(u), not u.is_turning())
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -272,7 +267,7 @@ func test_corridor_to_slot_tight_to_loose_extreme_ratio_routes_direct() -> void:
 	var p_local: Vector2 = Vector2(t_local.x * 0.25, t_local.y * 0.25)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, _settled_frac(u), not u.is_turning())
+	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, SettledFrac.settled_frac(u), not u.is_turning())
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -298,7 +293,7 @@ func test_corridor_to_slot_loose_to_tight_extreme_ratio_routes_direct() -> void:
 	var p_local: Vector2 = Vector2(t_local.x * 4.0, t_local.y * 4.0)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, _settled_frac(u), not u.is_turning())
+	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, SettledFrac.settled_frac(u), not u.is_turning())
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -324,7 +319,7 @@ func test_corridor_to_slot_loose_to_testudo_extreme_ratio_routes_direct() -> voi
 	var p_local: Vector2 = Vector2(t_local.x * 0.15, t_local.y * 0.15)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, _settled_frac(u), not u.is_turning())
+	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, SettledFrac.settled_frac(u), not u.is_turning())
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -350,7 +345,7 @@ func test_corridor_to_slot_testudo_to_loose_extreme_ratio_routes_direct() -> voi
 	var p_local: Vector2 = Vector2(t_local.x * (4.0 / 0.6), t_local.y * (4.0 / 0.6))
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, _settled_frac(u), not u.is_turning())
+	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, SettledFrac.settled_frac(u), not u.is_turning())
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 

@@ -66,8 +66,7 @@ func test_a_man_behind_his_slot_gains_on_it_while_the_block_sets_off() -> void:
 
 func test_a_pursuit_or_charge_grants_no_share() -> void:
 	# The same man on a march that is not an orderly one -- a pursuit, a charge, a combat
-	# approach, a hasty move -- keeps the ordinary rate, so he only keeps pace with his slot
-	# and the fights such a march closes into come out as they did before the share.
+	# approach, a hasty move -- keeps the ordinary rate, so he only keeps pace with his slot.
 	var u := _make_block()
 	var i: int = u.soldiers - 1
 	var gap: float = 20.0
@@ -397,3 +396,73 @@ func test_a_man_near_his_slot_moves_as_he_did_without_the_share() -> void:
 	assert_eq(ramp._sim_body_vel[i], flat._sim_body_vel[i],
 		"a man %.1f wu off his slot takes no share of the march's acceleration" % off)
 	assert_eq(ramp._sim_soldier_pos[i], flat._sim_soldier_pos[i], "and steps to the same place")
+
+
+# How far off a march's destination or an attack's enemy lies (wu): far enough that one tick
+# only sets off, never arrives or makes contact.
+const GATE_RANGE: float = 600.0
+
+
+## A block with a fresh MOVE order to GATE_RANGE ahead, set to step off at once (no reform hold).
+func _block_ordered_to_move(haste: bool) -> Unit:
+	var u := _make_block()
+	u.reform_before_move = false
+	var dest: Vector2 = u.position + u.facing * GATE_RANGE
+	u.set_current_order(Order.new_move(dest, 0, -1, haste))
+	u.move_target = dest
+	u.has_move_target = true
+	u.state = Unit.State.MOVING
+	return u
+
+
+func test_a_plain_move_order_marches_orderly() -> void:
+	var u := _block_ordered_to_move(false)
+	var start: Vector2 = u.position
+	u._physics_process(TICK)
+	assert_ne(u.position, start, "setup: the block stepped off on this tick")
+	assert_true(u._body_march_orderly, "a plain move order's march grants the share")
+
+
+func test_a_hasty_move_order_does_not_march_orderly() -> void:
+	var u := _block_ordered_to_move(true)
+	assert_true(u._is_move_order_in_haste(), "setup: the order is in haste")
+	var start: Vector2 = u.position
+	u._physics_process(TICK)
+	assert_ne(u.position, start, "setup: the block stepped off on this tick")
+	assert_false(u._body_march_orderly, "a hasty move order's march grants no share")
+
+
+func test_an_attack_approach_does_not_march_orderly() -> void:
+	var u := _make_block()
+	u.uid = 1
+	u.team = 0
+	var foe: Unit = Unit.new()
+	foe.max_soldiers = 30
+	add_child_autofree(foe)
+	foe.uid = 2
+	foe.team = 1
+	foe.position = u.position + u.facing * GATE_RANGE
+	foe.facing = Vector2.UP
+	foe.seed_sim_soldiers()
+	u.set_current_order(Order.new_attack(foe.uid))
+	u.target_enemy = foe
+	u.state = Unit.State.MOVING
+	var start: Vector2 = u.position
+	u._physics_process(TICK)
+	assert_ne(u.position, start, "setup: the block closed on its enemy on this tick")
+	assert_false(u._body_march_orderly, "an attack's approach grants no share")
+
+
+func test_the_orderly_flag_is_cleared_every_tick() -> void:
+	# A tick on which _move_to does not run (here the block stands idle) must not inherit the
+	# flag from the tick before: only _move_to sets it, so _physics_process clears it first.
+	var u := _block_ordered_to_move(false)
+	u._physics_process(TICK)
+	assert_true(u._body_march_orderly, "setup: the march set the flag")
+	u.set_current_order(null)
+	u.has_move_target = false
+	u._approach_velocity = Vector2.ZERO
+	u._current_speed = 0.0
+	u.state = Unit.State.IDLE
+	u._physics_process(TICK)
+	assert_false(u._body_march_orderly, "an idle tick reads the flag as clear")
