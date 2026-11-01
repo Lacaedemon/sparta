@@ -519,9 +519,16 @@ func test_same_unit_standoff_skips_the_pass_outside_an_armed_settle_window() -> 
 	# these two crowded bodies.
 	assert_eq(u._standoff_settle_until_tick, -1,
 		"sanity: a fresh unit's settle window starts unarmed")
+	# The pair stands crowded halfway between its two seeded slots, so each man is within a
+	# file pitch of his own: a block in good order, which the pass leaves alone (a block
+	# whose men stand well off their slots is policed; see the off-slot test below).
+	var mid: Vector2 = (u._sim_soldier_pos[0] + u._sim_soldier_pos[1]) * 0.5
+	assert_lt(mid.distance_to(u._sim_soldier_pos[0]),
+		SoldierBodies.STANDOFF_OFF_SLOT_PITCHES * u.file_pitch_wu(),
+		"sanity: the crowded pair stands within the off-slot gate of its slots")
 	var d_start: float = 0.05
-	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
-	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	u._sim_soldier_pos[0] = mid
+	u._sim_soldier_pos[1] = mid + Vector2(d_start, 0.0)
 	SoldierBodies.step(u, 1.0 / 60.0)
 	# Lateral (x) separation, not full 2D distance: both bodies also drift toward their
 	# rank slots on arrival, and that motion alone could satisfy a distance-only check
@@ -529,6 +536,28 @@ func test_same_unit_standoff_skips_the_pass_outside_an_armed_settle_window() -> 
 	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
 	assert_almost_eq(dx_after, d_start, 0.01,
 		"an unarmed, non-fighting unit must not run the standoff pass even when crowded")
+
+
+func test_same_unit_standoff_runs_while_a_man_stands_well_off_his_slot() -> void:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	# No settle window and not fighting, but the crowded pair stands about 50 wu from its
+	# slots, well beyond STANDOFF_OFF_SLOT_PITCHES file pitches: men walking back to their
+	# slots from that far off are kept apart, so the pass runs and separates them.
+	assert_eq(u._standoff_settle_until_tick, -1,
+		"sanity: a fresh unit's settle window starts unarmed")
+	var d_start: float = 0.05
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	assert_gt(u._sim_soldier_pos[0].distance_to(u.position),
+		SoldierBodies.STANDOFF_OFF_SLOT_PITCHES * u.file_pitch_wu(),
+		"sanity: the pair stands well off its slots")
+	SoldierBodies.step(u, 1.0 / 60.0)
+	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
+	assert_gt(dx_after, d_start + 0.1,
+		"a block with a man well off his slot must run the standoff pass")
 
 
 func test_same_unit_standoff_runs_after_set_frontage_arms_the_settle_window() -> void:

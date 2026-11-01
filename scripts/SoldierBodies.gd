@@ -99,6 +99,11 @@ const STANDOFF_MIN_SEP_FRAC: float = 0.9
 const STANDOFF_MAX_SPEED: float = 2.0 * WorldScaleRef.WU_PER_M
 # Floor below which same-unit standoff separation is disabled (tuned in wu):
 const STANDOFF_MIN_SEP_FLOOR: float = 0.01
+# How far off his own slot, in file pitches, one unengaged body of a block must stand for
+# _separate_same_unit to police the block outside its usual windows (fighting, or a re-slot's
+# settle window). While every man stands within this of his slot the block is in good order,
+# none of them is walking through another, and the scan is skipped.
+const STANDOFF_OFF_SLOT_PITCHES: float = 1.0
 # How far inside a rect a line must pass to count as crossing it, not running along its edge
 # (router_terrain_avoid's way round). A solver epsilon, tuned in wu:
 const INTERIOR_EPS: float = 0.01
@@ -921,10 +926,12 @@ static func _cap_body_speed_vec(vel: Vector2, facing: Vector2, jog_speed: float,
 ## skip below (scoped to the front body_tier_soldier_indices() ranks) already excludes the
 ## bodies actually in contact, so the unengaged rear bulk of a fighting regiment still gets
 ## policed for crowding -- e.g. post-impact stacking behind a routing enemy the front rank
-## cannot reach. Every other state only runs it inside unit._standoff_settle_until_tick's
+## cannot reach. Every other state runs it inside unit._standoff_settle_until_tick's
 ## window, armed by the re-slot events (set_formation, set_frontage, reform_ranks) whose
-## file-crossing this pass actually exists to police -- see the gate right below the
-## deliberate-pass-through check for why an ordinary march never needs the full scan.
+## file-crossing this pass exists to police, and while any unengaged man stands more than
+## STANDOFF_OFF_SLOT_PITCHES file pitches off his slot (_any_body_off_slot), when men walking
+## back to their slots can walk through each other -- see the gate right below the
+## deliberate-pass-through check for why a march in good order never needs the full scan.
 static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2Array, is_engaged: PackedByteArray, delta: float) -> PackedVector2Array:
 	if unit.state == Unit.State.ROUTING or n < 2 or delta <= 0.0:
 		return PackedVector2Array()
@@ -963,8 +970,19 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	# whose unengaged rear ranks can go on stacking behind a front rank pinned against a
 	# routing enemy for as long as the fight lasts and so are never covered by a settle
 	# window at all.
+	#
+	# A block out of good order outside both windows is the exception: one whose men a march
+	# has left strung out (a heading turn on the march, a block marching off scrambled from a
+	# fight) has them walking back, each straight at his own slot, and with nothing keeping two
+	# men of the block apart, a man walking back from far off walks through one nearer his slot
+	# who stands on that line (the support clip's cavalry squadron: two riders 17 and 57 wu off
+	# their slots came within 0.56 wu of each other as the farther one passed). So the pass also
+	# runs while any unengaged man stands more than STANDOFF_OFF_SLOT_PITCHES file pitches off
+	# his slot.
 	if unit.state != Unit.State.FIGHTING \
-			and Engine.get_physics_frames() > unit._standoff_settle_until_tick:
+			and Engine.get_physics_frames() > unit._standoff_settle_until_tick \
+			and not _any_body_off_slot(unit, n, target_slots, is_engaged,
+					STANDOFF_OFF_SLOT_PITCHES * unit.file_pitch_wu()):
 		return PackedVector2Array()
 
 	var body_radius: float = unit.soldier_body_radius()
@@ -1077,6 +1095,23 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 			sep_vel[i] = sep_vel[i].limit_length(max_sep_speed)
 
 	return sep_vel
+
+
+## Whether any living, unbroken, unengaged body of `unit` stands more than `dist` from its
+## own slot in `target_slots` (_separate_same_unit's gate for a block out of good order).
+static func _any_body_off_slot(unit: Unit, n: int, target_slots: PackedVector2Array,
+		is_engaged: PackedByteArray, dist: float) -> bool:
+	var dist_sq: float = dist * dist
+	for i in range(mini(n, target_slots.size())):
+		if i < unit._sim_soldier_hp.size() and unit._sim_soldier_hp[i] <= 0.0:
+			continue
+		if unit._sim_soldier_broken.size() > i and unit._sim_soldier_broken[i] != 0:
+			continue
+		if not is_engaged.is_empty() and is_engaged[i] == 1:
+			continue
+		if (unit._sim_soldier_pos[i] - target_slots[i]).length_squared() > dist_sq:
+			return true
+	return false
 
 
 ## Slide the regiment center toward its soldiers' centroid, at a bounded velocity (phase 5).
@@ -1238,11 +1273,12 @@ static func couple(unit: Unit, delta: float) -> void:
 ## march_target_ramp_s(unit) a step, so it covers the whole way in the time the march takes
 ## to reach Unit.march_target_full_speed() from rest at the unit's own acceleration. The
 ## step the march stops it returns 0, so the target switches straight back to the standing
-## one. Only a stop that lasts more than Unit.march_target_stop_grace_ticks steps drops the
+## one. Only a stop of more than Unit.march_target_stop_grace_ticks counted steps drops the
 ## stored ramp (Unit._march_target_frac) to 0 as well: a march that dips to a standstill for
 ## a tick or two and goes on picks its ramp up where it left it, instead of starting it
-## again from nothing each time (Unit._march_stopped_ticks counts the stop). A stop in
-## enemy contact, or while the block is engaged, is not counted at all, so a block that
+## again from nothing each time (Unit._march_stopped_ticks counts the stop). A step stood in
+## enemy contact, or while the block is engaged, is not counted and does not reset the
+## count either, so a block that
 ## halts to fight marches off afterwards with the ramp it came in with: a fight is not a
 ## new start from rest, and it leaves the men scrambled, which is when they most need the
 ## marching target's direct walk back. Restarting the ramp there sent a scrambled block's
