@@ -67,11 +67,14 @@ const CORRIDOR_PROXIMITY_MULT: float = 1.5
 # which also covers how a block setting off blends the two (arrival_target) and why one that
 # stops switches straight back to the narrow band.
 const MARCHING_CORRIDOR_PROXIMITY_MULT: float = 4.5
-# Default for Unit.march_target_stop_grace_ticks: how many body steps in a row a march may
+# Default for Unit.march_target_stop_grace_ticks: how many counted body steps a march may
 # stand still before the ramp of its bodies' arrival target (advance_march_target_frac)
-# starts again from nothing. Counted in steps, not seconds, because what it forgives is a
-# step artifact -- a march velocity that reads zero for one or two integration steps and
-# goes on -- so it means the same thing at any physics rate.
+# starts again from nothing. Unit._march_stopped_ticks does the counting: a marching step
+# resets it to 0, a standing step out of enemy contact and unengaged adds 1, and a standing
+# step in contact or engaged leaves it as it is, so it is not a count of steps in a row. The
+# ramp drops to 0 once that count passes this. Counted in steps, not seconds, because what
+# it forgives is a step artifact -- a march velocity that reads zero for one or two
+# integration steps and goes on -- so it means the same thing at any physics rate.
 const MARCH_TARGET_STOP_GRACE_TICKS: int = 2
 # Default for Unit.march_share_max_accel_mult: the most extra acceleration
 # march_accel_budget grants a body, as a multiple of the body's own body_accel.
@@ -639,9 +642,12 @@ static func step(unit: Unit, delta: float) -> void:
 ## slots at unit.accel, so without this share a man behind his slot spends all or most of
 ## body_accel keeping pace with the accelerating slot and gains on it little or not at all.
 ## With it he keeps pace on the share and closes on the slot at his full body_accel. The
-## rate is of the whole velocity vector, so a march that swings its heading at an unchanged
-## speed grants it too. While the march runs at a steady velocity the share is zero, and
-## step() grants it only to a man well off his slot (march_share_frac), so a block marching
+## rate is of the whole velocity vector, so a heading swing counts toward it, but only on a
+## step whose march speed has not dropped: the test compares the squared speeds of this step
+## and the last exactly, with no tolerance, so a swing at what is meant to be an unchanged
+## speed grants the share on a step where rounding leaves the speed equal or higher and none
+## on one where it reads lower by any amount. While the march runs at a steady velocity the
+## share is zero, and step() grants it only to a man well off his slot (march_share_frac), so a block marching
 ## in good order moves exactly as before. That gate matters: without it the share also took
 ## up the small lag kinetic friction leaves a body behind an accelerating march, so every
 ## charge and pursuit closed faster than before. step() grants the share only on an orderly
