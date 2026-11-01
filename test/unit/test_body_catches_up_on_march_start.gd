@@ -290,6 +290,37 @@ func test_the_stop_grace_is_the_units_own_knob() -> void:
 			"grace %d, a %d-tick dip: %.3f before, %.3f after" % [grace, dip, before, after])
 
 
+func test_a_stop_to_fight_keeps_the_ramp() -> void:
+	# A block that halts in enemy contact, or engaged, and fights for far longer than the grace
+	# marches off again with the ramp it came in with: the fight is not a new start from rest.
+	# The same stop out of contact and unengaged restarts it.
+	for fought in [true, false]:
+		var u := _make_block()
+		u.state = Unit.State.MOVING
+		var ramp_ticks: int = ceili(SoldierBodies.march_target_ramp_s(u) / TICK)
+		u._approach_velocity = u.facing * u.walk_speed
+		for _t in range(ramp_ticks + 1):
+			SoldierBodies.advance_march_target_frac(u, TICK)
+		assert_eq(u._march_target_frac, 1.0, "the march has ramped all the way")
+		u._approach_velocity = Vector2.ZERO
+		var stop: int = u.march_target_stop_grace_ticks + 60
+		for t in range(stop):
+			# Contact and the engaged latch each hold it: half the stop in contact only, the
+			# other half engaged only.
+			u._in_enemy_contact = fought and t < stop / 2
+			u.state = Unit.State.FIGHTING if fought and t >= stop / 2 else Unit.State.MOVING
+			assert_eq(SoldierBodies.advance_march_target_frac(u, TICK), 0.0,
+				"stopped, his target is the standing one")
+		u._in_enemy_contact = false
+		u.state = Unit.State.MOVING
+		u._approach_velocity = u.facing * u.walk_speed
+		var after: float = SoldierBodies.advance_march_target_frac(u, TICK)
+		var want: float = 1.0 if fought else TICK / SoldierBodies.march_target_ramp_s(u)
+		assert_almost_eq(after, want, 1e-5,
+			"a %d-tick stop, %s: the ramp reads %.3f on the next step" %
+			[stop, "fighting" if fought else "out of contact", after])
+
+
 func test_march_target_frac_ramps_by_time_not_by_speed() -> void:
 	var u := _make_block()
 	var ramp_s: float = SoldierBodies.march_target_ramp_s(u)
@@ -334,16 +365,22 @@ func test_the_blended_target_keeps_its_length() -> void:
 			15.0, 1e-3, "a quarter of the way from 10 to 30 wu is 15 wu")
 	# Two targets pointing exactly apart turn through the half-turn at the same constant rate,
 	# their length still running linearly.
-	assert_almost_eq(SoldierBodies.blend_targets(Vector2(10, 0), Vector2(-20, 0), 0.5),
-			Vector2(0, 15), Vector2(1e-3, 1e-3), "opposed targets, halfway: a quarter-turn, 15 wu")
-	assert_almost_eq(SoldierBodies.blend_targets(Vector2(10, 0), Vector2(-20, 0), 0.25),
-			Vector2.from_angle(PI / 4.0) * 12.5, Vector2(1e-3, 1e-3),
+	# GUT's assert_almost_eq cannot compare Vector2s, so each component is checked on its own.
+	_assert_vec_near(SoldierBodies.blend_targets(Vector2(10, 0), Vector2(-20, 0), 0.5),
+			Vector2(0, 15), "opposed targets, halfway: a quarter-turn toward +y, 15 wu")
+	_assert_vec_near(SoldierBodies.blend_targets(Vector2(10, 0), Vector2(-20, 0), 0.25),
+			Vector2.from_angle(PI / 4.0) * 12.5,
 			"opposed targets, a quarter: an eighth-turn, 12.5 wu")
 	# A zero-length end blends to the other end's direction, linearly in length.
-	assert_almost_eq(SoldierBodies.blend_targets(Vector2.ZERO, Vector2(0, 20), 0.5),
-			Vector2(0, 10), Vector2(1e-3, 1e-3), "from nothing, halfway")
-	assert_almost_eq(SoldierBodies.blend_targets(Vector2(0, 20), Vector2.ZERO, 0.75),
-			Vector2(0, 5), Vector2(1e-3, 1e-3), "to nothing, three quarters")
+	_assert_vec_near(SoldierBodies.blend_targets(Vector2.ZERO, Vector2(0, 20), 0.5),
+			Vector2(0, 10), "from nothing, halfway")
+	_assert_vec_near(SoldierBodies.blend_targets(Vector2(0, 20), Vector2.ZERO, 0.75),
+			Vector2(0, 5), "to nothing, three quarters")
+
+
+func _assert_vec_near(got: Vector2, want: Vector2, msg: String) -> void:
+	assert_almost_eq(got.x, want.x, 1e-3, "%s (x of %s)" % [msg, got])
+	assert_almost_eq(got.y, want.y, 1e-3, "%s (y of %s)" % [msg, got])
 
 
 func test_the_blended_target_turns_at_a_constant_rate() -> void:
@@ -375,7 +412,7 @@ func test_the_blended_target_turns_at_a_constant_rate() -> void:
 			% [spread, worst, even])
 		assert_almost_eq(total, spread, 0.01,
 			"targets %.1f degrees apart: the ramp turns %.3f degrees in all" % [spread, total])
-		assert_almost_eq(prev, b, Vector2(1e-3, 1e-3), "and ends on the marching target")
+		_assert_vec_near(prev, b, "and ends on the marching target")
 
 
 func test_the_blended_target_keeps_its_length_in_step() -> void:

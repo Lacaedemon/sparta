@@ -1241,7 +1241,15 @@ static func couple(unit: Unit, delta: float) -> void:
 ## one. Only a stop that lasts more than Unit.march_target_stop_grace_ticks steps drops the
 ## stored ramp (Unit._march_target_frac) to 0 as well: a march that dips to a standstill for
 ## a tick or two and goes on picks its ramp up where it left it, instead of starting it
-## again from nothing each time (Unit._march_stopped_ticks counts the stop). Depends only
+## again from nothing each time (Unit._march_stopped_ticks counts the stop). A stop in
+## enemy contact, or while the block is engaged, is not counted at all, so a block that
+## halts to fight marches off afterwards with the ramp it came in with: a fight is not a
+## new start from rest, and it leaves the men scrambled, which is when they most need the
+## marching target's direct walk back. Restarting the ramp there sent a scrambled block's
+## men round the perimeter corridor again each time it marched off between bouts: the
+## shallow cavalry troop of rout_rally, marching on its ATTACK between bouts, read a worst
+## fitted residual of 41.29 wu against a limit of 30 on every seed with the restart, and
+## passes without it, as it did with the hard switch. Depends only
 ## on unit-level state, so step() advances it once per unit-step and hands it to every
 ## body's arrival_target call (the same hoisting mass, body_radius and turning get above
 ## the per-soldier loop).
@@ -1279,7 +1287,8 @@ static func couple(unit: Unit, delta: float) -> void:
 ## residual of 41.8 now passes).
 static func advance_march_target_frac(unit: Unit, delta: float) -> float:
 	if not is_marching(unit):
-		unit._march_stopped_ticks += 1
+		if not unit._in_enemy_contact and not unit.is_engaged():
+			unit._march_stopped_ticks += 1
 		if unit._march_stopped_ticks > unit.march_target_stop_grace_ticks:
 			unit._march_target_frac = 0.0
 		return 0.0
@@ -1337,8 +1346,10 @@ static func arrival_target(unit: Unit, i: int, own_slot: Vector2, n: int, march_
 ## barely moves near either end and swings round in the middle, 14.3 degrees in one tick of
 ## a 90-tick ramp for two targets 170 degrees apart, against 1.9 at the constant rate. Two
 ## targets pointing exactly apart turn through the half-turn at the same constant rate, on
-## the side Vector2.angle_to's sign picks (counter-clockwise from +x to -x). A zero-length
-## end has no direction, so there the blend is the plain lerp.
+## the side Vector2.angle_to's sign picks: it reads +PI or -PI as the sign of the zero cross
+## product falls. From (10, 0) to (-20, 0) it reads +PI, so the target turns from +x toward
+## +y, which is clockwise on screen in Godot's y-down frame, and halfway is (0, 15). A
+## zero-length end has no direction, so there the blend is the plain lerp.
 static func blend_targets(a: Vector2, b: Vector2, frac: float) -> Vector2:
 	return a.slerp(b, frac)
 

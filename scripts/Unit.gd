@@ -149,7 +149,8 @@ var _cached_combat_profile: Dictionary = {}
 @export var march_share_max_accel_mult: float = SoldierBodies.MARCH_SHARE_MAX_ACCEL_MULT
 # How many body steps in a row a march may stand still before its bodies' arrival target
 # ramp starts again from nothing (SoldierBodies.advance_march_target_frac), so a march that
-# dips to a standstill for a step or two keeps its ramp.
+# dips to a standstill for a step or two keeps its ramp. Steps stood in enemy contact or
+# engaged are not counted.
 @export var march_target_stop_grace_ticks: int = SoldierBodies.MARCH_TARGET_STOP_GRACE_TICKS
 # Effective melee reach, in world units (Battle sets it per weapon from reach_m;
 # the 26 default is the infantry/sword baseline). A unit counts as in melee
@@ -1763,11 +1764,11 @@ var _body_march_orderly: bool = false
 # time while the block marches and drops it to 0 once the march has stood still for longer
 # than its grace, _march_stopped_ticks).
 var _march_target_frac: float = 0.0
-# How many body steps in a row this unit's march has stood still
-# (SoldierBodies.advance_march_target_frac): its bodies' arrival target switches back to the
-# standing one the tick the march stops, but _march_target_frac only drops to 0 once the stop
-# outlasts march_target_stop_grace_ticks, so a march that dips for a tick or two keeps its
-# ramp.
+# How many body steps in a row this unit's march has stood still out of enemy contact and
+# unengaged (SoldierBodies.advance_march_target_frac): its bodies' arrival target switches
+# back to the standing one the tick the march stops, but _march_target_frac only drops to 0
+# once the stop outlasts march_target_stop_grace_ticks, so a march that dips for a tick or
+# two keeps its ramp, and a stop to fight does not count toward the grace at all.
 var _march_stopped_ticks: int = 0
 # Velocity the regiment center followed its soldiers' centroid at this tick (phase 5):
 # the soldier->regiment coupling slides the center toward where its bodies actually are,
