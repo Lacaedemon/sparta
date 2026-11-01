@@ -400,7 +400,7 @@ func test_a_man_near_his_slot_moves_as_he_did_without_the_share() -> void:
 
 # How far off a march's destination or an attack's enemy lies (wu): far enough that one tick
 # only sets off, never arrives or makes contact.
-const GATE_RANGE: float = 600.0
+const GATE_RANGE: float = 600.0   # tuned in wu
 
 
 ## A block with a fresh MOVE order to GATE_RANGE ahead, set to step off at once (no reform hold).
