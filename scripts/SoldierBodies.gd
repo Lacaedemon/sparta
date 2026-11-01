@@ -1284,7 +1284,8 @@ static func couple(unit: Unit, delta: float) -> void:
 ## corridor (worst shape residual 29.9 to 32.3 on seeds 0 to 4 against a limit of 27; 17.6
 ## to 17.7 with the wide band). On the seed-0 catalog the wide band also re-formed the
 ## shallow cavalry troop in rout_rally, one of the clips the depth gate was kept for (its
-## residual of 41.8 now passes).
+## residual of 41.8 passed with the wide band, and passes on seeds 0 to 4 with the ramp,
+## since a stop to fight does not restart it).
 static func advance_march_target_frac(unit: Unit, delta: float) -> float:
 	if not is_marching(unit):
 		if not unit._in_enemy_contact and not unit.is_engaged():

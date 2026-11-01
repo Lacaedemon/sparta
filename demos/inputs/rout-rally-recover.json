@@ -20,11 +20,5 @@
     {"tick": [480, 600], "uid": 3, "field": "target_enemy_uid", "value": 0},
     {"tick": [480, 600], "uid": 3, "field": "engaged", "value": true},
     {"tick": [610, 700], "uid": 0, "absent": true}
-  ],
-  "defect_exemptions": {
-    "shape_residual": {
-      "uids": [3],
-      "reason": "Uid 3, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; ea0a9029 (#1880) reads 41.29, 41.29, 41.29, 41.29, 41.29, against 30.0. Traced on seeds 0 to 4, which read the same on each tree: the shallow cavalry troop marches on an ATTACK scrambled by its first melee, and its fitted residual is lower here than on 9f9bddee at every sampled tick from 280 to 400 (37.9 against 43.6 wu at tick 340, 47.0 against 53.0 at 380), and up to 1.7 wu higher from 260 to 278. On 9f9bddee its contact reading flickers on and off every few ticks there, and after tick 300 no out-of-contact run is longer than 3 samples (ticks 322 to 326), which is too short to judge; here it stays out of contact from tick 340 to 354, and the samples from 344 to 352 are judged, reading 39.0 to 41.3. A block that leaves melee scrambled stays scrambled while it marches off (#1837). Measured 2026-10-31. The sim of every later #1880 commit is hash-identical to ea0a9029's at the 60 Hz body step on the seed-0 catalog."
-    }
-  }
+  ]
 }
