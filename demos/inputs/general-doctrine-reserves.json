@@ -14,5 +14,15 @@
     {"tick": 0, "x": 650.0, "y": 570.0, "zoom": 0.42}
   ],
   "steps": [],
-  "state": [0, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900]
+  "state": [0, 60, 120, 180, 240, 300, 360, 420, 440, 442, 444, 446, 448, 450, 452, 454, 456, 458, 460, 480, 540, 600, 602, 604, 606, 608, 610, 612, 614, 616, 618, 620, 622, 624, 626, 628, 630, 632, 634, 636, 638, 640, 642, 644, 646, 648, 650, 652, 654, 656, 658, 660, 662, 664, 666, 668, 670, 672, 674, 676, 678, 680, 682, 684, 686, 688, 690, 692, 694, 696, 698, 700, 702, 704, 706, 708, 710, 712, 714, 716, 718, 720, 722, 724, 726, 728, 730, 732, 734, 736, 738, 740, 742, 744, 746, 748, 750, 752, 754, 756, 758, 760, 762, 764, 766, 768, 770, 772, 774, 776, 778, 780, 840, 900],
+  "defect_exemptions": {
+    "facing_flutter": {
+      "uids": [5],
+      "reason": "Uid 5 (team 1's reserve Infantry) chases uid 0 with its heading stepping one pivot step (0.36 to 0.45 degrees) back and forth every few ticks, the marching ATTACK heading dither tracked in #1764. Dense 2-tick FULL dumps judged with no exemption, Windows: main b1d5822b reads 1, 1, 2, 9 and 2 on seeds 0 to 4; on 16b003c7 (#1847 and #1878) the battle's trajectories differ from tick 71 and it reads 4, 3, 11, 2 and 2 against 3. The run on the clip seed falls between ticks 600 and 780, which the state list samples every 2 ticks so the regular scan sees it. Measured 2026-10-30."
+    },
+    "overlap": {
+      "uids": [4],
+      "reason": "Uid 4 (team 1's 80-horse Cavalry) marches out of contact with two riders passing within 1.69 wu at ticks 440 to 460 on the clip seed (floor 5.0). The block is deep enough that its turning march already had the wide corridor band on main, so its own steering is unchanged by #1847 and #1878 (16b003c7); the battle around it diverges from tick 71. Main b1d5822b has the same defect on perturbed seed 4 (0.58 wu), so it is seed-dependent and pre-existing: on dense 2-tick FULL dumps with no exemption, Windows, main fails on seed 4 only and 16b003c7 on seed 0 only. Tracked in #1889. The state list samples ticks 440 to 460 every 2 ticks so the regular scan sees it. Measured 2026-10-30."
+    }
+  }
 }

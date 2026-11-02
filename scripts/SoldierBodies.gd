@@ -62,12 +62,8 @@ const CORRIDOR_PROXIMITY_MULT: float = 1.5
 # land. See _corridor_to_slot's own doc comment for the failure this was measured against.
 # A stationary reform (drill/frontage-fold, _approach_velocity zero) keeps the plain,
 # narrower radius, so a genuine casualty-thinned or frontage-fold reform still corridors
-# around its own formation's interior exactly as before. A formed march turn keeps this
-# wider band while marching ONLY when the turning block is deep/wide enough that
-# Unit._formed_turn_gait_frac has actually derated its corner-slot pace below full
-# jog_speed (Unit.is_deep_for_formed_turn) -- see corridor_proximity_mult's doc comment for
-# why an ordinary shallow block's turn instead keeps the plain, narrower radius exactly as
-# it did before this widening existed.
+# around its own formation's interior exactly as before. A march that turns keeps this
+# wider band too, whatever the block's depth -- see corridor_proximity_mult's doc comment.
 const MARCHING_CORRIDOR_PROXIMITY_MULT: float = 4.5
 # Lateral clearance beyond outer formed file for perimeter corridor routing.
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
@@ -323,7 +319,7 @@ static func step(unit: Unit, delta: float) -> void:
 	var two_bodies: float = body_radius * 2.0
 	var turning: bool = unit.is_maneuver_turning()
 	# The per-body loop below skips _corridor_to_slot entirely during a maneuver turn, so
-	# the band (and the pivot-radius work behind it) is only derived when a body will use it.
+	# the band is only derived when a body will use it.
 	var proximity_mult: float = CORRIDOR_PROXIMITY_MULT if turning else corridor_proximity_mult(unit)
 	var straight_march: bool = false if turning else is_straight_march(unit)
 	# Precompute true file-column front and rear neighbors in O(n) for lane follower speed damping
@@ -1145,21 +1141,23 @@ static func couple(unit: Unit, delta: float) -> void:
 ## body's _corridor_to_slot call rather than re-deriving it per soldier (the same hoisting
 ## mass, body_radius and turning get above the per-soldier loop). The wider
 ## MARCHING_CORRIDOR_PROXIMITY_MULT applies while the unit is actively marching (own_slot is
-## a moving point, not a fixed reform target -- see that const's own doc comment) on a
-## straight march, and on a formed march turn ONLY when the turning block is deep enough
-## for its corner-slot pace to be derated (Unit.is_deep_for_formed_turn): that is the case
-## where a lagging body's arrival is slow relative to its slot's swinging arc and needs the
-## wider band to keep walking direct instead of being diverted into a perimeter corridor
-## detour it would never catch up from. A shallow block's turn keeps the plain
-## CORRIDOR_PROXIMITY_MULT band exactly as it did before the widening existed, because it
-## never lags far enough behind its own slot's arc to need more. Depth, not approach speed,
-## is the deciding quantity: a slow deep block still gets the wide band. Measured on the
-## website demo clips coast_to_stop and rout_rally (shallow cavalry troops): widening every
-## turning march moved their settle timing and overlap/shape_residual readings, while the
-## parade_ground and showcase slowdown, the intended cost of derating a deep block, is the
-## same with or without this depth gate.
+## a moving point, not a fixed reform target -- see that const's own doc comment), straight
+## or turning, whatever the block's depth: a lagging body keeps walking direct instead of
+## being diverted into a perimeter corridor detour it would never catch up from. A turning
+## march once kept the narrow band unless the block was deep (its formed turn derated),
+## on the premise that a shallow block never lags far behind its own slots' arc. A combat
+## re-face breaks that premise: it turns a marching block's whole slot grid about the anchor
+## in one tick, and the men at its ends then stand ranks across and files along from their
+## slots. Each such man was sent round the perimeter corridor, laid out in the grid's frame,
+## while the block kept marching and turning, so the block did not re-form: in the support
+## clip a 13-file archer block shooting on the march turned its grid 18.6 degrees, its end
+## men stood up to 146 wu off, and 100 ticks later 25 of its 90 men were still walking the
+## corridor (worst shape residual 29.9 to 32.3 on seeds 0 to 4 against a limit of 27; 17.6
+## to 17.7 with the wide band). On the seed-0 catalog the wide band also re-formed the
+## shallow cavalry troop in rout_rally, one of the clips the depth gate was kept for (its
+## residual of 41.8 now passes).
 static func corridor_proximity_mult(unit: Unit) -> float:
-	if is_marching(unit) and (not unit.is_turning() or unit.is_deep_for_formed_turn()):
+	if is_marching(unit):
 		return MARCHING_CORRIDOR_PROXIMITY_MULT
 	return CORRIDOR_PROXIMITY_MULT
 
