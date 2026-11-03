@@ -226,3 +226,44 @@ func test_a_formed_pivot_never_writes_the_lag_the_clearance_reads() -> void:
 	var travel: Vector2 = loose.facing.orthogonal()
 	assert_almost_eq(loose.terrain_clearance(travel), _swept(loose, 0.0, travel), CLEAR_EPS,
 			"an undisciplined block reads the fold alone, lag or no lag")
+
+
+func test_a_hasty_march_reads_the_fold_alone() -> void:
+	# A disciplined block given a move in haste re-faces onto its path's bearing through
+	# _reface, as an undisciplined one does, so it too reads the fold alone. The same move not
+	# in haste pivots as a formation and reads the re-square lag.
+	var u := _unit()
+	_stand_resquare(u, 0.0, PI / 3.0)
+	var travel: Vector2 = u.facing.orthogonal()
+	u.set_current_order(Order.new_move(START + travel * 1000.0))
+	assert_true(u.lag_reading_cannot_feed_back(), "setup: a move not in haste reads the lag")
+	assert_gt(u.terrain_clearance(travel), _swept(u, 0.0, travel) + 10.0,
+			"setup: and clears the angles the grid still turns through")
+	u.current_order.haste = true
+	assert_false(u.lag_reading_cannot_feed_back(), "a move in haste does not")
+	assert_almost_eq(u.terrain_clearance(travel), _swept(u, 0.0, travel), CLEAR_EPS,
+			"so a hasty march reads the fold alone, lag or no lag")
+
+
+func test_a_file_double_over_a_folded_march_lag_squares_it_too() -> void:
+	# A march's lag (not an order's re-square) of 60 degrees still trailing when a quarter-turn
+	# drill folds a quarter under it: the grid stands 30 degrees off, neither square nor a
+	# quarter. The lag would have closed onto the quarter fold, along which the widened files no
+	# longer lie, so it is folded where the grid stands and a re-square waits to run, as it does
+	# for an order's lag; once it has run and closed, the grid stands square.
+	var u := _unit()
+	u._reface(u.facing.rotated(PI / 3.0))
+	assert_almost_eq(u._grid_lag, -PI / 3.0, 0.0001, "setup: a march leaves a 60 degree lag")
+	assert_false(u._grid_lag_resquare, "setup: a march's lag, not an order's re-square")
+	u._formation_angle = PI * 0.5
+	assert_false(u._holds_quarter_fold(), "setup: the grid as it stands is not a quarter off")
+	u._apply_file_double_step(Order.new_file_double(1))
+	var files: int = UnitFormation.frontage(u)
+	assert_eq(files, UnitFormation.widened_files(MEN, FILES), "the files widen as they stand")
+	assert_almost_eq(u.grid_fold(), PI / 6.0, 0.0001, "the grid stays where it stood")
+	assert_true(u._resquare_pending, "a re-square waits to run from the new fold")
+	u._run_waiting_resquare()
+	_close_lag(u)
+	assert_almost_eq(wrapf(u.grid_fold(), -PI, PI), 0.0, 0.0001,
+			"once it has run and closed the grid stands square")
+	assert_eq(UnitFormation.frontage(u), files, "with its files still across the facing")

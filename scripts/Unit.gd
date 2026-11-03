@@ -1050,8 +1050,11 @@ const TURN_ACCEL_BUDGET_FRACTION: float = 0.5
 # as a fraction of jog_speed (via UnitManeuver.wheel_gait_rate). A deep block's corner slot
 # moves slower than the body arrival cap (jog_speed) so a body has positive velocity
 # headroom to overcome inertia, close its lag, and maintain formation dressing; a shallow
-# block, whose bodies never lag far, keeps the full cap (_formed_turn_gait_frac returns
-# 1.0 there by design, so the headroom is reserved only where the depth ratio needs it).
+# block, whose bodies the pivot alone never leaves far behind, keeps the full cap
+# (_formed_turn_gait_frac returns 1.0 there by design, so the headroom is reserved only where
+# the depth ratio needs it). The derate sets the pivot's pace only: it does not decide which
+# corridor band a turning march's bodies use (every march uses the wide one, see
+# SoldierBodies.advance_march_target_frac).
 const FORMED_TURN_TRACKING_FRAC: float = 0.6
 # Live formed turn tracking fraction -- caller-configurable parameter defaulting to
 # FORMED_TURN_TRACKING_FRAC above. This is the value a formation reaches once its DEPTH
@@ -5239,10 +5242,10 @@ func _pivot_arm(extents: Vector2 = UNKNOWN_EXTENTS) -> float:
 ## full-pace-then-derated form, which would snap discontinuously right at the reference
 ## ratio (a mid-battle jump whenever casualties change a block's files/ranks). Below the
 ## caller's own free depth ratio (formed_turn_tracking_frac x FORMED_TURN_DEPTH_RATIO_REF)
-## a lagging body can always close its distance to a swinging slot within the corridor's
-## own direct-arrival band before ever needing to divert around the formation's perimeter,
-## so the pivot runs at full jog_speed pace; the ramp then reaches formed_turn_tracking_frac
-## exactly at FORMED_TURN_DEPTH_RATIO_REF and stays there for any deeper block still --
+## the pivot alone never leaves a body further behind its swinging slot than the marching
+## band's direct-arrival radius, so it runs at full jog_speed pace; the ramp then reaches
+## formed_turn_tracking_frac exactly at FORMED_TURN_DEPTH_RATIO_REF and stays there for any
+## deeper block still --
 ## reserving exactly the catch-up headroom a block that size needs, instead of taxing every
 ## formed pivot by the same flat amount regardless of size. The free ratio scales with the
 ## caller's own (clamped) formed_turn_tracking_frac rather than the FORMED_TURN_TRACKING_FRAC
@@ -5547,9 +5550,13 @@ func _far_tier_half_extents() -> Vector2:
 ## The re-square lag is read only by a disciplined block not marching in haste
 ## (lag_reading_cannot_feed_back). Such a block's march turns its heading by a formed pivot
 ## (_rotate_facing_toward), which turns the slot grid with the heading and leaves the lag
-## alone, or, while a maneuver holds its facing, through _reface onto a facing the order fixed;
-## either way the heading the clearance steers never writes the lag, so the loop a march lag
-## closes cannot form. An undisciplined or hasty march turns its heading onto the
+## alone, or, while a maneuver holds its facing, through _reface onto a facing the order fixed.
+## That _reface does write the lag, but only by the turn onto the fixed facing, which the
+## clearance does not steer. A pivot's rate does bound how fast the re-square closes on a
+## pivoting tick (_close_resquare_lag_in_pivot), but it never turns the lag away from the fold
+## nor moves the fold it closes onto. Either way the clearance cannot grow the lag or move
+## where it ends, so the loop a march lag closes cannot form. An undisciplined or hasty march
+## turns its heading onto the
 ## path's bearing through _reface, which writes every correction into the lag, so it reads
 ## the fold alone, as before.
 ##
@@ -7534,11 +7541,13 @@ func _arm_combo_step(step: Order) -> bool:
 ##   whole grid is squared to the heading -- the fold and the lag, and with the lag any
 ##   re-square still turning or waiting to run.
 ## - Standing square or a half-turn off, but over a fold a quarter off (a re-square lag turning
-##   the grid back from a quarter fold the other way): the files lie across the facing now, but
-##   would run along the depth once the lag closed. The lag is folded where the grid stands
-##   (_fold_grid_lag), so the grid stays put and the widened files stay across the facing. A
-##   re-square folded so waits to run again (_resquare_pending) and squares whatever the new
-##   fold leaves off square or a half-turn, at a bounded rate.
+##   the grid back from a quarter fold the other way, or a march's lag of more than an eighth
+##   turn still trailing when a quarter-turn drill folds a quarter under it): the files lie
+##   across the facing now, but would run along the depth once the lag closed. The lag is
+##   folded where the grid stands (_fold_grid_lag), so the grid stays put and the widened files
+##   stay across the facing. Whichever lag was folded, a re-square then waits to run
+##   (_resquare_pending) and squares whatever the new fold leaves off square or a half-turn, at
+##   a bounded rate.
 ## - The transposition turns the grid from where it stands onto the heading, which is a quarter
 ##   turn plus the grid's residue however the fold and lag split it (a fold of a half-turn with
 ##   a lag of minus 60 degrees turns the grid by 120, exactly as a 120 degree fold would): the
@@ -7559,12 +7568,12 @@ func _apply_file_double_step(step: Order) -> void:
 			_resquare_pending = false
 			_render_dirty = true
 		elif _grid_lag != 0.0 and is_quarter_turn_off(_formation_angle):
-			# An order's re-square folded this way waits to run again from the new fold, as
-			# _reface and a lag carried into contact leave it, so a grid left between square
-			# and a quarter is still squared.
-			var was_resquare: bool = _grid_lag_resquare
+			# Any lag folded this way leaves a re-square waiting to run from the new fold, as
+			# _reface and a lag carried into contact leave an order's, so a grid left between
+			# square and a quarter is still squared. A march's lag would have closed onto the
+			# quarter fold, which the widened files no longer fit, so it is squared the same.
 			_fold_grid_lag()
-			_resquare_pending = _resquare_pending or was_resquare
+			_resquare_pending = true
 		files = UnitFormation.widened_files(soldiers, current) if step.dir > 0 \
 				else UnitFormation.narrowed_files(current)
 	set_frontage(files, step.frontage_anchor_offset)
