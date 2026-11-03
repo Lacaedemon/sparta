@@ -107,21 +107,25 @@ PREPS="$TMP/preps"
 count_prep() { echo x >> "$PREPS"; }
 attempts_made() { wc -l < "$PREPS" | tr -d ' '; }
 
-# hang_first <prep-log>: on the first attempt (by the prepare hook's count) exits 124,
-# the status run_bounded returns when its timeout kills a run; later attempts exit 0.
-# Faking the first timeout lets the budget be generous, so a retry that starts slowly
-# still finishes inside it. Case 2 covers a real timeout kill.
-cat > "$TMP/hang-first" <<'EOF'
+# timeout_first <prep-log> <run-log>: logs each run, then on the first attempt (by the
+# prepare hook's count) exits 124, the status run_bounded returns when its timeout kills
+# a run; later attempts exit 0. Faking the first timeout lets the budget be generous, so
+# a retry that starts slowly still runs and finishes inside it, and the run log can be
+# trusted. Case 2 covers a real timeout kill.
+cat > "$TMP/timeout-first" <<'EOF'
 #!/usr/bin/env bash
+echo x >> "$2"
 if [ "$(wc -l < "$1" | tr -d ' ')" -eq 1 ]; then exit 124; fi
 exit 0
 EOF
-chmod +x "$TMP/hang-first"
+chmod +x "$TMP/timeout-first"
 
 rc=0
-run_bounded_retry 3 30 "case-1" count_prep "$TMP/hang-first" "$PREPS" 2>"$TMP/c1.err" || rc=$?
+run_bounded_retry 3 30 "case-1" count_prep "$TMP/timeout-first" "$PREPS" "$TMP/c1.runs" \
+  2>"$TMP/c1.err" || rc=$?
 assert_eq "a once-timed-out command succeeds on a retry" 0 "$rc"
-assert_eq "it ran twice, the prepare hook before each attempt" 2 "$(attempts_made)"
+assert_eq "it ran twice" 2 "$(wc -l < "$TMP/c1.runs" | tr -d ' ')"
+assert_eq "the prepare hook ran before each attempt" 2 "$(attempts_made)"
 assert_eq "the retry is logged" 1 "$(grep -c 'attempt 1/3 timed out after 30s' "$TMP/c1.err" || true)"
 
 # always_hang: hangs until the timeout kills it. Every attempt times out whether or not
@@ -743,8 +747,13 @@ assert_eq "a plain non-zero import status writes no stamp" missing \
 
 # A fake project with a one-row catalog, and a stub Godot that answers --version and
 # --import, and for a dump writes a two-line hash stream and one state file. When
-# STUB_HANG_FIRST names a counter file, its first dump writes ONE hash line and then
+# STUB_ATTEMPTS names an attempt log, its first dump writes ONE hash line and then
 # hangs, the shape of a run killed mid-dump.
+#
+# The attempt log is not written by the stub: a stub killed before it ran a line would
+# leave the next attempt reading as the first, and hanging again. A fake `rm` first on
+# PATH writes it instead, one line each time dump-demo-states.sh's prepare step wipes the
+# clip dir, which it does before every attempt and outside the timeout.
 TREE="$TMP/tree"
 mkdir -p "$TREE/website/tools" "$TREE/demos/inputs"
 cat > "$TREE/website/tools/demo-catalog.sh" <<'EOF'
@@ -760,19 +769,27 @@ case " $* " in
   *" --import "*) exit 0 ;;
 esac
 dir="$SPARTA_DEMO_STATE_DIR"
-if [ -n "${STUB_HANG_FIRST:-}" ]; then
-  n=$(( $(cat "$STUB_HANG_FIRST" 2>/dev/null || echo 0) + 1 ))
-  echo "$n" > "$STUB_HANG_FIRST"
-  if [ "$n" -eq 1 ]; then
-    echo '{"tick":8,"hash":"aaaa"}' >> "$dir/hash_stream.jsonl"
-    exec sleep 60
-  fi
+if [ -n "${STUB_ATTEMPTS:-}" ] && [ "$(wc -l < "$STUB_ATTEMPTS" | tr -d ' ')" -eq 1 ]; then
+  echo '{"tick":8,"hash":"aaaa"}' >> "$dir/hash_stream.jsonl"
+  exec sleep 60
 fi
 echo '{"tick":8,"hash":"aaaa"}' >> "$dir/hash_stream.jsonl"
 echo '{"tick":200,"hash":"bbbb"}' >> "$dir/hash_stream.jsonl"
 echo '{"tick":8}' > "$dir/state_00008.json"
 EOF
 chmod +x "$TMP/godot-dump-stub"
+
+REAL_RM="$(command -v rm)"
+mkdir -p "$TMP/attemptbin"
+cat > "$TMP/attemptbin/rm" <<EOF
+#!/usr/bin/env bash
+case "\$*" in
+  *"/alpha") [ -n "\${STUB_ATTEMPTS:-}" ] && echo x >> "\$STUB_ATTEMPTS" ;;
+esac
+exec "$REAL_RM" "\$@"
+EOF
+chmod +x "$TMP/attemptbin/rm"
+dump_attempts() { wc -l < "$TMP/attempts.log" | tr -d ' '; }
 
 dump() {
   # 5 s, not 1: a clean stub run on a loaded machine must never use up a retry.
@@ -786,25 +803,28 @@ rc=0
 dump "$TMP/clean" >"$TMP/clean.log" 2>&1 || rc=$?
 assert_eq "a clean stub dump succeeds" 0 "$rc"
 rc=0
-STUB_HANG_FIRST="$TMP/hang.count" dump "$TMP/retried" >"$TMP/retried.log" 2>&1 || rc=$?
+STUB_ATTEMPTS="$TMP/attempts.log" PATH="$TMP/attemptbin:$PATH" \
+  dump "$TMP/retried" >"$TMP/retried.log" 2>&1 || rc=$?
 assert_eq "a dump hung on its first attempt succeeds on retry" 0 "$rc"
+assert_eq "the retried dump took two attempts" 2 "$(dump_attempts)"
 assert_eq "the dump's retry is logged" 1 "$(grep -c "attempt 1/3 timed out" "$TMP/retried.log" || true)"
 assert_eq "the retry says how far the killed attempt got" 1 \
   "$(grep -c "killed attempt for 'alpha' had written 0 of " "$TMP/retried.log" || true)"
 assert_eq "the retried hash stream is byte-identical to a clean run's" same \
   "$(cmp -s "$TMP/clean/alpha/hash_stream.jsonl" "$TMP/retried/alpha/hash_stream.jsonl" && echo same || echo differs)"
 
-rm -f "$TMP/hang.count"
+rm -f "$TMP/attempts.log"
 rc=0
-STUB_HANG_FIRST="$TMP/hang.count" SPARTA_DUMP_ATTEMPTS=1 dump "$TMP/once" >"$TMP/once.log" 2>&1 || rc=$?
+STUB_ATTEMPTS="$TMP/attempts.log" PATH="$TMP/attemptbin:$PATH" SPARTA_DUMP_ATTEMPTS=1 \
+  dump "$TMP/once" >"$TMP/once.log" 2>&1 || rc=$?
 assert_eq "with one attempt a hung dump fails" 1 "$rc"
 assert_eq "the failure names the timeout" 1 "$(grep -c "timed out on all 1 attempts" "$TMP/once.log" || true)"
 
 # Under CI the default is one attempt, so a deterministic hang fails within one timeout
 # instead of outlasting the CI step's own limit.
-rm -f "$TMP/hang.count"
+rm -f "$TMP/attempts.log"
 rc=0
-STUB_HANG_FIRST="$TMP/hang.count" CI=true GODOT_BIN="$TMP/godot-dump-stub" SPARTA_DUMP_STATE_TIMEOUT=5 \
+STUB_ATTEMPTS="$TMP/attempts.log" PATH="$TMP/attemptbin:$PATH" CI=true GODOT_BIN="$TMP/godot-dump-stub" SPARTA_DUMP_STATE_TIMEOUT=5 \
   bash "$REPO_ROOT/website/tools/dump-demo-states.sh" "$TMP/ci" "$TREE" >"$TMP/ci.log" 2>&1 || rc=$?
 assert_eq "under CI a hung dump fails without a retry" 1 "$rc"
 assert_eq "under CI the default is one attempt" 1 "$(grep -c "timed out on all 1 attempts" "$TMP/ci.log" || true)"
@@ -812,7 +832,6 @@ assert_eq "under CI the default is one attempt" 1 "$(grep -c "timed out on all 1
 # A wipe that fails (a killed Godot on Windows still holding a file) is retried, and
 # only a wipe that keeps failing fails the run. A fake `rm` first on PATH fails its
 # first RM_FAILS calls on the clip dir, then hands over to the real rm.
-REAL_RM="$(command -v rm)"
 mkdir -p "$TMP/fakebin"
 cat > "$TMP/fakebin/rm" <<EOF
 #!/usr/bin/env bash
