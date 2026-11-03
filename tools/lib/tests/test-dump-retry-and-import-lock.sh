@@ -752,8 +752,9 @@ assert_eq "a plain non-zero import status writes no stamp" missing \
 #
 # The attempt log is not written by the stub: a stub killed before it ran a line would
 # leave the next attempt reading as the first, and hanging again. A fake `rm` first on
-# PATH writes it instead, one line each time dump-demo-states.sh's prepare step wipes the
-# clip dir, which it does before every attempt and outside the timeout.
+# PATH writes it instead, one line for each rm call on these cases' clip dirs. The
+# prepare step wipes the clip dir before every attempt and outside the timeout, once per
+# attempt unless a wipe fails and is retried.
 TREE="$TMP/tree"
 mkdir -p "$TREE/website/tools" "$TREE/demos/inputs"
 cat > "$TREE/website/tools/demo-catalog.sh" <<'EOF'
@@ -784,7 +785,7 @@ mkdir -p "$TMP/attemptbin"
 cat > "$TMP/attemptbin/rm" <<EOF
 #!/usr/bin/env bash
 case "\$*" in
-  *"/alpha") [ -n "\${STUB_ATTEMPTS:-}" ] && echo x >> "\$STUB_ATTEMPTS" ;;
+  *"/retried/alpha"|*"/once/alpha"|*"/ci/alpha") [ -n "\${STUB_ATTEMPTS:-}" ] && echo x >> "\$STUB_ATTEMPTS" ;;
 esac
 exec "$REAL_RM" "\$@"
 EOF
@@ -819,6 +820,7 @@ STUB_ATTEMPTS="$TMP/attempts.log" PATH="$TMP/attemptbin:$PATH" SPARTA_DUMP_ATTEM
   dump "$TMP/once" >"$TMP/once.log" 2>&1 || rc=$?
 assert_eq "with one attempt a hung dump fails" 1 "$rc"
 assert_eq "the failure names the timeout" 1 "$(grep -c "timed out on all 1 attempts" "$TMP/once.log" || true)"
+assert_eq "with one attempt the dump ran once" 1 "$(dump_attempts)"
 
 # Under CI the default is one attempt, so a deterministic hang fails within one timeout
 # instead of outlasting the CI step's own limit.
@@ -828,6 +830,7 @@ STUB_ATTEMPTS="$TMP/attempts.log" PATH="$TMP/attemptbin:$PATH" CI=true GODOT_BIN
   bash "$REPO_ROOT/website/tools/dump-demo-states.sh" "$TMP/ci" "$TREE" >"$TMP/ci.log" 2>&1 || rc=$?
 assert_eq "under CI a hung dump fails without a retry" 1 "$rc"
 assert_eq "under CI the default is one attempt" 1 "$(grep -c "timed out on all 1 attempts" "$TMP/ci.log" || true)"
+assert_eq "under CI the dump ran once" 1 "$(dump_attempts)"
 
 # A wipe that fails (a killed Godot on Windows still holding a file) is retried, and
 # only a wipe that keeps failing fails the run. A fake `rm` first on PATH fails its
