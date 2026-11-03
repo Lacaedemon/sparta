@@ -65,10 +65,25 @@ godot_import_is_current() {
 
 # godot_lock_take <lock>
 #
-# Creates <lock> holding this caller's PID, and fails if <lock> already exists. The
-# create is bash's own noclobber redirect, one open(O_CREAT|O_EXCL) made by the shell
-# itself, so exactly one of any number of racing callers succeeds, on Linux and in Git
-# Bash alike (which has no flock).
+# Creates <lock> holding this caller's PID. Returns 0 when this call created it, 1 when
+# <lock> already exists (someone else holds it), and 2, with an ::error:: carrying the
+# shell's own message, when the create failed for any other reason (a missing parent
+# directory, no permission, a full or failing disk). A failed create reads as "held"
+# only when the path is there afterwards, so a lock that can never be taken fails at
+# once instead of being waited on for the whole budget.
+#
+# The create is bash's own noclobber redirect, so exactly one of any number of racing
+# callers succeeds, on Linux and in Git Bash alike (which has no flock). Under noclobber
+# bash stats the path first: an absent path is opened with O_CREAT|O_EXCL, so of two
+# callers that both saw it absent only one creates it; an existing regular file is
+# refused without being opened; and an existing non-regular path is opened without
+# O_EXCL, which for a directory fails with EISDIR. Every case that finds the path
+# already there fails, which is all a lock needs.
+#
+# The PID goes in by a second, ordinary redirect into the file this call just created.
+# Until it lands the lock reads as PID-less, which godot_lock_is_stale allows for. If
+# that write fails, the file is removed again and the call fails, rather than leaving
+# an empty lock behind that every caller would wait a minute on.
 #
 # Not mkdir(1): its exit status is not a lock. uutils coreutils' mkdir, the default on
 # Ubuntu 26.04 (and so on its CI runners), exits 0 for a directory another process
@@ -78,10 +93,39 @@ godot_import_is_current() {
 #
 # BASHPID, not $$: callers backgrounded from one shell share its $$, and each needs its
 # own identity here (bash 3.2 has no BASHPID and falls back to $$). It is read before
-# the subshell, whose own BASHPID would name the subshell.
+# the command substitution, whose own BASHPID would name its subshell.
 godot_lock_take() {
-  local me="${BASHPID:-$$}"
-  ( set -C; echo "$me" > "$1" ) 2>/dev/null
+  local lock="$1" me="${BASHPID:-$$}" err tries=0
+  # The command substitution is a subshell, so set -C does not leak to the caller.
+  while ! err="$( { set -C; : > "$lock"; } 2>&1 )"; do
+    if [ -e "$lock" ] || [ -L "$lock" ]; then
+      return 1
+    fi
+    # Gone again: its holder may have released it between the create and the test, so
+    # only a create that keeps failing on an absent path is an error.
+    tries=$((tries + 1))
+    if [ "$tries" -ge 3 ]; then
+      echo "::error::godot-import-lock: cannot create lock $lock: $err" >&2
+      return 2
+    fi
+  done
+  if ! err="$( { echo "$me" > "$lock"; } 2>&1 )"; then
+    rm -f "$lock"
+    echo "::error::godot-import-lock: created lock $lock but could not write its PID, so removed it again: $err" >&2
+    return 2
+  fi
+}
+
+# godot_lock_holder <lock> -- the holder PID recorded in <lock>, or nothing. A directory
+# at <lock> is a lock taken by an older version of this helper, which used mkdir locks
+# and kept the PID in <lock>/pid. Reading it there means a live old-version holder is
+# waited for like any other, and a dead one is broken at once.
+godot_lock_holder() {
+  if [ -d "$1" ]; then
+    cat "$1/pid" 2>/dev/null || true
+  else
+    cat "$1" 2>/dev/null || true
+  fi
 }
 
 # godot_lock_acquire <lock> <wait-secs>
@@ -89,8 +133,10 @@ godot_lock_take() {
 # Atomic lock file (see godot_lock_take), holding its holder's PID. A lock is stale when
 # its holder PID is no longer alive, or when it has no PID at all and is over a minute
 # old (a holder killed between creating the file and writing its PID). A directory at
-# <lock>, left by a version of this helper that used mkdir locks, reads as a lock with
-# no PID.
+# <lock> is a lock left by a version of this helper that used mkdir locks, and its
+# holder is read from <lock>/pid (see godot_lock_holder). The reverse is out of this
+# helper's reach: an old-version caller looks for <lock>/pid in a file lock, finds
+# none, and so breaks a live new holder's lock once it is a minute old.
 #
 # Breaking a stale lock is itself serialised by a second lock file, <lock>.break.
 # The one waiter holding it re-reads the PID and removes the lock only if it still names
@@ -103,15 +149,23 @@ godot_lock_take() {
 # file to remove by hand.
 #
 # A live holder is waited for up to <wait-secs>, after which this fails loudly rather
-# than importing under someone else's import.
+# than importing under someone else's import. A lock or breaker that cannot be created
+# at all (see godot_lock_take) fails at once.
 godot_lock_acquire() {
-  local lock="$1" wait_secs="$2" waited=0 holder now
+  local lock="$1" wait_secs="$2" waited=0 holder now rc
   local breaker="$lock.break"
-  while ! godot_lock_take "$lock"; do
-    holder="$(cat "$lock" 2>/dev/null || true)"
+  while :; do
+    rc=0
+    godot_lock_take "$lock" || rc=$?
+    [ "$rc" -eq 0 ] && return 0
+    [ "$rc" -eq 1 ] || return 1
+    holder="$(godot_lock_holder "$lock")"
     if godot_lock_is_stale "$lock" "$holder"; then
-      if godot_lock_take "$breaker"; then
-        now="$(cat "$lock" 2>/dev/null || true)"
+      rc=0
+      godot_lock_take "$breaker" || rc=$?
+      [ "$rc" -le 1 ] || return 1
+      if [ "$rc" -eq 0 ]; then
+        now="$(godot_lock_holder "$lock")"
         if [ -e "$lock" ] && [ "$now" = "$holder" ] && godot_lock_is_stale "$lock" "$now"; then
           rm -rf "$lock"
           echo "godot-import-lock: broke stale lock $lock (holder PID ${holder:-none} is gone)" >&2

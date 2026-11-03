@@ -27,8 +27,11 @@
 #      broken; a fresh PID-less one is not; a breaker that arrives after another caller
 #      already broke and retook the lock leaves it alone; an abandoned .break lock fails
 #      loudly and is not cleared; a directory lock left by the older mkdir-based helper
-#      is waited for while fresh and broken once old; one held by a live holder is
-#      waited for and then refused loudly when the wait runs out
+#      is judged by the PID in <lock>/pid (a live one is waited for however old the
+#      lock, a dead one is broken at once) and without one is waited for while fresh
+#      and broken once old; one held by a live holder is waited for and then refused
+#      loudly when the wait runs out; a lock that cannot be created at all (under a
+#      missing directory) fails at once with the shell's error, not after the wait
 #   8. an import killed by the timeout fails and leaves no stamp, so the next run
 #      imports; any other non-zero status (a signal death included) warns with the
 #      log's tail, writes no stamp, and does not fail
@@ -358,19 +361,71 @@ assert_eq "an old PID-less lock is broken" 0 "$rc"
 assert_eq "the PID-less takeover is reported" 1 "$(grep -c 'holder PID none is gone' "$TMP/nopid.err" || true)"
 godot_lock_release "$LOCK"
 
-# A directory lock left by the older mkdir-based helper reads as a lock with no PID:
-# waited for while fresh, broken once over a minute old.
+# A directory lock left by the older mkdir-based helper keeps its holder in <lock>/pid.
+# A live holder there (this shell), even one older than the PID-less stale age, is
+# waited for and never broken: its import may still be running.
+mkdir "$LOCK"
+echo "$$" > "$LOCK/pid"
+touch -d '2 minutes ago' "$LOCK"
+rc=0
+godot_lock_acquire "$LOCK" 2 2>"$TMP/dirlive.err" || rc=$?
+assert_eq "an old directory lock with a live holder is not broken" 1 "$rc"
+assert_eq "the refusal names the directory lock's live holder" 1 \
+  "$(grep -c "gave up after 2s.*holder PID $$)" "$TMP/dirlive.err" || true)"
+assert_eq "the live directory lock is left in place" "$$" "$(cat "$LOCK/pid" 2>/dev/null || echo missing)"
+rm -rf "$LOCK"
+
+# A dead holder in <lock>/pid is broken at once, fresh as the lock is.
 mkdir "$LOCK"
 echo "$dead" > "$LOCK/pid"
 rc=0
+godot_lock_acquire "$LOCK" 1 2>"$TMP/dirlock.err" || rc=$?
+assert_eq "a directory lock with a dead holder is broken" 0 "$rc"
+assert_eq "the directory-lock takeover names the dead holder" 1 \
+  "$(grep -c "broke stale lock.*holder PID $dead is gone" "$TMP/dirlock.err" || true)"
+assert_eq "the lock is a file after the takeover" yes "$([ -f "$LOCK" ] && echo yes || echo no)"
+godot_lock_release "$LOCK"
+
+# A directory lock with no <lock>/pid (an old holder killed before writing one) reads as
+# PID-less: waited for while fresh, broken once over a minute old.
+mkdir "$LOCK"
+rc=0
 godot_lock_acquire "$LOCK" 1 2>/dev/null || rc=$?
-assert_eq "a fresh directory lock is not broken" 1 "$rc"
+assert_eq "a fresh PID-less directory lock is not broken" 1 "$rc"
 touch -d '2 minutes ago' "$LOCK"
 rc=0
-godot_lock_acquire "$LOCK" 1 2>"$TMP/dirlock.err" || rc=$?
-assert_eq "an old directory lock is broken" 0 "$rc"
-assert_eq "the directory-lock takeover is reported" 1 "$(grep -c 'broke stale lock' "$TMP/dirlock.err" || true)"
-assert_eq "the lock is a file after the takeover" yes "$([ -f "$LOCK" ] && echo yes || echo no)"
+godot_lock_acquire "$LOCK" 1 2>"$TMP/dirnopid.err" || rc=$?
+assert_eq "an old PID-less directory lock is broken" 0 "$rc"
+assert_eq "the PID-less directory-lock takeover is reported" 1 \
+  "$(grep -c 'holder PID none is gone' "$TMP/dirnopid.err" || true)"
+godot_lock_release "$LOCK"
+
+# A lock that cannot be created at all (here, under a missing directory) is not mistaken
+# for one someone else holds: it fails at once, well inside the wait budget, with the
+# shell's own error, rather than waiting the budget out and blaming an unknown holder.
+start=$SECONDS
+rc=0
+godot_lock_acquire "$TMP/no-such-dir/lock" 30 2>"$TMP/nodir.err" || rc=$?
+assert_eq "a lock under a missing directory fails" 1 "$rc"
+assert_eq "that failure is immediate, not the wait budget" yes \
+  "$([ $((SECONDS - start)) -le 5 ] && echo yes || echo no)"
+assert_eq "that failure says the lock cannot be created" 1 \
+  "$(grep -c "::error::godot-import-lock: cannot create lock $TMP/no-such-dir/lock: .*No such file or directory" "$TMP/nodir.err" || true)"
+assert_eq "that failure does not blame a holder" 0 "$(grep -c 'holder PID' "$TMP/nodir.err" || true)"
+
+# godot_lock_take itself tells a create error (2) from a held lock (1): a path under a
+# regular file cannot be created, and nothing is left behind.
+: > "$TMP/not-a-dir"
+rc=0
+godot_lock_take "$TMP/not-a-dir/lock" 2>"$TMP/notdir.err" || rc=$?
+assert_eq "a lock under a non-directory is a create error, not held" 2 "$rc"
+assert_eq "that create error is reported" 1 \
+  "$(grep -c '::error::godot-import-lock: cannot create lock' "$TMP/notdir.err" || true)"
+echo "$$" > "$LOCK"
+rc=0
+godot_lock_take "$LOCK" 2>"$TMP/held.err" || rc=$?
+assert_eq "an existing lock reads as held" 1 "$rc"
+assert_eq "a held lock is not reported as an error" 0 "$(wc -c < "$TMP/held.err" | tr -d ' ')"
 godot_lock_release "$LOCK"
 
 # A live holder (this shell) is waited for, then refused.
