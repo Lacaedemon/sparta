@@ -4,7 +4,8 @@
 #
 # run_bounded_retry() (tools/lib/run-bounded.sh):
 #   1. a command that times out once and then finishes succeeds on attempt 2, runs its
-#      prepare hook before each attempt, and logs the retry
+#      prepare hook before each attempt, and logs the retry (the first timeout is faked
+#      by its exit status, so a slow start cannot use up a short budget)
 #   2. a command that times out on every attempt fails with the timeout's status after
 #      exactly N attempts and says so
 #   3. a command that fails WITHOUT timing out is not retried -- a deterministic failure
@@ -99,37 +100,43 @@ fi
 
 # --- run_bounded_retry ------------------------------------------------------------
 
-# hang_first <counter-file>: hangs on its first call (until killed), exits 0 after.
+# Cases 1 and 2 count attempts with the prepare hook, which runs in this shell before
+# every attempt, not with the stubs: on a loaded machine a stub can be killed by the
+# timeout before it runs a single line, and that attempt must still count.
+PREPS="$TMP/preps"
+count_prep() { echo x >> "$PREPS"; }
+attempts_made() { wc -l < "$PREPS" | tr -d ' '; }
+
+# hang_first <prep-log>: on the first attempt (by the prepare hook's count) exits 124,
+# the status run_bounded returns when its timeout kills a run; later attempts exit 0.
+# Faking the first timeout lets the budget be generous, so a retry that starts slowly
+# still finishes inside it. Case 2 covers a real timeout kill.
 cat > "$TMP/hang-first" <<'EOF'
 #!/usr/bin/env bash
-n=$(( $(cat "$1" 2>/dev/null || echo 0) + 1 ))
-echo "$n" > "$1"
-if [ "$n" -eq 1 ]; then exec sleep 60; fi
+if [ "$(wc -l < "$1" | tr -d ' ')" -eq 1 ]; then exit 124; fi
 exit 0
 EOF
 chmod +x "$TMP/hang-first"
 
-PREPS="$TMP/preps"
-count_prep() { echo x >> "$PREPS"; }
-
 rc=0
-run_bounded_retry 3 1 "case-1" count_prep "$TMP/hang-first" "$TMP/c1" 2>"$TMP/c1.err" || rc=$?
-assert_eq "a once-hung command succeeds on a retry" 0 "$rc"
-assert_eq "it ran twice" 2 "$(cat "$TMP/c1")"
-assert_eq "the prepare hook ran before each attempt" 2 "$(wc -l < "$PREPS" | tr -d ' ')"
-assert_eq "the retry is logged" 1 "$(grep -c 'attempt 1/3 timed out after 1s' "$TMP/c1.err" || true)"
+run_bounded_retry 3 30 "case-1" count_prep "$TMP/hang-first" "$PREPS" 2>"$TMP/c1.err" || rc=$?
+assert_eq "a once-timed-out command succeeds on a retry" 0 "$rc"
+assert_eq "it ran twice, the prepare hook before each attempt" 2 "$(attempts_made)"
+assert_eq "the retry is logged" 1 "$(grep -c 'attempt 1/3 timed out after 30s' "$TMP/c1.err" || true)"
 
+# always_hang: hangs until the timeout kills it. Every attempt times out whether or not
+# the stub got to start before the kill, so a short budget is safe here.
 cat > "$TMP/always-hang" <<'EOF'
 #!/usr/bin/env bash
-echo x >> "$1"
 exec sleep 60
 EOF
 chmod +x "$TMP/always-hang"
+rm -f "$PREPS"
 rc=0
-run_bounded_retry 2 1 "case-2" "" "$TMP/always-hang" "$TMP/c2" 2>"$TMP/c2.err" || rc=$?
+run_bounded_retry 2 1 "case-2" count_prep "$TMP/always-hang" 2>"$TMP/c2.err" || rc=$?
 assert_eq "an always-hung command fails with the timeout status" yes \
   "$(run_bounded_timed_out "$rc" && echo yes || echo no)"
-assert_eq "it ran exactly the attempt budget" 2 "$(wc -l < "$TMP/c2" | tr -d ' ')"
+assert_eq "it ran exactly the attempt budget" 2 "$(attempts_made)"
 assert_eq "the give-up is logged" 1 "$(grep -c 'timed out on all 2 attempts' "$TMP/c2.err" || true)"
 
 cat > "$TMP/fail-3" <<'EOF'
