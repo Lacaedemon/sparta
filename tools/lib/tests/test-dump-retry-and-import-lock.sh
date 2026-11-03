@@ -34,9 +34,11 @@
 #      missing directory) fails at once with the shell's error, not after the wait;
 #      a create beaten by a lock already gone again is retried, and reads as held
 #      (not an error) when that keeps happening; a failed PID write removes the file
-#      it made; an unreadable PID file fails at once instead of reading as "no PID";
-#      release leaves a lock that names another holder in place; a caller under
-#      set -C can still take, release and import
+#      it made; an unreadable PID file fails at once instead of reading as "no PID",
+#      while a read that finds no file reads as "no PID" even if the file is back;
+#      release leaves a lock that names another holder in place, reports one already
+#      gone as gone, and leaves an unreadable one in place without failing; a caller
+#      under set -C can still take, release and import
 #   8. an import killed by the timeout fails and leaves no stamp, so the next run
 #      imports; any other non-zero status (a signal death included) warns with the
 #      log's tail, writes no stamp, and does not fail
@@ -497,6 +499,40 @@ assert_eq "the unreadable lock is not broken" "$$" "$(cat "$LOCK" 2>/dev/null ||
 assert_eq "no breaker is left behind" no "$([ -e "$LOCK.break" ] && echo yes || echo no)"
 godot_lock_release "$LOCK"
 
+# A read that finds no file is "no PID", not an error, even when the file is back by
+# the time anything could test for it (a holder that released and a new one that took
+# the lock in between). Forced by a cat that fails that way once on a lock that exists.
+cat() {
+  if [ "${1:-}" = "$LOCK" ] && [ ! -e "$TMP/cat-failed" ]; then
+    : > "$TMP/cat-failed"
+    builtin echo "cat: $1: $CAT_ERR" >&2
+    return 1
+  fi
+  command cat "$@"
+}
+echo "$dead" > "$LOCK"
+for CAT_ERR in "No such file or directory" "Not a directory"; do
+  rm -f "$TMP/cat-failed"
+  rc=0
+  out="$(godot_lock_holder "$LOCK" 2>"$TMP/enoent.err")" || rc=$?
+  assert_eq "a holder read failing with '$CAT_ERR' reads as no PID" "0:" "$rc:$out"
+  assert_eq "a holder read failing with '$CAT_ERR' is not an error" 0 \
+    "$(wc -c < "$TMP/enoent.err" | tr -d ' ')"
+done
+# In acquire, that read is a fresh PID-less lock: waited for, read again, and broken
+# once the re-read names its dead holder, instead of failing the caller.
+CAT_ERR="No such file or directory"
+rm -f "$TMP/cat-failed"
+rc=0
+godot_lock_acquire "$LOCK" 5 2>"$TMP/enoent-acq.err" || rc=$?
+unset -f cat
+assert_eq "a lock whose first read finds no file is still taken" 0 "$rc"
+assert_eq "that read is not reported as an error" 0 \
+  "$(grep -c '::error::' "$TMP/enoent-acq.err" || true)"
+assert_eq "the re-read's dead holder is broken" 1 \
+  "$(grep -c "broke stale lock.*holder PID $dead is gone" "$TMP/enoent-acq.err" || true)"
+godot_lock_release "$LOCK"
+
 # Release removes the lock only while it names this caller: a lock broken and retaken
 # by someone else is theirs, and is left in place with a warning.
 echo "$dead" > "$LOCK"
@@ -511,6 +547,29 @@ echo "$$" > "$LOCK"
 godot_lock_release "$LOCK" 2>"$TMP/release-own.err"
 assert_eq "this caller's own lock is released" no "$([ -e "$LOCK" ] && echo yes || echo no)"
 assert_eq "releasing its own lock is silent" 0 "$(wc -c < "$TMP/release-own.err" | tr -d ' ')"
+# A lock already gone is reported as gone, not as one left in place for another holder.
+rc=0
+godot_lock_release "$LOCK" 2>"$TMP/release-gone.err" || rc=$?
+assert_eq "releasing a lock already gone does not fail" 0 "$rc"
+assert_eq "a lock already gone is reported as gone" 1 \
+  "$(grep -c "::warning::godot-import-lock: $LOCK was already gone when PID $$ released it" "$TMP/release-gone.err" || true)"
+assert_eq "a lock already gone is not reported as left in place" 0 \
+  "$(grep -c 'left it in place' "$TMP/release-gone.err" || true)"
+# A lock whose PID cannot be read is left in place with the read's ::error::, and the
+# release still returns 0: the caller's import is over.
+echo "$$" > "$LOCK"
+cat() {
+  if [ "${1:-}" = "$LOCK" ]; then builtin echo "cat: $1: Permission denied" >&2; return 1; fi
+  command cat "$@"
+}
+rc=0
+godot_lock_release "$LOCK" 2>"$TMP/release-unread.err" || rc=$?
+unset -f cat
+assert_eq "releasing an unreadable lock returns 0" 0 "$rc"
+assert_eq "an unreadable lock at release is reported" 1 \
+  "$(grep -c "::error::godot-import-lock: cannot read the holder PID in $LOCK: .*Permission denied" "$TMP/release-unread.err" || true)"
+assert_eq "an unreadable lock at release is left in place" "$$" "$(cat "$LOCK" 2>/dev/null || echo missing)"
+rm -f "$LOCK"
 
 # A caller running under set -C (noclobber) can still take, release and import twice:
 # the helper's own writes, last run's import log included, do not trip on it. A log
