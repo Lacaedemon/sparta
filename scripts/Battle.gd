@@ -3263,6 +3263,17 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				var da: float = a.position.distance_squared_to(relief_ref_pos)
 				var db: float = b.position.distance_squared_to(relief_ref_pos)
 				return da < db if da != db else a.uid < b.uid)
+	# Which tired unit each reliever takes: the proximity sort above picks WHICH tired units
+	# are relieved; the pairing within that set runs flank to flank along the line, so each
+	# reliever relieves the unit in front of it (see UnitRelief.pair_by_lateral_order).
+	var relief_pairing: Dictionary = {}
+	if relief_targets.size() > 1:
+		var relievers: Array = []
+		for uid in cmd["units"]:
+			var reliever: Unit = _unit_by_uid(int(uid))
+			if reliever != null and reliever != target_unit:
+				relievers.append(reliever)
+		relief_pairing = UnitRelief.pair_by_lateral_order(relievers, relief_targets)
 	# A refused reinforcement applies nothing at all: the reserve keeps its current
 	# order, march and stance (the design's refusal contract). That contract covers the
 	# whole selection rather than each unit, so validate every pair before the loop
@@ -3361,15 +3372,13 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				u.has_move_target = false
 				u.set_current_order(Order.new_support(target_unit.uid))
 			elif relief_targets.size() > 1:
-				# Distributed relief: pair this ordered unit with its own tired target,
-				# via the same proximity-sorted slot scheme distributed attack uses, so a
-				# whole fresh line passes through a whole tired line at once -- each
-				# reliever swaps with a DIFFERENT unit instead of every reliever swapping
-				# with the one clicked. Later relievers wrap around and repeat an earlier
-				# pairing when there are more relievers than tired candidates, the same
-				# wraparound distributed attack already uses.
-				var relief_slot: int = cmd["units"].find(uid)
-				var tired: Unit = relief_targets[relief_slot % relief_targets.size()]
+				# Distributed relief: pair this ordered unit with its own tired target
+				# (relief_pairing, built above), so a whole fresh line passes through a
+				# whole tired line at once -- each reliever swaps with a DIFFERENT unit,
+				# the one in front of it, instead of every reliever swapping with the one
+				# clicked. When relievers outnumber the tired candidates, the extras double
+				# up on their neighbouring tired units.
+				var tired: Unit = relief_pairing[u.uid]
 				var distributed_relief_order := Order.new_relief(tired.uid)
 				u.set_current_order(distributed_relief_order)
 				UnitRelief.begin(u, tired, distributed_relief_order)

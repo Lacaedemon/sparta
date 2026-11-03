@@ -95,12 +95,12 @@ func test_distributed_relief_pairs_each_fresh_unit_with_a_different_tired_unit()
 		"group_attack": BattleScript.GroupAttackMode.DISTRIBUTED,
 	})
 
-	# Proximity to the clicked target (tired_b, distance 0) sorts the candidate pool
-	# [tired_b, tired_a (320px), tired_c (350px)]; slot order follows the "units" array
-	# passed above, so fresh1 -> tired_b, fresh2 -> tired_a, fresh3 -> tired_c.
+	# All three tired units are relieved, and the pairing runs flank to flank along the
+	# line: each fresh unit takes the tired unit in front of it, whatever order the
+	# "units" array lists them in and whichever one was clicked.
 	var pairing := {
-		fresh1: tired_b,
-		fresh2: tired_a,
+		fresh1: tired_a,
+		fresh2: tired_b,
 		fresh3: tired_c,
 	}
 	for fresh in pairing:
@@ -114,9 +114,10 @@ func test_distributed_relief_pairs_each_fresh_unit_with_a_different_tired_unit()
 		assert_eq(tired.current_order.type, Order.Type.MOVE,
 				"%s's tired partner gets a real retreat order" % fresh.unit_name)
 
-	# Every pairing is genuinely distinct -- the whole point of the maneuver.
-	var partners := [tired_b, tired_a, tired_c]
-	assert_eq(partners.size(), 3, "sanity: three tired units named")
+	# Every pairing is genuinely distinct -- the whole point of the maneuver -- read off the
+	# swap links the order actually armed.
+	var partners: Array = [fresh1.current_order.friendly_target,
+			fresh2.current_order.friendly_target, fresh3.current_order.friendly_target]
 	assert_ne(partners[0], partners[1], "fresh1 and fresh2 relieve different units")
 	assert_ne(partners[0], partners[2], "fresh1 and fresh3 relieve different units")
 	assert_ne(partners[1], partners[2], "fresh2 and fresh3 relieve different units")

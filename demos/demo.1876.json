@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/passage-of-lines.json",
+  "caption": "Passage of lines now pairs each fresh unit with the tired unit in front of it (#1876). The player selects the fresh reserve line, switches to Distributed, and right-clicks the centre tired unit. Watch the left fresh unit pass through the left tired unit, the centre through the centre and the right through the right, with no two pairs crossing. Before, the pairing followed distance from the clicked unit: the left fresh unit took the centre fight, and the two flank fights, equally far from the click, went to the other two fresh units in an order float noise decided, so it changed from seed to seed.",
+  "fixed_fps": 30,
+  "max_frames": 110,
+  "fps": 15,
+  "width": 720
+}

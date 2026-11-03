@@ -384,11 +384,13 @@ line behind it.
   an idle or already-routing unit just to keep busy --- if fewer of your tired
   line are actually fighting than you have fresh units, the extras fall back to
   piling onto a fight instead of manufacturing a swap.
-- **Pairing is sorted by proximity to the unit you clicked, not to each
-  reliever's own position.** With reserves lined up abreast of a tired line,
-  this usually pairs each fresh unit with roughly the ally in front of it, but
-  it can cross --- the same distribution rule distributed attack already uses
-  for spreading a multi-unit attack across several enemies.
+- **Proximity picks which tired units are relieved; position along the line
+  picks who relieves whom.** The engaged friendlies nearest the unit you
+  clicked are relieved first, one per fresh unit. Within that set, both lines
+  are ordered along the tired line's own length and paired flank to flank, so
+  each fresh unit relieves the unit in front of it and no two pairings cross.
+  If you have more fresh units than tired ones, the extras double up on the
+  neighbouring tired unit rather than crossing the line.
 - **Every pairing is a full line relief**, with the same pass-through
   exemption, the same real retreat order, and the same "expect to bleed a
   little on the way out" cost described above --- distributed relief only
@@ -2564,9 +2566,9 @@ which pair of behaviours applies depends only on what you right-click:
   friendly target) every reliever swaps with the one tired unit clicked.
   Use it to overwhelm a single regiment quickly.
 - **Distributed** --- each unit picks a different nearby enemy, sorted by proximity
-  to the clicked target; on a friendly target, each reliever instead pairs with its
-  own nearby engaged ally the same way. Extra units cycle through the list if you
-  have more units than targets. Use it to hold an entire line rather than piling
+  to the clicked target; on a friendly target, each reliever instead relieves the
+  nearby engaged ally in front of it (see [Passage of lines](#passage-of-lines)).
+  Extra attackers cycle through the list if you have more units than targets. Use it to hold an entire line rather than piling
   onto one regiment (or one relief swap) and leaving the rest unengaged.
 
 The flash message in the top-centre of the screen confirms the active mode. The mode
