@@ -625,13 +625,12 @@ const RESQUARE_CONTACT_CLEAR_EPS: float = 1.0e-6   # solver epsilon
 # it does at an exact quarter, since the lateral order it is dealt by runs along its short side
 # once the grid's axes swap: such a block keeps the turn-out (QUARTER_REDEAL_MAX_ASPECT).
 const QUARTER_REDEAL_BAND: float = deg_to_rad(10.0)
-# How far (rad) past a quarter-turn off the line its grid stands on an order's re-square of a block
-# marching when it came (_order_square_marching) still turns its whole fold out on that line rather
-# than taking the other line (order_square_line), when the half-turn re-deals its men in depth
-# (_half_turn_moves_men). The line the grid stands on is square for a grid already reflected in
-# depth, whose fold reform_ranks drops to square under a toggled mirror, as for one never
-# reflected, so a fold drifting a few degrees across a quarter does not turn a quarter-turn wheel
-# into its mirror, and a reflection is not undone by the next. The nearer split alone flips
+# How far (rad) past a quarter-turn an order's re-square of a block marching when it came
+# (_order_square_marching), whose half-turn re-deals its men in depth (_march_keeps_line), still
+# turns its whole fold out onto square rather than taking the half-turn (order_square_line).
+# Such a grid always stands on square: reform_ranks drops a reflected partial grid's fold to
+# square under a toggled mirror, so a fold drifting a few degrees across a quarter does not turn
+# a quarter-turn wheel into its mirror, and a reflection is not undone by the next. The nearer split alone flips
 # between the two either side of a quarter. Past the quarter the reflection costs a re-deal on
 # the march, and a marching block re-dealt, in depth or at a quarter-turn, re-forms worse than one
 # wheeled. A full grid's half-turn moves no man (reform_ranks keeps its +-PI fold), so such a
@@ -4875,8 +4874,8 @@ func _reface(dir: Vector2) -> void:
 	# `may_redeal`), so a near-quarter re-deal leaves at most QUARTER_REDEAL_BAND. For an order that
 	# came to a block not marching, or whose half-turn moves no man, the re-run splits about the
 	# nearer whole or half turn, so the lag stands on its line up to a quarter-turn; for one that
-	# came to a marching block whose half-turn re-deals its men (_march_keeps_line) it keeps the
-	# line the grid stands on up to a quarter-turn plus MARCH_SQUARE_BAND (order_square_line).
+	# came to a marching block whose half-turn re-deals its men (_march_keeps_line) it keeps
+	# square up to a quarter-turn plus MARCH_SQUARE_BAND (order_square_line).
 	# Grown past that, the line has changed, so
 	# it is folded where it stands and the re-square waits to run again from the new fold: the
 	# block is out of contact here (_face_dir took the turn otherwise). _advance_grid_lag runs it
@@ -10336,9 +10335,9 @@ func start_order_response() -> void:
 ## clear (_run_waiting_resquare), are not re-dealt.
 ##
 ## A block marching when the order came whose half-turn would re-deal its men in depth
-## (_march_keeps_line) keeps the line its grid stands on (_grid_line) up to MARCH_SQUARE_BAND past
-## a quarter-turn off it (order_square_line), so a fold drifting a few degrees across a quarter
-## does not turn a wheel into its mirror, and a grid already reflected is not reflected back.
+## (_march_keeps_line) keeps square, the line such a grid stands on, up to MARCH_SQUARE_BAND past
+## a quarter-turn (order_square_line), so a fold drifting a few degrees across a quarter does not
+## turn a wheel into its mirror, and a grid already reflected is not reflected back.
 ##
 ## Two cases keep the whole re-square in one tick. A quarter-turn fold (one measuring a quarter,
 ## or whose drills net one, as reform_ranks reads both) is dealt again with nothing lagged, even
@@ -10358,7 +10357,7 @@ func _square_fold_for_order(hold_ground: bool, may_redeal: bool = false) -> void
 		return
 	var total: float = wrapf(_formation_angle + _grid_lag, -PI, PI)
 	var line: float = order_square_line(total, may_redeal and _quarter_redeal_suits_shape(),
-			_march_keeps_line(), _grid_line())
+			_march_keeps_line())
 	var residue: float = wrapf(total - line, -PI, PI)
 	if residue != 0.0 or _grid_lag != 0.0:
 		_formation_angle = line
@@ -10372,23 +10371,17 @@ func _square_fold_for_order(hold_ground: bool, may_redeal: bool = false) -> void
 
 
 ## Whether an order's re-square (_square_fold_for_order), a re-run of it that waited, and a march's
-## correction of its lag (_reface) keep the line the grid stands on across MARCH_SQUARE_BAND: the
-## block was marching when the order came (_order_square_marching), and its half-turn would
-## re-deal its men in depth. reform_ranks keeps a full grid's +-PI fold and a single rank's as
-## they stand, moving no man, so those blocks take the nearer split.
+## correction of its lag (_reface) keep square across MARCH_SQUARE_BAND: the block was marching
+## when the order came (_order_square_marching), and its half-turn would re-deal its men in depth.
+## reform_ranks keeps a full grid's +-PI fold and a single rank's as they stand, moving no man,
+## so those blocks take the nearer split. A grid with a short rank never rests on the half-turn
+## (reform_ranks drops its fold to square under a toggled mirror), so square is its line, even
+## for a full grid that kept a +-PI fold and has since lost men to a short rank.
 func _march_keeps_line() -> bool:
 	if not _order_square_marching:
 		return false
 	var files: int = maxi(1, formation_files(soldiers))
 	return UnitFormation.ranks_for(soldiers, files) > 1 and soldiers % files != 0
-
-
-## The line the slot grid stands on, square (0) or the half-turn (PI), that a re-square keeping
-## its line (_march_keeps_line) measures the fold from: the half-turn only while the fold stands
-## there exactly. A grid reflected in depth stands on square, its fold dropped to square under a
-## toggled mirror (reform_ranks), so it reads square and is not reflected back.
-func _grid_line() -> float:
-	return PI if absf(absf(wrapf(_formation_angle, -PI, PI)) - PI) < 0.01 else 0.0
 
 
 ## The line an order's re-square (_square_fold_for_order) takes in one step out of a grid turned
@@ -10401,21 +10394,15 @@ func _grid_line() -> float:
 ## same quarter and turn out residues of opposite sign, rather than one wheeling nearly a
 ## quarter-turn and the other reflecting by a half-turn and wheeling back.
 ## With `keep_line` (a marching block whose half-turn re-deals its men: _march_keeps_line) there
-## is no re-deal at the quarter; the grid keeps `grid_line` (0 or PI, the line it stands on) while
-## `total` lies within a quarter-turn plus MARCH_SQUARE_BAND of it, and takes the other line past
-## that, so a fold a few degrees either side of a quarter takes the same line on the march too.
-static func order_square_line(total: float, redeal: bool = true, keep_line: bool = false,
-		grid_line: float = 0.0) -> float:
+## is no re-deal at the quarter; the grid keeps square while `total` lies within a quarter-turn
+## plus MARCH_SQUARE_BAND of it, and takes the half-turn past that, so a fold a few degrees
+## either side of a quarter takes the same line on the march too.
+static func order_square_line(total: float, redeal: bool = true, keep_line: bool = false) -> float:
 	var t: float = wrapf(total, -PI, PI)
 	if redeal and not keep_line and absf(absf(t) - PI * 0.5) <= QUARTER_REDEAL_BAND:
 		return signf(t) * PI * 0.5
-	if not keep_line:
-		return 0.0 if absf(t) <= PI * 0.5 else signf(t) * PI
-	var half: bool = absf(grid_line) > PI * 0.5
-	var off: float = absf(wrapf(t - (PI if half else 0.0), -PI, PI))
-	if off <= PI * 0.5 + MARCH_SQUARE_BAND:
-		return signf(t) * PI if half else 0.0
-	return 0.0 if half else signf(t) * PI
+	var cut: float = PI * 0.5 + MARCH_SQUARE_BAND if keep_line else PI * 0.5
+	return 0.0 if absf(t) <= cut else signf(t) * PI
 
 
 ## Whether an order's re-square of a near-quarter fold may deal this block again at the quarter

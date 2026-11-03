@@ -1,9 +1,9 @@
 extends GutTest
 ## An order squaring a block that was marching when it came, whose half-turn would re-deal its men
-## in depth, keeps the line its grid stands on up to MARCH_SQUARE_BAND past a quarter-turn off it
-## (Unit.order_square_line, Unit._square_fold_for_order, Unit._march_keeps_line): a grid on square,
-## including one already reflected in depth (its fold dropped to square under a toggled mirror),
-## turns its whole fold out instead of being reflected. Whether the block is marching is read when
+## in depth (a short rank), keeps square, the line its grid stands on, up to MARCH_SQUARE_BAND past
+## a quarter-turn (Unit.order_square_line, Unit._square_fold_for_order, Unit._march_keeps_line):
+## it turns its whole fold out instead of being reflected, and a grid already reflected in depth
+## (its fold dropped to square under a toggled mirror) is not reflected back. Whether the block is marching is read when
 ## the order comes, for the re-square, a re-run of it that waited, and a march correction of its
 ## lag, which re-runs the re-square only once the lag has grown past that band (Unit._reface).
 ##
@@ -61,36 +61,51 @@ func _partial(u: Unit) -> bool:
 	return u.soldiers % maxi(1, u.formation_files(u.soldiers)) != 0
 
 
-func test_order_square_line_keeps_the_grid_line_across_the_band() -> void:
+func test_order_square_line_keeps_square_across_the_band() -> void:
 	var band: float = rad_to_deg(Unit.MARCH_SQUARE_BAND)
-	# [fold degrees, grid line degrees, squares to]
+	# [fold degrees, squares to]
 	var cases: Array = [
-		[90.0 - band - 0.1, 0.0, 0.0], [90.0 + NEAR_DEG, 0.0, 0.0],
-		[90.0 + band - 0.1, 0.0, 0.0], [90.0 + band + 0.1, 0.0, 180.0],
-		[90.0 - band - 0.1, 180.0, 0.0], [90.0 - band + 0.1, 180.0, 180.0],
-		[90.0 - NEAR_DEG, 180.0, 180.0], [90.0 + band + 0.1, 180.0, 180.0],
+		[90.0 - band - 0.1, 0.0], [90.0 + NEAR_DEG, 0.0], [90.0 + band - 0.1, 0.0],
+		[90.0 + band + 0.1, 180.0], [180.0, 180.0],
 	]
 	for c in cases:
 		for s in [1.0, -1.0]:
-			var got: float = Unit.order_square_line(deg_to_rad(s * float(c[0])), false, true,
-					deg_to_rad(float(c[1])))
-			assert_almost_eq(absf(rad_to_deg(got)), float(c[2]), 0.001,
-					"%.1f degrees on line %.0f squares to %.0f" % [s * float(c[0]), float(c[1]),
-					float(c[2])])
+			var got: float = Unit.order_square_line(deg_to_rad(s * float(c[0])), false, true)
+			assert_almost_eq(absf(rad_to_deg(got)), float(c[1]), 0.001,
+					"%.1f degrees squares to %.0f" % [s * float(c[0]), float(c[1])])
 
 
 func test_order_square_line_without_keeping_takes_the_nearer_split() -> void:
-	for line in [0.0, PI]:
-		var short: float = Unit.order_square_line(deg_to_rad(90.0 - NEAR_DEG), false, false, line)
-		var past: float = Unit.order_square_line(deg_to_rad(90.0 + NEAR_DEG), false, false, line)
-		assert_eq(short, 0.0, "line %.0f: short of a quarter squares" % rad_to_deg(line))
-		assert_almost_eq(absf(past), PI, ANGLE_EPS,
-				"line %.0f: past a quarter takes the half-turn" % rad_to_deg(line))
+	var short: float = Unit.order_square_line(deg_to_rad(90.0 - NEAR_DEG), false, false)
+	var past: float = Unit.order_square_line(deg_to_rad(90.0 + NEAR_DEG), false, false)
+	assert_eq(short, 0.0, "short of a quarter squares")
+	assert_almost_eq(absf(past), PI, ANGLE_EPS, "past a quarter takes the half-turn")
 
 
-func test_a_block_keeping_its_line_is_never_redealt_at_the_quarter() -> void:
-	var got: float = Unit.order_square_line(deg_to_rad(90.0 - NEAR_DEG), true, true, 0.0)
+func test_a_block_keeping_square_is_never_redealt_at_the_quarter() -> void:
+	var got: float = Unit.order_square_line(deg_to_rad(90.0 - NEAR_DEG), true, true)
 	assert_eq(got, 0.0, "a marching block wheels a near-quarter fold out")
+
+
+## A full grid keeps its fold on the half-turn as it stands (its half-turn moves no man), here
+## 110 degrees off with the 70 degrees back to the half-turn still turning out. Once it loses men
+## to a short rank, the next marching re-square wheels the grid round onto square rather than
+## keeping the half-turn, which would now reflect the short rank in depth.
+func test_a_full_grid_at_the_half_turn_that_lost_men_wheels_onto_square() -> void:
+	var u := _marching_unit(FULL_MEN, FULL_FILES)
+	assert_false(_partial(u), "setup: full ranks")
+	_fold(u, 110.0)
+	_reissue(u)
+	assert_almost_eq(absf(u._formation_angle), PI, ANGLE_EPS, "setup: the half-turn kept as it stands")
+	assert_almost_eq(absf(u._grid_lag), deg_to_rad(70.0), ANGLE_EPS, "setup: 70 degrees to turn")
+	for i in [0, 1]:
+		u._sim_soldier_hp[i] = 0.0
+	SoldierMelee.reap(u, null)
+	assert_true(_partial(u), "setup: a short rank now")
+	_reissue(u)
+	assert_eq(u._formation_angle, 0.0, "the grid squares")
+	assert_almost_eq(absf(u._grid_lag), deg_to_rad(110.0), ANGLE_EPS,
+			"and the whole 110 degrees turns out, nothing reflected in depth")
 
 
 func test_a_marching_partial_block_wheels_a_fold_either_side_of_a_quarter_the_same_way() -> void:

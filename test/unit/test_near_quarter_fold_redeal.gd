@@ -7,8 +7,8 @@ extends GutTest
 ## The regression this pins: the re-square split every fold about its nearer whole or half turn,
 ## so a fold a few degrees short of a quarter wheeled nearly a quarter-turn about the block's
 ## centre, and one a few degrees past it was reflected by a half-turn and wheeled nearly a
-## quarter-turn back. A block marching when the order comes is not re-dealt: it keeps the line its
-## last re-square took across a band either side of the quarter instead
+## quarter-turn back. A block marching when the order comes is not re-dealt; one with a short rank
+## keeps square, the line its grid stands on, up to a band past the quarter instead
 ## (test_marching_near_quarter_square.gd).
 
 const START := Vector2(500.0, 500.0)
