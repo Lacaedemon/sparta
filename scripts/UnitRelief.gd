@@ -107,7 +107,9 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 ## distance, so their order there is decided by float noise in their drifted positions,
 ## and a uid tie-break never fires because the two distances are never exactly equal. The
 ## lateral gap between neighbours is a whole unit's width, so float noise cannot reorder
-## it. Relievers beyond the pool wrap around and repeat a pairing from the first flank on.
+## it. When relievers outnumber the pool, the mapping stays monotone along the line rather
+## than wrapping: the extra relievers double up on their neighbouring tired units, so no
+## pairing crosses another and no reliever is sent back across the line.
 static func pair_by_lateral_order(relievers: Array, tired: Array) -> Dictionary:
 	var pairing: Dictionary = {}
 	var count: int = mini(relievers.size(), tired.size())
@@ -126,8 +128,10 @@ static func pair_by_lateral_order(relievers: Array, tired: Array) -> Dictionary:
 	var ordered_relievers: Array = relievers.duplicate()
 	ordered_relievers.sort_custom(by_lateral)
 	chosen.sort_custom(by_lateral)
-	for i in ordered_relievers.size():
-		pairing[ordered_relievers[i].uid] = chosen[i % count]
+	var n: int = ordered_relievers.size()
+	for i in n:
+		# Integer division: index rises with i and stays below count, so lateral order holds.
+		pairing[ordered_relievers[i].uid] = chosen[i * count / n]
 	return pairing
 
 

@@ -3376,8 +3376,8 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 				# (relief_pairing, built above), so a whole fresh line passes through a
 				# whole tired line at once -- each reliever swaps with a DIFFERENT unit,
 				# the one in front of it, instead of every reliever swapping with the one
-				# clicked. Later relievers wrap around and repeat an earlier pairing when
-				# there are more relievers than tired candidates.
+				# clicked. When relievers outnumber the tired candidates, the extras double
+				# up on their neighbouring tired units.
 				var tired: Unit = relief_pairing[u.uid]
 				var distributed_relief_order := Order.new_relief(tired.uid)
 				u.set_current_order(distributed_relief_order)
