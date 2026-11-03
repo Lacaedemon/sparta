@@ -14,8 +14,8 @@
 # tries, but they still rewrite .godot/global_script_class_cache.cfg, uid_cache.bin and
 # editor/filesystem_cache10 on every run, so they are pure churn under a running dump.
 #
-# godot_import_once serialises imports against each other behind a per-project mkdir
-# lock (it does not hold dumps off while an import runs) and skips the import when the
+# godot_import_once serialises imports against each other behind a per-project lock
+# file (it does not hold dumps off while an import runs) and skips the import when the
 # cache is already current for this tree and this Godot, so N parallel runs never
 # import at the same time and a warm project is not re-imported at all. A cold
 # project imports twice, one after the other: the first import writes new *.import
@@ -63,73 +63,92 @@ godot_import_is_current() {
   [ -z "$newer" ]
 }
 
-# godot_lock_acquire <lockdir> <wait-secs>
+# godot_lock_take <lock>
 #
-# Atomic mkdir lock (mkdir is atomic on every platform this runs on, and Git Bash has no
-# flock). The holder's PID goes in <lockdir>/pid. A lock is stale when its holder PID is
-# no longer alive, or when it has no PID at all and is over a minute old (a holder killed
-# between its mkdir and its PID write).
+# Creates <lock> holding this caller's PID, and fails if <lock> already exists. The
+# create is bash's own noclobber redirect, one open(O_CREAT|O_EXCL) made by the shell
+# itself, so exactly one of any number of racing callers succeeds, on Linux and in Git
+# Bash alike (which has no flock).
 #
-# Breaking a stale lock is itself serialised by a second mkdir lock, <lockdir>.break.
+# Not mkdir(1): its exit status is not a lock. uutils coreutils' mkdir, the default on
+# Ubuntu 26.04 (and so on its CI runners), exits 0 for a directory another process
+# created a moment earlier. Measured (uutils 0.8.0, 2026-11-02): five concurrent
+# `mkdir d` calls had more than one report success in 24 of 100 rounds, against 0 of
+# 100 for GNU mkdir, so two callers both took a mkdir lock and imported at once.
+#
+# BASHPID, not $$: callers backgrounded from one shell share its $$, and each needs its
+# own identity here (bash 3.2 has no BASHPID and falls back to $$). It is read before
+# the subshell, whose own BASHPID would name the subshell.
+godot_lock_take() {
+  local me="${BASHPID:-$$}"
+  ( set -C; echo "$me" > "$1" ) 2>/dev/null
+}
+
+# godot_lock_acquire <lock> <wait-secs>
+#
+# Atomic lock file (see godot_lock_take), holding its holder's PID. A lock is stale when
+# its holder PID is no longer alive, or when it has no PID at all and is over a minute
+# old (a holder killed between creating the file and writing its PID). A directory at
+# <lock>, left by a version of this helper that used mkdir locks, reads as a lock with
+# no PID.
+#
+# Breaking a stale lock is itself serialised by a second lock file, <lock>.break.
 # The one waiter holding it re-reads the PID and removes the lock only if it still names
 # the same dead holder. Nothing else removes a dead holder's lock, so the lock cannot
 # change between that re-read and the removal, and no waiter can delete a lock another
-# waiter has just taken. A breaker killed mid-break leaves <lockdir>.break behind.
+# waiter has just taken. A breaker killed mid-break leaves <lock>.break behind.
 # That is never cleared automatically: two waiters that both saw it abandoned could
 # both clear it and then break concurrently, which is the race the breaker exists to
 # prevent. Once it is over a minute old this fails with an ::error:: naming the
-# directory to remove by hand.
+# file to remove by hand.
 #
 # A live holder is waited for up to <wait-secs>, after which this fails loudly rather
 # than importing under someone else's import.
 godot_lock_acquire() {
-  local lockdir="$1" wait_secs="$2" waited=0 holder now
-  local breaker="$lockdir.break"
-  while ! mkdir "$lockdir" 2>/dev/null; do
-    holder="$(cat "$lockdir/pid" 2>/dev/null || true)"
-    if godot_lock_is_stale "$lockdir" "$holder"; then
-      if mkdir "$breaker" 2>/dev/null; then
-        now="$(cat "$lockdir/pid" 2>/dev/null || true)"
-        if [ -d "$lockdir" ] && [ "$now" = "$holder" ] && godot_lock_is_stale "$lockdir" "$now"; then
-          rm -rf "$lockdir"
-          echo "godot-import-lock: broke stale lock $lockdir (holder PID ${holder:-none} is gone)" >&2
+  local lock="$1" wait_secs="$2" waited=0 holder now
+  local breaker="$lock.break"
+  while ! godot_lock_take "$lock"; do
+    holder="$(cat "$lock" 2>/dev/null || true)"
+    if godot_lock_is_stale "$lock" "$holder"; then
+      if godot_lock_take "$breaker"; then
+        now="$(cat "$lock" 2>/dev/null || true)"
+        if [ -e "$lock" ] && [ "$now" = "$holder" ] && godot_lock_is_stale "$lock" "$now"; then
+          rm -rf "$lock"
+          echo "godot-import-lock: broke stale lock $lock (holder PID ${holder:-none} is gone)" >&2
         fi
-        rmdir "$breaker"
+        rm -f "$breaker"
         continue
       fi
       if [ -n "$(find "$breaker" -maxdepth 0 -mmin +1 2>/dev/null)" ]; then
-        echo "::error::godot-import-lock: $breaker is over a minute old, so the waiter breaking $lockdir died mid-break; check no dump is running, then remove $breaker by hand" >&2
+        echo "::error::godot-import-lock: $breaker is over a minute old, so the waiter breaking $lock died mid-break; check no dump is running, then remove $breaker by hand" >&2
         return 1
       fi
       # Another waiter is breaking it: wait like for a live holder.
     fi
     if [ "$waited" -ge "$wait_secs" ]; then
-      echo "::error::godot-import-lock: gave up after ${wait_secs}s waiting for $lockdir (holder PID ${holder:-unknown})" >&2
+      echo "::error::godot-import-lock: gave up after ${wait_secs}s waiting for $lock (holder PID ${holder:-unknown})" >&2
       return 1
     fi
     sleep 1
     waited=$((waited + 1))
   done
-  # BASHPID, not $$: callers backgrounded from one shell share its $$, and each needs
-  # its own identity here (bash 3.2 has no BASHPID and falls back to $$).
-  echo "${BASHPID:-$$}" > "$lockdir/pid"
 }
 
-# godot_lock_is_stale <lockdir> <holder-pid-or-empty>
+# godot_lock_is_stale <lock> <holder-pid-or-empty>
 godot_lock_is_stale() {
-  local lockdir="$1" holder="$2"
+  local lock="$1" holder="$2"
   if [ -n "$holder" ]; then
     ! kill -0 "$holder" 2>/dev/null
     return
   fi
   # No PID yet: stale only once the lock is old enough that its holder cannot still be
   # about to write one.
-  [ -n "$(find "$lockdir" -maxdepth 0 -mmin +1 2>/dev/null)" ]
+  [ -n "$(find "$lock" -maxdepth 0 -mmin +1 2>/dev/null)" ]
 }
 
-# godot_lock_release <lockdir>
+# godot_lock_release <lock>
 godot_lock_release() {
-  rm -rf "$1"
+  rm -f "$1"
 }
 
 # godot_import_once <timeout-secs> <godot-bin> <project> <stamp-content>
@@ -151,17 +170,17 @@ godot_lock_release() {
 # stamp, so the next caller imports again rather than trusting it, and returns 0.
 godot_import_once() {
   local secs="$1" godot="$2" project="$3" want="$4"
-  local lockdir="$project/.godot/sparta-import.lock" rc=0
+  local lock="$project/.godot/sparta-import.lock" rc=0
   local stamp log pending
   stamp="$(godot_import_stamp_path "$project")"
   log="$project/.godot/sparta-import.log"
   pending="$stamp.pending.${BASHPID:-$$}.$RANDOM"
   mkdir -p "$project/.godot"
   # Wait at most one import's budget plus slack for another run's import to finish.
-  godot_lock_acquire "$lockdir" "$(( secs + 30 ))" || return 1
+  godot_lock_acquire "$lock" "$(( secs + 30 ))" || return 1
   if godot_import_is_current "$project" "$want"; then
     echo "godot-import-lock: import cache in $project is current; skipping --import" >&2
-    godot_lock_release "$lockdir"
+    godot_lock_release "$lock"
     return 0
   fi
   rm -f "$stamp"
@@ -169,18 +188,18 @@ godot_import_once() {
   run_bounded "$secs" "$godot" --headless --import --path "$project" >"$log" 2>&1 || rc=$?
   if run_bounded_timed_out "$rc"; then
     rm -f "$pending"
-    godot_lock_release "$lockdir"
+    godot_lock_release "$lock"
     echo "::error::godot --import of $project timed out after ${secs}s and was killed (output: $log)" >&2
     return 1
   fi
   if [ "$rc" -ne 0 ]; then
     rm -f "$pending"
-    godot_lock_release "$lockdir"
+    godot_lock_release "$lock"
     echo "::warning::godot --import of $project exited with status $rc; no stamp written, so the next run imports again (last lines of $log follow)" >&2
     tail -n 20 "$log" | sed 's/^/  | /' >&2
     return 0
   fi
   mv "$pending" "$stamp"
-  godot_lock_release "$lockdir"
+  godot_lock_release "$lock"
   return 0
 }

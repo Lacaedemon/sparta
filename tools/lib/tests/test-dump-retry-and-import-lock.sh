@@ -21,12 +21,14 @@
 #      forces the next one; an empty stamp content (unknown version) always imports
 #   6. several calls started at once (on a stub that writes no sidecars) run one
 #      import, and never two at the same
-#      time -- also when they all start against a stale lock they race to break
+#      time -- also when they all start against a stale lock they race to break, and
+#      also when mkdir(1) reports success for a directory that already exists
 #   7. a lock left by a dead holder, or with no holder PID and over a minute old, is
 #      broken; a fresh PID-less one is not; a breaker that arrives after another caller
 #      already broke and retook the lock leaves it alone; an abandoned .break lock fails
-#      loudly and is not cleared; one held by a live holder is waited for and then
-#      refused loudly when the wait runs out
+#      loudly and is not cleared; a directory lock left by the older mkdir-based helper
+#      is waited for while fresh and broken once old; one held by a live holder is
+#      waited for and then refused loudly when the wait runs out
 #   8. an import killed by the timeout fails and leaves no stamp, so the next run
 #      imports; any other non-zero status (a signal death included) warns with the
 #      log's tail, writes no stamp, and does not fail
@@ -145,18 +147,20 @@ assert_eq "the prepare failure is logged" 1 "$(grep -c 'prepare step failed befo
 
 # --- godot_import_once ------------------------------------------------------------
 
-# A stub Godot for --import: logs each import, and fails the test if two overlap.
+# A stub Godot for --import: logs each import, and fails the test if two overlap. The
+# busy marker is a noclobber file, not a mkdir: a mkdir(1) that reports success for an
+# existing directory would hide the very overlap this looks for.
 cat > "$TMP/godot-import-stub" <<'EOF'
 #!/usr/bin/env bash
 log="$STUB_LOG"
-if ! mkdir "$log.busy" 2>/dev/null; then echo overlap >> "$log"; fi
+if ! ( set -C; : > "$log.busy" ) 2>/dev/null; then echo overlap >> "$log"; fi
 echo import >> "$log"
 # Godot's own output, which godot_import_once sends to .godot/sparta-import.log.
 echo "stub import output"
 sleep "${STUB_SLEEP:-0}"
 # STUB_EDIT_DURING names a file to edit mid-import (an edit racing the import).
 if [ -n "${STUB_EDIT_DURING:-}" ]; then echo '# mid-import edit' >> "$STUB_EDIT_DURING"; fi
-rmdir "$log.busy" 2>/dev/null || true
+rm -f "$log.busy"
 exit "${STUB_EXIT:-0}"
 EOF
 chmod +x "$TMP/godot-import-stub"
@@ -236,48 +240,66 @@ echo '# edit' >> "$ROOTG/scripts/a.gd"
 assert_eq "an edit under a root .gdignore is still seen" no \
   "$(godot_import_is_current "$ROOTG" "stub|v1" && echo yes || echo no)"
 
-# Concurrent callers on a cold project: one import, never two at once.
-rm -rf "$PROJ/.godot" "$STUB_LOG"
-pids=()
-for _ in 1 2 3 4 5; do
-  STUB_SLEEP=2 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v1" 2>/dev/null &
-  pids+=($!)
-done
-failed_callers=0
-for p in "${pids[@]}"; do wait "$p" || failed_callers=$((failed_callers + 1)); done
-assert_eq "five concurrent callers all succeed" 0 "$failed_callers"
-assert_eq "five concurrent callers run one import" 1 "$(imports)"
-assert_eq "no two imports overlapped" 0 "$(grep -c '^overlap$' "$STUB_LOG" || true)"
-assert_eq "the lock is released afterwards" no "$([ -e "$PROJ/.godot/sparta-import.lock" ] && echo yes || echo no)"
-
 # A PID from a finished background job is dead.
 sh -c 'exit 0' &
 dead=$!
 wait "$dead"
 
-# Five callers that all find a stale lock race to break it: still exactly one import,
-# never two at once, and the stale lock is broken exactly once.
-rm -rf "$PROJ/.godot" "$STUB_LOG"
-mkdir -p "$PROJ/.godot/sparta-import.lock"
-echo "$dead" > "$PROJ/.godot/sparta-import.lock/pid"
-pids=()
-for i in 1 2 3 4 5; do
-  STUB_SLEEP=2 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v1" 2>"$TMP/race-$i.err" &
-  pids+=($!)
+# The concurrent cases run twice: once with the real mkdir, and once with a mkdir that
+# reports success for a directory that already exists. The second is what uutils
+# coreutils' mkdir (Ubuntu 26.04's) does when another process creates the directory a
+# moment before it, which on CI let two callers take a mkdir lock and import at once.
+# Faking it on every call makes that race certain rather than timing-dependent, so a
+# lock that trusts mkdir's exit status fails here every run.
+lying_mkdir() { command mkdir -p "$@"; }
+for mkdir_mode in real lying; do
+  if [ "$mkdir_mode" = lying ]; then
+    mkdir() { lying_mkdir "$@"; }
+    mode_note=" (mkdir reports success for an existing dir)"
+  else
+    mode_note=""
+  fi
+
+  # Concurrent callers on a cold project: one import, never two at once.
+  rm -rf "$PROJ/.godot" "$STUB_LOG"
+  pids=()
+  for _ in 1 2 3 4 5; do
+    STUB_SLEEP=2 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v1" 2>/dev/null &
+    pids+=($!)
+  done
+  failed_callers=0
+  for p in "${pids[@]}"; do wait "$p" || failed_callers=$((failed_callers + 1)); done
+  assert_eq "five concurrent callers all succeed$mode_note" 0 "$failed_callers"
+  assert_eq "five concurrent callers run one import$mode_note" 1 "$(imports)"
+  assert_eq "no two imports overlapped$mode_note" 0 "$(grep -c '^overlap$' "$STUB_LOG" || true)"
+  assert_eq "the lock is released afterwards$mode_note" no \
+    "$([ -e "$PROJ/.godot/sparta-import.lock" ] && echo yes || echo no)"
+
+  # Five callers that all find a stale lock race to break it: still exactly one import,
+  # never two at once, and the stale lock is broken exactly once.
+  rm -rf "$PROJ/.godot" "$STUB_LOG" "$TMP"/race-*.err
+  command mkdir -p "$PROJ/.godot"
+  echo "$dead" > "$PROJ/.godot/sparta-import.lock"
+  pids=()
+  for i in 1 2 3 4 5; do
+    STUB_SLEEP=2 godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "stub|v1" 2>"$TMP/race-$i.err" &
+    pids+=($!)
+  done
+  failed_callers=0
+  for p in "${pids[@]}"; do wait "$p" || failed_callers=$((failed_callers + 1)); done
+  assert_eq "callers racing to break a stale lock all succeed$mode_note" 0 "$failed_callers"
+  assert_eq "callers racing to break a stale lock run one import$mode_note" 1 "$(imports)"
+  assert_eq "no two imports overlapped after the race$mode_note" 0 "$(grep -c '^overlap$' "$STUB_LOG" || true)"
+  assert_eq "the stale lock was broken once$mode_note" 1 \
+    "$(cat "$TMP"/race-*.err | grep -c 'broke stale lock' || true)"
+  assert_eq "no stale-lock leftovers remain$mode_note" 0 \
+    "$(find "$PROJ/.godot" -maxdepth 1 -name 'sparta-import.lock*' | wc -l | tr -d ' ')"
 done
-failed_callers=0
-for p in "${pids[@]}"; do wait "$p" || failed_callers=$((failed_callers + 1)); done
-assert_eq "callers racing to break a stale lock all succeed" 0 "$failed_callers"
-assert_eq "callers racing to break a stale lock run one import" 1 "$(imports)"
-assert_eq "no two imports overlapped after the race" 0 "$(grep -c '^overlap$' "$STUB_LOG" || true)"
-assert_eq "the stale lock was broken once" 1 "$(cat "$TMP"/race-*.err | grep -c 'broke stale lock' || true)"
-assert_eq "no stale-lock leftovers remain" 0 \
-  "$(find "$PROJ/.godot" -maxdepth 1 -name 'sparta-import.lock*' | wc -l | tr -d ' ')"
+unset -f mkdir
 
 # A dead holder's lock is broken.
-LOCK="$TMP/lock.d"
-mkdir "$LOCK"
-echo "$dead" > "$LOCK/pid"
+LOCK="$TMP/lock"
+echo "$dead" > "$LOCK"
 rc=0
 godot_lock_acquire "$LOCK" 5 2>"$TMP/stale.err" || rc=$?
 assert_eq "a dead holder's lock is taken over" 0 "$rc"
@@ -294,39 +316,38 @@ swapped=0
 godot_lock_is_stale() {
   if [ "$swapped" -eq 0 ]; then
     swapped=1
-    rm -rf "$1"; mkdir "$1"; echo "$$" > "$1/pid"
+    rm -f "$1"; echo "$$" > "$1"
     return 0
   fi
   orig_godot_lock_is_stale "$@"
 }
-mkdir "$LOCK"
-echo "$dead" > "$LOCK/pid"
+echo "$dead" > "$LOCK"
 rc=0
 godot_lock_acquire "$LOCK" 1 2>/dev/null || rc=$?
 assert_eq "a late breaker does not take the lock" 1 "$rc"
-assert_eq "the new holder's lock is left intact" "$$" "$(cat "$LOCK/pid" 2>/dev/null || echo missing)"
+assert_eq "the new holder's lock is left intact" "$$" "$(cat "$LOCK" 2>/dev/null || echo missing)"
 eval "$(declare -f orig_godot_lock_is_stale | sed '1s/^orig_//')"
 godot_lock_release "$LOCK"
 
 # A breaker killed mid-break leaves <lock>.break behind. It is never cleared
 # automatically (two waiters could both clear it and break concurrently): once over a
-# minute old it fails the caller loudly, naming the directory, and is left in place.
-mkdir "$LOCK" "$LOCK.break"
-echo "$dead" > "$LOCK/pid"
+# minute old it fails the caller loudly, naming the file, and is left in place.
+echo "$dead" > "$LOCK"
+: > "$LOCK.break"
 touch -d '2 minutes ago' "$LOCK.break"
 rc=0
 godot_lock_acquire "$LOCK" 3 2>"$TMP/breaker.err" || rc=$?
 assert_eq "an abandoned breaker lock fails the caller" 1 "$rc"
-assert_eq "the failure names the .break dir to remove" 1 \
+assert_eq "the failure names the .break file to remove" 1 \
   "$(grep -c "::error::.*$LOCK.break is over a minute old" "$TMP/breaker.err" || true)"
-assert_eq "the abandoned breaker lock is left in place" yes "$([ -d "$LOCK.break" ] && echo yes || echo no)"
-assert_eq "the stale lock under it is not broken" "$dead" "$(cat "$LOCK/pid" 2>/dev/null || echo missing)"
-rm -rf "$LOCK.break"
+assert_eq "the abandoned breaker lock is left in place" yes "$([ -e "$LOCK.break" ] && echo yes || echo no)"
+assert_eq "the stale lock under it is not broken" "$dead" "$(cat "$LOCK" 2>/dev/null || echo missing)"
+rm -f "$LOCK.break"
 godot_lock_release "$LOCK"
 
 # A lock with no PID: a fresh one may be a holder about to write its PID, so it is
 # waited for; one over a minute old is a holder that died first, so it is broken.
-mkdir "$LOCK"
+: > "$LOCK"
 rc=0
 godot_lock_acquire "$LOCK" 1 2>/dev/null || rc=$?
 assert_eq "a fresh PID-less lock is not broken" 1 "$rc"
@@ -337,9 +358,23 @@ assert_eq "an old PID-less lock is broken" 0 "$rc"
 assert_eq "the PID-less takeover is reported" 1 "$(grep -c 'holder PID none is gone' "$TMP/nopid.err" || true)"
 godot_lock_release "$LOCK"
 
-# A live holder (this shell) is waited for, then refused.
+# A directory lock left by the older mkdir-based helper reads as a lock with no PID:
+# waited for while fresh, broken once over a minute old.
 mkdir "$LOCK"
-echo "$$" > "$LOCK/pid"
+echo "$dead" > "$LOCK/pid"
+rc=0
+godot_lock_acquire "$LOCK" 1 2>/dev/null || rc=$?
+assert_eq "a fresh directory lock is not broken" 1 "$rc"
+touch -d '2 minutes ago' "$LOCK"
+rc=0
+godot_lock_acquire "$LOCK" 1 2>"$TMP/dirlock.err" || rc=$?
+assert_eq "an old directory lock is broken" 0 "$rc"
+assert_eq "the directory-lock takeover is reported" 1 "$(grep -c 'broke stale lock' "$TMP/dirlock.err" || true)"
+assert_eq "the lock is a file after the takeover" yes "$([ -f "$LOCK" ] && echo yes || echo no)"
+godot_lock_release "$LOCK"
+
+# A live holder (this shell) is waited for, then refused.
+echo "$$" > "$LOCK"
 rc=0
 godot_lock_acquire "$LOCK" 2 2>"$TMP/live.err" || rc=$?
 assert_eq "a live holder's lock is refused after the wait" 1 "$rc"
@@ -353,7 +388,7 @@ STUB_SLEEP=60 godot_import_once 1 "$TMP/godot-import-stub" "$PROJ" "stub|v1" 2>"
 assert_eq "a hung import fails" 1 "$rc"
 assert_eq "a hung import leaves no stamp" no "$([ -f "$(godot_import_stamp_path "$PROJ")" ] && echo yes || echo no)"
 assert_eq "a hung import releases the lock" no "$([ -e "$PROJ/.godot/sparta-import.lock" ] && echo yes || echo no)"
-rmdir "$STUB_LOG.busy" 2>/dev/null || true
+rm -f "$STUB_LOG.busy"
 
 # An import that dies on a signal (here 134, the abort a Linux CI import hit) is not
 # fatal: Godot's --import status is unreliable and the cache it leaves works. It warns
