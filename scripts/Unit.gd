@@ -153,6 +153,11 @@ var _cached_combat_profile: Dictionary = {}
 # not counted, nor do they reset the count: it counts the steps stood still out of contact
 # and unengaged since the march last moved (Unit._march_stopped_ticks).
 @export var march_target_stop_grace_ticks: int = SoldierBodies.MARCH_TARGET_STOP_GRACE_TICKS
+# How far off his own slot, in file pitches, one unengaged soldier body must stand for the
+# same-unit standoff (SoldierBodies._separate_same_unit) to keep this block's men apart
+# outside a fight or a re-slot's settle window, so men walking back to their slots from
+# far off do not walk through each other.
+@export var standoff_off_slot_pitches: float = SoldierBodies.STANDOFF_OFF_SLOT_PITCHES
 # Effective melee reach, in world units (Battle sets it per weapon from reach_m;
 # the 26 default is the infantry/sword baseline). A unit counts as in melee
 # contact when the gap to its target closes within attack_range + both RADII, so a
@@ -11911,6 +11916,7 @@ func to_snapshot_dict() -> Dictionary:
 		"march_share_full_pitches": march_share_full_pitches,
 		"march_share_max_accel_mult": march_share_max_accel_mult,
 		"march_target_stop_grace_ticks": march_target_stop_grace_ticks,
+		"standoff_off_slot_pitches": standoff_off_slot_pitches,
 		"attack_range": attack_range, "sight_range": sight_range,
 		"weapon_type_id": weapon_type_id, "shield_type_id": shield_type_id,
 		# The deployed weapon and the carried second one travel with the clone too: a
@@ -12143,6 +12149,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 			march_share_max_accel_mult))
 	march_target_stop_grace_ticks = int(d.get("march_target_stop_grace_ticks",
 			march_target_stop_grace_ticks))
+	standoff_off_slot_pitches = float(d.get("standoff_off_slot_pitches",
+			standoff_off_slot_pitches))
 	attack_range = float(d["attack_range"])
 	weapon_type_id = int(d["weapon_type_id"])
 	shield_type_id = int(d["shield_type_id"])

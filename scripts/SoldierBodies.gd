@@ -102,8 +102,8 @@ const STANDOFF_MIN_SEP_FRAC: float = 0.9
 const STANDOFF_MAX_SPEED: float = 2.0 * WorldScaleRef.WU_PER_M
 # Floor below which same-unit standoff separation is disabled (tuned in wu):
 const STANDOFF_MIN_SEP_FLOOR: float = 0.01
-# How far off his own slot, in file pitches, one unengaged body of a block must stand for
-# _separate_same_unit to police the block outside its usual windows (fighting, or a re-slot's
+# Default for Unit.standoff_off_slot_pitches: how far off his own slot, in file pitches,
+# one unengaged body of a block must stand for _separate_same_unit to police the block outside its usual windows (fighting, or a re-slot's
 # settle window). While every man stands within this of his slot the block is in good order,
 # none of them is walking through another, and the scan is skipped.
 const STANDOFF_OFF_SLOT_PITCHES: float = 1.0
@@ -935,7 +935,7 @@ static func _cap_body_speed_vec(vel: Vector2, facing: Vector2, jog_speed: float,
 ## cannot reach. Every other state runs it inside unit._standoff_settle_until_tick's
 ## window, armed by the re-slot events (set_formation, set_frontage, reform_ranks) whose
 ## file-crossing this pass exists to police, and while any unengaged man stands more than
-## STANDOFF_OFF_SLOT_PITCHES file pitches off his slot (_any_body_off_slot), when men walking
+## Unit.standoff_off_slot_pitches file pitches off his slot (_any_body_off_slot), when men walking
 ## back to their slots can walk through each other -- see the gate right below the
 ## deliberate-pass-through check for why a march in good order never needs the full scan.
 static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2Array, is_engaged: PackedByteArray, delta: float) -> PackedVector2Array:
@@ -983,12 +983,12 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	# men of the block apart, a man walking back from far off walks through one nearer his slot
 	# who stands on that line (the support clip's cavalry squadron: two riders 17 and 57 wu off
 	# their slots came within 0.56 wu of each other as the farther one passed). So the pass also
-	# runs while any unengaged man stands more than STANDOFF_OFF_SLOT_PITCHES file pitches off
+	# runs while any unengaged man stands more than unit.standoff_off_slot_pitches file pitches off
 	# his slot.
 	if unit.state != Unit.State.FIGHTING \
 			and Engine.get_physics_frames() > unit._standoff_settle_until_tick \
 			and not _any_body_off_slot(unit, n, target_slots, is_engaged,
-					STANDOFF_OFF_SLOT_PITCHES * unit.file_pitch_wu()):
+					unit.standoff_off_slot_pitches * unit.file_pitch_wu()):
 		return PackedVector2Array()
 
 	var body_radius: float = unit.soldier_body_radius()

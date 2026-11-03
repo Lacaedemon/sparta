@@ -524,7 +524,7 @@ func test_same_unit_standoff_skips_the_pass_outside_an_armed_settle_window() -> 
 	# whose men stand well off their slots is policed; see the off-slot test below).
 	var mid: Vector2 = (u._sim_soldier_pos[0] + u._sim_soldier_pos[1]) * 0.5
 	assert_lt(mid.distance_to(u._sim_soldier_pos[0]),
-		SoldierBodies.STANDOFF_OFF_SLOT_PITCHES * u.file_pitch_wu(),
+		u.standoff_off_slot_pitches * u.file_pitch_wu(),
 		"sanity: the crowded pair stands within the off-slot gate of its slots")
 	var d_start: float = 0.05
 	u._sim_soldier_pos[0] = mid
@@ -544,7 +544,7 @@ func test_same_unit_standoff_runs_while_a_man_stands_well_off_his_slot() -> void
 	u.position = Vector2(0.0, 50.0)
 	SoldierBodies.seed(u)
 	# No settle window and not fighting, but the crowded pair stands about 50 wu from its
-	# slots, well beyond STANDOFF_OFF_SLOT_PITCHES file pitches: men walking back to their
+	# slots, well beyond standoff_off_slot_pitches file pitches: men walking back to their
 	# slots from that far off are kept apart, so the pass runs and separates them.
 	assert_eq(u._standoff_settle_until_tick, -1,
 		"sanity: a fresh unit's settle window starts unarmed")
@@ -552,12 +552,30 @@ func test_same_unit_standoff_runs_while_a_man_stands_well_off_his_slot() -> void
 	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
 	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
 	assert_gt(u._sim_soldier_pos[0].distance_to(u.soldier_world_slots(u.soldiers)[0]),
-		SoldierBodies.STANDOFF_OFF_SLOT_PITCHES * u.file_pitch_wu(),
+		u.standoff_off_slot_pitches * u.file_pitch_wu(),
 		"sanity: man 0 stands well off his slot")
 	SoldierBodies.step(u, 1.0 / 60.0)
 	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
 	assert_gt(dx_after, d_start + 0.1,
 		"a block with a man well off his slot must run the standoff pass")
+
+
+func test_same_unit_standoff_off_slot_threshold_is_the_units_own() -> void:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	# The same crowded pair about 50 wu from its slots, but this block only polices men
+	# farther off than that, so the pass is skipped and the pair stays crowded.
+	var d_start: float = 0.05
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	var off_wu: float = u._sim_soldier_pos[0].distance_to(u.soldier_world_slots(u.soldiers)[0])
+	u.standoff_off_slot_pitches = (off_wu + 10.0) / u.file_pitch_wu()
+	SoldierBodies.step(u, 1.0 / 60.0)
+	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
+	assert_almost_eq(dx_after, d_start, 0.01,
+		"a block whose own threshold lies beyond its farthest man must skip the standoff pass")
 
 
 func test_same_unit_standoff_runs_after_set_frontage_arms_the_settle_window() -> void:
