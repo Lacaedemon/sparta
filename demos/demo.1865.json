@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/sweep-routers.json",
+  "caption": "A block already marching when an order comes now squares a fold near a quarter-turn the way its last order squared it, instead of by whichever side of a quarter-turn the fold happens to fall. The 30-man enemy infantry block on the right chases the player's second cavalry troop with its ranks about 92 to 99 degrees off its heading, and the AI re-issues its attack order on the march. Before this change a fold just past a quarter-turn was reflected by a half-turn and wheeled nearly a quarter-turn back, and one just short of it wheeled the other way. Now, short of 25 degrees past a quarter-turn and with no reflection before it, the ranks wheel the whole turn round. Over seeds 0 to 4 the block's men no longer come within 2.25 wu of each other (closest pair 4.5 to 5.6 wu, against 0.4 to 1.3 wu on three seeds before), and its worst shape residual falls on three seeds and is unchanged on two.",
+  "fixed_fps": 30,
+  "max_frames": 130,
+  "fps": 15,
+  "width": 720
+}
