@@ -628,13 +628,13 @@ const QUARTER_REDEAL_BAND: float = deg_to_rad(10.0)
 # How far (rad) past a quarter-turn an order's re-square of a block marching when it came
 # (_order_square_marching), whose half-turn re-deals its men in depth (_march_keeps_line), still
 # turns its whole fold out onto square rather than taking the half-turn (order_square_line).
-# Such a grid always stands on square: reform_ranks drops a reflected partial grid's fold to
-# square under a toggled mirror, so a fold drifting a few degrees across a quarter does not turn
-# a quarter-turn wheel into its mirror, and a reflection is not undone by the next. The nearer split alone flips
-# between the two either side of a quarter. Past the quarter the reflection costs a re-deal on
-# the march, and a marching block re-dealt, in depth or at a quarter-turn, re-forms worse than one
-# wheeled. A full grid's half-turn moves no man (reform_ranks keeps its +-PI fold), so such a
-# block takes the nearer split. Measured on sweep_routers uid 4 (30 men on 8 files chasing at up
+# The band is measured from square, and a reflection by reform_ranks leaves such a grid's fold
+# at square under a toggled mirror, so a fold drifting a few degrees across a quarter does not
+# turn a quarter-turn wheel into its mirror, and a reflection is not undone by the next. The
+# nearer split alone flips between the two either side of a quarter. Past the quarter the
+# reflection costs a re-deal on the march, and a marching block re-dealt, in depth or at a
+# quarter-turn, re-forms worse than one wheeled. A full grid's half-turn moves no man
+# (reform_ranks keeps its +-PI fold), so such a block takes the nearer split. Measured on sweep_routers uid 4 (30 men on 8 files chasing at up
 # to a sprint, its first order re-square 92 to 99 degrees off on seeds 0, 1 and 3, later ones 103
 # and 112 degrees off on seeds 1 and 3), dense 2-tick dumps of the clip's 260 ticks judged with no
 # exemption, seeds 0 to 4: worst shape residual 21.8, 19.1, 20.9, 21.8 and 11.1 against the
@@ -4875,13 +4875,18 @@ func _reface(dir: Vector2) -> void:
 	# came to a block not marching, or whose half-turn moves no man, the re-run splits about the
 	# nearer whole or half turn, so the lag stands on its line up to a quarter-turn; for one that
 	# came to a marching block whose half-turn re-deals its men (_march_keeps_line) it keeps
-	# square up to a quarter-turn plus MARCH_SQUARE_BAND (order_square_line).
+	# square up to a quarter-turn plus MARCH_SQUARE_BAND (order_square_line), so a lag standing on
+	# square stands up to that. A lag standing on the half-turn (a full grid's kept +-PI fold, the
+	# block since left with a short rank) re-runs past a quarter-turn, as the band measures from
+	# square, not from it.
 	# Grown past that, the line has changed, so
 	# it is folded where it stands and the re-square waits to run again from the new fold: the
 	# block is out of contact here (_face_dir took the turn otherwise). _advance_grid_lag runs it
 	# once the contact has cleared, on a tick that does not turn in place: this same tick, since
 	# it runs right after _think, when the block is already clear and not turning in place.
-	var reach: float = PI * 0.5 + MARCH_SQUARE_BAND if _march_keeps_line() else PI * 0.5
+	var reach: float = PI * 0.5
+	if _march_keeps_line() and absf(_formation_angle) < 0.01:
+		reach += MARCH_SQUARE_BAND
 	if absf(_grid_lag) > reach:
 		_fold_grid_lag()
 		_resquare_pending = true
@@ -10374,9 +10379,9 @@ func _square_fold_for_order(hold_ground: bool, may_redeal: bool = false) -> void
 ## correction of its lag (_reface) keep square across MARCH_SQUARE_BAND: the block was marching
 ## when the order came (_order_square_marching), and its half-turn would re-deal its men in depth.
 ## reform_ranks keeps a full grid's +-PI fold and a single rank's as they stand, moving no man,
-## so those blocks take the nearer split. A grid with a short rank never rests on the half-turn
-## (reform_ranks drops its fold to square under a toggled mirror), so square is its line, even
-## for a full grid that kept a +-PI fold and has since lost men to a short rank.
+## so those blocks take the nearer split. The band measures from square, whatever angle the
+## fold stands at (a full grid's kept +-PI fold, the block since left with a short rank,
+## included); a reflection by reform_ranks leaves the fold at square under a toggled mirror.
 func _march_keeps_line() -> bool:
 	if not _order_square_marching:
 		return false

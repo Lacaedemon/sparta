@@ -3,9 +3,10 @@ extends GutTest
 ## in depth (a short rank), keeps square, the line its grid stands on, up to MARCH_SQUARE_BAND past
 ## a quarter-turn (Unit.order_square_line, Unit._square_fold_for_order, Unit._march_keeps_line):
 ## it turns its whole fold out instead of being reflected, and a grid already reflected in depth
-## (its fold dropped to square under a toggled mirror) is not reflected back. Whether the block is marching is read when
-## the order comes, for the re-square, a re-run of it that waited, and a march correction of its
-## lag, which re-runs the re-square only once the lag has grown past that band (Unit._reface).
+## (its fold dropped to square under a toggled mirror) is not reflected back. Whether the block
+## is marching is read when the order comes, for the re-square, a re-run of it that waited, and a
+## march correction of its lag, which re-runs the re-square only once a lag standing on square
+## has grown past that band (Unit._reface).
 ##
 ## The regression this pins: a marching block split its fold about the nearer whole or half turn,
 ## so a fold a few degrees past a quarter was reflected by a half-turn and wheeled nearly a
@@ -106,6 +107,30 @@ func test_a_full_grid_at_the_half_turn_that_lost_men_wheels_onto_square() -> voi
 	assert_eq(u._formation_angle, 0.0, "the grid squares")
 	assert_almost_eq(absf(u._grid_lag), deg_to_rad(110.0), ANGLE_EPS,
 			"and the whole 110 degrees turns out, nothing reflected in depth")
+
+
+## A full grid's lag standing on its kept half-turn, the block since left with a short rank: a
+## march correction past a quarter-turn off the half-turn re-runs the re-square, since the band
+## measures from square, and the re-run wheels the grid onto square.
+func test_a_lag_on_the_half_turn_of_a_grid_that_lost_men_reruns_past_a_quarter() -> void:
+	var u := _marching_unit(FULL_MEN, FULL_FILES)
+	_fold(u, 110.0)
+	_reissue(u)
+	assert_almost_eq(absf(u._formation_angle), PI, ANGLE_EPS, "setup: the half-turn kept")
+	var lag: float = u._grid_lag
+	assert_almost_eq(absf(lag), deg_to_rad(70.0), ANGLE_EPS, "setup: 70 degrees to turn")
+	for i in [0, 1]:
+		u._sim_soldier_hp[i] = 0.0
+	SoldierMelee.reap(u, null)
+	assert_true(_partial(u), "setup: a short rank now")
+	assert_true(u._march_keeps_line(), "setup: the block keeps square")
+	u._reface(u.facing.rotated(-signf(lag) * deg_to_rad(25.0)))   # grows the lag to 95 degrees
+	assert_true(u._resquare_pending, "past a quarter-turn off the half-turn the re-square waits")
+	u._advance_grid_lag(TICK)
+	assert_false(u._resquare_pending, "it runs in the same tick's grid advance")
+	assert_eq(u._formation_angle, 0.0, "onto square")
+	assert_almost_eq(absf(u._grid_lag), deg_to_rad(85.0), deg_to_rad(2.0),
+			"wheeling the 85 degrees the grid stands off square")
 
 
 func test_a_marching_partial_block_wheels_a_fold_either_side_of_a_quarter_the_same_way() -> void:
