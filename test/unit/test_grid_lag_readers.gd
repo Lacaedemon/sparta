@@ -267,3 +267,47 @@ func test_a_file_double_over_a_folded_march_lag_squares_it_too() -> void:
 	assert_almost_eq(wrapf(u.grid_fold(), -PI, PI), 0.0, 0.0001,
 			"once it has run and closed the grid stands square")
 	assert_eq(UnitFormation.frontage(u), files, "with its files still across the facing")
+
+
+func test_a_file_double_over_a_march_lag_toward_a_half_turn_squares_on_the_half_turn() -> void:
+	# The other side of the quarter: a quarter fold with a march's lag of 60 degrees the same
+	# way stands the grid 150 degrees off, nearer the half-turn. The lag is folded there and a
+	# re-square waits; driven through real ticks, it waits out a contact, then runs once the
+	# block has been clear for RESQUARE_CONTACT_CLEAR_TIME, squares onto the half-turn (the
+	# about-face fold, which keeps the files lateral) and turns the 30 degree residue out.
+	var u := _unit()
+	u._reface(u.facing.rotated(-PI / 3.0))
+	assert_almost_eq(u._grid_lag, PI / 3.0, 0.0001, "setup: a march leaves a 60 degree lag")
+	assert_false(u._grid_lag_resquare, "setup: a march's lag, not an order's re-square")
+	u._formation_angle = PI * 0.5
+	assert_false(u._holds_quarter_fold(), "setup: the grid as it stands is nearer a half-turn")
+	u._apply_file_double_step(Order.new_file_double(1))
+	var files: int = UnitFormation.frontage(u)
+	assert_eq(files, UnitFormation.widened_files(MEN, FILES), "the files widen as they stand")
+	assert_almost_eq(u.grid_fold(), PI * 5.0 / 6.0, 0.0001, "the grid stays where it stood")
+	assert_true(u._resquare_pending, "a re-square waits to run from the new fold")
+	var tick: float = 1.0 / 60.0
+	u._in_enemy_contact = true
+	u._advance_grid_lag(tick)
+	assert_true(u._resquare_pending, "in contact the re-square goes on waiting")
+	u._in_enemy_contact = false
+	var waited: int = 0
+	while u._resquare_pending and waited < 600:
+		u._advance_grid_lag(tick)
+		waited += 1
+	assert_false(u._resquare_pending, "it runs once the contact has cleared")
+	assert_gte(float(waited) * tick, Unit.RESQUARE_CONTACT_CLEAR_TIME - 0.001,
+			"and not before the block has been clear for RESQUARE_CONTACT_CLEAR_TIME")
+	assert_almost_eq(absf(wrapf(u._formation_angle, -PI, PI)), PI, 0.0001,
+			"the re-square takes the half-turn")
+	assert_almost_eq(u._grid_lag, -PI / 6.0, 0.001, "and turns out the residue from there")
+	assert_true(u._grid_lag_resquare, "as an order's re-square")
+	var closing: int = 0
+	while u._grid_lag != 0.0 and closing < 1200:
+		u._advance_grid_lag(tick)
+		closing += 1
+	assert_eq(u._grid_lag, 0.0, "the residue closes at the bounded rate")
+	assert_gt(closing, 1, "over more than one tick")
+	assert_almost_eq(absf(wrapf(u.grid_fold(), -PI, PI)), PI, 0.0001,
+			"leaving the grid a half-turn off, its files lateral")
+	assert_eq(UnitFormation.frontage(u), files, "with its files still across the facing")

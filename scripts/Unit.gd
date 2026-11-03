@@ -561,8 +561,10 @@ var _grid_lag_resquare: bool = false
 # True while a fresh order's re-square of the fold waits for the block to leave enemy contact
 # (_square_fold_for_order): it runs, holding ground, once the block has been out of contact for
 # RESQUARE_CONTACT_CLEAR_TIME (_contact_clear_time) and is not turning in place
-# (_advance_grid_lag). A later order decides afresh; a rout drops it, since the rally squares
-# the fold.
+# (_advance_grid_lag). Also set when a combo's file double folds a lag where the grid stands
+# over a quarter fold (_apply_file_double_step), so the grid it leaves between square and a
+# quarter is squared from there. A later order decides afresh; a rout drops it, since the rally
+# squares the fold.
 var _resquare_pending: bool = false
 # The part of _formation_angle (rad, signed like it) that combat re-faces on riders inside a
 # foot block folded in (_face_dir's absorb), counted apart from the rest of the fold (an engage
@@ -5245,9 +5247,8 @@ func _pivot_arm(extents: Vector2 = UNKNOWN_EXTENTS) -> float:
 ## the pivot alone never leaves a body further behind its swinging slot than the marching
 ## band's direct-arrival radius, so it runs at full jog_speed pace; the ramp then reaches
 ## formed_turn_tracking_frac exactly at FORMED_TURN_DEPTH_RATIO_REF and stays there for any
-## deeper block still --
-## reserving exactly the catch-up headroom a block that size needs, instead of taxing every
-## formed pivot by the same flat amount regardless of size. The free ratio scales with the
+## deeper block still -- reserving exactly the catch-up headroom a block that size needs,
+## instead of taxing every formed pivot by the same flat amount regardless of size. The free ratio scales with the
 ## caller's own (clamped) formed_turn_tracking_frac rather than the FORMED_TURN_TRACKING_FRAC
 ## default, so a caller-configured tracking fraction still lands exactly on itself at the
 ## reference ratio -- see FORMED_TURN_TRACKING_FRAC_FLOOR's own doc comment for why that
@@ -5556,9 +5557,8 @@ func _far_tier_half_extents() -> Vector2:
 ## pivoting tick (_close_resquare_lag_in_pivot), but it never turns the lag away from the fold
 ## nor moves the fold it closes onto. Either way the clearance cannot grow the lag or move
 ## where it ends, so the loop a march lag closes cannot form. An undisciplined or hasty march
-## turns its heading onto the
-## path's bearing through _reface, which writes every correction into the lag, so it reads
-## the fold alone, as before.
+## turns its heading onto the path's bearing through _reface, which writes every correction
+## into the lag, so it reads the fold alone, as before.
 ##
 ## Deliberately NOT the flat corner_clearance() (the corner man's full half-diagonal,
 ## folding in BOTH width and depth unconditionally) for a KNOWN travel direction: a
@@ -7541,11 +7541,13 @@ func _arm_combo_step(step: Order) -> bool:
 ##   whole grid is squared to the heading -- the fold and the lag, and with the lag any
 ##   re-square still turning or waiting to run.
 ## - Standing square or a half-turn off, but over a fold a quarter off (a re-square lag turning
-##   the grid back from a quarter fold the other way, or a march's lag of more than an eighth
-##   turn still trailing when a quarter-turn drill folds a quarter under it): the files lie
-##   across the facing now, but would run along the depth once the lag closed. The lag is
-##   folded where the grid stands (_fold_grid_lag), so the grid stays put and the widened files
-##   stay across the facing. Whichever lag was folded, a re-square then waits to run
+##   the grid back from a quarter fold the other way, or a march's lag still trailing when a
+##   quarter-turn drill folds a quarter under it, wide enough that the grid stands nearer square
+##   or a half-turn than the quarter: an eighth turn either way over an exact quarter fold,
+##   but only 20 degrees toward the half-turn over a 115 degree fold, which still reads as a
+##   quarter): the files lie across the facing now, but would run along the depth once the lag
+##   closed. The lag is folded where the grid stands (_fold_grid_lag), so the grid stays put
+##   and the widened files stay across the facing. Whichever lag was folded, a re-square then waits to run
 ##   (_resquare_pending) and squares whatever the new fold leaves off square or a half-turn, at
 ##   a bounded rate.
 ## - The transposition turns the grid from where it stands onto the heading, which is a quarter
