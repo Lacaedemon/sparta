@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.10.20">
+<meta name="generator" content="quarto-1.11.9">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -42,18 +42,19 @@ ul.task-list li input[type="checkbox"] {
 <link href=".//favicon.svg" rel="icon" type="image/svg+xml">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/scrollable-regions/scrollable-regions.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="site_libs/quarto-html/anchor.min.js"></script>
 <link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-17888a1159294d3eb470f19f6f52f5a5.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-0ae969d3293726db143f6e9eb89af930.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-17888a1159294d3eb470f19f6f52f5a5.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-447e42e69aaa9833c0ba1b986f430b20.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-ee3c11bf363ebb19cd4463bda8569c83.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/bootstrap/bootstrap-dark-6c469cdab8085149ac7b114b4a942bdb.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="site_libs/bootstrap/bootstrap-ee3c11bf363ebb19cd4463bda8569c83.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-ee18c662167785d118e0654ae4c5222c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-7a27704bd20ff3d3ef381102f20d504a.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-ee18c662167785d118e0654ae4c5222c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -87,7 +88,7 @@ ul.task-list li input[type="checkbox"] {
 <link rel="stylesheet" href="styles.css">
 </head>
 
-<body class="nav-sidebar floating nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+<body class="nav-sidebar floating nav-fixed quarto-light"><a id="quarto-skip-link" class="visually-hidden-focusable" href="#quarto-document-content">Skip to main content</a><script id="quarto-html-before-body" type="application/javascript">
     const toggleBodyColorMode = (bsSheetEl) => {
       const mode = bsSheetEl.getAttribute("data-mode");
       const bodyEl = window.document.querySelector("body");
@@ -110,6 +111,7 @@ ul.task-list li input[type="checkbox"] {
       for (let i=0; i < toggles.length; i++) {
         const toggle = toggles[i];
         if (toggle) {
+          toggle.setAttribute("aria-checked", alternate ? "true" : "false");
           if (alternate) {
             toggle.classList.add("alternate");
           } else {
@@ -139,13 +141,19 @@ ul.task-list li input[type="checkbox"] {
       manageTransitions('#quarto-margin-sidebar .nav-link', true);
       // Switch the toggles
       setColorSchemeToggle(alternate)
-      // Hack to workaround the fact that safari doesn't
-      // properly recolor the scrollbar when toggling (#1455)
+    }
+    // Hack to workaround the fact that safari doesn't
+    // properly recolor the scrollbar when toggling (#1455).
+    // Not run on load: stylesheets are set before first paint there, and
+    // scrolling would undo the scroll to a URL fragment (#14973).
+    // The one pixel nudge keeps the reader where they were.
+    const refreshSafariScrollbar = () => {
       if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
         manageTransitions("body", false);
-        window.scrollTo(0, 1);
+        const scrollY = window.scrollY;
+        window.scrollTo(0, scrollY > 0 ? scrollY - 1 : 1);
         setTimeout(() => {
-          window.scrollTo(0, 0);
+          window.scrollTo(0, scrollY);
           manageTransitions("body", true);
         }, 40);
       }
@@ -239,6 +247,7 @@ ul.task-list li input[type="checkbox"] {
       // Read the current dark / light value
       let toAlternate = !hasAlternateSentinel();
       toggleColorMode(toAlternate);
+      refreshSafariScrollbar();
       setStyleSentinel(toAlternate);
       toggleGiscusIfUsed(toAlternate, darkModeDefault);
       window.dispatchEvent(new Event('resize'));
@@ -253,7 +262,7 @@ ul.task-list li input[type="checkbox"] {
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
-    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark" aria-label="Site">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
     <a href="./index.html" class="navbar-brand navbar-brand-logo">
@@ -264,8 +273,7 @@ ul.task-list li input[type="checkbox"] {
     <span class="navbar-title">Sparta</span>
     </a>
   </div>
-            <div id="quarto-search" class="" title="Search"></div>
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
   <span class="navbar-toggler-icon"></span>
 </button>
           <div class="collapse navbar-collapse" id="navbarCollapse">
@@ -330,22 +338,23 @@ ul.task-list li input[type="checkbox"] {
 </ul>
           </div> <!-- /navcollapse -->
             <div class="quarto-navbar-tools">
-  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+  <button type="button" role="switch" aria-checked="false" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode" aria-label="Toggle dark mode"><i class="bi"></i></button>
   <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
   <div class="quarto-reader-toggle-btn">
   <i class="bi"></i>
   </div>
 </a>
 </div>
+            <div id="quarto-search" class="" title="Search"></div>
       </div> <!-- /container-fluid -->
     </nav>
-  <nav class="quarto-secondary-nav">
+  <nav class="quarto-secondary-nav" aria-label="Toolbar">
     <div class="container-fluid d-flex">
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./getting-started.html">Play</a></li><li class="breadcrumb-item"><a href="./how-to-play.html">How to Play</a></li></ol></nav>
-        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        <nav class="quarto-page-breadcrumbs" aria-label="Breadcrumbs"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./getting-started.html">Play</a></li><li class="breadcrumb-item"><a href="./how-to-play.html">How to Play</a></li></ol></nav>
+        <a class="flex-grow-1" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
   </nav>
@@ -353,7 +362,7 @@ ul.task-list li input[type="checkbox"] {
 <!-- content -->
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
-  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto" aria-label="Section">
     <div class="sidebar-menu-container"> 
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
@@ -364,13 +373,10 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
- <span class="menu-text">Play</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-controls="quarto-sidebar-section-1" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-1-label">Play</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
       </div>
-      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+      <ul id="quarto-sidebar-section-1" aria-labelledby="quarto-sidebar-section-1-label" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./getting-started.html" class="sidebar-item-text sidebar-link">
@@ -399,13 +405,10 @@ ul.task-list li input[type="checkbox"] {
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false">
- <span class="menu-text">Under the Hood</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-controls="quarto-sidebar-section-2" aria-expanded="false">
+ <span class="menu-text" id="quarto-sidebar-section-2-label">Under the Hood</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
       </div>
-      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">  
+      <ul id="quarto-sidebar-section-2" aria-labelledby="quarto-sidebar-section-2-label" class="collapse list-unstyled sidebar-section depth1 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./replays.html" class="sidebar-item-text sidebar-link">
@@ -438,7 +441,7 @@ ul.task-list li input[type="checkbox"] {
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        <nav id="TOC" role="doc-toc" class="toc-active">
+        <nav id="TOC" role="doc-toc" aria-labelledby="toc-title" class="toc-active">
     <h2 id="toc-title">On this page</h2>
    
   <ul>
@@ -460,10 +463,10 @@ ul.task-list li input[type="checkbox"] {
 <div class="toc-actions"><ul><li><a href="https://github.com/Lacaedemon/sparta/edit/main/website/how-to-play.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/Lacaedemon/sparta/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li><li><a href="https://github.com/Lacaedemon/sparta/blob/main/website/how-to-play.qmd" class="toc-action"><i class="bi empty"></i>View source</a></li></ul></div></nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content">
+<main class="content" id="quarto-document-content" tabindex="-1">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./getting-started.html">Play</a></li><li class="breadcrumb-item"><a href="./how-to-play.html">How to Play</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="Breadcrumbs"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./getting-started.html">Play</a></li><li class="breadcrumb-item"><a href="./how-to-play.html">How to Play</a></li></ol></nav>
 <div class="quarto-title">
 <h1 class="title">How to Play</h1>
 </div>
@@ -481,7 +484,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Last updated: 2026-11-02</p>
+      <p class="date">Last updated: 2026-11-03</p>
     </div>
   </div>
   
@@ -770,7 +773,7 @@ Figure&nbsp;3: Disciplined vs.&nbsp;undisciplined: two regiments get the same qu
 </figcaption>
 </figure>
 </div>
-<p><strong>Reform before move (default on for most types).</strong> By default, a fresh move order makes a unit hold its position briefly (~0.8 s) while its ranks settle into formation before it steps off. The unit spends this hold <strong>pivoting in place</strong> toward the destination — no faster than its corner man can run, so the ranks hold their dressing — and its ranks are already coming onto the new heading before the first step. For a unit already on the march, the hold is also the <strong>brake leg</strong> of a sharp turn: a fresh order that roughly continues the current travel carries the column’s momentum straight through, while one that turns it sharply back bleeds that speed off during the hold, so the block comes about from a stand instead of carrying its pace into the turn (<a href="#fig-reversal-march" class="quarto-xref">Figure&nbsp;4</a>). To make a unit move immediately without the pause, uncheck <strong>Reform before move</strong> in its unit settings panel, or click <strong>Reform</strong> in the control bar — either applies to every currently selected unit. Cavalry starts with the setting off (immediate responsiveness matters more to a mounted regiment than settling ranks); every other type starts with it on. The setting is a persistent property of each unit, and any mid-battle toggle is itself recorded, so replays reproduce whichever mode was active at the moment you issued each order.</p>
+<p><strong>Reform before move (default on for most types).</strong> By default, a fresh move order makes a unit hold its position briefly (~0.8 s) while its ranks settle into formation before it steps off. The unit spends this hold <strong>pivoting in place</strong> toward the destination — no faster than its corner man can run, so the ranks hold their dressing — and its ranks are already coming onto the new heading before the first step. For a unit already on the march, the hold is also the <strong>brake leg</strong> of a sharp turn: a fresh order that roughly continues the current travel carries the column’s momentum straight through, while one that turns it sharply back bleeds that speed off during the hold, so the block comes about from a stand instead of carrying its pace into the turn (<a href="#fig-reversal-march" class="quarto-xref">Figure&nbsp;4</a>). Men still walking to their places when the block steps off on a move order (yours, or one the AI gives) or a withdrawal out of a fight keep closing on them while the march changes: whenever the block speeds up, or swings its heading without slowing, each man well off his place may change his own speed and direction at his usual rate plus the rate the march is changing at (that extra is capped at his usual rate). The extra keeps him level with his moving place and his usual rate still closes on it, so he gains on his place instead of only keeping pace with it, though he still walks onto it no faster than his usual jog. A march that slows gives none. Only those orderly marches give that extra acceleration. A combat approach — the march of an attack or support order, a charge or a pursuit — gives none, and neither does an <strong>in-haste</strong> move order (a triple- or quadruple-click) or a rout. On every march, the way a man walks onto his place changes over gradually as the block gets under way rather than all at once on its first step (<a href="#fig-march-start-catch-up" class="quarto-xref">Figure&nbsp;5</a>). A block that halts in a fight and marches off straight from it takes the change-over up where it left off, so its men, thrown about by the fight, go back to their places as they did before the block halted. Once that change-over is complete, a man within about four and a half file widths of his place walks straight to it; while the block is still getting under way, his way there is a blend of that straight walk and the way he would take if the block stood still, which can lead round the outside of the block. One farther off whose way back crosses both the block’s files and its ranks may still be sent round the outside of the block, as on any march. To make a unit move immediately without the reform hold, uncheck <strong>Reform before move</strong> in its unit settings panel, or click <strong>Reform</strong> in the control bar — either applies to every currently selected unit. Cavalry starts with the setting off (immediate responsiveness matters more to a mounted regiment than settling ranks); every other type starts with it on. The setting is a persistent property of each unit, and any mid-battle toggle is itself recorded, so replays reproduce whichever mode was active at the moment you issued each order.</p>
 <div id="fig-reversal-march" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-reversal-march-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -785,6 +788,20 @@ Figure&nbsp;4: A marching column ordered sharply back the way it came: it brakes
 </figcaption>
 </figure>
 </div>
+<div id="fig-march-start-catch-up" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-march-start-catch-up-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/march_start_catch_up.jpg">
+  <source src="media/march_start_catch_up.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-march-start-catch-up-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: A 96-man block loosens its spacing and is ordered south while its men are still walking out to their new places. It steps off with them far from their places, and the rear and flank men close on them as the block gathers pace.
+</figcaption>
+</figure>
+</div>
 <p><strong>Side-step (small lateral moves).</strong> A move order that only shifts a unit a short way to the side — less than about its own width — is carried out as a <strong>side-step</strong>: the unit shuffles sideways at a walk while holding its current facing, instead of pivoting the whole line round to face the move and then pivoting back. So a small dressing of the line keeps every soldier looking the same way and keeps the ranks in order. A move that heads forward still turns to face the destination and marches normally; a longer move to the side is a <strong>lateral pivot</strong> instead, covered below.</p>
 <div id="fig-sidestep" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
@@ -796,7 +813,7 @@ Figure&nbsp;4: A marching column ordered sharply back the way it came: it brakes
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-sidestep-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;5: Side-step: a short lateral move shuffles the regiment sideways while it holds its facing, rather than pivoting.
+Figure&nbsp;6: Side-step: a short lateral move shuffles the regiment sideways while it holds its facing, rather than pivoting.
 </figcaption>
 </figure>
 </div>
@@ -811,7 +828,7 @@ Figure&nbsp;5: Side-step: a short lateral move shuffles the regiment sideways wh
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-back-step-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;6: Back-step: a short move behind the unit shuffles it backward while it holds its facing, rather than about-facing.
+Figure&nbsp;7: Back-step: a short move behind the unit shuffles it backward while it holds its facing, rather than about-facing.
 </figcaption>
 </figure>
 </div>
@@ -826,7 +843,7 @@ Figure&nbsp;6: Back-step: a short move behind the unit shuffles it backward whil
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-arrow-nudge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;7: Arrow-key nudges: the selected regiment side-steps left, then right, then back-steps, then forward-steps — each a small step that holds its facing.
+Figure&nbsp;8: Arrow-key nudges: the selected regiment side-steps left, then right, then back-steps, then forward-steps — each a small step that holds its facing.
 </figcaption>
 </figure>
 </div>
@@ -841,7 +858,7 @@ Figure&nbsp;7: Arrow-key nudges: the selected regiment side-steps left, then rig
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-disengage-step-back-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;8: Disengage and step back: a player regiment locked in melee is ordered to disengage — it breaks contact and steps back holding facing, while the still-committed enemy keeps pressing after it.
+Figure&nbsp;9: Disengage and step back: a player regiment locked in melee is ordered to disengage — it breaks contact and steps back holding facing, while the still-committed enemy keeps pressing after it.
 </figcaption>
 </figure>
 </div>
@@ -859,7 +876,7 @@ Figure&nbsp;8: Disengage and step back: a player regiment locked in melee is ord
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-about-face-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;9: Move to the rear: ordered to a point behind it, the regiment about-faces in place (each soldier reversing 180°), reforms so a full rank fronts the new heading — holding ground while the men re-square without marching through the block — and then marches off facing the destination.
+Figure&nbsp;10: Move to the rear: ordered to a point behind it, the regiment about-faces in place (each soldier reversing 180°), reforms so a full rank fronts the new heading — holding ground while the men re-square without marching through the block — and then marches off facing the destination.
 </figcaption>
 </figure>
 </div>
@@ -874,7 +891,7 @@ Figure&nbsp;9: Move to the rear: ordered to a point behind it, the regiment abou
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-wheel-turn-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;10: Oblique move to the rear: the regiment about-faces in place, flank-pivots (wheels) the rest of the way onto the destination’s bearing, then marches off already lined up on it.
+Figure&nbsp;11: Oblique move to the rear: the regiment about-faces in place, flank-pivots (wheels) the rest of the way onto the destination’s bearing, then marches off already lined up on it.
 </figcaption>
 </figure>
 </div>
@@ -889,7 +906,7 @@ Figure&nbsp;10: Oblique move to the rear: the regiment about-faces in place, fla
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-lateral-pivot-flank-march-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;11: Lateral pivot: ordered far to its own side, the regiment quarter-turns toward the destination in place, marches straight there without reforming (the wide line stays wide, moving sideways relative to its own printed shape), then quarter-turns back to its original facing on arrival.
+Figure&nbsp;12: Lateral pivot: ordered far to its own side, the regiment quarter-turns toward the destination in place, marches straight there without reforming (the wide line stays wide, moving sideways relative to its own printed shape), then quarter-turns back to its original facing on arrival.
 </figcaption>
 </figure>
 </div>
@@ -905,7 +922,7 @@ Figure&nbsp;11: Lateral pivot: ordered far to its own side, the regiment quarter
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-about-face-residue-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;12: An about-face made on a block that was not square: a levy snaps round onto a move order and back onto a queued waypoint, which leaves its grid skewed a little off its heading. It halts, about-faces with <kbd>V</kbd>, and is ordered on the way it now faces. The men square away only the small skew as the block marches off, each keeping his own flank.
+Figure&nbsp;13: An about-face made on a block that was not square: a levy snaps round onto a move order and back onto a queued waypoint, which leaves its grid skewed a little off its heading. It halts, about-faces with <kbd>V</kbd>, and is ordered on the way it now faces. The men square away only the small skew as the block marches off, each keeping his own flank.
 </figcaption>
 </figure>
 </div>
@@ -921,7 +938,7 @@ Figure&nbsp;12: An about-face made on a block that was not square: a levy snaps 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-quarter-turn-resquare-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;13: A quarter-turned block takes a move order: the spearmen quarter-turn to face east, then are ordered east, and the block squares to its new heading with each man stepping into the nearest new place rather than marching across the block.
+Figure&nbsp;14: A quarter-turned block takes a move order: the spearmen quarter-turn to face east, then are ordered east, and the block squares to its new heading with each man stepping into the nearest new place rather than marching across the block.
 </figcaption>
 </figure>
 </div>
@@ -935,7 +952,7 @@ Figure&nbsp;13: A quarter-turned block takes a move order: the spearmen quarter-
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-quarter-turn-residue-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;14: A quarter-turn made on a block that was not square: a levy snaps round onto a move order, leaving its grid skewed. It halts, quarter-turns with <kbd>E</kbd>, and is ordered north, and each man still steps into the nearest new place as the block squares to its heading.
+Figure&nbsp;15: A quarter-turn made on a block that was not square: a levy snaps round onto a move order, leaving its grid skewed. It halts, quarter-turns with <kbd>E</kbd>, and is ordered north, and each man still steps into the nearest new place as the block squares to its heading.
 </figcaption>
 </figure>
 </div>
@@ -950,7 +967,7 @@ Figure&nbsp;14: A quarter-turn made on a block that was not square: a levy snaps
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-turn-explicatio-combo-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;15: Turn and unfold (Shift+Q): a column 5 files wide and 8 deep quarter-turns left in place, then unfolds into a 16-wide, 3-deep line across its new facing.
+Figure&nbsp;16: Turn and unfold (Shift+Q): a column 5 files wide and 8 deep quarter-turns left in place, then unfolds into a 16-wide, 3-deep line across its new facing.
 </figcaption>
 </figure>
 </div>
@@ -966,7 +983,7 @@ Figure&nbsp;15: Turn and unfold (Shift+Q): a column 5 files wide and 8 deep quar
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-moving-wheel-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;16: Moving wheel vs.&nbsp;the standing route: a cavalry regiment (left) and an infantry regiment (right) are each marching, then given the same sharply off-heading destination. The cavalry gallops through a single continuous wheel without ever stopping; the infantry halts, about-faces, wheels the remaining residual, then marches — visibly pausing where the cavalry never does.
+Figure&nbsp;17: Moving wheel vs.&nbsp;the standing route: a cavalry regiment (left) and an infantry regiment (right) are each marching, then given the same sharply off-heading destination. The cavalry gallops through a single continuous wheel without ever stopping; the infantry halts, about-faces, wheels the remaining residual, then marches — visibly pausing where the cavalry never does.
 </figcaption>
 </figure>
 </div>
@@ -987,7 +1004,7 @@ Figure&nbsp;16: Moving wheel vs.&nbsp;the standing route: a cavalry regiment (le
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-countermarch-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;17: Countermarch (exelismos): three identical regiments, each commanded through a different variant. Left, Choral/Persian reverses facing on the same ground; middle, Macedonian reverses facing and advances; right, Laconian reverses facing and withdraws — the same about-face, but three different outcomes for where the line ends up.
+Figure&nbsp;18: Countermarch (exelismos): three identical regiments, each commanded through a different variant. Left, Choral/Persian reverses facing on the same ground; middle, Macedonian reverses facing and advances; right, Laconian reverses facing and withdraws — the same about-face, but three different outcomes for where the line ends up.
 </figcaption>
 </figure>
 </div>
@@ -1001,7 +1018,7 @@ Figure&nbsp;17: Countermarch (exelismos): three identical regiments, each comman
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-wheel-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;18: Wheel (circumductio): the line swings 90° about its standing flank file — the near flank holds while the far flank marches a wide arc — reorienting the whole block without breaking its ranks. Wheeled right (C), then back left (Z).
+Figure&nbsp;19: Wheel (circumductio): the line swings 90° about its standing flank file — the near flank holds while the far flank marches a wide arc — reorienting the whole block without breaking its ranks. Wheeled right (C), then back left (Z).
 </figcaption>
 </figure>
 </div>
@@ -1033,7 +1050,7 @@ Figure&nbsp;18: Wheel (circumductio): the line swings 90° about its standing fl
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-stance-order-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;19: Setting a stance in place with <kbd>Ctrl</kbd>+<kbd>H</kbd>, then toggling rank relief off with <kbd>I</kbd> — both confirmed by a flash toast.
+Figure&nbsp;20: Setting a stance in place with <kbd>Ctrl</kbd>+<kbd>H</kbd>, then toggling rank relief off with <kbd>I</kbd> — both confirmed by a flash toast.
 </figcaption>
 </figure>
 </div>
@@ -1047,7 +1064,7 @@ Figure&nbsp;19: Setting a stance in place with <kbd>Ctrl</kbd>+<kbd>H</kbd>, the
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-support-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;20: Support stance: a unit guards an ally, shadowing it and engaging any threat.
+Figure&nbsp;21: Support stance: a unit guards an ally, shadowing it and engaging any threat.
 </figcaption>
 </figure>
 </div>
@@ -1061,7 +1078,7 @@ Figure&nbsp;20: Support stance: a unit guards an ally, shadowing it and engaging
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cycle-charge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;21: Cycle charge stance: cavalry charge, land the impact hit, peel back to a standoff, then charge again.
+Figure&nbsp;22: Cycle charge stance: cavalry charge, land the impact hit, peel back to a standoff, then charge again.
 </figcaption>
 </figure>
 </div>
@@ -1075,7 +1092,7 @@ Figure&nbsp;21: Cycle charge stance: cavalry charge, land the impact hit, peel b
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-sweep-routers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;22: Sweep routers stance: the unit bypasses a closer, still-fighting enemy to chase down a more distant one that has broken and is fleeing.
+Figure&nbsp;23: Sweep routers stance: the unit bypasses a closer, still-fighting enemy to chase down a more distant one that has broken and is fleeing.
 </figcaption>
 </figure>
 </div>
@@ -1089,7 +1106,7 @@ Figure&nbsp;22: Sweep routers stance: the unit bypasses a closer, still-fighting
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-roll-the-line-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;23: Roll the line stance: a single attack order carries the unit through three enemies in a row, one after another, as each breaks and routs.
+Figure&nbsp;24: Roll the line stance: a single attack order carries the unit through three enemies in a row, one after another, as each breaks and routs.
 </figcaption>
 </figure>
 </div>
@@ -1103,7 +1120,7 @@ Figure&nbsp;23: Roll the line stance: a single attack order carries the unit thr
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pin-down-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;24: Pin down stance: a defensive stall in a head-on clash — fewer swings, each one briefly more exposed on the follow-through.
+Figure&nbsp;25: Pin down stance: a defensive stall in a head-on clash — fewer swings, each one briefly more exposed on the follow-through.
 </figcaption>
 </figure>
 </div>
@@ -1117,7 +1134,7 @@ Figure&nbsp;24: Pin down stance: a defensive stall in a head-on clash — fewer 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-all-out-attack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;25: All-out attack stance: two matched regiments clash, and the one fighting all-out both deals and takes more casualties than a fair fight would.
+Figure&nbsp;26: All-out attack stance: two matched regiments clash, and the one fighting all-out both deals and takes more casualties than a fair fight would.
 </figcaption>
 </figure>
 </div>
@@ -1131,7 +1148,7 @@ Figure&nbsp;25: All-out attack stance: two matched regiments clash, and the one 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-chase-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;26: Chase stance: once the enemy breaks and routs, the cavalry keeps pressing the same fleeing target instead of disengaging.
+Figure&nbsp;27: Chase stance: once the enemy breaks and routs, the cavalry keeps pressing the same fleeing target instead of disengaging.
 </figcaption>
 </figure>
 </div>
@@ -1145,7 +1162,7 @@ Figure&nbsp;26: Chase stance: once the enemy breaks and routs, the cavalry keeps
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-wedge-charge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;27: Wedge charge stance: two matched regiments given the same move order, one wedge-charging — it visibly pulls ahead and reaches the enemy line first.
+Figure&nbsp;28: Wedge charge stance: two matched regiments given the same move order, one wedge-charging — it visibly pulls ahead and reaches the enemy line first.
 </figcaption>
 </figure>
 </div>
@@ -1159,7 +1176,7 @@ Figure&nbsp;27: Wedge charge stance: two matched regiments given the same move o
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-knockback-focus-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;28: Knockback focus stance: a unit switches mid-fight and starts hitting softer while visibly shoving the enemy line back harder with every blow.
+Figure&nbsp;29: Knockback focus stance: a unit switches mid-fight and starts hitting softer while visibly shoving the enemy line back harder with every blow.
 </figcaption>
 </figure>
 </div>
@@ -1174,7 +1191,7 @@ Figure&nbsp;28: Knockback focus stance: a unit switches mid-fight and starts hit
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-line-relief-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;29: Line relief: a fresh unit passes through its tired ally and takes over the fight; the relieved unit falls back to the rear.
+Figure&nbsp;30: Line relief: a fresh unit passes through its tired ally and takes over the fight; the relieved unit falls back to the rear.
 </figcaption>
 </figure>
 </div>
@@ -1189,7 +1206,7 @@ Figure&nbsp;29: Line relief: a fresh unit passes through its tired ally and take
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-passage-of-lines-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;30: Passage of lines: three fresh units, ordered with the group-order mode set to Distributed, each relieve a different tired unit in one order instead of all three swapping with the single unit clicked.
+Figure&nbsp;31: Passage of lines: three fresh units, ordered with the group-order mode set to Distributed, each relieve a different tired unit in one order instead of all three swapping with the single unit clicked.
 </figcaption>
 </figure>
 </div>
@@ -1205,7 +1222,7 @@ Figure&nbsp;30: Passage of lines: three fresh units, ordered with the group-orde
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cavalry-grid-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;31: An 80-horse Cavalry regiment (right) on its own grid pitch beside a 120-man Infantry block (left) at foot Normal (0.9 m): the mounted block stands both wider and far deeper, and marches as one body on that roomier grid.
+Figure&nbsp;32: An 80-horse Cavalry regiment (right) on its own grid pitch beside a 120-man Infantry block (left) at foot Normal (0.9 m): the mounted block stands both wider and far deeper, and marches as one body on that roomier grid.
 </figcaption>
 </figure>
 </div>
@@ -1219,7 +1236,7 @@ Figure&nbsp;31: An 80-horse Cavalry regiment (right) on its own grid pitch besid
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-interval-labels-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;32: Same spacing identity, different pitches: a foot block starts at 0.9 m pyknosis beside a cavalry squadron at 2 m files × 6 m ranks. <kbd>T</kbd> packs the foot block to 0.45 m locked, then opens 1.8 m; the horse walks Tight 1 × 3 m locked, then Loose 4 × 12 m — same 1x / 2x / 4x ratios, not a second metric.
+Figure&nbsp;33: Same spacing identity, different pitches: a foot block starts at 0.9 m pyknosis beside a cavalry squadron at 2 m files × 6 m ranks. <kbd>T</kbd> packs the foot block to 0.45 m locked, then opens 1.8 m; the horse walks Tight 1 × 3 m locked, then Loose 4 × 12 m — same 1x / 2x / 4x ratios, not a second metric.
 </figcaption>
 </figure>
 </div>
@@ -1244,7 +1261,7 @@ Figure&nbsp;32: Same spacing identity, different pitches: a foot block starts at
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-shielded-stances-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;33: Shielded-stance visuals: a shield wall (left) packs into a tight edge-to-edge line, and a testudo (right) packs into a dense block — each stance reads at a glance from the soldiers’ own positions.
+Figure&nbsp;34: Shielded-stance visuals: a shield wall (left) packs into a tight edge-to-edge line, and a testudo (right) packs into a dense block — each stance reads at a glance from the soldiers’ own positions.
 </figcaption>
 </figure>
 </div>
@@ -1260,7 +1277,7 @@ Figure&nbsp;33: Shielded-stance visuals: a shield wall (left) packs into a tight
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-file-major-reform-contrast-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;34: Two identical Spearmen-vs-Infantry standoffs. The left Spearmen keeps file-major reform on: its rear ends up jagged, some files deeper than others. The right Spearmen has it off: its rear reflows and re-centres uniformly instead.
+Figure&nbsp;35: Two identical Spearmen-vs-Infantry standoffs. The left Spearmen keeps file-major reform on: its rear ends up jagged, some files deeper than others. The right Spearmen has it off: its rear reflows and re-centres uniformly instead.
 </figcaption>
 </figure>
 </div>
@@ -1274,7 +1291,7 @@ Figure&nbsp;34: Two identical Spearmen-vs-Infantry standoffs. The left Spearmen 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-resize-anchor-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;35: Flank-anchored drag-resize: pulling the east grip outward extends the line east only, the west flank’s edge holding its ground while the new files form up.
+Figure&nbsp;36: Flank-anchored drag-resize: pulling the east grip outward extends the line east only, the west flank’s edge holding its ground while the new files form up.
 </figcaption>
 </figure>
 </div>
@@ -1289,7 +1306,7 @@ Figure&nbsp;35: Flank-anchored drag-resize: pulling the east grip outward extend
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-file-doubling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;36: File-doubling: duplicatio (N) folds the line into a deep column; explicatio (B) unfolds it back into a broad line.
+Figure&nbsp;37: File-doubling: duplicatio (N) folds the line into a deep column; explicatio (B) unfolds it back into a broad line.
 </figcaption>
 </figure>
 </div>
@@ -1304,7 +1321,7 @@ Figure&nbsp;36: File-doubling: duplicatio (N) folds the line into a deep column;
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-file-doubling-asymmetric-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;37: Anchored explicatio (Shift+B): the right flank stays fixed while the whole widen lands on the left.
+Figure&nbsp;38: Anchored explicatio (Shift+B): the right flank stays fixed while the whole widen lands on the left.
 </figcaption>
 </figure>
 </div>
@@ -1327,7 +1344,7 @@ Figure&nbsp;37: Anchored explicatio (Shift+B): the right flank stays fixed while
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-form-up-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;38: Three regiments of different size — Spearmen (Tight, 0.45 m), Infantry (Normal, 0.9 m), Archers (Loose, 1.8 m) — box-selected and dragged into a flank line under the default equal-depth (space) split: each forms up to the same physical depth. The three densities now occupy genuinely different frontage, so the split is density-driven for all three, not only the Archers.
+Figure&nbsp;39: Three regiments of different size — Spearmen (Tight, 0.45 m), Infantry (Normal, 0.9 m), Archers (Loose, 1.8 m) — box-selected and dragged into a flank line under the default equal-depth (space) split: each forms up to the same physical depth. The three densities now occupy genuinely different frontage, so the split is density-driven for all three, not only the Archers.
 </figcaption>
 </figure>
 </div>
@@ -1342,7 +1359,7 @@ Figure&nbsp;38: Three regiments of different size — Spearmen (Tight, 0.45 m), 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-checkerboard-form-up-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;39: Four Infantry regiments, box-selected and dragged into a line under the checkerboard split: the 2nd and 4th land on the front row, the 1st and 3rd land behind them, each centred on a front-row gap.
+Figure&nbsp;40: Four Infantry regiments, box-selected and dragged into a line under the checkerboard split: the 2nd and 4th land on the front row, the 1st and 3rd land behind them, each centred on a front-row gap.
 </figcaption>
 </figure>
 </div>
@@ -1357,7 +1374,7 @@ Figure&nbsp;39: Four Infantry regiments, box-selected and dragged into a line un
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-echelon-form-up-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;40: Three Spearmen regiments, box-selected and dragged into a line under the echelon (right leads) split: the unit nearest the right flank advances furthest, the unit nearest the left flank trails, and the middle regiment splits the difference — a clean staggered diagonal.
+Figure&nbsp;41: Three Spearmen regiments, box-selected and dragged into a line under the echelon (right leads) split: the unit nearest the right flank advances furthest, the unit nearest the left flank trails, and the middle regiment splits the difference — a clean staggered diagonal.
 </figcaption>
 </figure>
 </div>
@@ -1375,7 +1392,7 @@ Figure&nbsp;40: Three Spearmen regiments, box-selected and dragged into a line u
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-tray-formation-deploy-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;41: Three Infantry regiments laid out in the tray as a quincunx (Line 1: unit, gap, unit; Line 2: gap, unit, gap), then box-selected and drag-deployed: the two Line-1 units land on the front with a gap between them, and the Line-2 unit sits behind in that gap.
+Figure&nbsp;42: Three Infantry regiments laid out in the tray as a quincunx (Line 1: unit, gap, unit; Line 2: gap, unit, gap), then box-selected and drag-deployed: the two Line-1 units land on the front with a gap between them, and the Line-2 unit sits behind in that gap.
 </figcaption>
 </figure>
 </div>
@@ -1390,7 +1407,7 @@ Figure&nbsp;41: Three Infantry regiments laid out in the tray as a quincunx (Lin
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-formation-preview-square-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;42: Move-order ghost preview: a unit forms Square, then marches under the hold-Space orders overlay. The destination ghost shows the real hollow-square footprint, matching the stance it is actually marching into.
+Figure&nbsp;43: Move-order ghost preview: a unit forms Square, then marches under the hold-Space orders overlay. The destination ghost shows the real hollow-square footprint, matching the stance it is actually marching into.
 </figcaption>
 </figure>
 </div>
@@ -1405,7 +1422,7 @@ Figure&nbsp;42: Move-order ghost preview: a unit forms Square, then marches unde
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-order-distance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;43: Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.
+Figure&nbsp;44: Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.
 </figcaption>
 </figure>
 </div>
@@ -1420,7 +1437,7 @@ Figure&nbsp;43: Order distance labels: the green move line shows the remaining m
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-slow-motion-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;44: A marching unit visibly covers less ground per stretch of the clip as F5 steps through 50%, 25%, and 10% speed.
+Figure&nbsp;45: A marching unit visibly covers less ground per stretch of the clip as F5 steps through 50%, 25%, and 10% speed.
 </figcaption>
 </figure>
 </div>
@@ -1437,7 +1454,7 @@ Figure&nbsp;44: A marching unit visibly covers less ground per stretch of the cl
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fog-of-war-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;45: Toggling fog of war mid-battle with F7. Units outside sight range are hidden and leave fading ghost markers where last seen.
+Figure&nbsp;46: Toggling fog of war mid-battle with F7. Units outside sight range are hidden and leave fading ghost markers where last seen.
 </figcaption>
 </figure>
 </div>
@@ -1452,7 +1469,7 @@ Figure&nbsp;45: Toggling fog of war mid-battle with F7. Units outside sight rang
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ai-honors-fog-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;46: The enemy AI honors fog of war: a lone enemy unit issues no order while a player unit sits beyond its sight disc, then attacks on the first AI decision after the player marches that unit into view.
+Figure&nbsp;47: The enemy AI honors fog of war: a lone enemy unit issues no order while a player unit sits beyond its sight disc, then attacks on the first AI decision after the player marches that unit into view.
 </figcaption>
 </figure>
 </div>
@@ -1466,7 +1483,7 @@ Figure&nbsp;46: The enemy AI honors fog of war: a lone enemy unit issues no orde
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fog-terrain-occlusion-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;47: Terrain occlusion under fog of war: enemy units positioned behind hills are occluded until cavalry scouts advance past the shoulder to open an unobstructed line of sight.
+Figure&nbsp;48: Terrain occlusion under fog of war: enemy units positioned behind hills are occluded until cavalry scouts advance past the shoulder to open an unobstructed line of sight.
 </figcaption>
 </figure>
 </div>
@@ -1480,7 +1497,7 @@ Figure&nbsp;47: Terrain occlusion under fog of war: enemy units positioned behin
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fog-terrain-explored-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;48: The explored/unexplored terrain overlay: the field starts entirely dark, and a marching unit leaves a dimmed trail of explored-but-no-longer-visible ground behind it as it advances into still-unexplored territory.
+Figure&nbsp;49: The explored/unexplored terrain overlay: the field starts entirely dark, and a marching unit leaves a dimmed trail of explored-but-no-longer-visible ground behind it as it advances into still-unexplored territory.
 </figcaption>
 </figure>
 </div>
@@ -1499,7 +1516,7 @@ Figure&nbsp;48: The explored/unexplored terrain overlay: the field starts entire
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-charge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;49: Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.
+Figure&nbsp;50: Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.
 </figcaption>
 </figure>
 </div>
@@ -1525,7 +1542,7 @@ Figure&nbsp;49: Cavalry charge: two horse units receive an attack order and acce
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-parade-ground-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;50: Parade Ground: the standard player line, no enemy on the field, given a group move order and settling into formation.
+Figure&nbsp;51: Parade Ground: the standard player line, no enemy on the field, given a group move order and settling into formation.
 </figcaption>
 </figure>
 </div>
@@ -1543,7 +1560,7 @@ Figure&nbsp;50: Parade Ground: the standard player line, no enemy on the field, 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-all-teams-control-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;51: All-Teams Control: both the top (team 0) and bottom (team 1) lines box-selected and marched forward in turn, one commanded directly by the player just like the other.
+Figure&nbsp;52: All-Teams Control: both the top (team 0) and bottom (team 1) lines box-selected and marched forward in turn, one commanded directly by the player just like the other.
 </figcaption>
 </figure>
 </div>
@@ -1557,7 +1574,7 @@ Figure&nbsp;51: All-Teams Control: both the top (team 0) and bottom (team 1) lin
 <img src="media/custom-battle-setup.png" class="img-fluid figure-img" width="700">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-custom-battle-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;52: Custom Battle Setup: picking Sparta vs.&nbsp;Rome, with each side’s roster shown alongside its own faction dropdown.
+Figure&nbsp;53: Custom Battle Setup: picking Sparta vs.&nbsp;Rome, with each side’s roster shown alongside its own faction dropdown.
 </figcaption>
 </figure>
 </div>
@@ -1573,7 +1590,7 @@ Figure&nbsp;52: Custom Battle Setup: picking Sparta vs.&nbsp;Rome, with each sid
 <img src="media/faction-identity-hud-sparta.png" class="img-fluid figure-img" width="700">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-faction-formation-sparta-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;53: A Spartan spear block at normal order: the control bar and the info panel both read <em>0.9 m (pyknosis)</em>, and the identity pair sits below the live-state block — <strong>Faction</strong> Sparta (Laconian), with <strong>Doctrine</strong> Phalanx Shock Push (othismos) on the line under it, at the panel’s scroll fold in this 720p frame.
+Figure&nbsp;54: A Spartan spear block at normal order: the control bar and the info panel both read <em>0.9 m (pyknosis)</em>, and the identity pair sits below the live-state block — <strong>Faction</strong> Sparta (Laconian), with <strong>Doctrine</strong> Phalanx Shock Push (othismos) on the line under it, at the panel’s scroll fold in this 720p frame.
 </figcaption>
 </figure>
 </div>
@@ -1583,7 +1600,7 @@ Figure&nbsp;53: A Spartan spear block at normal order: the control bar and the i
 <img src="media/faction-identity-hud-rome.png" class="img-fluid figure-img" width="700">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-faction-formation-rome-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;54: The same battle, a Roman maniple selected instead. Its shield wall reads <em>0.34 m Shield Wall (scuta undique)</em>; the Spartan army in the same clip stands a shield wall of its own, and that one reads <em>phalanx</em> — one stance, two names. <strong>Faction</strong> reads Rome (Latin / Roman), with the Manipular Line Rotation (acies triplex) doctrine on the line below it.
+Figure&nbsp;55: The same battle, a Roman maniple selected instead. Its shield wall reads <em>0.34 m Shield Wall (scuta undique)</em>; the Spartan army in the same clip stands a shield wall of its own, and that one reads <em>phalanx</em> — one stance, two names. <strong>Faction</strong> reads Rome (Latin / Roman), with the Manipular Line Rotation (acies triplex) doctrine on the line below it.
 </figcaption>
 </figure>
 </div>
@@ -1878,15 +1895,50 @@ window.addEventListener("load", alignEquationAnchorsWithDefault);
   window.document.addEventListener("DOMContentLoaded", function (event) {
     // Ensure there is a toggle, if there isn't float one in the top right
     if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
-      const a = window.document.createElement('a');
-      a.classList.add('top-right');
-      a.classList.add('quarto-color-scheme-toggle');
-      a.href = "";
-      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const toggle = window.document.createElement('button');
+      toggle.type = "button";
+      toggle.setAttribute("role", "switch");
+      toggle.setAttribute("aria-checked", "false");
+      toggle.classList.add('top-right');
+      toggle.classList.add('quarto-color-scheme-toggle');
+      toggle.setAttribute("aria-label", "Toggle dark mode");
+      toggle.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
       const i = window.document.createElement("i");
       i.classList.add('bi');
-      a.appendChild(i);
-      window.document.body.appendChild(a);
+      toggle.appendChild(i);
+      // Put the toggle in a landmark of its own, so that landmark navigation
+      // can reach it.
+      //
+      // The container is always a fresh direct child of body, and the toggle is
+      // never moved into page furniture that the theme or the author controls.
+      // The toggle is positioned against the page, so any ancestor that
+      // establishes a containing block captures it: a positioned element or a
+      // grid for position: absolute, and transform, filter, will-change or
+      // contain for position: fixed. A direct child of body has none of these
+      // to inherit, and the shift when one appears is silent and visual.
+      //
+      // ARIA says a document should have at most one banner, and axe reports a
+      // duplicate whether or not the banners carry distinct labels. So use a
+      // header when the page has no banner yet, and a named region otherwise.
+      //
+      // A header is a banner wherever it sits, unless it is inside sectioning
+      // content, so this cannot just look at the children of body: a custom
+      // page layout wraps the title block header in a plain div. An explicit
+      // role="banner" always counts.
+      const sectioning = 'article, aside, main, nav, section, [role="article"], [role="complementary"], [role="main"], [role="navigation"], [role="region"]';
+      const hasBanner = Array.from(
+        window.document.querySelectorAll('header:not([role]), [role="banner"]')
+      ).some(function(el) {
+        return el.hasAttribute("role") || el.closest(sectioning) === null;
+      });
+      const container = window.document.createElement(hasBanner ? "div" : "header");
+      if (hasBanner) {
+        container.setAttribute("role", "region");
+        container.setAttribute("aria-label", "Toggle dark mode");
+      }
+      container.classList.add('quarto-color-scheme-toggle-container');
+      container.appendChild(toggle);
+      window.document.body.appendChild(container);
     }
     setColorSchemeToggle(hasAlternateSentinel())
     const icon = "";
@@ -1961,11 +2013,30 @@ window.addEventListener("load", alignEquationAnchorsWithDefault);
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
       var mailtoRegex = new RegExp(/^mailto:/);
         var filterRegex = new RegExp("https:\/\/lacaedemon\.github\.io\/sparta\/");
+      const newWindowLabel = "(opens in a new tab)";
+      const newWindowNoteId = "quarto-ext-newwindow-label";
+      // Links reference one hidden label through aria-describedby, so the
+      // announcement never changes their accessible name.
+      var describeNewWindow = (link) => {
+        if (!window.document.getElementById(newWindowNoteId)) {
+          var newWindowNote = window.document.createElement("span");
+          newWindowNote.id = newWindowNoteId;
+          newWindowNote.hidden = true;
+          newWindowNote.textContent = newWindowLabel;
+          window.document.body.appendChild(newWindowNote);
+        }
+        var describedBy = (link.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean);
+        if (!describedBy.includes(newWindowNoteId)) {
+          describedBy.push(newWindowNoteId);
+          link.setAttribute("aria-describedby", describedBy.join(" "));
+        }
+      }
       var isInternal = (href) => {
           return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
       }
       // Inspect non-navigation links and adorn them if external
-     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      window.quartoDecorateExternalLinks = function (root) {
+     var links = (root || window.document).querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
       for (var i=0; i<links.length; i++) {
         const link = links[i];
         if (!isInternal(link.href)) {
@@ -1979,10 +2050,72 @@ window.addEventListener("load", alignEquationAnchorsWithDefault);
             if (link.getAttribute("rel") === null) {
               link.setAttribute("rel", "noopener");
             }
+            describeNewWindow(link);
+          if (!link.classList.contains('no-external-icon')) {
             // default icon
             link.classList.add("external");
+          }
         }
       }
+      };
+      window.quartoDecorateExternalLinks(window.document);
+    // Esc closes the popup (WCAG 1.4.13) and focus leaving both trigger and
+    // popup closes it (WCAG 2.4.11); tippy handles neither for interactive popups.
+    const hideOnEscAndFocusOut = {
+      name: 'hideOnEscAndFocusOut',
+      defaultValue: true,
+      fn(instance) {
+        const dismiss = () => {
+          // A show scheduled by the trigger delay would otherwise reopen it
+          instance.clearDelayTimeouts();
+          instance.hide();
+        };
+        const onKeyDown = (event) => {
+          if (event.key !== 'Escape') {
+            return;
+          }
+          // Keep Esc from also reaching page handlers (e.g. reveal.js overview),
+          // except an open reveal.js slide menu, which Esc should close too.
+          // The menu handles keys only when its keyboard option is on.
+          const menuHandlesEsc = window.Reveal?.getPlugin?.('menu')?.isOpen() &&
+            window.Reveal.getConfig().menu?.keyboard !== false;
+          if (!menuHandlesEsc) {
+            event.stopPropagation();
+          }
+          if (instance.popper.contains(window.document.activeElement)) {
+            // Disabled while refocusing so the focus trigger does not reopen it
+            instance.disable();
+            instance.reference.focus();
+            instance.enable();
+          }
+          dismiss();
+        };
+        const onFocusOut = (event) => {
+          const target = event.relatedTarget;
+          if (target && !instance.reference.contains(target) &&
+              !instance.popper.contains(target)) {
+            dismiss();
+          }
+        };
+        // On the trigger too: a click trigger (code-annotations: select) has no
+        // blur handling. Attached for the instance's lifetime so leaving the
+        // trigger also cancels a show still pending on the trigger delay.
+        instance.reference.addEventListener('focusout', onFocusOut);
+        return {
+          onShow() {
+            window.document.addEventListener('keydown', onKeyDown, true);
+            instance.popper.addEventListener('focusout', onFocusOut);
+          },
+          onHide() {
+            window.document.removeEventListener('keydown', onKeyDown, true);
+            instance.popper.removeEventListener('focusout', onFocusOut);
+          },
+          onDestroy() {
+            instance.reference.removeEventListener('focusout', onFocusOut);
+          },
+        };
+      },
+    };
     function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
       const config = {
         allowHTML: true,
@@ -1996,6 +2129,7 @@ window.addEventListener("load", alignEquationAnchorsWithDefault);
         interactiveBorder: 10,
         theme: 'quarto',
         placement: 'bottom-start',
+        plugins: [hideOnEscAndFocusOut],
       };
       if (contentFn) {
         config.content = contentFn;
@@ -2158,44 +2292,54 @@ window.addEventListener("load", alignEquationAnchorsWithDefault);
           const lineIds = lines.map((line) => {
             return targetCell + "-" + line;
           })
-          let top = null;
-          let height = null;
-          let parent = null;
+          // Each band is positioned against its own containing block, which is
+          // not the offsetParent of the lines, so place it from client rects.
+          const placeBand = (band, firstEl, lastEl, codeBlock) => {
+            const container = band.offsetParent;
+            if (container === null) {
+              return;
+            }
+            const containerRect = container.getBoundingClientRect();
+            // Reveal.js scales slides with a transform, so convert client
+            // pixels back to the CSS pixels of the container.
+            const scale = containerRect.height / container.offsetHeight || 1;
+            const firstRect = firstEl.getBoundingClientRect();
+            const lastRect = lastEl.getBoundingClientRect();
+            const top = (firstRect.top - containerRect.top) / scale - container.clientTop + container.scrollTop;
+            const height = (lastRect.bottom - firstRect.top) / scale;
+            band.style.top = top - 2 + "px";
+            band.style.height = height + 4 + "px";
+            if (codeBlock) {
+              // Without the copy button wrapper, the containing block is wider
+              // than the code block, so span the code block explicitly.
+              const blockRect = codeBlock.getBoundingClientRect();
+              band.style.left = (blockRect.left - containerRect.left) / scale - container.clientLeft + container.scrollLeft + "px";
+              band.style.width = blockRect.width / scale + "px";
+            }
+          };
           if (lineIds.length > 0) {
-              //compute the position of the single el (top and bottom and make a div)
-              const el = window.document.getElementById(lineIds[0]);
-              top = el.offsetTop;
-              height = el.offsetHeight;
-              parent = el.parentElement.parentElement;
-            if (lineIds.length > 1) {
-              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
-              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
-              height = bottom - top;
+            const el = window.document.getElementById(lineIds[0]);
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const parent = el.parentElement.parentElement;
+            // cook up a div (if necessary) and position it
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
             }
-            if (top !== null && height !== null && parent !== null) {
-              // cook up a div (if necessary) and position it 
-              let div = window.document.getElementById("code-annotation-line-highlight");
-              if (div === null) {
-                div = window.document.createElement("div");
-                div.setAttribute("id", "code-annotation-line-highlight");
-                div.style.position = 'absolute';
-                parent.appendChild(div);
-              }
-              div.style.top = top - 2 + "px";
-              div.style.height = height + 4 + "px";
-              div.style.left = 0;
-              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
-              if (gutterDiv === null) {
-                gutterDiv = window.document.createElement("div");
-                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
-                gutterDiv.style.position = 'absolute';
-                const codeCell = window.document.getElementById(targetCell);
-                const gutter = codeCell.querySelector('.code-annotation-gutter');
-                gutter.appendChild(gutterDiv);
-              }
-              gutterDiv.style.top = top - 2 + "px";
-              gutterDiv.style.height = height + 4 + "px";
+            placeBand(div, el, lastEl, parent.closest("div.sourceCode") || parent);
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
             }
+            placeBand(gutterDiv, el, lastEl);
             selectedAnnoteEl = annoteEl;
           }
         };
@@ -2294,7 +2438,10 @@ window.addEventListener("load", alignEquationAnchorsWithDefault);
     }
   });
   </script>
-<nav class="page-navigation">
+  <script type="application/javascript">
+  window.quartoScrollableRegionsLabels = {"code":"Scrollable code","output":"Scrollable output"};
+  </script>
+<nav class="page-navigation" aria-label="Page">
   <div class="nav-page nav-page-previous">
       <a href="./getting-started.html" class="pagination-link" aria-label="Getting Started">
         <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Getting Started</span>
