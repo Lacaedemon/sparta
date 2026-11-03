@@ -101,6 +101,14 @@ godot_lock_create() (
 # or a dangling symlink (O_EXCL refuses any symlink). A FIFO or device there would be
 # opened and written to instead; nothing ever puts one at a lock path.
 #
+# One window is left, and only while an older mkdir-based helper runs beside this one:
+# if the old helper removes its directory lock between bash's stat and its open, that
+# open (still O_CREAT, without O_EXCL) creates an empty regular file. Bash then sees a
+# regular file where it saw a non-regular one, closes it, and reports "cannot overwrite
+# existing file", so this call reads as held and the empty file is left at the lock
+# path. Exclusion holds, since no caller took the lock, but every caller then waits on
+# a PID-less lock until godot_lock_is_stale breaks it, about a minute later.
+#
 # The PID is written through the descriptor the create opened (see godot_lock_create).
 # Until it lands the lock reads as PID-less, which godot_lock_is_stale allows for. If
 # that write fails, the file is removed again and the call fails, rather than leaving
@@ -215,18 +223,18 @@ godot_lock_acquire() {
       [ "$rc" -le 1 ] || return 1
       if [ "$rc" -eq 0 ]; then
         if ! now="$(godot_lock_holder "$lock")"; then
-          rm -f "$breaker"
+          godot_lock_drop_breaker "$breaker"
           return 1
         fi
         if [ "$now" = "$holder" ] && godot_lock_is_stale "$lock" "$now"; then
           if ! out="$(rm -rf "$lock" 2>&1)"; then
             echo "::error::godot-import-lock: cannot remove stale lock $lock (holder PID ${holder:-none} is gone): $out" >&2
-            rm -f "$breaker"
+            godot_lock_drop_breaker "$breaker"
             return 1
           fi
           echo "godot-import-lock: broke stale lock $lock (holder PID ${holder:-none} is gone)" >&2
         fi
-        rm -f "$breaker"
+        godot_lock_drop_breaker "$breaker" || return 1
         continue
       fi
       if [ -n "$(find "$breaker" -maxdepth 0 -mmin +1 2>/dev/null)" ]; then
@@ -242,6 +250,17 @@ godot_lock_acquire() {
     sleep 1
     waited=$((waited + 1))
   done
+}
+
+# godot_lock_drop_breaker <breaker> -- removes <breaker> (see godot_lock_acquire). A
+# remove that fails returns 1 with an ::error:: carrying rm's message, so the caller
+# fails now and names the cause, instead of a later waiter finding the breaker over a
+# minute old and blaming a breaker that died mid-break.
+godot_lock_drop_breaker() {
+  local out
+  out="$(rm -f "$1" 2>&1)" && return 0
+  echo "::error::godot-import-lock: cannot remove breaker $1; remove it by hand: $out" >&2
+  return 1
 }
 
 # godot_lock_is_stale <lock> <holder-pid-or-empty>
@@ -267,12 +286,16 @@ godot_lock_is_stale() {
 # over, and failing here would fail the caller over a lock it no longer needs. The read
 # and the remove are two steps, and shell has no way to make them one: a lock broken
 # and retaken between them would still be removed. That needs this caller's own live
-# lock to be judged stale in that instant, which nothing here does.
+# lock to be judged stale in that instant, which nothing here does. A remove of this
+# caller's own lock that fails is named in a ::warning:: carrying rm's message, and
+# release still returns 0; the lock left behind names a dead PID once this caller
+# exits, so the next caller breaks it.
 godot_lock_release() {
-  local lock="$1" me="${BASHPID:-$$}" holder
+  local lock="$1" me="${BASHPID:-$$}" holder out
   holder="$(godot_lock_holder "$lock")" || return 0
   if [ "$holder" = "$me" ]; then
-    rm -f "$lock"
+    out="$(rm -f "$lock" 2>&1)" ||
+      echo "::warning::godot-import-lock: cannot remove lock $lock: $out" >&2
   else
     echo "::warning::godot-import-lock: $lock no longer names PID $me (it names ${holder:-no PID, or is gone}), so it was broken while held; not removing it" >&2
   fi

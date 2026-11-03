@@ -34,12 +34,14 @@
 #      missing directory) fails at once with the shell's error, not after the wait;
 #      an existing directory reads as held; a failed PID write removes the file it
 #      made, and says so when that remove fails too; a stale lock that cannot be
-#      removed fails at once; a stale dangling symlink at the lock path is broken; an
+#      removed fails at once, and so does a breaker that cannot be removed; a stale
+#      dangling symlink at the lock path is broken; an
 #      unreadable PID file fails at once instead of reading as "no PID", while a read
 #      that finds no file reads as "no PID" even if the file is back; a directory lock
 #      is read at <lock>/pid, also when it appears just before the read; release
 #      leaves a lock that names another holder in place, warns about one already
-#      gone, and leaves an unreadable one in place without failing; a caller under
+#      gone, leaves an unreadable one in place without failing, and warns without
+#      failing when removing its own lock fails; a caller under
 #      set -C can still take, release and import
 #   8. an import killed by the timeout fails and leaves no stamp, so the next run
 #      imports; any other non-zero status (a signal death included) warns with the
@@ -490,6 +492,25 @@ assert_eq "its breaker is released" no "$([ -e "$LOCK.break" ] && echo yes || ec
 unset -f rm
 rm -f "$LOCK" "$LOCK.break"
 
+# A breaker that cannot be removed after a takeover fails the caller at once with rm's
+# error, rather than leaving it for a later waiter to blame on a breaker that died
+# mid-break. Forced by an rm that fails on the breaker.
+rm() {
+  if [ "${*: -1}" = "$LOCK.break" ]; then builtin echo "rm: cannot remove '$LOCK.break': Permission denied" >&2; return 1; fi
+  command rm "$@"
+}
+export -f rm
+echo "$dead" > "$LOCK"
+rc=0
+bounded 10 godot_lock_acquire "$LOCK" 3 2>"$TMP/brkrm.err" || rc=$?
+unset -f rm
+assert_eq "a breaker that cannot be removed fails the caller" 1 "$rc"
+assert_eq "that failure names the breaker and the rm error" 1 \
+  "$(grep -c "::error::godot-import-lock: cannot remove breaker $LOCK.break; remove it by hand: .*Permission denied" "$TMP/brkrm.err" || true)"
+assert_eq "that failure is not blamed on a breaker that died mid-break" 0 \
+  "$(grep -c 'died mid-break' "$TMP/brkrm.err" || true)"
+rm -f "$LOCK" "$LOCK.break"
+
 # A create whose PID write fails removes the file it made and fails, rather than leaving
 # a PID-less lock that every caller would wait a minute on. Forced by an echo that fails
 # on this caller's PID, as a full disk would.
@@ -621,6 +642,19 @@ echo "$$" > "$LOCK"
 godot_lock_release "$LOCK" 2>"$TMP/release-own.err"
 assert_eq "this caller's own lock is released" no "$([ -e "$LOCK" ] && echo yes || echo no)"
 assert_eq "releasing its own lock is silent" 0 "$(wc -c < "$TMP/release-own.err" | tr -d ' ')"
+# A remove of its own lock that fails is a warning with rm's error, and still returns 0.
+echo "$$" > "$LOCK"
+rm() {
+  if [ "${*: -1}" = "$LOCK" ]; then builtin echo "rm: cannot remove '$LOCK': Permission denied" >&2; return 1; fi
+  command rm "$@"
+}
+rc=0
+godot_lock_release "$LOCK" 2>"$TMP/release-rm.err" || rc=$?
+unset -f rm
+assert_eq "a failed remove at release returns 0" 0 "$rc"
+assert_eq "a failed remove at release is a warning with rm's error" 1 \
+  "$(grep -c "::warning::godot-import-lock: cannot remove lock $LOCK: .*Permission denied" "$TMP/release-rm.err" || true)"
+rm -f "$LOCK"
 # A lock already gone gets the same warning: it no longer names this caller.
 rc=0
 godot_lock_release "$LOCK" 2>"$TMP/release-gone.err" || rc=$?
