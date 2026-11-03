@@ -156,18 +156,23 @@ func test_drill_turn_fold_round_trips_and_defaults_for_older_snapshots() -> void
 	assert_eq(older._drill_turn_fold, 0.0, "a snapshot from before the field existed restores no record")
 
 
-func test_order_square_reflected_round_trips_and_defaults_for_older_snapshots() -> void:
+func test_order_square_line_record_round_trips_and_defaults_for_older_snapshots() -> void:
 	var original := _sample_unit()
 	original._order_square_reflected = true
+	original._order_square_marching = true
 	var d := original.to_snapshot_dict()
 	var restored := Unit.new()
 	restored.apply_snapshot_dict(d)
 	assert_true(restored._order_square_reflected,
 		"the last re-square's line survives a replay-seek restore, so a march keeps it")
+	assert_true(restored._order_square_marching,
+		"and so does whether the block marched when the order came")
 	d.erase("order_square_reflected")
+	d.erase("order_square_marching")
 	var older := Unit.new()
 	older.apply_snapshot_dict(d)
 	assert_false(older._order_square_reflected, "a snapshot from before the field existed restores none")
+	assert_false(older._order_square_marching, "nor a march")
 
 
 func test_anchor_hold_until_tick_round_trips_and_defaults_for_older_snapshots() -> void:

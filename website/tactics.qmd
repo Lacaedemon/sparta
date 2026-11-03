@@ -1898,8 +1898,10 @@ A wider line walked further when dealt out, so near a quarter-turn it wheels ins
 A unit already marching when the order comes is not dealt out near a quarter-turn either,
 since it re-forms worse on the move.
 Within 25 degrees either side of a quarter-turn it squares the way it last squared:
-if the order that last squared its ranks reflected them by a half-turn, they are reflected again,
-and otherwise they wheel the whole turn round.
+if an earlier order's squaring, still under way, reflected its ranks by a half-turn,
+they are reflected again, and otherwise they wheel the whole turn round.
+Whether the unit is marching is taken from when the order came,
+so a unit fighting when it is ordered off squares, once clear, as a unit standing would.
 So a few degrees either side of a quarter-turn do not turn a wheel into its mirror.
 A wider line and a marching unit are both still dealt out at exactly a quarter-turn, as above.
 

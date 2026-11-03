@@ -475,10 +475,20 @@ var _last_reshape_widened: bool = false
 # a file-doubling maneuver as _last_reshape_tick does.
 var _last_redeal_tick: int = -1
 # Whether the last order's re-square out of contact (_square_fold_for_order) squared the grid onto
-# the half-turn, reflecting it in depth, rather than onto square or a quarter. A block marching
-# when the next one comes keeps that choice across a band either side of a quarter-turn
-# (MARCH_SQUARE_BAND, order_square_line), so a fold drifting across a quarter does not flip it.
+# the half-turn, reflecting it in depth, rather than onto square or a quarter. A marching block's
+# next re-square keeps that choice across a band either side of a quarter-turn
+# (MARCH_SQUARE_BAND, order_square_line), so a fold drifting across a quarter does not flip it,
+# but only while it continues that re-square: its lag still turning (_grid_lag_resquare) or a
+# re-run of it waiting (_resquare_pending). A re-square that finished, or a grid squared in one
+# step, leaves nothing for a later fold to continue.
 var _order_square_reflected: bool = false
+# Whether the block was marching when the last order came (start_order_response): it had a march
+# target, or was MOVING on an attack or a chase. The order's re-square, a re-run of it that
+# waited (_run_waiting_resquare), and a march correction of its lag (_reface) all read this, not
+# the state when they run: the order's own march target is written after the response, so a
+# block fighting when it is ordered to march has a march target by the time its waiting
+# re-square runs.
+var _order_square_marching: bool = false
 # Physics-frame deadline through which SoldierBodies._separate_same_unit keeps running its
 # full same-unit standoff scan for this unit while NOT fighting (a FIGHTING unit always runs
 # it, regardless of this deadline -- see that function's own doc comment). A body's target
@@ -631,9 +641,10 @@ const QUARTER_REDEAL_BAND: float = deg_to_rad(10.0)
 # quarter-turn wheel into its mirror. A first re-square takes square: a marching block re-dealt
 # at all, by the half-turn's reflection in depth or by a quarter-turn's re-deal, re-forms worse on
 # the march than one wheeled. Measured on sweep_routers uid 4 (30 men chasing at up to a sprint,
-# its order re-squares 92 to 112 degrees off), dense 2-tick dumps of the clip's 260 ticks judged
-# with no exemption, seeds 0 to 4: worst shape residual 21.8, 19.1, 20.9, 21.8 and 11.1 against
-# the nearer split's 23.9, 22.4, 20.9, 23.7 and 11.1, and closest pair at least 4.4 wu on every
+# its first order re-square 92 to 99 degrees off on seeds 0, 1 and 3, later ones 103 and 112
+# degrees off on seeds 1 and 3), dense 2-tick dumps of the clip's 260 ticks judged with no
+# exemption, seeds 0 to 4: worst shape residual 21.8, 19.1, 20.9, 21.8 and 11.1 against the
+# nearer split's 23.9, 22.4, 20.9, 23.7 and 11.1, and closest pair at least 4.46 wu on every
 # seed against 0.8, 0.4 and 1.3 on seeds 0, 1 and 3. Re-dealt at the quarter instead, it reads 30
 # to 32 from the re-deal on, never settling. At 15 degrees seed 3's second re-square, 112 degrees
 # off, takes the half-turn and reads 25.0.
@@ -4866,16 +4877,20 @@ func _reface(dir: Vector2) -> void:
 	# An order's re-square stays a lag while the re-square this re-runs (_run_waiting_resquare)
 	# would still take the line the lag stands on. That re-run never re-deals a near-quarter fold
 	# (that is only an order's own response to a block that is not marching: _square_fold_for_order's
-	# `may_redeal`), so a near-quarter re-deal leaves at most QUARTER_REDEAL_BAND. For a block not
-	# marching it splits about the nearer whole or half turn, so the lag stands on its line up to a
-	# quarter-turn; a marching block keeps its last line across MARCH_SQUARE_BAND either side of a
-	# quarter (order_square_line), so up to a quarter-turn plus that band. Grown past that, the
-	# line has changed, so
+	# `may_redeal`), so a near-quarter re-deal leaves at most QUARTER_REDEAL_BAND, and a lag on
+	# that quarter line re-runs past a quarter-turn as before. Otherwise, for an order that came to
+	# a block not marching the re-run splits about the nearer whole or half turn, so the lag stands
+	# on its line up to a quarter-turn; for one that came to a marching block
+	# (_order_square_marching) it keeps the line across MARCH_SQUARE_BAND either side of a quarter
+	# (order_square_line), so up to a quarter-turn plus that band. Grown past that, the line has
+	# changed, so
 	# it is folded where it stands and the re-square waits to run again from the new fold: the
 	# block is out of contact here (_face_dir took the turn otherwise). _advance_grid_lag runs it
 	# once the contact has cleared, on a tick that does not turn in place: this same tick, since
 	# it runs right after _think, when the block is already clear and not turning in place.
-	var reach: float = PI * 0.5 + MARCH_SQUARE_BAND if _square_marching() else PI * 0.5
+	var reach: float = PI * 0.5
+	if _order_square_marching and not is_quarter_turn_off(_formation_angle):
+		reach += MARCH_SQUARE_BAND
 	if absf(_grid_lag) > reach:
 		_fold_grid_lag()
 		_resquare_pending = true
@@ -10287,8 +10302,9 @@ func start_order_response() -> void:
 	# own march target is written after this response, so state here still says whether the block
 	# was marching when the order came (MOVING, on a move, an attack or a chase). has_move_target
 	# adds the plain move; some order paths clear it before responding, so it cannot stand alone.
+	_order_square_marching = has_move_target or state == State.MOVING
 	_square_fold_for_order(current_order == null or current_order.countermarch_variant < 0,
-			not has_move_target and state != State.MOVING)
+			not _order_square_marching)
 
 
 ## Square the fold for a fresh order (start_order_response) without stepping the slot grid in
@@ -10327,16 +10343,18 @@ func start_order_response() -> void:
 ## blocks squared holding ground; a marching block, and a re-square that waited for contact to
 ## clear (_run_waiting_resquare), are not re-dealt.
 ##
-## A block marching when the re-square runs (_square_marching) keeps the line its last order's
-## re-square took (_order_square_reflected) across MARCH_SQUARE_BAND either side of a quarter-turn
-## (order_square_line), so a fold drifting a few degrees across a quarter does not turn a wheel
-## into its mirror; with no reflection before it, it wheels the whole fold out up to the band.
+## A block marching when the order came (_order_square_marching) keeps the line the re-square it
+## continues took (_order_square_reflected: while that one's lag still turns or a re-run of it
+## waits) across MARCH_SQUARE_BAND either side of a quarter-turn (order_square_line), so a fold
+## drifting a few degrees across a quarter does not turn a wheel into its mirror; with no
+## reflection to continue, it wheels the whole fold out up to the band.
 ##
 ## Two cases keep the whole re-square in one tick. A quarter-turn fold (one measuring a quarter,
 ## or whose drills net one, as reform_ranks reads both) is dealt again with nothing lagged, even
 ## when its drills sit on a residue. A far-tier block has no bodies on its slots to strand.
 ## `hold_ground` as for reform_ranks.
 func _square_fold_for_order(hold_ground: bool, may_redeal: bool = false) -> void:
+	var continues: bool = _grid_lag_resquare or _resquare_pending
 	_resquare_pending = false
 	var fold: float = wrapf(_formation_angle, -PI, PI)
 	var in_fight: bool = _in_enemy_contact or not _contact_cleared()
@@ -10346,11 +10364,12 @@ func _square_fold_for_order(hold_ground: bool, may_redeal: bool = false) -> void
 	var quarter: bool = absf(absf(fold) - PI * 0.5) < 0.01 or (
 			absf(absf(_drill_turn_fold) - PI * 0.5) < 0.01 and absf(absf(fold) - PI) >= 0.01)
 	if tier == FormationTier.FAR or quarter or in_fight:
+		_order_square_reflected = false   # squared in one step: nothing to continue
 		reform_ranks(hold_ground)
 		return
 	var total: float = wrapf(_formation_angle + _grid_lag, -PI, PI)
 	var line: float = order_square_line(total, may_redeal and _quarter_redeal_suits_shape(),
-			_square_marching(), _order_square_reflected)
+			_order_square_marching, _order_square_reflected and continues)
 	_order_square_reflected = absf(line) == PI
 	var residue: float = wrapf(total - line, -PI, PI)
 	if residue != 0.0 or _grid_lag != 0.0:
@@ -10362,14 +10381,6 @@ func _square_fold_for_order(hold_ground: bool, may_redeal: bool = false) -> void
 		if absf(line) == PI * 0.5:
 			_last_redeal_tick = Engine.get_physics_frames()   # reform_ranks re-deals it below
 	reform_ranks(hold_ground)
-
-
-## Whether an order's re-square (_square_fold_for_order) and a march's correction of its lag
-## (_reface) treat the block as marching (order_square_line): it has a march target, or it is
-## MOVING on an attack or a chase. Read in start_order_response before the order's own march
-## target is written, so it says whether the block was marching when the order came.
-func _square_marching() -> bool:
-	return has_move_target or state == State.MOVING
 
 
 ## The line an order's re-square (_square_fold_for_order) takes in one step out of a grid turned
@@ -12013,6 +12024,7 @@ func to_snapshot_dict() -> Dictionary:
 		"last_reshape_widened": _last_reshape_widened,
 		"last_redeal_tick": _last_redeal_tick,
 		"order_square_reflected": _order_square_reflected,
+		"order_square_marching": _order_square_marching,
 		"standoff_settle_until_tick": _standoff_settle_until_tick,
 		"standoff_settle_remaining_ticks": (
 				_standoff_settle_until_tick - Engine.get_physics_frames()
@@ -12268,6 +12280,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_last_reshape_widened = bool(d["last_reshape_widened"])
 	_last_redeal_tick = int(d.get("last_redeal_tick", -1))
 	_order_square_reflected = bool(d.get("order_square_reflected", false))
+	_order_square_marching = bool(d.get("order_square_marching", false))
 	if d.has("standoff_settle_remaining_ticks"):
 		var rem_standoff: int = int(d["standoff_settle_remaining_ticks"])
 		_standoff_settle_until_tick = (
