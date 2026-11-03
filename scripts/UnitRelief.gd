@@ -104,8 +104,9 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 ## n-th reliever from one flank takes the n-th tired unit from the same flank. So each
 ## reliever relieves the unit in front of it and no two pairings cross. Proximity order
 ## alone could not give that: two tired units flanking the clicked one stand at equal
-## distance, so their order there is decided by float noise in their drifted positions,
-## and a uid tie-break never fires because the two distances are never exactly equal. The
+## distance, so once the units have drifted their order there is decided by float noise in
+## their positions, and a uid tie-break no longer fires because the two drifted distances
+## are not exactly equal (it only does for untouched symmetric spawn positions). The
 ## lateral gap between neighbours is a whole unit's width, so float noise cannot reorder
 ## it. When relievers outnumber the pool, the mapping stays monotone along the line rather
 ## than wrapping: the extra relievers double up on their neighbouring tired units, so no

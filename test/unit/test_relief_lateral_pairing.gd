@@ -89,6 +89,46 @@ func test_a_relieved_set_off_to_one_side_still_pairs_along_the_line() -> void:
 	assert_eq(_uids_of(pairing, fresh), [3, 4], "the left reliever takes the left relieved unit")
 
 
+func _facing(u: Unit, f: Vector2) -> Unit:
+	u.facing = f
+	return u
+
+
+func test_a_line_facing_east_pairs_along_its_north_south_length() -> void:
+	# The tired line faces east (Vector2.RIGHT), so it runs north-south and the relievers stand
+	# west of it. The uids run against the line, so an axis that ignored the facing (one fixed
+	# east-west axis, on which every unit of a line projects alike) would fall back to uid
+	# order and cross the pairs.
+	var fresh: Array = [_unit(0, Vector2(0, 0)), _unit(1, Vector2(0, 220)),
+			_unit(2, Vector2(0, 440))]
+	var top: Unit = _facing(_unit(5, Vector2(100, 0)), Vector2.RIGHT)
+	var middle: Unit = _facing(_unit(4, Vector2(100, 220)), Vector2.RIGHT)
+	var bottom: Unit = _facing(_unit(3, Vector2(100, 440)), Vector2.RIGHT)
+	var pairing := UnitRelief.pair_by_lateral_order(fresh, [middle, top, bottom])
+	assert_eq(_uids_of(pairing, fresh), [5, 4, 3], "each reliever takes the unit beside it")
+
+
+func test_cancelling_facings_fall_back_to_the_offset_between_the_lines() -> void:
+	# Two relieved units facing opposite ways leave no mean facing; the axis then comes from
+	# the offset between the two sets' centres (here east-west, so the line runs north-south).
+	# The uids again run against the line, so a fixed east-west fallback would cross the pair.
+	var fresh: Array = [_unit(0, Vector2(0, 0)), _unit(1, Vector2(0, 220))]
+	var top: Unit = _facing(_unit(4, Vector2(100, 0)), Vector2.RIGHT)
+	var bottom: Unit = _facing(_unit(3, Vector2(100, 220)), Vector2.LEFT)
+	var pairing := UnitRelief.pair_by_lateral_order(fresh, [top, bottom])
+	assert_eq(_uids_of(pairing, fresh), [4, 3], "each reliever takes the unit beside it")
+
+
+func test_no_facing_and_no_offset_still_pairs_deterministically() -> void:
+	# Degenerate input only (the two sets would have to share a centre with cancelling
+	# facings): the fixed axis keeps the result deterministic rather than undefined.
+	var fresh: Array = [_unit(0, Vector2(0, 0)), _unit(1, Vector2(100, 0))]
+	var left: Unit = _facing(_unit(3, Vector2(0, 0)), Vector2.RIGHT)
+	var right: Unit = _facing(_unit(4, Vector2(100, 0)), Vector2.LEFT)
+	var pairing := UnitRelief.pair_by_lateral_order(fresh, [right, left])
+	assert_eq(_uids_of(pairing, fresh), [3, 4], "ordered along the fixed east-west axis")
+
+
 func test_empty_inputs_pair_nothing() -> void:
 	assert_eq(UnitRelief.pair_by_lateral_order([], [_unit(3, Vector2.ZERO)]), {})
 	assert_eq(UnitRelief.pair_by_lateral_order([_unit(0, Vector2.ZERO)], []), {})
