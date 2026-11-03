@@ -101,8 +101,9 @@ godot_lock_create() (
 # or a dangling symlink (O_EXCL refuses any symlink). A FIFO or device there would be
 # opened and written to instead; nothing ever puts one at a lock path.
 #
-# One window is left, and only while an older mkdir-based helper runs beside this one:
-# if the old helper removes its directory lock between bash's stat and its open, that
+# One window is left, and only while a directory lock from an older mkdir-based helper
+# is at the lock path: if that directory is removed between bash's stat and its open,
+# either by the old helper releasing it or by this helper breaking it as stale, that
 # open (still O_CREAT, without O_EXCL) creates an empty regular file. Bash then sees a
 # regular file where it saw a non-regular one, closes it, and reports "cannot overwrite
 # existing file", so this call reads as held and the empty file is left at the lock
