@@ -1,0 +1,718 @@
+{
+  "ticks": [
+    {
+      "tick": 42,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "WHEEL",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 9,
+          "maneuver": "WHEELING",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            500.0,
+            380.0
+          ],
+          "position_m": [
+            25.0,
+            19.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "centroid": [
+              500.0,
+              382.25
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.8
+            ],
+            "centroid_m": [
+              25.0,
+              19.113
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "WHEEL",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 9,
+          "maneuver": "WHEELING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            700.0,
+            380.0
+          ],
+          "position_m": [
+            35.0,
+            19.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "centroid": [
+              700.0,
+              382.25
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.8
+            ],
+            "centroid_m": [
+              35.0,
+              19.113
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 60,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "WHEEL",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "engaged": false,
+          "facing": [
+            -0.18,
+            0.98
+          ],
+          "formation": "NORMAL",
+          "frontage": 9,
+          "maneuver": "WHEELING",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            502.69,
+            386.9
+          ],
+          "position_m": [
+            25.134,
+            19.345
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              75.73,
+              44.46
+            ],
+            "centroid": [
+              502.28,
+              389.11
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.786,
+              2.223
+            ],
+            "centroid_m": [
+              25.114,
+              19.456
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "WHEEL",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 9,
+          "maneuver": "WHEELING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            700.0,
+            380.0
+          ],
+          "position_m": [
+            35.0,
+            19.0
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "centroid": [
+              700.0,
+              382.25
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.8
+            ],
+            "centroid_m": [
+              35.0,
+              19.113
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 90,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "WHEEL",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "engaged": false,
+          "facing": [
+            -0.49,
+            0.87
+          ],
+          "formation": "NORMAL",
+          "frontage": 9,
+          "maneuver": "WHEELING",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            504.21,
+            399.84
+          ],
+          "position_m": [
+            25.21,
+            19.992
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              76.03,
+              58.68
+            ],
+            "centroid": [
+              503.11,
+              401.8
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.801,
+              2.934
+            ],
+            "centroid_m": [
+              25.156,
+              20.09
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "WHEEL",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "engaged": false,
+          "facing": [
+            -0.16,
+            0.99
+          ],
+          "formation": "NORMAL",
+          "frontage": 9,
+          "maneuver": "WHEELING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            702.44,
+            386.06
+          ],
+          "position_m": [
+            35.122,
+            19.303
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              75.42,
+              43.54
+            ],
+            "centroid": [
+              702.07,
+              388.28
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.771,
+              2.177
+            ],
+            "centroid_m": [
+              35.104,
+              19.414
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 150,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "WHEEL",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "engaged": false,
+          "facing": [
+            -0.92,
+            0.4
+          ],
+          "formation": "NORMAL",
+          "frontage": 9,
+          "maneuver": "WHEELING",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            494.89,
+            423.8
+          ],
+          "position_m": [
+            24.744,
+            21.19
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              53.53,
+              76.79
+            ],
+            "centroid": [
+              492.83,
+              424.7
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.677,
+              3.84
+            ],
+            "centroid_m": [
+              24.641,
+              21.235
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "WHEEL",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "engaged": false,
+          "facing": [
+            -0.73,
+            0.69
+          ],
+          "formation": "NORMAL",
+          "frontage": 9,
+          "maneuver": "WHEELING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            701.82,
+            411.77
+          ],
+          "position_m": [
+            35.091,
+            20.588
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              69.11,
+              70.85
+            ],
+            "centroid": [
+              700.19,
+              413.32
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.455,
+              3.542
+            ],
+            "centroid_m": [
+              35.009,
+              20.666
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 210,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 9,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            482.37,
+            433.82
+          ],
+          "position_m": [
+            24.118,
+            21.691
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              36.0,
+              72.0
+            ],
+            "centroid": [
+              480.12,
+              433.82
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              1.8,
+              3.6
+            ],
+            "centroid_m": [
+              24.006,
+              21.691
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "WHEEL",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "engaged": false,
+          "facing": [
+            -0.99,
+            0.11
+          ],
+          "formation": "NORMAL",
+          "frontage": 9,
+          "maneuver": "WHEELING",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            685.77,
+            431.85
+          ],
+          "position_m": [
+            34.288,
+            21.593
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              41.12,
+              74.49
+            ],
+            "centroid": [
+              683.53,
+              432.1
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.056,
+              3.724
+            ],
+            "centroid_m": [
+              34.177,
+              21.605
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 250,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 9,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            482.37,
+            433.82
+          ],
+          "position_m": [
+            24.118,
+            21.691
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              36.0,
+              72.0
+            ],
+            "centroid": [
+              480.12,
+              433.82
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              1.8,
+              3.6
+            ],
+            "centroid_m": [
+              24.006,
+              21.691
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "formation": "NORMAL",
+          "frontage": 9,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            682.37,
+            433.82
+          ],
+          "position_m": [
+            34.118,
+            21.691
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              36.0,
+              72.0
+            ],
+            "centroid": [
+              680.12,
+              433.82
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              1.8,
+              3.6
+            ],
+            "centroid_m": [
+              34.006,
+              21.691
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    }
+  ]
+}

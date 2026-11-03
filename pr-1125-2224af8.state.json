@@ -1,0 +1,2163 @@
+{
+  "ticks": [
+    {
+      "tick": 8,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 2.7,
+          "current_speed_mps": 0.133,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            800.0,
+            300.22
+          ],
+          "position_m": [
+            40.0,
+            15.011
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.45,
+              302.51
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.8
+            ],
+            "centroid_m": [
+              40.023,
+              15.125
+            ]
+          },
+          "soldiers": 40,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.0,
+            450.0
+          ],
+          "position_m": [
+            40.0,
+            22.5
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              799.55,
+              447.75
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.8
+            ],
+            "centroid_m": [
+              39.977,
+              22.388
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 16,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 5.3,
+          "current_speed_mps": 0.267,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.0,
+            300.83
+          ],
+          "position_m": [
+            40.0,
+            15.042
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.45,
+              303.16
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.8
+            ],
+            "centroid_m": [
+              40.023,
+              15.158
+            ]
+          },
+          "soldiers": 40,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.0,
+            450.0
+          ],
+          "position_m": [
+            40.0,
+            22.5
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              799.55,
+              447.75
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.8
+            ],
+            "centroid_m": [
+              39.977,
+              22.388
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 60,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 4.7,
+          "current_speed_mps": 0.233,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.0,
+            301.96
+          ],
+          "position_m": [
+            40.0,
+            15.098
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.45,
+              304.28
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.8
+            ],
+            "centroid_m": [
+              40.023,
+              15.214
+            ]
+          },
+          "soldiers": 40,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 10.0,
+          "current_speed_mps": 0.5,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.0,
+            447.16
+          ],
+          "position_m": [
+            40.0,
+            22.358
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              799.55,
+              444.76
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.8
+            ],
+            "centroid_m": [
+              39.977,
+              22.238
+            ]
+          },
+          "soldiers": 40,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 130,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.0,
+            322.09
+          ],
+          "position_m": [
+            40.0,
+            16.104
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.45,
+              324.67
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.8
+            ],
+            "centroid_m": [
+              40.023,
+              16.233
+            ]
+          },
+          "soldiers": 40,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.0,
+            422.78
+          ],
+          "position_m": [
+            40.0,
+            21.139
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              799.55,
+              420.2
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.8
+            ],
+            "centroid_m": [
+              39.977,
+              21.01
+            ]
+          },
+          "soldiers": 40,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 155,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 93.3,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.0,
+            332.61
+          ],
+          "position_m": [
+            40.0,
+            16.63
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              35.31
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.48,
+              335.67
+            ],
+            "count": 37,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.765
+            ],
+            "centroid_m": [
+              40.024,
+              16.783
+            ]
+          },
+          "soldiers": 37,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 95.5,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.0,
+            412.26
+          ],
+          "position_m": [
+            40.0,
+            20.613
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              35.32
+            ],
+            "broken_count": 0,
+            "centroid": [
+              799.29,
+              409.76
+            ],
+            "count": 38,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.766
+            ],
+            "centroid_m": [
+              39.965,
+              20.488
+            ]
+          },
+          "soldiers": 38,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 160,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 93.3,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.0,
+            334.57
+          ],
+          "position_m": [
+            40.0,
+            16.728
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              34.42
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.48,
+              336.63
+            ],
+            "count": 37,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.721
+            ],
+            "centroid_m": [
+              40.024,
+              16.832
+            ]
+          },
+          "soldiers": 37,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 95.6,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.0,
+            410.3
+          ],
+          "position_m": [
+            40.0,
+            20.515
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              34.47
+            ],
+            "broken_count": 0,
+            "centroid": [
+              799.3,
+              408.77
+            ],
+            "count": 38,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.723
+            ],
+            "centroid_m": [
+              39.965,
+              20.439
+            ]
+          },
+          "soldiers": 38,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 200,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 93.7,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.0,
+            344.28
+          ],
+          "position_m": [
+            40.0,
+            17.214
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              33.3
+            ],
+            "broken_count": 0,
+            "centroid": [
+              800.27,
+              345.38
+            ],
+            "count": 37,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.665
+            ],
+            "centroid_m": [
+              40.013,
+              17.269
+            ]
+          },
+          "soldiers": 37,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 96.0,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.0,
+            400.65
+          ],
+          "position_m": [
+            40.0,
+            20.033
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              34.48
+            ],
+            "broken_count": 0,
+            "centroid": [
+              799.64,
+              400.13
+            ],
+            "count": 38,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              1.724
+            ],
+            "centroid_m": [
+              39.982,
+              20.007
+            ]
+          },
+          "soldiers": 38,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 250,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.01,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 91.9,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            799.87,
+            351.7
+          ],
+          "position_m": [
+            39.993,
+            17.585
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              72.07,
+              29.11
+            ],
+            "broken_count": 0,
+            "centroid": [
+              799.14,
+              352.6
+            ],
+            "count": 36,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.603,
+              1.456
+            ],
+            "centroid_m": [
+              39.957,
+              17.63
+            ]
+          },
+          "soldiers": 36,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.01,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 96.4,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            800.14,
+            394.36
+          ],
+          "position_m": [
+            40.007,
+            19.718
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              73.52,
+              32.96
+            ],
+            "broken_count": 0,
+            "centroid": [
+              799.95,
+              393.7
+            ],
+            "count": 38,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.676,
+              1.648
+            ],
+            "centroid_m": [
+              39.997,
+              19.685
+            ]
+          },
+          "soldiers": 38,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 300,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.11,
+            0.99
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 85.6,
+          "name": "Spearmen 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "REFORM",
+          "position": [
+            798.25,
+            353.17
+          ],
+          "position_m": [
+            39.912,
+            17.659
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              73.12,
+              38.41
+            ],
+            "broken_count": 0,
+            "centroid": [
+              798.5,
+              353.36
+            ],
+            "count": 33,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.656,
+              1.92
+            ],
+            "centroid_m": [
+              39.925,
+              17.668
+            ]
+          },
+          "soldiers": 33,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.11,
+            -0.99
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 85.6,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            802.8,
+            391.63
+          ],
+          "position_m": [
+            40.14,
+            19.581
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              73.02,
+              28.94
+            ],
+            "broken_count": 0,
+            "centroid": [
+              798.19,
+              394.17
+            ],
+            "count": 33,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.651,
+              1.447
+            ],
+            "centroid_m": [
+              39.909,
+              19.708
+            ]
+          },
+          "soldiers": 33,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 305,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.09,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "MARCHING",
+          "morale": 85.7,
+          "name": "Spearmen 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            796.79,
+            351.19
+          ],
+          "position_m": [
+            39.839,
+            17.56
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              73.41,
+              38.84
+            ],
+            "broken_count": 0,
+            "centroid": [
+              798.47,
+              353.18
+            ],
+            "count": 33,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.67,
+              1.942
+            ],
+            "centroid_m": [
+              39.923,
+              17.659
+            ]
+          },
+          "soldiers": 33,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.16,
+            -0.99
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 85.7,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            803.23,
+            390.8
+          ],
+          "position_m": [
+            40.162,
+            19.54
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              73.28,
+              29.26
+            ],
+            "broken_count": 0,
+            "centroid": [
+              798.15,
+              394.35
+            ],
+            "count": 33,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.664,
+              1.463
+            ],
+            "centroid_m": [
+              39.908,
+              19.718
+            ]
+          },
+          "soldiers": 33,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 310,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.09,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "MARCHING",
+          "morale": 85.9,
+          "name": "Spearmen 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            796.0,
+            349.85
+          ],
+          "position_m": [
+            39.8,
+            17.493
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              73.63,
+              38.75
+            ],
+            "broken_count": 0,
+            "centroid": [
+              798.37,
+              353.1
+            ],
+            "count": 33,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.681,
+              1.937
+            ],
+            "centroid_m": [
+              39.919,
+              17.655
+            ]
+          },
+          "soldiers": 33,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.17,
+            -0.99
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 85.7,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            803.01,
+            390.38
+          ],
+          "position_m": [
+            40.15,
+            19.519
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              73.62,
+              29.51
+            ],
+            "broken_count": 0,
+            "centroid": [
+              798.16,
+              394.41
+            ],
+            "count": 33,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.681,
+              1.475
+            ],
+            "centroid_m": [
+              39.908,
+              19.721
+            ]
+          },
+          "soldiers": 33,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 320,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.09,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "MARCHING",
+          "morale": 86.2,
+          "name": "Spearmen 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            794.93,
+            348.53
+          ],
+          "position_m": [
+            39.746,
+            17.427
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              74.45,
+              38.6
+            ],
+            "broken_count": 0,
+            "centroid": [
+              797.92,
+              353.04
+            ],
+            "count": 33,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.722,
+              1.93
+            ],
+            "centroid_m": [
+              39.896,
+              17.652
+            ]
+          },
+          "soldiers": 33,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.21,
+            -0.98
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 85.8,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            803.61,
+            389.67
+          ],
+          "position_m": [
+            40.18,
+            19.483
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              74.06,
+              29.94
+            ],
+            "broken_count": 0,
+            "centroid": [
+              798.29,
+              394.14
+            ],
+            "count": 33,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.703,
+              1.497
+            ],
+            "centroid_m": [
+              39.914,
+              19.707
+            ]
+          },
+          "soldiers": 33,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 330,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "MOVE",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.09,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "MARCHING",
+          "morale": 86.6,
+          "name": "Spearmen 1",
+          "order_guard": "ENGAGED_FRACTION_ABOVE",
+          "order_mode": "Normal",
+          "order_phase": "MARCH",
+          "position": [
+            795.01,
+            347.86
+          ],
+          "position_m": [
+            39.751,
+            17.393
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              74.92,
+              38.41
+            ],
+            "broken_count": 0,
+            "centroid": [
+              797.18,
+              352.84
+            ],
+            "count": 33,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.746,
+              1.921
+            ],
+            "centroid_m": [
+              39.859,
+              17.642
+            ]
+          },
+          "soldiers": 33,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.22,
+            -0.98
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 85.9,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            804.57,
+            388.85
+          ],
+          "position_m": [
+            40.229,
+            19.442
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              74.12,
+              31.29
+            ],
+            "broken_count": 0,
+            "centroid": [
+              798.59,
+              393.53
+            ],
+            "count": 33,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.706,
+              1.564
+            ],
+            "centroid_m": [
+              39.93,
+              19.676
+            ]
+          },
+          "soldiers": 33,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 332,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 21.5,
+          "current_speed_mps": 1.075,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.08,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "MARCHING",
+          "morale": 77.6,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            795.25,
+            348.49
+          ],
+          "position_m": [
+            39.762,
+            17.425
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              73.44,
+              38.12
+            ],
+            "broken_count": 0,
+            "centroid": [
+              799.99,
+              353.89
+            ],
+            "count": 29,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.672,
+              1.906
+            ],
+            "centroid_m": [
+              40.0,
+              17.694
+            ]
+          },
+          "soldiers": 29,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.24,
+            -0.97
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 85.9,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            804.8,
+            388.64
+          ],
+          "position_m": [
+            40.24,
+            19.432
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              74.11,
+              31.57
+            ],
+            "broken_count": 0,
+            "centroid": [
+              798.67,
+              393.36
+            ],
+            "count": 33,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.705,
+              1.579
+            ],
+            "centroid_m": [
+              39.934,
+              19.668
+            ]
+          },
+          "soldiers": 33,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 336,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 21.5,
+          "current_speed_mps": 1.075,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.18,
+            0.98
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 77.7,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            796.44,
+            351.04
+          ],
+          "position_m": [
+            39.822,
+            17.552
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              73.6,
+              37.51
+            ],
+            "broken_count": 0,
+            "centroid": [
+              799.63,
+              353.8
+            ],
+            "count": 29,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.68,
+              1.875
+            ],
+            "centroid_m": [
+              39.982,
+              17.69
+            ]
+          },
+          "soldiers": 29,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.18,
+            -0.98
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 79.2,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            803.32,
+            389.07
+          ],
+          "position_m": [
+            40.166,
+            19.453
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              74.06,
+              29.03
+            ],
+            "broken_count": 0,
+            "centroid": [
+              798.95,
+              391.49
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.703,
+              1.452
+            ],
+            "centroid_m": [
+              39.947,
+              19.575
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 350,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 21.5,
+          "current_speed_mps": 1.075,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.17,
+            0.99
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 77.8,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            798.15,
+            354.48
+          ],
+          "position_m": [
+            39.908,
+            17.724
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              74.32,
+              35.1
+            ],
+            "broken_count": 0,
+            "centroid": [
+              798.52,
+              353.68
+            ],
+            "count": 29,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.716,
+              1.755
+            ],
+            "centroid_m": [
+              39.926,
+              17.684
+            ]
+          },
+          "soldiers": 29,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.17,
+            -0.99
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 79.3,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            803.86,
+            388.45
+          ],
+          "position_m": [
+            40.193,
+            19.422
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              74.18,
+              31.36
+            ],
+            "broken_count": 0,
+            "centroid": [
+              799.95,
+              390.06
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.709,
+              1.568
+            ],
+            "centroid_m": [
+              39.998,
+              19.503
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    },
+    {
+      "tick": 400,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 21.5,
+          "current_speed_mps": 1.075,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.15,
+            0.99
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 75.9,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            793.9,
+            354.92
+          ],
+          "position_m": [
+            39.695,
+            17.746
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              73.63,
+              29.43
+            ],
+            "broken_count": 0,
+            "centroid": [
+              795.76,
+              353.56
+            ],
+            "count": 28,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.682,
+              1.472
+            ],
+            "centroid_m": [
+              39.788,
+              17.678
+            ]
+          },
+          "soldiers": 28,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 1,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 22.0,
+          "current_speed_mps": 1.1,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.15,
+            -0.99
+          ],
+          "formation": "TIGHT",
+          "frontage": 9,
+          "in_enemy_contact": true,
+          "maneuver": "FIGHTING",
+          "morale": 77.4,
+          "name": "Spearmen 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            798.82,
+            386.79
+          ],
+          "position_m": [
+            39.941,
+            19.339
+          ],
+          "queue_tail": [],
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              77.91,
+              28.22
+            ],
+            "broken_count": 0,
+            "centroid": [
+              801.66,
+              387.27
+            ],
+            "count": 29,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.896,
+              1.411
+            ],
+            "centroid_m": [
+              40.083,
+              19.363
+            ]
+          },
+          "soldiers": 29,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "target_enemy_uid": 0,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1
+        }
+      ]
+    }
+  ]
+}

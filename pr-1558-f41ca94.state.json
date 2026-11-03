@@ -1,0 +1,3659 @@
+{
+  "ticks": [
+    {
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 8,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            500.0,
+            300.0
+          ],
+          "position_m": [
+            25.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              501.99,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              25.099,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 99.8,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            541.87
+          ],
+          "position_m": [
+            33.0,
+            27.093
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              658.2,
+              532.87
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              32.91,
+              26.643
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 30,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            500.0,
+            300.0
+          ],
+          "position_m": [
+            25.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              501.99,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              25.099,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 99.2,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            541.87
+          ],
+          "position_m": [
+            33.0,
+            27.093
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              658.2,
+              532.87
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              32.91,
+              26.643
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 60,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            500.0,
+            300.0
+          ],
+          "position_m": [
+            25.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              501.99,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              25.099,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 98.5,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            541.87
+          ],
+          "position_m": [
+            33.0,
+            27.093
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              658.2,
+              532.87
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              32.91,
+              26.643
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 1%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 90,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            500.0,
+            300.0
+          ],
+          "position_m": [
+            25.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              501.99,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              25.099,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 97.7,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            541.87
+          ],
+          "position_m": [
+            33.0,
+            27.093
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              658.2,
+              532.87
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              32.91,
+              26.643
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 1%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.1 m/s\nAccel: -0.3 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 120,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.54,
+            0.84
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            500.06,
+            299.96
+          ],
+          "position_m": [
+            25.003,
+            14.998
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              250.88,
+              207.71
+            ],
+            "broken_count": 0,
+            "centroid": [
+              502.01,
+              302.99
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.544,
+              10.386
+            ],
+            "centroid_m": [
+              25.101,
+              15.149
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 92.5,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            548.8
+          ],
+          "position_m": [
+            33.0,
+            27.44
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              664.74,
+              538.91
+            ],
+            "count": 38,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              33.237,
+              26.945
+            ]
+          },
+          "soldiers": 38,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 1%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.0 m/s\nAccel: -0.6 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 150,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.54,
+            0.84
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            500.07,
+            299.95
+          ],
+          "position_m": [
+            25.003,
+            14.998
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              251.41,
+              206.82
+            ],
+            "broken_count": 0,
+            "centroid": [
+              501.99,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.571,
+              10.341
+            ],
+            "centroid_m": [
+              25.1,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 91.7,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            552.5
+          ],
+          "position_m": [
+            33.0,
+            27.625
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              664.74,
+              541.77
+            ],
+            "count": 38,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              33.237,
+              27.088
+            ]
+          },
+          "soldiers": 38,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 2%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 180,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.53,
+            0.85
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            500.07,
+            299.95
+          ],
+          "position_m": [
+            25.003,
+            14.998
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              251.53,
+              206.63
+            ],
+            "broken_count": 0,
+            "centroid": [
+              501.99,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.576,
+              10.331
+            ],
+            "centroid_m": [
+              25.1,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 91.0,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            553.3
+          ],
+          "position_m": [
+            33.0,
+            27.665
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              664.74,
+              541.93
+            ],
+            "count": 38,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              33.237,
+              27.097
+            ]
+          },
+          "soldiers": 38,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 2%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 210,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.53,
+            0.85
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            500.07,
+            299.95
+          ],
+          "position_m": [
+            25.003,
+            14.998
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              251.53,
+              206.63
+            ],
+            "broken_count": 0,
+            "centroid": [
+              501.99,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.576,
+              10.331
+            ],
+            "centroid_m": [
+              25.1,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 90.2,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            553.3
+          ],
+          "position_m": [
+            33.0,
+            27.665
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              664.74,
+              541.93
+            ],
+            "count": 38,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              33.237,
+              27.097
+            ]
+          },
+          "soldiers": 38,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 2%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.5 m/s\nAccel: -2.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 240,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 14.0,
+          "current_speed_mps": 0.7,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.53,
+            0.85
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "MARCHING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            501.35,
+            301.95
+          ],
+          "position_m": [
+            25.068,
+            15.098
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              251.31,
+              205.29
+            ],
+            "broken_count": 0,
+            "centroid": [
+              503.35,
+              305.15
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.565,
+              10.264
+            ],
+            "centroid_m": [
+              25.168,
+              15.258
+            ]
+          },
+          "soldiers": 30,
+          "state": "MOVING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 88.2,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            556.46
+          ],
+          "position_m": [
+            33.0,
+            27.823
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              668.76,
+              545.75
+            ],
+            "count": 37,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              33.438,
+              27.288
+            ]
+          },
+          "soldiers": 37,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 2%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.3 m/s\nAccel: -0.2 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 270,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 16.7,
+          "current_speed_mps": 0.833,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.53,
+            0.85
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            502.63,
+            303.93
+          ],
+          "position_m": [
+            25.132,
+            15.196
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              251.17,
+              203.98
+            ],
+            "broken_count": 0,
+            "centroid": [
+              505.08,
+              307.92
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.558,
+              10.199
+            ],
+            "centroid_m": [
+              25.254,
+              15.396
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 87.5,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            558.98
+          ],
+          "position_m": [
+            33.0,
+            27.949
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              668.76,
+              547.82
+            ],
+            "count": 37,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              33.438,
+              27.391
+            ]
+          },
+          "soldiers": 37,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 3%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.2 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 300,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 16.7,
+          "current_speed_mps": 0.833,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.52,
+            0.85
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            503.89,
+            305.93
+          ],
+          "position_m": [
+            25.195,
+            15.297
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              251.25,
+              203.49
+            ],
+            "broken_count": 0,
+            "centroid": [
+              506.4,
+              310.02
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.563,
+              10.174
+            ],
+            "centroid_m": [
+              25.32,
+              15.501
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 86.7,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            559.85
+          ],
+          "position_m": [
+            33.0,
+            27.993
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              668.76,
+              548.24
+            ],
+            "count": 37,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              33.438,
+              27.412
+            ]
+          },
+          "soldiers": 37,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 3%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.2 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 330,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 16.7,
+          "current_speed_mps": 0.833,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.52,
+            0.85
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            505.17,
+            307.99
+          ],
+          "position_m": [
+            25.258,
+            15.399
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              251.3,
+              203.4
+            ],
+            "broken_count": 0,
+            "centroid": [
+              507.68,
+              312.08
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.565,
+              10.17
+            ],
+            "centroid_m": [
+              25.384,
+              15.604
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 86.0,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            559.87
+          ],
+          "position_m": [
+            33.0,
+            27.994
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              668.76,
+              548.2
+            ],
+            "count": 37,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              33.438,
+              27.41
+            ]
+          },
+          "soldiers": 37,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 3%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.2 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 360,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 16.7,
+          "current_speed_mps": 0.833,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.52,
+            0.86
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            506.49,
+            310.01
+          ],
+          "position_m": [
+            25.324,
+            15.5
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              251.52,
+              202.82
+            ],
+            "broken_count": 0,
+            "centroid": [
+              508.96,
+              314.13
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.576,
+              10.141
+            ],
+            "centroid_m": [
+              25.448,
+              15.706
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 80.7,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            563.8
+          ],
+          "position_m": [
+            33.0,
+            28.19
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              676.46,
+              553.75
+            ],
+            "count": 35,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              33.823,
+              27.687
+            ]
+          },
+          "soldiers": 35,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 4%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.2 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 390,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 16.7,
+          "current_speed_mps": 0.833,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.51,
+            0.86
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            507.81,
+            312.03
+          ],
+          "position_m": [
+            25.391,
+            15.602
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              251.97,
+              201.97
+            ],
+            "broken_count": 0,
+            "centroid": [
+              510.27,
+              316.17
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.598,
+              10.098
+            ],
+            "centroid_m": [
+              25.514,
+              15.808
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 80.0,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            567.21
+          ],
+          "position_m": [
+            33.0,
+            28.36
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              676.46,
+              556.59
+            ],
+            "count": 35,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              33.823,
+              27.83
+            ]
+          },
+          "soldiers": 35,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 4%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.2 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 420,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 16.7,
+          "current_speed_mps": 0.833,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.51,
+            0.86
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            509.11,
+            314.08
+          ],
+          "position_m": [
+            25.456,
+            15.704
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.28,
+              201.49
+            ],
+            "broken_count": 0,
+            "centroid": [
+              511.58,
+              318.21
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.614,
+              10.074
+            ],
+            "centroid_m": [
+              25.579,
+              15.91
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 79.2,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            568.39
+          ],
+          "position_m": [
+            33.0,
+            28.42
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              676.46,
+              557.15
+            ],
+            "count": 35,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              33.823,
+              27.858
+            ]
+          },
+          "soldiers": 35,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 4%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.2 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 450,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 16.7,
+          "current_speed_mps": 0.833,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.51,
+            0.86
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            510.39,
+            316.14
+          ],
+          "position_m": [
+            25.519,
+            15.807
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.38,
+              201.37
+            ],
+            "broken_count": 0,
+            "centroid": [
+              512.86,
+              320.26
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.619,
+              10.068
+            ],
+            "centroid_m": [
+              25.643,
+              16.013
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 78.5,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            568.41
+          ],
+          "position_m": [
+            33.0,
+            28.421
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              676.46,
+              557.1
+            ],
+            "count": 35,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              33.823,
+              27.855
+            ]
+          },
+          "soldiers": 35,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "1.8 m",
+        "info_text": "Archers 1\nType: Archers\nCommander: Centurion (Sagittariorum)\nSoldiers: 30 / 30\nMorale: 100 (berserk)\nFatigue: 4%\nTraining: 30%\nFormation: 1.8 m\nWidth: 8 files\nOrder: Attacking Archers 3\nHP per man: 80 ±0 of 80\nGait: Auto\nSpeed: 0.2 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 470,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 16.7,
+          "current_speed_mps": 0.833,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.51,
+            0.86
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            511.25,
+            317.51
+          ],
+          "position_m": [
+            25.563,
+            15.875
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.42,
+              201.24
+            ],
+            "broken_count": 0,
+            "centroid": [
+              513.7,
+              321.64
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.621,
+              10.062
+            ],
+            "centroid_m": [
+              25.685,
+              16.082
+            ]
+          },
+          "soldiers": 30,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.55,
+            0.83
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            820.0,
+            300.0
+          ],
+          "position_m": [
+            41.0,
+            15.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              249.9,
+              209.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              818.01,
+              303.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.495,
+              10.462
+            ],
+            "centroid_m": [
+              40.901,
+              15.15
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 73.5,
+          "name": "Archers 3",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            660.0,
+            569.5
+          ],
+          "position_m": [
+            33.0,
+            28.475
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              252.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              685.09,
+              561.48
+            ],
+            "count": 33,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              12.6,
+              7.2
+            ],
+            "centroid_m": [
+              34.255,
+              28.074
+            ]
+          },
+          "soldiers": 33,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Sidearm"
+        }
+      ]
+    }
+  ]
+}

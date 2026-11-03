@@ -1,0 +1,1978 @@
+{
+  "ticks": [
+    {
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 30,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            520.0,
+            400.0
+          ],
+          "position_m": [
+            26.0,
+            20.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              518.2,
+              391.0
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              25.91,
+              19.55
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1080.0,
+            400.0
+          ],
+          "position_m": [
+            54.0,
+            20.0
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1078.2,
+              391.0
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.2
+            ],
+            "centroid_m": [
+              53.91,
+              19.55
+            ]
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 3,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            520.0,
+            570.0
+          ],
+          "position_m": [
+            26.0,
+            28.5
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              180.0,
+              90.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              520.0,
+              565.5
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.0,
+              4.5
+            ],
+            "centroid_m": [
+              26.0,
+              28.275
+            ]
+          },
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1080.0,
+            570.0
+          ],
+          "position_m": [
+            54.0,
+            28.5
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              90.0,
+              180.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1084.5,
+              570.0
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.5,
+              9.0
+            ],
+            "centroid_m": [
+              54.225,
+              28.5
+            ]
+          },
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 120,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 28.7,
+          "current_speed_mps": 1.433,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            520.0,
+            417.77
+          ],
+          "position_m": [
+            26.0,
+            20.889
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              149.61
+            ],
+            "broken_count": 0,
+            "centroid": [
+              518.2,
+              411.84
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.481
+            ],
+            "centroid_m": [
+              25.91,
+              20.592
+            ]
+          },
+          "soldiers": 40,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 28.7,
+          "current_speed_mps": 1.433,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1080.0,
+            417.77
+          ],
+          "position_m": [
+            54.0,
+            20.889
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              149.61
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1078.2,
+              411.84
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.481
+            ],
+            "centroid_m": [
+              53.91,
+              20.592
+            ]
+          },
+          "soldiers": 40,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 3,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 98.8,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            520.0,
+            570.0
+          ],
+          "position_m": [
+            26.0,
+            28.5
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              180.0,
+              90.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              520.0,
+              565.5
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.0,
+              4.5
+            ],
+            "centroid_m": [
+              26.0,
+              28.275
+            ]
+          },
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 98.8,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1080.0,
+            570.0
+          ],
+          "position_m": [
+            54.0,
+            28.5
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              90.0,
+              180.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1084.5,
+              570.0
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.5,
+              9.0
+            ],
+            "centroid_m": [
+              54.225,
+              28.5
+            ]
+          },
+          "soldiers": 60,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 240,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 28.7,
+          "current_speed_mps": 1.433,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            520.0,
+            437.99
+          ],
+          "position_m": [
+            26.0,
+            21.899
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              149.58
+            ],
+            "broken_count": 0,
+            "centroid": [
+              518.2,
+              432.04
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.479
+            ],
+            "centroid_m": [
+              25.91,
+              21.602
+            ]
+          },
+          "soldiers": 40,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 28.7,
+          "current_speed_mps": 1.433,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.01,
+            1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1079.72,
+            437.97
+          ],
+          "position_m": [
+            53.986,
+            21.899
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.95,
+              151.08
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1078.15,
+              432.03
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.447,
+              7.554
+            ],
+            "centroid_m": [
+              53.907,
+              21.601
+            ]
+          },
+          "soldiers": 40,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 3,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 92.8,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            520.0,
+            574.26
+          ],
+          "position_m": [
+            26.0,
+            28.713
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              180.0,
+              90.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              520.31,
+              568.85
+            ],
+            "count": 58,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.0,
+              4.5
+            ],
+            "centroid_m": [
+              26.016,
+              28.443
+            ]
+          },
+          "soldiers": 58,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 91.3,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1077.88,
+            570.0
+          ],
+          "position_m": [
+            53.894,
+            28.5
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              90.0,
+              180.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1082.51,
+              574.74
+            ],
+            "count": 57,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.5,
+              9.0
+            ],
+            "centroid_m": [
+              54.126,
+              28.737
+            ]
+          },
+          "soldiers": 57,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 360,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 28.7,
+          "current_speed_mps": 1.433,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 100.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            520.0,
+            458.2
+          ],
+          "position_m": [
+            26.0,
+            22.91
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              149.58
+            ],
+            "broken_count": 0,
+            "centroid": [
+              518.2,
+              452.25
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.479
+            ],
+            "centroid_m": [
+              25.91,
+              22.612
+            ]
+          },
+          "soldiers": 40,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 28.7,
+          "current_speed_mps": 1.433,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.06,
+            1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 99.7,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1078.64,
+            458.09
+          ],
+          "position_m": [
+            53.932,
+            22.905
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              293.37,
+              158.96
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1077.49,
+              452.12
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.668,
+              7.948
+            ],
+            "centroid_m": [
+              53.874,
+              22.606
+            ]
+          },
+          "soldiers": 40,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 3,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 86.8,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            520.0,
+            580.45
+          ],
+          "position_m": [
+            26.0,
+            29.023
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              180.0,
+              90.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              520.32,
+              573.61
+            ],
+            "count": 56,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.0,
+              4.5
+            ],
+            "centroid_m": [
+              26.016,
+              28.68
+            ]
+          },
+          "soldiers": 56,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 76.3,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1072.06,
+            570.0
+          ],
+          "position_m": [
+            53.603,
+            28.5
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              90.0,
+              144.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1075.97,
+              587.63
+            ],
+            "count": 49,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.5,
+              7.2
+            ],
+            "centroid_m": [
+              53.798,
+              29.382
+            ]
+          },
+          "soldiers": 49,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 480,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 28.7,
+          "current_speed_mps": 1.433,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 99.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            520.0,
+            478.4
+          ],
+          "position_m": [
+            26.0,
+            23.92
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              149.58
+            ],
+            "broken_count": 0,
+            "centroid": [
+              518.2,
+              472.45
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.479
+            ],
+            "centroid_m": [
+              25.91,
+              23.623
+            ]
+          },
+          "soldiers": 40,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 28.7,
+          "current_speed_mps": 1.433,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.14,
+            0.99
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 99.4,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1076.83,
+            477.96
+          ],
+          "position_m": [
+            53.842,
+            23.898
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              299.18,
+              171.44
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1076.48,
+              472.08
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.959,
+              8.572
+            ],
+            "centroid_m": [
+              53.824,
+              23.604
+            ]
+          },
+          "soldiers": 40,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 3,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 83.8,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            520.0,
+            580.71
+          ],
+          "position_m": [
+            26.0,
+            29.036
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              180.0,
+              90.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              520.32,
+              573.64
+            ],
+            "count": 56,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.0,
+              4.5
+            ],
+            "centroid_m": [
+              26.016,
+              28.682
+            ]
+          },
+          "soldiers": 56,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 61.3,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1064.17,
+            570.0
+          ],
+          "position_m": [
+            53.209,
+            28.5
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              90.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1068.7,
+              599.85
+            ],
+            "count": 41,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.5,
+              6.3
+            ],
+            "centroid_m": [
+              53.435,
+              29.993
+            ]
+          },
+          "soldiers": 41,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 600,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 28.7,
+          "current_speed_mps": 1.433,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 98.0,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            520.0,
+            498.61
+          ],
+          "position_m": [
+            26.0,
+            24.931
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              149.58
+            ],
+            "broken_count": 0,
+            "centroid": [
+              518.2,
+              492.66
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.479
+            ],
+            "centroid_m": [
+              25.91,
+              24.633
+            ]
+          },
+          "soldiers": 40,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 28.7,
+          "current_speed_mps": 1.433,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.16,
+            0.99
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 99.4,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1075.65,
+            497.88
+          ],
+          "position_m": [
+            53.782,
+            24.894
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              303.81,
+              182.91
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1075.23,
+              491.76
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              15.191,
+              9.145
+            ],
+            "centroid_m": [
+              53.762,
+              24.588
+            ]
+          },
+          "soldiers": 40,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 3,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 76.3,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            520.0,
+            588.08
+          ],
+          "position_m": [
+            26.0,
+            29.404
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              180.0,
+              90.07
+            ],
+            "broken_count": 0,
+            "centroid": [
+              520.34,
+              579.61
+            ],
+            "count": 53,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.0,
+              4.503
+            ],
+            "centroid_m": [
+              26.017,
+              28.981
+            ]
+          },
+          "soldiers": 53,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 5,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 41.4,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1061.25,
+            589.14
+          ],
+          "position_m": [
+            53.062,
+            29.457
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              90.0,
+              90.05
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1063.36,
+              616.7
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.5,
+              4.503
+            ],
+            "centroid_m": [
+              53.168,
+              30.835
+            ]
+          },
+          "soldiers": 30,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 660,
+      "units": [
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 28.7,
+          "current_speed_mps": 1.433,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 97.5,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            520.0,
+            508.71
+          ],
+          "position_m": [
+            26.0,
+            25.436
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              288.0,
+              149.58
+            ],
+            "broken_count": 0,
+            "centroid": [
+              518.2,
+              502.77
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.4,
+              7.479
+            ],
+            "centroid_m": [
+              25.91,
+              25.138
+            ]
+          },
+          "soldiers": 40,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 2,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": "ATTACK",
+          "current_speed": 28.7,
+          "current_speed_mps": 1.433,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.15,
+            0.99
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "maneuver": "FIGHTING",
+          "morale": 99.4,
+          "name": "Archers 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "NONE",
+          "position": [
+            1077.47,
+            507.84
+          ],
+          "position_m": [
+            53.874,
+            25.392
+          ],
+          "queue_tail": [],
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              299.1,
+              174.32
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1077.24,
+              502.11
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.955,
+              8.716
+            ],
+            "centroid_m": [
+              53.862,
+              25.106
+            ]
+          },
+          "soldiers": 40,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 3,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "weapon": "Sidearm"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 74.8,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            520.0,
+            588.36
+          ],
+          "position_m": [
+            26.0,
+            29.418
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              180.0,
+              90.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              520.34,
+              579.7
+            ],
+            "count": 53,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.0,
+              4.5
+            ],
+            "centroid_m": [
+              26.017,
+              28.985
+            ]
+          },
+          "soldiers": 53,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 2,
+          "weapon": "Gladius"
+        },
+        {
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 5,
+          "in_enemy_contact": false,
+          "maneuver": "IDLE",
+          "morale": 31.8,
+          "name": "Infantry 2",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1061.25,
+            612.41
+          ],
+          "position_m": [
+            53.063,
+            30.62
+          ],
+          "queue_tail": [],
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "soldier_summary": {
+            "bbox": [
+              90.3,
+              76.72
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1061.71,
+              619.35
+            ],
+            "count": 25,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.515,
+              3.836
+            ],
+            "centroid_m": [
+              53.085,
+              30.968
+            ]
+          },
+          "soldiers": 25,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 3,
+          "weapon": "Gladius"
+        }
+      ]
+    }
+  ]
+}
