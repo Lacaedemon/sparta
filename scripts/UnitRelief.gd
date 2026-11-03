@@ -96,6 +96,48 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 	tired.has_move_target = true
 
 
+## Pair the relievers of a distributed relief with tired units, returning a reliever uid ->
+## tired Unit map. `tired` is the candidate pool already sorted by proximity to the clicked
+## unit; its first min(relievers, pool) members are the ones relieved. Within that set the
+## pairing follows LATERAL order along the line, not proximity order: both sides are sorted
+## by their projection on the axis across the depth between them (then by uid), and the
+## n-th reliever from one flank takes the n-th tired unit from the same flank. So each
+## reliever relieves the unit in front of it and no two pairings cross. Proximity order
+## alone could not give that: two tired units flanking the clicked one stand at equal
+## distance, so their order there is decided by float noise in their drifted positions,
+## and a uid tie-break never fires because the two distances are never exactly equal. The
+## lateral gap between neighbours is a whole unit's width, so float noise cannot reorder
+## it. Relievers beyond the pool wrap around and repeat a pairing from the first flank on.
+static func pair_by_lateral_order(relievers: Array, tired: Array) -> Dictionary:
+	var pairing: Dictionary = {}
+	var count: int = mini(relievers.size(), tired.size())
+	if count == 0:
+		return pairing
+	var chosen: Array = tired.slice(0, count)
+	var depth: Vector2 = _mean_position(chosen) - _mean_position(relievers)
+	# A degenerate depth (the two sets share a centroid) has no "across"; any fixed axis keeps
+	# the pairing deterministic.
+	var lateral: Vector2 = Vector2.RIGHT if depth.length_squared() < 1e-6 \
+			else depth.orthogonal().normalized()
+	var by_lateral := func(a: Unit, b: Unit) -> bool:
+		var la: float = a.position.dot(lateral)
+		var lb: float = b.position.dot(lateral)
+		return la < lb if la != lb else a.uid < b.uid
+	var ordered_relievers: Array = relievers.duplicate()
+	ordered_relievers.sort_custom(by_lateral)
+	chosen.sort_custom(by_lateral)
+	for i in ordered_relievers.size():
+		pairing[ordered_relievers[i].uid] = chosen[i % count]
+	return pairing
+
+
+static func _mean_position(units: Array) -> Vector2:
+	var total := Vector2.ZERO
+	for u in units:
+		total += u.position
+	return total / float(units.size())
+
+
 ## A point toward `u`'s own back edge -- where a relieved unit retreats to.
 static func _rear_point(u: Unit) -> Vector2:
 	var back: Vector2 = Vector2.UP if u.team == 0 else Vector2.DOWN
