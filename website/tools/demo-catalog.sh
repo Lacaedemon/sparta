@@ -132,6 +132,7 @@ DEMOS=(
   "cavalry_inside_foot|demos/inputs/melee-reface-keeps-grid-1792.json|30|300|720|input"
   "absorb_toward_square|demos/inputs/absorb-against-engage-fold-1868.json|30|550|720|input"
   "near_quarter_redeal|demos/inputs/near-quarter-redeal-1865.json|30|500|720|input"
+  "march_start_catch_up|demos/inputs/march-start-catch-up-1880.json|30|160|640|input"
 )
 
 # The SPARTA_DUMP_CLIPS narrowing helpers (demo_catalog_selected,

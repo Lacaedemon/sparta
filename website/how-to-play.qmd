@@ -196,7 +196,28 @@ turn: a fresh order that roughly continues the current travel carries the column
 momentum straight through, while one that turns it sharply back bleeds that speed off
 during the hold, so the block comes about from a stand instead of carrying its pace
 into the turn (@fig-reversal-march).
-To make a unit move immediately without the pause, uncheck **Reform before move** in
+Men still walking to their places when the block steps off on a move order (yours, or one
+the AI gives) or a withdrawal out of a fight keep closing on them while the march changes:
+whenever the block speeds up, or swings its heading without slowing, each man well off his
+place may change his own speed and direction at his usual rate plus the rate the march is
+changing at (that extra is capped at his usual rate). The extra keeps him level with his
+moving place and his usual rate still closes on it, so he gains on his place instead of
+only keeping pace with it, though he still walks onto it no faster than his usual jog. A
+march that slows gives none. Only those orderly marches give that extra acceleration. A
+combat approach --- the march of an attack or support order, a charge or a pursuit ---
+gives none, and neither does an **in-haste** move order (a triple- or quadruple-click) or
+a rout. On every march, the way a man walks onto his place changes over gradually as the
+block gets under way rather than all at once on its first step
+(@fig-march-start-catch-up). A block that halts in a fight and marches off straight from
+it takes the change-over up where it left off, so its men, thrown about by the fight, go
+back to their places as they did before the block halted.
+Once that change-over is complete, a man within about four and a half file widths of his
+place walks straight to it; while the block is still getting under way, his way there is
+a blend of that straight walk and the way he would take if the block stood still, which
+can lead round the outside of the block. One farther off whose way back crosses both the
+block's files and its ranks may still be sent round the outside of the block, as on any
+march.
+To make a unit move immediately without the reform hold, uncheck **Reform before move** in
 its unit settings panel, or click **Reform** in the control bar --- either applies to every
 currently selected unit. Cavalry starts with the setting off (immediate
 responsiveness matters more to a mounted regiment than settling ranks); every other
@@ -218,6 +239,22 @@ at the moment you issued each order.
 A marching column ordered sharply back the way it came: it brakes during its
 reform hold, comes about no faster than its corner man can run, and steps off on
 the new heading in good order.
+:::
+
+::: {#fig-march-start-catch-up .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/march_start_catch_up.jpg">
+  <source src="media/march_start_catch_up.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A 96-man block loosens its spacing and is ordered south while its men are still
+walking out to their new places. It steps off with them far from their places, and
+the rear and flank men close on them as the block gathers pace.
 :::
 
 **Side-step (small lateral moves).** A move order that only shifts a unit a short way

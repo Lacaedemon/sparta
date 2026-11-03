@@ -37,16 +37,12 @@
   ],
   "defect_exemptions": {
     "overlap": {
-      "uids": [
-        7
-      ],
+      "uids": [7],
       "reason": "Cavalry at the right flank engages in close-tier melee with opposing cavalry, compressing in melee contact. Measured on the density re-pin."
     },
     "shape_residual": {
-      "uids": [
-        7
-      ],
-      "reason": "Flank cavalry formation distorts during the violent mounted clash. Measured on the density re-pin."
+      "uids": [7, 14, 6],
+      "reason": "Flank cavalry formation distorts during the violent mounted clash. Measured on the density re-pin. Uid 14, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, pass, pass, pass, pass; eb8b0995 and e57be4c6 (#1880) read pass, 35.53, pass, pass, pass, against 30.0. Traced on seed 1 on eb8b0995 and on 9f9bddee: the 80-horse squadron (frontage 9) is in contact in its first 20 ticks (fitted residual 2.7 wu as it lets go) and then marches on its ATTACK, touching the enemy again only at ticks 186 and 240 before a fight from tick 286, its residual climbing steadily, with no step, at about 0.15 wu a tick: 5.1 at tick 80, 17.4 at 180, 35.1 at 280. Two facing changes on the way, about 54 degrees in 4 ticks (ticks 184 to 188) and about 20 degrees in 4 ticks (ticks 236 to 240), swing its grid under its riders (median 16 wu off their slots before, 253 after the first and 323 after the second), with no step in the residual. 9f9bddee climbs the same way (17.2 at tick 180, 29.5 at 280), with its first turn about 40 ticks later; at ticks 276 to 282 it is in contact, which the scan does not judge, while here the squadron is out of contact there and judged, reading 34.15 to 35.53. The steady climb is the cavalry drift of #1716; the swings are facing changes rotating the grid under the riders (#1806). Measured 2026-10-31, e57be4c6's seed figures included (on the tree later committed as e57be4c6; seed 0 re-checked on e57be4c6 2026-11-01). Uid 6, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4: 9f9bddee reads pass, 98.50, pass, pass, 118.73; eb8b0995 and e57be4c6 (#1880) read pass, 86.93, pass, 118.17, pass, against 30.0. It fails on two seeds on both trees. Traced on seed 3 on add2930b and on 9f9bddee (eb8b0995's dense seed-3 dump is hash-identical to that of 1498634e, which has add2930b's sim): the 80-horse squadron starts in contact and swings its heading about 89 degrees in 12 ticks (90 at tick 6 to 1 at tick 20), which carries its grid round under its riders: their median distance from their slots goes from 9 to 409 wu. It marches on with the enemy against it (in physical contact at almost every sample), and its fitted residual climbs steadily, about 0.4 wu a tick, from 0.7 at tick 20 to 121.6 at tick 300, within 1.2 wu of 9f9bddee's. Here it is briefly out of contact at ticks 284 to 294 and judged at 288 to 292, reading 116.42 to 118.17; on 9f9bddee it is in contact there. The swing is a facing change rotating the grid under the riders (#1806); the climb is the cavalry drift of #1716. Measured 2026-10-31, e57be4c6's seed figures included (on the tree later committed as e57be4c6; seed 0 re-checked on e57be4c6 2026-11-01)."
     }
   }
 }
