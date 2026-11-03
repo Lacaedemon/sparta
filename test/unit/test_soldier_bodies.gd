@@ -570,7 +570,9 @@ func test_same_unit_standoff_off_slot_threshold_is_the_units_own() -> void:
 	var d_start: float = 0.05
 	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
 	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
-	var off_wu: float = u._sim_soldier_pos[0].distance_to(u.soldier_world_slots(u.soldiers)[0])
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var off_wu: float = maxf(u._sim_soldier_pos[0].distance_to(slots[0]),
+			u._sim_soldier_pos[1].distance_to(slots[1]))
 	u.standoff_off_slot_pitches = (off_wu + 10.0) / u.file_pitch_wu()
 	SoldierBodies.step(u, 1.0 / 60.0)
 	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)

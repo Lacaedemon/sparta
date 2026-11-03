@@ -103,9 +103,10 @@ const STANDOFF_MAX_SPEED: float = 2.0 * WorldScaleRef.WU_PER_M
 # Floor below which same-unit standoff separation is disabled (tuned in wu):
 const STANDOFF_MIN_SEP_FLOOR: float = 0.01
 # Default for Unit.standoff_off_slot_pitches: how far off his own slot, in file pitches,
-# one unengaged body of a block must stand for _separate_same_unit to police the block outside its usual windows (fighting, or a re-slot's
-# settle window). While every man stands within this of his slot the block is in good order,
-# none of them is walking through another, and the scan is skipped.
+# one unengaged body of a block must stand for _separate_same_unit to police the block
+# outside its usual windows (fighting, or a re-slot's settle window). While every man stands
+# within this of his slot the block is in good order, none of them is walking through
+# another, and the scan is skipped.
 const STANDOFF_OFF_SLOT_PITCHES: float = 1.0
 # How far inside a rect a line must pass to count as crossing it, not running along its edge
 # (router_terrain_avoid's way round). A solver epsilon, tuned in wu:
