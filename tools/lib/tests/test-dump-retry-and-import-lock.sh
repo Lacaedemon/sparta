@@ -31,7 +31,12 @@
 #      lock, a dead one is broken at once) and without one is waited for while fresh
 #      and broken once old; one held by a live holder is waited for and then refused
 #      loudly when the wait runs out; a lock that cannot be created at all (under a
-#      missing directory) fails at once with the shell's error, not after the wait
+#      missing directory) fails at once with the shell's error, not after the wait;
+#      a create beaten by a lock already gone again is retried, and reads as held
+#      (not an error) when that keeps happening; a failed PID write removes the file
+#      it made; an unreadable PID file fails at once instead of reading as "no PID";
+#      release leaves a lock that names another holder in place; a caller under
+#      set -C can still take, release and import
 #   8. an import killed by the timeout fails and leaves no stamp, so the next run
 #      imports; any other non-zero status (a signal death included) warns with the
 #      log's tail, writes no stamp, and does not fail
@@ -345,8 +350,7 @@ assert_eq "the failure names the .break file to remove" 1 \
   "$(grep -c "::error::.*$LOCK.break is over a minute old" "$TMP/breaker.err" || true)"
 assert_eq "the abandoned breaker lock is left in place" yes "$([ -e "$LOCK.break" ] && echo yes || echo no)"
 assert_eq "the stale lock under it is not broken" "$dead" "$(cat "$LOCK" 2>/dev/null || echo missing)"
-rm -f "$LOCK.break"
-godot_lock_release "$LOCK"
+rm -f "$LOCK.break" "$LOCK"
 
 # A lock with no PID: a fresh one may be a holder about to write its PID, so it is
 # waited for; one over a minute old is a holder that died first, so it is broken.
@@ -427,6 +431,102 @@ godot_lock_take "$LOCK" 2>"$TMP/held.err" || rc=$?
 assert_eq "an existing lock reads as held" 1 "$rc"
 assert_eq "a held lock is not reported as an error" 0 "$(wc -c < "$TMP/held.err" | tr -d ' ')"
 godot_lock_release "$LOCK"
+
+# A create that fails because the path existed, on a path gone again by the time it is
+# tested (a holder that released in between), is retried rather than reported. Forced
+# by a create that fails that way on its first CREATE_FAILS calls.
+eval "orig_$(declare -f godot_lock_create)"
+godot_lock_create() {
+  local n; n=$(( $(cat "$TMP/creates" 2>/dev/null || builtin echo 0) + 1 )); builtin echo "$n" > "$TMP/creates"
+  if [ "$n" -le "${CREATE_FAILS:-0}" ]; then
+    echo "bash: $1: cannot overwrite existing file" >&2
+    return 1
+  fi
+  orig_godot_lock_create "$@"
+}
+rm -f "$TMP/creates"
+rc=0
+CREATE_FAILS=1 godot_lock_take "$LOCK" 2>"$TMP/vanish.err" || rc=$?
+assert_eq "a create beaten by a lock released at once is retried and succeeds" 0 "$rc"
+assert_eq "the retried create holds this caller's PID" "$$" "$(cat "$LOCK" 2>/dev/null || echo missing)"
+assert_eq "the retry is not reported as an error" 0 "$(wc -c < "$TMP/vanish.err" | tr -d ' ')"
+godot_lock_release "$LOCK"
+# Beaten that way on every try, it reads as held (the caller waits), not as an error.
+rm -f "$TMP/creates"
+rc=0
+CREATE_FAILS=99 godot_lock_take "$LOCK" 2>"$TMP/vanish3.err" || rc=$?
+assert_eq "a create always beaten by a lock that is gone again reads as held" 1 "$rc"
+assert_eq "it was tried three times" 3 "$(cat "$TMP/creates")"
+assert_eq "that is not reported as an error" 0 "$(wc -c < "$TMP/vanish3.err" | tr -d ' ')"
+assert_eq "nothing is left at the lock path" no "$([ -e "$LOCK" ] && echo yes || echo no)"
+eval "$(declare -f orig_godot_lock_create | sed '1s/^orig_//')"
+
+# A create whose PID write fails removes the file it made and fails, rather than leaving
+# a PID-less lock that every caller would wait a minute on. Forced by an echo that fails
+# on this caller's PID, as a full disk would.
+echo() {
+  if [ "$*" = "$$" ]; then builtin echo "echo: write error: No space left on device" >&2; return 1; fi
+  builtin echo "$@"
+}
+rc=0
+godot_lock_take "$LOCK" 2>"$TMP/pidwrite.err" || rc=$?
+unset -f echo
+assert_eq "a failed PID write fails the take as an error" 2 "$rc"
+assert_eq "a failed PID write is reported" 1 \
+  "$(grep -c "::error::godot-import-lock: created lock $LOCK but could not write its PID, so removed it again: .*No space left" "$TMP/pidwrite.err" || true)"
+assert_eq "a failed PID write leaves no lock behind" no "$([ -e "$LOCK" ] && echo yes || echo no)"
+
+# A PID file that exists but cannot be read is not "no PID": treated that way, an old
+# lock of a live holder would be broken. Forced by a cat that fails on the lock.
+echo "$$" > "$LOCK"
+touch -d '2 minutes ago' "$LOCK"
+cat() {
+  if [ "${1:-}" = "$LOCK" ]; then builtin echo "cat: $1: Permission denied" >&2; return 1; fi
+  command cat "$@"
+}
+start=$SECONDS
+rc=0
+godot_lock_acquire "$LOCK" 30 2>"$TMP/unread.err" || rc=$?
+unset -f cat
+assert_eq "an unreadable lock fails the caller" 1 "$rc"
+assert_eq "that failure is immediate, not the wait budget" yes \
+  "$([ $((SECONDS - start)) -le 5 ] && echo yes || echo no)"
+assert_eq "that failure names the unreadable PID file" 1 \
+  "$(grep -c "::error::godot-import-lock: cannot read the holder PID in $LOCK: .*Permission denied" "$TMP/unread.err" || true)"
+assert_eq "the unreadable lock is not broken" "$$" "$(cat "$LOCK" 2>/dev/null || echo missing)"
+assert_eq "no breaker is left behind" no "$([ -e "$LOCK.break" ] && echo yes || echo no)"
+godot_lock_release "$LOCK"
+
+# Release removes the lock only while it names this caller: a lock broken and retaken
+# by someone else is theirs, and is left in place with a warning.
+echo "$dead" > "$LOCK"
+rc=0
+godot_lock_release "$LOCK" 2>"$TMP/release.err" || rc=$?
+assert_eq "releasing someone else's lock does not fail" 0 "$rc"
+assert_eq "someone else's lock is left in place" "$dead" "$(cat "$LOCK" 2>/dev/null || echo missing)"
+assert_eq "leaving it is reported" 1 \
+  "$(grep -c "::warning::godot-import-lock: $LOCK no longer names PID $$ (it names $dead)" "$TMP/release.err" || true)"
+rm -f "$LOCK"
+echo "$$" > "$LOCK"
+godot_lock_release "$LOCK" 2>"$TMP/release-own.err"
+assert_eq "this caller's own lock is released" no "$([ -e "$LOCK" ] && echo yes || echo no)"
+assert_eq "releasing its own lock is silent" 0 "$(wc -c < "$TMP/release-own.err" | tr -d ' ')"
+
+# A caller running under set -C (noclobber) can still take, release and import twice:
+# the helper's own writes, last run's import log included, do not trip on it. A log
+# that cannot be written would only show as a non-zero import status, which is not
+# fatal, so the imports themselves are counted and the stderr checked.
+before="$(imports)"
+rc=0
+( set -C
+  godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "" 2>"$TMP/noclobber.err"
+  godot_import_once 30 "$TMP/godot-import-stub" "$PROJ" "" 2>>"$TMP/noclobber.err" ) || rc=$?
+assert_eq "a caller under set -C succeeds twice in a row" 0 "$rc"
+assert_eq "a caller under set -C runs both imports" $((before + 2)) "$(imports)"
+assert_eq "a caller under set -C gets no warning or error" 0 \
+  "$(grep -c '::\(warning\|error\)::' "$TMP/noclobber.err" || true)"
+assert_eq "its lock is released afterwards" no \
+  "$([ -e "$PROJ/.godot/sparta-import.lock" ] && echo yes || echo no)"
 
 # A live holder (this shell) is waited for, then refused.
 echo "$$" > "$LOCK"
