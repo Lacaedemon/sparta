@@ -100,7 +100,7 @@ static func begin(u: Unit, tired: Unit, order: Order) -> void:
 ## tired Unit map. `tired` is the candidate pool already sorted by proximity to the clicked
 ## unit; its first min(relievers, pool) members are the ones relieved. Within that set the
 ## pairing follows LATERAL order along the line, not proximity order: both sides are sorted
-## by their projection on the axis across the depth between them (then by uid), and the
+## by their projection on the axis along the tired line (_line_axis; then by uid), and the
 ## n-th reliever from one flank takes the n-th tired unit from the same flank. So each
 ## reliever relieves the unit in front of it and no two pairings cross. Proximity order
 ## alone could not give that: two tired units flanking the clicked one stand at equal
@@ -116,11 +116,7 @@ static func pair_by_lateral_order(relievers: Array, tired: Array) -> Dictionary:
 	if count == 0:
 		return pairing
 	var chosen: Array = tired.slice(0, count)
-	var depth: Vector2 = _mean_position(chosen) - _mean_position(relievers)
-	# A degenerate depth (the two sets share a centroid) has no "across"; any fixed axis keeps
-	# the pairing deterministic.
-	var lateral: Vector2 = Vector2.RIGHT if depth.length_squared() < 1e-6 \
-			else depth.orthogonal().normalized()
+	var lateral: Vector2 = _line_axis(chosen, relievers)
 	var by_lateral := func(a: Unit, b: Unit) -> bool:
 		var la: float = a.position.dot(lateral)
 		var lb: float = b.position.dot(lateral)
@@ -133,6 +129,25 @@ static func pair_by_lateral_order(relievers: Array, tired: Array) -> Dictionary:
 		# Integer division: index rises with i and stays below count, so lateral order holds.
 		pairing[ordered_relievers[i].uid] = chosen[i * count / n]
 	return pairing
+
+
+## The axis along the tired line: square to the relieved units' mean facing. It comes from the
+## line itself, not from the offset between the two sets' centres, because the relieved set can
+## sit off to one side of the relievers (fewer relievers than the pool, a click near the end of
+## the line). That offset then tilts toward the depth axis, and a few tens of wu of depth drift
+## between neighbouring tired units would reorder them. Only when the facings cancel out does it
+## fall back to square across the offset between the centres, and to a fixed axis when that is
+## zero too, so the pairing stays deterministic.
+static func _line_axis(chosen: Array, relievers: Array) -> Vector2:
+	var facing_sum := Vector2.ZERO
+	for u in chosen:
+		facing_sum += u.facing
+	if facing_sum.length_squared() > 1e-6:
+		return facing_sum.normalized().orthogonal()
+	var depth: Vector2 = _mean_position(chosen) - _mean_position(relievers)
+	if depth.length_squared() > 1e-6:
+		return depth.normalized().orthogonal()
+	return Vector2.RIGHT
 
 
 static func _mean_position(units: Array) -> Vector2:

@@ -76,6 +76,19 @@ func test_extra_relievers_double_up_without_crossing() -> void:
 				"partners never step back along the line, so no two pairs cross")
 
 
+func test_a_relieved_set_off_to_one_side_still_pairs_along_the_line() -> void:
+	# Two relievers stand over the right end of a tired line; the click lands on the line's left
+	# end, so the two relieved tired units sit far to the relievers' left. The left tired unit has
+	# drifted 50 wu deeper than its neighbour. The axis along the line must come from the line
+	# itself (its facing), not from the offset between the two sets' centres, which here tilts
+	# almost onto the depth axis and would let that drift reorder the two tired units.
+	var fresh: Array = [_unit(0, Vector2(660, 0)), _unit(1, Vector2(880, 0))]
+	var pool: Array = [_unit(3, Vector2(0, 150)), _unit(4, Vector2(220, 100)),
+			_unit(5, Vector2(440, 100)), _unit(6, Vector2(660, 100)), _unit(7, Vector2(880, 100))]
+	var pairing := UnitRelief.pair_by_lateral_order(fresh, pool)
+	assert_eq(_uids_of(pairing, fresh), [3, 4], "the left reliever takes the left relieved unit")
+
+
 func test_empty_inputs_pair_nothing() -> void:
 	assert_eq(UnitRelief.pair_by_lateral_order([], [_unit(3, Vector2.ZERO)]), {})
 	assert_eq(UnitRelief.pair_by_lateral_order([_unit(0, Vector2.ZERO)], []), {})

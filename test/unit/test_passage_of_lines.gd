@@ -114,9 +114,10 @@ func test_distributed_relief_pairs_each_fresh_unit_with_a_different_tired_unit()
 		assert_eq(tired.current_order.type, Order.Type.MOVE,
 				"%s's tired partner gets a real retreat order" % fresh.unit_name)
 
-	# Every pairing is genuinely distinct -- the whole point of the maneuver.
-	var partners := [tired_a, tired_b, tired_c]
-	assert_eq(partners.size(), 3, "sanity: three tired units named")
+	# Every pairing is genuinely distinct -- the whole point of the maneuver -- read off the
+	# swap links the order actually armed.
+	var partners: Array = [fresh1.current_order.friendly_target,
+			fresh2.current_order.friendly_target, fresh3.current_order.friendly_target]
 	assert_ne(partners[0], partners[1], "fresh1 and fresh2 relieve different units")
 	assert_ne(partners[0], partners[2], "fresh1 and fresh3 relieve different units")
 	assert_ne(partners[1], partners[2], "fresh2 and fresh3 relieve different units")
