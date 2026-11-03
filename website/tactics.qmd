@@ -972,8 +972,8 @@ and the rest of the turn is made no faster than the men can follow,
 except that ranks left exactly a quarter-turn off are dealt out in one step,
 and so, at the quarter-turn, are ranks within 10 degrees of it
 when the order comes to a block that is not marching (described with re-facing to fight, below).
-A block marching when the order comes squares near a quarter-turn the way it last squared,
-also described below.
+A block marching when the order comes wheels a fold of up to 25 degrees past a quarter-turn
+rather than reflecting it, also described below.
 A cavalry troop with foot or other horsemen among it
 still wheels its formation to follow its enemy.
 
@@ -1897,12 +1897,16 @@ past 10 degrees from the quarter-turn the wheel was the shorter walk for some bl
 A wider line walked further when dealt out, so near a quarter-turn it wheels instead.
 A unit already marching when the order comes is not dealt out near a quarter-turn either,
 since it re-forms worse on the move.
-Within 25 degrees either side of a quarter-turn it squares the way it last squared:
-if an earlier order's squaring, still under way, reflected its ranks by a half-turn,
-they are reflected again, and otherwise they wheel the whole turn round.
-Whether the unit is marching is taken from when the order came,
-so a unit fighting when it is ordered off squares, once clear, as a unit standing would.
+Its ranks wheel the whole turn round, up to 25 degrees past a quarter-turn,
+rather than being reflected by a half-turn, which would send men across its depth on the move.
+Ranks an earlier order already reflected count as square,
+so a later order does not reflect them back.
 So a few degrees either side of a quarter-turn do not turn a wheel into its mirror.
+A block whose ranks are all full is reflected without any man moving,
+so it takes the nearer of square and the half-turn as before.
+Whether the unit is marching is taken from when the order came.
+A unit fighting when it is ordered off squares once clear by the nearer of square and the half-turn,
+as a standing unit does away from a quarter-turn, and is not dealt out at the quarter-turn.
 A wider line and a marching unit are both still dealt out at exactly a quarter-turn, as above.
 
 ::: {#fig-near-quarter-redeal .demo}
