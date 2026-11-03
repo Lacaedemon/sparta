@@ -1,0 +1,33 @@
+{
+  "_comment": "Men still walking to their slots when their block sets off now close on them as it gathers pace (#1880). A 96-man Infantry block, 8 files by 12 ranks, stands facing south in drill (no enemy). At ticks 10 and 14 T cycles its spacing to Loose, so every man but the one at the pivot has a new slot well away from where he stands. At tick 40 it is ordered south. The order's reform hold lets it settle for a moment, and it steps off at tick 88 with its men still far from their slots (fitted shape residual 57.7 wu on both trees). Before, each man changed his velocity at the same rate the march sped his slot up, so while the block gathered pace he only kept pace with his slot, and his route onto it switched at the first tick of the march. Now he gains on his slot as the block speeds up, and his route moves over to the marching one as the march gets under way. Fitted residual, 9f9bddee against e57be4c6 (#1880): 42.4 / 40.1 at tick 120, 24.2 / 19.1 at tick 160, 10.2 / 6.9 at tick 200, 4.2 / 3.0 at tick 240. The expect at tick 240 pins the improvement: the farthest any man's slot lies sideways of his place (slot_lateral_excess) reads 7.1 wu on 9f9bddee and 3.8 on e57be4c6, and the bound of 5 wu is under a seventh of the 36 wu file pitch: it sits 1.2 wu above the reading on e57be4c6 and 2.1 wu below the one on 9f9bddee. The e57be4c6 figures were read 2026-11-01 on a dense 2-tick FULL dump of seed 0 on the branch at 7b5053d6, whose scripts match e57be4c6's; those figures match the ones of ea0a9029, the first #1880 change, read 2026-10-31. Static camera. Deterministic (drill, scenario and scripted input, no RNG draws): dense 2-tick FULL dumps, every exemption removed, Windows, 2026-10-31, read the same on seeds 0 to 4 on 9f9bddee and on ea0a9029, and the only defect either of those two trees fails is the misslotted one exempted below. The tree later committed as e57be4c6 was dumped on seed 0 only, 2026-10-31, and judged by the clip's own script with its exemption in place; it fails the same misslotted check and nothing else. The drill draws no RNG, so the seed does not change the run.",
+  "seed": "18803",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 520, "y": 420, "count": 96, "frontage": 8, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 520.0, "y": 500.0, "zoom": 1.5}
+  ],
+  "steps": [
+    {"tick": 4, "click": [520, 420]},
+    {"tick": 10, "key": "T"},
+    {"tick": 14, "key": "T"},
+    {"tick": 40, "rmb_click": [520, 1000]}
+  ],
+  "state": [8, 40, 88, 120, 160, 200, 240, 280, 320, 400, 480],
+  "frames": [88, 160, 240],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [520, 420]},
+    {"tick": 40, "uid": 0, "field": "formation", "value": "LOOSE"},
+    {"tick": 88, "uid": 0, "field": "state", "value": "MOVING"},
+    {"tick": 120, "uid": 0, "field": "order_phase", "value": "MARCH"},
+    {"tick": 240, "uid": 0, "field": "slot_lateral_excess", "value": 0, "tol": 5.0},
+    {"tick": 320, "uid": 0, "field": "grid_off_heading", "value": 0, "tol": 2.0}
+  ],
+  "defect_exemptions": {
+    "misslotted": {
+      "uids": [0],
+      "reason": "Loosening the spacing doubles every man's distance from the pivot, so while the men walk out to their new slots most stand nearer another man's slot than their own: misslotted reads 0.4375 on 9f9bddee and 0.396 on ea0a9029 (#1880) on each of seeds 0 to 4, and on e57be4c6 on seed 0, against 0.25. The scan has a transit window for shape_residual after a reshape but none for misslotted. Tracked in #1892. 9f9bddee and ea0a9029 measured 2026-10-31 on dense 2-tick FULL dumps, every exemption removed, Windows; e57be4c6's seed 0 measured 2026-10-31 on the tree later committed as e57be4c6, judged by the clip's own script with this exemption in place (the judge still reports the exempted worst reading); seed 0 re-read 2026-11-01 on the branch at 7b5053d6, whose scripts match e57be4c6's."
+    }
+  }
+}

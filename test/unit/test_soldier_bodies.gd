@@ -10,6 +10,8 @@ extends GutTest
 ## and morale still read the regiment circle, so gameplay is unchanged. These call
 ## the seeding functions directly, as the separation tests call _separate() directly.
 
+const SettledFrac = preload("res://test/helpers/settled_march_target_frac.gd")
+
 
 func _make_unit(uid: int, max_soldiers: int = 120) -> Unit:
 	var u: Unit = Unit.new()
@@ -239,7 +241,7 @@ func test_corridor_to_slot_monotonic_scaling_routes_direct() -> void:
 	var p_local: Vector2 = Vector2(t_local.x * 1.5, t_local.y * 1.5)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers, SoldierBodies.corridor_proximity_mult(u), SoldierBodies.is_straight_march(u))
+	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, SettledFrac.settled_frac(u), not u.is_turning())
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -265,7 +267,7 @@ func test_corridor_to_slot_tight_to_loose_extreme_ratio_routes_direct() -> void:
 	var p_local: Vector2 = Vector2(t_local.x * 0.25, t_local.y * 0.25)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers, SoldierBodies.corridor_proximity_mult(u), SoldierBodies.is_straight_march(u))
+	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, SettledFrac.settled_frac(u), not u.is_turning())
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -291,7 +293,7 @@ func test_corridor_to_slot_loose_to_tight_extreme_ratio_routes_direct() -> void:
 	var p_local: Vector2 = Vector2(t_local.x * 4.0, t_local.y * 4.0)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers, SoldierBodies.corridor_proximity_mult(u), SoldierBodies.is_straight_march(u))
+	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, SettledFrac.settled_frac(u), not u.is_turning())
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -317,7 +319,7 @@ func test_corridor_to_slot_loose_to_testudo_extreme_ratio_routes_direct() -> voi
 	var p_local: Vector2 = Vector2(t_local.x * 0.15, t_local.y * 0.15)
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers, SoldierBodies.corridor_proximity_mult(u), SoldierBodies.is_straight_march(u))
+	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, SettledFrac.settled_frac(u), not u.is_turning())
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -343,7 +345,7 @@ func test_corridor_to_slot_testudo_to_loose_extreme_ratio_routes_direct() -> voi
 	var p_local: Vector2 = Vector2(t_local.x * (4.0 / 0.6), t_local.y * (4.0 / 0.6))
 	u._sim_soldier_pos[slot_idx] = u.position + p_local.rotated(ang)
 
-	var to_target: Vector2 = SoldierBodies._corridor_to_slot(u, slot_idx, own_slot, u.soldiers, SoldierBodies.corridor_proximity_mult(u), SoldierBodies.is_straight_march(u))
+	var to_target: Vector2 = SoldierBodies.arrival_target(u, slot_idx, own_slot, u.soldiers, SettledFrac.settled_frac(u), not u.is_turning())
 	var target_pos: Vector2 = u._sim_soldier_pos[slot_idx] + to_target
 	var target_local: Vector2 = (target_pos - u.position).rotated(-ang)
 
@@ -517,9 +519,16 @@ func test_same_unit_standoff_skips_the_pass_outside_an_armed_settle_window() -> 
 	# these two crowded bodies.
 	assert_eq(u._standoff_settle_until_tick, -1,
 		"sanity: a fresh unit's settle window starts unarmed")
+	# The pair stands crowded halfway between its two seeded slots, so each man is within a
+	# file pitch of his own: a block in good order, which the pass leaves alone (a block
+	# whose men stand well off their slots is policed; see the off-slot test below).
+	var mid: Vector2 = (u._sim_soldier_pos[0] + u._sim_soldier_pos[1]) * 0.5
+	assert_lt(mid.distance_to(u._sim_soldier_pos[0]),
+		u.standoff_off_slot_pitches * u.file_pitch_wu(),
+		"sanity: the crowded pair stands within the off-slot gate of its slots")
 	var d_start: float = 0.05
-	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
-	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	u._sim_soldier_pos[0] = mid
+	u._sim_soldier_pos[1] = mid + Vector2(d_start, 0.0)
 	SoldierBodies.step(u, 1.0 / 60.0)
 	# Lateral (x) separation, not full 2D distance: both bodies also drift toward their
 	# rank slots on arrival, and that motion alone could satisfy a distance-only check
@@ -527,6 +536,48 @@ func test_same_unit_standoff_skips_the_pass_outside_an_armed_settle_window() -> 
 	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
 	assert_almost_eq(dx_after, d_start, 0.01,
 		"an unarmed, non-fighting unit must not run the standoff pass even when crowded")
+
+
+func test_same_unit_standoff_runs_while_a_man_stands_well_off_his_slot() -> void:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	# No settle window and not fighting, but the crowded pair stands about 50 wu from its
+	# slots, well beyond standoff_off_slot_pitches file pitches: men walking back to their
+	# slots from that far off are kept apart, so the pass runs and separates them.
+	assert_eq(u._standoff_settle_until_tick, -1,
+		"sanity: a fresh unit's settle window starts unarmed")
+	var d_start: float = 0.05
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	assert_gt(u._sim_soldier_pos[0].distance_to(u.soldier_world_slots(u.soldiers)[0]),
+		u.standoff_off_slot_pitches * u.file_pitch_wu(),
+		"sanity: man 0 stands well off his slot")
+	SoldierBodies.step(u, 1.0 / 60.0)
+	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
+	assert_gt(dx_after, d_start + 0.1,
+		"a block with a man well off his slot must run the standoff pass")
+
+
+func test_same_unit_standoff_off_slot_threshold_is_the_units_own() -> void:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	# The same crowded pair about 50 wu from its slots, but this block only polices men
+	# farther off than that, so the pass is skipped and the pair stays crowded.
+	var d_start: float = 0.05
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var off_wu: float = maxf(u._sim_soldier_pos[0].distance_to(slots[0]),
+			u._sim_soldier_pos[1].distance_to(slots[1]))
+	u.standoff_off_slot_pitches = (off_wu + 10.0) / u.file_pitch_wu()
+	SoldierBodies.step(u, 1.0 / 60.0)
+	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
+	assert_almost_eq(dx_after, d_start, 0.01,
+		"a block whose own threshold lies beyond its farthest man must skip the standoff pass")
 
 
 func test_same_unit_standoff_runs_after_set_frontage_arms_the_settle_window() -> void:
