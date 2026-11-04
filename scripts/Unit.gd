@@ -8269,7 +8269,11 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 			# through the mirror armed above, so the deal already ranks each man by the ground
 			# he holds. Reversing its ranks would reapply the reflection the deal has just
 			# absorbed and walk men the block's depth, as for the row-major and square layouts
-			# (_apply_row_slot_reflection).
+			# (_apply_row_slot_reflection). Two rebuilds read no body and keep the reversal: a
+			# FILE_GROUP block re-forms its files from the ids it held
+			# (UnitFormation.subunit_reform_files), whose ranks are still in the unreflected
+			# frame, and a reshape that finds too few bodies holds an index-order placeholder
+			# that the next query deals again.
 			if not _ensure_file_assignment(soldiers, files):
 				_sim_soldier_rank = UnitFormation.reversed_ranks_within_files(
 						_sim_soldier_file, _sim_soldier_rank)

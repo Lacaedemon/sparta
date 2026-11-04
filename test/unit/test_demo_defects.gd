@@ -1015,6 +1015,9 @@ func test_derived_slot_distance_sees_a_walk_in_depth() -> void:
 			"measured as a straight line, in any direction")
 	assert_null(DemoDefects.derived_field(_derived_record([], []), "slot_distance_max"),
 			"no men to measure is uncheckable, not a pass")
+	assert_null(DemoDefects.derived_field(
+			_derived_record([[-15.0, 0.0], [15.0, 0.0]], [[15.0, 0.0]]), "slot_distance_max"),
+			"bodies and slots out of step are uncheckable, not measured short")
 
 
 func test_derived_slot_excess_measures_an_outside_man_from_the_block_edge() -> void:

@@ -164,3 +164,25 @@ func test_a_file_major_resquare_with_no_pending_deal_still_reverses_the_ranks() 
 		farthest = maxf(farthest, w)
 	assert_lt(farthest, u.rank_pitch_wu() + 0.01,
 		"the farthest man walks %.1f wu (a rank pitch %.1f)" % [farthest, u.rank_pitch_wu()])
+
+
+
+## A FILE_GROUP block re-forms its files from the ids it held rather than dealing them from the
+## bodies, so its ranks are still in the unreflected frame and the re-square keeps reversing
+## them. The re-form reads no body, so the re-square over the pending deal ends with exactly the
+## ranks a slot query laid out in the fold would have, reversed within each file.
+func test_a_file_group_resize_before_the_resquare_keeps_the_reversal() -> void:
+	var pending := _make(46, 10, false)
+	var laid_out := _make(46, 10, false)
+	for u in [pending, laid_out]:
+		u.subunit_structure = Unit.SubunitStructure.FILE_GROUP
+		_settle_about_face(u)
+		u.frontage_override = 9
+	assert_true(pending._slot_deal_pending(pending.soldiers,
+			pending.formation_files(pending.soldiers)), "precondition: the file deal is pending")
+	laid_out.soldier_world_slots(laid_out.soldiers)   # lays the re-form out in the fold
+	var expected: PackedInt32Array = UnitFormation.reversed_ranks_within_files(
+			laid_out._sim_soldier_file, laid_out._sim_soldier_rank)
+	assert_true(pending.reform_ranks(true), "precondition: the about-face fold re-squares")
+	assert_eq(pending._sim_soldier_file, laid_out._sim_soldier_file, "the same re-formed files")
+	assert_eq(pending._sim_soldier_rank, expected, "each file's ranks reversed")
