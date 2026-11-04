@@ -7178,13 +7178,14 @@ func _slot_deal_pending(count: int, files: int) -> bool:
 
 
 ## Whether the next slot query for (count, files) would deal this block's assignment from the
-## live bodies: _slot_deal_pending, less the row-major and square rebuilds worked out from the
-## cells alone (a close-up over a loss, or the tail cells for a gain). A caller that relies on the block having
+## live bodies: _slot_deal_pending, less the row-major rebuilds worked out from the cells alone (a
+## close-up over a loss, or the tail cells for a gain). A square's pending rebuild counts as a deal
+## from the bodies even when an ordinary query would close it up from the cells, because a
+## hold-ground re-square that meets one deals it from the bodies (_apply_square_slot_reflection).
+## A caller that relies on the block having
 ## been dealt where its men stand reads this one. Pure.
 func _slot_body_deal_pending(count: int, files: int) -> bool:
-	if in_square():
-		return _square_slot_body_deal_pending(count, files)
-	if _effective_file_major_reform():
+	if in_square() or _effective_file_major_reform():
 		return _slot_deal_pending(count, files)
 	return _row_slot_body_deal_pending(count, files)
 
@@ -8368,12 +8369,17 @@ func _apply_square_slot_reflection(count: int, files: int) -> void:
 	var pairing: PackedInt32Array = UnitFormation.depth_reflection_pairing(count, files)
 	if count <= 0 or pairing.size() != count:
 		return
-	# A deal has already done this job. _slot_frame_positions reads the mirror that the caller
-	# armed a moment ago, so a pairing computed from live bodies lands them in the frame the
-	# render will actually use -- the depth reflection is baked into it. Composing again would
-	# undo it and leave the bare lateral mirror standing, which walks the whole block through
-	# itself: the exact defect this reflection exists to prevent. A close-up or an extension
-	# worked out from the cells reads no body, so the reflection is still owed over it.
+	# An assignment out of step with (count, files) is dealt again from the bodies here, even a
+	# headcount change an ordinary query would close up from the cells: on a grid whose short
+	# rank is centred, the reflection composed over a close-up sends the outer files' men the
+	# whole depth of the block, where a deal from where the men stand sends none more than half
+	# of it. The deal has then done this job. _slot_frame_positions reads the mirror that the
+	# caller armed a moment ago, so a pairing computed from live bodies lands them in the frame
+	# the render will actually use -- the depth reflection is baked into it. Composing again
+	# would undo it and leave the bare lateral mirror standing, which walks the whole block
+	# through itself: the exact defect this reflection exists to prevent.
+	if _sim_soldier_square_slot.size() != count or _square_slot_files != files:
+		_square_slot_files = -1
 	var grid: PackedVector2Array = UnitFormation.block_slots(count, files, file_pitch_wu())
 	if _ensure_square_slot_assignment(count, files, grid):
 		return
