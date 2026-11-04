@@ -52,15 +52,26 @@ func _max_slot_shift(a: PackedVector2Array, b: PackedVector2Array) -> float:
 	return worst
 
 
-func test_a_small_reface_in_contact_wheels_the_heading_at_the_bounded_rate() -> void:
+## One tick of the wheel as _think runs it: the turn flags clear at the top of every tick, and
+## the wheel ran on the tick before when `followed` (GUT calls within one test share a physics
+## frame, so the tick stamp is set by hand).
+func _wheel_tick(u: Unit, e: Unit, followed: bool) -> bool:
+	u._is_facing_turning = false
+	u._facing_turn_step = 0.0
+	u._combat_wheel_tick = Engine.get_physics_frames() - (1 if followed else 5)
+	return u._face_for_action(e.position, DT, e)
+
+
+func test_a_small_reface_in_contact_wheels_the_heading_from_rest() -> void:
 	var u := _make_block()
 	var e := _make_enemy(_bearing_point(30.0))
-	var rate: float = u.bounded_turn_rate()
-	assert_lt(rate * DT, deg_to_rad(30.0), "sanity: one tick of the bound is far short of the turn")
+	var radius: float = u._formation_local_half_extents().length()
+	var first: float = u.bounded_turn_accel(radius) * DT * DT
+	assert_lt(first, deg_to_rad(30.0), "sanity: one tick from rest is far short of the turn")
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
-	assert_true(u._face_for_action(e.position, DT, e), "the block reports itself faced and fights on")
-	assert_almost_eq(absf(Vector2.DOWN.angle_to(u.facing)), rate * DT, FACING_TOL,
-		"the heading turns one tick of the bounded rate toward the enemy")
+	assert_true(_wheel_tick(u, e, false), "30 degrees off, the block fights on as it wheels")
+	assert_almost_eq(absf(Vector2.DOWN.angle_to(u.facing)), first, FACING_TOL,
+		"from rest the heading turns one tick of bounded_turn_accel toward the enemy")
 	assert_gt(Vector2.DOWN.angle_to(u.facing) * deg_to_rad(30.0), 0.0, "and it turns toward him")
 	assert_lt(_max_slot_shift(before, u.soldier_world_slots(u.soldiers)), u.jog_speed * DT + SWEEP_TOL,
 		"no slot sweeps faster than the men can jog")
@@ -68,16 +79,65 @@ func test_a_small_reface_in_contact_wheels_the_heading_at_the_bounded_rate() -> 
 	assert_eq(u._formation_angle, 0.0, "nothing is folded into the grid")
 
 
+func test_the_wheel_builds_to_the_bounded_rate_and_no_faster() -> void:
+	var u := _make_block()
+	var e := _make_enemy(_bearing_point(70.0))
+	var rate: float = u.bounded_turn_rate()
+	var worst := 0.0
+	var bearing: float = (e.position - u.position).angle()
+	for i in range(240):
+		var prev: float = u.facing.angle()
+		if absf(angle_difference(prev, bearing)) <= u.combat_reface_snap_turn:
+			break   # the last few degrees snap
+		_wheel_tick(u, e, i > 0)
+		worst = maxf(worst, absf(angle_difference(prev, u.facing.angle())))
+	assert_almost_eq(worst, rate * DT, FACING_TOL, "the wheel's fastest tick is the bounded rate")
+
+
 func test_the_wheel_reaches_the_enemy_and_then_holds_on_him() -> void:
 	var u := _make_block()
 	var e := _make_enemy(_bearing_point(30.0))
-	var ticks: int = int(ceil(deg_to_rad(30.0) / (u.bounded_turn_rate() * DT))) + 2
-	for i in range(ticks):
-		u._is_facing_turning = false   # cleared at the top of every tick
-		u._facing_turn_step = 0.0
-		u._face_for_action(e.position, DT, e)
+	for i in range(600):
+		_wheel_tick(u, e, i > 0)
 	assert_almost_eq(u.facing.angle(), (e.position - u.position).angle(), FACING_TOL,
 		"the heading comes onto the enemy")
+
+
+func test_the_wheel_withholds_blows_past_the_fight_tolerance() -> void:
+	var u := _make_block()
+	var e := _make_enemy(_bearing_point(70.0))
+	assert_gt(deg_to_rad(70.0), Unit.ENGAGE_TURN_FIGHT_TOLERANCE, "sanity: past the tolerance")
+	assert_lt(deg_to_rad(70.0), Unit.ENGAGE_TURN_THRESHOLD, "sanity: under the turn-in-place threshold")
+	assert_false(_wheel_tick(u, e, false), "70 degrees off its enemy, the block does not strike")
+	var faced := false
+	for i in range(600):
+		faced = _wheel_tick(u, e, true)
+		var off: float = absf(angle_difference(u.facing.angle(), (e.position - u.position).angle()))
+		assert_eq(faced, off <= Unit.ENGAGE_TURN_FIGHT_TOLERANCE,
+			"it strikes exactly when its front is within the tolerance, as after a turn in place")
+		if faced:
+			break
+	assert_true(faced, "and once the wheel brings its front to bear it fights")
+
+
+func test_a_resquare_hold_shortens_the_wheel_and_the_rate_records_it() -> void:
+	var u := _make_block()
+	var e := _make_enemy(_bearing_point(30.0))
+	for i in range(30):
+		_wheel_tick(u, e, i > 0)
+	var free_rate: float = u._combat_wheel_rate
+	assert_gt(absf(free_rate), 0.0, "sanity: the wheel is turning")
+	# An order's re-square closing the same way the wheel turns holds the pivot back
+	# (_hold_pivot_for_resquare), so the wheel takes less than its own step.
+	u._grid_lag = -signf(free_rate) * deg_to_rad(40.0)
+	u._grid_lag_resquare = true
+	u._grid_lag_rate = signf(free_rate) * u.bounded_turn_rate()
+	var prev: float = u.facing.angle()
+	_wheel_tick(u, e, true)
+	var turned: float = angle_difference(prev, u.facing.angle())
+	assert_lt(absf(turned), absf(free_rate) * DT, "the hold shortens the wheel's step")
+	assert_almost_eq(u._combat_wheel_rate, turned / DT, FACING_TOL,
+		"the carried rate is the turn actually made")
 
 
 func test_a_correction_within_the_snap_turn_still_snaps() -> void:

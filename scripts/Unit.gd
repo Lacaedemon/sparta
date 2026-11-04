@@ -4658,7 +4658,7 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		if _in_enemy_contact and _cavalry_inside_foot_footprint(enemy_unit):
 			_face_dir(dir, true)
 		elif _in_enemy_contact:
-			_wheel_combat_reface(dir, offset, delta, enemy_unit)
+			return _wheel_combat_reface(dir, offset, delta, enemy_unit)
 		else:
 			_face_dir(dir)
 		return true
@@ -4675,40 +4675,54 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 
 
 ## Turn the heading of a cavalry block in enemy contact `offset` (rad, under
-## ENGAGE_TURN_THRESHOLD) onto `dir` as a bounded wheel: at most bounded_turn_rate a second, the
-## rate at which the block's corner slot sweeps sideways at jog_speed, the pace the men close on
-## a moving slot. The slot grid is laid out from the heading, so it turns with it, and the riders
-## can keep their places as it does. A snap (_face_dir) turned the whole grid about the anchor in
-## one tick while the riders, held in the press, stayed where they stood. A troop of horse stands
-## deep (its ranks 120 wu apart), so its corner slot moved its radius times the turn at once,
-## hundreds of world units for a few tens of degrees, and a troop that swung onto its enemy that
-## way could leave the fight formed but with its grid a quarter-turn off its riders. The heading
-## reaches the enemy no faster than the wheel, but the block still reports itself faced and
-## fights on, as it did after a snap.
-## A foot block still snaps: it is compact, so a snap moves its corner far less, and wheeling it
-## changed how a fight with horse runs. In the cycle_charge_flee clip the infantry, wheeling
-## onto riders sweeping round it, then chased them at a run and was back in contact at ticks
-## 1200, 1560 and 2160; in the same matchup test_infantry_respreads_after_melee_exit found it
-## not yet opened back out to its file pitch by tick 3000, against tick 1009 when it snaps.
-## A re-face onto a routing `enemy_unit` still snaps: a pursuer in contact has to keep its front
-## on a quarry that turns away from it as fast as it flees. Wheeling it left the lead squadron
-## of the rout_rally clip fighting its router on the move with its front off it, landing few
-## blows, so the router was not cut down until ticks 760 to 800 on seeds 0 and 1, after the clip
-## ends at tick 720, instead of about tick 650.
-## So does a re-face onto an enemy standing in a square or schiltron: the contact point on an
-## omnidirectional block jumps round its faces as the riders slide along it, a wheel falls
-## behind it, and once the offset passes ENGAGE_TURN_THRESHOLD the troop turns in place, again
-## and again. In the anti-cav-square clip the charging squadron's heading went from 74 to -179
-## degrees over ticks 380 to 440 that way, and its shape residual from passing to 49.5.
-## A re-face within combat_reface_snap_turn still snaps too (the bearing to a pressed enemy
-## wanders that much tick to tick), and so does any re-face on a far-tier block, which has no
-## bodies on its slots.
-func _wheel_combat_reface(dir: Vector2, offset: float, delta: float, enemy_unit: Unit = null) -> void:
+## ENGAGE_TURN_THRESHOLD) onto `dir` as a bounded wheel, and return whether the block is faced
+## enough to strike. The slot grid is laid out from the heading, so it turns with it. A snap
+## (_face_dir) turned the whole grid about the anchor in one tick while the riders, held in the
+## press, stayed where they stood: a troop of horse stands deep, so its corner slot moved its
+## radius times the turn at once, and a troop that swung onto its enemy that way could leave the
+## fight formed but with its grid far off its riders. The wheel turns at most bounded_turn_rate,
+## the rate at which the corner slot sweeps sideways at jog_speed, the pace the riders close on
+## a moving slot, and its rate builds and sheds at bounded_turn_accel (bounded_turn_step), as the
+## other bounded grid turns do. The rate carries from one tick to the next in _combat_wheel_rate
+## while the wheel runs on consecutive ticks, and starts from rest otherwise; it records the turn
+## actually made, after any hold _rotate_facing_toward applies for an order's re-square
+## (_hold_pivot_for_resquare). Like a turn in place (_advance_turn), the block withholds its
+## blows while its heading is more than ENGAGE_TURN_FIGHT_TOLERANCE off the enemy.
+## Some re-faces still snap, each for its own reason:
+## - one within combat_reface_snap_turn: the bearing to a pressed enemy wanders that much tick
+##   to tick, and wheeling it held the heading back off its enemy for the whole melee;
+## - one by a foot block: a foot block is compact, so a snap moves its corner far less, and
+##   wheeling it changed how a fight with horse runs (test_infantry_respreads_after_melee_exit:
+##   the infantry, wheeling onto riders sweeping round it, kept meeting them and did not open
+##   back out to its file pitch in time);
+## - one onto a routing enemy: a pursuer in contact has to keep its front on a quarry that turns
+##   away from it as fast as it flees, or it lands few blows and the router gets away;
+## - one onto an enemy in a square or schiltron: the contact point on an omnidirectional block
+##   jumps round its faces as the riders slide along it, so a wheel falls behind it until the
+##   offset passes ENGAGE_TURN_THRESHOLD and the troop turns in place, again and again;
+## - one by a far-tier block, which has no bodies on its slots.
+## A gate on the bearing's own rate (snap whenever the contact bearing moves faster than the
+## wheel can follow) was measured instead of the last two and kept neither need: a router or a
+## square's contact point does not always move that fast, and a deep troop's bearing to an enemy
+## pressed against it does, so the gate snapped most of the re-faces the wheel exists for.
+func _wheel_combat_reface(dir: Vector2, offset: float, delta: float, enemy_unit: Unit = null) -> bool:
+	var tick: int = Engine.get_physics_frames()
+	var followed: bool = _combat_wheel_tick == tick - 1
+	_combat_wheel_tick = tick
 	if offset <= combat_reface_snap_turn or tier == FormationTier.FAR or not is_cavalry \
 			or (enemy_unit != null and (enemy_unit.state == State.ROUTING or enemy_unit.in_square())):
+		_combat_wheel_rate = 0.0
 		_face_dir(dir)
-		return
-	_rotate_facing_toward(dir, delta, bounded_turn_rate())
+		return true
+	var radius: float = _formation_local_half_extents().length()
+	var diff: float = angle_difference(facing.angle(), dir.angle())
+	var rate: float = bounded_turn_step(_combat_wheel_rate if followed else 0.0, diff,
+			bounded_turn_rate(radius), bounded_turn_accel(radius), delta)
+	var before: float = _facing_turn_step
+	if rate != 0.0 and signf(rate) == signf(diff):
+		_rotate_facing_toward(dir, delta, absf(rate))
+	_combat_wheel_rate = (_facing_turn_step - before) / delta if delta > 0.0 else 0.0
+	return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
 
 
 ## Whether `enemy_unit` is a ROUTING regiment streaming out through this block. It starts
@@ -6719,19 +6733,24 @@ const ENGAGE_TURN_THRESHOLD: float = deg_to_rad(75.0)
 # the line to bear before it fights, but it need not be dead-on. Slightly under a flank
 # boundary so a re-faced unit lands frontal blows.
 const ENGAGE_TURN_FIGHT_TOLERANCE: float = deg_to_rad(50.0)
-# The largest re-face (rad) a cavalry block in enemy contact still snaps onto its enemy in one tick
-# (_wheel_combat_reface); a larger one, up to ENGAGE_TURN_THRESHOLD, wheels the heading and
+# The largest re-face (rad) a cavalry block in enemy contact still snaps onto its enemy in one
+# tick (_wheel_combat_reface); a larger one, up to ENGAGE_TURN_THRESHOLD, wheels the heading and
 # grid together at bounded_turn_rate. The bearing from a block pressed in a melee to its enemy
 # wanders a little every tick as the men jostle: the pursuer of the trapped_routing clip turns
 # 1.1 to 3.5 degrees per 2 ticks over its first 10 ticks in contact and under 1 degree per 2
-# ticks after. Wheeling those too (no snap at all) left that 80-horse block's heading up to
-# 9.8 degrees off where it turned before, which changed the press and took the router it
-# fought 34 wu further along its flight by tick 680; with the snap at 2 or 3 degrees the router
-# stood 4.3 wu from where it stood before there, while the re-faces this bounds (8 to 57
-# degrees per 2 ticks in the sweep_routers and chase clips) still wheel. A snap this size moves a corner slot 500 wu from
-# the anchor by about 26 wu. Default for combat_reface_snap_turn.
+# ticks after. Wheeling those too (no snap at all) left that 80-horse block's heading up to 9.8
+# degrees off where it turned before, which changed the press and took the router it fought 34
+# wu further along its flight by tick 680; with the snap at 2 or 3 degrees the router stood 4.3
+# wu from where it stood before there, while the re-faces this bounds (8 to 57 degrees per 2
+# ticks in the sweep_routers and chase clips) still wheel. A snap this size moves a corner slot
+# 500 wu from the anchor by about 26 wu. Default for combat_reface_snap_turn.
 const COMBAT_REFACE_SNAP_TURN: float = deg_to_rad(3.0)
 var combat_reface_snap_turn: float = COMBAT_REFACE_SNAP_TURN
+# The bounded wheel's state between ticks (_wheel_combat_reface): the rate (rad/s, signed) it
+# turned the heading at, and the physics tick it last ran on. A wheel that did not run on the
+# tick before starts again from rest.
+var _combat_wheel_rate: float = 0.0
+var _combat_wheel_tick: int = -2
 # Beyond this heading offset (radians) an instant facing snap (_face_dir) folds the jump into
 # _formation_angle instead of leaving soldier_world_slots' facing-relative grid to swap every
 # slot to the new side of the block. Below it _face_dir leaves the change unfolded, so the
@@ -12192,6 +12211,7 @@ func to_snapshot_dict() -> Dictionary:
 		"router_contact_reentry_frac": router_contact_reentry_frac,
 		"melee_reface_fold_footprint_scale": melee_reface_fold_footprint_scale,
 		"combat_reface_snap_turn": combat_reface_snap_turn,
+		"combat_wheel_rate": _combat_wheel_rate, "combat_wheel_tick": _combat_wheel_tick,
 		"interior_strike_margin": interior_strike_margin,
 		"melee_front_line_scale": melee_front_line_scale,
 		"melee_front_line_min_cos": melee_front_line_min_cos,
@@ -12477,6 +12497,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	melee_reface_fold_footprint_scale = float(d.get("melee_reface_fold_footprint_scale",
 			melee_reface_fold_footprint_scale))
 	combat_reface_snap_turn = float(d.get("combat_reface_snap_turn", combat_reface_snap_turn))
+	_combat_wheel_rate = float(d.get("combat_wheel_rate", _combat_wheel_rate))
+	_combat_wheel_tick = int(d.get("combat_wheel_tick", _combat_wheel_tick))
 	interior_strike_margin = float(d.get("interior_strike_margin", interior_strike_margin))
 	melee_front_line_scale = float(d.get("melee_front_line_scale", melee_front_line_scale))
 	melee_front_line_min_cos = float(d.get("melee_front_line_min_cos", melee_front_line_min_cos))

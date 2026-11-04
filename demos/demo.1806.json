@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/melee-reface-wheels-1806.json",
-  "caption": "A deep cavalry squadron on Hold is attacked by an infantry block that comes into contact about 45 degrees off its front. The squadron now wheels round onto the infantry no faster than the riders on its corners can jog, and fights on while it turns, so its riders keep their places in the ranks. Before this fix its heading snapped round 45 degrees in one tick and the whole formation swung with it while the riders, held in the fight, stood where they were: 23 of the 60 riders found their place on the far side of the squadron and the farthest place lay 282 wu sideways of its rider. The squadron then lost contact, swung again each time it came back, and by tick 360 had its ranks turned more than a quarter of the way round off its riders.",
+  "input": "demos/inputs/run-order-keeps-ranks-1806.json",
+  "caption": "A 120-man infantry block facing north is ordered to run to a point about 40 degrees east of north. A run order marches without a formed pivot, so its heading turns onto the march at once. The block's formation now stays where its men stand and swings round after the heading no faster than the men on its corners can jog, so the block sets off in good order and no man has to cross it. Before this fix the whole formation swung 40 degrees under the men in the same tick: six men's places jumped across the block, the men stood on average almost 3 m from their places, and the block marched off trailing them, a little slower than it does now.",
   "fixed_fps": 30,
-  "max_frames": 200,
+  "max_frames": 180,
   "fps": 15,
   "width": 720
 }
