@@ -276,3 +276,22 @@ func test_a_wheel_restored_from_a_snapshot_carries_on_at_its_saved_rate() -> voi
 	r._face_for_action(e.position, DT, e)
 	assert_almost_eq(r._combat_wheel_rate, rate + r.bounded_turn_accel(radius) * DT, 1e-4,
 		"the restored wheel builds on its saved rate rather than starting from rest")
+
+
+func test_a_wheel_closer_than_one_step_lands_exactly_on_the_bearing() -> void:
+	var u := _make_block()
+	var deg := 4.0
+	assert_gt(deg_to_rad(deg), u.combat_reface_snap_turn, "sanity: past the snap turn, so it wheels")
+	var e := _make_enemy(_bearing_point(deg))
+	# A wheel still carrying a fast rate from the tick before: one tick's step at that rate is
+	# longer than the offset left.
+	u._combat_wheel_rate = 10.0
+	assert_gt(u._combat_wheel_rate * DT, deg_to_rad(deg), "sanity: one step overshoots the bearing")
+	_wheel_tick(u, e, true)
+	assert_almost_eq(u.facing.angle(), (e.position - u.position).angle(), FACING_TOL,
+		"the heading stops on the bearing rather than past it")
+
+
+func test_no_enemy_is_not_inside_the_footprint() -> void:
+	var u := _make_block()
+	assert_false(u._enemy_inside_own_footprint(null), "a missing enemy stands nowhere")
