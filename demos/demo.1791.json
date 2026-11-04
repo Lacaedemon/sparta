@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/scrambled-reform-standoff-1791.json",
+  "caption": "An 80-man infantry block on 12 files is dragged into a 9-file line just ahead of it, and re-forms in place before it marches off. Its men walk across the files to their places in the narrower, deeper block. They now keep their distance from one another as they cross, the closest two staying 6.2 wu apart. Before this fix the men stopped keeping apart for the whole of a reform hold, and walked through one another: two of them came within 0.49 wu, where two bodies need 9 wu. The same thing let a block scrambled by a fight walk its men through each other as it re-formed on its next order (the showcase clip's archers).",
+  "fixed_fps": 30,
+  "max_frames": 200,
+  "fps": 15,
+  "width": 720
+}

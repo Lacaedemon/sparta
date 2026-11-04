@@ -945,9 +945,18 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 
 	# Same-unit standoff is gated off whenever soldiers deliberately pass through each other
 	# along file lanes: an in-place maneuver turn/wheel (rigid rotation, no crossing to
-	# resolve), a REFORM leaf hold, or a still-in-flight mirror reform (an about-face fold
-	# whose bodies have not yet reached their re-squared slots -- the reflection genuinely
-	# crosses files through the block).
+	# resolve), a REFORM leaf hold of a block in good order, or a still-in-flight mirror
+	# reform (an about-face fold whose bodies have not yet reached their re-squared slots --
+	# the reflection genuinely crosses files through the block).
+	#
+	# A REFORM hold of a block out of good order (any unengaged man more than
+	# unit.standoff_off_slot_pitches file pitches off his slot) is not a pass-through: its men
+	# are walking back to their slots from wherever a fight or a march left them, each
+	# straight at his own slot, and nothing about the hold routes them along file lanes. With
+	# the pass gated off they walked through each other: an archer block re-forming after a
+	# fight that had scrambled it (the showcase clip's uid 7) brought two men within 0.87 wu,
+	# against 9 wu for two bodies. A block still crossing in a mirror reform keeps the gate
+	# through the mirror clause.
 	#
 	# The bare _formation_mirror_x flag is NOT the right test: it stays armed until the next
 	# fresh order, long after any traversal finished -- including a hold_ground reform, which
@@ -960,9 +969,11 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	# Gating it off let bodies pass fully through each other with zero clearance instead
 	# (measured: worst-case nnd collapsed from ~2.2 wu to ~0.13 wu on demos/inputs/
 	# file-doubling.json), worse than the near-miss standoff was meant to fix.
+	var off_slot_dist: float = unit.standoff_off_slot_pitches * unit.file_pitch_wu()
 	var deliberate_pass_through: bool = unit.is_maneuver_turning() \
-			or unit._reform_holding() \
-			or (unit._formation_mirror_x and not unit._reform_bodies_settled())
+			or (unit._formation_mirror_x and not unit._reform_bodies_settled()) \
+			or (unit._reform_holding()
+					and not _any_body_off_slot(unit, n, target_slots, is_engaged, off_slot_dist))
 	if deliberate_pass_through:
 		return PackedVector2Array()
 
@@ -988,8 +999,7 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	# his slot.
 	if unit.state != Unit.State.FIGHTING \
 			and Engine.get_physics_frames() > unit._standoff_settle_until_tick \
-			and not _any_body_off_slot(unit, n, target_slots, is_engaged,
-					unit.standoff_off_slot_pitches * unit.file_pitch_wu()):
+			and not _any_body_off_slot(unit, n, target_slots, is_engaged, off_slot_dist):
 		return PackedVector2Array()
 
 	var body_radius: float = unit.soldier_body_radius()
