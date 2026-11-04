@@ -141,3 +141,13 @@ func test_a_reface_onto_a_routing_enemy_still_snaps() -> void:
 	u._face_for_action(e.position, DT, e)
 	assert_almost_eq(u.facing.angle(), (e.position - u.position).angle(), FACING_TOL,
 		"a pursuer in contact keeps its front on a fleeing enemy")
+
+
+func test_a_reface_onto_a_square_still_snaps() -> void:
+	var u := _make_block()
+	var e := _make_enemy(_bearing_point(30.0))
+	e.formation_mode = Unit.FORMATION_SQUARE
+	assert_true(e.in_square(), "sanity: the enemy stands in a square")
+	u._face_for_action(e.position, DT, e)
+	assert_almost_eq(u.facing.angle(), (e.position - u.position).angle(), FACING_TOL,
+		"a troop keeps snapping onto an omnidirectional block")

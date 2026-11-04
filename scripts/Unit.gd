@@ -4695,12 +4695,17 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 ## of the rout_rally clip fighting its router on the move with its front off it, landing few
 ## blows, so the router was not cut down until ticks 760 to 800 on seeds 0 and 1, after the clip
 ## ends at tick 720, instead of about tick 650.
+## So does a re-face onto an enemy standing in a square or schiltron: the contact point on an
+## omnidirectional block jumps round its faces as the riders slide along it, a wheel falls
+## behind it, and once the offset passes ENGAGE_TURN_THRESHOLD the troop turns in place, again
+## and again. In the anti-cav-square clip the charging squadron's heading went from 74 to -179
+## degrees over ticks 380 to 440 that way, and its shape residual from passing to 49.5.
 ## A re-face within combat_reface_snap_turn still snaps too (the bearing to a pressed enemy
 ## wanders that much tick to tick), and so does any re-face on a far-tier block, which has no
 ## bodies on its slots.
 func _wheel_combat_reface(dir: Vector2, offset: float, delta: float, enemy_unit: Unit = null) -> void:
 	if offset <= combat_reface_snap_turn or tier == FormationTier.FAR or not is_cavalry \
-			or (enemy_unit != null and enemy_unit.state == State.ROUTING):
+			or (enemy_unit != null and (enemy_unit.state == State.ROUTING or enemy_unit.in_square())):
 		_face_dir(dir)
 		return
 	_rotate_facing_toward(dir, delta, bounded_turn_rate())
