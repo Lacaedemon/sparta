@@ -211,3 +211,13 @@ func test_a_reface_onto_a_square_still_snaps() -> void:
 	u._face_for_action(e.position, DT, e)
 	assert_almost_eq(u.facing.angle(), (e.position - u.position).angle(), FACING_TOL,
 		"a troop keeps snapping onto an omnidirectional block")
+
+
+func test_an_enemy_inside_the_block_is_struck_while_the_wheel_turns() -> void:
+	# The bearing from the anchor to an enemy among the ranks names no front, and one circling
+	# close to the anchor can keep the heading a constant angle behind it.
+	var u := _make_block()
+	var e := _make_enemy(u.position + Vector2.DOWN.rotated(deg_to_rad(70.0)) * 10.0)
+	assert_true(u._enemy_inside_own_footprint(e), "sanity: the enemy stands inside the footprint")
+	assert_true(_wheel_tick(u, e, false), "the block strikes an enemy inside its own ranks")
+	assert_lt(absf(Vector2.DOWN.angle_to(u.facing)), deg_to_rad(10.0), "while its heading still wheels")

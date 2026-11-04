@@ -1854,15 +1854,22 @@ roughly a quarter-turn or more off its current front --- attacked in the flank, 
 sent to hit a foe off to one side --- it does **not** snap its facing round.
 Instead the whole line **turns in place** to bring its front to bear, the men
 holding their ground as the block pivots, and it withholds its blows until it
-has come about. A small correction still fights at once, so a unit
-already roughly fronting its target loses no time.
+has come about.
+A small correction still fights at once,
+so a unit already roughly fronting its target loses no time.
 Most units snap round onto the enemy.
 A cavalry troop already in contact, whose ranks stand far deeper than a foot block's,
-wheels onto its enemy instead when the correction is more than a few degrees,
-no faster than the riders on its corners can jog,
+wheels onto its enemy instead when the correction is more than a few degrees.
+It wheels no faster than the riders on its corners can jog,
 so its ranks stay with its riders instead of swinging round under them,
 and it leaves the fight still square to its riders.
-The troop keeps fighting while it wheels. The upshot: catching a unit on
+It keeps fighting while it wheels,
+unless its front is still more than 50 degrees off the enemy,
+in which case it holds its blows until it has come round, as a block turning in place does.
+A troop still snaps round onto a routing enemy, so it keeps its front on a quarry that flees,
+and onto an enemy formed in a square or schiltron, whose faces it slides along.
+
+The upshot: catching a unit on
 the flank buys you a genuine window --- it must turn to answer you before it can
 strike back --- so a flank attack rewards you both with the flank casualty bonus
 *and* the beat the enemy spends coming about. Once the turn settles, the unit

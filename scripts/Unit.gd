@@ -4687,7 +4687,11 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 ## while the wheel runs on consecutive ticks, and starts from rest otherwise; it records the turn
 ## actually made, after any hold _rotate_facing_toward applies for an order's re-square
 ## (_hold_pivot_for_resquare). Like a turn in place (_advance_turn), the block withholds its
-## blows while its heading is more than ENGAGE_TURN_FIGHT_TOLERANCE off the enemy.
+## blows while its heading is more than ENGAGE_TURN_FIGHT_TOLERANCE off the enemy, unless the
+## enemy's centre stands inside the block's own footprint (_enemy_inside_own_footprint): the
+## bearing from the anchor to a point among the ranks names no front, and a small enemy circling
+## close to the anchor can turn that bearing as fast as the wheel turns, holding the heading a
+## constant angle behind it and the blows withheld for as long as the fight lasts.
 ## Some re-faces still snap, each for its own reason:
 ## - one within combat_reface_snap_turn: the bearing to a pressed enemy wanders that much tick
 ##   to tick, and wheeling it held the heading back off its enemy for the whole melee;
@@ -4722,7 +4726,18 @@ func _wheel_combat_reface(dir: Vector2, offset: float, delta: float, enemy_unit:
 	if rate != 0.0 and signf(rate) == signf(diff):
 		_rotate_facing_toward(dir, delta, absf(rate))
 	_combat_wheel_rate = (_facing_turn_step - before) / delta if delta > 0.0 else 0.0
-	return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
+	return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE \
+			or _enemy_inside_own_footprint(enemy_unit)
+
+
+## Whether `enemy_unit`'s centre stands inside this block's own slot footprint (its half extents
+## in its grid's frame, about the anchor).
+func _enemy_inside_own_footprint(enemy_unit: Unit) -> bool:
+	if enemy_unit == null:
+		return false
+	var half: Vector2 = soldier_block_half_extents()
+	var local: Vector2 = (enemy_unit.position - position).rotated(-soldier_block_world_angle())
+	return absf(local.x) <= half.x and absf(local.y) <= half.y
 
 
 ## Whether `enemy_unit` is a ROUTING regiment streaming out through this block. It starts
