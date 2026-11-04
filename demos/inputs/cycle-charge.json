@@ -147,7 +147,7 @@
         1,
         3
       ],
-      "reason": "Measured 2026-11-03 on dense 2-tick FULL dumps with every exemption removed, Windows, seeds 0 to 4, on c078f6cd and on the merge-base b055ef7f. uid 1 (the player Infantry, pressed by the enemy foot) dips to nnd_min 2.32, 2.18, 2.32, 2.24 and 2.19 wu against its 2.25 wu floor on both trees alike, failing on seeds 1, 3 and 4: press compression in the infantry melee. uid 3 (the player's charging cavalry) reads 6.76, 4.96, 6.03, 5.71 and 3.91 wu against its 5.0 wu floor here, failing on seeds 1 and 4 (5.16, 0.76, 3.56, 6.23 and 3.73 on the merge-base): in the charge turnaround mounts about 150 wu off their slots swap sides across each other and pass close as they do, which #1804 tracks. On the clip's own ticks both read STALE (uid 1 17.99 wu, uid 3 6.76 wu), the dense-only case #1821 tracks for this clip."
+      "reason": "Measured 2026-11-03 on dense 2-tick FULL dumps with every exemption removed, Windows, seeds 0 to 4, on c078f6cd and on the merge-base b055ef7f. uid 1 (the player Infantry, pressed by the enemy foot) dips to nnd_min 2.32, 2.18, 2.32, 2.24 and 2.19 wu against its 2.25 wu floor on both trees alike, failing on seeds 1, 3 and 4: press compression in the infantry melee, tracked by #1911. uid 3 (the player's charging cavalry) reads 6.76, 4.96, 6.03, 5.71 and 3.91 wu against its 5.0 wu floor here, failing on seeds 1 and 4 (5.16, 0.76, 3.56, 6.23 and 3.73 on the merge-base): in the charge turnaround mounts about 150 wu off their slots swap sides across each other and pass close as they do, which #1804 tracks. On the clip's own ticks both read STALE (uid 1 17.99 wu, uid 3 6.76 wu), the dense-only case #1821 tracks for this clip."
     },
     "facing_flutter": {
       "uids": [
