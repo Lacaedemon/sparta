@@ -4649,11 +4649,18 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	# time, on every tick the block is out of contact (_bleed_absorbed_fold), or with the rest of
 	# the fold by an order (_square_fold_for_order) or the rally. A later engage settle, snap or
 	# folded lag drops the count, and then only an order or the rally squares the fold.
-	# Every other small re-face turns the grid with the heading, as before: holding the grid
-	# back as a march does (_reface) let foot blocks in a melee grind into each other and held
-	# a block that broke in the press, and a troop of horse keeps its own front to follow.
+	# Every other small re-face turns the grid with the heading: holding the grid back as a
+	# march does (_reface) let foot blocks in a melee grind into each other and held a block
+	# that broke in the press, and a troop of horse keeps its own front to follow. In contact
+	# the two turn together as a bounded wheel (_wheel_combat_reface), so the grid never turns
+	# faster than the men on its corners can follow.
 	if offset <= ENGAGE_TURN_THRESHOLD:
-		_face_dir(dir, _in_enemy_contact and _cavalry_inside_foot_footprint(enemy_unit))
+		if _in_enemy_contact and _cavalry_inside_foot_footprint(enemy_unit):
+			_face_dir(dir, true)
+		elif _in_enemy_contact:
+			_wheel_combat_reface(dir, offset, delta)
+		else:
+			_face_dir(dir)
 		return true
 	# Large offset: begin a turn-in-place. Men hold their positions (arrival frozen) while
 	# facing rotates; the strike is withheld until the front comes to bear. Capture the
@@ -4665,6 +4672,25 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	if _advance_turn(_engage_turn_target, delta):
 		_settle_engage_turn()
 	return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
+
+
+## Turn the heading of a block in enemy contact `offset` (rad, under ENGAGE_TURN_THRESHOLD) onto
+## `dir` as a bounded wheel: at most bounded_turn_rate a second, the rate at which the block's
+## corner slot sweeps sideways at jog_speed, the pace the men close on a moving slot. The slot
+## grid is laid out from the heading, so it turns with it, and the men can keep their places as
+## it does. A snap (_face_dir) turned the whole grid about the anchor in one tick while the men,
+## held in the press, stayed where they stood: a deep block's corner slot moved its radius times
+## the turn at once, hundreds of world units for a few tens of degrees, and a block that swung
+## onto its enemy that way could leave the fight formed but with its grid a quarter-turn off its
+## men. The heading reaches the enemy no faster than the wheel, but the block still reports
+## itself faced and fights on, as it did after a snap. A re-face within combat_reface_snap_turn
+## still snaps (the bearing to a pressed enemy wanders that much tick to tick), and so does any
+## re-face on a far-tier block, which has no bodies on its slots.
+func _wheel_combat_reface(dir: Vector2, offset: float, delta: float) -> void:
+	if offset <= combat_reface_snap_turn or tier == FormationTier.FAR:
+		_face_dir(dir)
+		return
+	_rotate_facing_toward(dir, delta, bounded_turn_rate())
 
 
 ## Whether `enemy_unit` is a ROUTING regiment streaming out through this block. It starts
@@ -4785,7 +4811,9 @@ func _settle_engage_turn() -> void:
 ## heading tick by tick without a formed pivot goes through _reface instead, which keeps the
 ## grid where the men stand and lets it follow at a bounded rate. A combat re-face
 ## (_face_for_action) and a form-up hold still snap here (a form-up reshapes its frontage in
-## the same tick), except a combat re-face on riders inside a foot block, which sets `absorb`.
+## the same tick), except a combat re-face on riders inside a foot block, which sets `absorb`,
+## and one in enemy contact larger than combat_reface_snap_turn, which wheels the heading and
+## grid together at a bounded rate instead (_wheel_combat_reface).
 ## A LARGE snap (e.g. an idle unit's
 ## very first move order firing while it still faces its spawn heading, or a combat chase
 ## target appearing behind it) would instead swap every slot to the opposite side of the
@@ -6673,6 +6701,19 @@ const ENGAGE_TURN_THRESHOLD: float = deg_to_rad(75.0)
 # the line to bear before it fights, but it need not be dead-on. Slightly under a flank
 # boundary so a re-faced unit lands frontal blows.
 const ENGAGE_TURN_FIGHT_TOLERANCE: float = deg_to_rad(50.0)
+# The largest re-face (rad) a block in enemy contact still snaps onto its enemy in one tick
+# (_wheel_combat_reface); a larger one, up to ENGAGE_TURN_THRESHOLD, wheels the heading and
+# grid together at bounded_turn_rate. The bearing from a block pressed in a melee to its enemy
+# wanders a little every tick as the men jostle: the pursuer of the trapped_routing clip turns
+# 1.1 to 3.5 degrees per 2 ticks over its first 10 ticks in contact and under 1 degree per 2
+# ticks after. Wheeling those too (no snap at all) left that 80-horse block's heading up to
+# 9.8 degrees off where it turned before, which changed the press and took the router it
+# fought 34 wu further along its flight by tick 680; with the snap at 2 or 3 degrees the router
+# stood 4.3 wu from where it stood before there, while the re-faces this bounds (8 to 57
+# degrees per 2 ticks in the sweep_routers and chase clips) still wheel. A snap this size moves a corner slot 500 wu from
+# the anchor by about 26 wu. Default for combat_reface_snap_turn.
+const COMBAT_REFACE_SNAP_TURN: float = deg_to_rad(3.0)
+var combat_reface_snap_turn: float = COMBAT_REFACE_SNAP_TURN
 # Beyond this heading offset (radians) an instant facing snap (_face_dir) folds the jump into
 # _formation_angle instead of leaving soldier_world_slots' facing-relative grid to swap every
 # slot to the new side of the block. Below it _face_dir leaves the change unfolded, so the

@@ -1854,8 +1854,14 @@ roughly a quarter-turn or more off its current front --- attacked in the flank, 
 sent to hit a foe off to one side --- it does **not** snap its facing round.
 Instead the whole line **turns in place** to bring its front to bear, the men
 holding their ground as the block pivots, and it withholds its blows until it
-has come about. A small correction still snaps and fights at once, so a unit
-already roughly fronting its target loses no time. The upshot: catching a unit on
+has come about. A small correction still fights at once, so a unit
+already roughly fronting its target loses no time.
+Out of contact the correction snaps.
+In contact, a correction of more than a few degrees wheels the whole block onto its enemy
+no faster than the men on its corners can jog,
+so its ranks stay with its men instead of swinging round under them,
+and a deep block that leaves the fight is still square to its men.
+The block keeps fighting while it wheels. The upshot: catching a unit on
 the flank buys you a genuine window --- it must turn to answer you before it can
 strike back --- so a flank attack rewards you both with the flank casualty bonus
 *and* the beat the enemy spends coming about. Once the turn settles, the unit
