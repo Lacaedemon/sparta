@@ -278,3 +278,18 @@ func test_a_loss_across_a_file_count_change_deals_again() -> void:
 	for c in u._sim_soldier_square_slot:
 		seen[c] = true
 	assert_eq(seen.size(), u.soldiers, "the deal is a permutation of the new grid")
+
+
+func test_an_in_step_pairing_is_worked_out_from_the_cells_not_dealt() -> void:
+	var u := _make_square(60)
+	var files: int = u._square_slot_files
+	assert_gt(files, 0, "setup: the square pairing is dealt")
+	assert_false(u._square_slot_body_deal_pending(u.soldiers, files),
+			"a pairing in step with its count and files is not dealt again")
+
+
+func test_closing_up_over_no_casualties_changes_nothing() -> void:
+	var u := _make_square(60)
+	var held: PackedInt32Array = u._sim_soldier_square_slot.duplicate()
+	u.close_up_square_slots(PackedInt32Array(), u.soldiers)
+	assert_eq(u._sim_soldier_square_slot, held, "no casualty leaves the pairing as it was")
