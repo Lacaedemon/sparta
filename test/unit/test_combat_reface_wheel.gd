@@ -132,3 +132,12 @@ func test_a_foot_block_in_contact_still_snaps() -> void:
 	u._face_for_action(e.position, DT, e)
 	assert_almost_eq(u.facing.angle(), (e.position - u.position).angle(), FACING_TOL,
 		"a compact foot block snaps onto its enemy as before")
+
+
+func test_a_reface_onto_a_routing_enemy_still_snaps() -> void:
+	var u := _make_block()
+	var e := _make_enemy(_bearing_point(30.0))
+	e.state = Unit.State.ROUTING
+	u._face_for_action(e.position, DT, e)
+	assert_almost_eq(u.facing.angle(), (e.position - u.position).angle(), FACING_TOL,
+		"a pursuer in contact keeps its front on a fleeing enemy")

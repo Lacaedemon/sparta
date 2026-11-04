@@ -4658,7 +4658,7 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		if _in_enemy_contact and _cavalry_inside_foot_footprint(enemy_unit):
 			_face_dir(dir, true)
 		elif _in_enemy_contact:
-			_wheel_combat_reface(dir, offset, delta)
+			_wheel_combat_reface(dir, offset, delta, enemy_unit)
 		else:
 			_face_dir(dir)
 		return true
@@ -4690,11 +4690,17 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 ## onto riders sweeping round it, then chased them at a run and was back in contact at ticks
 ## 1200, 1560 and 2160; in the same matchup test_infantry_respreads_after_melee_exit found it
 ## not yet opened back out to its file pitch by tick 3000, against tick 1009 when it snaps.
-## A re-face within
-## combat_reface_snap_turn still snaps too (the bearing to a pressed enemy wanders that much
-## tick to tick), and so does any re-face on a far-tier block, which has no bodies on its slots.
-func _wheel_combat_reface(dir: Vector2, offset: float, delta: float) -> void:
-	if offset <= combat_reface_snap_turn or tier == FormationTier.FAR or not is_cavalry:
+## A re-face onto a routing `enemy_unit` still snaps: a pursuer in contact has to keep its front
+## on a quarry that turns away from it as fast as it flees. Wheeling it left the lead squadron
+## of the rout_rally clip fighting its router on the move with its front off it, landing few
+## blows, so the router was not cut down until ticks 760 to 800 on seeds 0 and 1, after the clip
+## ends at tick 720, instead of about tick 650.
+## A re-face within combat_reface_snap_turn still snaps too (the bearing to a pressed enemy
+## wanders that much tick to tick), and so does any re-face on a far-tier block, which has no
+## bodies on its slots.
+func _wheel_combat_reface(dir: Vector2, offset: float, delta: float, enemy_unit: Unit = null) -> void:
+	if offset <= combat_reface_snap_turn or tier == FormationTier.FAR or not is_cavalry \
+			or (enemy_unit != null and enemy_unit.state == State.ROUTING):
 		_face_dir(dir)
 		return
 	_rotate_facing_toward(dir, delta, bounded_turn_rate())
