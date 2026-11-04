@@ -848,13 +848,15 @@ static func _is_numeric_value(v) -> bool:
 ## The expectation fields derived_field supplies.
 const DERIVED_FIELDS: Array[String] = [
 	"slots_across_centreline", "slot_lateral_excess", "slots_beyond_flanks", "grid_off_heading",
+	"slot_distance_max",
 ]
 
 
 ## Expectation fields derived offline from a FULL record (soldiers_full plus motion_ref), for
 ## claims about where each man is sent rather than where the unit is. Null when the record
 ## cannot supply the field (not one of these names, or a dump without soldiers_full), which
-## check_expectations reports as uncheckable. Each measures sideways from the unit's position.
+## check_expectations reports as uncheckable. All but the last measure sideways from the unit's
+## position.
 ## The first two read every man's body against his own slot along the unit's lateral axis (its
 ## facing turned a quarter); the third reads every slot against the grid's own footprint, along
 ## the grid's own file axis:
@@ -880,6 +882,9 @@ const DERIVED_FIELDS: Array[String] = [
 ##   `facing` to 2 decimals (DemoState.POSITION_DECIMAL_PLACES), up to about 0.4 degrees on its
 ##   own; a fold the men turned in place (an engage re-face, a drill, a re-face absorbed on riders
 ##   inside the block) reads as its size. A dump without the footprint cannot supply it.
+## - slot_distance_max: the farthest any man's slot lies from where he stands, in world units
+##   to 0.1, in any direction. Unlike the lateral fields it sees a walk in depth, such as a
+##   re-square that sends a man to the other end of his own file.
 ##
 ## Sampled the tick after a reshape, before the men have walked, they measure the deal itself.
 static func derived_field(u: Dictionary, field: String):
@@ -897,6 +902,12 @@ static func derived_field(u: Dictionary, field: String):
 	# lags the headcount): a claim about either would pass on nothing, so it is uncheckable.
 	if pos.is_empty() or pos.size() != slots.size():
 		return null
+	if field == "slot_distance_max":
+		var farthest: float = 0.0
+		for i in range(pos.size()):
+			farthest = maxf(farthest, Vector2(pos[i][0], pos[i][1]).distance_to(
+					Vector2(slots[i][0], slots[i][1])))
+		return snappedf(farthest, 0.1)
 	var centre_pair: Array = u.get("position", [])
 	var facing_pair: Array = u.get("facing", [])
 	if centre_pair.size() != 2 or facing_pair.size() != 2:

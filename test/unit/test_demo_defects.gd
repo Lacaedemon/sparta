@@ -1002,6 +1002,24 @@ func test_derived_slot_fields_count_men_sent_across_and_how_far_sideways() -> vo
 			"a step straight back moves nobody sideways")
 
 
+func test_derived_slot_distance_sees_a_walk_in_depth() -> void:
+	# Two men sent to the other end of their own file, 40 wu back: nobody moves sideways, so
+	# the lateral fields read nothing, but the slot distance reads the whole walk.
+	var u: Dictionary = _derived_record([[-5.0, 20.0], [5.0, -20.0]], [[-5.0, -20.0], [5.0, 20.0]])
+	assert_almost_eq(float(DemoDefects.derived_field(u, "slot_lateral_excess")), 0.0, 0.001,
+			"precondition: nobody is sent sideways")
+	assert_almost_eq(float(DemoDefects.derived_field(u, "slot_distance_max")), 40.0, 0.001,
+			"the farthest man is sent 40 wu, the depth of the file")
+	var diagonal: Dictionary = _derived_record([[0.0, 0.0], [10.0, 0.0]], [[3.0, 4.0], [10.0, 0.0]])
+	assert_almost_eq(float(DemoDefects.derived_field(diagonal, "slot_distance_max")), 5.0, 0.001,
+			"measured as a straight line, in any direction")
+	assert_null(DemoDefects.derived_field(_derived_record([], []), "slot_distance_max"),
+			"no men to measure is uncheckable, not a pass")
+	assert_null(DemoDefects.derived_field(
+			_derived_record([[-15.0, 0.0], [15.0, 0.0]], [[15.0, 0.0]]), "slot_distance_max"),
+			"bodies and slots out of step are uncheckable, not measured short")
+
+
 func test_derived_slot_excess_measures_an_outside_man_from_the_block_edge() -> void:
 	# A narrowing: the man at x 40 stands outside the new block (half-width 10), so his walk in
 	# to its near edge is not excess; the man at the centre stepping out to -10 is.

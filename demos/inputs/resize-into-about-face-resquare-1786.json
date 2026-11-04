@@ -1,0 +1,34 @@
+{
+  "_comment": "A 46-man Infantry block on 10 files (a short rear rank of 6) stands alone in drill mode at (520, 440) facing south. At tick 24 it about-faces in place (V), which leaves its grid folded a half-turn under the men. At tick 180 it is narrowed to 9 files ([) and ordered north (right-click at (520, 240)) on the same tick, so the order's hold-ground re-square meets a file count no slot query has laid out yet and deals the files from where the men stand. The tick-180 sample is the deal before anyone has walked. The block goes from 5 ranks to 6 and from 10 files to 9 (file and rank pitch both 18 wu), so the new grid sits half a file pitch to the side of the old one and half a rank pitch deeper at each end: every man's slot lies half a file pitch (9 wu) sideways of him, and in depth 23 men step up half a rank pitch, 14 step up a rank and a half, and 9 step back half a rank. The farthest is therefore sent hypot(9, 27) = 28.5 wu. The slot_distance_max tol of 36 wu (two rank pitches) is that 28.5 wu with 7.5 wu to spare, and well short of a walk through the block: on main the re-square reversed each file's ranks on top of the deal, sending men up to four and a half rank pitches along their own file, the farthest 81.5 wu.",
+  "seed": "53917",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "count": 46,
+      "frontage": 10,
+      "x": 520,
+      "y": 440,
+      "facing": [0, 1]
+    }
+  ],
+  "camera": [
+    {"tick": 0, "x": 520.0, "y": 400.0, "zoom": 1.8}
+  ],
+  "steps": [
+    {"tick": 12, "click": [520, 440]},
+    {"tick": 24, "key": "V"},
+    {"tick": 180, "key": "BracketLeft"},
+    {"tick": 180, "rmb_click": [520, 240]}
+  ],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [520, 440]},
+    {"tick": 170, "uid": 0, "field": "frontage", "value": 10},
+    {"tick": 170, "uid": 0, "field": "current_order", "value": null},
+    {"tick": 180, "uid": 0, "field": "frontage", "value": 9},
+    {"tick": 180, "uid": 0, "field": "slot_distance_max", "value": 0, "tol": 36}
+  ],
+  "frames": [0, 120, 180, 200, 240, 300, 420],
+  "state": [120, 170, 180, 240, 300, 420]
+}
