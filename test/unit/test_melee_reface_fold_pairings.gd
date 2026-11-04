@@ -1,10 +1,11 @@
 extends GutTest
 ## Which pairings the in-footprint re-face fold covers (Unit._cavalry_inside_foot_footprint):
-## only a foot block, archers included, hosting enemy cavalry. Two archer blocks in melee,
-## cavalry hosting foot, cavalry hosting cavalry, foot hosting foot, and foot with a troop on
-## the cycle-charge stance (a caracole) inside it all re-face as before, turning the slot grid
-## with the heading, while riders still moving in a plain charge are folded. The fold itself is
-## covered in test_melee_reface_inside_block.gd.
+## only a foot block, archers included, hosting enemy cavalry. Two archer blocks in melee, foot
+## hosting foot, and foot with a troop on the cycle-charge stance (a caracole) inside it all
+## re-face as before, turning the slot grid with the heading, while riders still moving in a
+## plain charge are folded. Cavalry hosting foot or cavalry folds nothing either: it wheels its
+## heading and grid together (test_combat_reface_wheel.gd). The fold itself is covered in
+## test_melee_reface_inside_block.gd.
 
 const DT := 1.0 / 60.0
 # 39.8 degrees off the block's DOWN heading; each test checks it lies inside the footprint.
@@ -29,13 +30,16 @@ func _make_unit(max_soldiers: int, cavalry: bool, ranged: bool) -> Unit:
 ## far the farthest slot moved.
 func _slot_shift(host_cav: bool, host_ranged: bool, enemy_cav: bool, enemy_ranged: bool,
 		enemy_state: int = Unit.State.FIGHTING, enemy_order_mode: int = 0) -> float:
+	return _reface(host_cav, host_ranged, enemy_cav, enemy_ranged, enemy_state,
+			enemy_order_mode)["shift"]
+
+
+## The re-face _slot_shift makes, returning the host and the farthest slot's move.
+func _reface(host_cav: bool, host_ranged: bool, enemy_cav: bool, enemy_ranged: bool,
+		enemy_state: int = Unit.State.FIGHTING, enemy_order_mode: int = 0) -> Dictionary:
 	var u := _make_unit(60, host_cav, host_ranged)
 	u.uid = 1
 	u._in_enemy_contact = true
-	# A cavalry host in contact wheels a re-face at a bounded rate rather than snapping it
-	# (test_combat_reface_wheel.gd); let it snap here so the turn it does not fold is measured
-	# whole.
-	u.combat_reface_snap_turn = Unit.ENGAGE_TURN_THRESHOLD
 	var e := _make_unit(20, enemy_cav, enemy_ranged)
 	e.uid = 2
 	e.team = 1
@@ -52,7 +56,7 @@ func _slot_shift(host_cav: bool, host_ranged: bool, enemy_cav: bool, enemy_range
 	var worst := 0.0
 	for i in range(before.size()):
 		worst = maxf(worst, before[i].distance_to(after[i]))
-	return worst
+	return {"unit": u, "shift": worst}
 
 
 func test_infantry_hosting_cavalry_holds_the_grid() -> void:
@@ -69,13 +73,21 @@ func test_archers_against_archers_turn_the_grid() -> void:
 
 
 func test_cavalry_hosting_infantry_turns_the_grid() -> void:
-	assert_gt(_slot_shift(true, false, false, false), 100.0 * SLOT_KEEP_TOL,
+	_assert_not_folded(_reface(true, false, false, false)["unit"],
 		"a troop riding through foot keeps its own front to follow")
 
 
 func test_cavalry_hosting_cavalry_turns_the_grid() -> void:
-	assert_gt(_slot_shift(true, false, true, false), 100.0 * SLOT_KEEP_TOL,
-		"horse against horse re-faces as before")
+	_assert_not_folded(_reface(true, false, true, false)["unit"],
+		"horse against horse turns its grid with its heading")
+
+
+## A cavalry host wheels rather than snapping, so its first tick moves its grid only a
+## little; what the pairing decides is that the turn goes with the heading, not into the fold.
+func _assert_not_folded(u: Unit, msg: String) -> void:
+	assert_ne(u.facing, Vector2.DOWN, msg + ": the heading turns toward the enemy")
+	assert_eq(u._formation_angle, 0.0, msg + ": nothing is folded into the grid")
+	assert_eq(u._absorbed_fold, 0.0, msg + ": and nothing is counted as absorbed")
 
 
 func test_infantry_hosting_infantry_turns_the_grid() -> void:

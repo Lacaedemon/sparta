@@ -1864,17 +1864,19 @@ sent to hit a foe off to one side --- it does **not** snap its facing round.
 Instead the whole line **turns in place** to bring its front to bear, the men
 holding their ground as the block pivots, and it withholds its blows until it
 has come about.
-A small correction still fights at once,
+A smaller correction is made at once,
+and most units snap round onto the enemy and fight straight away,
 so a unit already roughly fronting its target loses no time.
-Most units snap round onto the enemy.
 A cavalry troop already in contact, whose ranks stand far deeper than a foot block's,
 wheels onto its enemy instead when the correction is more than a few degrees.
 It wheels no faster than the riders on its corners can jog,
 so its ranks stay with its riders instead of swinging round under them,
 and it leaves the fight still square to its riders.
 It keeps fighting while it wheels,
-unless its front is still more than 50 degrees off the enemy,
-in which case it holds its blows until it has come round, as a block turning in place does.
+except that while its front is more than 50 degrees off the enemy
+it holds its blows until it has come round, as a block turning in place does.
+It strikes anyway at an enemy that has got among its own ranks,
+and at one sweeping round it faster than it can wheel to follow.
 A troop still snaps round onto a routing enemy, so it keeps its front on a quarry that flees,
 and onto an enemy formed in a square or schiltron, whose faces it slides along.
 

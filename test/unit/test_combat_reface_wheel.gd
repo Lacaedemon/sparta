@@ -221,3 +221,58 @@ func test_an_enemy_inside_the_block_is_struck_while_the_wheel_turns() -> void:
 	assert_true(u._enemy_inside_own_footprint(e), "sanity: the enemy stands inside the footprint")
 	assert_true(_wheel_tick(u, e, false), "the block strikes an enemy inside its own ranks")
 	assert_lt(absf(Vector2.DOWN.angle_to(u.facing)), deg_to_rad(10.0), "while its heading still wheels")
+
+
+func test_a_reversal_sheds_the_rate_through_zero() -> void:
+	var u := _make_block()
+	var e := _make_enemy(_bearing_point(60.0))
+	for i in range(60):
+		_wheel_tick(u, e, i > 0)
+	var rate: float = u._combat_wheel_rate
+	assert_gt(rate, 0.0, "sanity: the wheel is turning toward the enemy")
+	# The enemy crosses to the heading's other side: the wheel brakes at bounded_turn_accel and
+	# carries on its old way this tick, rather than stopping dead.
+	e.position = u.position + Vector2.from_angle(u.facing.angle() - deg_to_rad(40.0)) * 2000.0
+	var radius: float = u._formation_local_half_extents().length()
+	var prev: float = u.facing.angle()
+	_wheel_tick(u, e, true)
+	assert_almost_eq(u._combat_wheel_rate, rate - u.bounded_turn_accel(radius) * DT, FACING_TOL,
+		"the rate sheds one tick of bounded_turn_accel")
+	assert_gt(angle_difference(prev, u.facing.angle()), 0.0, "and the heading still turns its old way")
+
+
+func test_an_enemy_sweeping_round_as_fast_as_the_wheel_is_still_struck() -> void:
+	var u := _make_block()
+	var deg := 60.0
+	var e := _make_enemy(_bearing_point(deg))
+	assert_false(_wheel_tick(u, e, false), "sanity: 60 degrees off, the first tick withholds")
+	var struck := false
+	for i in range(120):
+		# The enemy's bearing moves on at the wheel's top rate, so the heading cannot close on it.
+		deg += rad_to_deg(u.bounded_turn_rate() * DT)
+		e.position = u.position + Vector2.DOWN.rotated(deg_to_rad(deg)) * 2000.0
+		if _wheel_tick(u, e, true):
+			struck = true
+			break
+	assert_true(struck, "a wheel that cannot close on its enemy does not withhold its blows for ever")
+
+
+func test_a_wheel_restored_from_a_snapshot_carries_on_at_its_saved_rate() -> void:
+	var u := _make_block()
+	var e := _make_enemy(_bearing_point(60.0))
+	for i in range(40):
+		_wheel_tick(u, e, i > 0)
+	var rate: float = u._combat_wheel_rate
+	assert_gt(rate, 0.0, "sanity: the wheel is turning")
+	u._combat_wheel_tick = Engine.get_physics_frames() - 1   # it ran on the tick before
+	var d: Dictionary = u.to_snapshot_dict()
+	var r := _make_block()
+	r.apply_snapshot_dict(d)
+	assert_eq(r._combat_wheel_tick, Engine.get_physics_frames() - 1,
+		"the stamp is rebased onto the current clock")
+	r._is_facing_turning = false
+	r._facing_turn_step = 0.0
+	var radius: float = r._formation_local_half_extents().length()
+	r._face_for_action(e.position, DT, e)
+	assert_almost_eq(r._combat_wheel_rate, rate + r.bounded_turn_accel(radius) * DT, 1e-4,
+		"the restored wheel builds on its saved rate rather than starting from rest")
