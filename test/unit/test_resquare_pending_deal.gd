@@ -125,3 +125,42 @@ func test_a_pending_deal_on_a_rally_resquare_keeps_following_the_bodies() -> voi
 		SoldierBodies.couple(u, DT)
 	var follow: float = (u.position - start).dot(u.facing)
 	assert_gt(follow, 10.0, "the anchor followed the braking bodies (%.2f wu)" % follow)
+
+
+## A file-major block about-faced, then resized with no slot query in between, so the re-square
+## meets a file-count change and deals the files from the bodies. That deal reads them through
+## the mirror the re-square has just armed, so it already ranks each man by the ground he holds,
+## and no man walks more than two rank pitches (28.5 wu for 46 men going from 10 files to 9).
+## Reversing each file's ranks on top of the deal reapplied the reflection: the farthest man
+## walked the block's depth, 81.5 wu (2102 wu in all).
+func test_a_file_major_resize_before_the_resquare_sends_no_man_through_the_block() -> void:
+	var u := _make(46, 10, false)
+	_settle_about_face(u)
+	var bodies: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	u.frontage_override = 9
+	assert_true(u._slot_deal_pending(u.soldiers, u.formation_files(u.soldiers)),
+		"precondition: the file deal is pending")
+	assert_true(u.reform_ranks(true), "precondition: the about-face fold re-squares")
+	var farthest: float = 0.0
+	for w in _walks(u, bodies):
+		farthest = maxf(farthest, w)
+	assert_lt(farthest, 2.0 * u.rank_pitch_wu(),
+		"the farthest man walks %.1f wu (two rank pitches %.1f)" % [farthest,
+			2.0 * u.rank_pitch_wu()])
+
+
+## The same re-square with no file-count change still cancels the reflection by reversing each
+## file's ranks: a block that only about-faced re-squares with every man in a full file on his
+## own ground, and the short files' men step up no more than a rank pitch.
+func test_a_file_major_resquare_with_no_pending_deal_still_reverses_the_ranks() -> void:
+	var u := _make(46, 10, false)
+	_settle_about_face(u)
+	var bodies: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	assert_false(u._slot_deal_pending(u.soldiers, u.formation_files(u.soldiers)),
+		"precondition: no deal is pending")
+	assert_true(u.reform_ranks(true), "precondition: the about-face fold re-squares")
+	var farthest: float = 0.0
+	for w in _walks(u, bodies):
+		farthest = maxf(farthest, w)
+	assert_lt(farthest, u.rank_pitch_wu() + 0.01,
+		"the farthest man walks %.1f wu (a rank pitch %.1f)" % [farthest, u.rank_pitch_wu()])

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/resize-into-about-face-resquare-1786.json",
+  "caption": "A block of 46 infantry on 10 files turns about in place, then is narrowed to 9 files and ordered forward in the same moment. Squaring its ranks to the new front, it now keeps every man near his place: the full files hold their ground and the rest step up a rank or across a file, at most 28.5 wu. Before this fix the re-square sent men through the block to the other end of their own file, the farthest 81.5 wu, and the men walked through each other on the way.",
+  "fixed_fps": 30,
+  "max_frames": 210,
+  "fps": 15,
+  "width": 720
+}

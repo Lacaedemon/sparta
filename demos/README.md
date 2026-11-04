@@ -543,7 +543,7 @@ Two optional keys widen what an entry can say:
   A uid that never appeared, or any snapshot inside the range with no `units` list,
   fails rather than passing.
 
-Four more fields are derived from a FULL dump (`SPARTA_DEMO_STATE_FULL=1`, which CI's
+Five more fields are derived from a FULL dump (`SPARTA_DEMO_STATE_FULL=1`, which CI's
 defect scan uses) rather than read from the compact record (`DemoDefects.derived_field`).
 The first three measure sideways from the unit's position.
 The first two compare every man's body with his own slot, along the unit's lateral axis.
@@ -591,7 +591,15 @@ Sampled the tick after a reshape, they show where the reshape sends the men befo
   a re-face onto riders inside the block) reads its size.
   Pin a squared grid with `"value": 0` and a `tol` of at least half a degree, with a stated basis.
 
-A dump without the full arrays cannot supply any of the first three fields,
+- `slot_distance_max` -- the farthest any man's slot lies from where he stands,
+  in world units, rounded to 0.1, in any direction.
+  The lateral fields above cannot see a walk in depth,
+  such as a re-square that sends a man to the other end of his own file;
+  this one can.
+  Pin it with `"value": 0` and a `tol` in world units with a stated basis,
+  such as a number of rank pitches (`motion_ref.rank_pitch`).
+
+A dump without the full arrays cannot supply any of the first three fields or `slot_distance_max`,
 and one without `motion_ref.slot_grid` cannot supply `grid_off_heading`.
 Neither can one whose per-soldier bodies and slots are empty or differ in count
 (a casualty the body layer has not caught up with yet).
