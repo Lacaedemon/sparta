@@ -1,0 +1,3868 @@
+{
+  "ticks": [
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 8,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 99.8,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            880.0,
+            540.0
+          ],
+          "position_m": [
+            44.0,
+            27.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              63.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              880.0,
+              537.89
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.15
+            ],
+            "centroid_m": [
+              44.0,
+              26.895
+            ]
+          },
+          "soldiers": 60,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -1.0,
+            0.1
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.86,
+            497.09
+          ],
+          "position_m": [
+            65.493,
+            24.854
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              144.71,
+              324.29
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1310.0,
+              499.96
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              7.236,
+              16.214
+            ],
+            "centroid_m": [
+              65.5,
+              24.998
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 60,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 98.5,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            880.1,
+            539.85
+          ],
+          "position_m": [
+            44.005,
+            26.992
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              63.08
+            ],
+            "broken_count": 0,
+            "centroid": [
+              880.1,
+              537.73
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.154
+            ],
+            "centroid_m": [
+              44.005,
+              26.887
+            ]
+          },
+          "soldiers": 60,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.1
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.72,
+            495.23
+          ],
+          "position_m": [
+            65.486,
+            24.761
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              172.01,
+              334.83
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.77,
+              495.75
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.6,
+              16.742
+            ],
+            "centroid_m": [
+              65.489,
+              24.787
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 120,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 97.0,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            880.05,
+            539.77
+          ],
+          "position_m": [
+            44.002,
+            26.988
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              63.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              880.05,
+              537.67
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.15
+            ],
+            "centroid_m": [
+              44.002,
+              26.883
+            ]
+          },
+          "soldiers": 60,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.1
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.37,
+            494.75
+          ],
+          "position_m": [
+            65.468,
+            24.738
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              177.0,
+              337.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.41,
+              494.97
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.85,
+              16.862
+            ],
+            "centroid_m": [
+              65.47,
+              24.748
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 200,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 95.0,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            880.05,
+            539.77
+          ],
+          "position_m": [
+            44.002,
+            26.988
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              63.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              880.05,
+              537.67
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.15
+            ],
+            "centroid_m": [
+              44.002,
+              26.883
+            ]
+          },
+          "soldiers": 60,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.11
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.41,
+            494.26
+          ],
+          "position_m": [
+            65.47,
+            24.713
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              177.35,
+              337.37
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.4,
+              494.51
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.867,
+              16.869
+            ],
+            "centroid_m": [
+              65.47,
+              24.726
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 270,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 93.2,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            880.05,
+            539.77
+          ],
+          "position_m": [
+            44.002,
+            26.988
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              63.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              880.05,
+              537.67
+            ],
+            "count": 60,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.15
+            ],
+            "centroid_m": [
+              44.002,
+              26.883
+            ]
+          },
+          "soldiers": 60,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.11
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.41,
+            493.94
+          ],
+          "position_m": [
+            65.47,
+            24.697
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              177.57,
+              337.45
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.41,
+              494.22
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.879,
+              16.873
+            ],
+            "centroid_m": [
+              65.471,
+              24.711
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 272,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 91.1,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            879.94,
+            539.91
+          ],
+          "position_m": [
+            43.997,
+            26.995
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              63.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              878.96,
+              537.9
+            ],
+            "count": 58,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.15
+            ],
+            "centroid_m": [
+              43.948,
+              26.895
+            ]
+          },
+          "soldiers": 58,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.11
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.41,
+            493.93
+          ],
+          "position_m": [
+            65.47,
+            24.696
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              177.58,
+              337.46
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.41,
+              494.21
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.879,
+              16.873
+            ],
+            "centroid_m": [
+              65.471,
+              24.71
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 274,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 91.0,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            879.75,
+            540.15
+          ],
+          "position_m": [
+            43.988,
+            27.007
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.01,
+              63.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              878.95,
+              537.91
+            ],
+            "count": 58,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.151,
+              3.15
+            ],
+            "centroid_m": [
+              43.948,
+              26.896
+            ]
+          },
+          "soldiers": 58,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.11
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.41,
+            493.92
+          ],
+          "position_m": [
+            65.47,
+            24.696
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              177.64,
+              337.48
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.41,
+              494.21
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.882,
+              16.874
+            ],
+            "centroid_m": [
+              65.471,
+              24.71
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 300,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 90.4,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            878.5,
+            541.74
+          ],
+          "position_m": [
+            43.925,
+            27.087
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.92,
+              63.11
+            ],
+            "broken_count": 0,
+            "centroid": [
+              878.21,
+              538.84
+            ],
+            "count": 58,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.196,
+              3.155
+            ],
+            "centroid_m": [
+              43.911,
+              26.942
+            ]
+          },
+          "soldiers": 58,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.11
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.43,
+            493.79
+          ],
+          "position_m": [
+            65.471,
+            24.69
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              178.91,
+              337.93
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.42,
+              494.09
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.946,
+              16.896
+            ],
+            "centroid_m": [
+              65.471,
+              24.705
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 330,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 89.6,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            878.13,
+            542.19
+          ],
+          "position_m": [
+            43.906,
+            27.11
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              63.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              878.13,
+              538.93
+            ],
+            "count": 58,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.15
+            ],
+            "centroid_m": [
+              43.907,
+              26.946
+            ]
+          },
+          "soldiers": 58,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.11
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.43,
+            493.64
+          ],
+          "position_m": [
+            65.471,
+            24.682
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              179.34,
+              338.07
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.42,
+              493.95
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.967,
+              16.904
+            ],
+            "centroid_m": [
+              65.471,
+              24.698
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 332,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 88.5,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            878.08,
+            542.27
+          ],
+          "position_m": [
+            43.904,
+            27.113
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              63.02
+            ],
+            "broken_count": 0,
+            "centroid": [
+              877.58,
+              539.11
+            ],
+            "count": 57,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              3.151
+            ],
+            "centroid_m": [
+              43.879,
+              26.955
+            ]
+          },
+          "soldiers": 57,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.11
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.43,
+            493.63
+          ],
+          "position_m": [
+            65.471,
+            24.681
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              179.34,
+              338.08
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.42,
+              493.94
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.967,
+              16.904
+            ],
+            "centroid_m": [
+              65.471,
+              24.697
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 334,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 88.5,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            877.98,
+            542.41
+          ],
+          "position_m": [
+            43.899,
+            27.12
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.01,
+              63.04
+            ],
+            "broken_count": 0,
+            "centroid": [
+              877.58,
+              539.12
+            ],
+            "count": 57,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.151,
+              3.152
+            ],
+            "centroid_m": [
+              43.879,
+              26.956
+            ]
+          },
+          "soldiers": 57,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.11
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.43,
+            493.62
+          ],
+          "position_m": [
+            65.471,
+            24.681
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              179.41,
+              338.1
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.42,
+              493.93
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.97,
+              16.905
+            ],
+            "centroid_m": [
+              65.471,
+              24.697
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 360,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 87.8,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            877.28,
+            543.47
+          ],
+          "position_m": [
+            43.864,
+            27.173
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              64.57,
+              62.84
+            ],
+            "broken_count": 0,
+            "centroid": [
+              877.14,
+              539.83
+            ],
+            "count": 57,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.229,
+              3.142
+            ],
+            "centroid_m": [
+              43.857,
+              26.991
+            ]
+          },
+          "soldiers": 57,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.11
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.44,
+            493.48
+          ],
+          "position_m": [
+            65.472,
+            24.674
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              180.26,
+              338.39
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.43,
+              493.81
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.013,
+              16.92
+            ],
+            "centroid_m": [
+              65.472,
+              24.69
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 390,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 87.1,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            877.13,
+            543.69
+          ],
+          "position_m": [
+            43.857,
+            27.185
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.01,
+              63.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              877.13,
+              539.82
+            ],
+            "count": 57,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.151,
+              3.15
+            ],
+            "centroid_m": [
+              43.856,
+              26.991
+            ]
+          },
+          "soldiers": 57,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.12
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.44,
+            493.32
+          ],
+          "position_m": [
+            65.472,
+            24.666
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              180.53,
+              338.49
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.44,
+              493.66
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.026,
+              16.924
+            ],
+            "centroid_m": [
+              65.472,
+              24.683
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 392,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 86.0,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            877.07,
+            543.34
+          ],
+          "position_m": [
+            43.854,
+            27.167
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.01,
+              62.99
+            ],
+            "broken_count": 0,
+            "centroid": [
+              876.57,
+              540.16
+            ],
+            "count": 56,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.151,
+              3.149
+            ],
+            "centroid_m": [
+              43.828,
+              27.008
+            ]
+          },
+          "soldiers": 56,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.12
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.44,
+            493.31
+          ],
+          "position_m": [
+            65.472,
+            24.666
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              180.53,
+              338.49
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.44,
+              493.65
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.027,
+              16.924
+            ],
+            "centroid_m": [
+              65.472,
+              24.683
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 394,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 85.9,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            876.98,
+            542.74
+          ],
+          "position_m": [
+            43.849,
+            27.137
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.09,
+              62.91
+            ],
+            "broken_count": 0,
+            "centroid": [
+              876.57,
+              540.19
+            ],
+            "count": 56,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.154,
+              3.146
+            ],
+            "centroid_m": [
+              43.829,
+              27.01
+            ]
+          },
+          "soldiers": 56,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.11
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.44,
+            493.31
+          ],
+          "position_m": [
+            65.472,
+            24.666
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              180.48,
+              338.47
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.44,
+              493.65
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.024,
+              16.923
+            ],
+            "centroid_m": [
+              65.472,
+              24.682
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 450,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 84.5,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            876.22,
+            541.57
+          ],
+          "position_m": [
+            43.811,
+            27.079
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.02,
+              54.01
+            ],
+            "broken_count": 0,
+            "centroid": [
+              876.21,
+              541.56
+            ],
+            "count": 56,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.151,
+              2.7
+            ],
+            "centroid_m": [
+              43.81,
+              27.078
+            ]
+          },
+          "soldiers": 56,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.11
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.44,
+            493.22
+          ],
+          "position_m": [
+            65.472,
+            24.661
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              179.05,
+              337.97
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.44,
+              493.56
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.952,
+              16.899
+            ],
+            "centroid_m": [
+              65.472,
+              24.678
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 452,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 82.4,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            876.21,
+            541.57
+          ],
+          "position_m": [
+            43.811,
+            27.078
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.01,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              875.04,
+              542.39
+            ],
+            "count": 54,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              2.7
+            ],
+            "centroid_m": [
+              43.752,
+              27.119
+            ]
+          },
+          "soldiers": 54,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.11
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.44,
+            493.21
+          ],
+          "position_m": [
+            65.472,
+            24.661
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              179.05,
+              337.97
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.44,
+              493.56
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.953,
+              16.899
+            ],
+            "centroid_m": [
+              65.472,
+              24.678
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 454,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 82.3,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            875.99,
+            541.91
+          ],
+          "position_m": [
+            43.8,
+            27.096
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.01,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              875.04,
+              542.39
+            ],
+            "count": 54,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              2.7
+            ],
+            "centroid_m": [
+              43.752,
+              27.12
+            ]
+          },
+          "soldiers": 54,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.11
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.44,
+            493.21
+          ],
+          "position_m": [
+            65.472,
+            24.66
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              179.07,
+              337.98
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.44,
+              493.55
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              8.954,
+              16.899
+            ],
+            "centroid_m": [
+              65.472,
+              24.678
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 500,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 81.2,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            874.51,
+            545.11
+          ],
+          "position_m": [
+            43.725,
+            27.255
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              64.88,
+              53.38
+            ],
+            "broken_count": 0,
+            "centroid": [
+              874.51,
+              544.42
+            ],
+            "count": 54,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.244,
+              2.669
+            ],
+            "centroid_m": [
+              43.725,
+              27.221
+            ]
+          },
+          "soldiers": 54,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.12
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.46,
+            493.01
+          ],
+          "position_m": [
+            65.473,
+            24.651
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              181.48,
+              338.81
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.44,
+              493.38
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.074,
+              16.941
+            ],
+            "centroid_m": [
+              65.472,
+              24.669
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 560,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 79.7,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            874.53,
+            545.46
+          ],
+          "position_m": [
+            43.727,
+            27.273
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              63.0,
+              54.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              874.53,
+              544.46
+            ],
+            "count": 54,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.15,
+              2.7
+            ],
+            "centroid_m": [
+              43.727,
+              27.223
+            ]
+          },
+          "soldiers": 54,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.12
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.46,
+            492.74
+          ],
+          "position_m": [
+            65.473,
+            24.637
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              181.94,
+              338.97
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.47,
+              493.13
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.097,
+              16.949
+            ],
+            "centroid_m": [
+              65.473,
+              24.656
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 600,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "SQUARE",
+          "formation_label": "0.45 m Square",
+          "frontage": 11,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 76.6,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            872.97,
+            547.58
+          ],
+          "position_m": [
+            43.649,
+            27.379
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              64.41,
+              52.73
+            ],
+            "broken_count": 0,
+            "centroid": [
+              872.64,
+              546.04
+            ],
+            "count": 52,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.22,
+              2.636
+            ],
+            "centroid_m": [
+              43.632,
+              27.302
+            ]
+          },
+          "soldiers": 52,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": true,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": true,
+          "facing": [
+            -0.99,
+            0.12
+          ],
+          "file_pitch": 36.0,
+          "formation": "LOOSE",
+          "formation_label": "1.8 m",
+          "frontage": 10,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "FIGHTING",
+          "missile_ammo": -1,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Archers 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1309.48,
+            492.55
+          ],
+          "position_m": [
+            65.474,
+            24.628
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 36.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              183.34,
+              339.44
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1309.47,
+              492.97
+            ],
+            "count": 50,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              9.167,
+              16.972
+            ],
+            "centroid_m": [
+              65.473,
+              24.648
+            ]
+          },
+          "soldiers": 50,
+          "soldiers_at_block_terrain_edge": 4,
+          "soldiers_in_block_terrain": 25,
+          "stamina_mean": 90.0,
+          "state": "FIGHTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": 0,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Sidearm"
+        }
+      ]
+    }
+  ]
+}
