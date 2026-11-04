@@ -12307,7 +12307,6 @@ func to_snapshot_dict() -> Dictionary:
 		"melee_reface_fold_footprint_scale": melee_reface_fold_footprint_scale,
 		"combat_reface_snap_turn": combat_reface_snap_turn,
 		"combat_wheel_rate": _combat_wheel_rate, "combat_wheel_offset": _combat_wheel_offset,
-		"combat_wheel_tick": _combat_wheel_tick,
 		"combat_wheel_ticks_ago": (
 				Engine.get_physics_frames() - _combat_wheel_tick if _combat_wheel_tick >= 0 else -1
 		),
@@ -12598,11 +12597,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	combat_reface_snap_turn = float(d.get("combat_reface_snap_turn", combat_reface_snap_turn))
 	_combat_wheel_rate = float(d.get("combat_wheel_rate", _combat_wheel_rate))
 	_combat_wheel_offset = float(d.get("combat_wheel_offset", _combat_wheel_offset))
-	if d.has("combat_wheel_ticks_ago"):
-		var wheel_ago: int = int(d["combat_wheel_ticks_ago"])
-		_combat_wheel_tick = Engine.get_physics_frames() - wheel_ago if wheel_ago >= 0 else -2
-	else:
-		_combat_wheel_tick = int(d.get("combat_wheel_tick", _combat_wheel_tick))
+	var wheel_ago: int = int(d.get("combat_wheel_ticks_ago", -1))
+	_combat_wheel_tick = Engine.get_physics_frames() - wheel_ago if wheel_ago >= 0 else -2
 	interior_strike_margin = float(d.get("interior_strike_margin", interior_strike_margin))
 	melee_front_line_scale = float(d.get("melee_front_line_scale", melee_front_line_scale))
 	melee_front_line_min_cos = float(d.get("melee_front_line_min_cos", melee_front_line_min_cos))
