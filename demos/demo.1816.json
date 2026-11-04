@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/square-casualty-close-up-1816.json",
+  "caption": "Archers shoot into the east face of a 60-man infantry square that holds its ground. Each fallen man's file steps forward to close the gap and the rear rank fills in behind, so everyone else keeps his place in the ring. Before this fix every man behind a fallen one moved up one place in roster order, so a man from each rank was sent across the square to the far end of the rank ahead, and the square slid 35 wu west under fire.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}
