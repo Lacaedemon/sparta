@@ -1,12 +1,12 @@
 extends GutTest
-## A fighting block in enemy contact that re-faces by a small correction (up to
+## A fighting cavalry block in enemy contact that re-faces by a small correction (up to
 ## ENGAGE_TURN_THRESHOLD) wheels its heading onto the enemy at a bounded rate instead of
 ## snapping it there in one tick. The slot grid is laid out from the heading, so a snap turned
 ## the whole grid about the anchor at once: a deep block's corner slot moved its radius times the
-## turn in a single tick while the men, held in the press, stayed where they stood. A correction
-## within combat_reface_snap_turn (a few degrees) still snaps, and so does every correction out
-## of contact, on a far-tier block, and on riders inside a foot block (which folds the turn into
-## the grid instead: test_melee_reface_inside_block.gd).
+## turn in a single tick while the riders, held in the press, stayed where they stood. A
+## correction within combat_reface_snap_turn (a few degrees) still snaps, and so does every
+## correction out of contact, on a far-tier block, and on a foot block (riders inside a foot
+## block fold the turn into the grid instead: test_melee_reface_inside_block.gd).
 
 const DT := 1.0 / 60.0
 const FACING_TOL := 1e-5
@@ -26,6 +26,7 @@ func _make_unit(max_soldiers: int = 120) -> Unit:
 func _make_block() -> Unit:
 	var u := _make_unit()
 	u.uid = 1
+	u.is_cavalry = true
 	u._in_enemy_contact = true
 	return u
 
@@ -122,3 +123,12 @@ func test_a_large_offset_still_turns_in_place() -> void:
 	var e := _make_enemy(_bearing_point(120.0))
 	assert_false(u._face_for_action(e.position, DT, e), "the strike waits while the block turns")
 	assert_ne(u._engage_turn_target, Vector2.ZERO, "a turn-in-place is armed, as before")
+
+
+func test_a_foot_block_in_contact_still_snaps() -> void:
+	var u := _make_block()
+	u.is_cavalry = false
+	var e := _make_enemy(_bearing_point(30.0))
+	u._face_for_action(e.position, DT, e)
+	assert_almost_eq(u.facing.angle(), (e.position - u.position).angle(), FACING_TOL,
+		"a compact foot block snaps onto its enemy as before")
