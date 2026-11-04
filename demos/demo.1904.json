@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "No recorded battle shows this change. The behaviour change (a combo's file double queues a re-square for any lag it folds) is reached only by the player-issued turn-explicatio combo with a march lag of more than an eighth turn still trailing, and the one demo that issues the combo (turn-explicatio-combo) never carries such a lag: dense 2-tick FULL dumps of it on seeds 0 to 4 hash identical to main a8c838e8, and all 300 state files match apart from the HUD's display-only Accel string. The rest of the PR is tests and comments. Unit tests cover the change (test_grid_lag_readers.gd)."
+}
