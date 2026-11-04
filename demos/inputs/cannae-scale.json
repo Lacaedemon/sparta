@@ -37,8 +37,12 @@
   ],
   "defect_exemptions": {
     "shape_residual": {
-      "uids": [7, 2],
-      "reason": "Uid 7, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4, measured 2026-11-04: main d0272c6d reads 162.36, 178.99, 212.82, 228.56 and 177.52 against 30.0; 6147a6b7 (a cavalry troop in contact wheels onto its enemy at a bounded rate, #1806) reads pass, 53.97, pass, pass and pass. Not traced on 6147a6b7; the earlier trace of this squadron put its steady climb out of the fight down to the cavalry drift of #1716. The uid 6 and uid 14 shape_residual entries and the uid 7 overlap entry are dropped: they pass on every seed on 6147a6b7 (uid 7 overlap passes on every seed on d0272c6d too). Uid 2 (team 0's first Infantry block), shape_residual: d0272c6d passes on every seed; 6147a6b7 reads 20.36 on seed 0 and passes on the others, against 13.5. Traced on seed 0 on 6147a6b7: the block fights in contact from the start, its residual climbing to about 20 wu by tick 510, and leaves contact at tick 540 to march (MOVING) with it still there: a block that leaves melee scrambled stays scrambled while it marches off (#1837)."
+      "uids": [7, 9],
+      "reason": "Uid 7, shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4, measured 2026-11-04: main aeb67079 reads 162.36, 178.99, 212.82, 228.56 and 177.52 against 30.0; 3c442b07 (a cavalry troop in contact wheels onto its enemy at a bounded rate, #1806) reads pass, 59.90, pass, pass and pass. Not traced on 3c442b07; the earlier trace of this squadron put its steady climb out of the fight down to the cavalry drift of #1716. Uid 9 (team 1's second Spearmen block), shape_residual: aeb67079 passes on every seed; 3c442b07 reads 12.61 on seed 1 and passes on the others, against 6.75. Traced on seed 1 on 3c442b07: it fights in contact from the start, its residual 13 to 22 wu through the melee, and leaves contact at tick 560 to march (MOVING) with 13 wu still there: a block that leaves melee scrambled stays scrambled while it marches off (#1837). The uid 6 and uid 14 shape_residual entries and the uid 7 overlap entry are dropped (they pass on every seed on 3c442b07; uid 7 overlap passes on every seed on main too), and so is the uid 2 entry this change added earlier, which now passes on every seed."
+    },
+    "overlap": {
+      "uids": [13],
+      "reason": "Uid 13 (team 1's second Archers block), overlap: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4, measured 2026-11-04: aeb67079 passes on every seed; 3c442b07 reads 1.94 on seed 2 and passes on the others, against 2.25. Traced on seed 2 on 3c442b07: the dip is at tick 566, out of contact on its ATTACK march after the block lost more than half its men in the melee, the pair 13.1 and 78.5 wu off their slots, a man walking back from far off passing through one nearer his slot (#1894)."
     }
   }
 }
