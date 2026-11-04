@@ -25,12 +25,6 @@
     {"tick": 74, "rmb_click": [800, 633]}
   ],
   "state": [8, 120, 240, 330, 400, 440, 500],
-  "defect_exemptions": {
-    "overlap": {
-      "uids": [2],
-      "reason": "Uid 2 (the 70-man infantry), overlap: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4, measured 2026-11-04: d0272c6d passes on every seed; e58a15a9 (a cavalry block in contact wheels at a bounded rate, #1806) reads pass, pass, pass, 2.19, pass against 2.25. Traced on seed 3 on e58a15a9: the dip is at tick 544, out of contact on its MOVE march just after the pursuing horse brushed it (ticks 480 to 540); the farther man of the pair is 16.4 wu off his slot and walks back through one 0.6 wu off his (#1894)."
-    }
-  },
   "expect": [
     {"tick": 8, "uid": 0, "field": "position", "value": [700.0, 340.0]},
     {"tick": 8, "uid": 1, "field": "position", "value": [900.0, 340.0]},
