@@ -7,8 +7,9 @@ extends GutTest
 ## The regression this pins: the re-square split every fold about its nearer whole or half turn,
 ## so a fold a few degrees short of a quarter wheeled nearly a quarter-turn about the block's
 ## centre, and one a few degrees past it was reflected by a half-turn and wheeled nearly a
-## quarter-turn back. A block marching when the order comes keeps that split (sweep_routers
-## uid 4, whose re-square runs on the march, still squares -90.8 by a half-turn on seed 0).
+## quarter-turn back. A block marching when the order comes is not re-dealt; one with a short rank
+## keeps square, the line its grid stands on, up to a band past the quarter instead
+## (test_marching_near_quarter_square.gd).
 
 const START := Vector2(500.0, 500.0)
 const MEN := 120
@@ -65,8 +66,8 @@ func test_folds_either_side_of_a_quarter_take_the_same_quarter() -> void:
 
 
 ## The band and the shape cut were measured on blocks squared holding ground: a block already
-## marching when the order comes keeps the split about the nearer whole or half turn.
-func test_a_marching_block_keeps_the_nearer_half_turn_split() -> void:
+## marching when the order comes is not re-dealt, and short of a quarter turns its whole fold out.
+func test_a_marching_block_is_not_redealt() -> void:
 	# Standing; on a move (a march target); on an attack or chase (MOVING, no march target).
 	for how in ["standing", "on a move", "on a chase"]:
 		var u := _unit()
