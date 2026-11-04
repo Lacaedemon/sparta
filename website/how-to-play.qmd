@@ -570,7 +570,7 @@ still unfolds across its new facing, and the skew is squared away with it.
 One skewed in between ends the turn with its files nearer across its new facing than along it,
 so it widens those files where they lie,
 then swings the widened line round square to its front,
-no faster than the men on its ends can walk.
+no faster than the men on its ends can jog.
 The historical use is deploying from column:
 a regiment marching by files quarter-turns to bring its long side to the front,
 then unfolds into line. The panel reads "Quarter-turning (step 1 of 2)" while the
