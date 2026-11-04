@@ -32,6 +32,10 @@ func _slot_shift(host_cav: bool, host_ranged: bool, enemy_cav: bool, enemy_range
 	var u := _make_unit(60, host_cav, host_ranged)
 	u.uid = 1
 	u._in_enemy_contact = true
+	# A cavalry host in contact wheels a re-face at a bounded rate rather than snapping it
+	# (test_combat_reface_wheel.gd); let it snap here so the turn it does not fold is measured
+	# whole.
+	u.combat_reface_snap_turn = Unit.ENGAGE_TURN_THRESHOLD
 	var e := _make_unit(20, enemy_cav, enemy_ranged)
 	e.uid = 2
 	e.team = 1
