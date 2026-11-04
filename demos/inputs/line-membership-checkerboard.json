@@ -23,13 +23,9 @@
       "uids": [0, 1, 2, 3],
       "reason": "Soldier paths transiently intersect while the multi-unit line splits into front/rear checkerboard positions before forming up."
     },
-    "blob": {
-      "uids": [0, 1, 2, 3],
-      "reason": "Each unit reforms in place from its spawn line into its checkerboard front/rear slot; mid-reform, bodies converging on their new grid slots transiently compress well inside the resting spacing before settling. Same reform transition already exempted from path_crossing above."
-    },
     "overlap": {
       "uids": [0, 1, 2, 3],
-      "reason": "Same in-place reform as the blob exemption above: bodies pass very close to each other mid-transition while converging on their new checkerboard slots, before settling back to resting spacing."
+      "reason": "Each unit reforms in place from its spawn line into its checkerboard front/rear slot, and bodies converging on their new slots pass close to each other mid-transition before settling back to resting spacing. Since the same-unit standoff runs in a reform hold while any man stands more than a file pitch off his slot, the closest pairs read 1.89, 1.68, 1.67 and 0.51 wu for uids 0 to 3 on every seed (0.04, 0.04, 0.04 and 0.07 on main) against the 2.25 wu floor, and the blob verdict once exempted here passes on every seed. Traced on seed 0: uids 0 to 2 come closest at ticks 260, 278 and 278 in their REFORM hold, men a mean 30 wu off their slots, where the pass runs but pushes apart no faster than its bounded speed; uid 3 comes closest at tick 924, still holding, with every man within a file pitch of his slot (the pair 6.9 and 2.3 wu off theirs), where the hold skips the pass. Men of one block walking through each other is #1894. Measured 2026-11-04 on 47428369 against main bec0b16e with full state dumps every 2 ticks, every exemption removed, seeds 0 to 4."
     }
   }
 }
