@@ -6940,9 +6940,12 @@ func formation_slots(count: int, apply_relief_corridor: bool = true,
 ##
 ## Idempotent and side-effect-free once in sync -- safe to call from every formation_slots()
 ## query in a tick, not just the first.
-func _ensure_file_assignment(count: int, files: int) -> void:
+##
+## Returns true when this call dealt the files and ranks from the live bodies (a reshape with
+## bodies to read), so the ranks already follow where the men stand.
+func _ensure_file_assignment(count: int, files: int) -> bool:
 	if _sim_soldier_file.size() == count and _file_assignment_files == files:
-		return
+		return false
 	var capacities: PackedInt32Array = UnitFormation.file_capacities(count, files)
 	# Only a genuine RESHAPE -- the file count itself changing -- re-chooses which man stands
 	# where. The other way into this function is a size mismatch with the frontage unchanged
@@ -6954,6 +6957,7 @@ func _ensure_file_assignment(count: int, files: int) -> void:
 	# worsens the residual melee-lock swirl.
 	var reshaped: bool = _file_assignment_files != files
 	var live := _slot_frame_positions(count) if reshaped else PackedVector2Array()
+	var dealt: bool = false
 	if live.is_empty():
 		_sim_soldier_file = UnitFormation.file_ids_in_index_order(capacities)
 		_sim_soldier_rank = PackedInt32Array()   # array order IS the depth order here
@@ -6971,6 +6975,7 @@ func _ensure_file_assignment(count: int, files: int) -> void:
 		else:
 			_sim_soldier_file = UnitFormation.deal_file_ids_by_lateral_order(live, capacities)
 			_sim_soldier_rank = UnitFormation.deal_ranks_by_depth(live, _sim_soldier_file)
+			dealt = true
 	note_file_assignment_changed()
 	# _slot_frame_positions returns nothing unless the body layer holds at least `count`
 	# entries, so a reshape can find FEWER bodies than live soldiers -- `count` having run
@@ -6984,6 +6989,7 @@ func _ensure_file_assignment(count: int, files: int) -> void:
 	# it separates 'too few bodies to deal from' from 'no bodies by design'.
 	var placeholder: bool = reshaped and live.is_empty() and not _sim_soldier_pos.is_empty()
 	_file_assignment_files = -1 if placeholder else files
+	return dealt
 
 
 ## The live soldier bodies expressed in the SLOT GRID's own local frame -- the exact inverse
@@ -8149,10 +8155,15 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 		if in_square():
 			_apply_square_slot_reflection(soldiers, files)
 		elif _effective_file_major_reform():
-			_ensure_file_assignment(soldiers, files)
-			_sim_soldier_rank = UnitFormation.reversed_ranks_within_files(
-					_sim_soldier_file, _sim_soldier_rank)
-			note_file_assignment_changed()
+			# A file-count change no query has laid out yet is dealt from the live bodies here,
+			# through the mirror armed above, so the deal already ranks each man by the ground
+			# he holds. Reversing its ranks would reapply the reflection the deal has just
+			# absorbed and walk men the block's depth, as for the row-major and square layouts
+			# (_apply_row_slot_reflection).
+			if not _ensure_file_assignment(soldiers, files):
+				_sim_soldier_rank = UnitFormation.reversed_ranks_within_files(
+						_sim_soldier_file, _sim_soldier_rank)
+				note_file_assignment_changed()
 		else:
 			# Row-major has no per-soldier depth array to reverse, so the same cancellation
 			# is expressed as a slot pairing instead: each man takes the cell whose reflected
