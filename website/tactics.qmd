@@ -1253,7 +1253,10 @@ as the shape of the saving and not a number to time a charge against.
 the men behind him in his file step up,
 and the rear rank fills the back of that file,
 so everyone else keeps his place in the ring.
-Nobody is sent across the square to fill a gap on the far side.
+When a volley takes several men at once,
+the square may instead shift whole ranks a file over to fill the gaps,
+whichever leaves the shorter walk.
+Either way nobody is sent across the square to fill a gap on the far side.
 
 **Orbis vs schiltron.** The hollow square comes in two variants with different
 trade-offs, not one generic stance:

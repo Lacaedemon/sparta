@@ -1,7 +1,7 @@
 extends GutTest
 ## A squared block closes up over its casualties the way a row-major block does: the men behind
-## a fallen man step up in his file, the rear rank fills the back of it, and everyone else keeps
-## his cell.
+## a fallen man step up in his file, the rear rank fills the back of it, and after a single loss
+## everyone else keeps his cell (several at once may be dealt again by lateral file instead).
 ##
 ## The square grid is block_slots(n, square_files(n), pitch), a row-major grid whose ranks sit a
 ## file pitch apart, so its cell c sits in column c % files. Renumbering every cell behind a
@@ -135,8 +135,10 @@ func test_one_casualty_moves_only_his_file_and_the_back_of_the_block() -> void:
 			assert_eq(strays, [], "%s: men outside his file and the back ranks moved" % what)
 
 
-## A volley takes several men in one tick. Each closes up his own file; together they move no
-## man more than the sum of the single bounds, and none across the centreline.
+## A volley takes several men in one tick. Their files close up one loss at a time, or, when
+## that leaves a longer walk, the survivors are dealt again by lateral file from the cells they
+## held, which can move every man a little (UnitFormation.close_up_slot_assignment_over). Either
+## way no man moves more than the sum of the single bounds, and none across the centreline.
 func test_a_volley_closes_up_each_file() -> void:
 	for dead in [[0, 1, 2], [3, 17, 40], [5, 13, 21, 29]]:
 		var u := _make_square(60)
@@ -151,11 +153,41 @@ func test_a_volley_closes_up_each_file() -> void:
 ## than dealing the whole block again from where it stands.
 func test_a_regiment_path_casualty_closes_up_over_the_tail() -> void:
 	var u := _make_square(60)
+	var held: PackedInt32Array = u._sim_soldier_square_slot.duplicate()
 	var before: PackedVector2Array = u.soldier_world_slots(60)
 	u.soldiers -= 3
 	var t: Dictionary = _walk(u, before, _survivors(60, [57, 58, 59]))
 	assert_eq(u._sim_soldier_square_slot.size(), u.soldiers, "the pairing covers the survivors")
 	_assert_closed_up(u, t, 3, "three regiment-path casualties")
+	var expected: PackedInt32Array = UnitFormation.close_up_slot_assignment_over(held,
+			PackedInt32Array([57, 58, 59]), 8, u.file_pitch_wu(), u.file_pitch_wu())
+	assert_eq(u._sim_soldier_square_slot, expected,
+		"the pairing is the held one closed up over the tail men, not a deal from the bodies")
+
+
+## A squared block re-squared by a hold-ground about-face carries the depth mirror armed. A
+## regiment-path loss then leaves its pairing longer than the headcount, and a fresh order bakes
+## the mirror before any query has closed the pairing up. The bake must relabel that longer
+## pairing too, or the close-up the next query makes runs in the wrong frame and puts the
+## off-centre men's slots on the other flank.
+func test_a_loss_then_a_bake_keeps_every_man_on_his_flank() -> void:
+	var u := _make_square(60)
+	var leaf: Order = Order.new_about_face()
+	u.set_current_order(leaf)
+	leaf.turn_start_facing = u.facing
+	u.facing = u.facing.rotated(PI)
+	u._settle_order_turn()
+	_stand_on_slots(u)
+	assert_true(u.reform_ranks(true), "precondition: the about-face fold re-squares")
+	_stand_on_slots(u)
+	assert_true(u._formation_mirror_x, "precondition: the mirror is armed")
+	var before: PackedVector2Array = u.soldier_world_slots(60)
+	u.soldiers -= 3
+	assert_eq(u._sim_soldier_square_slot.size(), 60, "precondition: no query has closed it up")
+	u.set_current_order(Order.new_move(u.position + u.facing * 200.0))
+	assert_false(u._formation_mirror_x, "precondition: the order baked the mirror")
+	var t: Dictionary = _walk(u, before, _survivors(60, [57, 58, 59]))
+	_assert_closed_up(u, t, 3, "three regiment-path casualties, then a bake")
 
 
 ## A hold-ground about-face re-square records the men it sends walking the block's depth, and

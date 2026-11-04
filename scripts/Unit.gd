@@ -6555,7 +6555,8 @@ var _file_assignment_files: int = -1
 # square, or its file count changing -- and otherwise closed up over a casualty from the cells
 # alone (close_up_square_slots, and _ensure_square_slot_assignment for a regiment-path loss or
 # a gain), so the slot targets a squared block steers onto never churn tick to tick while it
-# takes losses, and only the fallen man's file and the back of the block move.
+# takes losses: one loss moves only the fallen man's file and the back of the block, and a
+# volley can deal the survivors again by lateral file from the cells they held.
 var _sim_soldier_square_slot: PackedInt32Array = PackedInt32Array()
 # The file count _sim_soldier_square_slot was last paired against; a mismatch against the
 # current formation_files(count) means the grid has genuinely reshaped and the pairing
@@ -7352,8 +7353,9 @@ func close_up_row_slots(dead: PackedInt32Array, count_before: int) -> void:
 ## Close the square pairing up over the men SoldierMelee.reap() removes at the indices in `dead`,
 ## from a block of `count_before`, as close_up_row_slots does for the row-major pairing. The
 ## square grid is a row-major block_slots grid whose ranks lie a file pitch apart, so the men
-## behind each fallen man step up in his file and everyone else keeps his cell. Renumbering every
-## cell behind the vacancy instead (UnitFormation.drop_slot_assignment) sends each rank's first
+## behind each fallen man step up in his file; a single loss leaves everyone else on his cell,
+## and several at once may be dealt again by lateral file instead. Renumbering every
+## cell behind the vacancy (UnitFormation.drop_slot_assignment) sends each rank's first
 ## man to the far end of the rank ahead, through the middle of the square.
 ##
 ## A pairing not held for this block (a placeholder, one of another length, or one left over
@@ -8253,9 +8255,13 @@ func _bake_formation_mirror() -> void:
 		for i in range(count):
 			_sim_soldier_file[i] = _file_assignment_files - 1 - _sim_soldier_file[i]
 		note_file_assignment_changed()
-	if _square_slot_files > 0 and _sim_soldier_square_slot.size() == count:
+	# Relabelled by its own length, like the row pairing below: a pairing a regiment-path loss
+	# has left longer than the headcount is closed up from its cells on the next query
+	# (_ensure_square_slot_assignment), so it has to be in the baked frame by then.
+	var held_square: int = _sim_soldier_square_slot.size()
+	if _square_slot_files > 0 and held_square > 0:
 		_sim_soldier_square_slot = _composed_pairing(
-				UnitFormation.lateral_reflection_pairing(count, _square_slot_files),
+				UnitFormation.lateral_reflection_pairing(held_square, _square_slot_files),
 				_sim_soldier_square_slot)
 	var held_rows: int = _sim_soldier_row_slot.size()
 	if _row_slot_files > 0 and held_rows > 0:
