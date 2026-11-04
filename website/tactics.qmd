@@ -1249,6 +1249,15 @@ distance walked, and the ring is standing and still appreciably sooner. A real
 square forms under pressure rather than on the drill ground, so treat those figures
 as the shape of the saving and not a number to time a charge against.
 
+**A square closes up over its dead.** When a man in the square falls,
+the men behind him in his file step up,
+and the rear rank fills the back of that file,
+so everyone else keeps his place in the ring.
+When a volley takes several men at once,
+the square may instead shift whole ranks a file over to fill the gaps,
+whichever leaves the shorter walk.
+Either way nobody is sent across the square to fill a gap on the far side.
+
 **Orbis vs schiltron.** The hollow square comes in two variants with different
 trade-offs, not one generic stance:
 

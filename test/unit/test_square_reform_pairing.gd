@@ -220,11 +220,11 @@ func test_square_reform_still_faces_the_ring_outward_after_pairing() -> void:
 
 
 func test_casualties_carry_the_pairing_instead_of_re_pairing_the_block() -> void:
-	# The wiring half of the casualty story: SoldierMelee.reap() trims the pairing at the
-	# dead man's own array index, exactly like every other per-soldier array, so a survivor
-	# keeps the cell he already held. Without that trim the pairing silently goes stale --
-	# it would still be the right length but would name cells for men who are no longer at
-	# those indices.
+	# The wiring half of the casualty story: SoldierMelee.reap() closes the pairing up over
+	# the dead man, dropping his entry like every other per-soldier array's, so a survivor
+	# keeps the cell he already held. Without that the pairing silently goes stale -- it would
+	# still be the right length but would name cells for men who are no longer at those
+	# indices. (test_square_casualty_close_up.gd pins which men the close-up moves.)
 	var u: Unit = _stage_lone_infantry()
 	assert_not_null(u, "the lone Infantry regiment spawned")
 	if u == null:
@@ -239,9 +239,12 @@ func test_casualties_carry_the_pairing_instead_of_re_pairing_the_block() -> void
 	var doomed: int = 47
 	var vacated_cell: int = u._sim_soldier_square_slot[doomed]
 	var neighbour_cell: int = u._sim_soldier_square_slot[10]
-	# Cell ids above the vacancy step down by one, because the grid itself loses its last
-	# cell and re-closes; ids below it are untouched.
-	var expected_neighbour: int = neighbour_cell - (1 if neighbour_cell > vacated_cell else 0)
+	# Only the dead man's file and the last two ranks close up; a man elsewhere keeps his cell.
+	var files: int = u.formation_files(u.soldiers)
+	var last_full: int = u.soldiers / files - 1
+	assert_true(neighbour_cell % files != vacated_cell % files
+			and neighbour_cell / files < last_full,
+		"precondition: man 10 stands outside the dead man's file and the back ranks")
 	u._sim_soldier_hp[doomed] = 0.0
 	SoldierMelee.reap(u, null)
 
@@ -255,9 +258,8 @@ func test_casualties_carry_the_pairing_instead_of_re_pairing_the_block() -> void
 			"cell id %d stays inside the shrunken grid" % cell)
 		seen[cell] = true
 	assert_eq(seen.size(), u.soldiers, "the pairing is still a bijection after the casualty")
-	# A survivor is never re-paired by someone else's death: he holds his own cell, or
-	# steps one cell forward because the grid closed up behind him.
-	assert_eq(u._sim_soldier_square_slot[10], expected_neighbour,
+	# A survivor is never re-paired by someone else's death: he holds his own cell.
+	assert_eq(u._sim_soldier_square_slot[10], neighbour_cell,
 		"a survivor keeps his own cell across a casualty elsewhere in the block")
 
 

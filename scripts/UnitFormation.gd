@@ -863,11 +863,11 @@ static func apply_traverse_flank_arcs(slots: PackedVector2Array, world_positions
 ## had, or steps one cell forward if it stood behind the vacancy -- the same close-up the
 ## index-order layout has always produced, only now applied in the paired order.
 ##
-## Called from `SoldierMelee.reap` alongside every other per-soldier array's own trim, so an
-## ordinary casualty never re-pairs the block. Re-pairing per casualty would read better on
-## a still frame but would recompute slot targets from jostling bodies every tick a squared
-## unit is being ground down, which is the target-slot churn this sim has been bitten by
-## before. Out-of-range `index` returns `perm` unchanged.
+## That is the right trim for a pairing whose grid is not the one in hand (a dormant pairing,
+## or one the next query deals again anyway). On a row-major block_slots grid itself, the
+## square's included, it sends each rank's first man to the far end of the rank ahead, so a
+## held pairing closes up instead (close_up_slot_assignment). Out-of-range `index` returns
+## `perm` unchanged.
 static func drop_slot_assignment(perm: PackedInt32Array, index: int) -> PackedInt32Array:
 	if index < 0 or index >= perm.size():
 		return perm
