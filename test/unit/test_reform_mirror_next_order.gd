@@ -341,10 +341,20 @@ func test_a_baked_block_keeps_its_flanks_through_a_regiment_path_casualty() -> v
 ## its ties toward one flank. The baked block and its armed twin must still close up onto the
 ## same ground, man for man, or the bake would move men after all.
 func test_a_baked_row_major_block_closes_up_over_casualties_as_its_armed_twin_does() -> void:
+	_assert_twins_close_up_alike(_make_partial_row_major)
+
+
+## A squared block's pairing closes up the same way (Unit.close_up_square_slots), so the same
+## holds for the square.
+func test_a_baked_square_closes_up_over_casualties_as_its_armed_twin_does() -> void:
+	_assert_twins_close_up_alike(_make_square)
+
+
+func _assert_twins_close_up_alike(make: Callable) -> void:
 	for dead in [[4], [0, 1, 2, 9, 17], [3, 4, 11, 12, 59]]:
-		var u := _make_partial_row_major()
+		var u: Unit = make.call()
 		_baked_block(u)
-		var m: Unit = _mirrored_block(_make_partial_row_major)
+		var m: Unit = _mirrored_block(make)
 		_stand_on_slots(m)
 		assert_false(u._formation_mirror_x, "precondition: the mirror is baked")
 		for b in [u, m]:
