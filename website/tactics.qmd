@@ -1005,9 +1005,9 @@ but its ranks stay where its men stand rather than wheeling round after them.
 ```
 
 An infantry block on Hold first snaps round toward a cavalry charge,
-then turns back as the riders come inside its ranks, until its ranks are square again.
-Once the riders have broken and gone, its ranks stay square
-rather than wheeling back off its heading.
+then turns back as the riders come inside its ranks, on past its ranks by about 22 degrees.
+Once the riders have broken and gone, it turns its ranks back that far and stops square
+rather than wheeling them on round off its heading.
 :::
 
 Stopping at the edge makes a flank or rear attack cheaper for the attacker,
@@ -1863,8 +1863,24 @@ roughly a quarter-turn or more off its current front --- attacked in the flank, 
 sent to hit a foe off to one side --- it does **not** snap its facing round.
 Instead the whole line **turns in place** to bring its front to bear, the men
 holding their ground as the block pivots, and it withholds its blows until it
-has come about. A small correction still snaps and fights at once, so a unit
-already roughly fronting its target loses no time. The upshot: catching a unit on
+has come about.
+A smaller correction is made at once,
+and most units snap round onto the enemy and fight straight away,
+so a unit already roughly fronting its target loses no time.
+A cavalry troop already in contact, whose ranks stand far deeper than a foot block's,
+wheels onto its enemy instead when the correction is more than a few degrees.
+It wheels no faster than the riders on its corners can jog,
+so its ranks stay with its riders instead of swinging round under them,
+and it leaves the fight still square to its riders.
+It keeps fighting while it wheels,
+except that while its front is more than 50 degrees off the enemy
+it holds its blows until it has come round, as a block turning in place does.
+It strikes anyway at an enemy that has got among its own ranks,
+and at one sweeping round it faster than it can wheel to follow.
+A troop still snaps round onto a routing enemy, so it keeps its front on a quarry that flees,
+and onto an enemy formed in a square or schiltron, whose faces it slides along.
+
+The upshot: catching a unit on
 the flank buys you a genuine window --- it must turn to answer you before it can
 strike back --- so a flank attack rewards you both with the flank casualty bonus
 *and* the beat the enemy spends coming about. Once the turn settles, the unit
