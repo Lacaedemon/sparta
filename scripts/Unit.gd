@@ -4879,7 +4879,8 @@ func _reface(dir: Vector2) -> void:
 	# square up to a quarter-turn plus MARCH_SQUARE_BAND (order_square_line), so a lag standing on
 	# square stands up to that. A lag standing on the half-turn (a full grid's kept +-PI fold, the
 	# block since left with a short rank) stands only up to a quarter-turn less the band, since
-	# the band measures from square and the re-run takes square from there on.
+	# the band measures from square and the re-run takes square from there on (a lag that has not
+	# grown past FACING_SNAP_ABSORB_THRESHOLD returns above, so one of up to that still stands).
 	# Grown past that, the line has changed, so
 	# it is folded where it stands and the re-square waits to run again from the new fold: the
 	# block is out of contact here (_face_dir took the turn otherwise). _advance_grid_lag runs it
