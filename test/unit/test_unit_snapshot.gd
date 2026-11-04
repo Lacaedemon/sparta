@@ -467,7 +467,8 @@ func test_spawn_role_tunables_and_late_state_round_trip() -> void:
 		"router_contact_reentry_frac": 0.75, "_router_left_contact": true, "_router_anchor_contact": true,
 		"melee_front_line_scale": 0.25, "melee_front_line_min_cos": 0.8,
 		"melee_side_contact_max_cos": 0.6, "interior_strike_margin": 7.5,
-		"melee_reface_fold_footprint_scale": 0.5,
+		"melee_reface_fold_footprint_scale": 0.5, "combat_reface_snap_turn": 0.125,
+		"_combat_wheel_rate": -0.375, "_combat_wheel_offset": 0.625,
 		"flanking_maneuver_wrap_files": 6, "flanking_maneuver_cooldown_ticks": 90,
 		"flanking_maneuver_hysteresis": 3,
 	}
@@ -499,6 +500,8 @@ func test_newly_captured_fields_default_for_older_snapshots() -> void:
 		"moved_while_routing_pace": "_moved_while_routing_pace", "rally_halt": "_rally_halt",
 		"fallback_mirror_x": "_fallback_mirror_x",
 		"router_left_contact": "_router_left_contact", "router_anchor_contact": "_router_anchor_contact",
+		"combat_wheel_rate": "_combat_wheel_rate", "combat_wheel_offset": "_combat_wheel_offset",
+		"combat_wheel_ticks_ago": "_combat_wheel_tick",
 	}
 	for tunable in ["order_clear_step", "order_clear_tolerance", "formed_turn_tracking_frac",
 			"melee_press_fraction", "routing_melee_press_fraction", "disengage_step_distance",
@@ -506,7 +509,7 @@ func test_newly_captured_fields_default_for_older_snapshots() -> void:
 			"rally_morale_threshold", "rally_resume_radius_factor", "rally_resume_clear_ticks",
 			"router_contact_reentry_frac", "melee_front_line_scale", "melee_front_line_min_cos",
 			"melee_side_contact_max_cos", "interior_strike_margin",
-			"melee_reface_fold_footprint_scale", "flanking_maneuver_wrap_files",
+			"melee_reface_fold_footprint_scale", "combat_reface_snap_turn", "flanking_maneuver_wrap_files",
 			"flanking_maneuver_cooldown_ticks", "flanking_maneuver_hysteresis"]:
 		fields[tunable] = tunable
 	for key in fields:
