@@ -634,7 +634,8 @@ const QUARTER_REDEAL_BAND: float = deg_to_rad(10.0)
 # nearer split alone flips between the two either side of a quarter. Past the quarter the
 # reflection costs a re-deal on the march, and a marching block re-dealt, in depth or at a
 # quarter-turn, re-forms worse than one wheeled. A full grid's half-turn moves no man
-# (reform_ranks keeps its +-PI fold), so such a block takes the nearer split. Measured on sweep_routers uid 4 (30 men on 8 files chasing at up
+# (reform_ranks keeps its +-PI fold), so such a block takes the nearer split. Measured on
+# sweep_routers uid 4 (30 men on 8 files chasing at up
 # to a sprint, its first order re-square 92 to 99 degrees off on seeds 0, 1 and 3, later ones 103
 # and 112 degrees off on seeds 1 and 3), dense 2-tick dumps of the clip's 260 ticks judged with no
 # exemption, seeds 0 to 4: worst shape residual 21.8, 19.1, 20.9, 21.8 and 11.1 against the
@@ -4877,16 +4878,19 @@ func _reface(dir: Vector2) -> void:
 	# came to a marching block whose half-turn re-deals its men (_march_keeps_line) it keeps
 	# square up to a quarter-turn plus MARCH_SQUARE_BAND (order_square_line), so a lag standing on
 	# square stands up to that. A lag standing on the half-turn (a full grid's kept +-PI fold, the
-	# block since left with a short rank) re-runs past a quarter-turn, as the band measures from
-	# square, not from it.
+	# block since left with a short rank) stands only up to a quarter-turn less the band, since
+	# the band measures from square and the re-run takes square from there on.
 	# Grown past that, the line has changed, so
 	# it is folded where it stands and the re-square waits to run again from the new fold: the
 	# block is out of contact here (_face_dir took the turn otherwise). _advance_grid_lag runs it
 	# once the contact has cleared, on a tick that does not turn in place: this same tick, since
 	# it runs right after _think, when the block is already clear and not turning in place.
 	var reach: float = PI * 0.5
-	if _march_keeps_line() and absf(_formation_angle) < 0.01:
-		reach += MARCH_SQUARE_BAND
+	if _march_keeps_line():
+		if absf(_formation_angle) < 0.01:
+			reach += MARCH_SQUARE_BAND
+		elif absf(absf(wrapf(_formation_angle, -PI, PI)) - PI) < 0.01:
+			reach -= MARCH_SQUARE_BAND
 	if absf(_grid_lag) > reach:
 		_fold_grid_lag()
 		_resquare_pending = true

@@ -133,6 +133,26 @@ func test_a_lag_on_the_half_turn_of_a_grid_that_lost_men_reruns_past_a_quarter()
 			"wheeling the 85 degrees the grid stands off square")
 
 
+## Short of a quarter-turn off the half-turn, but past a quarter-turn less the band, the re-run
+## already takes square, so the lag does not stand on the half-turn there either.
+func test_a_lag_on_the_half_turn_reruns_once_the_rerun_would_take_square() -> void:
+	var u := _marching_unit(FULL_MEN, FULL_FILES)
+	_fold(u, 110.0)
+	_reissue(u)
+	var lag: float = u._grid_lag
+	assert_almost_eq(absf(lag), deg_to_rad(70.0), ANGLE_EPS, "setup: 70 degrees to turn")
+	for i in [0, 1]:
+		u._sim_soldier_hp[i] = 0.0
+	SoldierMelee.reap(u, null)
+	assert_true(u._march_keeps_line(), "setup: the block keeps square")
+	u._reface(u.facing.rotated(-signf(lag) * deg_to_rad(10.0)))   # grows the lag to 80 degrees
+	assert_true(u._resquare_pending, "past a quarter less the band off the half-turn it waits")
+	u._advance_grid_lag(TICK)
+	assert_eq(u._formation_angle, 0.0, "onto square")
+	assert_almost_eq(absf(u._grid_lag), deg_to_rad(100.0), deg_to_rad(2.0),
+			"wheeling the 100 degrees the grid stands off square")
+
+
 func test_a_marching_partial_block_wheels_a_fold_either_side_of_a_quarter_the_same_way() -> void:
 	var lags: Array = []
 	for deg in [90.0 - NEAR_DEG, 90.0 + NEAR_DEG]:
