@@ -166,7 +166,6 @@ func test_a_file_major_resquare_with_no_pending_deal_still_reverses_the_ranks() 
 		"the farthest man walks %.1f wu (a rank pitch %.1f)" % [farthest, u.rank_pitch_wu()])
 
 
-
 ## A FILE_GROUP block re-forms its files from the ids it held rather than dealing them from the
 ## bodies, so its ranks are still in the unreflected frame and the re-square keeps reversing
 ## them. The re-form reads no body, so the re-square over the pending deal ends with exactly the
