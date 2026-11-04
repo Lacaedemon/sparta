@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/folded-march-lag-explicatio.json",
+  "caption": "A wide, loose block of 120 undisciplined spearmen marches a short way off to its left. It turns its heading at once, and its formation swings round after it only as fast as the men on its ends can jog, so it halts with the formation still well off its heading. It is then told to quarter-turn and unfold into a line twice as wide. The new line is laid out where the men stand, about 33 degrees off the direction they now face. As the men walk out to it, it swings square to their front over the next twenty seconds. Before this fix nothing turned it back, and the line stayed crooked to its own front until the block's next order. The line is very wide, so its outer men are still walking out at the end of the clip.",
+  "fixed_fps": 30,
+  "max_frames": 750,
+  "fps": 12,
+  "width": 720
+}
