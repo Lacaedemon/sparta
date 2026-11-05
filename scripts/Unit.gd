@@ -11537,8 +11537,9 @@ func _flight_front_veer(dir: Vector2, step: Vector2, delta: float) -> Vector2:
 		if again == 1:
 			return dir
 		travel = turned
-	if travel.length_squared() <= 0.0 or travel.dot(dir) < -STRAIGHT_FLIGHT_EPS:
-		return dir
+	if travel == want or travel.length_squared() <= 0.0 \
+			or travel.dot(dir) < -STRAIGHT_FLIGHT_EPS:
+		return dir   # nothing turned, or a turn back: the flight runs on exactly as before
 	return travel.normalized()
 
 
