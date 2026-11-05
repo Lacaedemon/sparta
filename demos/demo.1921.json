@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/reform-hold-contact-1921.json",
+  "caption": "Two Spearmen blocks split into a checkerboard and re-form in place before they march. A hundred men crossing a tight block to new places crowd, and men far off their places walk past men nearer theirs. The closest two in either block now stay at least 3.16 wu apart: nearer than the 9 wu two bodies take up, but above the 2.25 wu overlap floor. Before this fix a man the crowd drove on walked on through his neighbour, and two men came within 1.39 wu. A reform hold also keeps its men apart now when every man stands within a file pitch of his place, where two neighbours trading places once crossed within 0.51 wu (the line-membership checkerboard clip).",
+  "fixed_fps": 30,
+  "max_frames": 330,
+  "fps": 15,
+  "width": 720
+}

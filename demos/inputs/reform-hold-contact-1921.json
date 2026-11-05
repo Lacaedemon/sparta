@@ -1,0 +1,24 @@
+{
+  "_comment": "Two Spearmen blocks of 100 standing side by side are box-selected and given a right-to-left checkerboard drag (form_up_dist=4), which splits them into a front block and an offset rear block. Each order's reform hold re-forms its block in place before it marches, and with 100 men walking across a tight block to new places they crowd: men far off their places walk past men nearer theirs. Before the fix the same-unit standoff pushed a crowded pair apart at a speed that grew with how deep the two overlapped but not with how fast they still walked into each other, so a man the crowd drove on walked on through his neighbour: on main f57ccdfa the closest pairs read 1.39 wu (uid 0, tick 550) and 2.13 wu (uid 1, tick 112) against the 2.25 wu overlap floor, 9 wu for two bodies. Inside half the standoff distance a pair now also stops closing, and the closest pairs stay at 3.61 and 3.16 wu, with the blocks still in their reform hold at tick 900 on both trees. Measured with full state dumps every 2 ticks to tick 900 on seeds 0 to 4 (a drill with no melee, so every seed runs the same).",
+  "seed": "19210",
+  "drill": true,
+  "form_up_dist": 4,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 560, "y": 480, "count": 100},
+    {"team": 0, "type": "Spearmen", "x": 680, "y": 480, "count": 100}
+  ],
+  "camera": [
+    {"tick": 0, "x": 620.0, "y": 600.0, "zoom": 1.2}
+  ],
+  "steps": [
+    {"tick": 5, "box": {"from": [480, 400], "to": [760, 520]}},
+    {"tick": 20, "rmb_drag": {"from": [800, 650], "to": [440, 650]}}
+  ],
+  "state": [10, 120, 240, 360, 480, 600, 750, 900],
+  "expect": [
+    {"tick": 40, "uid": 0, "field": "order_phase", "value": "REFORM"},
+    {"tick": 40, "uid": 1, "field": "order_phase", "value": "REFORM"},
+    {"tick": 600, "uid": 0, "field": "order_phase", "value": "REFORM"},
+    {"tick": 600, "uid": 1, "field": "order_phase", "value": "REFORM"}
+  ]
+}
