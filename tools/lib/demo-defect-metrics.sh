@@ -32,7 +32,7 @@
 # type=input rows carry their own scripted-input file, which already declares both keys
 # (see demos/README.md). type=replay rows have no input script, but MAY carry a sidecar
 # file at the replay's own path with its .json extension replaced by .defects.json (e.g.
-# demos/showcase.json -> demos/showcase.defects.json); when that sidecar exists in the
+# demos/charge_demo.json -> demos/charge_demo.defects.json); when that sidecar exists in the
 # tree, it is returned the same way, since the analyzer reads only the two declaration
 # keys from whatever `--script` points at and does not care whether the file is also a
 # playable replay. A replay row with no such sidecar returns empty, as before.

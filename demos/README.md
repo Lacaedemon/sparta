@@ -696,7 +696,7 @@ A replay clip that legitimately needs one
 (a maneuver that trips a metric on purpose, a platform-dependent reading that needs pinning)
 carries a **sidecar file** instead:
 same directory as the replay, same basename, `.defects.json` in place of `.json`.
-`demos/showcase.json` pairs with `demos/showcase.defects.json`.
+`demos/charge_demo.json` pairs with `demos/charge_demo.defects.json`.
 
 The sidecar holds the two keys documented above, with the identical schema;
 the analyzer reads only those two, so a `_comment` key is tolerated and ignored.
