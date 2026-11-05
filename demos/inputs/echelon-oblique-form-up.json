@@ -20,6 +20,10 @@
     "path_crossing": {
       "uids": [0, 1, 2],
       "reason": "Soldier paths intersect transiently during the 90-man frontage and facing reorganization before marching into echelon."
+    },
+    "misslotted": {
+      "uids": [0, 1, 2],
+      "reason": "Judged on full state dumps every 2 ticks, each block's form-up reads as misslotted while its men are still walking to their new places in the reform hold: worst 0.27, 0.28 and 0.28 for uids 0 to 2 on every seed against the 0.25 threshold (0.22, 0.27 and 0.30 on main, where uid 2 already fails), and all three pass at the script's own sampled ticks on both trees. Traced on seed 0, uid 0: from tick 330 the block's men stand a mean 2.24 wu from their nearest slot, just inside the settled test (a quarter of the 9 wu spacing), while 29 of 90 still stand nearer another man's slot; the count falls each sample to 3 by tick 500 and 0 by tick 600, when the block marches. The men are in transit, not settled on the wrong slots. With the same-unit standoff keeping men apart in the hold (overlap now passes for all three, 2.90 to 2.96 wu, against 1.15 to 1.58 on main), the blocks cross the settled test a few ticks earlier, while more men are still walking. misslotted having no transit window after a re-slot is #1892. Measured 2026-11-05 against main f57ccdfa, every exemption removed, seeds 0 to 4."
     }
   }
 }
