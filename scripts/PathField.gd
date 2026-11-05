@@ -1034,6 +1034,37 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 	return best
 
 
+## Whether the segment a..b, carried along `travel`, passes through the interior of `rect`:
+## the parallelogram it sweeps (corners a, b, b + travel, a + travel) overlaps the rect by
+## more than its boundary. Exact for any orientation, by the separating-axis test over the
+## rect's two axes and the parallelogram's two edge normals (a zero edge is skipped, which
+## leaves the exact test for the segment or point that remains). A sweep that only touches
+## the rect's boundary, such as a line sliding along a face, does not count. Deterministic
+## float math.
+static func swept_segment_meets_rect(a: Vector2, b: Vector2, travel: Vector2, rect: Rect2) -> bool:
+	var poly: Array[Vector2] = [a, b, b + travel, a + travel]
+	var box: Array[Vector2] = [rect.position, Vector2(rect.end.x, rect.position.y), rect.end,
+			Vector2(rect.position.x, rect.end.y)]
+	var axes: Array[Vector2] = [Vector2.RIGHT, Vector2.DOWN]
+	for edge in [b - a, travel]:
+		if edge.length_squared() > 0.0:
+			axes.append(edge.orthogonal())
+	for axis in axes:
+		var p_lo: float = INF
+		var p_hi: float = -INF
+		for p in poly:
+			p_lo = minf(p_lo, p.dot(axis))
+			p_hi = maxf(p_hi, p.dot(axis))
+		var r_lo: float = INF
+		var r_hi: float = -INF
+		for p in box:
+			r_lo = minf(r_lo, p.dot(axis))
+			r_hi = maxf(r_hi, p.dot(axis))
+		if p_hi <= r_lo or p_lo >= r_hi:
+			return false
+	return true
+
+
 ## Whether the segment from..to touches `rect` (endpoints inside count).
 ## Deterministic float math, so paths stay replay-reproducible.
 static func segment_intersects_rect(from: Vector2, to: Vector2, rect: Rect2) -> bool:
