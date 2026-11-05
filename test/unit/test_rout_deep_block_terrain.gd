@@ -9,6 +9,9 @@ extends GutTest
 ## - A routing man whose run would carry him onto the terrain veers along it while he can
 ##   still turn (SoldierBodies.router_terrain_avoid), instead of being held against the face
 ##   by the soldier backstop.
+## - A block whose leading rank is about to step onto the terrain travels along the face
+##   instead (Unit._flight_front_veer), so a block that breaks with its front just short of
+##   the terrain keeps that rank with it.
 ## - The detour never leads the block off the field.
 ##
 ## The regression this pins: the flee detour rounded the hill with the anchor's own margin
@@ -59,12 +62,21 @@ const CLOSE_ENEMY := Vector2(1420.0, 760.0)
 const CLOSE_START_TICK := 350
 # The men counted as fallen out of their block: more than this far from their slots (wu).
 const FALLEN_OUT_WU := 100.0
-# Measured at CLOSE_START_TICK on this branch: 5 men fallen out and a worst gap of 382 wu;
-# on main 12 and 426. The bounds sit one man and about 5 percent above the branch's figures,
-# below main's: they pin the improvement, not a clean result.
-# TODO(#1787): tighten once the close-start lag is fixed.
-const CLOSE_MAX_FALLEN_OUT := 6
-const CLOSE_MAX_WORST_WU := 400.0
+# Measured at CLOSE_START_TICK with the leading rank's veer (Unit._flight_front_veer): 2 men
+# fallen out and a worst gap of 192.3 wu; without it 5 and 382.5, its front-rank men held
+# on the hill's face while their slots ran on. The bounds sit at the measured count and
+# about 4 percent above the measured worst gap.
+const CLOSE_MAX_FALLEN_OUT := 2
+const CLOSE_MAX_WORST_WU := 200.0
+# _flight_front_veer fixtures on the close-start staging: the router's front rank line
+# (centred half its depth ahead of the anchor) is moved to FACE_SHORT_WU short of the hill's
+# north face, grown by a body radius, which is less than one tick of travel at flee speed;
+# FAR_SHORT_WU is more than one tick. A step point well west and south of the hill sends the
+# flight round its west end, and one east and south round its east end.
+const FACE_SHORT_WU := 1.0
+const FAR_SHORT_WU := 40.0
+const WEST_STEP := Vector2(300.0, 1700.0)
+const EAST_STEP := Vector2(1500.0, 1700.0)
 # Pure-function fixtures for router_terrain_avoid: a rect (already grown by the body radius)
 # north of a man running north, and the man's own acceleration.
 const FACE_RECT := Rect2(-100.0, -300.0, 300.0, 100.0)   # south face at y = -200
@@ -254,17 +266,21 @@ func test_a_detour_beside_the_field_edge_keeps_the_block_on_the_field() -> void:
 			"the rallied anchor stands on the field (%s)" % router.position)
 
 
-func test_a_close_start_router_keeps_more_of_its_front_than_before() -> void:
-	# A block whose front rank starts within a few strides of the hill cannot turn away in
-	# time, so its leading men still meet the hill's face and fall behind. This pins the
-	# improvement over the anchor-margin detour.
-	# TODO(#1787): the leading men of a close-start block still fall behind.
-	var router: Unit = await _spawn([
+## Spawn the close-start staging and return its router (uid 0).
+func _spawn_close() -> Unit:
+	return await _spawn([
 		{"team": 1, "type": "Cavalry", "count": MOUNTS, "x": CLOSE_START.x, "y": CLOSE_START.y,
 				"morale": 1.0, "starting_state": 3, "facing": [0, 1]},
 		{"team": 0, "type": "Cavalry", "count": 24, "x": CLOSE_ENEMY.x, "y": CLOSE_ENEMY.y,
 				"facing": [-1, 0]},
 	], CLOSE_FIELD, [{"rect": CLOSE_HILL, "type": "hill", "kind": "block"}])
+
+
+func test_a_close_start_router_keeps_its_front_rank() -> void:
+	# A block whose front rank starts within a few strides of the hill cannot turn its
+	# heading away in time; its anchor side-steps along the face instead, so the front rank
+	# stays with the block.
+	var router: Unit = await _spawn_close()
 	assert_not_null(router, "the team-1 cavalry deployed")
 	if router == null:
 		return
@@ -285,6 +301,74 @@ func test_a_close_start_router_keeps_more_of_its_front_than_before() -> void:
 			% [CLOSE_MAX_FALLEN_OUT, FALLEN_OUT_WU, fallen_out])
 	assert_lt(worst, CLOSE_MAX_WORST_WU, "worst body-to-slot gap under %.0f wu (got %.1f)"
 			% [CLOSE_MAX_WORST_WU, worst])
+
+
+## Move the close-start router so its front rank line, centred half its depth ahead of the
+## anchor, stands at `front_x` and `short` wu north of the hill's north face grown by a body
+## radius, and give it its full flee pace.
+func _place_front(router: Unit, front_x: float, short: float) -> void:
+	var half: Vector2 = router._formation_local_half_extents()
+	var face_y: float = CLOSE_HILL.position.y - router.soldier_body_radius()
+	router.position = Vector2(front_x, face_y - short) - router.facing * half.y
+	router._flee_pace = router.flee_speed()
+
+
+func test_a_leading_rank_about_to_step_onto_a_face_travels_along_it() -> void:
+	var router: Unit = await _spawn_close()
+	assert_not_null(router, "the team-1 cavalry deployed")
+	if router == null:
+		return
+	assert_almost_eq(router.facing.dot(Vector2.DOWN), 1.0, 0.0001, "setup: facing south")
+	_place_front(router, CLOSE_START.x, FACE_SHORT_WU)
+	assert_lt(FACE_SHORT_WU, router.flee_speed() * TICK, "setup: the face is within one tick")
+	var west: Vector2 = router._flight_front_veer(Vector2.DOWN, WEST_STEP, TICK)
+	assert_almost_eq(west.x, -1.0, 0.0001, "the anchor travels west along the face (got %s)" % west)
+	assert_almost_eq(west.y, 0.0, 0.0001, "with nothing left heading into the face")
+	var east: Vector2 = router._flight_front_veer(Vector2.DOWN, EAST_STEP, TICK)
+	assert_almost_eq(east.x, 1.0, 0.0001,
+			"a step round the east end sends it east along the face (got %s)" % east)
+	assert_almost_eq(east.y, 0.0, 0.0001, "with nothing left heading into the face")
+
+
+func test_a_leading_rank_more_than_a_tick_short_of_the_face_keeps_its_direction() -> void:
+	var router: Unit = await _spawn_close()
+	assert_not_null(router, "the team-1 cavalry deployed")
+	if router == null:
+		return
+	_place_front(router, CLOSE_START.x, FAR_SHORT_WU)
+	assert_gt(FAR_SHORT_WU, router.flee_speed() * TICK, "setup: the face is beyond one tick")
+	var dir := Vector2(-0.6, 0.8)
+	assert_eq(router._flight_front_veer(dir, WEST_STEP, TICK), dir,
+			"a flight one tick clear of the face travels along its step")
+
+
+func test_the_leading_rank_counts_its_flank_files() -> void:
+	# The rank's centre runs past the hill's west end, but its eastern flank file (half the
+	# block's width out, plus a body radius) would still meet the face.
+	var router: Unit = await _spawn_close()
+	assert_not_null(router, "the team-1 cavalry deployed")
+	if router == null:
+		return
+	var half: Vector2 = router._formation_local_half_extents()
+	var r: float = router.soldier_body_radius()
+	_place_front(router, CLOSE_HILL.position.x - half.x - r + 1.0, FACE_SHORT_WU)
+	var flank: Vector2 = router._flight_front_veer(Vector2.DOWN, WEST_STEP, TICK)
+	assert_almost_eq(flank.x, -1.0, 0.0001,
+			"a rank whose flank file would meet the face travels along it (got %s)" % flank)
+	_place_front(router, CLOSE_HILL.position.x - half.x - r - 1.0, FACE_SHORT_WU)
+	assert_eq(router._flight_front_veer(Vector2.DOWN, WEST_STEP, TICK), Vector2.DOWN,
+			"a rank whose whole line passes the hill's end keeps its direction")
+
+
+func test_a_flight_not_yet_moving_keeps_its_direction() -> void:
+	var router: Unit = await _spawn_close()
+	assert_not_null(router, "the team-1 cavalry deployed")
+	if router == null:
+		return
+	_place_front(router, CLOSE_START.x, FACE_SHORT_WU)
+	router._flee_pace = 0.0
+	assert_eq(router._flight_front_veer(Vector2.DOWN, WEST_STEP, TICK), Vector2.DOWN,
+			"no travel this tick, nothing to veer")
 
 
 func test_a_turning_router_feeds_its_turn_forward_to_its_men() -> void:

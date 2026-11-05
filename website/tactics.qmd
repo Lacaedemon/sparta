@@ -148,8 +148,10 @@ its riders running together as a block.
   and its men veer off the rock rather than running into it,
   so even a deep block keeps together round the hill
   and regains its full flight pace once past it.
-  (Currently, a block that breaks just short of a hill
-  can still leave some of its leading men behind.)
+  A block that breaks with its front just short of a hill
+  side-steps along the hill's face until its front rank is clear,
+  so that rank stays with it,
+  though a few of its leading men can still fall a rank or two behind.
   If every escape direction is blocked,
   it gives up fleeing and stands to fight
   instead of uselessly running in place against the obstacle.

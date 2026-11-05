@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/deep-router-close-start-hill.json",
+  "caption": "Fixes #1787: a routing deep block that breaks with its front rank just short of a hill now keeps most of that rank with it. An 80-horse squadron, already broken, flees south (down the screen) with its front rank only 40 wu short of a hill that stands across the eastern half of its block. Its flight now side-steps west along the hill's face while its front rank would otherwise run onto it, so the whole block moves together with its men on their places, and then runs on round the hill. The leading riders still touch the face for a moment, but at the end of the clip the farthest rider is 192 wu from his place and 2 riders are more than 100 wu off theirs. Before the fix the flight kept running south-west: four riders of the front rank were held on the face and slid along it while their places ran on, ending 150 to 380 wu behind, with 5 riders more than 100 wu off. The clip ends just before the rout timer runs out and the squadron rallies.",
+  "fixed_fps": 30,
+  "max_frames": 176,
+  "fps": 15,
+  "width": 720
+}

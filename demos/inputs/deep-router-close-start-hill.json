@@ -1,0 +1,34 @@
+{
+  "_comment": "A broken deep cavalry block whose front rank starts only 40 wu short of a hill keeps its front rank with it. Team 1's 80 horses (default Cavalry geometry: 9 files by 9 ranks, about 320 wu wide and 960 wu deep, rank pitch 120 wu) spawn ALREADY routing (starting_state 3, morale 1.0) facing south, their own back edge, with their front rank at y 1180 and a hill (block terrain, x 780-1040, y 1220-1420) across the eastern half of the block. This is deep-router-rounds-hill.json's staging with the hill moved 180 wu closer (that clip's first draft). The flight's step rounds the hill from the anchor, which is 480 wu behind the front rank, so the front rank meets the hill's north face before the bounded heading turn has swung it clear. With the fix the anchor travels west along the face while the front rank's line, grown by its half-width, would run onto it, so the whole block side-steps with its men on their slots, then runs on round the hill. Measured with full state dumps at the declared ticks on seeds 0 to 4 (all identical: nothing here draws on the seed): slot_distance_max (the farthest any man stands from his slot) is 143.0 wu at tick 300 and 192.3 wu at tick 350, with 2 men more than 100 wu off their slots at tick 350; before the fix 325.1 and 382.5 wu, with 5 men more than 100 wu off (front-rank men i0-i3 pinned on the face and sliding west along it until about tick 240). The slot_distance_max pins allow two rank pitches (240 wu), which main exceeds at both ticks. The anchor is at about (687.3, 811.1) at tick 240, against (701.8, 911.3) before the fix: the side-step shows as 100 wu less travel south. The leading men still touch the face for a while (soldiers_at_block_terrain_edge 4, 3, 2 at ticks 120, 150, 180, about as before), since a block starting this close and from rest cannot stop short of it. The tick-8 position pins are setup pins (the spawn), not claims about the fix. A routing unit's rout timer (6 s) runs out at tick 360 and it rallies; the clip ends at tick 352, just before that. A small idle team-0 squadron 600 wu east keeps the router in the close sim tier; all_teams_control leaves both sides without AI. Flat declared map apart from the hill; drill mode. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "48213",
+  "drill": true,
+  "all_teams_control": true,
+  "map": {
+    "field": [1800, 2400],
+    "terrain": [
+      {"rect": [780, 1220, 260, 200], "type": "hill", "kind": "block"}
+    ],
+    "spawn_lines": [300.0, 1100.0]
+  },
+  "scenario": [
+    {"team": 1, "type": "Cavalry", "x": 820, "y": 700, "count": 80, "morale": 1.0, "starting_state": 3, "facing": [0, 1]},
+    {"team": 0, "type": "Cavalry", "x": 1420, "y": 760, "count": 24, "facing": [-1, 0]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 860.0, "y": 1150.0, "zoom": 0.32}
+  ],
+  "steps": [],
+  "state": [8, 60, 120, 150, 180, 210, 240, 270, 300, 330, 350, 352],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": 8, "uid": 0, "field": "tier", "value": "CLOSE"},
+    {"tick": 8, "uid": 0, "field": "position", "value": [819.8, 700.3], "tol": 1.0},
+    {"tick": 8, "uid": 1, "field": "position", "value": [1420.0, 760.0], "tol": 1.0},
+    {"tick": 240, "uid": 0, "field": "position", "value": [687.3, 811.1], "tol": 5.0},
+    {"tick": 300, "uid": 0, "field": "slot_distance_max", "value": 0, "tol": 240.0},
+    {"tick": 350, "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": 350, "uid": 0, "field": "tier", "value": "CLOSE"},
+    {"tick": 350, "uid": 0, "field": "slot_distance_max", "value": 0, "tol": 240.0},
+    {"tick": 350, "uid": 0, "field": "soldiers_in_block_terrain", "value": 0}
+  ]
+}
