@@ -11398,6 +11398,10 @@ func _is_escape_path_blocked(flee_direction: Vector2) -> bool:
 # How close to parallel (cosine) a step direction must be to a heading to count as running
 # along it: a solver tolerance on float directions, not a gameplay parameter.
 const STRAIGHT_FLIGHT_DOT: float = 0.999999
+# How far (wu/s, along the step direction) a router's veered travel may lean back against its
+# step and still count as running square to it (_flight_front_veer): a solver tolerance on a
+# float dot product, not a gameplay parameter.
+const STRAIGHT_FLIGHT_EPS: float = 0.000001
 
 
 ## Clearance margin for a routing unit's escape check (_is_escape_path_blocked): whether
@@ -11480,35 +11484,102 @@ func _flight_step(flee: Vector2) -> Vector2:
 ## while their slots run on, and a man held there loses more ground than he can make up
 ## before the rout ends.
 ## So the leading rank veers along the face the way a man veers his own run
-## (SoldierBodies.router_terrain_avoid): when this tick's travel would carry the rank's
-## line, centred half the block's depth ahead along `facing`, onto any block rect grown by
-## that line's half-width (plus a body radius) along each axis, the part of `dir` heading
-## into the face is turned along it, toward the end `step` goes round by. The whole block
-## translates with the anchor, so its men stay on their slots. Only this tick's travel is
-## looked along, so a flight whose heading turn swings its front clear in time travels
-## exactly as before. `dir` itself when there is no block terrain, or when the flight does
-## not move this tick. _process_rout does not call it on a tick whose step fell back to the
-## anchor's own margin (_flight_step_narrow): a block too wide to pass beside the field's
-## edge has no room to side-step either, and veering it there led it off the field.
+## (SoldierBodies.router_terrain_avoid). The leading rank is the side of the slot grid's
+## footprint that faces most nearly along `facing` (_flight_front_line), read off the grid's
+## own axes: a rout keeps the grid's fold, so a block that broke facing one way and flees
+## another leads with whichever side of its grid now faces the flight. When this tick's
+## travel would carry that line into a block rect grown by a body radius (an exact swept
+## test, PathField.swept_segment_meets_rect), the part of `dir` heading into the face it
+## meets is turned along that face, toward the end `step` goes round by. The face is read
+## off the rect grown by the line's half-extent along each axis, which for a line oblique
+## to the axes also covers the corners the line cannot reach; only the exact test decides
+## whether to veer at all. If the turned travel would still carry the line into a face (two
+## rects meeting in a corner), it is turned once more along that one; travel that would need
+## a third turn, or that would run back against `dir`, is dropped for `dir` itself, the
+## flight as it ran before the veer existed. The whole block translates with the anchor, so
+## its men stay on their slots. Only this tick's travel is looked along, so a flight whose
+## heading turn swings its front clear in time travels exactly as before.
+## `dir` itself when there is no block terrain, or when the flight does not move this tick.
+## _process_rout does not call it on a tick whose step fell back to the anchor's own margin
+## (_flight_step_narrow): a block too wide to pass beside the field's edge has no room to
+## side-step either, and veering it there led it off the field.
+## The veered travel stays in _flee_velocity like any flight, and its readers want the travel
+## itself: the bodies' feed-forward and a rally's coast run with the block as it moves, and
+## _flight_step's turn-back exception reads it only to tell a router already in flight from
+## one just broken, its real guard being a heading turned off the flight line.
 func _flight_front_veer(dir: Vector2, step: Vector2, delta: float) -> Vector2:
 	var field: PathField = PathField.active
 	if not field.has_block_terrain() or _flee_pace <= 0.0 or delta <= 0.0:
 		return dir
-	var half: Vector2 = _formation_local_half_extents()
-	var front: Vector2 = position + facing * half.y
-	var side: Vector2 = facing.orthogonal()
+	var line: Array[Vector2] = _flight_front_line()
+	var centre: Vector2 = line[0]
+	var reach: Vector2 = line[1]
 	var radius: float = soldier_body_radius()
-	var grow_x: float = half.x * absf(side.x) + radius
-	var grow_y: float = half.x * absf(side.y) + radius
-	var grown: Array[Rect2] = []
-	for rect in field.block_rects():
-		grown.append(rect.grow_individual(grow_x, grow_y, grow_x, grow_y))
+	var body_accel: float = maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR)
 	var want: Vector2 = dir * _flee_pace
-	var travel: Vector2 = SoldierBodies.router_terrain_avoid(front, Vector2.ZERO, step, want,
-			grown, maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR), delta)
-	if travel == want or travel == Vector2.ZERO:
+	var met: Array[Rect2] = _rects_met_by_line(centre, reach, want * delta, radius)
+	if met.is_empty():
+		return dir
+	var travel: Vector2 = SoldierBodies.router_terrain_avoid(centre, Vector2.ZERO, step, want,
+			_grown_by_line(met, reach, radius), body_accel, delta)
+	# Re-check the turned travel. A rect it still passes into turns it again only if it heads
+	# into that rect's face (router_terrain_avoid leaves travel along or away from a face
+	# alone), so a line the grid's own bounded turn has tilted a hair past the face it slides
+	# along keeps sliding. A second turn that would need a third gives up.
+	for again in range(2):
+		met = _rects_met_by_line(centre, reach, travel * delta, radius)
+		if met.is_empty():
+			break
+		var turned: Vector2 = SoldierBodies.router_terrain_avoid(centre, Vector2.ZERO, step,
+				travel, _grown_by_line(met, reach, radius), body_accel, delta)
+		if turned == travel:
+			break
+		if again == 1:
+			return dir
+		travel = turned
+	if travel.length_squared() <= 0.0 or travel.dot(dir) < -STRAIGHT_FLIGHT_EPS:
 		return dir
 	return travel.normalized()
+
+
+## The router's leading rank as [centre, half-vector]: the side of its slot grid's footprint
+## (_formation_local_half_extents about the anchor, on the grid's own axes, the rotation
+## soldier_world_slots applies) whose outward normal lies nearest `facing`, and the vector
+## from that side's centre to either end of it.
+func _flight_front_line() -> Array[Vector2]:
+	var half: Vector2 = _formation_local_half_extents()
+	var angle: float = soldier_block_world_angle()
+	var file_axis: Vector2 = Vector2.RIGHT.rotated(angle)
+	var rank_axis: Vector2 = Vector2.DOWN.rotated(angle)
+	var along_files: float = file_axis.dot(facing)
+	var along_ranks: float = rank_axis.dot(facing)
+	if absf(along_ranks) >= absf(along_files):
+		return [position + rank_axis * (signf(along_ranks) * half.y), file_axis * half.x]
+	return [position + file_axis * (signf(along_files) * half.x), rank_axis * half.y]
+
+
+## The block rects, grown by `radius`, that a line centred on `centre` reaching `reach`
+## either way would pass into when carried along `travel` (PathField.swept_segment_meets_rect).
+func _rects_met_by_line(centre: Vector2, reach: Vector2, travel: Vector2,
+		radius: float) -> Array[Rect2]:
+	var met: Array[Rect2] = []
+	for rect in PathField.active.block_rects():
+		if PathField.swept_segment_meets_rect(centre - reach, centre + reach, travel,
+				rect.grow(radius)):
+			met.append(rect)
+	return met
+
+
+## `rects` grown by a line's half-extent `reach` along each axis plus `radius`: where a point
+## at the line's centre stands when the line itself reaches a rect, for router_terrain_avoid
+## to read the face from.
+func _grown_by_line(rects: Array[Rect2], reach: Vector2, radius: float) -> Array[Rect2]:
+	var grown: Array[Rect2] = []
+	var gx: float = absf(reach.x) + radius
+	var gy: float = absf(reach.y) + radius
+	for rect in rects:
+		grown.append(rect.grow_individual(gx, gy, gx, gy))
+	return grown
 
 
 ## Whether `p` stands at least `margin` inside the field across the flight line `flee` (the
