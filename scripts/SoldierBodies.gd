@@ -104,9 +104,11 @@ const STANDOFF_MAX_SPEED: float = 2.0 * WorldScaleRef.WU_PER_M
 const STANDOFF_MIN_SEP_FLOOR: float = 0.01
 # Default for Unit.standoff_off_slot_pitches: how far off his own slot, in file pitches,
 # one unengaged body of a block must stand for _separate_same_unit to police the block
-# outside its usual windows (fighting, or a re-slot's settle window). While every man stands
-# within this of his slot the block is in good order, none of them is walking through
-# another, and the scan is skipped.
+# outside its usual windows (fighting, or a re-slot's settle window), and for the pass to run
+# during a REFORM hold. While every man stands within this of his slot the block counts as in
+# good order and the scan is skipped. That is a threshold, not a guarantee: men still settling
+# inside it can converge closer than two bodies (about half a wu has been measured in a
+# checkerboard reform hold), a known gap the pass does not yet police.
 const STANDOFF_OFF_SLOT_PITCHES: float = 1.0
 # How far inside a rect a line must pass to count as crossing it, not running along its edge
 # (router_terrain_avoid's way round). A solver epsilon, tuned in wu:
@@ -945,9 +947,24 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 
 	# Same-unit standoff is gated off whenever soldiers deliberately pass through each other
 	# along file lanes: an in-place maneuver turn/wheel (rigid rotation, no crossing to
-	# resolve), a REFORM leaf hold, or a still-in-flight mirror reform (an about-face fold
-	# whose bodies have not yet reached their re-squared slots -- the reflection genuinely
-	# crosses files through the block).
+	# resolve), a REFORM leaf hold of a block in good order (every unengaged man within
+	# unit.standoff_off_slot_pitches file pitches of his slot), or a still-in-flight mirror
+	# reform (an about-face fold whose bodies have not yet reached their re-squared slots --
+	# the reflection genuinely crosses files through the block).
+	#
+	# Good order here is a threshold, not a guarantee that nobody crosses: men still settling
+	# inside that band can converge on each other, and with the pass skipped nothing keeps
+	# them apart. A checkerboard reform hold has brought two such men within about half a wu,
+	# each a few wu off his slot. That gap is known and not yet closed.
+	#
+	# A REFORM hold of a block out of good order (any unengaged man more than
+	# unit.standoff_off_slot_pitches file pitches off his slot) is not a pass-through: its men
+	# are walking back to their slots from wherever a fight or a march left them, each
+	# straight at his own slot, and nothing about the hold routes them along file lanes. With
+	# the pass gated off they walked through each other: an archer block re-forming after a
+	# fight that had scrambled it (the showcase clip's uid 7) brought two men within 0.87 wu,
+	# against 9 wu for two bodies. A block still crossing in a mirror reform keeps the gate
+	# through the mirror clause.
 	#
 	# The bare _formation_mirror_x flag is NOT the right test: it stays armed until the next
 	# fresh order, long after any traversal finished -- including a hold_ground reform, which
@@ -960,10 +977,18 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	# Gating it off let bodies pass fully through each other with zero clearance instead
 	# (measured: worst-case nnd collapsed from ~2.2 wu to ~0.13 wu on demos/inputs/
 	# file-doubling.json), worse than the near-miss standoff was meant to fix.
-	var deliberate_pass_through: bool = unit.is_maneuver_turning() \
-			or unit._reform_holding() \
-			or (unit._formation_mirror_x and not unit._reform_bodies_settled())
-	if deliberate_pass_through:
+	if unit.is_maneuver_turning() \
+			or (unit._formation_mirror_x and not unit._reform_bodies_settled()):
+		return PackedVector2Array()
+	# Both the hold gate here and the window gate below ask whether any man stands well off
+	# his slot; the scan runs once, and only when one of them needs it.
+	var holding: bool = unit._reform_holding()
+	var outside_windows: bool = unit.state != Unit.State.FIGHTING \
+			and Engine.get_physics_frames() > unit._standoff_settle_until_tick
+	var off_slot: bool = (holding or outside_windows) and _any_body_off_slot(
+			unit, n, target_slots, is_engaged,
+			unit.standoff_off_slot_pitches * unit.file_pitch_wu())
+	if holding and not off_slot:
 		return PackedVector2Array()
 
 	# An ordinary march never brings the settled gate below into play: target_slots moves
@@ -986,10 +1011,7 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	# their slots came within 0.56 wu of each other as the farther one passed). So the pass also
 	# runs while any unengaged man stands more than unit.standoff_off_slot_pitches file pitches off
 	# his slot.
-	if unit.state != Unit.State.FIGHTING \
-			and Engine.get_physics_frames() > unit._standoff_settle_until_tick \
-			and not _any_body_off_slot(unit, n, target_slots, is_engaged,
-					unit.standoff_off_slot_pitches * unit.file_pitch_wu()):
+	if outside_windows and not off_slot:
 		return PackedVector2Array()
 
 	var body_radius: float = unit.soldier_body_radius()
@@ -1041,8 +1063,10 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 			cells[ck] = PackedInt32Array()
 		cells[ck].append(i)
 
-	# _reform_holding() already returned above via deliberate_pass_through, so only the IDLE
-	# case can take the jog cap here; a moving unit gets the superphysical march cap instead.
+	# The push is capped by the block's state the same way inside a REFORM hold as outside one:
+	# a jog while the block stands (IDLE), the superphysical march cap while it moves.
+	# STANDOFF_MAX_SPEED is lower than either for most unit types, so it is usually the cap
+	# that binds.
 	var speed_cap: float = unit.jog_speed if unit.state == Unit.State.IDLE \
 			else unit.move_speed * unit.superphysical_speed_frac
 	var max_sep_speed: float = minf(STANDOFF_MAX_SPEED, speed_cap)

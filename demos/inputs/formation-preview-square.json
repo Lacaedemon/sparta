@@ -54,13 +54,5 @@
       "value": "SQUARE"
     }
   ],
-  "spawn_fingerprint": "392ad332293ee14efe684f3f5b524116",
-  "defect_exemptions": {
-    "overlap": {
-      "uids": [
-        0
-      ],
-      "reason": "Square reform packs uid0 onto the Tight floor while bodies funnel through the corners; measured min neighbour 0.54 wu on the re-pinned 2x-default layout (previously cited 1.58 wu at the old density). Transient reform compression, not standing interpenetration."
-    }
-  }
+  "spawn_fingerprint": "392ad332293ee14efe684f3f5b524116"
 }

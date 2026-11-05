@@ -33,12 +33,6 @@
   ],
   "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9",
   "defect_exemptions": {
-    "overlap": {
-      "uids": [
-        0
-      ],
-      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: min neighbour 0.26 wu during the drag-line re-deal."
-    },
     "shape_residual": {
       "uids": [
         0

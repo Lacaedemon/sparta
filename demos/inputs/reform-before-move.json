@@ -54,6 +54,12 @@
         0
       ],
       "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: 0.54 crossing fraction during the reform."
+    },
+    "facing_flutter": {
+      "uids": [
+        5
+      ],
+      "reason": "uid 5 (an enemy block) on seed 1 only: worst 4 against the threshold of 3 with the reform-hold standoff change, 1 on main; seeds 0, 2, 3 and 4 pass on both trees. The clip diverges at tick 54, in uid 0's form-up, and on seed 1 uid 5 is still attacking uid 1 at tick 1236, where on main it has turned on uid 0 by tick 872. Traced on seed 1: while it marches on that attack, out of contact, its dumped facing alternates between -61.89 and -62.67 degrees at ticks 1236 to 1240, but its slot grid front (no fold, so the same heading), dumped to 4 decimals, wobbles only 0.1 to 0.18 degrees there, and the longest flutter run measured on that grid angle is 3, which passes. The dump rounds facing to 2 decimals (DemoState.vec2_pair, POSITION_DECIMAL_PLACES), about 0.6 to 0.8 degrees a step at this heading, against a 0.1 degree FLUTTER_MIN_SWING_DEG, so the verdict counts rounding steps as swings: facing_flutter should be judged at higher precision (a facing dumped to 4 decimals, as the grid front is). Facing dumped at 2 decimals reading rounding steps as flutter is #1920. Measured 2026-11-04 on 47428369 against main bec0b16e with full state dumps every 2 ticks, every exemption removed, seeds 0 to 4."
     }
   }
 }

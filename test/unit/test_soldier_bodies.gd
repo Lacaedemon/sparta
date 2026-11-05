@@ -776,13 +776,44 @@ func test_same_unit_standoff_skips_during_reform_hold() -> void:
 	u.current_order = Order.new_move(u.position)
 	u.current_order.reform_timer = 1.0
 	assert_true(u._reform_holding(), "sanity: the unit reads as reform-holding")
+	# Arm the settle window too, so the hold is the only thing that can skip the pass.
+	u._standoff_settle_until_tick = Engine.get_physics_frames() + 100
+	# The pair stands crowded halfway between its two seeded slots, each man within the
+	# off-slot gate of his own: a block in good order, whose hold is a pass-through.
+	var mid: Vector2 = (u._sim_soldier_pos[0] + u._sim_soldier_pos[1]) * 0.5
+	assert_lt(mid.distance_to(u._sim_soldier_pos[0]),
+		u.standoff_off_slot_pitches * u.file_pitch_wu(),
+		"sanity: the crowded pair stands within the off-slot gate of its slots")
 	var d_start: float = 0.05
-	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
-	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	u._sim_soldier_pos[0] = mid
+	u._sim_soldier_pos[1] = mid + Vector2(d_start, 0.0)
 	SoldierBodies.step(u, 1.0 / 60.0)
 	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
 	assert_almost_eq(dx_after, d_start, 0.01,
 		"crowded bodies must not be pushed apart by standoff during a REFORM leaf hold")
+
+
+func test_same_unit_standoff_runs_during_reform_hold_of_a_scrambled_block() -> void:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	# A REFORM hold of a block whose men stand well off their slots, as a fight leaves a
+	# block before it re-forms on a new order: the men walk back each straight at his own
+	# slot, so the hold is no pass-through and the pass keeps them apart.
+	u.current_order = Order.new_move(u.position)
+	u.current_order.reform_timer = 1.0
+	assert_true(u._reform_holding(), "sanity: the unit reads as reform-holding")
+	var d_start: float = 0.05
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d_start, 0.0)
+	assert_gt(u._sim_soldier_pos[0].distance_to(u.soldier_world_slots(u.soldiers)[0]),
+		u.standoff_off_slot_pitches * u.file_pitch_wu(),
+		"sanity: man 0 stands well off his slot")
+	SoldierBodies.step(u, 1.0 / 60.0)
+	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
+	assert_gt(dx_after, d_start + 0.1,
+		"a REFORM hold of a block with a man well off his slot must run the standoff pass")
 
 
 func test_same_unit_standoff_skips_unsettled_mirror_reform() -> void:

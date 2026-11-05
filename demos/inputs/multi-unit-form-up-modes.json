@@ -15,8 +15,8 @@
   "state": [8, 60, 140, 300, 340, 380, 420, 460, 500, 540, 580],
   "defect_exemptions": {
     "overlap": {
-      "uids": [0, 1],
-      "reason": "Mid-deploy proximity while the drag-line re-forms all three regiments: soldiers funnel past each other in transit, and sampled minimum neighbour distances dip under the floor. Pre-existing on the merge-base of this clip (measured there: uid0 worst 0.06 wu, uid1 worst 1.01 wu), not introduced by the pitch change."
+      "uids": [0],
+      "reason": "Uid 0 (Spearmen): while the drag-line form-up re-forms all three regiments, its men funnel past each other in its REFORM hold and its closest pair reads 1.95 wu on every seed against the 2.25 wu floor. Traced on seed 0: the pair comes closest at tick 294, its two men 81.2 and 20.2 wu off their slots and the block's men a mean 20 wu off theirs, so the same-unit standoff is running there but pushes apart no faster than its bounded speed. Uid 1 (Infantry) passes on every seed. Men of one block passing under the overlap floor in a REFORM hold is #1921. Measured 2026-11-04 on 47428369 against main bec0b16e with full state dumps every 2 ticks, every exemption removed, seeds 0 to 4."
     },
     "path_crossing": {
       "uids": [0, 1],

@@ -1,0 +1,22 @@
+{
+  "_comment": "A lone 80-man infantry block on 12 files is given a drag form-up to a 9-file line a little way ahead of it (#1791). The order's reform hold re-forms the block in place before it marches: its men walk across the files to their places in the narrower, deeper block. Before the fix the same-unit standoff pass stood down for the whole of any reform hold, so men walking from well off their places passed through one another: on main bec0b16e two men came within 0.49 wu of each other at tick 164, against the 2.25 wu overlap floor (9 wu for two bodies). The pass now runs during a reform hold whenever a man stands more than a file pitch off his place, so the closest pair stays at 6.22 wu (tick 136), above the floor, and the block steps off on its march at tick 264 (272 on main). Measured with full state dumps every 2 ticks to tick 500 on seeds 0 to 4.",
+  "seed": "17910",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 1000, "y": 600, "count": 80, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 1000.0, "y": 660.0, "zoom": 1.6}
+  ],
+  "steps": [
+    {"tick": 20, "click": [1000, 600]},
+    {"tick": 40, "rmb_drag": {"from": [1070, 760], "to": [930, 760]}}
+  ],
+  "state": [8, 40, 140, 300, 400],
+  "expect": [
+    {"tick": 40, "uid": 0, "field": "frontage", "value": 12},
+    {"tick": 140, "uid": 0, "field": "order_phase", "value": "REFORM"},
+    {"tick": 140, "uid": 0, "field": "frontage", "value": 9},
+    {"tick": 300, "uid": 0, "field": "order_phase", "value": "MARCH"}
+  ]
+}
