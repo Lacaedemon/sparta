@@ -100,13 +100,15 @@ const LANE_FOLLOWER_LATERAL_MULT: float = 1.5
 const STANDOFF_MIN_SEP_FRAC: float = 0.9
 # In-transit same-unit standoff maximum separation velocity along pair axis:
 const STANDOFF_MAX_SPEED: float = 2.0 * WorldScaleRef.WU_PER_M
-# Fraction of the standoff distance inside which a same-unit pair in a REFORM hold also stops
-# closing (_separate_same_unit): the push grows with the overlap but never with the speed at
-# which the two still walk into each other, so a man the arrival or a crowd at his back
-# drives on at more than that push could walk on through a neighbour (a crowded re-slot
-# brought pairs within 1.7 wu, against 9 wu for two bodies, with the pass running). Only a
-# hold takes it: there the block stands and every man is walking to his own slot, while a
-# march or a fight carries other pushes (the march itself, knockback) it would also blunt.
+# Fraction of the standoff distance inside which a same-unit pair in a REFORM hold also has
+# its closing speed cancelled (_separate_same_unit): each man takes half of it on top of the
+# overlap push, the sum held to the per-man push cap, so the pair closes no faster than that
+# cap allows. Without it the push grows with the overlap but never with the speed at which
+# the two still walk into each other, so a man the arrival or a crowd at his back drives on
+# at more than that push could walk on through a neighbour (a crowded re-slot brought pairs
+# within 1.7 wu, against 9 wu for two bodies, with the pass running). Only a hold takes it:
+# there the block stands and every man is walking to his own slot, while a march or a fight
+# carries other pushes (the march itself, knockback) it would also blunt.
 const STANDOFF_CONTACT_SEP_FRAC: float = 0.5
 # Floor below which same-unit standoff separation is disabled (tuned in wu):
 const STANDOFF_MIN_SEP_FLOOR: float = 0.01
@@ -943,10 +945,11 @@ static func _cap_body_speed_vec(vel: Vector2, facing: Vector2, jog_speed: float,
 ## policed for crowding -- e.g. post-impact stacking behind a routing enemy the front rank
 ## cannot reach. Every other state runs it through a REFORM hold, inside
 ## unit._standoff_settle_until_tick's window, armed by the re-slot events (set_formation,
-## set_frontage, reform_ranks) whose file-crossing this pass exists to police, and while any unengaged man stands more than
-## Unit.standoff_off_slot_pitches file pitches off his slot (_any_body_off_slot), when men walking
-## back to their slots can walk through each other -- see the gate right below the
-## deliberate-pass-through check for why a march in good order never needs the full scan.
+## set_frontage, reform_ranks) whose file-crossing this pass exists to police, and while any
+## unengaged man stands more than Unit.standoff_off_slot_pitches file pitches off his slot
+## (_any_body_off_slot), when men walking back to their slots can walk through each other --
+## see the gate right below the deliberate-pass-through check for why a march in good order
+## never needs the full scan.
 static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2Array, is_engaged: PackedByteArray, delta: float) -> PackedVector2Array:
 	if unit.state == Unit.State.ROUTING or n < 2 or delta <= 0.0:
 		return PackedVector2Array()
@@ -1116,9 +1119,9 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 						# direction is fixed; push/reaction below stays equal-and-opposite.
 						axis = -Vector2.RIGHT.rotated(angle)
 					var push: Vector2 = axis * (max_sep_speed * overlap)
-					# Inside the contact band the pair also stops closing: each takes half
-					# of the speed at which the two are still walking into each other, up
-					# to the per-man cap below (see STANDOFF_CONTACT_SEP_FRAC). Motion
+					# Inside the contact band the pair's closing is cancelled too: each
+					# takes half of the speed at which the two are still walking into each
+					# other, up to the per-man cap below (see STANDOFF_CONTACT_SEP_FRAC). Motion
 					# across the axis is left alone, so the two still slide round each other.
 					if d < contact_sep and has_vel:
 						var closing: float = (unit._sim_body_vel[j] - unit._sim_body_vel[i]).dot(axis)

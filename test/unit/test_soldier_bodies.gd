@@ -834,7 +834,7 @@ func test_same_unit_standoff_cancels_closing_speed_inside_the_contact_band() -> 
 	var contact_sep: float = _standoff_min_sep(probe) * SoldierBodies.STANDOFF_CONTACT_SEP_FRAC
 	var d: float = contact_sep * 0.5
 	# Body 1 walks into body 0 at 10 wu/s while body 0 stands: each takes half of that
-	# closing speed on top of the overlap push, so the pair stops pressing deeper.
+	# closing speed on top of the overlap push, well inside the per-man cap here.
 	var still: Vector2 = _standoff_push_on_first_of_pair(d, Vector2.ZERO, Vector2.ZERO)
 	var closing: Vector2 = _standoff_push_on_first_of_pair(d, Vector2.ZERO, Vector2(-10.0, 0.0))
 	assert_almost_eq(closing.x - still.x, -5.0, 0.001,

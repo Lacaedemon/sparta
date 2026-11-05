@@ -1,0 +1,22 @@
+{
+  "_comment": "A 150-man Spearmen block and an 80-man Archer block stand side by side facing south. Both are box-selected and dragged into one line along a row behind them, so the order's reform hold has the Spearmen block turn about and re-form in place from 10 files into 5, a narrower and deeper block, before it marches: its men cross the tight block to their new places and crowd, the ones far off their places walking past the ones nearer theirs. Before the fix the same-unit standoff pushed a crowded pair apart at a speed that grew with how deep the two overlapped but not with how fast they still walked into each other, so a man the crowd drove on walked on through his neighbour: on main the Spearmen block's closest pair came within 1.08 wu at tick 338, against the 2.25 wu overlap floor (9 wu for two bodies), and pairs dipped under the floor at ticks from 248 to 362. In a reform hold a pair inside half the standoff distance now also takes half its closing speed each, up to the per-man push cap, and the closest pair stays at 3.43 wu (tick 346). The block steps off on its march between ticks 600 and 650 on both trees. The Archer block, on its loose pitch, never comes near the floor (5.49 wu on both trees). The script samples every 20 ticks, which catches main's crowding: at those ticks main fails overlap at 1.24 wu and the fix passes every verdict. Measured 2026-11-05 on 2b432171 against main f57ccdfa with full state dumps every 2 ticks to tick 800, seeds 0 to 4 (a drill with no melee, so every seed runs the same).",
+  "seed": "55190",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 640, "y": 360, "count": 150, "facing": [0, 1]},
+    {"team": 0, "type": "Archers", "x": 800, "y": 360, "count": 80, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 680.0, "y": 340.0, "zoom": 1.25}
+  ],
+  "steps": [
+    {"tick": 15, "box": {"from": [560, 300], "to": [880, 420]}},
+    {"tick": 35, "rmb_drag": {"from": [520, 300], "to": [860, 300]}}
+  ],
+  "state": [10, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340, 360, 380, 400, 420, 440, 460, 480, 500, 520, 540, 560, 580, 600, 620, 640, 660, 680, 700, 720, 740, 760, 780, 800],
+  "expect": [
+    {"tick": 60, "uid": 0, "field": "order_phase", "value": "REFORM"},
+    {"tick": 300, "uid": 0, "field": "order_phase", "value": "REFORM"},
+    {"tick": [600, 700], "uid": 0, "field": "order_phase", "value": "MARCH"}
+  ]
+}
