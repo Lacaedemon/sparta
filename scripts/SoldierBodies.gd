@@ -1063,12 +1063,10 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 			cells[ck] = PackedInt32Array()
 		cells[ck].append(i)
 
-	# The push is capped by the block's state, a REFORM hold included. A hold that reaches here
-	# (some man well off his slot) is IDLE while the block stands for it, and its men walk to
-	# their slots no faster than a jog, so the jog cap keeps the push from outpacing the walk it
-	# separates. A hold taken on the march (the block still MOVING, its slots travelling with
-	# it) keeps the superphysical march cap, as any moving unit does: a push held to a jog
-	# there could not keep pace with men closing at march speed.
+	# The push is capped by the block's state the same way inside a REFORM hold as outside one:
+	# a jog while the block stands (IDLE), the superphysical march cap while it moves.
+	# STANDOFF_MAX_SPEED is lower than either for most unit types, so it is usually the cap
+	# that binds.
 	var speed_cap: float = unit.jog_speed if unit.state == Unit.State.IDLE \
 			else unit.move_speed * unit.superphysical_speed_frac
 	var max_sep_speed: float = minf(STANDOFF_MAX_SPEED, speed_cap)
