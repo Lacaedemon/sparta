@@ -155,8 +155,8 @@ var _cached_combat_profile: Dictionary = {}
 @export var march_target_stop_grace_ticks: int = SoldierBodies.MARCH_TARGET_STOP_GRACE_TICKS
 # How far off his own slot, in file pitches, one unengaged soldier body must stand for the
 # same-unit standoff (SoldierBodies._separate_same_unit) to keep this block's men apart
-# outside a fight or a re-slot's settle window, so men walking back to their slots from
-# far off do not walk through each other.
+# outside a fight, a re-slot's settle window or a REFORM hold, so men walking back to
+# their slots from far off do not walk through each other.
 @export var standoff_off_slot_pitches: float = SoldierBodies.STANDOFF_OFF_SLOT_PITCHES
 # Effective melee reach, in world units (Battle sets it per weapon from reach_m;
 # the 26 default is the infantry/sword baseline). A unit counts as in melee

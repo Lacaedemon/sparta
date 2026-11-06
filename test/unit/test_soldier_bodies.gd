@@ -764,7 +764,7 @@ func test_same_unit_standoff_skips_while_maneuver_turning() -> void:
 		"crowded bodies must not be pushed apart by standoff while maneuver-turning")
 
 
-func test_same_unit_standoff_skips_during_reform_hold() -> void:
+func test_same_unit_standoff_runs_during_reform_hold_of_a_block_in_good_order() -> void:
 	var u := _make_unit(42, 2)
 	u.frontage_override = 1
 	u.position = Vector2(0.0, 50.0)
@@ -776,10 +776,12 @@ func test_same_unit_standoff_skips_during_reform_hold() -> void:
 	u.current_order = Order.new_move(u.position)
 	u.current_order.reform_timer = 1.0
 	assert_true(u._reform_holding(), "sanity: the unit reads as reform-holding")
-	# Arm the settle window too, so the hold is the only thing that can skip the pass.
-	u._standoff_settle_until_tick = Engine.get_physics_frames() + 100
+	# No settle window and not fighting, so the hold is the only thing that can run the pass.
+	assert_eq(u._standoff_settle_until_tick, -1,
+		"sanity: a fresh unit's settle window starts unarmed")
 	# The pair stands crowded halfway between its two seeded slots, each man within the
-	# off-slot gate of his own: a block in good order, whose hold is a pass-through.
+	# off-slot gate of his own: a block in good order, whose men can still walk into each
+	# other as they settle, as two neighbours trading places do.
 	var mid: Vector2 = (u._sim_soldier_pos[0] + u._sim_soldier_pos[1]) * 0.5
 	assert_lt(mid.distance_to(u._sim_soldier_pos[0]),
 		u.standoff_off_slot_pitches * u.file_pitch_wu(),
@@ -789,8 +791,87 @@ func test_same_unit_standoff_skips_during_reform_hold() -> void:
 	u._sim_soldier_pos[1] = mid + Vector2(d_start, 0.0)
 	SoldierBodies.step(u, 1.0 / 60.0)
 	var dx_after: float = absf(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x)
-	assert_almost_eq(dx_after, d_start, 0.01,
-		"crowded bodies must not be pushed apart by standoff during a REFORM leaf hold")
+	assert_gt(dx_after, d_start + 0.1,
+		"a REFORM hold must run the standoff pass even while every man is near his slot")
+
+
+## The standoff push _separate_same_unit gives body 0 of a pair standing `d` apart along x,
+## with the two bodies' stored velocities set to `v0` and `v1`: in a REFORM hold when
+## `holding`, otherwise under an armed settle window.
+func _standoff_push_on_first_of_pair(d: float, v0: Vector2, v1: Vector2,
+		holding: bool = true) -> Vector2:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	if holding:
+		u.current_order = Order.new_move(u.position)
+		u.current_order.reform_timer = 1.0
+	else:
+		u._standoff_settle_until_tick = Engine.get_physics_frames() + 60
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d, 0.0)
+	u._sim_body_vel[0] = v0
+	u._sim_body_vel[1] = v1
+	var target_slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var is_engaged := PackedByteArray()
+	is_engaged.resize(2)
+	var sep_vel: PackedVector2Array = SoldierBodies._separate_same_unit(
+		u, 2, target_slots, is_engaged, 1.0 / 60.0)
+	assert_eq(sep_vel.size(), 2, "sanity: the pass ran for the crowded pair")
+	return sep_vel[0] if sep_vel.size() == 2 else Vector2.ZERO
+
+
+## A unit's standoff distance, as _separate_same_unit derives it.
+func _standoff_min_sep(u: Unit) -> float:
+	var min_pitch: float = minf(u.file_pitch_wu(), u.rank_pitch_wu())
+	return SoldierBodies.STANDOFF_MIN_SEP_FRAC * minf(u.soldier_body_radius() * 2.0, min_pitch)
+
+
+func test_same_unit_standoff_cancels_closing_speed_inside_the_contact_band() -> void:
+	var probe := _make_unit(42, 2)
+	probe.frontage_override = 1
+	var contact_sep: float = _standoff_min_sep(probe) * SoldierBodies.STANDOFF_CONTACT_SEP_FRAC
+	var d: float = contact_sep * 0.5
+	# Body 1 walks into body 0 at 10 wu/s while body 0 stands: each takes half of that
+	# closing speed on top of the overlap push, well inside the per-man cap here.
+	var still: Vector2 = _standoff_push_on_first_of_pair(d, Vector2.ZERO, Vector2.ZERO)
+	var closing: Vector2 = _standoff_push_on_first_of_pair(d, Vector2.ZERO, Vector2(-10.0, 0.0))
+	assert_almost_eq(closing.x - still.x, -5.0, 0.001,
+		"a closing pair inside the contact band must take half its closing speed each")
+	assert_almost_eq(closing.y, still.y, 0.001, "the cancel acts along the pair axis only")
+	# Walking apart, the pair keeps only the overlap push.
+	var opening: Vector2 = _standoff_push_on_first_of_pair(d, Vector2.ZERO, Vector2(10.0, 0.0))
+	assert_almost_eq(opening.x, still.x, 0.001,
+		"a pair already walking apart must take no closing cancel")
+
+
+func test_same_unit_standoff_leaves_closing_speed_outside_a_reform_hold() -> void:
+	var probe := _make_unit(42, 2)
+	probe.frontage_override = 1
+	var d: float = _standoff_min_sep(probe) * SoldierBodies.STANDOFF_CONTACT_SEP_FRAC * 0.5
+	# The same closing pair inside the contact band, but in a settle window rather than a
+	# hold: a march or a fight keeps the overlap push alone.
+	var still: Vector2 = _standoff_push_on_first_of_pair(d, Vector2.ZERO, Vector2.ZERO, false)
+	var closing: Vector2 = _standoff_push_on_first_of_pair(
+		d, Vector2.ZERO, Vector2(-10.0, 0.0), false)
+	assert_lt(still.x, 0.0, "sanity: the pair is inside the standoff distance and is pushed")
+	assert_almost_eq(closing.x, still.x, 0.001,
+		"outside a REFORM hold a closing pair must take only the overlap push")
+
+
+func test_same_unit_standoff_leaves_closing_speed_outside_the_contact_band() -> void:
+	var probe := _make_unit(42, 2)
+	probe.frontage_override = 1
+	var min_sep: float = _standoff_min_sep(probe)
+	var contact_sep: float = min_sep * SoldierBodies.STANDOFF_CONTACT_SEP_FRAC
+	# Inside the standoff distance but outside the contact band: the overlap push alone.
+	var d: float = (contact_sep + min_sep) * 0.5
+	var still: Vector2 = _standoff_push_on_first_of_pair(d, Vector2.ZERO, Vector2.ZERO)
+	var closing: Vector2 = _standoff_push_on_first_of_pair(d, Vector2.ZERO, Vector2(-10.0, 0.0))
+	assert_lt(still.x, 0.0, "sanity: the pair is inside the standoff distance and is pushed")
+	assert_almost_eq(closing.x, still.x, 0.001,
+		"a closing pair outside the contact band must take only the overlap push")
 
 
 func test_same_unit_standoff_runs_during_reform_hold_of_a_scrambled_block() -> void:

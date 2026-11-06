@@ -100,15 +100,23 @@ const LANE_FOLLOWER_LATERAL_MULT: float = 1.5
 const STANDOFF_MIN_SEP_FRAC: float = 0.9
 # In-transit same-unit standoff maximum separation velocity along pair axis:
 const STANDOFF_MAX_SPEED: float = 2.0 * WorldScaleRef.WU_PER_M
+# Fraction of the standoff distance inside which a same-unit pair in a REFORM hold also has
+# its closing speed cancelled (_separate_same_unit): each man takes half of it on top of the
+# overlap push, the sum held to the per-man push cap, so the pair closes no faster than that
+# cap allows. Without it the push grows with the overlap but never with the speed at which
+# the two still walk into each other, so a man the arrival or a crowd at his back drives on
+# at more than that push could walk on through a neighbour (a crowded re-slot brought pairs
+# within 1.7 wu, against 9 wu for two bodies, with the pass running). Only a hold takes it:
+# there the block stands and every man is walking to his own slot, while a march or a fight
+# carries other pushes (the march itself, knockback) it would also blunt.
+const STANDOFF_CONTACT_SEP_FRAC: float = 0.5
 # Floor below which same-unit standoff separation is disabled (tuned in wu):
 const STANDOFF_MIN_SEP_FLOOR: float = 0.01
 # Default for Unit.standoff_off_slot_pitches: how far off his own slot, in file pitches,
 # one unengaged body of a block must stand for _separate_same_unit to police the block
-# outside its usual windows (fighting, or a re-slot's settle window), and for the pass to run
-# during a REFORM hold. While every man stands within this of his slot the block counts as in
-# good order and the scan is skipped. That is a threshold, not a guarantee: men still settling
-# inside it can converge closer than two bodies (about half a wu has been measured in a
-# checkerboard reform hold), a known gap the pass does not yet police.
+# outside its usual windows (fighting, a re-slot's settle window, or a REFORM hold). While
+# every man stands within this of his slot the block counts as in good order and the scan
+# is skipped.
 const STANDOFF_OFF_SLOT_PITCHES: float = 1.0
 # How far inside a rect a line must pass to count as crossing it, not running along its edge
 # (router_terrain_avoid's way round). A solver epsilon, tuned in wu:
@@ -935,36 +943,34 @@ static func _cap_body_speed_vec(vel: Vector2, facing: Vector2, jog_speed: float,
 ## skip below (scoped to the front body_tier_soldier_indices() ranks) already excludes the
 ## bodies actually in contact, so the unengaged rear bulk of a fighting regiment still gets
 ## policed for crowding -- e.g. post-impact stacking behind a routing enemy the front rank
-## cannot reach. Every other state runs it inside unit._standoff_settle_until_tick's
-## window, armed by the re-slot events (set_formation, set_frontage, reform_ranks) whose
-## file-crossing this pass exists to police, and while any unengaged man stands more than
-## Unit.standoff_off_slot_pitches file pitches off his slot (_any_body_off_slot), when men walking
-## back to their slots can walk through each other -- see the gate right below the
-## deliberate-pass-through check for why a march in good order never needs the full scan.
+## cannot reach. Every other state runs it through a REFORM hold, inside
+## unit._standoff_settle_until_tick's window, armed by the re-slot events (set_formation,
+## set_frontage, reform_ranks) whose file-crossing this pass exists to police, and while any
+## unengaged man stands more than Unit.standoff_off_slot_pitches file pitches off his slot
+## (_any_body_off_slot), when men walking back to their slots can walk through each other --
+## see the gate right below the deliberate-pass-through check for why a march in good order
+## never needs the full scan.
 static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2Array, is_engaged: PackedByteArray, delta: float) -> PackedVector2Array:
 	if unit.state == Unit.State.ROUTING or n < 2 or delta <= 0.0:
 		return PackedVector2Array()
 
 	# Same-unit standoff is gated off whenever soldiers deliberately pass through each other
 	# along file lanes: an in-place maneuver turn/wheel (rigid rotation, no crossing to
-	# resolve), a REFORM leaf hold of a block in good order (every unengaged man within
-	# unit.standoff_off_slot_pitches file pitches of his slot), or a still-in-flight mirror
-	# reform (an about-face fold whose bodies have not yet reached their re-squared slots --
-	# the reflection genuinely crosses files through the block).
+	# resolve), or a still-in-flight mirror reform (an about-face fold whose bodies have not
+	# yet reached their re-squared slots -- the reflection genuinely crosses files through the
+	# block).
 	#
-	# Good order here is a threshold, not a guarantee that nobody crosses: men still settling
-	# inside that band can converge on each other, and with the pass skipped nothing keeps
-	# them apart. A checkerboard reform hold has brought two such men within about half a wu,
-	# each a few wu off his slot. That gap is known and not yet closed.
-	#
-	# A REFORM hold of a block out of good order (any unengaged man more than
-	# unit.standoff_off_slot_pitches file pitches off his slot) is not a pass-through: its men
-	# are walking back to their slots from wherever a fight or a march left them, each
-	# straight at his own slot, and nothing about the hold routes them along file lanes. With
-	# the pass gated off they walked through each other: an archer block re-forming after a
-	# fight that had scrambled it (the showcase clip's uid 7) brought two men within 0.87 wu,
-	# against 9 wu for two bodies. A block still crossing in a mirror reform keeps the gate
-	# through the mirror clause.
+	# A REFORM leaf hold is not a pass-through, in or out of good order, and the pass runs for
+	# the whole of it. Its men walk each straight at his own slot, from wherever a fight, a
+	# march or the re-slot left them, and nothing about the hold routes them along file lanes.
+	# With the pass gated off they walked through each other: an archer block re-forming after
+	# a fight that had scrambled it (the showcase clip's uid 7) brought two men within 0.87 wu,
+	# against 9 wu for two bodies. Nor does a block whose men all stand within a file pitch of
+	# their slots hold apart on its own: one man standing on his neighbour's slot, the
+	# neighbour half a pitch beside him, is exactly a pitch off, and when the two trade places
+	# they cross head on (a checkerboard reform hold brought such a pair within 0.51 wu). What
+	# a hold does need, bodies that file past one another on purpose, is the mirror clause's
+	# case, and a block still crossing in a mirror reform keeps its gate there.
 	#
 	# The bare _formation_mirror_x flag is NOT the right test: it stays armed until the next
 	# fresh order, long after any traversal finished -- including a hold_ground reform, which
@@ -980,16 +986,6 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	if unit.is_maneuver_turning() \
 			or (unit._formation_mirror_x and not unit._reform_bodies_settled()):
 		return PackedVector2Array()
-	# Both the hold gate here and the window gate below ask whether any man stands well off
-	# his slot; the scan runs once, and only when one of them needs it.
-	var holding: bool = unit._reform_holding()
-	var outside_windows: bool = unit.state != Unit.State.FIGHTING \
-			and Engine.get_physics_frames() > unit._standoff_settle_until_tick
-	var off_slot: bool = (holding or outside_windows) and _any_body_off_slot(
-			unit, n, target_slots, is_engaged,
-			unit.standoff_off_slot_pitches * unit.file_pitch_wu())
-	if holding and not off_slot:
-		return PackedVector2Array()
 
 	# An ordinary march never brings the settled gate below into play: target_slots moves
 	# with the unit every tick, so a marching body is never within ARRIVE_EPS of it and
@@ -1001,9 +997,9 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	# moment they re-slot the block -- see that field's own doc comment), or while FIGHTING,
 	# whose unengaged rear ranks can go on stacking behind a front rank pinned against a
 	# routing enemy for as long as the fight lasts and so are never covered by a settle
-	# window at all.
+	# window at all. A REFORM hold is a third window, for the reason given above.
 	#
-	# A block out of good order outside both windows is the exception: one whose men a march
+	# A block out of good order outside all three windows is the exception: one whose men a march
 	# has left strung out (a heading turn on the march, a block marching off scrambled from a
 	# fight) has them walking back, each straight at his own slot, and with nothing keeping two
 	# men of the block apart, a man walking back from far off walks through one nearer his slot
@@ -1011,7 +1007,11 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	# their slots came within 0.56 wu of each other as the farther one passed). So the pass also
 	# runs while any unengaged man stands more than unit.standoff_off_slot_pitches file pitches off
 	# his slot.
-	if outside_windows and not off_slot:
+	var holding: bool = unit._reform_holding()
+	if not holding and unit.state != Unit.State.FIGHTING \
+			and Engine.get_physics_frames() > unit._standoff_settle_until_tick \
+			and not _any_body_off_slot(unit, n, target_slots, is_engaged,
+					unit.standoff_off_slot_pitches * unit.file_pitch_wu()):
 		return PackedVector2Array()
 
 	var body_radius: float = unit.soldier_body_radius()
@@ -1076,6 +1076,9 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	sep_vel.fill(Vector2.ZERO)
 	var min_sep_sq: float = min_sep * min_sep
 	var inv_min_sep: float = 1.0 / min_sep
+	# The contact band applies in a REFORM hold only (see STANDOFF_CONTACT_SEP_FRAC).
+	var contact_sep: float = min_sep * STANDOFF_CONTACT_SEP_FRAC if holding else 0.0
+	var has_vel: bool = unit._sim_body_vel.size() == n
 
 	for i in range(n):
 		if i < unit._sim_soldier_hp.size() and unit._sim_soldier_hp[i] <= 0.0:
@@ -1116,6 +1119,14 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 						# direction is fixed; push/reaction below stays equal-and-opposite.
 						axis = -Vector2.RIGHT.rotated(angle)
 					var push: Vector2 = axis * (max_sep_speed * overlap)
+					# Inside the contact band the pair's closing is cancelled too: each
+					# takes half of the speed at which the two are still walking into each
+					# other, up to the per-man cap below (see STANDOFF_CONTACT_SEP_FRAC). Motion
+					# across the axis is left alone, so the two still slide round each other.
+					if d < contact_sep and has_vel:
+						var closing: float = (unit._sim_body_vel[j] - unit._sim_body_vel[i]).dot(axis)
+						if closing > 0.0:
+							push += axis * (closing * 0.5)
 					sep_vel[i] += push
 					sep_vel[j] -= push
 
