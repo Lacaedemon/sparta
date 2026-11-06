@@ -314,13 +314,23 @@ func test_a_man_joining_between_steps_grants_no_share() -> void:
 			% joined)
 
 
+func test_a_rear_trim_between_steps_grants_no_share() -> void:
+	# A regiment-path casualty trims the rear bodies (step() resizes to the live count), so
+	# the last step's record no longer matches the headcount and no man takes a share on it.
+	var body_accel: float = maxf(_make_router().accel, SoldierBodies.BODY_ACCEL_FLOOR)
+	var fell: float = _worst_change_across_headcount(_make_router(), -1)
+	assert_lte(fell, body_accel * TICK + 1e-4,
+			"after a rear trim no man's velocity changes faster than his own acceleration (worst %.4f wu/s)"
+			% fell)
+
+
 func test_a_casualty_keeps_each_survivors_share_his_own() -> void:
 	# A man in the middle of the block falls (SoldierMelee.reap removes him at his own index,
 	# so every man after him moves down one place). The flight quickens by the unit's accel
 	# on the next step, so each survivor whose own slot did not move takes exactly that much
 	# share on top of his own acceleration: his velocity changes by twice it in the tick. A
 	# record left untrimmed would either drop the share for that step (the headcount guard)
-	# or hand each man after the dead one the feed-forward of the man who stood above him,
+	# or hand each man after the dead one the feed-forward of the man one index lower,
 	# whose slot turns at a different velocity.
 	var u := _make_router()
 	var n: int = u._sim_soldier_pos.size()

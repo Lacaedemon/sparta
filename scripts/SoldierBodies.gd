@@ -206,7 +206,8 @@ static func seed(unit: Unit) -> void:
 ## bounded force and integrates its velocity; the unengaged bulk additionally feeds the
 ## unit's march velocity forward, which cancels the lag a slot-only target would give a
 ## moving formation (engaged regiments are ~stationary in melee, so their feed-forward is
-## zero). Resizes to the live soldier count first — a casualty trims the rear bodies; the first call
+## zero). Resizes to the live soldier count first — a regiment-path casualty trims the rear
+## bodies (SoldierMelee.reap compacts at the dead man's own index instead); the first call
 ## (empty arrays) seeds every body on its slot at rest. Order-free across soldiers; driven
 ## by the fixed physics delta, so it reproduces on replay.
 static func step(unit: Unit, delta: float) -> void:
