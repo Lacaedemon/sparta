@@ -271,18 +271,25 @@ func _running_wheel(deg: float) -> Array:
 	return [u, e]
 
 
-func test_a_running_wheel_keeps_wheeling_past_the_turn_threshold() -> void:
+## A point `deg` degrees off `u`'s heading, `dist` wu from its anchor.
+func _off_heading(u: Unit, deg: float, dist: float) -> Vector2:
+	return u.position + Vector2.from_angle(u.facing.angle() + deg_to_rad(deg)) * dist
+
+
+func test_a_running_wheel_keeps_wheeling_past_the_turn_threshold_onto_an_enemy_among_its_ranks() -> void:
 	var pair: Array = _running_wheel(60.0)
 	var u: Unit = pair[0]
 	var e: Unit = pair[1]
 	var rate: float = u._combat_wheel_rate
 	assert_gt(rate, 0.0, "sanity: the wheel is turning")
-	# The bearing moves on past ENGAGE_TURN_THRESHOLD, faster than the wheel can follow.
-	e.position = u.position + Vector2.from_angle(u.facing.angle() + deg_to_rad(80.0)) * 2000.0
+	# The enemy's centre has come in among the ranks, and its bearing has run on past
+	# ENGAGE_TURN_THRESHOLD, faster than the wheel can follow.
+	e.position = _off_heading(u, 80.0, 10.0)
+	assert_true(u._enemy_inside_own_footprint(e), "sanity: the enemy stands inside the footprint")
 	assert_gt(_offset(u, e), Unit.ENGAGE_TURN_THRESHOLD, "sanity: past the turn-in-place threshold")
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	var radius: float = u._formation_local_half_extents().length()
-	_wheel_tick(u, e, true)
+	assert_true(_wheel_tick(u, e, true), "the block strikes an enemy among its ranks")
 	assert_eq(u._engage_turn_target, Vector2.ZERO, "no turn in place is armed")
 	assert_almost_eq(u._combat_wheel_rate, rate + u.bounded_turn_accel(radius) * DT, FACING_TOL,
 		"the wheel carries on from its rate")
@@ -291,21 +298,122 @@ func test_a_running_wheel_keeps_wheeling_past_the_turn_threshold() -> void:
 		"no slot sweeps faster than the men can jog")
 
 
-func test_a_wheel_past_the_threshold_still_strikes_an_enemy_among_its_ranks() -> void:
+func test_a_running_wheel_turns_in_place_past_the_threshold_onto_an_enemy_outside_its_ranks() -> void:
 	var pair: Array = _running_wheel(60.0)
 	var u: Unit = pair[0]
 	var e: Unit = pair[1]
-	e.position = u.position + Vector2.from_angle(u.facing.angle() + deg_to_rad(80.0)) * 10.0
-	assert_true(u._enemy_inside_own_footprint(e), "sanity: the enemy stands inside the footprint")
-	assert_gt(_offset(u, e), Unit.ENGAGE_TURN_THRESHOLD, "sanity: past the turn-in-place threshold")
-	assert_true(_wheel_tick(u, e, true), "the block strikes an enemy among its ranks")
+	e.position = _off_heading(u, 80.0, 2000.0)
+	assert_false(u._enemy_inside_own_footprint(e), "sanity: the enemy stands outside the footprint")
+	assert_false(_wheel_tick(u, e, true), "the strike waits while the block turns")
+	assert_ne(u._engage_turn_target, Vector2.ZERO, "a turn in place is armed, as before")
+
+
+func test_a_wheel_onto_a_new_enemy_past_the_threshold_turns_in_place_and_holds_its_blows() -> void:
+	var pair: Array = _running_wheel(20.0)
+	var u: Unit = pair[0]
+	var flanker := _make_enemy(_off_heading(u, 150.0, 10.0))
+	flanker.uid = 3
+	assert_true(u._enemy_inside_own_footprint(flanker), "sanity: even one among the ranks")
+	assert_false(_wheel_tick(u, flanker, true), "the strike waits while the block turns")
+	assert_ne(u._engage_turn_target, Vector2.ZERO, "a new enemy past the threshold is turned onto in place")
+
+
+func test_a_wheel_onto_a_new_enemy_starts_from_rest_and_judges_afresh() -> void:
+	var pair: Array = _running_wheel(60.0)
+	var u: Unit = pair[0]
+	var other := _make_enemy(_off_heading(u, 70.0, 2000.0))
+	other.uid = 3
+	var radius: float = u._formation_local_half_extents().length()
+	assert_false(_wheel_tick(u, other, true), "70 degrees off a new enemy, the block withholds")
+	assert_almost_eq(absf(u._combat_wheel_rate), u.bounded_turn_accel(radius) * DT, FACING_TOL,
+		"the wheel onto the new enemy starts from rest")
+	assert_almost_eq(u._combat_wheel_offset, _offset(u, other), FACING_TOL,
+		"and is judged from its offset now, not from the nearest it came to the first enemy")
+
+
+func test_a_bearing_that_jumps_past_the_threshold_turns_in_place_and_holds_its_blows() -> void:
+	var pair: Array = _running_wheel(60.0)
+	var u: Unit = pair[0]
+	var e: Unit = pair[1]
+	# The same enemy, now straight behind the block.
+	e.position = _off_heading(u, 179.0, 2000.0)
+	assert_false(_wheel_tick(u, e, true), "the strike waits while the block turns")
+	assert_ne(u._engage_turn_target, Vector2.ZERO, "a turn in place is armed")
+
+
+func test_a_bearing_that_jumps_by_more_than_the_band_is_judged_afresh() -> void:
+	var pair: Array = _running_wheel(20.0)
+	var u: Unit = pair[0]
+	var e: Unit = pair[1]
+	# The same enemy jumps from about 20 to 70 degrees off, under the turn-in-place threshold: a
+	# fresh re-face withholds until its front is within the tolerance, and so does the wheel.
+	e.position = _off_heading(u, 70.0, 2000.0)
+	var faced := false
+	for i in range(600):
+		faced = _wheel_tick(u, e, true)
+		assert_eq(faced, _offset(u, e) <= Unit.ENGAGE_TURN_FIGHT_TOLERANCE,
+			"tick %d: it strikes exactly when its front is within the tolerance" % i)
+		if faced:
+			break
+	assert_true(faced, "and it comes round to strike")
+
+
+func test_a_wheel_that_catches_up_again_holds_its_blows_as_it_comes_round() -> void:
+	var u := _make_block()
+	var deg := 60.0
+	var e := _make_enemy(_bearing_point(deg))
+	_wheel_tick(u, e, false)
+	# The enemy draws away a tenth of the band a tick until the wheel has fallen behind ...
+	var step: float = 0.1 * u.combat_reface_snap_turn
+	var i := 0
+	while not u._combat_wheel_behind and i < 600:
+		deg += rad_to_deg(step)
+		e.position = u.position + Vector2.DOWN.rotated(deg_to_rad(deg)) * 2000.0
+		_wheel_tick(u, e, true)
+		i += 1
+	assert_true(u._combat_wheel_behind, "sanity: the wheel fell behind")
+	# ... then stands, and the wheel closes on it.
+	var furthest: float = u._combat_wheel_offset
+	var caught_up := false
+	for j in range(600):
+		var faced: bool = _wheel_tick(u, e, true)
+		var off: float = _offset(u, e)
+		if off <= Unit.ENGAGE_TURN_FIGHT_TOLERANCE:
+			break
+		if off < furthest - u.combat_reface_snap_turn:
+			caught_up = true
+			assert_false(faced, "tick %d: %.2f degrees off and catching up, it withholds" % [j, rad_to_deg(off)])
+	assert_true(caught_up, "sanity: the wheel came back more than the band before the tolerance")
+
+
+func test_an_enemy_that_routs_mid_wheel_is_turned_onto_in_place_past_the_threshold() -> void:
+	# A router among the ranks is held against instead (_router_streaming_through), as on main,
+	# so this one routs off beyond the footprint.
+	var pair: Array = _running_wheel(60.0)
+	var u: Unit = pair[0]
+	var e: Unit = pair[1]
+	e.position = _off_heading(u, 80.0, 2000.0)
+	e.state = Unit.State.ROUTING
+	_wheel_tick(u, e, true)
+	assert_ne(u._engage_turn_target, Vector2.ZERO, "past the threshold a router is turned onto in place")
+
+
+func test_a_block_that_drops_to_the_far_tier_mid_wheel_turns_in_place_past_the_threshold() -> void:
+	var pair: Array = _running_wheel(60.0)
+	var u: Unit = pair[0]
+	var e: Unit = pair[1]
+	e.position = _off_heading(u, 80.0, 10.0)
+	assert_true(u._enemy_inside_own_footprint(e), "sanity: the enemy stands among the ranks")
+	u.tier = FormationTier.FAR
+	_wheel_tick(u, e, true)
+	assert_ne(u._engage_turn_target, Vector2.ZERO, "past the threshold a far-tier block turns in place")
 
 
 func test_a_wheel_that_ran_does_not_carry_on_onto_a_square() -> void:
 	var pair: Array = _running_wheel(60.0)
 	var u: Unit = pair[0]
 	var e: Unit = pair[1]
-	e.position = u.position + Vector2.from_angle(u.facing.angle() + deg_to_rad(80.0)) * 2000.0
+	e.position = _off_heading(u, 80.0, 10.0)
 	e.formation_mode = Unit.FORMATION_SQUARE
 	assert_true(e.in_square(), "sanity: the enemy stands in a square")
 	_wheel_tick(u, e, true)
@@ -317,7 +425,7 @@ func test_a_wheel_that_lost_contact_turns_in_place_past_the_threshold() -> void:
 	var u: Unit = pair[0]
 	var e: Unit = pair[1]
 	u._in_enemy_contact = false
-	e.position = u.position + Vector2.from_angle(u.facing.angle() + deg_to_rad(80.0)) * 2000.0
+	e.position = _off_heading(u, 80.0, 10.0)
 	_wheel_tick(u, e, true)
 	assert_ne(u._engage_turn_target, Vector2.ZERO, "out of contact a large re-face turns in place")
 
@@ -328,7 +436,7 @@ func test_a_fresh_reface_past_the_threshold_turns_in_place_after_a_snap() -> voi
 	var e := _make_enemy(_bearing_point(0.5 * rad_to_deg(u.combat_reface_snap_turn)))
 	u._face_for_action(e.position, DT, e)
 	assert_eq(u._combat_wheel_tick, -2, "sanity: the small correction snapped")
-	e.position = _bearing_point(100.0)
+	e.position = u.position + Vector2.DOWN.rotated(deg_to_rad(100.0)) * 10.0
 	assert_false(u._face_for_action(e.position, DT, e), "the strike waits while the block turns")
 	assert_ne(u._engage_turn_target, Vector2.ZERO, "a turn in place is armed")
 
@@ -337,26 +445,35 @@ func test_jitter_in_the_bearing_does_not_release_withheld_blows() -> void:
 	var u := _make_block()
 	var deg := 70.0
 	var e := _make_enemy(_bearing_point(deg))
-	# The bearing wanders tick to tick by less than half combat_reface_snap_turn, so the offset
-	# never stands more than the snap turn above the nearest the wheel has come.
+	# The bearing swings between +0.4 and -0.4 of combat_reface_snap_turn about a fixed enemy, so
+	# it moves 0.8 of the band from one tick to the next: under the band, so no tick counts as
+	# a jump, and the offset never stands more than 0.8 of the band above the nearest it has come.
 	var jitter: float = 0.4 * u.combat_reface_snap_turn
+	var ticks := 30
+	# The wheel turns at most bounded_turn_rate a tick, less than the 0.8-band swing, so every
+	# swing away from the heading raises the offset: every other tick, so at least ticks / 2 - 1
+	# rises once the first tick has set the wheel going.
+	assert_lt(u.bounded_turn_rate() * DT, 2.0 * jitter, "sanity: a swing away outruns one tick of the wheel")
+	# And the wheel cannot close from 70 degrees to the tolerance within the run, so every tick
+	# is one it must withhold on.
+	assert_lt(u.bounded_turn_rate() * DT * ticks, deg_to_rad(deg) - Unit.ENGAGE_TURN_FIGHT_TOLERANCE - jitter,
+		"sanity: the whole run stays past the tolerance")
 	var withheld := 0
 	var rose := 0
 	var prev: float = INF
-	for i in range(60):
+	for i in range(ticks):
 		var sign_i: float = 1.0 if i % 2 == 0 else -1.0
 		e.position = u.position + Vector2.DOWN.rotated(deg_to_rad(deg) + sign_i * jitter) * 2000.0
-		var off_before: float = _offset(u, e)
 		var faced: bool = _wheel_tick(u, e, i > 0)
 		var off: float = _offset(u, e)
 		if off > prev:
 			rose += 1
 		prev = off
-		if off_before > Unit.ENGAGE_TURN_FIGHT_TOLERANCE:
-			assert_false(faced, "tick %d: %.2f degrees off, the block still withholds" % [i, rad_to_deg(off)])
+		assert_false(faced, "tick %d: %.2f degrees off, the block still withholds" % [i, rad_to_deg(off)])
+		if not faced:
 			withheld += 1
-	assert_gt(rose, 10, "sanity: the offset rose from one tick to the next many times")
-	assert_gt(withheld, 30, "sanity: the test covered many withheld ticks")
+	assert_gte(rose, ticks / 2 - 1, "the offset rose on every swing away from the heading")
+	assert_eq(withheld, ticks, "and every tick was a withheld one")
 
 
 func test_a_wheel_that_falls_more_than_the_snap_turn_behind_strikes() -> void:
@@ -409,6 +526,7 @@ func test_a_wheel_closer_than_one_step_lands_exactly_on_the_bearing() -> void:
 	# A wheel still carrying a fast rate from the tick before: one tick's step at that rate is
 	# longer than the offset left.
 	u._combat_wheel_rate = 10.0
+	u._combat_wheel_enemy_uid = e.uid   # onto this same enemy
 	assert_gt(u._combat_wheel_rate * DT, deg_to_rad(deg), "sanity: one step overshoots the bearing")
 	_wheel_tick(u, e, true)
 	assert_almost_eq(u.facing.angle(), (e.position - u.position).angle(), FACING_TOL,

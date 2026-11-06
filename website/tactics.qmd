@@ -1909,14 +1909,26 @@ It keeps fighting while it wheels,
 except that while its front is more than 50 degrees off the enemy
 it holds its blows until it has come round, as a block turning in place does.
 It strikes anyway at an enemy that has got among its own ranks,
-and at one sweeping round it faster than it can wheel to follow:
-once its front has fallen more than 3 degrees further behind than it has yet been.
-The jostling of a press moves the enemy's bearing by less than that,
-so it does not let blows through while the troop is still coming round.
-A troop already wheeling keeps wheeling even when its enemy gets more than 75 degrees ahead of it,
-which happens most when the enemy has pressed in among its ranks.
-It does not stop to turn in place with its blows held back,
+and at one sweeping round it faster than it can wheel to follow.
+It counts as falling behind once its front is more than 3 degrees further off the enemy
+than the nearest it has come,
+and holds its blows again once it has come back more than 3 degrees
+from the furthest behind it fell,
+so it does not strike while it is still coming round.
+The 3 degrees is about what the bearing to a pressed enemy wanders from one tick to the next,
+so that jostling alone does not let blows through.
+A new enemy, or a bearing that jumps more than 3 degrees in one tick,
+is judged afresh, as a new re-face.
+An enemy that has pressed in among the troop's ranks is the exception:
+the bearing to it can swing tens of degrees in a few ticks,
+faster than any wheel can follow.
+A troop already wheeling onto such an enemy keeps wheeling
+even when the enemy gets more than 75 degrees ahead of it,
+and keeps striking,
+rather than stopping to turn in place with its blows held back,
 which would leave its ranks lying off its new front.
+Any other enemy that far off, a new one or one outside its ranks,
+it turns to face in place, as any unit does.
 A troop still snaps round onto a routing enemy, so it keeps its front on a quarry that flees,
 and onto an enemy formed in a square or schiltron, whose faces it slides along.
 
