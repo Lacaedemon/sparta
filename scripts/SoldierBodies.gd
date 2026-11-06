@@ -1340,32 +1340,13 @@ static func couple(unit: Unit, delta: float) -> void:
 	if indices.is_empty() and unit.position_anchor_held():
 		unit._body_follow_vel = Vector2.ZERO
 		return
-	var body_centroid := Vector2.ZERO
-	var slot_centroid := Vector2.ZERO
-	var count: int = indices.size()
-	if count > 0:
-		for i in indices:
-			body_centroid += unit._sim_soldier_pos[i]
-		# canonical_target_slot_indices' non-Square branch is always the contiguous
-		# 0..target_count-1 (see its own docstring: `slots` is a fresh rank-major grid, so
-		# the front `count` slots are always exactly those indices) -- sum straight over that
-		# range instead of materializing the index array just to walk it right back off
-		# (every engaged unit pays this once per tick in couple(), on top of step()'s own call to
-		# canonical_target_slot_indices()).
-		if unit.in_square():
-			var target_indices: PackedInt32Array = unit.canonical_target_slot_indices(slots, count)
-			for j in target_indices:
-				slot_centroid += slots[j]
-			if target_indices.size() != count:
-				count = maxi(1, target_indices.size())
-		else:
-			# `count` (engaged-soldier indices, a subset of this unit's own `n` bodies) can
-			# never exceed `slots.size()` (== n, guaranteed by the early-return above), so
-			# the sum always runs over exactly `count` slots -- no size-mismatch fallback
-			# needed here, unlike the Square branch's live-perimeter selection above.
-			for j in range(count):
-				slot_centroid += slots[j]
+	var drift: Vector2
+	if not indices.is_empty():
+		drift = anchor_drift(unit, indices, slots)
 	else:
+		var body_centroid := Vector2.ZERO
+		var slot_centroid := Vector2.ZERO
+		var count: int = 0
 		# A hold-ground re-square walks the short files onto slots a rank pitch away while the
 		# full files already stand on theirs (Unit.arm_couple_transit). Those walkers are in
 		# deliberate transit, not pushed off formation, so they stay out of the average until
@@ -1374,7 +1355,6 @@ static func couple(unit: Unit, delta: float) -> void:
 		var transit: bool = unit.couple_transit_active(n)
 		var eps_sq: float = Unit.REFORM_SETTLE_EPS * Unit.REFORM_SETTLE_EPS
 		var walking: int = 0
-		count = 0
 		for i in range(n):
 			if transit and unit._couple_transit[i] != 0:
 				if unit._sim_soldier_pos[i].distance_squared_to(slots[i]) > eps_sq:
@@ -1389,11 +1369,46 @@ static func couple(unit: Unit, delta: float) -> void:
 		if count == 0:
 			unit._body_follow_vel = Vector2.ZERO
 			return
-	var inv: float = 1.0 / float(count)
-	var drift: Vector2 = (body_centroid - slot_centroid) * inv
+		var inv: float = 1.0 / float(count)
+		drift = (body_centroid - slot_centroid) * inv
 	var follow_step: Vector2 = (drift * Unit.FOLLOW_RATE * delta).limit_length(Unit.MAX_FOLLOW_SPEED * delta)
 	unit._body_follow_vel = follow_step / delta if delta > 0.0 else Vector2.ZERO
 	unit.position += follow_step
+
+
+## How far the bodies `indices` (a non-empty anchor selection, Unit.position_anchor_indices)
+## stand off the slots of `slots` (the unit's slot grid at its `position`) that a selection that
+## size belongs on: their centroid less those slots' centroid. couple() moves `position` along
+## it, so `position` plus it is where anchoring on those bodies settles the block. Moving
+## `position` moves the slots with it and leaves the bodies, so the sum does not depend on
+## where `position` stands.
+static func anchor_drift(unit: Unit, indices: PackedInt32Array, slots: PackedVector2Array) -> Vector2:
+	var body_centroid := Vector2.ZERO
+	var slot_centroid := Vector2.ZERO
+	var count: int = indices.size()
+	for i in indices:
+		body_centroid += unit._sim_soldier_pos[i]
+	# canonical_target_slot_indices' non-Square branch is always the contiguous
+	# 0..target_count-1 (see its own docstring: `slots` is a fresh rank-major grid, so
+	# the front `count` slots are always exactly those indices) -- sum straight over that
+	# range instead of materializing the index array just to walk it right back off
+	# (every engaged unit pays this once per tick in couple(), on top of step()'s own call to
+	# canonical_target_slot_indices()).
+	if unit.in_square():
+		var target_indices: PackedInt32Array = unit.canonical_target_slot_indices(slots, count)
+		for j in target_indices:
+			slot_centroid += slots[j]
+		if target_indices.size() != count:
+			count = maxi(1, target_indices.size())
+	else:
+		# `count` (an anchor selection, a subset of this unit's own bodies) can never exceed
+		# `slots.size()` (one slot per body, which both callers check), so the sum always runs
+		# over exactly `count` slots -- no size-mismatch fallback needed here, unlike the
+		# Square branch's live-perimeter selection above.
+		for j in range(count):
+			slot_centroid += slots[j]
+	var inv: float = 1.0 / float(count)
+	return (body_centroid - slot_centroid) * inv
 
 
 ## Advances and returns how far a body's arrival target has gone from the standing one
