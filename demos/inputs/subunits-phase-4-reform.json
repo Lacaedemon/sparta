@@ -1,5 +1,5 @@
 {
-  "_comment": "Subunits Phase 4 reform demo: an 80-man Spearmen regiment staged alone in drill mode (5 files of 16 men, lochos). At tick 60, frontage is narrowed by 1 file (to 4 files of 20) via BracketLeft. Each man is dealt the new place nearest where he stands, as in any other foot block: the files keep their left-to-right order, so the dropped flank file closes in on its neighbour and the block deepens by four ranks, rather than that file marching across to the rear of the far flank.",
+  "_comment": "Subunits Phase 4 reform demo: an 80-man Spearmen regiment staged alone in drill mode (5 files of 16 men, lochos). At tick 60, frontage is narrowed by 1 file (to 4 files of 20) via BracketLeft. The block is dealt from the men's live positions, as any other foot block is: the files keep their left-to-right order, so the dropped flank file closes in on its neighbour and the block deepens by four ranks, rather than that file marching across to the rear of the far flank.",
   "seed": "4471",
   "drill": true,
   "scenario": [

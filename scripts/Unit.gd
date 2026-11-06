@@ -7043,7 +7043,8 @@ func formation_slots(count: int, apply_relief_corridor: bool = true,
 ## A FILE_GROUP block is dealt the same way. Re-forming its files from the ids it held kept
 ## every retained man in his file, but the new grid re-centres under him anyway, so he still
 ## stepped half a file pitch, and the men of the folded or peeled files went to whichever
-## file had room, often on the far flank: 46 men going from 10 files to 9 sent one 165.5 wu
+## file had room, often on the far flank. On bare blocks at an 18 wu file and rank pitch,
+## 46 men going from 10 files to 9 sent one 165.5 wu
 ## across the block, against 12.7 wu dealt from the bodies, and 80 men going from 5 files to
 ## 4 sent the folded file's front man 259.8 wu to the opposite rear corner, against 37.1 wu.
 ##

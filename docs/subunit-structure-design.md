@@ -780,7 +780,7 @@ The issue's own
   (`UnitFormation.subunit_reform_files`): retained men kept their file and rank,
   and the folded or peeled file's men went to whichever file had room.
   Measured 2026-11-05 against the plain lateral deal on bare blocks standing on
-  their slots, it failed both halves of the test above.
+  their slots at an 18 wu file and rank pitch, it failed both halves of the test above.
   It moved every man in every case probed, since the new grid re-centres under
   the retained files anyway, where the deal moved 74 of 80 men going from 5 files to 4.
   It also covered more ground: 46 men from 10 files to 9 walked 948 wu in all
