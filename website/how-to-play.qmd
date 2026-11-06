@@ -217,9 +217,11 @@ and only while that is not slowing down.
 So a man left behind as the flight swings round keeps up better:
 on the two demo clips that show it,
 a rider a hill's face held back for a moment
-and the leading riders of a block whose flight bends round a long wall,
+([Tactics](tactics.qmd#fig-deep-router-close-start-hill))
+and the leading riders of a block whose flight bends round a long wall
+(@fig-router-bends-round-wall),
 no rider ends more than 6 m (one rank of a cavalry block) from his place,
-against up to 9.6 m before (@fig-router-bends-round-wall).
+against up to 9.6 m before.
 A block whose men all keep within 3 m of their places flees as before.
 
 ::: {#fig-router-bends-round-wall .demo}
@@ -233,7 +235,7 @@ A block whose men all keep within 3 m of their places flees as before.
 </video>
 ```
 
-A broken block of 64 Cavalry flees north and bends onto a detour round a long wall while its flight gathers pace. Its leading riders keep up with their places as the flight turns: at tick 350 the farthest rider is 73 wu (3.6 m) off his place, against 166 wu (8.3 m) before this change.
+A broken block of 64 Cavalry flees north and bends onto a detour round a long wall while its flight gathers pace. Its leading riders keep up with their places as the flight turns: near the end of the clip the farthest rider is 3.6 m off his place, against 8.3 m without this catch-up.
 :::
 
 On every march, the way a man walks onto his place changes over gradually as the

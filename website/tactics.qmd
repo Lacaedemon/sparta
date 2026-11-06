@@ -181,7 +181,7 @@ its riders running together as a block.
 </video>
 ```
 
-A broken block of 80 Cavalry, nine ranks deep, flees south with its front rank only 40 wu short of a hill. The block side-steps along the hill's face until its front rank is clear, and a leading rider the face holds back catches up as the flight swings on: at tick 350 the farthest rider is 97 wu (4.8 m) off his place, against 192 wu (9.6 m) before this change.
+A broken block of 80 Cavalry, nine ranks deep, flees south with its front rank only 40 wu short of a hill. The block side-steps along the hill's face until its front rank is clear, and a leading rider the face holds back catches up as the flight swings on: near the end of the clip the farthest rider is 4.8 m off his place, against 9.6 m with the side-step alone.
 :::
 
 ::: {#fig-morale-recovery .demo}
