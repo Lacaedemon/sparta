@@ -1,0 +1,1844 @@
+{
+  "ticks": [
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 75,
+        "grid_w": 50,
+        "total_cells": 3750,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 8,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 2.4,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            999.75,
+            2399.72
+          ],
+          "position_m": [
+            49.987,
+            119.986
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              280.49,
+              840.02
+            ],
+            "broken_count": 0,
+            "centroid": [
+              999.81,
+              2399.74
+            ],
+            "count": 64,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              14.025,
+              42.001
+            ],
+            "centroid_m": [
+              49.99,
+              119.987
+            ]
+          },
+          "soldiers": 64,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 120.0,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1700.0,
+            2300.0
+          ],
+          "position_m": [
+            85.0,
+            115.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1698.2,
+              2300.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              6.3
+            ],
+            "centroid_m": [
+              84.91,
+              115.0
+            ]
+          },
+          "soldiers": 30,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 75,
+        "grid_w": 50,
+        "total_cells": 3750,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 60,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.05,
+            -1.0
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 10.8,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            990.29,
+            2387.32
+          ],
+          "position_m": [
+            49.514,
+            119.366
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              306.96,
+              843.45
+            ],
+            "broken_count": 0,
+            "centroid": [
+              991.84,
+              2388.07
+            ],
+            "count": 64,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              15.348,
+              42.173
+            ],
+            "centroid_m": [
+              49.592,
+              119.404
+            ]
+          },
+          "soldiers": 64,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 120.0,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1700.0,
+            2300.0
+          ],
+          "position_m": [
+            85.0,
+            115.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1698.2,
+              2300.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              6.3
+            ],
+            "centroid_m": [
+              84.91,
+              115.0
+            ]
+          },
+          "soldiers": 30,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 75,
+        "grid_w": 50,
+        "total_cells": 3750,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 120,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.18,
+            -0.98
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 18.3,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            965.89,
+            2351.72
+          ],
+          "position_m": [
+            48.295,
+            117.586
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              388.1,
+              849.14
+            ],
+            "broken_count": 0,
+            "centroid": [
+              969.42,
+              2353.26
+            ],
+            "count": 64,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              19.405,
+              42.457
+            ],
+            "centroid_m": [
+              48.471,
+              117.663
+            ]
+          },
+          "soldiers": 64,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 119.3,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1700.0,
+            2300.0
+          ],
+          "position_m": [
+            85.0,
+            115.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1698.2,
+              2300.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              6.3
+            ],
+            "centroid_m": [
+              84.91,
+              115.0
+            ]
+          },
+          "soldiers": 30,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 75,
+        "grid_w": 50,
+        "total_cells": 3750,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 180,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.33,
+            -0.94
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 24.2,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            920.98,
+            2292.25
+          ],
+          "position_m": [
+            46.049,
+            114.613
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              507.23,
+              842.41
+            ],
+            "broken_count": 0,
+            "centroid": [
+              925.02,
+              2294.24
+            ],
+            "count": 64,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              25.361,
+              42.121
+            ],
+            "centroid_m": [
+              46.251,
+              114.712
+            ]
+          },
+          "soldiers": 64,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 118.2,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1700.0,
+            2300.0
+          ],
+          "position_m": [
+            85.0,
+            115.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1698.2,
+              2300.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              6.3
+            ],
+            "centroid_m": [
+              84.91,
+              115.0
+            ]
+          },
+          "soldiers": 30,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 75,
+        "grid_w": 50,
+        "total_cells": 3750,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 240,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.48,
+            -0.88
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 28.8,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            844.92,
+            2216.86
+          ],
+          "position_m": [
+            42.246,
+            110.843
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              638.47,
+              810.89
+            ],
+            "broken_count": 0,
+            "centroid": [
+              852.26,
+              2211.85
+            ],
+            "count": 64,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              31.923,
+              40.545
+            ],
+            "centroid_m": [
+              42.613,
+              110.592
+            ]
+          },
+          "soldiers": 64,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 113.2,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1700.0,
+            2300.0
+          ],
+          "position_m": [
+            85.0,
+            115.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1698.2,
+              2300.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              6.3
+            ],
+            "centroid_m": [
+              84.91,
+              115.0
+            ]
+          },
+          "soldiers": 30,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 75,
+        "grid_w": 50,
+        "total_cells": 3750,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 270,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.54,
+            -0.84
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 30.7,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            798.59,
+            2171.93
+          ],
+          "position_m": [
+            39.929,
+            108.597
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              703.63,
+              792.59
+            ],
+            "broken_count": 0,
+            "centroid": [
+              805.65,
+              2171.13
+            ],
+            "count": 64,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              35.182,
+              39.63
+            ],
+            "centroid_m": [
+              40.282,
+              108.556
+            ]
+          },
+          "soldiers": 64,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 110.7,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1700.0,
+            2300.0
+          ],
+          "position_m": [
+            85.0,
+            115.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1698.2,
+              2300.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              6.3
+            ],
+            "centroid_m": [
+              84.91,
+              115.0
+            ]
+          },
+          "soldiers": 30,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 75,
+        "grid_w": 50,
+        "total_cells": 3750,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 300,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.61,
+            -0.79
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 32.4,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            748.38,
+            2120.08
+          ],
+          "position_m": [
+            37.419,
+            106.004
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              767.02,
+              779.32
+            ],
+            "broken_count": 0,
+            "centroid": [
+              753.31,
+              2126.24
+            ],
+            "count": 64,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              38.351,
+              38.966
+            ],
+            "centroid_m": [
+              37.666,
+              106.312
+            ]
+          },
+          "soldiers": 64,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 108.2,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1700.0,
+            2300.0
+          ],
+          "position_m": [
+            85.0,
+            115.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1698.2,
+              2300.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              6.3
+            ],
+            "centroid_m": [
+              84.91,
+              115.0
+            ]
+          },
+          "soldiers": 30,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 75,
+        "grid_w": 50,
+        "total_cells": 3750,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 330,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.66,
+            -0.75
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 33.9,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            691.05,
+            2066.78
+          ],
+          "position_m": [
+            34.552,
+            103.339
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              826.13,
+              767.15
+            ],
+            "broken_count": 0,
+            "centroid": [
+              696.32,
+              2073.15
+            ],
+            "count": 64,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              41.306,
+              38.357
+            ],
+            "centroid_m": [
+              34.816,
+              103.658
+            ]
+          },
+          "soldiers": 64,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 105.7,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1700.0,
+            2300.0
+          ],
+          "position_m": [
+            85.0,
+            115.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1698.2,
+              2300.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              6.3
+            ],
+            "centroid_m": [
+              84.91,
+              115.0
+            ]
+          },
+          "soldiers": 30,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 75,
+        "grid_w": 50,
+        "total_cells": 3750,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 350,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.68,
+            -0.73
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 34.8,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            650.77,
+            2027.79
+          ],
+          "position_m": [
+            32.539,
+            101.39
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              860.39,
+              760.21
+            ],
+            "broken_count": 0,
+            "centroid": [
+              655.47,
+              2033.51
+            ],
+            "count": 64,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              43.019,
+              38.011
+            ],
+            "centroid_m": [
+              32.773,
+              101.675
+            ]
+          },
+          "soldiers": 64,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 104.1,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1700.0,
+            2300.0
+          ],
+          "position_m": [
+            85.0,
+            115.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1698.2,
+              2300.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              6.3
+            ],
+            "centroid_m": [
+              84.91,
+              115.0
+            ]
+          },
+          "soldiers": 30,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 75,
+        "grid_w": 50,
+        "total_cells": 3750,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 352,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -0.69,
+            -0.73
+          ],
+          "file_pitch": 40.0,
+          "formation": "NORMAL",
+          "formation_label": "2 x 6 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 34.9,
+          "move_target": null,
+          "name": "Cavalry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            646.67,
+            2023.76
+          ],
+          "position_m": [
+            32.333,
+            101.188
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 120.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              863.53,
+              759.59
+            ],
+            "broken_count": 0,
+            "centroid": [
+              651.26,
+              2029.37
+            ],
+            "count": 64,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              43.176,
+              37.98
+            ],
+            "centroid_m": [
+              32.563,
+              101.468
+            ]
+          },
+          "soldiers": 64,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 103.9,
+          "state": "ROUTING",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "NONE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spatha"
+        },
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "file_pitch": 18.0,
+          "formation": "NORMAL",
+          "formation_label": "0.9 m",
+          "frontage": 8,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Infantry 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            1700.0,
+            2300.0
+          ],
+          "position_m": [
+            85.0,
+            115.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 18.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              54.0,
+              126.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              1698.2,
+              2300.0
+            ],
+            "count": 30,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.7,
+              6.3
+            ],
+            "centroid_m": [
+              84.91,
+              115.0
+            ]
+          },
+          "soldiers": 30,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 0,
+          "subunit_structure": "LATERAL_HALVES",
+          "target_enemy_uid": null,
+          "team": 1,
+          "tier": "CLOSE",
+          "uid": 1,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Gladius"
+        }
+      ]
+    }
+  ]
+}
