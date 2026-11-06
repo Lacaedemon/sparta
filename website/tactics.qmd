@@ -160,7 +160,8 @@ its riders running together as a block.
   while that is not slowing
   (at most twice his usual rate on top).
   On the demo clip of such a block
-  no rider ends more than about 5 m from his place, against 9.6 m before.
+  no rider ends more than about 5 m from his place, against 9.6 m before
+  (@fig-deep-router-close-start-hill).
   If every escape direction is blocked,
   it gives up fleeing and stands to fight
   instead of uselessly running in place against the obstacle.
@@ -168,6 +169,20 @@ its riders running together as a block.
   its last unit is truly gone (escaped, annihilated, or otherwise removed), not while
   its final unit is merely routing. Even a lone survivor that breaks can flee, rally,
   and fight on --- so press a rout home rather than assuming a broken last unit is a win.
+
+::: {#fig-deep-router-close-start-hill .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/deep_router_close_start_hill.jpg">
+  <source src="media/deep_router_close_start_hill.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A broken block of 80 Cavalry, nine ranks deep, flees south with its front rank only 40 wu short of a hill. The block side-steps along the hill's face until its front rank is clear, and a leading rider the face holds back catches up as the flight swings on: at tick 350 the farthest rider is 97 wu (4.8 m) off his place, against 192 wu (9.6 m) before this change.
+:::
 
 ::: {#fig-morale-recovery .demo}
 

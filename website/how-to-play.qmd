@@ -219,8 +219,23 @@ on the two demo clips that show it,
 a rider a hill's face held back for a moment
 and the leading riders of a block whose flight bends round a long wall,
 no rider ends more than 6 m (one rank of a cavalry block) from his place,
-against up to 9.6 m before.
+against up to 9.6 m before (@fig-router-bends-round-wall).
 A block whose men all keep within 3 m of their places flees as before.
+
+::: {#fig-router-bends-round-wall .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/router_bends_round_wall.jpg">
+  <source src="media/router_bends_round_wall.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A broken block of 64 Cavalry flees north and bends onto a detour round a long wall while its flight gathers pace. Its leading riders keep up with their places as the flight turns: at tick 350 the farthest rider is 73 wu (3.6 m) off his place, against 166 wu (8.3 m) before this change.
+:::
+
 On every march, the way a man walks onto his place changes over gradually as the
 block gets under way rather than all at once on its first step
 (@fig-march-start-catch-up). A block that halts in a fight and marches off straight from
