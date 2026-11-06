@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/file-group-narrow-from-the-bodies-1918.json",
+  "caption": "A block of 54 spearmen on 7 files is narrowed to 6. Spearmen are drilled in file groups, and the block now deals each man the new place nearest where he stands, as any other foot block does: a file pitch to the side at most, and a rank and a half in depth as it deepens from 8 ranks to 9, 14.2 wu at the most. Before this fix it re-formed its files from the ids it held, which sent the dropped file's men to whichever file had room: the farthest place lay 76.6 wu from its man, and 3 men were sent across the block's centreline.",
+  "fixed_fps": 30,
+  "max_frames": 210,
+  "fps": 15,
+  "width": 720
+}
