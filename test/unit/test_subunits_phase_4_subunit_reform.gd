@@ -1,4 +1,9 @@
 extends GutTest
+## A FILE_GROUP block that changes its frontage re-forms its files from where the men stand,
+## exactly as a block with no declared subunit does (Unit._ensure_file_assignment's lateral
+## deal). Re-forming them from the ids it held instead kept each retained man in his file but
+## sent the men of the folded or peeled files to whichever file had room, often on the far
+## flank, so a man walked across or through his own block.
 
 const SPAWN := Vector2(600, 420)
 var _battle: Node = null
@@ -13,124 +18,106 @@ func after_each() -> void:
 	await get_tree().physics_frame
 
 
-func test_fold_flank_to_rear_preserves_retained_files() -> void:
-	var count := 80
-	var old_files := 5
-	var new_files := 4
-	var old_capacities: PackedInt32Array = UnitFormation.file_capacities(count, old_files)
-	var initial_files: PackedInt32Array = UnitFormation.file_ids_in_index_order(old_capacities)
-	var initial_ranks: PackedInt32Array = PackedInt32Array()
-	initial_ranks.resize(count)
-	var seen := {}
-	for i in range(count):
-		var f: int = initial_files[i]
-		var d: int = int(seen.get(f, 0))
-		seen[f] = d + 1
-		initial_ranks[i] = d
-
-	var res: Dictionary = UnitFormation.fold_flank_to_rear(initial_files, initial_ranks, new_files)
-	var out_files: PackedInt32Array = res["file_ids"]
-	var out_ranks: PackedInt32Array = res["ranks"]
-
-	assert_eq(out_files.size(), count)
-	assert_eq(out_ranks.size(), count)
-
-	var unchanged_count := 0
-	for i in range(count):
-		if initial_files[i] < new_files and initial_ranks[i] < 20:
-			if out_files[i] == initial_files[i] and out_ranks[i] == initial_ranks[i]:
-				unchanged_count += 1
-	assert_eq(unchanged_count, 64, "all 64 men in retained files 0..3 stay in their exact file and rank")
-
-	var counts := [0, 0, 0, 0]
-	for i in range(count):
-		var f: int = out_files[i]
-		assert_lt(f, new_files)
-		counts[f] += 1
-	assert_eq(counts, [20, 20, 20, 20], "each of the 4 files now holds exactly 20 soldiers")
+## A bare file-major foot block facing down the screen, every body on its slot.
+func _make(count: int, files: int, structure: int, size: int) -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = count
+	add_child_autofree(u)
+	u.position = Vector2.ZERO
+	u.facing = Vector2.DOWN
+	u.frontage_override = files
+	u.file_major_reform_mode = Unit.ReformMode.FILE_MAJOR
+	u.subunit_structure = structure
+	u.subunit_size = size
+	u.seed_sim_soldiers()
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(slots.size()):
+		u._sim_soldier_pos[i] = slots[i]
+	return u
 
 
-func test_peel_rear_to_flank_preserves_retained_files() -> void:
-	var count := 80
-	var old_files := 4
-	var new_files := 5
-	var old_capacities: PackedInt32Array = UnitFormation.file_capacities(count, old_files)
-	var initial_files: PackedInt32Array = UnitFormation.file_ids_in_index_order(old_capacities)
-	var initial_ranks: PackedInt32Array = PackedInt32Array()
-	initial_ranks.resize(count)
-	var seen := {}
-	for i in range(count):
-		var f: int = initial_files[i]
-		var d: int = int(seen.get(f, 0))
-		seen[f] = d + 1
-		initial_ranks[i] = d
-
-	var res: Dictionary = UnitFormation.peel_rear_to_flank(initial_files, initial_ranks, new_files)
-	var out_files: PackedInt32Array = res["file_ids"]
-	var out_ranks: PackedInt32Array = res["ranks"]
-
-	assert_eq(out_files.size(), count)
-	assert_eq(out_ranks.size(), count)
-
-	var unchanged_count := 0
-	for i in range(count):
-		if initial_files[i] < old_files and initial_ranks[i] < 16:
-			if out_files[i] == initial_files[i] and out_ranks[i] == initial_ranks[i]:
-				unchanged_count += 1
-	assert_eq(unchanged_count, 64, "all 64 men in ranks 0..15 stay in their exact file and rank")
-
-	var counts := [0, 0, 0, 0, 0]
-	for i in range(count):
-		var f: int = out_files[i]
-		assert_lt(f, new_files)
-		counts[f] += 1
-	assert_eq(counts, [16, 16, 16, 16, 16], "each of the 5 files now holds exactly 16 soldiers")
+## Per man, how far his slot after the resize lies from where he stood before it.
+func _walks(u: Unit, bodies: PackedVector2Array) -> PackedFloat32Array:
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var out := PackedFloat32Array()
+	for i in range(mini(bodies.size(), slots.size())):
+		out.push_back(bodies[i].distance_to(slots[i]))
+	return out
 
 
-func test_file_disruption_improvement_over_whole_block_relabel() -> void:
-	var count := 80
-	var old_files := 9
-	var new_files := 8
-	var spacing := 20.0
-
-	var old_capacities: PackedInt32Array = UnitFormation.file_capacities(count, old_files)
-	var initial_files: PackedInt32Array = UnitFormation.file_ids_in_index_order(old_capacities)
-	var initial_ranks: PackedInt32Array = PackedInt32Array()
-	initial_ranks.resize(count)
-	var seen := {}
-	for i in range(count):
-		var f: int = initial_files[i]
-		var d: int = int(seen.get(f, 0))
-		seen[f] = d + 1
-		initial_ranks[i] = d
-
-	var old_slots: PackedVector2Array = UnitFormation.file_major_block_slots(
-			initial_files, old_files, spacing, -1.0, initial_ranks)
-
-	# 1. Whole-block relabel
-	var new_capacities: PackedInt32Array = UnitFormation.file_capacities(count, new_files)
-	var relabel_files: PackedInt32Array = UnitFormation.deal_file_ids_by_lateral_order(old_slots, new_capacities)
-
-	# 2. Subunit reform
-	var subunit_res: Dictionary = UnitFormation.subunit_reform_files(
-			initial_files, initial_ranks, new_files)
-	var sub_files: PackedInt32Array = subunit_res["file_ids"]
-
-	var files_changed_relabel := 0
-	var files_changed_subunit := 0
-	for i in range(count):
-		if initial_files[i] != relabel_files[i]:
-			files_changed_relabel += 1
-		if initial_files[i] != sub_files[i]:
-			files_changed_subunit += 1
-
-	assert_lt(files_changed_subunit, files_changed_relabel,
-			"subunit reform changes far fewer soldier file assignments (%d vs %d)" % [files_changed_subunit, files_changed_relabel])
-	assert_eq(files_changed_subunit, 8, "exactly 8 soldiers in the folded flank file change file assignment")
-	assert_gt(files_changed_relabel, 30, "whole-block relabel disrupts most soldiers in the formation")
+func _farthest(walks: PackedFloat32Array) -> float:
+	var far: float = 0.0
+	for w in walks:
+		far = maxf(far, w)
+	return far
 
 
-func test_live_spearmen_unit_narrowing_preserves_file_identity() -> void:
+## How far a lateral deal can send a man when `count` men go from `from_files` to
+## `to_files`. Sideways, the deal keeps every man's lateral order, so he moves at most the
+## k / 2 file pitches the flanks spread or close by for a change of k files, plus half a pitch
+## of the new grid re-centring (the slot_lateral_excess basis in demos/README.md). In depth,
+## each end of the block moves by half the change in rank count, and the depth deal can step
+## him up to one rank more as men from a neighbouring file slot in beside him.
+func _deal_bound(u: Unit, count: int, from_files: int, to_files: int) -> float:
+	var k: int = absi(to_files - from_files)
+	var lateral: float = float(k + 1) * 0.5 * u.file_pitch_wu()
+	var rank_change: int = absi(UnitFormation.ranks_for(count, to_files)
+			- UnitFormation.ranks_for(count, from_files))
+	var depth: float = (float(rank_change) * 0.5 + 1.0) * u.rank_pitch_wu()
+	return Vector2(lateral, depth).length()
+
+
+## Resize a FILE_GROUP block and a twin with no declared subunit from the same stance, and
+## check the FILE_GROUP block is dealt exactly as its twin is, with no man sent past the
+## lateral deal's own bound. The twin is the reference because dealing from where the men
+## stand is the whole of the change.
+func _assert_resize_matches_plain(count: int, from_files: int, to_files: int, size: int) -> void:
+	var grouped := _make(count, from_files, Unit.SubunitStructure.FILE_GROUP, size)
+	var plain := _make(count, from_files, Unit.SubunitStructure.NONE, 0)
+	var grouped_bodies: PackedVector2Array = grouped._sim_soldier_pos.duplicate()
+	var plain_bodies: PackedVector2Array = plain._sim_soldier_pos.duplicate()
+	grouped.set_frontage(to_files)
+	plain.set_frontage(to_files)
+	var far: float = _farthest(_walks(grouped, grouped_bodies))
+	var plain_far: float = _farthest(_walks(plain, plain_bodies))
+	var label := "%d men, %d files to %d, subunit_size %d" % [count, from_files, to_files, size]
+	assert_eq(grouped.formation_files(grouped.soldiers), to_files, "precondition: %s" % label)
+	assert_eq(grouped._sim_soldier_file, plain._sim_soldier_file, "%s: the same files" % label)
+	assert_eq(grouped._sim_soldier_rank, plain._sim_soldier_rank, "%s: the same ranks" % label)
+	var bound: float = _deal_bound(grouped, count, from_files, to_files)
+	assert_lt(far, bound,
+		"%s: the farthest man walks %.1f wu (plain %.1f, bound %.1f)" % [label, far,
+			plain_far, bound])
+
+
+## The issue's case: 46 men going from 10 files to 9, on the default subunit_size of 0. Held
+## ids sent the farthest man 165.5 wu; dealt from the bodies he walks 12.7 wu.
+func test_a_one_file_narrowing_sends_no_man_across_the_block() -> void:
+	_assert_resize_matches_plain(46, 10, 9, 0)
+
+
+## The same block widened back, which peeled the rear men of four files into the new flank
+## file from as far away as the opposite flank (165.5 wu).
+func test_a_one_file_widening_sends_no_man_across_the_block() -> void:
+	_assert_resize_matches_plain(46, 9, 10, 0)
+
+
+## An 80-man lochos-sized block (subunit_size 16) going from 5 files to 4, which folded the
+## flank file into the other files' rear front man first, so the folded file's front man walked
+## to the opposite rear corner (259.8 wu, against 37.1 wu from the bodies).
+func test_a_lochos_narrowing_folds_no_man_to_the_far_corner() -> void:
+	_assert_resize_matches_plain(80, 5, 4, 16)
+
+
+## And a full Spearmen-sized block of 140 on 9 files narrowed to 6 (334.0 wu, against 76.9).
+func test_a_three_file_narrowing_sends_no_man_across_the_block() -> void:
+	_assert_resize_matches_plain(140, 9, 6, 16)
+
+
+## A Spearmen regiment in a live battle narrowed by the bracket order's own path
+## (Unit.set_frontage): every man's slot stays inside the lateral deal's bound of him (the
+## farthest is 18.6 wu), where re-forming from the held ids sent one 129.9 wu.
+func test_live_spearmen_narrowing_sends_no_man_across_the_block() -> void:
 	Replay.forced_seed = 912
 	_battle = load("res://scenes/Battle.tscn").instantiate()
 	_battle.drill_mode = true
@@ -144,117 +131,11 @@ func test_live_spearmen_unit_narrowing_preserves_file_identity() -> void:
 
 	var u: Unit = _battle._units.get_child(0)
 	assert_true(u.unit_name.begins_with("Spearmen"))
-	const UnitScript = preload("res://scripts/Unit.gd")
-	assert_eq(u.subunit_structure, UnitScript.SubunitStructure.FILE_GROUP)
-	var initial_files_count: int = UnitFormation.frontage(u)
-	assert_eq(initial_files_count, 5, "80 spearmen on 16-man files default to 5 files")
-
-	var _initial_slots: PackedVector2Array = u.formation_slots(u.soldiers)
-	var files_before: PackedInt32Array = u._sim_soldier_file.duplicate()
-	var ranks_before: PackedInt32Array = u._sim_soldier_rank.duplicate()
-	if ranks_before.is_empty():
-		var seen := {}
-		ranks_before.resize(u.soldiers)
-		for i in range(u.soldiers):
-			var f: int = files_before[i]
-			var d: int = int(seen.get(f, 0))
-			seen[f] = d + 1
-			ranks_before[i] = d
-
+	assert_eq(u.subunit_structure, Unit.SubunitStructure.FILE_GROUP)
+	assert_eq(UnitFormation.frontage(u), 5, "80 spearmen on 16-man files default to 5 files")
+	var bodies: PackedVector2Array = u._sim_soldier_pos.duplicate()
 	u.set_frontage(4)
-	var _new_slots: PackedVector2Array = u.formation_slots(u.soldiers)
-	var files_after: PackedInt32Array = u._sim_soldier_file
-	var ranks_after: PackedInt32Array = u._sim_soldier_rank
-
-	var retained_unchanged := 0
-	for i in range(u.soldiers):
-		if files_before[i] < 4 and ranks_before[i] < 20:
-			if files_after[i] == files_before[i] and ranks_after[i] == ranks_before[i]:
-				retained_unchanged += 1
-
-	assert_eq(retained_unchanged, 64, "all 64 men in retained files 0..3 preserved their exact file and rank")
-
-
-func test_fold_flank_to_rear_maps_nearest_rear_ranks_first() -> void:
-	var count := 80
-	var old_files := 5
-	var new_files := 4
-	var old_capacities: PackedInt32Array = UnitFormation.file_capacities(count, old_files)
-	var initial_files: PackedInt32Array = UnitFormation.file_ids_in_index_order(old_capacities)
-	var initial_ranks: PackedInt32Array = PackedInt32Array()
-	initial_ranks.resize(count)
-	var seen := {}
-	for i in range(count):
-		var f: int = initial_files[i]
-		var d: int = int(seen.get(f, 0))
-		seen[f] = d + 1
-		initial_ranks[i] = d
-
-	var res: Dictionary = UnitFormation.fold_flank_to_rear(initial_files, initial_ranks, new_files)
-	var out_files: PackedInt32Array = res["file_ids"]
-	var out_ranks: PackedInt32Array = res["ranks"]
-
-	# Check the 16 soldiers from folded file 4:
-	# File 4 ranks 12..15 (already near rear) should map to adjacent File 3 ranks 16..19
-	for i in range(count):
-		if initial_files[i] != 4:
-			continue
-		var old_r: int = initial_ranks[i]
-		var new_f: int = out_files[i]
-		var new_r: int = out_ranks[i]
-		if old_r >= 12:
-			assert_eq(new_f, 3, "file 4 rank %d maps to adjacent file 3" % old_r)
-			assert_eq(new_r, 16 + (old_r - 12), "file 4 rank %d maps to file 3 rank %d" % [old_r, 16 + (old_r - 12)])
-		elif old_r >= 8:
-			assert_eq(new_f, 2, "file 4 rank %d maps to file 2" % old_r)
-			assert_eq(new_r, 16 + (old_r - 8), "file 4 rank %d maps to file 2 rank %d" % [old_r, 16 + (old_r - 8)])
-		elif old_r >= 4:
-			assert_eq(new_f, 1, "file 4 rank %d maps to file 1" % old_r)
-			assert_eq(new_r, 16 + (old_r - 4), "file 4 rank %d maps to file 1 rank %d" % [old_r, 16 + (old_r - 4)])
-		else:
-			assert_eq(new_f, 0, "file 4 rank %d maps to file 0" % old_r)
-			assert_eq(new_r, 16 + old_r, "file 4 rank %d maps to file 0 rank %d" % [old_r, 16 + old_r])
-
-
-func test_live_spearmen_reform_routes_around_formation_block() -> void:
-	Replay.forced_seed = 912
-	_battle = load("res://scenes/Battle.tscn").instantiate()
-	_battle.drill_mode = true
-	_battle.scenario = [
-		{"team": 0, "type": "Spearmen", "x": SPAWN.x, "y": SPAWN.y,
-			"count": 80, "facing": [0, 1]}
-	]
-	add_child_autofree(_battle)
-	for _i in range(10):
-		await get_tree().physics_frame
-
-	var u: Unit = _battle._units.get_child(0)
-	var spacing: float = u.file_pitch_wu()
-	var depth: float = u.rank_pitch_wu()
-	if depth < 0.0:
-		depth = spacing
-	var rx_min_retained: float = -(4 - 1) * 0.5 * spacing
-	var rx_max_retained: float = (4 - 1) * 0.5 * spacing
-	var y_rear_pre_reform: float = (16 - 1) * 0.5 * depth
-	var folded_soldier_indices: Array[int] = []
-	for i in range(u.soldiers):
-		if u._sim_soldier_file[i] == 4:
-			folded_soldier_indices.push_back(i)
-	assert_eq(folded_soldier_indices.size(), 16, "exactly 16 soldiers in folded file 4")
-
-	u.set_frontage(4)
-
-	# Track all 16 soldiers from the folded flank file during reform
-	for _frame in range(120):
-		await get_tree().physics_frame
-		var ang: float = u.soldier_block_world_angle()
-		for i in folded_soldier_indices:
-			var pos: Vector2 = u._sim_soldier_pos[i]
-			var p_local: Vector2 = (pos - u.position).rotated(-ang)
-			# If the soldier's lateral position enters the retained files interior (files 0..3):
-			# the soldier must be entering via the rear corridor / rear ranks,
-			# never cutting through the interior front/mid ranks (ranks 0..14 of the original block)!
-			if p_local.x >= rx_min_retained + spacing * 0.2 and p_local.x <= rx_max_retained - spacing * 0.2:
-				assert_gte(p_local.y, y_rear_pre_reform - depth * 1.5,
-						"soldier %d during reform routes around rear corridor instead of penetrating interior (y=%.1f, y_rear=%.1f)" % [i, p_local.y, y_rear_pre_reform])
+	var far: float = _farthest(_walks(u, bodies))
+	var bound: float = _deal_bound(u, u.soldiers, 5, 4)
+	assert_lt(far, bound, "the farthest man walks %.1f wu (bound %.1f)" % [far, bound])
 

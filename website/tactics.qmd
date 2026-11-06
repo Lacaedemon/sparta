@@ -713,7 +713,14 @@ The same goes for any foot regiment set to reform row-major.
 An 80-horse Cavalry regiment formed up into a 9-column squadron block in drill mode. Frontage derives from squadron geometry rather than line-infantry files, operating structureless with cohesive row-major reflow.
 :::
 
-When a file-grouped unit reforms to a narrower or wider frontage, the reform operates at the subunit level rather than as a whole-block relabeling (@fig-subunits-phase-4-reform). Retained files keep their existing soldiers and internal ranks without criss-crossing the formation; only the flank file peels off to march into the rear ranks of the remaining files.
+When a file-grouped unit such as the Spearmen reforms to a narrower or wider frontage,
+it is dealt from the men's live positions, just as any other foot block is
+(@fig-subunits-phase-4-reform).
+The files keep their left-to-right order,
+and the men who share a file keep their order front to back,
+so each man moves only a short way:
+the flank file that is dropped closes in on its neighbour and the block deepens
+rather than sending that file's men across to the far flank.
 
 ::: {#fig-subunits-phase-4-reform .demo}
 
@@ -726,7 +733,7 @@ When a file-grouped unit reforms to a narrower or wider frontage, the reform ope
 </video>
 ```
 
-An 80-man Spearmen regiment (5 files of 16 men) narrows frontage by one file to 4 files of 20 men in drill mode. The 64 men in files 0--3 stay in their exact files and ranks without displacement, while the 16 men from the folded flank file march into the rear ranks.
+An 80-man Spearmen regiment (5 files of 16 men) narrows frontage by one file to 4 files of 20 men in drill mode. The files keep their left-to-right order, so each man moves only a short way: the block closes in from the dropped flank and deepens by four ranks without anyone crossing it.
 :::
 
 

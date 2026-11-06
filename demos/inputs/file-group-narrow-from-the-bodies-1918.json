@@ -1,0 +1,32 @@
+{
+  "_comment": "A 54-man Spearmen block (a FILE_GROUP type) stands alone in drill mode at (380, 300) facing east on 7 files and 8 ranks (file and rank pitch both 9 wu). It is selected at tick 16 and narrowed one file with [ at tick 90, which takes it to 6 files and 9 ranks. The tick-90 sample is the new deal before anyone has walked. The files are now dealt from where the men stand: each man keeps his place left to right, so he moves sideways at most one file pitch (the half pitch the flank closes in by plus the half pitch the new grid re-centres by), and in depth at most a rank and a half (each end of the block moves half a rank as it deepens by one, and a man can step one rank more as a neighbouring file's man slots in beside him). The slot_distance_max tol of 16.7 wu is hypot(9, 13.5) = 16.2 wu plus 0.5 wu of float margin; it reads 14.2 wu here. On main the block re-formed its files from the ids it held, which sent the dropped file's men to whichever file had room: the farthest slot lay 76.6 wu from its man, and 3 men had their slots across the block's centreline from them, where every man here keeps his own side.",
+  "seed": "70613",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "count": 54,
+      "frontage": 7,
+      "x": 380,
+      "y": 300,
+      "facing": [1, 0]
+    }
+  ],
+  "camera": [
+    {"tick": 0, "x": 380.0, "y": 300.0, "zoom": 4.0}
+  ],
+  "steps": [
+    {"tick": 16, "click": [380, 300]},
+    {"tick": 90, "key": "BracketLeft"}
+  ],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [380, 300]},
+    {"tick": 80, "uid": 0, "field": "frontage", "value": 7},
+    {"tick": 90, "uid": 0, "field": "frontage", "value": 6},
+    {"tick": 90, "uid": 0, "field": "slot_distance_max", "value": 0, "tol": 16.7},
+    {"tick": 90, "uid": 0, "field": "slots_across_centreline", "value": 0}
+  ],
+  "frames": [80, 92, 140, 240, 420],
+  "state": [8, 80, 90, 140, 240, 420]
+}

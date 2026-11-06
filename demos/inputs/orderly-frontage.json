@@ -50,12 +50,6 @@
       ],
       "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: median neighbour 3.28 wu while six successive frontage widenings re-deal the files."
     },
-    "overlap": {
-      "uids": [
-        0
-      ],
-      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: min neighbour 0.03 wu as re-slotting bodies pass through each other."
-    },
     "shape_residual": {
       "uids": [
         0
