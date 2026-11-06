@@ -11,11 +11,11 @@ extends GutTest
 const TICK: float = 1.0 / 60.0
 
 
-## A 30-man infantry block (the default type) routing with its heading DOWN, every body seeded
-## on its slot at rest.
-func _make_router() -> Unit:
+## A `count`-man infantry block (the default type, 30 men by default) routing with its
+## heading DOWN, every body seeded on its slot at rest.
+func _make_router(count: int = 30) -> Unit:
 	var u: Unit = Unit.new()
-	u.max_soldiers = 30
+	u.max_soldiers = count
 	add_child_autofree(u)
 	u.position = Vector2(500, 500)
 	u.facing = Vector2.DOWN
@@ -228,17 +228,34 @@ func test_leaving_the_engaged_tier_grants_no_share_spike() -> void:
 	# A front-rank man engaged on one step takes only his friendly-contact steering as his
 	# feed-forward; on the next he is unengaged and takes the whole flight. His recorded
 	# feed-forward is the unengaged form either way, so with the flight unchanged between the
-	# steps he takes no share for it.
+	# steps he takes no share for it. The grid is turning, and the man is pushed from one end
+	# of the leading rank past its other end, so the engaged tier re-pairs him onto the
+	# canonical slot at that far end: his recorded turning velocity must still be his own
+	# slot's. The turn's sign makes the far-end slot's turning velocity point against the
+	# flight, so reading it would look like a quickening feed-forward, not a slowing one that
+	# grants nothing anyway.
 	var u := _make_router()
 	u._engaged_linger = 1.0
+	u._flight_turn_rate = -0.2
 	var n: int = u._sim_soldier_pos.size()
 	var tier: PackedInt32Array = u.body_tier_soldier_indices(n)
 	assert_gt(tier.size(), 0, "setup: the router has an engaged tier")
 	if tier.is_empty():
 		return
+	# The tier's man at one end of the rank, pushed sideways past its other end, so he keeps
+	# his place in the leading rank's line but stands nearest the far end's slot.
+	var lat: Vector2 = u.facing.orthogonal()
 	var i: int = tier[0]
-	# Sideways, so he keeps his place in the leading rank's line.
-	u._sim_soldier_pos[i] += u.facing.orthogonal() * u.flight_share_full_wu * 1.5
+	var lo: float = INF
+	var hi: float = -INF
+	for k in tier:
+		var at: float = u._sim_soldier_pos[k].dot(lat)
+		hi = maxf(hi, at)
+		if at < lo:
+			lo = at
+			i = k
+	var push: float = maxf(u.flight_share_full_wu * 1.5, hi - lo + u.file_pitch_wu())
+	u._sim_soldier_pos[i] += lat * push
 	u._sim_body_vel[i] = Vector2.ZERO
 	u._flee_velocity = u.facing * u.flee_speed() * 0.5
 	SoldierBodies.step(u, TICK)
@@ -250,6 +267,45 @@ func test_leaving_the_engaged_tier_grants_no_share_spike() -> void:
 	var change: float = u._sim_body_vel[i].distance_to(before)
 	assert_lte(change, body_accel * TICK + 1e-4,
 			"leaving the tier, his velocity changes at his own acceleration only (%.4f wu/s)" % change)
+
+
+## Step `u` once at half flee pace with every man well off his slot, change its headcount by
+## `change`, step again, and return the largest change any man's velocity took on the second
+## step. With the flight and the turn the same on both steps, no man may take a share then.
+func _worst_change_across_headcount(u: Unit, change: int) -> float:
+	u._flight_turn_rate = 0.2
+	u._flee_velocity = u.facing * u.flee_speed() * 0.5
+	for k in range(u._sim_soldier_pos.size()):
+		_fall_back(u, k, u.flight_share_full_wu * 1.5)
+	SoldierBodies.step(u, TICK)
+	var before: PackedVector2Array = u._sim_body_vel.duplicate()
+	var n_before: int = before.size()
+	u.soldiers += change
+	SoldierBodies.step(u, TICK)
+	assert_eq(u._sim_soldier_pos.size(), n_before + change, "setup: the step resized the bodies")
+	var worst: float = 0.0
+	for k in range(mini(n_before, u._sim_body_vel.size())):
+		worst = maxf(worst, u._sim_body_vel[k].distance_to(before[k]))
+	return worst
+
+
+func test_a_headcount_change_between_steps_grants_no_share() -> void:
+	# The last step's feed-forwards belong to a different headcount: a casualty leaves one fewer
+	# body to pair them with, and a man joining (a reinforcement) leaves one with no last
+	# feed-forward at all. The step reads no change across either, so no man takes a share.
+	var body_accel: float = maxf(_make_router().accel, SoldierBodies.BODY_ACCEL_FLOOR)
+	var bound: float = body_accel * TICK + 1e-4
+	var fell: float = _worst_change_across_headcount(_make_router(), -1)
+	assert_lte(fell, bound,
+			"after a casualty no man's velocity changes faster than his own acceleration (worst %.4f wu/s)"
+			% fell)
+	var grown := _make_router(31)
+	grown.soldiers = 30
+	SoldierBodies.seed(grown)
+	var joined: float = _worst_change_across_headcount(grown, 1)
+	assert_lte(joined, bound,
+			"after a man joins no man's velocity changes faster than his own acceleration (worst %.4f wu/s)"
+			% joined)
 
 
 func test_seeding_the_bodies_clears_the_flight_feed_forward() -> void:

@@ -96,26 +96,25 @@ const MARCH_SHARE_FULL_PITCHES: float = 1.0
 # corner because the turn rate builds and sheds at Unit.bounded_turn_accel. Two body_accels
 # cover those two. Not counted: the turning velocity swinging round with the grid; the bend
 # of the flight's own heading as it follows a detour, about the pace times the rate the
-# heading turns, which nothing bounds; and a one-tick swing of the flight's direction (the
-# step leaving a detour leg, or a side-step along a face starting or ending,
-# Unit._flight_front_veer). So the cap binds while a flight bends round terrain at pace: on
-# deep-router-close-start-hill (seed 0, Windows, 2026-11-06) the uncapped rate exceeded it
-# on 279 of the 1637 man-ticks in which a man took any share and the flight was not
-# slowing, mostly between ticks 290 and 340 as the flight bent round the hill.
+# heading turns, which nothing bounds; the man's friendly-contact steering (_sim_steer), part
+# of his feed-forward, which can change by any amount from one tick to the next; and a
+# one-tick swing of the flight's direction (the step leaving a detour leg, or a side-step
+# along a face starting or ending, Unit._flight_front_veer). So the cap binds while a flight
+# bends round terrain at pace: on deep-router-close-start-hill (seed 0, Windows) the uncapped
+# rate exceeded it on 279 of the 1637 man-ticks in which a man took any share and the flight
+# was not slowing, mostly between ticks 290 and 340 as the flight bent round the hill
+# (measured on 4a1c49aa, 2026-11-06, by a temporary per-man log of the uncapped rate).
 const FLIGHT_SHARE_MAX_ACCEL_MULT: float = 2.0
 # Defaults for Unit.flight_share_from_wu and Unit.flight_share_full_wu: how far off his own
 # slot a routing body takes none of flight_accel_share and all of it (march_share_frac), a
 # fixed distance rather than a multiple of the block's pitch: half and a whole of a default
-# Cavalry block's 120 wu (6 m) rank pitch. While a flight builds up its men trail their slots: on
-# deep-router-rounds-hill (Cavalry, file pitch 2 m, no man held at the hill), with no share,
-# the farthest man stands 43.7 to 103.6 wu off his slot from tick 120 to tick 350. A man
-# within 3 m of his slot takes none, so a block whose men all keep that close flees as it
-# did before. Ramps set in the block's own pitches, half a file or rank pitch to a whole
-# one, took up that ordinary lag too, and the coupling then dragged the anchor back less:
-# they moved the anchor pins of the two hill clips by 8 to 20 wu (file pitches) and, for
-# Infantry, whose rank pitch is about its file pitch, the anchor pin of square-rally-reform
-# by 32 wu and of last-unit-rally by 54 wu (rank pitches), measured on Windows on their own
-# seeds.
+# Cavalry block's 120 wu (6 m) rank pitch. While a flight builds up its men trail their
+# slots: on deep-router-rounds-hill (Cavalry, file pitch 2 m, no man held at the hill), with
+# no share (main 806be006, seed 0, Windows, 2026-11-05), the farthest man stands 43.7 to
+# 103.6 wu off his slot from tick 120 to tick 350. A man within 3 m of his slot takes none,
+# so a block whose men all keep that close flees as it did before. A ramp set in the
+# block's own file or rank pitches also took up that ordinary lag, and in Infantry, whose
+# rank pitch is about its file pitch (18 wu), it reached men only 9 wu off their slots.
 const FLIGHT_SHARE_FROM_WU: float = 3.0 * WorldScaleRef.WU_PER_M
 const FLIGHT_SHARE_FULL_WU: float = 6.0 * WorldScaleRef.WU_PER_M
 # Lateral clearance beyond outer formed file for perimeter corridor routing.
@@ -571,15 +570,19 @@ static func step(unit: Unit, delta: float) -> void:
 		# A router's flight builds its pace at the unit's accel, and its grid turn speeds a
 		# corner slot sideways at up to the bodies' own acceleration on top, so a man's slot can
 		# change its velocity faster than his body_accel lets him follow, and a man who has
-		# fallen behind it never gains on it. He takes the change in his own feed-forward on
-		# top, ramped in by how far he stands off his slot (Unit.flight_share_from_wu,
-		# Unit.flight_share_full_wu).
+		# fallen behind it gains nothing on it while the flight keeps changing (once its pace
+		# and heading settle, his arrival term closes the gap as usual). He takes the change in
+		# his own feed-forward on top, ramped in by how far he stands off his slot
+		# (Unit.flight_share_from_wu, Unit.flight_share_full_wu).
 		if routing:
 			# Recorded in the unengaged form for every man, so a man who leaves the engaged
 			# tier compares like with like rather than steering alone against the whole flight.
+			# An engaged man's own_slot is the canonical slot he was re-paired onto, so his arm
+			# is read off his own grid slot (slots[i]), the one he returns to when he leaves.
 			var flight_ff: Vector2 = feed_forward
 			if is_engaged[i] == 1:
-				var flight_arm: Vector2 = own_slot - unit.position
+				var home: Vector2 = slots[i] if i < slots.size() else own_slot
+				var flight_arm: Vector2 = home - unit.position
 				flight_ff = march_vel + unit._sim_steer[i] \
 						+ Vector2(-flight_arm.y, flight_arm.x) * turn_rate
 			flight_now[i] = flight_ff
