@@ -4685,6 +4685,11 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		else:
 			_face_dir(dir)
 		return true
+	# A wheel already running from the tick before keeps wheeling past ENGAGE_TURN_THRESHOLD
+	# rather than stopping to turn in place (_wheel_combat_reface says why).
+	if _in_enemy_contact and _combat_wheel_tick == Engine.get_physics_frames() - 1 \
+			and _combat_wheel_applies(enemy_unit):
+		return _wheel_combat_reface(dir, offset, delta, enemy_unit)
 	# Large offset: begin a turn-in-place. Men hold their positions (arrival frozen) while
 	# facing rotates; the strike is withheld until the front comes to bear. Capture the
 	# pre-turn frontage and the enemy now, before anything reshapes or the target changes.
@@ -4697,8 +4702,8 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	return absf(angle_difference(facing.angle(), dir.angle())) <= ENGAGE_TURN_FIGHT_TOLERANCE
 
 
-## Turn the heading of a cavalry block in enemy contact `offset` (rad, under
-## ENGAGE_TURN_THRESHOLD) onto `dir` as a bounded wheel, and return whether the block is faced
+## Turn the heading of a cavalry block in enemy contact `offset` (rad) onto `dir` as a bounded
+## wheel, and return whether the block is faced
 ## enough to strike. The slot grid is laid out from the heading, so it turns with it. A snap
 ## (_face_dir) turned the whole grid about the anchor in one tick while the riders, held in the
 ## press, stayed where they stood: a troop of horse stands deep, so its corner slot moved its
@@ -4714,11 +4719,23 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 ## Like a turn in place (_advance_turn), the block withholds its blows while its heading is more
 ## than ENGAGE_TURN_FIGHT_TOLERANCE off the enemy, with two exceptions. It strikes an enemy whose
 ## centre stands inside the block's own footprint (_enemy_inside_own_footprint): the bearing from
-## the anchor to a point among the ranks names no front. And it strikes once the wheel is not
-## closing on the bearing (the offset after this tick's turn no smaller than after the last
-## one's): an enemy sweeping round the block as fast as the heading can follow it would
-## otherwise hold the heading a constant angle behind it and the blows withheld for as long as
-## the fight lasts.
+## the anchor to a point among the ranks names no front. And it strikes once the wheel has fallen
+## behind: once the offset after this tick's turn stands more than combat_reface_snap_turn above
+## the nearest the wheel has come to its enemy since it began (_combat_wheel_offset). An enemy
+## sweeping round the block as fast as the heading can follow it would otherwise hold the heading
+## a constant angle behind it and the blows withheld for as long as the fight lasts. The margin is
+## the bearing's own tick-to-tick wander (combat_reface_snap_turn): judged tick by tick, against
+## the offset one tick before, each tick the bearing wandered away let the blow through while the
+## wheel was still closing on it, so jitter alone struck about every other tick.
+## A wheel keeps running once its offset passes ENGAGE_TURN_THRESHOLD, which only a wheel already
+## running reaches (_face_for_action), rather than stopping to turn in place. The wheel falls that
+## far behind when the bearing moves faster than it can follow, mostly when the enemy's centre
+## stands inside the troop's own footprint, where a few wu of jostling swings the bearing tens of
+## degrees. A turn in place there swung the heading round at the drill rate with the strike
+## withheld, though the enemy stood among the ranks, and left the grid folded where the riders
+## stood. A snap would swing the grid about the anchor, which is what the wheel exists to stop.
+## The wheel keeps the grid turning with the heading at the bounded rate, and keeps striking an
+## enemy among its ranks.
 ## An enemy inside the footprint is still wheeled toward, rather than folded into the grid as a
 ## foot block folds riders inside it (_face_dir's absorb): a troop of horse with enemies among it
 ## keeps its own front to follow them, and folding would hold its grid where its riders stand
@@ -4744,8 +4761,7 @@ func _wheel_combat_reface(dir: Vector2, offset: float, delta: float, enemy_unit:
 	var tick: int = Engine.get_physics_frames()
 	var followed: bool = _combat_wheel_tick == tick - 1
 	_combat_wheel_tick = tick
-	if offset <= combat_reface_snap_turn or tier == FormationTier.FAR or not is_cavalry \
-			or (enemy_unit != null and (enemy_unit.state == State.ROUTING or enemy_unit.in_square())):
+	if offset <= combat_reface_snap_turn or not _combat_wheel_applies(enemy_unit):
 		_combat_wheel_rate = 0.0
 		_combat_wheel_offset = 0.0
 		_combat_wheel_tick = -2   # a snap ends the wheel: the next one starts from rest
@@ -4764,10 +4780,19 @@ func _wheel_combat_reface(dir: Vector2, offset: float, delta: float, enemy_unit:
 				absf(step) / delta)
 	_combat_wheel_rate = (_facing_turn_step - before) / delta if delta > 0.0 else 0.0
 	var after: float = absf(angle_difference(facing.angle(), dir.angle()))
-	var closing: bool = not followed or after < _combat_wheel_offset
-	_combat_wheel_offset = after
-	return after <= ENGAGE_TURN_FIGHT_TOLERANCE or not closing \
+	if not followed or after < _combat_wheel_offset:
+		_combat_wheel_offset = after   # the nearest the wheel has come to its enemy
+	var fallen_behind: bool = after > _combat_wheel_offset + combat_reface_snap_turn
+	return after <= ENGAGE_TURN_FIGHT_TOLERANCE or fallen_behind \
 			or _enemy_inside_own_footprint(enemy_unit)
+
+
+## Whether a re-face in enemy contact onto `enemy_unit` is one this block wheels rather than
+## snaps, whatever its size (_wheel_combat_reface lists why each other case snaps): a close-tier
+## troop of horse facing an enemy that is neither routing nor in a square or schiltron.
+func _combat_wheel_applies(enemy_unit: Unit) -> bool:
+	return tier != FormationTier.FAR and is_cavalry and not (enemy_unit != null
+			and (enemy_unit.state == State.ROUTING or enemy_unit.in_square()))
 
 
 ## Whether `enemy_unit`'s centre stands inside this block's own slot footprint (its half extents
@@ -6797,12 +6822,14 @@ const ENGAGE_TURN_FIGHT_TOLERANCE: float = deg_to_rad(50.0)
 # deep troop's heading several degrees off where the snaps put it for the whole melee, which
 # changed the press it made and where its enemy went, while the re-faces the wheel is for turn
 # tens of degrees in a few ticks. A snap this size moves a corner slot 500 wu from the anchor
-# by about 26 wu. Default for combat_reface_snap_turn.
+# by about 26 wu. The same wander is the margin a wheel's offset must rise above the nearest it
+# has come before the wheel counts as fallen behind and strikes. Default for
+# combat_reface_snap_turn.
 const COMBAT_REFACE_SNAP_TURN: float = deg_to_rad(3.0)
 var combat_reface_snap_turn: float = COMBAT_REFACE_SNAP_TURN
 # The bounded wheel's state between ticks (_wheel_combat_reface): the rate (rad/s, signed) it
-# turned the heading at, the physics tick it last ran on, and the heading's offset (rad) from
-# its enemy after that tick's turn. A wheel that did not run on the tick before starts again
+# turned the heading at, the physics tick it last ran on, and the smallest offset (rad) of the
+# heading from its enemy after any tick's turn since the wheel began. A wheel that did not run on the tick before starts again
 # from rest. The snapshot saves the tick as how many ticks ago it was, since the physics frame
 # counter does not rewind on a replay seek.
 var _combat_wheel_rate: float = 0.0
