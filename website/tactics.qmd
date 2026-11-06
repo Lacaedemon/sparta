@@ -716,8 +716,10 @@ An 80-horse Cavalry regiment formed up into a 9-column squadron block in drill m
 When a file-grouped unit such as the Spearmen reforms to a narrower or wider frontage,
 it is dealt from the men's live positions, just as any other foot block is
 (@fig-subunits-phase-4-reform).
-The files keep their left-to-right order, and each man keeps his place front to back,
-so each man moves only a short way: the flank file that is dropped closes in on its neighbour and the block deepens
+The files keep their left-to-right order,
+and the men who share a file keep their order front to back,
+so each man moves only a short way:
+the flank file that is dropped closes in on its neighbour and the block deepens
 rather than sending that file's men across to the far flank.
 
 ::: {#fig-subunits-phase-4-reform .demo}
