@@ -1,33 +1,34 @@
 {
-  "_comment": "A broken cavalry block's leading riders, held back for a moment by a hill they meet, rejoin their ranks as the flight swings round it. Team 0's 72 horses (default Cavalry geometry for 72: 9 files by 8 ranks, about 320 wu wide and 840 wu deep, file pitch 40 wu, rank pitch 120 wu) spawn ALREADY routing (starting_state 3, morale 1.0) facing north, their own back edge, with their front rank at y 1080 and a hill (block terrain, x 880-1180, y 820-1040) 40 wu ahead of it across the block's four western files. The block's centre line (x 1220) runs 40 wu east of the hill's east end. The flight runs north-east round the hill's east end; the western riders touch the face (soldiers_at_block_terrain_edge 2 at tick 120) and fall behind their places while the flight swings round. Each rider more than 60 wu (3 m, half a rank pitch here) off his place may now change his velocity faster than his own acceleration, by as much as his place's own feed-forward changes (SoldierBodies.flight_accel_share, capped at twice his acceleration), so he no longer loses ground on a place that turns and speeds up faster than he can. Measured 2026-11-05 on Windows with full state dumps at the declared ticks, seeds 0 to 4 (all identical: nothing here draws on the seed), against main 806be006: slot_distance_max (the farthest any rider stands from his place) is 103.6, 114.5 and 114.2 wu at ticks 240, 300 and 350, with no rider more than one rank pitch (120 wu) off; on main 126.9, 185.9 and 227.0 wu, with 1, 2 and 7 riders more than a rank pitch off. The slot_distance_max pins at ticks 300 and 350 allow one rank pitch, which main exceeds at both. The anchor's path moves little (about (1348.5, 1235.2) at tick 300 and (1376.6, 1120.7) at tick 350, against (1348.4, 1236.5) and (1376.9, 1127.0) on main), since only the riders who have fallen out of their ranks take the extra. The tick-8 position pins are setup pins (the spawn), not claims about the fix. A routing unit's rout timer (6 s) runs out at tick 360 and it rallies; the clip ends at tick 352, just before that. A small idle team-1 Infantry block 620 wu west keeps the router in the close sim tier; all_teams_control leaves both sides without AI. Flat declared map apart from the hill; drill mode. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
-  "seed": "60417",
+  "_comment": "A broken cavalry block whose flight bends onto a detour round a long wall keeps its leading riders with their places. Team 0's 64 horses (default Cavalry geometry for 64: 8 files by 8 ranks, about 280 wu wide and 840 wu deep, file pitch 40 wu, rank pitch 120 wu) spawn ALREADY routing (starting_state 3, morale 1.0) facing north, their own back edge, centred on x 1000 with their front rank at y 1980. A wall of block terrain (x 700-1300, y 1650-1770) stands 210 wu ahead across the whole line of flight, reaching 160 wu past the block's flank files on either side, so the flight cannot run straight on: its step heads for the wall's west end, and the block's heading turns north-west onto that detour while the flight gathers pace (the anchor runs from (999.8, 2399.7) at tick 8 to about (651, 2028) at tick 350, still south of the wall: the clip ends before the block reaches the wall's end). No rider reaches the wall: soldiers_at_block_terrain_edge reads 0 at every declared tick, so nothing here is a side-step along a face. As the flight turns and speeds up, a slot's own velocity can change faster than the rider on it can follow at his acceleration, and riders fall behind their places. A rider more than 60 wu (3 m) off his place now takes, on top of his acceleration, the change in his own feed-forward (the flight velocity, his place's turning velocity and any friendly-contact steering) while it is not slowing, capped at twice his acceleration (SoldierBodies.flight_accel_share). Measured 2026-11-06 on Windows on 4a1c49aa against main 806be006, full state dumps at the declared ticks and dense 2-tick FULL dumps, seeds 0 to 4 and the clip's own seed (all identical: nothing here draws on the seed): slot_distance_max (the farthest any rider stands from his place) is 96.9, 94.3 and 72.8 wu at ticks 240, 300 and 350, with no rider more than one rank pitch (120 wu) off; on 806be006 109.1, 130.1 and 166.2 wu, with 0, 1 and 2 riders more than a rank pitch off. The slot_distance_max pins at ticks 300 and 350 allow one rank pitch, which 806be006 exceeds at both and 4a1c49aa does not. The defect scan finds nothing on 4a1c49aa at either sampling. The tick-8 position pins are setup pins (the spawn), not claims about the fix; the soldiers_at_block_terrain_edge pins hold on both trees and pin the staging (a bend with no rider at the wall). A routing unit's rout timer (6 s) runs out at tick 360 and it rallies; the clip ends at tick 352, just before that. A small idle team-1 Infantry block 700 wu east keeps the router in the close sim tier; all_teams_control leaves both sides without AI. No scripted inputs: the flight runs on its own. Flat declared map apart from the wall; drill mode. Run by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "52906",
   "drill": true,
   "all_teams_control": true,
   "map": {
-    "field": [2000, 2600],
+    "field": [2000, 3000],
     "terrain": [
-      {"rect": [880, 820, 300, 220], "type": "hill", "kind": "block"}
+      {"rect": [700, 1650, 600, 120], "type": "hill", "kind": "block"}
     ],
-    "spawn_lines": [500.0, 2100.0]
+    "spawn_lines": [400.0, 2600.0]
   },
   "scenario": [
-    {"team": 0, "type": "Cavalry", "x": 1220, "y": 1500, "count": 72, "morale": 1.0, "starting_state": 3, "facing": [0, -1]},
-    {"team": 1, "type": "Infantry", "x": 600, "y": 1560, "count": 40, "facing": [1, 0]}
+    {"team": 0, "type": "Cavalry", "x": 1000, "y": 2400, "count": 64, "morale": 1.0, "starting_state": 3, "facing": [0, -1]},
+    {"team": 1, "type": "Infantry", "x": 1700, "y": 2300, "count": 30, "facing": [-1, 0]}
   ],
   "camera": [
-    {"tick": 0, "x": 1180.0, "y": 1180.0, "zoom": 0.3}
+    {"tick": 0, "x": 900.0, "y": 2050.0, "zoom": 0.3}
   ],
   "steps": [],
   "state": [8, 60, 120, 180, 240, 270, 300, 330, 350, 352],
   "expect": [
     {"tick": 8, "uid": 0, "field": "state", "value": "ROUTING"},
     {"tick": 8, "uid": 0, "field": "tier", "value": "CLOSE"},
-    {"tick": 8, "uid": 0, "field": "position", "value": [1220.2, 1499.7], "tol": 1.0},
-    {"tick": 8, "uid": 1, "field": "position", "value": [600.0, 1560.0], "tol": 1.0},
+    {"tick": 8, "uid": 0, "field": "position", "value": [999.8, 2399.7], "tol": 1.0},
+    {"tick": 8, "uid": 1, "field": "position", "value": [1700.0, 2300.0], "tol": 1.0},
+    {"tick": 240, "uid": 0, "field": "soldiers_at_block_terrain_edge", "value": 0},
     {"tick": 300, "uid": 0, "field": "slot_distance_max", "value": 0, "tol": 120.0},
     {"tick": 350, "uid": 0, "field": "state", "value": "ROUTING"},
     {"tick": 350, "uid": 0, "field": "tier", "value": "CLOSE"},
     {"tick": 350, "uid": 0, "field": "slot_distance_max", "value": 0, "tol": 120.0},
-    {"tick": 350, "uid": 0, "field": "soldiers_in_block_terrain", "value": 0}
+    {"tick": 350, "uid": 0, "field": "soldiers_at_block_terrain_edge", "value": 0}
   ]
 }

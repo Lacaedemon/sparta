@@ -209,13 +209,18 @@ gives none, and neither does an **in-haste** move order (a triple- or quadruple-
 A rout gives its own extra instead,
 and only to a man more than 3 m off his place
 (all of it from 6 m out):
-the rate his place's own movement is changing at,
-as the flight speeds up and the block turns,
-capped at twice his usual rate.
-So a man left behind as the flight swings round,
-such as a rider a hill's face held back for a moment,
-gets back within about 6 m (one rank of a cavalry block) of his place,
-while a block whose men all keep within 3 m of their places flees as before.
+the rate at which what he follows is changing ---
+his place's own movement as the flight speeds up and the block turns,
+plus any sidestep he takes to keep off a friendly block he is pressed against ---
+capped at twice his usual rate,
+and only while that is not slowing down.
+So a man left behind as the flight swings round keeps up better:
+on the two demo clips that show it,
+a rider a hill's face held back for a moment
+and the leading riders of a block whose flight bends round a long wall,
+no rider ends more than 6 m (one rank of a cavalry block) from his place,
+against up to 9.6 m before.
+A block whose men all keep within 3 m of their places flees as before.
 On every march, the way a man walks onto his place changes over gradually as the
 block gets under way rather than all at once on its first step
 (@fig-march-start-catch-up). A block that halts in a fight and marches off straight from
