@@ -88,6 +88,31 @@ const MARCH_TARGET_WALK_FRAC: float = 1.0
 # (march_share_frac).
 const MARCH_SHARE_FROM_PITCHES: float = 0.5
 const MARCH_SHARE_FULL_PITCHES: float = 1.0
+# Default for Unit.flight_share_max_accel_mult: the most extra acceleration
+# flight_accel_share grants a routing body, as a multiple of the body's own body_accel. Two
+# speeds in a slot's feed-forward each change no faster than body_accel: the flight pace,
+# which builds at unit.accel (Unit._process_rout) and body_accel is never below, and the
+# speed of the slot's turning velocity, which changes by at most body_accel at the block's
+# corner because the turn rate builds and sheds at Unit.bounded_turn_accel. Two body_accels
+# cover those two. Not counted: the turning velocity swinging round with the grid, the bend
+# of the flight's path between steps, and a one-tick swing of the flight's direction (the
+# step leaving a detour leg, or a side-step along a face starting or ending,
+# Unit._flight_front_veer), which is unbounded and so grants no more than the cap.
+const FLIGHT_SHARE_MAX_ACCEL_MULT: float = 2.0
+# Defaults for Unit.flight_share_from_pitches and Unit.flight_share_full_pitches: how far off
+# his own slot, in RANK pitches (Unit.rank_pitch_wu), a routing body takes none of
+# flight_accel_share and all of it (march_share_frac). The march share's ramp, half a pitch
+# to a whole one, measured in the block's rank pitch rather than its file pitch. While a
+# flight builds up its men trail their slots by more than a file pitch: on
+# deep-router-rounds-hill (file pitch 40 wu, rank pitch 120 wu, no man held at the hill),
+# with no share, the farthest man stands 43.7 to 103.6 wu off his slot from tick 120 to tick
+# 350. A man within half a rank pitch of his slot takes none, so a block whose men all keep
+# that close flees as it did before; a man falling out of his rank's place takes it. A ramp
+# in file pitches took up the lag of men nearer their slots too, and the coupling then
+# dragged the anchor back less: on that clip and deep-router-close-start-hill it put the
+# anchor 8 to 20 wu from where it runs with no share, at the ticks the clips sample.
+const FLIGHT_SHARE_FROM_PITCHES: float = 0.5
+const FLIGHT_SHARE_FULL_PITCHES: float = 1.0
 # Lateral clearance beyond outer formed file for perimeter corridor routing.
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
 # Stagger fraction between alternate soldier lanes in perimeter corridor.
@@ -422,14 +447,25 @@ static func step(unit: Unit, delta: float) -> void:
 	var march_vel: Vector2 = unit._flee_velocity if routing else unit._approach_velocity
 	# The velocity change the march itself took since the last step, which each unengaged body
 	# may take on top of its own body_accel (see march_accel_budget). Only an orderly march
-	# grants it (Unit._body_march_orderly). A router's flight gets none: its men keep the
-	# ordinary rate, so a flight still builds up as it always has (the share let a routing
-	# block keep up with its anchor and carried it measurably farther). Nor does a pursuit,
-	# a charge or a hasty move: their men close at the ordinary rate.
+	# grants it (Unit._body_march_orderly). A router's flight takes its own per-man share
+	# instead (flight_accel_share, below). A pursuit, a charge or a hasty move takes none:
+	# their men close at the ordinary rate.
 	var march_budget: float = march_accel_budget(unit, march_vel, body_accel, delta) \
 			if unit._body_march_orderly and not routing else 0.0
 	var share_pitch: float = unit.file_pitch_wu()
 	unit._body_march_ff_prev = march_vel
+	# A router's men each read their own feed-forward from the last step (the flight velocity,
+	# their slot's turning velocity and any friendly-contact steering,
+	# Unit._body_flight_ff_prev), so a man well off his
+	# slot can take on top of body_accel what his slot's feed-forward changed by
+	# (flight_accel_share). A last step with a different headcount, or none, grants nothing.
+	var flight_prev: PackedVector2Array = unit._body_flight_ff_prev
+	var flight_share: bool = routing and flight_prev.size() == n
+	var flight_now := PackedVector2Array()
+	if routing:
+		flight_now.resize(n)
+	var flight_cap: float = body_accel * maxf(unit.flight_share_max_accel_mult, 0.0)
+	var flight_pitch: float = unit.rank_pitch_wu() if flight_share else 0.0
 	# A router turning its flight, or any other block whose slot grid is turning after a small
 	# heading correction, turns its grid about the anchor at this rate (rad/s;
 	# Unit._turn_flight_toward, Unit._advance_grid_lag): each unengaged slot also moves at
@@ -526,6 +562,17 @@ static func step(unit: Unit, delta: float) -> void:
 			accel_i += march_budget * march_share_frac(
 					own_slot.distance_to(unit._sim_soldier_pos[i]), share_pitch,
 					unit.march_share_from_pitches, unit.march_share_full_pitches)
+		# A router's flight builds its pace at the unit's accel, and its grid turn speeds a
+		# corner slot sideways at up to the bodies' own acceleration on top, so a man's slot can
+		# change its velocity faster than his body_accel lets him follow, and a man who has
+		# fallen behind it never gains on it. He takes the change in his own feed-forward on
+		# top, ramped in by how far he stands off his slot in rank pitches.
+		if routing:
+			flight_now[i] = feed_forward
+			if flight_share and is_engaged[i] == 0:
+				accel_i += flight_accel_share(feed_forward, flight_prev[i], flight_cap, delta) \
+						* march_share_frac(own_slot.distance_to(unit._sim_soldier_pos[i]),
+						flight_pitch, unit.flight_share_from_pitches, unit.flight_share_full_pitches)
 		var new_vel: Vector2 = damped_vel.move_toward(desired_vel, accel_i * delta) \
 				if brake_accel <= accel_i \
 				else brake_biased_step(damped_vel, desired_vel, accel_i, brake_accel, delta)
@@ -640,10 +687,27 @@ static func step(unit: Unit, delta: float) -> void:
 		if unit._sim_body_vel[i].length_squared() > REST_SPEED * REST_SPEED:
 			unit._render_dirty = true
 
+	# Empty unless routing, so a later rout's first step grants no flight share.
+	unit._body_flight_ff_prev = flight_now
 	# One arrival integration per body, each with exactly one `to_slot.length()`.
 	SimOps.add(SimOps.BODY_STEP, n)
 	SimOps.add(SimOps.SQRT_EVAL, n)
 	_keep_out_of_terrain(unit, n, terrain_guard, delta)
+
+
+## The extra acceleration (world units/s^2) a routing body may take this tick on top of its
+## own body_accel: the rate its feed-forward `ff` (the flight velocity, its slot's turning
+## velocity and any friendly-contact steering) changed since its feed-forward `ff_prev` on the
+## last step, capped at `cap`
+## (Unit.flight_share_max_accel_mult times body_accel). Unlike march_accel_budget it is read
+## per man, since a turning grid moves each slot at its own velocity, and a slowing flight
+## counts as well as a quickening one. step() scales it by march_share_frac in rank pitches
+## (Unit.flight_share_from_pitches, Unit.flight_share_full_pitches), so a man within half a
+## rank pitch of his slot, by default, takes none of it. 0 when `delta` is not positive.
+static func flight_accel_share(ff: Vector2, ff_prev: Vector2, cap: float, delta: float) -> float:
+	if delta <= 0.0:
+		return 0.0
+	return minf((ff - ff_prev).length() / delta, cap)
 
 
 ## The extra acceleration (world units/s^2) each unengaged body may take this tick: the rate
@@ -662,7 +726,8 @@ static func step(unit: Unit, delta: float) -> void:
 ## in good order moves exactly as before. That gate matters: without it the share also took
 ## up the small lag kinetic friction leaves a body behind an accelerating march, so every
 ## charge and pursuit closed faster than before. step() grants the share only on an orderly
-## march (Unit._body_march_orderly): never on a router's flight, a pursuit, a charge, a
+## march (Unit._body_march_orderly): never on a router's flight (its men take
+## flight_accel_share instead), a pursuit, a charge, a
 ## combat approach or a hasty move. A march that slows grants none either: pulling up is not
 ## what leaves a man behind, and a man braking harder than the neighbour behind him in his
 ## file was run into (sprint_reshape's 180-degree reversal: two men of one file 0.14 wu

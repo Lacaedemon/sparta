@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/router-rejoins-rank-after-hill.json",
+  "caption": "Fixes #1924: a routing block's leading riders, held back for a moment by a hill they meet, now get back within a rank's distance of their places as the flight swings round it. A 72-horse squadron, already broken, flees north (up the screen) with its front rank 40 wu short of a hill that stands across its four western files, and runs on round the hill's east end. A rider more than half a rank's distance off his place may now change his speed and direction faster than usual, by as much as his place's own movement is changing (at most twice his usual rate on top), so a place that turns and speeds up faster than he can follow no longer leaves him behind. At the end of the clip the farthest rider is 114 wu from his place and none is more than a rank's distance (120 wu) off. Before the fix the riders the hill held back kept losing ground as the flight turned and gathered pace, ending up to 227 wu behind, with 7 riders more than a rank's distance off. The clip ends just before the rout timer runs out and the squadron rallies.",
+  "fixed_fps": 30,
+  "max_frames": 176,
+  "fps": 15,
+  "width": 720
+}

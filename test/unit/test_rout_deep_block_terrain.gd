@@ -11,7 +11,9 @@ extends GutTest
 ##   by the soldier backstop.
 ## - A block whose leading rank is about to step onto the terrain travels along the face
 ##   instead (Unit._flight_front_veer), so a block that breaks with its front just short of
-##   the terrain keeps that rank with it.
+##   the terrain keeps that rank with it, and a man the face still held back gains on his slot
+##   again as the flight swings round, on the change in his own feed-forward
+##   (SoldierBodies.flight_accel_share).
 ## - The detour never leads the block off the field.
 ##
 ## The regression this pins: the flee detour rounded the hill with the anchor's own margin
@@ -60,19 +62,17 @@ const CLOSE_HILL := Rect2(780.0, 1220.0, 260.0, 200.0)
 const CLOSE_START := Vector2(820.0, 700.0)
 const CLOSE_ENEMY := Vector2(1420.0, 760.0)
 const CLOSE_START_TICK := 350
-# The close-start bounds, in the router's own rank pitches (Unit.rank_pitch_wu, 120 wu for
+# The close-start bound, in the router's own rank pitches (Unit.rank_pitch_wu, 120 wu for
 # this block). A man counts as fallen out of his block when he stands more than
-# CLOSE_FALLEN_OUT_PITCHES from his slot, a whole rank's place. Fewer men may fall out than
-# the front rank has files whose slots lie over the hill at the break: without the leading
-# rank's veer (Unit._flight_front_veer) the face holds the front-rank men it meets and as
-# many men as those files fall out, so the bound asks the veer to keep at least one place
-# more than that. No man may stand CLOSE_MAX_WORST_PITCHES or more from his slot, the
-# tolerance deep-router-close-start-hill.json's slot_distance_max pins allow. Measured at
-# CLOSE_START_TICK: with the veer 2 men more than a rank pitch off and a worst gap of
-# 192.3 wu (1.6 pitches); without it 5 men and 382.5 wu (3.2 pitches), against 5 front-rank
-# files over the hill.
+# CLOSE_FALLEN_OUT_PITCHES from his slot, a whole rank's place, and no man may: the leading
+# rank's veer (Unit._flight_front_veer) keeps the front rank off the face, and a man the face
+# still slows takes the change in his own feed-forward on top of his acceleration
+# (SoldierBodies.flight_accel_share), so he rejoins his rank as the flight swings round the
+# hill. Measured at CLOSE_START_TICK on demos/inputs/deep-router-close-start-hill.json, this
+# staging, on seeds 0 to 4 (all identical): with the share no man more than a rank pitch off
+# and a worst gap of 98.0 wu (0.82 pitches); with the veer alone 2 men and 192.3 wu (1.6
+# pitches); with neither 5 men and 382.5 wu (3.2 pitches).
 const CLOSE_FALLEN_OUT_PITCHES := 1.0
-const CLOSE_MAX_WORST_PITCHES := 2.0
 # _flight_front_veer fixtures on the close-start staging: the router's leading rank line is
 # moved to FACE_SHORT_WU short of the hill's north face, grown by a body radius, which is
 # less than one tick of travel at flee speed; FAR_SHORT_WU is more than one tick. A step
@@ -331,12 +331,9 @@ func test_a_close_start_router_keeps_its_front_rank() -> void:
 		worst = maxf(worst, gap)
 		if gap > CLOSE_FALLEN_OUT_PITCHES * pitch:
 			fallen_out += 1
-	assert_lt(fallen_out, over_hill,
-			("fewer men than the %d front-rank files over the hill are more than a rank pitch "
-			+ "(%.0f wu) off their slots (got %d)") % [over_hill, pitch, fallen_out])
-	assert_lt(worst, CLOSE_MAX_WORST_PITCHES * pitch,
-			"worst body-to-slot gap under %.1f rank pitches, %.0f wu (got %.1f)"
-			% [CLOSE_MAX_WORST_PITCHES, CLOSE_MAX_WORST_PITCHES * pitch, worst])
+	assert_eq(fallen_out, 0,
+			"no man is more than a rank pitch (%.0f wu) off his slot (got %d, the worst %.1f wu)"
+			% [CLOSE_FALLEN_OUT_PITCHES * pitch, fallen_out, worst])
 
 
 ## Move the close-start router so the centre of its leading rank line (Unit._flight_front_line)
