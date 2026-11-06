@@ -7040,6 +7040,13 @@ func formation_slots(count: int, apply_relief_corridor: bool = true,
 ## between a fifth and half the block crossing its own centreline to get there. The shape is
 ## untouched either way; only the labelling differs.
 ##
+## A FILE_GROUP block is dealt the same way. Re-forming its files from the ids it held kept
+## every retained man in his file, but the new grid re-centres under him anyway, so he still
+## stepped half a file pitch, and the men of the folded or peeled files went to whichever
+## file had room, often on the far flank: 46 men going from 10 files to 9 sent one 165.5 wu
+## across the block, against 12.7 wu dealt from the bodies, and 80 men going from 5 files to
+## 4 sent the folded file's front man 259.8 wu to the opposite rear corner, against 37.1 wu.
+##
 ## WHERE IN his file each man stands is settled the same way, front to back by live depth
 ## (UnitFormation.deal_ranks_by_depth into _sim_soldier_rank). A file's depth order would
 ## otherwise be the array-index order of whoever the deal happened to send there, which
@@ -7082,15 +7089,9 @@ func _ensure_file_assignment(count: int, files: int) -> bool:
 			for i in range(_sim_soldier_file.size()):
 				_sim_soldier_file[i] = files - 1 - _sim_soldier_file[i]
 	else:
-		if subunit_structure == SubunitStructure.FILE_GROUP and _file_assignment_files > 0 and _sim_soldier_file.size() == count:
-			var reformed: Dictionary = UnitFormation.subunit_reform_files(
-					_sim_soldier_file, _sim_soldier_rank, files)
-			_sim_soldier_file = reformed["file_ids"]
-			_sim_soldier_rank = reformed["ranks"]
-		else:
-			_sim_soldier_file = UnitFormation.deal_file_ids_by_lateral_order(live, capacities)
-			_sim_soldier_rank = UnitFormation.deal_ranks_by_depth(live, _sim_soldier_file)
-			dealt = true
+		_sim_soldier_file = UnitFormation.deal_file_ids_by_lateral_order(live, capacities)
+		_sim_soldier_rank = UnitFormation.deal_ranks_by_depth(live, _sim_soldier_file)
+		dealt = true
 	note_file_assignment_changed()
 	# _slot_frame_positions returns nothing unless the body layer holds at least `count`
 	# entries, so a reshape can find FEWER bodies than live soldiers -- `count` having run
@@ -8274,11 +8275,9 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 			# through the mirror armed above, so the deal already ranks each man by the ground
 			# he holds. Reversing its ranks would reapply the reflection the deal has just
 			# absorbed and walk men the block's depth, as for the row-major and square layouts
-			# (_apply_row_slot_reflection). Two rebuilds read no body and keep the reversal: a
-			# FILE_GROUP block re-forms its files from the ids it held
-			# (UnitFormation.subunit_reform_files), whose ranks are still in the unreflected
-			# frame, and a reshape that finds too few bodies holds an index-order placeholder
-			# that the next query deals again.
+			# (_apply_row_slot_reflection). A reshape that finds too few bodies reads none and
+			# keeps the reversal: it holds an index-order placeholder that the next query deals
+			# again.
 			if not _ensure_file_assignment(soldiers, files):
 				_sim_soldier_rank = UnitFormation.reversed_ranks_within_files(
 						_sim_soldier_file, _sim_soldier_rank)
@@ -8326,8 +8325,8 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 ## square assignment.
 ## A row-major unit with no bodies to read (far tier, not yet seeded) keeps its pairing; a
 ## file-major one gets _ensure_file_assignment's own no-body fill. A FILE_GROUP
-## unit's files are re-dealt too, not carried by subunit: after a quarter-turn its old file
-## groups run along the new heading, so keeping them would be the crossing this avoids.
+## unit's files are re-dealt too: after a quarter-turn its old file groups run along the new
+## heading, so keeping them would be the crossing this avoids.
 func _pair_after_quarter_fold(count: int) -> void:
 	if count <= 0 or in_square():
 		return
