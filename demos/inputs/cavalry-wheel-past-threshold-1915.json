@@ -1,0 +1,18 @@
+{
+  "_comment": "A troop of horse whose combat wheel falls past the turn-in-place threshold keeps wheeling (#1915). A player squadron (24 Cavalry) stands facing south; an enemy squadron (20 Cavalry) 15 m to its south-east, facing it, charges it with no player input. The squadron meets it from tick 331 and wheels its heading onto the enemy, whose centre is soon only about 1.6 m (32 wu) from its anchor, well inside its own footprint, so the bearing runs away faster than the wheel can follow. On main a37af5c0 the offset passed 75 degrees at tick 368 and the squadron turned in place, swinging its heading from 88 to 40 degrees by tick 378 with its blows withheld, and the turn left its ranks lying where the riders stood: grid_off_heading read 48.2 degrees at tick 380 and 48.1 at tick 450 on seed 0 (47.7 to 48.3 on seeds 0 to 4). Now the wheel keeps running and turns the ranks with the heading: grid_off_heading reads 0.1 at both ticks on seeds 0 to 4. The tol of 1 degree is more than twice the up to 0.4 degrees that the 2-decimal facing alone can move the reading. Measured 2026-11-06 on bbaf899a against main a37af5c0.",
+  "seed": "19150",
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 800, "y": 500, "count": 24, "facing": [0, 1]},
+    {"team": 1, "type": "Cavalry", "x": 1020, "y": 700, "count": 20, "facing": [-1, -1]}
+  ],
+  "camera": [{"tick": 0, "x": 840.0, "y": 545.0, "zoom": 0.9}],
+  "steps": [],
+  "state": [10, 300, 340, 360, 370, 380, 400, 450, 520],
+  "expect": [
+    {"tick": 10, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": 360, "uid": 0, "field": "in_enemy_contact", "value": true},
+    {"tick": 380, "uid": 0, "field": "grid_off_heading", "value": 0, "tol": 1.0},
+    {"tick": 450, "uid": 0, "field": "grid_off_heading", "value": 0, "tol": 1.0},
+    {"tick": 520, "uid": 0, "field": "state", "value": "FIGHTING"}
+  ]
+}
