@@ -207,15 +207,15 @@ march that slows gives none. Only those orderly marches give that extra accelera
 combat approach --- the march of an attack or support order, a charge or a pursuit ---
 gives none, and neither does an **in-haste** move order (a triple- or quadruple-click).
 A rout gives its own extra instead,
-and only to a man more than half a rank's distance off his place
-(all of it from a whole rank's distance out):
+and only to a man more than 3 m off his place
+(all of it from 6 m out):
 the rate his place's own movement is changing at,
 as the flight speeds up and the block turns,
 capped at twice his usual rate.
 So a man left behind as the flight swings round,
 such as a rider a hill's face held back for a moment,
-gets back within about a rank's distance of his place,
-while a block whose men all keep closer than that flees as before.
+gets back within about 6 m (one rank of a cavalry block) of his place,
+while a block whose men all keep within 3 m of their places flees as before.
 On every march, the way a man walks onto his place changes over gradually as the
 block gets under way rather than all at once on its first step
 (@fig-march-start-catch-up). A block that halts in a fight and marches off straight from

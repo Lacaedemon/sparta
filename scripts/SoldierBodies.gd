@@ -99,20 +99,21 @@ const MARCH_SHARE_FULL_PITCHES: float = 1.0
 # step leaving a detour leg, or a side-step along a face starting or ending,
 # Unit._flight_front_veer), which is unbounded and so grants no more than the cap.
 const FLIGHT_SHARE_MAX_ACCEL_MULT: float = 2.0
-# Defaults for Unit.flight_share_from_pitches and Unit.flight_share_full_pitches: how far off
-# his own slot, in RANK pitches (Unit.rank_pitch_wu), a routing body takes none of
-# flight_accel_share and all of it (march_share_frac). The march share's ramp, half a pitch
-# to a whole one, measured in the block's rank pitch rather than its file pitch. While a
-# flight builds up its men trail their slots by more than a file pitch: on
-# deep-router-rounds-hill (file pitch 40 wu, rank pitch 120 wu, no man held at the hill),
-# with no share, the farthest man stands 43.7 to 103.6 wu off his slot from tick 120 to tick
-# 350. A man within half a rank pitch of his slot takes none, so a block whose men all keep
-# that close flees as it did before; a man falling out of his rank's place takes it. A ramp
-# in file pitches took up the lag of men nearer their slots too, and the coupling then
-# dragged the anchor back less: on that clip and deep-router-close-start-hill it put the
-# anchor 8 to 20 wu from where it runs with no share, at the ticks the clips sample.
-const FLIGHT_SHARE_FROM_PITCHES: float = 0.5
-const FLIGHT_SHARE_FULL_PITCHES: float = 1.0
+# Defaults for Unit.flight_share_from_wu and Unit.flight_share_full_wu: how far off his own
+# slot a routing body takes none of flight_accel_share and all of it (march_share_frac), a
+# fixed distance rather than a multiple of the block's pitch: half and a whole of a default
+# Cavalry block's 120 wu (6 m) rank pitch. While a flight builds up its men trail their slots: on
+# deep-router-rounds-hill (Cavalry, file pitch 2 m, no man held at the hill), with no share,
+# the farthest man stands 43.7 to 103.6 wu off his slot from tick 120 to tick 350. A man
+# within 3 m of his slot takes none, so a block whose men all keep that close flees as it
+# did before. Ramps set in the block's own pitches, half a file or rank pitch to a whole
+# one, took up that ordinary lag too, and the coupling then dragged the anchor back less:
+# they moved the anchor pins of the two hill clips by 8 to 20 wu (file pitches) and, for
+# Infantry, whose rank pitch is about its file pitch, the anchor pin of square-rally-reform
+# by 32 wu and of last-unit-rally by 54 wu (rank pitches), measured on Windows on their own
+# seeds.
+const FLIGHT_SHARE_FROM_WU: float = 3.0 * WorldScaleRef.WU_PER_M
+const FLIGHT_SHARE_FULL_WU: float = 6.0 * WorldScaleRef.WU_PER_M
 # Lateral clearance beyond outer formed file for perimeter corridor routing.
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
 # Stagger fraction between alternate soldier lanes in perimeter corridor.
@@ -465,7 +466,6 @@ static func step(unit: Unit, delta: float) -> void:
 	if routing:
 		flight_now.resize(n)
 	var flight_cap: float = body_accel * maxf(unit.flight_share_max_accel_mult, 0.0)
-	var flight_pitch: float = unit.rank_pitch_wu() if flight_share else 0.0
 	# A router turning its flight, or any other block whose slot grid is turning after a small
 	# heading correction, turns its grid about the anchor at this rate (rad/s;
 	# Unit._turn_flight_toward, Unit._advance_grid_lag): each unengaged slot also moves at
@@ -566,13 +566,14 @@ static func step(unit: Unit, delta: float) -> void:
 		# corner slot sideways at up to the bodies' own acceleration on top, so a man's slot can
 		# change its velocity faster than his body_accel lets him follow, and a man who has
 		# fallen behind it never gains on it. He takes the change in his own feed-forward on
-		# top, ramped in by how far he stands off his slot in rank pitches.
+		# top, ramped in by how far he stands off his slot (Unit.flight_share_from_wu,
+		# Unit.flight_share_full_wu).
 		if routing:
 			flight_now[i] = feed_forward
 			if flight_share and is_engaged[i] == 0:
 				accel_i += flight_accel_share(feed_forward, flight_prev[i], flight_cap, delta) \
-						* march_share_frac(own_slot.distance_to(unit._sim_soldier_pos[i]),
-						flight_pitch, unit.flight_share_from_pitches, unit.flight_share_full_pitches)
+						* march_share_frac(own_slot.distance_to(unit._sim_soldier_pos[i]), 1.0,
+						unit.flight_share_from_wu, unit.flight_share_full_wu)
 		var new_vel: Vector2 = damped_vel.move_toward(desired_vel, accel_i * delta) \
 				if brake_accel <= accel_i \
 				else brake_biased_step(damped_vel, desired_vel, accel_i, brake_accel, delta)
@@ -701,9 +702,9 @@ static func step(unit: Unit, delta: float) -> void:
 ## last step, capped at `cap`
 ## (Unit.flight_share_max_accel_mult times body_accel). Unlike march_accel_budget it is read
 ## per man, since a turning grid moves each slot at its own velocity, and a slowing flight
-## counts as well as a quickening one. step() scales it by march_share_frac in rank pitches
-## (Unit.flight_share_from_pitches, Unit.flight_share_full_pitches), so a man within half a
-## rank pitch of his slot, by default, takes none of it. 0 when `delta` is not positive.
+## counts as well as a quickening one. step() scales it by march_share_frac over the man's
+## distance from his slot (Unit.flight_share_from_wu, Unit.flight_share_full_wu), so a man
+## within 3 m of his slot, by default, takes none of it. 0 when `delta` is not positive.
 static func flight_accel_share(ff: Vector2, ff_prev: Vector2, cap: float, delta: float) -> float:
 	if delta <= 0.0:
 		return 0.0

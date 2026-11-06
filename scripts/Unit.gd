@@ -151,11 +151,11 @@ var _cached_combat_profile: Dictionary = {}
 # (SoldierBodies.flight_accel_share), as a multiple of its own acceleration, so a flight
 # that swings its direction in one tick cannot hand its men an unbounded kick.
 @export var flight_share_max_accel_mult: float = SoldierBodies.FLIGHT_SHARE_MAX_ACCEL_MULT
-# How far off his own slot, in rank pitches, a routing body must stand to take that share
-# (SoldierBodies.march_share_frac): none within flight_share_from_pitches, all of it from
-# flight_share_full_pitches out.
-@export var flight_share_from_pitches: float = SoldierBodies.FLIGHT_SHARE_FROM_PITCHES
-@export var flight_share_full_pitches: float = SoldierBodies.FLIGHT_SHARE_FULL_PITCHES
+# How far off his own slot (wu) a routing body must stand to take that share
+# (SoldierBodies.march_share_frac): none within flight_share_from_wu, all of it from
+# flight_share_full_wu out.
+@export var flight_share_from_wu: float = SoldierBodies.FLIGHT_SHARE_FROM_WU
+@export var flight_share_full_wu: float = SoldierBodies.FLIGHT_SHARE_FULL_WU
 # How many body steps a march may stand still before its bodies' arrival target ramp starts
 # again from nothing (SoldierBodies.advance_march_target_frac), so a march that dips to a
 # standstill for a step or two keeps its ramp. Steps stood in enemy contact or engaged are
@@ -12318,8 +12318,8 @@ func to_snapshot_dict() -> Dictionary:
 		"march_share_full_pitches": march_share_full_pitches,
 		"march_share_max_accel_mult": march_share_max_accel_mult,
 		"flight_share_max_accel_mult": flight_share_max_accel_mult,
-		"flight_share_from_pitches": flight_share_from_pitches,
-		"flight_share_full_pitches": flight_share_full_pitches,
+		"flight_share_from_wu": flight_share_from_wu,
+		"flight_share_full_wu": flight_share_full_wu,
 		"march_target_stop_grace_ticks": march_target_stop_grace_ticks,
 		"standoff_off_slot_pitches": standoff_off_slot_pitches,
 		"attack_range": attack_range, "sight_range": sight_range,
@@ -12561,8 +12561,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 			march_share_max_accel_mult))
 	flight_share_max_accel_mult = float(d.get("flight_share_max_accel_mult",
 			flight_share_max_accel_mult))
-	flight_share_from_pitches = float(d.get("flight_share_from_pitches", flight_share_from_pitches))
-	flight_share_full_pitches = float(d.get("flight_share_full_pitches", flight_share_full_pitches))
+	flight_share_from_wu = float(d.get("flight_share_from_wu", flight_share_from_wu))
+	flight_share_full_wu = float(d.get("flight_share_full_wu", flight_share_full_wu))
 	march_target_stop_grace_ticks = int(d.get("march_target_stop_grace_ticks",
 			march_target_stop_grace_ticks))
 	standoff_off_slot_pitches = float(d.get("standoff_off_slot_pitches",

@@ -153,11 +153,11 @@ its riders running together as a block.
   so that rank stays with it.
   A leading man the face still holds back for a moment
   is not left a rank or two behind as the flight swings on round the hill:
-  once he is more than half a rank's distance off his place,
+  once he is more than 3 m off his place,
   he may change his speed and direction faster than usual,
   by as much as his place's own movement is changing
   (at most twice his usual rate on top),
-  so he keeps within about a rank's distance of it.
+  so he keeps within about 6 m of it, one rank of a cavalry block.
   If every escape direction is blocked,
   it gives up fleeing and stands to fight
   instead of uselessly running in place against the obstacle.
