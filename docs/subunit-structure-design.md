@@ -761,7 +761,7 @@ Stop laying cavalry out as
   itself structureless so nothing downstream reasons about cavalry files.
   That is strictly less wrong than today and does not prejudge the leader model.
 
-- **Phase 4 (shipped, #1329) --- express one reform as a subunit operation.**
+- **Phase 4 (shipped in #1329, withdrawn in #1918) --- express one reform as a subunit operation.**
 The issue's own
   example: convert a flank file into a back rank by marching that file around
   the edge of the block into its rear, as a body, rather than relabelling every
@@ -775,6 +775,24 @@ The issue's own
   A conversion that does not improve that pair of numbers has not earned its
   complexity.
 
+  **Withdrawn after measurement (#1918).**
+  #1329 re-formed a `FILE_GROUP` block's files from the ids it held
+  (`UnitFormation.subunit_reform_files`): retained men kept their file and rank,
+  and the folded or peeled file's men went to whichever file had room.
+  Measured 2026-11-05 against the plain lateral deal on bare blocks standing on
+  their slots, it failed both halves of the test above.
+  It moved every man in every case probed, since the new grid re-centres under
+  the retained files anyway, where the deal moved 74 of 80 men going from 5 files to 4.
+  It also covered more ground: 46 men from 10 files to 9 walked 948 wu in all
+  and 165.5 wu at the farthest, against 585 and 12.7 wu, and 80 men from 5 files
+  to 4 walked 4750 and 259.8 wu, against 2472 and 37.1 wu.
+  The fold dealt the folded file front man first onto the farthest file, so its
+  men did not march round the edge as a body but crossed the block diagonally.
+  A `FILE_GROUP` block now re-forms through the same deal from the bodies as
+  every other file-major block.
+  Marching a file round the edge as a body still needs the per-file route of
+  Phase 5, not a relabelling.
+
 - **Phase 5 (optional, later, not started) --- ride #547.**
 Once explicit per-soldier slot
   ownership lands, a subunit becomes an addressable recipient of an order ("your
@@ -786,8 +804,10 @@ Once explicit per-soldier slot
 
 Phases 1--2 are worth doing regardless.
 Phase 3 should not start before its open question is answered.
-Phase 4 is where the issue's actual request is delivered, and phases 1--3
-exist mainly to make it expressible.
+Phase 4 was meant to deliver the issue's actual request, and phases 1--3
+exist mainly to make it expressible;
+its relabelling did not pass its own acceptance test, so the request now waits
+on Phase 5.
 
 ## Cross-references
 

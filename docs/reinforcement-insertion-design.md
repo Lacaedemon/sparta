@@ -270,7 +270,7 @@ The manifests `demos/demo.1555.json` (files) and `demos/demo.1574.json` (ranks) 
   the interleave survives only if `_file_assignment_files` is written with it.
 
 - **File-group subunits.**
-  For a `FILE_GROUP` host, `UnitFormation.frontage` derives the width from `subunit_size` unless overridden, and `_ensure_file_assignment` reforms through `subunit_reform_files`;
+  For a `FILE_GROUP` host, `UnitFormation.frontage` derives the width from `subunit_size` unless overridden, and `_ensure_file_assignment` deals a reshape from the bodies as for any file-major host;
   ReinforceGuard refuses `FILE_GROUP` hosts, leaving subunit-aware insertion to a follow-up.
 
 - **Mixed loadouts.**

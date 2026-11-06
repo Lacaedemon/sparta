@@ -20,10 +20,6 @@
     "path_crossing": {
       "uids": [0, 1, 2],
       "reason": "Soldier paths intersect transiently during the 90-man frontage and facing reorganization before marching into echelon."
-    },
-    "misslotted": {
-      "uids": [0, 1, 2],
-      "reason": "This change exposes the misslotted verdict's lack of a transit window; the men it flags are walking, not misplaced. Uids 0 and 1 pass on main and fail here, every seed: worst 0.27 and 0.28 against 0.25 (0.22 and 0.27 on main); uid 2 fails on both trees (0.28 here, 0.30 on main). The verdict counts a man misslotted when he stands nearer another man's slot than his own, but only on samples where the block's men stand a mean of no more than a quarter of the spacing (2.25 wu) from their nearest slot, and it fails when two samples in a row read above 0.25 without falling. That mean is passed long before the men arrive: traced on seed 0, uid 0 passes it at a mean 2.22 wu at tick 344 with 24 of its 90 men misslotted, and those 24 stand 5.9 to 46.6 wu from their own slots (up to five file pitches) and close on them at a mean 11.6 wu/s; the series reads zero from tick 564, before the block marches (MARCH by tick 600). Main shows the same: its uid 1 passes the mean at tick 336 with 24 men misslotted (0.27), and passes the verdict only because one more man has reached his slot two ticks later. Here the count holds at 24 for one 2-tick sample (ticks 344 and 346; uid 2 at 346 and 348, uid 1 at 358 to 362): the line between failing and passing is one man reaching his slot two ticks later, among men the standoff now keeps from walking through each other. So the sim is doing what this change asks of it, and the verdict reads its convergence as a defect. The script's state ticks include 340 to 348, 358 and 360 so its own scan reads this as EXEMPT. misslotted having no transit window after a re-slot is #1892. Measured 2026-11-05 on 2b432171 against main f57ccdfa (the later commits on this branch change no behaviour), with full state dumps every 2 ticks, every exemption removed, seeds 0 to 4."
     }
   }
 }
