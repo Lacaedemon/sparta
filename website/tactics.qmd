@@ -150,8 +150,14 @@ its riders running together as a block.
   and regains its full flight pace once past it.
   A block that breaks with its front just short of a hill
   side-steps along the hill's face until its front rank is clear,
-  so that rank stays with it,
-  though a few of its leading men can still fall a rank or two behind.
+  so that rank stays with it.
+  A leading man the face still holds back for a moment
+  is not left a rank or two behind as the flight swings on round the hill:
+  once he is more than half a rank's distance off his place,
+  he may change his speed and direction faster than usual,
+  by as much as his place's own movement is changing
+  (at most twice his usual rate on top),
+  so he keeps within about a rank's distance of it.
   If every escape direction is blocked,
   it gives up fleeing and stands to fight
   instead of uselessly running in place against the obstacle.
