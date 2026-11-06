@@ -48,24 +48,54 @@ func _flee(u: Unit, i: int, ticks: int) -> PackedFloat32Array:
 	return dists
 
 
-func test_a_man_fallen_well_behind_gains_on_his_slot_while_the_flight_builds_up() -> void:
+## How long a man starting `gap` wu farther off his slot than he needs to be takes to close that
+## gap, closing at the relative acceleration `net` (wu/s^2) up to the relative speed `cap_speed`.
+## On a straight flight building its pace at the bodies' own acceleration the man's own
+## acceleration only keeps pace with his slot, so `net` is whatever share he takes on top.
+func _close_time(gap: float, net: float, cap_speed: float) -> float:
+	if net <= 0.0:
+		return INF
+	var ramp: float = cap_speed * cap_speed / (2.0 * net)
+	if ramp >= gap:
+		return sqrt(2.0 * gap / net)
+	return cap_speed / net + (gap - ramp) / cap_speed
+
+
+## Body `i`'s distance to its slot after `ticks` ticks of _flee on a fresh router, `start` wu
+## behind his slot, with the share capped at `mult` times his acceleration.
+func _gap_after(start: float, ticks: int, mult: float) -> float:
 	var u := _make_router()
+	u.flight_share_max_accel_mult = mult
 	var i: int = u.soldiers - 1
-	var full: float = u.flight_share_full_wu
-	var start: float = full * 1.5
 	_fall_back(u, i, start)
-	var body_accel: float = maxf(u.accel, SoldierBodies.BODY_ACCEL_FLOOR)
-	assert_almost_eq(body_accel, u.accel, 0.0001,
-			"setup: the flight builds its pace at the bodies' own acceleration")
-	# The whole build-up to flee pace.
-	var ticks: int = ceili(u.flee_speed() / u.accel / TICK)
 	var dists: PackedFloat32Array = _flee(u, i, ticks)
-	# At his own acceleration alone he only keeps pace with his slot and never closes on it;
-	# with his feed-forward's change on top he closes on it at his full acceleration, back
-	# inside the distance from which he takes all of the share.
-	assert_lt(dists[dists.size() - 1], full,
-			"the man %.0f wu behind his slot is within %.0f wu after the %.2f s build-up (%.1f wu)"
-			% [start, full, ticks * TICK, dists[dists.size() - 1]])
+	return dists[dists.size() - 1]
+
+
+func test_a_man_fallen_well_behind_gains_on_his_slot_while_the_flight_builds_up() -> void:
+	# He starts half of flight_share_full_wu farther back than full, so he takes all of the
+	# share until he is back at full. The flight's change, his share, is the unit's accel; he
+	# closes on his slot at that much, up to his jog pace (the cap on his arrival), and a
+	# half-strength share closes at half of it. The sample tick is midway between the two
+	# times that model gives for reaching full: a whole share is inside full by then and a
+	# half share is not. With no share at all he never closes.
+	var probe := _make_router()
+	var body_accel: float = maxf(probe.accel, SoldierBodies.BODY_ACCEL_FLOOR)
+	assert_almost_eq(body_accel, probe.accel, 0.0001,
+			"setup: the flight builds its pace at the bodies' own acceleration")
+	var full: float = probe.flight_share_full_wu
+	var start: float = full * 1.5
+	var t_whole: float = _close_time(start - full, probe.accel, probe.jog_speed)
+	var t_half: float = _close_time(start - full, probe.accel * 0.5, probe.jog_speed)
+	var ticks: int = roundi((t_whole + t_half) * 0.5 / TICK)
+	assert_lt(ticks * TICK, probe.flee_speed() / probe.accel,
+			"setup: the sample falls inside the flight's build-up")
+	var whole: float = _gap_after(start, ticks, SoldierBodies.FLIGHT_SHARE_MAX_ACCEL_MULT)
+	assert_lt(whole, full, "with the whole share he is within %.0f wu after %.2f s (%.1f wu)"
+			% [full, ticks * TICK, whole])
+	var half: float = _gap_after(start, ticks, 0.5)
+	assert_gt(half, full, "a share capped at half his acceleration leaves him beyond %.0f wu (%.1f wu)"
+			% [full, half])
 
 
 func test_a_man_within_the_share_distance_takes_no_share() -> void:
@@ -96,8 +126,6 @@ func test_a_man_within_the_share_distance_takes_no_share() -> void:
 	assert_eq(plain._sim_body_vel[i], capped._sim_body_vel[i], "and his velocity is the same")
 
 
-
-
 func test_flight_accel_share_is_the_feed_forward_change_capped() -> void:
 	var cap: float = 80.0
 	assert_almost_eq(SoldierBodies.flight_accel_share(Vector2(0, 10), Vector2(0, 10), cap, TICK),
@@ -105,7 +133,9 @@ func test_flight_accel_share_is_the_feed_forward_change_capped() -> void:
 	assert_almost_eq(SoldierBodies.flight_accel_share(Vector2(0, 10.5), Vector2(0, 10), cap, TICK),
 			30.0, 1e-3, "gaining 0.5 wu/s in one tick grants 30 wu/s^2")
 	assert_almost_eq(SoldierBodies.flight_accel_share(Vector2(0, 9.5), Vector2(0, 10), cap, TICK),
-			30.0, 1e-3, "losing 0.5 wu/s in one tick grants as much")
+			0.0, 1e-4, "losing 0.5 wu/s in one tick grants nothing")
+	assert_almost_eq(SoldierBodies.flight_accel_share(Vector2(-10, 0), Vector2(0, 10), cap, TICK),
+			cap, 1e-4, "a swing at the same speed counts as a quickening one")
 	assert_almost_eq(SoldierBodies.flight_accel_share(Vector2(0.5, 10), Vector2(0, 10), cap, TICK),
 			30.0, 1e-3, "and so does a sideways change of 0.5 wu/s")
 	assert_almost_eq(SoldierBodies.flight_accel_share(Vector2(10, 0), Vector2(0, 10), cap, TICK),
@@ -158,8 +188,12 @@ func test_the_share_settings_ride_the_snapshot() -> void:
 	u.flight_share_max_accel_mult = 1.25
 	u.flight_share_from_wu = 30.0
 	u.flight_share_full_wu = 90.0
-	u._flee_velocity = u.facing * 20.0
-	SoldierBodies.step(u, TICK)
+	# A distinct feed-forward for every man, so a snapshot that mixed them up or kept only one
+	# would not compare equal.
+	var ffs := PackedVector2Array()
+	for k in range(u._sim_soldier_pos.size()):
+		ffs.append(Vector2(float(k), -2.0 * float(k) - 1.0))
+	u._body_flight_ff_prev = ffs
 	var d: Dictionary = u.to_snapshot_dict()
 	var copy: Unit = Unit.new()
 	copy.max_soldiers = 30
@@ -168,5 +202,60 @@ func test_the_share_settings_ride_the_snapshot() -> void:
 	assert_almost_eq(copy.flight_share_max_accel_mult, 1.25, 1e-6, "the cap rides the snapshot")
 	assert_almost_eq(copy.flight_share_from_wu, 30.0, 1e-6, "so does the ramp's start")
 	assert_almost_eq(copy.flight_share_full_wu, 90.0, 1e-6, "and its end")
-	assert_eq(copy._body_flight_ff_prev, u._body_flight_ff_prev,
-			"and each man's last feed-forward")
+	assert_eq(copy._body_flight_ff_prev, ffs, "and each man's own last feed-forward")
+
+
+func test_a_slowing_flight_grants_no_share() -> void:
+	# The flight pulls up (its pace drops between two steps): a man far behind his slot sheds
+	# speed at his own rate only, as a march that slows grants none either.
+	var u := _make_router()
+	var i: int = u.soldiers - 1
+	_fall_back(u, i, u.flight_share_full_wu * 1.5)
+	var pace: float = u.flee_speed() * 0.5
+	for _t in range(30):
+		u._flee_velocity = u.facing * pace
+		SoldierBodies.step(u, TICK)
+	var before: Vector2 = u._sim_body_vel[i]
+	u._flee_velocity = u.facing * (pace * 0.5)
+	SoldierBodies.step(u, TICK)
+	var body_accel: float = maxf(u.accel, SoldierBodies.BODY_ACCEL_FLOOR)
+	var change: float = u._sim_body_vel[i].distance_to(before)
+	assert_lte(change, body_accel * TICK + 1e-4,
+			"his velocity changes at his own acceleration only (%.4f wu/s in the tick)" % change)
+
+
+func test_leaving_the_engaged_tier_grants_no_share_spike() -> void:
+	# A front-rank man engaged on one step takes only his friendly-contact steering as his
+	# feed-forward; on the next he is unengaged and takes the whole flight. His recorded
+	# feed-forward is the unengaged form either way, so with the flight unchanged between the
+	# steps he takes no share for it.
+	var u := _make_router()
+	u._engaged_linger = 1.0
+	var n: int = u._sim_soldier_pos.size()
+	var tier: PackedInt32Array = u.body_tier_soldier_indices(n)
+	assert_gt(tier.size(), 0, "setup: the router has an engaged tier")
+	if tier.is_empty():
+		return
+	var i: int = tier[0]
+	# Sideways, so he keeps his place in the leading rank's line.
+	u._sim_soldier_pos[i] += u.facing.orthogonal() * u.flight_share_full_wu * 1.5
+	u._sim_body_vel[i] = Vector2.ZERO
+	u._flee_velocity = u.facing * u.flee_speed() * 0.5
+	SoldierBodies.step(u, TICK)
+	assert_true(i in u.body_tier_soldier_indices(n), "setup: he was engaged on the first step")
+	u._engaged_linger = 0.0
+	var before: Vector2 = u._sim_body_vel[i]
+	SoldierBodies.step(u, TICK)
+	var body_accel: float = maxf(u.accel, SoldierBodies.BODY_ACCEL_FLOOR)
+	var change: float = u._sim_body_vel[i].distance_to(before)
+	assert_lte(change, body_accel * TICK + 1e-4,
+			"leaving the tier, his velocity changes at his own acceleration only (%.4f wu/s)" % change)
+
+
+func test_seeding_the_bodies_clears_the_flight_feed_forward() -> void:
+	var u := _make_router()
+	u._flee_velocity = u.facing * 20.0
+	SoldierBodies.step(u, TICK)
+	assert_gt(u._body_flight_ff_prev.size(), 0, "setup: a routing step recorded the feed-forward")
+	u.seed_sim_soldiers()
+	assert_eq(u._body_flight_ff_prev.size(), 0, "fresh bodies carry no flight feed-forward")

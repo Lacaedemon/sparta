@@ -1798,9 +1798,11 @@ var current_speed: float:
 # march_accel_budget for how exactly that is judged).
 var _body_march_ff_prev: Vector2 = Vector2.ZERO
 # Each soldier body's feed-forward on SoldierBodies.step's last step while routing: the
-# flight velocity, his slot's turning velocity and any friendly-contact steering, or that
-# steering alone for an engaged body. Empty after any step that was not routing. The step reads each unengaged
-# man's change in it as extra acceleration (SoldierBodies.flight_accel_share).
+# flight velocity, his slot's turning velocity and any friendly-contact steering, recorded in
+# that form for an engaged body too (whose own feed-forward is the steering alone), so a man
+# leaving the engaged tier is not read as a jump. Empty after any step that was not routing,
+# and after SoldierBodies.seed. The step reads each unengaged man's change in it as extra
+# acceleration (SoldierBodies.flight_accel_share).
 var _body_flight_ff_prev: PackedVector2Array = PackedVector2Array()
 # Whether this tick's march is an orderly one (_move_to's `orderly`: a MOVE order marching
 # to its destination, whether the player or the AI issued it, or a fighting withdrawal's

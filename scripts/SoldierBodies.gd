@@ -94,10 +94,14 @@ const MARCH_SHARE_FULL_PITCHES: float = 1.0
 # which builds at unit.accel (Unit._process_rout) and body_accel is never below, and the
 # speed of the slot's turning velocity, which changes by at most body_accel at the block's
 # corner because the turn rate builds and sheds at Unit.bounded_turn_accel. Two body_accels
-# cover those two. Not counted: the turning velocity swinging round with the grid, the bend
-# of the flight's path between steps, and a one-tick swing of the flight's direction (the
+# cover those two. Not counted: the turning velocity swinging round with the grid; the bend
+# of the flight's own heading as it follows a detour, about the pace times the rate the
+# heading turns, which nothing bounds; and a one-tick swing of the flight's direction (the
 # step leaving a detour leg, or a side-step along a face starting or ending,
-# Unit._flight_front_veer), which is unbounded and so grants no more than the cap.
+# Unit._flight_front_veer). So the cap binds while a flight bends round terrain at pace: on
+# deep-router-close-start-hill (seed 0, Windows, 2026-11-06) the uncapped rate exceeded it
+# on 279 of the 1637 man-ticks in which a man took any share and the flight was not
+# slowing, mostly between ticks 290 and 340 as the flight bent round the hill.
 const FLIGHT_SHARE_MAX_ACCEL_MULT: float = 2.0
 # Defaults for Unit.flight_share_from_wu and Unit.flight_share_full_wu: how far off his own
 # slot a routing body takes none of flight_accel_share and all of it (march_share_frac), a
@@ -192,6 +196,8 @@ static func seed(unit: Unit) -> void:
 	# from rest, as from any other standstill, and start their arrival target from the
 	# standing one.
 	unit._body_march_ff_prev = Vector2.ZERO
+	# Nor a flight: the next routing step reads no feed-forward change, so grants no share.
+	unit._body_flight_ff_prev = PackedVector2Array()
 	unit._march_target_frac = 0.0
 	unit._march_stopped_ticks = 0
 	unit._render_dirty = true   # fresh bodies need an initial draw
@@ -569,7 +575,14 @@ static func step(unit: Unit, delta: float) -> void:
 		# top, ramped in by how far he stands off his slot (Unit.flight_share_from_wu,
 		# Unit.flight_share_full_wu).
 		if routing:
-			flight_now[i] = feed_forward
+			# Recorded in the unengaged form for every man, so a man who leaves the engaged
+			# tier compares like with like rather than steering alone against the whole flight.
+			var flight_ff: Vector2 = feed_forward
+			if is_engaged[i] == 1:
+				var flight_arm: Vector2 = own_slot - unit.position
+				flight_ff = march_vel + unit._sim_steer[i] \
+						+ Vector2(-flight_arm.y, flight_arm.x) * turn_rate
+			flight_now[i] = flight_ff
 			if flight_share and is_engaged[i] == 0:
 				accel_i += flight_accel_share(feed_forward, flight_prev[i], flight_cap, delta) \
 						* march_share_frac(own_slot.distance_to(unit._sim_soldier_pos[i]), 1.0,
@@ -701,12 +714,17 @@ static func step(unit: Unit, delta: float) -> void:
 ## velocity and any friendly-contact steering) changed since its feed-forward `ff_prev` on the
 ## last step, capped at `cap`
 ## (Unit.flight_share_max_accel_mult times body_accel). Unlike march_accel_budget it is read
-## per man, since a turning grid moves each slot at its own velocity, and a slowing flight
-## counts as well as a quickening one. step() scales it by march_share_frac over the man's
+## per man, since a turning grid moves each slot at its own velocity. Like it, a feed-forward
+## whose speed fell grants none (compared exactly, with no tolerance): pulling up is not what
+## leaves a man behind, and extra braking for a man well off his slot is what ran file-mates
+## into each other on a march (march_accel_budget's sprint_reshape case). A swing at an
+## unchanged or higher speed still counts. step() scales it by march_share_frac over the man's
 ## distance from his slot (Unit.flight_share_from_wu, Unit.flight_share_full_wu), so a man
 ## within 3 m of his slot, by default, takes none of it. 0 when `delta` is not positive.
 static func flight_accel_share(ff: Vector2, ff_prev: Vector2, cap: float, delta: float) -> float:
 	if delta <= 0.0:
+		return 0.0
+	if ff.length_squared() < ff_prev.length_squared():
 		return 0.0
 	return minf((ff - ff_prev).length() / delta, cap)
 
