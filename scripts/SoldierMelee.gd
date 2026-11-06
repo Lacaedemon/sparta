@@ -401,12 +401,19 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 	var dead_positions := PackedVector2Array()
 	var dead_indices := PackedInt32Array()
 	var count_before: int = unit._sim_soldier_pos.size()
+	# A router's per-man feed-forward record (Unit._body_flight_ff_prev) is trimmed with the
+	# bodies while it matches them, so each survivor's next step compares his own last
+	# feed-forward rather than that of the man one index lower in the array, whose entry
+	# he would otherwise read once the removal shifts him down.
+	var trim_flight: bool = unit._body_flight_ff_prev.size() == count_before
 	for i in range(unit._sim_soldier_hp.size() - 1, -1, -1):
 		if unit._sim_soldier_hp[i] <= 0.0:
 			dead_indices.push_back(i)
 			dead_positions.push_back(unit._sim_soldier_pos[i])
 			unit._sim_soldier_pos.remove_at(i)
 			unit._sim_body_vel.remove_at(i)
+			if trim_flight:
+				unit._body_flight_ff_prev.remove_at(i)
 			unit._sim_soldier_hp.remove_at(i)
 			if i < unit._sim_steer.size():
 				unit._sim_steer.remove_at(i)   # keep the steering array index-aligned

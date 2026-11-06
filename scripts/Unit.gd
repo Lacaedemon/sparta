@@ -147,6 +147,15 @@ var _cached_combat_profile: Dictionary = {}
 # acceleration (SoldierBodies.march_accel_budget), so a march that changes sharply in one
 # tick cannot hand its men an unbounded kick.
 @export var march_share_max_accel_mult: float = SoldierBodies.MARCH_SHARE_MAX_ACCEL_MULT
+# The most extra acceleration a routing body takes from the change in its own feed-forward
+# (SoldierBodies.flight_accel_share), as a multiple of its own acceleration, so a flight
+# that swings its direction in one tick cannot hand its men an unbounded kick.
+@export var flight_share_max_accel_mult: float = SoldierBodies.FLIGHT_SHARE_MAX_ACCEL_MULT
+# How far off his own slot (wu) a routing body must stand to take that share
+# (SoldierBodies.march_share_frac): none within flight_share_from_wu, all of it from
+# flight_share_full_wu out.
+@export var flight_share_from_wu: float = SoldierBodies.FLIGHT_SHARE_FROM_WU
+@export var flight_share_full_wu: float = SoldierBodies.FLIGHT_SHARE_FULL_WU
 # How many body steps a march may stand still before its bodies' arrival target ramp starts
 # again from nothing (SoldierBodies.advance_march_target_frac), so a march that dips to a
 # standstill for a step or two keeps its ramp. Steps stood in enemy contact or engaged are
@@ -1788,6 +1797,15 @@ var current_speed: float:
 # still gains on it while the march speeds up or swings round without losing speed (see
 # march_accel_budget for how exactly that is judged).
 var _body_march_ff_prev: Vector2 = Vector2.ZERO
+# Each soldier body's feed-forward on SoldierBodies.step's last step while routing: the
+# flight velocity, his slot's turning velocity and any friendly-contact steering, recorded in
+# that form for an engaged body too (whose own feed-forward is the steering alone), so a man
+# leaving the engaged tier is not read as a jump. Empty after any step that was not routing,
+# after SoldierBodies.seed, and after either tier change (TierTransition.demote, promote).
+# SoldierMelee.reap trims a dead man's entry with his body, so each survivor keeps his own.
+# The step reads each unengaged man's change in it as extra acceleration
+# (SoldierBodies.flight_accel_share), and none on a step whose headcount it does not match.
+var _body_flight_ff_prev: PackedVector2Array = PackedVector2Array()
 # Whether this tick's march is an orderly one (_move_to's `orderly`: a MOVE order marching
 # to its destination, whether the player or the AI issued it, or a fighting withdrawal's
 # peel) marched in good time (not a hasty MOVE). Only such a march grants its unengaged
@@ -12303,6 +12321,9 @@ func to_snapshot_dict() -> Dictionary:
 		"march_share_from_pitches": march_share_from_pitches,
 		"march_share_full_pitches": march_share_full_pitches,
 		"march_share_max_accel_mult": march_share_max_accel_mult,
+		"flight_share_max_accel_mult": flight_share_max_accel_mult,
+		"flight_share_from_wu": flight_share_from_wu,
+		"flight_share_full_wu": flight_share_full_wu,
 		"march_target_stop_grace_ticks": march_target_stop_grace_ticks,
 		"standoff_off_slot_pitches": standoff_off_slot_pitches,
 		"attack_range": attack_range, "sight_range": sight_range,
@@ -12422,6 +12443,7 @@ func to_snapshot_dict() -> Dictionary:
 		"moved_while_routing_pace": _moved_while_routing_pace,
 		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity, "flight_turn_rate": _flight_turn_rate,
 		"body_march_ff_prev": _body_march_ff_prev, "body_march_orderly": _body_march_orderly,
+		"body_flight_ff_prev": _body_flight_ff_prev.duplicate(),
 		"march_target_frac": _march_target_frac,
 		"march_stopped_ticks": _march_stopped_ticks,
 		"rally_halt": _rally_halt, "rally_resquare_pending": _rally_resquare_pending,
@@ -12541,6 +12563,10 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	march_share_full_pitches = float(d.get("march_share_full_pitches", march_share_full_pitches))
 	march_share_max_accel_mult = float(d.get("march_share_max_accel_mult",
 			march_share_max_accel_mult))
+	flight_share_max_accel_mult = float(d.get("flight_share_max_accel_mult",
+			flight_share_max_accel_mult))
+	flight_share_from_wu = float(d.get("flight_share_from_wu", flight_share_from_wu))
+	flight_share_full_wu = float(d.get("flight_share_full_wu", flight_share_full_wu))
 	march_target_stop_grace_ticks = int(d.get("march_target_stop_grace_ticks",
 			march_target_stop_grace_ticks))
 	standoff_off_slot_pitches = float(d.get("standoff_off_slot_pitches",
@@ -12711,6 +12737,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_flight_turn_rate = float(d.get("flight_turn_rate", _flight_turn_rate))
 	_body_march_ff_prev = d.get("body_march_ff_prev", _body_march_ff_prev)
 	_body_march_orderly = bool(d.get("body_march_orderly", _body_march_orderly))
+	_body_flight_ff_prev = PackedVector2Array(d.get("body_flight_ff_prev", _body_flight_ff_prev))
 	_march_target_frac = float(d.get("march_target_frac", _march_target_frac))
 	_march_stopped_ticks = int(d.get("march_stopped_ticks", _march_stopped_ticks))
 	_rally_halt = bool(d.get("rally_halt", _rally_halt))

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/router-bends-round-wall.json",
+  "caption": "Fixes #1924: a routing block's riders who fall behind their places as its flight turns and gathers pace now keep up. A 64-horse squadron, already broken, flees north (up the screen) toward a long wall that stands across its whole line of flight, so its flight turns north-west onto a detour toward the wall's west end while it speeds up; no rider reaches the wall. A rider more than 3 m off his place may now change his speed and direction faster than usual, by part of what he follows is changing (his place's own movement plus any sidestep off a friendly block), rising to all of it from 6 m off, while that is not slowing, and at most twice his usual rate on top. Measured on this clip: at tick 350 the farthest rider is 73 wu (3.6 m) from his place and none is more than a rank's distance (120 wu, 6 m) off at any sampled tick. Before the fix the farthest rider was 166 wu (8.3 m) behind at tick 350, with 2 riders more than a rank's distance off. The clip ends just before the rout timer runs out and the squadron rallies.",
+  "fixed_fps": 30,
+  "max_frames": 176,
+  "fps": 15,
+  "width": 720
+}

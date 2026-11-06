@@ -150,8 +150,18 @@ its riders running together as a block.
   and regains its full flight pace once past it.
   A block that breaks with its front just short of a hill
   side-steps along the hill's face until its front rank is clear,
-  so that rank stays with it,
-  though a few of its leading men can still fall a rank or two behind.
+  so that rank stays with it.
+  A leading man the face still holds back for a moment
+  is not left a rank or two behind as the flight swings on round the hill:
+  once he is more than 3 m off his place
+  he may change his speed and direction faster than usual,
+  by part of what he follows is changing, rising to all of it from 6 m off ---
+  his place's own movement, plus any sidestep off a friendly block he presses against ---
+  while that is not slowing
+  (at most twice his usual rate on top).
+  On the demo clip of such a block
+  no rider ends more than about 5 m from his place, against 9.6 m before
+  (@fig-deep-router-close-start-hill).
   If every escape direction is blocked,
   it gives up fleeing and stands to fight
   instead of uselessly running in place against the obstacle.
@@ -159,6 +169,20 @@ its riders running together as a block.
   its last unit is truly gone (escaped, annihilated, or otherwise removed), not while
   its final unit is merely routing. Even a lone survivor that breaks can flee, rally,
   and fight on --- so press a rout home rather than assuming a broken last unit is a win.
+
+::: {#fig-deep-router-close-start-hill .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/deep_router_close_start_hill.jpg">
+  <source src="media/deep_router_close_start_hill.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A broken block of 80 Cavalry, nine ranks deep, flees south with its front rank only 40 wu short of a hill. The block side-steps along the hill's face until its front rank is clear, and a leading rider the face holds back catches up as the flight swings on: near the end of the clip the farthest rider is 4.8 m off his place, against 9.6 m with the side-step alone.
+:::
 
 ::: {#fig-morale-recovery .demo}
 
