@@ -69,7 +69,7 @@ const CLOSE_START_TICK := 350
 # still slows takes the change in his own feed-forward on top of his acceleration
 # (SoldierBodies.flight_accel_share), so he rejoins his rank as the flight swings round the
 # hill. Measured at CLOSE_START_TICK on demos/inputs/deep-router-close-start-hill.json, this
-# staging, on seeds 0 to 4 (all identical), Windows: with the veer and the share (4a1c49aa,
+# staging, on seeds 0 to 4 (all identical), Windows: with the veer and the share (d2b7e7b4,
 # 2026-11-06) no man more than a rank pitch off and a worst gap of 96.7 wu (0.81 pitches);
 # with the veer alone (main 806be006, 2026-11-05) 2 men and 192.3 wu (1.6 pitches); with
 # neither (c6475b82, as the veer's own PR measured it) 5 men and 382.5 wu (3.2 pitches).
