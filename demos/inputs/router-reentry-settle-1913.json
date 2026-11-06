@@ -1,0 +1,21 @@
+{
+  "_comment": "A routed squadron whose re-entry into anchor contact would undo itself now switches its couple() anchor once (#1913). A brittle player squadron (16 Cavalry at morale 0.4) stands on open ground facing south; an enemy Spearmen block (40 men, 10 files) 210 wu to its east, facing it, marches onto its flank with no player input. The squadron is in contact from tick 552, routs at tick 588 still in contact, and flees west with the spearmen following at the edge of their reach. Measured 2026-11-06 on 7cd40cfc against main a37af5c0, on the clip's own seed: on main its anchor leaves its front ranks for its whole block at tick 663, the glide toward its whole block brings its position back inside the re-entry share of the range, so it returns to its front ranks at tick 671 and leaves again at tick 678. Now the re-entry is also measured from where the front ranks would settle it, which stays outside the share, so it leaves once, at tick 663, and stays on its whole block. Its position at ticks 675, 677 and 679 is 11.6, 14.6 and 11.7 wu from main's, so those expects (tol 3 wu) fail on main; the gap closes to 1.1 wu by tick 710. Its physical contact lasts to tick 701 (677 on main). On seeds 1 to 4 main switches 3 times and this branch once; every seed routs at tick 588, seeds 2 and 4 leave anchor contact 6 and 7 ticks earlier, and their positions at the three pinned ticks have each coordinate within 2.9 wu of seed 0's here (at tick 673 one was 3.6 wu off on seed 4, so the pins start at 675). The squadron is still routing when the clip ends at tick 760.",
+  "seed": "19130",
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 1180, "y": 640, "count": 16, "morale": 0.4},
+    {"team": 1, "type": "Spearmen", "x": 1390, "y": 640, "count": 40, "frontage": 10, "facing": [-1, 0]}
+  ],
+  "camera": [{"tick": 0, "x": 1150.0, "y": 650.0, "zoom": 0.8}],
+  "steps": [],
+  "state": [10, 500, 586, 587, 588, 640, 660, 662, 664, 666, 668, 670, 671, 672, 673, 674, 675, 676, 677, 678, 679, 680, 681, 682, 683, 684, 686, 688, 690, 695, 700, 705, 710, 720, 740, 760],
+  "expect": [
+    {"tick": 10, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": 587, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": 588, "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": 588, "uid": 0, "field": "in_enemy_contact", "value": true},
+    {"tick": 675, "uid": 0, "field": "position", "value": [1134.2, 650.99], "tol": 3.0},
+    {"tick": 677, "uid": 0, "field": "position", "value": [1133.5, 650.72], "tol": 3.0},
+    {"tick": 679, "uid": 0, "field": "position", "value": [1132.59, 650.67], "tol": 3.0},
+    {"tick": 760, "uid": 0, "field": "state", "value": "ROUTING"}
+  ]
+}

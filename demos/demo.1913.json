@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/router-reentry-settle-1913.json",
+  "caption": "A brittle cavalry squadron (blue) is caught on its flank by a spear block, breaks while still in contact and flees west, with the spearmen following at the edge of their reach. As it crosses that edge, the point its formation is laid out from moves once, from its front ranks to its whole block, and stays there. Before this fix the move toward the whole block carried that point back inside the spearmen's reach, so it went back to the front ranks for about a tenth of a second and then away again, up to 0.7 m off the line it now follows.",
+  "fixed_fps": 30,
+  "max_frames": 380,
+  "fps": 15,
+  "width": 720
+}
