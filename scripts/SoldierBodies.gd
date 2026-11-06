@@ -581,8 +581,7 @@ static func step(unit: Unit, delta: float) -> void:
 			# is read off his own grid slot (slots[i]), the one he returns to when he leaves.
 			var flight_ff: Vector2 = feed_forward
 			if is_engaged[i] == 1:
-				var home: Vector2 = slots[i] if i < slots.size() else own_slot
-				var flight_arm: Vector2 = home - unit.position
+				var flight_arm: Vector2 = slots[i] - unit.position
 				flight_ff = march_vel + unit._sim_steer[i] \
 						+ Vector2(-flight_arm.y, flight_arm.x) * turn_rate
 			flight_now[i] = flight_ff

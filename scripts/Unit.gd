@@ -1801,8 +1801,10 @@ var _body_march_ff_prev: Vector2 = Vector2.ZERO
 # flight velocity, his slot's turning velocity and any friendly-contact steering, recorded in
 # that form for an engaged body too (whose own feed-forward is the steering alone), so a man
 # leaving the engaged tier is not read as a jump. Empty after any step that was not routing,
-# and after SoldierBodies.seed. The step reads each unengaged man's change in it as extra
-# acceleration (SoldierBodies.flight_accel_share).
+# after SoldierBodies.seed, and after either tier change (TierTransition.demote, promote).
+# SoldierMelee.reap trims a dead man's entry with his body, so each survivor keeps his own.
+# The step reads each unengaged man's change in it as extra acceleration
+# (SoldierBodies.flight_accel_share), and none on a step whose headcount it does not match.
 var _body_flight_ff_prev: PackedVector2Array = PackedVector2Array()
 # Whether this tick's march is an orderly one (_move_to's `orderly`: a MOVE order marching
 # to its destination, whether the player or the AI issued it, or a fighting withdrawal's

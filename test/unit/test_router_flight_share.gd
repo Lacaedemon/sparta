@@ -260,6 +260,18 @@ func test_leaving_the_engaged_tier_grants_no_share_spike() -> void:
 	u._flee_velocity = u.facing * u.flee_speed() * 0.5
 	SoldierBodies.step(u, TICK)
 	assert_true(i in u.body_tier_soldier_indices(n), "setup: he was engaged on the first step")
+	# The engaged tier re-paired him (SoldierBodies.step's cached pairing): his target slot is
+	# not his own grid slot, so the arm the record reads is what the test is about.
+	var own_slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var target_idx: int = -1
+	for k in range(u._engaged_target_pairing_engaged.size()):
+		if u._engaged_target_pairing_engaged[k] == i:
+			target_idx = u._engaged_target_pairing_canonical[k]
+	assert_gt(target_idx, -1, "setup: the engaged tier paired him with a slot")
+	if target_idx < 0:
+		return
+	assert_gt(own_slots[target_idx].distance_to(own_slots[i]), 1.0,
+			"setup: his re-paired target slot (index %d) is not his own (index %d)" % [target_idx, i])
 	u._engaged_linger = 0.0
 	var before: Vector2 = u._sim_body_vel[i]
 	SoldierBodies.step(u, TICK)
@@ -289,23 +301,60 @@ func _worst_change_across_headcount(u: Unit, change: int) -> float:
 	return worst
 
 
-func test_a_headcount_change_between_steps_grants_no_share() -> void:
-	# The last step's feed-forwards belong to a different headcount: a casualty leaves one fewer
-	# body to pair them with, and a man joining (a reinforcement) leaves one with no last
-	# feed-forward at all. The step reads no change across either, so no man takes a share.
+func test_a_man_joining_between_steps_grants_no_share() -> void:
+	# A man joining (a reinforcement) has no last feed-forward at all, so the step reads no
+	# change across the new headcount and no man takes a share on it.
 	var body_accel: float = maxf(_make_router().accel, SoldierBodies.BODY_ACCEL_FLOOR)
-	var bound: float = body_accel * TICK + 1e-4
-	var fell: float = _worst_change_across_headcount(_make_router(), -1)
-	assert_lte(fell, bound,
-			"after a casualty no man's velocity changes faster than his own acceleration (worst %.4f wu/s)"
-			% fell)
 	var grown := _make_router(31)
 	grown.soldiers = 30
 	SoldierBodies.seed(grown)
 	var joined: float = _worst_change_across_headcount(grown, 1)
-	assert_lte(joined, bound,
+	assert_lte(joined, body_accel * TICK + 1e-4,
 			"after a man joins no man's velocity changes faster than his own acceleration (worst %.4f wu/s)"
 			% joined)
+
+
+func test_a_casualty_keeps_each_survivors_share_his_own() -> void:
+	# A man in the middle of the block falls (SoldierMelee.reap removes him at his own index,
+	# so every man after him moves down one place). The flight quickens by the unit's accel
+	# on the next step, so each survivor whose own slot did not move takes exactly that much
+	# share on top of his own acceleration: his velocity changes by twice it in the tick. A
+	# record left untrimmed would either drop the share for that step (the headcount guard)
+	# or hand each man after the dead one the feed-forward of the man who stood above him,
+	# whose slot turns at a different velocity.
+	var u := _make_router()
+	var n: int = u._sim_soldier_pos.size()
+	u._flight_turn_rate = 0.2
+	var pace: float = u.flee_speed() * 0.5
+	u._flee_velocity = u.facing * pace
+	for k in range(n):
+		_fall_back(u, k, u.flight_share_full_wu * 1.5)
+	SoldierBodies.step(u, TICK)
+	var dead: int = n / 2
+	var slots_before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	u._sim_soldier_hp[dead] = 0.0
+	SoldierMelee.reap(u, null)
+	assert_eq(u._sim_soldier_pos.size(), n - 1, "setup: the reap removed one body")
+	var before: PackedVector2Array = u._sim_body_vel.duplicate()
+	var slots_after: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	u._flee_velocity = u.facing * (pace + u.accel * TICK)
+	SoldierBodies.step(u, TICK)
+	var body_accel: float = maxf(u.accel, SoldierBodies.BODY_ACCEL_FLOOR)
+	var expected: float = (body_accel + u.accel) * TICK
+	var checked: int = 0
+	var after_dead: int = 0
+	for k in range(n - 1):
+		var was: int = k if k < dead else k + 1
+		if slots_after[k].distance_to(slots_before[was]) > 0.01:
+			continue   # his slot moved up over the gap: his feed-forward changed for that too
+		checked += 1
+		if k >= dead:
+			after_dead += 1
+		var change: float = u._sim_body_vel[k].distance_to(before[k])
+		assert_almost_eq(change, expected, 1e-3,
+				"survivor %d takes his own share: velocity change %.4f, expected %.4f wu/s"
+				% [k, change, expected])
+	assert_gt(after_dead, 0, "setup: some survivor after the dead man kept his slot (checked %d)" % checked)
 
 
 func test_seeding_the_bodies_clears_the_flight_feed_forward() -> void:
@@ -315,3 +364,18 @@ func test_seeding_the_bodies_clears_the_flight_feed_forward() -> void:
 	assert_gt(u._body_flight_ff_prev.size(), 0, "setup: a routing step recorded the feed-forward")
 	u.seed_sim_soldiers()
 	assert_eq(u._body_flight_ff_prev.size(), 0, "fresh bodies carry no flight feed-forward")
+
+
+func test_a_tier_change_clears_the_flight_feed_forward() -> void:
+	# Demotion drops the bodies and promotion rebuilds them: neither may leave a last
+	# feed-forward behind for the rebuilt bodies' first routing step to read.
+	var u := _make_router()
+	u._flee_velocity = u.facing * 20.0
+	SoldierBodies.step(u, TICK)
+	assert_gt(u._body_flight_ff_prev.size(), 0, "setup: a routing step recorded the feed-forward")
+	TierTransition.demote(u)
+	assert_eq(u._body_flight_ff_prev.size(), 0, "demotion clears it")
+	u._body_flight_ff_prev = PackedVector2Array([Vector2(1, 2)])
+	TierTransition.promote(u, 0, 0)
+	assert_eq(u._body_flight_ff_prev.size(), 0, "promotion clears it too")
+
