@@ -1427,12 +1427,20 @@ var traverse_arc_clearance: float = UnitFormation.TRAVERSE_ARC_CLEARANCE
 # parameter defaulting to ROUTER_FRONT_ARC, with rout_time's set-before-_ready contract.
 const ROUTER_FRONT_ARC: float = PI / 3.0
 var router_front_arc: float = ROUTER_FRONT_ARC
+# The slot grid's turn off the heading (rad, grid_fold) past which its front ranks stand behind
+# the men's heading rather than ahead of it: a quarter-turn, plus 0.01 rad so a grid turned
+# exactly a quarter-turn, whose front ranks are a flank, does not count. near_front_reversed
+# ranks toward the grid's rear past it.
+const QUARTER_TURN_PAST: float = PI * 0.5 + 0.01
 # The turn (rad) of a router's slot grid off its heading (grid_fold) past which couple() anchors
 # it on the men ahead of its centre along the heading rather than on the grid's front ranks
-# (position_anchor_on_heading): 45 degrees, past which another face of the grid lies nearer the
-# heading than its front does. A caller-configurable parameter defaulting to
-# ROUTER_HEADING_ANCHOR_FOLD, with rout_time's set-before-_ready contract.
-const ROUTER_HEADING_ANCHOR_FOLD: float = PI / 4.0
+# (position_anchor_on_heading): QUARTER_TURN_PAST, past which those front ranks trail the
+# router's centre along its flight. At a quarter-turn or less they are a flank or lie ahead: the
+# router-reentry-settle-1913 squadron routs with its grid turned exactly a quarter-turn, and its
+# grid's front ranks stood 6.9 wu ahead of its centroid (measured 2026-11-06 on main 1d0d7705).
+# A caller-configurable parameter defaulting to ROUTER_HEADING_ANCHOR_FOLD, with rout_time's
+# set-before-_ready contract.
+const ROUTER_HEADING_ANCHOR_FOLD: float = QUARTER_TURN_PAST
 var router_heading_anchor_fold: float = ROUTER_HEADING_ANCHOR_FOLD
 # The share of the melee contact range inside which a router that has already left enemy
 # contact in its current rout anchors as one in contact again (_router_anchor_contact). It
@@ -9825,7 +9833,7 @@ func grid_front_forward() -> Vector2:
 ## the fold alone (main ec95f85f), so none of those flips came from the lag turning. 18 came
 ## within 5 degrees of the threshold.
 func near_front_reversed() -> bool:
-	return absf(wrapf(grid_fold(), -PI, PI)) > PI * 0.5 + 0.01
+	return absf(wrapf(grid_fold(), -PI, PI)) > QUARTER_TURN_PAST
 
 
 ## True while an in-place reshape or turn is actively changing what "the front" even means:
@@ -9947,8 +9955,8 @@ func _contact_anchor_indices(count: int) -> PackedInt32Array:
 ## off its heading, unless Square/Schiltron or an unstable block (_position_anchor_unstable)
 ## takes the wider contact selection instead.
 ## A rout keeps the grid's fold, so after a flight turn that snapped (_turn_flight_toward) the
-## grid's front ranks are the ones toward the enemy the router broke from, and anchoring on
-## them anchors it on its trailing men. Every other unit, and a router whose grid stands nearer
+## grid's front ranks are the ones toward the enemy the router broke from, and once the grid is
+## past a quarter-turn anchoring on them anchors it on its trailing men. Every other unit, and a router whose grid stands nearer
 ## its heading, keeps the grid's front: anchoring a folded testudo on its rear ranks instead
 ## made it flick about every tick (near_front_soldier_indices).
 func position_anchor_on_heading() -> bool:

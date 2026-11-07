@@ -10,9 +10,15 @@ const DT := 1.0 / 60.0
 # (measured 2026-11-06 on main 1d0d7705): -2.759 rad, about 158 degrees, so the grid's front
 # points nearly back the way the router came.
 const SNAP_FOLD := -2.759
-# A fold under the 45-degree default (ROUTER_HEADING_ANCHOR_FOLD), whose grid front still
-# points ahead of the men.
+# A fold well under the quarter-turn default (ROUTER_HEADING_ANCHOR_FOLD), whose grid front
+# still points ahead of the men.
 const SMALL_FOLD := 0.3
+# The router-reentry-settle-1913 squadron's fold as it routs (measured 2026-11-06 on main
+# 1d0d7705): exactly a quarter-turn, so the grid's front ranks are a flank, standing 6.9 wu ahead
+# of its centroid there, not trailing it.
+const QUARTER_FOLD := -PI * 0.5
+# Just past the default: the 0.01 rad margin that keeps a quarter-turn out, and as much again.
+const PAST_QUARTER_FOLD := Unit.ROUTER_HEADING_ANCHOR_FOLD + 0.01
 # How far a pursuer holds the grid's front ranks back off their slots, and how far the men ahead
 # are pushed sideways: any non-zero distance shows the anchor reading one set and not the other.
 const HOLD_BACK := 30.0
@@ -144,6 +150,22 @@ func test_a_router_nearly_square_to_its_heading_keeps_its_grid_front() -> void:
 	var n: int = u._sim_soldier_pos.size()
 	assert_false(u.position_anchor_on_heading(), "a fold under the threshold keeps the grid's front")
 	assert_eq(u.position_anchor_indices(n), u.near_front_soldier_indices(n))
+
+
+func test_a_router_turned_exactly_a_quarter_turn_keeps_its_grid_front() -> void:
+	var u := _folded_unit(QUARTER_FOLD)
+	var n: int = u._sim_soldier_pos.size()
+	assert_gt(_lead(u, u.near_front_soldier_indices(n)), 0.0,
+			"setup: the grid's front ranks, a flank, do not stand behind the centroid")
+	assert_false(u.position_anchor_on_heading(), "its front ranks do not trail, so it keeps them")
+	assert_eq(u.position_anchor_indices(n), u.near_front_soldier_indices(n))
+
+
+func test_a_router_turned_just_past_a_quarter_turn_anchors_on_its_heading() -> void:
+	var u := _folded_unit(PAST_QUARTER_FOLD)
+	var n: int = u._sim_soldier_pos.size()
+	assert_true(u.position_anchor_on_heading(), "past a quarter-turn the front ranks trail")
+	assert_eq(u.position_anchor_indices(n), u.heading_anchor_soldier_indices(n))
 
 
 func test_a_fold_a_whole_turn_round_reads_as_its_wrapped_angle() -> void:
