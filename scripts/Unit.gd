@@ -9963,7 +9963,7 @@ func _contact_anchor_indices(count: int) -> PackedInt32Array:
 ## a router whose grid stands nearer its heading, keeps the grid's front: anchoring a folded
 ## testudo on its rear ranks instead made it flick about every tick
 ## (near_front_soldier_indices).
-## TODO(#FOLLOWUP): a flight turn that snaps by 75 degrees up to router_heading_anchor_fold
+## TODO(#1938): a flight turn that snaps by 75 degrees up to router_heading_anchor_fold
 ## leaves the router anchored on its grid's front ranks, which are then a flank that can still
 ## be pressed and can fall behind its centre as the block stretches.
 func position_anchor_on_heading() -> bool:
