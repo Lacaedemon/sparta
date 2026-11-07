@@ -357,6 +357,30 @@ func test_a_target_flipping_between_two_enemies_side_by_side_keeps_the_wheel_run
 	assert_false(faced_any, "and the flips alone never let a blow through 60 degrees off")
 
 
+func test_a_flip_to_an_enemy_close_beside_past_the_threshold_keeps_the_wheel_running() -> void:
+	# The first enemy has pressed in among the ranks and run on past ENGAGE_TURN_THRESHOLD, so
+	# the wheel is running past it; then the target flips to a second enemy among the ranks
+	# whose bearing lies within combat_reface_snap_turn of the first's.
+	var pair: Array = _running_wheel(60.0)
+	var u: Unit = pair[0]
+	var a: Unit = pair[1]
+	a.position = _off_heading(u, 76.0, 10.0)
+	_wheel_tick(u, a, true)
+	assert_eq(u._engage_turn_target, Vector2.ZERO, "sanity: the wheel runs on past the threshold")
+	var rate: float = u._combat_wheel_rate
+	var b := _make_enemy(Vector2.ZERO)
+	b.uid = 3
+	b.position = u.position + Vector2.from_angle(u._combat_wheel_bearing
+			+ 0.5 * u.combat_reface_snap_turn) * 10.0
+	assert_true(u._enemy_inside_own_footprint(b), "sanity: the second enemy stands among the ranks")
+	assert_gt(_offset(u, b), Unit.ENGAGE_TURN_THRESHOLD, "sanity: it is past the threshold too")
+	var radius: float = u._formation_local_half_extents().length()
+	assert_true(_wheel_tick(u, b, true), "the block strikes the enemy among its ranks")
+	assert_eq(u._engage_turn_target, Vector2.ZERO, "no turn in place is armed for the flip")
+	assert_almost_eq(u._combat_wheel_rate, rate + u.bounded_turn_accel(radius) * DT, 1e-4,
+		"the wheel carries its rate across the flip")
+
+
 func test_a_bearing_that_jumps_past_the_threshold_turns_in_place_and_holds_its_blows() -> void:
 	var pair: Array = _running_wheel(60.0)
 	var u: Unit = pair[0]

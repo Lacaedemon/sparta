@@ -4728,18 +4728,20 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 ## stops once the offset has come back more than the band below the furthest behind it fell, so
 ## a wheel catching up again holds its blows as it comes round. A wheel onto a different enemy
 ## away from the old bearing, or an offset that grew further in one tick than the band, starts
-## the judging afresh, as a new re-face would. The band is combat_reface_snap_turn, the
-## bearing's own tick-to-tick wander to an enemy pressed against the block: judged tick by tick
-## instead, against the offset one tick before, each tick the bearing wandered away let the
-## blow through while the wheel was still closing on it, so jitter alone struck about every
-## other tick. The bearing to an enemy whose centre stands among the ranks moves further than
-## the band from one tick to the next, so it restarts the judging nearly every tick; that
-## costs nothing, since the block strikes such an enemy anyway.
+## the judging afresh, as a new re-face would. The band is combat_reface_snap_turn, a margin
+## for the jostling of a press: judged tick by tick instead, against the offset one tick
+## before, each tick the bearing wandered away let the blow through while the wheel was still
+## closing on it, so jitter alone struck about every other tick. The offset to an enemy whose
+## centre stands among the ranks usually grows less than the band in a tick, but now and then
+## more, and each such tick restarts the judging; that costs nothing, since the block strikes
+## such an enemy anyway. (Every consecutive wheel tick of every demos/inputs clip on seeds 0
+## to 4 had its enemy among the ranks: the offset moved a median 0.41 degrees a tick and 1.79
+## at the 90th percentile, and it grew more than the band on 872 of 18215 ticks.)
 ## A wheel still running (_combat_wheel_running) keeps running once its offset passes
 ## ENGAGE_TURN_THRESHOLD, rather than stopping to turn in place, while the enemy's centre stands
 ## inside the troop's own footprint (_face_for_action). That is where a wheel falls so far
-## behind: a few wu of jostling swings the bearing to a point among the ranks several degrees
-## a tick, faster than the wheel can turn.
+## behind: the bearing to a point a few tens of wu from the anchor can run away faster than the
+## wheel can turn, as it does for ticks on end in a deep troop's press.
 ## A turn in place there swung the heading round at the drill rate with the strike withheld,
 ## though the enemy stood among the ranks, and left the grid folded where the riders stood. A
 ## snap would swing the grid about the anchor, which is what the wheel exists to stop. The
@@ -4751,8 +4753,8 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 ## keeps its own front to follow them, and folding would hold its grid where its riders stand
 ## while its heading went round, leaving the troop to fight with its ranks turned off its front.
 ## Some re-faces still snap, each for its own reason:
-## - one within combat_reface_snap_turn: the bearing to a pressed enemy wanders that much tick
-##   to tick, and wheeling it held the heading back off its enemy for the whole melee;
+## - one within combat_reface_snap_turn, the margin for the jostling of a press: wheeling such
+##   small corrections held the heading back off its enemy for the whole melee;
 ## - one by a foot block: a foot block is compact, so a snap moves its corner far less, and
 ##   wheeling it changed how a fight with horse runs (test_infantry_respreads_after_melee_exit:
 ##   the infantry, wheeling onto riders sweeping round it, kept meeting them and did not open
@@ -4796,8 +4798,8 @@ func _wheel_combat_reface(dir: Vector2, offset: float, delta: float, enemy_unit:
 	var after: float = absf(angle_difference(facing.angle(), dir.angle()))
 	var band: float = combat_reface_snap_turn
 	if not followed or offset > _combat_wheel_last_offset + band:
-		# A new wheel, or a bearing that jumped further in one tick than it wanders: judge
-		# from here, as a fresh re-face would.
+		# A new wheel, or an offset that grew further from the heading in one tick than the
+		# band: judge from here, as a fresh re-face would.
 		_combat_wheel_behind = false
 		_combat_wheel_offset = after
 	elif _combat_wheel_behind:
