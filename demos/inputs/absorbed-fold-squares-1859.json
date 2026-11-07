@@ -15,10 +15,6 @@
   "state": [8, 360, 440, 600, 680, 720, 760, 800, 840, 880, 900],
   "frames": [440, 600, 720, 800, 900],
   "defect_exemptions": {
-    "shape_residual": {
-      "uids": [0],
-      "reason": "Uid 0 (the infantry block), shape_residual: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4, measured 2026-11-04: main aeb67079 reads pass, pass, pass, 18.80, pass; 3c442b07 (a cavalry troop in contact wheels at a bounded rate, #1806) reads 20.63, 31.45, pass, 26.60, and plays seed 4 as main, against 13.5. Traced on seed 0 on 3c442b07: the troop routs at tick 560, after which _cavalry_inside_foot_footprint no longer holds (a routing enemy is left out), so the block's small re-faces onto the fleeing riders snap with its grid: its heading goes 44.6 to 31.9 degrees (tick 590) and on to 79.6 (tick 680), and its grid is fitted 15.9 and then -35.2 degrees off its men (main: -10.5 at worst). A foot block's small re-face in contact still turns its whole grid at once (#1806)."
-    },
     "overlap": {
       "uids": [1],
       "reason": "Uid 1 (the troop), overlap: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4, measured 2026-11-04: main aeb67079 passes on every seed; 3c442b07 reads pass, pass, 3.80, pass and plays seed 4 as main, against 5.0. Traced on seed 2 on 3c442b07: the dip is at tick 918, the tick the troop rallies (IDLE), out of contact, with the pair 15.1 and 27.5 wu off their slots as its riders walk back to them, a man walking back from farther off passing through one nearer his slot (#1894). It falls after the clip ends (tick 900) but within the dense scan's window."

@@ -1,0 +1,38 @@
+{
+  "_comment": "A brittle spear block (team 0: 72 Spearmen at morale 6, Tight) facing west is ordered at tick 14 to attack a 100-man Infantry block (team 1, Tight) 240 wu west of it (#1825). It breaks still in contact at tick 520 and flees north, and its first flight turn snaps, so its slot grid keeps its front toward the infantry, about 116 degrees off its heading. Before the fix the block's position was anchored on the grid's front ranks, which then trail the flight and stay pressed against the pursuers, so while they stayed in contact the block slid east off its flight line and lagged behind its leading men. With the fix a router whose grid is turned more than a quarter-turn off its heading anchors on the men ahead along that heading, and it flees straight north. Measured 2026-11-07 on this clip's own seed with dense 2-tick dumps: on main 1d0d7705 the block slides 28.46 wu east while in contact, reads (1010.96, 1117.9) at tick 720 and last has enemy contact at tick 754; on the fix 580995c5 it drifts 10.73 wu east, reads (994.62, 1098.6) at tick 720 and last has contact at tick 732. The position pin's tol of 8.1 wu is half of the 16.34 wu by which main's x misses the fixed x, the smaller of the two gaps (y misses by 19.3). On perturbed seeds 1 to 4 the melee breaks it at ticks 474 to 546 and the fix leaves contact earlier on every one (main 718 to 778, fix 680 to 730), but the positions scatter by seed (y at tick 720 runs from 1061.57 to 1160.08 on the fix), so the position pin and the rout-tick checks hold on this seed only. The state ticks every 10 from 740 to the clip's end let the regular scan see the pursuer's deformation the exemption covers. The clip ends at tick 880, before it rallies (tick 884).",
+  "seed": "18250",
+  "fixed_fps": 30,
+  "max_frames": 440,
+  "fps": 15,
+  "width": 720,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 1000, "y": 1250, "count": 72, "morale": 6.0, "formation": 1, "facing": [-1, 0]},
+    {"team": 1, "type": "Infantry", "x": 760, "y": 1250, "count": 100, "formation": 1, "facing": [1, 0]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 900.0, "y": 1240.0, "zoom": 1.6},
+    {"tick": 500, "x": 960.0, "y": 1210.0, "zoom": 1.6},
+    {"tick": 880, "x": 995.0, "y": 990.0, "zoom": 1.6}
+  ],
+  "steps": [
+    {"tick": 6, "click": [1000, 1250]},
+    {"tick": 14, "rmb_click": [760, 1250]}
+  ],
+  "frames": [300, 600, 760],
+  "state": [10, 200, 400, 500, 524, 600, 660, 720, 740, 750, 760, 770, 780, 790, 800, 810, 820, 830, 840, 850, 860, 870, 880],
+  "defect_exemptions": {
+    "shape_residual": {
+      "uids": [1],
+      "reason": "The infantry pursuer (uid 1) follows the router with its grid still scrambled from the fight, from the tick contact breaks (732 on this seed) to the clip's end. Dense 2-tick FULL dumps, every exemption removed, Windows, measured 2026-11-07: on main 1d0d7705 seeds 0 to 4 read 23.97, 19.56, 24.47, 26.13 and 19.17, and on the fix 580995c5 25.70, 19.70, 27.58, 24.18 and 19.65, against 6.75. On this seed on the fix it passes over ticks 2 to 700 and reads 22.40 over ticks 700 to 760, 25.61 over 760 to 820 and 25.70 over 820 to 880. It is not caused by the router's anchor: main fails the same way. Tracked as #1824, a pursuer deforming at the edge of a router's contact range."
+    }
+  },
+  "expect": [
+    {"tick": 10, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": 500, "uid": 0, "field": "state", "value": "FIGHTING"},
+    {"tick": 524, "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": 524, "uid": 0, "field": "in_enemy_contact", "value": true},
+    {"tick": 720, "uid": 0, "field": "position", "value": [994.62, 1098.6], "tol": 8.1},
+    {"tick": 740, "uid": 0, "field": "in_enemy_contact", "value": false},
+    {"tick": 860, "uid": 0, "field": "state", "value": "ROUTING"}
+  ]
+}
