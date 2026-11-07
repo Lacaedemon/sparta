@@ -35,13 +35,14 @@ const GAP_START := Vector2(700.0, 1300.0)
 # less a sum of as many slots, divided by the count. The staging's positions lie within 2048 wu
 # of the origin, so each sum stays under 16 * 2048 = 32768 wu, where one add rounds by at most
 # half an ulp, 2^-10 wu: at most 15 * 2^-10 wu per sum. Each body, set to its slot plus the
-# shift, rounds by at most 2^-13 wu more (half an ulp under 2048). Divided by the count of 16
+# shift, rounds by less than 2^-13 wu more (a whole ulp in [1024, 2048), twice the half-ulp
+# bound, so an overcount). Divided by the count of 16
 # that is (2 * 15 * 2^-10 + 16 * 2^-13) / 16, about 0.00195 wu, under 0.002 wu.
 const OFFSET_TOL := 0.002
 # Where the anchor would settle the block, `position` plus the offset, read before and after
-# `position` moves: two offsets of OFFSET_TOL each, plus five more roundings under 2048 wu of
-# at most 2^-13 wu (the slots' centroid on each side, the moved `position`, and the two sums of
-# `position` and offset).
+# `position` moves: two offsets of OFFSET_TOL each, plus five more roundings under 2048 wu,
+# each counted as a whole ulp there, 2^-13 wu (an overcount of the half-ulp bound): the slots'
+# centroid on each side, the moved `position`, and the two sums of `position` and offset.
 const SETTLE_TOL := 2.0 * OFFSET_TOL + 5.0 / 8192.0
 
 var _battle: Node = null

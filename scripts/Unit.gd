@@ -3213,20 +3213,22 @@ func fresh_pick_allowed(candidate: Unit) -> bool:
 ## front-rank anchor it would switch to would settle the router (contact_anchor_offset).
 ## `position` alone is not enough, because the whole-block anchor the router is on moves it: once
 ## the router's men stand off their slots, the two anchors settle the block far apart, the glide
-## toward the whole block carries `position` back inside the range, and the front-rank anchor
-## that re-entry then picks carries it out past the range again. On main a37af5c0 (measured
-## 2026-11-06) the router-contact-edge-1801 staging on its perturbed seed run 1 switched anchors
-## 21 times in the 300 ticks after its rout that way, with the two settling points 54 to 86 wu
-## apart at the switches. That holds for an enemy fighting the router too, which is why it gets
-## the second measure as well: there the pursuer turned to fighting as `position` glided up to
-## it, and a variant of 7cd40cfc that measured a fighting enemy from `position` alone still
-## switched 7 times. So a fought router whose front ranks would settle it beyond the full range
-## of its pursuer, such as one caught from behind with its leading ranks run ahead of their
-## slots, stays on its whole block: anchoring on those ranks would carry `position` out past the
-## range, where it leaves anchor contact again. Only the anchor reads this. Its physical contact (_in_enemy_contact), and so
-## its body contact and the melee, keep the full range from `position`. In the seeds 0 to 4
-## hash sweep of every demos/inputs clip (7cd40cfc against a37af5c0), that one run was the only
-## one whose re-entries the second measure changed.
+## toward the whole block carries `position` back inside the share (or, for an enemy fighting
+## the router, the range), and the front-rank anchor that re-entry then picks carries it out
+## past the range again. On main a37af5c0 (measured 2026-11-06) the router-contact-edge-1801
+## staging on its perturbed seed run 1 switched anchors 21 times in the 300 ticks after its rout
+## that way, with the two settling points 54 to 86 wu apart at the switches. That holds for an
+## enemy fighting the router too, which is why it gets the second measure as well: there the
+## pursuer turned to fighting as `position` glided up to it, and a variant of 7cd40cfc that
+## measured a fighting enemy from `position` alone still switched 7 times. So a fought router
+## that has left anchor contact, and whose front ranks would settle it beyond the full range of
+## its pursuer, such as one caught from behind with its leading ranks run ahead of their slots,
+## stays on its whole block: anchoring on those ranks would carry `position` out past the range,
+## where it leaves anchor contact again. Only the anchor reads this. Its physical contact
+## (_in_enemy_contact), and so its body contact and the melee, keep the full range from
+## `position`. In the seeds 0 to 4 hash sweep of every clip in demos/inputs on main a37af5c0
+## (7cd40cfc against a37af5c0), that one run was the only one whose re-entries the second
+## measure changed.
 ##
 ## The range is the pair's melee contact range plus MeleeFrontLine.contact_extension, so two
 ## blocks front to front come into contact as their front ranks come within reach, and a block
@@ -3274,9 +3276,9 @@ func _refresh_enemy_contact() -> void:
 					reentry_offset_known = true
 				# Translating last_gap is exact when either block takes no front-line extension
 				# (cavalry, missile troops or a far-tier block: MeleeFrontProfile.eligible), since
-				# the gap is then the positions' alone. Otherwise it
-				# keeps the extension's shift and weight as measured from `position`, which
-				# depend on where the blocks stand: an approximation, not a re-measurement.
+				# the gap is then the positions' alone. Otherwise it keeps the extension's shift
+				# and weight as measured from `position`, which depend on where the blocks stand:
+				# an approximation, not a re-measurement.
 				var settled_gap: Vector2 = gap - reentry_offset
 				if not ((u.position - position - reentry_offset).length_squared() <= base_sq \
 						or settled_gap.length_squared() <= a_dist * a_dist):
