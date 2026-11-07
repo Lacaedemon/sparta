@@ -1427,6 +1427,21 @@ var traverse_arc_clearance: float = UnitFormation.TRAVERSE_ARC_CLEARANCE
 # parameter defaulting to ROUTER_FRONT_ARC, with rout_time's set-before-_ready contract.
 const ROUTER_FRONT_ARC: float = PI / 3.0
 var router_front_arc: float = ROUTER_FRONT_ARC
+# The slot grid's turn off the heading (rad, grid_fold) past which its front ranks stand behind
+# the men's heading rather than ahead of it: a quarter-turn, plus 0.01 rad so a grid turned
+# exactly a quarter-turn, whose front ranks are a flank, does not count. near_front_reversed
+# ranks toward the grid's rear past it.
+const QUARTER_TURN_PAST: float = PI * 0.5 + 0.01
+# The turn (rad) of a router's slot grid off its heading (grid_fold) past which couple() anchors
+# it on the men ahead of its centre along the heading rather than on the grid's front ranks
+# (position_anchor_on_heading): QUARTER_TURN_PAST, past which those front ranks trail the
+# router's centre along its flight. At a quarter-turn or less they are a flank or lie ahead: the
+# router-reentry-settle-1913 squadron routs with its grid turned exactly a quarter-turn, and its
+# grid's front ranks stood 6.9 wu ahead of its centroid (measured 2026-11-06 on main 1d0d7705).
+# A caller-configurable parameter defaulting to ROUTER_HEADING_ANCHOR_FOLD, with rout_time's
+# set-before-_ready contract.
+const ROUTER_HEADING_ANCHOR_FOLD: float = QUARTER_TURN_PAST
+var router_heading_anchor_fold: float = ROUTER_HEADING_ANCHOR_FOLD
 # The share of the melee contact range inside which a router that has already left enemy
 # contact in its current rout anchors as one in contact again (_router_anchor_contact). It
 # still leaves at the full range, and its physical contact (_in_enemy_contact) keeps the full
@@ -3210,7 +3225,9 @@ func fresh_pick_allowed(candidate: Unit) -> bool:
 ## the router (_fighting_me) is measured at the full range instead of the share.
 ##
 ## Either way re-entry is measured twice, and must pass both: from `position`, and from where the
-## front-rank anchor it would switch to would settle the router (contact_anchor_offset).
+## contact anchor it would switch to would settle the router (contact_anchor_offset): its front
+## ranks, or the men ahead along its heading once its grid is turned past
+## router_heading_anchor_fold (position_anchor_on_heading).
 ## `position` alone is not enough, because the whole-block anchor the router is on moves it: once
 ## the router's men stand off their slots, the two anchors settle the block far apart, the glide
 ## toward the whole block carries `position` back inside the share (or, for an enemy fighting
@@ -3272,8 +3289,9 @@ func _refresh_enemy_contact() -> void:
 			if not (dist_sq <= base_sq or gap.length_squared() <= a_dist * a_dist):
 				continue
 			if reentering:
-				# Re-entry also measures from where the front-rank anchor it would switch to would
-				# settle the router: `position` alone is moved by the whole-block anchor it is on.
+				# Re-entry also measures from where the contact anchor it would switch to (its front
+				# ranks, or the men ahead along its heading: _contact_anchor_indices) would settle
+				# the router: `position` alone is moved by the whole-block anchor it is on.
 				if not reentry_offset_known:
 					reentry_offset = contact_anchor_offset()
 					reentry_offset_known = true
@@ -3308,9 +3326,11 @@ func _fighting_me(enemy: Unit) -> bool:
 ## Nor is it armed when the heading is already on the flee heading (its front ranks are its
 ## flight-side ranks), or more than FACING_SNAP_ABSORB_THRESHOLD off it: that first flight
 ## turn snaps and folds at once (_turn_flight_toward), so the heading lands on the flight on
-## the router's first tick and no bounded turn keeps its front in the melee.
-## TODO(#1825): a rout keeps the grid's fold, so after a snapped flight turn the
-## front ranks can be the trailing ranks, not the flight-side ones.
+## the router's first tick and no bounded turn keeps its front in the melee. "Front" here is
+## the side the heading points to. The snap keeps the grid's fold, so the grid's own front
+## ranks stay toward the enemy. Past router_heading_anchor_fold the anchor reads the heading
+## side too, the men ahead along it (position_anchor_on_heading), its flight-side men; a snap
+## that leaves the grid at or under that fold keeps the grid's front ranks as its anchor.
 func _arm_router_front_in_melee() -> void:
 	_router_front_in_melee = false
 	if not is_inside_tree() or facing == Vector2.ZERO:
@@ -9816,7 +9836,7 @@ func grid_front_forward() -> Vector2:
 ## the fold alone (main ec95f85f), so none of those flips came from the lag turning. 18 came
 ## within 5 degrees of the threshold.
 func near_front_reversed() -> bool:
-	return absf(wrapf(grid_fold(), -PI, PI)) > PI * 0.5 + 0.01
+	return absf(wrapf(grid_fold(), -PI, PI)) > QUARTER_TURN_PAST
 
 
 ## True while an in-place reshape or turn is actively changing what "the front" even means:
@@ -9904,9 +9924,10 @@ func near_front_soldier_indices(count: int) -> PackedInt32Array:
 ## A router whose front ranks are the ones in the melee (router_front_in_melee) gets none, so
 ## couple() tracks its whole block: anchoring on the men the melee holds would hold the whole
 ## router in the fight. A router caught from behind still anchors on its front ranks, which
-## are then its flight-side ranks, the ones farthest from the pursuer.
-## TODO(#1825): a rout keeps the grid's fold, so after a snapped flight turn the
-## front ranks can be the trailing ranks, not the flight-side ones.
+## are then its flight-side ranks, the ones farthest from the pursuer. A rout keeps the grid's
+## fold, so a router whose flight turn snapped has its grid's front ranks toward the enemy it
+## broke from, behind it; a router folded that far anchors on the men ahead along its heading
+## instead (position_anchor_on_heading).
 ## A router reads its anchor contact (_router_anchor_contact) here in place of
 ## _in_enemy_contact, so one at the edge of contact range switches anchors once.
 func position_anchor_indices(count: int) -> PackedInt32Array:
@@ -9918,13 +9939,45 @@ func position_anchor_indices(count: int) -> PackedInt32Array:
 
 ## The selection position_anchor_indices returns while this unit is fighting or anchored as one
 ## in contact: none for a router with its front in the melee, the wider contact selection for
-## a Square or an unstable transition, and the live near-front ranks otherwise.
+## a Square or an unstable transition, the men ahead along the heading for a router whose grid is
+## folded off it (position_anchor_on_heading), and the live near-front ranks otherwise.
 func _contact_anchor_indices(count: int) -> PackedInt32Array:
 	if router_front_in_melee():
 		return PackedInt32Array()
 	if in_square() or _position_anchor_unstable():
 		return contact_soldier_indices(count)
+	if position_anchor_on_heading():
+		return heading_anchor_soldier_indices(count)
 	return near_front_soldier_indices(count)
+
+
+## Whether couple() anchors this unit on the men ahead of its centre along its heading
+## (heading_anchor_soldier_indices), each measured against his own slot
+## (SoldierBodies.anchor_drift), rather than on the grid's front ranks measured against the
+## front slots. True for a router whose slot grid is turned more than router_heading_anchor_fold
+## off its heading, unless Square/Schiltron or an unstable block (_position_anchor_unstable)
+## takes the wider contact selection instead.
+## A rout keeps the grid's fold, so after a flight turn that snapped (_turn_flight_toward) the
+## grid's front ranks are the ones toward the enemy the router broke from, and once the grid is
+## past a quarter-turn anchoring on them anchors it on its trailing men. Every other unit, and
+## a router whose grid stands nearer its heading, keeps the grid's front: anchoring a folded
+## testudo on its rear ranks instead made it flick about every tick
+## (near_front_soldier_indices).
+## TODO(#1938): a flight turn that snaps by 75 degrees up to router_heading_anchor_fold
+## leaves the router anchored on its grid's front ranks, which are then a flank that can still
+## be pressed and can fall behind its centre as the block stretches.
+func position_anchor_on_heading() -> bool:
+	if state != State.ROUTING or in_square() or _position_anchor_unstable():
+		return false
+	return absf(wrapf(grid_fold(), -PI, PI)) > router_heading_anchor_fold
+
+
+## The ANCHOR_RANKS-worth of live bodies farthest ahead of `position` along the heading: the
+## position anchor of a router folded off its heading (position_anchor_on_heading). The men
+## face the heading, so these are the ones running ahead, whichever grid ranks they stand in.
+func heading_anchor_soldier_indices(count: int) -> PackedInt32Array:
+	var cutoff: int = mini(count, formation_files(count) * ANCHOR_RANKS)
+	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, facing)
 
 
 ## How far from `position` couple() would settle this unit if it anchored as one in contact
@@ -9956,9 +10009,9 @@ func contact_anchor_offset() -> Vector2:
 ## (body_tier_soldier_indices), and the block is anchored on all of them
 ## (position_anchor_indices). Otherwise its front ranks are its flight-side ranks and the
 ## rules for those apply: a router caught from behind anchors on them, and one fleeing
-## straight into the enemy it broke from keeps its engaged front on the melee line.
-## TODO(#1825): a rout keeps the grid's fold, so after a snapped flight turn the
-## front ranks can be the trailing ranks, not the flight-side ones.
+## straight into the enemy it broke from keeps its engaged front on the melee line. A router
+## whose grid is folded off its heading anchors on the men ahead along the heading
+## (position_anchor_on_heading), so its anchor stays on its flight-side men all the same.
 func router_front_in_melee() -> bool:
 	return state == State.ROUTING and _router_front_in_melee
 
@@ -12614,6 +12667,7 @@ func to_snapshot_dict() -> Dictionary:
 		"rearguard_sacrifice_frac": rearguard_sacrifice_frac,
 		"rearguard_delay_sec": rearguard_delay_sec,
 		"rout_time": rout_time, "router_front_arc": router_front_arc,
+		"router_heading_anchor_fold": router_heading_anchor_fold,
 		"router_contact_reentry_frac": router_contact_reentry_frac,
 		"melee_reface_fold_footprint_scale": melee_reface_fold_footprint_scale,
 		"combat_reface_snap_turn": combat_reface_snap_turn,
@@ -12910,6 +12964,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rearguard_delay_sec = float(d.get("rearguard_delay_sec", rearguard_delay_sec))
 	rout_time = float(d.get("rout_time", rout_time))
 	router_front_arc = float(d.get("router_front_arc", router_front_arc))
+	router_heading_anchor_fold = float(d.get("router_heading_anchor_fold", router_heading_anchor_fold))
 	router_contact_reentry_frac = float(d.get("router_contact_reentry_frac", router_contact_reentry_frac))
 	melee_reface_fold_footprint_scale = float(d.get("melee_reface_fold_footprint_scale",
 			melee_reface_fold_footprint_scale))

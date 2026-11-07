@@ -38,6 +38,7 @@ DEMOS=(
   "cycle_charge_flee|demos/inputs/cycle-charge-flee.json|30|520|640|input"
   "router_outruns_pursuer|demos/inputs/close-tier-router-outruns-pursuer.json|30|176|640|input"
   "router_reentry_settle|demos/inputs/router-reentry-settle-1913.json|30|400|640|input"
+  "router_anchor_flight_side|demos/inputs/router-anchor-flight-side-1825.json|30|440|640|input"
   "deep_router_close_start_hill|demos/inputs/deep-router-close-start-hill.json|30|176|640|input"
   "router_bends_round_wall|demos/inputs/router-bends-round-wall.json|30|176|640|input"
   "rout_rally|demos/inputs/rout-rally-recover.json|30|360|640|input"

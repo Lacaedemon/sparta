@@ -104,6 +104,37 @@ As it crosses that edge, the point its formation is laid out from moves once,
 from its front ranks to its whole block, and stays there.
 :::
 
+A unit that made its turn onto its flight at once still stands in its block as it faced,
+so its front ranks, the ones that faced the enemy, no longer lead it.
+Once its block stands more than a quarter-turn off its heading,
+those ranks trail behind it, still pressed against the pursuers,
+and its formation is laid out from the men ahead of it along its flight instead,
+not from those trailing ranks,
+so the men the pursuers hold no longer set where the router's formation stands.
+A block turned a quarter-turn or less is still laid out from its front ranks,
+even when a turn of nearly a quarter-turn has left them along one of its flanks.
+
+::: {#fig-router-anchor-flight-side .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/router_anchor_flight_side.jpg">
+  <source src="media/router_anchor_flight_side.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A brittle spear block (blue) facing west is ordered to attack an infantry block,
+breaks while still in contact and turns at once to flee north,
+its block still facing the infantry.
+It is laid out from its leading men,
+not from the ranks still pressed against the infantry behind it.
+On this clip's seed (measured 2026-11-07 on 580995c5)
+it drifts 0.5 m east while the infantry still touch it
+and gets clear of them 3.5 seconds after it breaks.
+:::
+
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
   break too. One collapse can cascade down a line.
 - **Local force ratio, combat status & named morale ladder.** Morale reflects local tactical context: being locally outnumbered, under unanswered missile fire (ambient incoming fire erosion halts at the `shaken` suppression floor at 50.0, shaking the formation without breaking it unaided, though separate casualty morale shock remains unfloored, and erosion halts entirely if the target can reply with its own ranged weapons), or losing local melee balance drains morale over time, while local numerical superiority steadies nerve. Unit combat status (`Winning decisively`, `Winning`, `Balanced`, `Losing`, `Losing decisively`) is derived from engaged physics and displayed on the `Combat:` HUD readout, alongside the 7-rung morale ladder (`routing`...`berserk`).

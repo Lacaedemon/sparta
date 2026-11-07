@@ -1378,8 +1378,10 @@ static func couple(unit: Unit, delta: float) -> void:
 
 ## How far the bodies `indices` (a non-empty anchor selection, Unit.position_anchor_indices)
 ## stand off the slots of `slots` (the unit's slot grid at its `position`) that a selection that
-## size belongs on: their centroid less those slots' centroid. couple() moves `position` along
-## it, so `position` plus it is where anchoring on those bodies settles the block. Moving
+## size belongs on, or off their own slots for a router anchored on the men ahead along its
+## heading (Unit.position_anchor_on_heading): their centroid less those slots' centroid.
+## couple() moves `position` along it, so `position` plus it is where anchoring on those
+## bodies settles the block. Moving
 ## `position` moves the slots with it and leaves the bodies, so the sum does not depend on
 ## where `position` stands.
 static func anchor_drift(unit: Unit, indices: PackedInt32Array, slots: PackedVector2Array) -> Vector2:
@@ -1394,7 +1396,13 @@ static func anchor_drift(unit: Unit, indices: PackedInt32Array, slots: PackedVec
 	# range instead of materializing the index array just to walk it right back off
 	# (every engaged unit pays this once per tick in couple(), on top of step()'s own call to
 	# canonical_target_slot_indices()).
-	if unit.in_square():
+	# A router anchored on the men ahead along its heading (Unit.position_anchor_on_heading)
+	# can be anchored on any of the grid's ranks, its rear ones included, so each of those
+	# men is measured against his own slot instead of against the grid's front slots.
+	if unit.position_anchor_on_heading():
+		for i in indices:
+			slot_centroid += slots[i]
+	elif unit.in_square():
 		var target_indices: PackedInt32Array = unit.canonical_target_slot_indices(slots, count)
 		for j in target_indices:
 			slot_centroid += slots[j]
