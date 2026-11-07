@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/deep-router-close-start-hill.json",
+  "caption": "Tightens the slot_distance_max pins of deep-router-close-start-hill from 240 wu to 120 wu (one default Cavalry rank pitch), so the clip fails if a routing block's riders lag their places as they did before #1924: 80 already-broken horses start 40 wu short of a hill and round it. The farthest rider is 89.9 wu from his place at tick 300 and 96.7 wu at tick 350 (measured 2026-11-06 on cf24ad95, identical on seeds 0 to 4), against 143.0 and 192.3 wu on main 806be006 before the fix, which now fail the pins. The clip ends just before the rout timer runs out and the block rallies.",
+  "fixed_fps": 30,
+  "max_frames": 176,
+  "fps": 15,
+  "width": 720
+}
