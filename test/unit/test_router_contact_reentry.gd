@@ -15,16 +15,17 @@ const EDGE_SEED := 12345
 const EDGE_ROUTER := {"team": 0, "type": "Cavalry", "x": 1260, "y": 870, "count": 16, "morale": 0.5}
 const EDGE_PURSUER := {"team": 1, "type": "Infantry", "x": 1460, "y": 870, "count": 40, "frontage": 10,
 		"facing": [-1, 0]}
-# The same squadron and block as router-contact-edge-1801's clip, on that clip's seed 18011
-# perturbed by run 1 (DemoSeed.seed_for_run): the squadron routs at tick 326 with most of its
-# riders off their slots, so its front-rank and whole-block anchors settle it 54 to 86 wu apart.
-# On main a37af5c0 (measured 2026-11-06) it switched anchors 21 times in the 300 ticks after
-# its rout, re-entering its anchor contact every 6 to 8 ticks.
-const OFF_SLOT_SEED := 1051351146
+# The router-reentry-settle-1913 clip's squadron and spear block on its seed: 20 riders facing
+# west, caught on the left flank by 48 spearmen from 240 wu south. The squadron routs at tick
+# 676 in contact, and on main cf24ad95 (measured 2026-11-06) its anchor switched 5 times in the
+# 300 ticks after the rout (7, 21, 33, 47 and 66 ticks after it), the glide toward its whole
+# block carrying it back into the re-entry share each time.
+const OFF_SLOT_SEED := 383830975
 const OFF_SLOT_SCENARIO := [
-	{"team": 0, "type": "Cavalry", "x": 520, "y": 980, "count": 16, "morale": 0.5},
-	{"team": 1, "type": "Infantry", "x": 730, "y": 980, "count": 40, "frontage": 10, "facing": [-1, 0]},
+	{"team": 0, "type": "Cavalry", "x": 900, "y": 700, "count": 20, "morale": 0.4, "facing": [-1, 0]},
+	{"team": 1, "type": "Spearmen", "x": 900, "y": 940, "count": 48, "frontage": 12, "facing": [0, -1]},
 ]
+const OFF_SLOT_ROUT_BY_TICK := 720
 const EDGE_ROUT_BY_TICK := 400
 # Ticks after the rout that the edge staging is watched for: well past the last tick of
 # physical contact on either tree.
@@ -75,27 +76,27 @@ func _anchored(router: Unit) -> bool:
 
 
 func test_a_router_at_the_edge_of_contact_switches_anchor_once() -> void:
-	await _assert_switches_anchor_once([EDGE_ROUTER, EDGE_PURSUER], EDGE_SEED)
+	await _assert_switches_anchor_once([EDGE_ROUTER, EDGE_PURSUER], EDGE_SEED, EDGE_ROUT_BY_TICK)
 
 
 func test_a_router_whose_men_stand_off_their_slots_switches_anchor_once() -> void:
-	await _assert_switches_anchor_once(OFF_SLOT_SCENARIO, OFF_SLOT_SEED)
+	await _assert_switches_anchor_once(OFF_SLOT_SCENARIO, OFF_SLOT_SEED, OFF_SLOT_ROUT_BY_TICK)
 
 
-## Play `scenario` on `seed_value` until uid 0 routs, then watch it for EDGE_WATCH_TICKS: it
-## must anchor on its front ranks on every tick in contact until it first leaves contact, and
-## then switch to its whole-block anchor exactly once.
-func _assert_switches_anchor_once(scenario: Array, seed_value: int) -> void:
+## Play `scenario` on `seed_value` until uid 0 routs (by tick `rout_by`), then watch it for
+## EDGE_WATCH_TICKS: it must anchor on its front ranks on every tick in contact until it first
+## leaves contact, and then switch to its whole-block anchor exactly once.
+func _assert_switches_anchor_once(scenario: Array, seed_value: int, rout_by: int) -> void:
 	var units: Dictionary = await _start(scenario, seed_value)
 	var router: Unit = units.get(0)
 	assert_not_null(router, "setup: the squadron deployed")
 	if router == null:
 		return
-	var safety: int = (EDGE_ROUT_BY_TICK + EDGE_WATCH_TICKS) * 4
-	while router.state != Unit.State.ROUTING and _battle.current_tick() < EDGE_ROUT_BY_TICK and safety > 0:
+	var safety: int = (rout_by + EDGE_WATCH_TICKS) * 4
+	while router.state != Unit.State.ROUTING and _battle.current_tick() < rout_by and safety > 0:
 		safety -= 1
 		await get_tree().physics_frame
-	assert_eq(router.state, Unit.State.ROUTING, "setup: the squadron routs by tick %d" % EDGE_ROUT_BY_TICK)
+	assert_eq(router.state, Unit.State.ROUTING, "setup: the squadron routs by tick %d" % rout_by)
 	if router.state != Unit.State.ROUTING:
 		return
 	var rout_tick: int = _battle.current_tick()

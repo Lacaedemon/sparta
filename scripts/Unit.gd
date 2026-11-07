@@ -3228,7 +3228,9 @@ func fresh_pick_allowed(candidate: Unit) -> bool:
 ## (_in_enemy_contact), and so its body contact and the melee, keep the full range from
 ## `position`. In the seeds 0 to 4 hash sweep of every clip in demos/inputs on main a37af5c0
 ## (7cd40cfc against a37af5c0), that one run was the only one whose re-entries the second
-## measure changed.
+## measure changed. On main cf24ad95, whose combat wheel changes the fight before that rout,
+## the sweep of the same clips (dc15400a against cf24ad95) changed none, and the flicker shows
+## in the router-reentry-settle-1913 staging instead: 5 switches on its own seed, against 1.
 ##
 ## The range is the pair's melee contact range plus MeleeFrontLine.contact_extension, so two
 ## blocks front to front come into contact as their front ranks come within reach, and a block
