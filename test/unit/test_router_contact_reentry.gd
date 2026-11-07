@@ -31,11 +31,18 @@ const EDGE_ROUT_BY_TICK := 400
 const EDGE_WATCH_TICKS := 300
 # A 16-mount squadron routing north with an enemy squadron behind it.
 const GAP_START := Vector2(700.0, 1300.0)
-# The front-rank anchor offset is the difference of two float32 centroids of up to 16 positions
-# within 2048 wu of the origin. Their sums stay under 16384 wu, where one add rounds by at most
-# 2^-10 wu, so each centroid is off by at most 15 * 2^-10 / 16 wu and the difference by less
-# than 0.002 wu.
+# The front-rank anchor offset (SoldierBodies.anchor_drift) is a float32 sum of up to 16 bodies
+# less a sum of as many slots, divided by the count. The staging's positions lie within 2048 wu
+# of the origin, so each sum stays under 16 * 2048 = 32768 wu, where one add rounds by at most
+# half an ulp, 2^-10 wu: at most 15 * 2^-10 wu per sum. Each body, set to its slot plus the
+# shift, rounds by at most 2^-13 wu more (half an ulp under 2048). Divided by the count of 16
+# that is (2 * 15 * 2^-10 + 16 * 2^-13) / 16, about 0.00195 wu, under 0.002 wu.
 const OFFSET_TOL := 0.002
+# Where the anchor would settle the block, `position` plus the offset, read before and after
+# `position` moves: two offsets of OFFSET_TOL each, plus five more roundings under 2048 wu of
+# at most 2^-13 wu (the slots' centroid on each side, the moved `position`, and the two sums of
+# `position` and offset).
+const SETTLE_TOL := 2.0 * OFFSET_TOL + 5.0 / 8192.0
 
 var _battle: Node = null
 
@@ -272,8 +279,8 @@ func test_the_front_rank_anchor_offset_is_measured_from_the_bodies() -> void:
 	var settled: Vector2 = router.position + offset
 	router.position += Vector2(11.0, 5.0)
 	var moved: Vector2 = router.position + _offset(router)
-	assert_almost_eq(moved.x, settled.x, OFFSET_TOL, "its settling point does not follow position (x)")
-	assert_almost_eq(moved.y, settled.y, OFFSET_TOL, "and (y)")
+	assert_almost_eq(moved.x, settled.x, SETTLE_TOL, "its settling point does not follow position (x)")
+	assert_almost_eq(moved.y, settled.y, SETTLE_TOL, "and (y)")
 	router._router_front_in_melee = true
 	assert_eq(_offset(router), Vector2.ZERO, "none for a router anchored on its whole block either way")
 	router._router_front_in_melee = false
@@ -300,8 +307,10 @@ func test_a_router_outside_its_anchor_contact_is_still_in_physical_contact() -> 
 
 
 func test_a_router_held_by_an_enemy_fighting_it_anchors_in_contact_at_the_full_range() -> void:
-	# A router caught again and held in a melee near the edge of the range anchors as one in
-	# contact: the re-entry share is only for an enemy hovering at the edge without fighting it.
+	# A router caught again by an enemy fighting it re-enters anchor contact anywhere inside the
+	# full range rather than the share, provided its front-rank anchor would settle it inside that
+	# range too (the test below covers that half). The share is only for an enemy hovering at the
+	# edge without fighting it. Here the bodies stand on their slots, so both points coincide.
 	var pair: Array = await _router_and_enemy()
 	if pair.is_empty():
 		return
@@ -321,6 +330,38 @@ func test_a_router_held_by_an_enemy_fighting_it_anchors_in_contact_at_the_full_r
 	enemy.state = Unit.State.FIGHTING
 	enemy.target_enemy = null
 	assert_false(_place(router, enemy, between), "as does one fighting someone else")
+
+
+func test_a_fought_router_off_its_slots_re_enters_only_where_its_front_ranks_stay_in_range() -> void:
+	# A router caught from behind whose leading ranks have run ahead of their slots: its
+	# front-rank anchor would settle it farther from the pursuer than `position`. An enemy
+	# fighting it is measured at the full range from both points, so the router takes its front
+	# ranks only where anchoring on them keeps it in range; otherwise it stays on its whole
+	# block, while its physical contact still holds.
+	var pair: Array = await _router_and_enemy()
+	if pair.is_empty():
+		return
+	var router: Unit = pair[0]
+	var enemy: Unit = pair[1]
+	var reach: float = maxf(router.attack_range, enemy.attack_range) + router.RADIUS + enemy.RADIUS
+	var between: float = (1.0 + _frac(router)) * 0.5
+	_place(router, enemy, 0.5)
+	assert_false(_place(router, enemy, 1.01), "setup: it leaves contact")
+	enemy.state = Unit.State.FIGHTING
+	enemy.target_enemy = router
+	# Bodies run ahead (away from the enemy) by more than the gap from `between` to the full
+	# range put the front-rank anchor past that range.
+	var ahead: float = 1.0 - between + 0.05
+	_stand_bodies_off(router, Vector2.UP * reach * ahead)
+	assert_false(_place(router, enemy, between),
+			"an enemy fighting it, whom its front-rank anchor would leave out of range, is not anchor contact")
+	assert_true(router._in_enemy_contact, "though it is in physical contact")
+	assert_false(_anchored(router), "so it stays on its whole-block anchor")
+	# Run ahead by less than that gap, its front-rank anchor stays inside the full range.
+	_stand_bodies_off(router, Vector2.UP * reach * (1.0 - between - 0.025))
+	assert_true(_place(router, enemy, between),
+			"while one its front-rank anchor would keep inside the full range is")
+	assert_true(_anchored(router), "on its front ranks")
 
 
 func test_the_reentry_share_is_caller_configurable() -> void:

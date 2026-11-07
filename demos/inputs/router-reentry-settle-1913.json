@@ -1,21 +1,22 @@
 {
-  "_comment": "A routed squadron whose re-entry into anchor contact would undo itself now switches its couple() anchor once (#1913). A brittle player squadron (16 Cavalry at morale 0.4) stands on open ground facing south; an enemy Spearmen block (40 men, 10 files) 210 wu to its east, facing it, marches onto its flank with no player input. The squadron is in contact from tick 552, routs at tick 588 still in contact, and flees west with the spearmen following at the edge of their reach. Measured 2026-11-06 on 7cd40cfc against main a37af5c0, on the clip's own seed: on main its anchor leaves its front ranks for its whole block at tick 663, the glide toward its whole block brings its position back inside the re-entry share of the range, so it returns to its front ranks at tick 671 and leaves again at tick 678. Now the re-entry is also measured from where the front ranks would settle it, which stays outside the share, so it leaves once, at tick 663, and stays on its whole block. Its position at ticks 675, 677 and 679 is 11.6, 14.6 and 11.7 wu from main's, so those expects (tol 3 wu) fail on main; the gap closes to 1.1 wu by tick 710. Its physical contact lasts to tick 701 (677 on main). On seeds 1 to 4 main switches 3 times and this branch once; every seed routs at tick 588, seeds 2 and 4 leave anchor contact 6 and 7 ticks earlier, and their positions at the three pinned ticks have each coordinate within 2.9 wu of seed 0's here (at tick 673 one was 3.6 wu off on seed 4, so the pins start at 675). The squadron is still routing when the clip ends at tick 760.",
-  "seed": "19130",
+  "_comment": "A routed squadron whose re-entry into anchor contact would undo itself now switches its couple() anchor once (#1913). A brittle player squadron (20 Cavalry at morale 0.4) stands facing west; an enemy Spearmen block (48 men, 12 files) 240 wu to its south, facing it, marches up onto its left flank with no player input. The squadron is in contact from tick 637, routs at tick 676 still in contact, and flees with the spearmen following at the edge of their reach. Measured 2026-11-06 on 7cd40cfc against main a37af5c0, on the clip's own seed: on main its anchor leaves its front ranks for its whole block at tick 683, the glide toward its whole block brings its position back inside the re-entry share of the range, so it returns to its front ranks at tick 697, leaves at 709, returns at 723 and leaves at 742; its position swings up to 23.3 wu off this branch's. Now the re-entry is also measured from where the front ranks would settle it, which stays outside the share, so it leaves once, at tick 683, and stays on its whole block. The position expects sit on two of main's swings (ticks 705 and 708, and 732 and 735), where main's larger coordinate is 11.9, 13.9, 14.1 and 15.7 wu off this branch's. Their tol is half the smallest of those, 5.9 wu, so main stays at least twice the tol away on this seed; this branch's seeds 1 to 4 lie within 4.1 wu of seed 0 on every coordinate at those ticks. Seeds 1 to 3 switch 5 times on main and once here, as seed 0 does; on seed 4 the squadron routs a tick earlier and both trees switch once, at tick 751, so main passes there. The squadron is still routing when the clip ends at tick 800.",
+  "seed": "383830975",
   "scenario": [
-    {"team": 0, "type": "Cavalry", "x": 1180, "y": 640, "count": 16, "morale": 0.4},
-    {"team": 1, "type": "Spearmen", "x": 1390, "y": 640, "count": 40, "frontage": 10, "facing": [-1, 0]}
+    {"team": 0, "type": "Cavalry", "x": 900, "y": 700, "count": 20, "morale": 0.4, "facing": [-1, 0]},
+    {"team": 1, "type": "Spearmen", "x": 900, "y": 940, "count": 48, "frontage": 12, "facing": [0, -1]}
   ],
-  "camera": [{"tick": 0, "x": 1150.0, "y": 650.0, "zoom": 0.8}],
+  "camera": [{"tick": 0, "x": 900.0, "y": 760.0, "zoom": 0.8}],
   "steps": [],
-  "state": [10, 500, 586, 587, 588, 640, 660, 662, 664, 666, 668, 670, 671, 672, 673, 674, 675, 676, 677, 678, 679, 680, 681, 682, 683, 684, 686, 688, 690, 695, 700, 705, 710, 720, 740, 760],
+  "state": [10, 600, 637, 674, 675, 676, 680, 683, 686, 690, 695, 697, 699, 701, 703, 705, 707, 708, 709, 711, 713, 715, 717, 720, 723, 726, 729, 732, 735, 738, 741, 742, 744, 747, 750, 760, 780, 800],
   "expect": [
     {"tick": 10, "uid": 0, "field": "state", "value": "IDLE"},
-    {"tick": 587, "uid": 0, "field": "state", "value": "IDLE"},
-    {"tick": 588, "uid": 0, "field": "state", "value": "ROUTING"},
-    {"tick": 588, "uid": 0, "field": "in_enemy_contact", "value": true},
-    {"tick": 675, "uid": 0, "field": "position", "value": [1134.2, 650.99], "tol": 3.0},
-    {"tick": 677, "uid": 0, "field": "position", "value": [1133.5, 650.72], "tol": 3.0},
-    {"tick": 679, "uid": 0, "field": "position", "value": [1132.59, 650.67], "tol": 3.0},
-    {"tick": 760, "uid": 0, "field": "state", "value": "ROUTING"}
+    {"tick": 674, "uid": 0, "field": "state", "value": "IDLE"},
+    {"tick": 676, "uid": 0, "field": "state", "value": "ROUTING"},
+    {"tick": 676, "uid": 0, "field": "in_enemy_contact", "value": true},
+    {"tick": 705, "uid": 0, "field": "position", "value": [917.74, 686.78], "tol": 5.9},
+    {"tick": 708, "uid": 0, "field": "position", "value": [918.23, 686.36], "tol": 5.9},
+    {"tick": 732, "uid": 0, "field": "position", "value": [920.64, 679.53], "tol": 5.9},
+    {"tick": 735, "uid": 0, "field": "position", "value": [920.96, 678.28], "tol": 5.9},
+    {"tick": 800, "uid": 0, "field": "state", "value": "ROUTING"}
   ]
 }

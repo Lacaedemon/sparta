@@ -96,8 +96,9 @@ does not swing back and forth between them either.
 </video>
 ```
 
-A brittle cavalry squadron (blue) is caught on its flank by a spear block,
-breaks while still in contact and flees west,
+A brittle cavalry squadron (blue) facing west
+is caught on its left flank by a spear block marching up from the south,
+breaks while still in contact and flees north,
 with the spearmen following at the edge of their reach.
 As it crosses that edge, the point its formation is laid out from moves once,
 from its front ranks to its whole block, and stays there.
