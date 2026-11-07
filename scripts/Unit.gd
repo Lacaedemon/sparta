@@ -3215,22 +3215,23 @@ func fresh_pick_allowed(candidate: Unit) -> bool:
 ## the router's men stand off their slots, the two anchors settle the block far apart, the glide
 ## toward the whole block carries `position` back inside the share (or, for an enemy fighting
 ## the router, the range), and the front-rank anchor that re-entry then picks carries it out
-## past the range again. On main a37af5c0 (measured 2026-11-06) the router-contact-edge-1801
-## staging on its perturbed seed run 1 switched anchors 21 times in the 300 ticks after its rout
-## that way, with the two settling points 54 to 86 wu apart at the switches. That holds for an
-## enemy fighting the router too, which is why it gets the second measure as well: there the
-## pursuer turned to fighting as `position` glided up to it, and a variant of 7cd40cfc that
-## measured a fighting enemy from `position` alone still switched 7 times. So a fought router
-## that has left anchor contact, and whose front ranks would settle it beyond the full range of
-## its pursuer, such as one caught from behind with its leading ranks run ahead of their slots,
-## stays on its whole block: anchoring on those ranks would carry `position` out past the range,
-## where it leaves anchor contact again. Only the anchor reads this. Its physical contact
-## (_in_enemy_contact), and so its body contact and the melee, keep the full range from
-## `position`. In the seeds 0 to 4 hash sweep of every clip in demos/inputs on main a37af5c0
-## (7cd40cfc against a37af5c0), that one run was the only one whose re-entries the second
-## measure changed. On main cf24ad95, whose combat wheel changes the fight before that rout,
-## the sweep of the same clips (dc15400a against cf24ad95) changed none, and the flicker shows
-## in the router-reentry-settle-1913 staging instead: 5 switches on its own seed, against 1.
+## past the range again. On main cf24ad95 (measured 2026-11-06) the router-reentry-settle-1913
+## staging switched anchors 5 times in the 300 ticks after its rout that way, against once with
+## the second measure. Before the combat-wheel change merged, on main a37af5c0, the
+## router-contact-edge-1801 staging on its perturbed seed run 1 did the same 21 times, with the
+## two settling points 54 to 86 wu apart at the switches; that run no longer flickers on
+## cf24ad95. The second measure applies to an enemy fighting the router too: in that run on
+## a37af5c0 the pursuer turned to fighting as `position` glided up to it, and a variant of
+## 7cd40cfc that measured a fighting enemy from `position` alone still switched 7 times. So a
+## fought router that has left anchor contact, and whose front ranks would settle it beyond the
+## full range of its pursuer, such as one caught from behind with its leading ranks run ahead of
+## their slots, stays on its whole block: anchoring on those ranks would carry `position` out
+## past the range, where it leaves anchor contact again. Only the anchor reads this. Its
+## physical contact (_in_enemy_contact), and so its body contact and the melee, keep the full
+## range from `position`. In the seeds 0 to 4 hash sweep of every clip in demos/inputs on
+## a37af5c0 (246, 7cd40cfc against a37af5c0) that 1801 run was the only one whose re-entries
+## the second measure changed, and in the sweep of every clip in demos/inputs on cf24ad95 (247,
+## dc15400a against cf24ad95) none changed.
 ##
 ## The range is the pair's melee contact range plus MeleeFrontLine.contact_extension, so two
 ## blocks front to front come into contact as their front ranks come within reach, and a block

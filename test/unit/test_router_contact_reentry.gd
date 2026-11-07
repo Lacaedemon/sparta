@@ -26,10 +26,18 @@ const OFF_SLOT_SCENARIO := [
 	{"team": 1, "type": "Spearmen", "x": 900, "y": 940, "count": 48, "frontage": 12, "facing": [0, -1]},
 ]
 const OFF_SLOT_ROUT_BY_TICK := 720
+# On the fix (measured 2026-11-06 on 13ba766f) that squadron last has physical contact 96 ticks
+# after its rout (tick 772) and rallies 361 ticks after it (tick 1037). So it is watched for 300
+# ticks, which ends 61 ticks before the rally, while it is still routing, and must leave contact
+# within the first 150 of them, so the watch sees it out of contact at least as long as in it.
+const OFF_SLOT_WATCH_TICKS := 300
+const OFF_SLOT_CONTACT_BY := 150
 const EDGE_ROUT_BY_TICK := 400
-# Ticks after the rout that the edge staging is watched for: well past the last tick of
-# physical contact on either tree.
+# Ticks after the rout that the edge staging (EDGE_ROUTER and EDGE_PURSUER) is watched for:
+# well past the last tick of physical contact on either tree. It must leave contact 60 ticks
+# before the watch ends.
 const EDGE_WATCH_TICKS := 300
+const EDGE_CONTACT_BY := EDGE_WATCH_TICKS - 60
 # A 16-mount squadron routing north with an enemy squadron behind it.
 const GAP_START := Vector2(700.0, 1300.0)
 # The front-rank anchor offset (SoldierBodies.anchor_drift) is a float32 sum of up to 16 bodies
@@ -37,8 +45,8 @@ const GAP_START := Vector2(700.0, 1300.0)
 # of the origin, so each sum stays under 16 * 2048 = 32768 wu, where one add rounds by at most
 # half an ulp, 2^-10 wu: at most 15 * 2^-10 wu per sum. Each body, set to its slot plus the
 # shift, rounds by less than 2^-13 wu more (a whole ulp in [1024, 2048), twice the half-ulp
-# bound, so an overcount). Divided by the count of 16
-# that is (2 * 15 * 2^-10 + 16 * 2^-13) / 16, about 0.00195 wu, under 0.002 wu.
+# bound, so an overcount). Divided by the count of 16 that is
+# (2 * 15 * 2^-10 + 16 * 2^-13) / 16, about 0.00195 wu, under 0.002 wu.
 const OFFSET_TOL := 0.002
 # Where the anchor would settle the block, `position` plus the offset, read before and after
 # `position` moves: two offsets of OFFSET_TOL each, plus five more roundings under 2048 wu,
@@ -76,23 +84,27 @@ func _anchored(router: Unit) -> bool:
 
 
 func test_a_router_at_the_edge_of_contact_switches_anchor_once() -> void:
-	await _assert_switches_anchor_once([EDGE_ROUTER, EDGE_PURSUER], EDGE_SEED, EDGE_ROUT_BY_TICK)
+	await _assert_switches_anchor_once([EDGE_ROUTER, EDGE_PURSUER], EDGE_SEED, EDGE_ROUT_BY_TICK,
+			EDGE_WATCH_TICKS, EDGE_CONTACT_BY)
 
 
 func test_a_router_whose_men_stand_off_their_slots_switches_anchor_once() -> void:
-	await _assert_switches_anchor_once(OFF_SLOT_SCENARIO, OFF_SLOT_SEED, OFF_SLOT_ROUT_BY_TICK)
+	await _assert_switches_anchor_once(OFF_SLOT_SCENARIO, OFF_SLOT_SEED, OFF_SLOT_ROUT_BY_TICK,
+			OFF_SLOT_WATCH_TICKS, OFF_SLOT_CONTACT_BY)
 
 
 ## Play `scenario` on `seed_value` until uid 0 routs (by tick `rout_by`), then watch it for
-## EDGE_WATCH_TICKS: it must anchor on its front ranks on every tick in contact until it first
-## leaves contact, and then switch to its whole-block anchor exactly once.
-func _assert_switches_anchor_once(scenario: Array, seed_value: int, rout_by: int) -> void:
+## `watch` ticks, leaving contact within `contact_by` of them: it must anchor on its front ranks
+## on every tick in contact until it first leaves contact, and then switch to its whole-block
+## anchor exactly once.
+func _assert_switches_anchor_once(scenario: Array, seed_value: int, rout_by: int, watch: int,
+		contact_by: int) -> void:
 	var units: Dictionary = await _start(scenario, seed_value)
 	var router: Unit = units.get(0)
 	assert_not_null(router, "setup: the squadron deployed")
 	if router == null:
 		return
-	var safety: int = (rout_by + EDGE_WATCH_TICKS) * 4
+	var safety: int = (rout_by + watch) * 4
 	while router.state != Unit.State.ROUTING and _battle.current_tick() < rout_by and safety > 0:
 		safety -= 1
 		await get_tree().physics_frame
@@ -106,7 +118,7 @@ func _assert_switches_anchor_once(scenario: Array, seed_value: int, rout_by: int
 	var left_contact: bool = false
 	var front_in_melee: bool = false
 	var unanchored_before_leaving: int = 0
-	while _battle.current_tick() < rout_tick + EDGE_WATCH_TICKS and safety > 0:
+	while _battle.current_tick() < rout_tick + watch and safety > 0:
 		safety -= 1
 		await get_tree().physics_frame
 		if not is_instance_valid(router) or router.state != Unit.State.ROUTING:
@@ -126,7 +138,7 @@ func _assert_switches_anchor_once(scenario: Array, seed_value: int, rout_by: int
 			"setup: still routing at the end of the watch")
 	assert_false(front_in_melee, "setup: its front is not in the melee")
 	assert_gt(last_contact, 0, "setup: the router is in contact after the rout")
-	assert_lt(last_contact, EDGE_WATCH_TICKS - 60, "setup: and leaves it well inside the watch")
+	assert_lt(last_contact, contact_by, "setup: and leaves it well inside the watch")
 	assert_eq(unanchored_before_leaving, 0,
 			"it anchors on its front ranks on every tick in contact until it first leaves")
 	assert_eq(anchor_switches, 1,
