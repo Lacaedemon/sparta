@@ -1937,8 +1937,50 @@ except that while its front is more than 50 degrees off the enemy
 it holds its blows until it has come round, as a block turning in place does.
 It strikes anyway at an enemy that has got among its own ranks,
 and at one sweeping round it faster than it can wheel to follow.
+It counts as falling behind once its front is more than 3 degrees further off the enemy
+than the nearest it has come,
+and holds its blows again once it has come back more than 3 degrees
+from the furthest behind it fell,
+so it does not strike while it is still coming round.
+The 3 degrees is a margin for the jostling of a press,
+so that a bearing wandering back and forth does not let blows through.
+A front that falls more than 3 degrees further behind in a single tick
+is taken as a new re-face and judged afresh,
+and so is a switch to another enemy that is not close beside the first.
+An enemy that has pressed in among the troop's ranks is the exception.
+The bearing to it usually moves under 2 degrees a tick,
+but now and then several degrees,
+faster than any wheel can follow.
+Those ticks restart the judging, which costs the troop nothing,
+since it strikes such an enemy anyway.
+A troop already wheeling onto such an enemy keeps wheeling
+even when the enemy gets more than 75 degrees ahead of it,
+and keeps striking,
+rather than stopping to turn in place with its blows held back,
+which would leave its ranks lying off its new front.
+Any other enemy that far off, a new one or one outside its ranks,
+it turns to face in place, as any unit does.
 A troop still snaps round onto a routing enemy, so it keeps its front on a quarry that flees,
 and onto an enemy formed in a square or schiltron, whose faces it slides along.
+
+::: {#fig-cavalry-wheel-past-threshold .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/cavalry_wheel_past_threshold.jpg">
+  <source src="media/cavalry_wheel_past_threshold.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A squadron of 24 horse is charged at an angle by 20 enemy horse,
+whose centre presses in to about 1.6 m from the squadron's own,
+so the bearing the squadron wheels onto runs away from it faster than it can turn.
+It falls more than 75 degrees behind and keeps wheeling, its ranks turning with its heading.
+Before, it stopped to turn in place with its blows held back,
+which left its ranks lying 48 degrees off the way it faced.
+:::
 
 The upshot: catching a unit on
 the flank buys you a genuine window --- it must turn to answer you before it can

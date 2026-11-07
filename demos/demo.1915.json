@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/cavalry-wheel-past-threshold-1915.json",
+  "caption": "A player squadron of horse is charged at an angle by an enemy squadron whose centre ends up among its own ranks, so the bearing it wheels onto runs away faster than it can turn. Before this fix the squadron stopped wheeling once it fell 75 degrees behind and turned in place with its blows held back, leaving its ranks 48 degrees off its heading. Now it keeps wheeling: its ranks turn with its heading and it fights on.",
+  "fixed_fps": 30,
+  "max_frames": 260,
+  "fps": 12,
+  "width": 640
+}
