@@ -41,12 +41,17 @@ const OFFSET_TOL := 2.0 / 2048.0 + 1.0 / 262144.0
 # centroid for 124 of the 125 ticks it anchored at all.
 const EDGE_SEED := 18011
 const EDGE_ROUTER := {"team": 0, "type": "Cavalry", "x": 520, "y": 980, "count": 16, "morale": 0.5}
-const EDGE_PURSUER := {"team": 1, "type": "Infantry", "x": 730, "y": 980, "count": 40, "frontage": 10,
-		"facing": [-1, 0]}
+const EDGE_PURSUER := {"team": 1, "type": "Infantry", "x": 730, "y": 980, "count": 40,
+		"frontage": 10, "facing": [-1, 0]}
 const EDGE_ROUT_BY_TICK := 400
-# The squadron last anchors as one in contact 124 ticks after its rout on main and 133 with
+# The squadron last anchors as one in contact 124 ticks after its rout on main and 134 with
 # the fix, so 200 ticks watches every anchored tick on both trees.
 const EDGE_WATCH_TICKS := 200
+# The squadron anchors as one in contact on 125 of those ticks on main and 135 with the fix
+# (130 to 136 on the clip's perturbed seed runs), measured 2026-11-07 on 1d0d7705 and 580995c5.
+# Requiring half of the smaller count still shows it anchored through most of its contact, so
+# the trailing check below has ticks to judge.
+const EDGE_MIN_ANCHORED_TICKS := 62
 
 var _battle: Node = null
 
@@ -230,10 +235,12 @@ func test_a_router_whose_flight_turn_snapped_anchors_ahead_of_its_centre() -> vo
 	if router == null:
 		return
 	var safety: int = (EDGE_ROUT_BY_TICK + EDGE_WATCH_TICKS) * 4
-	while router.state != Unit.State.ROUTING and _battle.current_tick() < EDGE_ROUT_BY_TICK and safety > 0:
+	while (router.state != Unit.State.ROUTING and _battle.current_tick() < EDGE_ROUT_BY_TICK
+			and safety > 0):
 		safety -= 1
 		await get_tree().physics_frame
-	assert_eq(router.state, Unit.State.ROUTING, "setup: the squadron routs by tick %d" % EDGE_ROUT_BY_TICK)
+	assert_eq(router.state, Unit.State.ROUTING,
+			"setup: the squadron routs by tick %d" % EDGE_ROUT_BY_TICK)
 	if router.state != Unit.State.ROUTING:
 		return
 	var rout_tick: int = _battle.current_tick()
@@ -256,8 +263,8 @@ func test_a_router_whose_flight_turn_snapped_anchors_ahead_of_its_centre() -> vo
 		if lead < 0.0:
 			trailing_ticks += 1
 	assert_true(folded, "setup: the flight turn left the grid's front pointing back")
-	# The squadron anchors as one in contact for about 125 ticks on either tree.
-	assert_gt(anchored_ticks, 20, "setup: the router anchors on some of its men after the rout")
+	assert_gte(anchored_ticks, EDGE_MIN_ANCHORED_TICKS,
+			"setup: the router anchors on some of its men after the rout")
 	assert_eq(trailing_ticks, 0,
 			"it never anchors on men behind its centre (%d of %d ticks, worst %.1f wu)"
 			% [trailing_ticks, anchored_ticks, worst_lead])

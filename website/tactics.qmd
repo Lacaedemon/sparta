@@ -104,14 +104,15 @@ As it crosses that edge, the point its formation is laid out from moves once,
 from its front ranks to its whole block, and stays there.
 :::
 
-A router's front ranks here are the men running at its head.
 A unit that made its turn onto its flight at once still stands in its block as it faced,
-so the ranks that faced the enemy now trail behind it, still pressed against the pursuers.
+so its front ranks, the ones that faced the enemy, no longer lead it.
 Once its block stands more than a quarter-turn off its heading,
-where those ranks are behind its middle rather than beside it,
-its formation is laid out from the men ahead of it along its flight,
+those ranks trail behind it, still pressed against the pursuers,
+and its formation is laid out from the men ahead of it along its flight instead,
 not from those trailing ranks,
-so the men the pursuers hold do not drag the router back or sideways.
+so the men the pursuers hold no longer set where the router's formation stands.
+A block turned a quarter-turn or less is still laid out from its front ranks,
+even when a turn of nearly a quarter-turn has left them along one of its flanks.
 
 ::: {#fig-router-anchor-flight-side .demo}
 
@@ -127,12 +128,11 @@ so the men the pursuers hold do not drag the router back or sideways.
 A brittle spear block (blue) facing west is ordered to attack an infantry block,
 breaks while still in contact and turns at once to flee north,
 its block still facing the infantry.
-It runs straight north, laid out from its leading men.
-Before this fix it was laid out from the ranks still pressed against the infantry,
-and slid 1.4 m east off its line while they held it;
-on this clip's seed (measured 2026-11-07 on 580995c5 against main 1d0d7705)
-it now drifts 0.5 m east, stands 1.0 m further north 3.3 seconds after it breaks,
-and gets clear of the infantry 0.4 seconds sooner.
+It is laid out from its leading men,
+not from the ranks still pressed against the infantry behind it.
+On this clip's seed (measured 2026-11-07 on 580995c5)
+it drifts 0.5 m east while the infantry still touch it
+and gets clear of them 3.5 seconds after it breaks.
 :::
 
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to

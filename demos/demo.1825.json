@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/router-anchor-flight-side-1825.json",
-  "caption": "A brittle spear block (blue) facing west is ordered to attack an infantry block, breaks while still in contact and turns at once to flee north, its block still facing the infantry. It now runs straight north, laid out from its leading men. Before this fix it was laid out from the ranks still pressed against the infantry, and slid 1.4 m east off its line while they held it; on this clip's seed it now drifts 0.5 m east, stands 1.0 m further north 3.3 seconds after it breaks, and gets clear of the infantry 0.4 seconds sooner.",
+  "caption": "A brittle spear block (blue) facing west is ordered to attack an infantry block, breaks while still in contact and turns at once to flee north, its block still facing the infantry. It is now laid out from its leading men, not from the ranks still pressed against the infantry, which trailed behind it before this fix. On every seed 0 to 4 it gets clear of the infantry sooner than before. On this clip's seed (seed 0; measured 2026-11-07 on 580995c5 against main 1d0d7705) it slid 1.4 m east while in contact before the fix and drifts 0.5 m now, stands 1.0 m further north 3.3 seconds after it breaks, and gets clear 0.4 seconds sooner.",
   "fixed_fps": 30,
   "max_frames": 440,
   "fps": 15,
