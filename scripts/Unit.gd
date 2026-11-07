@@ -1334,8 +1334,9 @@ var _in_enemy_contact: bool = false
 # Whether couple() anchors this router as one in enemy contact (position_anchor_indices).
 # Recomputed with _in_enemy_contact by _refresh_enemy_contact, and the same while the router
 # has not left contact in its current rout; after that it comes back only within
-# router_contact_reentry_frac of the range, or to an enemy fighting the router. Only the
-# anchor reads it: every physical-contact reader keeps _in_enemy_contact.
+# router_contact_reentry_frac of the range, or to an enemy fighting the router, measured both
+# from `position` and from where its front-rank anchor would settle it. Only the anchor reads
+# it: every physical-contact reader keeps _in_enemy_contact.
 var _router_anchor_contact: bool = false
 # Whether this router has left anchor contact since it routed: set on the routing tick
 # _router_anchor_contact falls, cleared by _rout().
@@ -1433,8 +1434,10 @@ var router_front_arc: float = ROUTER_FRONT_ARC
 # contact every tick or two, and its couple() anchor flips with it between its front ranks
 # and its whole block. In the stagings measured such a router came back into contact as far
 # out as 0.956 of the range, so 0.9 asks for over twice that depth. An enemy fighting the
-# router keeps the full range. A caller-configurable parameter defaulting to
-# ROUTER_CONTACT_REENTRY_FRAC, with rout_time's set-before-_ready contract.
+# router keeps the full range. Both of the re-entry test's measures, from `position` and from
+# the front-rank anchor's settling point (_refresh_enemy_contact), take the same share.
+# A caller-configurable parameter defaulting to ROUTER_CONTACT_REENTRY_FRAC, with rout_time's
+# set-before-_ready contract.
 const ROUTER_CONTACT_REENTRY_FRAC: float = 0.9
 var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
 # How much of a foot block's own slot footprint (soldier_block_half_extents, per axis) its
@@ -3204,8 +3207,31 @@ func fresh_pick_allowed(candidate: Unit) -> bool:
 ## place of _in_enemy_contact. Once the router has left anchor contact in its current rout it
 ## comes back only within router_contact_reentry_frac of the range, so a router at the edge
 ## of the range switches anchors once rather than every tick or two. An enemy that is fighting
-## the router (_fighting_me) counts at the full range all the same: a router held in a melee
-## anchors as one in contact wherever the edge of the range happens to fall.
+## the router (_fighting_me) is measured at the full range instead of the share.
+##
+## Either way re-entry is measured twice, and must pass both: from `position`, and from where the
+## front-rank anchor it would switch to would settle the router (contact_anchor_offset).
+## `position` alone is not enough, because the whole-block anchor the router is on moves it: once
+## the router's men stand off their slots, the two anchors settle the block far apart, the glide
+## toward the whole block carries `position` back inside the share (or, for an enemy fighting
+## the router, the range), and the front-rank anchor that re-entry then picks carries it out
+## past the range again. On main cf24ad95 (measured 2026-11-06) the router-reentry-settle-1913
+## staging switched anchors 5 times in the 300 ticks after its rout that way, against once with
+## the second measure. Before the combat-wheel change merged, on main a37af5c0, the
+## router-contact-edge-1801 staging on its perturbed seed run 1 did the same 21 times, with the
+## two settling points 54 to 86 wu apart at the switches; that run no longer flickers on
+## cf24ad95. The second measure applies to an enemy fighting the router too: in that run on
+## a37af5c0 the pursuer turned to fighting as `position` glided up to it, and a variant of
+## 7cd40cfc that measured a fighting enemy from `position` alone still switched 7 times. So a
+## fought router that has left anchor contact, and whose front ranks would settle it beyond the
+## full range of its pursuer, such as one caught from behind with its leading ranks run ahead of
+## their slots, stays on its whole block: anchoring on those ranks would carry `position` out
+## past the range, where it leaves anchor contact again. Only the anchor reads this. Its
+## physical contact (_in_enemy_contact), and so its body contact and the melee, keep the full
+## range from `position`. In the seeds 0 to 4 hash sweep of every clip in demos/inputs on
+## a37af5c0 (246, 7cd40cfc against a37af5c0) that 1801 run was the only one whose re-entries
+## the second measure changed, and in the sweep of every clip in demos/inputs on cf24ad95 (247,
+## dc15400a against cf24ad95) none changed.
 ##
 ## The range is the pair's melee contact range plus MeleeFrontLine.contact_extension, so two
 ## blocks front to front come into contact as their front ranks come within reach, and a block
@@ -3216,6 +3242,10 @@ func _refresh_enemy_contact() -> void:
 	var was_anchor_contact: bool = _router_anchor_contact
 	var reentering: bool = routing and _router_left_contact and not was_anchor_contact
 	var anchor_contact: bool = false
+	# Where the re-entry test measures from, as an offset from `position`: computed once, on the
+	# first enemy it is needed for (contact_anchor_offset).
+	var reentry_offset := Vector2.ZERO
+	var reentry_offset_known: bool = false
 	_in_enemy_contact = false
 	var contact_candidates: Array = get_tree().get_nodes_in_group("units")
 	contact_candidates.append_array(get_tree().get_nodes_in_group("routers"))
@@ -3237,10 +3267,27 @@ func _refresh_enemy_contact() -> void:
 			var frac: float = router_contact_reentry_frac if reentering and not _fighting_me(u) \
 					else 1.0
 			var a_dist: float = (c_dist + MeleeFrontLine.contact_extension(self, u)) * frac
-			if dist_sq <= c_dist * c_dist * frac * frac \
-					or MeleeFrontLine.last_gap.length_squared() <= a_dist * a_dist:
-				anchor_contact = true
-				break
+			var gap: Vector2 = MeleeFrontLine.last_gap
+			var base_sq: float = c_dist * c_dist * frac * frac
+			if not (dist_sq <= base_sq or gap.length_squared() <= a_dist * a_dist):
+				continue
+			if reentering:
+				# Re-entry also measures from where the front-rank anchor it would switch to would
+				# settle the router: `position` alone is moved by the whole-block anchor it is on.
+				if not reentry_offset_known:
+					reentry_offset = contact_anchor_offset()
+					reentry_offset_known = true
+				# Translating last_gap is exact when either block takes no front-line extension
+				# (cavalry, missile troops or a far-tier block: MeleeFrontProfile.eligible), since
+				# the gap is then the positions' alone. Otherwise it keeps the extension's shift
+				# and weight as measured from `position`, which depend on where the blocks stand:
+				# an approximation, not a re-measurement.
+				var settled_gap: Vector2 = gap - reentry_offset
+				if not ((u.position - position - reentry_offset).length_squared() <= base_sq \
+						or settled_gap.length_squared() <= a_dist * a_dist):
+					continue
+			anchor_contact = true
+			break
 	SimOps.add(SimOps.REGIMENT_CHECK, contact_checks)
 	if routing:
 		_router_anchor_contact = anchor_contact
@@ -9864,11 +9911,36 @@ func near_front_soldier_indices(count: int) -> PackedInt32Array:
 ## _in_enemy_contact, so one at the edge of contact range switches anchors once.
 func position_anchor_indices(count: int) -> PackedInt32Array:
 	var in_contact: bool = _router_anchor_contact if state == State.ROUTING else _in_enemy_contact
-	if not (is_engaged() or in_contact) or router_front_in_melee():
+	if not (is_engaged() or in_contact):
+		return PackedInt32Array()
+	return _contact_anchor_indices(count)
+
+
+## The selection position_anchor_indices returns while this unit is fighting or anchored as one
+## in contact: none for a router with its front in the melee, the wider contact selection for
+## a Square or an unstable transition, and the live near-front ranks otherwise.
+func _contact_anchor_indices(count: int) -> PackedInt32Array:
+	if router_front_in_melee():
 		return PackedInt32Array()
 	if in_square() or _position_anchor_unstable():
 		return contact_soldier_indices(count)
 	return near_front_soldier_indices(count)
+
+
+## How far from `position` couple() would settle this unit if it anchored as one in contact
+## (_contact_anchor_indices): that selection's drift off its slots (SoldierBodies.anchor_drift).
+## Zero when the selection is empty, so the whole block is anchored either way, or while the slot
+## grid and the bodies differ in size. It is measured from the bodies and the grid's shape, so it
+## is the same whichever anchor couple() reads now.
+func contact_anchor_offset() -> Vector2:
+	var n: int = _sim_soldier_pos.size()
+	var indices: PackedInt32Array = _contact_anchor_indices(n)
+	if indices.is_empty():
+		return Vector2.ZERO
+	var slots: PackedVector2Array = soldier_world_slots(soldiers)
+	if slots.size() != n:
+		return Vector2.ZERO
+	return SoldierBodies.anchor_drift(self, indices, slots)
 
 
 ## Whether this unit is a router whose front ranks are the ones in the melee it broke from

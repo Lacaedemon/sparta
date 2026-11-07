@@ -15,12 +15,44 @@ const EDGE_SEED := 12345
 const EDGE_ROUTER := {"team": 0, "type": "Cavalry", "x": 1260, "y": 870, "count": 16, "morale": 0.5}
 const EDGE_PURSUER := {"team": 1, "type": "Infantry", "x": 1460, "y": 870, "count": 40, "frontage": 10,
 		"facing": [-1, 0]}
+# The router-reentry-settle-1913 clip's squadron and spear block on its seed: 20 riders facing
+# west, caught on the left flank by 48 spearmen from 240 wu south. The squadron routs at tick
+# 676 in contact, and on main cf24ad95 (measured 2026-11-06) its anchor switched 5 times in the
+# 300 ticks after the rout (7, 21, 33, 47 and 66 ticks after it), the glide toward its whole
+# block carrying it back into the re-entry share each time.
+const OFF_SLOT_SEED := 383830975
+const OFF_SLOT_SCENARIO := [
+	{"team": 0, "type": "Cavalry", "x": 900, "y": 700, "count": 20, "morale": 0.4, "facing": [-1, 0]},
+	{"team": 1, "type": "Spearmen", "x": 900, "y": 940, "count": 48, "frontage": 12, "facing": [0, -1]},
+]
+const OFF_SLOT_ROUT_BY_TICK := 720
+# On the fix (measured 2026-11-06 on 13ba766f) that squadron last has physical contact 96 ticks
+# after its rout (tick 772) and rallies 361 ticks after it (tick 1037). So it is watched for 300
+# ticks, which ends 61 ticks before the rally, while it is still routing, and must leave contact
+# within the first 150 of them, so the watch sees it out of contact at least as long as in it.
+const OFF_SLOT_WATCH_TICKS := 300
+const OFF_SLOT_CONTACT_BY := 150
 const EDGE_ROUT_BY_TICK := 400
-# Ticks after the rout that the edge staging is watched for: well past the last tick of
-# physical contact on either tree.
+# Ticks after the rout that the edge staging (EDGE_ROUTER and EDGE_PURSUER) is watched for:
+# well past the last tick of physical contact on either tree. It must leave contact 60 ticks
+# before the watch ends.
 const EDGE_WATCH_TICKS := 300
+const EDGE_CONTACT_BY := EDGE_WATCH_TICKS - 60
 # A 16-mount squadron routing north with an enemy squadron behind it.
 const GAP_START := Vector2(700.0, 1300.0)
+# The front-rank anchor offset (SoldierBodies.anchor_drift) is a float32 sum of up to 16 bodies
+# less a sum of as many slots, divided by the count. The staging's positions lie within 2048 wu
+# of the origin, so each sum stays under 16 * 2048 = 32768 wu, where one add rounds by at most
+# half an ulp, 2^-10 wu: at most 15 * 2^-10 wu per sum. Each body, set to its slot plus the
+# shift, rounds by less than 2^-13 wu more (a whole ulp in [1024, 2048), twice the half-ulp
+# bound, so an overcount). Divided by the count of 16 that is
+# (2 * 15 * 2^-10 + 16 * 2^-13) / 16, about 0.00195 wu, under 0.002 wu.
+const OFFSET_TOL := 0.002
+# Where the anchor would settle the block, `position` plus the offset, read before and after
+# `position` moves: two offsets of OFFSET_TOL each, plus five more roundings under 2048 wu,
+# each counted as a whole ulp there, 2^-13 wu (an overcount of the half-ulp bound): the slots'
+# centroid on each side, the moved `position`, and the two sums of `position` and offset.
+const SETTLE_TOL := 2.0 * OFFSET_TOL + 5.0 / 8192.0
 
 var _battle: Node = null
 
@@ -52,16 +84,31 @@ func _anchored(router: Unit) -> bool:
 
 
 func test_a_router_at_the_edge_of_contact_switches_anchor_once() -> void:
-	var units: Dictionary = await _start([EDGE_ROUTER, EDGE_PURSUER], EDGE_SEED)
+	await _assert_switches_anchor_once([EDGE_ROUTER, EDGE_PURSUER], EDGE_SEED, EDGE_ROUT_BY_TICK,
+			EDGE_WATCH_TICKS, EDGE_CONTACT_BY)
+
+
+func test_a_router_whose_men_stand_off_their_slots_switches_anchor_once() -> void:
+	await _assert_switches_anchor_once(OFF_SLOT_SCENARIO, OFF_SLOT_SEED, OFF_SLOT_ROUT_BY_TICK,
+			OFF_SLOT_WATCH_TICKS, OFF_SLOT_CONTACT_BY)
+
+
+## Play `scenario` on `seed_value` until uid 0 routs (by tick `rout_by`), then watch it for
+## `watch` ticks, leaving contact within `contact_by` of them: it must anchor on its front ranks
+## on every tick in contact until it first leaves contact, and then switch to its whole-block
+## anchor exactly once.
+func _assert_switches_anchor_once(scenario: Array, seed_value: int, rout_by: int, watch: int,
+		contact_by: int) -> void:
+	var units: Dictionary = await _start(scenario, seed_value)
 	var router: Unit = units.get(0)
 	assert_not_null(router, "setup: the squadron deployed")
 	if router == null:
 		return
-	var safety: int = (EDGE_ROUT_BY_TICK + EDGE_WATCH_TICKS) * 4
-	while router.state != Unit.State.ROUTING and _battle.current_tick() < EDGE_ROUT_BY_TICK and safety > 0:
+	var safety: int = (rout_by + watch) * 4
+	while router.state != Unit.State.ROUTING and _battle.current_tick() < rout_by and safety > 0:
 		safety -= 1
 		await get_tree().physics_frame
-	assert_eq(router.state, Unit.State.ROUTING, "setup: the squadron routs by tick %d" % EDGE_ROUT_BY_TICK)
+	assert_eq(router.state, Unit.State.ROUTING, "setup: the squadron routs by tick %d" % rout_by)
 	if router.state != Unit.State.ROUTING:
 		return
 	var rout_tick: int = _battle.current_tick()
@@ -71,7 +118,7 @@ func test_a_router_at_the_edge_of_contact_switches_anchor_once() -> void:
 	var left_contact: bool = false
 	var front_in_melee: bool = false
 	var unanchored_before_leaving: int = 0
-	while _battle.current_tick() < rout_tick + EDGE_WATCH_TICKS and safety > 0:
+	while _battle.current_tick() < rout_tick + watch and safety > 0:
 		safety -= 1
 		await get_tree().physics_frame
 		if not is_instance_valid(router) or router.state != Unit.State.ROUTING:
@@ -91,7 +138,7 @@ func test_a_router_at_the_edge_of_contact_switches_anchor_once() -> void:
 			"setup: still routing at the end of the watch")
 	assert_false(front_in_melee, "setup: its front is not in the melee")
 	assert_gt(last_contact, 0, "setup: the router is in contact after the rout")
-	assert_lt(last_contact, EDGE_WATCH_TICKS - 60, "setup: and leaves it well inside the watch")
+	assert_lt(last_contact, contact_by, "setup: and leaves it well inside the watch")
 	assert_eq(unanchored_before_leaving, 0,
 			"it anchors on its front ranks on every tick in contact until it first leaves")
 	assert_eq(anchor_switches, 1,
@@ -167,6 +214,94 @@ func test_a_router_anchors_in_contact_again_only_nearer_once_it_has_left() -> vo
 	assert_false(_place(router, enemy, 1.01), "as before")
 
 
+## Stand every body of `router` on its slot moved by `offset`, so anchoring on any of them
+## would settle the block `offset` from its position.
+func _stand_bodies_off(router: Unit, offset: Vector2) -> void:
+	var slots: PackedVector2Array = router.soldier_world_slots(router.soldiers)
+	for i in range(mini(slots.size(), router._sim_soldier_pos.size())):
+		router._sim_soldier_pos[i] = slots[i] + offset
+
+
+func test_a_router_that_has_left_contact_measures_re_entry_from_its_front_rank_anchor() -> void:
+	# Whichever anchor couple() reads moves `position`, and the whole-block anchor a router
+	# takes on leaving contact can carry it back within the re-entry share of the enemy it
+	# left. Re-entry is measured from where the front-rank anchor it would switch to would
+	# settle it as well, so the switch cannot undo itself, and from `position` still, so a
+	# router back on its front ranks keeps the share's depth inside the full range it leaves at.
+	var pair: Array = await _router_and_enemy()
+	if pair.is_empty():
+		return
+	var router: Unit = pair[0]
+	var enemy: Unit = pair[1]
+	var reach: float = maxf(router.attack_range, enemy.attack_range) + router.RADIUS + enemy.RADIUS
+	# Half the range from `position`: inside the re-entry share, so on `position` alone it
+	# would anchor in contact again.
+	var near: float = 0.5
+	assert_lt(near, _frac(router), "setup: the enemy stands inside the re-entry share")
+	_place(router, enemy, near)
+	assert_false(_place(router, enemy, 1.01), "setup: it leaves contact")
+	# Bodies a full range away from the enemy put the front-rank anchor 1 + near ranges from it,
+	# past even the full range an enemy fighting the router is measured at.
+	_stand_bodies_off(router, Vector2.UP * reach)
+	assert_false(_place(router, enemy, near),
+			"an enemy near its position but past the range of its front-rank anchor is not anchor contact")
+	assert_true(router._in_enemy_contact, "though it is in physical contact")
+	assert_false(_anchored(router), "so it stays on its whole-block anchor")
+	enemy.state = Unit.State.FIGHTING
+	enemy.target_enemy = router
+	assert_false(_place(router, enemy, near), "nor is one fighting it")
+	enemy.state = Unit.State.MOVING
+	enemy.target_enemy = null
+	# An enemy inside the full range but outside the share of `position`, with the bodies
+	# standing so that the front-rank anchor would settle the router right on it.
+	var between: float = (1.0 + _frac(router)) * 0.5
+	_stand_bodies_off(router, Vector2.DOWN * reach * between)
+	assert_false(_place(router, enemy, between),
+			"an enemy on its front-rank anchor but outside the share of its position is not anchor contact")
+	assert_true(router._in_enemy_contact, "setup: though it is in physical contact")
+	# Bodies `near` ranges toward the enemy put the front-rank anchor on it, where the reverse
+	# offset would put it 2 * near ranges off, past the re-entry share.
+	assert_gt(2.0 * near, _frac(router), "setup: the reverse offset would leave it outside the share")
+	_stand_bodies_off(router, Vector2.DOWN * reach * near)
+	assert_true(_place(router, enemy, near), "one at its front-rank anchor brings it back into anchor contact")
+	assert_true(_anchored(router), "on its front ranks")
+
+
+## Unit.contact_anchor_offset, called by name so this file still loads on a tree without it.
+func _offset(router: Unit) -> Vector2:
+	if not router.has_method("contact_anchor_offset"):
+		return Vector2(INF, INF)
+	return router.call("contact_anchor_offset")
+
+
+func test_the_front_rank_anchor_offset_is_measured_from_the_bodies() -> void:
+	var pair: Array = await _router_and_enemy()
+	if pair.is_empty():
+		return
+	var router: Unit = pair[0]
+	var enemy: Unit = pair[1]
+	assert_true(router.has_method("contact_anchor_offset"), "the router measures its front-rank anchor")
+	_place(router, enemy, 0.5)
+	assert_true(router._in_enemy_contact, "setup: in contact, so it has a front-rank anchor")
+	var shift := Vector2(3.0, -7.0)
+	_stand_bodies_off(router, shift)
+	var offset: Vector2 = _offset(router)
+	assert_almost_eq(offset.x, shift.x, OFFSET_TOL, "bodies standing off their slots give the offset (x)")
+	assert_almost_eq(offset.y, shift.y, OFFSET_TOL, "and (y)")
+	# Moving `position` moves the slots and leaves the bodies, so where the front-rank anchor
+	# would settle the block stays put.
+	var settled: Vector2 = router.position + offset
+	router.position += Vector2(11.0, 5.0)
+	var moved: Vector2 = router.position + _offset(router)
+	assert_almost_eq(moved.x, settled.x, SETTLE_TOL, "its settling point does not follow position (x)")
+	assert_almost_eq(moved.y, settled.y, SETTLE_TOL, "and (y)")
+	router._router_front_in_melee = true
+	assert_eq(_offset(router), Vector2.ZERO, "none for a router anchored on its whole block either way")
+	router._router_front_in_melee = false
+	router._sim_soldier_pos.resize(router._sim_soldier_pos.size() - 1)
+	assert_eq(_offset(router), Vector2.ZERO, "and none while the grid and the bodies differ in size")
+
+
 func test_a_router_outside_its_anchor_contact_is_still_in_physical_contact() -> void:
 	# The gap is the anchor's alone: inside the full range the router's bodies still meet the
 	# enemy's, whichever anchor couple() reads.
@@ -186,8 +321,10 @@ func test_a_router_outside_its_anchor_contact_is_still_in_physical_contact() -> 
 
 
 func test_a_router_held_by_an_enemy_fighting_it_anchors_in_contact_at_the_full_range() -> void:
-	# A router caught again and held in a melee near the edge of the range anchors as one in
-	# contact: the re-entry share is only for an enemy hovering at the edge without fighting it.
+	# A router caught again by an enemy fighting it re-enters anchor contact anywhere inside the
+	# full range rather than the share, provided its front-rank anchor would settle it inside that
+	# range too (the test below covers that half). The share is only for an enemy hovering at the
+	# edge without fighting it. Here the bodies stand on their slots, so both points coincide.
 	var pair: Array = await _router_and_enemy()
 	if pair.is_empty():
 		return
@@ -207,6 +344,38 @@ func test_a_router_held_by_an_enemy_fighting_it_anchors_in_contact_at_the_full_r
 	enemy.state = Unit.State.FIGHTING
 	enemy.target_enemy = null
 	assert_false(_place(router, enemy, between), "as does one fighting someone else")
+
+
+func test_a_fought_router_off_its_slots_re_enters_only_where_its_front_ranks_stay_in_range() -> void:
+	# A router caught from behind whose leading ranks have run ahead of their slots: its
+	# front-rank anchor would settle it farther from the pursuer than `position`. An enemy
+	# fighting it is measured at the full range from both points, so the router takes its front
+	# ranks only where anchoring on them keeps it in range; otherwise it stays on its whole
+	# block, while its physical contact still holds.
+	var pair: Array = await _router_and_enemy()
+	if pair.is_empty():
+		return
+	var router: Unit = pair[0]
+	var enemy: Unit = pair[1]
+	var reach: float = maxf(router.attack_range, enemy.attack_range) + router.RADIUS + enemy.RADIUS
+	var between: float = (1.0 + _frac(router)) * 0.5
+	_place(router, enemy, 0.5)
+	assert_false(_place(router, enemy, 1.01), "setup: it leaves contact")
+	enemy.state = Unit.State.FIGHTING
+	enemy.target_enemy = router
+	# Bodies run ahead (away from the enemy) by more than the gap from `between` to the full
+	# range put the front-rank anchor past that range.
+	var ahead: float = 1.0 - between + 0.05
+	_stand_bodies_off(router, Vector2.UP * reach * ahead)
+	assert_false(_place(router, enemy, between),
+			"an enemy fighting it, whom its front-rank anchor would leave out of range, is not anchor contact")
+	assert_true(router._in_enemy_contact, "though it is in physical contact")
+	assert_false(_anchored(router), "so it stays on its whole-block anchor")
+	# Run ahead by less than that gap, its front-rank anchor stays inside the full range.
+	_stand_bodies_off(router, Vector2.UP * reach * (1.0 - between - 0.025))
+	assert_true(_place(router, enemy, between),
+			"while one its front-rank anchor would keep inside the full range is")
+	assert_true(_anchored(router), "on its front ranks")
 
 
 func test_the_reentry_share_is_caller_configurable() -> void:
