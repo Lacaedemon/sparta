@@ -1915,13 +1915,17 @@ than the nearest it has come,
 and holds its blows again once it has come back more than 3 degrees
 from the furthest behind it fell,
 so it does not strike while it is still coming round.
-The 3 degrees is about what the bearing to a pressed enemy wanders from one tick to the next,
-so that jostling alone does not let blows through.
-A new enemy, or a bearing that jumps more than 3 degrees in one tick,
-is judged afresh, as a new re-face.
-An enemy that has pressed in among the troop's ranks is the exception:
-the bearing to it can swing tens of degrees in a few ticks,
+The 3 degrees is a margin for the jostling of a press,
+so that a bearing wandering back and forth does not let blows through.
+A front that falls more than 3 degrees further behind in a single tick
+is taken as a new re-face and judged afresh,
+and so is a switch to another enemy that is not close beside the first.
+An enemy that has pressed in among the troop's ranks is the exception.
+The bearing to it usually moves under 2 degrees a tick,
+but now and then several degrees,
 faster than any wheel can follow.
+Those ticks restart the judging, which costs the troop nothing,
+since it strikes such an enemy anyway.
 A troop already wheeling onto such an enemy keeps wheeling
 even when the enemy gets more than 75 degrees ahead of it,
 and keeps striking,

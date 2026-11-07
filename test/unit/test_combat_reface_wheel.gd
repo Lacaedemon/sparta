@@ -331,6 +331,32 @@ func test_a_wheel_onto_a_new_enemy_starts_from_rest_and_judges_afresh() -> void:
 		"and is judged from its offset now, not from the nearest it came to the first enemy")
 
 
+func test_a_target_flipping_between_two_enemies_side_by_side_keeps_the_wheel_running() -> void:
+	# A block holding its ground against two enemies pressed side by side can have its target
+	# flip between them every tick. Their bearings lie closer than combat_reface_snap_turn, so
+	# the wheel carries its rate across each flip and builds it exactly as onto one enemy.
+	var u := _make_block()
+	var a := _make_enemy(_bearing_point(60.0))
+	var b := _make_enemy(_bearing_point(60.0 + 0.5 * rad_to_deg(u.combat_reface_snap_turn)))
+	b.uid = 3
+	var radius: float = u._formation_local_half_extents().length()
+	var accel_step: float = u.bounded_turn_accel(radius) * DT
+	var ticks := 30
+	# Over the run the rate stays under the bounded rate and under sqrt(2 a d), so every tick
+	# builds it by one accel_step: from rest it reaches ticks * accel_step.
+	assert_lt(ticks * accel_step, u.bounded_turn_rate(radius), "sanity: the run stays under the rate cap")
+	var faced_any := false
+	for i in range(ticks):
+		var e: Unit = a if i % 2 == 0 else b
+		faced_any = _wheel_tick(u, e, i > 0) or faced_any
+	# The rate is read back from the turn the float32 heading took, which costs well under 1% of
+	# it here; a wheel restarted from rest on every flip would hold one accel_step, 1 / ticks of it.
+	var built: float = ticks * accel_step
+	assert_almost_eq(absf(u._combat_wheel_rate), built, 0.01 * built,
+		"the rate built on every tick across the flips")
+	assert_false(faced_any, "and the flips alone never let a blow through 60 degrees off")
+
+
 func test_a_bearing_that_jumps_past_the_threshold_turns_in_place_and_holds_its_blows() -> void:
 	var pair: Array = _running_wheel(60.0)
 	var u: Unit = pair[0]
@@ -387,13 +413,18 @@ func test_a_wheel_that_catches_up_again_holds_its_blows_as_it_comes_round() -> v
 
 
 func test_an_enemy_that_routs_mid_wheel_is_turned_onto_in_place_past_the_threshold() -> void:
-	# A router among the ranks is held against instead (_router_streaming_through), as on main,
-	# so this one routs off beyond the footprint.
+	# A router among the ranks streaming out through the block is held against instead
+	# (_router_streaming_through), as on main; this one leads the anchor along its line of
+	# flight, so it is not streaming through, and stands inside the footprint, so only the
+	# ROUTING clause of _combat_wheel_applies stops the wheel carrying on.
 	var pair: Array = _running_wheel(60.0)
 	var u: Unit = pair[0]
 	var e: Unit = pair[1]
-	e.position = _off_heading(u, 80.0, 2000.0)
+	e.position = _off_heading(u, 80.0, 10.0)
+	assert_true(u._enemy_inside_own_footprint(e), "sanity: the router stands among the ranks")
 	e.state = Unit.State.ROUTING
+	e._flee_velocity = (e.position - u.position).normalized() * 50.0
+	assert_false(u._router_streaming_through(e), "sanity: it leads the anchor, so it is not streaming through")
 	_wheel_tick(u, e, true)
 	assert_ne(u._engage_turn_target, Vector2.ZERO, "past the threshold a router is turned onto in place")
 
