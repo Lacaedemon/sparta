@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/router-contact-edge-1801.json",
+  "caption": "A brittle cavalry squadron (blue) is charged by a spear-armed infantry block from the east, breaks while still in contact and flees north with the infantry following at the edge of its reach. This change re-pins the clip's four position checks at ticks 430 to 448 to where the squadron's flight now runs, since the combat-wheel change moved it; watch the squadron drift slowly north at the edge of contact, as the checks now expect.",
+  "fixed_fps": 30,
+  "max_frames": 600,
+  "fps": 15,
+  "width": 720
+}
